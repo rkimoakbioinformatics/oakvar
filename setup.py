@@ -55,14 +55,14 @@ for root, dirs, files in os.walk(os.path.join('cravat', 'websubmit')):
     data_files.extend(root_files)
 
 setup(
-    name='open-cravat',
+    name='oxygenv-core',
     packages=['cravat'],
-    version='2.2.7',
-    description='OpenCRAVAT - variant analysis toolkit',
+    version='2.2.8',
+    description='Oxygen V Core: Variant Analysis Platform',
     long_description=readme(),
     author='RyangGuk Kim, Kyle Moad, Mike Ryan, and Rachel Karchin',
     author_email='rkim@oakbioinformatics.com',
-    url='http://www.opencravat.org',
+    url='http://www.oxygenv.com',
     license='',
     package_data={
         'cravat': data_files
