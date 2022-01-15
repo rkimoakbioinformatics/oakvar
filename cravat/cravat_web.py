@@ -10,10 +10,10 @@ import argparse
 import imp
 import oyaml as yaml
 import re
-from cravat import admin_util as au
-from cravat.webresult import webresult as wr
-from cravat.webstore import webstore as ws
-from cravat.websubmit import websubmit as wu
+from . import admin_util as au
+from .webresult import webresult as wr
+from .webstore import webstore as ws
+from .websubmit import websubmit as wu
 import websockets
 from aiohttp import web, web_runner
 import socket
@@ -28,9 +28,9 @@ import importlib
 import socket
 import concurrent
 import logging
-from cravat import constants
+from . import constants
 import time
-import cravat.util
+from . import util
 
 SERVER_ALREADY_RUNNING = -1
 

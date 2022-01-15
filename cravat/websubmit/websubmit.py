@@ -4,9 +4,10 @@ import datetime
 import subprocess
 import yaml
 import json
-from cravat import admin_util as au
-from cravat.config_loader import ConfigLoader
-from cravat.cravat_class import run_cravat_job
+#from cravat import admin_util as au
+from .. import admin_util as au
+from ..config_loader import ConfigLoader
+from ..cravat_class import run_cravat_job
 import sys
 import traceback
 import shutil
@@ -21,12 +22,12 @@ import asyncio
 import importlib
 from multiprocessing import Process, Pipe, Value, Manager, Queue
 from queue import Empty
-from cravat import constants
-from cravat import get_live_annotator, get_live_mapper
+from .. import constants
+from .. import get_live_annotator, get_live_mapper
 import signal
 import gzip
-from cravat.cravat_util import max_version_supported_for_migration, status_from_db
-import cravat.util
+from ..cravat_util import max_version_supported_for_migration, status_from_db
+from ..util import is_compatible_version
 import logging
 
 cfl = ConfigLoader()
@@ -1186,7 +1187,7 @@ async def update_result_db (request):
     cmd = ['oc', 'util', 'update-result', db_path]
     p = await asyncio.create_subprocess_shell(' '.join(cmd))
     await p.wait()
-    compatible_version, db_version, oc_version = cravat.util.is_compatible_version(db_path)
+    compatible_version, db_version, oc_version = is_compatible_version(db_path)
     if compatible_version:
         msg = 'success'
         fn = find_files_by_ending(job_dir, '.status.json')[0]

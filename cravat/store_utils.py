@@ -89,7 +89,7 @@ class PathBuilder(object):
 
     def manifest(self, version=None):
         if version is None:
-            version = pkg_resources.get_distribution("open-cravat").version
+            version = pkg_resources.get_distribution("oxygenv-core").version
         fname = "manifest-{}.yml".format(version)
         return self._build_path(self.base(), fname)
 
