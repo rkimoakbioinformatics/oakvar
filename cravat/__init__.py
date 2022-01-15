@@ -56,6 +56,12 @@ from .constants import crx_def
 
 wgs = None
 
+def run(*args):
+    from .oc import main as ocmain
+    import sys
+    print("sys.argv=", sys.argv)
+    print("args=", args)
+    ocmain()
 
 def get_live_annotator(module_name):
     try:
@@ -197,3 +203,4 @@ class LiveAnnotator:
         del crx_data["tmp_mapper"]
         response["base"] = crx_data
         return response
+

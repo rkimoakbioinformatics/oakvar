@@ -69,7 +69,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'oc=cravat.oc:main',
+            'oc=cravat.__main__:main',
         ]
     },
     cmdclass={
