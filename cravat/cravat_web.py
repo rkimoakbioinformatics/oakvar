@@ -86,7 +86,7 @@ parser.add_argument(
     help="Name of OpenCRAVAT webapp module to run",
 )
 parser.add_argument("--port", dest="port", default=None, help="Port number for OpenCRAVAT graphical user interface")
-
+parser.add_argument("--noguest", dest="noguest", default=False, action="store_true", help="Diasbles guest mode")
 
 def setup(args):
     try:
@@ -106,7 +106,6 @@ def setup(args):
             try:
                 global cravat_multiuser
                 import cravat_multiuser
-
                 loop.create_task(cravat_multiuser.setup_module())
                 global server_ready
                 server_ready = True
@@ -135,6 +134,7 @@ def setup(args):
             cravat_multiuser.servermode = servermode
             cravat_multiuser.server_ready = server_ready
             cravat_multiuser.logger = logger
+            cravat_multiuser.noguest = args.noguest
             wu.cravat_multiuser = cravat_multiuser
             ws.cravat_multiuser = cravat_multiuser
         if servermode and server_ready == False:
