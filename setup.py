@@ -57,12 +57,12 @@ for root, dirs, files in os.walk(os.path.join('cravat', 'websubmit')):
 setup(
     name='oxygenv-core',
     packages=['cravat'],
-    version='2.3.0',
+    version='2.3.1',
     description='Oxygen V Core',
     long_description=readme(),
     author='Ryangguk Kim',
     author_email='rkim@oakbioinformatics.com',
-    url='http://www.oxygenv.org',
+    url='https://github.com/oakbioinformatics/oxygenv-core',
     license='',
     package_data={
         'cravat': data_files
