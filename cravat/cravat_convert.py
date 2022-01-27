@@ -561,10 +561,9 @@ class MasterCravatConverter(object):
         self._close_files()
         self.end()
         if self.status_writer is not None:
-            if self.status_writer is not None:
-                self.status_writer.queue_status_update("num_input_var", total_lnum)
-                self.status_writer.queue_status_update("num_unique_var", write_lnum)
-                self.status_writer.queue_status_update("num_error_input", num_errors)
+            self.status_writer.queue_status_update("num_input_var", total_lnum)
+            self.status_writer.queue_status_update("num_unique_var", write_lnum)
+            self.status_writer.queue_status_update("num_error_input", num_errors)
         end_time = time.time()
         self.logger.info("finished: %s" % time.asctime(time.localtime(end_time)))
         runtime = round(end_time - start_time, 3)
