@@ -138,6 +138,8 @@ class MasterCravatConverter(object):
             action="store_true",
             help=argparse.SUPPRESS,
         )
+        if len(sys.argv) > 1 and len(inargs) == 0:
+            inargs = [sys.argv]
         parsed_args = cravat.util.get_args(parser, inargs, inkwargs)
         self.input_format = None
         if parsed_args.format:
@@ -193,9 +195,10 @@ class MasterCravatConverter(object):
         if parsed_args.confs is not None:
             confs = parsed_args.confs.lstrip("'").rstrip("'").replace("'", '"')
             self.conf = json.loads(confs)
-        self.conf.update(parsed_args.conf)
+        if hasattr(parsed_args, "conf"):
+            self.conf.update(parsed_args.conf)
         self.unique_variants = parsed_args.unique_variants
-        if parsed_args.status_writer:
+        if hasattr(parsed_args, "status_writer"):
             self.status_writer = parsed_args.status_writer
         else:
             self.status_writer = None
@@ -398,10 +401,11 @@ class MasterCravatConverter(object):
         """ Convert input file to a .crv file using the primary converter."""
         self.setup()
         start_time = time.time()
-        self.status_writer.queue_status_update(
-            "status",
-            "Started {} ({})".format("Converter", self.primary_converter.format_name),
-        )
+        if self.status_writer is not None:
+            self.status_writer.queue_status_update(
+                "status",
+                "Started {} ({})".format("Converter", self.primary_converter.format_name),
+            )
         last_status_update_time = time.time()
         multiple_files = len(self.input_paths) > 1
         fileno = 0
@@ -544,12 +548,13 @@ class MasterCravatConverter(object):
             f.close()
             cur_time = time.time()
             if total_lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
-                self.status_writer.queue_status_update(
-                    "status",
-                    "Running {} ({}): line {}".format(
-                        "Converter", cur_fname, read_lnum
-                    ),
-                )
+                if self.status_writer is not None:
+                    self.status_writer.queue_status_update(
+                        "status",
+                        "Running {} ({}): line {}".format(
+                            "Converter", cur_fname, read_lnum
+                        ),
+                    )
                 last_status_update_time = cur_time
         self.logger.info("error lines: %d" % self.error_lines)
         self._close_files()
@@ -563,17 +568,32 @@ class MasterCravatConverter(object):
         runtime = round(end_time - start_time, 3)
         self.logger.info("num input lines: {}".format(total_lnum))
         self.logger.info("runtime: %s" % runtime)
-        self.status_writer.queue_status_update(
-            "status",
-            "Finished {} ({})".format("Converter", self.primary_converter.format_name),
-        )
+        if self.status_writer is not None:
+            self.status_writer.queue_status_update(
+                "status",
+                "Finished {} ({})".format("Converter", self.primary_converter.format_name),
+            )
         return total_lnum, self.primary_converter.format_name
+
+    def liftover_one_pos(self, chrom, pos):
+        res = self.lifter.convert_coordinate(chrom, pos - 1)
+        if len(res) == 0:
+            res_prev = self.lifter.convert_coordinate(chrom, pos - 2)
+            res_next = self.lifter.convert_coordinate(chrom, pos)
+            if len(res_prev) == 1 and len(res_next) == 1:
+                pos_prev = res_prev[0][1]
+                pos_next = res_next[0][1]
+                if pos_prev == pos_next - 2:
+                    res = [(res_prev[0][0], pos_prev + 1)]
+                elif pos_prev == pos_next + 2:
+                    res = [(res_prev[0][0], pos_prev - 1)]
+        return res
 
     def liftover(self, chrom, pos, ref, alt):
         reflen = len(ref)
         altlen = len(alt)
         if reflen == 1 and altlen == 1:
-            res = self.lifter.convert_coordinate(chrom, pos - 1)
+            res = self.liftover_one_pos(chrom, pos)
             if res is None or len(res) == 0:
                 raise LiftoverFailure("Liftover failure")
             if len(res) > 1:
