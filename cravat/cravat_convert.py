@@ -570,11 +570,25 @@ class MasterCravatConverter(object):
         )
         return total_lnum, self.primary_converter.format_name
 
+    def liftover_one_pos(self, chrom, pos):
+        res = self.lifter.convert_coordinate(chrom, pos - 1)
+        if len(res) == 0:
+            res_prev = self.lifter.convert_coordinate(chrom, pos - 2)
+            res_next = self.lifter.convert_coordinate(chrom, pos)
+            if len(res_prev) == 1 and len(res_next) == 1:
+                pos_prev = res_prev[0][1]
+                pos_next = res_next[0][1]
+                if pos_prev == pos_next - 2:
+                    res = [(res_prev[0][0], pos_prev + 1)]
+                elif pos_prev == pos_next + 2:
+                    res = [(res_prev[0][0], pos_prev - 1)]
+        return res
+
     def liftover(self, chrom, pos, ref, alt):
         reflen = len(ref)
         altlen = len(alt)
         if reflen == 1 and altlen == 1:
-            res = self.lifter.convert_coordinate(chrom, pos - 1)
+            res = self.liftover_one_pos(chrom, pos)
             if res is None or len(res) == 0:
                 raise LiftoverFailure("Liftover failure")
             if len(res) > 1:
