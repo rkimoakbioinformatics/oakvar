@@ -59,8 +59,6 @@ wgs = None
 def run(*args):
     from .oc import main as ocmain
     import sys
-    print("sys.argv=", sys.argv)
-    print("args=", args)
     ocmain()
 
 def get_live_annotator(module_name):
@@ -80,7 +78,6 @@ def get_live_annotator(module_name):
     except:
         print("    module loading error: {}".format(module.module_name))
         import traceback
-
         traceback.print_exc()
         return None
     return module
@@ -102,7 +99,6 @@ def get_live_mapper(module_name):
     except Exception as e:
         print("    module loading error: {}".format(module_name))
         import traceback
-
         traceback.print_exc()
         return None
     return module
@@ -124,7 +120,6 @@ def get_module(module_name):
     except Exception as e:
         print("    module loading error: {}".format(module_name))
         import traceback
-
         traceback.print_exc()
         return None
 
@@ -197,7 +192,6 @@ class LiveAnnotator:
                 response[k] = annot_data
             except Exception as e:
                 import traceback
-
                 traceback.print_exc()
                 response[k] = None
         del crx_data["tmp_mapper"]
