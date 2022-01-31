@@ -24,7 +24,7 @@ wcravat_process = None
 
 def launch_log_window ():
     global log_window
-    log_window = tkinter.Tk(className='OpenCRAVAT')
+    log_window = tkinter.Tk(className='OxygenV')
     log_window.protocol('WM_DELETE_WINDOW', log_window.withdraw)
     scrt = tkinter.scrolledtext.ScrolledText(log_window, wrap='word')
     scrt.pack(side=tkinter.LEFT)
@@ -127,7 +127,7 @@ def main ():
         ('Hide log', None, hide_log),)
     systray = SysTrayIcon(
         "icon_256x256.ico", 
-        "OpenCRAVAT", 
+        "OxygenV", 
         menu_options, 
         on_quit=on_quit_callback,
         default_menu_index=0,

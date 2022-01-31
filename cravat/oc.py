@@ -7,7 +7,7 @@ from .cravat_report import parser as report_parser
 import sys
 
 root_p = argparse.ArgumentParser(
-    description="Open-CRAVAT genomic variant interpreter. https://github.com/KarchinLab/open-cravat"
+    description="Open-CRAVAT genomic variant interpreter. https://github.com/rkimoakbioinformatics/oxygenv-core"
 )
 root_sp = root_p.add_subparsers(title="Commands")
 
