@@ -1,4 +1,4 @@
-Oxygen V Core is a genomic variant interpretation platform, based on and further developed from `OpenCRAVAT`_ by `Oak Bioinformatics LLC`_. 
+OxygenV Core is a genomic variant interpretation platform, based on and further developed from `OpenCRAVAT`_ by `Oak Bioinformatics LLC`_. 
 
 .. _OpenCRAVAT: https://github.com/KarchinLab/open-cravat
 .. _Oak Bioinformatics LLC: https://oakbioinformatics.com
