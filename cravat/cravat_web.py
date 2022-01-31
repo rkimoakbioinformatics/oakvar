@@ -83,9 +83,9 @@ parser.add_argument(
     "--webapp",
     dest="webapp",
     default=None,
-    help="Name of OpenCRAVAT webapp module to run",
+    help="Name of OxygenV webapp module to run",
 )
-parser.add_argument("--port", dest="port", default=None, help="Port number for OpenCRAVAT graphical user interface")
+parser.add_argument("--port", dest="port", default=None, help="Port number for OxygenV graphical user interface")
 parser.add_argument("--noguest", dest="noguest", default=False, action="store_true", help="Diasbles guest mode")
 
 def setup(args):
@@ -138,7 +138,7 @@ def setup(args):
             wu.cravat_multiuser = cravat_multiuser
             ws.cravat_multiuser = cravat_multiuser
         if servermode and server_ready == False:
-            msg = 'open-cravat-server package is required to run OpenCRAVAT Server.\nRun "pip install open-cravat-server" to get the package.'
+            msg = 'open-cravat-multiuser package is required to run OxygenV Server.\nRun "pip install open-cravat-multiuser" to get the package.'
             logger.info(msg)
             logger.info("Exiting...")
             print(msg)
@@ -166,7 +166,7 @@ def setup(args):
             traceback.print_exc()
         logger.info("Exiting...")
         print(
-            "Error occurred while starting OpenCRAVAT server.\nCheck {} for details.".format(
+            "Error occurred while starting OxygenV server.\nCheck {} for details.".format(
                 log_path
             )
         )
@@ -227,7 +227,7 @@ def run(args):
                 ) = cravat.util.is_compatible_version(dbpath)
                 if not compatible_version:
                     print(
-                        f"DB version {db_version} of {dbpath} is not compatible with the current OpenCRAVAT ({oc_version})."
+                        f"DB version {db_version} of {dbpath} is not compatible with the current OxygenV ({oc_version})."
                     )
                     print(
                         f'Consider running "oc util update-result {dbpath}" and running "oc gui {dbpath}" again.'
@@ -249,7 +249,7 @@ def run(args):
             traceback.print_exc()
         logger.info("Exiting...")
         print(
-            "Error occurred while starting OpenCRAVAT server.\nCheck {} for details.".format(
+            "Error occurred while starting OxygenV server.\nCheck {} for details.".format(
                 log_path
             )
         )
@@ -303,7 +303,7 @@ def get_server():
             traceback.print_exc()
         logger.info("Exiting...")
         print(
-            "Error occurred while OpenCRAVAT server.\nCheck {} for details.".format(
+            "Error occurred while OxygenV server.\nCheck {} for details.".format(
                 log_path
             )
         )
@@ -549,7 +549,7 @@ def main(url=None, host=None, port=None):
                     "wcravat already running. Exiting from this instance of wcravat..."
                 )
                 print(
-                    "OpenCRAVAT is already running at {}{}:{}.".format(
+                    "OxygenV is already running at {}{}:{}.".format(
                         protocol, host, port
                     )
                 )
@@ -569,14 +569,14 @@ def main(url=None, host=None, port=None):
     /_/                                                     
 """
         )
-        print("OpenCRAVAT is served at {}:{}".format(host, port))
+        print("OxygenV is served at {}:{}".format(host, port))
         logger.info(
-            "Serving OpenCRAVAT server at {}:{}".format(
+            "Serving OxygenV server at {}:{}".format(
                 host, port
             )
         )
         print(
-            '(To quit: Press Ctrl-C or Ctrl-Break if run on a Terminal or Windows, or click "Cancel" and then "Quit" if run through OpenCRAVAT app on Mac OS)'
+            '(To quit: Press Ctrl-C or Ctrl-Break if run on a Terminal or Windows, or click "Cancel" and then "Quit" if run through OxygenV app on Mac OS)'
         )
         loop = asyncio.get_event_loop()
         loop.call_later(0.1, wakeup)
@@ -617,7 +617,7 @@ def main(url=None, host=None, port=None):
             traceback.print_exc()
         logger.info("Exiting...")
         print(
-            "Error occurred while starting OpenCRAVAT server.\nCheck {} for details.".format(
+            "Error occurred while starting OxygenV server.\nCheck {} for details.".format(
                 log_path
             )
         )

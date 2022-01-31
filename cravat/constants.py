@@ -327,7 +327,7 @@ module_tag_desc = {
     "allele frequency": "modules for studying allele frequency across populations",
     "cancer": "tools for cancer research",
     "clinical relevance": "tools for assessing clinical relevance of variants",
-    "converters": "modules for using the result of other tools as open-cravat input",
+    "converters": "modules for using the result of other tools as oxygenv-core input",
     "dbnsfp": "modules ported from dbNSFP",
     "denovo": "modules related to denovo variants",
     "evolution": "modules for studying variants in evolutionary context",

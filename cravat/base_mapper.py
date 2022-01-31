@@ -77,7 +77,7 @@ class BaseMapper(object):
         self._setup_logger()
         config_loader = ConfigLoader()
         self.conf = config_loader.get_module_conf(self.module_name)
-        self.cravat_version = pkg_resources.get_distribution("open-cravat").version
+        self.cravat_version = pkg_resources.get_distribution("oxygenv-core").version
 
     def _define_main_cmd_args(self):
         self.cmd_parser = argparse.ArgumentParser()
@@ -115,7 +115,7 @@ class BaseMapper(object):
             "--primary-transcript",
             dest="primary_transcript",
             nargs="*",
-            default=["mane"],
+            default=["mane2"],
             help='"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
         )
 
