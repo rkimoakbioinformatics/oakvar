@@ -12,16 +12,17 @@ import requests
 import traceback
 import re
 from distutils.version import LooseVersion
-import pkg_resources
 from collections import defaultdict
 from types import SimpleNamespace
 from . import exceptions
 from collections.abc import MutableMapping
 import multiprocessing
 import importlib
+from importlib.metadata import version as pkg_version
 import traceback
 import signal
 import subprocess
+import pkg_resources
 
 
 class InstallProgressHandler(object):
@@ -492,11 +493,6 @@ def get_cravat_conf_info():
         "content": yaml.dump(cravat_conf, default_flow_style=False),
     }
     return cravat_conf_info
-
-
-def get_current_package_version():
-    version = pkg_resources.get_distribution("oxygenv-core").version
-    return version
 
 
 def get_default_assembly():
@@ -1561,7 +1557,7 @@ def show_cravat_conf():
 
 
 def show_cravat_version():
-    version = get_current_package_version()
+    version = util.get_pkg_version()
     print(version)
 
 

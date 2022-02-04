@@ -13,7 +13,7 @@ from .exceptions import BadFormatError
 import traceback
 from distutils.version import LooseVersion
 from collections import OrderedDict
-
+from . import util
 
 class Aggregator(object):
 
@@ -199,7 +199,7 @@ class Aggregator(object):
     def fill_categories(self):
         header_table = self.level + "_header"
         coldefs = []
-        if LooseVersion(au.get_current_package_version()) >= LooseVersion("1.5.0"):
+        if util.get_pkg_version() >= LooseVersion("1.5.0"):
             sql = f"select col_def from {header_table}"
             self.cursor.execute(sql)
             for row in self.cursor:

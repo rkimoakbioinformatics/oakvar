@@ -354,6 +354,13 @@ class CravatWriter(CravatFile):
     def close(self):
         self.wf.close()
 
+    def delete(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def close_and_delete(self):
+        self.close()
+        self.delete()
 
 class CrxMapping(object):
     def __init__(self):

@@ -358,7 +358,7 @@ class Cravat(object):
                     self.status_json = json.load(f)
                     self.pkg_ver = self.status_json["open_cravat_version"]
                 except:
-                    self.pkg_ver = au.get_current_package_version()
+                    self.create_initial_status_json()
             if self.status_json["status"] == "Submitted":
                 self.status_json["job_dir"] = self.output_dir
                 self.status_json["id"] = os.path.basename(
@@ -382,7 +382,7 @@ class Cravat(object):
                 self.status_json["reports"] = (
                     self.args.reports if self.args.reports != None else []
                 )
-                self.pkg_ver = au.get_current_package_version()
+                self.pkg_ver = str(util.get_pkg_version())
                 self.status_json["open_cravat_version"] = self.pkg_ver
                 annot_names = list(self.annotators.keys())
                 annot_names.sort()
@@ -392,32 +392,35 @@ class Cravat(object):
                 with open(self.status_json_path, "w") as wf:
                     wf.write(json.dumps(self.status_json, indent=2, sort_keys=True))
         else:
-            self.status_json = {}
-            self.status_json["job_dir"] = self.output_dir
-            self.status_json["id"] = os.path.basename(os.path.normpath(self.output_dir))
-            self.status_json["run_name"] = self.run_name
-            self.status_json["assembly"] = self.input_assembly
-            self.status_json["db_path"] = os.path.join(
-                self.output_dir, self.run_name + ".sqlite"
-            )
-            self.status_json["orig_input_fname"] = [
-                os.path.basename(x) for x in self.inputs
-            ]
-            self.status_json["orig_input_path"] = self.inputs
-            self.status_json["submission_time"] = datetime.datetime.now().isoformat()
-            self.status_json["viewable"] = False
-            self.status_json["note"] = self.args.note
-            self.status_json["status"] = "Starting"
-            self.status_json["reports"] = (
-                self.args.reports if self.args.reports != None else []
-            )
-            self.pkg_ver = au.get_current_package_version()
-            self.status_json["open_cravat_version"] = self.pkg_ver
-            annot_names = list(self.annotators.keys())
-            annot_names.sort()
-            self.status_json["annotators"] = annot_names
-            with open(self.status_json_path, "w") as wf:
-                wf.write(json.dumps(self.status_json, indent=2, sort_keys=True))
+            self.create_initial_status_json()
+
+    def create_initial_status_json(self):
+        self.status_json = {}
+        self.status_json["job_dir"] = self.output_dir
+        self.status_json["id"] = os.path.basename(os.path.normpath(self.output_dir))
+        self.status_json["run_name"] = self.run_name
+        self.status_json["assembly"] = self.input_assembly
+        self.status_json["db_path"] = os.path.join(
+            self.output_dir, self.run_name + ".sqlite"
+        )
+        self.status_json["orig_input_fname"] = [
+            os.path.basename(x) for x in self.inputs
+        ]
+        self.status_json["orig_input_path"] = self.inputs
+        self.status_json["submission_time"] = datetime.datetime.now().isoformat()
+        self.status_json["viewable"] = False
+        self.status_json["note"] = self.args.note
+        self.status_json["status"] = "Starting"
+        self.status_json["reports"] = (
+            self.args.reports if self.args.reports != None else []
+        )
+        self.status_json["open_cravat_version"] = str(util.get_pkg_version())
+        self.pkg_ver = self.status_json["open_cravat_version"]
+        annot_names = list(self.annotators.keys())
+        annot_names.sort()
+        self.status_json["annotators"] = annot_names
+        with open(self.status_json_path, "w") as wf:
+            wf.write(json.dumps(self.status_json, indent=2, sort_keys=True))
 
     def get_logger(self):
         if self.args.newlog == True:
@@ -473,7 +476,7 @@ class Cravat(object):
             os.remove(fn)
 
     def log_versions(self):
-        self.logger.info(f"version: oxygenv-core {au.get_current_package_version()} {os.path.dirname(os.path.abspath(__file__))}")
+        self.logger.info(f"version: oxygenv-core {util.get_pkg_version()} {os.path.dirname(os.path.abspath(__file__))}")
         if self.package_conf is not None and len(self.package_conf) > 0:
             self.logger.info(
                 f'package: {self.args.package} {self.package_conf["version"]}'
@@ -611,6 +614,10 @@ class Cravat(object):
             if no_problem_in_run:
                 self.logger.info("finished: {0}".format(display_time))
                 self.logger.info("runtime: {0:0.3f}s".format(runtime))
+                if len(self.error_modules) > 0:
+                    s = "Error modules: {0}".format(','.join(self.error_modules))
+                    self.logger.info(s)
+                    print(s)
                 if not self.args.silent:
                     print("Finished normally. Runtime: {0:0.3f}s".format(runtime))
             else:
@@ -1706,15 +1713,11 @@ class Cravat(object):
         assigned_mnames = set()
         done_mnames = set(self.done_annotators)
         queue_populated = self.manager.Value("c_bool", False)
-        pool_args = [
-            [start_queue, end_queue, queue_populated, self.status_writer]
-        ] * num_workers
+        error_modules = self.manager.list()
         with mp.Pool(num_workers, init_worker) as pool:
-            results = pool.starmap_async(
-                annot_from_queue,
-                pool_args,
-                error_callback=lambda e, mp_pool=pool: mp_pool.terminate(),
-            )
+            results = []
+            for i in range(num_workers):
+                results.append(pool.apply_async(annot_from_queue, (start_queue, end_queue, queue_populated, self.status_writer, error_modules)))
             pool.close()
             for mname, module in self.run_annotators.items():
                 if (
@@ -1737,6 +1740,7 @@ class Cravat(object):
                         assigned_mnames.add(mname)
             queue_populated = True
             pool.join()
+        self.error_modules = list(error_modules)
         self.log_path = os.path.join(self.output_dir, self.run_name + ".log")
         self.log_handler = logging.FileHandler(self.log_path, "a")
         formatter = logging.Formatter(

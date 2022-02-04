@@ -16,7 +16,6 @@ from .constants import (
 from .exceptions import InvalidData, NoVariantError
 from cravat.config_loader import ConfigLoader
 import sys
-import pkg_resources
 import json
 import cravat.cravat_util as cu
 from types import SimpleNamespace
@@ -24,6 +23,7 @@ import multiprocessing as mp
 import cravat.admin_util as au
 import time
 import cravat.util
+from . import util
 
 
 class BaseMapper(object):
@@ -77,7 +77,7 @@ class BaseMapper(object):
         self._setup_logger()
         config_loader = ConfigLoader()
         self.conf = config_loader.get_module_conf(self.module_name)
-        self.cravat_version = pkg_resources.get_distribution("oxygenv-core").version
+        self.cravat_version = util.get_pkg_version()
 
     def _define_main_cmd_args(self):
         self.cmd_parser = argparse.ArgumentParser()

@@ -12,7 +12,7 @@ def init_worker():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
-def annot_from_queue(start_queue, end_queue, queue_populated, status_writer):
+def annot_from_queue(start_queue, end_queue, queue_populated, status_writer, error_modules):
     while True:
         try:
             task = start_queue.get(True, 1)
@@ -33,11 +33,11 @@ def annot_from_queue(start_queue, end_queue, queue_populated, status_writer):
             kwargs["status_writer"] = status_writer
             annotator_class = util.load_class(module.script_path, "CravatAnnotator")
             annotator = annotator_class(kwargs)
+            annotator.run()
         except Exception as e:
-            print(f"        Error with {module.name}: {e}")
-            logger.error(e)
-            raise
-        annotator.run()
+            import traceback
+            logger.error(traceback.format_exc())
+            error_modules.append(module.name)
         end_queue.put(module.name)
 
 

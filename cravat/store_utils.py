@@ -10,9 +10,9 @@ import hashlib
 import zipfile
 from . import exceptions
 import json
-import pkg_resources
 from urllib.error import HTTPError
 import types
+from . import util
 
 
 class PathBuilder(object):
@@ -89,7 +89,7 @@ class PathBuilder(object):
 
     def manifest(self, version=None):
         if version is None:
-            version = pkg_resources.get_distribution("oxygenv-core").version
+            version = util.get_pkg_version()
         fname = "manifest-{}.yml".format(version)
         return self._build_path(self.base(), fname)
 

@@ -1,6 +1,7 @@
 import re
 import os
 import importlib
+from importlib.metadata import version as pkg_version
 import sys
 import oyaml as yaml
 import chardet
@@ -11,7 +12,6 @@ import logging
 from distutils.version import LooseVersion
 from cravat.cravat_util import max_version_supported_for_migration
 import sqlite3
-import pkg_resources
 import datetime
 import argparse
 from types import SimpleNamespace
@@ -383,13 +383,30 @@ def detect_encoding(path):
         return encoding
 
 
+def get_pkg_version():
+    try:
+        oc_version = LooseVersion(pkg_version("oxygenv-core"))
+    except:
+        oc_version = None
+    if oc_version is None:
+        try:
+            oc_version = LooseVersion(pkg_version("open-cravat"))
+        except:
+            oc_version = None
+    return oc_version
+
+
 def is_compatible_version(dbpath):
     db = sqlite3.connect(dbpath)
     c = db.cursor()
-    oc_version = LooseVersion(pkg_resources.get_distribution("oxygenv-core").version)
+    oc_version = get_pkg_version()
     sql = 'select colval from info where colkey="oxygenv-core"'
     c.execute(sql)
     r = c.fetchone()
+    if r is None:
+        sql = 'select colval from info where colkey="open-cravat"'
+        c.execute(sql)
+        r = c.fetchone()
     compatible = None
     db_version = "0.0.0"
     if r is None:
