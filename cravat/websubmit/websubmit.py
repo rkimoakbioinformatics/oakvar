@@ -29,6 +29,7 @@ import gzip
 from ..cravat_util import max_version_supported_for_migration, status_from_db
 from ..util import is_compatible_version
 import logging
+from .. import util
 
 cfl = ConfigLoader()
 report_generation_ps = {}
@@ -460,7 +461,7 @@ async def submit (request):
     status_json['note'] = note
     status_json['status'] = 'Submitted'
     status_json['reports'] = []
-    pkg_ver = au.get_current_package_version()
+    pkg_ver = str(util.get_pkg_version())
     status_json['open_cravat_version'] = pkg_ver
     status_json['annotators'] = annotators
     if cc_cohorts_path is not None:
@@ -797,7 +798,7 @@ def get_servermode (request):
     return web.json_response({'servermode': servermode and server_ready})
 
 async def get_package_versions(request):
-    cur_ver = au.get_current_package_version()
+    cur_ver = str(util.get_pkg_version())
     lat_ver = au.get_latest_package_version()
     if lat_ver is not None:
         cur_drop_patch = '.'.join(cur_ver.split('.')[:-1])
