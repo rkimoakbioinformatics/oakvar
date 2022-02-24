@@ -28,6 +28,7 @@ from cravat.inout import CravatWriter
 from cravat.inout import CravatReader
 import glob
 import nest_asyncio
+from cravat import admindb
 
 nest_asyncio.apply()
 import re
@@ -278,6 +279,8 @@ cravat_cmd_parser.add_argument("-f", dest="filterpath", default=None, help="Path
 cravat_cmd_parser.add_argument("--md", default=None, help="Specify the root directory of OxygenV modules (annotators, etc)")
 cravat_cmd_parser.add_argument("-m", dest="mapper_name", nargs="+", default=[], help="Mapper module name or mapper module directory")
 cravat_cmd_parser.add_argument("-p", nargs="+", dest="postaggregators", default=[], help="Postaggregators to run. Additionally, tagsampler, casecontrol, varmeta, and vcfinfo will automatically run depending on conditions.")
+cravat_cmd_parser.add_argument("--admindb", default=None, help="path to the database to log the job")
+cravat_cmd_parser.add_argument("--username", default="default", help="username of the job")
 
 def run(cmd_args):
     au.ready_resolution_console()
@@ -320,8 +323,13 @@ class Cravat(object):
         self.annotators = {}
         self.append_mode = False
         self.pipeinput = False
+        self.logger = None
+        self.admindb = None
+        self.numinput = None
+        self.error_modules = []
         try:
             self.make_args_namespace(kwargs)
+            self.check_args()
             if self.args.clean_run:
                 if not self.args.silent:
                     print("Deleting previous output files...")
@@ -341,8 +349,12 @@ class Cravat(object):
             self.manager.register("StatusWriter", StatusWriter)
             self.manager.start()
             self.status_writer = self.manager.StatusWriter(self.status_json_path)
+            self.setup_admindb()
         except Exception as e:
             self.handle_exception(e)
+
+    def setup_admindb(self):
+        self.admindb = admindb.AdminDb.get_admindb(admindb=self.args.admindb)
 
     def check_valid_modules(self, module_names):
         for module_name in module_names:
@@ -489,11 +501,36 @@ class Cravat(object):
         for mname, module in self.reports.items():
             self.logger.info(f"version: {module.name} {module.conf['version']} {os.path.dirname(module.script_path)}")
 
+    def admindb_add_job(self):
+        self.admindb.add_job(
+            jobid=self.args.jobid,
+            username=self.args.username,
+            submit=datetime.datetime.now().isoformat(),
+            runtime=0,
+            numinput=0,
+            annotators=",".join([mn for mn in self.annotators.keys()]),
+            assembly=self.input_assembly)
+
+    def admindb_add_numinput(self):
+        self.admindb.add_numinput(
+            jobid=self.args.jobid,
+            numinput=self.numinput)
+
+    def admindb_add_runtime(self, runtime):
+        self.admindb.add_runtime(
+            jobid=self.args.jobid,
+            runtime=runtime)
+
+    def is_whole_run(self):
+        return self.admindb is not None and self.args.startat is None and self.args.endat is None
+
     async def main(self):
         no_problem_in_run = True
         report_response = None
         try:
             self.aggregator_ran = False
+            if self.is_whole_run():
+                self.admindb_add_job()
             self.update_status("Started cravat", force=True)
             if self.pipeinput == False:
                 input_files_str = ", ".join(self.inputs)
@@ -526,6 +563,8 @@ class Cravat(object):
                         print(msg)
                     self.logger.info(msg)
                     exit()
+            if self.is_whole_run():
+                self.admindb_add_numinput()
             self.mapper_ran = False
             if (
                 self.endlevel >= self.runlevels["mapper"]
@@ -630,6 +669,8 @@ class Cravat(object):
                     print("Check {}".format(self.log_path))
                 self.update_status("Error", force=True)
             self.close_logger()
+            if self.is_whole_run():
+                self.admindb_add_runtime(runtime)
             if self.args.do_not_change_status != True:
                 self.status_writer.flush()
             if no_problem_in_run and not self.args.temp_files and self.aggregator_ran:
@@ -734,13 +775,18 @@ class Cravat(object):
             if not self.args.silent:
                 print(e)
             exit()
+        elif exc_class == ArgumentException:
+            print(e)
+            exit()
         elif exc_class == InvalidData:
             pass
         elif exc_class == ExpectedException:
-            self.logger.exception("An expected exception occurred.")
-            self.logger.error(e)
+            if self.logger is not None:
+                self.logger.exception("An expected exception occurred.")
+                self.logger.error(e)
         else:
-            self.logger.exception("An unexpected exception occurred.")
+            if self.logger is not None:
+                self.logger.exception("An unexpected exception occurred.")
             if not self.args.silent:
                 print(exc_str)
 
@@ -790,6 +836,7 @@ class Cravat(object):
         self.process_module_options()
         self.cravat_conf = self.conf.get_cravat_conf()
         self.run_conf = self.conf._all
+        # makes self.args.
         args_keys = self.args.__dict__.keys()
         for arg_key in args_keys:
             if self.args.__dict__[arg_key] is None and arg_key in self.run_conf:
@@ -975,6 +1022,10 @@ class Cravat(object):
             self.endlevel = self.runlevels[self.args.endat]
         except KeyError:
             self.endlevel = max(self.runlevels.values())
+
+    def check_args(self):
+        if self.args.admindb is not None and self.args.jobid is None:
+            raise ArgumentException("--jobid should be given if --admindb is used.")
 
     def make_args_namespace(self, supplied_args):
         self.set_package_conf(supplied_args)
