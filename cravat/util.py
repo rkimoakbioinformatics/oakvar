@@ -435,18 +435,19 @@ def get_current_time_str():
 def get_args(parser, inargs, inkwargs):
     # Combines arguments in various formats.
     inarg_dict = {}
-    for inarg in inargs:
-        t = type(inarg)
-        if t == list:  # ['-t', 'text']
-            #if inarg[0].endswith(".py"):
-            #    inarg = inarg[1:]
-            inarg_dict.update(**vars(parser.parse_args(inarg)))
-        elif t == argparse.Namespace:  # already parsed by a parser.
-            inarg_dict.update(**vars(inarg))
-        elif t == types.SimpleNamespace:
-            inarg_dict.update(**vars(inarg))
-        elif t == dict:  # {'output_dir': '/rt'}
-            inarg_dict.update(inarg)
+    if type(inargs) in [list, tuple] and type(inargs[0]) in [list, tuple]:
+        inarg = inargs[0]
+    else:
+        inarg = inargs
+    t = type(inarg)
+    if t == list:  # ['-t', 'text']
+        inarg_dict.update(**vars(parser.parse_args(inarg)))
+    elif t == argparse.Namespace:  # already parsed by a parser.
+        inarg_dict.update(**vars(inarg))
+    elif t == types.SimpleNamespace:
+        inarg_dict.update(**vars(inarg))
+    elif t == dict:  # {'output_dir': '/rt'}
+        inarg_dict.update(inarg)
     inarg_dict.update(inkwargs)
     arg_dict = get_argument_parser_defaults(parser)
     arg_dict.update(inarg_dict)

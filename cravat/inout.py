@@ -142,8 +142,8 @@ class CravatReader(CravatFile):
         len_poss = len(poss)
         return num_lines, chunksize, poss, len_poss, max_num_lines
 
-    def loop_data(self):
-        for lnum, l in self._loop_data():
+    def loop_data(self, start=None, end=None):
+        for lnum, l in self._loop_data(start=start, end=end):
             toks = l.split("\t")
             out = {}
             if len(toks) < len(self.columns):
@@ -189,8 +189,8 @@ class CravatReader(CravatFile):
     def _close_file(self):
         self.f.close()
 
-    def get_data(self):
-        all_data = [d for _, _, d in self.loop_data()]
+    def get_data(self, start=None, end=None):
+        all_data = [d for _, _, d in self.loop_data(start=start, end=end)]
         return all_data
 
     def _loop_definition(self):
@@ -203,7 +203,7 @@ class CravatReader(CravatFile):
                 break
         f.close()
 
-    def _loop_data(self):
+    def _loop_data(self, start=None, end=None):
         f = open(self.path, "rb")
         if self.seekpos is not None:
             f.seek(self.seekpos)
@@ -214,8 +214,12 @@ class CravatReader(CravatFile):
             if l.startswith("#"):
                 continue
             else:
-                yield lnum, l
-            lnum += 1
+                if start is not None and end is not None:
+                    if lnum >= start and lnum <= end:
+                        yield lnum, l
+                else:
+                    yield lnum, l
+                lnum += 1
             if self.chunksize is not None and lnum == self.chunksize:
                 break
         f.close()
@@ -253,17 +257,20 @@ class CravatWriter(CravatFile):
         if not (override):
             try:
                 self.columns[col_index]
-                raise Exception(
-                    "A column is already defined for index %d." % col_index
-                    + " Choose another index,"
-                    + " or set override to True"
-                )
+                return False
+                #raise Exception(
+                #    "A column is already defined for index %d." % col_index
+                #    + " Choose another index,"
+                #    + " or set override to True"
+                #)
             except KeyError:
                 pass
         for i in self.columns:
             if self.columns[i].name == col_def.name:
-                raise Exception("A column with name %s already exists." % col_def.name)
+                return False
+                #raise Exception("A column with name %s already exists." % col_def.name)
         self.columns[col_index] = col_def
+        return True
 
     def add_columns(self, col_list, append=False):
         """
@@ -548,6 +555,7 @@ class ColumnDefinition(object):
         self.link_format = d.get("link_format")
         self.genesummary = d.get("genesummary", False)
         self.table = d.get("table", False)
+        self.is_input = d.get("is_input", False)
 
     def from_row(self, row, order=None):
         if order is None:

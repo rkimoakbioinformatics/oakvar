@@ -37,11 +37,16 @@ gui_p = root_sp.add_parser(
 
 # module
 module_p = root_sp.add_parser(
-    "module", description="Change installed modules", help="Change installed modules"
+    "module2", 
+    description="module-level operation", 
+    help="Module-level operation"
 )
 module_sp = module_p.add_subparsers(title="Commands")
 module_ls_p = module_sp.add_parser(
-    "ls", parents=[cravat_admin.parser_ls], add_help=False, help="List modules"
+    "ls", 
+    parents=[cravat_admin.parser_ls], 
+    add_help=False, 
+    help="List modules"
 )
 module_install_p = module_sp.add_parser(
     "install",
@@ -70,7 +75,12 @@ module_install_base_base_p = module_sp.add_parser(
     add_help=False,
     help="Install base modules",
 )
-
+module_run_p = module_sp.add_parser(
+    "run",
+    parents=[base_annotator.parser],
+    add_help=False,
+    help="Run one annotator module",
+)
 
 # config
 config_p = root_sp.add_parser(

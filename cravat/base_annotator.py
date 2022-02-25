@@ -17,14 +17,60 @@ from .exceptions import InvalidData
 from .exceptions import ConfigurationError
 import sqlite3
 import json
-import cravat.cravat_util as cu
-import cravat.admin_util as au
 import re
 from types import SimpleNamespace
-import cravat.util
 from distutils.version import LooseVersion
 from cravat.constants import cannonical_chroms
 
+def run(args):
+    if args.module is not None:
+        from cravat import get_module
+        ModuleClass = get_module(args.module)
+        module = ModuleClass(args)
+        module.run()
+
+parser = argparse.ArgumentParser()
+parser.add_argument("input_file", help="Input file to be annotated.")
+parser.add_argument(
+    "-s",
+    action="append",
+    dest="secondary_inputs",
+    help="Secondary inputs. " + "Format as <module_name>:<path>",
+)
+parser.add_argument(
+    "-n", dest="run_name", help="Name of job. Default is input file name."
+)
+parser.add_argument(
+    "-d",
+    dest="output_dir",
+    help="Output directory. " + "Default is input file directory.",
+)
+parser.add_argument(
+    "-c", dest="conf", help="Path to optional run conf file."
+)
+parser.add_argument(
+    "-p",
+    "--plainoutput",
+    action="store_true",
+    dest="plainoutput",
+    help="Skip column definition writing",
+)
+parser.add_argument(
+    "--confs", dest="confs", default="{}", help="Configuration string"
+)
+parser.add_argument(
+    "--silent", dest="silent", default=False, help="Silent operation"
+)
+parser.add_argument(
+    "-a", dest="module", default=None, help="Annotator module name"
+)
+parser.add_argument(
+    "--start", dest="start", type=int, default=None, help="Beginning line of the crx input file")
+parser.add_argument(
+    "--end", dest="end", type=int, default=None, help="End line of the crx input file")
+parser.add_argument(
+    "--includecrv", action="store_true", default=False, help="Include variant information")
+parser.set_defaults(func=run)
 
 class BaseAnnotator(object):
 
@@ -50,8 +96,6 @@ class BaseAnnotator(object):
         self.dbconn = None
         self.cursor = None
         self.output_writer = None
-        self._define_cmd_parser()
-        self.args = cravat.util.get_args(self.cmd_arg_parser, inargs, inkwargs)
         self.parse_cmd_args(inargs, inkwargs)
         if hasattr(self.args, "status_writer") == False:
             self.status_writer = None
@@ -136,44 +180,15 @@ class BaseAnnotator(object):
                 self.conf["input_format"]
             ]
 
-    def _define_cmd_parser(self):
-        parser = argparse.ArgumentParser()
-        parser.add_argument("input_file", help="Input file to be annotated.")
-        parser.add_argument(
-            "-s",
-            action="append",
-            dest="secondary_inputs",
-            help="Secondary inputs. " + "Format as <module_name>:<path>",
-        )
-        parser.add_argument(
-            "-n", dest="run_name", help="Name of job. Default is input file name."
-        )
-        parser.add_argument(
-            "-d",
-            dest="output_dir",
-            help="Output directory. " + "Default is input file directory.",
-        )
-        parser.add_argument(
-            "-c", dest="conf", help="Path to optional run conf file."
-        )
-        parser.add_argument(
-            "-p",
-            "--plainoutput",
-            action="store_true",
-            dest="plainoutput",
-            help="Skip column definition writing",
-        )
-        parser.add_argument(
-            "--confs", dest="confs", default="{}", help="Configuration string"
-        )
-        parser.add_argument(
-            "--silent", dest="silent", default=False, help="Silent operation"
-        )
-        self.cmd_arg_parser = parser
-
     # Parse the command line arguments
     def parse_cmd_args(self, inargs, inkwargs):
-        args = cravat.util.get_args(self.cmd_arg_parser, inargs, inkwargs)
+        import cravat.util
+        if type(inargs) == tuple:
+            inargs = inargs[0]
+        if type(inargs) == list:
+            if len(inargs) > 1 and inargs[0].endswith(".py"):
+                inargs = inargs[1:]
+        args = cravat.util.get_args(parser, inargs, inkwargs)
         self.primary_input_path = os.path.abspath(args.input_file)
         self.secondary_paths = {}
         if args.secondary_inputs:
@@ -247,24 +262,26 @@ class BaseAnnotator(object):
             if "table" in col and col["table"] == True:
                 self.json_colnames.append(col["name"])
 
-    # Runs the annotator.
-    def run(self):
+    def announce_start(self):
         if self.update_status_json_flag and self.status_writer is not None:
             self.status_writer.queue_status_update(
                 "status", "Started {} ({})".format(self.conf["title"], self.module_name)
             )
-        start_time = time.time()
-        self.logger.info("started: %s" % time.asctime(time.localtime(start_time)))
+        self.start_time = time.time()
+        self.logger.info("started: %s" % time.asctime(time.localtime(self.start_time)))
         if not self.args.silent:
             print(
                 "        {}: started at {}".format(
-                    self.module_name, time.asctime(time.localtime(start_time))
+                    self.module_name, time.asctime(time.localtime(self.start_time))
                 )
             )
+
+    # Runs the annotator.
+    def run(self):
+        self.announce_start()
         try:
             self.base_setup()
             self.last_status_update_time = time.time()
-            self.output_columns = self.conf["output_columns"]
             self.make_json_colnames()
         except Exception as e:
             if self.output_writer is not None:
@@ -290,6 +307,8 @@ class BaseAnnotator(object):
                 output_dict[self._id_col_name] = input_data[self._id_col_name]
                 # Fill absent columns with empty strings
                 output_dict = self.fill_empty_output(output_dict)
+                if self.args.includecrv:
+                    output_dict.update(input_data)
                 # Writes output.
                 self.output_writer.write_data(output_dict)
             except Exception as e:
@@ -307,7 +326,7 @@ class BaseAnnotator(object):
                     self.module_name, time.asctime(time.localtime(end_time))
                 )
             )
-        run_time = end_time - start_time
+        run_time = end_time - self.start_time
         self.logger.info("runtime: {0:0.3f}s".format(run_time))
         if not self.args.silent:
             print("        {}: runtime {:0.3f}s".format(self.module_name, run_time))
@@ -486,10 +505,23 @@ class BaseAnnotator(object):
             )
             self.output_writer.write_meta_line("version", self.annotator_version)
         skip_aggregation = []
-        for col_index, col_def in enumerate(self.conf["output_columns"]):
-            self.output_writer.add_column(col_index, col_def)
-            if not (col_def.get("aggregate", True)):
-                skip_aggregation.append(col_def["name"])
+        self.output_columns = []
+        col_index = 0
+        # handles --includecrv
+        if self.args.includecrv:
+            for col_def in crv_def:
+                col_def['is_input'] = True
+                if self.output_writer.add_column(col_index, col_def):
+                    self.output_columns.append(col_def)
+                    skip_aggregation.append(col_def["name"])
+                    col_index += 1
+        for col_def in self.conf["output_columns"]:
+            col_def['is_input'] = False
+            if self.output_writer.add_column(col_index, col_def):
+                self.output_columns.append(col_def)
+                if not (col_def.get("aggregate", True)):
+                    skip_aggregation.append(col_def["name"])
+                col_index += 1
         if not (self.plain_output):
             self.output_writer.write_definition(self.conf)
             self.output_writer.write_meta_line(
@@ -569,7 +601,8 @@ class BaseAnnotator(object):
     # Gets the input dict from both the input file, and
     # any depended annotators depended annotator feature not complete.
     def _get_input(self):
-        for lnum, line, reader_data in self.primary_input_reader.loop_data():
+        for lnum, line, reader_data in \
+            self.primary_input_reader.loop_data(start=self.args.start, end=self.args.end):
             try:
                 input_data = {}
                 for col_name in self.conf["input_columns"]:

@@ -326,7 +326,6 @@ class Cravat(object):
         self.logger = None
         self.admindb = None
         self.numinput = None
-        self.error_modules = []
         try:
             self.make_args_namespace(kwargs)
             self.check_args()
@@ -653,7 +652,7 @@ class Cravat(object):
             if no_problem_in_run:
                 self.logger.info("finished: {0}".format(display_time))
                 self.logger.info("runtime: {0:0.3f}s".format(runtime))
-                if len(self.error_modules) > 0:
+                if hasattr(self, "error_modules") and len(self.error_modules) > 0:
                     s = "Error modules: {0}".format(','.join(self.error_modules))
                     self.logger.info(s)
                     print(s)
@@ -1048,6 +1047,7 @@ class Cravat(object):
         self.set_genome_assembly()
         self.set_start_end_levels()
         self.cleandb = self.args.cleandb
+        self.num_workers = self.get_num_workers()
         if self.args.note == None:
             self.args.note = ""
 
@@ -1309,7 +1309,61 @@ class Cravat(object):
         genemapper = genemapper_class(cmd, self.status_writer)
         genemapper.run()
 
-    def run_genemapper_mp(self):
+    def collects_crx(self):
+        crx_path = os.path.join(self.output_dir, f"{self.run_name}.crx")
+        wf = open(crx_path, "w")
+        fns = sorted(glob.glob(crx_path + "[.]*"))
+        fn = fns[0]
+        f = open(fn)
+        for line in f:
+            wf.write(line)
+        f.close()
+        os.remove(fn)
+        for fn in fns[1:]:
+            f = open(fn)
+            for line in f:
+                if line[0] != "#":
+                    wf.write(line)
+            f.close()
+            os.remove(fn)
+        wf.close()
+
+    def collects_crg(self):
+        crg_path = os.path.join(self.output_dir, f"{self.run_name}.crg")
+        wf = open(crg_path, "w")
+        unique_hugos = {}
+        fns = sorted(glob.glob(crg_path + "[.]*"))
+        fn = fns[0]
+        f = open(fn)
+        for line in f:
+            if line[0] != "#":
+                hugo = line.split()[0]
+                if hugo not in unique_hugos:
+                    # wf.write(line)
+                    unique_hugos[hugo] = line
+            else:
+                wf.write(line)
+        f.close()
+        os.remove(fn)
+        for fn in fns[1:]:
+            f = open(fn)
+            for line in f:
+                if line[0] != "#":
+                    hugo = line.split()[0]
+                    if hugo not in unique_hugos:
+                        # wf.write(line)
+                        unique_hugos[hugo] = line
+            f.close()
+            os.remove(fn)
+        hugos = list(unique_hugos.keys())
+        hugos.sort()
+        for hugo in hugos:
+            wf.write(unique_hugos[hugo])
+        wf.close()
+        del unique_hugos
+        del hugos
+
+    def get_num_workers(self):
         num_workers = au.get_max_num_concurrent_annotators_per_job()
         if self.args.mp is not None:
             try:
@@ -1319,10 +1373,12 @@ class Cravat(object):
             except:
                 self.logger.exception("error handling mp argument:")
         self.logger.info("num_workers: {}".format(num_workers))
+        self.num_workers = num_workers
+
+    def run_genemapper_mp(self):
         reader = CravatReader(self.crvinput)
-        num_lines, chunksize, poss, len_poss, max_num_lines = reader.get_chunksize(
-            num_workers
-        )
+        num_lines, chunksize, poss, len_poss, max_num_lines = \
+            reader.get_chunksize(self.num_workers)
         self.logger.info(
             f"input line chunksize={chunksize} total number of input lines={num_lines} number of chunks={len_poss}"
         )
@@ -1369,97 +1425,115 @@ class Cravat(object):
             for job in jobs:
                 job.get()
         pool.close()
-        # collects crx.
-        crx_path = os.path.join(self.output_dir, f"{self.run_name}.crx")
-        wf = open(crx_path, "w")
-        fns = sorted(glob.glob(crx_path + "[.]*"))
-        fn = fns[0]
-        f = open(fn)
-        for line in f:
-            wf.write(line)
-        f.close()
-        os.remove(fn)
-        for fn in fns[1:]:
-            f = open(fn)
-            for line in f:
-                if line[0] != "#":
-                    wf.write(line)
-            f.close()
-            os.remove(fn)
-        wf.close()
-        # collects crg.
-        crg_path = os.path.join(self.output_dir, f"{self.run_name}.crg")
-        wf = open(crg_path, "w")
-        unique_hugos = {}
-        fns = sorted(glob.glob(crg_path + "[.]*"))
-        fn = fns[0]
-        f = open(fn)
-        for line in f:
-            if line[0] != "#":
-                hugo = line.split()[0]
-                if hugo not in unique_hugos:
-                    # wf.write(line)
-                    unique_hugos[hugo] = line
-            else:
-                wf.write(line)
-        f.close()
-        os.remove(fn)
-        for fn in fns[1:]:
-            f = open(fn)
-            for line in f:
-                if line[0] != "#":
-                    hugo = line.split()[0]
-                    if hugo not in unique_hugos:
-                        # wf.write(line)
-                        unique_hugos[hugo] = line
-            f.close()
-            os.remove(fn)
-        hugos = list(unique_hugos.keys())
-        hugos.sort()
-        for hugo in hugos:
-            wf.write(unique_hugos[hugo])
-        wf.close()
-        del unique_hugos
-        del hugos
-        # collects crt.
-        crt_path = os.path.join(self.output_dir, f"{self.run_name}.crt")
-        """
-        wf = open(crt_path, 'w')
-        """
-        unique_trs = {}
-        fns = sorted(glob.glob(crt_path + "[.]*"))
-        fn = fns[0]
-        """
-        f = open(fn)
-        for line in f:
-            if line[0] != '#':
-                [tr, alt] = line.split()[:1]
-                if tr not in unique_trs:
-                    unique_trs[tr] = {}
-                if alt not in unique_trs[tr]:
-                    unique_trs[tr][alt] = True
-                    wf.write(line)
-            else:
-                wf.write(line)
-        f.close()
-        """
-        os.remove(fn)
-        for fn in fns[1:]:
-            """
-            f = open(fn)
-            for line in f:
-                if line[0] != '#':
-                    [tr, alt] = line.split()[:1]
-                    if tr not in unique_trs:
-                        unique_trs[tr] = {}
-                    if alt not in unique_trs[tr]:
-                        unique_trs[tr][alt] = True
-                        wf.write(line)
-            f.close()
-            """
-            os.remove(fn)
-        wf.close()
-        del unique_trs
+        self.collects_crx()
+        self.collects_crg()
+
+    def run_annotators_mp(self):
+        run_args = {}
+        for module in self.run_annotators.values():
+            # Make command
+            if module.level == "variant":
+                if "input_format" in module.conf:
+                    input_format = module.conf["input_format"]
+                    if input_format == "crv":
+                        inputpath = self.crvinput
+                    elif input_format == "crx":
+                        inputpath = self.crxinput
+                    else:
+                        raise Exception("Incorrect input_format value")
+                        # inputpath = self.input
+                else:
+                    inputpath = self.crvinput
+            elif module.level == "gene":
+                inputpath = self.crginput
+            # secondary_opts = []
+            secondary_inputs = []
+            if "secondary_inputs" in module.conf:
+                secondary_module_names = module.conf["secondary_inputs"]
+                for secondary_module_name in secondary_module_names:
+                    secondary_module = self.annotators[secondary_module_name]
+                    secondary_output_path = self.get_module_output_path(
+                        secondary_module
+                    )
+                    secondary_inputs.append(
+                        secondary_module.name.replace("=", r"\=")
+                        + "="
+                        + os.path.join(self.output_dir, secondary_output_path).replace(
+                            "=", r"\="
+                        )
+                    )
+            kwargs = {
+                "script_path": module.script_path,
+                "input_file": inputpath,
+                "secondary_inputs": secondary_inputs,
+                "silent": self.args.silent,
+                "log_path": self.log_path,
+            }
+            if self.run_name != None:
+                kwargs["run_name"] = self.run_name
+            if self.output_dir != None:
+                kwargs["output_dir"] = self.output_dir
+            if module.name in self.cravat_conf:
+                kwargs["conf"] = self.cravat_conf[module.name]
+            run_args[module.name] = (module, kwargs)
+        self.logger.removeHandler(self.log_handler)
+        start_queue = self.manager.Queue()
+        end_queue = self.manager.Queue()
+        all_mnames = set(self.run_annotators)
+        assigned_mnames = set()
+        done_mnames = set(self.done_annotators)
+        queue_populated = self.manager.Value("c_bool", False)
+        error_modules = self.manager.list()
+        error_modules = []
+        print("@ before pool", num_workers)
+        self.status_writer = None
+        with mp.Pool(num_workers, init_worker) as pool:
+            results = []
+            for i in range(num_workers):
+                results.append(pool.apply_async(
+                    annot_from_queue, 
+                    (start_queue, end_queue, queue_populated, self.status_writer, error_modules)))
+            pool.close()
+            print("@ here")
+            for mname, module in self.run_annotators.items():
+                print("@ mname=", mname)
+                if (
+                    mname not in assigned_mnames
+                    and set(module.secondary_module_names) <= done_mnames
+                ):
+                    print("@ putting into queue", mname)
+                    start_queue.put(run_args[mname])
+                    print("@ queue added")
+                    assigned_mnames.add(mname)
+                    print("@ assigned added")
+            print("@ before while")
+            while (
+                assigned_mnames != all_mnames
+            ):  # TODO not handling case where parent module errors out
+                print("@ here 2")
+                finished_module = end_queue.get()
+                done_mnames.add(finished_module)
+                for mname, module in self.run_annotators.items():
+                    if (
+                        mname not in assigned_mnames
+                        and set(module.secondary_module_names) <= done_mnames
+                    ):
+                        start_queue.put(run_args[mname])
+                        assigned_mnames.add(mname)
+            queue_populated = True
+            print("@ before join")
+            pool.join()
+            print("@ after join")
+        self.error_modules = list(error_modules)
+        self.log_path = os.path.join(self.output_dir, self.run_name + ".log")
+        self.log_handler = logging.FileHandler(self.log_path, "a")
+        formatter = logging.Formatter(
+            "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
+        )
+        self.log_handler.setFormatter(formatter)
+        self.logger.addHandler(self.log_handler)
+        if len(self.run_annotators) > 0:
+            self.annotator_ran = True
 
     def run_aggregator(self):
         # Variant level
@@ -1699,108 +1773,6 @@ class Cravat(object):
                         await reporter.close_db()
                 all_reporters_ran_well = False
         return all_reporters_ran_well, response
-
-    def run_annotators_mp(self):
-        num_workers = au.get_max_num_concurrent_annotators_per_job()
-        if self.args.mp is not None:
-            try:
-                self.args.mp = int(self.args.mp)
-                if self.args.mp >= 1:
-                    num_workers = self.args.mp
-            except:
-                self.logger.exception("error handling mp argument:")
-        self.logger.info("num_workers: {}".format(num_workers))
-        run_args = {}
-        for module in self.run_annotators.values():
-            # Make command
-            if module.level == "variant":
-                if "input_format" in module.conf:
-                    input_format = module.conf["input_format"]
-                    if input_format == "crv":
-                        inputpath = self.crvinput
-                    elif input_format == "crx":
-                        inputpath = self.crxinput
-                    else:
-                        raise Exception("Incorrect input_format value")
-                        # inputpath = self.input
-                else:
-                    inputpath = self.crvinput
-            elif module.level == "gene":
-                inputpath = self.crginput
-            # secondary_opts = []
-            secondary_inputs = []
-            if "secondary_inputs" in module.conf:
-                secondary_module_names = module.conf["secondary_inputs"]
-                for secondary_module_name in secondary_module_names:
-                    secondary_module = self.annotators[secondary_module_name]
-                    secondary_output_path = self.get_module_output_path(
-                        secondary_module
-                    )
-                    secondary_inputs.append(
-                        secondary_module.name.replace("=", r"\=")
-                        + "="
-                        + os.path.join(self.output_dir, secondary_output_path).replace(
-                            "=", r"\="
-                        )
-                    )
-            kwargs = {
-                "script_path": module.script_path,
-                "input_file": inputpath,
-                "secondary_inputs": secondary_inputs,
-                "silent": self.args.silent,
-                "log_path": self.log_path,
-            }
-            if self.run_name != None:
-                kwargs["run_name"] = self.run_name
-            if self.output_dir != None:
-                kwargs["output_dir"] = self.output_dir
-            if module.name in self.cravat_conf:
-                kwargs["conf"] = self.cravat_conf[module.name]
-            run_args[module.name] = (module, kwargs)
-        self.logger.removeHandler(self.log_handler)
-        start_queue = self.manager.Queue()
-        end_queue = self.manager.Queue()
-        all_mnames = set(self.run_annotators)
-        assigned_mnames = set()
-        done_mnames = set(self.done_annotators)
-        queue_populated = self.manager.Value("c_bool", False)
-        error_modules = self.manager.list()
-        with mp.Pool(num_workers, init_worker) as pool:
-            results = []
-            for i in range(num_workers):
-                results.append(pool.apply_async(annot_from_queue, (start_queue, end_queue, queue_populated, self.status_writer, error_modules)))
-            pool.close()
-            for mname, module in self.run_annotators.items():
-                if (
-                    mname not in assigned_mnames
-                    and set(module.secondary_module_names) <= done_mnames
-                ):
-                    start_queue.put(run_args[mname])
-                    assigned_mnames.add(mname)
-            while (
-                assigned_mnames != all_mnames
-            ):  # TODO not handling case where parent module errors out
-                finished_module = end_queue.get()
-                done_mnames.add(finished_module)
-                for mname, module in self.run_annotators.items():
-                    if (
-                        mname not in assigned_mnames
-                        and set(module.secondary_module_names) <= done_mnames
-                    ):
-                        start_queue.put(run_args[mname])
-                        assigned_mnames.add(mname)
-            queue_populated = True
-            pool.join()
-        self.error_modules = list(error_modules)
-        self.log_path = os.path.join(self.output_dir, self.run_name + ".log")
-        self.log_handler = logging.FileHandler(self.log_path, "a")
-        formatter = logging.Formatter(
-            "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
-        )
-        self.log_handler.setFormatter(formatter)
-        self.logger.addHandler(self.log_handler)
-        if len(self.run_annotators) > 0:
-            self.annotator_ran = True
 
     def table_exists(self, cursor, table):
         sql = (

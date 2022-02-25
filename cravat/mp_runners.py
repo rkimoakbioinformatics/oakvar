@@ -37,7 +37,7 @@ def annot_from_queue(start_queue, end_queue, queue_populated, status_writer, err
         except Exception as e:
             import traceback
             logger.error(traceback.format_exc())
-            error_modules.append(module.name)
+            #error_modules.append(module.name)
         end_queue.put(module.name)
 
 
