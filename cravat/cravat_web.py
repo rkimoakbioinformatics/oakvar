@@ -216,6 +216,7 @@ def run(args):
                     return
                 url = f"{host}:{port}/webapps/{args.webapp}/index.html"
             elif args.result:
+                import cravat
                 dbpath = args.result
                 if os.path.exists(dbpath) == False:
                     print(f"{dbpath} does not exist. Exiting.")
