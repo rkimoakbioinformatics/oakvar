@@ -78,9 +78,21 @@ module_install_base_base_p = module_sp.add_parser(
 )
 module_run_p = module_sp.add_parser(
     "run",
+    add_help=False,
+    help="Run one module",
+)
+module_run_sp = module_run_p.add_subparsers()
+module_run_sp.add_parser(
+    "annotator",
     parents=[run_annotator_parser],
     add_help=False,
-    help="Run one annotator module",
+    help="Run one annotator module"
+)
+module_run_sp.add_parser(
+    "converter",
+    parents=[run_converter_parser],
+    add_help=False,
+    help="Run one converter module"
 )
 
 

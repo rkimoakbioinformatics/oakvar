@@ -62,7 +62,7 @@ parser.add_argument(
     "--silent", dest="silent", default=False, help="Silent operation"
 )
 parser.add_argument(
-    "-a", dest="module", default=None, help="Annotator module name"
+    "-m", dest="module", default=None, help="Module name"
 )
 parser.add_argument(
     "--start", dest="start", type=int, default=None, help="Beginning line of the crx input file")

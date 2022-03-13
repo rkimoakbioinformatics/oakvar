@@ -435,7 +435,8 @@ def get_current_time_str():
 def get_args(parser, inargs, inkwargs):
     # Combines arguments in various formats.
     inarg_dict = {}
-    if type(inargs) in [list, tuple] and type(inargs[0]) in [list, tuple]:
+    # If inargs is a list/tuple of list/tuple.
+    if type(inargs) in [list, tuple] and len(inargs) > 0 and type(inargs[0]) in [list, tuple]:
         inarg = inargs[0]
     else:
         inarg = inargs
