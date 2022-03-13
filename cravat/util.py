@@ -393,7 +393,17 @@ def is_compatible_version(dbpath):
     compatible = None
     db_version = "0.0.0"
     if r is None:
-        compatible = False
+        sql = 'select colval from info where colkey="open-cravat"'
+        c.execute(sql)
+        r = c.fetchone()
+        if r is None:
+            compatible = False
+        else:
+            db_version = LooseVersion(r[0])
+            if db_version < max_version_supported_for_migration:
+                compatible = False
+            else:
+                compatible = True
     else:
         db_version = LooseVersion(r[0])
         if db_version < max_version_supported_for_migration:
