@@ -1,4 +1,4 @@
-OakCRAVAT is a genomic variant interpretation platform, based on and further developed from [OpenCRAVAT](https://github.com/KarchinLab/open-cravat) by [Oak Bioinformatics LLC](https://oakbioinformatics.com).
+OakCRAVAT is a genomic variant analysis platform, based on [OpenCRAVAT](https://github.com/KarchinLab/open-cravat) and further developed by Ryangguk Kim, the lead architect of OpenCRAVAT.
 
 OakCRAVAT uses the same commands as OpenCRAVAT. Thus, to use OakCRAVAT do `pip uninstall open-cravat` and `pip install oak-cravat`. The same `oc` commands will work.
 
