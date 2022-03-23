@@ -628,7 +628,7 @@ def migrate_result(args):
             db = sqlite3.connect(dbpath)
             cursor = db.cursor()
         except:
-            print("  [{}] is not OxygenV result DB.".format(dbpath))
+            print("  [{}] is not OakCRAVAT result DB.".format(dbpath))
             continue
         try:
             q = 'select colval from info where colkey="open-cravat"'
@@ -641,16 +641,16 @@ def migrate_result(args):
                 oc_ver = LooseVersion(r[0])
         except:
             print(
-                "  [{}] is not OxygenV result DB or too old for migration.".format(
+                "  [{}] is not OakCRAVAT result DB or too old for migration.".format(
                     dbpath
                 )
             )
             continue
         if oc_ver >= max(migrate_checkpoints):
-            print(f"  OxygenV version of {oc_ver} does not need migration.")
+            print(f"  OakCRAVAT version of {oc_ver} does not need migration.")
             continue
         elif oc_ver < LooseVersion("1.4.4"):
-            print(f"  OxygenV version of {oc_ver} is not supported for migration.")
+            print(f"  OakCRAVAT version of {oc_ver} is not supported for migration.")
             continue
         try:
             if args.backup:
@@ -666,7 +666,7 @@ def migrate_result(args):
                 continue
             for target_ver in migrate_checkpoints[ver_idx:]:
                 target_ver = str(target_ver)
-                print(f"  converting OxygenV version to {target_ver}...")
+                print(f"  converting OakCRAVAT version to {target_ver}...")
                 migrate_functions[target_ver](dbpath)
                 with sqlite3.connect(dbpath) as db:
                     db.execute(

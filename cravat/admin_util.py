@@ -710,10 +710,10 @@ def get_modules_dir():
 
 def get_package_versions():
     """
-    Return available oxygenv-core versions from pypi, sorted asc
+    Return available oak-cravat versions from pypi, sorted asc
     """
     try:
-        r = requests.get("https://pypi.org/pypi/oxygenv-core/json", timeout=(3, None))
+        r = requests.get("https://pypi.org/pypi/oak-cravat/json", timeout=(3, None))
     except requests.exceptions.ConnectionError:
         print("Internet connection is not available.")
         return None
@@ -1469,7 +1469,7 @@ def refresh_cache():
 def report_issue():
     import webbrowser
 
-    webbrowser.open("http://github.com/KarchinLab/oxygenv-core/issues")
+    webbrowser.open("http://github.com/KarchinLab/oak-cravat/issues")
 
 
 def search_local(*patterns):

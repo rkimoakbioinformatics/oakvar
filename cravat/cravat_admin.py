@@ -495,11 +495,11 @@ parser_install_base.add_argument('-d', '--force-data',
 parser_install_base.add_argument('--install-pypi-dependency',
     action='store_true',
     default=True,
-    help='Try to install non-OxygenV package dependency with pip'
+    help='Try to install non-OakCRAVAT package dependency with pip'
 )
 parser_install_base.add_argument('--md',
     default=None,
-    help='Specify the root directory of OxygenV modules'
+    help='Specify the root directory of OakCRAVAT modules'
 )
 parser_install_base.set_defaults(func=install_base)
 
@@ -541,11 +541,11 @@ parser_install.add_argument('--skip-data',
 parser_install.add_argument('--install-pypi-dependency',
     action='store_true',
     default=True,
-    help='Try to install non-OxygenV package dependency with pip'
+    help='Try to install non-OakCRAVAT package dependency with pip'
 )
 parser_install.add_argument('--md',
     default=None,
-    help='Specify the root directory of OxygenV modules'
+    help='Specify the root directory of OakCRAVAT modules'
 )
 parser_install.set_defaults(func=install_modules)
 
@@ -579,11 +579,11 @@ parser_update.add_argument('--strategy',
 parser_update.add_argument('--install-pypi-dependency',
     action='store_true',
     default=True,
-    help='Try to install non-OxygenV package dependency with pip'
+    help='Try to install non-OakCRAVAT package dependency with pip'
 )
 parser_update.add_argument('--md',
     default=None,
-    help='Specify the root directory of OxygenV modules'
+    help='Specify the root directory of OakCRAVAT modules'
 )
 parser_update.set_defaults(func=update_modules)
 
@@ -598,7 +598,7 @@ parser_uninstall.add_argument('-y','--yes',
                                 help='Proceed without prompt')
 parser_uninstall.add_argument('--md',
     default=None,
-    help='Specify the root directory of OxygenV modules'
+    help='Specify the root directory of OakCRAVAT modules'
 )
 parser_uninstall.set_defaults(func=uninstall_modules)
 
@@ -613,7 +613,7 @@ parser_info.add_argument('-l','--local',
                             action='store_true')
 parser_info.add_argument('--md',
     default=None,
-    help='Specify the root directory of OxygenV modules'
+    help='Specify the root directory of OakCRAVAT modules'
 )
 parser_info.set_defaults(func=print_info)
 
@@ -657,7 +657,7 @@ parser_ls.add_argument('--bytes',
     )
 parser_ls.add_argument('--md',
     default=None,
-    help='Specify the root directory of OxygenV modules'
+    help='Specify the root directory of OakCRAVAT modules'
 )
 parser_ls.set_defaults(func=list_modules)
 
@@ -695,7 +695,7 @@ parser_publish.add_argument('--overwrite',
                             help='overwrites a published module/version')
 parser_publish.add_argument('--md',
     default=None,
-    help='Specify the root directory of OxygenV modules'
+    help='Specify the root directory of OakCRAVAT modules'
 )
 parser_publish.set_defaults(func=publish_module)
 
@@ -756,7 +756,7 @@ parser_new_annotator.add_argument('annotator_name',
                                 help='Annotator name')
 parser_new_annotator.add_argument('--md',
     default=None,
-    help='Specify the root directory of OxygenV modules'
+    help='Specify the root directory of OakCRAVAT modules'
 )
 parser_new_annotator.set_defaults(func=new_annotator)
 
@@ -777,7 +777,7 @@ parser_show_cravat_conf.set_defaults(func=show_cravat_conf)
 
 # shows version
 parser_show_version = subparsers.add_parser('version',
-                                            help='shows oxygenv-core version')
+                                            help='shows oak-cravat version')
 parser_show_version.set_defaults(func=show_version)
 
 def main ():

@@ -8,7 +8,7 @@ from .base_annotator import parser as run_annotator_parser
 import sys
 
 root_p = argparse.ArgumentParser(
-    description="OxygenV genomic variant interpreter. https://github.com/rkimoakbioinformatics/oxygenv-core"
+    description="OakCRAVAT. https://github.com/rkimoakbioinformatics/oak-cravat"
 )
 root_sp = root_p.add_subparsers(title="Commands")
 

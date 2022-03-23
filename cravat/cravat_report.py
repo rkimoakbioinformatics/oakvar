@@ -1025,7 +1025,7 @@ def run_reporter(*inargs, **inkwargs):
     if not compatible_version:
         if args.silent == False:
             print(
-                f"DB version {db_version} of {dbpath} is not compatible with the current OxygenV ({oc_version})."
+                f"DB version {db_version} of {dbpath} is not compatible with the current OakCRAVAT ({oc_version})."
             )
             print(
                 f'Consider running "oc util update-result {dbpath}" and running "oc gui {dbpath}" again.'
@@ -1203,7 +1203,7 @@ parser.add_argument(
     "--system-option",
     dest="system_option",
     nargs="*",
-    help="System option in key=value syntax. For example, --system-option modules_dir=/home/user/oxygenv/modules",
+    help="System option in key=value syntax. For example, --system-option modules_dir=/home/user/oak-cravat/modules",
 )
 parser.add_argument(
     "--module-option",
@@ -1236,6 +1236,6 @@ parser.add_argument("--package", help="Use filters and report types in a package
 parser.add_argument(
     "--md", 
     default=None, 
-    help="Specify the root directory of OxygenV modules (annotators, etc)"
+    help="Specify the root directory of OakCRAVAT modules (annotators, etc)"
 )
 parser.set_defaults(func=run_reporter)
