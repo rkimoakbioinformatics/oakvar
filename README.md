@@ -1,6 +1,6 @@
-OxygenV Core is a genomic variant interpretation platform, based on and further developed from [OpenCRAVAT](https://github.com/KarchinLab/open-cravat) by [Oak Bioinformatics LLC](https://oakbioinformatics.com).
+OakCRAVAT is a genomic variant interpretation platform, based on and further developed from [OpenCRAVAT](https://github.com/KarchinLab/open-cravat) by [Oak Bioinformatics LLC](https://oakbioinformatics.com).
 
-OxygenV Core uses the same commands as OpenCRAVAT. Thus, to use OxygenV Core, do `pip uninstall open-cravat` and `pip install oxygenv-core`. The same `oc` commands will work.
+OakCRAVAT uses the same commands as OpenCRAVAT. Thus, to use OakCRAVAT do `pip uninstall open-cravat` and `pip install oak-cravat`. The same `oc` commands will work.
 
 For documentation on `oc` commands, see [OpenCRAVAT Documentation](https://open-cravat.readthedocs.org).
 
