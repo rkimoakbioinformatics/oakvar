@@ -386,8 +386,8 @@ def detect_encoding(path):
 def is_compatible_version(dbpath):
     db = sqlite3.connect(dbpath)
     c = db.cursor()
-    oc_version = LooseVersion(pkg_resources.get_distribution("oxygenv-core").version)
-    sql = 'select colval from info where colkey="oxygenv-core"'
+    oc_version = LooseVersion(pkg_resources.get_distribution("oak-cravat").version)
+    sql = 'select colval from info where colkey="oak-cravat"'
     c.execute(sql)
     r = c.fetchone()
     compatible = None

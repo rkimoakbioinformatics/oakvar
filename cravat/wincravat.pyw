@@ -127,7 +127,7 @@ def main ():
         ('Hide log', None, hide_log),)
     systray = SysTrayIcon(
         "icon_256x256.ico", 
-        "OxygenV", 
+        "OakCRAVAT", 
         menu_options, 
         on_quit=on_quit_callback,
         default_menu_index=0,

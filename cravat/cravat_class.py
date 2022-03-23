@@ -64,7 +64,7 @@ else:
 
 cravat_cmd_parser = argparse.ArgumentParser(
     prog="cravat input_file_path_1 input_file_path_2 ...",
-    description="Open-CRAVAT genomic variant interpreter. https://github.com/rkimoakbioinformatics/oxygenv-core. Use input_file_path arguments before any option or define them in a conf file (option -c).",
+    description="Open-CRAVAT genomic variant interpreter. https://github.com/rkimoakbioinformatics/oak-cravat. Use input_file_path arguments before any option or define them in a conf file (option -c).",
     epilog="inputs should be the first option",
 )
 cravat_cmd_parser.add_argument(
@@ -73,7 +73,7 @@ cravat_cmd_parser.add_argument(
     default=None,
     help="Input file(s). One or more variant files in a supported format like VCF.  "
     + "See the -i/--input-format flag for supported formats. In the special case "
-    + "where you want to add annotations to an existing OxygenV Core analysis, "
+    + "where you want to add annotations to an existing OakCRAVAT analysis, "
     + "provide the output sqlite database from the previous run as input instead of a variant input file.",
 )
 cravat_cmd_parser.add_argument(
@@ -208,7 +208,7 @@ cravat_cmd_parser.add_argument(
     dest="show_version",
     action="store_true",
     default=None,
-    help="Shows OxygenV Core version.",
+    help="Shows OakCRAVAT version.",
 )
 cravat_cmd_parser.add_argument(
     "--separatesample",
@@ -255,7 +255,7 @@ cravat_cmd_parser.add_argument(
     "--system-option",
     dest="system_option",
     nargs="*",
-    help="System option in key=value syntax. For example, --system-option modules_dir=/home/user/oxygenv-core/modules",
+    help="System option in key=value syntax. For example, --system-option modules_dir=/home/user/oak-cravat/modules",
 )
 cravat_cmd_parser.add_argument(
     "--silent", dest="silent", action="store_true", default=None, help="Runs silently."
@@ -275,7 +275,7 @@ cravat_cmd_parser.add_argument("--includesample", nargs='+', default=None, help=
 cravat_cmd_parser.add_argument("--excludesample", nargs='+', default=None, help="Sample IDs to exclude")
 cravat_cmd_parser.add_argument("--filter", default=None, help=argparse.SUPPRESS)
 cravat_cmd_parser.add_argument("-f", dest="filterpath", default=None, help="Path to a filter file")
-cravat_cmd_parser.add_argument("--md", default=None, help="Specify the root directory of OxygenV modules (annotators, etc)")
+cravat_cmd_parser.add_argument("--md", default=None, help="Specify the root directory of OakCRAVAT modules (annotators, etc)")
 cravat_cmd_parser.add_argument("-m", dest="mapper_name", nargs="+", default=[], help="Mapper module name or mapper module directory")
 cravat_cmd_parser.add_argument("-p", nargs="+", dest="postaggregators", default=[], help="Postaggregators to run. Additionally, tagsampler, casecontrol, varmeta, and vcfinfo will automatically run depending on conditions.")
 
@@ -473,7 +473,7 @@ class Cravat(object):
             os.remove(fn)
 
     def log_versions(self):
-        self.logger.info(f"version: oxygenv-core {au.get_current_package_version()} {os.path.dirname(os.path.abspath(__file__))}")
+        self.logger.info(f"version: oak-cravat {au.get_current_package_version()} {os.path.dirname(os.path.abspath(__file__))}")
         if self.package_conf is not None and len(self.package_conf) > 0:
             self.logger.info(
                 f'package: {self.args.package} {self.package_conf["version"]}'

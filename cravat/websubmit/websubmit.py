@@ -822,7 +822,7 @@ def open_terminal (request):
         cmd = {'cmd': '''
 osascript -e 'tell app "Terminal"
 do script "export PATH=''' + python_dir + ''':$PATH"
-do script "echo Welcome to OxygenV" in window 1
+do script "echo Welcome to OakCRAVAT" in window 1
 end tell'
 ''', 'shell': True}
     elif p.startswith('linux'):
