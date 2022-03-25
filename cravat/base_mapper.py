@@ -115,7 +115,7 @@ class BaseMapper(object):
             "--primary-transcript",
             dest="primary_transcript",
             nargs="*",
-            default=["mane2"],
+            default=["mane"],
             help='"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
         )
 
