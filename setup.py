@@ -57,8 +57,8 @@ for root, dirs, files in os.walk(os.path.join('cravat', 'websubmit')):
 setup(
     name='oak-cravat',
     packages=['cravat'],
-    version='2.3.6',
-    description='OakCRAVAT, a fork of OpenCRAVAT',
+    version='2.3.11',
+    description='OakCRAVAT, further development of OpenCRAVAT by its lead architect',
     long_description=readme(),
     author='Ryangguk Kim',
     author_email='rkim@oakbioinformatics.com',
