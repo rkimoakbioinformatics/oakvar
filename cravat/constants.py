@@ -5,6 +5,7 @@ import shutil
 import sys
 import platform
 import yaml
+import subprocess
 
 # Directories
 custom_modules_dir = None
@@ -14,13 +15,32 @@ system_conf_path_env_key = 'OPENCRAVAT_SYSTEM_CONF_PATH'
 packagedir = os.path.dirname(os.path.abspath(__file__))
 pl = platform.platform()
 if pl.startswith("Windows"):
+    pl = "windows"
+elif pl.startswith("Darwin") or pl.startswith("macOS"):
+    pl = "macos"
+elif pl.startswith("Linux"):
+    pl = "linux"
+else:
+    pl = "linux"
+if pl == "windows":
     oc_root_dir = os.path.join(
         os.path.expandvars("%systemdrive%"), os.sep, "open-cravat"
     )
-elif pl.startswith("Linux"):
+    if os.path.exists(oc_root_dir) == False: # OakCRAVAT first installation
+        oc_root_dir = os.path.join(
+            os.path.expandvars("%systemdrive%"), os.sep, "oakcravat"
+        )
+elif pl == "linux":
     oc_root_dir = packagedir
-elif pl.startswith("Darwin") or pl.startswith("macOS"):
+    if os.path.exists(os.path.join(oc_root_dir, "conf")) == False: # OakCRAVAT first installation
+        if 'SUDO_USER' in os.environ:
+            oc_root_dir = os.path.join('/home', os.environ['SUDO_USER'], '.oakcravat')
+        else:
+            oc_root_dir = os.path.join('/home', os.environ['USER'], '.oakcravat')
+elif pl == "macos":
     oc_root_dir = "/Users/Shared/open-cravat"
+    if os.path.exists(oc_root_dir) == False: # OakCRAVAT first installation
+        oc_root_dir = "Users/Shared/oakcravat"
 if os.path.exists(oc_root_dir) == False:
     os.mkdir(oc_root_dir)
 # conf dir
@@ -31,11 +51,44 @@ if os.path.exists(default_conf_dir) == False:
     os.mkdir(default_conf_dir)
 admindb_path = os.path.join(default_conf_dir, "admin.sqlite")
 system_conf_fname = "cravat-system.yml"
-system_conf_path = os.path.join(default_conf_dir, system_conf_fname)
+if pl in ["windows", "macos"]:
+    system_conf_path = os.path.join(default_conf_dir, system_conf_fname)
+else:
+    system_conf_path = os.path.join(packagedir, system_conf_fname)
 system_conf_template_fname = "cravat-system.template.yml"
 system_conf_template_path = os.path.join(packagedir, system_conf_template_fname)
+linux_first_time = False
 if os.path.exists(system_conf_path) == False:
-    shutil.copyfile(system_conf_template_path, system_conf_path)
+    try:
+        shutil.copyfile(system_conf_template_path, system_conf_path)
+    except PermissionError:
+        if pl == "linux":
+            print("""
+It seems that OakCRAVAT has been installed as root 
+and that you are running it for the first time. 
+To configure OakCRAVAT properly, you can do one of 
+the following:
+
+1) Stop at this point with Ctrl-C and run 
+`sudo oc` just once to create a system configration 
+file and system folders.
+
+OR
+
+2) Type Enter and continue. OakCRAVAT will need to 
+access `sudo` three times, once to create a system
+configration file, then to modify it, and then to
+change its file permission back. 
+
+Either way, afterwards, normal users will be able 
+to use `oc` commands without sudo privilege, 
+except when making changes to system settings.
+""")
+            _ = input("Ctrl-C to stop or Enter to continue>")
+            linux_first_time = True
+            subprocess.call(['sudo', 'cp', system_conf_template_path, system_conf_path])
+        else:
+            raise
 # conf
 f = open(system_conf_path)
 conf = yaml.safe_load(f)
@@ -48,9 +101,21 @@ if not modules_dir_key in conf:
     if os.path.exists(default_modules_dir) == False:
         os.mkdir(default_modules_dir)
     conf[modules_dir_key] = default_modules_dir
+    if linux_first_time:
+        subprocess.call(['sudo', 'chmod', '777', system_conf_path])
     wf = open(system_conf_path, "w")
     yaml.dump(conf, wf, default_flow_style=False)
     wf.close()
+    if linux_first_time:
+        subprocess.call(['sudo', 'chmod', '644', system_conf_path])
+        print("""
+System configuration file and folders have been set up.
+
+Remember to run `oc module install-base` to install
+base modules before running any job.
+
+===
+""")
 # jobs dir
 jobs_dir_key = "jobs_dir"
 jobs_dir_name = "jobs"
