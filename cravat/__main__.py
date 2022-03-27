@@ -7,7 +7,7 @@ from .cravat_report import parser as report_parser
 import sys
 
 root_p = argparse.ArgumentParser(
-    description="OakCRAVAT. https://github.com/rkimoakbioinformatics/oak-cravat"
+    description="OakCRAVAT. Genomic variant analysis platform. https://github.com/rkimoakbioinformatics/oak-cravat"
 )
 root_sp = root_p.add_subparsers(title="Commands")
 

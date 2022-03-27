@@ -345,11 +345,13 @@ class ReadyState(object):
     READY = 0
     MISSING_MD = 1
     UPDATE_NEEDED = 2
+    NO_BASE_MODULES = 3
 
     messages = {
         0: "",
         1: "Modules directory not found",
         2: 'Update on system modules needed. Run "oc module install-base"',
+        3: "Base modules do not exist.",
     }
 
     def __init__(self, code=READY):
@@ -1433,8 +1435,17 @@ def ready_resolution_console():
             set_modules_dir(full_path)
             print(full_path)
         else:
-            print("Please manually recreate/reattach the modules directory")
+            print("Please manually recreate/reattach the modules directory.")
             exit()
+    elif rs.code == ReadyState.NO_BASE_MODULES:
+        yn = input("Do you want to install base modules now? (y/n)>")
+        if yn == "y":
+            args = SimpleNamespace(
+                force_data=False, force=False, install_pypi_dependency=True, md=None
+            )
+            from . import cravat_admin
+            cravat_admin.install_base(args)
+            print("Base modules have been installed.")
     exit()
 
 
@@ -1572,10 +1583,13 @@ def show_system_conf():
 
 
 def system_ready():
-    if not (os.path.exists(get_modules_dir())):
+    modules_dir = get_modules_dir()
+    if not (os.path.exists(modules_dir)):
         return ReadyState(code=ReadyState.MISSING_MD)
-    return ReadyState()
-
+    elif not(os.path.exists(os.path.join(modules_dir, 'converters', 'cravat-converter'))):
+        return ReadyState(code=ReadyState.NO_BASE_MODULES)
+    else:
+        return ReadyState()
 
 def uninstall_module(module_name):
     """
