@@ -26,20 +26,20 @@ if pl == "windows":
     oc_root_dir = os.path.join(
         os.path.expandvars("%systemdrive%"), os.sep, "open-cravat"
     )
-    if os.path.exists(oc_root_dir) == False: # OakCRAVAT first installation
+    if os.path.exists(oc_root_dir) == False: # OakVar first installation
         oc_root_dir = os.path.join(
             os.path.expandvars("%systemdrive%"), os.sep, "oakcravat"
         )
 elif pl == "linux":
     oc_root_dir = packagedir
-    if os.path.exists(os.path.join(oc_root_dir, "conf")) == False: # OakCRAVAT first installation
+    if os.path.exists(os.path.join(oc_root_dir, "conf")) == False: # OakVar first installation
         if 'SUDO_USER' in os.environ:
             oc_root_dir = os.path.join('/home', os.environ['SUDO_USER'], '.oakcravat')
         else:
             oc_root_dir = os.path.join('/home', os.environ['USER'], '.oakcravat')
 elif pl == "macos":
     oc_root_dir = "/Users/Shared/open-cravat"
-    if os.path.exists(oc_root_dir) == False: # OakCRAVAT first installation
+    if os.path.exists(oc_root_dir) == False: # OakVar first installation
         oc_root_dir = "Users/Shared/oakcravat"
 if os.path.exists(oc_root_dir) == False:
     os.mkdir(oc_root_dir)
@@ -64,9 +64,9 @@ if os.path.exists(system_conf_path) == False:
     except PermissionError:
         if pl == "linux":
             print("""
-It seems that OakCRAVAT has been installed as root 
+It seems that OakVar has been installed as root 
 and that you are running it for the first time. 
-To configure OakCRAVAT properly, you can do one of 
+To configure OakVar properly, you can do one of 
 the following:
 
 1) Stop at this point with Ctrl-C and run 
@@ -75,7 +75,7 @@ file and system folders.
 
 OR
 
-2) Type Enter and continue. OakCRAVAT will need to 
+2) Type Enter and continue. OakVar will need to 
 access `sudo` three times, once to create a system
 configration file, then to modify it, and then to
 change its file permission back. 
@@ -392,7 +392,7 @@ module_tag_desc = {
     "allele frequency": "modules for studying allele frequency across populations",
     "cancer": "tools for cancer research",
     "clinical relevance": "tools for assessing clinical relevance of variants",
-    "converters": "modules for using the result of other tools as oak-cravat input",
+    "converters": "modules for using the result of other tools as oakvar input",
     "dbnsfp": "modules ported from dbNSFP",
     "denovo": "modules related to denovo variants",
     "evolution": "modules for studying variants in evolutionary context",

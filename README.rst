@@ -1,8 +1,8 @@
-OakCRAVAT is a genomic variant analysis platform, based on `OpenCRAVAT`_ and further developed by Ryangguk Kim, the lead architect of OpenCRAVAT.
+OakVar is a genomic variant analysis platform, based on `OpenCRAVAT`_ and further developed by Ryangguk Kim, the lead architect of OpenCRAVAT.
 
 .. _OpenCRAVAT: https://github.com/KarchinLab/open-cravat
 
-OakCRAVAT uses the same commands as OpenCRAVAT. Thus, to use OakCRAVAT do `pip uninstall open-cravat` and `pip install oak-cravat`. The same `oc` commands will work.
+OakVar uses the same commands as OpenCRAVAT. Thus, to use OakVar do `pip uninstall open-cravat` and `pip install oakvar`. The same `oc` commands will work.
 
 For documentation, see `OpenCRAVAT Documentation`_
 

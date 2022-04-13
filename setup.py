@@ -55,14 +55,14 @@ for root, dirs, files in os.walk(os.path.join('cravat', 'websubmit')):
     data_files.extend(root_files)
 
 setup(
-    name='oak-cravat',
+    name='oakvar',
     packages=['cravat'],
     version='2.3.13',
-    description='OakCRAVAT, further development of OpenCRAVAT by its lead architect',
+    description='OakVar, further development of OpenCRAVAT by its lead architect',
     long_description=readme(),
     author='Ryangguk Kim',
     author_email='rkim@oakbioinformatics.com',
-    url='https://github.com/oakbioinformatics/oak-cravat',
+    url='https://github.com/oakbioinformatics/oakvar',
     license='',
     package_data={
         'cravat': data_files
@@ -70,6 +70,7 @@ setup(
     entry_points={
         'console_scripts': [
             'oc=cravat.__main__:main',
+            'ov=cravat.__main__:main',
         ]
     },
     cmdclass={

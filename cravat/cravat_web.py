@@ -78,14 +78,14 @@ parser.add_argument(
     default=False,
     help="Console echoes exceptions written to log file.",
 )
-parser.add_argument("result", nargs="?", help="Path to a CRAVAT result SQLite file")
+parser.add_argument("result", nargs="?", help="Path to a OakVar result SQLite file")
 parser.add_argument(
     "--webapp",
     dest="webapp",
     default=None,
-    help="Name of OakCRAVAT webapp module to run",
+    help="Name of OakVar webapp module to run",
 )
-parser.add_argument("--port", dest="port", default=None, help="Port number for OakCRAVAT graphical user interface")
+parser.add_argument("--port", dest="port", default=None, help="Port number for OakVar graphical user interface")
 parser.add_argument("--noguest", dest="noguest", default=False, action="store_true", help="Diasbles guest mode")
 
 def setup(args):
@@ -138,7 +138,7 @@ def setup(args):
             wu.cravat_multiuser = cravat_multiuser
             ws.cravat_multiuser = cravat_multiuser
         if servermode and server_ready == False:
-            msg = 'open-cravat-multiuser package is required to run OakCRAVAT Server.\nRun "pip install open-cravat-multiuser" to get the package.'
+            msg = 'open-cravat-multiuser package is required to run OakVar Server.\nRun "pip install open-cravat-multiuser" to get the package.'
             logger.info(msg)
             logger.info("Exiting...")
             print(msg)
@@ -166,7 +166,7 @@ def setup(args):
             traceback.print_exc()
         logger.info("Exiting...")
         print(
-            "Error occurred while starting OakCRAVAT server.\nCheck {} for details.".format(
+            "Error occurred while starting OakVar server.\nCheck {} for details.".format(
                 log_path
             )
         )
@@ -228,7 +228,7 @@ def run(args):
                 ) = cravat.util.is_compatible_version(dbpath)
                 if not compatible_version:
                     print(
-                        f"DB version {db_version} of {dbpath} is not compatible with the current OakCRAVAT ({oc_version})."
+                        f"DB version {db_version} of {dbpath} is not compatible with the current OakVar ({oc_version})."
                     )
                     print(
                         f'Consider running "oc util update-result {dbpath}" and running "oc gui {dbpath}" again.'
@@ -250,7 +250,7 @@ def run(args):
             traceback.print_exc()
         logger.info("Exiting...")
         print(
-            "Error occurred while starting OakCRAVAT server.\nCheck {} for details.".format(
+            "Error occurred while starting OakVar server.\nCheck {} for details.".format(
                 log_path
             )
         )
@@ -304,7 +304,7 @@ def get_server():
             traceback.print_exc()
         logger.info("Exiting...")
         print(
-            "Error occurred while OakCRAVAT server.\nCheck {} for details.".format(
+            "Error occurred while OakVar server.\nCheck {} for details.".format(
                 log_path
             )
         )
@@ -550,7 +550,7 @@ def main(url=None, host=None, port=None):
                     "wcravat already running. Exiting from this instance of wcravat..."
                 )
                 print(
-                    "OakCRAVAT is already running at {}{}:{}.".format(
+                    "OakVar is already running at {}{}:{}.".format(
                         protocol, host, port
                     )
                 )
@@ -562,21 +562,21 @@ def main(url=None, host=None, port=None):
             pass
         print(
             """
-    ____        __   __________  ___ _    _____  ______
-   / __ \____ _/ /__/ ____/ __ \/   | |  / /   |/_  __/
-  / / / / __ `/ //_/ /   / /_/ / /| | | / / /| | / /   
- / /_/ / /_/ / ,< / /___/ _, _/ ___ | |/ / ___ |/ /    
- \____/\__,_/_/|_|\____/_/ |_/_/  |_|___/_/  |_/_/     
+ ██████   █████  ██   ██ ██    ██  █████  ██████  
+██    ██ ██   ██ ██  ██  ██    ██ ██   ██ ██   ██ 
+██    ██ ███████ █████   ██    ██ ███████ ██████  
+██    ██ ██   ██ ██  ██   ██  ██  ██   ██ ██   ██ 
+ ██████  ██   ██ ██   ██   ████   ██   ██ ██   ██ 
 """
         )
-        print("OakCRAVAT is served at {}:{}".format(host, port))
+        print("OakVar is served at {}:{}".format(host, port))
         logger.info(
-            "Serving OakCRAVAT server at {}:{}".format(
+            "Serving OakVar server at {}:{}".format(
                 host, port
             )
         )
         print(
-            '(To quit: Press Ctrl-C or Ctrl-Break if run on a Terminal or Windows, or click "Cancel" and then "Quit" if run through OakCRAVAT app on Mac OS)'
+            '(To quit: Press Ctrl-C or Ctrl-Break if run on a Terminal or Windows, or click "Cancel" and then "Quit" if run through OakVar app on Mac OS)'
         )
         loop = asyncio.get_event_loop()
         loop.call_later(0.1, wakeup)
@@ -617,7 +617,7 @@ def main(url=None, host=None, port=None):
             traceback.print_exc()
         logger.info("Exiting...")
         print(
-            "Error occurred while starting OakCRAVAT server.\nCheck {} for details.".format(
+            "Error occurred while starting OakVar server.\nCheck {} for details.".format(
                 log_path
             )
         )

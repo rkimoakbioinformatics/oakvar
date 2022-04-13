@@ -241,9 +241,11 @@ class ModuleInfoCache(object):
         if force or not (self._counts_fetched):
             counts_url = self._store_path_builder.download_counts()
             counts_str = su.get_file_to_string(counts_url)
-            if counts_str != "":
+            if counts_str != "" and type(counts_str) != str:
                 self.download_counts = yaml.safe_load(counts_str).get("modules", {})
-            self._counts_fetched = True
+                self._counts_fetched = True
+            else:
+                self._counts_fetched = False
 
     def update_local(self):
         self.local = LocalInfoCache()
@@ -286,11 +288,11 @@ class ModuleInfoCache(object):
             else:
                 manifest_str = su.get_file_to_string(self._remote_url)
             self.remote = {}
-            if manifest_str != "":
+            if manifest_str != "" and type(manifest_str) != str:
                 self.remote = yaml.safe_load(manifest_str)
                 self.remote.pop("hgvs", None)  # deprecate hgvs annotator
             else:
-                msg = f"WARNING: Could not list modules from {self._remote_url}. Check internet connection."
+                msg = f"WARNING: Could not list modules from {self._remote_url}. The store or the internet connection can be off-line."
                 print(msg, file=sys.stderr)
             self._remote_fetched = True
 
@@ -497,7 +499,7 @@ def get_cravat_conf_info():
 
 
 def get_current_package_version():
-    version = pkg_resources.get_distribution("oak-cravat").version
+    version = pkg_resources.get_distribution("oakvar").version
     return version
 
 
@@ -716,10 +718,10 @@ def get_modules_dir():
 
 def get_package_versions():
     """
-    Return available oak-cravat versions from pypi, sorted asc
+    Return available oakvar versions from pypi, sorted asc
     """
     try:
-        r = requests.get("https://pypi.org/pypi/oak-cravat/json", timeout=(3, None))
+        r = requests.get("https://pypi.org/pypi/oakvar/json", timeout=(3, None))
     except requests.exceptions.ConnectionError:
         print("Internet connection is not available.")
         return None
@@ -1484,7 +1486,7 @@ def refresh_cache():
 def report_issue():
     import webbrowser
 
-    webbrowser.open("http://github.com/KarchinLab/oak-cravat/issues")
+    webbrowser.open("http://github.com/KarchinLab/oakvar/issues")
 
 
 def search_local(*patterns):

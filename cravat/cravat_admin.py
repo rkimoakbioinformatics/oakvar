@@ -461,7 +461,7 @@ subparsers = parser.add_subparsers(title='Commands')
 
 # md
 md_examples = ExampleCommandsFormatter(prefix='cravat-admin md')
-md_examples.add_example('','Print the current CRAVAT modules directory')
+md_examples.add_example('','Print the current OakVar modules directory')
 md_examples.add_example('~/cravat-modules',
                         '''Set the cravat modules directory to ~/cravat-modules. 
                         ~/cravat-modules will be created if it does not already exist. 
@@ -469,8 +469,8 @@ md_examples.add_example('~/cravat-modules',
                         modules directory to the new one if there is not already a file 
                         named cravat.yml in the new modules directory.''')
 parser_md = subparsers.add_parser('md',
-                                    help='displays or changes CRAVAT modules directory.',
-                                    description='displays or changes CRAVAT modules directory.',
+                                    help='displays or changes OakVar modules directory.',
+                                    description='displays or changes OakVar modules directory.',
                                     epilog=str(md_examples),
                                     formatter_class=argparse.RawDescriptionHelpFormatter
                                     )
@@ -495,11 +495,11 @@ parser_install_base.add_argument('-d', '--force-data',
 parser_install_base.add_argument('--install-pypi-dependency',
     action='store_true',
     default=True,
-    help='Try to install non-OakCRAVAT package dependency with pip'
+    help='Try to install non-OakVar package dependency with pip'
 )
 parser_install_base.add_argument('--md',
     default=None,
-    help='Specify the root directory of OakCRAVAT modules'
+    help='Specify the root directory of OakVar modules'
 )
 parser_install_base.set_defaults(func=install_base)
 
@@ -541,11 +541,11 @@ parser_install.add_argument('--skip-data',
 parser_install.add_argument('--install-pypi-dependency',
     action='store_true',
     default=True,
-    help='Try to install non-OakCRAVAT package dependency with pip'
+    help='Try to install non-OakVar package dependency with pip'
 )
 parser_install.add_argument('--md',
     default=None,
-    help='Specify the root directory of OakCRAVAT modules'
+    help='Specify the root directory of OakVar modules'
 )
 parser_install.set_defaults(func=install_modules)
 
@@ -579,11 +579,11 @@ parser_update.add_argument('--strategy',
 parser_update.add_argument('--install-pypi-dependency',
     action='store_true',
     default=True,
-    help='Try to install non-OakCRAVAT package dependency with pip'
+    help='Try to install non-OakVar package dependency with pip'
 )
 parser_update.add_argument('--md',
     default=None,
-    help='Specify the root directory of OakCRAVAT modules'
+    help='Specify the root directory of OakVar modules'
 )
 parser_update.set_defaults(func=update_modules)
 
@@ -598,7 +598,7 @@ parser_uninstall.add_argument('-y','--yes',
                                 help='Proceed without prompt')
 parser_uninstall.add_argument('--md',
     default=None,
-    help='Specify the root directory of OakCRAVAT modules'
+    help='Specify the root directory of OakVar modules'
 )
 parser_uninstall.set_defaults(func=uninstall_modules)
 
@@ -613,7 +613,7 @@ parser_info.add_argument('-l','--local',
                             action='store_true')
 parser_info.add_argument('--md',
     default=None,
-    help='Specify the root directory of OakCRAVAT modules'
+    help='Specify the root directory of OakVar modules'
 )
 parser_info.set_defaults(func=print_info)
 
@@ -657,7 +657,7 @@ parser_ls.add_argument('--bytes',
     )
 parser_ls.add_argument('--md',
     default=None,
-    help='Specify the root directory of OakCRAVAT modules'
+    help='Specify the root directory of OakVar modules'
 )
 parser_ls.set_defaults(func=list_modules)
 
@@ -695,13 +695,13 @@ parser_publish.add_argument('--overwrite',
                             help='overwrites a published module/version')
 parser_publish.add_argument('--md',
     default=None,
-    help='Specify the root directory of OakCRAVAT modules'
+    help='Specify the root directory of OakVar modules'
 )
 parser_publish.set_defaults(func=publish_module)
 
 # create-account
 parser_create_account = subparsers.add_parser('create-account',
-                                                help='creates a CRAVAT store developer account.')
+                                                help='creates a OakVar store developer account.')
 parser_create_account.add_argument('username',
                                     help='use your email as your username.')
 parser_create_account.add_argument('password',
@@ -710,7 +710,7 @@ parser_create_account.set_defaults(func=create_account)
 
 # change-password
 parser_change_password = subparsers.add_parser('change-password',
-                                                help='changes CRAVAT store account password.')
+                                                help='changes OakVar store account password.')
 parser_change_password.add_argument('username',
                                     help='username')
 parser_change_password.add_argument('cur_pw',
@@ -721,7 +721,7 @@ parser_change_password.set_defaults(func=change_password)
 
 # reset-password
 parser_reset_pw = subparsers.add_parser('reset-password',
-                                        help='resets CRAVAT store account password.')
+                                        help='resets OakVar store account password.')
 parser_reset_pw.add_argument('username',
                                 help='username')
 parser_reset_pw.set_defaults(func=send_reset_email)
@@ -756,7 +756,7 @@ parser_new_annotator.add_argument('annotator_name',
                                 help='Annotator name')
 parser_new_annotator.add_argument('--md',
     default=None,
-    help='Specify the root directory of OakCRAVAT modules'
+    help='Specify the root directory of OakVar modules'
 )
 parser_new_annotator.set_defaults(func=new_annotator)
 
@@ -777,7 +777,7 @@ parser_show_cravat_conf.set_defaults(func=show_cravat_conf)
 
 # shows version
 parser_show_version = subparsers.add_parser('version',
-                                            help='shows oak-cravat version')
+                                            help='shows oakvar version')
 parser_show_version.set_defaults(func=show_version)
 
 def main ():
