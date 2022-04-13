@@ -10,7 +10,7 @@ import openpyxl as pyxl
 import openpyxl as pyxl
 
 
-# Regression test program for CRAVAT modules.  By default, it will go through all modules and
+# Regression test program for OakVar modules.  By default, it will go through all modules and
 # if the module has a test directory with an input and key file, it will test the module
 # and compare the results to the key to determine whether everything is running as expected.
 # The command line -m can be used to specify one or more specific modules to test and the
@@ -26,7 +26,7 @@ import openpyxl as pyxl
 # Logs and output for each module can be found in the associated subdirectory.
 
 
-# Open CRAVAT has multiple output types (reports) generated optional using the -t parameter when running oc.
+# OakVar has multiple output types (reports) generated optional using the -t parameter when running oc.
 # The tester uses report output to verify expected results.  The ReportReader class is responsible for parsing
 # output reports and 'key' files which are expected results.  Because there are multiple types of reports,
 # the ReportReader is an abstract class and a class of the correct type is instantiated based on the type of
@@ -623,7 +623,7 @@ class Tester:
             " ".join(cmd_list), shell=True, stdout=self.log, stderr=subprocess.STDOUT
         )
         if exit_code != 0:
-            self._report("    CRAVAT non-zero exit code: " + str(exit_code))
+            self._report("    OakVar non-zero exit code: " + str(exit_code))
         return exit_code
 
     def verify(self):

@@ -33,7 +33,7 @@ class CravatAnnotator(BaseAnnotator):
             ('hugo', 'num_variants', 'so', 'all_so')
         
         secondary_data is used to allow an annotator to access the output of
-        other annotators. It is described in more detail in the CRAVAT 
+        other annotators. It is described in more detail in the OakVar 
         documentation.
         
         annotate should return a dictionary with keys matching the column names
