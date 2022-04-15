@@ -57,12 +57,12 @@ for root, dirs, files in os.walk(os.path.join('cravat', 'websubmit')):
 setup(
     name='oakvar',
     packages=['cravat'],
-    version='2.3.13',
+    version='2.3.16',
     description='OakVar, further development of OpenCRAVAT by its lead architect',
     long_description=readme(),
     author='Ryangguk Kim',
     author_email='rkim@oakbioinformatics.com',
-    url='https://github.com/oakbioinformatics/oakvar',
+    url='https://github.com/rkimoakbioinformatics/oakvar',
     license='',
     package_data={
         'cravat': data_files
