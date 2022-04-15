@@ -20,7 +20,7 @@ output_columns:
   # dictionary returned by the annotate method of annotator_name.py
 - name: placeholder_annotation
   # title is the display name of this column, similar to the title of the module.
-  # It can be changed without affecting the functionality of CRAVAT
+  # It can be changed without affecting the functionality of OakVar
   title: Placeholder Annotation
   # type is the data type of the value. It is primarily used when storing the 
   # results in a database. It may be one of string, int, or float.

@@ -8,7 +8,7 @@ from .base_annotator import parser as run_annotator_parser
 import sys
 
 root_p = argparse.ArgumentParser(
-    description="OakCRAVAT. https://github.com/rkimoakbioinformatics/oak-cravat"
+    description="OakVar. Genomic variant analysis platform. https://github.com/rkimoakbioinformatics/oakvar"
 )
 root_sp = root_p.add_subparsers(title="Commands")
 

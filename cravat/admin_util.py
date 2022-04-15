@@ -242,9 +242,11 @@ class ModuleInfoCache(object):
         if force or not (self._counts_fetched):
             counts_url = self._store_path_builder.download_counts()
             counts_str = su.get_file_to_string(counts_url)
-            if counts_str != "":
+            if counts_str != "" and type(counts_str) != str:
                 self.download_counts = yaml.safe_load(counts_str).get("modules", {})
-            self._counts_fetched = True
+                self._counts_fetched = True
+            else:
+                self._counts_fetched = False
 
     def update_local(self):
         self.local = LocalInfoCache()
@@ -287,11 +289,11 @@ class ModuleInfoCache(object):
             else:
                 manifest_str = su.get_file_to_string(self._remote_url)
             self.remote = {}
-            if manifest_str != "":
+            if manifest_str != "" and type(manifest_str) != str:
                 self.remote = yaml.safe_load(manifest_str)
                 self.remote.pop("hgvs", None)  # deprecate hgvs annotator
             else:
-                msg = f"WARNING: Could not list modules from {self._remote_url}. Check internet connection."
+                msg = f"WARNING: Could not list modules from {self._remote_url}. The store or the internet connection can be off-line."
                 print(msg, file=sys.stderr)
             self._remote_fetched = True
 
@@ -346,11 +348,13 @@ class ReadyState(object):
     READY = 0
     MISSING_MD = 1
     UPDATE_NEEDED = 2
+    NO_BASE_MODULES = 3
 
     messages = {
         0: "",
         1: "Modules directory not found",
         2: 'Update on system modules needed. Run "oc module install-base"',
+        3: "Base modules do not exist.",
     }
 
     def __init__(self, code=READY):
@@ -710,10 +714,10 @@ def get_modules_dir():
 
 def get_package_versions():
     """
-    Return available oak-cravat versions from pypi, sorted asc
+    Return available oakvar versions from pypi, sorted asc
     """
     try:
-        r = requests.get("https://pypi.org/pypi/oak-cravat/json", timeout=(3, None))
+        r = requests.get("https://pypi.org/pypi/oakvar/json", timeout=(3, None))
     except requests.exceptions.ConnectionError:
         print("Internet connection is not available.")
         return None
@@ -1429,8 +1433,17 @@ def ready_resolution_console():
             set_modules_dir(full_path)
             print(full_path)
         else:
-            print("Please manually recreate/reattach the modules directory")
+            print("Please manually recreate/reattach the modules directory.")
             exit()
+    elif rs.code == ReadyState.NO_BASE_MODULES:
+        yn = input("Do you want to install base modules now? (y/n)>")
+        if yn == "y":
+            args = SimpleNamespace(
+                force_data=False, force=False, install_pypi_dependency=True, md=None
+            )
+            from . import cravat_admin
+            cravat_admin.install_base(args)
+            print("Base modules have been installed.")
     exit()
 
 
@@ -1469,7 +1482,7 @@ def refresh_cache():
 def report_issue():
     import webbrowser
 
-    webbrowser.open("http://github.com/KarchinLab/oak-cravat/issues")
+    webbrowser.open("http://github.com/KarchinLab/oakvar/issues")
 
 
 def search_local(*patterns):
@@ -1568,10 +1581,13 @@ def show_system_conf():
 
 
 def system_ready():
-    if not (os.path.exists(get_modules_dir())):
+    modules_dir = get_modules_dir()
+    if not (os.path.exists(modules_dir)):
         return ReadyState(code=ReadyState.MISSING_MD)
-    return ReadyState()
-
+    elif not(os.path.exists(os.path.join(modules_dir, 'converters', 'cravat-converter'))):
+        return ReadyState(code=ReadyState.NO_BASE_MODULES)
+    else:
+        return ReadyState()
 
 def uninstall_module(module_name):
     """

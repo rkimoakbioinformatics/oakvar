@@ -399,8 +399,8 @@ def get_pkg_version():
 def is_compatible_version(dbpath):
     db = sqlite3.connect(dbpath)
     c = db.cursor()
-    oc_version = get_pkg_version()
-    sql = 'select colval from info where colkey="oak-cravat"'
+    oc_version = LooseVersion(pkg_resources.get_distribution("oakvar").version)
+    sql = 'select colval from info where colkey="oakvar"'
     c.execute(sql)
     r = c.fetchone()
     if r is None:

@@ -2,7 +2,7 @@ function getExportContent (tabName) {
 	var conditionDic = {'contain':'contains', 'lte':'less than', 'gte':'greater than'};
 	// Writes job information.
 	var content = '';
-	content += '# CRAVAT Report\n';
+	content += '# OakVar Report\n';
 	content += '# Result database: ' + dbPath + '\n';
 	content += '# Report section (tab): ' + tabName + '\n';
 	// Writes filters.
@@ -943,7 +943,7 @@ function getCheckNoRowsMessage (tabName, noRows) {
 	var msg = '';
 	var maxNoRows = infomgr.getStat(tabName)['maxnorows'];
 	if (noRows > maxNoRows) {
-		msg = 'You have more variants than CRAVAT Result Viewer can display. ' +
+		msg = 'You have more variants than OakVar Result Viewer can display. ' +
 			'Use filters below to reduce the number of variants to load. When ' +
 			maxNoRows +
 			' or less remain, they can be retrieved with the Load button.';
@@ -1084,10 +1084,10 @@ function webresult_run () {
     $grids = {};
     gridObjs = {};
     if (jobId != null) {
-        document.title = 'CRAVAT: ' + jobId;
+        document.title = 'OakVar: ' + jobId;
     } else if (dbPath != null) {
         var toks = dbPath.split('/');
-        document.title = 'CRAVAT: ' + toks[toks.length - 1];
+        document.title = 'OakVar: ' + toks[toks.length - 1];
         jobId = toks[toks.length - 1];
     }
     var resizeTimeout = null;
