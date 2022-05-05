@@ -33,8 +33,8 @@ def readme ():
 data_files = ['cravat.yml', 
               'cravat-system.template.yml', 
               'modules/cravat.yml', 
-              'example_input',
-              'wincravat.pyw']
+              'example_input'
+]
 for root, dirs, files in os.walk(os.path.join('cravat', 'webviewer')):
     root_files = [os.path.join('..', root, f) for f in files]
     data_files.extend(root_files)
@@ -53,10 +53,10 @@ for root, dirs, files in os.walk(os.path.join('cravat', 'webstore')):
 for root, dirs, files in os.walk(os.path.join('cravat', 'websubmit')):
     root_files = [os.path.join('..', root, f) for f in files]
     data_files.extend(root_files)
-
+oakvar_files = ['cravat.yml']
 setup(
     name='oakvar',
-    packages=['cravat'],
+    packages=['cravat', 'oakvar'],
     version='2.3.16',
     description='OakVar, further development of OpenCRAVAT by its lead architect',
     long_description=readme(),
@@ -65,12 +65,13 @@ setup(
     url='https://github.com/rkimoakbioinformatics/oakvar',
     license='',
     package_data={
-        'cravat': data_files
+        'cravat': data_files,
+        'oakvar': oakvar_files
     },
     entry_points={
         'console_scripts': [
             'oc=cravat.__main__:main',
-            'ov=cravat.__main__:main',
+            'ov=oakvar.__main__:main',
         ]
     },
     cmdclass={
