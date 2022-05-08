@@ -1,7 +1,7 @@
-from cravat.cravat_report import CravatReport
+from oakvar.cravat_report import CravatReport
 import sys
 import datetime
-from cravat.config_loader import ConfigLoader
+from oakvar.config_loader import ConfigLoader
 import cravat.constants as constants
 
 class Reporter (CravatReport):

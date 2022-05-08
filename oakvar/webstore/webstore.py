@@ -1,5 +1,5 @@
-from cravat import admin_util as au
-from cravat import ConfigLoader
+from oakvar import admin_util as au
+from oakvar import ConfigLoader
 import os
 import yaml
 import json
@@ -11,8 +11,8 @@ import urllib
 import asyncio
 from aiohttp import web
 from html.parser import HTMLParser
-from cravat import store_utils as su
-from cravat import constants
+from oakvar import store_utils as su
+from oakvar import constants
 import cravat.admin_util as au
 import markdown
 import shutil

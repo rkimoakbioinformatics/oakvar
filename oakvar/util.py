@@ -9,7 +9,7 @@ import types
 import inspect
 import logging
 from distutils.version import LooseVersion
-from cravat.cravat_util import max_version_supported_for_migration
+from oakvar.cravat_util import max_version_supported_for_migration
 import sqlite3
 import pkg_resources
 import datetime
@@ -428,19 +428,21 @@ def get_current_time_str():
 def get_args(parser, inargs, inkwargs):
     # Combines arguments in various formats.
     inarg_dict = {}
-    for inarg in inargs:
-        t = type(inarg)
-        if t == list:  # ['-t', 'text']
-            #if inarg[0].endswith(".py"):
-            #    inarg = inarg[1:]
-            inarg_dict.update(**vars(parser.parse_args(inarg)))
-        elif t == argparse.Namespace:  # already parsed by a parser.
-            inarg_dict.update(**vars(inarg))
-        elif t == types.SimpleNamespace:
-            inarg_dict.update(**vars(inarg))
-        elif t == dict:  # {'output_dir': '/rt'}
-            inarg_dict.update(inarg)
-    inarg_dict.update(inkwargs)
+    if inargs is not None:
+        for inarg in inargs:
+            t = type(inarg)
+            if t == list:  # ['-t', 'text']
+                #if inarg[0].endswith(".py"):
+                #    inarg = inarg[1:]
+                inarg_dict.update(**vars(parser.parse_args(inarg)))
+            elif t == argparse.Namespace:  # already parsed by a parser.
+                inarg_dict.update(**vars(inarg))
+            elif t == types.SimpleNamespace:
+                inarg_dict.update(**vars(inarg))
+            elif t == dict:  # {'output_dir': '/rt'}
+                inarg_dict.update(inarg)
+    if inkwargs is not None:
+        inarg_dict.update(inkwargs)
     arg_dict = get_argument_parser_defaults(parser)
     arg_dict.update(inarg_dict)
     args = SimpleNamespace(**arg_dict)
@@ -495,4 +497,14 @@ def write_log_msg(logger, e):
     else:
         logger.info(e)
         print(e)
+
+def get_simplenamespace(d):
+    if type(d) == dict:
+        d = types.SimpleNamespace(**d)
+    return d
+
+def get_dict_from_namespace(n):
+    if type(n) == types.SimpleNamespace or type(n) == argparse.Namespace:
+        n = vars(n)
+    return n
 

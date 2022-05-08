@@ -4,16 +4,15 @@ import os
 import oyaml as yaml
 import sys
 import traceback
-from cravat import admin_util as au
-from cravat import util
-from cravat import constants
+from oakvar import admin_util as au
+from oakvar import util
+from oakvar import constants
 from types import SimpleNamespace
 import re
 import textwrap
 import copy
 from getpass import getpass
 from distutils.version import LooseVersion
-from cravat import util
 
 
 class ExampleCommandsFormatter(object,):
@@ -86,8 +85,8 @@ def print_tabular_lines(l, *kwargs):
     for line in yield_tabular_lines(l, *kwargs):
         print(line)
 
-def list_local_modules(pattern=r'.*', types=[], include_hidden=False, tags=[], quiet=False, raw_bytes=False):
-    if quiet:
+def list_local_modules(pattern=r'.*', types=[], include_hidden=False, tags=[], quiet=False, raw_bytes=False, fmt="tabular", stdout=True, **kwargs):
+    if quiet or fmt=="json":
         all_toks = []
     else:
         header = ['Name', 'Title', 'Type','Version','Data source ver','Size']
@@ -107,13 +106,31 @@ def list_local_modules(pattern=r'.*', types=[], include_hidden=False, tags=[], q
             toks = [module_name]
         else:
             size = module_info.get_size()
-            toks = [module_name, module_info.title, module_info.type, module_info.version, module_info.datasource]
-            if raw_bytes:
-                toks.append(size)
+            if fmt == "json":
+                toks = {"name": module_name,
+                        "title": module_info.title,
+                        "type": module_info.type,
+                        "version": module_info.version,
+                        "datasource": module_info.datasource}
             else:
-                toks.append(util.humanize_bytes(size))
+                toks = [module_name, module_info.title, module_info.type, module_info.version, module_info.datasource]
+            if raw_bytes:
+                if fmt == "json":
+                    toks["size"] = size
+                else:
+                    toks.append(size)
+            else:
+                if fmt == "json":
+                    toks["size"] = util.humanize_bytes(size)
+                else:
+                    toks.append(util.humanize_bytes(size))
         all_toks.append(toks)
-    print_tabular_lines(all_toks)
+    if stdout:
+        if fmt == "tabular":
+            print_tabular_lines(all_toks)
+        else:
+            print(all_toks)
+    return all_toks
 
 def list_available_modules(pattern=r'.*', types=[], include_hidden=False, tags=[], quiet=False, raw_bytes=False):
     if quiet:
@@ -161,11 +178,15 @@ def list_available_modules(pattern=r'.*', types=[], include_hidden=False, tags=[
         all_toks.append(toks)
     print_tabular_lines(all_toks)
 
-def list_modules(args):
-    if args.available:
-        list_available_modules(pattern=args.pattern, types=args.types, include_hidden=args.include_hidden, tags=args.tags, quiet=args.quiet, raw_bytes=args.raw_bytes)
+def fn_module_ls(args):
+    args = util.get_dict_from_namespace(args)
+    if args["available"]:
+        list_available_modules(pattern=args["pattern"], types=args["types"], include_hidden=args["include_hidden"], tags=args["tags"], quiet=args["quiet"], raw_bytes=args["raw_bytes"])
     else:
-        list_local_modules(pattern=args.pattern, types=args.types, include_hidden=args.include_hidden, tags=args.tags, quiet=args.quiet, raw_bytes=args.raw_bytes)
+        #import json
+        #args = json.loads(json.dumps(args, default=lambda v: vars(v)))
+        ret = list_local_modules(**args)
+        return ret
 
 def yaml_string(x):
     s = yaml.dump(x, default_flow_style = False)
@@ -173,10 +194,15 @@ def yaml_string(x):
     s = s.strip('\r\n')
     return s
 
-def print_info(args):
-    if args.md is not None:
-        constants.custom_modules_dir = args.md
-    module_name = args.module
+def fn_module_info(args, out="stdout"):
+    ret = {}
+    args = util.get_dict_from_namespace(args)
+    md = args.get("md", None)
+    module_name = args.get("module", None)
+    if md is not None:
+        constants.custom_modules_dir = md
+    if module_name is None:
+        return ret
     installed = False
     remote_available = False
     up_to_date = False
@@ -195,7 +221,6 @@ def print_info(args):
         local_info = au.get_local_module_info(module_name)
         if local_info != None:
             installed = True
-            del local_info.readme
             release_note = local_info.conf.get('release_note', {})
         else:
             installed = False
@@ -214,11 +239,13 @@ def print_info(args):
                 version = version + ' ' + note
             new_versions.append(version)
         remote_info.versions = new_versions
-        del remote_info.data_sources
-        dump = yaml_string(remote_info)
-        print(dump)
+        #del remote_info.data_sources
+        #dump = yaml_string(remote_info)
+        #print(dump)
+        ret.update(remote_info.data)
         # output columns
-        print('output columns:')
+        #print('output columns:')
+        ret["output_columns"] = []
         conf = au.get_remote_module_config(module_name)
         if 'output_columns' in conf:
             output_columns = conf['output_columns']
@@ -226,40 +253,57 @@ def print_info(args):
                 desc = ''
                 if 'desc' in col:
                     desc = col['desc']
-                print('  {}: {}'.format(col['title'], desc))
+                #print('  {}: {}'.format(col['title'], desc))
+                ret["output_columns"].append({
+                    "name": col["name"],
+                    "title": col["title"],
+                    "desc": desc
+                })
     else:
-        print('NOT IN STORE')
+        #print('NOT IN STORE')
+        ret["store_availability"] = False
+    ret["installed"] = installed
     if installed:
-        print('INSTALLED')
-        if args.local:
-            li_out = copy.deepcopy(local_info)
-            del li_out.conf
-            li_out.get_size()
-            dump = yaml_string(li_out)
-            print(dump)
+        #print('INSTALLED')
+        if args.get("local", None):
+            ret.update(local_info)
+            #li_out = copy.deepcopy(local_info)
+            #del li_out.conf
+            #li_out.get_size()
+            #dump = yaml_string(li_out)
+            #print(dump)
     else:
-        print('NOT INSTALLED')
+        #print('NOT INSTALLED')
+        pass
     if installed and remote_available:
         if installed and local_info.version == remote_info.latest_version:
             up_to_date = True
         else:
             up_to_date = False
-        if up_to_date:
-            print('UP TO DATE')
-        else:
-            print('NEWER VERSION EXISTS')
+        ret["latest_installed"] = up_to_date
+        #if up_to_date:
+        #    print('UP TO DATE')
+        #else:
+        #    print('NEWER VERSION EXISTS')
+    if out == "stdout":
+        #s = yaml.dump(x, default_flow_style = False)
+        print(yaml.dump(ret))
+    else:
+        return ret
 
 def set_modules_dir(args):
     if args.directory:
         au.set_modules_dir(args.directory)
     print(au.get_modules_dir())
 
-def install_modules(args):
+def fn_module_install(args):
+    args = util.get_simplenamespace(args)
     if args.md is not None:
         constants.custom_modules_dir = args.md
     matching_names = au.search_remote(*args.modules)
     if len(matching_names) > 1 and args.version is not None:
-        sys.exit('Version filter cannot be applied to multiple modules')
+        print('Version filter cannot be applied to multiple modules', flush=True)
+        return False
     selected_install = {}
     for module_name in matching_names:
         remote_info = au.get_remote_module_info(module_name)
@@ -269,12 +313,12 @@ def install_modules(args):
                 local_ver = local_info.version
                 remote_ver = remote_info.latest_version
                 if not args.force and LooseVersion(local_ver) >= LooseVersion(remote_ver):
-                    print(f'{module_name}: latest ({local_ver}) is already installed. Use -f/--force to overwrite')
+                    print(f'{module_name}: latest ({local_ver}) is already installed. Use -f/--force to overwrite', flush=True)
                     continue
             selected_install[module_name] = remote_info.latest_version
         elif remote_info.has_version(args.version):
             if not args.force and local_info is not None and LooseVersion(local_info.version) == LooseVersion(args.version):
-                print(f'{module_name}:{args.version} is already installed. Use -f/--force to overwrite')
+                print(f'{module_name}:{args.version} is already installed. Use -f/--force to overwrite', flush=True)
                 continue
             selected_install[module_name] = args.version
         else:
@@ -286,30 +330,37 @@ def install_modules(args):
             if au.module_exists_remote(module_name, version=args.version, private=True):
                 selected_install[module_name] = args.version
     # Add dependencies of selected modules
-    dep_install = {}
-    pypi_deps_install = {}
+    deps_install = {}
+    deps_install_pypi = {}
     if not args.skip_dependencies:
         for module_name, version in selected_install.items():
-            deps = au.get_install_deps(module_name, version=version)
-            dep_install.update(deps)
+            deps, deps_pypi = au.get_install_deps(module_name, version=version)
+            deps_install.update(deps)
+            deps_install_pypi.update(deps_pypi)
+    for m, v in deps_install_pypi.items():
+        import subprocess
+        p = subprocess.run([sys.executable, "-m", "pip", "install", m])
+        if p.returncode != 0:
+            print(f"Error while installingn {m}. Exiting.", flush=True)
+            return False
     # If overlap between selected modules and dependency modules, use the dependency version
     to_install = selected_install
-    to_install.update(dep_install)
+    to_install.update(deps_install)
     if len(to_install) == 0:
-        print('No modules to install found')
+        print('No modules to install found', flush=True)
     else:
         print('Installing: {:}'\
                 .format(', '.join([name+':'+version for name, version in sorted(to_install.items())]))
-                )
+                , flush=True)
         if not(args.yes):
             while True:
                 resp = input('Proceed? ([y]/n) > ')
                 if resp == 'y' or resp=='':
                     break
                 if resp == 'n':
-                    exit()
+                    return False
                 else:
-                    print('Your response (\'{:}\') was not one of the expected responses: y, n'.format(resp))
+                    print('Your response (\'{:}\') was not one of the expected responses: y, n'.format(resp), flush=True)
                     continue
         for module_name, module_version in sorted(to_install.items()):
             stage_handler = InstallProgressStdout(module_name, module_version)
@@ -357,15 +408,16 @@ def update_modules(args):
         args.skip_dependencies = False
         args.force = False
         args.skip_data = False
-        install_modules(args)
+        fn_module_install(args)
 
-def uninstall_modules (args):
-    if args.md is not None:
-        constants.custom_modules_dir = args.md
-    matching_names = au.search_local(*args.modules)
+def fn_module_uninstall (args):
+    args = util.get_dict_from_namespace(args)
+    if args["md"] is not None:
+        constants.custom_modules_dir = args["md"]
+    matching_names = au.search_local(*args["modules"])
     if len(matching_names) > 0:
         print('Uninstalling: {:}'.format(', '.join(matching_names)))
-        if not(args.yes):
+        if not(args["yes"]):
             while True:
                 resp = input('Proceed? (y/n) > ')
                 if resp == 'y':
@@ -410,7 +462,7 @@ def install_base (args):
         install_pypi_dependency=args.install_pypi_dependency,
         md=args.md
     )
-    install_modules(args)
+    fn_module_install(args)
 
 def create_account (args):
     au.create_account(args.username, args.password)
@@ -427,8 +479,9 @@ def send_verify_email (args):
 def check_login (args):
     au.check_login(args.username, args.password)
 
-def make_example_input (arg):
-    au.make_example_input(arg.directory)
+def fn_new_exampleinput (args):
+    args = util.get_dict_from_namespace(args)
+    au.fn_new_exampleinput(args["directory"])
 
 def new_annotator (args):
     if args.md is not None:
@@ -538,16 +591,16 @@ parser_install.add_argument('--skip-data',
     action='store_true',
     help='Skip installing data'
 )
-parser_install.add_argument('--install-pypi-dependency',
-    action='store_true',
-    default=True,
-    help='Try to install non-OakVar package dependency with pip'
-)
+#parser_install.add_argument('--install-pypi-dependency',
+#    action='store_true',
+#    default=True,
+#    help='Try to install non-OakVar package dependency with pip'
+#)
 parser_install.add_argument('--md',
     default=None,
     help='Specify the root directory of OakVar modules'
 )
-parser_install.set_defaults(func=install_modules)
+parser_install.set_defaults(func=fn_module_install)
 
 # update
 update_examples = ExampleCommandsFormatter(prefix='cravat-admin update')
@@ -600,7 +653,7 @@ parser_uninstall.add_argument('--md',
     default=None,
     help='Specify the root directory of OakVar modules'
 )
-parser_uninstall.set_defaults(func=uninstall_modules)
+parser_uninstall.set_defaults(func=fn_module_uninstall)
 
 # info
 parser_info = subparsers.add_parser('info',
@@ -615,7 +668,7 @@ parser_info.add_argument('--md',
     default=None,
     help='Specify the root directory of OakVar modules'
 )
-parser_info.set_defaults(func=print_info)
+parser_info.set_defaults(func=fn_module_info)
 
 # ls
 ls_examples = ExampleCommandsFormatter(prefix='cravat-admin ls')
@@ -659,7 +712,9 @@ parser_ls.add_argument('--md',
     default=None,
     help='Specify the root directory of OakVar modules'
 )
-parser_ls.set_defaults(func=list_modules)
+parser_ls.add_argument('--fmt', default="tabular", help="Output format. tabular or json")
+parser_ls.add_argument('--stdout', default=True, help="Print to stdout")
+parser_ls.set_defaults(func=fn_module_ls)
 
 # publish
 parser_publish = subparsers.add_parser('publish',
@@ -743,11 +798,11 @@ parser_check_login.add_argument('password',
 parser_check_login.set_defaults(func=check_login)
 
 # test input file
-parser_make_example_input = subparsers.add_parser('make-example-input',
+parser_make_example_input = subparsers.add_parser('new-exampleinput',
                                                     help='makes a file with example input variants.')
-parser_make_example_input.add_argument('directory', default='',
+parser_make_example_input.add_argument('-d', dest='directory', default='.',
                                         help='Directory to make the example input file in')
-parser_make_example_input.set_defaults(func=make_example_input)
+parser_make_example_input.set_defaults(func=fn_new_exampleinput)
 
 # new-annotator
 parser_new_annotator = subparsers.add_parser('new-annotator',

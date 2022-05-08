@@ -51,43 +51,6 @@ sc = None
 loop = None
 debug = False
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--multiuser",
-    dest="servermode",
-    action="store_true",
-    default=False,
-    help="Runs in multiuser mode",
-)
-parser.add_argument(
-    "--headless",
-    action="store_true",
-    default=False,
-    help="do not open the cravat web page",
-)
-parser.add_argument(
-    "--http-only",
-    action="store_true",
-    default=False,
-    help="Force not to accept https connection",
-)
-parser.add_argument(
-    "--debug",
-    dest="debug",
-    action="store_true",
-    default=False,
-    help="Console echoes exceptions written to log file.",
-)
-parser.add_argument("result", nargs="?", help="Path to a OakVar result SQLite file")
-parser.add_argument(
-    "--webapp",
-    dest="webapp",
-    default=None,
-    help="Name of OakVar webapp module to run",
-)
-parser.add_argument("--port", dest="port", default=None, help="Port number for OakVar graphical user interface")
-parser.add_argument("--noguest", dest="noguest", default=False, action="store_true", help="Diasbles guest mode")
-
 def setup(args):
     try:
         global loop
@@ -97,11 +60,11 @@ def setup(args):
         else:
             loop = asyncio.get_event_loop()
         global headless
-        headless = args.headless
+        headless = args["headless"]
         global servermode
-        servermode = args.servermode
+        servermode = args["servermode"]
         global debug
-        debug = args.debug
+        debug = args["debug"]
         if servermode and importlib.util.find_spec("cravat_multiuser") is not None:
             try:
                 global cravat_multiuser
@@ -121,10 +84,10 @@ def setup(args):
         else:
             servermode = False
             server_ready = False
-        wu.servermode = args.servermode
-        ws.servermode = args.servermode
-        wr.servermode = args.servermode
-        wu.filerouter.servermode = args.servermode
+        wu.servermode = args["servermode"]
+        ws.servermode = args["servermode"]
+        wr.servermode = args["servermode"]
+        wu.filerouter.servermode = args["servermode"]
         wu.server_ready = server_ready
         ws.server_ready = server_ready
         wr.server_ready = server_ready
@@ -134,7 +97,7 @@ def setup(args):
             cravat_multiuser.servermode = servermode
             cravat_multiuser.server_ready = server_ready
             cravat_multiuser.logger = logger
-            cravat_multiuser.noguest = args.noguest
+            cravat_multiuser.noguest = args["noguest"]
             wu.cravat_multiuser = cravat_multiuser
             ws.cravat_multiuser = cravat_multiuser
         if servermode and server_ready == False:
@@ -148,7 +111,7 @@ def setup(args):
         global protocol
         protocol = None
         global http_only
-        http_only = args.http_only
+        http_only = args["http_only"]
         if "conf_dir" in sysconf:
             pem_path = os.path.join(sysconf["conf_dir"], "cert.pem")
             if os.path.exists(pem_path) and http_only == False:
@@ -178,18 +141,19 @@ def wcravat_entrypoint():
     run(args)
 
 
-def run(args):
+def fn_gui(args):
+    args = util.get_dict_from_namespace(args)
     log_handler = logging.handlers.TimedRotatingFileHandler(
         log_path, when="d", backupCount=30
     )
     log_formatter = logging.Formatter("%(asctime)s: %(message)s", "%Y/%m/%d %H:%M:%S")
     log_handler.setFormatter(log_formatter)
     logger.addHandler(log_handler)
-    if args.servermode:
-        args.headless = True
-    if args.result:
-        args.headless = False
-        args.result = os.path.abspath(args.result)
+    if args["servermode"]:
+        args["headless"] = True
+    if args["result"]:
+        args["headless"] = False
+        args["result"] = os.path.abspath(args["result"])
     setup(args)
     try:
         global headless
@@ -199,25 +163,25 @@ def run(args):
         server = get_server()
         host = server.get("host")
         port = None
-        if args.port is not None:
+        if args["port"] is not None:
             try:
-                port = int(args.port)
+                port = int(args["port"])
             except:
                 port = None
         if port is None:
             port = server.get("port")
         if not headless:
-            if args.webapp is not None:
+            if args["webapp"] is not None:
                 index_path = os.path.join(
-                    modules_dir, "webapps", args.webapp, "index.html"
+                    modules_dir, "webapps", args["webapp"], "index.html"
                 )
                 if os.path.exists(index_path) == False:
-                    print(f"Webapp {args.webapp} does not exist. Exiting.")
+                    print(f"Webapp {args['webapp']} does not exist. Exiting.")
                     return
-                url = f"{host}:{port}/webapps/{args.webapp}/index.html"
-            elif args.result:
+                url = f"{host}:{port}/webapps/{args['webapp']}/index.html"
+            elif args["result"]:
                 import cravat
-                dbpath = args.result
+                dbpath = args["result"]
                 if os.path.exists(dbpath) == False:
                     print(f"{dbpath} does not exist. Exiting.")
                     return
@@ -235,7 +199,7 @@ def run(args):
                     )
                     return
                 else:
-                    url = f"{host}:{port}/result/index.html?dbpath={args.result}"
+                    url = f"{host}:{port}/result/index.html?dbpath={args['result']}"
             else:
                 if server_ready and servermode:
                     url = f"{host}:{port}/server/nocache/login.html"
@@ -260,7 +224,6 @@ def run(args):
             logger.removeHandler(handler)
 
 
-parser.set_defaults(func=run)
 
 
 def get_server():
@@ -623,6 +586,44 @@ def main(url=None, host=None, port=None):
         )
         exit()
 
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--multiuser",
+    dest="servermode",
+    action="store_true",
+    default=False,
+    help="Runs in multiuser mode",
+)
+parser.add_argument(
+    "--headless",
+    action="store_true",
+    default=False,
+    help="do not open the cravat web page",
+)
+parser.add_argument(
+    "--http-only",
+    action="store_true",
+    default=False,
+    help="Force not to accept https connection",
+)
+parser.add_argument(
+    "--debug",
+    dest="debug",
+    action="store_true",
+    default=False,
+    help="Console echoes exceptions written to log file.",
+)
+parser.add_argument("result", nargs="?", help="Path to a OakVar result SQLite file")
+parser.add_argument(
+    "--webapp",
+    dest="webapp",
+    default=None,
+    help="Name of OakVar webapp module to run",
+)
+parser.add_argument("--port", dest="port", default=None, help="Port number for OakVar graphical user interface")
+parser.add_argument("--noguest", dest="noguest", default=False, action="store_true", help="Diasbles guest mode")
+parser.set_defaults(func=fn_gui)
 
 if __name__ == "__main__":
     main()

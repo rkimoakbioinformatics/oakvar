@@ -11,9 +11,9 @@ import argparse
 import imp
 import yaml
 import re
-from cravat import ConfigLoader
-from cravat import admin_util as au
-from cravat import CravatFilter
+from oakvar import ConfigLoader
+from oakvar import admin_util as au
+from oakvar import CravatFilter
 
 def get (handler):
     head = handler.trim_path_head()

@@ -6,8 +6,8 @@ import argparse
 import time
 import traceback
 import cravat.constants as constants
-from cravat.inout import CravatWriter
-from cravat.exceptions import (
+from oakvar.inout import CravatWriter
+from oakvar.exceptions import (
     LiftoverFailure,
     InvalidData,
     BadFormatError,
@@ -18,11 +18,11 @@ import cravat.admin_util as au
 from pyliftover import LiftOver
 import copy
 import cravat.cravat_util as cu
-from cravat.util import detect_encoding
+from oakvar.util import detect_encoding
 import json
 import gzip
 from collections import defaultdict
-from cravat.base_converter import BaseConverter
+from oakvar.base_converter import BaseConverter
 import cravat
 import re
 

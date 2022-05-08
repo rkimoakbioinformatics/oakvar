@@ -146,7 +146,7 @@ class LocalModuleInfo(object):
         self.helphtml_exists = os.path.exists(self.helphtml_path)
         self.conf = {}
         if self.conf_exists:
-            from cravat.config_loader import ConfigLoader
+            from oakvar.config_loader import ConfigLoader
 
             conf = ConfigLoader()
             self.conf = conf.get_module_conf(self.name)
@@ -376,29 +376,45 @@ class ReadyState(object):
 
 class RemoteModuleInfo(object):
     def __init__(self, name, **kwargs):
-        self.name = name
-        self.versions = kwargs.get("versions", [])
-        self.latest_version = kwargs.get("latest_version", "")
-        self.type = kwargs.get("type", "")
-        self.title = kwargs.get("title", "")
-        self.description = kwargs.get("description", "")
-        self.size = kwargs.get("size", 0)
-        self.data_size = kwargs.get("data_size", 0)
-        self.code_size = kwargs.get("code_size", 0)
-        self.datasource = kwargs.get("datasource", "")
-        self.hidden = kwargs.get("hidden", False)
-        if self.datasource == None:
-            self.datasource = ""
-        dev_dict = kwargs.get("developer")
-        if not (type(dev_dict) == dict):
-            dev_dict = {}
+        self.data = kwargs
+        self.data.setdefault("versions", [])
+        self.data.setdefault("latest_version", "")
+        self.data.setdefault("type", "")
+        self.data.setdefault("title", "")
+        self.data.setdefault("description", "")
+        self.data.setdefault("size", "")
+        self.data.setdefault("data_size", 0)
+        self.data.setdefault("code_size", 0)
+        self.data.setdefault("datasource", "")
+        self.data.setdefault("hidden", False)
+        self.data.setdefault("developer", {})
+        self.data.setdefault("data_versions", {})
+        self.data.setdefault("data_sources", {})
+        self.data.setdefault("tags", [])
+        self.data.setdefault("publish_time", None)
+        self.name = self.data.get("name")
+        self.versions = self.data.get("versions")
+        self.latest_version = self.data.get("latest_version")
+        self.type = self.data.get("intype")
+        self.title = self.data.get("title")
+        self.description = self.data.get("description")
+        self.size = self.data.get("size")
+        self.data_size = self.data.get("data_size")
+        self.code_size = self.data.get("code_size")
+        self.datasource = self.data.get("datasource")
+        self.data_versions = self.data.get("data_versions")
+        self.hidden = self.data.get("hidden")
+        self.tags = self.data.get("tags")
+        self.publish_time = self.data.get("publish_time")
+        #if self.datasource == None:
+        #    self.datasource = ""
+        dev_dict = self.data.get("developer")
+        #if not (type(dev_dict) == dict):
+        #    dev_dict = {}
         self.developer = get_developer_dict(**dev_dict)
-        self.data_versions = kwargs.get("data_versions", {})
         self.data_sources = {
-            x: str(y) for x, y in kwargs.get("data_sources", {}).items()
+            x: str(y) for x, y in self.data.get("data_sources").items()
         }
-        self.tags = kwargs.get("tags", [])
-        self.publish_time = kwargs.get("publish_time")
 
     def has_version(self, version):
         return version in self.versions
@@ -481,7 +497,7 @@ def get_conf_dir():
 
 
 def get_cravat_conf():
-    from cravat.config_loader import ConfigLoader
+    from oakvar.config_loader import ConfigLoader
 
     confpath = get_main_conf_path()
     conf = ConfigLoader()
@@ -510,13 +526,12 @@ def get_default_assembly():
 
 
 def get_developer_dict(**kwargs):
-    d = {}
-    d["name"] = kwargs.get("name", "")
-    d["email"] = kwargs.get("email", "")
-    d["organization"] = kwargs.get("organization")
-    d["citation"] = kwargs.get("citation", "")
-    d["website"] = kwargs.get("website", "")
-    return d
+    kwargs.setdefault("name", "")
+    kwargs.setdefault("email", "")
+    kwargs.setdefault("organization", "")
+    kwargs.setdefault("citation", "")
+    kwargs.setdefault("website", "")
+    return {"name": kwargs["name"], "email": kwargs["email"], "organization": kwargs["organization"], "citation": kwargs["citation"], "website": kwargs["website"]}
 
 
 def get_download_counts():
@@ -555,7 +570,12 @@ def get_install_deps(module_name, version=None, skip_installed=True):
         # Dont include if no matching version exists
         if highest_matching is not None:
             deps[req.name] = highest_matching
-    return deps
+    req_pypi_list = config.get("requires_pypi", [])
+    req_pypi_list = ["pandas"]
+    deps_pypi = {}
+    for req_pypi in req_pypi_list:
+        deps_pypi[req_pypi] = True
+    return deps, deps_pypi
 
 
 def get_jobs_dir():
@@ -1004,11 +1024,6 @@ def install_module(
     install_pypi_dependency=False,
     **kwargs,
 ):
-    """
-    Installs a module.
-    version=None will install the latest version.
-    force_data=True will force an update to the data files, even if one is not needed.
-    """
     modules_dir = get_modules_dir()
     temp_dir = os.path.join(modules_dir, constants.install_tempdir_name, module_name)
     shutil.rmtree(temp_dir, ignore_errors=True)
@@ -1271,12 +1286,15 @@ def load_yml_conf(yml_conf_path):
     return conf
 
 
-def make_example_input(d):
-    fn = "example_input"
-    ifn = os.path.join(constants.packagedir, fn)
-    ofn = os.path.join(d, fn)
-    shutil.copyfile(ifn, ofn)
-    print(fn + " has been created at " + os.path.abspath(d))
+def fn_new_exampleinput(d):
+    try:
+        fn = "exampleinput"
+        ifn = os.path.join(constants.packagedir, fn)
+        ofn = os.path.join(d, fn)
+        shutil.copyfile(ifn, ofn)
+        return True
+    except Exception as e:
+        raise e
 
 
 def module_exists_local(module_name):

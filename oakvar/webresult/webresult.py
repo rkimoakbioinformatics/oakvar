@@ -9,10 +9,10 @@ import argparse
 import imp
 import yaml
 import re
-from cravat import ConfigLoader
-from cravat import admin_util as au
-from cravat import CravatFilter
-from cravat.constants import base_smartfilters
+from oakvar import ConfigLoader
+from oakvar import admin_util as au
+from oakvar import CravatFilter
+from oakvar.constants import base_smartfilters
 from aiohttp import web
 import time
 from concurrent.futures import ProcessPoolExecutor

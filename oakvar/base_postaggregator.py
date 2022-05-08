@@ -5,11 +5,11 @@ import logging
 import os
 import time
 import argparse
-from cravat.util import get_caller_name
-from cravat.config_loader import ConfigLoader
-from cravat.constants import VARIANT, GENE, LEVELS
-from cravat.exceptions import InvalidData
-from cravat.inout import ColumnDefinition
+from oakvar.util import get_caller_name
+from oakvar.config_loader import ConfigLoader
+from oakvar.constants import VARIANT, GENE, LEVELS
+from oakvar.exceptions import InvalidData
+from oakvar.inout import ColumnDefinition
 import json
 
 

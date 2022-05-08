@@ -7,7 +7,7 @@ import oyaml as yaml
 import json
 import csv
 from io import StringIO
-from cravat.util import detect_encoding
+from oakvar.util import detect_encoding
 import sys
 from json.decoder import JSONDecodeError
 import multiprocessing as mp

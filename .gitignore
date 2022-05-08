@@ -14,3 +14,4 @@ __dummy__*
 cravat/jobs
 *.egg-info
 */open_cravat.egg-info
+tmp/*

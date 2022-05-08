@@ -1,6 +1,6 @@
 import sys
-from cravat import BaseAnnotator
-from cravat import InvalidData
+from oakvar import BaseAnnotator
+from oakvar import InvalidData
 import sqlite3
 import os
 

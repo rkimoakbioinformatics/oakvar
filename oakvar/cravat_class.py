@@ -2,30 +2,30 @@ import time
 import argparse
 import os
 import sys
-from cravat import admin_util as au
-from cravat import util
-from cravat.config_loader import ConfigLoader
-from cravat.util import write_log_msg
+from oakvar import admin_util as au
+from oakvar import util
+from oakvar.config_loader import ConfigLoader
+from oakvar.util import write_log_msg
 import aiosqlite
 import datetime
 from types import SimpleNamespace
-from cravat import constants
+from oakvar import constants
 import json
 import logging
 import traceback
-from cravat.mp_runners import init_worker, annot_from_queue, mapper_runner
+from oakvar.mp_runners import init_worker, annot_from_queue, mapper_runner
 import multiprocessing as mp
 import multiprocessing.managers
 from logging.handlers import QueueListener
-from cravat.aggregator import Aggregator
-from cravat.exceptions import *
+from oakvar.aggregator import Aggregator
+from oakvar.exceptions import *
 import oyaml as yaml
 import cravat.cravat_util as cu
 import collections
 import asyncio
 import sqlite3
-from cravat.inout import CravatWriter
-from cravat.inout import CravatReader
+from oakvar.inout import CravatWriter
+from oakvar.inout import CravatReader
 import glob
 import nest_asyncio
 
@@ -62,12 +62,22 @@ if args.system_option is not None:
 else:
     au.custom_system_conf = {}
 
-cravat_cmd_parser = argparse.ArgumentParser(
+
+def run(args):
+    args = util.get_dict_from_namespace(args)
+    au.ready_resolution_console()
+    module = Cravat(**args)
+    loop = asyncio.get_event_loop()
+    response = loop.run_until_complete(module.main())
+    return response
+
+
+parser = argparse.ArgumentParser(
     prog="cravat input_file_path_1 input_file_path_2 ...",
     description="OakVar genomic variant interpreter. https://github.com/rkimoakbioinformatics/oakvar. Use input_file_path arguments before any option or define them in a conf file (option -c).",
     epilog="inputs should be the first option",
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "inputs",
     nargs="*",
     default=None,
@@ -76,20 +86,20 @@ cravat_cmd_parser.add_argument(
     + "where you want to add annotations to an existing OakVar analysis, "
     + "provide the output sqlite database from the previous run as input instead of a variant input file.",
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "-a", nargs="+", dest="annotators", default=[], help="Annotator module names or directories. If --package is used also, annotator modules defined with -a will be added."
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "-A", nargs="+", dest="annotators_replace", default=[], help="Annotator module names or directories. If --package is used also, annotator modules defined with -A will replace those defined with --package. -A has priority over -a."
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "-e", nargs="+", dest="excludes", default=[], help="annotators to exclude"
 )
-cravat_cmd_parser.add_argument("-n", dest="run_name", help="name of cravat run")
-cravat_cmd_parser.add_argument(
+parser.add_argument("-n", dest="run_name", help="name of cravat run")
+parser.add_argument(
     "-d", dest="output_dir", default=None, help="directory for output files"
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--startat",
     dest="startat",
     choices=[
@@ -103,7 +113,7 @@ cravat_cmd_parser.add_argument(
     default=None,
     help="starts at given stage",
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--endat",
     dest="endat",
     choices=[
@@ -117,7 +127,7 @@ cravat_cmd_parser.add_argument(
     default=None,
     help="ends after given stage.",
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--skip",
     dest="skip",
     nargs="+",
@@ -132,23 +142,23 @@ cravat_cmd_parser.add_argument(
     default=None,
     help="skips given stage(s).",
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "-c", dest="conf", default="oc.yml", help="path to a conf file"
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--cs", dest="confs", default=None, help="configuration string"
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "-v", dest="verbose", action="store_true", default=None, help="verbose"
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "-t",
     nargs="+",
     dest="reports",
     default=[],
     help="Reporter types or reporter module directories"
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "-l",
     "--liftover",
     dest="genome",
@@ -156,29 +166,29 @@ cravat_cmd_parser.add_argument(
     default=None,
     help="reference genome of input. OakVar will lift over to hg38 if needed.",
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "-x",
     dest="cleandb",
     action="store_true",
     help="deletes the existing result database and creates a new one.",
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--newlog",
     dest="newlog",
     action="store_true",
     default=None,
     help="deletes the existing log file and creates a new one.",
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--note",
     dest="note",
     default=None,
     help="note will be written to the run status file (.status.json)",
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--mp", dest="mp", default=None, help="number of processes to use to run annotators"
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "-i",
     "--input-format",
     dest="forcedinputformat",
@@ -186,115 +196,99 @@ cravat_cmd_parser.add_argument(
     choices=au.input_formats(),
     help="Force input format",
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--temp-files",
     dest="temp_files",
     action="store_true",
     default=None,
     help="Leave temporary files after run is complete.",
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--writeadmindb",
     dest="writeadmindb",
     action="store_true",
     default=None,
     help="Write job information to admin db after job completion",
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--jobid", dest="jobid", default=None, help="Job ID for server version"
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--version",
     dest="show_version",
     action="store_true",
     default=None,
     help="Shows OakVar version.",
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--separatesample",
     dest="separatesample",
     action="store_true",
     default=None,
     help="Separate variant results by sample",
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--unique-variants",
     dest="unique_variants",
     action="store_true",
     default=None,
     help=argparse.SUPPRESS,
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--primary-transcript",
     dest="primary_transcript",
     nargs="+",
     default=["mane"],
     help='"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--cleanrun",
     dest="clean_run",
     action="store_true",
     default=None,
     help="Deletes all previous output files for the job and generate new ones.",
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--do-not-change-status",
     dest="do_not_change_status",
     action="store_true",
     default=None,
     help="Job status in status.json will not be changed",
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--module-option",
     dest="module_option",
     nargs="*",
     help="Module-specific option in module_name.key=value syntax. For example, --module-option vcfreporter.type=separate",
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--system-option",
     dest="system_option",
     nargs="*",
     help="System option in key=value syntax. For example, --system-option modules_dir=/home/user/oakvar/modules",
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--silent", dest="silent", action="store_true", default=None, help="Runs silently."
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--concise-report",
     dest="concise_report",
     action="store_true",
     default=None,
     help="Generate concise reports with default columns defined by each annotation module",
 )
-cravat_cmd_parser.add_argument(
+parser.add_argument(
     "--package", dest="package", default=None, help="Use package"
 )
-cravat_cmd_parser.add_argument("--filtersql", default=None, help="Filter SQL")
-cravat_cmd_parser.add_argument("--includesample", nargs='+', default=None, help="Sample IDs to include")
-cravat_cmd_parser.add_argument("--excludesample", nargs='+', default=None, help="Sample IDs to exclude")
-cravat_cmd_parser.add_argument("--filter", default=None, help=argparse.SUPPRESS)
-cravat_cmd_parser.add_argument("-f", dest="filterpath", default=None, help="Path to a filter file")
-cravat_cmd_parser.add_argument("--md", default=None, help="Specify the root directory of OakVar modules (annotators, etc)")
-cravat_cmd_parser.add_argument("-m", dest="mapper_name", nargs="+", default=[], help="Mapper module name or mapper module directory")
-cravat_cmd_parser.add_argument("-p", nargs="+", dest="postaggregators", default=[], help="Postaggregators to run. Additionally, tagsampler, casecontrol, varmeta, and vcfinfo will automatically run depending on conditions.")
-
-def run(cmd_args):
-    au.ready_resolution_console()
-    module = Cravat(**vars(cmd_args))
-    loop = asyncio.get_event_loop()
-    response = loop.run_until_complete(module.main())
-    return response
-
-
-def run_cravat_job(**kwargs):
-    module = Cravat(**kwargs)
-    loop = asyncio.get_event_loop()
-    response = loop.run_until_complete(module.main())
-    return response
-
-
-cravat_cmd_parser.set_defaults(func=run)
+parser.add_argument("--filtersql", default=None, help="Filter SQL")
+parser.add_argument("--includesample", nargs='+', default=None, help="Sample IDs to include")
+parser.add_argument("--excludesample", nargs='+', default=None, help="Sample IDs to exclude")
+parser.add_argument("--filter", default=None, help=argparse.SUPPRESS)
+parser.add_argument("-f", dest="filterpath", default=None, help="Path to a filter file")
+parser.add_argument("--md", default=None, help="Specify the root directory of OakVar modules (annotators, etc)")
+parser.add_argument("-m", dest="mapper_name", nargs="+", default=[], help="Mapper module name or mapper module directory")
+parser.add_argument("-p", nargs="+", dest="postaggregators", default=[], help="Postaggregators to run. Additionally, tagsampler, casecontrol, varmeta, and vcfinfo will automatically run depending on conditions.")
+parser.set_defaults(func=run)
 
 
 class MyManager(multiprocessing.managers.SyncManager):
@@ -749,7 +743,7 @@ class Cravat(object):
             self.package_conf = {}
 
     def make_self_args_considering_package_conf(self, supplied_args):
-        full_args = util.get_argument_parser_defaults(cravat_cmd_parser)
+        full_args = util.get_argument_parser_defaults(parser)
         # package
         if "run" in self.package_conf:
             package_conf_run = {k: v for k, v in self.package_conf['run'].items() if v is not None}
@@ -837,7 +831,7 @@ class Cravat(object):
                     if not self.args.silent:
                         print("inputs in conf file is invalid")
             else:
-                cravat_cmd_parser.print_help()
+                parser.print_help()
                 print("\nNo input file was given.")
                 exit()
         self.process_url_and_pipe_inputs()
