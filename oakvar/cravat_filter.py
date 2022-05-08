@@ -10,7 +10,7 @@ import time
 import asyncio
 import platform
 import sys
-from cravat.exceptions import InvalidFilter
+from oakvar.exceptions import InvalidFilter
 
 if sys.platform == "win32" and sys.version_info >= (3, 8):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())

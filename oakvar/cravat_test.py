@@ -1,7 +1,7 @@
 import argparse
 import os
 import subprocess
-from cravat import admin_util as au
+from oakvar import admin_util as au
 import time
 import sys
 from abc import ABC, abstractmethod

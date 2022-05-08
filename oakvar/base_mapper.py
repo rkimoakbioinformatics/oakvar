@@ -14,7 +14,7 @@ from .constants import (
     gene_level_so_exclude,
 )
 from .exceptions import InvalidData, NoVariantError
-from cravat.config_loader import ConfigLoader
+from oakvar.config_loader import ConfigLoader
 import sys
 import pkg_resources
 import json

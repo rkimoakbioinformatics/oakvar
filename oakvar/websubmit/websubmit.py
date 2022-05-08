@@ -4,10 +4,9 @@ import datetime
 import subprocess
 import yaml
 import json
-#from cravat import admin_util as au
+#from oakvar import admin_util as au
 from .. import admin_util as au
 from ..config_loader import ConfigLoader
-from ..cravat_class import run_cravat_job
 import sys
 import traceback
 import shutil
@@ -23,7 +22,6 @@ import importlib
 from multiprocessing import Process, Pipe, Value, Manager, Queue
 from queue import Empty
 from .. import constants
-from .. import get_live_annotator, get_live_mapper
 import signal
 import gzip
 from ..cravat_util import max_version_supported_for_migration, status_from_db
@@ -1038,6 +1036,7 @@ async def load_live_modules (module_names=[]):
             default_mapper = cravat_conf['genemapper']
         else:
             default_mapper = 'hg38'
+        from oakvar import get_live_mapper
         live_mapper = get_live_mapper(default_mapper)
     modules = au.get_local_module_infos(types=['annotator'])
     for module in modules:
@@ -1050,6 +1049,7 @@ async def load_live_modules (module_names=[]):
                 continue
             if 'secondary_inputs' in module.conf:
                 continue
+        from oakvar import get_live_annotator
         annotator = get_live_annotator(module.name)
         if annotator is None:
             continue
@@ -1075,9 +1075,9 @@ def clean_annot_dict (d):
     return d
 
 async def live_annotate (input_data, annotators):
-    from cravat.constants import mapping_parser_name
-    from cravat.constants import all_mappings_col_name
-    from cravat.inout import AllMappingsParser
+    from oakvar.constants import mapping_parser_name
+    from oakvar.constants import all_mappings_col_name
+    from oakvar.inout import AllMappingsParser
     global live_modules
     global live_mapper
     response = {}

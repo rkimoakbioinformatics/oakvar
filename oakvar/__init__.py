@@ -43,16 +43,16 @@ from .base_mapper import BaseMapper
 from .base_postaggregator import BasePostAggregator
 from .base_commonmodule import BaseCommonModule
 from .cravat_report import CravatReport, run_reporter
+from .config_loader import ConfigLoader
+from .cravat_filter import CravatFilter
+from .cravat_class import Cravat
+from .util import get_ucsc_bins, reverse_complement, translate_codon, switch_strand
+from .constants import crx_def
 from .exceptions import *
 from . import util
 from . import admin_util
-from .config_loader import ConfigLoader
 from . import constants
-from .cravat_filter import CravatFilter
-from .cravat_class import Cravat
-from .cravat_class import run_cravat_job as run
-from .util import get_ucsc_bins, reverse_complement, translate_codon, switch_strand
-from .constants import crx_def
+from . import __main__ as cli
 
 wgs = None
 
@@ -176,7 +176,7 @@ class LiveAnnotator:
 
     def annotate(self, crv):
         from .inout import AllMappingsParser
-        from cravat.constants import all_mappings_col_name
+        from oakvar.constants import all_mappings_col_name
 
         if "uid" not in crv:
             crv["uid"] = self.variant_uid

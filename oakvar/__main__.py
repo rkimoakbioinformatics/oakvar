@@ -1,20 +1,25 @@
 import argparse
 from . import cravat_admin, cravat_util
-from .cravat_class import cravat_cmd_parser
-from .cravat_test import parser as test_parser
-from .cravat_web import parser as gui_parser
-from .cravat_report import parser as report_parser
+from .cravat_class import parser as oakvar_cmd_parser
+from .cravat_test import parser as oakvar_test_parser
+from .cravat_web import parser as oakvar_web_parser
+from .cravat_report import parser as oakvar_report_parser
 import sys
 
-root_p = argparse.ArgumentParser(
+class ArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        print("@ error:", message)
+        self.print_help(sys.stderr)
+
+p_entry = ArgumentParser(
     description="OakVar. Genomic variant analysis platform. https://github.com/rkimoakbioinformatics/oakvar"
 )
-root_sp = root_p.add_subparsers(title="Commands")
+sp_entry = p_entry.add_subparsers(title="Commands")
 
 # run
-run_p = root_sp.add_parser(
+p_run = sp_entry.add_parser(
     "run",
-    parents=[cravat_cmd_parser],
+    parents=[oakvar_cmd_parser],
     add_help=False,
     description="Run a job",
     help="Run a job",
@@ -22,50 +27,51 @@ run_p = root_sp.add_parser(
 )
 
 # report
-report_p = root_sp.add_parser(
+p_report = sp_entry.add_parser(
     "report",
-    parents=[report_parser],
+    parents=[oakvar_report_parser],
     add_help=False,
     help="Generate a report from a job",
     epilog="dbpath must be the first argument",
 )
 
 # gui
-gui_p = root_sp.add_parser(
-    "gui", parents=[gui_parser], add_help=False, help="Start the GUI"
+p_gui = sp_entry.add_parser(
+    "gui", parents=[oakvar_web_parser], add_help=False, help="Start the GUI"
 )
 
 # module
-module_p = root_sp.add_parser(
+p_module = sp_entry.add_parser(
     "module", description="Change installed modules", help="Change installed modules"
 )
-module_sp = module_p.add_subparsers(title="Commands")
-module_ls_p = module_sp.add_parser(
+sp_module = p_module.add_subparsers(title="Commands")
+p_module_ls = sp_module.add_parser(
     "ls", parents=[cravat_admin.parser_ls], add_help=False, help="List modules"
 )
-module_install_p = module_sp.add_parser(
+p_module_install = sp_module.add_parser(
     "install",
+    description="Install modules",
     parents=[cravat_admin.parser_install],
     add_help=False,
     help="Install modules",
 )
-module_uninstall_p = module_sp.add_parser(
+p_module_uninstall = sp_module.add_parser(
     "uninstall",
     parents=[cravat_admin.parser_uninstall],
     add_help=False,
     help="Uninstall modules",
 )
-module_update_p = module_sp.add_parser(
+p_module_update = sp_module.add_parser(
     "update",
     parents=[cravat_admin.parser_update],
     add_help=False,
     help="Update modules",
 )
-module_info_p = module_sp.add_parser(
+p_module_info = sp_module.add_parser(
     "info", parents=[cravat_admin.parser_info], add_help=False, help="Module details"
 )
-module_install_base_base_p = module_sp.add_parser(
-    "install-base",
+p_module_installbase = sp_module.add_parser(
+    "installbase",
     parents=[cravat_admin.parser_install_base],
     add_help=False,
     help="Install base modules",
@@ -73,25 +79,25 @@ module_install_base_base_p = module_sp.add_parser(
 
 
 # config
-config_p = root_sp.add_parser(
+p_config = sp_entry.add_parser(
     "config",
     description="View and change configuration settings",
     help="View and change configuration settings",
 )
-config_sp = config_p.add_subparsers(title="Commands")
-config_md_p = config_sp.add_parser(
+sp_config = p_config.add_subparsers(title="Commands")
+p_config_md = sp_config.add_parser(
     "md",
     parents=[cravat_admin.parser_md],
     add_help=False,
     help="Change modules directory",
 )
-config_system_p = config_sp.add_parser(
+p_config_system = sp_config.add_parser(
     "system",
     parents=[cravat_admin.parser_show_system_conf],
     add_help=False,
     help="Show system config",
 )
-config_system_p = config_sp.add_parser(
+p_config_cravat = sp_config.add_parser(
     "cravat",
     parents=[cravat_admin.parser_show_cravat_conf],
     add_help=False,
@@ -99,17 +105,17 @@ config_system_p = config_sp.add_parser(
 )
 
 # new
-new_p = root_sp.add_parser(
+p_new = sp_entry.add_parser(
     "new", description="Create new modules", help="Create new modules"
 )
-new_sp = new_p.add_subparsers(title="Commands")
-create_example_input_p = new_sp.add_parser(
-    "example-input",
+sp_new = p_new.add_subparsers(title="Commands")
+p_new_exampleinput = sp_new.add_parser(
+    "exampleinput",
     parents=[cravat_admin.parser_make_example_input],
     add_help=False,
     help="Make example input file",
 )
-create_annotator_p = new_sp.add_parser(
+p_new_annotator = sp_new.add_parser(
     "annotator",
     parents=[cravat_admin.parser_new_annotator],
     add_help=False,
@@ -117,80 +123,80 @@ create_annotator_p = new_sp.add_parser(
 )
 
 # store
-store_p = root_sp.add_parser(
+p_store = sp_entry.add_parser(
     "store",
     description="Publish modules to the store",
     help="Publish modules to the store",
 )
-store_sp = store_p.add_subparsers(title="Commands")
-store_publish_p = store_sp.add_parser(
+sp_store = p_store.add_subparsers(title="Commands")
+p_store_publish = sp_store.add_parser(
     "publish",
     parents=[cravat_admin.parser_publish],
     add_help=False,
     help="Publish a module",
 )
-account_create_p = store_sp.add_parser(
-    "new-account",
+p_store_newaccount = sp_store.add_parser(
+    "newaccount",
     parents=[cravat_admin.parser_create_account],
     add_help=False,
-    help="Create an account",
+    help="Create a publish account",
 )
-account_change_pw_p = store_sp.add_parser(
-    "change-pw",
+p_store_changepw = sp_store.add_parser(
+    "changepw",
     parents=[cravat_admin.parser_change_password],
     add_help=False,
-    help="Change password",
+    help="Change the password of a publish account",
 )
-account_reset_pw_p = store_sp.add_parser(
-    "reset-pw",
+p_store_resetpw = sp_store.add_parser(
+    "resetpw",
     parents=[cravat_admin.parser_reset_pw],
     add_help=False,
-    help="Request password reset",
+    help="Request reset the password of a publish account",
 )
-account_verify_email_p = store_sp.add_parser(
-    "verify-email",
+p_store_verifyemail = sp_store.add_parser(
+    "verifyemail",
     parents=[cravat_admin.parser_verify_email],
     add_help=False,
-    help="Request email verification",
+    help="Request email verification for a publish account",
 )
-account_check_login_p = store_sp.add_parser(
-    "check-login",
+p_store_checklogin = sp_store.add_parser(
+    "checklogin",
     parents=[cravat_admin.parser_check_login],
     add_help=False,
-    help="Check login credentials",
+    help="Check the login credentials of a publish account",
 )
 
 # util
-util_p = root_sp.add_parser("util", description="Utilities", help="Utilities")
-util_sp = util_p.add_subparsers(title="Commands")
-util_test_p = util_sp.add_parser(
-    "test", parents=[test_parser], add_help=False, help="Test installed modules"
+p_util = sp_entry.add_parser("util", description="Utilities", help="Utilities")
+sp_util = p_util.add_subparsers(title="Commands")
+p_util_test = sp_util.add_parser(
+    "test", parents=[oakvar_test_parser], add_help=False, help="Test installed modules"
 )
-util_update_result_p = util_sp.add_parser(
-    "update-result",
+p_util_updateresult = sp_util.add_parser(
+    "updateresult",
     parents=[cravat_util.parser_migrate_result],
     add_help=False,
     help="Update old result database to newer format",
 )
-util_send_gui_p = util_sp.add_parser(
-    "send-gui",
+p_util_sendgui = sp_util.add_parser(
+    "sendgui",
     parents=[cravat_util.parser_result2gui],
     add_help=False,
     help="Copy a command line job into the GUI submission list",
 )
-util_mergesqlite_p = util_sp.add_parser(
+p_util_mergesqlite = sp_util.add_parser(
     "mergesqlite",
     parents=[cravat_util.parser_mergesqlite],
     add_help=False,
     help="Merge SQLite result files",
 )
-util_filtersqlite_p = util_sp.add_parser(
+p_util_filtersqlite = sp_util.add_parser(
     "filtersqlite",
     parents=[cravat_util.parser_filtersqlite],
     add_help=False,
     help="Filter SQLite result files",
 )
-util_showsqliteinfo_p = util_sp.add_parser(
+p_util_showsqliteinfo = sp_util.add_parser(
     "showsqliteinfo",
     parents=[cravat_util.parser_showsqliteinfo],
     add_help=False,
@@ -198,7 +204,7 @@ util_showsqliteinfo_p = util_sp.add_parser(
 )
 
 # version
-version_p = root_sp.add_parser(
+p_version = sp_entry.add_parser(
     "version",
     parents=[cravat_admin.parser_show_version],
     add_help=False,
@@ -206,8 +212,8 @@ version_p = root_sp.add_parser(
 )
 
 # feedback
-feedback_p = root_sp.add_parser(
-    "feedback",
+p_feedback = sp_entry.add_parser(
+    name="feedback",
     parents=[cravat_admin.parser_report_issue],
     add_help=False,
     help="Send feedback to the developers",
@@ -215,11 +221,14 @@ feedback_p = root_sp.add_parser(
 
 
 def main():
-    args = root_p.parse_args()
-    if hasattr(args, "func"):
-        args.func(args)
-    else:
-        root_p.parse_args(sys.argv[1:] + ["--help"])
+    try:
+        args = p_entry.parse_args()
+        if hasattr(args, "func"):
+            args.func(args)
+        else:
+            p_entry.parse_args(sys.argv[1:] + ["--help"])
+    except SystemExit:
+        return
 
 
 if __name__ == "__main__":

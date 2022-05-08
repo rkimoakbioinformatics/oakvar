@@ -3,7 +3,7 @@ from .exceptions import ConfigurationError
 from .inout import CravatReader
 from .inout import CravatWriter
 from .inout import AllMappingsParser
-from cravat.config_loader import ConfigLoader
+from oakvar.config_loader import ConfigLoader
 import sys
 from .constants import crv_def
 from .constants import crx_def

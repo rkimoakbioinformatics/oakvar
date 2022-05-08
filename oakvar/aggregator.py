@@ -6,7 +6,7 @@ import re
 import time
 import logging
 import oyaml as yaml
-from cravat.inout import CravatReader, CravatWriter, ColumnDefinition
+from oakvar.inout import CravatReader, CravatWriter, ColumnDefinition
 import cravat.admin_util as au
 import json
 from .exceptions import BadFormatError

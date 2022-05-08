@@ -14,7 +14,7 @@ import datetime
 from . import admin_util as au
 from . import cravat_filter
 from distutils.version import LooseVersion
-from cravat import util
+from oakvar import util
 import asyncio
 
 

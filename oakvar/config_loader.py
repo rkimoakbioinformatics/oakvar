@@ -1,9 +1,9 @@
 import os
 import oyaml as yaml
 import copy
-from cravat import admin_util as au
+from oakvar import admin_util as au
 import shutil
-from cravat import constants
+from oakvar import constants
 
 
 class ConfigLoader:

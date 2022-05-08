@@ -3,12 +3,12 @@ import sys
 import sqlite3
 import os
 import json
-from cravat.cravat_filter import CravatFilter
-from cravat import admin_util as au
-from cravat.config_loader import ConfigLoader
-from cravat import util
-from cravat.inout import ColumnDefinition
-from cravat.util import write_log_msg
+from oakvar.cravat_filter import CravatFilter
+from oakvar import admin_util as au
+from oakvar.config_loader import ConfigLoader
+from oakvar import util
+from oakvar.inout import ColumnDefinition
+from oakvar.util import write_log_msg
 import subprocess
 import re
 import logging
@@ -16,7 +16,7 @@ import time
 import re
 import aiosqlite
 import types
-from cravat import constants
+from oakvar import constants
 import asyncio
 import importlib
 import cravat.cravat_class
@@ -1105,7 +1105,7 @@ def run_reporter(*inargs, **inkwargs):
                     output_fns = " ".join(response_t)
                 else:
                     output_fns = response_t
-                if output_fns is not None:
+                if output_fns is not None and type(output_fns) == str:
                     print(f"report created: {output_fns}")
         except Exception as e:
             if hasattr(reporter, "cf"):

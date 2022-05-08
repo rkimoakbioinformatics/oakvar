@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from cravat.cravat_class import Cravat, cravat_cmd_parser
-from cravat.admin_util import ready_resolution_console
+from oakvar.cravat_class import Cravat, cravat_cmd_parser
+from oakvar.admin_util import ready_resolution_console
 
 
 def main():
