@@ -18,12 +18,11 @@ from oakvar.config_loader import ConfigLoader
 import sys
 import pkg_resources
 import json
-import cravat.cravat_util as cu
 from types import SimpleNamespace
 import multiprocessing as mp
-import cravat.admin_util as au
+import oakvar.admin_util as au
 import time
-import cravat.util
+import oakvar.util
 
 
 class BaseMapper(object):
@@ -124,7 +123,7 @@ class BaseMapper(object):
         pass
 
     def _parse_cmd_args(self, inargs, inkwargs):
-        args = cravat.util.get_args(self.cmd_parser, inargs, inkwargs)
+        args = oakvar.util.get_args(self.cmd_parser, inargs, inkwargs)
         self.input_path = os.path.abspath(args.input_file)
         self.input_dir, self.input_fname = os.path.split(self.input_path)
         if args.output_dir:
@@ -158,7 +157,7 @@ class BaseMapper(object):
         pass
 
     def _setup_logger(self):
-        self.logger = logging.getLogger("cravat.mapper")
+        self.logger = logging.getLogger("oakvar.mapper")
         self.logger.info("input file: %s" % self.input_path)
         self.error_logger = logging.getLogger("error.mapper")
         self.unique_excs = []
@@ -368,7 +367,7 @@ class BaseMapper(object):
         t = time.time()
         hugos = await cf.exec_db(cf.get_filtered_hugo_list)
         # Below is to fix opening oc 1.8.0 jobs with oc 1.8.1.
-        # TODO: Remove it after a while and add 1.8.0 to the db update chain in cravat_util.
+        # TODO: Remove it after a while and add 1.8.0 to the db update chain in cmd_util.
         cols = [
             "base__" + coldef["name"]
             for coldef in crx_def

@@ -24,7 +24,7 @@ from queue import Empty
 from .. import constants
 import signal
 import gzip
-from ..cravat_util import max_version_supported_for_migration, status_from_db
+from ..cmd_util import max_version_supported_for_migration, status_from_db
 from ..util import is_compatible_version
 import logging
 

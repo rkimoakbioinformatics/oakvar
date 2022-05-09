@@ -51,6 +51,7 @@ sc = None
 loop = None
 debug = False
 
+
 def setup(args):
     try:
         global loop
@@ -69,6 +70,7 @@ def setup(args):
             try:
                 global cravat_multiuser
                 import cravat_multiuser
+
                 loop.create_task(cravat_multiuser.setup_module())
                 global server_ready
                 server_ready = True
@@ -76,7 +78,7 @@ def setup(args):
                 logger.exception(e)
                 logger.info("Exiting...")
                 print(
-                    "Error occurred while loading open-cravat-multiuser.\nCheck {} for details.".format(
+                    "Error occurred while loading oakvar-multiuser.\nCheck {} for details.".format(
                         log_path
                     )
                 )
@@ -101,7 +103,7 @@ def setup(args):
             wu.cravat_multiuser = cravat_multiuser
             ws.cravat_multiuser = cravat_multiuser
         if servermode and server_ready == False:
-            msg = 'open-cravat-multiuser package is required to run OakVar Server.\nRun "pip install open-cravat-multiuser" to get the package.'
+            msg = 'oakvar-multiuser package is required to run OakVar Server.\nRun "pip install oakvar-multiuser" to get the package.'
             logger.info(msg)
             logger.info("Exiting...")
             print(msg)
@@ -180,7 +182,8 @@ def fn_gui(args):
                     return
                 url = f"{host}:{port}/webapps/{args['webapp']}/index.html"
             elif args["result"]:
-                import cravat
+                import oakvar
+
                 dbpath = args["result"]
                 if os.path.exists(dbpath) == False:
                     print(f"{dbpath} does not exist. Exiting.")
@@ -189,7 +192,7 @@ def fn_gui(args):
                     compatible_version,
                     db_version,
                     oc_version,
-                ) = cravat.util.is_compatible_version(dbpath)
+                ) = oakvar.util.is_compatible_version(dbpath)
                 if not compatible_version:
                     print(
                         f"DB version {db_version} of {dbpath} is not compatible with the current OakVar ({oc_version})."
@@ -222,8 +225,6 @@ def fn_gui(args):
         for handler in logger.handlers:
             handler.close()
             logger.removeHandler(handler)
-
-
 
 
 def get_server():
@@ -513,9 +514,7 @@ def main(url=None, host=None, port=None):
                     "wcravat already running. Exiting from this instance of wcravat..."
                 )
                 print(
-                    "OakVar is already running at {}{}:{}.".format(
-                        protocol, host, port
-                    )
+                    "OakVar is already running at {}{}:{}.".format(protocol, host, port)
                 )
                 global SERVER_ALREADY_RUNNING
                 if url and not headless:
@@ -533,11 +532,7 @@ def main(url=None, host=None, port=None):
 """
         )
         print("OakVar is served at {}:{}".format(host, port))
-        logger.info(
-            "Serving OakVar server at {}:{}".format(
-                host, port
-            )
-        )
+        logger.info("Serving OakVar server at {}:{}".format(host, port))
         print(
             '(To quit: Press Ctrl-C or Ctrl-Break if run on a Terminal or Windows, or click "Cancel" and then "Quit" if run through OakVar app on Mac OS)'
         )
@@ -621,8 +616,19 @@ parser.add_argument(
     default=None,
     help="Name of OakVar webapp module to run",
 )
-parser.add_argument("--port", dest="port", default=None, help="Port number for OakVar graphical user interface")
-parser.add_argument("--noguest", dest="noguest", default=False, action="store_true", help="Diasbles guest mode")
+parser.add_argument(
+    "--port",
+    dest="port",
+    default=None,
+    help="Port number for OakVar graphical user interface",
+)
+parser.add_argument(
+    "--noguest",
+    dest="noguest",
+    default=False,
+    action="store_true",
+    help="Diasbles guest mode",
+)
 parser.set_defaults(func=fn_gui)
 
 if __name__ == "__main__":

@@ -28,7 +28,7 @@ class BaseCommonModule(object):
 
     def _setup_logger(self):
         try:
-            self.logger = logging.getLogger("cravat." + self.module_name)
+            self.logger = logging.getLogger("oakvar." + self.module_name)
             if self.output_basename != "__dummy__":
                 self.log_path = os.path.join(
                     self.output_dir, self.output_basename + ".log"

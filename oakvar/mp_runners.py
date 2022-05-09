@@ -5,7 +5,7 @@ import os
 import logging
 from queue import Empty
 import signal
-import cravat.admin_util as au
+import oakvar.admin_util as au
 
 
 def init_worker():

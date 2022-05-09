@@ -9,7 +9,7 @@ import types
 import inspect
 import logging
 from distutils.version import LooseVersion
-from oakvar.cravat_util import max_version_supported_for_migration
+from oakvar.cmd_util import max_version_supported_for_migration
 import sqlite3
 import pkg_resources
 import datetime
@@ -321,7 +321,7 @@ def load_class(path, class_name=None):
             spec.loader.exec_module(module)
         except:
             raise
-            logger = logging.getLogger("cravat")
+            logger = logging.getLogger("oakvar")
             logger.exception(f"{module_name} could not be loaded.")
             print(f"{module_name} is not found")
     if module is not None:
@@ -432,7 +432,7 @@ def get_args(parser, inargs, inkwargs):
         for inarg in inargs:
             t = type(inarg)
             if t == list:  # ['-t', 'text']
-                #if inarg[0].endswith(".py"):
+                # if inarg[0].endswith(".py"):
                 #    inarg = inarg[1:]
                 inarg_dict.update(**vars(parser.parse_args(inarg)))
             elif t == argparse.Namespace:  # already parsed by a parser.
@@ -474,7 +474,7 @@ def humanize_bytes(num, binary=False):
             exponent = max_exponent
     else:
         exponent = 0
-    quotient = float(num) / base ** exponent
+    quotient = float(num) / base**exponent
     if binary:
         unit = exp2unit_bin[exponent]
     else:
@@ -484,6 +484,7 @@ def humanize_bytes(num, binary=False):
     if exponent == 0:
         quot_str = quot_str.rstrip("0").rstrip(".")
     return "{quotient} {unit}".format(quotient=quot_str, unit=unit)
+
 
 def write_log_msg(logger, e):
     if hasattr(e, "msg"):
@@ -498,13 +499,14 @@ def write_log_msg(logger, e):
         logger.info(e)
         print(e)
 
+
 def get_simplenamespace(d):
     if type(d) == dict:
         d = types.SimpleNamespace(**d)
     return d
 
+
 def get_dict_from_namespace(n):
     if type(n) == types.SimpleNamespace or type(n) == argparse.Namespace:
         n = vars(n)
     return n
-

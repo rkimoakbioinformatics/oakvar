@@ -10,8 +10,8 @@ import subprocess
 # Directories
 custom_modules_dir = None
 custom_system_conf_path = None
-modules_dir_env_key = 'OPENCRAVAT_MD'
-system_conf_path_env_key = 'OPENCRAVAT_SYSTEM_CONF_PATH'
+modules_dir_env_key = "OPENCRAVAT_MD"
+system_conf_path_env_key = "OPENCRAVAT_SYSTEM_CONF_PATH"
 packagedir = os.path.dirname(os.path.abspath(__file__))
 pl = platform.platform()
 if pl.startswith("Windows"):
@@ -26,20 +26,22 @@ if pl == "windows":
     oc_root_dir = os.path.join(
         os.path.expandvars("%systemdrive%"), os.sep, "open-cravat"
     )
-    if os.path.exists(oc_root_dir) == False: # OakVar first installation
+    if os.path.exists(oc_root_dir) == False:  # OakVar first installation
         oc_root_dir = os.path.join(
             os.path.expandvars("%systemdrive%"), os.sep, "oakcravat"
         )
 elif pl == "linux":
     oc_root_dir = packagedir
-    if os.path.exists(os.path.join(oc_root_dir, "conf")) == False: # OakVar first installation
-        if 'SUDO_USER' in os.environ:
-            oc_root_dir = os.path.join('/home', os.environ['SUDO_USER'], '.oakcravat')
+    if (
+        os.path.exists(os.path.join(oc_root_dir, "conf")) == False
+    ):  # OakVar first installation
+        if "SUDO_USER" in os.environ:
+            oc_root_dir = os.path.join("/home", os.environ["SUDO_USER"], ".oakcravat")
         else:
-            oc_root_dir = os.path.join('/home', os.environ['USER'], '.oakcravat')
+            oc_root_dir = os.path.join("/home", os.environ["USER"], ".oakcravat")
 elif pl == "macos":
     oc_root_dir = "/Users/Shared/open-cravat"
-    if os.path.exists(oc_root_dir) == False: # OakVar first installation
+    if os.path.exists(oc_root_dir) == False:  # OakVar first installation
         oc_root_dir = "Users/Shared/oakcravat"
 if os.path.exists(oc_root_dir) == False:
     os.mkdir(oc_root_dir)
@@ -63,7 +65,8 @@ if os.path.exists(system_conf_path) == False:
         shutil.copyfile(system_conf_template_path, system_conf_path)
     except PermissionError:
         if pl == "linux":
-            print("""
+            print(
+                """
 It seems that OakVar has been installed as root 
 and that you are running it for the first time. 
 To configure OakVar properly, you can do one of 
@@ -83,10 +86,11 @@ change its file permission back.
 Either way, afterwards, normal users will be able 
 to use `oc` commands without sudo privilege, 
 except when making changes to system settings.
-""")
+"""
+            )
             _ = input("Ctrl-C to stop or Enter to continue>")
             linux_first_time = True
-            subprocess.call(['sudo', 'cp', system_conf_template_path, system_conf_path])
+            subprocess.call(["sudo", "cp", system_conf_template_path, system_conf_path])
         else:
             raise
 # conf
@@ -102,20 +106,22 @@ if not modules_dir_key in conf:
         os.mkdir(default_modules_dir)
     conf[modules_dir_key] = default_modules_dir
     if linux_first_time:
-        subprocess.call(['sudo', 'chmod', '777', system_conf_path])
+        subprocess.call(["sudo", "chmod", "777", system_conf_path])
     wf = open(system_conf_path, "w")
     yaml.dump(conf, wf, default_flow_style=False)
     wf.close()
     if linux_first_time:
-        subprocess.call(['sudo', 'chmod', '644', system_conf_path])
-        print("""
+        subprocess.call(["sudo", "chmod", "644", system_conf_path])
+        print(
+            """
 System configuration file and folders have been set up.
 
 Remember to run `oc module install-base` to install
 base modules before running any job.
 
 ===
-""")
+"""
+        )
 # jobs dir
 jobs_dir_key = "jobs_dir"
 jobs_dir_name = "jobs"

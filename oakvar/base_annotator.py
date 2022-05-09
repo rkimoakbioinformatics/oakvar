@@ -17,11 +17,10 @@ from .exceptions import InvalidData
 from .exceptions import ConfigurationError
 import sqlite3
 import json
-import cravat.cravat_util as cu
-import cravat.admin_util as au
+import oakvar.admin_util as au
 import re
 from types import SimpleNamespace
-import cravat.util
+import oakvar.util
 from distutils.version import LooseVersion
 from oakvar.constants import cannonical_chroms
 
@@ -51,7 +50,7 @@ class BaseAnnotator(object):
             self.dbconn = None
             self.cursor = None
             self._define_cmd_parser()
-            self.args = cravat.util.get_args(self.cmd_arg_parser, inargs, inkwargs)
+            self.args = oakvar.util.get_args(self.cmd_arg_parser, inargs, inkwargs)
             self.parse_cmd_args(inargs, inkwargs)
             if hasattr(self.args, "status_writer") == False:
                 self.status_writer = None
@@ -178,7 +177,7 @@ class BaseAnnotator(object):
     # Parse the command line arguments
     def parse_cmd_args(self, inargs, inkwargs):
         try:
-            args = cravat.util.get_args(self.cmd_arg_parser, inargs, inkwargs)
+            args = oakvar.util.get_args(self.cmd_arg_parser, inargs, inkwargs)
             self.primary_input_path = os.path.abspath(args.input_file)
             self.secondary_paths = {}
             if args.secondary_inputs:
@@ -230,10 +229,7 @@ class BaseAnnotator(object):
                 self.last_status_update_time = cur_time
 
     def is_star_allele(self, input_data):
-        return (
-            self.conf["level"] == "variant"
-            and input_data.get("alt_base", "") == "*"
-        )
+        return self.conf["level"] == "variant" and input_data.get("alt_base", "") == "*"
 
     def should_skip_chrom(self, input_data):
         return (
@@ -277,7 +273,9 @@ class BaseAnnotator(object):
                 try:
                     self.log_progress(lnum)
                     # * allele and undefined non-canonical chroms are skipped.
-                    if self.is_star_allele(input_data) or self.should_skip_chrom(input_data):
+                    if self.is_star_allele(input_data) or self.should_skip_chrom(
+                        input_data
+                    ):
                         continue
                     if secondary_data == {}:
                         output_dict = self.annotate(input_data)
@@ -561,7 +559,7 @@ class BaseAnnotator(object):
     # Setup the logging utility
     def _setup_logger(self):
         try:
-            self.logger = logging.getLogger("cravat." + self.module_name)
+            self.logger = logging.getLogger("oakvar." + self.module_name)
             if self.output_basename != "__dummy__":
                 self.log_path = os.path.join(
                     self.output_dir, self.output_basename + ".log"

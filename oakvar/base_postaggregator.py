@@ -52,7 +52,7 @@ class BasePostAggregator(object):
 
     def _define_cmd_parser(self):
         parser = argparse.ArgumentParser()
-        parser.add_argument("-n", dest="run_name", help="name of cravat run")
+        parser.add_argument("-n", dest="run_name", help="name of oakvar run")
         parser.add_argument(
             "-d",
             dest="output_dir",
@@ -199,7 +199,7 @@ class BasePostAggregator(object):
                     continue
                 col_type = col_def["type"]
                 if col_type in ["string"]:
-                    val = '\'' + val + '\''
+                    val = "'" + val + "'"
                 else:
                     val = str(val)
                 q += col_name + "=" + val + ","
@@ -298,7 +298,7 @@ class BasePostAggregator(object):
 
     def _setup_logger(self):
         try:
-            self.logger = logging.getLogger("cravat." + self.module_name)
+            self.logger = logging.getLogger("oakvar." + self.module_name)
         except Exception as e:
             self._log_exception(e)
         self.error_logger = logging.getLogger("error." + self.module_name)
