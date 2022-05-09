@@ -383,30 +383,35 @@ def detect_encoding(path):
         return encoding
 
 
+def get_job_version(dbpath, platform_name):
+    db = sqlite3.connect(dbpath)
+    c = db.cursor()
+    sql = f'select colval from info where colkey="{platform_name}"'
+    c.execute(sql)
+    r = c.fetchone()
+    db_version = None
+    if r is not None:
+        db_version = LooseVersion(r[0])
+    return db_version
+
 def is_compatible_version(dbpath):
     db = sqlite3.connect(dbpath)
     c = db.cursor()
-    oc_version = LooseVersion(pkg_resources.get_distribution("oakvar").version)
-    sql = 'select colval from info where colkey="oakvar"'
-    c.execute(sql)
-    r = c.fetchone()
-    compatible = None
-    db_version = "0.0.0"
-    if r is None:
-        sql = 'select colval from info where colkey="open-cravat"'
-        c.execute(sql)
-        r = c.fetchone()
-        if r is None:
+    oc_version = LooseVersion(pkg_resources.get_distribution("open-cravat").version)
+    ov_version = LooseVersion(pkg_resources.get_distribution("oakvar").version)
+    job_version_ov = get_job_version(dbpath, "oakvar")
+    job_version_oc = get_job_version(dbpath, "open-cravat")
+    if job_version_ov is None:
+        if job_version_oc is None:
             compatible = False
         else:
-            db_version = LooseVersion(r[0])
-            if db_version < max_version_supported_for_migration:
+            if job_version_oc < max_version_supported_for_migration:
                 compatible = False
             else:
                 compatible = True
+        return compatible, db_version, oc_version
     else:
-        db_version = LooseVersion(r[0])
-        if db_version < max_version_supported_for_migration:
+        if job_version_ov < max_version_supported_for_migration:
             compatible = False
         else:
             compatible = True

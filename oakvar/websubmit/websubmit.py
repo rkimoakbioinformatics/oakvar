@@ -646,7 +646,7 @@ async def view_job(request):
     if os.path.exists(db_path):
         if type(VIEW_PROCESS) == subprocess.Popen:
             VIEW_PROCESS.kill()
-        VIEW_PROCESS = subprocess.Popen(['cravat-view', db_path])
+        VIEW_PROCESS = subprocess.Popen(['ov gui', db_path])
         return web.Response()
     else:
         return web.Response(status=404)
@@ -913,7 +913,7 @@ def fetch_job_queue (job_queue, run_jobs_info):
                         if p.poll() is not None:
                             break
                 elif pl.startswith('darwin') or pl.startswith('macos'):
-                    lines = subprocess.check_output('ps -ef | grep {} | grep cravat'.format(uid), shell=True)
+                    lines = subprocess.check_output('ps -ef | grep {} | grep "ov"'.format(uid), shell=True)
                     lines = lines.decode('utf-8')
                     lines = lines.split('\n')
                     pids = [int(l.strip().split(' ')[0]) for l in lines if l != '']

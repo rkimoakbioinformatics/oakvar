@@ -514,7 +514,7 @@ class Cravat(object):
         report_response = None
         try:
             self.aggregator_ran = False
-            self.update_status("Started cravat", force=True)
+            self.update_status("Started OakVar", force=True)
             if self.pipeinput == False:
                 input_files_str = ", ".join(self.inputs)
             else:
@@ -1904,7 +1904,7 @@ class Cravat(object):
                 + '")'
             )
             await cursor.execute(q)
-            q = 'insert into info values ("open-cravat", "{}")'.format(self.pkg_ver)
+            q = 'insert into info values ("oakvar", "{}")'.format(self.pkg_ver)
             await cursor.execute(q)
             q = 'insert into info values ("_converter_format", "{}")'.format(
                 await self.get_converter_format_from_crv()

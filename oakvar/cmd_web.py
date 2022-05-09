@@ -379,23 +379,28 @@ class WebServer(object):
         webbrowser.open(url)
 
     async def start(self):
-        global middleware
-        global server_ready
-        self.app = web.Application(loop=self.loop, middlewares=[middleware])
-        if server_ready:
-            cravat_multiuser.setup(self.app)
-        self.setup_routes()
-        self.runner = web.AppRunner(self.app)
-        await self.runner.setup()
-        self.site = TCPSitePatched(
-            self.runner,
-            self.host,
-            self.port,
-            loop=self.loop,
-            ssl_context=self.ssl_context,
-        )
-        await self.site.start()
-        self.server_started = True
+        try:
+            global middleware
+            global server_ready
+            self.app = web.Application(loop=self.loop, middlewares=[middleware])
+            if server_ready:
+                cravat_multiuser.setup(self.app)
+            self.setup_routes()
+            self.runner = web.AppRunner(self.app)
+            await self.runner.setup()
+            self.site = TCPSitePatched(
+                self.runner,
+                self.host,
+                self.port,
+                loop=self.loop,
+                ssl_context=self.ssl_context,
+            )
+            await self.site.start()
+            self.server_started = True
+        except Exception as e:
+            logger.exception(e)
+            print("Exception occurred. Log at", log_path)
+            exit()
 
     def setup_webapp_routes(self):
         global modules_dir
@@ -530,12 +535,12 @@ def main(url=None, host=None, port=None):
 ██    ██ ██   ██ ██  ██   ██  ██  ██   ██ ██   ██ 
  ██████  ██   ██ ██   ██   ████   ██   ██ ██   ██ 
 """
-        )
-        print("OakVar is served at {}:{}".format(host, port))
+        , flush=True)
+        print("OakVar Server is served at {}:{}".format(host, port))
         logger.info("Serving OakVar server at {}:{}".format(host, port))
         print(
             '(To quit: Press Ctrl-C or Ctrl-Break if run on a Terminal or Windows, or click "Cancel" and then "Quit" if run through OakVar app on Mac OS)'
-        )
+        , flush=True)
         loop = asyncio.get_event_loop()
         loop.call_later(0.1, wakeup)
         loop.call_later(1, check_local_update, 5)
@@ -594,7 +599,7 @@ parser.add_argument(
     "--headless",
     action="store_true",
     default=False,
-    help="do not open the cravat web page",
+    help="do not open the OakVar web page",
 )
 parser.add_argument(
     "--http-only",
