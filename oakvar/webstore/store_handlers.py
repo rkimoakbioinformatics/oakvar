@@ -1,4 +1,4 @@
-import cravat.admin_util as au
+import oakvar.admin_util as au
 import markdown
 
 def get_remote_manifest(handler):

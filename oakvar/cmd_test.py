@@ -16,10 +16,10 @@ import openpyxl as pyxl
 # The command line -m can be used to specify one or more specific modules to test and the
 # -t option can be used to run tests on modules of a specific type (e.g. annotator)
 #
-# The test program runs input though the full cravat processing flow and collects the output
+# The test program runs input though the full oakvar processing flow and collects the output
 # of the 'text' reporter to compare to the key.
 #
-# When creating a test case for the cravat_test, just run a cravat input, collect the text
+# When creating a test case for the test, just run a oakvar input, collect the text
 # report output, check that the results are correct, and then save the output as the key.
 #
 # The tester creates an output directory and then a subdirectory for each module run.
@@ -40,7 +40,7 @@ class ReportReader(ABC):
     def reportFileExtension(self):
         pass
 
-    # Read the specified level (variant, gene, etc) from a cravat report
+    # Read the specified level (variant, gene, etc) from a oakvar report
     # Return a list of the report headers and a list of the row values
     # The bDict parameter indicates whether to return Rows as a list or dictionary
     @abstractmethod
@@ -257,6 +257,7 @@ class VcfReportReader(ReportReader):
         else:
             rows = []
         import vcf
+
         reader = vcf.Reader(filename=self.rsltFile)
         if headers == None:
             headers = self.readSectionHeader(reader)
@@ -783,18 +784,9 @@ class Tester:
             self._report("  Test result: FAIL")
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-d", "--rundir", help="Directory for output")
-parser.add_argument(
-    "-m", "--modules", nargs="+", help="Name of module(s) to test. (e.g. gnomad)"
-)
-parser.add_argument(
-    "-t", "--mod_types", nargs="+", help="Type of module(s) to test (e.g. annotators)"
-)
-
 # Loop through installed modules.  Test each one or the ones indicated
 # by -m and -t options.
-def run_test(cmd_args):
+def fn_util_test(cmd_args):
     if cmd_args.rundir is None:
         cmd_args.rundir = "cravat_test_" + str(int(round(time.time() * 1000)))
 
@@ -849,10 +841,20 @@ def run_test(cmd_args):
 
 def main():
     cmd_args = parser.parse_args()
-    run_test(cmd_args)
+    fn_util_test(cmd_args)
 
 
-parser.set_defaults(func=run_test)
+parser = argparse.ArgumentParser()
+parser.add_argument("-d", "--rundir", help="Directory for output")
+parser.add_argument(
+    "-m", "--modules", nargs="+", help="Name of module(s) to test. (e.g. gnomad)"
+)
+parser.add_argument(
+    "-t", "--mod_types", nargs="+", help="Type of module(s) to test (e.g. annotators)"
+)
+
+parser.set_defaults(func=fn_util_test)
+
 
 if __name__ == "__main__":
     main()

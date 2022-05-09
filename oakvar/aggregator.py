@@ -7,7 +7,7 @@ import time
 import logging
 import oyaml as yaml
 from oakvar.inout import CravatReader, CravatWriter, ColumnDefinition
-import cravat.admin_util as au
+import oakvar.admin_util as au
 import json
 from .exceptions import BadFormatError
 import traceback
@@ -87,7 +87,7 @@ class Aggregator(object):
         self.append = parsed.append
 
     def _setup_logger(self):
-        self.logger = logging.getLogger("cravat.aggregator")
+        self.logger = logging.getLogger("oakvar.aggregator")
         self.logger.info("level: {0}".format(self.level))
         self.logger.info("input directory: %s" % self.input_dir)
         self.error_logger = logging.getLogger("error.aggregator")
@@ -290,12 +290,12 @@ class Aggregator(object):
                 body = fname[len_prefix:]
                 if self.level == "variant" and fname.endswith(".var"):
                     annot_name = body[:-4]
-                    if not '.' in annot_name:
+                    if not "." in annot_name:
                         self.annotators.append(annot_name)
                         self.ipaths[annot_name] = os.path.join(self.input_dir, fname)
                 elif self.level == "gene" and fname.endswith(".gen"):
                     annot_name = body[:-4]
-                    if not '.' in annot_name:
+                    if not "." in annot_name:
                         self.annotators.append(annot_name)
                         self.ipaths[annot_name] = os.path.join(self.input_dir, fname)
         self.annotators.sort()

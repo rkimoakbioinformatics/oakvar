@@ -42,28 +42,31 @@ from .base_annotator import BaseAnnotator
 from .base_mapper import BaseMapper
 from .base_postaggregator import BasePostAggregator
 from .base_commonmodule import BaseCommonModule
-from .cravat_report import CravatReport, run_reporter
+from .cmd_report import CravatReport, run_reporter
 from .config_loader import ConfigLoader
 from .cravat_filter import CravatFilter
-from .cravat_class import Cravat
+from .cmd_run import Cravat
 from .util import get_ucsc_bins, reverse_complement, translate_codon, switch_strand
 from .constants import crx_def
 from .exceptions import *
-from . import util
+from . import cmd_util
 from . import admin_util
 from . import constants
 from . import __main__ as cli
 
 wgs = None
 
+
 def run(*args, **kwargs):
     print("args=", args, "kwargs=", kwargs)
     print(len(args), len(kwargs))
     if len(args) == 0 and len(kwargs) == 0:
         from .oc import main as ocmain
+
         ocmain()
     else:
-        cravat_class.run_cravat_job(*args, **kwargs)
+        cmd_run.run_cravat_job(*args, **kwargs)
+
 
 def get_live_annotator(module_name):
     try:
@@ -82,6 +85,7 @@ def get_live_annotator(module_name):
     except:
         print("    module loading error: {}".format(module.module_name))
         import traceback
+
         traceback.print_exc()
         return None
     return module
@@ -103,6 +107,7 @@ def get_live_mapper(module_name):
     except Exception as e:
         print("    module loading error: {}".format(module_name))
         import traceback
+
         traceback.print_exc()
         return None
     return module
@@ -124,6 +129,7 @@ def get_module(module_name):
     except Exception as e:
         print("    module loading error: {}".format(module_name))
         import traceback
+
         traceback.print_exc()
         return None
 
@@ -196,9 +202,9 @@ class LiveAnnotator:
                 response[k] = annot_data
             except Exception as e:
                 import traceback
+
                 traceback.print_exc()
                 response[k] = None
         del crx_data["tmp_mapper"]
         response["base"] = crx_data
         return response
-

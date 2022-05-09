@@ -20,7 +20,6 @@ from logging.handlers import QueueListener
 from oakvar.aggregator import Aggregator
 from oakvar.exceptions import *
 import oyaml as yaml
-import cravat.cravat_util as cu
 import collections
 import asyncio
 import sqlite3
@@ -73,7 +72,7 @@ def run(args):
 
 
 parser = argparse.ArgumentParser(
-    prog="cravat input_file_path_1 input_file_path_2 ...",
+    prog="ov run input_file_path_1 input_file_path_2 ...",
     description="OakVar genomic variant interpreter. https://github.com/rkimoakbioinformatics/oakvar. Use input_file_path arguments before any option or define them in a conf file (option -c).",
     epilog="inputs should be the first option",
 )
@@ -87,15 +86,23 @@ parser.add_argument(
     + "provide the output sqlite database from the previous run as input instead of a variant input file.",
 )
 parser.add_argument(
-    "-a", nargs="+", dest="annotators", default=[], help="Annotator module names or directories. If --package is used also, annotator modules defined with -a will be added."
+    "-a",
+    nargs="+",
+    dest="annotators",
+    default=[],
+    help="Annotator module names or directories. If --package is used also, annotator modules defined with -a will be added.",
 )
 parser.add_argument(
-    "-A", nargs="+", dest="annotators_replace", default=[], help="Annotator module names or directories. If --package is used also, annotator modules defined with -A will replace those defined with --package. -A has priority over -a."
+    "-A",
+    nargs="+",
+    dest="annotators_replace",
+    default=[],
+    help="Annotator module names or directories. If --package is used also, annotator modules defined with -A will replace those defined with --package. -A has priority over -a.",
 )
 parser.add_argument(
     "-e", nargs="+", dest="excludes", default=[], help="annotators to exclude"
 )
-parser.add_argument("-n", dest="run_name", help="name of cravat run")
+parser.add_argument("-n", dest="run_name", help="name of oakvar run")
 parser.add_argument(
     "-d", dest="output_dir", default=None, help="directory for output files"
 )
@@ -142,12 +149,8 @@ parser.add_argument(
     default=None,
     help="skips given stage(s).",
 )
-parser.add_argument(
-    "-c", dest="conf", default="oc.yml", help="path to a conf file"
-)
-parser.add_argument(
-    "--cs", dest="confs", default=None, help="configuration string"
-)
+parser.add_argument("-c", dest="conf", default="oc.yml", help="path to a conf file")
+parser.add_argument("--cs", dest="confs", default=None, help="configuration string")
 parser.add_argument(
     "-v", dest="verbose", action="store_true", default=None, help="verbose"
 )
@@ -156,7 +159,7 @@ parser.add_argument(
     nargs="+",
     dest="reports",
     default=[],
-    help="Reporter types or reporter module directories"
+    help="Reporter types or reporter module directories",
 )
 parser.add_argument(
     "-l",
@@ -232,7 +235,7 @@ parser.add_argument(
     dest="unique_variants",
     action="store_true",
     default=None,
-    help=argparse.SUPPRESS,
+    help="Set to get only unique variants in output"
 )
 parser.add_argument(
     "--primary-transcript",
@@ -277,17 +280,35 @@ parser.add_argument(
     default=None,
     help="Generate concise reports with default columns defined by each annotation module",
 )
-parser.add_argument(
-    "--package", dest="package", default=None, help="Use package"
-)
+parser.add_argument("--package", dest="package", default=None, help="Use package")
 parser.add_argument("--filtersql", default=None, help="Filter SQL")
-parser.add_argument("--includesample", nargs='+', default=None, help="Sample IDs to include")
-parser.add_argument("--excludesample", nargs='+', default=None, help="Sample IDs to exclude")
+parser.add_argument(
+    "--includesample", nargs="+", default=None, help="Sample IDs to include"
+)
+parser.add_argument(
+    "--excludesample", nargs="+", default=None, help="Sample IDs to exclude"
+)
 parser.add_argument("--filter", default=None, help=argparse.SUPPRESS)
 parser.add_argument("-f", dest="filterpath", default=None, help="Path to a filter file")
-parser.add_argument("--md", default=None, help="Specify the root directory of OakVar modules (annotators, etc)")
-parser.add_argument("-m", dest="mapper_name", nargs="+", default=[], help="Mapper module name or mapper module directory")
-parser.add_argument("-p", nargs="+", dest="postaggregators", default=[], help="Postaggregators to run. Additionally, tagsampler, casecontrol, varmeta, and vcfinfo will automatically run depending on conditions.")
+parser.add_argument(
+    "--md",
+    default=None,
+    help="Specify the root directory of OakVar modules (annotators, etc)",
+)
+parser.add_argument(
+    "-m",
+    dest="mapper_name",
+    nargs="+",
+    default=[],
+    help="Mapper module name or mapper module directory",
+)
+parser.add_argument(
+    "-p",
+    nargs="+",
+    dest="postaggregators",
+    default=[],
+    help="Postaggregators to run. Additionally, tagsampler, casecontrol, varmeta, and vcfinfo will automatically run depending on conditions.",
+)
 parser.set_defaults(func=run)
 
 
@@ -418,7 +439,7 @@ class Cravat(object):
             self.logmode = "w"
         else:
             self.logmode = "a"
-        self.logger = logging.getLogger("cravat")
+        self.logger = logging.getLogger("oakvar")
         self.logger.setLevel("INFO")
         self.log_path = os.path.join(self.output_dir, self.run_name + ".log")
         if os.path.exists(self.log_path):
@@ -467,18 +488,26 @@ class Cravat(object):
             os.remove(fn)
 
     def log_versions(self):
-        self.logger.info(f"version: oakvar {au.get_current_package_version()} {os.path.dirname(os.path.abspath(__file__))}")
+        self.logger.info(
+            f"version: oakvar {au.get_current_package_version()} {os.path.dirname(os.path.abspath(__file__))}"
+        )
         if self.package_conf is not None and len(self.package_conf) > 0:
             self.logger.info(
                 f'package: {self.args.package} {self.package_conf["version"]}'
             )
         for mname, module in self.annotators.items():
-            self.logger.info(f"version: {module.name} {module.conf['version']} {os.path.dirname(module.script_path)}")
+            self.logger.info(
+                f"version: {module.name} {module.conf['version']} {os.path.dirname(module.script_path)}"
+            )
         if "mapper" not in self.args.skip:
             module = self.mapper
-            self.logger.info(f'version: {module.name} {module.conf["version"]} {os.path.dirname(module.script_path)}')
+            self.logger.info(
+                f'version: {module.name} {module.conf["version"]} {os.path.dirname(module.script_path)}'
+            )
         for mname, module in self.reports.items():
-            self.logger.info(f"version: {module.name} {module.conf['version']} {os.path.dirname(module.script_path)}")
+            self.logger.info(
+                f"version: {module.name} {module.conf['version']} {os.path.dirname(module.script_path)}"
+            )
 
     async def main(self):
         no_problem_in_run = True
@@ -716,7 +745,7 @@ class Cravat(object):
         exc_str = traceback.format_exc()
         exc_class = e.__class__
         if exc_class == InvalidModule:
-            if hasattr(self, 'logger'):
+            if hasattr(self, "logger"):
                 self.logger.error(str(e))
             if not self.args.silent:
                 print(e)
@@ -746,29 +775,39 @@ class Cravat(object):
         full_args = util.get_argument_parser_defaults(parser)
         # package
         if "run" in self.package_conf:
-            package_conf_run = {k: v for k, v in self.package_conf['run'].items() if v is not None}
+            package_conf_run = {
+                k: v for k, v in self.package_conf["run"].items() if v is not None
+            }
             full_args.update(package_conf_run)
         # command-line arguments
-        supplied_args_no_none = {k: v for k, v in supplied_args.items() if v is not None and v != []}
-        if 'inputs' in full_args and full_args['inputs'] is not None and 'inputs' in supplied_args_no_none:
-            del supplied_args_no_none['inputs']
+        supplied_args_no_none = {
+            k: v for k, v in supplied_args.items() if v is not None and v != []
+        }
+        if (
+            "inputs" in full_args
+            and full_args["inputs"] is not None
+            and "inputs" in supplied_args_no_none
+        ):
+            del supplied_args_no_none["inputs"]
         # -a and -A regarding --package
-        annos_pkg = full_args.get('annotators', [])
-        annos_add = supplied_args_no_none.get('annotators', [])
-        annos_repl = supplied_args_no_none.get('annotators_replace', [])
+        annos_pkg = full_args.get("annotators", [])
+        annos_add = supplied_args_no_none.get("annotators", [])
+        annos_repl = supplied_args_no_none.get("annotators_replace", [])
         if len(annos_pkg) > 0:
             if len(annos_repl) > 0:
-                full_args['annotators'] = annos_repl
+                full_args["annotators"] = annos_repl
             elif len(annos_add) > 0:
-                full_args['annotators'] = list(set(full_args['annotators']).union(set(annos_add)))
+                full_args["annotators"] = list(
+                    set(full_args["annotators"]).union(set(annos_add))
+                )
         else:
             if len(annos_repl) > 0:
-                full_args['annotators'] = annos_repl
+                full_args["annotators"] = annos_repl
             elif len(annos_add) > 0:
-                full_args['annotators'] = annos_add
+                full_args["annotators"] = annos_add
         # other command-line arguments
         for k, v in supplied_args_no_none.items():
-            if k in ['annotators', 'annotators_replace']:
+            if k in ["annotators", "annotators_replace"]:
                 continue
             full_args[k] = v
         self.args = SimpleNamespace(**full_args)
@@ -844,6 +883,7 @@ class Cravat(object):
             exit()
         if util.is_url(ip):
             import requests
+
             if not self.args.silent:
                 print(f"Fetching {ip}... ")
             try:
@@ -892,7 +932,10 @@ class Cravat(object):
                 for x in self.args.inputs
             ]
             for input_no in range(len(self.inputs)):
-                if self.download_url_input(input_no) is not None and self.first_non_url_input is None:
+                if (
+                    self.download_url_input(input_no) is not None
+                    and self.first_non_url_input is None
+                ):
                     self.first_non_url_input = self.inputs[input_no]
         else:
             self.inputs = []
@@ -934,7 +977,9 @@ class Cravat(object):
             if self.num_input == 0 or self.first_non_url_input is None:
                 self.output_dir = os.getcwd()
             else:
-                self.output_dir = os.path.dirname(os.path.abspath(self.first_non_url_input))
+                self.output_dir = os.path.dirname(
+                    os.path.abspath(self.first_non_url_input)
+                )
         else:
             self.output_dir = os.path.abspath(self.output_dir)
         if os.path.exists(self.output_dir) == False:
@@ -945,7 +990,10 @@ class Cravat(object):
             if constants.default_assembly_key in self.cravat_conf:
                 self.input_assembly = self.cravat_conf[constants.default_assembly_key]
             else:
-                msg = "Genome assembly should be given (as one of {}) with -l option or a default genome assembly should be defined in {} as default_assembly.".format(", ".join(constants.assembly_choices), constants.main_conf_path,)
+                msg = "Genome assembly should be given (as one of {}) with -l option or a default genome assembly should be defined in {} as default_assembly.".format(
+                    ", ".join(constants.assembly_choices),
+                    constants.main_conf_path,
+                )
                 print(msg)
                 exit()
         else:
@@ -995,10 +1043,16 @@ class Cravat(object):
         self.excludes = self.args.excludes
         if len(self.args.annotators) > 0:
             if self.args.annotators == ["all"]:
-                self.annotator_names = sorted(list(au.get_local_module_infos_of_type("annotator").keys()))
+                self.annotator_names = sorted(
+                    list(au.get_local_module_infos_of_type("annotator").keys())
+                )
             else:
                 self.annotator_names = self.args.annotators
-        elif self.package_conf is not None and "run" in self.package_conf and "annotators" in self.package_conf["run"]:
+        elif (
+            self.package_conf is not None
+            and "run" in self.package_conf
+            and "annotators" in self.package_conf["run"]
+        ):
             self.annotator_names = self.package_conf["run"]["annotators"]
         else:
             self.annotator_names = []
@@ -1017,7 +1071,11 @@ class Cravat(object):
     def set_mapper(self):
         if len(self.args.mapper_name) > 0:
             self.mapper_name = self.args.mapper_name[0]
-        elif self.package_conf is not None and "run" in self.package_conf and "mapper" in self.package_conf["run"]:
+        elif (
+            self.package_conf is not None
+            and "run" in self.package_conf
+            and "mapper" in self.package_conf["run"]
+        ):
             self.mapper_name = self.package_conf["run"]["mapper"]
         else:
             self.mapper_name = self.conf.get_cravat_conf()["genemapper"]
@@ -1027,31 +1085,53 @@ class Cravat(object):
     def set_postaggregators(self):
         if len(self.args.postaggregators) > 0:
             self.postaggregator_names = self.args.postaggregators
-        elif self.package_conf is not None and "run" in self.package_conf and "postaggregators" in self.package_conf["run"]:
-            self.postaggregator_names = sorted(list(au.get_local_module_infos_by_names(self.package_conf["run"]["postaggregators"])))
+        elif (
+            self.package_conf is not None
+            and "run" in self.package_conf
+            and "postaggregators" in self.package_conf["run"]
+        ):
+            self.postaggregator_names = sorted(
+                list(
+                    au.get_local_module_infos_by_names(
+                        self.package_conf["run"]["postaggregators"]
+                    )
+                )
+            )
         else:
             self.postaggregator_names = []
         if "postaggregator" in self.args.skip:
             self.postaggregators = {}
         else:
-            self.postaggregator_names = sorted(list(set(self.postaggregator_names).union(set(constants.default_postaggregator_names))))
-            if 'casecontrol' in self.postaggregator_names:
-                if au.module_exists_local('casecontrol') == False:
-                    self.postaggregator_names.remove('casecontrol')
+            self.postaggregator_names = sorted(
+                list(
+                    set(self.postaggregator_names).union(
+                        set(constants.default_postaggregator_names)
+                    )
+                )
+            )
+            if "casecontrol" in self.postaggregator_names:
+                if au.module_exists_local("casecontrol") == False:
+                    self.postaggregator_names.remove("casecontrol")
             self.check_valid_modules(self.postaggregator_names)
-            self.postaggregators = au.get_local_module_infos_by_names(self.postaggregator_names)
+            self.postaggregators = au.get_local_module_infos_by_names(
+                self.postaggregator_names
+            )
 
     def set_reporters(self):
         if len(self.args.reports) > 0:
             self.report_names = self.args.reports
-        elif self.package_conf is not None and "run" in self.package_conf and "reports" in self.package_conf["run"]:
+        elif (
+            self.package_conf is not None
+            and "run" in self.package_conf
+            and "reports" in self.package_conf["run"]
+        ):
             self.report_names = self.package_conf["run"]["reports"]
         else:
             self.report_names = []
         if "reporter" in self.args.skip:
             self.reports = {}
         else:
-            self.reporter_names = [v + 'reporter' for v in self.report_names]
+            self.reporter_names = [v + "reporter" for v in self.report_names]
             self.check_valid_modules(self.reporter_names)
             self.reports = au.get_local_module_infos_by_names(self.reporter_names)
 
@@ -1422,7 +1502,7 @@ class Cravat(object):
                 print(" ".join(cmd))
         self.update_status(
             "Running {title} ({level})".format(title="Aggregator", level="variant"),
-            force=True
+            force=True,
         )
         v_aggregator = Aggregator(cmd, self.status_writer)
         v_aggregator.run()
@@ -1452,7 +1532,7 @@ class Cravat(object):
                 print(" ".join(cmd))
         self.update_status(
             "Running {title} ({level})".format(title="Aggregator", level="gene"),
-            force=True
+            force=True,
         )
         g_aggregator = Aggregator(cmd, self.status_writer)
         g_aggregator.run()
@@ -1480,9 +1560,8 @@ class Cravat(object):
                 if not self.args.silent:
                     print(" ".join(cmd))
             self.update_status(
-                "Running {title} ({level})".format(
-                    title="Aggregator", level="sample"
-                ), force=True
+                "Running {title} ({level})".format(title="Aggregator", level="sample"),
+                force=True,
             )
             s_aggregator = Aggregator(cmd, self.status_writer)
             s_aggregator.run()
@@ -1509,9 +1588,8 @@ class Cravat(object):
                 if not self.args.silent:
                     print(" ".join(cmd))
             self.update_status(
-                "Running {title} ({level})".format(
-                    title="Aggregator", level="mapping"
-                ), force=True
+                "Running {title} ({level})".format(title="Aggregator", level="mapping"),
+                force=True,
             )
             m_aggregator = Aggregator(cmd, self.status_writer)
             m_aggregator.run()
@@ -1597,8 +1675,8 @@ class Cravat(object):
                 arg_dict["concise_report"] = self.args.concise_report
                 arg_dict["package"] = self.args.package
                 arg_dict["filtersql"] = self.args.filtersql
-                arg_dict['includesample'] = self.args.includesample
-                arg_dict['excludesample'] = self.args.excludesample
+                arg_dict["includesample"] = self.args.includesample
+                arg_dict["excludesample"] = self.args.excludesample
                 arg_dict["filter"] = self.args.filter
                 arg_dict["filterpath"] = self.args.filterpath
                 Reporter = util.load_class(module.script_path, "Reporter")
@@ -1625,13 +1703,14 @@ class Cravat(object):
                 else:
                     if not hasattr(e, "notraceback") or e.notraceback != True:
                         import traceback
+
                         traceback.print_exc()
                         self.logger.exception(e)
                     else:
                         print(e)
                         if hasattr(self, "logger"):
                             write_log_msg(self.logger, e)
-                    if "reporter" in locals() and hasattr(reporter, 'close_db'):
+                    if "reporter" in locals() and hasattr(reporter, "close_db"):
                         await reporter.close_db()
                 all_reporters_ran_well = False
         return all_reporters_ran_well, response
@@ -1936,7 +2015,7 @@ class Cravat(object):
             )
         self.update_status(
             "Running {title} ({name})".format(title=module.title, name=module.name),
-            force=True
+            force=True,
         )
 
     def clean_up_at_end(self):

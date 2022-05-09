@@ -19,7 +19,7 @@ import types
 from oakvar import constants
 import asyncio
 import importlib
-import cravat.cravat_class
+import oakvar.cmd_run
 from types import SimpleNamespace
 import nest_asyncio
 
@@ -61,7 +61,7 @@ class CravatReport:
         self._setup_logger()
 
     def parse_cmd_args(self, inargs, inkwargs):
-        parsed_args = cravat.util.get_args(parser, inargs, inkwargs)
+        parsed_args = oakvar.util.get_args(parser, inargs, inkwargs)
         self.parsed_args = parsed_args
         if parsed_args.md is not None:
             constants.custom_modules_dir = parsed_args.md
@@ -162,6 +162,7 @@ class CravatReport:
                 await self.cf.close_db()
             if not hasattr(e, "notraceback") or e.notraceback != True:
                 import traceback
+
                 traceback.print_exc()
                 self.logger.error(e)
             else:
@@ -174,7 +175,7 @@ class CravatReport:
         if hasattr(self, "no_log") and self.no_log:
             return
         try:
-            self.logger = logging.getLogger("cravat." + self.module_name)
+            self.logger = logging.getLogger("oakvar." + self.module_name)
         except Exception as e:
             self._log_exception(e)
         self.error_logger = logging.getLogger("error." + self.module_name)
@@ -779,7 +780,7 @@ class CravatReport:
                 ]:
                     continue
                 if module_name not in local_modules:
-                    if self.args.silent == False and module_name != 'original_input':
+                    if self.args.silent == False and module_name != "original_input":
                         print(
                             "            [{}] module does not exist in the system. Gene level summary for this module is skipped.".format(
                                 module_name
@@ -973,7 +974,7 @@ class CravatReport:
             filterstring=self.filterstring,
             filtersql=self.filtersql,
             includesample=self.args.includesample,
-            excludesample=self.args.excludesample
+            excludesample=self.args.excludesample,
         )
 
     async def table_exists(self, tablename, conn=None, cursor=None):
@@ -992,24 +993,8 @@ class CravatReport:
         return ret
 
 
-def clean_args(cmd_args):
-    if len(cmd_args[0]) == 0:
-        cmd_args = cmd_args[1:]
-    if cmd_args[0].endswith("oc") or cmd_args[0].endswith("oc.py"):
-        cmd_args = cmd_args[1:]
-        if cmd_args[0] == "report":
-            cmd_args = cmd_args[1:]
-    elif cmd_args[0] == "report":
-        cmd_args = cmd_args[1:]
-    elif cmd_args[0].endswith("cravat-report"):
-        cmd_args = cmd_args[1:]
-    elif cmd_args[0].endswith(".py"):
-        cmd_args = cmd_args[1:]
-    return cmd_args
-
-
 def run_reporter(*inargs, **inkwargs):
-    args = cravat.util.get_args(parser, inargs, inkwargs)
+    args = oakvar.util.get_args(parser, inargs, inkwargs)
     global au
     dbpath = args.dbpath
     # Check if exists
@@ -1113,6 +1098,7 @@ def run_reporter(*inargs, **inkwargs):
             if hasattr(e, "handled") and e.handled == True:
                 if not hasattr(e, "notraceback") or e.notraceback != True:
                     import traceback
+
                     traceback.print_exc()
                 else:
                     if hasattr(reporter, "logger"):
@@ -1129,7 +1115,6 @@ def run_reporter(*inargs, **inkwargs):
 
 def cravat_report_entrypoint():
     global parser
-    clean_args(sys.argv)  # Unclear what this does. Does it edit sys.argv?
     parsed_args = parser.parse_args(sys.argv[1:])
     run_reporter(parsed_args)
 
@@ -1219,23 +1204,23 @@ parser.add_argument(
     help="Generate concise report with default columns defined by annotation modules",
 )
 parser.add_argument(
-    '--includesample',
-    dest='includesample',
-    nargs='+',
+    "--includesample",
+    dest="includesample",
+    nargs="+",
     default=None,
-    help='Sample IDs to include',
+    help="Sample IDs to include",
 )
 parser.add_argument(
-    '--excludesample',
-    dest='excludesample',
-    nargs='+',
+    "--excludesample",
+    dest="excludesample",
+    nargs="+",
     default=None,
-    help='Sample IDs to exclude',
+    help="Sample IDs to exclude",
 )
 parser.add_argument("--package", help="Use filters and report types in a package")
 parser.add_argument(
-    "--md", 
-    default=None, 
-    help="Specify the root directory of OakVar modules (annotators, etc)"
+    "--md",
+    default=None,
+    help="Specify the root directory of OakVar modules (annotators, etc)",
 )
 parser.set_defaults(func=run_reporter)

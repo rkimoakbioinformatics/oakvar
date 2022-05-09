@@ -13,7 +13,7 @@ from aiohttp import web
 from html.parser import HTMLParser
 from oakvar import store_utils as su
 from oakvar import constants
-import cravat.admin_util as au
+import oakvar.admin_util as au
 import markdown
 import shutil
 import copy

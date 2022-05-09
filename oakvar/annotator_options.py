@@ -27,7 +27,6 @@ class AnnotatorOptions(object):
     # Parse the default conf files and the optional job conf
     def parse_all_conf_files(self):
         self.parse_conf_file(self.annotator_conf_path)
-        # TODO parse cravat.conf if available
         if self.job_conf_path:
             self.parse_conf_file(self.job_conf_path)
 
