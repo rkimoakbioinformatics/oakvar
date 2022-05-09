@@ -216,9 +216,9 @@ def yaml_string(x):
     return s
 
 
-def fn_module_info(args, out="stdout"):
-    ret = {}
+def fn_module_info(args):
     args = util.get_dict_from_namespace(args)
+    ret = {}
     md = args.get("md", None)
     module_name = args.get("module", None)
     if md is not None:
@@ -305,7 +305,7 @@ def fn_module_info(args, out="stdout"):
         #    print('UP TO DATE')
         # else:
         #    print('NEWER VERSION EXISTS')
-    if out == "stdout":
+    if args["to"] == "stdout":
         # s = yaml.dump(x, default_flow_style = False)
         print(yaml.dump(ret))
     else:
@@ -521,7 +521,7 @@ def fn_store_publish(args):
     )
 
 
-def install_base(args):
+def fn_module_installbase(args):
     args = util.get_dict_from_namespace(args)
     sys_conf = au.get_system_conf()
     base_modules = sys_conf.get(constants.base_modules_key, [])
@@ -630,7 +630,7 @@ parser_md.set_defaults(func=fn_config_md)
 
 # install-base
 parser_install_base = subparsers.add_parser(
-    "install-base", help="installs base modules.", description="installs base modules."
+    "installbase", help="installs base modules.", description="installs base modules."
 )
 parser_install_base.add_argument(
     "-f",
@@ -653,7 +653,7 @@ parser_install_base.add_argument(
 parser_install_base.add_argument(
     "--md", default=None, help="Specify the root directory of OakVar modules"
 )
-parser_install_base.set_defaults(func=install_base)
+parser_install_base.set_defaults(func=fn_module_installbase)
 
 # install
 parser_install = subparsers.add_parser(
@@ -743,6 +743,7 @@ parser_info.add_argument(
 parser_info.add_argument(
     "--md", default=None, help="Specify the root directory of OakVar modules"
 )
+parser_info.add_argument("--to", default="stdout", help="\"print\" to stdout / \"return\" to return")
 parser_info.set_defaults(func=fn_module_info)
 
 # ls
