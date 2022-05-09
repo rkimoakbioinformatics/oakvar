@@ -39,10 +39,10 @@ def main ():
     reporter.run()
     
 def test ():
-    reporter = Reporter(['', 'd:\\git\\cravat-newarch\\tmp\\job\\in1000.sqlite'])
+    reporter = Reporter(['', 'd:\\git\\oakvar\\tmp\\job\\in1000.sqlite'])
     data = reporter.run()
     reporter = Reporter([
-        '', 'd:\\git\\cravat-newarch\\tmp\\job\\in1000.sqlite',
+        '', 'd:\\git\\oakvar\\tmp\\job\\in1000.sqlite',
         '--filterstring', '{"variant": {"thousandgenomes__af": ">0.1"}}'])
     data = reporter.run()
 
