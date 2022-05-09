@@ -11,29 +11,6 @@ from pathlib import Path
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.rst").read_text()
 
-data_files = ['cravat.yml', 
-              'cravat-system.template.yml', 
-              'modules/cravat.yml', 
-              'example_input'
-]
-for root, dirs, files in os.walk(os.path.join('cravat', 'webviewer')):
-    root_files = [os.path.join('..', root, f) for f in files]
-    data_files.extend(root_files)
-for root, dirs, files in os.walk(os.path.join('cravat', 'liftover')):
-    root_files = [os.path.join('..', root, f) for f in files]
-    data_files.extend(root_files)
-for root, dirs, files in os.walk(os.path.join('cravat', 'annotator_template')):
-    root_files = [os.path.join('..', root, f) for f in files]
-    data_files.extend(root_files)
-for root, dirs, files in os.walk(os.path.join('cravat', 'webresult')):
-    root_files = [os.path.join('..', root, f) for f in files]
-    data_files.extend(root_files)
-for root, dirs, files in os.walk(os.path.join('cravat', 'webstore')):
-    root_files = [os.path.join('..', root, f) for f in files]
-    data_files.extend(root_files)
-for root, dirs, files in os.walk(os.path.join('cravat', 'websubmit')):
-    root_files = [os.path.join('..', root, f) for f in files]
-    data_files.extend(root_files)
 oakvar_files = ['cravat.yml', 
               'cravat-system.template.yml', 
               'modules/cravat.yml', 
@@ -57,7 +34,6 @@ for root, dirs, files in os.walk(os.path.join('oakvar', 'webstore')):
 for root, dirs, files in os.walk(os.path.join('oakvar', 'websubmit')):
     root_files = [os.path.join('..', root, f) for f in files]
     oakvar_files.extend(root_files)
-oakvar_files = ['cravat.yml']
 setup(
     name='oakvar',
     version='2.4.0',
@@ -75,7 +51,7 @@ setup(
         'Source': 'https://github.com/rkimoakbioinformatics/oakvar',
         'Tracker': 'https://github.com/rkimoakbioinformatics/oakvar/issues',
     },
-    packages=['cravat', 'oakvar'],
+    packages=['oakvar'],
     py_modules=[],
     install_requires=[
         'pyyaml',
@@ -99,15 +75,13 @@ setup(
     ],
     python_requires='>=3.6',
     package_data={
-        'cravat': data_files,
         'oakvar': oakvar_files
     },
     data_files=[],
     scripts=[],
     entry_points={
         'console_scripts': [
-            'oc=cravat.__main__:main',
-            'ov=oakvar.__main__:main',
+            'ov=oakvar.__main__:main'
         ]
     },
 )
