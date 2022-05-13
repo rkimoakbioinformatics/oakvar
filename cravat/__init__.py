@@ -42,24 +42,31 @@ from .base_annotator import BaseAnnotator
 from .base_mapper import BaseMapper
 from .base_postaggregator import BasePostAggregator
 from .base_commonmodule import BaseCommonModule
-from .cravat_report import CravatReport, run_reporter
-from .exceptions import *
-from . import util
-from . import admin_util
+from .cmd_report import CravatReport, run_reporter
 from .config_loader import ConfigLoader
-from . import constants
 from .cravat_filter import CravatFilter
-from .cravat_class import Cravat
-from .cravat_class import run_cravat_job as run
+from .cmd_run import Cravat
 from .util import get_ucsc_bins, reverse_complement, translate_codon, switch_strand
 from .constants import crx_def
+from .exceptions import *
+from . import cmd_util
+from . import admin_util
+from . import constants
+from . import __main__ as cli
 
 wgs = None
 
-def run(*args):
-    from .oc import main as ocmain
-    import sys
-    ocmain()
+
+def run(*args, **kwargs):
+    print("args=", args, "kwargs=", kwargs)
+    print(len(args), len(kwargs))
+    if len(args) == 0 and len(kwargs) == 0:
+        from .oc import main as ocmain
+
+        ocmain()
+    else:
+        cmd_run.run_cravat_job(*args, **kwargs)
+
 
 def get_live_annotator(module_name):
     try:
@@ -77,6 +84,7 @@ def get_live_annotator(module_name):
     except:
         print("    module loading error: {}".format(module.module_name))
         import traceback
+
         traceback.print_exc()
         return None
     return module
@@ -98,6 +106,7 @@ def get_live_mapper(module_name):
     except Exception as e:
         print("    module loading error: {}".format(module_name))
         import traceback
+
         traceback.print_exc()
         return None
     return module
@@ -118,6 +127,7 @@ def get_module(module_name):
     except Exception as e:
         print("    module loading error: {}".format(module_name))
         import traceback
+
         traceback.print_exc()
         return None
 
@@ -170,7 +180,7 @@ class LiveAnnotator:
 
     def annotate(self, crv):
         from .inout import AllMappingsParser
-        from cravat.constants import all_mappings_col_name
+        from oakvar.constants import all_mappings_col_name
 
         if "uid" not in crv:
             crv["uid"] = self.variant_uid
@@ -190,9 +200,9 @@ class LiveAnnotator:
                 response[k] = annot_data
             except Exception as e:
                 import traceback
+
                 traceback.print_exc()
                 response[k] = None
         del crx_data["tmp_mapper"]
         response["base"] = crx_data
         return response
-

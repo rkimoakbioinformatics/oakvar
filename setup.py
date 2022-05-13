@@ -7,75 +7,52 @@ import atexit
 import traceback
 import shutil
 
-class InstallCommand(install):
-    
-    user_options = install.user_options + [
-            ('modules-dir=', 'm', 'Modules directory'),
-            ('install-defaults=','d','Install default')
-    ]
-    
-    def initialize_options (self):
-        install.initialize_options(self)
-    
-    def finalize_options (self):
-        install.finalize_options(self)
-    
-    def run(self):
-        install.run(self)
+from pathlib import Path
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.rst").read_text()
 
-def readme ():
-    try:
-        with open('README.rst') as f:
-            return f.read()
-    except IOError:
-        return ''
-
-data_files = ['cravat.yml', 
+oakvar_files = ['cravat.yml', 
               'cravat-system.template.yml', 
               'modules/cravat.yml', 
-              'example_input',
-              'wincravat.pyw']
-for root, dirs, files in os.walk(os.path.join('cravat', 'webviewer')):
+              'exampleinput'
+]
+for root, dirs, files in os.walk(os.path.join('oakvar', 'webviewer')):
     root_files = [os.path.join('..', root, f) for f in files]
-    data_files.extend(root_files)
-for root, dirs, files in os.walk(os.path.join('cravat', 'liftover')):
+    oakvar_files.extend(root_files)
+for root, dirs, files in os.walk(os.path.join('oakvar', 'liftover')):
     root_files = [os.path.join('..', root, f) for f in files]
-    data_files.extend(root_files)
-for root, dirs, files in os.walk(os.path.join('cravat', 'annotator_template')):
+    oakvar_files.extend(root_files)
+for root, dirs, files in os.walk(os.path.join('oakvar', 'annotator_template')):
     root_files = [os.path.join('..', root, f) for f in files]
-    data_files.extend(root_files)
-for root, dirs, files in os.walk(os.path.join('cravat', 'webresult')):
+    oakvar_files.extend(root_files)
+for root, dirs, files in os.walk(os.path.join('oakvar', 'webresult')):
     root_files = [os.path.join('..', root, f) for f in files]
-    data_files.extend(root_files)
-for root, dirs, files in os.walk(os.path.join('cravat', 'webstore')):
+    oakvar_files.extend(root_files)
+for root, dirs, files in os.walk(os.path.join('oakvar', 'webstore')):
     root_files = [os.path.join('..', root, f) for f in files]
-    data_files.extend(root_files)
-for root, dirs, files in os.walk(os.path.join('cravat', 'websubmit')):
+    oakvar_files.extend(root_files)
+for root, dirs, files in os.walk(os.path.join('oakvar', 'websubmit')):
     root_files = [os.path.join('..', root, f) for f in files]
-    data_files.extend(root_files)
-
+    oakvar_files.extend(root_files)
 setup(
     name='oakvar',
-    packages=['cravat'],
-    version='2.3.16',
-    description='OakVar, further development of OpenCRAVAT by its lead architect',
-    long_description=readme(),
+    version='2.4.0',
+    description='A genomic variant analysis platform',
+    long_description=long_description,
+    long_description_content_type='text/x-rst',
+    url='https://github.com/rkimoakbioinformatics/oakvar',
     author='Ryangguk Kim',
     author_email='rkim@oakbioinformatics.com',
-    url='https://github.com/rkimoakbioinformatics/oakvar',
-    license='',
-    package_data={
-        'cravat': data_files
+    license='MIT',
+    classifiers='',
+    keywords='genomic variant analysis interpretation genome',
+    project_urls={
+        'Documentation': 'https://oakvar.readthedocs.io',
+        'Source': 'https://github.com/rkimoakbioinformatics/oakvar',
+        'Tracker': 'https://github.com/rkimoakbioinformatics/oakvar/issues',
     },
-    entry_points={
-        'console_scripts': [
-            'oc=cravat.__main__:main',
-            'ov=cravat.__main__:main',
-        ]
-    },
-    cmdclass={
-              'install':InstallCommand,
-              },
+    packages=['oakvar', 'cravat'],
+    py_modules=[],
     install_requires=[
         'pyyaml',
         'requests',
@@ -94,6 +71,22 @@ setup(
         'nest-asyncio',
         'psutil',
         'mpmath',
+<<<<<<< HEAD
         ],
+=======
+        'pyvcf',
+    ],
+>>>>>>> master
     python_requires='>=3.6',
+    package_data={
+        'oakvar': oakvar_files,
+        'cravat': oakvar_files
+    },
+    data_files=[],
+    scripts=[],
+    entry_points={
+        'console_scripts': [
+            'ov=oakvar.__main__:main'
+        ]
+    },
 )

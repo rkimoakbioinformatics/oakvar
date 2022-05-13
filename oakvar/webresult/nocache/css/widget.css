@@ -1,0 +1,165 @@
+@font-face {
+	font-family: 'roboto-medium';
+    src: url('/result/fonts/roboto-medium-webfont.woff') format('woff'),
+	url('/result/fonts/roboto-medium-webfont.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'roboto-light';
+    src: url('/result/fonts/roboto-light-webfont.woff') format('woff'),
+         url('/result/fonts/roboto-light-webfont.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'roboto-bold';
+    src: url('/result/fonts/roboto-bold-webfont.woff') format('woff'),
+         url('/result/fonts/roboto-bold-webfont.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'sourcesanspro-bold';
+    src: url('/result/fonts/sourcesanspro-bold-webfont.woff') format('woff'),
+	url('/result/fonts/sourcesanspro-bold-webfont.woff2') format('woff2');
+}
+
+body * {
+	font-family: 'roboto-light';
+	margin: 0px;
+}
+
+.detaildiv {
+	overflow: auto;
+	position: absolute;
+    font-family: monospace;
+}
+
+.detaildiv.resultviewer {
+	width: calc(100% - 8px);
+	bottom: 10px;
+	height: 350px;
+}
+
+.detailcontainerdiv {
+    /*padding-top: 8px;*/
+}
+
+.detailcontainerwrapdiv {
+	width: 100%;
+	height: 100%;
+	overflow: auto;
+	position: relative;
+}
+
+.detailcontentdiv {
+	overflow: auto;
+	height: calc(100% - 32px);
+	padding: 0px;
+    padding-left: 7px;
+    padding-right: 7px;
+}
+
+.detailcontentdiv * {
+    font-size: 11px;
+}
+
+.detailwidget {
+	font-size: 12px;
+	border: 1px solid #d0d0d0;
+    padding: 0px;
+    border-radius: 6px;
+}
+
+.detailwidgetheader {
+	font-size: 14px;
+	font-weight: bold;
+	display: flex;
+	width: 100%;
+    vertical-align: middle;
+    border-radius: 6px 6px 0 0;
+    background-color: #1a4a75;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+}
+
+.detailwidgettitle {
+	display: inline-block;
+    font-family: sourcesanspro-bold;
+	font-size: 13px;
+    height: 18px;
+    padding: 9px;
+}
+
+.detailwidget-hr {
+    margin-top: 0px;
+    margin-inline-start: 0px;
+    margin-inline-end: 0px;
+}
+
+.detailwidgeticondiv {
+	display: flex;
+    text-align: right;
+    margin-right: 7px;
+}
+
+.detailwidget-closebutton {
+	width: 16px;
+	height: 16px;
+    cursor: pointer;
+    margin: 2px;
+    padding: 2px;
+}
+
+.detailwidgetpinbutton {
+	font-size: 12px;
+	text-align: center;
+	width: 14px;
+	cursor: pointer;
+    margin: 2px;
+    padding: 2px;
+}
+
+.detailwidgetpinbutton.unpinned {
+	color: black;
+    background-color: #1a4a75;
+}
+
+.detailwidgetpinbutton.pinned {
+	color: white;
+	background-color: #848484;
+}
+
+.detailwidget-downloadbutton {
+    height: 16px;
+    cursor: pointer;
+    margin: 2px;
+    padding: 2px;
+}
+
+.detailwidget-camerabutton {
+    height: 16px;
+    cursor: pointer;
+    margin: 2px;
+    padding: 2px;
+}
+
+.detailwidgetselect {
+	font-family: roboto-light;
+	font-size: 11px;
+}
+
+.detail-info-line-header {
+    vertical-align: top;
+    min-width: 60px;
+    font-weight: bold;
+}
+
+.detail-info-line-content {
+    vertical-align: top;
+    min-width: 60px;
+}
+
+.nodata {
+    color: #cccccc;
+}
+

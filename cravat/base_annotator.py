@@ -6,7 +6,7 @@ import argparse
 from .inout import CravatReader
 from .inout import CravatWriter
 from .inout import AllMappingsParser
-from cravat.config_loader import ConfigLoader
+from oakvar.config_loader import ConfigLoader
 import sys
 from .constants import crv_def
 from .constants import crx_def
@@ -17,10 +17,12 @@ from .exceptions import InvalidData
 from .exceptions import ConfigurationError
 import sqlite3
 import json
+import oakvar.admin_util as au
 import re
 from types import SimpleNamespace
+import oakvar.util
 from distutils.version import LooseVersion
-from cravat.constants import cannonical_chroms
+from oakvar.constants import cannonical_chroms
 
 def run(args):
     if args.module is not None:
@@ -85,48 +87,62 @@ class BaseAnnotator(object):
     required_conf_keys = ["level", "output_columns"]
 
     def __init__(self, *inargs, **inkwargs):
-        main_fpath = os.path.abspath(sys.modules[self.__module__].__file__)
-        self.primary_input_path = None
-        self.secondary_paths = None
-        self.output_dir = None
-        self.output_basename = None
-        self.plain_output = None
-        self.job_conf_path = None
-        self.logger = None
-        self.dbconn = None
-        self.cursor = None
-        self.output_writer = None
-        self.parse_cmd_args(inargs, inkwargs)
-        if hasattr(self.args, "status_writer") == False:
-            self.status_writer = None
-        else:
-            self.status_writer = self.args.status_writer
-        if hasattr(self.args, "live") == False:
-            live = False
-        else:
-            live = self.args.live
-        self.supported_chroms = set(cannonical_chroms)
-        if live:
-            return
-        main_basename = os.path.basename(main_fpath)
-        if "." in main_basename:
-            self.module_name = ".".join(main_basename.split(".")[:-1])
-        else:
-            self.module_name = main_basename
-        self.annotator_name = self.module_name
-        self.module_dir = os.path.dirname(main_fpath)
-        self.annotator_dir = os.path.dirname(main_fpath)
-        self.data_dir = os.path.join(self.module_dir, "data")
-        # Load command line opts
-        self._setup_logger()
-        config_loader = ConfigLoader(self.job_conf_path)
-        self.conf = config_loader.get_module_conf(self.module_name)
-        self._verify_conf()
-        self._id_col_name = self.conf["output_columns"][0]["name"]
-        if "logging_level" in self.conf:
-            self.logger.setLevel(self.conf["logging_level"].upper())
-        if "title" in self.conf:
-            self.annotator_display_name = self.conf["title"]
+        try:
+            main_fpath = os.path.abspath(sys.modules[self.__module__].__file__)
+            self.primary_input_path = None
+            self.secondary_paths = None
+            self.output_dir = None
+            self.output_basename = None
+            self.plain_output = None
+            self.job_conf_path = None
+            self.logger = None
+            self.dbconn = None
+            self.cursor = None
+            self._define_cmd_parser()
+            self.args = oakvar.util.get_args(self.cmd_arg_parser, inargs, inkwargs)
+            self.parse_cmd_args(inargs, inkwargs)
+            if hasattr(self.args, "status_writer") == False:
+                self.status_writer = None
+            else:
+                self.status_writer = self.args["status_writer"]
+            if hasattr(self.args, "live") == False:
+                live = False
+            else:
+                live = self.args["live"]
+            self.supported_chroms = set(cannonical_chroms)
+            if live:
+                return
+            main_basename = os.path.basename(main_fpath)
+            if "." in main_basename:
+                self.module_name = ".".join(main_basename.split(".")[:-1])
+            else:
+                self.module_name = main_basename
+            self.annotator_name = self.module_name
+            self.module_dir = os.path.dirname(main_fpath)
+            self.annotator_dir = os.path.dirname(main_fpath)
+            self.data_dir = os.path.join(self.module_dir, "data")
+            # Load command line opts
+            self._setup_logger()
+            config_loader = ConfigLoader(self.job_conf_path)
+            self.conf = config_loader.get_module_conf(self.module_name)
+            self._verify_conf()
+            self._id_col_name = self.conf["output_columns"][0]["name"]
+            if "logging_level" in self.conf:
+                self.logger.setLevel(self.conf["logging_level"].upper())
+            if "title" in self.conf:
+                self.annotator_display_name = self.conf["title"]
+            else:
+                self.annotator_display_name = os.path.basename(self.module_dir).upper()
+            if "version" in self.conf:
+                self.annotator_version = self.conf["version"]
+            else:
+                self.annotator_version = ""
+        except Exception as e:
+            self._log_exception(e)
+
+    def _log_exception(self, e, halt=True):
+        if halt:
+            raise e
         else:
             self.annotator_display_name = os.path.basename(self.module_dir).upper()
         if "version" in self.conf:
@@ -182,40 +198,37 @@ class BaseAnnotator(object):
 
     # Parse the command line arguments
     def parse_cmd_args(self, inargs, inkwargs):
-        import cravat.util
-        if type(inargs) == tuple:
-            inargs = inargs[0]
-        if type(inargs) == list:
-            if len(inargs) > 1 and inargs[0].endswith(".py"):
-                inargs = inargs[1:]
-        args = cravat.util.get_args(parser, inargs, inkwargs)
-        self.primary_input_path = os.path.abspath(args.input_file)
-        self.secondary_paths = {}
-        if args.secondary_inputs:
-            for secondary_def in args.secondary_inputs:
-                sec_name, sec_path = re.split(r"(?<!\\)=", secondary_def)
-                self.secondary_paths[sec_name] = os.path.abspath(sec_path)
-        self.output_dir = os.path.dirname(self.primary_input_path)
-        if args.output_dir:
-            self.output_dir = args.output_dir
-        self.plain_output = args.plainoutput
-        if hasattr(args, "run_name") and args.run_name is not None:
-            self.output_basename = args.run_name
-        else:
-            self.output_basename = os.path.basename(self.primary_input_path)
-            if self.output_basename.endswith(".crx"):
-                self.output_basename = self.output_basename[:-4]
-        if self.output_basename != "__dummy__":
-            self.update_status_json_flag = True
-        else:
-            self.update_status_json_flag = False
-        if hasattr(args, "conf"):
-            self.job_conf_path = args.conf
-        self.confs = None
-        if hasattr(args, "confs") and args.confs is not None:
-            confs = args.confs.lstrip("'").rstrip("'").replace("'", '"')
-            self.confs = json.loads(confs)
-        self.args = args
+        try:
+            args = oakvar.util.get_args(self.cmd_arg_parser, inargs, inkwargs)
+            self.primary_input_path = os.path.abspath(args["input_file"])
+            self.secondary_paths = {}
+            if args["secondary_inputs"]:
+                for secondary_def in args["secondary_inputs"]:
+                    sec_name, sec_path = re.split(r"(?<!\\)=", secondary_def)
+                    self.secondary_paths[sec_name] = os.path.abspath(sec_path)
+            self.output_dir = os.path.dirname(self.primary_input_path)
+            if args["output_dir"]:
+                self.output_dir = args["output_dir"]
+            self.plain_output = args["plainoutput"]
+            if "run_name" in args and args["run_name"] is not None:
+                self.output_basename = args["run_name"]
+            else:
+                self.output_basename = os.path.basename(self.primary_input_path)
+                if self.output_basename.endswith(".crx"):
+                    self.output_basename = self.output_basename[:-4]
+            if self.output_basename != "__dummy__":
+                self.update_status_json_flag = True
+            else:
+                self.update_status_json_flag = False
+            if hasattr(args, "conf"):
+                self.job_conf_path = args["conf"]
+            self.confs = None
+            if hasattr(args, "confs") and args["confs"] is not None:
+                confs = args["confs"].lstrip("'").rstrip("'").replace("'", '"')
+                self.confs = json.loads(confs)
+            self.args = args
+        except Exception as e:
+            self._log_exception(e)
 
     def handle_jsondata(self, output_dict):
         for colname in self.json_colnames:
@@ -238,10 +251,7 @@ class BaseAnnotator(object):
                 self.last_status_update_time = cur_time
 
     def is_star_allele(self, input_data):
-        return (
-            self.conf["level"] == "variant"
-            and input_data.get("alt_base", "") == "*"
-        )
+        return self.conf["level"] == "variant" and input_data.get("alt_base", "") == "*"
 
     def should_skip_chrom(self, input_data):
         return (
@@ -267,12 +277,14 @@ class BaseAnnotator(object):
             self.status_writer.queue_status_update(
                 "status", "Started {} ({})".format(self.conf["title"], self.module_name)
             )
-        self.start_time = time.time()
-        self.logger.info("started: %s" % time.asctime(time.localtime(self.start_time)))
-        if not self.args.silent:
-            print(
-                "        {}: started at {}".format(
-                    self.module_name, time.asctime(time.localtime(self.start_time))
+        try:
+            start_time = time.time()
+            self.logger.info("started: %s" % time.asctime(time.localtime(start_time)))
+            if not self.args["silent"]:
+                print(
+                    "        {}: started at {}".format(
+                        self.module_name, time.asctime(time.localtime(start_time))
+                    )
                 )
             )
 
@@ -283,6 +295,55 @@ class BaseAnnotator(object):
             self.base_setup()
             self.last_status_update_time = time.time()
             self.make_json_colnames()
+            for lnum, line, input_data, secondary_data in self._get_input():
+                try:
+                    self.log_progress(lnum)
+                    # * allele and undefined non-canonical chroms are skipped.
+                    if self.is_star_allele(input_data) or self.should_skip_chrom(
+                        input_data
+                    ):
+                        continue
+                    if secondary_data == {}:
+                        output_dict = self.annotate(input_data)
+                    else:
+                        output_dict = self.annotate(input_data, secondary_data)
+                    # This enables summarizing without writing for now.
+                    if output_dict is None:
+                        continue
+                    # Handles empty table-format column data.
+                    output_dict = self.handle_jsondata(output_dict)
+                    # Preserves the first column
+                    output_dict[self._id_col_name] = input_data[self._id_col_name]
+                    # Fill absent columns with empty strings
+                    output_dict = self.fill_empty_output(output_dict)
+                    # Writes output.
+                    self.output_writer.write_data(output_dict)
+                except Exception as e:
+                    self._log_runtime_exception(lnum, line, input_data, e)
+            # This does summarizing.
+            self.postprocess()
+            self.base_cleanup()
+            end_time = time.time()
+            self.logger.info(
+                "finished: {0}".format(time.asctime(time.localtime(end_time)))
+            )
+            if not self.args["silent"]:
+                print(
+                    "        {}: finished at {}".format(
+                        self.module_name, time.asctime(time.localtime(end_time))
+                    )
+                )
+            run_time = end_time - start_time
+            self.logger.info("runtime: {0:0.3f}s".format(run_time))
+            if not self.args["silent"]:
+                print("        {}: runtime {:0.3f}s".format(self.module_name, run_time))
+            if self.update_status_json_flag and self.status_writer is not None:
+                version = self.conf.get("version", "unknown")
+                self.status_writer.queue_status_update(
+                    "status",
+                    "Finished {} ({})".format(self.conf["title"], self.module_name),
+                )
+>>>>>>> master
         except Exception as e:
             if self.output_writer is not None:
                 self.output_writer.close_and_delete()
@@ -572,10 +633,17 @@ class BaseAnnotator(object):
 
     # Setup the logging utility
     def _setup_logger(self):
-        self.logger = logging.getLogger("cravat." + self.module_name)
-        if self.output_basename != "__dummy__":
-            self.log_path = os.path.join(
-                self.output_dir, self.output_basename + ".log"
+        try:
+            self.logger = logging.getLogger("oakvar." + self.module_name)
+            if self.output_basename != "__dummy__":
+                self.log_path = os.path.join(
+                    self.output_dir, self.output_basename + ".log"
+                )
+                log_handler = logging.FileHandler(self.log_path, "a")
+            else:
+                log_handler = logging.StreamHandler()
+            formatter = logging.Formatter(
+                "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
             )
             log_handler = logging.FileHandler(self.log_path, "a")
         else:

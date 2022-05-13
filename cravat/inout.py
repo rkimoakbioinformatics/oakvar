@@ -7,12 +7,11 @@ import oyaml as yaml
 import json
 import csv
 from io import StringIO
-from cravat.util import detect_encoding
+from oakvar.util import detect_encoding
 import sys
 from json.decoder import JSONDecodeError
 import multiprocessing as mp
 
-csv.register_dialect("cravat", delimiter=",", quotechar="@")
 
 
 class CravatFile(object):
@@ -566,7 +565,7 @@ class ColumnDefinition(object):
             self.categories = json.loads(self.categories)
 
     def from_var_csv(self, row):
-        l = list(csv.reader([row], dialect="cravat"))[0]
+        l = list(csv.reader([row], dialect="oakvar"))[0]
         self._load_dict(dict(zip(self.csv_order[: len(l)], l)))
         self.index = int(self.index)
         if isinstance(self.categories, str):

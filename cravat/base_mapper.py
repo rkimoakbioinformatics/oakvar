@@ -12,16 +12,14 @@ from .constants import (
     gene_level_so_exclude,
 )
 from .exceptions import InvalidData, NoVariantError
-from cravat.config_loader import ConfigLoader
+from oakvar.config_loader import ConfigLoader
 import sys
 import json
-import cravat.cravat_util as cu
 from types import SimpleNamespace
 import multiprocessing as mp
-import cravat.admin_util as au
+import oakvar.admin_util as au
 import time
-import cravat.util
-from . import util
+import oakvar.util
 
 
 class BaseMapper(object):
@@ -49,18 +47,10 @@ class BaseMapper(object):
         print("@ mapper init. inargs=", inargs)
         print("@ mapper init. inkwargs=", inkwargs)
         self._parse_cmd_args(inargs, inkwargs)
-        if hasattr(self.args, "status_writer") == False:
-            status_writer = None
-        else:
-            status_writer = self.args.status_writer
-        if hasattr(self.args, "live") == False:
-            live = False
-        else:
-            live = self.args.live
-        self.live = live
+        self.live = self.args["live"]
         self.t = time.time()
-        self.status_writer = status_writer
-        main_fpath = self.args.script_path
+        self.status_writer = self.args["status_writer"]
+        main_fpath = self.args["script_path"]
         main_basename = os.path.basename(main_fpath)
         if "." in main_basename:
             self.module_name = ".".join(main_basename.split(".")[:-1])
@@ -79,8 +69,6 @@ class BaseMapper(object):
 
     def _define_main_cmd_args(self):
         self.cmd_parser = argparse.ArgumentParser()
-        # self.cmd_parser.add_argument('path',
-        #                            help='Path to this mapper\'s python module')
         self.cmd_parser.add_argument("input_file", help="Input crv file")
         self.cmd_parser.add_argument(
             "-n", dest="name", help="Name of job. " + "Default is input file name."
@@ -116,34 +104,34 @@ class BaseMapper(object):
             default=["mane"],
             help='"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
         )
+        self.cmd_parser.add_argument("--live", action="store_true", default=False, help=argparse.SUPPRESS)
+        self.cmd_parser.add_argument("--status_writer", default=None, help=argparse.SUPPRESS)
 
     def _define_additional_cmd_args(self):
         """This method allows sub-classes to override and provide addittional command line args"""
         pass
 
     def _parse_cmd_args(self, inargs, inkwargs):
-        print("@ mapper. parse_cmd. inargs=", inargs)
-        print("@ mapper. parse_cmd. inkwargs=", inkwargs)
-        args = cravat.util.get_args(self.cmd_parser, inargs, inkwargs)
-        self.input_path = os.path.abspath(args.input_file)
+        args = oakvar.util.get_args(self.cmd_parser, inargs, inkwargs)
+        self.input_path = os.path.abspath(args["input_file"])
         self.input_dir, self.input_fname = os.path.split(self.input_path)
-        if args.output_dir:
-            self.output_dir = args.output_dir
+        if args["output_dir"]:
+            self.output_dir = args["output_dir"]
         else:
             self.output_dir = self.input_dir
         if not (os.path.exists(self.output_dir)):
             os.makedirs(self.output_dir)
         if hasattr(args, "run_name"):
-            self.output_base_fname = args.run_name
+            self.output_base_fname = args["run_name"]
         else:
             self.output_base_fname = self.input_fname
         self.confs = None
-        if args.confs is not None:
-            confs = args.confs.lstrip("'").rstrip("'").replace("'", '"')
+        if args["confs"] is not None:
+            confs = args["confs"].lstrip("'").rstrip("'").replace("'", '"')
             self.confs = json.loads(confs)
-        self.slavemode = args.slavemode
-        self.postfix = args.postfix
-        self.primary_transcript_paths = args.primary_transcript
+        self.slavemode = args["slavemode"]
+        self.postfix = args["postfix"]
+        self.primary_transcript_paths = args["primary_transcript"]
         self.args = args
 
     def base_setup(self):
@@ -158,7 +146,7 @@ class BaseMapper(object):
         pass
 
     def _setup_logger(self):
-        self.logger = logging.getLogger("cravat.mapper")
+        self.logger = logging.getLogger("oakvar.mapper")
         self.logger.info("input file: %s" % self.input_path)
         self.error_logger = logging.getLogger("error.mapper")
         self.unique_excs = []
@@ -170,11 +158,11 @@ class BaseMapper(object):
         output. Open plain file for err output.
         """
         # Reader
-        if self.args.seekpos is not None and self.args.chunksize is not None:
+        if self.args["seekpos"] is not None and self.args["chunksize"] is not None:
             self.reader = CravatReader(
                 self.input_path,
-                seekpos=int(self.args.seekpos),
-                chunksize=int(self.args.chunksize),
+                seekpos=int(self.args["seekpos"]),
+                chunksize=int(self.args["chunksize"]),
             )
         else:
             self.reader = CravatReader(self.input_path)
@@ -272,7 +260,7 @@ class BaseMapper(object):
         self.base_setup()
         start_time = time.time()
         tstamp = time.asctime(time.localtime(start_time))
-        self.logger.info(f"started: {tstamp} | {self.args.seekpos}")
+        self.logger.info(f"started: {tstamp} | {self.args['seekpos']}")
         if self.status_writer is not None:
             self.status_writer.queue_status_update(
                 "status", "Started {} ({})".format(self.conf["title"], self.module_name)
@@ -305,7 +293,7 @@ class BaseMapper(object):
         self._write_crg()
         stop_time = time.time()
         tstamp = time.asctime(time.localtime(stop_time))
-        self.logger.info(f"finished: {tstamp} | {self.args.seekpos}")
+        self.logger.info(f"finished: {tstamp} | {self.args['seekpos']}")
         runtime = stop_time - start_time
         self.logger.info("runtime: %6.3f" % runtime)
         self.end()
@@ -350,7 +338,7 @@ class BaseMapper(object):
         t = time.time()
         hugos = await cf.exec_db(cf.get_filtered_hugo_list)
         # Below is to fix opening oc 1.8.0 jobs with oc 1.8.1.
-        # TODO: Remove it after a while and add 1.8.0 to the db update chain in cravat_util.
+        # TODO: Remove it after a while and add 1.8.0 to the db update chain in cmd_util.
         cols = [
             "base__" + coldef["name"]
             for coldef in crx_def

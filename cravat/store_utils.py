@@ -194,7 +194,7 @@ def get_file_to_string(url):
             return r.text
         else:
             raise HTTPError(url, r.status_code, "", None, None)
-    except:
+    except Exception as e:
         return ""
 
 

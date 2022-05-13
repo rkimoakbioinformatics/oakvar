@@ -10,7 +10,7 @@ import types
 import inspect
 import logging
 from distutils.version import LooseVersion
-from cravat.cravat_util import max_version_supported_for_migration
+from oakvar.cmd_util import max_version_supported_for_migration
 import sqlite3
 import datetime
 import argparse
@@ -321,7 +321,7 @@ def load_class(path, class_name=None):
             spec.loader.exec_module(module)
         except:
             raise
-            logger = logging.getLogger("cravat")
+            logger = logging.getLogger("oakvar")
             logger.exception(f"{module_name} could not be loaded.")
             print(f"{module_name} is not found")
     if module is not None:
@@ -383,51 +383,45 @@ def detect_encoding(path):
         return encoding
 
 
-def get_pkg_version():
-    try:
-        oc_version = LooseVersion(pkg_version("oxygenv-core"))
-    except:
-        oc_version = None
-    if oc_version is None:
-        try:
-            oc_version = LooseVersion(pkg_version("open-cravat"))
-        except:
-            oc_version = None
-    return oc_version
-
+def get_job_version(dbpath, platform_name):
+    db = sqlite3.connect(dbpath)
+    c = db.cursor()
+    sql = f'select colval from info where colkey="{platform_name}"'
+    c.execute(sql)
+    r = c.fetchone()
+    db_version = None
+    if r is not None:
+        db_version = LooseVersion(r[0])
+    return db_version
 
 def is_compatible_version(dbpath):
     db = sqlite3.connect(dbpath)
     c = db.cursor()
-    oc_version = LooseVersion(pkg_resources.get_distribution("oakvar").version)
-    sql = 'select colval from info where colkey="oakvar"'
-    c.execute(sql)
-    r = c.fetchone()
-    if r is None:
-        sql = 'select colval from info where colkey="open-cravat"'
-        c.execute(sql)
-        r = c.fetchone()
-    compatible = None
-    db_version = "0.0.0"
-    if r is None:
-        sql = 'select colval from info where colkey="open-cravat"'
-        c.execute(sql)
-        r = c.fetchone()
-        if r is None:
+    try:
+        ov_version = LooseVersion(pkg_resources.get_distribution("oakvar").version)
+    except:
+        ov_version = None
+    try:
+        oc_version = LooseVersion(pkg_resources.get_distribution("open-cravat").version)
+    except:
+        oc_version = None
+    job_version_ov = get_job_version(dbpath, "oakvar")
+    job_version_oc = get_job_version(dbpath, "open-cravat")
+    if job_version_ov is None:
+        if job_version_oc is None:
             compatible = False
         else:
-            db_version = LooseVersion(r[0])
-            if db_version < max_version_supported_for_migration:
+            if job_version_oc < max_version_supported_for_migration:
                 compatible = False
             else:
                 compatible = True
+        return compatible, job_version_oc, oc_version
     else:
-        db_version = LooseVersion(r[0])
-        if db_version < max_version_supported_for_migration:
+        if job_version_ov < max_version_supported_for_migration:
             compatible = False
         else:
             compatible = True
-    return compatible, db_version, oc_version
+        return compatible, job_version_ov, oc_version
 
 
 def is_url(s):
@@ -445,25 +439,25 @@ def get_current_time_str():
 def get_args(parser, inargs, inkwargs):
     # Combines arguments in various formats.
     inarg_dict = {}
-    # If inargs is a list/tuple of list/tuple.
-    if type(inargs) in [list, tuple] and len(inargs) > 0 and type(inargs[0]) in [list, tuple]:
-        inarg = inargs[0]
-    else:
-        inarg = inargs
-    t = type(inarg)
-    if t == list:  # ['-t', 'text']
-        inarg_dict.update(**vars(parser.parse_args(inarg)))
-    elif t == argparse.Namespace:  # already parsed by a parser.
-        inarg_dict.update(**vars(inarg))
-    elif t == types.SimpleNamespace:
-        inarg_dict.update(**vars(inarg))
-    elif t == dict:  # {'output_dir': '/rt'}
-        inarg_dict.update(inarg)
-    inarg_dict.update(inkwargs)
+    if inargs is not None:
+        for inarg in inargs:
+            t = type(inarg)
+            if t == list:  # ['-t', 'text']
+                # if inarg[0].endswith(".py"):
+                #    inarg = inarg[1:]
+                inarg_dict.update(**vars(parser.parse_args(inarg)))
+            elif t == argparse.Namespace:  # already parsed by a parser.
+                inarg_dict.update(**vars(inarg))
+            elif t == types.SimpleNamespace:
+                inarg_dict.update(**vars(inarg))
+            elif t == dict:  # {'output_dir': '/rt'}
+                inarg_dict.update(inarg)
+    if inkwargs is not None:
+        inarg_dict.update(inkwargs)
     arg_dict = get_argument_parser_defaults(parser)
     arg_dict.update(inarg_dict)
-    args = SimpleNamespace(**arg_dict)
-    return args
+    #args = SimpleNamespace(**arg_dict)
+    return arg_dict
 
 
 def filter_affected_cols(filter):
@@ -491,7 +485,7 @@ def humanize_bytes(num, binary=False):
             exponent = max_exponent
     else:
         exponent = 0
-    quotient = float(num) / base ** exponent
+    quotient = float(num) / base**exponent
     if binary:
         unit = exp2unit_bin[exponent]
     else:
@@ -501,6 +495,7 @@ def humanize_bytes(num, binary=False):
     if exponent == 0:
         quot_str = quot_str.rstrip("0").rstrip(".")
     return "{quotient} {unit}".format(quotient=quot_str, unit=unit)
+
 
 def write_log_msg(logger, e):
     if hasattr(e, "msg"):
@@ -515,3 +510,14 @@ def write_log_msg(logger, e):
         logger.info(e)
         print(e)
 
+
+def get_simplenamespace(d):
+    if type(d) == dict:
+        d = types.SimpleNamespace(**d)
+    return d
+
+
+def get_dict_from_namespace(n):
+    if type(n) == types.SimpleNamespace or type(n) == argparse.Namespace:
+        n = vars(n)
+    return n
