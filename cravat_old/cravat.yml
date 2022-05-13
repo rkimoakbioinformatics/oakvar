@@ -1,4 +1,0 @@
-converter: converter
-genemapper: hg38
-aggregator: aggregator
-gui_port: 8060
