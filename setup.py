@@ -14,7 +14,7 @@ long_description = (this_directory / "README.rst").read_text()
 oakvar_files = ['cravat.yml', 
               'cravat-system.template.yml', 
               'modules/cravat.yml', 
-              'example_input'
+              'exampleinput'
 ]
 for root, dirs, files in os.walk(os.path.join('oakvar', 'webviewer')):
     root_files = [os.path.join('..', root, f) for f in files]
@@ -51,7 +51,7 @@ setup(
         'Source': 'https://github.com/rkimoakbioinformatics/oakvar',
         'Tracker': 'https://github.com/rkimoakbioinformatics/oakvar/issues',
     },
-    packages=['oakvar'],
+    packages=['oakvar', 'cravat'],
     py_modules=[],
     install_requires=[
         'pyyaml',
@@ -75,7 +75,8 @@ setup(
     ],
     python_requires='>=3.6',
     package_data={
-        'oakvar': oakvar_files
+        'oakvar': oakvar_files,
+        'cravat': oakvar_files
     },
     data_files=[],
     scripts=[],
