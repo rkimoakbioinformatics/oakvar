@@ -81,8 +81,8 @@ def main():
             args.func(args)
         else:
             p_entry.parse_args(sys.argv[1:] + ["--help"])
-    except SystemExit:
-        return
+    except SystemExit as e:
+        raise e
 
 
 if __name__ == "__main__":
