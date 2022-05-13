@@ -632,7 +632,7 @@ parser_fn_gui.add_argument(
     dest="noguest",
     default=False,
     action="store_true",
-    help="Diasbles guest mode",
+    help="Disables guest mode",
 )
 parser_fn_gui.set_defaults(func=fn_gui)
 

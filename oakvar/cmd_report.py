@@ -22,10 +22,10 @@ import importlib
 import oakvar.cmd_run
 from types import SimpleNamespace
 import nest_asyncio
-
 nest_asyncio.apply()
 import sys
 import oyaml as yaml
+from oakvar.exceptions import InvalidModule
 
 if sys.platform == "win32" and sys.version_info >= (3, 8):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -1064,9 +1064,9 @@ def run_reporter(*inargs, **inkwargs):
     for report_type in report_types:
         module_info = au.get_local_module_info(report_type + "reporter")
         if module_info is None:
-            if args["silent"] == False:
-                print(f"Report module for {report_type} does not exist. Skipping...")
-            continue
+            #if args["silent"] == False:
+            #    print(f"Report module for {report_type} does not exist. Skipping...")
+            raise InvalidModule(report_type + "reporter")
         if args["silent"] == False:
             print(f"Generating {report_type} report... ", end="", flush=True)
         module_name = module_info.name

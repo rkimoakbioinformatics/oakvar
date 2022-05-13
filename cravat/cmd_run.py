@@ -68,9 +68,11 @@ def fn_run(*args, **kwargs):
     args = util.get_args(parser, args, kwargs)
     au.ready_resolution_console()
     module = Cravat(**args)
-    loop = asyncio.get_event_loop()
-    response = loop.run_until_complete(module.main())
-    return response
+    try:
+        response = asyncio.run(module.main())
+        return response
+    except Exception as e:
+        raise e
 
 
 parser_fn_run = argparse.ArgumentParser(
@@ -514,6 +516,7 @@ class Cravat(object):
     async def main(self):
         no_problem_in_run = True
         report_response = None
+        exception = None
         try:
             self.aggregator_ran = False
             self.update_status("Started OakVar", force=True)
@@ -627,8 +630,9 @@ class Cravat(object):
                 no_problem_in_run, report_response = await self.run_reporter()
             self.update_status("Finished", force=True)
         except Exception as e:
-            self.handle_exception(e)
             no_problem_in_run = False
+            exception = e
+            self.handle_exception(e)
         finally:
             end_time = time.time()
             display_time = time.asctime(time.localtime(end_time))
@@ -654,6 +658,8 @@ class Cravat(object):
                 self.clean_up_at_end()
             if self.args.writeadmindb:
                 await self.write_admin_db(runtime, self.numinput)
+            if exception is not None:
+                raise exception
             if (
                 report_response is not None
                 and type(report_response) == list
@@ -751,7 +757,7 @@ class Cravat(object):
                 self.logger.error(str(e))
             if not self.args.silent:
                 print(e)
-            exit()
+            exit(-1)
         elif exc_class == InvalidData:
             pass
         elif exc_class == ExpectedException:
@@ -761,6 +767,7 @@ class Cravat(object):
             self.logger.exception("An unexpected exception occurred.")
             if not self.args.silent:
                 print(exc_str)
+            return e
 
     def set_package_conf(self, supplied_args):
         if "package" in supplied_args:

@@ -728,7 +728,7 @@ parser_update.add_argument("modules", nargs="*", help="Modules to update.")
 parser_update.add_argument("-y", action="store_true", help="Proceed without prompt")
 parser_update.add_argument(
     "--strategy",
-    help='Dependency resolution strategy. "consensus" will attemp to resolve dependencies. "force" will install the highest available version. "skip" will skip modules with constraints.',
+    help='Dependency resolution strategy. "consensus" will attempt to resolve dependencies. "force" will install the highest available version. "skip" will skip modules with constraints.',
     default="consensus",
     type=str,
     choices=("consensus", "force", "skip"),
