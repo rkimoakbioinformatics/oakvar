@@ -71,12 +71,7 @@ setup(
         'nest-asyncio',
         'psutil',
         'mpmath',
-<<<<<<< HEAD
-        ],
-=======
-        'pyvcf',
     ],
->>>>>>> master
     python_requires='>=3.6',
     package_data={
         'oakvar': oakvar_files,

@@ -1,0 +1,28 @@
+publish_url: https://publish.opencravat.org
+store_url: https://store.opencravat.org
+
+base_modules:
+- cravat-converter
+- vcf-converter
+- oldcravat-converter
+- textreporter
+- excelreporter
+- tagsampler
+- vcfinfo
+- hg38
+- casecontrol
+- wgbase
+- wghg19
+- wgncrna
+- wglollipop
+- wgndex
+- wgcircossummary
+- wgcodingvsnoncodingsummary
+- wggosummary
+- wgsosamplesummary
+- wgsosummary
+- wgnote
+- wgvcfinfo
+- hg38wgs
+- varmeta
+- wgrankscore
