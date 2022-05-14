@@ -12,16 +12,17 @@ import requests
 import traceback
 import re
 from distutils.version import LooseVersion
-import pkg_resources
 from collections import defaultdict
 from types import SimpleNamespace
 from . import exceptions
 from collections.abc import MutableMapping
 import multiprocessing
 import importlib
+from importlib.metadata import version as pkg_version
 import traceback
 import signal
 import subprocess
+import pkg_resources
 
 
 class InstallProgressHandler(object):
@@ -511,11 +512,6 @@ def get_cravat_conf_info():
     cravat_conf = get_cravat_conf()
     cravat_conf.update({"cravat_conf_path": get_main_conf_path()})
     return cravat_conf
-
-
-def get_current_package_version():
-    version = pkg_resources.get_distribution("oakvar").version
-    return version
 
 
 def get_default_assembly():

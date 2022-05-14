@@ -38,7 +38,6 @@ class MasterCravatConverter(object):
     ALREADYCRV = 2
 
     def __init__(self, *inargs, **inkwargs):
-        print("@ __init__ inargs=", inargs)
         self._parse_cmd_args(inargs, inkwargs)
         self.logger = None
         self.crv_writer = None

@@ -1,6 +1,7 @@
 import re
 import os
 import importlib
+from importlib.metadata import version as pkg_version
 import sys
 import oyaml as yaml
 import chardet
@@ -11,7 +12,6 @@ import logging
 from distutils.version import LooseVersion
 from oakvar.cmd_util import max_version_supported_for_migration
 import sqlite3
-import pkg_resources
 import datetime
 import argparse
 from types import SimpleNamespace

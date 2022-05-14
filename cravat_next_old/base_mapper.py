@@ -44,8 +44,6 @@ class BaseMapper(object):
         self.crg_writer = None
         self._define_main_cmd_args()
         self._define_additional_cmd_args()
-        print("@ mapper init. inargs=", inargs)
-        print("@ mapper init. inkwargs=", inkwargs)
         self._parse_cmd_args(inargs, inkwargs)
         self.live = self.args["live"]
         self.t = time.time()

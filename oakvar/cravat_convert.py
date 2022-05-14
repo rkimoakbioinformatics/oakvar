@@ -28,44 +28,6 @@ import re
 STDIN = "stdin"
 
 
-class VTracker:
-    """This helper class is used to identify the unique variants from the input
-    so the crv file will not contain multiple copies of the same variant.
-    """
-
-    def __init__(self, deduplicate=True):
-        self.var_by_chrom = defaultdict(dict)
-        self.current_UID = 1
-        self.deduplicate = deduplicate
-
-    # Add a variant - Returns true if the variant is a new unique variant, false
-    # if it is a duplicate.  Also returns the UID.
-    def addVar(self, chrom, pos, ref, alt):
-        if not self.deduplicate:
-            self.current_UID += 1
-            return True, self.current_UID - 1
-
-        change = ref + ":" + alt
-
-        chr_dict = self.var_by_chrom[chrom]
-        if pos not in chr_dict:
-            # we have not seen this position before, add the position and change
-            chr_dict[pos] = {}
-            chr_dict[pos][change] = self.current_UID
-            self.current_UID += 1
-            return True, chr_dict[pos][change]
-        else:
-            variants = chr_dict[pos]
-            if change not in variants:
-                # we have the position but not this base change, add it.
-                chr_dict[pos][change] = self.current_UID
-                self.current_UID = self.current_UID + 1
-                return True, chr_dict[pos][change]
-            else:
-                # this variant has been seen before.
-                return False, chr_dict[pos][change]
-
-
 class MasterCravatConverter(object):
     """Convert a file of ambiguous format to .crv format.
 
@@ -137,6 +99,8 @@ class MasterCravatConverter(object):
             action="store_true",
             help=argparse.SUPPRESS,
         )
+        if type(inargs) in [tuple, list]:
+            inargs = inargs[0]
         if len(sys.argv) > 1 and len(inargs) == 0:
             inargs = [sys.argv]
         parsed_args = oakvar.util.get_args(parser, inargs, inkwargs)
