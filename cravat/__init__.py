@@ -2,7 +2,6 @@ def raise_break(signal_number, stack_frame):
     import os
     import platform
     import psutil
-
     pl = platform.platform()
     if pl.startswith("Windows"):
         pid = os.getpid()
@@ -34,7 +33,6 @@ def raise_break(signal_number, stack_frame):
 
 
 import signal
-
 signal.signal(signal.SIGINT, raise_break)
 
 from .base_converter import BaseConverter
