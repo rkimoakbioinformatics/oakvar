@@ -576,7 +576,7 @@ def get_install_deps(module_name, version=None, skip_installed=True):
         if highest_matching is not None:
             deps[req.name] = highest_matching
     req_pypi_list = config.get("requires_pypi", [])
-    req_pypi_list = ["pandas"]
+    req_pypi_list.extend(config.get("pypi_dependency", []))
     deps_pypi = {}
     for req_pypi in req_pypi_list:
         deps_pypi[req_pypi] = True
@@ -1036,7 +1036,6 @@ def install_module(
         # Ctrl-c in this func must be caught to delete temp_dir
         def raise_kbi(a, b):
             raise KeyboardInterrupt
-
         original_sigint = signal.signal(signal.SIGINT, raise_kbi)
         if stage_handler is None:
             stage_handler = InstallProgressHandler(module_name, version)
@@ -1050,7 +1049,8 @@ def install_module(
         stage_handler.stage_start("start")
         # Checks and installs pip packages.
         config = mic.get_remote_config(module_name, version=version)
-        pypi_deps = config.get("pypi_dependency", [])
+        pypi_deps = config.get("requires_pypi", [])
+        pypi_deps.extend(config.get("pypi_dependency", []))
         idx = 0
         while idx < len(pypi_deps):
             dep = pypi_deps[idx]
@@ -1481,7 +1481,7 @@ def ready_resolution_console():
         yn = input("Do you want to install base modules now? (y/n)>")
         if yn == "y":
             args = SimpleNamespace(
-                force_data=False, force=False, install_pypi_dependency=True, md=None
+                force_data=False, force=False, md=None
             )
             from . import cmd_admin
 

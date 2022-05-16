@@ -17,12 +17,11 @@ from oakvar.exceptions import (
 import oakvar.admin_util as au
 from pyliftover import LiftOver
 import copy
-from oakvar.util import detect_encoding
+from oakvar.util import detect_encoding, get_args, reverse_complement
 import json
 import gzip
 from collections import defaultdict
 from oakvar.base_converter import BaseConverter
-import oakvar
 import re
 
 STDIN = "stdin"
@@ -96,7 +95,8 @@ class MasterCravatConverter(object):
         }
         self._setup_logger()
         self.vtracker = VTracker(deduplicate=not (self.unique_variants))
-        self.wgsreader = oakvar.get_wgs_reader(assembly="hg38")
+        from oakvar import get_wgs_reader
+        self.wgsreader = get_wgs_reader(assembly="hg38")
         self.crs_def = constants.crs_def.copy()
         self.error_lines = 0
 
@@ -139,7 +139,7 @@ class MasterCravatConverter(object):
         )
         if len(sys.argv) > 1 and len(inargs) == 0:
             inargs = [sys.argv]
-        parsed_args = oakvar.util.get_args(parser, inargs, inkwargs)
+        parsed_args = get_args(parser, inargs, inkwargs)
         self.input_format = None
         if parsed_args["format"]:
             self.input_format = parsed_args["format"]
@@ -656,9 +656,9 @@ class MasterCravatConverter(object):
             newchrom = newchrom1
             newpos = min(newpos1, newpos2)
         hg38_ref = self.wgsreader.get_bases(newchrom, newpos)
-        if hg38_ref == oakvar.util.reverse_complement(ref):
+        if hg38_ref == reverse_complement(ref):
             newref = hg38_ref
-            newalt = oakvar.util.reverse_complement(alt)
+            newalt = reverse_complement(alt)
         else:
             newref = ref
             newalt = alt

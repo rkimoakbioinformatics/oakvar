@@ -376,18 +376,14 @@ def fn_module_install(*args, **kwargs):
         if version is None:
             if args["private"]:
                 print(
-                    f"{module_name}: --include-private cannot be used without specifying a version using -v/--version"
-                , flush=True)
+                    f"{module_name}: a version should be given for a private module", flush=True)
                 continue
             else:
                 if local_info is not None:
                     local_ver = local_info.version
                     remote_ver = remote_info.latest_version
                     if not args["force"] and LooseVersion(local_info.version) >= LooseVersion(remote_info.latest_version):
-                        print(
-                            f"{module_name}: latest ({local_ver}) is already installed. Use -f/--force to overwrite",
-                            flush=True,
-                        )
+                        print(f"{module_name}: latest version is already installed.", flush=True)
                         continue
                 selected_install[module_name] = remote_info.latest_version
         else:
@@ -420,17 +416,9 @@ def fn_module_install(*args, **kwargs):
     if len(to_install) == 0:
         print("No module to install found", flush=True)
     else:
-        print(
-            "Installing: {:}".format(
-                ", ".join(
-                    [
-                        name + ":" + version
-                        for name, version in sorted(to_install.items())
-                    ]
-                )
-            ),
-            flush=True,
-        )
+        print("The following modules will be installed:", flush=True)
+        for name in sorted(list(to_install.keys())):
+            print(f"- {name}=={to_install[name]}", flush=True)
         if not (args["yes"]):
             while True:
                 resp = input("Proceed? ([y]/n) > ")
@@ -666,12 +654,6 @@ parser_module_installbase.add_argument(
     help="Download data even if latest data is already installed",
 )
 parser_module_installbase.add_argument(
-    "--install-pypi-dependency",
-    action="store_true",
-    default=True,
-    help="Try to install non-OakVar package dependency with pip",
-)
-parser_module_installbase.add_argument(
     "--md", default=None, help="Specify the root directory of OakVar modules"
 )
 parser_module_installbase.set_defaults(func=fn_module_installbase)
@@ -707,11 +689,6 @@ parser_module_install.add_argument(
 parser_module_install.add_argument(
     "--skip-data", action="store_true", help="Skip installing data"
 )
-# parser_module_install.add_argument('--install-pypi-dependency',
-#    action='store_true',
-#    default=True,
-#    help='Try to install non-OakVar package dependency with pip'
-# )
 parser_module_install.add_argument(
     "--md", default=None, help="Specify the root directory of OakVar modules"
 )
@@ -732,12 +709,6 @@ parser_update.add_argument(
     default="consensus",
     type=str,
     choices=("consensus", "force", "skip"),
-)
-parser_update.add_argument(
-    "--install-pypi-dependency",
-    action="store_true",
-    default=True,
-    help="Try to install non-OakVar package dependency with pip",
 )
 parser_update.add_argument(
     "--md", default=None, help="Specify the root directory of OakVar modules"

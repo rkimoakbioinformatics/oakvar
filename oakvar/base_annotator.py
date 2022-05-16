@@ -20,7 +20,7 @@ import json
 import oakvar.admin_util as au
 import re
 from types import SimpleNamespace
-import oakvar.util
+from oakvar.util import get_args
 from distutils.version import LooseVersion
 from oakvar.constants import cannonical_chroms
 
@@ -38,175 +38,164 @@ class BaseAnnotator(object):
     required_conf_keys = ["level", "output_columns"]
 
     def __init__(self, *inargs, **inkwargs):
-        try:
-            main_fpath = os.path.abspath(sys.modules[self.__module__].__file__)
-            self.primary_input_path = None
-            self.secondary_paths = None
-            self.output_dir = None
-            self.output_basename = None
-            self.plain_output = None
-            self.job_conf_path = None
-            self.logger = None
-            self.dbconn = None
-            self.cursor = None
-            self._define_cmd_parser()
-            self.args = oakvar.util.get_args(self.cmd_arg_parser, inargs, inkwargs)
-            self.parse_cmd_args(inargs, inkwargs)
-            if hasattr(self.args, "status_writer") == False:
-                self.status_writer = None
-            else:
-                self.status_writer = self.args["status_writer"]
-            if hasattr(self.args, "live") == False:
-                live = False
-            else:
-                live = self.args["live"]
-            self.supported_chroms = set(cannonical_chroms)
-            if live:
-                return
-            main_basename = os.path.basename(main_fpath)
-            if "." in main_basename:
-                self.module_name = ".".join(main_basename.split(".")[:-1])
-            else:
-                self.module_name = main_basename
-            self.annotator_name = self.module_name
-            self.module_dir = os.path.dirname(main_fpath)
-            self.annotator_dir = os.path.dirname(main_fpath)
-            self.data_dir = os.path.join(self.module_dir, "data")
-            # Load command line opts
-            self._setup_logger()
-            config_loader = ConfigLoader(self.job_conf_path)
-            self.conf = config_loader.get_module_conf(self.module_name)
-            self._verify_conf()
-            self._id_col_name = self.conf["output_columns"][0]["name"]
-            if "logging_level" in self.conf:
-                self.logger.setLevel(self.conf["logging_level"].upper())
-            if "title" in self.conf:
-                self.annotator_display_name = self.conf["title"]
-            else:
-                self.annotator_display_name = os.path.basename(self.module_dir).upper()
-            if "version" in self.conf:
-                self.annotator_version = self.conf["version"]
-            else:
-                self.annotator_version = ""
-        except Exception as e:
-            self._log_exception(e)
+        main_fpath = os.path.abspath(sys.modules[self.__module__].__file__)
+        self.primary_input_path = None
+        self.secondary_paths = None
+        self.output_dir = None
+        self.output_basename = None
+        self.plain_output = None
+        self.job_conf_path = None
+        self.logger = None
+        self.dbconn = None
+        self.cursor = None
+        self._define_cmd_parser()
+        self.args = get_args(self.cmd_arg_parser, inargs, inkwargs)
+        self.parse_cmd_args(inargs, inkwargs)
+        if hasattr(self.args, "status_writer") == False:
+            self.status_writer = None
+        else:
+            self.status_writer = self.args["status_writer"]
+        if hasattr(self.args, "live") == False:
+            live = False
+        else:
+            live = self.args["live"]
+        self.supported_chroms = set(cannonical_chroms)
+        if live:
+            return
+        main_basename = os.path.basename(main_fpath)
+        if "." in main_basename:
+            self.module_name = ".".join(main_basename.split(".")[:-1])
+        else:
+            self.module_name = main_basename
+        self.annotator_name = self.module_name
+        self.module_dir = os.path.dirname(main_fpath)
+        self.annotator_dir = os.path.dirname(main_fpath)
+        self.data_dir = os.path.join(self.module_dir, "data")
+        # Load command line opts
+        self._setup_logger()
+        config_loader = ConfigLoader(self.job_conf_path)
+        self.conf = config_loader.get_module_conf(self.module_name)
+        self._verify_conf()
+        self._id_col_name = self.conf["output_columns"][0]["name"]
+        if "logging_level" in self.conf:
+            self.logger.setLevel(self.conf["logging_level"].upper())
+        if "title" in self.conf:
+            self.annotator_display_name = self.conf["title"]
+        else:
+            self.annotator_display_name = os.path.basename(self.module_dir).upper()
+        if "version" in self.conf:
+            self.annotator_version = self.conf["version"]
+        else:
+            self.annotator_version = ""
 
     def _log_exception(self, e, halt=True):
+        if self.logger:
+            self.logger.exception(e)
         if halt:
-            raise e
+            return False
         else:
-            if self.logger:
-                self.logger.exception(e)
+            return True
 
     def _verify_conf(self):
-        try:
-            for k in self.required_conf_keys:
-                if k not in self.conf:
-                    err_msg = 'Required key "%s" not found in configuration' % k
-                    raise ConfigurationError(err_msg)
-            if self.conf["level"] in self.valid_levels:
-                self.conf["output_columns"] = [
-                    self.id_col_defs[self.conf["level"]]
-                ] + self.conf["output_columns"]
-            else:
-                err_msg = "%s is not a valid level. Valid levels are %s" % (
-                    self.conf["level"],
-                    ", ".join(self.valid_levels),
-                )
+        for k in self.required_conf_keys:
+            if k not in self.conf:
+                err_msg = 'Required key "%s" not found in configuration' % k
                 raise ConfigurationError(err_msg)
-            if "input_format" in self.conf:
-                if self.conf["input_format"] not in self.valid_input_formats:
-                    err_msg = "Invalid input_format %s, select from %s" % (
-                        self.conf["input_format"],
-                        ", ".join(self.valid_input_formats),
-                    )
-            else:
-                if self.conf["level"] == "variant":
-                    self.conf["input_format"] = "crv"
-                elif self.conf["level"] == "gene":
-                    self.conf["input_format"] = "crg"
-            if "input_columns" in self.conf:
-                id_col_name = self.id_col_defs[self.conf["level"]]["name"]
-                if id_col_name not in self.conf["input_columns"]:
-                    self.conf["input_columns"].append(id_col_name)
-            else:
-                self.conf["input_columns"] = self.default_input_columns[
-                    self.conf["input_format"]
-                ]
-        except Exception as e:
-            self._log_exception(e)
+        if self.conf["level"] in self.valid_levels:
+            self.conf["output_columns"] = [
+                self.id_col_defs[self.conf["level"]]
+            ] + self.conf["output_columns"]
+        else:
+            err_msg = "%s is not a valid level. Valid levels are %s" % (
+                self.conf["level"],
+                ", ".join(self.valid_levels),
+            )
+            raise ConfigurationError(err_msg)
+        if "input_format" in self.conf:
+            if self.conf["input_format"] not in self.valid_input_formats:
+                err_msg = "Invalid input_format %s, select from %s" % (
+                    self.conf["input_format"],
+                    ", ".join(self.valid_input_formats),
+                )
+        else:
+            if self.conf["level"] == "variant":
+                self.conf["input_format"] = "crv"
+            elif self.conf["level"] == "gene":
+                self.conf["input_format"] = "crg"
+        if "input_columns" in self.conf:
+            id_col_name = self.id_col_defs[self.conf["level"]]["name"]
+            if id_col_name not in self.conf["input_columns"]:
+                self.conf["input_columns"].append(id_col_name)
+        else:
+            self.conf["input_columns"] = self.default_input_columns[
+                self.conf["input_format"]
+            ]
 
     def _define_cmd_parser(self):
-        try:
-            parser = argparse.ArgumentParser()
-            parser.add_argument("input_file", help="Input file to be annotated.")
-            parser.add_argument(
-                "-s",
-                action="append",
-                dest="secondary_inputs",
-                help="Secondary inputs. " + "Format as <module_name>:<path>",
-            )
-            parser.add_argument(
-                "-n", dest="run_name", help="Name of job. Default is input file name."
-            )
-            parser.add_argument(
-                "-d",
-                dest="output_dir",
-                help="Output directory. " + "Default is input file directory.",
-            )
-            parser.add_argument(
-                "-c", dest="conf", help="Path to optional run conf file."
-            )
-            parser.add_argument(
-                "-p",
-                "--plainoutput",
-                action="store_true",
-                dest="plainoutput",
-                help="Skip column definition writing",
-            )
-            parser.add_argument(
-                "--confs", dest="confs", default="{}", help="Configuration string"
-            )
-            parser.add_argument(
-                "--silent", dest="silent", default=False, help="Silent operation"
-            )
-            self.cmd_arg_parser = parser
-        except Exception as e:
-            self._log_exception(e)
+        parser = argparse.ArgumentParser()
+        parser.add_argument("input_file", help="Input file to be annotated.")
+        parser.add_argument(
+            "-s",
+            action="append",
+            dest="secondary_inputs",
+            help="Secondary inputs. " + "Format as <module_name>:<path>",
+        )
+        parser.add_argument(
+            "-n", dest="run_name", help="Name of job. Default is input file name."
+        )
+        parser.add_argument(
+            "-d",
+            dest="output_dir",
+            help="Output directory. " + "Default is input file directory.",
+        )
+        parser.add_argument(
+            "-c", dest="conf", help="Path to optional run conf file."
+        )
+        parser.add_argument(
+            "-p",
+            "--plainoutput",
+            action="store_true",
+            dest="plainoutput",
+            help="Skip column definition writing",
+        )
+        parser.add_argument(
+            "--confs", dest="confs", default="{}", help="Configuration string"
+        )
+        parser.add_argument(
+            "--silent", dest="silent", default=False, help="Silent operation"
+        )
+        self.cmd_arg_parser = parser
 
     # Parse the command line arguments
     def parse_cmd_args(self, inargs, inkwargs):
-        try:
-            args = oakvar.util.get_args(self.cmd_arg_parser, inargs, inkwargs)
-            self.primary_input_path = os.path.abspath(args["input_file"])
-            self.secondary_paths = {}
-            if args["secondary_inputs"]:
-                for secondary_def in args["secondary_inputs"]:
-                    sec_name, sec_path = re.split(r"(?<!\\)=", secondary_def)
-                    self.secondary_paths[sec_name] = os.path.abspath(sec_path)
-            self.output_dir = os.path.dirname(self.primary_input_path)
-            if args["output_dir"]:
-                self.output_dir = args["output_dir"]
-            self.plain_output = args["plainoutput"]
-            if "run_name" in args and args["run_name"] is not None:
-                self.output_basename = args["run_name"]
-            else:
-                self.output_basename = os.path.basename(self.primary_input_path)
-                if self.output_basename.endswith(".crx"):
-                    self.output_basename = self.output_basename[:-4]
-            if self.output_basename != "__dummy__":
-                self.update_status_json_flag = True
-            else:
-                self.update_status_json_flag = False
-            if hasattr(args, "conf"):
-                self.job_conf_path = args["conf"]
-            self.confs = None
-            if hasattr(args, "confs") and args["confs"] is not None:
-                confs = args["confs"].lstrip("'").rstrip("'").replace("'", '"')
-                self.confs = json.loads(confs)
-            self.args = args
-        except Exception as e:
-            self._log_exception(e)
+        args = get_args(self.cmd_arg_parser, inargs, inkwargs)
+        self.primary_input_path = os.path.abspath(args["input_file"])
+        self.secondary_paths = {}
+        if args["secondary_inputs"]:
+            for secondary_def in args["secondary_inputs"]:
+                sec_name, sec_path = re.split(r"(?<!\\)=", secondary_def)
+                self.secondary_paths[sec_name] = os.path.abspath(sec_path)
+        self.output_dir = os.path.dirname(self.primary_input_path)
+        if args["output_dir"]:
+            self.output_dir = args["output_dir"]
+        self.plain_output = args["plainoutput"]
+        if "run_name" in args and args["run_name"] is not None:
+            self.output_basename = args["run_name"]
+        else:
+            self.output_basename = os.path.basename(self.primary_input_path)
+            if self.output_basename.endswith(".crx"):
+                self.output_basename = self.output_basename[:-4]
+        if self.output_basename != "__dummy__":
+            self.update_status_json_flag = True
+        else:
+            self.update_status_json_flag = False
+        if hasattr(args, "conf"):
+            self.job_conf_path = args["conf"]
+        self.confs = None
+        if hasattr(args, "confs") and args["confs"] is not None:
+            confs = args["confs"].lstrip("'").rstrip("'").replace("'", '"')
+            self.confs = json.loads(confs)
+        self.args = args
 
     def handle_jsondata(self, output_dict):
         for colname in self.json_colnames:
@@ -364,154 +353,139 @@ class BaseAnnotator(object):
         return data
 
     def _log_runtime_exception(self, lnum, line, input_data, e):
-        try:
-            err_str = traceback.format_exc().rstrip()
-            lines = err_str.split("\n")
-            last_line = lines[-1]
-            err_str_log = (
-                "\n".join(lines[:-1]) + "\n" + ":".join(last_line.split(":")[:2])
-            )
-            if err_str_log not in self.unique_excs:
-                self.unique_excs.append(err_str_log)
-                self.logger.error(err_str_log)
-            self.error_logger.error(
-                "\n[{:d}]{}\n({})\n#".format(lnum, line.rstrip(), str(e))
-            )
-        except Exception as e:
-            self._log_exception(e, halt=False)
+        err_str = traceback.format_exc().rstrip()
+        lines = err_str.split("\n")
+        last_line = lines[-1]
+        err_str_log = (
+            "\n".join(lines[:-1]) + "\n" + ":".join(last_line.split(":")[:2])
+        )
+        if err_str_log not in self.unique_excs:
+            self.unique_excs.append(err_str_log)
+            self.logger.error(err_str_log)
+        self.error_logger.error(
+            "\n[{:d}]{}\n({})\n#".format(lnum, line.rstrip(), str(e))
+        )
 
     # Setup function for the base_annotator, different from self.setup()
     # which is intended to be for the derived annotator.
     def base_setup(self):
-        try:
-            self._setup_primary_input()
-            self._setup_secondary_inputs()
-            self._setup_outputs()
-            self._open_db_connection()
-            self.setup()
-            if not hasattr(self, "supported_chroms"):
-                self.supported_chroms = set(
-                    ["chr" + str(n) for n in range(1, 23)] + ["chrX", "chrY"]
-                )
-        except Exception as e:
-            self._log_exception(e)
+        self._setup_primary_input()
+        self._setup_secondary_inputs()
+        self._setup_outputs()
+        self._open_db_connection()
+        self.setup()
+        if not hasattr(self, "supported_chroms"):
+            self.supported_chroms = set(
+                ["chr" + str(n) for n in range(1, 23)] + ["chrX", "chrY"]
+            )
 
     def _setup_primary_input(self):
-        try:
-            self.primary_input_reader = CravatReader(self.primary_input_path)
-            requested_input_columns = self.conf["input_columns"]
-            defined_columns = self.primary_input_reader.get_column_names()
-            missing_columns = set(requested_input_columns) - set(defined_columns)
-            if missing_columns:
-                if len(defined_columns) > 0:
-                    err_msg = "Columns not defined in input: %s" % ", ".join(
-                        missing_columns
-                    )
-                    raise ConfigurationError(err_msg)
-                else:
-                    default_columns = self.default_input_columns[
-                        self.conf["input_format"]
-                    ]
-                    for col_name in requested_input_columns:
-                        try:
-                            col_index = default_columns.index(col_name)
-                        except ValueError:
-                            err_msg = "Column %s not defined for %s format input" % (
-                                col_name,
-                                self.conf["input_format"],
-                            )
-                            raise ConfigurationError(err_msg)
-                        if col_name == "pos":
-                            data_type = "int"
-                        else:
-                            data_type = "string"
-                        self.primary_input_reader.override_column(
-                            col_index, col_name, data_type=data_type
+        self.primary_input_reader = CravatReader(self.primary_input_path)
+        requested_input_columns = self.conf["input_columns"]
+        defined_columns = self.primary_input_reader.get_column_names()
+        missing_columns = set(requested_input_columns) - set(defined_columns)
+        if missing_columns:
+            if len(defined_columns) > 0:
+                err_msg = "Columns not defined in input: %s" % ", ".join(
+                    missing_columns
+                )
+                raise ConfigurationError(err_msg)
+            else:
+                default_columns = self.default_input_columns[
+                    self.conf["input_format"]
+                ]
+                for col_name in requested_input_columns:
+                    try:
+                        col_index = default_columns.index(col_name)
+                    except ValueError:
+                        err_msg = "Column %s not defined for %s format input" % (
+                            col_name,
+                            self.conf["input_format"],
                         )
-        except Exception as e:
-            self._log_exception(e)
+                        raise ConfigurationError(err_msg)
+                    if col_name == "pos":
+                        data_type = "int"
+                    else:
+                        data_type = "string"
+                    self.primary_input_reader.override_column(
+                        col_index, col_name, data_type=data_type
+                    )
 
     def _setup_secondary_inputs(self):
+        self.secondary_readers = {}
         try:
-            self.secondary_readers = {}
-            try:
-                num_expected = len(self.conf["secondary_inputs"])
-            except KeyError:
-                num_expected = 0
-            num_provided = len(self.secondary_paths)
-            if num_expected > num_provided:
-                raise Exception(
-                    f"Too few secondary inputs. {num_expected} expected, {num_provided} provided"
-                )
-            elif num_expected < num_provided:
-                raise Exception(
-                    "Too many secondary inputs. %d expected, %d provided"
-                    % (num_expected, num_provided)
-                )
-            for sec_name, sec_input_path in self.secondary_paths.items():
-                key_col = (
-                    self.conf["secondary_inputs"][sec_name]
-                    .get("match_columns", {})
-                    .get("secondary", "uid")
-                )
-                use_columns = self.conf["secondary_inputs"][sec_name].get(
-                    "use_columns", []
-                )
-                fetcher = SecondaryInputFetcher(
-                    sec_input_path, key_col, fetch_cols=use_columns
-                )
-                self.secondary_readers[sec_name] = fetcher
-        except Exception as e:
-            self._log_exception(e)
+            num_expected = len(self.conf["secondary_inputs"])
+        except KeyError:
+            num_expected = 0
+        num_provided = len(self.secondary_paths)
+        if num_expected > num_provided:
+            raise Exception(
+                f"Too few secondary inputs. {num_expected} expected, {num_provided} provided"
+            )
+        elif num_expected < num_provided:
+            raise Exception(
+                "Too many secondary inputs. %d expected, %d provided"
+                % (num_expected, num_provided)
+            )
+        for sec_name, sec_input_path in self.secondary_paths.items():
+            key_col = (
+                self.conf["secondary_inputs"][sec_name]
+                .get("match_columns", {})
+                .get("secondary", "uid")
+            )
+            use_columns = self.conf["secondary_inputs"][sec_name].get(
+                "use_columns", []
+            )
+            fetcher = SecondaryInputFetcher(
+                sec_input_path, key_col, fetch_cols=use_columns
+            )
+            self.secondary_readers[sec_name] = fetcher
 
     # Open the output files (.var, .gen, .ncd) that are needed
     def _setup_outputs(self):
-        try:
-            level = self.conf["level"]
-            if level == "variant":
-                output_suffix = "var"
-            elif level == "gene":
-                output_suffix = "gen"
-            elif level == "summary":
-                output_suffix = "sum"
-            else:
-                output_suffix = "out"
-            if not (os.path.exists(self.output_dir)):
-                os.makedirs(self.output_dir)
-            self.output_path = os.path.join(
-                self.output_dir,
-                ".".join([self.output_basename, self.module_name, output_suffix]),
+        level = self.conf["level"]
+        if level == "variant":
+            output_suffix = "var"
+        elif level == "gene":
+            output_suffix = "gen"
+        elif level == "summary":
+            output_suffix = "sum"
+        else:
+            output_suffix = "out"
+        if not (os.path.exists(self.output_dir)):
+            os.makedirs(self.output_dir)
+        self.output_path = os.path.join(
+            self.output_dir,
+            ".".join([self.output_basename, self.module_name, output_suffix]),
+        )
+        self.invalid_path = os.path.join(
+            self.output_dir,
+            ".".join([self.output_basename, self.module_name, "err"]),
+        )
+        if self.plain_output:
+            self.output_writer = CravatWriter(
+                self.output_path,
+                include_definition=False,
+                include_titles=True,
+                titles_prefix="",
             )
-            self.invalid_path = os.path.join(
-                self.output_dir,
-                ".".join([self.output_basename, self.module_name, "err"]),
+        else:
+            self.output_writer = CravatWriter(self.output_path)
+            self.output_writer.write_meta_line("name", self.module_name)
+            self.output_writer.write_meta_line(
+                "displayname", self.annotator_display_name
             )
-            if self.plain_output:
-                self.output_writer = CravatWriter(
-                    self.output_path,
-                    include_definition=False,
-                    include_titles=True,
-                    titles_prefix="",
-                )
-            else:
-                self.output_writer = CravatWriter(self.output_path)
-                self.output_writer.write_meta_line("name", self.module_name)
-                self.output_writer.write_meta_line(
-                    "displayname", self.annotator_display_name
-                )
-                self.output_writer.write_meta_line("version", self.annotator_version)
-            skip_aggregation = []
-            for col_index, col_def in enumerate(self.conf["output_columns"]):
-                self.output_writer.add_column(col_index, col_def)
-                if not (col_def.get("aggregate", True)):
-                    skip_aggregation.append(col_def["name"])
-            if not (self.plain_output):
-                self.output_writer.write_definition(self.conf)
-                self.output_writer.write_meta_line(
-                    "no_aggregate", ",".join(skip_aggregation)
-                )
-        except Exception as e:
-            self._log_exception(e)
+            self.output_writer.write_meta_line("version", self.annotator_version)
+        skip_aggregation = []
+        for col_index, col_def in enumerate(self.conf["output_columns"]):
+            self.output_writer.add_column(col_index, col_def)
+            if not (col_def.get("aggregate", True)):
+                skip_aggregation.append(col_def["name"])
+        if not (self.plain_output):
+            self.output_writer.write_definition(self.conf)
+            self.output_writer.write_meta_line(
+                "no_aggregate", ",".join(skip_aggregation)
+            )
 
     def _open_db_connection(self):
         db_dirs = [self.data_dir, os.path.join("/ext", "resource", "newarch")]
@@ -537,14 +511,11 @@ class BaseAnnotator(object):
         pass
 
     def base_cleanup(self):
-        try:
-            self.output_writer.close()
-            # self.invalid_file.close()
-            if self.dbconn != None:
-                self.close_db_connection()
-            self.cleanup()
-        except Exception as e:
-            self._log_exception(e)
+        self.output_writer.close()
+        # self.invalid_file.close()
+        if self.dbconn != None:
+            self.close_db_connection()
+        self.cleanup()
 
     # Placeholder, intended to be overridden in derived class
     def cleanup(self):
@@ -558,33 +529,30 @@ class BaseAnnotator(object):
 
     # Setup the logging utility
     def _setup_logger(self):
-        try:
-            self.logger = logging.getLogger("oakvar." + self.module_name)
-            if self.output_basename != "__dummy__":
-                self.log_path = os.path.join(
-                    self.output_dir, self.output_basename + ".log"
-                )
-                log_handler = logging.FileHandler(self.log_path, "a")
-            else:
-                log_handler = logging.StreamHandler()
-            formatter = logging.Formatter(
-                "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
+        self.logger = logging.getLogger("oakvar." + self.module_name)
+        if self.output_basename != "__dummy__":
+            self.log_path = os.path.join(
+                self.output_dir, self.output_basename + ".log"
             )
-            log_handler.setFormatter(formatter)
-            self.logger.addHandler(log_handler)
-            self.error_logger = logging.getLogger("error." + self.module_name)
-            if self.output_basename != "__dummy__":
-                error_log_path = os.path.join(
-                    self.output_dir, self.output_basename + ".err"
-                )
-                error_log_handler = logging.FileHandler(error_log_path, "a")
-            else:
-                error_log_handler = logging.StreamHandler()
-            formatter = logging.Formatter("SOURCE:%(name)-20s %(message)s")
-            error_log_handler.setFormatter(formatter)
-            self.error_logger.addHandler(error_log_handler)
-        except Exception as e:
-            self._log_exception(e)
+            log_handler = logging.FileHandler(self.log_path, "a")
+        else:
+            log_handler = logging.StreamHandler()
+        formatter = logging.Formatter(
+            "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
+        )
+        log_handler.setFormatter(formatter)
+        self.logger.addHandler(log_handler)
+        self.error_logger = logging.getLogger("error." + self.module_name)
+        if self.output_basename != "__dummy__":
+            error_log_path = os.path.join(
+                self.output_dir, self.output_basename + ".err"
+            )
+            error_log_handler = logging.FileHandler(error_log_path, "a")
+        else:
+            error_log_handler = logging.StreamHandler()
+        formatter = logging.Formatter("SOURCE:%(name)-20s %(message)s")
+        error_log_handler.setFormatter(formatter)
+        self.error_logger.addHandler(error_log_handler)
         self.unique_excs = []
 
     # Gets the input dict from both the input file, and
@@ -673,23 +641,27 @@ class SecondaryInputFetcher:
     def load_input(self):
         for _, line, all_col_data in self.input_reader.loop_data():
             key_data = all_col_data[self.key_col]
-            if key_data not in self.data:
-                self.data[key_data] = []
+            #if key_data not in self.data:
+            #    self.data[key_data] = [None] * len(self.fetch_cols)
+            #else:
             fetch_col_data = {}
-            row_has_data = False
+            #row_has_data = False
             for col in self.fetch_cols:
-                if col != self.key_col and all_col_data[col] is not None:
-                    row_has_data = True
+                #if col != self.key_col:# and all_col_data[col] is not None:
+                #    row_has_data = True
                 fetch_col_data[col] = all_col_data[col]
-            if row_has_data:
-                self.data[key_data].append(fetch_col_data)
+            #if row_has_data:
+            self.data[key_data] = fetch_col_data
             # self.data[key_data].append(fetch_col_data)
 
     def get(self, key_data):
         if key_data in self.data:
             return self.data[key_data]
         else:
-            return []
+            ret = {}
+            for col_name in self.fetch_cols:
+                ret[col_name] = None
+            return ret
 
     def get_values(self, key_data, key_column):
         ret = [v[key_column] for v in self.data[key_data]]
