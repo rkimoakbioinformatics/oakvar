@@ -1543,9 +1543,8 @@ def ready_resolution_console():
             args = SimpleNamespace(
                 force_data=False, force=False, md=None
             )
-            from . import cmd_admin
-
-            cmd_admin.install_base(args)
+            from .cli_admin import install_base
+            install_base(args)
             print("Base modules have been installed.")
     exit()
 

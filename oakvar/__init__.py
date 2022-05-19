@@ -40,27 +40,16 @@ from .base_annotator import BaseAnnotator
 from .base_mapper import BaseMapper
 from .base_postaggregator import BasePostAggregator
 from .base_commonmodule import BaseCommonModule
-from .cmd_report import CravatReport, run_reporter
+from .cli_report import CravatReport, run_reporter
 from .config_loader import ConfigLoader
 from .cravat_filter import CravatFilter
-from .cmd_run import Cravat
+from .cli_run import Cravat
 from .constants import crx_def
 from .exceptions import *
 from . import constants
 from . import __main__ as cli
 
 wgs = None
-
-
-def run(*args, **kwargs):
-    print("args=", args, "kwargs=", kwargs)
-    print(len(args), len(kwargs))
-    if len(args) == 0 and len(kwargs) == 0:
-        from .oc import main as ocmain
-
-        ocmain()
-    else:
-        cmd_run.run_cravat_job(*args, **kwargs)
 
 
 def get_live_annotator(module_name):

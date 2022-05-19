@@ -192,9 +192,9 @@ class BaseAnnotator(object):
         return output_dict
 
     def log_progress(self, lnum):
-        import time
+        from time import time
         if self.update_status_json_flag and self.status_writer is not None:
-            cur_time = time.time()
+            cur_time = time()
             if lnum % 10000 == 0 or cur_time - self.last_status_update_time > 3:
                 self.status_writer.queue_status_update(
                     "status",
@@ -228,22 +228,22 @@ class BaseAnnotator(object):
 
     # Runs the annotator.
     def run(self):
-        import time
+        from time import time, asctime, localtime
         if self.update_status_json_flag and self.status_writer is not None:
             self.status_writer.queue_status_update(
                 "status", "Started {} ({})".format(self.conf["title"], self.module_name)
             )
         try:
-            start_time = time.time()
-            self.logger.info("started: %s" % time.asctime(time.localtime(start_time)))
+            start_time = time()
+            self.logger.info("started: %s" % asctime(localtime(start_time)))
             if not self.args["silent"]:
                 print(
                     "        {}: started at {}".format(
-                        self.module_name, time.asctime(time.localtime(start_time))
+                        self.module_name, asctime(localtime(start_time))
                     )
                 )
             self.base_setup()
-            self.last_status_update_time = time.time()
+            self.last_status_update_time = time()
             self.output_columns = self.conf["output_columns"]
             self.make_json_colnames()
             for lnum, line, input_data, secondary_data in self._get_input():
@@ -274,14 +274,14 @@ class BaseAnnotator(object):
             # This does summarizing.
             self.postprocess()
             self.base_cleanup()
-            end_time = time.time()
+            end_time = time()
             self.logger.info(
-                "finished: {0}".format(time.asctime(time.localtime(end_time)))
+                "finished: {0}".format(asctime(localtime(end_time)))
             )
             if not self.args["silent"]:
                 print(
                     "        {}: finished at {}".format(
-                        self.module_name, time.asctime(time.localtime(end_time))
+                        self.module_name, asctime(localtime(end_time))
                     )
                 )
             run_time = end_time - start_time
@@ -307,9 +307,9 @@ class BaseAnnotator(object):
         pass
 
     async def get_gene_summary_data(self, cf):
-        import time
+        from time import time
         # print('            {}: getting gene summary data'.format(self.module_name))
-        t = time.time()
+        t = time()
         module_ver = await cf.exec_db(cf.get_module_version_in_job, self.module_name)
         hugos = await cf.exec_db(cf.get_filtered_hugo_list)
         output_columns = await cf.exec_db(
@@ -321,16 +321,16 @@ class BaseAnnotator(object):
             if coldef["name"] != "uid"
         ]
         data = {}
-        t = time.time()
+        t = time()
         rows = await cf.exec_db(cf.get_variant_data_for_cols, cols)
         rows_by_hugo = {}
-        t = time.time()
+        t = time()
         for row in rows:
             hugo = row[-1]
             if hugo not in rows_by_hugo:
                 rows_by_hugo[hugo] = []
             rows_by_hugo[hugo].append(row)
-        t = time.time()
+        t = time()
         for hugo in hugos:
             rows = rows_by_hugo[hugo]
             input_data = {}
@@ -338,7 +338,7 @@ class BaseAnnotator(object):
                 input_data[cols[i].split("__")[1]] = [row[i] for row in rows]
             out = self.summarize_by_gene(hugo, input_data)
             data[hugo] = out
-        # print('            {}: finished getting gene summary data in {:0.3f}s'.format(self.module_name, time.time() - t))
+        # print('            {}: finished getting gene summary data in {:0.3f}s'.format(self.module_name, time() - t))
         return data
 
     def _log_runtime_exception(self, lnum, line, input_data, e):

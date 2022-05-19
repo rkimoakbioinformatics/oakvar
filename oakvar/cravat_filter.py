@@ -833,7 +833,7 @@ class CravatFilter:
                     q += "(v.base__uid in (select base__uid from fsample))"
             await cursor.execute(q)
             await conn.commit()
-            t = time.time() - t
+            t = time() - t
 
     async def make_gene_list_table(self, conn=None, cursor=None):
         tname = "gene_list"
