@@ -1,15 +1,10 @@
-import os
-import oyaml as yaml
-import copy
-from oakvar import admin_util as au
-import shutil
-from oakvar import constants
 
 
 class ConfigLoader:
     def __init__(self, job_conf_path=None):
+        from .admin_util import get_main_conf_path
         self.job_conf_path = job_conf_path
-        self.main_conf_path = au.get_main_conf_path()
+        self.main_conf_path = get_main_conf_path()
         self._system = {}
         self._main = {}
         self._job = {}
@@ -21,29 +16,37 @@ class ConfigLoader:
         self._build_all()
 
     def _load_system_conf(self, build_all=True):
-        self._system = au.get_system_conf()
+        from .admin_util import get_system_conf
+        self._system = get_system_conf()
         if build_all:
             self._build_all()
 
     def _load_main_conf(self, build_all=True):
+        import os
+        import copy
+        from .admin_util import load_yml_conf, get_packagedir
+        import shutil
+        from .constants import default_multicore_mapper_mode
         self._main = {}
         if os.path.exists(self.main_conf_path) == False:
             shutil.copy(
-                os.path.join(constants.packagedir, "cravat.yml"), self.main_conf_path
+                os.path.join(get_packagedir(), "cravat.yml"), self.main_conf_path
             )
-        self._main = au.load_yml_conf(self.main_conf_path)
+        self._main = load_yml_conf(self.main_conf_path)
         conf_modified = False
         k = "multicore_mapper_mode"
         if k not in self._main:
-            self._main[k] = constants.default_multicore_mapper_mode
+            self._main[k] = default_multicore_mapper_mode
         if build_all:
             self._build_all()
 
     def _load_job_conf(self, build_all=True):
+        import os
+        from .admin_util import load_yml_conf
         self._job = {}
         if self.job_conf_path:
             if os.path.exists(self.job_conf_path):
-                self._job = au.load_yml_conf(self.job_conf_path)
+                self._job = load_yml_conf(self.job_conf_path)
             else:
                 print("Job conf file", self.job_conf_path, "does not exist.")
                 exit()
@@ -51,13 +54,16 @@ class ConfigLoader:
             self._build_all()
 
     def _load_module_conf(self, module_name, build_all=True):
-        conf_path = au.get_module_conf_path(module_name)
+        from .admin_util import get_module_conf_path, load_yml_conf
+        conf_path = get_module_conf_path(module_name)
         if conf_path is not None:
-            self._modules[module_name] = au.load_yml_conf(conf_path)
+            self._modules[module_name] = load_yml_conf(conf_path)
         if build_all:
             self._build_all()
 
     def _build_all(self):
+        import copy
+        from .admin_util import recursive_update
         self._all = {}
         if self._modules:
             self._all["modules"] = copy.deepcopy(self._modules)
@@ -65,7 +71,7 @@ class ConfigLoader:
             self._all["cravat"] = copy.deepcopy(self._main)
         if self._system:
             self._all["system"] = copy.deepcopy(self._system)
-        self._all = au.recursive_update(self._all, self._job)
+        self._all = recursive_update(self._all, self._job)
         if "run" not in self._all:
             self._all["run"] = {}
         for k, v in self._all["system"].items():
@@ -84,9 +90,11 @@ class ConfigLoader:
         A list of modules to include may be passed in. An empty list results
         in all module configs being saved.
         """
+        import oyaml as yaml
+        from .admin_util import list_local
         # Load all modules, or only requested modules
         if len(modules) == 0:
-            modules = au.list_local()
+            modules = list_local()
         for module_name in modules:
             self._load_module_conf(module_name, build_all=False)
         self._build_all()
@@ -112,7 +120,7 @@ class ConfigLoader:
     def get_all_conf(self):
         return self._all
 
-    def get_module_conf(self, module_name):
+    def get_module_conf(self, module_name, module_type=None):
         if module_name not in self._modules:
             self._load_module_conf(module_name)
         if "modules" in self._all and module_name in self._all["modules"]:
@@ -144,13 +152,16 @@ class ConfigLoader:
             return None
 
     def override_run_conf(self, run_conf):
-        self._all["run"] = au.recursive_update(self._all["run"], run_conf)
+        from .admin_util import recursive_update
+        self._all["run"] = recursive_update(self._all["run"], run_conf)
 
     def override_cravat_conf(self, cravat_conf):
-        self._all["cravat"] = au.recursive_update(self._all["cravat"], cravat_conf)
+        from .admin_util import recursive_update
+        self._all["cravat"] = recursive_update(self._all["cravat"], cravat_conf)
 
     def override_all_conf(self, conf):
-        self._all = au.recursive_update(self._all, conf)
+        from .admin_util import recursive_update
+        self._all = recursive_update(self._all, conf)
 
     def get_local_module_confs(self):
         return self._all["modules"]

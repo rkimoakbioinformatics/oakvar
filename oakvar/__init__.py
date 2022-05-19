@@ -44,11 +44,8 @@ from .cmd_report import CravatReport, run_reporter
 from .config_loader import ConfigLoader
 from .cravat_filter import CravatFilter
 from .cmd_run import Cravat
-from .util import get_ucsc_bins, reverse_complement, translate_codon, switch_strand
 from .constants import crx_def
 from .exceptions import *
-from . import cmd_util
-from . import admin_util
 from . import constants
 from . import __main__ as cli
 
@@ -114,11 +111,12 @@ def get_live_mapper(module_name):
 def get_module(module_name):
     try:
         import os
-
+        from .admin_util import get_local_module_info
+        from .util import load_class
         config_loader = ConfigLoader()
-        module_info = admin_util.get_local_module_info(module_name)
+        module_info = get_local_module_info(module_name)
         script_path = module_info.script_path
-        ModuleClass = util.load_class(script_path)
+        ModuleClass = load_class(script_path)
         ModuleClass.script_path = script_path
         ModuleClass.module_name = module_name
         ModuleClass.module_dir = os.path.dirname(script_path)
@@ -149,10 +147,11 @@ class LiveAnnotator:
         self.variant_uid = 1
 
     def load_live_modules(self, mapper, annotator_names):
+        from .admin_util import get_mic
         self.live_mapper = get_live_mapper(mapper)
-        for module_name in admin_util.mic.local.keys():
+        for module_name in get_mic().local.keys():
             if module_name in annotator_names:
-                module = admin_util.mic.local[module_name]
+                module = get_mic().local[module_name]
                 if "secondary_inputs" in module.conf:
                     continue
                 annotator = get_live_annotator(module.name)
@@ -206,3 +205,4 @@ class LiveAnnotator:
         del crx_data["tmp_mapper"]
         response["base"] = crx_data
         return response
+

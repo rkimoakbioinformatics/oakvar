@@ -1,13 +1,6 @@
-import argparse
-import os
-import subprocess
-from oakvar import admin_util as au
-import time
+from argparse import ArgumentParser
 import sys
 from abc import ABC, abstractmethod
-import csv as csv
-import openpyxl as pyxl
-import openpyxl as pyxl
 
 class ReportReader(ABC):
     def __init__(self, rsltFile):
@@ -134,6 +127,7 @@ class ExcelReportReader(ReportReader):
 
     # Based on the level selected, return column headers and row values.
     def readReport(self, test_level, bDict):
+        from openpyxl import load_workbook
         headers = None
         tabNbr = "Variant"
         if test_level == "gene":
@@ -147,7 +141,7 @@ class ExcelReportReader(ReportReader):
         xlxsFile = (
             self.rsltFile if ".xlsx" in self.rsltFile else self.rsltFile + ".xlsx"
         )
-        wb = pyxl.load_workbook(filename=xlxsFile)
+        wb = load_workbook(filename=xlxsFile)
         sheet = wb[tabNbr]
 
         if bDict:
@@ -409,6 +403,7 @@ class CsvReportReader(ReportReader):
 
     # Based on the level selected, return column headers and row values.
     def readReport(self, test_level, bDict):
+        import csv
         level_hdr = "level="
         level = ""
         headers = None
@@ -499,33 +494,35 @@ class CsvReportReader(ReportReader):
 # class that actually runs a test of a specific module and then verifies the results.
 class Tester:
     def __init__(self, module, args, input_file):
+        from os.path import dirname, exists, join, abspath
+        from os import makdirs
         self.args = args
         rundir = args["rundir"]
-        cur_dir = os.path.dirname(os.path.abspath(__file__))
+        cur_dir = dirname(abspath(__file__))
         self.module = module
-        if not os.path.exists(module.directory) or not module.script_exists:
+        if not exists(module.directory) or not module.script_exists:
             raise Exception(
                 "No runnable module installed at path %s" % module.directory
             )
-        self.out_dir = os.path.join(rundir, module.name)
-        if not os.path.exists(self.out_dir):
-            os.makedirs(self.out_dir)
+        self.out_dir = join(rundir, module.name)
+        if not exists(self.out_dir):
+            makedirs(self.out_dir)
         self.input_file = input_file
-        self.input_path = os.path.join(module.test_dir, input_file)
-        self.key_path = os.path.join(
+        self.input_path = join(module.test_dir, input_file)
+        self.key_path = join(
             module.test_dir, input_file.replace("input", "key")
         )
-        self.parms_path = os.path.join(
+        self.parms_path = join(
             module.test_dir, input_file.replace("input", "parms")
         )
         log = "test.log"
         if len(input_file.replace("input", "")) > 0:
             log = input_file + ".test.log"
-        self.log_path = os.path.join(
+        self.log_path = join(
             self.out_dir, log
         )  # put the output of this program in test.log
         self.output_file = "oc_output"
-        self.out_path = os.path.join(self.out_dir, self.output_file)
+        self.out_path = join(self.out_dir, self.output_file)
         self.log = open(self.log_path, "w", encoding="UTF-8")
         self.start_time = None
         self.end_time = None
@@ -537,8 +534,9 @@ class Tester:
     # the test parameters are tab delimited.  Load each parm/value into the parms
     # dictionary.
     def parse_parms(self):
+        from os.path import exists
         self.parms = {}
-        if os.path.exists(self.parms_path):
+        if exists(self.parms_path):
             with open(self.parms_path) as f:
                 line = f.readline().strip("\n")
                 while line:
@@ -550,11 +548,14 @@ class Tester:
 
     # function that tests one module
     def run(self):
+        from .admin_util import get_local_module_info
+        from time import time
+        from subprocess import call, STDOUT
         input_msg = (
             "" if self.input_file == "input" else self.input_file
         )  # if there is more than one test for the module, include the test file in the log.
         self._report(f"{self.module.name}: started {input_msg}")
-        self.start_time = time.time()
+        self.start_time = time()
         self.parse_parms()
         python_exc = sys.executable
         # default is to run 'text' report but it can be overridden in the optional parms file.
@@ -578,8 +579,8 @@ class Tester:
             cmd_list.extend(["-a", self.module.name])
         elif (
             (self.module.type == "reporter")
-            and (au.get_local_module_info("vest") is not None)
-            and (au.get_local_module_info("cgl") is not None)
+            and (get_local_module_info("vest") is not None)
+            and (get_local_module_info("cgl") is not None)
         ):
             # when testing reporters, if the vest and cgl modules are installed, include them in the run / report.
             cmd_list.extend(["-a", "vest", "cgl"])
@@ -596,8 +597,8 @@ class Tester:
             cmd_list.extend(["-l", "hg38"])
         if self.args["to"] == "stdout":
             print(" ".join(cmd_list))
-        exit_code = subprocess.call(
-            " ".join(cmd_list), shell=True, stdout=self.log, stderr=subprocess.STDOUT
+        exit_code = call(
+            " ".join(cmd_list), shell=True, stdout=self.log, stderr=STDOUT
         )
         if exit_code != 0:
             self._report(f"{self.module.name}: exit code {exit_code}")
@@ -627,8 +628,8 @@ class Tester:
                     ],
                 )
             else:
-                if (au.get_local_module_info("vest") is not None) and (
-                    au.get_local_module_info("cgl") is not None
+                if (get_local_module_info("vest") is not None) and (
+                    get_local_module_info("cgl") is not None
                 ):
                     self.verify_level(
                         "variant",
@@ -732,7 +733,8 @@ class Tester:
 
     # Log success /failure of test.
     def write_results(self):
-        self.end_time = time.time()
+        from time import time
+        self.end_time = time()
         elapsed_time = self.end_time - self.start_time
         self._report(f"{self.module.name}: finished in %.2f seconds" % elapsed_time)
         if self.test_passed:
@@ -742,23 +744,25 @@ class Tester:
 
 
 def fn_util_test(*inargs, **inkwargs):
-    import oakvar
-    args = oakvar.util.get_args(parser_fn_util_test, inargs, inkwargs)
+    from .util import get_args
+    from os.path import exists
+    from os import makedirs
+    from .admin_util import get_local_module_types, get_local_module_info
+    args = get_args(parser_fn_util_test, inargs, inkwargs)
     rundir = args["rundir"]
     if rundir is None:
         num = 1
         while True:
             rundir = f"oakvartest_{num}"
-            if os.path.exists(rundir) == False:
+            if exists(rundir) == False:
                 break
             else:
                 num += 1
-        #args["rundir"] = "oakvartest_" + str(int(round(time.time() * 1000)))
     # create run output directory
-    if not os.path.exists(args["rundir"]):
-        os.makedirs(args["rundir"])
+    if not exists(args["rundir"]):
+        makedirs(args["rundir"])
     # installed module types
-    module_types = au.get_local_module_types()
+    module_types = get_local_module_types()
     passed = 0
     failed = 0
     modules_failed = []
@@ -766,7 +770,7 @@ def fn_util_test(*inargs, **inkwargs):
     module_names.sort()
     result = {}
     for module_name in module_names:
-        module = au.get_local_module_info(module_name)
+        module = get_local_module_info(module_name)
         if module is None:
             #print(f"{module_name} does not exist in the system. Passing.")
             continue
@@ -803,7 +807,7 @@ def main():
     fn_util_test(args)
 
 
-parser_fn_util_test = argparse.ArgumentParser()
+parser_fn_util_test = ArgumentParser()
 parser_fn_util_test.add_argument("-d", "--rundir", help="Directory for output")
 parser_fn_util_test.add_argument(
     "-m", "--modules", nargs="+", help="Name of module(s) to test. (e.g. gnomad)"

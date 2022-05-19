@@ -1,32 +1,6 @@
-import logging
-import os
-import time
-import traceback
-import argparse
-from .inout import CravatReader
-from .inout import CravatWriter
-from .inout import AllMappingsParser
-from oakvar.config_loader import ConfigLoader
-import sys
-from .constants import crv_def
-from .constants import crx_def
-from .constants import crg_def
-from .constants import all_mappings_col_name
-from .constants import mapping_parser_name
-from .exceptions import InvalidData
-from .exceptions import ConfigurationError
-import sqlite3
-import json
-import oakvar.admin_util as au
-import re
-from types import SimpleNamespace
-from oakvar.util import get_args
-from distutils.version import LooseVersion
-from oakvar.constants import cannonical_chroms
-
-
 class BaseAnnotator(object):
 
+    from .constants import crv_def, crx_def, crg_def
     valid_levels = ["variant", "gene"]
     valid_input_formats = ["crv", "crx", "crg"]
     id_col_defs = {"variant": crv_def[0], "gene": crg_def[0]}
@@ -38,6 +12,11 @@ class BaseAnnotator(object):
     required_conf_keys = ["level", "output_columns"]
 
     def __init__(self, *inargs, **inkwargs):
+        import os
+        import sys
+        from oakvar.config_loader import ConfigLoader
+        from oakvar.util import get_args
+        from oakvar.constants import cannonical_chroms
         main_fpath = os.path.abspath(sys.modules[self.__module__].__file__)
         self.primary_input_path = None
         self.secondary_paths = None
@@ -97,6 +76,7 @@ class BaseAnnotator(object):
             return True
 
     def _verify_conf(self):
+        from .exceptions import ConfigurationError
         for k in self.required_conf_keys:
             if k not in self.conf:
                 err_msg = 'Required key "%s" not found in configuration' % k
@@ -132,6 +112,7 @@ class BaseAnnotator(object):
             ]
 
     def _define_cmd_parser(self):
+        import argparse
         parser = argparse.ArgumentParser()
         parser.add_argument("input_file", help="Input file to be annotated.")
         parser.add_argument(
@@ -168,6 +149,10 @@ class BaseAnnotator(object):
 
     # Parse the command line arguments
     def parse_cmd_args(self, inargs, inkwargs):
+        import os
+        import json
+        import re
+        from oakvar.util import get_args
         args = get_args(self.cmd_arg_parser, inargs, inkwargs)
         self.primary_input_path = os.path.abspath(args["input_file"])
         self.secondary_paths = {}
@@ -198,6 +183,7 @@ class BaseAnnotator(object):
         self.args = args
 
     def handle_jsondata(self, output_dict):
+        import json
         for colname in self.json_colnames:
             json_data = output_dict.get(colname, None)
             if json_data is not None:
@@ -206,6 +192,7 @@ class BaseAnnotator(object):
         return output_dict
 
     def log_progress(self, lnum):
+        import time
         if self.update_status_json_flag and self.status_writer is not None:
             cur_time = time.time()
             if lnum % 10000 == 0 or cur_time - self.last_status_update_time > 3:
@@ -241,6 +228,7 @@ class BaseAnnotator(object):
 
     # Runs the annotator.
     def run(self):
+        import time
         if self.update_status_json_flag and self.status_writer is not None:
             self.status_writer.queue_status_update(
                 "status", "Started {} ({})".format(self.conf["title"], self.module_name)
@@ -319,6 +307,7 @@ class BaseAnnotator(object):
         pass
 
     async def get_gene_summary_data(self, cf):
+        import time
         # print('            {}: getting gene summary data'.format(self.module_name))
         t = time.time()
         module_ver = await cf.exec_db(cf.get_module_version_in_job, self.module_name)
@@ -353,6 +342,7 @@ class BaseAnnotator(object):
         return data
 
     def _log_runtime_exception(self, lnum, line, input_data, e):
+        import traceback
         err_str = traceback.format_exc().rstrip()
         lines = err_str.split("\n")
         last_line = lines[-1]
@@ -380,6 +370,8 @@ class BaseAnnotator(object):
             )
 
     def _setup_primary_input(self):
+        from .exceptions import ConfigurationError
+        from .inout import CravatReader
         self.primary_input_reader = CravatReader(self.primary_input_path)
         requested_input_columns = self.conf["input_columns"]
         defined_columns = self.primary_input_reader.get_column_names()
@@ -443,6 +435,8 @@ class BaseAnnotator(object):
 
     # Open the output files (.var, .gen, .ncd) that are needed
     def _setup_outputs(self):
+        import os
+        from .inout import CravatWriter
         level = self.conf["level"]
         if level == "variant":
             output_suffix = "var"
@@ -488,6 +482,8 @@ class BaseAnnotator(object):
             )
 
     def _open_db_connection(self):
+        import os
+        import sqlite3
         db_dirs = [self.data_dir, os.path.join("/ext", "resource", "newarch")]
         db_path = None
         for db_dir in db_dirs:
@@ -522,6 +518,7 @@ class BaseAnnotator(object):
         pass
 
     def remove_log_file(self):
+        import os
         self.logger.removeHandler(self.log_handler)
         self.log_handler.flush()
         self.log_handler.close()
@@ -529,6 +526,8 @@ class BaseAnnotator(object):
 
     # Setup the logging utility
     def _setup_logger(self):
+        import logging
+        import os
         self.logger = logging.getLogger("oakvar." + self.module_name)
         if self.output_basename != "__dummy__":
             self.log_path = os.path.join(
@@ -558,6 +557,9 @@ class BaseAnnotator(object):
     # Gets the input dict from both the input file, and
     # any depended annotators depended annotator feature not complete.
     def _get_input(self):
+        from .inout import AllMappingsParser
+        from .constants import all_mappings_col_name
+        from .constants import mapping_parser_name
         for lnum, line, reader_data in self.primary_input_reader.loop_data():
             try:
                 input_data = {}
@@ -582,6 +584,7 @@ class BaseAnnotator(object):
                 continue
 
     def annotate(self, input_data):
+        import sys
         sys.stdout.write(
             "        annotate method should be implemented. "
             + "Exiting "
@@ -592,7 +595,6 @@ class BaseAnnotator(object):
 
     def live_report_substitute(self, d):
         import re
-
         if "report_substitution" not in self.conf:
             return d
         rs_dic = self.conf["report_substitution"]
@@ -614,6 +616,8 @@ class BaseAnnotator(object):
 
 class SecondaryInputFetcher:
     def __init__(self, input_path, key_col, fetch_cols=[]):
+        from .inout import CravatReader
+        from .exceptions import ConfigurationError
         self.key_col = key_col
         self.input_path = input_path
         self.input_reader = CravatReader(self.input_path)
@@ -666,3 +670,4 @@ class SecondaryInputFetcher:
     def get_values(self, key_data, key_column):
         ret = [v[key_column] for v in self.data[key_data]]
         return ret
+

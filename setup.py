@@ -72,7 +72,7 @@ setup(
         'psutil',
         'mpmath',
     ],
-    python_requires='>=3.7',
+    python_requires='>=3.8',
     package_data={
         'oakvar': oakvar_files,
         'cravat': oakvar_files

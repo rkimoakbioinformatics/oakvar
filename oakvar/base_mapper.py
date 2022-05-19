@@ -1,30 +1,3 @@
-import os
-import traceback
-import argparse
-import logging
-import time
-from .inout import CravatReader, CravatWriter, AllMappingsParser
-from .constants import (
-    crx_def,
-    crx_idx,
-    crg_def,
-    crg_idx,
-    crt_def,
-    crt_idx,
-    gene_level_so_exclude,
-)
-from .exceptions import InvalidData, NoVariantError
-from oakvar.config_loader import ConfigLoader
-import sys
-import pkg_resources
-import json
-from types import SimpleNamespace
-import multiprocessing as mp
-import oakvar.admin_util as au
-import time
-import oakvar.util
-
-
 class BaseMapper(object):
     """
     BaseMapper is the parent class for Cravat Mapper objects.
@@ -35,6 +8,10 @@ class BaseMapper(object):
     """
 
     def __init__(self, *inargs, **inkwargs):
+        import os
+        import time
+        from oakvar.config_loader import ConfigLoader
+        import pkg_resources
         self.cmd_parser = None
         self.input_path = None
         self.input_dir = None
@@ -71,6 +48,7 @@ class BaseMapper(object):
         self.cravat_version = pkg_resources.get_distribution("oakvar").version
 
     def _define_main_cmd_args(self):
+        import argparse
         self.cmd_parser = argparse.ArgumentParser()
         self.cmd_parser.add_argument("input_file", help="Input crv file")
         self.cmd_parser.add_argument(
@@ -115,15 +93,19 @@ class BaseMapper(object):
         pass
 
     def _parse_cmd_args(self, inargs, inkwargs):
-        args = oakvar.util.get_args(self.cmd_parser, inargs, inkwargs)
-        self.input_path = os.path.abspath(args["input_file"])
-        self.input_dir, self.input_fname = os.path.split(self.input_path)
+        from os.path import abspath, split, exists
+        from os import makedirs
+        from json import loads
+        from .util import get_args
+        args = get_args(self.cmd_parser, inargs, inkwargs)
+        self.input_path = abspath(args["input_file"])
+        self.input_dir, self.input_fname = split(self.input_path)
         if args["output_dir"]:
             self.output_dir = args["output_dir"]
         else:
             self.output_dir = self.input_dir
-        if not (os.path.exists(self.output_dir)):
-            os.makedirs(self.output_dir)
+        if not (exists(self.output_dir)):
+            makedirs(self.output_dir)
         if hasattr(args, "run_name"):
             self.output_base_fname = args["run_name"]
         else:
@@ -131,7 +113,7 @@ class BaseMapper(object):
         self.confs = None
         if args["confs"] is not None:
             confs = args["confs"].lstrip("'").rstrip("'").replace("'", '"')
-            self.confs = json.loads(confs)
+            self.confs = loads(confs)
         self.slavemode = args["slavemode"]
         self.postfix = args["postfix"]
         self.primary_transcript_paths = args["primary_transcript"]
@@ -149,6 +131,7 @@ class BaseMapper(object):
         pass
 
     def _setup_logger(self):
+        import logging
         self.logger = logging.getLogger("oakvar.mapper")
         self.logger.info("input file: %s" % self.input_path)
         self.error_logger = logging.getLogger("error.mapper")
@@ -160,6 +143,10 @@ class BaseMapper(object):
         Open CravatReader for crv input. Open  CravatWriters for crx, and crg
         output. Open plain file for err output.
         """
+        import os
+        from .inout import CravatReader
+        from .inout import CravatWriter
+        from .constants import crx_def, crx_idx, crg_def, crg_idx, crt_def, crt_idx
         # Reader
         if self.args["seekpos"] is not None and self.args["chunksize"] is not None:
             self.reader = CravatReader(
@@ -219,6 +206,7 @@ class BaseMapper(object):
         Read crv file and use map() function to convert to crx dict. Write the
         crx dict to the crx file and add information in crx dict to gene_info
         """
+        import time
         self.base_setup()
         start_time = time.time()
         self.logger.info("started: %s" % time.asctime(time.localtime(start_time)))
@@ -270,6 +258,7 @@ class BaseMapper(object):
         Read crv file and use map() function to convert to crx dict. Write the
         crx dict to the crx file and add information in crx dict to gene_info
         """
+        import time
         self.base_setup()
         start_time = time.time()
         tstamp = time.asctime(time.localtime(start_time))
@@ -323,6 +312,7 @@ class BaseMapper(object):
         """
         Add information in a crx dict to persistent gene_info dict
         """
+        from .inout import AllMappingsParser
         tmap_json = crx_data["all_mappings"]
         # Return if no tmap
         if tmap_json == "":
@@ -335,6 +325,7 @@ class BaseMapper(object):
         """
         Convert gene_info to crg dict and write to crg file
         """
+        from .constants import crg_def
         sorted_hugos = list(self.gene_info.keys())
         sorted_hugos.sort()
         for hugo in sorted_hugos:
@@ -344,6 +335,7 @@ class BaseMapper(object):
             self.crg_writer.write_data(crg_data)
 
     def _log_runtime_error(self, ln, line, e):
+        import traceback
         err_str = traceback.format_exc().rstrip()
         if err_str not in self.unique_excs:
             self.unique_excs.append(err_str)
@@ -356,6 +348,8 @@ class BaseMapper(object):
 
     async def get_gene_summary_data(self, cf):
         # print('            {}: started getting gene summary data'.format(self.module_name))
+        import time
+        from .constants import crx_def
         t = time.time()
         hugos = await cf.exec_db(cf.get_filtered_hugo_list)
         # Below is to fix opening oc 1.8.0 jobs with oc 1.8.1.

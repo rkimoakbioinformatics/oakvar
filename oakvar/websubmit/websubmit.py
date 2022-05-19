@@ -24,8 +24,6 @@ from queue import Empty
 from .. import constants
 import signal
 import gzip
-from ..cmd_util import max_version_supported_for_migration, status_from_db
-from ..util import is_compatible_version
 import logging
 
 cfl = ConfigLoader()
@@ -505,6 +503,7 @@ def find_files_by_ending (d, ending):
     return files
 
 async def get_job (request, job_id):
+    from ..admin_util import get_max_version_supported_for_migration
     global filerouter
     job_dir = await filerouter.job_dir(request, job_id)
     if os.path.exists(job_dir) == False:
@@ -583,7 +582,7 @@ async def get_job (request, job_id):
     job.info['username'] = os.path.basename(os.path.dirname(job_dir))
     if 'open_cravat_version' not in job.info:
         job.info['open_cravat_version'] = '0.0.0'
-    if LooseVersion(job.info['open_cravat_version']) < max_version_supported_for_migration:
+    if LooseVersion(job.info['open_cravat_version']) < get_max_version_supported_for_migration():
         job.info['result_available'] = False
     else:
         job.info['result_available'] = True
@@ -1180,6 +1179,7 @@ def get_status_json_in_dir (job_dir):
     return status_json
 
 async def update_result_db (request):
+    from ..util import is_compatible_version
     queries = request.rel_url.query
     job_id = queries['job_id']
     global filerouter
@@ -1205,6 +1205,7 @@ async def update_result_db (request):
     return web.json_response(msg)
 
 async def import_job (request):
+    from ..cmd_util import status_from_db
     global filerouter
     jobs_dirs = await filerouter.get_jobs_dirs(request)
     jobs_dir = jobs_dirs[0]

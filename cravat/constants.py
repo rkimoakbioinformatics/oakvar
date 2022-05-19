@@ -1,159 +1,3 @@
-import os
-import copy
-import pathlib
-import shutil
-import sys
-import platform
-import yaml
-import subprocess
-
-# Directories
-custom_modules_dir = None
-custom_system_conf_path = None
-modules_dir_env_key = "OPENCRAVAT_MD"
-system_conf_path_env_key = "OPENCRAVAT_SYSTEM_CONF_PATH"
-packagedir = os.path.dirname(os.path.abspath(__file__))
-pl = platform.platform()
-if pl.startswith("Windows"):
-    pl = "windows"
-elif pl.startswith("Darwin") or pl.startswith("macOS"):
-    pl = "macos"
-elif pl.startswith("Linux"):
-    pl = "linux"
-else:
-    pl = "linux"
-if pl == "windows":
-    oc_root_dir = os.path.join(
-        os.path.expandvars("%systemdrive%"), os.sep, "open-cravat"
-    )
-    if os.path.exists(oc_root_dir) == False:  # OakVar first installation
-        oc_root_dir = os.path.join(
-            os.path.expandvars("%systemdrive%"), os.sep, "oakcravat"
-        )
-elif pl == "linux":
-    oc_root_dir = packagedir
-    if (
-        os.path.exists(os.path.join(oc_root_dir, "conf")) == False
-    ):  # OakVar first installation
-        if "SUDO_USER" in os.environ:
-            oc_root_dir = os.path.join("/home", os.environ["SUDO_USER"], ".oakcravat")
-        else:
-            oc_root_dir = os.path.join("/home", os.environ["USER"], ".oakcravat")
-elif pl == "macos":
-    oc_root_dir = "/Users/Shared/open-cravat"
-    if os.path.exists(oc_root_dir) == False:  # OakVar first installation
-        oc_root_dir = "Users/Shared/oakcravat"
-if os.path.exists(oc_root_dir) == False:
-    os.mkdir(oc_root_dir)
-# conf dir
-conf_dir_name = "conf"
-conf_dir_key = "conf_dir"
-default_conf_dir = os.path.join(oc_root_dir, conf_dir_name)
-if os.path.exists(default_conf_dir) == False:
-    os.mkdir(default_conf_dir)
-admindb_path = os.path.join(default_conf_dir, "admin.sqlite")
-system_conf_fname = "cravat-system.yml"
-if pl in ["windows", "macos"]:
-    system_conf_path = os.path.join(default_conf_dir, system_conf_fname)
-else:
-    system_conf_path = os.path.join(packagedir, system_conf_fname)
-system_conf_template_fname = "cravat-system.template.yml"
-system_conf_template_path = os.path.join(packagedir, system_conf_template_fname)
-linux_first_time = False
-if os.path.exists(system_conf_path) == False:
-    try:
-        shutil.copyfile(system_conf_template_path, system_conf_path)
-    except PermissionError:
-        if pl == "linux":
-            print(
-                """
-It seems that OakVar has been installed as root 
-and that you are running it for the first time. 
-To configure OakVar properly, you can do one of 
-the following:
-
-1) Stop at this point with Ctrl-C and run 
-`sudo oc` just once to create a system configration 
-file and system folders.
-
-OR
-
-2) Type Enter and continue. OakVar will need to 
-access `sudo` three times, once to create a system
-configration file, then to modify it, and then to
-change its file permission back. 
-
-Either way, afterwards, normal users will be able 
-to use `oc` commands without sudo privilege, 
-except when making changes to system settings.
-"""
-            )
-            _ = input("Ctrl-C to stop or Enter to continue>")
-            linux_first_time = True
-            subprocess.call(["sudo", "cp", system_conf_template_path, system_conf_path])
-        else:
-            raise
-# conf
-f = open(system_conf_path)
-conf = yaml.safe_load(f)
-f.close()
-# modules dir
-modules_dir_key = "modules_dir"
-modules_dir_name = "modules"
-if not modules_dir_key in conf:
-    default_modules_dir = os.path.join(oc_root_dir, modules_dir_name)
-    if os.path.exists(default_modules_dir) == False:
-        os.mkdir(default_modules_dir)
-    conf[modules_dir_key] = default_modules_dir
-    if linux_first_time:
-        subprocess.call(["sudo", "chmod", "777", system_conf_path])
-    wf = open(system_conf_path, "w")
-    yaml.dump(conf, wf, default_flow_style=False)
-    wf.close()
-    if linux_first_time:
-        subprocess.call(["sudo", "chmod", "644", system_conf_path])
-        print(
-            """
-System configuration file and folders have been set up.
-
-Remember to run `oc module install-base` to install
-base modules before running any job.
-
-===
-"""
-        )
-# jobs dir
-jobs_dir_key = "jobs_dir"
-jobs_dir_name = "jobs"
-if not jobs_dir_key in conf:
-    default_jobs_dir = os.path.join(oc_root_dir, jobs_dir_name)
-    if os.path.exists(default_jobs_dir) == False:
-        os.mkdir(default_jobs_dir)
-    conf[jobs_dir_key] = default_jobs_dir
-# log dir
-log_dir_key = "log_dir"
-log_dir_name = "logs"
-if not log_dir_key in conf:
-    default_log_dir = os.path.join(oc_root_dir, log_dir_name)
-    if os.path.exists(default_log_dir) == False:
-        os.mkdir(default_log_dir)
-    conf[log_dir_key] = default_log_dir
-# Live conf
-live_conf_fname = "live.yml"
-
-base_modules_key = "base_modules"
-main_conf_fname = "cravat.yml"
-main_conf_path = os.path.join(default_conf_dir, main_conf_fname)
-if os.path.exists(main_conf_path) == False:
-    shutil.copyfile(os.path.join(packagedir, main_conf_fname), main_conf_path)
-
-# liftover
-liftover_chains_dir = os.path.join(packagedir, "liftover")
-liftover_chain_paths = {
-    "hg19": os.path.join(liftover_chains_dir, "hg19ToHg38.over.chain"),
-    "hg18": os.path.join(liftover_chains_dir, "hg18ToHg38.over.chain"),
-}
-
 # built-in file column definitions
 crm_def = [
     {"name": "original_line", "title": "Original Line", "type": "int", "width": 90},
@@ -419,14 +263,30 @@ legacy_gene_level_cols_to_skip = ["base__num_variants", "base__so", "base__all_s
 default_num_input_line_warning_cutoff = 25000
 default_settings_gui_input_size_limit = 500
 default_max_num_concurrent_jobs = 4
-default_max_num_concurrent_annotators_per_job = max(1, os.cpu_count() - 1)
+default_max_num_concurrent_annotators_per_job = 1 #max(1, os.cpu_count() - 1)
 default_multicore_mapper_mode = True
 default_assembly = "hg38"
 default_assembly_key = "default_assembly"
 assembly_choices = ["hg38", "hg19", "hg18"]
 publish_time_fmt = "%Y-%m-%dT%H:%M:%S.%f%z"
-
 install_tempdir_name = "temp"
-
 cannonical_chroms = ["chr" + str(n) for n in range(1, 23)] + ["chrX", "chrY"]
 default_postaggregator_names = ["tagsampler", "casecontrol", "varmeta", "vcfinfo"]
+# env keys
+modules_dir_env_key = "OAKVAR_MD"
+system_conf_path_env_key = "OAKVAR_SYSTEM_CONF_PATH"
+# Directories
+custom_modules_dir = None
+conf_dir_name = "conf"
+conf_dir_key = "conf_dir"
+system_conf_fname = "cravat-system.yml"
+system_conf_template_fname = "cravat-system.template.yml"
+modules_dir_key = "modules_dir"
+modules_dir_name = "modules"
+jobs_dir_key = "jobs_dir"
+jobs_dir_name = "jobs"
+log_dir_key = "log_dir"
+log_dir_name = "logs"
+live_conf_fname = "live.yml"
+base_modules_key = "base_modules"
+main_conf_fname = "cravat.yml"

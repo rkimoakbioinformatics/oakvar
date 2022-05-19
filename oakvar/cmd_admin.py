@@ -1,29 +1,19 @@
 #!/usr/bin/env python3
 import argparse
-import os
-import oyaml as yaml
-import sys
-import traceback
-from oakvar import admin_util as au
-from oakvar import util
-from oakvar import constants
-from types import SimpleNamespace
-import re
-import textwrap
-import copy
-from getpass import getpass
-from distutils.version import LooseVersion
-import inspect
+from .admin_util import InstallProgressHandler
 
-class InstallProgressStdout(au.InstallProgressHandler):
+class InstallProgressStdout(InstallProgressHandler):
     def __init__(self, module_name, module_version):
         super().__init__(module_name, module_version)
 
     def stage_start(self, stage):
+        import sys
         self.cur_stage = stage
         sys.stdout.write(self._stage_msg(stage) + "\n")
 
     def stage_progress(self, cur_chunk, total_chunks, cur_size, total_size):
+        import sys
+        from .util import humanize_bytes
         rem_chunks = total_chunks - cur_chunk
         perc = cur_size / total_size * 100
         # trailing spaces needed to avoid leftover characters on resize
@@ -31,8 +21,8 @@ class InstallProgressStdout(au.InstallProgressHandler):
             "\r[{cur_prog}{rem_prog}] {cur_size} / {total_size} ({perc:.0f}%)  ".format(
                 cur_prog="*" * cur_chunk,
                 rem_prog=" " * rem_chunks,
-                cur_size=util.humanize_bytes(cur_size),
-                total_size=util.humanize_bytes(total_size),
+                cur_size=humanize_bytes(cur_size),
+                total_size=humanize_bytes(total_size),
                 perc=perc,
             )
         )
@@ -76,13 +66,16 @@ def list_local_modules(
     fmt="tabular",
     **kwargs,
 ):
+    from oyaml import dump
+    from .admin_util import search_local, get_local_module_info
+    from .util import humanize_bytes
     if quiet or fmt == "json" or fmt == "yaml":
         all_toks = []
     else:
         header = ["Name", "Title", "Type", "Version", "Data source ver", "Size"]
         all_toks = [header]
-    for module_name in au.search_local(pattern):
-        module_info = au.get_local_module_info(module_name)
+    for module_name in search_local(pattern):
+        module_info = get_local_module_info(module_name)
         if len(types) > 0 and module_info.type not in types:
             continue
         if len(tags) > 0:
@@ -119,17 +112,20 @@ def list_local_modules(
                     toks.append(size)
             else:
                 if fmt in ["json", "yaml"]:
-                    toks["size"] = util.humanize_bytes(size)
+                    toks["size"] = humanize_bytes(size)
                 else:
-                    toks.append(util.humanize_bytes(size))
+                    toks.append(humanize_bytes(size))
         all_toks.append(toks)
     if fmt in ["tabular", "json"]:
         return all_toks
     elif fmt == "yaml":
-        return yaml.dump(all_toks, default_flow_style=False)
+        return dump(all_toks, default_flow_style=False)
 
 
 def list_available_modules(**kwargs):
+    from oyaml import dump
+    from .admin_util import search_remote, get_local_module_info, get_remote_module_info
+    from .util import humanize_bytes
     fmt = kwargs["fmt"]
     quiet = kwargs["quiet"]
     if fmt == "tabular":
@@ -150,8 +146,8 @@ def list_available_modules(**kwargs):
             all_toks = [header]
     elif fmt in ["json", "yaml"]:
         all_toks = []
-    for module_name in au.search_remote(kwargs["pattern"]):
-        remote_info = au.get_remote_module_info(module_name)
+    for module_name in search_remote(kwargs["pattern"]):
+        remote_info = get_remote_module_info(module_name)
         if len(kwargs["types"]) > 0 and remote_info.type not in kwargs["types"]:
             continue
         if len(kwargs["tags"]) > 0:
@@ -161,7 +157,7 @@ def list_available_modules(**kwargs):
                 continue
         if remote_info.hidden and not kwargs["include_hidden"]:
             continue
-        local_info = au.get_local_module_info(module_name)
+        local_info = get_local_module_info(module_name)
         if local_info is not None:
             installed = "yes"
             local_version = local_info.version
@@ -173,7 +169,7 @@ def list_available_modules(**kwargs):
         if kwargs["raw_bytes"]:
             size = remote_info.size
         else:
-            size = util.humanize_bytes(remote_info.size)
+            size = humanize_bytes(remote_info.size)
         if fmt == "tabular":
             if quiet:
                 toks = [module_name]
@@ -203,13 +199,15 @@ def list_available_modules(**kwargs):
     if fmt in ["tabular", "json"]:
         return all_toks
     elif fmt == "yaml":
-        return yaml.dump(all_toks, default_flow_style=False)
+        return dump(all_toks, default_flow_style=False)
 
 
 def fn_module_ls(*args, **kwargs):
-    fnname = inspect.currentframe().f_code.co_name
+    from .util import get_args
+    from inspect import currentframe
+    fnname = currentframe().f_code.co_name
     parser = globals()["parser_" + fnname]
-    args = util.get_args(parser, args, kwargs)
+    args = get_args(parser, args, kwargs)
     if args["available"]:
         ret = list_available_modules(**args)
         if args["to"] == "stdout":
@@ -231,19 +229,25 @@ def fn_module_ls(*args, **kwargs):
 
 
 def yaml_string(x):
-    s = yaml.dump(x, default_flow_style=False)
-    s = re.sub("!!.*", "", s)
+    from oyaml import dump
+    from re import sub
+    s = dump(x, default_flow_style=False)
+    s = sub("!!.*", "", s)
     s = s.strip("\r\n")
     return s
 
 
 def fn_module_info(args):
-    args = util.get_dict_from_namespace(args)
+    from oyaml import dump
+    from .admin_util import get_local_module_info, get_remote_module_info
+    from .util import get_dict_from_namespace
+    from .constants import custom_modules_dir
+    args = get_dict_from_namespace(args)
     ret = {}
     md = args.get("md", None)
     module_name = args.get("module", None)
     if md is not None:
-        constants.custom_modules_dir = md
+        custom_modules_dir = md
     if module_name is None:
         return ret
     installed = False
@@ -253,7 +257,7 @@ def fn_module_info(args):
     remote_info = None
     # Remote
     try:
-        remote_info = au.get_remote_module_info(module_name)
+        remote_info = get_remote_module_info(module_name)
         if remote_info != None:
             remote_available = True
     except LookupError:
@@ -261,7 +265,7 @@ def fn_module_info(args):
     # Local
     release_note = {}
     try:
-        local_info = au.get_local_module_info(module_name)
+        local_info = get_local_module_info(module_name)
         if local_info != None:
             installed = True
             release_note = local_info.conf.get("release_note", {})
@@ -289,32 +293,23 @@ def fn_module_info(args):
         # output columns
         # print('output columns:')
         ret["output_columns"] = []
-        conf = au.get_remote_module_config(module_name)
+        conf = get_remote_module_config(module_name)
         if "output_columns" in conf:
             output_columns = conf["output_columns"]
             for col in output_columns:
                 desc = ""
                 if "desc" in col:
                     desc = col["desc"]
-                # print('  {}: {}'.format(col['title'], desc))
                 ret["output_columns"].append(
                     {"name": col["name"], "title": col["title"], "desc": desc}
                 )
     else:
-        # print('NOT IN STORE')
         ret["store_availability"] = False
     ret["installed"] = installed
     if installed:
-        # print('INSTALLED')
         if args.get("local", None):
             ret.update(local_info)
-            # li_out = copy.deepcopy(local_info)
-            # del li_out.conf
-            # li_out.get_size()
-            # dump = yaml_string(li_out)
-            # print(dump)
     else:
-        # print('NOT INSTALLED')
         pass
     if installed and remote_available:
         if installed and local_info.version == remote_info.latest_version:
@@ -322,28 +317,29 @@ def fn_module_info(args):
         else:
             up_to_date = False
         ret["latest_installed"] = up_to_date
-        # if up_to_date:
-        #    print('UP TO DATE')
-        # else:
-        #    print('NEWER VERSION EXISTS')
     if args["to"] == "stdout":
-        # s = yaml.dump(x, default_flow_style = False)
-        print(yaml.dump(ret))
+        print(dump(ret))
     else:
         return ret
 
 
 def fn_config_md(args):
-    args = util.get_dict_from_namespace(args)
+    from .admin_util import set_modules_dir, get_modules_dir
+    from .util import get_dict_from_namespace
+    args = get_dict_from_namespace(args)
     if args["directory"]:
-        au.set_modules_dir(args["directory"])
-    print(au.get_modules_dir())
+        set_modules_dir(args["directory"])
+    print(get_modules_dir())
 
 
 def fn_module_install(*args, **kwargs):
-    args = util.get_args(parser_module_install, args, kwargs)
+    from .admin_util import search_remote, get_local_module_info, get_remote_module_info, module_exists_remote, get_install_deps, install_module
+    from .util import get_args
+    from .constants import custom_modules_dir
+    from distutils.version import LooseVersion
+    args = get_args(parser_fn_module_install, args, kwargs)
     if args["md"] is not None:
-        constants.custom_modules_dir = args["md"]
+        custom_modules_dir = args["md"]
     # split module name and version
     module_name_versions = {}
     for mv in args["modules"]:
@@ -361,7 +357,7 @@ def fn_module_install(*args, **kwargs):
     for module_name in module_names:
         version = module_name_versions[module_name]
         del module_name_versions[module_name]
-        matching_names = au.search_remote(module_name)
+        matching_names = search_remote(module_name)
         if len(matching_names) == 0:
             print(f"invalid module name: {module_name}")
             continue
@@ -370,8 +366,8 @@ def fn_module_install(*args, **kwargs):
     # filters valid module name and version.
     selected_install = {}
     for module_name in module_name_versions.keys():
-        local_info = au.get_local_module_info(module_name)
-        remote_info = au.get_remote_module_info(module_name)
+        local_info = get_local_module_info(module_name)
+        remote_info = get_remote_module_info(module_name)
         version = module_name_versions[module_name]
         if version is None:
             if args["private"]:
@@ -387,7 +383,7 @@ def fn_module_install(*args, **kwargs):
                         continue
                 selected_install[module_name] = remote_info.latest_version
         else:
-            if not au.module_exists_remote(module_name, version=version, private=args["private"]):
+            if not module_exists_remote(module_name, version=version, private=args["private"]):
                 print(f"{module_name}=={version} does not exist.", flush=True)
                 continue
             else:
@@ -407,7 +403,7 @@ def fn_module_install(*args, **kwargs):
     deps_install_pypi = {}
     if not args["skip_dependencies"]:
         for module_name, version in selected_install.items():
-            deps, deps_pypi = au.get_install_deps(module_name, version=version)
+            deps, deps_pypi = get_install_deps(module_name, version=version)
             deps_install.update(deps)
             deps_install_pypi.update(deps_pypi)
     # If overlap between selected modules and dependency modules, use the dependency version
@@ -430,7 +426,7 @@ def fn_module_install(*args, **kwargs):
                     continue
         for module_name, module_version in sorted(to_install.items()):
             stage_handler = InstallProgressStdout(module_name, module_version)
-            au.install_module(
+            install_module(
                 module_name,
                 version=module_version,
                 force_data=args["force_data"],
@@ -441,16 +437,19 @@ def fn_module_install(*args, **kwargs):
 
 
 def fn_module_update(args):
-    args = util.get_dict_from_namespace(args)
+    from .admin_util import search_local, get_updatable
+    from .util import get_dict_from_namespace, humanize_bytes
+    from .constants import custom_modules_dir
+    args = get_dict_from_namespace(args)
     if args["md"] is not None:
-        constants.custom_modules_dir = args["md"]
+        custom_modules_dir = args["md"]
     if len(args["modules"]) > 0:
-        requested_modules = au.search_local(*args["modules"])
+        requested_modules = search_local(*args["modules"])
     else:
         requested_modules = []
     update_strategy = args["strategy"]
     status_table = [["Name", "New Version", "Size"]]
-    updates, _, reqs_failed = au.get_updatable(
+    updates, _, reqs_failed = get_updatable(
         requested_modules, strategy=update_strategy
     )
     if reqs_failed:
@@ -465,7 +464,7 @@ def fn_module_update(args):
     for mname, update_info in updates.items():
         version = update_info.version
         size = update_info.size
-        status_table.append([mname, version, util.humanize_bytes(size)])
+        status_table.append([mname, version, humanize_bytes(size)])
     print_tabular_lines(status_table)
     if not args["y"]:
         user_cont = input("Update the above modules? (y/n) > ")
@@ -484,10 +483,13 @@ def fn_module_update(args):
 
 
 def fn_module_uninstall(args):
-    args = util.get_dict_from_namespace(args)
+    from .admin_util import search_local, uninstall_module
+    from .util import get_dict_from_namespace
+    from .constants import custom_modules_dir
+    args = get_dict_from_namespace(args)
     if args["md"] is not None:
-        constants.custom_modules_dir = args["md"]
-    matching_names = au.search_local(*args["modules"])
+        custom_modules_dir = args["md"]
+    matching_names = search_local(*args["modules"])
     if len(matching_names) > 0:
         print("Uninstalling: {:}".format(", ".join(matching_names)))
         if not (args["yes"]):
@@ -500,17 +502,21 @@ def fn_module_uninstall(args):
                 else:
                     print("Response '{:}' not one of (y/n).".format(resp))
         for module_name in matching_names:
-            au.uninstall_module(module_name)
+            uninstall_module(module_name)
             print("Uninstalled %s" % module_name)
     else:
         print("No modules to uninstall found")
 
 
 def fn_store_publish(args):
-    args = util.get_dict_from_namespace(args)
+    from .admin_util import get_system_conf, publish_module
+    from .util import get_dict_from_namespace
+    from .constants import custom_modules_dir
+    from getpass import getpass
+    args = get_dict_from_namespace(args)
     if args["md"] is not None:
-        constants.custom_modules_dir = args["md"]
-    sys_conf = au.get_system_conf()
+        custom_modules_dir = args["md"]
+    sys_conf = get_system_conf()
     if args["user"] is None:
         if "publish_username" in sys_conf:
             args["user"] = sys_conf["publish_username"]
@@ -521,7 +527,7 @@ def fn_store_publish(args):
             args["password"] = sys_conf["publish_password"]
         else:
             args["password"] = getpass()
-    au.publish_module(
+    publish_module(
         args["module"],
         args["user"],
         args["password"],
@@ -531,9 +537,13 @@ def fn_store_publish(args):
 
 
 def fn_module_installbase(args):
-    args = util.get_dict_from_namespace(args)
-    sys_conf = au.get_system_conf()
-    base_modules = sys_conf.get(constants.base_modules_key, [])
+    from .admin_util import get_system_conf
+    from .util import get_dict_from_namespace
+    from .constants import base_modules_key
+    from types import SimpleNamespace
+    args = get_dict_from_namespace(args)
+    sys_conf = get_system_conf()
+    base_modules = sys_conf.get(base_modules_key, [])
     args = SimpleNamespace(
         modules=base_modules,
         force_data=args["force_data"],
@@ -549,77 +559,96 @@ def fn_module_installbase(args):
 
 
 def fn_store_newaccount(args):
-    args = util.get_dict_from_namespace(args)
-    ret = au.create_account(args["username"], args["password"])
+    from .admin_util import create_account
+    from .util import get_dict_from_namespace
+    args = get_dict_from_namespace(args)
+    ret = create_account(args["username"], args["password"])
     return ret
 
 
 def fn_store_changepassword(args):
-    args = util.get_dict_from_namespace(args)
-    ret = au.change_password(args["username"], args["current_password"], args["new_password"])
+    from .admin_util import change_password
+    from .util import get_dict_from_namespace
+    args = get_dict_from_namespace(args)
+    ret = change_password(args["username"], args["current_password"], args["new_password"])
     return ret
 
 
 def fn_store_resetpassword(args):
-    args = util.get_dict_from_namespace(args)
-    ret = au.send_reset_email(args["username"])
+    from .admin_util import send_reset_email
+    from .util import get_dict_from_namespace
+    args = get_dict_from_namespace(args)
+    ret = send_reset_email(args["username"])
     return ret
 
 
 def fn_store_verifyemail(args):
-    args = util.get_dict_from_namespace(args)
-    ret = au.send_verify_email(args["username"])
+    from .admin_util import send_verify_email
+    from .util import get_dict_from_namespace
+    args = get_dict_from_namespace(args)
+    ret = send_verify_email(args["username"])
     return ret
 
 
 def fn_store_checklogin(args):
-    args = util.get_dict_from_namespace(args)
-    ret = au.check_login(args.username, args["password"])
+    from .admin_util import check_login
+    from .util import get_dict_from_namespace
+    args = get_dict_from_namespace(args)
+    ret = check_login(args.username, args["password"])
     return ret
 
 
 def fn_new_exampleinput(args):
-    args = util.get_dict_from_namespace(args)
-    au.fn_new_exampleinput(args["directory"])
+    from .admin_util import fn_new_exampleinput
+    from .util import get_dict_from_namespace
+    args = get_dict_from_namespace(args)
+    fn_new_exampleinput(args["directory"])
 
 
 def fn_new_annotator(args):
-    args = util.get_dict_from_namespace(args)
+    from .admin_util import new_annotator, get_local_module_info
+    from .util import get_dict_from_namespace
+    from .constants import custom_modules_dir
+    args = get_dict_from_namespace(args)
     if args["md"] is not None:
-        constants.custom_modules_dir = args["md"]
-    au.new_annotator(args["annotator_name"])
-    module_info = au.get_local_module_info(args["annotator_name"])
+        custom_modules_dir = args["md"]
+    new_annotator(args["annotator_name"])
+    module_info = get_local_module_info(args["annotator_name"])
     print(f"created {module_info.directory}")
     return module_info.directory
 
 
 def fn_feedback(args):
-    au.report_issue()
+    from .admin_util import report_issue
+    report_issue()
 
 
 def fn_config_system(args):
-    args = util.get_dict_from_namespace(args)
-    ret = au.show_system_conf(**args)
+    from .admin_util import show_system_conf
+    from .util import get_dict_from_namespace
+    args = get_dict_from_namespace(args)
+    ret = show_system_conf(**args)
     return ret
 
 
-def fn_config_cravat(args):
-    args = util.get_dict_from_namespace(args)
-    ret = au.show_cravat_conf(**args)
+def fn_config_oakvar(args):
+    from .admin_util import show_oakvar_conf
+    from .util import get_dict_from_namespace
+    args = get_dict_from_namespace(args)
+    ret = show_oakvar_conf(**args)
     return ret
 
 
 def fn_version(args):
-    args = util.get_dict_from_namespace(args)
-    ret = au.cravat_version()
+    from .admin_util import oakvar_version
+    from .util import get_dict_from_namespace
+    args = get_dict_from_namespace(args)
+    ret = oakvar_version()
     if args["to"] == "stdout":
         print(ret)
     else:
         return ret
 
-
-# Check that the system is ready
-# au.ready_resolution_console()
 
 ###########################################################################
 # PARSERS START HERE
@@ -628,115 +657,115 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
 subparsers = parser.add_subparsers(title="Commands")
 
 # md
-parser_md = subparsers.add_parser(
+parser_fn_config_md = subparsers.add_parser(
     "md",
     help="displays or changes OakVar modules directory.",
     description="displays or changes OakVar modules directory.",
     formatter_class=argparse.RawDescriptionHelpFormatter,
 )
-parser_md.add_argument("directory", nargs="?", help="sets modules directory.")
-parser_md.set_defaults(func=fn_config_md)
+parser_fn_config_md.add_argument("directory", nargs="?", help="sets modules directory.")
+parser_fn_config_md.set_defaults(func=fn_config_md)
 
 # install-base
-parser_module_installbase = subparsers.add_parser(
+parser_fn_module_installbase = subparsers.add_parser(
     "installbase", help="installs base modules.", description="installs base modules."
 )
-parser_module_installbase.add_argument(
+parser_fn_module_installbase.add_argument(
     "-f",
     "--force",
     action="store_true",
     help="Overwrite existing modules",
 )
-parser_module_installbase.add_argument(
+parser_fn_module_installbase.add_argument(
     "-d",
     "--force-data",
     action="store_true",
     help="Download data even if latest data is already installed",
 )
-parser_module_installbase.add_argument(
+parser_fn_module_installbase.add_argument(
     "--md", default=None, help="Specify the root directory of OakVar modules"
 )
-parser_module_installbase.set_defaults(func=fn_module_installbase)
+parser_fn_module_installbase.set_defaults(func=fn_module_installbase)
 
 # install
-parser_module_install = subparsers.add_parser(
+parser_fn_module_install = subparsers.add_parser(
     "install", help="installs OakVar modules.", description="Installs OakVar modules."
 )
-parser_module_install.add_argument(
+parser_fn_module_install.add_argument(
     "modules", nargs="+", help="Modules to install. May be regular expressions."
 )
-parser_module_install.add_argument(
+parser_fn_module_install.add_argument(
     "-f",
     "--force",
     action="store_true",
     help="Install module even if latest version is already installed",
 )
-parser_module_install.add_argument(
+parser_fn_module_install.add_argument(
     "-d",
     "--force-data",
     action="store_true",
     help="Download data even if latest data is already installed",
 )
-parser_module_install.add_argument(
+parser_fn_module_install.add_argument(
     "-y", "--yes", action="store_true", help="Proceed without prompt"
 )
-parser_module_install.add_argument(
+parser_fn_module_install.add_argument(
     "--skip-dependencies", action="store_true", help="Skip installing dependencies"
 )
-parser_module_install.add_argument(
+parser_fn_module_install.add_argument(
     "-p", "--private", action="store_true", help="Install a private module"
 )
-parser_module_install.add_argument(
+parser_fn_module_install.add_argument(
     "--skip-data", action="store_true", help="Skip installing data"
 )
-parser_module_install.add_argument(
+parser_fn_module_install.add_argument(
     "--md", default=None, help="Specify the root directory of OakVar modules"
 )
-parser_module_install.set_defaults(func=fn_module_install)
+parser_fn_module_install.set_defaults(func=fn_module_install)
 
 # update
-parser_update = subparsers.add_parser(
+parser_fn_module_update = subparsers.add_parser(
     "update",
     help="updates modules.",
     description="updates modules.",
     formatter_class=argparse.RawDescriptionHelpFormatter,
 )
-parser_update.add_argument("modules", nargs="*", help="Modules to update.")
-parser_update.add_argument("-y", action="store_true", help="Proceed without prompt")
-parser_update.add_argument(
+parser_fn_module_update.add_argument("modules", nargs="*", help="Modules to update.")
+parser_fn_module_update.add_argument("-y", action="store_true", help="Proceed without prompt")
+parser_fn_module_update.add_argument(
     "--strategy",
     help='Dependency resolution strategy. "consensus" will attempt to resolve dependencies. "force" will install the highest available version. "skip" will skip modules with constraints.',
     default="consensus",
     type=str,
     choices=("consensus", "force", "skip"),
 )
-parser_update.add_argument(
+parser_fn_module_update.add_argument(
     "--md", default=None, help="Specify the root directory of OakVar modules"
 )
-parser_update.set_defaults(func=fn_module_update)
+parser_fn_module_update.set_defaults(func=fn_module_update)
 
 # uninstall
-parser_uninstall = subparsers.add_parser("uninstall", help="uninstalls modules.")
-parser_uninstall.add_argument("modules", nargs="+", help="Modules to uninstall")
-parser_uninstall.add_argument(
+parser_fn_module_uninstall = subparsers.add_parser("uninstall", help="uninstalls modules.")
+parser_fn_module_uninstall.add_argument("modules", nargs="+", help="Modules to uninstall")
+parser_fn_module_uninstall.add_argument(
     "-y", "--yes", action="store_true", help="Proceed without prompt"
 )
-parser_uninstall.add_argument(
+parser_fn_module_uninstall.add_argument(
     "--md", default=None, help="Specify the root directory of OakVar modules"
 )
-parser_uninstall.set_defaults(func=fn_module_uninstall)
+parser_fn_module_uninstall.set_defaults(func=fn_module_uninstall)
 
 # info
-parser_info = subparsers.add_parser("info", help="shows module information.")
-parser_info.add_argument("module", help="Module to get info about")
-parser_info.add_argument(
+parser_fn_module_info = subparsers.add_parser("info", help="shows module information.")
+parser_fn_module_info.add_argument("module", help="Module to get info about")
+parser_fn_module_info.add_argument(
     "-l", "--local", dest="local", help="Include local info", action="store_true"
 )
-parser_info.add_argument(
+parser_fn_module_info.add_argument(
     "--md", default=None, help="Specify the root directory of OakVar modules"
 )
-parser_info.add_argument("--to", default="stdout", help="\"print\" to stdout / \"return\" to return")
-parser_info.set_defaults(func=fn_module_info)
+parser_fn_module_info.add_argument("--to", default="stdout", help="\"print\" to stdout / \"return\" to return")
+parser_fn_module_info.set_defaults(func=fn_module_info)
 
 # ls
 parser_fn_module_ls = subparsers.add_parser(
@@ -776,9 +805,9 @@ parser_fn_module_ls.add_argument("--to", default="stdout", help="stdout to print
 parser_fn_module_ls.set_defaults(func=fn_module_ls)
 
 # publish
-parser_store_publish = subparsers.add_parser("publish", help="publishes a module.")
-parser_store_publish.add_argument("module", help="module to publish")
-data_group = parser_store_publish.add_mutually_exclusive_group(required=True)
+parser_fn_store_publish = subparsers.add_parser("publish", help="publishes a module.")
+parser_fn_store_publish.add_argument("module", help="module to publish")
+data_group = parser_fn_store_publish.add_mutually_exclusive_group(required=True)
 data_group.add_argument(
     "-d",
     "--data",
@@ -789,122 +818,123 @@ data_group.add_argument(
 data_group.add_argument(
     "-c", "--code", action="store_true", help="publishes module without data."
 )
-parser_store_publish.add_argument(
+parser_fn_store_publish.add_argument(
     "-u", "--user", default=None, help="user to publish as. Typically your email."
 )
-parser_store_publish.add_argument(
+parser_fn_store_publish.add_argument(
     "-p",
     "--password",
     default=None,
     help="password for the user. Enter at prompt if missing.",
 )
-parser_store_publish.add_argument(
+parser_fn_store_publish.add_argument(
     "--force-yes",
     default=False,
     action="store_true",
     help="overrides yes to overwrite question",
 )
-parser_store_publish.add_argument(
+parser_fn_store_publish.add_argument(
     "--overwrite",
     default=False,
     action="store_true",
     help="overwrites a published module/version",
 )
-parser_store_publish.add_argument(
+parser_fn_store_publish.add_argument(
     "--md", default=None, help="Specify the root directory of OakVar modules"
 )
-parser_store_publish.set_defaults(func=fn_store_publish)
+parser_fn_store_publish.set_defaults(func=fn_store_publish)
 
 # create-account
-parser_store_newaccount = subparsers.add_parser(
+parser_fn_store_newaccount = subparsers.add_parser(
     "createaccount", help="creates a OakVar store developer account."
 )
-parser_store_newaccount.add_argument("username", help="use your email as your username.")
-parser_store_newaccount.add_argument("password", help="this is your password.")
-parser_store_newaccount.set_defaults(func=fn_store_newaccount)
+parser_fn_store_newaccount.add_argument("username", help="use your email as your username.")
+parser_fn_store_newaccount.add_argument("password", help="this is your password.")
+parser_fn_store_newaccount.set_defaults(func=fn_store_newaccount)
 
 # change-password
-parser_store_changepassword = subparsers.add_parser(
+parser_fn_store_changepassword = subparsers.add_parser(
     "changepassword", help="changes OakVar store account password."
 )
-parser_store_changepassword.add_argument("username", help="username")
-parser_store_changepassword.add_argument("current_password", help="current password")
-parser_store_changepassword.add_argument("new_password", help="new password")
-parser_store_changepassword.set_defaults(func=fn_store_changepassword)
+parser_fn_store_changepassword.add_argument("username", help="username")
+parser_fn_store_changepassword.add_argument("current_password", help="current password")
+parser_fn_store_changepassword.add_argument("new_password", help="new password")
+parser_fn_store_changepassword.set_defaults(func=fn_store_changepassword)
 
 # reset-password
-parser_store_resetpassword = subparsers.add_parser(
+parser_fn_store_resetpassword = subparsers.add_parser(
     "resetpassword", help="resets OakVar store account password."
 )
-parser_store_resetpassword.add_argument("username", help="username")
-parser_store_resetpassword.set_defaults(func=fn_store_resetpassword)
+parser_fn_store_resetpassword.add_argument("username", help="username")
+parser_fn_store_resetpassword.set_defaults(func=fn_store_resetpassword)
 
 # verify-email
-parser_store_verifyemail = subparsers.add_parser(
+parser_fn_store_verifyemail = subparsers.add_parser(
     "verifyemail", help="sends a verification email."
 )
-parser_store_verifyemail.add_argument("username", help="username")
-parser_store_verifyemail.set_defaults(func=fn_store_verifyemail)
+parser_fn_store_verifyemail.add_argument("username", help="username")
+parser_fn_store_verifyemail.set_defaults(func=fn_store_verifyemail)
 
 # check-login
-parser_store_checklogin = subparsers.add_parser(
+parser_fn_store_checklogin = subparsers.add_parser(
     "checklogin", help="checks username and password."
 )
-parser_store_checklogin.add_argument("username", help="username")
-parser_store_checklogin.add_argument("password", help="password")
-parser_store_checklogin.set_defaults(func=fn_store_checklogin)
+parser_fn_store_checklogin.add_argument("username", help="username")
+parser_fn_store_checklogin.add_argument("password", help="password")
+parser_fn_store_checklogin.set_defaults(func=fn_store_checklogin)
 
 # test input file
-parser_new_exampleinput = subparsers.add_parser(
+parser_fn_new_exampleinput = subparsers.add_parser(
     "new-exampleinput", help="makes a file with example input variants."
 )
-parser_new_exampleinput.add_argument(
+parser_fn_new_exampleinput.add_argument(
     "-d",
     dest="directory",
     default=".",
     help="Directory to make the example input file in",
 )
-parser_new_exampleinput.set_defaults(func=fn_new_exampleinput)
+parser_fn_new_exampleinput.set_defaults(func=fn_new_exampleinput)
 
 # new-annotator
-parser_new_annotator = subparsers.add_parser(
+parser_fn_new_annotator = subparsers.add_parser(
     "new-annotator", help="creates a new annotator"
 )
-parser_new_annotator.add_argument("-n", dest="annotator_name", default="annotator", help="Annotator name")
-parser_new_annotator.add_argument(
+parser_fn_new_annotator.add_argument("-n", dest="annotator_name", default="annotator", help="Annotator name")
+parser_fn_new_annotator.add_argument(
     "--md", default=None, help="Specify the root directory of OakVar modules"
 )
-parser_new_annotator.set_defaults(func=fn_new_annotator)
+parser_fn_new_annotator.set_defaults(func=fn_new_annotator)
 
 # opens issue report
-parser_feedback = subparsers.add_parser(
+parser_fn_feedback = subparsers.add_parser(
     "report-issue", help="opens a browser window to report issues"
 )
-parser_feedback.set_defaults(func=fn_feedback)
+parser_fn_feedback.set_defaults(func=fn_feedback)
 
 # shows system conf content.
-parser_show_system_conf = subparsers.add_parser(
+parser_fn_config_system = subparsers.add_parser(
     "show-system-conf", help="shows system configuration."
 )
-parser_show_system_conf.add_argument("--fmt", default="yaml", help="Format of output. json or yaml.")
-parser_show_system_conf.add_argument("--to", default="stdout", help="\"stdout\" to print. \"return\" to return")
-parser_show_system_conf.set_defaults(func=fn_config_system)
+parser_fn_config_system.add_argument("--fmt", default="yaml", help="Format of output. json or yaml.")
+parser_fn_config_system.add_argument("--to", default="stdout", help="\"stdout\" to print. \"return\" to return")
+parser_fn_config_system.set_defaults(func=fn_config_system)
 
 # shows oakvar conf content.
-parser_fn_config_cravat = subparsers.add_parser(
+parser_fn_config_oakvar = subparsers.add_parser(
     "ov config system", help="shows oakvar configuration."
 )
-parser_fn_config_cravat.add_argument("--fmt", default="yaml", help="Format of output. json or yaml.")
-parser_fn_config_cravat.add_argument("--to", default="stdout", help="\"stdout\" to print. \"return\" to return")
-parser_fn_config_cravat.set_defaults(func=fn_config_cravat)
+parser_fn_config_oakvar.add_argument("--fmt", default="yaml", help="Format of output. json or yaml.")
+parser_fn_config_oakvar.add_argument("--to", default="stdout", help="\"stdout\" to print. \"return\" to return")
+parser_fn_config_oakvar.set_defaults(func=fn_config_oakvar)
 
 # shows version
-parser_version = subparsers.add_parser("version", help="shows oakvar version")
-parser_version.add_argument("--to", default="stdout", help="\"stdout\" to print. \"return\" to return")
-parser_version.set_defaults(func=fn_version)
+parser_fn_version = subparsers.add_parser("version", help="shows oakvar version")
+parser_fn_version.add_argument("--to", default="stdout", help="\"stdout\" to print. \"return\" to return")
+parser_fn_version.set_defaults(func=fn_version)
 
 
 def main():
+    import sys
     # Print usage if no args
     if len(sys.argv) == 1:
         sys.argv.append("-h")

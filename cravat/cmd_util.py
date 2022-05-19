@@ -1,56 +1,44 @@
-import subprocess
-import sqlite3
-import oakvar.constants as constants
-import pyliftover
 import argparse
-import os
-import sys
-import json
-import traceback
-import shutil
-import time
-from pathlib import Path
-import datetime
-from . import admin_util as au
-from . import cravat_filter
-from distutils.version import LooseVersion
-from oakvar import util
-import asyncio
-import oyaml as yaml
 
 
 def converttohg38(args):
+    from subprocess import check_output
+    import sqlite3
+    from .constants import get_liftover_chain_path_for_src_genome
+    from pyliftover import LiftOver
+    from os.path import exists
+    from os import remove
     if args.sourcegenome not in ["hg18", "hg19"]:
         print("Source genome should be either hg18 or hg19.")
         exit()
-    if os.path.exists(args.db) == False:
+    if exists(args.db) == False:
         print(args.db, "does not exist.")
         exit()
-    liftover = pyliftover.LiftOver(
-        constants.get_liftover_chain_path_for_src_genome(args.sourcegenome)
+    liftover = LiftOver(
+        get_liftover_chain_path_for_src_genome(args.sourcegenome)
     )
     print("Extracting table schema from DB...")
     cmd = ["sqlite3", args.db, ".schema"]
-    output = subprocess.check_output(cmd)
+    output = check_output(cmd)
     sqlpath = args.db + ".newdb.sql"
     wf = open(sqlpath, "w")
     wf.write(output.decode())
     wf.close()
     newdbpath = ".".join(args.db.split(".")[:-1]) + ".hg38.sqlite"
-    if os.path.exists(newdbpath):
+    if exists(newdbpath):
         print("Deleting existing hg38 DB...")
-        os.remove(newdbpath)
+        remove(newdbpath)
     print("Creating " + newdbpath + "...")
     newdb = sqlite3.connect(newdbpath)
     newc = newdb.cursor()
     print("Creating same table(s) in " + newdbpath + "...")
     cmd = ["sqlite3", newdbpath, ".read " + sqlpath]
-    output = subprocess.check_output(cmd)
+    output = check_output(cmd)
     db = sqlite3.connect(args.db)
     c = db.cursor()
     if args.tables == None:
         print("tables not given. All tables will be tried.")
-        output = subprocess.check_output(["sqlite3", args.db, ".table"])
+        output = check_output(["sqlite3", args.db, ".table"])
         args.tables = output.decode().split()
         args.tables.sort()
         print("The following tables will be examined:", ", ".join(args.tables))
@@ -151,28 +139,32 @@ def converttohg38(args):
     newdb.commit()
 
 
-migrate_functions = {}
-migrate_checkpoints = [LooseVersion(v) for v in list(migrate_functions.keys())]
-migrate_checkpoints.sort()
-max_version_supported_for_migration = LooseVersion("2.3.0")
 
 
 def fn_util_updateresult(args):
-    args = util.get_dict_from_namespace(args)
+    import sqlite3
+    from os import listdir
+    from os.path import join, isdir
+    from shutil import copy
+    from distutils.version import LooseVersion
+    from .util import get_dict_from_namespace
+    migrate_functions = {}
+    migrate_checkpoints = [LooseVersion(v) for v in list(migrate_functions.keys())]
+    migrate_checkpoints.sort()
+    args = get_dict_from_namespace(args)
     def get_dbpaths(dbpaths, path):
-        for fn in os.listdir(path):
-            p = os.path.join(path, fn)
-            if os.path.isdir(p) and args["recursive"]:
+        for fn in listdir(path):
+            p = join(path, fn)
+            if isdir(p) and args["recursive"]:
                 get_dbpaths(dbpaths, p)
             else:
                 if fn.endswith(".sqlite"):
                     dbpaths.append(p)
-
     dbpath = args["dbpath"]
-    if os.path.exists(dbpath) == False:
+    if exists(dbpath) == False:
         print("[{}] does not exist.".format(dbpath))
         return
-    if os.path.isdir(dbpath):
+    if isdir(dbpath):
         dbpaths = []
         get_dbpaths(dbpaths, dbpath)
     else:
@@ -182,7 +174,6 @@ def fn_util_updateresult(args):
         print("  " + dbpath)
     for dbpath in dbpaths:
         print("converting [{}]...".format(dbpath))
-        global migrate_checkpoints
         try:
             db = sqlite3.connect(dbpath)
             cursor = db.cursor()
@@ -215,7 +206,7 @@ def fn_util_updateresult(args):
             if args["backup"]:
                 bak_path = dbpath + ".bak"
                 print("  making backup copy [{}]...".format(bak_path))
-                shutil.copy(dbpath, bak_path)
+                copy(dbpath, bak_path)
             ver_idx = None
             for i, target_ver in enumerate(migrate_checkpoints):
                 if oc_ver < target_ver:
@@ -233,14 +224,21 @@ def fn_util_updateresult(args):
                         (target_ver,),
                     )
         except:
-            traceback.print_exc()
+            from traceback import print_exc
+            print_exc()
             print("  converting [{}] was not successful.".format(dbpath))
 
 
 def fn_util_addjob(args):
+    from json import dump
+    from shutil import copyfile
+    from time import sleep
+    from pathlib import Path
+    from datetime import datetime
+    from .admin_util import get_jobs_dir
     dbpath = args.path
     user = args.user
-    jobs_dir = Path(au.get_jobs_dir())
+    jobs_dir = Path(get_jobs_dir())
     user_dir = jobs_dir / user
     if not user_dir.is_dir():
         exit(f"User {user} not found")
@@ -248,34 +246,34 @@ def fn_util_addjob(args):
     while (
         True
     ):  # TODO this will currently overwrite if called in parallel. is_dir check and creation is not atomic
-        job_id = datetime.datetime.now().strftime(r"%y%m%d-%H%M%S")
+        job_id = datetime.now().strftime(r"%y%m%d-%H%M%S")
         job_dir = user_dir / job_id
         if not job_dir.is_dir():
             break
         else:
             attempts += 1
-            time.sleep(1)
+            sleep(1)
         if attempts >= 5:
             exit(
                 "Could not acquire a job id. Too many concurrent job submissions. Wait, or reduce submission frequency."
             )
     job_dir.mkdir()
     new_dbpath = job_dir / dbpath.name
-    shutil.copyfile(dbpath, new_dbpath)
+    copyfile(dbpath, new_dbpath)
     log_path = dbpath.with_suffix(".log")
     if log_path.exists():
-        shutil.copyfile(log_path, job_dir / log_path.name)
+        copyfile(log_path, job_dir / log_path.name)
     err_path = dbpath.with_suffix(".err")
     if err_path.exists():
-        shutil.copyfile(err_path, job_dir / err_path.name)
+        copyfile(err_path, job_dir / err_path.name)
     status_path = dbpath.with_suffix(".status.json")
     if status_path.exists():
-        shutil.copyfile(status_path, job_dir / status_path.name)
+        copyfile(status_path, job_dir / status_path.name)
     else:
         statusd = status_from_db(new_dbpath)
         new_status_path = job_dir / status_path.name
         with new_status_path.open("w") as wf:
-            json.dump(statusd, wf, indent=2, sort_keys=True)
+            dump(statusd, wf, indent=2, sort_keys=True)
 
 
 def variant_id(chrom, pos, ref, alt):
@@ -283,7 +281,11 @@ def variant_id(chrom, pos, ref, alt):
 
 
 def fn_util_showsqliteinfo(args):
-    args = util.get_dict_from_namespace(args)
+    import sqlite3
+    from json import loads
+    from .util import get_dict_from_namespace
+    from oyaml import dump
+    args = get_dict_from_namespace(args)
     fmt = args["fmt"]
     to = args["to"]
     if fmt == "text":
@@ -302,7 +304,7 @@ def fn_util_showsqliteinfo(args):
         conn = sqlite3.connect(dbpath)
         c = conn.cursor()
         c.execute('select colval from info where colkey="_input_paths"')
-        input_paths = json.loads(c.fetchone()[0].replace("'", '"'))
+        input_paths = loads(c.fetchone()[0].replace("'", '"'))
         if fmt == "text":
             s = f"\n# Input files:"
             ret.append(s)
@@ -326,7 +328,7 @@ def fn_util_showsqliteinfo(args):
             ret["output_columns"]["gene"] = []
         for r in rs:
             col_name, col_def = r
-            col_def = json.loads(col_def)
+            col_def = loads(col_def)
             if fmt == "text":
                 s = f"{col_name.ljust(width_colname)} {col_def['title'].ljust(width_coltitle)} {col_def['type']}"
                 ret.append(s)
@@ -336,7 +338,7 @@ def fn_util_showsqliteinfo(args):
         rs = c.fetchall()
         for r in rs:
             col_name, col_def = r
-            col_def = json.loads(col_def)
+            col_def = loads(col_def)
             if fmt == "text":
                 s = f"{col_name.ljust(width_colname)} {col_def['title'].ljust(width_coltitle)} {col_def['type']}"
                 ret.append(s)
@@ -350,17 +352,21 @@ def fn_util_showsqliteinfo(args):
             elif fmt == "json":
                 print(ret)
             elif fmt == "yaml":
-                print(yaml.dump(ret, default_flow_style=False))
+                print(dump(ret, default_flow_style=False))
         else:
             if fmt in ["text", "json"]:
                 return ret
             elif fmt == "yaml":
-                return yaml.dump(ret, default_flow_style=False)
+                return dump(ret, default_flow_style=False)
 
 
 # For now, only jobs with same annotators are allowed.
 def fn_util_mergesqlite(args):
-    args = util.get_dict_from_namespace(args)
+    import sqlite3
+    from json import loads, dumps
+    from shutil import copy
+    from .util import get_dict_from_namespace
+    args = get_dict_from_namespace(args)
     dbpaths = args["path"]
     if len(dbpaths) < 2:
         exit("Multiple sqlite file paths should be given")
@@ -387,7 +393,7 @@ def fn_util_mergesqlite(args):
             exit("Annotation columns mismatch (gene table)")
     # Copies the first db.
     print(f"Copying {dbpaths[0]} to {outpath}...")
-    shutil.copy(dbpaths[0], outpath)
+    copy(dbpaths[0], outpath)
     outconn = sqlite3.connect(outpath)
     outc = outconn.cursor()
     # Gets key column numbers.
@@ -411,7 +417,7 @@ def fn_util_mergesqlite(args):
     new_uid = outc.fetchone()[0] + 1
     # Input paths
     outc.execute('select colkey, colval from info where colkey="_input_paths"')
-    input_paths = json.loads(outc.fetchone()[1].replace("'", '"'))
+    input_paths = loads(outc.fetchone()[1].replace("'", '"'))
     new_fileno = max([int(v) for v in input_paths.keys()]) + 1
     rev_input_paths = {}
     for fileno, filepath in input_paths.items():
@@ -465,7 +471,7 @@ def fn_util_mergesqlite(args):
                 outc.execute(q, r)
         # File numbers
         c.execute('select colkey, colval from info where colkey="_input_paths"')
-        ips = json.loads(c.fetchone()[1].replace("'", '"'))
+        ips = loads(c.fetchone()[1].replace("'", '"'))
         fileno_dic = {}
         for fileno, filepath in ips.items():
             if filepath not in rev_input_paths:
@@ -485,7 +491,7 @@ def fn_util_mergesqlite(args):
                 q = f'insert into mapping values ({",".join(["?" for v in range(len(r))])})'
                 outc.execute(q, r)
     q = 'update info set colval=? where colkey="_input_paths"'
-    outc.execute(q, [json.dumps(input_paths)])
+    outc.execute(q, [dumps(input_paths)])
     q = 'update info set colval=? where colkey="Input file name"'
     v = ";".join(
         [input_paths[str(v)] for v in sorted(input_paths.keys(), key=lambda v: int(v))]
@@ -495,8 +501,10 @@ def fn_util_mergesqlite(args):
 
 
 def fn_util_filtersqlite(args):
-    args = util.get_dict_from_namespace(args)
-    loop = asyncio.get_event_loop()
+    from asyncio import get_event_loop
+    from .util import get_dict_from_namespace
+    args = get_dict_from_namespace(args)
+    loop = get_event_loop()
     loop.run_until_complete(filtersqlite_async(args))
 
 
@@ -507,6 +515,10 @@ def filtersqlite_async_drop_copy_table(c, table_name):
 
 
 async def filtersqlite_async(args):
+    import sqlite3
+    from os import remove
+    from os.path import exists
+    from .cravat_filter import CravatFilter
     dbpaths = args["paths"]
     for dbpath in dbpaths:
         if not dbpath.endswith(".sqlite"):
@@ -514,13 +526,13 @@ async def filtersqlite_async(args):
             continue
         opath = dbpath[:-7] + "." + args["suffix"] + ".sqlite"
         print(f"{opath}")
-        if os.path.exists(opath):
-            os.remove(opath)
+        if exists(opath):
+            remove(opath)
         conn = sqlite3.connect(opath)
         c = conn.cursor()
         try:
             c.execute("attach database '" + dbpath + "' as old_db")
-            cf = await cravat_filter.CravatFilter.create(
+            cf = await CravatFilter.create(
                 dbpath=dbpath,
                 filterpath=args["filterpath"],
                 filtersql=args["filtersql"],
@@ -617,6 +629,9 @@ def status_from_db(dbpath):
     Generate a status json from a result database.
     Currently only works well if the database is in the gui jobs area.
     """
+    import sqlite3
+    from pathlib import Path
+    from datetime import fromtimestamp
     if not isinstance(dbpath, Path):
         dbpath = Path(dbpath)
     d = {}
@@ -678,9 +693,7 @@ def status_from_db(dbpath):
         d["reports"] = []
         d["run_name"] = str(dbpath.stem)
         d["status"] = "Finished"
-        d["submission_time"] = datetime.datetime.fromtimestamp(
-            dbpath.stat().st_ctime
-        ).isoformat()
+        d["submission_time"] = fromtimestamp(dbpath.stat().st_ctime).isoformat()
         d["viewable"] = True
     except:
         raise
@@ -717,88 +730,87 @@ parser_convert.add_argument(
 )
 parser_convert.set_defaults(func=converttohg38)
 # migrate old result db
-parser_util_updateresult = subparsers.add_parser(
+parser_fn_util_updateresult = subparsers.add_parser(
     "migrate-result", help="migrates result db made with older versions of oakvar"
 )
-parser_util_updateresult.add_argument(
+parser_fn_util_updateresult.add_argument(
     "dbpath", help="path to a result db file or a directory"
 )
-parser_util_updateresult.add_argument(
+parser_fn_util_updateresult.add_argument(
     "-r",
     dest="recursive",
     action="store_true",
     default=False,
     help="recursive operation",
 )
-parser_util_updateresult.add_argument(
+parser_fn_util_updateresult.add_argument(
     "-c",
     dest="backup",
     action="store_true",
     default=False,
     help="backup original copy with .bak extension",
 )
-parser_util_updateresult.set_defaults(func=fn_util_updateresult)
+parser_fn_util_updateresult.set_defaults(func=fn_util_updateresult)
 # Make job accessible through the gui
-parser_util_addjob = subparsers.add_parser(
+parser_fn_util_addjob = subparsers.add_parser(
     "addjob", help="Copy a command line job into the GUI submission list"
 )
-parser_util_addjob.add_argument("path", help="Path to result database", type=Path)
-parser_util_addjob.add_argument(
+parser_fn_util_addjob.add_argument("path", help="Path to result database")
+parser_fn_util_addjob.add_argument(
     "-u",
     "--user",
     help="User who will own the job. Defaults to single user default user.",
     type=str,
     default="default",
 )
-parser_util_addjob.set_defaults(func=fn_util_addjob)
+parser_fn_util_addjob.set_defaults(func=fn_util_addjob)
 # Merge SQLite files
-parser_util_mergesqlite = subparsers.add_parser(
+parser_fn_util_mergesqlite = subparsers.add_parser(
     "mergesqlite", help="Merge SQLite result files"
 )
-parser_util_mergesqlite.add_argument(
-    "path", nargs="+", help="Path to result database", type=Path
-)
-parser_util_mergesqlite.add_argument(
+parser_fn_util_mergesqlite.add_argument(
+    "path", nargs="+", help="Path to result database")
+parser_fn_util_mergesqlite.add_argument(
     "-o", dest="outpath", required=True, help="Output SQLite file path"
 )
-parser_util_mergesqlite.set_defaults(func=fn_util_mergesqlite)
-parser_util_showsqliteinfo = subparsers.add_parser(
+parser_fn_util_mergesqlite.set_defaults(func=fn_util_mergesqlite)
+parser_fn_util_showsqliteinfo = subparsers.add_parser(
     "showsqliteinfo", help="Show SQLite result file information"
 )
-parser_util_showsqliteinfo.add_argument("paths", nargs="+", help="SQLite result file paths")
-parser_util_showsqliteinfo.add_argument("--fmt", default="text", help="Output format. text / json / yaml")
-parser_util_showsqliteinfo.add_argument("--to", default="stdout", help="Output to. stdout / return")
-parser_util_showsqliteinfo.set_defaults(func=fn_util_showsqliteinfo)
-parser_util_filtersqlite = subparsers.add_parser(
+parser_fn_util_showsqliteinfo.add_argument("paths", nargs="+", help="SQLite result file paths")
+parser_fn_util_showsqliteinfo.add_argument("--fmt", default="text", help="Output format. text / json / yaml")
+parser_fn_util_showsqliteinfo.add_argument("--to", default="stdout", help="Output to. stdout / return")
+parser_fn_util_showsqliteinfo.set_defaults(func=fn_util_showsqliteinfo)
+parser_fn_util_filtersqlite = subparsers.add_parser(
     "filtersqlite",
     help="Filter SQLite result files to produce filtered SQLite result files",
 )
-parser_util_filtersqlite.add_argument("paths", nargs="+", help="Path to result database")
-parser_util_filtersqlite.add_argument(
+parser_fn_util_filtersqlite.add_argument("paths", nargs="+", help="Path to result database")
+parser_fn_util_filtersqlite.add_argument(
     "-o", dest="out", default=".", help="Output SQLite file folder"
 )
-parser_util_filtersqlite.add_argument(
+parser_fn_util_filtersqlite.add_argument(
     "-s", dest="suffix", default="filtered", help="Suffix for output SQLite files"
 )
-parser_util_filtersqlite.add_argument(
+parser_fn_util_filtersqlite.add_argument(
     "-f", dest="filterpath", default=None, help="Path to a filter JSON file"
 )
-parser_util_filtersqlite.add_argument("--filtersql", default=None, help="Filter SQL")
-parser_util_filtersqlite.add_argument(
+parser_fn_util_filtersqlite.add_argument("--filtersql", default=None, help="Filter SQL")
+parser_fn_util_filtersqlite.add_argument(
     "--includesample",
     dest="includesample",
     nargs="+",
     default=None,
     help="Sample IDs to include",
 )
-parser_util_filtersqlite.add_argument(
+parser_fn_util_filtersqlite.add_argument(
     "--excludesample",
     dest="excludesample",
     nargs="+",
     default=None,
     help="Sample IDs to exclude",
 )
-parser_util_filtersqlite.set_defaults(func=fn_util_filtersqlite)
+parser_fn_util_filtersqlite.set_defaults(func=fn_util_filtersqlite)
 
 
 if __name__ == "__main__":

@@ -1,23 +1,10 @@
-import sqlite3
-import sys
-import traceback
-import logging
-import os
-import time
-import argparse
-from oakvar.util import get_caller_name
-from oakvar.config_loader import ConfigLoader
-from oakvar.constants import VARIANT, GENE, LEVELS
-from oakvar.exceptions import InvalidData
-from oakvar.inout import ColumnDefinition
-import json
-
-
 class BasePostAggregator(object):
 
     cr_type_to_sql = {"string": "text", "int": "integer", "float": "real"}
 
     def __init__(self, cmd_args, status_writer):
+        from oakvar.util import get_caller_name
+        from oakvar.config_loader import ConfigLoader
         self.status_writer = status_writer
         # self.module_name = get_caller_name(sys.modules[self.__module__].__file__)
         self.module_name = get_caller_name(cmd_args[0])
@@ -51,6 +38,7 @@ class BasePostAggregator(object):
                 self.logger.exception(e)
 
     def _define_cmd_parser(self):
+        import argparse
         parser = argparse.ArgumentParser()
         parser.add_argument("-n", dest="run_name", help="name of oakvar run")
         parser.add_argument(
@@ -70,6 +58,9 @@ class BasePostAggregator(object):
         self.cmd_arg_parser = parser
 
     def parse_cmd_args(self, cmd_args):
+        import os
+        import json
+        from oakvar.constants import LEVELS
         self._define_cmd_parser()
         parsed_args = self.cmd_arg_parser.parse_args(cmd_args[1:])
         if parsed_args.run_name:
@@ -86,6 +77,8 @@ class BasePostAggregator(object):
             self.confs = json.loads(confs)
 
     def run(self):
+        import time
+        import json
         if not self.should_run_annotate:
             self.base_cleanup()
             return
@@ -170,6 +163,7 @@ class BasePostAggregator(object):
         )
 
     def fill_categories(self):
+        from oakvar.inout import ColumnDefinition
         for col_d in self.conf["output_columns"]:
             col_def = ColumnDefinition(col_d)
             if col_def.category not in ["single", "multi"]:
@@ -189,6 +183,7 @@ class BasePostAggregator(object):
             self.cursor.execute(q, [col_def.get_json(), col_def.name])
 
     def write_output(self, input_data, output_dict):
+        from oakvar.constants import VARIANT, GENE
         q = ""
         for col_def in self.conf["output_columns"]:
             col_name = col_def["name"]
@@ -215,6 +210,7 @@ class BasePostAggregator(object):
         self.cursor_w.execute(q)
 
     def _log_runtime_exception(self, input_data, e):
+        import traceback
         try:
             err_str = traceback.format_exc().rstrip()
             if err_str not in self.unique_excs:
@@ -233,6 +229,8 @@ class BasePostAggregator(object):
         self.setup()
 
     def _open_db_connection(self):
+        import sqlite3
+        import os
         self.db_path = os.path.join(self.output_dir, self.run_name + ".sqlite")
         if os.path.exists(self.db_path):
             self.dbconn = sqlite3.connect(self.db_path)
@@ -243,6 +241,7 @@ class BasePostAggregator(object):
             msg = self.db_path + " not found"
             if self.logger:
                 self.logger.error(msg)
+            import sys
             sys.exit(msg)
 
     def _close_db_connection(self):
@@ -251,6 +250,7 @@ class BasePostAggregator(object):
         self.dbconn.close()
 
     def _alter_tables(self):
+        from oakvar.inout import ColumnDefinition
         # annotator table
         q = 'insert or replace into {:} values ("{:}", "{:}", "{}")'.format(
             self.level + "_annotator",
@@ -297,6 +297,7 @@ class BasePostAggregator(object):
         pass
 
     def _setup_logger(self):
+        import logging
         try:
             self.logger = logging.getLogger("oakvar." + self.module_name)
         except Exception as e:
@@ -305,6 +306,7 @@ class BasePostAggregator(object):
         self.unique_excs = []
 
     def _get_input(self):
+        import sqlite3
         dbconnloop = sqlite3.connect(self.db_path)
         cursorloop = dbconnloop.cursor()
         q = "select * from " + self.level

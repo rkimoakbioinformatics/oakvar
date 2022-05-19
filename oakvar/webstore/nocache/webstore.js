@@ -1849,17 +1849,14 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
             mdhtml = mdhtml.replace(/http:/g, 'https:');
         }
         var $mdhtml = $(mdhtml);
-        console.log("@ mdhtml=", mdhtml)
         var localRoot = window.location.origin + window.location.pathname.split('/').slice(0, -1).join('/');
         for (let img of $mdhtml.children('img')) {
-            console.log("@ img=", img)
             if (currentTab == 'store') {
                 var storeRoot = `${systemConf.store_url}/modules/${moduleName}/${mInfo.latest_version}`
             } else if (currentTab == 'submit') {
                 var storeRoot = `/modules/annotators/${moduleName}`
             }
             img.src = img.src.replace(localRoot, storeRoot);
-            console.log("@ img.src=", img.src)
             img.style.display = 'block';
             img.style.margin = 'auto';
             img.style['max-width'] = '100%';
