@@ -1,34 +1,11 @@
-import argparse
+from argparse import ArgumentParser, SUPPRESS
 import sys
-import sqlite3
-import os
-import json
-from oakvar.cravat_filter import CravatFilter
-from oakvar import admin_util as au
-from oakvar.config_loader import ConfigLoader
-from oakvar import util
-from oakvar.inout import ColumnDefinition
-from oakvar.util import write_log_msg
-import subprocess
-import re
-import logging
-import time
-import re
-import aiosqlite
-import types
-from oakvar import constants
-import asyncio
-import importlib
-import oakvar.cmd_run
-from types import SimpleNamespace
 import nest_asyncio
 nest_asyncio.apply()
-import sys
-import oyaml as yaml
-from oakvar.exceptions import InvalidModule
 
 if sys.platform == "win32" and sys.version_info >= (3, 8):
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy
+    set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 
 
 class CravatReport:
@@ -61,10 +38,17 @@ class CravatReport:
         self._setup_logger()
 
     def parse_cmd_args(self, inargs, inkwargs):
-        args = oakvar.util.get_args(parser_fn_report, inargs, inkwargs)
+        import sqlite3
+        import os
+        import json
+        from . import admin_util as au
+        from .config_loader import ConfigLoader
+        from .util import get_args
+        from .constants import custom_modules_dir
+        args = get_args(parser_fn_report, inargs, inkwargs)
         self.args = args
         if args["md"] is not None:
-            constants.custom_modules_dir = args["md"]
+            custom_modules_dir = args["md"]
         self.dbpath = args["dbpath"]
         self.filterpath = args["filterpath"]
         self.filtername = args["filtername"]
@@ -102,7 +86,7 @@ class CravatReport:
         if self.filter is None:
             if self.confs is not None and "filter" in self.confs:
                 self.filter = self.confs["filter"]
-            local = au.mic.get_local()
+            local = au.get_mic().get_local()
             if (
                 self.filter is None
                 and self.filterpath is None
@@ -154,6 +138,7 @@ class CravatReport:
             return False
 
     async def prep(self):
+        from .util import write_log_msg
         try:
             await self.connect_db()
             await self.load_filter()
@@ -162,7 +147,6 @@ class CravatReport:
                 await self.cf.close_db()
             if not hasattr(e, "notraceback") or e.notraceback != True:
                 import traceback
-
                 traceback.print_exc()
                 self.logger.error(e)
             else:
@@ -172,6 +156,7 @@ class CravatReport:
             raise
 
     def _setup_logger(self):
+        import logging
         if hasattr(self, "no_log") and self.no_log:
             return
         try:
@@ -182,6 +167,7 @@ class CravatReport:
         self.unique_excs = []
 
     async def get_db_conn(self):
+        import aiosqlite
         if self.dbpath is None:
             return None
         if self.conn is None:
@@ -207,6 +193,7 @@ class CravatReport:
                 self.logger.exception(e)
 
     async def getjson(self, level):
+        import json
         ret = None
         if await self.exec_db(self.table_exists, level) == False:
             return ret
@@ -215,6 +202,7 @@ class CravatReport:
             return json.dumps(row)
 
     def substitute_val(self, level, row):
+        import json
         for sub in self.column_subs.get(level, []):
             value = row[sub.index]
             if value is None or value == "":
@@ -245,6 +233,8 @@ class CravatReport:
         return row
 
     def process_datarow(self, args):
+        import json
+        from asyncio import get_event_loop, ensure_future
         datarow = args[0]
         should_skip_some_cols = args[1]
         level = args[2]
@@ -262,8 +252,8 @@ class CravatReport:
             # adds gene level data to variant level.
             if self.nogenelevelonvariantlevel == False and hugo_present:
                 hugo = datarow[self.colnos["variant"]["base__hugo"]]
-                loop = asyncio.get_event_loop()
-                future = asyncio.ensure_future(self.cf.get_gene_row(hugo), loop)
+                loop = get_event_loop()
+                future = ensure_future(self.cf.get_gene_row(hugo), loop)
                 generow = future.result()
                 if generow is None:
                     datarow.extend([None for i in range(len(self.var_added_cols))])
@@ -349,6 +339,8 @@ class CravatReport:
         return cols
 
     async def run_level(self, level):
+        import json
+        from .constants import legacy_gene_level_cols_to_skip
         ret = await self.exec_db(self.table_exists, level)
         if ret == False:
             return
@@ -400,7 +392,7 @@ class CravatReport:
         colnos_to_skip = []
         if level == "gene":
             for colno in range(len(datacols)):
-                if datacols[colno] in constants.legacy_gene_level_cols_to_skip:
+                if datacols[colno] in legacy_gene_level_cols_to_skip:
                     colnos_to_skip.append(colno)
         should_skip_some_cols = len(colnos_to_skip) > 0
         if level == "variant" and self.args["separatesample"]:
@@ -530,6 +522,8 @@ class CravatReport:
         # await conn.close()
 
     async def run(self, tab="all"):
+        import time
+        import oyaml as yaml
         try:
             start_time = time.time()
             if not (hasattr(self, "no_log") and self.no_log):
@@ -667,6 +661,12 @@ class CravatReport:
                 self.colnames_to_display[level].append(col_name)
 
     async def make_col_info(self, level, conn=None, cursor=None):
+        import os
+        import json
+        from . import admin_util as au
+        from .inout import ColumnDefinition
+        from .util import load_class
+        from types import SimpleNamespace
         self.colnames_to_display[level] = []
         await self.exec_db(self.store_mapper)
         cravat_conf = self.conf.get_cravat_conf()
@@ -796,9 +796,9 @@ class CravatReport:
                 mi = local_modules[module_name]
                 sys.path = sys.path + [os.path.dirname(mi.script_path)]
                 if module_name in done_var_annotators:
-                    annot_cls = util.load_class(mi.script_path, "CravatAnnotator")
+                    annot_cls = load_class(mi.script_path, "CravatAnnotator")
                 elif module_name == self.mapper_name:
-                    annot_cls = util.load_class(mi.script_path, "Mapper")
+                    annot_cls = load_class(mi.script_path, "Mapper")
                 cmd = {
                     "script_path": mi.script_path,
                     "input_file": "__dummy__",
@@ -947,6 +947,7 @@ class CravatReport:
         return v
 
     async def connect_db(self, dbpath=None):
+        import os
         if dbpath != None:
             self.dbpath = dbpath
         if self.dbpath == None:
@@ -965,6 +966,7 @@ class CravatReport:
             self.cf = None
 
     async def load_filter(self):
+        from .cravat_filter import CravatFilter
         self.cf = await CravatFilter.create(dbpath=self.dbpath)
         await self.cf.exec_db(
             self.cf.loadfilter,
@@ -994,8 +996,16 @@ class CravatReport:
 
 
 def run_reporter(*inargs, **inkwargs):
-    args = oakvar.util.get_args(parser_fn_report, inargs, inkwargs)
-    global au
+    import sqlite3
+    import os
+    from asyncio import get_event_loop
+    from .util import get_args, is_compatible_version
+    from . import admin_util as au
+    from .util import write_log_msg
+    from .constants import custom_modules_dir
+    import importlib
+    from .exceptions import InvalidModule
+    args = get_args(parser_fn_report, inargs, inkwargs)
     dbpath = args["dbpath"]
     # Check if exists
     if not os.path.exists(dbpath):
@@ -1006,7 +1016,7 @@ def run_reporter(*inargs, **inkwargs):
             db.execute("select * from info")
     except:
         exit(f"{dbpath} is not an OC database")
-    compatible_version, db_version, oc_version = util.is_compatible_version(dbpath)
+    compatible_version, db_version, oc_version = is_compatible_version(dbpath)
     if not compatible_version:
         if args["silent"] == False:
             print(
@@ -1018,8 +1028,8 @@ def run_reporter(*inargs, **inkwargs):
         return
     report_types = args["reporttypes"]
     if args["md"] is not None:
-        constants.custom_modules_dir = args["md"]
-    local = au.mic.get_local()
+        custom_modules_dir = args["md"]
+    local = au.get_mic().get_local()
     if len(report_types) == 0:
         if args["package"] is not None and args["package"] in local:
             package_conf = local[args["package"]].conf
@@ -1059,7 +1069,7 @@ def run_reporter(*inargs, **inkwargs):
             v = toks[1]
             module_options[module_name][key] = v
     del args["module_option"]
-    loop = asyncio.get_event_loop()
+    loop = get_event_loop()
     response = {}
     for report_type in report_types:
         module_info = au.get_local_module_info(report_type + "reporter")
@@ -1098,7 +1108,6 @@ def run_reporter(*inargs, **inkwargs):
             if hasattr(e, "handled") and e.handled == True:
                 if not hasattr(e, "notraceback") or e.notraceback != True:
                     import traceback
-
                     traceback.print_exc()
                 else:
                     if hasattr(reporter, "logger"):
@@ -1119,7 +1128,7 @@ def cravat_report_entrypoint():
     run_reporter(args)
 
 
-parser_fn_report = argparse.ArgumentParser(epilog="dbpath must be the first argument.")
+parser_fn_report = ArgumentParser(epilog="dbpath must be the first argument.")
 parser_fn_report.add_argument("dbpath", help="Path to aggregator output")
 parser_fn_report.add_argument(
     "-t",
@@ -1129,7 +1138,7 @@ parser_fn_report.add_argument(
     help="report types",
 )
 parser_fn_report.add_argument("-f", dest="filterpath", default=None, help="Path to filter file")
-parser_fn_report.add_argument("--filter", default=None, help=argparse.SUPPRESS)
+parser_fn_report.add_argument("--filter", default=None, help=SUPPRESS)
 parser_fn_report.add_argument("--filtersql", default=None, help="Filter SQL")
 parser_fn_report.add_argument(
     "-F",
@@ -1138,7 +1147,7 @@ parser_fn_report.add_argument(
     help="Name of filter (stored in aggregator output)",
 )
 parser_fn_report.add_argument(
-    "--filterstring", dest="filterstring", default=None, help=argparse.SUPPRESS
+    "--filterstring", dest="filterstring", default=None, help=SUPPRESS
 )
 parser_fn_report.add_argument("-s", dest="savepath", default=None, help="Path to save file")
 parser_fn_report.add_argument("-c", dest="confpath", help="path to a conf file")

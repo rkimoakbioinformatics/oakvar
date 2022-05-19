@@ -1,31 +1,4 @@
-import os
-import importlib
-import sys
-import logging
-import argparse
-import time
-import traceback
-import oakvar.constants as constants
-from oakvar.inout import CravatWriter
-from oakvar.exceptions import (
-    LiftoverFailure,
-    InvalidData,
-    BadFormatError,
-    ExpectedException,
-    NoVariantError,
-)
-import oakvar.admin_util as au
-from pyliftover import LiftOver
-import copy
-from oakvar.util import detect_encoding, get_args, reverse_complement
-import json
-import gzip
-from collections import defaultdict
-from oakvar.base_converter import BaseConverter
-import re
-
 STDIN = "stdin"
-
 
 class VTracker:
     """This helper class is used to identify the unique variants from the input
@@ -33,6 +6,7 @@ class VTracker:
     """
 
     def __init__(self, deduplicate=True):
+        from collections import defaultdict
         self.var_by_chrom = defaultdict(dict)
         self.current_UID = 1
         self.deduplicate = deduplicate
@@ -75,6 +49,7 @@ class MasterCravatConverter(object):
     ALREADYCRV = 2
 
     def __init__(self, *inargs, **inkwargs):
+        from oakvar.constants import crs_def
         self._parse_cmd_args(inargs, inkwargs)
         self.logger = None
         self.crv_writer = None
@@ -97,12 +72,21 @@ class MasterCravatConverter(object):
         self.vtracker = VTracker(deduplicate=not (self.unique_variants))
         from oakvar import get_wgs_reader
         self.wgsreader = get_wgs_reader(assembly="hg38")
-        self.crs_def = constants.crs_def.copy()
+        self.crs_def = crs_def.copy()
         self.error_lines = 0
 
     def _parse_cmd_args(self, inargs, inkwargs):
         """Parse the arguments in sys.argv"""
-        parser = argparse.ArgumentParser()
+        import sys
+        from json import loads
+        from argparse import ArgumentParser, SUPPRESS
+        from os.path import abspath, dirname, exists, basename, join
+        from os import makedirs
+        from oakvar.admin_util import get_liftover_chain_paths
+        from oakvar.exceptions import ExpectedException
+        from pyliftover import LiftOver
+        from oakvar.util import get_args
+        parser = ArgumentParser()
         parser.add_argument("path", help="Path to this converter's python module")
         parser.add_argument(
             "inputs", nargs="*", default=None, help="Files to be converted to .crv"
@@ -123,7 +107,6 @@ class MasterCravatConverter(object):
             "-l",
             "--genome",
             dest="genome",
-            choices=["hg38"] + list(constants.liftover_chain_paths.keys()),
             default="hg38",
             help="Input gene assembly. Will be lifted over to hg38",
         )
@@ -135,7 +118,7 @@ class MasterCravatConverter(object):
             dest="unique_variants",
             default=False,
             action="store_true",
-            help=argparse.SUPPRESS,
+            help=SUPPRESS,
         )
         if len(sys.argv) > 1 and len(inargs) == 0:
             inargs = [sys.argv]
@@ -155,11 +138,11 @@ class MasterCravatConverter(object):
         self.input_paths = []
         if self.pipeinput == False:
             self.input_paths = [
-                os.path.abspath(x) for x in parsed_args["inputs"] if x != "-"
+                abspath(x) for x in parsed_args["inputs"] if x != "-"
             ]
         else:
             self.input_paths = [f"./{STDIN}"]
-        self.input_dir = os.path.dirname(self.input_paths[0])
+        self.input_dir = dirname(self.input_paths[0])
         self.input_path_dict = {}
         self.input_path_dict2 = {}
         if self.pipeinput == False:
@@ -174,26 +157,33 @@ class MasterCravatConverter(object):
             self.output_dir = parsed_args["output_dir"]
         else:
             self.output_dir = self.input_dir
-        if not (os.path.exists(self.output_dir)):
-            os.makedirs(self.output_dir)
+        if not (exists(self.output_dir)):
+            makedirs(self.output_dir)
         self.output_base_fname = None
         if parsed_args["name"]:
             self.output_base_fname = parsed_args["name"]
         else:
-            self.output_base_fname = os.path.basename(self.input_paths[0])
+            self.output_base_fname = basename(self.input_paths[0])
         self.input_assembly = parsed_args["genome"]
         self.do_liftover = self.input_assembly != "hg38"
+        liftover_chain_paths = get_liftover_chain_paths()
         if self.do_liftover:
-            self.lifter = LiftOver(constants.liftover_chain_paths[self.input_assembly])
+            if self.input_assembly not in liftover_chain_paths:
+                from sys import stderr
+                from sys import exit as sysexit
+                stderr.write(f"{self.input_assembly} is not supported.")
+                sysexit(1)
+            else:
+                self.lifter = LiftOver(liftover_chain_paths[self.input_assembly])
         else:
             self.lifter = None
-        self.status_fpath = os.path.join(
+        self.status_fpath = join(
             self.output_dir, self.output_base_fname + ".status.json"
         )
         self.conf = {}
         if parsed_args["confs"] is not None:
             confs = parsed_args["confs"].lstrip("'").rstrip("'").replace("'", '"')
-            self.conf = json.loads(confs)
+            self.conf = loads(confs)
         if "conf" in parsed_args:
             self.conf.update(parsed_args["conf"])
         self.unique_variants = parsed_args["unique_variants"]
@@ -203,6 +193,8 @@ class MasterCravatConverter(object):
             self.status_writer = None
 
     def open_input_file(self, input_path):
+        import gzip
+        from oakvar.util import detect_encoding
         encoding = detect_encoding(input_path)
         if input_path.endswith(".gz"):
             f = gzip.open(input_path, mode="rt", encoding=encoding)
@@ -211,6 +203,9 @@ class MasterCravatConverter(object):
         return f
 
     def first_input_file(self):
+        import gzip
+        from sys import stdin
+        from oakvar.util import detect_encoding
         if self.pipeinput == False:
             input_path = self.input_paths[0]
             encoding = detect_encoding(input_path)
@@ -219,7 +214,7 @@ class MasterCravatConverter(object):
             else:
                 f = open(input_path, encoding=encoding)
         else:
-            f = sys.stdin
+            f = stdin
         return f
 
     def setup(self):
@@ -237,15 +232,17 @@ class MasterCravatConverter(object):
 
     def _setup_logger(self):
         """Open a log file and set up log handler"""
-        self.logger = logging.getLogger("oakvar.converter")
-        self.logger.info("started: %s" % time.asctime())
+        from logging import getLogger
+        from time import asctime
+        self.logger = getLogger("oakvar.converter")
+        self.logger.info("started: %s" % asctime())
         if self.pipeinput == False:
             self.logger.info("Input file(s): %s" % ", ".join(self.input_paths))
         else:
             self.logger.info(f"Input file(s): {STDIN}")
         if self.do_liftover:
             self.logger.info("liftover from %s" % self.input_assembly)
-        self.error_logger = logging.getLogger("error.converter")
+        self.error_logger = getLogger("error.converter")
         self.unique_excs = []
 
     def _initialize_converters(self):
@@ -255,12 +252,15 @@ class MasterCravatConverter(object):
         python modules. Initializes the CravatConverter class from that
         module and places them in a dict keyed by their input format
         """
-        for module_info in au.get_local_module_infos_of_type("converter").values():
+        from importlib.util import spec_from_file_location, module_from_spec
+        from oakvar.exceptions import ExpectedException
+        from oakvar.admin_util import get_local_module_infos_of_type
+        for module_info in get_local_module_infos_of_type("converter").values():
             # path based import from https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
-            spec = importlib.util.spec_from_file_location(
+            spec = spec_from_file_location(
                 module_info.name, module_info.script_path
             )
-            module = importlib.util.module_from_spec(spec)
+            module = module_from_spec(spec)
             spec.loader.exec_module(module)
             converter = module.CravatConverter()
             if converter.format_name not in self.converters:
@@ -279,6 +279,8 @@ class MasterCravatConverter(object):
         check_format() method of the CravatConverters to identify a
         converter which can parse the input file.
         """
+        from os.path import basename
+        from oakvar.exceptions import ExpectedException
         if self.input_format is not None:
             if self.input_format not in self.possible_formats:
                 raise ExpectedException(
@@ -299,7 +301,7 @@ class MasterCravatConverter(object):
                     if check_success:
                         valid_formats.append(converter_name)
                 if len(valid_formats) == 0:
-                    fn = os.path.basename(first_file.name)
+                    fn = basename(first_file.name)
                     msg = f'Input format could not be determined for file {fn}. Additional input format converters are available. View available converters in the store or with "oc module ls -a -t converter"'
                     raise ExpectedException(msg)
                 elif len(valid_formats) > 1:
@@ -344,60 +346,63 @@ class MasterCravatConverter(object):
         .map file contains two columns showing which lines in input
         correspond to which lines in output.
         """
+        from oakvar.constants import crv_def, crv_idx, crm_def, crm_idx, crs_idx, crl_def
+        from oakvar.inout import CravatWriter
+        from os.path import join
         # Setup CravatWriter
-        self.wpath = os.path.join(self.output_dir, self.output_base_fname + ".crv")
+        self.wpath = join(self.output_dir, self.output_base_fname + ".crv")
         self.crv_writer = CravatWriter(self.wpath)
-        self.crv_writer.add_columns(constants.crv_def)
+        self.crv_writer.add_columns(crv_def)
         self.crv_writer.write_definition()
-        for index_columns in constants.crv_idx:
+        for index_columns in crv_idx:
             self.crv_writer.add_index(index_columns)
         self.crv_writer.wf.write(
             "#input_format={}\n".format(self.primary_converter.format_name)
         )
         # Setup err file
-        self.err_path = os.path.join(
+        self.err_path = join(
             self.output_dir, self.output_base_fname + ".converter.err"
         )
         # Setup crm line mappings file
-        self.crm_path = os.path.join(self.output_dir, self.output_base_fname + ".crm")
+        self.crm_path = join(self.output_dir, self.output_base_fname + ".crm")
         self.crm_writer = CravatWriter(self.crm_path)
-        self.crm_writer.add_columns(constants.crm_def)
+        self.crm_writer.add_columns(crm_def)
         self.crm_writer.write_definition()
-        for index_columns in constants.crm_idx:
+        for index_columns in crm_idx:
             self.crm_writer.add_index(index_columns)
         self.crm_writer.write_input_paths(self.input_path_dict)
         # Setup crs sample file
-        self.crs_path = os.path.join(self.output_dir, self.output_base_fname + ".crs")
+        self.crs_path = join(self.output_dir, self.output_base_fname + ".crs")
         self.crs_writer = CravatWriter(self.crs_path)
         self.crs_writer.add_columns(self.crs_def)
         if hasattr(self.primary_converter, "addl_cols"):
             self.crs_writer.add_columns(self.primary_converter.addl_cols, append=True)
             self.crs_def.extend(self.primary_converter.addl_cols)
         self.crs_writer.write_definition()
-        for index_columns in constants.crs_idx:
+        for index_columns in crs_idx:
             self.crs_writer.add_index(index_columns)
         # Setup liftover var file
         # if self.do_liftover or self.primary_converter.format_name == "vcf":
-        self.crl_path = os.path.join(
+        self.crl_path = join(
             self.output_dir,
             ".".join([self.output_base_fname, "original_input", "var"]),
         )
         self.crl_writer = CravatWriter(self.crl_path)
-        # assm_crl_def = copy.deepcopy(constants.crl_def)
-        # assm_crl_def[1]["title"] = "Chrom".format(self.input_assembly.title())
-        # assm_crl_def[2]["title"] = "Position".format(self.input_assembly.title())
-        # assm_crl_def[2]["desc"] = "Position in {0}".format(
-        #    self.input_assembly.title()
-        # )
-        # self.crl_writer.add_columns(assm_crl_def)
-        self.crl_writer.add_columns(constants.crl_def)
+        self.crl_writer.add_columns(crl_def)
         self.crl_writer.write_definition()
         self.crl_writer.write_names("original_input", "Original Input", "")
 
     def run(self):
         """Convert input file to a .crv file using the primary converter."""
+        from sys import stdin
+        from os.path import basename
+        from time import time, asctime, localtime
+        from copy import copy
+        from re import compile
+        from oakvar.exceptions import BadFormatError, ExpectedException, NoVariantError
+        from oakvar.base_converter import BaseConverter
         self.setup()
-        start_time = time.time()
+        start_time = time()
         if self.status_writer is not None:
             self.status_writer.queue_status_update(
                 "status",
@@ -405,15 +410,15 @@ class MasterCravatConverter(object):
                     "Converter", self.primary_converter.format_name
                 ),
             )
-        last_status_update_time = time.time()
+        last_status_update_time = time()
         multiple_files = len(self.input_paths) > 1
         fileno = 0
         total_lnum = 0
-        base_re = re.compile("^[ATGC]+|[-]+$")
+        base_re = compile("^[ATGC]+|[-]+$")
         write_lnum = 0
         for fn in self.input_paths:
             if self.pipeinput:
-                f = sys.stdin
+                f = stdin
             else:
                 f = self.open_input_file(fn)
             if self.pipeinput == True:
@@ -429,7 +434,7 @@ class MasterCravatConverter(object):
             if self.pipeinput:
                 cur_fname = STDIN
             else:
-                cur_fname = os.path.basename(f.name)
+                cur_fname = basename(f.name)
             for read_lnum, l, all_wdicts in converter.convert_file(
                 f, exc_handler=self._log_conversion_error
             ):
@@ -478,7 +483,7 @@ class MasterCravatConverter(object):
                                         wdict["ref_base"] = self.wgsreader.get_bases(
                                             chrom, int(pos)
                                         )
-                                prelift_wdict = copy.copy(wdict)
+                                prelift_wdict = copy(wdict)
                                 if self.do_liftover:
                                     (
                                         wdict["chrom"],
@@ -551,7 +556,7 @@ class MasterCravatConverter(object):
                     self._log_conversion_error(read_lnum, l, e)
                     continue
             f.close()
-            cur_time = time.time()
+            cur_time = time()
             if total_lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
                 if self.status_writer is not None:
                     self.status_writer.queue_status_update(
@@ -568,8 +573,8 @@ class MasterCravatConverter(object):
             self.status_writer.queue_status_update("num_input_var", total_lnum)
             self.status_writer.queue_status_update("num_unique_var", write_lnum)
             self.status_writer.queue_status_update("num_error_input", self.error_lines)
-        end_time = time.time()
-        self.logger.info("finished: %s" % time.asctime(time.localtime(end_time)))
+        end_time = time()
+        self.logger.info("finished: %s" % asctime(localtime(end_time)))
         runtime = round(end_time - start_time, 3)
         self.logger.info("num input lines: {}".format(total_lnum))
         self.logger.info("runtime: %s" % runtime)
@@ -597,6 +602,8 @@ class MasterCravatConverter(object):
         return res
 
     def liftover(self, chrom, pos, ref, alt):
+        from oakvar.exceptions import LiftoverFailure
+        from oakvar.util import reverse_complement
         reflen = len(ref)
         altlen = len(alt)
         if reflen == 1 and altlen == 1:
@@ -670,9 +677,10 @@ class MasterCravatConverter(object):
         and message. Exceptions are also written to the log file once, with the
         traceback.
         """
+        from traceback import format_exc
         if full_line_error:
             self.error_lines += 1
-        err_str = traceback.format_exc().rstrip()
+        err_str = format_exc().rstrip()
         if err_str not in self.unique_excs:
             self.unique_excs.append(err_str)
             if hasattr(e, "notraceback") and e.notraceback:

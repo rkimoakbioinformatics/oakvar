@@ -1,43 +1,32 @@
-import time
-import argparse
-import os
+from argparse import ArgumentParser, SUPPRESS
 import sys
-from oakvar import admin_util as au
-from oakvar import util
-from oakvar.config_loader import ConfigLoader
-from oakvar.util import write_log_msg
-import aiosqlite
-import datetime
-from types import SimpleNamespace
-from oakvar import constants
-import json
-import logging
-import traceback
-from oakvar.mp_runners import init_worker, annot_from_queue, mapper_runner
-import multiprocessing as mp
-import multiprocessing.managers
-from logging.handlers import QueueListener
-from oakvar.aggregator import Aggregator
-from oakvar.exceptions import *
-import oyaml as yaml
-import collections
-import asyncio
-import sqlite3
-from oakvar.inout import CravatWriter
-from oakvar.inout import CravatReader
-import glob
-import nest_asyncio
-nest_asyncio.apply()
-import re
-import sys
-import inspect
+
+
+def fn_run(*args, **kwargs):
+    import asyncio
+    import inspect
+    from .util import get_args
+    from . import admin_util as au
+    import nest_asyncio
+    nest_asyncio.apply()
+    fnname = inspect.currentframe().f_code.co_name
+    parser = globals()["parser_" + fnname]
+    args = get_args(parser, args, kwargs)
+    au.ready_resolution_console()
+    module = Cravat(**args)
+    try:
+        response = asyncio.run(module.main())
+        return response
+    except Exception as e:
+        raise e
+
 
 if sys.platform == "win32" and sys.version_info >= (3, 8):
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-import shutil
+    from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy
+    set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 
 # Custom system conf
-pre_parser = argparse.ArgumentParser(add_help=False)
+pre_parser = ArgumentParser(add_help=False)
 pre_parser.add_argument(
     "--system-option", dest="system_option", nargs="*", default=None
 )
@@ -56,26 +45,14 @@ if args.system_option is not None:
         except ValueError:
             pass
         custom_system_conf[k] = v
+    from . import admin_util as au
     au.custom_system_conf = custom_system_conf
     au.update_mic()
 else:
-    au.custom_system_conf = {}
+    from . import admin_util
+    admin_util.custom_system_conf = {}
 
-
-def fn_run(*args, **kwargs):
-    fnname = inspect.currentframe().f_code.co_name
-    parser = globals()["parser_" + fnname]
-    args = util.get_args(parser, args, kwargs)
-    au.ready_resolution_console()
-    module = Cravat(**args)
-    try:
-        response = asyncio.run(module.main())
-        return response
-    except Exception as e:
-        raise e
-
-
-parser_fn_run = argparse.ArgumentParser(
+parser_fn_run = ArgumentParser(
     prog="ov run input_file_path_1 input_file_path_2 ...",
     description="OakVar genomic variant interpreter. https://github.com/rkimoakbioinformatics/oakvar. Use input_file_path arguments before any option or define them in a conf file (option -c).",
     epilog="inputs should be the first option",
@@ -169,7 +146,6 @@ parser_fn_run.add_argument(
     "-l",
     "--liftover",
     dest="genome",
-    choices=constants.assembly_choices,
     default=None,
     help="reference genome of input. OakVar will lift over to hg38 if needed.",
 )
@@ -200,7 +176,6 @@ parser_fn_run.add_argument(
     "--input-format",
     dest="forcedinputformat",
     default=None,
-    choices=au.input_formats(),
     help="Force input format",
 )
 parser_fn_run.add_argument(
@@ -292,7 +267,7 @@ parser_fn_run.add_argument(
 parser_fn_run.add_argument(
     "--excludesample", nargs="+", default=None, help="Sample IDs to exclude"
 )
-parser_fn_run.add_argument("--filter", default=None, help=argparse.SUPPRESS)
+parser_fn_run.add_argument("--filter", default=None, help=SUPPRESS)
 parser_fn_run.add_argument("-f", dest="filterpath", default=None, help="Path to a filter file")
 parser_fn_run.add_argument(
     "--md",
@@ -315,13 +290,14 @@ parser_fn_run.add_argument(
 )
 parser_fn_run.set_defaults(func=fn_run)
 
-
-class MyManager(multiprocessing.managers.SyncManager):
-    pass
-
-
 class Cravat(object):
+    #class MyManager(multiprocessing.managers.SyncManager):
+    #    pass
+
+
     def __init__(self, **kwargs):
+        import time
+        from multiprocessing.managers import SyncManager
         self.runlevels = {
             "converter": 1,
             "mapper": 2,
@@ -356,7 +332,8 @@ class Cravat(object):
             self.modules_conf = self.conf.get_modules_conf()
             self.write_initial_status_json()
             self.unique_logs = {}
-            self.manager = MyManager()
+            self.manager = SyncManager()
+            #self.manager = MyManager()
             self.manager.register("StatusWriter", StatusWriter)
             self.manager.start()
             self.status_writer = self.manager.StatusWriter(self.status_json_path)
@@ -364,11 +341,17 @@ class Cravat(object):
             self.handle_exception(e)
 
     def check_valid_modules(self, module_names):
+        from .exceptions import InvalidModule
+        from . import admin_util as au
         for module_name in module_names:
             if au.module_exists_local(module_name) == False:
                 raise InvalidModule(module_name)
 
     def write_initial_status_json(self):
+        import os
+        from datetime import datetime
+        import json
+        from . import admin_util as au
         status_fname = "{}.status.json".format(self.run_name)
         self.status_json_path = os.path.join(self.output_dir, status_fname)
         if os.path.exists(self.status_json_path) == True:
@@ -394,7 +377,7 @@ class Cravat(object):
                 self.status_json["orig_input_path"] = self.inputs
                 self.status_json[
                     "submission_time"
-                ] = datetime.datetime.now().isoformat()
+                ] = datetime.now().isoformat()
                 self.status_json["viewable"] = False
                 self.status_json["note"] = self.args.note
                 self.status_json["status"] = "Starting"
@@ -423,7 +406,7 @@ class Cravat(object):
                 os.path.basename(x) for x in self.inputs
             ]
             self.status_json["orig_input_path"] = self.inputs
-            self.status_json["submission_time"] = datetime.datetime.now().isoformat()
+            self.status_json["submission_time"] = datetime.now().isoformat()
             self.status_json["viewable"] = False
             self.status_json["note"] = self.args.note
             self.status_json["status"] = "Starting"
@@ -439,6 +422,8 @@ class Cravat(object):
                 wf.write(json.dumps(self.status_json, indent=2, sort_keys=True))
 
     def get_logger(self):
+        import os
+        import logging
         if self.args.newlog == True:
             self.logmode = "w"
         else:
@@ -466,6 +451,7 @@ class Cravat(object):
         self.error_logger.addHandler(self.error_log_handler)
 
     def close_logger(self):
+        import logging
         self.log_handler.close()
         self.logger.removeHandler(self.log_handler)
         self.error_log_handler.close()
@@ -478,13 +464,16 @@ class Cravat(object):
 
     def run(self):
         import asyncio
-
+        import nest_asyncio
+        nest_asyncio.apply()
         loop = asyncio.new_event_loop()
         response = loop.run_until_complete(self.main())
         loop.close()
         return response
 
     def delete_output_files(self):
+        import os
+        import glob
         fns = glob.glob(os.path.join(self.output_dir, self.run_name + ".*"))
         for fn in fns:
             if not self.args.silent:
@@ -492,6 +481,8 @@ class Cravat(object):
             os.remove(fn)
 
     def log_versions(self):
+        import os
+        from . import admin_util as au
         self.logger.info(
             f"version: oakvar {au.get_current_package_version()} {os.path.dirname(os.path.abspath(__file__))}"
         )
@@ -514,6 +505,7 @@ class Cravat(object):
             )
 
     async def main(self):
+        import time
         no_problem_in_run = True
         report_response = None
         exception = None
@@ -670,15 +662,18 @@ class Cravat(object):
                 return report_response
 
     async def write_admin_db(self, runtime, numinput):
+        import os
+        import aiosqlite
+        from .admin_util import get_admindb_path
         if runtime is None or numinput is None:
             return
-        if os.path.exists(constants.admindb_path) == False:
-            s = "{} does not exist.".format(constants.admindb_path)
+        if os.path.exists(get_admindb_path()) == False:
+            s = "{} does not exist.".format(get_admindb_path())
             self.logger.info(s)
             if not self.args.silent:
                 print(s)
             return
-        db = await aiosqlite.connect(constants.admindb_path)
+        db = await aiosqlite.connect(get_admindb_path())
         cursor = await db.cursor()
         q = 'update jobs set runtime={}, numinput={} where jobid="{}"'.format(
             runtime, numinput, self.args.jobid
@@ -689,6 +684,12 @@ class Cravat(object):
         await db.close()
 
     def write_smartfilters(self):
+        import time
+        import os
+        import json
+        import sqlite3
+        from .util import filter_affected_cols
+        from .constants import base_smartfilters
         if not self.args.silent:
             print("Indexing")
         dbpath = os.path.join(self.output_dir, self.run_name + ".sqlite")
@@ -700,13 +701,13 @@ class Cravat(object):
             "insert or replace into smartfilters (name, definition) values (?, ?);"
         )
         cols_to_index = set()
-        for sf in constants.base_smartfilters:
-            cols_to_index |= util.filter_affected_cols(sf["filter"])
+        for sf in base_smartfilters:
+            cols_to_index |= filter_affected_cols(sf["filter"])
         if self.annotator_ran:
             for linfo in self.annotators.values():
                 if linfo.smartfilters is not None:
                     for sf in linfo.smartfilters:
-                        cols_to_index |= util.filter_affected_cols(sf["filter"])
+                        cols_to_index |= filter_affected_cols(sf["filter"])
                     mname = linfo.name
                     json_info = json.dumps(linfo.smartfilters)
                     cursor.execute(ins_template, (mname, json_info))
@@ -737,7 +738,6 @@ class Cravat(object):
                     cursor.execute(q)
                     if not self.args.silent:
                         print(f"\tfinished in {time.time()-st:.3f}s")
-
         # Package filter
         if hasattr(self.args, "filter") and self.args.filter is not None:
             q = "create table if not exists viewersetup (datatype text, name text, viewersetup text, unique (datatype, name))"
@@ -750,6 +750,8 @@ class Cravat(object):
         conn.close()
 
     def handle_exception(self, e):
+        import traceback
+        from .exceptions import ExpectedException, InvalidData, InvalidModule
         exc_str = traceback.format_exc()
         exc_class = e.__class__
         if exc_class == InvalidModule:
@@ -764,24 +766,28 @@ class Cravat(object):
             self.logger.exception("An expected exception occurred.")
             self.logger.error(e)
         else:
-            self.logger.exception("An unexpected exception occurred.")
+            if hasattr(self, "logger"):
+                self.logger.exception("An unexpected exception occurred.")
             if not self.args.silent:
                 print(exc_str)
             return e
 
     def set_package_conf(self, supplied_args):
+        from . import admin_util as au
         if "package" in supplied_args:
             package_name = supplied_args["package"]
             del supplied_args["package"]
-            if package_name in au.mic.get_local():
-                self.package_conf = au.mic.get_local()[package_name].conf
+            if package_name in au.get_mic().get_local():
+                self.package_conf = au.get_mic().get_local()[package_name].conf
             else:
                 self.package_conf = {}
         else:
             self.package_conf = {}
 
     def make_self_args_considering_package_conf(self, supplied_args):
-        full_args = util.get_argument_parser_defaults(parser_fn_run)
+        from .util import get_argument_parser_defaults
+        from types import SimpleNamespace
+        full_args = get_argument_parser_defaults(parser_fn_run)
         # package
         if "run" in self.package_conf:
             package_conf_run = {
@@ -831,11 +837,14 @@ class Cravat(object):
                 self.args.__dict__[arg_key] = self.run_conf[arg_key]
 
     def make_run_conf_path(self):
+        import os
         self.run_conf_path = ""
         if hasattr(self.args, "conf") and os.path.exists(self.args.conf):
             self.run_conf_path = self.args.conf
 
     def make_self_conf(self):
+        from .config_loader import ConfigLoader
+        import json
         self.conf = ConfigLoader(job_conf_path=self.run_conf_path)
         if self.args.confs != None:
             conf_bak = self.conf
@@ -886,13 +895,14 @@ class Cravat(object):
         self.num_input = len(self.inputs)
 
     def download_url_input(self, input_no):
+        from .util import is_url, humanize_bytes
         ip = self.inputs[input_no]
         if " " in ip:
             print(f"Space is not allowed in input file paths ({ip})")
             exit()
-        if util.is_url(ip):
+        if is_url(ip):
+            import os
             import requests
-
             if not self.args.silent:
                 print(f"Fetching {ip}... ")
             try:
@@ -913,7 +923,7 @@ class Cravat(object):
                         cur_prog = "*" * cur_star
                         rem_prog = " " * rem_stars
                         print(
-                            f"[{cur_prog}{rem_prog}] {util.humanize_bytes(cur_size)} / {util.humanize_bytes(total_size)} ({perc * 100.0:.0f}%)",
+                            f"[{cur_prog}{rem_prog}] {humanize_bytes(cur_size)} / {humanize_bytes(total_size)} ({perc * 100.0:.0f}%)",
                             end="\r",
                             flush=True,
                         )
@@ -928,6 +938,7 @@ class Cravat(object):
             return ip
 
     def process_url_and_pipe_inputs(self):
+        from .util import is_url
         self.first_non_url_input = None
         if (
             self.args.inputs is not None
@@ -936,8 +947,9 @@ class Cravat(object):
         ):
             self.pipeinput = True
         if self.args.inputs is not None:
+            import os
             self.inputs = [
-                os.path.abspath(x) if not util.is_url(x) and x != "-" else x
+                os.path.abspath(x) if not is_url(x) and x != "-" else x
                 for x in self.args.inputs
             ]
             for input_no in range(len(self.inputs)):
@@ -950,6 +962,7 @@ class Cravat(object):
             self.inputs = []
 
     def set_run_name(self):
+        import os
         self.run_name = self.args.run_name
         if self.run_name == None:
             if self.num_input == 0 or self.pipeinput:
@@ -960,6 +973,8 @@ class Cravat(object):
                     self.run_name += "_and_" + str(len(self.inputs) - 1) + "_files"
 
     def set_append_mode(self):
+        import os
+        import shutil
         if self.num_input > 0 and self.inputs[0].endswith(".sqlite"):
             self.append_mode = True
             if self.args.skip is None:
@@ -981,6 +996,7 @@ class Cravat(object):
                 self.run_name = self.run_name[:-7]
 
     def set_output_dir(self):
+        import os
         self.output_dir = self.args.output_dir
         if self.output_dir == None:
             if self.num_input == 0 or self.first_non_url_input is None:
@@ -995,13 +1011,15 @@ class Cravat(object):
             os.mkdir(self.output_dir)
 
     def set_genome_assembly(self):
+        from .constants import default_assembly_key, assembly_choices
+        from .admin_util import get_main_conf_path
         if self.args.genome is None:
-            if constants.default_assembly_key in self.cravat_conf:
-                self.input_assembly = self.cravat_conf[constants.default_assembly_key]
+            if default_assembly_key in self.cravat_conf:
+                self.input_assembly = self.cravat_conf[default_assembly_key]
             else:
                 msg = "Genome assembly should be given (as one of {}) with -l option or a default genome assembly should be defined in {} as default_assembly.".format(
-                    ", ".join(constants.assembly_choices),
-                    constants.main_conf_path,
+                    ", ".join(assembly_choices),
+                    get_main_conf_path(),
                 )
                 print(msg)
                 exit()
@@ -1021,6 +1039,7 @@ class Cravat(object):
             self.endlevel = max(self.runlevels.values())
 
     def make_args_namespace(self, supplied_args):
+        from . import admin_util as au
         self.set_package_conf(supplied_args)
         self.make_self_args_considering_package_conf(supplied_args)
         if self.args.show_version:
@@ -1045,10 +1064,12 @@ class Cravat(object):
             self.args.note = ""
 
     def set_md(self):
+        from .constants import custom_modules_dir
         if self.args.md is not None:
-            constants.custom_modules_dir = self.args.md
+            custom_modules_dir = self.args.md
 
     def set_annotators(self):
+        from . import admin_util as au
         self.excludes = self.args.excludes
         if len(self.args.annotators) > 0:
             if self.args.annotators == ["all"]:
@@ -1078,6 +1099,7 @@ class Cravat(object):
         self.annotators = au.get_local_module_infos_by_names(self.annotator_names)
 
     def set_mapper(self):
+        from . import admin_util as au
         if len(self.args.mapper_name) > 0:
             self.mapper_name = self.args.mapper_name[0]
         elif (
@@ -1092,6 +1114,8 @@ class Cravat(object):
         self.mapper = au.get_local_module_info_by_name(self.mapper_name)
 
     def set_postaggregators(self):
+        from .constants import default_postaggregator_names
+        from . import admin_util as au
         if len(self.args.postaggregators) > 0:
             self.postaggregator_names = self.args.postaggregators
         elif (
@@ -1114,7 +1138,7 @@ class Cravat(object):
             self.postaggregator_names = sorted(
                 list(
                     set(self.postaggregator_names).union(
-                        set(constants.default_postaggregator_names)
+                        set(default_postaggregator_names)
                     )
                 )
             )
@@ -1127,6 +1151,7 @@ class Cravat(object):
             )
 
     def set_reporters(self):
+        from . import admin_util as au
         if len(self.args.reports) > 0:
             self.report_names = self.args.reports
         elif (
@@ -1145,6 +1170,7 @@ class Cravat(object):
             self.reports = au.get_local_module_infos_by_names(self.reporter_names)
 
     def set_and_check_input_files(self):
+        import os
         self.crvinput = os.path.join(self.output_dir, self.run_name + ".crv")
         self.crxinput = os.path.join(self.output_dir, self.run_name + ".crx")
         self.crginput = os.path.join(self.output_dir, self.run_name + ".crg")
@@ -1160,27 +1186,29 @@ class Cravat(object):
             self.crg_present = True
         else:
             self.crg_present = False
-
         if self.append_mode:
             self.regenerate_from_db()
 
     def regenerate_from_db(self):
+        import sqlite3
+        from .constants import crv_def, crx_def, crg_def
+        from .inout import CravatWriter
         dbpath = self.inputs[0]
         db = sqlite3.connect(dbpath)
         c = db.cursor()
         # Variant
         if not self.crv_present:
-            crv = CravatWriter(self.crvinput, columns=constants.crv_def)
+            crv = CravatWriter(self.crvinput, columns=crv_def)
             crv.write_definition()
         else:
             crv = None
         if not self.crx_present:
-            crx = CravatWriter(self.crxinput, columns=constants.crx_def)
+            crx = CravatWriter(self.crxinput, columns=crx_def)
             crx.write_definition()
         else:
             crx = None
         if crv or crx:
-            colnames = [x["name"] for x in constants.crx_def]
+            colnames = [x["name"] for x in crx_def]
             sel_cols = ", ".join(["base__" + x for x in colnames])
             q = f"select {sel_cols} from variant"
             c.execute(q)
@@ -1198,9 +1226,9 @@ class Cravat(object):
             self.crx_present = True
         # Gene
         if not self.crg_present:
-            crg = CravatWriter(self.crginput, columns=constants.crg_def)
+            crg = CravatWriter(self.crginput, columns=crg_def)
             crg.write_definition()
-            colnames = [x["name"] for x in constants.crg_def]
+            colnames = [x["name"] for x in crg_def]
             sel_cols = ", ".join(["base__" + x for x in colnames])
             q = f"select {sel_cols} from gene"
             c.execute(q)
@@ -1213,6 +1241,7 @@ class Cravat(object):
         db.close()
 
     def populate_secondary_annotators(self):
+        import os
         secondaries = {}
         for module in self.annotators.values():
             self._find_secondary_annotators(module, secondaries)
@@ -1244,6 +1273,7 @@ class Cravat(object):
             self._find_secondary_annotators(sannot, ret)
 
     def get_module_output_path(self, module):
+        import os
         if module.level == "variant":
             postfix = ".var"
         elif module.level == "gene":
@@ -1256,6 +1286,7 @@ class Cravat(object):
         return path
 
     def check_module_output(self, module):
+        import os
         path = self.get_module_output_path(module)
         if os.path.exists(path):
             return path
@@ -1263,6 +1294,7 @@ class Cravat(object):
             None
 
     def get_secondary_modules(self, primary_module):
+        from . import admin_util as au
         secondary_modules = [
             au.get_local_module_info(module_name)
             for module_name in primary_module.secondary_module_names
@@ -1270,6 +1302,10 @@ class Cravat(object):
         return secondary_modules
 
     def run_converter(self):
+        import os
+        from .util import load_class
+        from types import SimpleNamespace
+        import json
         converter_path = os.path.join(os.path.dirname(__file__), "cravat_convert.py")
         module = SimpleNamespace(
             title="Converter", name="converter", script_path=converter_path
@@ -1303,11 +1339,14 @@ class Cravat(object):
             if not self.args.silent:
                 print(" ".join([str(k) + "=" + str(v) for k, v in arg_dict.items()]))
         arg_dict["status_writer"] = self.status_writer
-        converter_class = util.load_class(module.script_path, "MasterCravatConverter")
+        converter_class = load_class(module.script_path, "MasterCravatConverter")
         converter = converter_class(arg_dict)
         self.numinput, self.converter_format = converter.run()
 
     def run_genemapper(self):
+        from .util import load_class
+        import json
+        from . import admin_util as au
         module = au.get_local_module_info(self.cravat_conf["genemapper"])
         self.genemapper = module
         cmd = [
@@ -1330,11 +1369,17 @@ class Cravat(object):
         if self.verbose:
             if not self.args.silent:
                 print(" ".join(cmd))
-        genemapper_class = util.load_class(module.script_path, "Mapper")
+        genemapper_class = load_class(module.script_path, "Mapper")
         genemapper = genemapper_class(cmd, self.status_writer)
         genemapper.run()
 
     def run_genemapper_mp(self):
+        import os
+        import glob
+        import multiprocessing as mp
+        from .mp_runners import init_worker, mapper_runner
+        from .inout import CravatReader
+        from . import admin_util as au
         num_workers = au.get_max_num_concurrent_annotators_per_job()
         if self.args.mp is not None:
             try:
@@ -1487,6 +1532,8 @@ class Cravat(object):
         del unique_trs
 
     def run_aggregator(self):
+        import time
+        from .aggregator import Aggregator
         # Variant level
         if not self.args.silent:
             print("\t{0:30s}\t".format("Variants"), end="", flush=True)
@@ -1518,7 +1565,6 @@ class Cravat(object):
         rtime = time.time() - stime
         if not self.args.silent:
             print("finished in {0:.3f}s".format(rtime))
-
         # Gene level
         if not self.args.silent:
             print("\t{0:30s}\t".format("Genes"), end="", flush=True)
@@ -1548,7 +1594,6 @@ class Cravat(object):
         rtime = time.time() - stime
         if not self.args.silent:
             print("finished in {0:.3f}s".format(rtime))
-
         # Sample level
         if not self.append_mode:
             if not self.args.silent:
@@ -1577,7 +1622,6 @@ class Cravat(object):
             rtime = time.time() - stime
             if not self.args.silent:
                 print("finished in {0:.3f}s".format(rtime))
-
         # Mapping level
         if not self.append_mode:
             if not self.args.silent:
@@ -1605,10 +1649,12 @@ class Cravat(object):
             rtime = time.time() - stime
             if not self.args.silent:
                 print("finished in {0:.3f}s".format(rtime))
-
         return v_aggregator.db_path
 
     def run_postaggregators(self):
+        import time
+        from .util import load_class
+        import json
         for module_name, module in self.postaggregators.items():
             cmd = [module.script_path, "-d", self.output_dir, "-n", self.run_name]
             postagg_conf = {}
@@ -1625,7 +1671,7 @@ class Cravat(object):
             if self.verbose:
                 if not self.args.silent:
                     print(" ".join(cmd))
-            post_agg_cls = util.load_class(module.script_path, "CravatPostAggregator")
+            post_agg_cls = load_class(module.script_path, "CravatPostAggregator")
             post_agg = post_agg_cls(cmd, self.status_writer)
             if post_agg.should_run_annotate:
                 self.announce_module(module)
@@ -1636,6 +1682,12 @@ class Cravat(object):
                 print("finished in {0:.3f}s".format(rtime))
 
     async def run_reporter(self):
+        import time
+        import os
+        import re
+        import traceback
+        from .util import load_class, write_log_msg
+        from . import admin_util as au
         if len(self.reports) > 0:
             module_names = [v for v in list(self.reports.keys())]
         else:
@@ -1688,7 +1740,7 @@ class Cravat(object):
                 arg_dict["excludesample"] = self.args.excludesample
                 arg_dict["filter"] = self.args.filter
                 arg_dict["filterpath"] = self.args.filterpath
-                Reporter = util.load_class(module.script_path, "Reporter")
+                Reporter = load_class(module.script_path, "Reporter")
                 reporter = Reporter(arg_dict)
                 await reporter.prep()
                 stime = time.time()
@@ -1712,7 +1764,6 @@ class Cravat(object):
                 else:
                     if not hasattr(e, "notraceback") or e.notraceback != True:
                         import traceback
-
                         traceback.print_exc()
                         self.logger.exception(e)
                     else:
@@ -1725,6 +1776,11 @@ class Cravat(object):
         return all_reporters_ran_well, response
 
     def run_annotators_mp(self):
+        import os
+        import logging
+        from .mp_runners import init_worker, annot_from_queue
+        from . import admin_util as au
+        from multiprocessing import Pool
         num_workers = au.get_max_num_concurrent_annotators_per_job()
         if self.args.mp is not None:
             try:
@@ -1791,7 +1847,7 @@ class Cravat(object):
         pool_args = [
             [start_queue, end_queue, queue_populated, self.status_writer]
         ] * num_workers
-        with mp.Pool(num_workers, init_worker) as pool:
+        with Pool(num_workers, init_worker) as pool:
             results = pool.starmap_async(
                 annot_from_queue,
                 pool_args,
@@ -1843,6 +1899,7 @@ class Cravat(object):
             return True
 
     async def get_converter_format_from_crv(self):
+        import os
         converter_format = None
         fn = os.path.join(self.output_dir, self.run_name + ".crv")
         if os.path.exists(fn):
@@ -1855,6 +1912,7 @@ class Cravat(object):
         return converter_format
 
     async def get_mapper_info_from_crx(self):
+        import os
         title = None
         version = None
         modulename = None
@@ -1874,6 +1932,11 @@ class Cravat(object):
         return title, version, modulename
 
     async def write_job_info(self):
+        import os
+        import aiosqlite
+        from datetime import datetime
+        import json
+        from . import admin_util as au
         dbpath = os.path.join(self.output_dir, self.run_name + ".sqlite")
         conn = await aiosqlite.connect(dbpath)
         cursor = await conn.cursor()
@@ -1882,7 +1945,7 @@ class Cravat(object):
             await cursor.execute(q)
             q = "create table info (colkey text primary key, colval text)"
             await cursor.execute(q)
-        modified = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        modified = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         q = (
             'insert or replace into info values ("Result modified at", "'
             + modified
@@ -1890,7 +1953,7 @@ class Cravat(object):
         )
         await cursor.execute(q)
         if not self.append_mode:
-            created = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            created = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             q = 'insert into info values ("Result created at", "' + created + '")'
             await cursor.execute(q)
             q = 'insert into info values ("Input file name", "{}")'.format(
@@ -2003,6 +2066,7 @@ class Cravat(object):
             self.run_summarizer(module)
 
     def run_summarizer(self, module):
+        from .util import load_class
         cmd = [module.script_path, "-l", "variant"]
         if self.run_name != None:
             cmd.extend(["-n", self.run_name])
@@ -2011,7 +2075,7 @@ class Cravat(object):
         if self.verbose:
             if not self.args.silent:
                 print(" ".join(cmd))
-        summarizer_cls = util.load_class(module.script_path, "")
+        summarizer_cls = load_class(module.script_path, "")
         summarizer = summarizer_cls(cmd)
         summarizer.run()
 
@@ -2028,6 +2092,7 @@ class Cravat(object):
         )
 
     def clean_up_at_end(self):
+        import os
         fns = os.listdir(self.output_dir)
         for fn in fns:
             fn_path = os.path.join(self.output_dir, fn)
@@ -2043,6 +2108,7 @@ class Cravat(object):
 
 class StatusWriter:
     def __init__(self, status_json_path):
+        import time
         self.status_json_path = status_json_path
         self.status_queue = []
         self.load_status_json()
@@ -2050,12 +2116,14 @@ class StatusWriter:
         self.lock = False
 
     def load_status_json(self):
+        import json
         f = open(self.status_json_path)
         lines = "\n".join(f.readlines())
         self.status_json = json.loads(lines)
         f.close()
 
     def queue_status_update(self, k, v, force=False):
+        import time
         self.status_json[k] = v
         tdif = time.time() - self.t
         if force == True or (tdif > 3 and self.lock == False):
@@ -2065,6 +2133,7 @@ class StatusWriter:
             self.lock = False
 
     def update_status_json(self):
+        import json
         with open(self.status_json_path, "w") as wf:
             json.dump(self.status_json, wf, indent=2, sort_keys=True)
 
@@ -2072,6 +2141,7 @@ class StatusWriter:
         return self.status_json
 
     def flush(self):
+        import time
         self.lock = True
         self.update_status_json()
         self.t = time.time()

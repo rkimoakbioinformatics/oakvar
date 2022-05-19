@@ -1,43 +1,16 @@
-from http.server import HTTPServer, CGIHTTPRequestHandler
-from socketserver import TCPServer
-import os
-import webbrowser
-import multiprocessing
-import urllib.parse
-import json
-import sys
-import argparse
-import imp
-import oyaml as yaml
-import re
-from . import admin_util as au
-from .webresult import webresult as wr
-from .webstore import webstore as ws
-from .websubmit import websubmit as wu
-import websockets
+from os.path import join
+from argparse import ArgumentParser
+from .admin_util import get_system_conf
 from aiohttp import web, web_runner
-import socket
-import hashlib
-import platform
-import asyncio
-import datetime as dt
-import requests
-import traceback
-import ssl
-import importlib
-import socket
-import concurrent
 import logging
-from . import constants
-import time
-from . import util
+from .constants import log_dir_key, modules_dir_key
 
 SERVER_ALREADY_RUNNING = -1
 
-sysconf = au.get_system_conf()
-log_dir = sysconf[constants.log_dir_key]
-modules_dir = sysconf[constants.modules_dir_key]
-log_path = os.path.join(log_dir, "wcravat.log")
+sysconf = get_system_conf()
+log_dir = sysconf[log_dir_key]
+modules_dir = sysconf[modules_dir_key]
+log_path = join(log_dir, "wcravat.log")
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -53,28 +26,36 @@ debug = False
 
 
 def setup(args):
+    from sys import platform as sysplatform
+    from .webresult import webresult as wr
+    from .webstore import webstore as ws
+    from .websubmit import websubmit as wu
+    from asyncio import get_event_loop
+    from importlib.util import find_spec
+    from os.path import join, exists
     try:
         global loop
-        if sys.platform == "win32":  # Required to use asyncio subprocesses
-            loop = asyncio.ProactorEventLoop()
-            asyncio.set_event_loop(loop)
+        if sysplatform == "win32":  # Required to use asyncio subprocesses
+            from asyncio import ProactorEventLoop
+            loop = ProactorEventLoop()
+            set_event_loop(loop)
         else:
-            loop = asyncio.get_event_loop()
+            loop = get_event_loop()
         global headless
         headless = args["headless"]
         global servermode
         servermode = args["servermode"]
         global debug
         debug = args["debug"]
-        if servermode and importlib.util.find_spec("cravat_multiuser") is not None:
+        if servermode and find_spec("cravat_multiuser") is not None:
             try:
                 global cravat_multiuser
                 import cravat_multiuser
-
                 loop.create_task(cravat_multiuser.setup_module())
                 global server_ready
                 server_ready = True
             except Exception as e:
+                print("@ exception line 58")
                 logger.exception(e)
                 logger.info("Exiting...")
                 print(
@@ -115,20 +96,23 @@ def setup(args):
         global http_only
         http_only = args["http_only"]
         if "conf_dir" in sysconf:
-            pem_path = os.path.join(sysconf["conf_dir"], "cert.pem")
-            if os.path.exists(pem_path) and http_only == False:
+            pem_path = join(sysconf["conf_dir"], "cert.pem")
+            if exists(pem_path) and http_only == False:
                 ssl_enabled = True
                 global sc
-                sc = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+                from ssl import create_default_context, Purpose
+                sc = create_default_context(Purpose.CLIENT_AUTH)
                 sc.load_cert_chain(pem_path)
         if ssl_enabled:
             protocol = "https://"
         else:
             protocol = "http://"
     except Exception as e:
+        print("@ exception line 111")
+        from traceback import print_exc
         logger.exception(e)
         if debug:
-            traceback.print_exc()
+            print_exc()
         logger.info("Exiting...")
         print(
             "Error occurred while starting OakVar server.\nCheck {} for details.".format(
@@ -144,8 +128,11 @@ def wcravat_entrypoint():
 
 
 def fn_gui(args):
-    args = util.get_dict_from_namespace(args)
-    log_handler = logging.handlers.TimedRotatingFileHandler(
+    from .util import get_dict_from_namespace, is_compatible_version
+    from logging.handlers import TimedRotatingFileHandler
+    from os.path import abspath, exists
+    args = get_dict_from_namespace(args)
+    log_handler = TimedRotatingFileHandler(
         log_path, when="d", backupCount=30
     )
     log_formatter = logging.Formatter("%(asctime)s: %(message)s", "%Y/%m/%d %H:%M:%S")
@@ -155,9 +142,9 @@ def fn_gui(args):
         args["headless"] = True
     if args["result"]:
         args["headless"] = False
-        args["result"] = os.path.abspath(args["result"])
-    setup(args)
+        args["result"] = abspath(args["result"])
     try:
+        setup(args)
         global headless
         global server_ready
         global servermode
@@ -174,25 +161,23 @@ def fn_gui(args):
             port = server.get("port")
         if not headless:
             if args["webapp"] is not None:
-                index_path = os.path.join(
+                index_path = join(
                     modules_dir, "webapps", args["webapp"], "index.html"
                 )
-                if os.path.exists(index_path) == False:
+                if exists(index_path) == False:
                     print(f"Webapp {args['webapp']} does not exist. Exiting.")
                     return
                 url = f"{host}:{port}/webapps/{args['webapp']}/index.html"
             elif args["result"]:
-                import oakvar
-
                 dbpath = args["result"]
-                if os.path.exists(dbpath) == False:
+                if exists(dbpath) == False:
                     print(f"{dbpath} does not exist. Exiting.")
                     return
                 (
                     compatible_version,
                     db_version,
                     oc_version,
-                ) = oakvar.util.is_compatible_version(dbpath)
+                ) = is_compatible_version(dbpath)
                 if not compatible_version:
                     print(
                         f"DB version {db_version} of {dbpath} is not compatible with the current OakVar ({oc_version})."
@@ -212,9 +197,11 @@ def fn_gui(args):
             url = protocol + url
         main(url=url, host=host, port=port)
     except Exception as e:
+        print("@ exception line 201")
+        from traceback import print_exc
         logger.exception(e)
         if debug:
-            traceback.print_exc()
+            print_exc()
         logger.info("Exiting...")
         print(
             "Error occurred while starting OakVar server.\nCheck {} for details.".format(
@@ -228,6 +215,8 @@ def fn_gui(args):
 
 
 def get_server():
+    from .admin_util import get_system_conf
+    import platform
     global args
     try:
         server = {}
@@ -257,15 +246,17 @@ def get_server():
             else:
                 port = 8443
         else:
-            host = au.get_system_conf().get("gui_host", def_host)
-            port = au.get_system_conf().get("gui_port", 8080)
+            host = get_system_conf().get("gui_host", def_host)
+            port = get_system_conf().get("gui_port", 8080)
         server["host"] = host
         server["port"] = port
         return server
     except Exception as e:
+        print("@ exception line 256")
+        from traceback import print_exc
         logger.exception(e)
         if debug:
-            traceback.print_exc()
+            print_exc()
         logger.info("Exiting...")
         print(
             "Error occurred while OakVar server.\nCheck {} for details.".format(
@@ -291,6 +282,7 @@ class TCPSitePatched(web_runner.BaseSite):
         reuse_port=None,
         loop=None,
     ):
+        from asyncio import get_event_loop
         super().__init__(
             runner,
             shutdown_timeout=shutdown_timeout,
@@ -298,7 +290,7 @@ class TCPSitePatched(web_runner.BaseSite):
             backlog=backlog,
         )
         if loop is None:
-            loop = asyncio.get_event_loop()
+            loop = get_event_loop()
         self.loop = loop
         if host is None:
             host = "0.0.0.0"
@@ -330,6 +322,7 @@ class TCPSitePatched(web_runner.BaseSite):
 
 @web.middleware
 async def middleware(request, handler):
+    from json import dumps
     global loop
     global args
     try:
@@ -345,17 +338,22 @@ async def middleware(request, handler):
             response.headers["Cache-Control"] = "no-cache"
         return response
     except Exception as e:
-        logger.info("Exception occurred at request={}".format(request))
+        print("@\n@@@@@@@@@@@@@ exception line 342\n@")
+        from traceback import print_exc
+        msg = "Exception with {}".format(request.rel_url)
+        logger.info(msg)
         logger.exception(e)
         if debug:
-            traceback.print_exc()
+            print(msg)
+            print_exc()
         return web.HTTPInternalServerError(
-            text=json.dumps({"status": "error", "msg": str(e)})
+            text=dumps({"status": "error", "msg": str(e)})
         )
 
 
 class WebServer(object):
     def __init__(self, host=None, port=None, loop=None, ssl_context=None, url=None):
+        from asyncio import get_event_loop, sleep
         serv = get_server()
         if host is None:
             host = serv["host"]
@@ -364,63 +362,80 @@ class WebServer(object):
         self.host = host
         self.port = port
         if loop is None:
-            loop = asyncio.get_event_loop()
+            loop = get_event_loop()
         self.ssl_context = ssl_context
         self.loop = loop
         self.server_started = False
-        loop.create_task(self.start())
+        task = loop.create_task(self.start())
+        task.add_done_callback(self.server_done)
         global headless
         if headless == False and url is not None:
             self.loop.create_task(self.open_url(url))
 
-    async def open_url(self, url):
-        while not self.server_started:
-            await asyncio.sleep(0.2)
-        webbrowser.open(url)
-
-    async def start(self):
+    def server_done(self, task):
         try:
-            global middleware
-            global server_ready
-            self.app = web.Application(loop=self.loop, middlewares=[middleware])
-            if server_ready:
-                cravat_multiuser.setup(self.app)
-            self.setup_routes()
-            self.runner = web.AppRunner(self.app)
-            await self.runner.setup()
-            self.site = TCPSitePatched(
-                self.runner,
-                self.host,
-                self.port,
-                loop=self.loop,
-                ssl_context=self.ssl_context,
-            )
-            await self.site.start()
-            self.server_started = True
+            task.result()
         except Exception as e:
+            print("@ exception line 378")
             logger.exception(e)
-            print("Exception occurred. Log at", log_path)
+            self.server_started = None
             exit()
 
+    async def open_url(self, url):
+        from webbrowser import open as webbrowseropen
+        from asyncio import sleep
+        while self.server_started == False:
+            await sleep(0.2)
+        if self.server_started:
+            webbrowseropen(url)
+
+    async def start(self):
+        global middleware
+        global server_ready
+        self.app = web.Application(loop=self.loop, middlewares=[middleware])
+        if server_ready:
+            cravat_multiuser.setup(self.app)
+        self.setup_routes()
+        self.runner = web.AppRunner(self.app)
+        await self.runner.setup()
+        self.site = TCPSitePatched(
+            self.runner,
+            self.host,
+            self.port,
+            loop=self.loop,
+            ssl_context=self.ssl_context,
+        )
+        await self.site.start()
+        self.server_started = True
+
     def setup_webapp_routes(self):
+        from importlib.util import spec_from_file_location, module_from_spec
+        from os.path import join, exists
+        from os import listdir
         global modules_dir
-        webapps_dir = os.path.join(modules_dir, "webapps")
-        if os.path.exists(webapps_dir) == False:
-            os.mkdir(webapps_dir)
-        module_names = os.listdir(webapps_dir)
+        webapps_dir = join(modules_dir, "webapps")
+        if exists(webapps_dir) == False:
+            return False
+        module_names = listdir(webapps_dir)
         for module_name in module_names:
-            module_dir = os.path.join(webapps_dir, module_name)
-            pypath = os.path.join(module_dir, "route.py")
-            if os.path.exists(pypath):
-                spec = importlib.util.spec_from_file_location("route", pypath)
-                module = importlib.util.module_from_spec(spec)
+            module_dir = join(webapps_dir, module_name)
+            pypath = join(module_dir, "route.py")
+            if exists(pypath):
+                spec = spec_from_file_location("route", pypath)
+                module = module_from_spec(spec)
                 spec.loader.exec_module(module)
                 for route in module.routes:
                     method, path, func_name = route
                     path = f"/webapps/{module_name}/" + path
                     self.app.router.add_route(method, path, func_name)
+        return True
 
     def setup_routes(self):
+        from .webresult import webresult as wr
+        from .webstore import webstore as ws
+        from .websubmit import websubmit as wu
+        from os.path import dirname, realpath, join, exists
+        source_dir = dirname(realpath(__file__))
         routes = list()
         routes.extend(ws.routes)
         routes.extend(wr.routes)
@@ -431,20 +446,19 @@ class WebServer(object):
         for route in routes:
             method, path, func_name = route
             self.app.router.add_route(method, path, func_name)
-        self.app.router.add_get("/webapps/{module}", get_webapp_index)
-        self.setup_webapp_routes()
-        source_dir = os.path.dirname(os.path.realpath(__file__))
-        self.app.router.add_static("/store", os.path.join(source_dir, "webstore"))
-        self.app.router.add_static("/result", os.path.join(source_dir, "webresult"))
-        self.app.router.add_static("/submit", os.path.join(source_dir, "websubmit"))
-        self.app.router.add_static("/webapps", os.path.join(modules_dir, "webapps"))
-        if os.path.exists(os.path.join(modules_dir, "annotators")):
-            self.app.router.add_static(
-                "/modules/annotators/", os.path.join(modules_dir, "annotators")
-            )
         self.app.router.add_get("/heartbeat", heartbeat)
         self.app.router.add_get("/issystemready", is_system_ready)
         self.app.router.add_get("/favicon.ico", serve_favicon)
+        self.app.router.add_get("/webapps/{module}", get_webapp_index)
+        self.setup_webapp_routes()
+        self.app.router.add_static("/store", join(source_dir, "webstore"))
+        self.app.router.add_static("/result", join(source_dir, "webresult"))
+        self.app.router.add_static("/submit", join(source_dir, "websubmit"))
+        if exists(join(modules_dir, "annotators")):
+            self.app.router.add_static(
+                "/modules/annotators/", join(modules_dir, "annotators")
+            )
+        self.app.router.add_static("/webapps", join(modules_dir, "webapps"))
         ws.start_worker()
         wu.start_worker()
 
@@ -461,50 +475,60 @@ async def get_webapp_index(request):
 
 
 async def serve_favicon(request):
-    source_dir = os.path.dirname(os.path.realpath(__file__))
-    return web.FileResponse(os.path.join(source_dir, "favicon.ico"))
+    from os.path import dirname, realpath, join
+    source_dir = dirname(realpath(__file__))
+    return web.FileResponse(join(source_dir, "favicon.ico"))
 
 
 async def heartbeat(request):
+    from .webstore import webstore as ws
+    from asyncio import get_event_loop
+    from concurrent.futures._base import CancelledError
     ws = web.WebSocketResponse(timeout=60 * 60 * 24 * 365)
     if servermode and server_ready:
-        asyncio.get_event_loop().create_task(
+        get_event_loop().create_task(
             cravat_multiuser.update_last_active(request)
         )
     await ws.prepare(request)
     try:
         async for msg in ws:
             pass
-    except concurrent.futures._base.CancelledError:
+    except CancelledError:
+        print("@ exception line 491")
         pass
     return ws
 
 
 async def is_system_ready(request):
-    return web.json_response(dict(au.system_ready()))
+    from .admin_util import system_ready
+    return web.json_response(dict(system_ready()))
 
 
 loop = None
 
 
 def main(url=None, host=None, port=None):
+    from .webstore import webstore as ws
+    import socket
+    from asyncio import get_event_loop, sleep
+    from requests.exceptions import ConnectionError
+    from webbrowser import open as webbrowseropen
     global args
     try:
         global loop
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(1)
-
         def wakeup():
             loop.call_later(0.1, wakeup)
-
         def check_local_update(interval):
             try:
                 ws.handle_modules_changed()
             except:
-                traceback.print_exc()
+                print("@ exception line 520")
+                from traceback import print_exc
+                print_exc()
             finally:
                 loop.call_later(interval, check_local_update, interval)
-
         serv = get_server()
         global protocol
         if host is None:
@@ -523,9 +547,10 @@ def main(url=None, host=None, port=None):
                 )
                 global SERVER_ALREADY_RUNNING
                 if url and not headless:
-                    webbrowser.open(url)
+                    webbrowseropen(url)
                 return SERVER_ALREADY_RUNNING
-        except requests.exceptions.ConnectionError:
+        except ConnectionError:
+            print("@ exception line 546")
             pass
         print(
             """
@@ -541,31 +566,32 @@ def main(url=None, host=None, port=None):
         print(
             '(To quit: Press Ctrl-C or Ctrl-Break if run on a Terminal or Windows, or click "Cancel" and then "Quit" if run through OakVar app on Mac OS)'
         , flush=True)
-        loop = asyncio.get_event_loop()
+        loop = get_event_loop()
         loop.call_later(0.1, wakeup)
         loop.call_later(1, check_local_update, 5)
-
         async def clean_sessions():
             """
             Clean sessions periodically.
             """
+            from .admin_util import get_system_conf
             try:
-                max_age = au.get_system_conf().get(
+                max_age = get_system_conf().get(
                     "max_session_age", 604800
                 )  # default 1 week
-                interval = au.get_system_conf().get(
+                interval = get_system_conf().get(
                     "session_clean_interval", 3600
                 )  # default 1 hr
                 while True:
                     await cravat_multiuser.admindb.clean_sessions(max_age)
-                    await asyncio.sleep(interval)
+                    await sleep(interval)
             except Exception as e:
+                print("@ exception line 581")
+                from traceback import print_exc
                 logger.exception(e)
                 if debug:
-                    traceback.print_exc()
-
+                    print_exc()
         if servermode and server_ready:
-            if "max_session_age" in au.get_system_conf():
+            if "max_session_age" in get_system_conf():
                 loop.create_task(clean_sessions())
         global ssl_enabled
         if ssl_enabled:
@@ -575,9 +601,11 @@ def main(url=None, host=None, port=None):
             server = WebServer(loop=loop, url=url, host=host, port=port)
         loop.run_forever()
     except Exception as e:
+        print("@ exception line 598")
         logger.exception(e)
         if debug:
-            traceback.print_exc()
+            from traceback import print_exc
+            print_exc()
         logger.info("Exiting...")
         print(
             "Error occurred while starting OakVar server.\nCheck {} for details.".format(
@@ -587,7 +615,7 @@ def main(url=None, host=None, port=None):
         exit()
 
 
-parser_fn_gui = argparse.ArgumentParser()
+parser_fn_gui = ArgumentParser()
 parser_fn_gui.add_argument(
     "--multiuser",
     dest="servermode",

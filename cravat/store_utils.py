@@ -1,20 +1,3 @@
-import math
-import sys
-import os
-import requests
-from requests_toolbelt.multipart.encoder import (
-    MultipartEncoder,
-    MultipartEncoderMonitor,
-)
-import hashlib
-import zipfile
-from . import exceptions
-import json
-import pkg_resources
-from urllib.error import HTTPError
-import types
-
-
 class PathBuilder(object):
     """
     Used to get routes to certain resources in the cravat-store download area.
@@ -31,10 +14,11 @@ class PathBuilder(object):
             raise RuntimeError("Invalid path type: %s" % path_type)
 
     def _build_path(self, *path_toks):
+        from os.path import join
         if self.path_type == "url":
             return "/".join(path_toks)
         elif self.path_type == "file":
-            return os.path.join(*path_toks)
+            return join(*path_toks)
 
     def base(self):
         return self._build_path(self._base)
@@ -88,8 +72,9 @@ class PathBuilder(object):
         )
 
     def manifest(self, version=None):
+        from pkg_resources import get_distribution
         if version is None:
-            version = pkg_resources.get_distribution("oakvar").version
+            version = get_distribution("oakvar").version
         fname = "manifest-{}.yml".format(version)
         return self._build_path(self.base(), fname)
 
@@ -132,8 +117,9 @@ class ProgressStager(object):
         self._update_stage()
 
     def _update_stage(self):
+        from math import floor
         old_stage = self.cur_stage
-        self.cur_stage = math.floor(self.cur_size / self.total_size * self.total_stages)
+        self.cur_stage = floor(self.cur_size / self.total_size * self.total_stages)
         if self.cur_stage != old_stage or self.first_block:
             self.first_block = False
             self.stage_handler(*self.get_cur_state())
@@ -145,6 +131,8 @@ def stream_multipart_post(url, fields, stage_handler=None, stages=50, **kwargs):
     multipart/form-data request. Optionally pass in a callback function which
     is called when the uploaded size passes each of total_size/stages.
     """
+    from requests_toolbelt.multipart.encoder import MultipartEncoder, MultipartEncoderMonitor
+    from requests import post
     encoder = MultipartEncoder(fields=fields)
     stager = ProgressStager(
         encoder.len, total_stages=stages, stage_handler=stage_handler
@@ -155,7 +143,7 @@ def stream_multipart_post(url, fields, stage_handler=None, stages=50, **kwargs):
 
     monitor = MultipartEncoderMonitor(encoder, stager_caller)
     headers = {"Content-Type": monitor.content_type}
-    r = requests.post(url, data=monitor, headers=headers, **kwargs)
+    r = post(url, data=monitor, headers=headers, **kwargs)
     return r
 
 
@@ -167,10 +155,14 @@ def stream_to_file(
     function which is called when the uploaded size passes each of
     total_size/stages.
     """
+    from requests import get
+    from requests.exceptions import ConnectionError
+    from .constants import KillInstallException
+    from types import SimpleNamespace
     try:
-        r = requests.get(url, stream=True, timeout=(3, None))
-    except requests.exceptions.ConnectionError:
-        r = types.SimpleNamespace()
+        r = get(url, stream=True, timeout=(3, None))
+    except ConnectionError:
+        r = SimpleNamespace()
         r.status_code = 503
     if r.status_code == 200:
         total_size = int(r.headers.get("content-length", 0))
@@ -181,15 +173,17 @@ def stream_to_file(
         with open(fpath, "wb") as wf:
             for chunk in r.iter_content(chunk_size):
                 if install_state is not None and install_state["kill_signal"] == True:
-                    raise exceptions.KillInstallException()
+                    raise KillInstallException()
                 wf.write(chunk)
                 stager.increase_cur_size(len(chunk))
     return r
 
 
 def get_file_to_string(url):
+    from requests import get
+    from urllib.error import HTTPError
     try:
-        r = requests.get(url, timeout=(3, None))
+        r = get(url, timeout=(3, None))
         if r.status_code == 200:
             return r.text
         else:
@@ -202,9 +196,10 @@ def file_checksum(path):
     """
     Get the md5 checksum of a file.
     """
+    from hashlib import md5
     if os.path.isdir(path):
         raise IsADirectoryError(path)
-    hasher = hashlib.md5()
+    hasher = md5()
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(256 * hasher.block_size), b""):
             hasher.update(chunk)
@@ -213,22 +208,25 @@ def file_checksum(path):
 
 class ModuleArchiveBuilder(object):
     def __init__(self, archive_path, base_path=os.getcwd()):
-        self._archive = zipfile.ZipFile(
-            archive_path, compression=zipfile.ZIP_DEFLATED, mode="w"
+        from zipfile import ZipFile, ZIP_DEFLATED
+        self._archive = ZipFile(
+            archive_path, compression=ZIP_DEFLATED, mode="w"
         )
         self._base_path = base_path
         self._manifest = {}
 
     def add_item(self, item_path):
-        rel_path = os.path.relpath(item_path, start=self._base_path)
+        from os.path import relpath, isdir, join
+        from os import listdir, sep
+        rel_path = relpath(item_path, start=self._base_path)
         self._archive.write(item_path, rel_path)
-        if os.path.isdir(item_path):
-            for child_name in os.listdir(item_path):
-                child_path = os.path.join(item_path, child_name)
+        if isdir(item_path):
+            for child_name in listdir(item_path):
+                child_path = join(item_path, child_name)
                 self.add_item(child_path)
         else:
             checksum = file_checksum(item_path)
-            path_list = rel_path.split(os.sep)
+            path_list = rel_path.split(sep)
             nest_value_in_dict(self._manifest, checksum, path_list)
 
     def get_manifest(self):
@@ -238,16 +236,21 @@ class ModuleArchiveBuilder(object):
         self._archive.close()
 
 
-def add_to_zipfile(full_path, zf, start=os.curdir, compress_type=zipfile.ZIP_DEFLATED):
+def add_to_zipfile(full_path, zf, start=None, compress_type=None):
     """
     Recursively add files to a zipfile. Optionally making the path within
     the zipfile relative to a base_path, default is curdir.
     """
-    rel_path = os.path.relpath(full_path, start=start)
+    from os.path import relpath, isdir, join
+    from os import curdir, listdir
+    from zipfile import ZIP_DEFLATED
+    if compress_type is None: compress_type = ZIP_DEFLATED
+    if start is None: start = curdir
+    rel_path = relpath(full_path, start=start)
     zf.write(full_path, arcname=rel_path, compress_type=compress_type)
-    if os.path.isdir(full_path):
-        for item_name in os.listdir(full_path):
-            item_path = os.path.join(full_path, item_name)
+    if isdir(full_path):
+        for item_name in listdir(full_path):
+            item_path = join(full_path, item_name)
             add_to_zipfile(item_path, zf, start=start, compress_type=compress_type)
 
 
@@ -274,12 +277,14 @@ def verify_against_manifest(dirpath, manifest):
     Verify that the files in manifest exist and have the right cksum.
     Return True if all pass, throw FileIntegrityError otherwise.
     """
+    from os.path import join, exists, isdir
+    from .constants import FileIntegrityError
     correct = True
     for item_name, v in manifest.items():
-        item_path = os.path.join(dirpath, item_name)
-        if os.path.exists(item_path):
+        item_path = join(dirpath, item_name)
+        if exists(item_path):
             if type(v) == dict:
-                correct = os.path.isdir(item_path) and verify_against_manifest(
+                correct = isdir(item_path) and verify_against_manifest(
                     item_path, v
                 )
             else:
@@ -287,12 +292,13 @@ def verify_against_manifest(dirpath, manifest):
         else:
             correct = False
         if not (correct):
-            raise (exceptions.FileIntegrityError(item_path))
+            raise (FileIntegrityError(item_path))
     return correct
 
 
 def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+    from hashlib import sha256
+    return sha256(password.encode()).hexdigest()
 
 
 class ClientError(object):
@@ -336,4 +342,5 @@ class NoSuchModule(ClientError):
 
 
 def client_error_json(error_class):
-    return json.dumps({"code": error_class.code, "message": error_class.message})
+    from json import dumps
+    return dumps({"code": error_class.code, "message": error_class.message})

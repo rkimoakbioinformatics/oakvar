@@ -1,24 +1,9 @@
-import os
-from .exceptions import BadFormatError
-import json
-import re
-from collections import OrderedDict
-import oyaml as yaml
-import json
-import csv
-from io import StringIO
-from oakvar.util import detect_encoding
-import sys
-from json.decoder import JSONDecodeError
-import multiprocessing as mp
-
-
-
 class CravatFile(object):
     valid_types = ["string", "int", "float"]
 
     def __init__(self, path):
-        self.path = os.path.abspath(path)
+        from os.path import abspath
+        self.path = abspath(path)
         self.columns = {}
 
     def _validate_col_type(self, col_type):
@@ -38,6 +23,7 @@ class CravatFile(object):
 
 class CravatReader(CravatFile):
     def __init__(self, path, seekpos=None, chunksize=None):
+        from .util import detect_encoding
         super().__init__(path)
         self.seekpos = seekpos
         self.chunksize = chunksize
@@ -51,6 +37,8 @@ class CravatReader(CravatFile):
         self._setup_definition()
 
     def _setup_definition(self):
+        from json import loads
+        from json.decoder import JSONDecodeError
         for l in self._loop_definition():
             if l.startswith("#name="):
                 self.annotator_name = l.split("=")[1]
@@ -73,7 +61,7 @@ class CravatReader(CravatFile):
                 self._validate_col_type(coldef.type)
                 self.columns[coldef.index] = coldef
             elif l.startswith("#report_substitution="):
-                self.report_substitution = json.loads(l.split("=")[1])
+                self.report_substitution = loads(l.split("=")[1])
             else:
                 continue
 
@@ -142,6 +130,8 @@ class CravatReader(CravatFile):
         return num_lines, chunksize, poss, len_poss, max_num_lines
 
     def loop_data(self):
+        from .exceptions import BadFormatError
+        from json import dumps
         for lnum, l in self._loop_data():
             toks = l.split("\t")
             out = {}
@@ -173,7 +163,7 @@ class CravatReader(CravatFile):
                             out[col_name] = None
                     elif col_type == "float":
                         try:
-                            tok = json.loads(tok)
+                            tok = loads(tok)
                             if type(tok) == list:
                                 out[col_name] = ",".join([str(v) for v in tok])
                             else:
@@ -310,18 +300,20 @@ class CravatWriter(CravatFile):
         self.wf.flush()
 
     def write_definition(self, conf=None):
+        from json import dumps
         self._prep_for_write()
         for col_def in self.ordered_columns:
             self.write_meta_line("column", col_def.get_json())
         if conf and "report_substitution" in conf:
             self.write_meta_line(
-                "report_substitution", json.dumps(conf["report_substitution"])
+                "report_substitution", dumps(conf["report_substitution"])
             )
         self._definition_written = True
         self.wf.flush()
 
     def write_input_paths(self, input_path_dict):
-        s = "#input_paths={}\n".format(json.dumps(input_path_dict))
+        from json import dumps
+        s = "#input_paths={}\n".format(dumps(input_path_dict))
         self.wf.write(s)
         self.wf.flush()
 
@@ -356,6 +348,7 @@ class CravatWriter(CravatFile):
 
 class CrxMapping(object):
     def __init__(self):
+        from re import compile
         self.protein = None
         self.achange = None
         self.transcript = None
@@ -368,8 +361,8 @@ class CrxMapping(object):
         self.aref = None
         self.apos_start = None
         self.aalt = None
-        self.tchange_re = re.compile(r"([AaTtCcGgUuNn_-]+)(\d+)([AaTtCcGgUuNn_-]+)")
-        self.achange_re = re.compile(r"([a-zA-Z_\*]+)(\d+)([AaTtCcGgUuNn_\*]+)")
+        self.tchange_re = compile(r"([AaTtCcGgUuNn_-]+)(\d+)([AaTtCcGgUuNn_-]+)")
+        self.achange_re = compile(r"([a-zA-Z_\*]+)(\d+)([AaTtCcGgUuNn_\*]+)")
 
     def load_tchange(self, tchange):
         self.tchange = tchange
@@ -398,8 +391,10 @@ class CrxMapping(object):
 
 class AllMappingsParser(object):
     def __init__(self, s):
+        from json import loads
+        from collections import OrderedDict
         if type(s) == str:
-            self._d = json.loads(s, object_pairs_hook=OrderedDict)
+            self._d = loads(s, object_pairs_hook=OrderedDict)
         else:
             self._d = s
         self._protein_index = 0
@@ -542,33 +537,38 @@ class ColumnDefinition(object):
         self.table = d.get("table", False)
 
     def from_row(self, row, order=None):
+        from json import loads
         if order is None:
             order = self.db_order
         d = {self.sql_map[column]: value for column, value in zip(order, row)}
         self._load_dict(d)
         if isinstance(self.categories, str):
-            self.categories = json.loads(self.categories)
+            self.categories = loads(self.categories)
 
     def from_var_csv(self, row):
-        l = list(csv.reader([row], dialect="oakvar"))[0]
+        from json import loads
+        from csv import reader
+        l = list(reader([row], dialect="oakvar"))[0]
         self._load_dict(dict(zip(self.csv_order[: len(l)], l)))
         self.index = int(self.index)
         if isinstance(self.categories, str):
-            self.categories = json.loads(self.categories)
+            self.categories = loads(self.categories)
         if self.categories is None:
             self.categories = []
         if isinstance(self.hidden, str):
-            self.hidden = json.loads(self.hidden.lower())
+            self.hidden = loads(self.hidden.lower())
         if isinstance(self.filterable, str):
-            self.filterable = json.loads(self.filterable.lower())
+            self.filterable = loads(self.filterable.lower())
         if self.link_format == "":
             self.link_format = None
 
     def from_json(self, sjson):
-        self._load_dict(json.loads(sjson))
+        from json import loads
+        self._load_dict(loads(sjson))
 
     def get_json(self):
-        return json.dumps(self.__dict__)
+        from json import dumps
+        return dumps(self.__dict__)
 
     def get_colinfo(self):
         return {

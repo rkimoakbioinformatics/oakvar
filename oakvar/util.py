@@ -1,23 +1,3 @@
-import re
-import os
-import importlib
-import sys
-import oyaml as yaml
-import chardet
-import gzip
-import types
-import inspect
-import logging
-from distutils.version import LooseVersion
-from oakvar.cmd_util import max_version_supported_for_migration
-import sqlite3
-import pkg_resources
-import datetime
-import argparse
-from types import SimpleNamespace
-import math
-
-
 def get_ucsc_bins(start, stop=None):
     if stop is None:
         stop = start + 1
@@ -139,15 +119,6 @@ def aa_abbv_to_let(abbvs):
         out += aa_321[abbv]
     return out
 
-
-tmap_re = re.compile(
-    "\*?(?P<transcript>[A-Z_]+\d+\.\d+):"
-    + "(?P<ref>[A-Z_\*]+)"
-    + "(?P<pos>\d+|NA)"
-    + "(?P<alt>[A-Z_\*]+)"
-    + "\((?P<so>\w+)\)"
-    + "\((?P<hugo>\w+)\)"
-)
 
 codon_table = {
     "ATG": "M",
@@ -296,8 +267,9 @@ def valid_so(so):
 
 
 def get_caller_name(path):
-    path = os.path.abspath(path)
-    basename = os.path.basename(path)
+    from os.path import abspath, basename
+    path = abspath(path)
+    basename = basename(path)
     if "." in basename:
         module_name = ".".join(basename.split(".")[:-1])
     else:
@@ -307,17 +279,22 @@ def get_caller_name(path):
 
 def load_class(path, class_name=None):
     """Load a class from the class's name and path. (dynamic importing)"""
-    path_dir = os.path.dirname(path)
+    from os.path import dirname, basename
+    from importlib.util import spec_from_file_location, module_from_spec
+    import sys
+    import inspect
+    from logging import getLogger
+    path_dir = dirname(path)
     sys.path = [path_dir] + sys.path
     module = None
     module_class = None
-    module_name = os.path.basename(path).split(".")[0]
+    module_name = basename(path).split(".")[0]
     try:
         module = __import__(module_name)
     except:
         try:
-            spec = importlib.util.spec_from_file_location(class_name, path)
-            module = importlib.util.module_from_spec(spec)
+            spec = spec_from_file_location(class_name, path)
+            module = module_from_spec(spec)
             spec.loader.exec_module(module)
         except:
             raise
@@ -342,11 +319,13 @@ def get_directory_size(start_path):
     """
     Recursively get directory filesize.
     """
+    from os import walk
+    from os.path import join, getsize
     total_size = 0
-    for dirpath, _, filenames in os.walk(start_path):
+    for dirpath, _, filenames in walk(start_path):
         for fname in filenames:
-            fp = os.path.join(dirpath, fname)
-            total_size += os.path.getsize(fp)
+            fp = join(dirpath, fname)
+            total_size += getsize(fp)
     return total_size
 
 
@@ -359,13 +338,15 @@ def get_argument_parser_defaults(parser):
 
 
 def detect_encoding(path):
+    from chardet.universaldetector import UniversalDetector
+    from gzip import open as gzipopen
     if " " not in path:
         path = path.strip('"')
     if path.endswith(".gz"):
-        f = gzip.open(path)
+        f = gzipopen(path)
     else:
         f = open(path, "rb")
-    detector = chardet.universaldetector.UniversalDetector()
+    detector = UniversalDetector()
     for n, line in enumerate(f):
         if n > 100:
             break
@@ -384,6 +365,8 @@ def detect_encoding(path):
 
 
 def get_job_version(dbpath, platform_name):
+    from distutils.version import LooseVersion
+    import sqlite3
     db = sqlite3.connect(dbpath)
     c = db.cursor()
     sql = f'select colval from info where colkey="{platform_name}"'
@@ -395,14 +378,19 @@ def get_job_version(dbpath, platform_name):
     return db_version
 
 def is_compatible_version(dbpath):
+    from .admin_util import get_max_version_supported_for_migration
+    from distutils.version import LooseVersion
+    import sqlite3
+    from pkg_resources import get_distribution
+    max_version_supported_for_migration = get_max_version_supported_for_migration()
     db = sqlite3.connect(dbpath)
     c = db.cursor()
     try:
-        ov_version = LooseVersion(pkg_resources.get_distribution("oakvar").version)
+        ov_version = LooseVersion(get_distribution("oakvar").version)
     except:
         ov_version = None
     try:
-        oc_version = LooseVersion(pkg_resources.get_distribution("open-cravat").version)
+        oc_version = LooseVersion(get_distribution("open-cravat").version)
     except:
         oc_version = None
     job_version_ov = get_job_version(dbpath, "oakvar")
@@ -432,11 +420,14 @@ def is_url(s):
 
 
 def get_current_time_str():
-    t = datetime.datetime.now()
+    from datetime import datetime
+    t = datetime.now()
     return t.strftime("%Y:%m:%d %H:%M:%S")
 
 
 def get_args(parser, inargs, inkwargs):
+    from types import SimpleNamespace
+    from argparse import Namespace
     # Combines arguments in various formats.
     inarg_dict = {}
     if inargs is not None:
@@ -446,9 +437,9 @@ def get_args(parser, inargs, inkwargs):
                 # if inarg[0].endswith(".py"):
                 #    inarg = inarg[1:]
                 inarg_dict.update(**vars(parser.parse_args(inarg)))
-            elif t == argparse.Namespace:  # already parsed by a parser.
+            elif t == Namespace:  # already parsed by a parser.
                 inarg_dict.update(**vars(inarg))
-            elif t == types.SimpleNamespace:
+            elif t == SimpleNamespace:
                 inarg_dict.update(**vars(inarg))
             elif t == dict:  # {'output_dir': '/rt'}
                 inarg_dict.update(inarg)
@@ -472,6 +463,7 @@ def filter_affected_cols(filter):
 
 def humanize_bytes(num, binary=False):
     """Human friendly file size"""
+    from math import floor, log
     exp2unit_dec = {0: "B", 1: "kB", 2: "MB", 3: "GB"}
     exp2unit_bin = {0: "B", 1: "KiB", 2: "MiB", 3: "GiB"}
     max_exponent = 3
@@ -480,7 +472,7 @@ def humanize_bytes(num, binary=False):
     else:
         base = 1000
     if num > 0:
-        exponent = math.floor(math.log(num, base))
+        exponent = floor(log(num, base))
         if exponent > max_exponent:
             exponent = max_exponent
     else:
@@ -512,12 +504,15 @@ def write_log_msg(logger, e):
 
 
 def get_simplenamespace(d):
+    from types import SimpleNamespace
     if type(d) == dict:
-        d = types.SimpleNamespace(**d)
+        d = SimpleNamespace(**d)
     return d
 
 
 def get_dict_from_namespace(n):
-    if type(n) == types.SimpleNamespace or type(n) == argparse.Namespace:
+    from types import SimpleNamespace
+    from argparse import Namespace
+    if type(n) == SimpleNamespace or type(n) == Namespace:
         n = vars(n)
     return n

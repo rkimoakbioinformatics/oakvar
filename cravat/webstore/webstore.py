@@ -96,7 +96,7 @@ def fetch_install_queue (install_queue, install_state, local_modules_changed):
             au.mic.update_local()
             local_modules_changed.set()
             time.sleep(1)
-        except:
+        except Exception as e:
             traceback.print_exc()
             local_modules_changed.set()
 

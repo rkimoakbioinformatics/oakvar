@@ -1,26 +1,10 @@
-import os
-import argparse
-import sys
-import sqlite3
-import re
-import time
-import logging
-import oyaml as yaml
-from oakvar.inout import CravatReader, CravatWriter, ColumnDefinition
-import oakvar.admin_util as au
-import json
-from .exceptions import BadFormatError
-import traceback
-from distutils.version import LooseVersion
-from collections import OrderedDict
-
-
 class Aggregator(object):
 
     cr_type_to_sql = {"string": "text", "int": "integer", "float": "real"}
     commit_threshold = 10000
 
     def __init__(self, cmd_args, status_writer):
+        from os.path import abspath
         self.status_writer = status_writer
         self.annotators = []
         self.ipaths = {}
@@ -34,12 +18,15 @@ class Aggregator(object):
         self.key_name = None
         self.table_name = None
         self.base_prefix = "base"
-        self.base_dir = os.path.abspath(__file__)
+        self.base_dir = abspath(__file__)
         self.parse_cmd_args(cmd_args)
         self._setup_logger()
 
     def parse_cmd_args(self, cmd_args):
-        parser = argparse.ArgumentParser()
+        from os.path import abspath, exists
+        from os import makedirs
+        from argparse import ArgumentParser
+        parser = ArgumentParser()
         parser.add_argument("path", help="Path to this aggregator module")
         parser.add_argument(
             "-i",
@@ -72,7 +59,7 @@ class Aggregator(object):
         parsed = parser.parse_args(cmd_args)
         self.level = parsed.level
         self.name = parsed.name
-        self.input_dir = os.path.abspath(parsed.input_dir)
+        self.input_dir = abspath(parsed.input_dir)
         if parsed.output_dir:
             self.output_dir = parsed.output_dir
         else:
@@ -81,28 +68,30 @@ class Aggregator(object):
         if self.input_base_fname == None:
             exit()
         self.set_output_base_fname()
-        if not (os.path.exists(self.output_dir)):
-            os.makedirs(self.output_dir)
+        if not (exists(self.output_dir)):
+            makedirs(self.output_dir)
         self.delete = parsed.delete
         self.append = parsed.append
 
     def _setup_logger(self):
-        self.logger = logging.getLogger("oakvar.aggregator")
+        from logging import getLogger
+        self.logger = getLogger("oakvar.aggregator")
         self.logger.info("level: {0}".format(self.level))
         self.logger.info("input directory: %s" % self.input_dir)
-        self.error_logger = logging.getLogger("error.aggregator")
+        self.error_logger = getLogger("error.aggregator")
         self.unique_excs = []
 
     def run(self):
+        from time import time, asctime, localtime
         self._setup()
         if self.input_base_fname == None:
             return
-        start_time = time.time()
+        start_time = time()
         self.status_writer.queue_status_update(
             "status", "Started {} ({})".format("Aggregator", self.level)
         )
-        last_status_update_time = time.time()
-        self.logger.info("started: %s" % time.asctime(time.localtime(start_time)))
+        last_status_update_time = time()
+        self.logger.info("started: %s" % asctime(localtime(start_time)))
         self.dbconn.commit()
         self.cursor.execute("pragma synchronous=0;")
         self.cursor.execute("pragma journal_mode=WAL;")
@@ -122,7 +111,7 @@ class Aggregator(object):
                     self.cursor.execute(q, vals)
                     if n % self.commit_threshold == 0:
                         self.dbconn.commit()
-                    cur_time = time.time()
+                    cur_time = time()
                     if lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
                         self.status_writer.queue_status_update(
                             "status",
@@ -154,7 +143,7 @@ class Aggregator(object):
                     self.cursor.execute(update_template, ins_vals)
                     if n % self.commit_threshold == 0:
                         self.dbconn.commit()
-                    cur_time = time.time()
+                    cur_time = time()
                     if lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
                         self.status_writer.queue_status_update(
                             "status",
@@ -167,8 +156,8 @@ class Aggregator(object):
         self.fill_categories()
         self.cursor.execute("pragma synchronous=2;")
         self.cursor.execute("pragma journal_mode=delete;")
-        end_time = time.time()
-        self.logger.info("finished: %s" % time.asctime(time.localtime(end_time)))
+        end_time = time()
+        self.logger.info("finished: %s" % asctime(localtime(end_time)))
         runtime = end_time - start_time
         self.logger.info("runtime: %s" % round(runtime, 3))
         self._cleanup()
@@ -177,13 +166,14 @@ class Aggregator(object):
         )
 
     def make_reportsub(self):
+        from json import loads
         if self.level in ["variant", "gene"]:
             q = f"select * from {self.level}_reportsub"
             self.cursor.execute(q)
             self.reportsub = {}
             for r in self.cursor.fetchall():
                 (col_name, sub) = r
-                self.reportsub[col_name] = json.loads(sub)
+                self.reportsub[col_name] = loads(sub)
         else:
             self.reportsub = {}
 
@@ -197,9 +187,12 @@ class Aggregator(object):
         return col_cats
 
     def fill_categories(self):
+        from distutils.version import LooseVersion
+        from oakvar.inout import ColumnDefinition
+        from oakvar.admin_util import get_current_package_version
         header_table = self.level + "_header"
         coldefs = []
-        if LooseVersion(au.get_current_package_version()) >= LooseVersion("1.5.0"):
+        if LooseVersion(get_current_package_version()) >= LooseVersion("1.5.0"):
             sql = f"select col_def from {header_table}"
             self.cursor.execute(sql)
             for row in self.cursor:
@@ -250,12 +243,13 @@ class Aggregator(object):
         self.dbconn.close()
 
     def set_input_base_fname(self):
+        from os import listdir
         crv_fname = self.name + ".crv"
         crx_fname = self.name + ".crx"
         crg_fname = self.name + ".crg"
         crs_fname = self.name + ".crs"
         crm_fname = self.name + ".crm"
-        for fname in os.listdir(self.input_dir):
+        for fname in listdir(self.input_dir):
             if self.level == "variant":
                 if fname == crx_fname:
                     self.input_base_fname = fname
@@ -272,6 +266,8 @@ class Aggregator(object):
         self.output_base_fname = self.name
 
     def _setup(self):
+        from os.path import join
+        from os import listdir
         if self.level == "variant":
             self.key_name = "uid"
         elif self.level == "gene":
@@ -285,25 +281,29 @@ class Aggregator(object):
         self.reportsub_table_name = self.table_name + "_reportsub"
         prefix = self.name + "."
         len_prefix = len(prefix)
-        for fname in os.listdir(self.input_dir):
+        for fname in listdir(self.input_dir):
             if fname.startswith(prefix):
                 body = fname[len_prefix:]
                 if self.level == "variant" and fname.endswith(".var"):
                     annot_name = body[:-4]
                     if not "." in annot_name:
                         self.annotators.append(annot_name)
-                        self.ipaths[annot_name] = os.path.join(self.input_dir, fname)
+                        self.ipaths[annot_name] = join(self.input_dir, fname)
                 elif self.level == "gene" and fname.endswith(".gen"):
                     annot_name = body[:-4]
                     if not "." in annot_name:
                         self.annotators.append(annot_name)
-                        self.ipaths[annot_name] = os.path.join(self.input_dir, fname)
+                        self.ipaths[annot_name] = join(self.input_dir, fname)
         self.annotators.sort()
-        self.base_fpath = os.path.join(self.input_dir, self.input_base_fname)
+        self.base_fpath = join(self.input_dir, self.input_base_fname)
         self._setup_io()
         self._setup_table()
 
     def _setup_table(self):
+        import sys
+        from json import loads, dumps
+        from collections import OrderedDict
+        from oakvar.inout import ColumnDefinition
         columns = []
         unique_names = set()
         # annotator table
@@ -401,7 +401,7 @@ class Aggregator(object):
         cdefs = OrderedDict()
         for cname, cjson in self.cursor:
             annot_name = cname.split("__")[0]
-            cdefs[cname] = ColumnDefinition(json.loads(cjson))
+            cdefs[cname] = ColumnDefinition(loads(cjson))
         if cdefs:
             self.cursor.execute(f"delete from {self.header_table_name}")
         for cdef in columns:
@@ -420,13 +420,13 @@ class Aggregator(object):
                     sub = self.base_reader.report_substitution
                     if sub:
                         q = f'insert into {self.reportsub_table_name} values ("base", ?)'
-                        self.cursor.execute(q, [json.dumps(sub)])
+                        self.cursor.execute(q, [dumps(sub)])
             for module in self.readers:
                 if hasattr(self.base_reader, "report_substitution"):
                     sub = self.readers[module].report_substitution
                     if sub:
                         q = f"insert or replace into {self.reportsub_table_name} values (?, ?)"
-                        self.cursor.execute(q, [module, json.dumps(sub)])
+                        self.cursor.execute(q, [module, dumps(sub)])
         self.make_reportsub()
         # filter and layout save table
         if not self.append:
@@ -437,18 +437,23 @@ class Aggregator(object):
         self.dbconn.commit()
 
     def _setup_io(self):
+        from os.path import join, exists
+        from os import remove
+        from sqlite3 import connect
+        from oakvar.inout import CravatReader
         self.base_reader = CravatReader(self.base_fpath)
         for annot_name in self.annotators:
             self.readers[annot_name] = CravatReader(self.ipaths[annot_name])
         self.db_fname = self.output_base_fname + ".sqlite"
-        self.db_path = os.path.join(self.output_dir, self.db_fname)
-        if self.delete and os.path.exists(self.db_path):
-            os.remove(self.db_path)
-        self.dbconn = sqlite3.connect(self.db_path)
+        self.db_path = join(self.output_dir, self.db_fname)
+        if self.delete and exists(self.db_path):
+            remove(self.db_path)
+        self.dbconn = connect(self.db_path)
         self.cursor = self.dbconn.cursor()
 
     def _log_runtime_error(self, ln, line, e):
-        err_str = traceback.format_exc().rstrip()
+        from traceback import format_exc
+        err_str = format_exc().rstrip()
         if ln is not None and line is not None:
             if err_str not in self.unique_excs:
                 self.unique_excs.append(err_str)
@@ -461,5 +466,6 @@ class Aggregator(object):
 
 
 if __name__ == "__main__":
+    import sys
     aggregator = Aggregator(sys.argv)
     aggregator.run()
