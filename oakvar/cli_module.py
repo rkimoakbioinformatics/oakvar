@@ -1,6 +1,7 @@
 def fn_module_ls(*args, **kwargs):
     from .util import get_args
     from inspect import currentframe
+
     fnname = currentframe().f_code.co_name
     parser = globals()["parser_" + fnname]
     args = get_args(parser, args, kwargs)
@@ -23,11 +24,17 @@ def fn_module_ls(*args, **kwargs):
         else:
             return ret
 
+
 def fn_module_info(args):
     from oyaml import dump
-    from .admin_util import get_local_module_info, get_remote_module_info, get_remote_module_config
+    from .admin_util import (
+        get_local_module_info,
+        get_remote_module_info,
+        get_remote_module_config,
+    )
     from .util import get_dict_from_namespace
     from .constants import custom_modules_dir
+
     args = get_dict_from_namespace(args)
     ret = {}
     md = args.get("md", None)
@@ -105,10 +112,18 @@ def fn_module_info(args):
 
 
 def fn_module_install(*args, **kwargs):
-    from .admin_util import search_remote, get_local_module_info, get_remote_module_info, module_exists_remote, get_install_deps, install_module
+    from .admin_util import (
+        search_remote,
+        get_local_module_info,
+        get_remote_module_info,
+        module_exists_remote,
+        get_install_deps,
+        install_module,
+    )
     from .util import get_args
     from .constants import custom_modules_dir
     from distutils.version import LooseVersion
+
     args = get_args(parser_fn_module_install, args, kwargs)
     if args["md"] is not None:
         custom_modules_dir = args["md"]
@@ -144,18 +159,27 @@ def fn_module_install(*args, **kwargs):
         if version is None:
             if args["private"]:
                 print(
-                    f"{module_name}: a version should be given for a private module", flush=True)
+                    f"{module_name}: a version should be given for a private module",
+                    flush=True,
+                )
                 continue
             else:
                 if local_info is not None:
                     local_ver = local_info.version
                     remote_ver = remote_info.latest_version
-                    if not args["force"] and LooseVersion(local_info.version) >= LooseVersion(remote_info.latest_version):
-                        print(f"{module_name}: latest version is already installed.", flush=True)
+                    if not args["force"] and LooseVersion(
+                        local_info.version
+                    ) >= LooseVersion(remote_info.latest_version):
+                        print(
+                            f"{module_name}: latest version is already installed.",
+                            flush=True,
+                        )
                         continue
                 selected_install[module_name] = remote_info.latest_version
         else:
-            if not module_exists_remote(module_name, version=version, private=args["private"]):
+            if not module_exists_remote(
+                module_name, version=version, private=args["private"]
+            ):
                 print(f"{module_name}=={version} does not exist.", flush=True)
                 continue
             else:
@@ -212,6 +236,7 @@ def fn_module_update(args):
     from .admin_util import search_local, get_updatable
     from .util import get_dict_from_namespace, humanize_bytes
     from .constants import custom_modules_dir
+
     args = get_dict_from_namespace(args)
     if args["md"] is not None:
         custom_modules_dir = args["md"]
@@ -221,9 +246,7 @@ def fn_module_update(args):
         requested_modules = []
     update_strategy = args["strategy"]
     status_table = [["Name", "New Version", "Size"]]
-    updates, _, reqs_failed = get_updatable(
-        requested_modules, strategy=update_strategy
-    )
+    updates, _, reqs_failed = get_updatable(requested_modules, strategy=update_strategy)
     if reqs_failed:
         print(
             "Newer versions of ({}) are available, but would break dependencies. You may use --strategy=force to force installation.".format(
@@ -258,6 +281,7 @@ def fn_module_uninstall(args):
     from .admin_util import search_local, uninstall_module
     from .util import get_dict_from_namespace
     from .constants import custom_modules_dir
+
     args = get_dict_from_namespace(args)
     if args["md"] is not None:
         custom_modules_dir = args["md"]
@@ -279,11 +303,13 @@ def fn_module_uninstall(args):
     else:
         print("No modules to uninstall found")
 
+
 def fn_module_installbase(args):
     from .admin_util import get_system_conf
     from .util import get_dict_from_namespace
     from .constants import base_modules_key
     from types import SimpleNamespace
+
     args = get_dict_from_namespace(args)
     sys_conf = get_system_conf()
     base_modules = sys_conf.get(base_modules_key, [])
@@ -300,10 +326,12 @@ def fn_module_installbase(args):
     )
     fn_module_install(args)
 
+
 def list_available_modules(**kwargs):
     from oyaml import dump
     from .admin_util import search_remote, get_local_module_info, get_remote_module_info
     from .util import humanize_bytes
+
     fmt = kwargs["fmt"]
     quiet = kwargs["quiet"]
     if fmt == "tabular":
@@ -361,23 +389,26 @@ def list_available_modules(**kwargs):
                     remote_info.datasource,
                     local_version,
                     local_datasource,
-                    size
+                    size,
                 ]
         elif fmt in ["json", "yaml"]:
-            toks = {"name": module_name,
-                    "title": remote_info.title,
-                    "type": remote_info.type,
-                    "installed": installed,
-                    "latest_version": remote_info.latest_version,
-                    "datasource": remote_info.datasource,
-                    "local_version": local_version,
-                    "local_datasource": local_datasource,
-                    "size": size}
+            toks = {
+                "name": module_name,
+                "title": remote_info.title,
+                "type": remote_info.type,
+                "installed": installed,
+                "latest_version": remote_info.latest_version,
+                "datasource": remote_info.datasource,
+                "local_version": local_version,
+                "local_datasource": local_datasource,
+                "size": size,
+            }
         all_toks.append(toks)
     if fmt in ["tabular", "json"]:
         return all_toks
     elif fmt == "yaml":
         return dump(all_toks, default_flow_style=False)
+
 
 def list_local_modules(
     pattern=r".*",
@@ -392,6 +423,7 @@ def list_local_modules(
     from oyaml import dump
     from .admin_util import search_local, get_local_module_info
     from .util import humanize_bytes
+
     if quiet or fmt == "json" or fmt == "yaml":
         all_toks = []
     else:
@@ -444,9 +476,11 @@ def list_local_modules(
     elif fmt == "yaml":
         return dump(all_toks, default_flow_style=False)
 
+
 def print_tabular_lines(l, *kwargs):
     for line in yield_tabular_lines(l, *kwargs):
         print(line)
+
 
 def yield_tabular_lines(l, col_spacing=2, indent=0):
     if not l:
@@ -467,19 +501,24 @@ def yield_tabular_lines(l, col_spacing=2, indent=0):
             jline += stok + " " * (max_lens[i] + col_spacing - len(stok))
         yield jline
 
+
 from .admin_util import InstallProgressHandler
+
+
 class InstallProgressStdout(InstallProgressHandler):
     def __init__(self, module_name, module_version):
         super().__init__(module_name, module_version)
 
     def stage_start(self, stage):
         import sys
+
         self.cur_stage = stage
         sys.stdout.write(self._stage_msg(stage) + "\n")
 
     def stage_progress(self, cur_chunk, total_chunks, cur_size, total_size):
         import sys
         from .util import humanize_bytes
+
         rem_chunks = total_chunks - cur_chunk
         perc = cur_size / total_size * 100
         # trailing spaces needed to avoid leftover characters on resize
@@ -496,7 +535,9 @@ class InstallProgressStdout(InstallProgressHandler):
         if cur_chunk == total_chunks:
             sys.stdout.write("\n")
 
+
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+
 parser_fn_module = ArgumentParser(formatter_class=RawDescriptionHelpFormatter)
 _subparsers = parser_fn_module.add_subparsers(title="Commands")
 
@@ -565,7 +606,9 @@ parser_fn_module_update = _subparsers.add_parser(
     formatter_class=RawDescriptionHelpFormatter,
 )
 parser_fn_module_update.add_argument("modules", nargs="*", help="Modules to update.")
-parser_fn_module_update.add_argument("-y", action="store_true", help="Proceed without prompt")
+parser_fn_module_update.add_argument(
+    "-y", action="store_true", help="Proceed without prompt"
+)
 parser_fn_module_update.add_argument(
     "--strategy",
     help='Dependency resolution strategy. "consensus" will attempt to resolve dependencies. "force" will install the highest available version. "skip" will skip modules with constraints.',
@@ -579,8 +622,12 @@ parser_fn_module_update.add_argument(
 parser_fn_module_update.set_defaults(func=fn_module_update)
 
 # uninstall
-parser_fn_module_uninstall = _subparsers.add_parser("uninstall", help="uninstalls modules.")
-parser_fn_module_uninstall.add_argument("modules", nargs="+", help="Modules to uninstall")
+parser_fn_module_uninstall = _subparsers.add_parser(
+    "uninstall", help="uninstalls modules."
+)
+parser_fn_module_uninstall.add_argument(
+    "modules", nargs="+", help="Modules to uninstall"
+)
 parser_fn_module_uninstall.add_argument(
     "-y", "--yes", action="store_true", help="Proceed without prompt"
 )
@@ -598,7 +645,9 @@ parser_fn_module_info.add_argument(
 parser_fn_module_info.add_argument(
     "--md", default=None, help="Specify the root directory of OakVar modules"
 )
-parser_fn_module_info.add_argument("--to", default="stdout", help="\"print\" to stdout / \"return\" to return")
+parser_fn_module_info.add_argument(
+    "--to", default="stdout", help='"print" to stdout / "return" to return'
+)
 parser_fn_module_info.set_defaults(func=fn_module_info)
 
 # ls
@@ -635,6 +684,7 @@ parser_fn_module_ls.add_argument(
 parser_fn_module_ls.add_argument(
     "--fmt", default="tabular", help="Output format. tabular or json"
 )
-parser_fn_module_ls.add_argument("--to", default="stdout", help="stdout to print / return to return")
+parser_fn_module_ls.add_argument(
+    "--to", default="stdout", help="stdout to print / return to return"
+)
 parser_fn_module_ls.set_defaults(func=fn_module_ls)
-

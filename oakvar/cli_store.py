@@ -3,6 +3,7 @@ def fn_store_publish(args):
     from .util import get_dict_from_namespace
     from .constants import custom_modules_dir
     from getpass import getpass
+
     args = get_dict_from_namespace(args)
     if args["md"] is not None:
         custom_modules_dir = args["md"]
@@ -25,24 +26,31 @@ def fn_store_publish(args):
         include_data=args["data"],
     )
 
+
 def fn_store_newaccount(args):
     from .admin_util import create_account
     from .util import get_dict_from_namespace
+
     args = get_dict_from_namespace(args)
     ret = create_account(args["username"], args["password"])
     return ret
 
+
 def fn_store_changepassword(args):
     from .admin_util import change_password
     from .util import get_dict_from_namespace
+
     args = get_dict_from_namespace(args)
-    ret = change_password(args["username"], args["current_password"], args["new_password"])
+    ret = change_password(
+        args["username"], args["current_password"], args["new_password"]
+    )
     return ret
 
 
 def fn_store_resetpassword(args):
     from .admin_util import send_reset_email
     from .util import get_dict_from_namespace
+
     args = get_dict_from_namespace(args)
     ret = send_reset_email(args["username"])
     return ret
@@ -51,18 +59,23 @@ def fn_store_resetpassword(args):
 def fn_store_verifyemail(args):
     from .admin_util import send_verify_email
     from .util import get_dict_from_namespace
+
     args = get_dict_from_namespace(args)
     ret = send_verify_email(args["username"])
     return ret
 
+
 def fn_store_checklogin(args):
     from .admin_util import check_login
     from .util import get_dict_from_namespace
+
     args = get_dict_from_namespace(args)
     ret = check_login(args.username, args["password"])
     return ret
 
+
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+
 parser_fn_store = ArgumentParser(formatter_class=RawDescriptionHelpFormatter)
 _subparsers = parser_fn_store.add_subparsers(title="Commands")
 
@@ -110,7 +123,9 @@ parser_fn_store_publish.set_defaults(func=fn_store_publish)
 parser_fn_store_newaccount = _subparsers.add_parser(
     "createaccount", help="creates a OakVar store developer account."
 )
-parser_fn_store_newaccount.add_argument("username", help="use your email as your username.")
+parser_fn_store_newaccount.add_argument(
+    "username", help="use your email as your username."
+)
 parser_fn_store_newaccount.add_argument("password", help="this is your password.")
 parser_fn_store_newaccount.set_defaults(func=fn_store_newaccount)
 
@@ -144,4 +159,3 @@ parser_fn_store_checklogin = _subparsers.add_parser(
 parser_fn_store_checklogin.add_argument("username", help="username")
 parser_fn_store_checklogin.add_argument("password", help="password")
 parser_fn_store_checklogin.set_defaults(func=fn_store_checklogin)
-

@@ -2,6 +2,7 @@ def raise_break(signal_number, stack_frame):
     import os
     import platform
     import psutil
+
     pl = platform.platform()
     if pl.startswith("Windows"):
         pid = os.getpid()
@@ -33,6 +34,7 @@ def raise_break(signal_number, stack_frame):
 
 
 import signal
+
 signal.signal(signal.SIGINT, raise_break)
 
 from .base_converter import BaseConverter
@@ -102,6 +104,7 @@ def get_module(module_name):
         import os
         from .admin_util import get_local_module_info
         from .util import load_class
+
         config_loader = ConfigLoader()
         module_info = get_local_module_info(module_name)
         script_path = module_info.script_path
@@ -137,6 +140,7 @@ class LiveAnnotator:
 
     def load_live_modules(self, mapper, annotator_names):
         from .admin_util import get_mic
+
         self.live_mapper = get_live_mapper(mapper)
         for module_name in get_mic().local.keys():
             if module_name in annotator_names:
@@ -194,4 +198,3 @@ class LiveAnnotator:
         del crx_data["tmp_mapper"]
         response["base"] = crx_data
         return response
-

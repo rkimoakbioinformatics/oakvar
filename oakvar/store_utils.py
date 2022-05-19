@@ -15,6 +15,7 @@ class PathBuilder(object):
 
     def _build_path(self, *path_toks):
         from os.path import join
+
         if self.path_type == "url":
             return "/".join(path_toks)
         elif self.path_type == "file":
@@ -73,6 +74,7 @@ class PathBuilder(object):
 
     def manifest(self, version=None):
         from pkg_resources import get_distribution
+
         if version is None:
             version = get_distribution("oakvar").version
         fname = "manifest-{}.yml".format(version)
@@ -118,6 +120,7 @@ class ProgressStager(object):
 
     def _update_stage(self):
         from math import floor
+
         old_stage = self.cur_stage
         self.cur_stage = floor(self.cur_size / self.total_size * self.total_stages)
         if self.cur_stage != old_stage or self.first_block:
@@ -131,8 +134,12 @@ def stream_multipart_post(url, fields, stage_handler=None, stages=50, **kwargs):
     multipart/form-data request. Optionally pass in a callback function which
     is called when the uploaded size passes each of total_size/stages.
     """
-    from requests_toolbelt.multipart.encoder import MultipartEncoder, MultipartEncoderMonitor
+    from requests_toolbelt.multipart.encoder import (
+        MultipartEncoder,
+        MultipartEncoderMonitor,
+    )
     from requests import post
+
     encoder = MultipartEncoder(fields=fields)
     stager = ProgressStager(
         encoder.len, total_stages=stages, stage_handler=stage_handler
@@ -159,6 +166,7 @@ def stream_to_file(
     from requests.exceptions import ConnectionError
     from .constants import KillInstallException
     from types import SimpleNamespace
+
     try:
         r = get(url, stream=True, timeout=(3, None))
     except ConnectionError:
@@ -182,6 +190,7 @@ def stream_to_file(
 def get_file_to_string(url):
     from requests import get
     from urllib.error import HTTPError
+
     try:
         r = get(url, timeout=(3, None))
         if r.status_code == 200:
@@ -197,6 +206,7 @@ def file_checksum(path):
     Get the md5 checksum of a file.
     """
     from hashlib import md5
+
     if os.path.isdir(path):
         raise IsADirectoryError(path)
     hasher = md5()
@@ -210,16 +220,17 @@ class ModuleArchiveBuilder(object):
     def __init__(self, archive_path, base_path=None):
         from os import getcwd
         from zipfile import ZipFile, ZIP_DEFLATED
-        if base_path is None: base_path = getcwd()
-        self._archive = ZipFile(
-            archive_path, compression=ZIP_DEFLATED, mode="w"
-        )
+
+        if base_path is None:
+            base_path = getcwd()
+        self._archive = ZipFile(archive_path, compression=ZIP_DEFLATED, mode="w")
         self._base_path = base_path
         self._manifest = {}
 
     def add_item(self, item_path):
         from os.path import relpath, isdir, join
         from os import listdir, sep
+
         rel_path = relpath(item_path, start=self._base_path)
         self._archive.write(item_path, rel_path)
         if isdir(item_path):
@@ -246,8 +257,11 @@ def add_to_zipfile(full_path, zf, start=None, compress_type=None):
     from os.path import relpath, isdir, join
     from os import curdir, listdir
     from zipfile import ZIP_DEFLATED
-    if compress_type is None: compress_type = ZIP_DEFLATED
-    if start is None: start = curdir
+
+    if compress_type is None:
+        compress_type = ZIP_DEFLATED
+    if start is None:
+        start = curdir
     rel_path = relpath(full_path, start=start)
     zf.write(full_path, arcname=rel_path, compress_type=compress_type)
     if isdir(full_path):
@@ -281,14 +295,13 @@ def verify_against_manifest(dirpath, manifest):
     """
     from os.path import join, exists, isdir
     from .constants import FileIntegrityError
+
     correct = True
     for item_name, v in manifest.items():
         item_path = join(dirpath, item_name)
         if exists(item_path):
             if type(v) == dict:
-                correct = isdir(item_path) and verify_against_manifest(
-                    item_path, v
-                )
+                correct = isdir(item_path) and verify_against_manifest(item_path, v)
             else:
                 correct = v == file_checksum(item_path)
         else:
@@ -300,6 +313,7 @@ def verify_against_manifest(dirpath, manifest):
 
 def hash_password(password):
     from hashlib import sha256
+
     return sha256(password.encode()).hexdigest()
 
 
@@ -345,4 +359,5 @@ class NoSuchModule(ClientError):
 
 def client_error_json(error_class):
     from json import dumps
+
     return dumps({"code": error_class.code, "message": error_class.message})
