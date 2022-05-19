@@ -522,13 +522,13 @@ class CravatReport:
         # await conn.close()
 
     async def run(self, tab="all"):
-        import time
+        from time import time, asctime, localtime
         import oyaml as yaml
         try:
-            start_time = time.time()
+            start_time = time()
             if not (hasattr(self, "no_log") and self.no_log):
                 self.logger.info(
-                    "started: %s" % time.asctime(time.localtime(start_time))
+                    "started: %s" % asctime(localtime(start_time))
                 )
                 if self.cf.filter:
                     s = f"filter:\n{yaml.dump(self.filter)}"
@@ -571,10 +571,10 @@ class CravatReport:
                             self.module_conf["title"], self.module_name
                         ),
                     )
-            end_time = time.time()
+            end_time = time()
             if not (hasattr(self, "no_log") and self.no_log):
                 self.logger.info(
-                    "finished: {0}".format(time.asctime(time.localtime(end_time)))
+                    "finished: {0}".format(asctime(localtime(end_time)))
                 )
                 run_time = end_time - start_time
                 self.logger.info("runtime: {0:0.3f}".format(run_time))
@@ -589,10 +589,10 @@ class CravatReport:
                             self.module_conf["title"], self.module_name
                         ),
                     )
-            end_time = time.time()
+            end_time = time()
             if not (hasattr(self, "no_log") and self.no_log):
                 self.logger.info(
-                    "finished: {0}".format(time.asctime(time.localtime(end_time)))
+                    "finished: {0}".format(asctime(localtime(end_time)))
                 )
                 run_time = end_time - start_time
                 self.logger.info("runtime: {0:0.3f}".format(run_time))

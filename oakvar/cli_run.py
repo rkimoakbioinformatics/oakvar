@@ -296,7 +296,7 @@ class Cravat(object):
 
 
     def __init__(self, **kwargs):
-        import time
+        from time import time, asctime, localtime
         from multiprocessing.managers import SyncManager
         self.runlevels = {
             "converter": 1,
@@ -322,10 +322,10 @@ class Cravat(object):
                     print("Deleting previous output files...")
                 self.delete_output_files()
             self.get_logger()
-            self.start_time = time.time()
+            self.start_time = time()
             self.logger.info(f'{" ".join(sys.argv)}')
             self.logger.info(
-                "started: {0}".format(time.asctime(time.localtime(self.start_time)))
+                "started: {0}".format(asctime(localtime(self.start_time)))
             )
             if self.run_conf_path != "":
                 self.logger.info("conf file: {}".format(self.run_conf_path))
@@ -531,9 +531,9 @@ class Cravat(object):
             ):
                 if not self.args.silent:
                     print("Running converter...")
-                stime = time.time()
+                stime = time()
                 self.run_converter()
-                rtime = time.time() - stime
+                rtime = time() - stime
                 if not self.args.silent:
                     print("finished in {0:.3f}s".format(rtime))
                 converter_ran = True
@@ -551,7 +551,7 @@ class Cravat(object):
             ):
                 if not self.args.silent:
                     print(f'Running gene mapper...{" "*18}', end="", flush=True)
-                stime = time.time()
+                stime = time()
                 multicore_mapper_mode = self.conf.get_cravat_conf()[
                     "multicore_mapper_mode"
                 ]
@@ -559,7 +559,7 @@ class Cravat(object):
                     self.run_genemapper_mp()
                 else:
                     self.run_genemapper()
-                rtime = time.time() - stime
+                rtime = time() - stime
                 if not self.args.silent:
                     print("finished in {0:.3f}s".format(rtime))
                 self.mapper_ran = True
@@ -581,9 +581,9 @@ class Cravat(object):
             ):
                 if not self.args.silent:
                     print("Running annotators...")
-                stime = time.time()
+                stime = time()
                 self.run_annotators_mp()
-                rtime = time.time() - stime
+                rtime = time() - stime
                 if not self.args.silent:
                     print("\tannotator(s) finished in {0:.3f}s".format(rtime))
             if (
@@ -626,8 +626,8 @@ class Cravat(object):
             exception = e
             self.handle_exception(e)
         finally:
-            end_time = time.time()
-            display_time = time.asctime(time.localtime(end_time))
+            end_time = time()
+            display_time = asctime(localtime(end_time))
             runtime = end_time - self.start_time
             if no_problem_in_run:
                 self.logger.info("finished: {0}".format(display_time))
@@ -684,7 +684,7 @@ class Cravat(object):
         await db.close()
 
     def write_smartfilters(self):
-        import time
+        from time import time
         import os
         import json
         import sqlite3
@@ -724,20 +724,20 @@ class Cravat(object):
                     q = f"create index if not exists {index_name} on variant ({col})"
                     if not self.args.silent:
                         print(f"\tvariant {col}", end="", flush=True)
-                    st = time.time()
+                    st = time()
                     cursor.execute(q)
                     if not self.args.silent:
-                        print(f"\tfinished in {time.time()-st:.3f}s")
+                        print(f"\tfinished in {time()-st:.3f}s")
             if col in gene_cols:
                 index_name = f"sf_gene_{col}"
                 if index_name not in existing_indices:
                     q = f"create index if not exists {index_name} on gene ({col})"
                     if not self.args.silent:
                         print(f"\tgene {col}", end="", flush=True)
-                    st = time.time()
+                    st = time()
                     cursor.execute(q)
                     if not self.args.silent:
-                        print(f"\tfinished in {time.time()-st:.3f}s")
+                        print(f"\tfinished in {time()-st:.3f}s")
         # Package filter
         if hasattr(self.args, "filter") and self.args.filter is not None:
             q = "create table if not exists viewersetup (datatype text, name text, viewersetup text, unique (datatype, name))"
@@ -1532,12 +1532,12 @@ class Cravat(object):
         del unique_trs
 
     def run_aggregator(self):
-        import time
+        from time import time
         from .aggregator import Aggregator
         # Variant level
         if not self.args.silent:
             print("\t{0:30s}\t".format("Variants"), end="", flush=True)
-        stime = time.time()
+        stime = time()
         cmd = [
             "donotremove",
             "-i",
@@ -1562,13 +1562,13 @@ class Cravat(object):
         )
         v_aggregator = Aggregator(cmd, self.status_writer)
         v_aggregator.run()
-        rtime = time.time() - stime
+        rtime = time() - stime
         if not self.args.silent:
             print("finished in {0:.3f}s".format(rtime))
         # Gene level
         if not self.args.silent:
             print("\t{0:30s}\t".format("Genes"), end="", flush=True)
-        stime = time.time()
+        stime = time()
         cmd = [
             "donotremove",
             "-i",
@@ -1591,14 +1591,14 @@ class Cravat(object):
         )
         g_aggregator = Aggregator(cmd, self.status_writer)
         g_aggregator.run()
-        rtime = time.time() - stime
+        rtime = time() - stime
         if not self.args.silent:
             print("finished in {0:.3f}s".format(rtime))
         # Sample level
         if not self.append_mode:
             if not self.args.silent:
                 print("\t{0:30s}\t".format("Samples"), end="", flush=True)
-            stime = time.time()
+            stime = time()
             cmd = [
                 "donotremove",
                 "-i",
@@ -1619,7 +1619,7 @@ class Cravat(object):
             )
             s_aggregator = Aggregator(cmd, self.status_writer)
             s_aggregator.run()
-            rtime = time.time() - stime
+            rtime = time() - stime
             if not self.args.silent:
                 print("finished in {0:.3f}s".format(rtime))
         # Mapping level
@@ -1646,13 +1646,13 @@ class Cravat(object):
             )
             m_aggregator = Aggregator(cmd, self.status_writer)
             m_aggregator.run()
-            rtime = time.time() - stime
+            rtime = time() - stime
             if not self.args.silent:
                 print("finished in {0:.3f}s".format(rtime))
         return v_aggregator.db_path
 
     def run_postaggregators(self):
-        import time
+        from time import time
         from .util import load_class
         import json
         for module_name, module in self.postaggregators.items():
@@ -1675,14 +1675,14 @@ class Cravat(object):
             post_agg = post_agg_cls(cmd, self.status_writer)
             if post_agg.should_run_annotate:
                 self.announce_module(module)
-            stime = time.time()
+            stime = time()
             post_agg.run()
-            rtime = time.time() - stime
+            rtime = time() - stime
             if not self.args.silent and post_agg.should_run_annotate:
                 print("finished in {0:.3f}s".format(rtime))
 
     async def run_reporter(self):
-        import time
+        from time import time
         import os
         import re
         import traceback
@@ -1743,7 +1743,7 @@ class Cravat(object):
                 Reporter = load_class(module.script_path, "Reporter")
                 reporter = Reporter(arg_dict)
                 await reporter.prep()
-                stime = time.time()
+                stime = time()
                 response_t = await reporter.run()
                 output_fns = None
                 if self.args.silent == False:
@@ -1755,7 +1755,7 @@ class Cravat(object):
                     if output_fns is not None:
                         print(f"report created: {output_fns} ", end="", flush=True)
                 response[re.sub("reporter$", "", module_name)] = response_t
-                rtime = time.time() - stime
+                rtime = time() - stime
                 if not self.args.silent:
                     print("finished in {0:.3f}s".format(rtime))
             except Exception as e:
@@ -2108,11 +2108,11 @@ class Cravat(object):
 
 class StatusWriter:
     def __init__(self, status_json_path):
-        import time
+        from time import time
         self.status_json_path = status_json_path
         self.status_queue = []
         self.load_status_json()
-        self.t = time.time()
+        self.t = time()
         self.lock = False
 
     def load_status_json(self):
@@ -2123,13 +2123,13 @@ class StatusWriter:
         f.close()
 
     def queue_status_update(self, k, v, force=False):
-        import time
+        from time import time
         self.status_json[k] = v
-        tdif = time.time() - self.t
+        tdif = time() - self.t
         if force == True or (tdif > 3 and self.lock == False):
             self.lock = True
             self.update_status_json()
-            self.t = time.time()
+            self.t = time()
             self.lock = False
 
     def update_status_json(self):
@@ -2141,8 +2141,8 @@ class StatusWriter:
         return self.status_json
 
     def flush(self):
-        import time
+        from time import time
         self.lock = True
         self.update_status_json()
-        self.t = time.time()
+        self.t = time()
         self.lock = False

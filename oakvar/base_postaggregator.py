@@ -77,18 +77,18 @@ class BasePostAggregator(object):
             self.confs = json.loads(confs)
 
     def run(self):
-        import time
+        from time import time, asctime, localtime
         import json
         if not self.should_run_annotate:
             self.base_cleanup()
             return
-        start_time = time.time()
+        start_time = time()
         self.status_writer.queue_status_update(
             "status", "Started {} ({})".format(self.conf["title"], self.module_name)
         )
-        last_status_update_time = time.time()
+        last_status_update_time = time()
         self.logger.info(
-            "started: {0}".format(time.asctime(time.localtime(start_time)))
+            "started: {0}".format(asctime(localtime(start_time)))
         )
         self.base_setup()
         lnum = 0
@@ -139,7 +139,7 @@ class BasePostAggregator(object):
                         del output_dict[shortcolname]
                 fixed_output = {}
                 self.write_output(input_data, output_dict)
-                cur_time = time.time()
+                cur_time = time()
                 lnum += 1
                 if lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
                     self.status_writer.queue_status_update(
@@ -154,9 +154,9 @@ class BasePostAggregator(object):
         self.fill_categories()
         self.dbconn.commit()
         self.base_cleanup()
-        end_time = time.time()
+        end_time = time()
         run_time = end_time - start_time
-        self.logger.info("finished: {0}".format(time.asctime(time.localtime(end_time))))
+        self.logger.info("finished: {0}".format(asctime(localtime(end_time))))
         self.logger.info("runtime: {0:0.3f}".format(run_time))
         self.status_writer.queue_status_update(
             "status", "Finished {} ({})".format(self.conf["title"], self.module_name)

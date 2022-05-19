@@ -1205,7 +1205,7 @@ async def update_result_db (request):
     return web.json_response(msg)
 
 async def import_job (request):
-    from ..cmd_util import status_from_db
+    from ..cli_util import status_from_db
     global filerouter
     jobs_dirs = await filerouter.get_jobs_dirs(request)
     jobs_dir = jobs_dirs[0]

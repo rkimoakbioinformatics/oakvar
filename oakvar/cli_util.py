@@ -703,34 +703,51 @@ def status_from_db(dbpath):
     return d
 
 
-parser = ArgumentParser()
+from argparse import ArgumentParser
+parser_fn_util = ArgumentParser()
+_subparsers = parser_fn_util.add_subparsers(title="Commands")
+
+# test
+from .cli_test import fn_util_test
+parser_fn_util_test = _subparsers.add_parser("test", help="Test installed modules")
+parser_fn_util_test.add_argument("-d", "--rundir", help="Directory for output")
+parser_fn_util_test.add_argument(
+    "-m", "--modules", nargs="+", help="Name of module(s) to test. (e.g. gnomad)"
+)
+parser_fn_util_test.add_argument(
+    "-t", "--mod_types", nargs="+", help="Type of module(s) to test (e.g. annotators)"
+)
+parser_fn_util_test.add_argument("--to", default="stdout", help="stdout to print / return to return")
+parser_fn_util_test.set_defaults(func=fn_util_test)
+
+
 # converts db coordinate to hg38
-subparsers = parser.add_subparsers(title="Commands")
-parser_convert = subparsers.add_parser(
+parser_fn_util_convert = _subparsers.add_parser(
     "converttohg38", help="converts hg19 coordinates in SQLite3 database to hg38 ones."
 )
-parser_convert.add_argument(
+parser_fn_util_convert.add_argument(
     "--db", nargs="?", required=True, help="path to SQLite3 database file"
 )
-parser_convert.add_argument(
+parser_fn_util_convert.add_argument(
     "--sourcegenome", required=True, help="genome assembly of source database"
 )
-parser_convert.add_argument(
+parser_fn_util_convert.add_argument(
     "--cols", nargs="+", required=True, help="names of the columns to convert"
 )
-parser_convert.add_argument(
+parser_fn_util_convert.add_argument(
     "--tables",
     nargs="*",
     help="table(s) to convert. If omitted, table name will be used as chromosome name.",
 )
-parser_convert.add_argument(
+parser_fn_util_convert.add_argument(
     "--chromcol",
     required=False,
     help="chromosome column. If omitted, all tables will be tried to be converted.",
 )
-parser_convert.set_defaults(func=converttohg38)
+parser_fn_util_convert.set_defaults(func=converttohg38)
+
 # migrate old result db
-parser_fn_util_updateresult = subparsers.add_parser(
+parser_fn_util_updateresult = _subparsers.add_parser(
     "migrate-result", help="migrates result db made with older versions of oakvar"
 )
 parser_fn_util_updateresult.add_argument(
@@ -751,8 +768,9 @@ parser_fn_util_updateresult.add_argument(
     help="backup original copy with .bak extension",
 )
 parser_fn_util_updateresult.set_defaults(func=fn_util_updateresult)
+
 # Make job accessible through the gui
-parser_fn_util_addjob = subparsers.add_parser(
+parser_fn_util_addjob = _subparsers.add_parser(
     "addjob", help="Copy a command line job into the GUI submission list"
 )
 parser_fn_util_addjob.add_argument("path", help="Path to result database")
@@ -764,8 +782,9 @@ parser_fn_util_addjob.add_argument(
     default="default",
 )
 parser_fn_util_addjob.set_defaults(func=fn_util_addjob)
+
 # Merge SQLite files
-parser_fn_util_mergesqlite = subparsers.add_parser(
+parser_fn_util_mergesqlite = _subparsers.add_parser(
     "mergesqlite", help="Merge SQLite result files"
 )
 parser_fn_util_mergesqlite.add_argument(
@@ -774,17 +793,21 @@ parser_fn_util_mergesqlite.add_argument(
     "-o", dest="outpath", required=True, help="Output SQLite file path"
 )
 parser_fn_util_mergesqlite.set_defaults(func=fn_util_mergesqlite)
-parser_fn_util_showsqliteinfo = subparsers.add_parser(
+
+# Show SQLite info
+parser_fn_util_showsqliteinfo = _subparsers.add_parser(
     "showsqliteinfo", help="Show SQLite result file information"
 )
 parser_fn_util_showsqliteinfo.add_argument("paths", nargs="+", help="SQLite result file paths")
 parser_fn_util_showsqliteinfo.add_argument("--fmt", default="text", help="Output format. text / json / yaml")
 parser_fn_util_showsqliteinfo.add_argument("--to", default="stdout", help="Output to. stdout / return")
 parser_fn_util_showsqliteinfo.set_defaults(func=fn_util_showsqliteinfo)
-parser_fn_util_filtersqlite = subparsers.add_parser(
+parser_fn_util_filtersqlite = _subparsers.add_parser(
     "filtersqlite",
     help="Filter SQLite result files to produce filtered SQLite result files",
 )
+
+# Filter SQLite
 parser_fn_util_filtersqlite.add_argument("paths", nargs="+", help="Path to result database")
 parser_fn_util_filtersqlite.add_argument(
     "-o", dest="out", default=".", help="Output SQLite file folder"
