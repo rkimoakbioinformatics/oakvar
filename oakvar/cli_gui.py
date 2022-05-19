@@ -33,10 +33,12 @@ def setup(args):
     from asyncio import get_event_loop
     from importlib.util import find_spec
     from os.path import join, exists
+
     try:
         global loop
         if sysplatform == "win32":  # Required to use asyncio subprocesses
             from asyncio import ProactorEventLoop
+
             loop = ProactorEventLoop()
             set_event_loop(loop)
         else:
@@ -51,6 +53,7 @@ def setup(args):
             try:
                 global cravat_multiuser
                 import cravat_multiuser
+
                 loop.create_task(cravat_multiuser.setup_module())
                 global server_ready
                 server_ready = True
@@ -100,6 +103,7 @@ def setup(args):
                 ssl_enabled = True
                 global sc
                 from ssl import create_default_context, Purpose
+
                 sc = create_default_context(Purpose.CLIENT_AUTH)
                 sc.load_cert_chain(pem_path)
         if ssl_enabled:
@@ -108,6 +112,7 @@ def setup(args):
             protocol = "http://"
     except Exception as e:
         from traceback import print_exc
+
         logger.exception(e)
         if debug:
             print_exc()
@@ -129,10 +134,9 @@ def fn_gui(args):
     from .util import get_dict_from_namespace, is_compatible_version
     from logging.handlers import TimedRotatingFileHandler
     from os.path import abspath, exists
+
     args = get_dict_from_namespace(args)
-    log_handler = TimedRotatingFileHandler(
-        log_path, when="d", backupCount=30
-    )
+    log_handler = TimedRotatingFileHandler(log_path, when="d", backupCount=30)
     log_formatter = logging.Formatter("%(asctime)s: %(message)s", "%Y/%m/%d %H:%M:%S")
     log_handler.setFormatter(log_formatter)
     logger.addHandler(log_handler)
@@ -159,9 +163,7 @@ def fn_gui(args):
             port = server.get("port")
         if not headless:
             if args["webapp"] is not None:
-                index_path = join(
-                    modules_dir, "webapps", args["webapp"], "index.html"
-                )
+                index_path = join(modules_dir, "webapps", args["webapp"], "index.html")
                 if exists(index_path) == False:
                     print(f"Webapp {args['webapp']} does not exist. Exiting.")
                     return
@@ -196,6 +198,7 @@ def fn_gui(args):
         main(url=url, host=host, port=port)
     except Exception as e:
         from traceback import print_exc
+
         logger.exception(e)
         if debug:
             print_exc()
@@ -214,6 +217,7 @@ def fn_gui(args):
 def get_server():
     from .admin_util import get_system_conf
     import platform
+
     global args
     try:
         server = {}
@@ -250,6 +254,7 @@ def get_server():
         return server
     except Exception as e:
         from traceback import print_exc
+
         logger.exception(e)
         if debug:
             print_exc()
@@ -279,6 +284,7 @@ class TCPSitePatched(web_runner.BaseSite):
         loop=None,
     ):
         from asyncio import get_event_loop
+
         super().__init__(
             runner,
             shutdown_timeout=shutdown_timeout,
@@ -319,6 +325,7 @@ class TCPSitePatched(web_runner.BaseSite):
 @web.middleware
 async def middleware(request, handler):
     from json import dumps
+
     global loop
     global args
     try:
@@ -335,6 +342,7 @@ async def middleware(request, handler):
         return response
     except Exception as e:
         from traceback import print_exc
+
         msg = "Exception with {}".format(request.rel_url)
         logger.info(msg)
         logger.exception(e)
@@ -349,6 +357,7 @@ async def middleware(request, handler):
 class WebServer(object):
     def __init__(self, host=None, port=None, loop=None, ssl_context=None, url=None):
         from asyncio import get_event_loop, sleep
+
         serv = get_server()
         if host is None:
             host = serv["host"]
@@ -378,6 +387,7 @@ class WebServer(object):
     async def open_url(self, url):
         from webbrowser import open as webbrowseropen
         from asyncio import sleep
+
         while self.server_started == False:
             await sleep(0.2)
         if self.server_started:
@@ -406,6 +416,7 @@ class WebServer(object):
         from importlib.util import spec_from_file_location, module_from_spec
         from os.path import join, exists
         from os import listdir
+
         global modules_dir
         webapps_dir = join(modules_dir, "webapps")
         if exists(webapps_dir) == False:
@@ -429,6 +440,7 @@ class WebServer(object):
         from .webstore import webstore as ws
         from .websubmit import websubmit as wu
         from os.path import dirname, realpath, join, exists
+
         source_dir = dirname(realpath(__file__))
         routes = list()
         routes.extend(ws.routes)
@@ -470,6 +482,7 @@ async def get_webapp_index(request):
 
 async def serve_favicon(request):
     from os.path import dirname, realpath, join
+
     source_dir = dirname(realpath(__file__))
     return web.FileResponse(join(source_dir, "favicon.ico"))
 
@@ -478,11 +491,10 @@ async def heartbeat(request):
     from .webstore import webstore as ws
     from asyncio import get_event_loop
     from concurrent.futures._base import CancelledError
+
     ws = web.WebSocketResponse(timeout=60 * 60 * 24 * 365)
     if servermode and server_ready:
-        get_event_loop().create_task(
-            cravat_multiuser.update_last_active(request)
-        )
+        get_event_loop().create_task(cravat_multiuser.update_last_active(request))
     await ws.prepare(request)
     try:
         async for msg in ws:
@@ -494,6 +506,7 @@ async def heartbeat(request):
 
 async def is_system_ready(request):
     from .admin_util import system_ready
+
     return web.json_response(dict(system_ready()))
 
 
@@ -506,21 +519,26 @@ def main(url=None, host=None, port=None):
     from asyncio import get_event_loop, sleep
     from requests.exceptions import ConnectionError
     from webbrowser import open as webbrowseropen
+
     global args
     try:
         global loop
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(1)
+
         def wakeup():
             loop.call_later(0.1, wakeup)
+
         def check_local_update(interval):
             try:
                 ws.handle_modules_changed()
             except:
                 from traceback import print_exc
+
                 print_exc()
             finally:
                 loop.call_later(interval, check_local_update, interval)
+
         serv = get_server()
         global protocol
         if host is None:
@@ -550,21 +568,25 @@ def main(url=None, host=None, port=None):
 ██    ██ ███████ █████   ██    ██ ███████ ██████  
 ██    ██ ██   ██ ██  ██   ██  ██  ██   ██ ██   ██ 
  ██████  ██   ██ ██   ██   ████   ██   ██ ██   ██ 
-"""
-        , flush=True)
+""",
+            flush=True,
+        )
         print("OakVar Server is served at {}:{}".format(host, port))
         logger.info("Serving OakVar server at {}:{}".format(host, port))
         print(
-            '(To quit: Press Ctrl-C or Ctrl-Break if run on a Terminal or Windows, or click "Cancel" and then "Quit" if run through OakVar app on Mac OS)'
-        , flush=True)
+            '(To quit: Press Ctrl-C or Ctrl-Break if run on a Terminal or Windows, or click "Cancel" and then "Quit" if run through OakVar app on Mac OS)',
+            flush=True,
+        )
         loop = get_event_loop()
         loop.call_later(0.1, wakeup)
         loop.call_later(1, check_local_update, 5)
+
         async def clean_sessions():
             """
             Clean sessions periodically.
             """
             from .admin_util import get_system_conf
+
             try:
                 max_age = get_system_conf().get(
                     "max_session_age", 604800
@@ -577,9 +599,11 @@ def main(url=None, host=None, port=None):
                     await sleep(interval)
             except Exception as e:
                 from traceback import print_exc
+
                 logger.exception(e)
                 if debug:
                     print_exc()
+
         if servermode and server_ready:
             if "max_session_age" in get_system_conf():
                 loop.create_task(clean_sessions())
@@ -594,6 +618,7 @@ def main(url=None, host=None, port=None):
         logger.exception(e)
         if debug:
             from traceback import print_exc
+
             print_exc()
         logger.info("Exiting...")
         print(
@@ -631,7 +656,9 @@ parser_fn_gui.add_argument(
     default=False,
     help="Console echoes exceptions written to log file.",
 )
-parser_fn_gui.add_argument("result", nargs="?", help="Path to a OakVar result SQLite file")
+parser_fn_gui.add_argument(
+    "result", nargs="?", help="Path to a OakVar result SQLite file"
+)
 parser_fn_gui.add_argument(
     "--webapp",
     dest="webapp",

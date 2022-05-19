@@ -1,10 +1,12 @@
 from argparse import ArgumentParser, SUPPRESS
 import sys
 import nest_asyncio
+
 nest_asyncio.apply()
 
 if sys.platform == "win32" and sys.version_info >= (3, 8):
     from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy
+
     set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 
 
@@ -45,6 +47,7 @@ class CravatReport:
         from .config_loader import ConfigLoader
         from .util import get_args
         from .constants import custom_modules_dir
+
         args = get_args(parser_fn_report, inargs, inkwargs)
         self.args = args
         if args["md"] is not None:
@@ -139,6 +142,7 @@ class CravatReport:
 
     async def prep(self):
         from .util import write_log_msg
+
         try:
             await self.connect_db()
             await self.load_filter()
@@ -147,6 +151,7 @@ class CravatReport:
                 await self.cf.close_db()
             if not hasattr(e, "notraceback") or e.notraceback != True:
                 import traceback
+
                 traceback.print_exc()
                 self.logger.error(e)
             else:
@@ -157,6 +162,7 @@ class CravatReport:
 
     def _setup_logger(self):
         import logging
+
         if hasattr(self, "no_log") and self.no_log:
             return
         try:
@@ -168,6 +174,7 @@ class CravatReport:
 
     async def get_db_conn(self):
         import aiosqlite
+
         if self.dbpath is None:
             return None
         if self.conn is None:
@@ -194,6 +201,7 @@ class CravatReport:
 
     async def getjson(self, level):
         import json
+
         ret = None
         if await self.exec_db(self.table_exists, level) == False:
             return ret
@@ -203,6 +211,7 @@ class CravatReport:
 
     def substitute_val(self, level, row):
         import json
+
         for sub in self.column_subs.get(level, []):
             value = row[sub.index]
             if value is None or value == "":
@@ -235,6 +244,7 @@ class CravatReport:
     def process_datarow(self, args):
         import json
         from asyncio import get_event_loop, ensure_future
+
         datarow = args[0]
         should_skip_some_cols = args[1]
         level = args[2]
@@ -341,6 +351,7 @@ class CravatReport:
     async def run_level(self, level):
         import json
         from .constants import legacy_gene_level_cols_to_skip
+
         ret = await self.exec_db(self.table_exists, level)
         if ret == False:
             return
@@ -524,12 +535,11 @@ class CravatReport:
     async def run(self, tab="all"):
         from time import time, asctime, localtime
         import oyaml as yaml
+
         try:
             start_time = time()
             if not (hasattr(self, "no_log") and self.no_log):
-                self.logger.info(
-                    "started: %s" % asctime(localtime(start_time))
-                )
+                self.logger.info("started: %s" % asctime(localtime(start_time)))
                 if self.cf.filter:
                     s = f"filter:\n{yaml.dump(self.filter)}"
                     self.logger.info(s)
@@ -573,9 +583,7 @@ class CravatReport:
                     )
             end_time = time()
             if not (hasattr(self, "no_log") and self.no_log):
-                self.logger.info(
-                    "finished: {0}".format(asctime(localtime(end_time)))
-                )
+                self.logger.info("finished: {0}".format(asctime(localtime(end_time))))
                 run_time = end_time - start_time
                 self.logger.info("runtime: {0:0.3f}".format(run_time))
             ret = self.end()
@@ -591,9 +599,7 @@ class CravatReport:
                     )
             end_time = time()
             if not (hasattr(self, "no_log") and self.no_log):
-                self.logger.info(
-                    "finished: {0}".format(asctime(localtime(end_time)))
-                )
+                self.logger.info("finished: {0}".format(asctime(localtime(end_time))))
                 run_time = end_time - start_time
                 self.logger.info("runtime: {0:0.3f}".format(run_time))
             raise
@@ -667,6 +673,7 @@ class CravatReport:
         from .inout import ColumnDefinition
         from .util import load_class
         from types import SimpleNamespace
+
         self.colnames_to_display[level] = []
         await self.exec_db(self.store_mapper)
         cravat_conf = self.conf.get_cravat_conf()
@@ -948,6 +955,7 @@ class CravatReport:
 
     async def connect_db(self, dbpath=None):
         import os
+
         if dbpath != None:
             self.dbpath = dbpath
         if self.dbpath == None:
@@ -967,6 +975,7 @@ class CravatReport:
 
     async def load_filter(self):
         from .cravat_filter import CravatFilter
+
         self.cf = await CravatFilter.create(dbpath=self.dbpath)
         await self.cf.exec_db(
             self.cf.loadfilter,
@@ -1005,6 +1014,7 @@ def run_reporter(*inargs, **inkwargs):
     from .constants import custom_modules_dir
     import importlib
     from .exceptions import InvalidModule
+
     args = get_args(parser_fn_report, inargs, inkwargs)
     dbpath = args["dbpath"]
     # Check if exists
@@ -1074,7 +1084,7 @@ def run_reporter(*inargs, **inkwargs):
     for report_type in report_types:
         module_info = au.get_local_module_info(report_type + "reporter")
         if module_info is None:
-            #if args["silent"] == False:
+            # if args["silent"] == False:
             #    print(f"Report module for {report_type} does not exist. Skipping...")
             raise InvalidModule(report_type + "reporter")
         if args["silent"] == False:
@@ -1108,6 +1118,7 @@ def run_reporter(*inargs, **inkwargs):
             if hasattr(e, "handled") and e.handled == True:
                 if not hasattr(e, "notraceback") or e.notraceback != True:
                     import traceback
+
                     traceback.print_exc()
                 else:
                     if hasattr(reporter, "logger"):
@@ -1137,7 +1148,9 @@ parser_fn_report.add_argument(
     default=[],
     help="report types",
 )
-parser_fn_report.add_argument("-f", dest="filterpath", default=None, help="Path to filter file")
+parser_fn_report.add_argument(
+    "-f", dest="filterpath", default=None, help="Path to filter file"
+)
 parser_fn_report.add_argument("--filter", default=None, help=SUPPRESS)
 parser_fn_report.add_argument("--filtersql", default=None, help="Filter SQL")
 parser_fn_report.add_argument(
@@ -1149,7 +1162,9 @@ parser_fn_report.add_argument(
 parser_fn_report.add_argument(
     "--filterstring", dest="filterstring", default=None, help=SUPPRESS
 )
-parser_fn_report.add_argument("-s", dest="savepath", default=None, help="Path to save file")
+parser_fn_report.add_argument(
+    "-s", dest="savepath", default=None, help="Path to save file"
+)
 parser_fn_report.add_argument("-c", dest="confpath", help="path to a conf file")
 parser_fn_report.add_argument(
     "--module-name", dest="module_name", default=None, help="report module name"
@@ -1161,7 +1176,9 @@ parser_fn_report.add_argument(
     default=False,
     help="Use this option to prevent gene level result from being added to variant level result.",
 )
-parser_fn_report.add_argument("--confs", dest="confs", default="{}", help="Configuration string")
+parser_fn_report.add_argument(
+    "--confs", dest="confs", default="{}", help="Configuration string"
+)
 parser_fn_report.add_argument(
     "--inputfiles",
     nargs="+",
@@ -1226,7 +1243,9 @@ parser_fn_report.add_argument(
     default=None,
     help="Sample IDs to exclude",
 )
-parser_fn_report.add_argument("--package", help="Use filters and report types in a package")
+parser_fn_report.add_argument(
+    "--package", help="Use filters and report types in a package"
+)
 parser_fn_report.add_argument(
     "--md",
     default=None,

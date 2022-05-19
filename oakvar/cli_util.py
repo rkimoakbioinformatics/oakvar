@@ -8,15 +8,14 @@ def converttohg38(args):
     from pyliftover import LiftOver
     from os.path import exists
     from os import remove
+
     if args.sourcegenome not in ["hg18", "hg19"]:
         print("Source genome should be either hg18 or hg19.")
         exit()
     if exists(args.db) == False:
         print(args.db, "does not exist.")
         exit()
-    liftover = LiftOver(
-        get_liftover_chain_path_for_src_genome(args.sourcegenome)
-    )
+    liftover = LiftOver(get_liftover_chain_path_for_src_genome(args.sourcegenome))
     print("Extracting table schema from DB...")
     cmd = ["sqlite3", args.db, ".schema"]
     output = check_output(cmd)
@@ -139,8 +138,6 @@ def converttohg38(args):
     newdb.commit()
 
 
-
-
 def fn_util_updateresult(args):
     import sqlite3
     from os import listdir
@@ -148,10 +145,12 @@ def fn_util_updateresult(args):
     from shutil import copy
     from distutils.version import LooseVersion
     from .util import get_dict_from_namespace
+
     migrate_functions = {}
     migrate_checkpoints = [LooseVersion(v) for v in list(migrate_functions.keys())]
     migrate_checkpoints.sort()
     args = get_dict_from_namespace(args)
+
     def get_dbpaths(dbpaths, path):
         for fn in listdir(path):
             p = join(path, fn)
@@ -160,6 +159,7 @@ def fn_util_updateresult(args):
             else:
                 if fn.endswith(".sqlite"):
                     dbpaths.append(p)
+
     dbpath = args["dbpath"]
     if exists(dbpath) == False:
         print("[{}] does not exist.".format(dbpath))
@@ -225,6 +225,7 @@ def fn_util_updateresult(args):
                     )
         except:
             from traceback import print_exc
+
             print_exc()
             print("  converting [{}] was not successful.".format(dbpath))
 
@@ -236,6 +237,7 @@ def fn_util_addjob(args):
     from pathlib import Path
     from datetime import datetime
     from .admin_util import get_jobs_dir
+
     dbpath = args.path
     user = args.user
     jobs_dir = Path(get_jobs_dir())
@@ -285,6 +287,7 @@ def fn_util_showsqliteinfo(args):
     from json import loads
     from .util import get_dict_from_namespace
     from oyaml import dump
+
     args = get_dict_from_namespace(args)
     fmt = args["fmt"]
     to = args["to"]
@@ -333,7 +336,13 @@ def fn_util_showsqliteinfo(args):
                 s = f"{col_name.ljust(width_colname)} {col_def['title'].ljust(width_coltitle)} {col_def['type']}"
                 ret.append(s)
             elif fmt in ["json", "yaml"]:
-                ret["output_columns"]["variant"].append({"name": col_name, "title": col_def["title"], "type": col_def["type"]})
+                ret["output_columns"]["variant"].append(
+                    {
+                        "name": col_name,
+                        "title": col_def["title"],
+                        "type": col_def["type"],
+                    }
+                )
         c.execute("select col_name, col_def from gene_header")
         rs = c.fetchall()
         for r in rs:
@@ -343,7 +352,13 @@ def fn_util_showsqliteinfo(args):
                 s = f"{col_name.ljust(width_colname)} {col_def['title'].ljust(width_coltitle)} {col_def['type']}"
                 ret.append(s)
             elif fmt in ["json", "yaml"]:
-                ret["output_columns"]["gene"].append({"name": col_name, "title": col_def["title"], "type": col_def["type"]})
+                ret["output_columns"]["gene"].append(
+                    {
+                        "name": col_name,
+                        "title": col_def["title"],
+                        "type": col_def["type"],
+                    }
+                )
         c.close()
         conn.close()
         if to == "stdout":
@@ -366,6 +381,7 @@ def fn_util_mergesqlite(args):
     from json import loads, dumps
     from shutil import copy
     from .util import get_dict_from_namespace
+
     args = get_dict_from_namespace(args)
     dbpaths = args["path"]
     if len(dbpaths) < 2:
@@ -503,6 +519,7 @@ def fn_util_mergesqlite(args):
 def fn_util_filtersqlite(args):
     from asyncio import get_event_loop
     from .util import get_dict_from_namespace
+
     args = get_dict_from_namespace(args)
     loop = get_event_loop()
     loop.run_until_complete(filtersqlite_async(args))
@@ -519,6 +536,7 @@ async def filtersqlite_async(args):
     from os import remove
     from os.path import exists
     from .cravat_filter import CravatFilter
+
     dbpaths = args["paths"]
     for dbpath in dbpaths:
         if not dbpath.endswith(".sqlite"):
@@ -632,6 +650,7 @@ def status_from_db(dbpath):
     import sqlite3
     from pathlib import Path
     from datetime import fromtimestamp
+
     if not isinstance(dbpath, Path):
         dbpath = Path(dbpath)
     d = {}
@@ -704,11 +723,13 @@ def status_from_db(dbpath):
 
 
 from argparse import ArgumentParser
+
 parser_fn_util = ArgumentParser()
 _subparsers = parser_fn_util.add_subparsers(title="Commands")
 
 # test
 from .cli_test import fn_util_test
+
 parser_fn_util_test = _subparsers.add_parser("test", help="Test installed modules")
 parser_fn_util_test.add_argument("-d", "--rundir", help="Directory for output")
 parser_fn_util_test.add_argument(
@@ -717,7 +738,9 @@ parser_fn_util_test.add_argument(
 parser_fn_util_test.add_argument(
     "-t", "--mod_types", nargs="+", help="Type of module(s) to test (e.g. annotators)"
 )
-parser_fn_util_test.add_argument("--to", default="stdout", help="stdout to print / return to return")
+parser_fn_util_test.add_argument(
+    "--to", default="stdout", help="stdout to print / return to return"
+)
 parser_fn_util_test.set_defaults(func=fn_util_test)
 
 
@@ -788,7 +811,8 @@ parser_fn_util_mergesqlite = _subparsers.add_parser(
     "mergesqlite", help="Merge SQLite result files"
 )
 parser_fn_util_mergesqlite.add_argument(
-    "path", nargs="+", help="Path to result database")
+    "path", nargs="+", help="Path to result database"
+)
 parser_fn_util_mergesqlite.add_argument(
     "-o", dest="outpath", required=True, help="Output SQLite file path"
 )
@@ -798,9 +822,15 @@ parser_fn_util_mergesqlite.set_defaults(func=fn_util_mergesqlite)
 parser_fn_util_showsqliteinfo = _subparsers.add_parser(
     "showsqliteinfo", help="Show SQLite result file information"
 )
-parser_fn_util_showsqliteinfo.add_argument("paths", nargs="+", help="SQLite result file paths")
-parser_fn_util_showsqliteinfo.add_argument("--fmt", default="text", help="Output format. text / json / yaml")
-parser_fn_util_showsqliteinfo.add_argument("--to", default="stdout", help="Output to. stdout / return")
+parser_fn_util_showsqliteinfo.add_argument(
+    "paths", nargs="+", help="SQLite result file paths"
+)
+parser_fn_util_showsqliteinfo.add_argument(
+    "--fmt", default="text", help="Output format. text / json / yaml"
+)
+parser_fn_util_showsqliteinfo.add_argument(
+    "--to", default="stdout", help="Output to. stdout / return"
+)
 parser_fn_util_showsqliteinfo.set_defaults(func=fn_util_showsqliteinfo)
 parser_fn_util_filtersqlite = _subparsers.add_parser(
     "filtersqlite",
@@ -808,7 +838,9 @@ parser_fn_util_filtersqlite = _subparsers.add_parser(
 )
 
 # Filter SQLite
-parser_fn_util_filtersqlite.add_argument("paths", nargs="+", help="Path to result database")
+parser_fn_util_filtersqlite.add_argument(
+    "paths", nargs="+", help="Path to result database"
+)
 parser_fn_util_filtersqlite.add_argument(
     "-o", dest="out", default=".", help="Output SQLite file folder"
 )

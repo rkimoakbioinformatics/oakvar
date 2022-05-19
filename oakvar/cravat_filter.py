@@ -3,7 +3,9 @@ import sys
 
 if sys.platform == "win32" and sys.version_info >= (3, 8):
     from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy
+
     set_event_loop_policy(WindowsSelectorEventLoopPolicy())
+
 
 class FilterColumn(object):
 
@@ -291,6 +293,7 @@ class CravatFilter:
 
     def parse_args(self, args):
         from argparse import ArgumentParser
+
         parser = ArgumentParser()
         parser.add_argument(
             "-d",
@@ -361,6 +364,7 @@ class CravatFilter:
             return None
         if self.conn is None:
             import aiosqlite
+
             self.conn = await aiosqlite.connect(self.dbpath)
         return self.conn
 
@@ -422,6 +426,7 @@ class CravatFilter:
         from os.path import exists
         from oyaml import safe_load
         from json import load, loads
+
         if filterpath != None:
             self.filterpath = filterpath
         if filtername != None:
@@ -472,6 +477,7 @@ class CravatFilter:
 
     async def verify_filter(self, cursor):
         from oakvar.exceptions import InvalidFilter
+
         wrong_samples = await self.verify_filter_sample(cursor)
         wrong_colnames = await self.verify_filter_module(cursor)
         if len(wrong_samples) > 0 or len(wrong_colnames) > 0:
@@ -557,12 +563,14 @@ class CravatFilter:
 
     def getvariantcount(self):
         from asyncio import get_event_loop
+
         loop = asyncio.get_event_loop()
         count = loop.run_until_complete(self.exec_db(self.getcount, "variant"))
         return count
 
     def getgenecount(self):
         from asyncio import get_event_loop
+
         loop = asyncio.get_event_loop()
         count = loop.run_until_complete(self.exec_db(self.getcount, "gene"))
         return count
@@ -591,12 +599,14 @@ class CravatFilter:
 
     def getvariantrows(self):
         from asyncio import get_event_loop
+
         loop = asyncio.get_event_loop()
         rows = loop.run_until_complete(self.exec_db(self.getrows, "variant"))
         return rows
 
     def getgenerows(self):
         from asyncio import get_event_loop
+
         loop = asyncio.get_event_loop()
         rows = loop.run_until_complete(self.exec_db(self.getrows, "gene"))
         return rows
@@ -623,6 +633,7 @@ class CravatFilter:
 
     async def make_generows(self, conn=None, cursor=None):
         from time import time
+
         t = time()
         q = "select * from gene"
         await cursor.execute(q)
@@ -642,12 +653,14 @@ class CravatFilter:
 
     def getvariantiterator(self):
         from asyncio import get_event_loop
+
         loop = asyncio.get_event_loop()
         iterator = loop.run_until_complete(self.exec_db(self.getiterator, "variant"))
         return iterator
 
     def getgeneiterator(self):
         from asyncio import get_event_loop
+
         loop = asyncio.get_event_loop()
         iterator = loop.run_until_complete(self.exec_db(self.getiterator, "gene"))
         return iterator
@@ -781,6 +794,7 @@ class CravatFilter:
 
     async def make_filtered_uid_table(self, conn=None, cursor=None):
         from time import time
+
         t = time()
         bypassfilter = (
             self.filter == {}
@@ -883,6 +897,7 @@ class CravatFilter:
 
     async def savefilter(self, name=None, conn=None, cursor=None):
         from json import dumps
+
         if conn is None or self.filter is None:
             return
         if name == None:
@@ -920,6 +935,7 @@ class CravatFilter:
 
     async def listfilter(self, name=None, conn=None, cursor=None):
         from json import loads
+
         if name == None:
             if self.savefiltername != None:
                 name = self.savefiltername
@@ -1080,6 +1096,7 @@ class CravatFilter:
 
     async def get_stored_output_columns(self, module_name, conn=None, cursor=None):
         from json import loads
+
         q = f'select col_def from variant_header where col_name like "{module_name}\\_\\_%" escape "\\"'
         await cursor.execute(q)
         output_columns = []
@@ -1092,7 +1109,9 @@ class CravatFilter:
 
 def regexp(y, x, search=None):
     import re
-    if search is None: search = re.search
+
+    if search is None:
+        search = re.search
     if x is None:
         return 0
     return 1 if search(y, x) else 0
@@ -1101,6 +1120,7 @@ def regexp(y, x, search=None):
 def main():
     import sys
     from asyncio import new_event_loop
+
     loop = asyncio.new_event_loop()
     cv = loop.run_until_complete(CravatFilter.create(mode="main"))
     loop.run_until_complete(cv.run(args=sys.argv[1:]))

@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 import sys
 from abc import ABC, abstractmethod
 
+
 class ReportReader(ABC):
     def __init__(self, rsltFile):
         self.rsltFile = rsltFile
@@ -128,6 +129,7 @@ class ExcelReportReader(ReportReader):
     # Based on the level selected, return column headers and row values.
     def readReport(self, test_level, bDict):
         from openpyxl import load_workbook
+
         headers = None
         tabNbr = "Variant"
         if test_level == "gene":
@@ -404,6 +406,7 @@ class CsvReportReader(ReportReader):
     # Based on the level selected, return column headers and row values.
     def readReport(self, test_level, bDict):
         import csv
+
         level_hdr = "level="
         level = ""
         headers = None
@@ -496,6 +499,7 @@ class Tester:
     def __init__(self, module, args, input_file):
         from os.path import dirname, exists, join, abspath
         from os import makdirs
+
         self.args = args
         rundir = args["rundir"]
         cur_dir = dirname(abspath(__file__))
@@ -509,12 +513,8 @@ class Tester:
             makedirs(self.out_dir)
         self.input_file = input_file
         self.input_path = join(module.test_dir, input_file)
-        self.key_path = join(
-            module.test_dir, input_file.replace("input", "key")
-        )
-        self.parms_path = join(
-            module.test_dir, input_file.replace("input", "parms")
-        )
+        self.key_path = join(module.test_dir, input_file.replace("input", "key"))
+        self.parms_path = join(module.test_dir, input_file.replace("input", "parms"))
         log = "test.log"
         if len(input_file.replace("input", "")) > 0:
             log = input_file + ".test.log"
@@ -535,6 +535,7 @@ class Tester:
     # dictionary.
     def parse_parms(self):
         from os.path import exists
+
         self.parms = {}
         if exists(self.parms_path):
             with open(self.parms_path) as f:
@@ -551,6 +552,7 @@ class Tester:
         from .admin_util import get_local_module_info
         from time import time
         from subprocess import call, STDOUT
+
         input_msg = (
             "" if self.input_file == "input" else self.input_file
         )  # if there is more than one test for the module, include the test file in the log.
@@ -597,9 +599,7 @@ class Tester:
             cmd_list.extend(["-l", "hg38"])
         if self.args["to"] == "stdout":
             print(" ".join(cmd_list))
-        exit_code = call(
-            " ".join(cmd_list), shell=True, stdout=self.log, stderr=STDOUT
-        )
+        exit_code = call(" ".join(cmd_list), shell=True, stdout=self.log, stderr=STDOUT)
         if exit_code != 0:
             self._report(f"{self.module.name}: exit code {exit_code}")
         return exit_code
@@ -654,6 +654,7 @@ class Tester:
                 else:
                     self.verify_level("variant", ["Variant Annotation"])
                     self.verify_level("gene", ["Variant Annotation"])
+
     # See if key and result are floating point numbers.  If so, allow tiny
     # differences.
     def floats_differ(self, str_val1, str_val2):
@@ -666,6 +667,7 @@ class Tester:
             return False
         else:
             return True
+
     # based on the type of report run in this test, create the appropriate type of
     # report reader.
     def create_report_reader(self, type, report_path):
@@ -680,11 +682,12 @@ class Tester:
         elif type == "vcf":
             return VcfReportReader(report_path)
         # need to put more parsers here when they are implemented
+
     # Match the key (expected values) to the text report output.  Generate errors
     # if expected results are not found and fail the test.    Test just the specified
     # level (variant, gene, etc) and specified module's columns
     def verify_level(self, level, module_name):
-        #self._report("  Verifying " + level + " level values.")
+        # self._report("  Verifying " + level + " level values.")
         key_reader = self.create_report_reader(self.report_type, self.key_path)
         report_extension = key_reader.reportFileExtension()
         result_reader = self.create_report_reader(
@@ -708,7 +711,9 @@ class Tester:
                 ):
                     continue
                 if header not in result_header:
-                    self._report(f"{self.module.name}: header {header} did not appear in results")
+                    self._report(
+                        f"{self.module.name}: header {header} did not appear in results"
+                    )
                     self.test_passed = False
                     continue
                 result_idx = result_header.index(header)
@@ -718,7 +723,9 @@ class Tester:
                     headLabel = header
                     if "|" in header:
                         headLabel = header[header.index("|") + 1 :]
-                    self._report(f"{self.module.name}: {variant}/{headLabel}/{key_row[idx]}/{result[result_idx]}")
+                    self._report(
+                        f"{self.module.name}: {variant}/{headLabel}/{key_row[idx]}/{result[result_idx]}"
+                    )
                     self.test_passed = False
 
     # headers are <module name>|<header> - this extracts the module name
@@ -734,6 +741,7 @@ class Tester:
     # Log success /failure of test.
     def write_results(self):
         from time import time
+
         self.end_time = time()
         elapsed_time = self.end_time - self.start_time
         self._report(f"{self.module.name}: finished in %.2f seconds" % elapsed_time)
@@ -748,6 +756,7 @@ def fn_util_test(*inargs, **inkwargs):
     from os.path import exists
     from os import makedirs
     from .admin_util import get_local_module_types, get_local_module_info
+
     args = get_args(parser_fn_util_test, inargs, inkwargs)
     rundir = args["rundir"]
     if rundir is None:
@@ -772,7 +781,7 @@ def fn_util_test(*inargs, **inkwargs):
     for module_name in module_names:
         module = get_local_module_info(module_name)
         if module is None:
-            #print(f"{module_name} does not exist in the system. Passing.")
+            # print(f"{module_name} does not exist in the system. Passing.")
             continue
         for test_input_file in module.tests:
             tester = Tester(module, args, test_input_file)
@@ -786,9 +795,7 @@ def fn_util_test(*inargs, **inkwargs):
             else:
                 failed += 1
                 fail_msg = module_name + (
-                    ""
-                    if test_input_file == "input"
-                    else " " + test_input_file
+                    "" if test_input_file == "input" else " " + test_input_file
                 )
                 modules_failed.append(fail_msg)
                 result[module_name] = {"passed": False, "msg": fail_msg}
@@ -815,7 +822,9 @@ parser_fn_util_test.add_argument(
 parser_fn_util_test.add_argument(
     "-t", "--mod_types", nargs="+", help="Type of module(s) to test (e.g. annotators)"
 )
-parser_fn_util_test.add_argument("--to", default="stdout", help="stdout to print / return to return")
+parser_fn_util_test.add_argument(
+    "--to", default="stdout", help="stdout to print / return to return"
+)
 parser_fn_util_test.set_defaults(func=fn_util_test)
 
 
