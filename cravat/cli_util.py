@@ -1,6 +1,3 @@
-import argparse
-
-
 def converttohg38(args):
     from subprocess import check_output
     import sqlite3
@@ -8,15 +5,14 @@ def converttohg38(args):
     from pyliftover import LiftOver
     from os.path import exists
     from os import remove
+
     if args.sourcegenome not in ["hg18", "hg19"]:
         print("Source genome should be either hg18 or hg19.")
         exit()
     if exists(args.db) == False:
         print(args.db, "does not exist.")
         exit()
-    liftover = LiftOver(
-        get_liftover_chain_path_for_src_genome(args.sourcegenome)
-    )
+    liftover = LiftOver(get_liftover_chain_path_for_src_genome(args.sourcegenome))
     print("Extracting table schema from DB...")
     cmd = ["sqlite3", args.db, ".schema"]
     output = check_output(cmd)
@@ -139,8 +135,6 @@ def converttohg38(args):
     newdb.commit()
 
 
-
-
 def fn_util_updateresult(args):
     import sqlite3
     from os import listdir
@@ -148,10 +142,12 @@ def fn_util_updateresult(args):
     from shutil import copy
     from distutils.version import LooseVersion
     from .util import get_dict_from_namespace
+
     migrate_functions = {}
     migrate_checkpoints = [LooseVersion(v) for v in list(migrate_functions.keys())]
     migrate_checkpoints.sort()
     args = get_dict_from_namespace(args)
+
     def get_dbpaths(dbpaths, path):
         for fn in listdir(path):
             p = join(path, fn)
@@ -160,6 +156,7 @@ def fn_util_updateresult(args):
             else:
                 if fn.endswith(".sqlite"):
                     dbpaths.append(p)
+
     dbpath = args["dbpath"]
     if exists(dbpath) == False:
         print("[{}] does not exist.".format(dbpath))
@@ -225,6 +222,7 @@ def fn_util_updateresult(args):
                     )
         except:
             from traceback import print_exc
+
             print_exc()
             print("  converting [{}] was not successful.".format(dbpath))
 
@@ -236,6 +234,7 @@ def fn_util_addjob(args):
     from pathlib import Path
     from datetime import datetime
     from .admin_util import get_jobs_dir
+
     dbpath = args.path
     user = args.user
     jobs_dir = Path(get_jobs_dir())
@@ -285,6 +284,7 @@ def fn_util_showsqliteinfo(args):
     from json import loads
     from .util import get_dict_from_namespace
     from oyaml import dump
+
     args = get_dict_from_namespace(args)
     fmt = args["fmt"]
     to = args["to"]
@@ -333,7 +333,13 @@ def fn_util_showsqliteinfo(args):
                 s = f"{col_name.ljust(width_colname)} {col_def['title'].ljust(width_coltitle)} {col_def['type']}"
                 ret.append(s)
             elif fmt in ["json", "yaml"]:
-                ret["output_columns"]["variant"].append({"name": col_name, "title": col_def["title"], "type": col_def["type"]})
+                ret["output_columns"]["variant"].append(
+                    {
+                        "name": col_name,
+                        "title": col_def["title"],
+                        "type": col_def["type"],
+                    }
+                )
         c.execute("select col_name, col_def from gene_header")
         rs = c.fetchall()
         for r in rs:
@@ -343,7 +349,13 @@ def fn_util_showsqliteinfo(args):
                 s = f"{col_name.ljust(width_colname)} {col_def['title'].ljust(width_coltitle)} {col_def['type']}"
                 ret.append(s)
             elif fmt in ["json", "yaml"]:
-                ret["output_columns"]["gene"].append({"name": col_name, "title": col_def["title"], "type": col_def["type"]})
+                ret["output_columns"]["gene"].append(
+                    {
+                        "name": col_name,
+                        "title": col_def["title"],
+                        "type": col_def["type"],
+                    }
+                )
         c.close()
         conn.close()
         if to == "stdout":
@@ -366,6 +378,7 @@ def fn_util_mergesqlite(args):
     from json import loads, dumps
     from shutil import copy
     from .util import get_dict_from_namespace
+
     args = get_dict_from_namespace(args)
     dbpaths = args["path"]
     if len(dbpaths) < 2:
@@ -503,6 +516,7 @@ def fn_util_mergesqlite(args):
 def fn_util_filtersqlite(args):
     from asyncio import get_event_loop
     from .util import get_dict_from_namespace
+
     args = get_dict_from_namespace(args)
     loop = get_event_loop()
     loop.run_until_complete(filtersqlite_async(args))
@@ -519,6 +533,7 @@ async def filtersqlite_async(args):
     from os import remove
     from os.path import exists
     from .cravat_filter import CravatFilter
+
     dbpaths = args["paths"]
     for dbpath in dbpaths:
         if not dbpath.endswith(".sqlite"):
@@ -632,6 +647,7 @@ def status_from_db(dbpath):
     import sqlite3
     from pathlib import Path
     from datetime import fromtimestamp
+
     if not isinstance(dbpath, Path):
         dbpath = Path(dbpath)
     d = {}
@@ -703,114 +719,142 @@ def status_from_db(dbpath):
     return d
 
 
-parser = argparse.ArgumentParser()
-# converts db coordinate to hg38
-subparsers = parser.add_subparsers(title="Commands")
-parser_convert = subparsers.add_parser(
-    "converttohg38", help="converts hg19 coordinates in SQLite3 database to hg38 ones."
-)
-parser_convert.add_argument(
-    "--db", nargs="?", required=True, help="path to SQLite3 database file"
-)
-parser_convert.add_argument(
-    "--sourcegenome", required=True, help="genome assembly of source database"
-)
-parser_convert.add_argument(
-    "--cols", nargs="+", required=True, help="names of the columns to convert"
-)
-parser_convert.add_argument(
-    "--tables",
-    nargs="*",
-    help="table(s) to convert. If omitted, table name will be used as chromosome name.",
-)
-parser_convert.add_argument(
-    "--chromcol",
-    required=False,
-    help="chromosome column. If omitted, all tables will be tried to be converted.",
-)
-parser_convert.set_defaults(func=converttohg38)
-# migrate old result db
-parser_fn_util_updateresult = subparsers.add_parser(
-    "migrate-result", help="migrates result db made with older versions of oakvar"
-)
-parser_fn_util_updateresult.add_argument(
-    "dbpath", help="path to a result db file or a directory"
-)
-parser_fn_util_updateresult.add_argument(
-    "-r",
-    dest="recursive",
-    action="store_true",
-    default=False,
-    help="recursive operation",
-)
-parser_fn_util_updateresult.add_argument(
-    "-c",
-    dest="backup",
-    action="store_true",
-    default=False,
-    help="backup original copy with .bak extension",
-)
-parser_fn_util_updateresult.set_defaults(func=fn_util_updateresult)
-# Make job accessible through the gui
-parser_fn_util_addjob = subparsers.add_parser(
-    "addjob", help="Copy a command line job into the GUI submission list"
-)
-parser_fn_util_addjob.add_argument("path", help="Path to result database")
-parser_fn_util_addjob.add_argument(
-    "-u",
-    "--user",
-    help="User who will own the job. Defaults to single user default user.",
-    type=str,
-    default="default",
-)
-parser_fn_util_addjob.set_defaults(func=fn_util_addjob)
-# Merge SQLite files
-parser_fn_util_mergesqlite = subparsers.add_parser(
-    "mergesqlite", help="Merge SQLite result files"
-)
-parser_fn_util_mergesqlite.add_argument(
-    "path", nargs="+", help="Path to result database")
-parser_fn_util_mergesqlite.add_argument(
-    "-o", dest="outpath", required=True, help="Output SQLite file path"
-)
-parser_fn_util_mergesqlite.set_defaults(func=fn_util_mergesqlite)
-parser_fn_util_showsqliteinfo = subparsers.add_parser(
-    "showsqliteinfo", help="Show SQLite result file information"
-)
-parser_fn_util_showsqliteinfo.add_argument("paths", nargs="+", help="SQLite result file paths")
-parser_fn_util_showsqliteinfo.add_argument("--fmt", default="text", help="Output format. text / json / yaml")
-parser_fn_util_showsqliteinfo.add_argument("--to", default="stdout", help="Output to. stdout / return")
-parser_fn_util_showsqliteinfo.set_defaults(func=fn_util_showsqliteinfo)
-parser_fn_util_filtersqlite = subparsers.add_parser(
-    "filtersqlite",
-    help="Filter SQLite result files to produce filtered SQLite result files",
-)
-parser_fn_util_filtersqlite.add_argument("paths", nargs="+", help="Path to result database")
-parser_fn_util_filtersqlite.add_argument(
-    "-o", dest="out", default=".", help="Output SQLite file folder"
-)
-parser_fn_util_filtersqlite.add_argument(
-    "-s", dest="suffix", default="filtered", help="Suffix for output SQLite files"
-)
-parser_fn_util_filtersqlite.add_argument(
-    "-f", dest="filterpath", default=None, help="Path to a filter JSON file"
-)
-parser_fn_util_filtersqlite.add_argument("--filtersql", default=None, help="Filter SQL")
-parser_fn_util_filtersqlite.add_argument(
-    "--includesample",
-    dest="includesample",
-    nargs="+",
-    default=None,
-    help="Sample IDs to include",
-)
-parser_fn_util_filtersqlite.add_argument(
-    "--excludesample",
-    dest="excludesample",
-    nargs="+",
-    default=None,
-    help="Sample IDs to exclude",
-)
-parser_fn_util_filtersqlite.set_defaults(func=fn_util_filtersqlite)
+def get_parser_fn_util():
+    from argparse import ArgumentParser
+    parser_fn_util = ArgumentParser()
+    _subparsers = parser_fn_util.add_subparsers(title="Commands")
+    # test
+    from .cli_test import fn_util_test
+    parser_fn_util_test = _subparsers.add_parser("test", help="Test installed modules")
+    parser_fn_util_test.add_argument("-d", "--rundir", help="Directory for output")
+    parser_fn_util_test.add_argument(
+        "-m", "--modules", nargs="+", help="Name of module(s) to test. (e.g. gnomad)"
+    )
+    parser_fn_util_test.add_argument(
+        "-t", "--mod_types", nargs="+", help="Type of module(s) to test (e.g. annotators)"
+    )
+    parser_fn_util_test.add_argument(
+        "--to", default="stdout", help="stdout to print / return to return"
+    )
+    parser_fn_util_test.set_defaults(func=fn_util_test)
+    # converts db coordinate to hg38
+    parser_fn_util_convert = _subparsers.add_parser(
+        "converttohg38", help="converts hg19 coordinates in SQLite3 database to hg38 ones."
+    )
+    parser_fn_util_convert.add_argument(
+        "--db", nargs="?", required=True, help="path to SQLite3 database file"
+    )
+    parser_fn_util_convert.add_argument(
+        "--sourcegenome", required=True, help="genome assembly of source database"
+    )
+    parser_fn_util_convert.add_argument(
+        "--cols", nargs="+", required=True, help="names of the columns to convert"
+    )
+    parser_fn_util_convert.add_argument(
+        "--tables",
+        nargs="*",
+        help="table(s) to convert. If omitted, table name will be used as chromosome name.",
+    )
+    parser_fn_util_convert.add_argument(
+        "--chromcol",
+        required=False,
+        help="chromosome column. If omitted, all tables will be tried to be converted.",
+    )
+    parser_fn_util_convert.set_defaults(func=converttohg38)
+    # migrate old result db
+    parser_fn_util_updateresult = _subparsers.add_parser(
+        "migrate-result", help="migrates result db made with older versions of oakvar"
+    )
+    parser_fn_util_updateresult.add_argument(
+        "dbpath", help="path to a result db file or a directory"
+    )
+    parser_fn_util_updateresult.add_argument(
+        "-r",
+        dest="recursive",
+        action="store_true",
+        default=False,
+        help="recursive operation",
+    )
+    parser_fn_util_updateresult.add_argument(
+        "-c",
+        dest="backup",
+        action="store_true",
+        default=False,
+        help="backup original copy with .bak extension",
+    )
+    parser_fn_util_updateresult.set_defaults(func=fn_util_updateresult)
+    # Make job accessible through the gui
+    parser_fn_util_addjob = _subparsers.add_parser(
+        "addjob", help="Copy a command line job into the GUI submission list"
+    )
+    parser_fn_util_addjob.add_argument("path", help="Path to result database")
+    parser_fn_util_addjob.add_argument(
+        "-u",
+        "--user",
+        help="User who will own the job. Defaults to single user default user.",
+        type=str,
+        default="default",
+    )
+    parser_fn_util_addjob.set_defaults(func=fn_util_addjob)
+    # Merge SQLite files
+    parser_fn_util_mergesqlite = _subparsers.add_parser(
+        "mergesqlite", help="Merge SQLite result files"
+    )
+    parser_fn_util_mergesqlite.add_argument(
+        "path", nargs="+", help="Path to result database"
+    )
+    parser_fn_util_mergesqlite.add_argument(
+        "-o", dest="outpath", required=True, help="Output SQLite file path"
+    )
+    parser_fn_util_mergesqlite.set_defaults(func=fn_util_mergesqlite)
+    # Show SQLite info
+    parser_fn_util_showsqliteinfo = _subparsers.add_parser(
+        "showsqliteinfo", help="Show SQLite result file information"
+    )
+    parser_fn_util_showsqliteinfo.add_argument(
+        "paths", nargs="+", help="SQLite result file paths"
+    )
+    parser_fn_util_showsqliteinfo.add_argument(
+        "--fmt", default="text", help="Output format. text / json / yaml"
+    )
+    parser_fn_util_showsqliteinfo.add_argument(
+        "--to", default="stdout", help="Output to. stdout / return"
+    )
+    parser_fn_util_showsqliteinfo.set_defaults(func=fn_util_showsqliteinfo)
+    parser_fn_util_filtersqlite = _subparsers.add_parser(
+        "filtersqlite",
+        help="Filter SQLite result files to produce filtered SQLite result files",
+    )
+    # Filter SQLite
+    parser_fn_util_filtersqlite.add_argument(
+        "paths", nargs="+", help="Path to result database"
+    )
+    parser_fn_util_filtersqlite.add_argument(
+        "-o", dest="out", default=".", help="Output SQLite file folder"
+    )
+    parser_fn_util_filtersqlite.add_argument(
+        "-s", dest="suffix", default="filtered", help="Suffix for output SQLite files"
+    )
+    parser_fn_util_filtersqlite.add_argument(
+        "-f", dest="filterpath", default=None, help="Path to a filter JSON file"
+    )
+    parser_fn_util_filtersqlite.add_argument("--filtersql", default=None, help="Filter SQL")
+    parser_fn_util_filtersqlite.add_argument(
+        "--includesample",
+        dest="includesample",
+        nargs="+",
+        default=None,
+        help="Sample IDs to include",
+    )
+    parser_fn_util_filtersqlite.add_argument(
+        "--excludesample",
+        dest="excludesample",
+        nargs="+",
+        default=None,
+        help="Sample IDs to exclude",
+    )
+    parser_fn_util_filtersqlite.set_defaults(func=fn_util_filtersqlite)
+    return parser_fn_util
 
 
 if __name__ == "__main__":

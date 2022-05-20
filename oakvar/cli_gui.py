@@ -1,5 +1,4 @@
 from os.path import join
-from argparse import ArgumentParser
 from .admin_util import get_system_conf
 from aiohttp import web, web_runner
 import logging
@@ -123,11 +122,6 @@ def setup(args):
             )
         )
         exit()
-
-
-def wcravat_entrypoint():
-    args = parser_fn_gui.parse_args()
-    run(args)
 
 
 def fn_gui(args):
@@ -629,56 +623,59 @@ def main(url=None, host=None, port=None):
         exit()
 
 
-parser_fn_gui = ArgumentParser()
-parser_fn_gui.add_argument(
-    "--multiuser",
-    dest="servermode",
-    action="store_true",
-    default=False,
-    help="Runs in multiuser mode",
-)
-parser_fn_gui.add_argument(
-    "--headless",
-    action="store_true",
-    default=False,
-    help="do not open the OakVar web page",
-)
-parser_fn_gui.add_argument(
-    "--http-only",
-    action="store_true",
-    default=False,
-    help="Force not to accept https connection",
-)
-parser_fn_gui.add_argument(
-    "--debug",
-    dest="debug",
-    action="store_true",
-    default=False,
-    help="Console echoes exceptions written to log file.",
-)
-parser_fn_gui.add_argument(
-    "result", nargs="?", help="Path to a OakVar result SQLite file"
-)
-parser_fn_gui.add_argument(
-    "--webapp",
-    dest="webapp",
-    default=None,
-    help="Name of OakVar webapp module to run",
-)
-parser_fn_gui.add_argument(
-    "--port",
-    dest="port",
-    default=None,
-    help="Port number for OakVar graphical user interface",
-)
-parser_fn_gui.add_argument(
-    "--noguest",
-    dest="noguest",
-    default=False,
-    action="store_true",
-    help="Disables guest mode",
-)
-parser_fn_gui.set_defaults(func=fn_gui)
+def get_parser_fn_gui():
+    from argparse import ArgumentParser
+    parser_fn_gui = ArgumentParser()
+    parser_fn_gui.add_argument(
+        "--multiuser",
+        dest="servermode",
+        action="store_true",
+        default=False,
+        help="Runs in multiuser mode",
+    )
+    parser_fn_gui.add_argument(
+        "--headless",
+        action="store_true",
+        default=False,
+        help="do not open the OakVar web page",
+    )
+    parser_fn_gui.add_argument(
+        "--http-only",
+        action="store_true",
+        default=False,
+        help="Force not to accept https connection",
+    )
+    parser_fn_gui.add_argument(
+        "--debug",
+        dest="debug",
+        action="store_true",
+        default=False,
+        help="Console echoes exceptions written to log file.",
+    )
+    parser_fn_gui.add_argument(
+        "result", nargs="?", help="Path to a OakVar result SQLite file"
+    )
+    parser_fn_gui.add_argument(
+        "--webapp",
+        dest="webapp",
+        default=None,
+        help="Name of OakVar webapp module to run",
+    )
+    parser_fn_gui.add_argument(
+        "--port",
+        dest="port",
+        default=None,
+        help="Port number for OakVar graphical user interface",
+    )
+    parser_fn_gui.add_argument(
+        "--noguest",
+        dest="noguest",
+        default=False,
+        action="store_true",
+        help="Disables guest mode",
+    )
+    parser_fn_gui.set_defaults(func=fn_gui)
+    return parser_fn_gui
 
 if __name__ == "__main__":
     main()

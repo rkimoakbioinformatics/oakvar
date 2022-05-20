@@ -2,6 +2,7 @@ def raise_break(signal_number, stack_frame):
     import os
     import platform
     import psutil
+
     pl = platform.platform()
     if pl.startswith("Windows"):
         pid = os.getpid()
@@ -33,6 +34,7 @@ def raise_break(signal_number, stack_frame):
 
 
 import signal
+
 signal.signal(signal.SIGINT, raise_break)
 
 from .base_converter import BaseConverter
@@ -40,27 +42,16 @@ from .base_annotator import BaseAnnotator
 from .base_mapper import BaseMapper
 from .base_postaggregator import BasePostAggregator
 from .base_commonmodule import BaseCommonModule
-from .cmd_report import CravatReport, run_reporter
+from .cli_report import CravatReport, run_reporter
 from .config_loader import ConfigLoader
 from .cravat_filter import CravatFilter
-from .cmd_run import Cravat
+from .cli_run import Cravat
 from .constants import crx_def
 from .exceptions import *
 from . import constants
 from . import __main__ as cli
 
 wgs = None
-
-
-def run(*args, **kwargs):
-    print("args=", args, "kwargs=", kwargs)
-    print(len(args), len(kwargs))
-    if len(args) == 0 and len(kwargs) == 0:
-        from .oc import main as ocmain
-
-        ocmain()
-    else:
-        cmd_run.run_cravat_job(*args, **kwargs)
 
 
 def get_live_annotator(module_name):
@@ -113,6 +104,7 @@ def get_module(module_name):
         import os
         from .admin_util import get_local_module_info
         from .util import load_class
+
         config_loader = ConfigLoader()
         module_info = get_local_module_info(module_name)
         script_path = module_info.script_path
@@ -148,6 +140,7 @@ class LiveAnnotator:
 
     def load_live_modules(self, mapper, annotator_names):
         from .admin_util import get_mic
+
         self.live_mapper = get_live_mapper(mapper)
         for module_name in get_mic().local.keys():
             if module_name in annotator_names:
@@ -205,4 +198,3 @@ class LiveAnnotator:
         del crx_data["tmp_mapper"]
         response["base"] = crx_data
         return response
-

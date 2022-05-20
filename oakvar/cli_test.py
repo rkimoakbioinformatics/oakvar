@@ -498,11 +498,14 @@ class CsvReportReader(ReportReader):
 class Tester:
     def __init__(self, module, args, input_file):
         from os.path import dirname, exists, join, abspath
-        from os import makdirs
+        from os import makedirs
 
         self.args = args
         rundir = args["rundir"]
         cur_dir = dirname(abspath(__file__))
+        if type(module) == str:
+            from .admin_util import get_local_module_info
+            module = get_local_module_info(module)
         self.module = module
         if not exists(module.directory) or not module.script_exists:
             raise Exception(
@@ -737,18 +740,26 @@ class Tester:
         self.log.write(s + "\n")
         if stdout:
             print(s, flush=True)
+        else:
+            return s
 
     # Log success /failure of test.
-    def write_results(self):
+    def write_results(self, stdout=True):
         from time import time
 
         self.end_time = time()
         elapsed_time = self.end_time - self.start_time
         self._report(f"{self.module.name}: finished in %.2f seconds" % elapsed_time)
         if self.test_passed:
-            self._report(f"{self.module.name}: PASS", stdout=True)
+            if stdout:
+                self._report(f"{self.module.name}: PASS", stdout=stdout)
+            else:
+                return "PASS"
         else:
-            self._report(f"{self.module.name}: FAIL", stdout=True)
+            if stdout:
+                self._report(f"{self.module.name}: FAIL", stdout=stdout)
+            else:
+                return "FAIL"
 
 
 def fn_util_test(*inargs, **inkwargs):

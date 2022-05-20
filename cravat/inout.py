@@ -3,6 +3,7 @@ class CravatFile(object):
 
     def __init__(self, path):
         from os.path import abspath
+
         self.path = abspath(path)
         self.columns = {}
 
@@ -24,6 +25,7 @@ class CravatFile(object):
 class CravatReader(CravatFile):
     def __init__(self, path, seekpos=None, chunksize=None):
         from .util import detect_encoding
+
         super().__init__(path)
         self.seekpos = seekpos
         self.chunksize = chunksize
@@ -39,6 +41,7 @@ class CravatReader(CravatFile):
     def _setup_definition(self):
         from json import loads
         from json.decoder import JSONDecodeError
+
         for l in self._loop_definition():
             if l.startswith("#name="):
                 self.annotator_name = l.split("=")[1]
@@ -132,6 +135,7 @@ class CravatReader(CravatFile):
     def loop_data(self):
         from .exceptions import BadFormatError
         from json import dumps
+
         for lnum, l in self._loop_data():
             toks = l.split("\t")
             out = {}
@@ -301,6 +305,7 @@ class CravatWriter(CravatFile):
 
     def write_definition(self, conf=None):
         from json import dumps
+
         self._prep_for_write()
         for col_def in self.ordered_columns:
             self.write_meta_line("column", col_def.get_json())
@@ -313,6 +318,7 @@ class CravatWriter(CravatFile):
 
     def write_input_paths(self, input_path_dict):
         from json import dumps
+
         s = "#input_paths={}\n".format(dumps(input_path_dict))
         self.wf.write(s)
         self.wf.flush()
@@ -349,6 +355,7 @@ class CravatWriter(CravatFile):
 class CrxMapping(object):
     def __init__(self):
         from re import compile
+
         self.protein = None
         self.achange = None
         self.transcript = None
@@ -393,6 +400,7 @@ class AllMappingsParser(object):
     def __init__(self, s):
         from json import loads
         from collections import OrderedDict
+
         if type(s) == str:
             self._d = loads(s, object_pairs_hook=OrderedDict)
         else:
@@ -538,6 +546,7 @@ class ColumnDefinition(object):
 
     def from_row(self, row, order=None):
         from json import loads
+
         if order is None:
             order = self.db_order
         d = {self.sql_map[column]: value for column, value in zip(order, row)}
@@ -548,6 +557,7 @@ class ColumnDefinition(object):
     def from_var_csv(self, row):
         from json import loads
         from csv import reader
+
         l = list(reader([row], dialect="oakvar"))[0]
         self._load_dict(dict(zip(self.csv_order[: len(l)], l)))
         self.index = int(self.index)
@@ -564,10 +574,12 @@ class ColumnDefinition(object):
 
     def from_json(self, sjson):
         from json import loads
+
         self._load_dict(loads(sjson))
 
     def get_json(self):
         from json import dumps
+
         return dumps(self.__dict__)
 
     def get_colinfo(self):

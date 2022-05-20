@@ -28,10 +28,13 @@ class InstallProgressHandler(object):
 
     def _stage_msg(self, stage):
         from oakvar.util import get_current_time_str
+
         if stage is None or stage == "":
             return ""
         elif stage == "start":
-            return f"[{get_current_time_str()}] Starting to install {self.display_name}..."
+            return (
+                f"[{get_current_time_str()}] Starting to install {self.display_name}..."
+            )
         elif stage == "download_code":
             return f"[{get_current_time_str()}] Downloading code archive of {self.display_name}..."
         elif stage == "extract_code":
@@ -39,9 +42,13 @@ class InstallProgressHandler(object):
         elif stage == "verify_code":
             return f"[{get_current_time_str()}] Verifying code integrity of {self.display_name}..."
         elif stage == "download_data":
-            return f"[{get_current_time_str()}] Downloading data of {self.display_name}..."
+            return (
+                f"[{get_current_time_str()}] Downloading data of {self.display_name}..."
+            )
         elif stage == "extract_data":
-            return f"[{get_current_time_str()}] Extracting data of {self.display_name}..."
+            return (
+                f"[{get_current_time_str()}] Extracting data of {self.display_name}..."
+            )
         elif stage == "verify_data":
             return f"[{get_current_time_str()}] Verifying data integrity of {self.display_name}..."
         elif stage == "finish":
@@ -74,6 +81,7 @@ class LocalInfoCache(MutableMapping):
 
     def __setitem__(self, key, value):
         import os
+
         if not (isinstance(value, LocalModuleInfo) or os.path.isdir(value)):
             raise ValueError(value)
         self.store[key] = value
@@ -91,6 +99,7 @@ class LocalInfoCache(MutableMapping):
 class LocalModuleInfo(object):
     def __init__(self, dir_path, module_type=None, name=None):
         import os
+
         self.directory = dir_path
         if name is None:
             self.name = os.path.basename(self.directory)
@@ -168,6 +177,7 @@ class LocalModuleInfo(object):
         Gets the total installed size of a module
         """
         from oakvar.util import get_directory_size
+
         if self.disk_size is None:
             self.disk_size = get_directory_size(self.directory)
         return self.disk_size
@@ -177,6 +187,7 @@ class LocalModuleInfo(object):
         Gets the module test input file(s) if the module has tests.  A test is a input file / key file pair.
         """
         import os
+
         tests = []
         if self.test_dir_exists:
             for i in os.listdir(self.test_dir):
@@ -197,6 +208,7 @@ class LocalModuleInfo(object):
 class ModuleInfoCache(object):
     def __init__(self):
         from oakvar.store_utils import PathBuilder
+
         self._sys_conf = get_system_conf()
         self._modules_dir = get_modules_dir()
         self.local = LocalInfoCache()
@@ -220,6 +232,7 @@ class ModuleInfoCache(object):
     def update_download_counts(self, force=False):
         import oyaml as yaml
         from oakvar.store_utils import get_file_to_string
+
         if force or not (self._counts_fetched):
             counts_url = self._store_path_builder.download_counts()
             counts_str = get_file_to_string(counts_url)
@@ -232,6 +245,7 @@ class ModuleInfoCache(object):
     def update_local(self):
         import os
         from .constants import install_tempdir_name
+
         self.local = LocalInfoCache()
         self._modules_dir = get_modules_dir()
         if not (os.path.exists(self._modules_dir)):
@@ -241,7 +255,11 @@ class ModuleInfoCache(object):
                 continue
             mg_path = os.path.join(self._modules_dir, mg)
             basename = os.path.basename(mg_path)
-            if not (os.path.isdir(mg_path)) or basename.startswith(".") or basename.startswith("_"):
+            if (
+                not (os.path.isdir(mg_path))
+                or basename.startswith(".")
+                or basename.startswith("_")
+            ):
                 continue
             for module_name in os.listdir(mg_path):
                 if module_name == "hgvs":  # deprecate hgvs
@@ -260,6 +278,7 @@ class ModuleInfoCache(object):
         import sys
         import oyaml as yaml
         from oakvar.store_utils import get_file_to_string
+
         if force or not (self._remote_fetched):
             if self._remote_url is None:
                 self._remote_url = self._store_path_builder.manifest()
@@ -281,6 +300,7 @@ class ModuleInfoCache(object):
 
     def get_remote_readme(self, module_name, version=None):
         from oakvar.store_utils import get_file_to_string
+
         self.update_remote()
         # Resolve name and version
         if module_name not in self.remote:
@@ -305,6 +325,7 @@ class ModuleInfoCache(object):
     def get_remote_config(self, module_name, version=None):
         import oyaml as yaml
         from oakvar.store_utils import get_file_to_string
+
         self.update_remote()
         if version == None:
             version = self.remote[module_name]["latest_version"]
@@ -402,12 +423,11 @@ class RemoteModuleInfo(object):
 
 def change_password(username, cur_pw, new_pw):
     from requests import post
+
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
     change_pw_url = publish_url + "/change-password"
-    r = post(
-        change_pw_url, auth=(username, cur_pw), json={"newPassword": new_pw}
-    )
+    r = post(change_pw_url, auth=(username, cur_pw), json={"newPassword": new_pw})
     if r.status_code == 500:
         print("Server error")
     elif r.status_code == 401:
@@ -418,6 +438,7 @@ def change_password(username, cur_pw, new_pw):
 
 def check_login(username, password):
     from requests import get
+
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
     login_url = publish_url + "/login"
@@ -432,6 +453,7 @@ def check_login(username, password):
 
 def compare_version(v1, v2):
     from distutils.version import LooseVersion
+
     sv1 = LooseVersion(v1)
     sv2 = LooseVersion(v2)
     if sv1 == sv2:
@@ -444,6 +466,7 @@ def compare_version(v1, v2):
 
 def create_account(username, password):
     from requests import post
+
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
     create_account_url = publish_url + "/create-account"
@@ -462,6 +485,7 @@ def create_account(username, password):
 
 def get_annotator_dir(module_name):
     import os
+
     module_dir = os.path.join(get_modules_dir(), "annotators", module_name)
     if os.path.exists(module_dir) == False:
         module_dir = None
@@ -470,6 +494,7 @@ def get_annotator_dir(module_name):
 
 def get_annotator_script_path(module_name):
     import os
+
     module_path = os.path.join(
         get_modules_dir(), "annotators", module_name, module_name + ".py"
     )
@@ -480,6 +505,7 @@ def get_annotator_script_path(module_name):
 
 def get_conf_dir():
     from .constants import conf_dir_key
+
     conf = get_system_conf()
     conf_dir = conf[conf_dir_key]
     return conf_dir
@@ -502,6 +528,7 @@ def get_cravat_conf_info():
 
 def get_current_package_version():
     from pkg_resources import get_distribution
+
     version = get_distribution("oakvar").version
     return version
 
@@ -536,6 +563,7 @@ def get_download_counts():
 def get_install_deps(module_name, version=None, skip_installed=True):
     from distutils.version import LooseVersion
     from pkg_resources import Requirement
+
     get_mic().update_remote()
     # If input module version not provided, set to highest
     if version is None:
@@ -575,6 +603,7 @@ def get_install_deps(module_name, version=None, skip_installed=True):
 
 def get_jobs_dir():
     from .constants import jobs_dir_key
+
     conf = get_system_conf()
     jobs_dir = conf[jobs_dir_key]
     return jobs_dir
@@ -602,6 +631,7 @@ def get_local_module_info(module_name):
     Returns a LocalModuleInfo object for a module.
     """
     import os
+
     if module_name in get_mic().get_local():
         return get_mic().get_local()[module_name]
     else:
@@ -674,6 +704,7 @@ def get_main_conf_path():
     """
     import os
     from .constants import main_conf_fname
+
     return os.path.join(get_conf_dir(), main_conf_fname)
 
 
@@ -683,11 +714,13 @@ def get_main_default_path():
     """
     import os
     from .constants import main_conf_fname
+
     return os.path.join(get_packagedir(), main_conf_fname)
 
 
 def get_mapper_script_path(module_name):
     import os
+
     module_path = os.path.join(
         get_modules_dir(), "mappers", module_name, module_name + ".py"
     )
@@ -702,26 +735,29 @@ def get_max_num_concurrent_annotators_per_job():
 
 def get_module_conf_path(module_name, module_type=None):
     import os
+
     conf_path = None
     modules_dir = get_modules_dir()
     yml_fn = os.path.basename(module_name) + ".yml"
     p = os.path.join(module_name, yml_fn)
-    if os.path.exists(p): # module folder is given.
+    if os.path.exists(p):  # module folder is given.
         conf_path = p
     else:
-        if module_type is not None: # module name and type are given.
+        if module_type is not None:  # module name and type are given.
             p = os.path.join(modules_dir, module_type, module_name, yml_fn)
             if os.path.exists(p):
                 conf_path = p
-        else: # module folder should be searched.
+        else:  # module folder should be searched.
             typefns = os.listdir(modules_dir)
             conf_path = None
             for typefn in typefns:
                 typepath = os.path.join(modules_dir, typefn)
-                if os.path.isdir(typepath) == False: continue
+                if os.path.isdir(typepath) == False:
+                    continue
                 modulefns = os.listdir(typepath)
                 for modulefn in modulefns:
-                    if os.path.basename(modulefn) != module_name: continue
+                    if os.path.basename(modulefn) != module_name:
+                        continue
                     modulepath = os.path.join(typepath, modulefn)
                     if os.path.isdir(modulepath):
                         path = os.path.join(modulepath, module_name + ".yml")
@@ -739,6 +775,7 @@ def get_modules_dir():
     """
     import os
     from .constants import custom_modules_dir, modules_dir_env_key, modules_dir_key
+
     if custom_modules_dir is not None:
         modules_dir = custom_modules_dir
     else:
@@ -760,6 +797,7 @@ def get_package_versions():
     from requests import get
     from requests.exceptions import ConnectionError
     from distutils.version import LooseVersion
+
     try:
         r = get("https://pypi.org/pypi/oakvar/json", timeout=(3, None))
     except ConnectionError:
@@ -779,6 +817,7 @@ def get_readme(module_name, version=None):
     Get the readme. Use local if available.
     """
     import os
+
     exists_remote = module_exists_remote(module_name, version=version)
     exists_local = module_exists_local(module_name)
     if exists_remote:
@@ -876,16 +915,18 @@ def get_system_conf(custom_system_conf_path=None, file_only=False):
     Get the system config. Fill in the default modules dir if not set.
     """
     import os
-    from .constants import \
-            system_conf_path_env_key, \
-            modules_dir_key, \
-            conf_dir_key, \
-            jobs_dir_key, \
-            log_dir_key, \
-            default_num_input_line_warning_cutoff, \
-            default_settings_gui_input_size_limit, \
-            default_max_num_concurrent_jobs, \
-            default_max_num_concurrent_annotators_per_job
+    from .constants import (
+        system_conf_path_env_key,
+        modules_dir_key,
+        conf_dir_key,
+        jobs_dir_key,
+        log_dir_key,
+        default_num_input_line_warning_cutoff,
+        default_settings_gui_input_size_limit,
+        default_max_num_concurrent_jobs,
+        default_max_num_concurrent_annotators_per_job,
+    )
+
     if custom_system_conf_path is not None:
         conf = load_yml_conf(custom_system_conf_path)
     elif os.environ.get(system_conf_path_env_key) is not None:
@@ -923,6 +964,7 @@ def get_system_conf(custom_system_conf_path=None, file_only=False):
 
 def get_system_conf_info(**kwargs):
     import os
+
     confpath = get_system_conf_path()
     if os.path.exists(confpath):
         conf = get_system_conf()
@@ -948,6 +990,7 @@ def get_updatable(modules=[], strategy="consensus"):
     from pkg_resources import Requirement
     from collections import defaultdict
     from types import SimpleNamespace
+
     if strategy not in ("consensus", "force", "skip"):
         raise ValueError('Unknown strategy "{}"'.format(strategy))
     if not modules:
@@ -1043,6 +1086,7 @@ def get_widgets_for_annotator(annotator_name, skip_installed=False):
 
 def input_formats():
     import os
+
     formats = set()
     d = os.path.join(get_modules_dir(), "converters")
     if os.path.exists(d):
@@ -1066,11 +1110,17 @@ def install_module(
     import os
     import oyaml as yaml
     from .constants import install_tempdir_name
-    from oakvar.store_utils import PathBuilder, stream_to_file, get_file_to_string, verify_against_manifest
+    from oakvar.store_utils import (
+        PathBuilder,
+        stream_to_file,
+        get_file_to_string,
+        verify_against_manifest,
+    )
     from requests import HTTPError
     from .exceptions import KillInstallException
     import signal
     import subprocess
+
     modules_dir = get_modules_dir()
     temp_dir = os.path.join(modules_dir, install_tempdir_name, module_name)
     shutil.rmtree(temp_dir, ignore_errors=True)
@@ -1079,6 +1129,7 @@ def install_module(
         # Ctrl-c in this func must be caught to delete temp_dir
         def raise_kbi(a, b):
             raise KeyboardInterrupt
+
         original_sigint = signal.signal(signal.SIGINT, raise_kbi)
         if stage_handler is None:
             stage_handler = InstallProgressHandler(module_name, version)
@@ -1211,9 +1262,7 @@ def install_module(
             and (remote_data_version != local_data_version or force_data)
         ):
             data_installed = True
-            data_url = store_path_builder.module_data(
-                module_name, remote_data_version
-            )
+            data_url = store_path_builder.module_data(module_name, remote_data_version)
             data_fname = ".".join([module_name, "data", "zip"])
             data_path = os.path.join(temp_dir, data_fname)
             stage_handler.stage_start("download_data")
@@ -1245,9 +1294,7 @@ def install_module(
                 data_manifest_url = store_path_builder.module_data_manifest(
                     module_name, remote_data_version
                 )
-                data_manifest = yaml.safe_load(
-                    get_file_to_string(data_manifest_url)
-                )
+                data_manifest = yaml.safe_load(get_file_to_string(data_manifest_url))
                 verify_against_manifest(temp_dir, data_manifest)
                 os.remove(data_path)
                 if install_state:
@@ -1341,6 +1388,7 @@ def load_yml_conf(yml_conf_path):
     empty.
     """
     import oyaml as yaml
+
     with open(yml_conf_path, encoding="utf-8") as f:
         conf = yaml.safe_load(f)
     if conf == None:
@@ -1351,6 +1399,7 @@ def load_yml_conf(yml_conf_path):
 def fn_new_exampleinput(d):
     import shutil
     import os
+
     try:
         fn = "exampleinput"
         ifn = os.path.join(get_packagedir(), fn)
@@ -1366,6 +1415,7 @@ def module_exists_local(module_name):
     Returns True if a module exists locally. False otherwise.
     """
     import os
+
     if module_name in get_mic().get_local():
         return True
     else:
@@ -1383,6 +1433,7 @@ def module_exists_remote(module_name, version=None, private=False):
     """
     from oakvar.store_utils import PathBuilder
     from requests import get
+
     get_mic().update_remote()
     found = False
     if module_name in get_mic().remote:
@@ -1405,6 +1456,7 @@ def module_exists_remote(module_name, version=None, private=False):
 def new_annotator(annot_name):
     import shutil
     import os
+
     annot_root = os.path.join(get_modules_dir(), "annotators", annot_name)
     template_root = os.path.join(get_packagedir(), "annotator_template")
     shutil.copytree(template_root, annot_root)
@@ -1419,6 +1471,7 @@ def new_annotator(annot_name):
 
 def print_stage_handler(cur_stage, total_stages, cur_size, total_size):
     import sys
+
     rem_stages = total_stages - cur_stage
     perc = cur_stage / total_stages * 100
     out = "\r[{1}{2}] {0:.0f}% ".format(perc, "*" * cur_stage, " " * rem_stages)
@@ -1430,8 +1483,13 @@ def print_stage_handler(cur_stage, total_stages, cur_size, total_size):
 def publish_module(module_name, user, password, overwrite=False, include_data=True):
     import os
     import json
-    from oakvar.store_utils import VersionExists, ModuleArchiveBuilder, stream_multipart_post
+    from oakvar.store_utils import (
+        VersionExists,
+        ModuleArchiveBuilder,
+        stream_multipart_post,
+    )
     from requests import get
+
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
     get_mic().update_local()
@@ -1513,6 +1571,7 @@ def publish_module(module_name, user, password, overwrite=False, include_data=Tr
 def read_system_conf_template():
     import oyaml as yaml
     from .constants import system_conf_template_path
+
     with open(system_conf_template_path) as f:
         d = yaml.safe_load(f)
         return d
@@ -1521,6 +1580,7 @@ def read_system_conf_template():
 def ready_resolution_console():
     import os
     from types import SimpleNamespace
+
     rs = system_ready()
     if rs:
         return
@@ -1540,12 +1600,10 @@ def ready_resolution_console():
     elif rs.code == ReadyState.NO_BASE_MODULES:
         yn = input("Do you want to install base modules now? (y/n)>")
         if yn == "y":
-            args = SimpleNamespace(
-                force_data=False, force=False, md=None
-            )
-            from . import cmd_admin
+            args = SimpleNamespace(force_data=False, force=False, md=None)
+            from .cli_admin import install_base
 
-            cmd_admin.install_base(args)
+            install_base(args)
             print("Base modules have been installed.")
     exit()
 
@@ -1558,6 +1616,7 @@ def recursive_update(d1, d2):
     level.
     """
     import copy
+
     d3 = copy.deepcopy(d1)  # Copy perhaps not needed. Test.
     for k, v in d2.items():
         if k in d3:
@@ -1585,6 +1644,7 @@ def refresh_cache():
 
 def report_issue():
     import webbrowser
+
     webbrowser.open("http://github.com/rkimoakbioinformatics/oakvar/issues")
 
 
@@ -1593,6 +1653,7 @@ def search_local(*patterns):
     Return local module names which match any of supplied patterns
     """
     from re import fullmatch
+
     modules_dir = get_modules_dir()
     if get_mic()._modules_dir != modules_dir:
         get_mic()._modules_dir = modules_dir
@@ -1609,6 +1670,7 @@ def search_remote(*patterns):
     Return remote module names which match any of supplied patterns
     """
     from re import fullmatch
+
     matching_names = []
     for module_name in list_remote():
         if any([fullmatch(pattern, module_name) for pattern in patterns]):
@@ -1618,6 +1680,7 @@ def search_remote(*patterns):
 
 def send_reset_email(username):
     from requests import post
+
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
     reset_pw_url = publish_url + "/reset-password"
@@ -1630,6 +1693,7 @@ def send_reset_email(username):
 
 def send_verify_email(username):
     from requests import post
+
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
     reset_pw_url = publish_url + "/verify-email"
@@ -1642,6 +1706,7 @@ def send_verify_email(username):
 
 def set_cravat_conf_prop(key, val):
     import oyaml as yaml
+
     conf = get_cravat_conf()
     conf[key] = val
     wf = open(get_main_conf_path(), "w")
@@ -1660,6 +1725,7 @@ def set_modules_dir(path, overwrite=False):
     import shutil
     import os
     from .constants import modules_dir_key
+
     path = os.path.abspath(os.path.expanduser(path))
     if not (os.path.isdir(path)):
         os.makedirs(path)
@@ -1676,6 +1742,7 @@ def set_modules_dir(path, overwrite=False):
 # return a list of module types (e.g. annotators) in the local install
 def show_oakvar_conf(**kwargs):
     import oyaml as yaml
+
     kwargs.setdefault("fmt", "yaml")
     kwargs.setdefault("to", "stdout")
     conf = get_cravat_conf_info()
@@ -1694,6 +1761,7 @@ def oakvar_version():
 
 def show_system_conf(**kwargs):
     import oyaml as yaml
+
     kwargs.setdefault("fmt", "yaml")
     kwargs.setdefault("to", "stdout")
     system_conf_info = get_system_conf_info(**kwargs)
@@ -1707,12 +1775,11 @@ def show_system_conf(**kwargs):
 
 def system_ready():
     import os
+
     modules_dir = get_modules_dir()
     if not (os.path.exists(modules_dir)):
         return ReadyState(code=ReadyState.MISSING_MD)
-    elif not (
-        os.path.exists(os.path.join(modules_dir, "converters", "vcf-converter"))
-    ):
+    elif not (os.path.exists(os.path.join(modules_dir, "converters", "vcf-converter"))):
         return ReadyState(code=ReadyState.NO_BASE_MODULES)
     else:
         return ReadyState()
@@ -1723,6 +1790,7 @@ def uninstall_module(module_name):
     Uninstalls a module.
     """
     import shutil
+
     uninstalled_modules = False
     if module_name in list_local():
         local_info = get_local_module_info(module_name)
@@ -1745,6 +1813,7 @@ def update_system_conf_file(d):
 
 def write_cravat_conf(cravat_conf):
     import oyaml as yaml
+
     confpath = get_main_conf_path()
     wf = open(confpath, "w")
     yaml.dump(cravat_conf, wf, default_flow_style=False)
@@ -1756,6 +1825,7 @@ def write_system_conf_file(d):
     Fully overwrite the system config file with a new system config.
     """
     import oyaml as yaml
+
     with open(get_system_conf_path(), "w") as wf:
         wf.write(yaml.dump(d, default_flow_style=False))
 
@@ -1768,6 +1838,7 @@ def update_mic():
 
 def get_liftover_chain_paths():
     from os.path import join
+
     liftover_chains_dir = get_liftover_chains_dir()
     liftover_chain_paths = {
         "hg19": join(liftover_chains_dir, "hg19ToHg38.over.chain"),
@@ -1778,11 +1849,13 @@ def get_liftover_chain_paths():
 
 def get_packagedir():
     from os.path import dirname, abspath
+
     return dirname(abspath(__file__))
 
 
 def get_platform():
     from platform import platform
+
     pl = platform()
     if pl.startswith("Windows"):
         pl = "windows"
@@ -1794,6 +1867,7 @@ def get_platform():
         pl = "linux"
     return pl
 
+
 def get_ov_root_dir():
     from os.path import exists as pathexists
     from os.path import join as pathjoin
@@ -1801,6 +1875,7 @@ def get_ov_root_dir():
     from os import sep
     from os import mkdir
     from os import environ
+
     pl = get_platform()
     root_dir = None
     if pl == "windows":
@@ -1809,7 +1884,7 @@ def get_ov_root_dir():
             root_dir = pathjoin(pathexpandvars("%systemdrive%"), sep, "oakvar")
     elif pl == "linux":
         root_dir = packagedir
-        if (pathexists(pathjoin(root_dir, "conf")) == False):  # OakVar first installation
+        if pathexists(pathjoin(root_dir, "conf")) == False:  # OakVar first installation
             if "SUDO_USER" in environ:
                 root_dir = pathjoin("/home", environ["SUDO_USER"], ".oakvar")
             else:
@@ -1827,6 +1902,7 @@ def setup_system():
     from os.path import exists as pathexists
     from os.path import join as pathjoin
     from os import mkdir
+
     if pathexists(default_conf_dir) == False:
         mkdir(default_conf_dir)
     linux_first_time = False
@@ -1834,6 +1910,7 @@ def setup_system():
     main_conf_path = get_main_conf_path()
     if pathexists(main_conf_path) == False:
         import shutil
+
         shutil.copyfile(pathjoin(packagedir, main_conf_fname), main_conf_path)
     f = open(system_conf_path)
     conf = yaml.safe_load(f)
@@ -1845,12 +1922,14 @@ def setup_system():
         conf[modules_dir_key] = default_modules_dir
         if linux_first_time:
             import subprocess
+
             subprocess.call(["sudo", "chmod", "777", get_system_conf_path()])
         wf = open(get_system_conf_path(), "w")
         yaml.dump(conf, wf, default_flow_style=False)
         wf.close()
         if linux_first_time:
             import subprocess
+
             subprocess.call(["sudo", "chmod", "644", get_system_conf_path()])
             print(
                 """
@@ -1861,11 +1940,12 @@ base modules before running any job.
 
 ===
 """
-        )
+            )
     system_conf_path = get_system_conf_path()
     if pathexists(system_conf_path) == False:
         try:
             import shutil
+
             shutil.copyfile(system_conf_template_path, system_conf_path)
         except PermissionError:
             if pl == "linux":
@@ -1895,7 +1975,10 @@ base modules before running any job.
                 _ = input("Ctrl-C to stop or Enter to continue>")
                 linux_first_time = True
                 import subprocess
-                subprocess.call(["sudo", "cp", system_conf_template_path, system_conf_path])
+
+                subprocess.call(
+                    ["sudo", "cp", system_conf_template_path, system_conf_path]
+                )
             else:
                 raise
     if not jobs_dir_key in conf:
@@ -1911,29 +1994,34 @@ base modules before running any job.
 def get_default_conf_dir():
     from os.path import join as pathjoin
     from .constants import conf_dir_name
+
     return pathjoin(get_ov_root_dir(), conf_dir_name)
 
 
 def get_default_modules_dir():
     from os.path import join as pathjoin
     from .constants import modules_dir_name
+
     return pathjoin(get_ov_root_dir(), modules_dir_name)
 
 
 def get_default_jobs_dir():
     from os.path import join as pathjoin
     from .constants import jobs_dir_name
+
     return pathjoin(get_ov_root_dir(), jobs_dir_name)
 
 
 def get_default_log_dir():
     from os.path import join as pathjoin
     from .constants import log_dir_name
+
     return pathjoin(get_ov_root_dir(), log_dir_name)
 
 
 def get_admindb_path():
     from os.path import join as pathjoin
+
     return pathjoin(get_default_conf_dir(), "admin.sqlite")
 
 
@@ -1941,6 +2029,7 @@ def get_system_conf_path():
     from .constants import system_conf_fname
     from os.path import join as pathjoin
     from .constants import system_conf_fname
+
     pl = get_platform()
     if pl in ["windows", "macos"]:
         return pathjoin(get_default_conf_dir(), system_conf_fname)
@@ -1952,11 +2041,13 @@ def get_system_conf_template_path():
     from .constants import system_conf_template_fname
     from .constants import system_conf_template_fname
     from os.path import join as pathjoin
+
     return pathjoin(get_packagedir(), system_conf_template_fname)
 
 
 def get_liftover_chains_dir():
     from os.path import join as pathjoin
+
     return pathjoin(get_packagedir(), "liftover")
 
 
@@ -1969,7 +2060,8 @@ def get_mic():
 
 def get_max_version_supported_for_migration():
     from distutils.version import LooseVersion
-    return LooseVersion("2.3.0")
+
+    return LooseVersion("1.7.0")
 
 
 mic = None
