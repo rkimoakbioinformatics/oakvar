@@ -9,9 +9,10 @@ class BaseMapper(object):
 
     def __init__(self, *inargs, **inkwargs):
         import os
-        import time
+        from time import time
         from oakvar.config_loader import ConfigLoader
         import pkg_resources
+
         self.cmd_parser = None
         self.input_path = None
         self.input_dir = None
@@ -28,7 +29,7 @@ class BaseMapper(object):
         self._define_additional_cmd_args()
         self._parse_cmd_args(inargs, inkwargs)
         self.live = self.args["live"]
-        self.t = time.time()
+        self.t = time()
         self.status_writer = self.args["status_writer"]
         main_fpath = self.args["script_path"]
         main_basename = os.path.basename(main_fpath)
@@ -49,6 +50,7 @@ class BaseMapper(object):
 
     def _define_main_cmd_args(self):
         import argparse
+
         self.cmd_parser = argparse.ArgumentParser()
         self.cmd_parser.add_argument("input_file", help="Input crv file")
         self.cmd_parser.add_argument(
@@ -85,8 +87,12 @@ class BaseMapper(object):
             default=["mane"],
             help='"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
         )
-        self.cmd_parser.add_argument("--live", action="store_true", default=False, help=argparse.SUPPRESS)
-        self.cmd_parser.add_argument("--status_writer", default=None, help=argparse.SUPPRESS)
+        self.cmd_parser.add_argument(
+            "--live", action="store_true", default=False, help=argparse.SUPPRESS
+        )
+        self.cmd_parser.add_argument(
+            "--status_writer", default=None, help=argparse.SUPPRESS
+        )
 
     def _define_additional_cmd_args(self):
         """This method allows sub-classes to override and provide addittional command line args"""
@@ -97,6 +103,7 @@ class BaseMapper(object):
         from os import makedirs
         from json import loads
         from .util import get_args
+
         args = get_args(self.cmd_parser, inargs, inkwargs)
         self.input_path = abspath(args["input_file"])
         self.input_dir, self.input_fname = split(self.input_path)
@@ -132,6 +139,7 @@ class BaseMapper(object):
 
     def _setup_logger(self):
         import logging
+
         self.logger = logging.getLogger("oakvar.mapper")
         self.logger.info("input file: %s" % self.input_path)
         self.error_logger = logging.getLogger("error.mapper")
@@ -147,6 +155,7 @@ class BaseMapper(object):
         from .inout import CravatReader
         from .inout import CravatWriter
         from .constants import crx_def, crx_idx, crg_def, crg_idx, crt_def, crt_idx
+
         # Reader
         if self.args["seekpos"] is not None and self.args["chunksize"] is not None:
             self.reader = CravatReader(
@@ -206,23 +215,24 @@ class BaseMapper(object):
         Read crv file and use map() function to convert to crx dict. Write the
         crx dict to the crx file and add information in crx dict to gene_info
         """
-        import time
+        from time import time, asctime, localtime
+
         self.base_setup()
-        start_time = time.time()
-        self.logger.info("started: %s" % time.asctime(time.localtime(start_time)))
+        start_time = time()
+        self.logger.info("started: %s" % asctime(localtime(start_time)))
         if self.status_writer is not None:
             self.status_writer.queue_status_update(
                 "status", "Started {} ({})".format(self.conf["title"], self.module_name)
             )
         count = 0
-        last_status_update_time = time.time()
+        last_status_update_time = time()
         crx_data = None
         output = {}
         for ln, line, crv_data in self.reader.loop_data():
             crx_data = None
             try:
                 count += 1
-                cur_time = time.time()
+                cur_time = time()
                 if self.status_writer is not None:
                     if count % 10000 == 0 or cur_time - last_status_update_time > 3:
                         self.status_writer.queue_status_update(
@@ -244,8 +254,8 @@ class BaseMapper(object):
                 self.crx_writer.write_data(crx_data)
                 self._add_crx_to_gene_info(crx_data)
         self._write_crg()
-        stop_time = time.time()
-        self.logger.info("finished: %s" % time.asctime(time.localtime(stop_time)))
+        stop_time = time()
+        self.logger.info("finished: %s" % asctime(localtime(stop_time)))
         runtime = stop_time - start_time
         self.logger.info("runtime: %6.3f" % runtime)
         if self.status_writer is not None:
@@ -258,22 +268,23 @@ class BaseMapper(object):
         Read crv file and use map() function to convert to crx dict. Write the
         crx dict to the crx file and add information in crx dict to gene_info
         """
-        import time
+        from time import time, asctime, localtime
+
         self.base_setup()
-        start_time = time.time()
-        tstamp = time.asctime(time.localtime(start_time))
+        start_time = time()
+        tstamp = asctime(localtime(start_time))
         self.logger.info(f"started: {tstamp} | {self.args['seekpos']}")
         if self.status_writer is not None:
             self.status_writer.queue_status_update(
                 "status", "Started {} ({})".format(self.conf["title"], self.module_name)
             )
         count = 0
-        last_status_update_time = time.time()
+        last_status_update_time = time()
         crx_data = None
         for ln, line, crv_data in self.reader.loop_data():
             try:
                 count += 1
-                cur_time = time.time()
+                cur_time = time()
                 if self.status_writer is not None:
                     if count % 10000 == 0 or cur_time - last_status_update_time > 3:
                         self.status_writer.queue_status_update(
@@ -293,8 +304,8 @@ class BaseMapper(object):
                 self.crx_writer.write_data(crx_data)
                 self._add_crx_to_gene_info(crx_data)
         self._write_crg()
-        stop_time = time.time()
-        tstamp = time.asctime(time.localtime(stop_time))
+        stop_time = time()
+        tstamp = asctime(localtime(stop_time))
         self.logger.info(f"finished: {tstamp} | {self.args['seekpos']}")
         runtime = stop_time - start_time
         self.logger.info("runtime: %6.3f" % runtime)
@@ -313,6 +324,7 @@ class BaseMapper(object):
         Add information in a crx dict to persistent gene_info dict
         """
         from .inout import AllMappingsParser
+
         tmap_json = crx_data["all_mappings"]
         # Return if no tmap
         if tmap_json == "":
@@ -326,6 +338,7 @@ class BaseMapper(object):
         Convert gene_info to crg dict and write to crg file
         """
         from .constants import crg_def
+
         sorted_hugos = list(self.gene_info.keys())
         sorted_hugos.sort()
         for hugo in sorted_hugos:
@@ -336,6 +349,7 @@ class BaseMapper(object):
 
     def _log_runtime_error(self, ln, line, e):
         import traceback
+
         err_str = traceback.format_exc().rstrip()
         if err_str not in self.unique_excs:
             self.unique_excs.append(err_str)
@@ -348,9 +362,10 @@ class BaseMapper(object):
 
     async def get_gene_summary_data(self, cf):
         # print('            {}: started getting gene summary data'.format(self.module_name))
-        import time
+        from time import time
         from .constants import crx_def
-        t = time.time()
+
+        t = time()
         hugos = await cf.exec_db(cf.get_filtered_hugo_list)
         # Below is to fix opening oc 1.8.0 jobs with oc 1.8.1.
         # TODO: Remove it after a while and add 1.8.0 to the db update chain in cmd_util.
@@ -361,16 +376,16 @@ class BaseMapper(object):
         ]
         cols.extend(["tagsampler__numsample"])
         data = {}
-        t = time.time()
+        t = time()
         rows = await cf.exec_db(cf.get_variant_data_for_cols, cols)
         rows_by_hugo = {}
-        t = time.time()
+        t = time()
         for row in rows:
             hugo = row[-1]
             if hugo not in rows_by_hugo:
                 rows_by_hugo[hugo] = []
             rows_by_hugo[hugo].append(row)
-        t = time.time()
+        t = time()
         for hugo in hugos:
             rows = rows_by_hugo[hugo]
             input_data = {}
@@ -378,7 +393,7 @@ class BaseMapper(object):
                 input_data[cols[i].split("__")[1]] = [row[i] for row in rows]
             out = self.summarize_by_gene(hugo, input_data)
             data[hugo] = out
-        # print('            {}: finished getting gene summary data in {:0.3f}s'.format(self.module_name, time.time() - t))
+        # print('            {}: finished getting gene summary data in {:0.3f}s'.format(self.module_name, time() - t))
         return data
 
     def live_report_substitute(self, d):

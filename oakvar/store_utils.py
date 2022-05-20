@@ -164,7 +164,7 @@ def stream_to_file(
     """
     from requests import get
     from requests.exceptions import ConnectionError
-    from .constants import KillInstallException
+    from .exceptions import KillInstallException
     from types import SimpleNamespace
 
     try:
@@ -206,8 +206,9 @@ def file_checksum(path):
     Get the md5 checksum of a file.
     """
     from hashlib import md5
+    from os.path import isdir
 
-    if os.path.isdir(path):
+    if isdir(path):
         raise IsADirectoryError(path)
     hasher = md5()
     with open(path, "rb") as f:
@@ -294,7 +295,7 @@ def verify_against_manifest(dirpath, manifest):
     Return True if all pass, throw FileIntegrityError otherwise.
     """
     from os.path import join, exists, isdir
-    from .constants import FileIntegrityError
+    from .exceptions import FileIntegrityError
 
     correct = True
     for item_name, v in manifest.items():

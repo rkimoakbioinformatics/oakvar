@@ -2061,7 +2061,7 @@ def get_mic():
 def get_max_version_supported_for_migration():
     from distutils.version import LooseVersion
 
-    return LooseVersion("2.3.0")
+    return LooseVersion("1.7.0")
 
 
 mic = None

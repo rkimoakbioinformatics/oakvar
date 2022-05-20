@@ -1,303 +1,64 @@
-from argparse import ArgumentParser, SUPPRESS
-import sys
-
-
-def fn_run(*args, **kwargs):
-    import asyncio
-    import inspect
-    from .util import get_args
+def fn_run(args):
+    from asyncio import run
+    from inspect import currentframe
+    from .util import get_dict_from_namespace
     from . import admin_util as au
+    # nested asyncio
     import nest_asyncio
     nest_asyncio.apply()
-    fnname = inspect.currentframe().f_code.co_name
-    parser = globals()["parser_" + fnname]
-    args = get_args(parser, args, kwargs)
+    # Windows event loop patch
+    from sys import platform, version_info, argv
+    if platform == "win32" and version_info >= (3, 8):
+        from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy
+        set_event_loop_policy(WindowsSelectorEventLoopPolicy())
+    # Custom system conf
+    from argparse import ArgumentParser
+    pre_parser = ArgumentParser(add_help=False)
+    pre_parser.add_argument(
+        "--system-option", dest="system_option", nargs="*", default=None
+    )
+    pre_args, unknown_args = pre_parser.parse_known_args(argv[1:])
+    if pre_args.system_option is not None:
+        custom_system_conf = {}
+        for kv in pre_args.system_option:
+            if "=" not in kv:
+                continue
+            toks = kv.split("=")
+            if len(toks) != 2:
+                continue
+            [k, v] = toks
+            try:
+                v = int(v)
+            except ValueError:
+                pass
+            custom_system_conf[k] = v
+        from . import admin_util
+        custom_system_conf = custom_system_conf
+        update_mic()
+    else:
+        from . import admin_util
+        admin_util.custom_system_conf = {}
+    fnname = currentframe().f_code.co_name
+    parser_fn_run = get_parser_fn_run()
+    args = get_dict_from_namespace(args)
     au.ready_resolution_console()
     module = Cravat(**args)
     try:
-        response = asyncio.run(module.main())
+        response = run(module.main())
         return response
     except Exception as e:
         raise e
 
 
-if sys.platform == "win32" and sys.version_info >= (3, 8):
-    from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy
-    set_event_loop_policy(WindowsSelectorEventLoopPolicy())
-
-# Custom system conf
-pre_parser = ArgumentParser(add_help=False)
-pre_parser.add_argument(
-    "--system-option", dest="system_option", nargs="*", default=None
-)
-args, unknown_args = pre_parser.parse_known_args(sys.argv[1:])
-if args.system_option is not None:
-    custom_system_conf = {}
-    for kv in args.system_option:
-        if "=" not in kv:
-            continue
-        toks = kv.split("=")
-        if len(toks) != 2:
-            continue
-        [k, v] = toks
-        try:
-            v = int(v)
-        except ValueError:
-            pass
-        custom_system_conf[k] = v
-    from . import admin_util as au
-    au.custom_system_conf = custom_system_conf
-    au.update_mic()
-else:
-    from . import admin_util
-    admin_util.custom_system_conf = {}
-
-parser_fn_run = ArgumentParser(
-    prog="ov run input_file_path_1 input_file_path_2 ...",
-    description="OakVar genomic variant interpreter. https://github.com/rkimoakbioinformatics/oakvar. Use input_file_path arguments before any option or define them in a conf file (option -c).",
-    epilog="inputs should be the first option",
-)
-parser_fn_run.add_argument(
-    "inputs",
-    nargs="*",
-    default=None,
-    help="Input file(s). One or more variant files in a supported format like VCF.  "
-    + "See the -i/--input-format flag for supported formats. In the special case "
-    + "where you want to add annotations to an existing OakVar analysis, "
-    + "provide the output sqlite database from the previous run as input instead of a variant input file.",
-)
-parser_fn_run.add_argument(
-    "-a",
-    nargs="+",
-    dest="annotators",
-    default=[],
-    help="Annotator module names or directories. If --package is used also, annotator modules defined with -a will be added.",
-)
-parser_fn_run.add_argument(
-    "-A",
-    nargs="+",
-    dest="annotators_replace",
-    default=[],
-    help="Annotator module names or directories. If --package is used also, annotator modules defined with -A will replace those defined with --package. -A has priority over -a.",
-)
-parser_fn_run.add_argument(
-    "-e", nargs="+", dest="excludes", default=[], help="annotators to exclude"
-)
-parser_fn_run.add_argument("-n", dest="run_name", help="name of oakvar run")
-parser_fn_run.add_argument(
-    "-d", dest="output_dir", default=None, help="directory for output files"
-)
-parser_fn_run.add_argument(
-    "--startat",
-    dest="startat",
-    choices=[
-        "converter",
-        "mapper",
-        "annotator",
-        "aggregator",
-        "postaggregator",
-        "reporter",
-    ],
-    default=None,
-    help="starts at given stage",
-)
-parser_fn_run.add_argument(
-    "--endat",
-    dest="endat",
-    choices=[
-        "converter",
-        "mapper",
-        "annotator",
-        "aggregator",
-        "postaggregator",
-        "reporter",
-    ],
-    default=None,
-    help="ends after given stage.",
-)
-parser_fn_run.add_argument(
-    "--skip",
-    dest="skip",
-    nargs="+",
-    choices=[
-        "converter",
-        "mapper",
-        "annotator",
-        "aggregator",
-        "postaggregator",
-        "reporter",
-    ],
-    default=None,
-    help="skips given stage(s).",
-)
-parser_fn_run.add_argument("-c", dest="conf", default="oc.yml", help="path to a conf file")
-parser_fn_run.add_argument("--cs", dest="confs", default=None, help="configuration string")
-parser_fn_run.add_argument(
-    "-v", dest="verbose", action="store_true", default=None, help="verbose"
-)
-parser_fn_run.add_argument(
-    "-t",
-    nargs="+",
-    dest="reports",
-    default=[],
-    help="Reporter types or reporter module directories",
-)
-parser_fn_run.add_argument(
-    "-l",
-    "--liftover",
-    dest="genome",
-    default=None,
-    help="reference genome of input. OakVar will lift over to hg38 if needed.",
-)
-parser_fn_run.add_argument(
-    "-x",
-    dest="cleandb",
-    action="store_true",
-    help="deletes the existing result database and creates a new one.",
-)
-parser_fn_run.add_argument(
-    "--newlog",
-    dest="newlog",
-    action="store_true",
-    default=None,
-    help="deletes the existing log file and creates a new one.",
-)
-parser_fn_run.add_argument(
-    "--note",
-    dest="note",
-    default=None,
-    help="note will be written to the run status file (.status.json)",
-)
-parser_fn_run.add_argument(
-    "--mp", dest="mp", default=None, help="number of processes to use to run annotators"
-)
-parser_fn_run.add_argument(
-    "-i",
-    "--input-format",
-    dest="forcedinputformat",
-    default=None,
-    help="Force input format",
-)
-parser_fn_run.add_argument(
-    "--temp-files",
-    dest="temp_files",
-    action="store_true",
-    default=None,
-    help="Leave temporary files after run is complete.",
-)
-parser_fn_run.add_argument(
-    "--writeadmindb",
-    dest="writeadmindb",
-    action="store_true",
-    default=None,
-    help="Write job information to admin db after job completion",
-)
-parser_fn_run.add_argument(
-    "--jobid", dest="jobid", default=None, help="Job ID for server version"
-)
-parser_fn_run.add_argument(
-    "--version",
-    dest="show_version",
-    action="store_true",
-    default=None,
-    help="Shows OakVar version.",
-)
-parser_fn_run.add_argument(
-    "--separatesample",
-    dest="separatesample",
-    action="store_true",
-    default=None,
-    help="Separate variant results by sample",
-)
-parser_fn_run.add_argument(
-    "--unique-variants",
-    dest="unique_variants",
-    action="store_true",
-    default=None,
-    help="Set to get only unique variants in output"
-)
-parser_fn_run.add_argument(
-    "--primary-transcript",
-    dest="primary_transcript",
-    nargs="+",
-    default=["mane"],
-    help='"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
-)
-parser_fn_run.add_argument(
-    "--cleanrun",
-    dest="clean_run",
-    action="store_true",
-    default=None,
-    help="Deletes all previous output files for the job and generate new ones.",
-)
-parser_fn_run.add_argument(
-    "--do-not-change-status",
-    dest="do_not_change_status",
-    action="store_true",
-    default=None,
-    help="Job status in status.json will not be changed",
-)
-parser_fn_run.add_argument(
-    "--module-option",
-    dest="module_option",
-    nargs="*",
-    help="Module-specific option in module_name.key=value syntax. For example, --module-option vcfreporter.type=separate",
-)
-parser_fn_run.add_argument(
-    "--system-option",
-    dest="system_option",
-    nargs="*",
-    help="System option in key=value syntax. For example, --system-option modules_dir=/home/user/oakvar/modules",
-)
-parser_fn_run.add_argument(
-    "--silent", dest="silent", action="store_true", default=None, help="Runs silently."
-)
-parser_fn_run.add_argument(
-    "--concise-report",
-    dest="concise_report",
-    action="store_true",
-    default=None,
-    help="Generate concise reports with default columns defined by each annotation module",
-)
-parser_fn_run.add_argument("--package", dest="package", default=None, help="Use package")
-parser_fn_run.add_argument("--filtersql", default=None, help="Filter SQL")
-parser_fn_run.add_argument(
-    "--includesample", nargs="+", default=None, help="Sample IDs to include"
-)
-parser_fn_run.add_argument(
-    "--excludesample", nargs="+", default=None, help="Sample IDs to exclude"
-)
-parser_fn_run.add_argument("--filter", default=None, help=SUPPRESS)
-parser_fn_run.add_argument("-f", dest="filterpath", default=None, help="Path to a filter file")
-parser_fn_run.add_argument(
-    "--md",
-    default=None,
-    help="Specify the root directory of OakVar modules (annotators, etc)",
-)
-parser_fn_run.add_argument(
-    "-m",
-    dest="mapper_name",
-    nargs="+",
-    default=[],
-    help="Mapper module name or mapper module directory",
-)
-parser_fn_run.add_argument(
-    "-p",
-    nargs="+",
-    dest="postaggregators",
-    default=[],
-    help="Postaggregators to run. Additionally, tagsampler, casecontrol, varmeta, and vcfinfo will automatically run depending on conditions.",
-)
-parser_fn_run.set_defaults(func=fn_run)
-
 class Cravat(object):
-    #class MyManager(multiprocessing.managers.SyncManager):
+    # class MyManager(multiprocessing.managers.SyncManager):
     #    pass
 
-
     def __init__(self, **kwargs):
-        import time
+        from time import time, asctime, localtime
         from multiprocessing.managers import SyncManager
+        from sys import executable, argv
+
         self.runlevels = {
             "converter": 1,
             "mapper": 2,
@@ -311,7 +72,7 @@ class Cravat(object):
         self.should_run_annotators = True
         self.should_run_aggregator = True
         self.should_run_reporter = True
-        self.pythonpath = sys.executable
+        self.pythonpath = executable
         self.annotators = {}
         self.append_mode = False
         self.pipeinput = False
@@ -322,18 +83,16 @@ class Cravat(object):
                     print("Deleting previous output files...")
                 self.delete_output_files()
             self.get_logger()
-            self.start_time = time.time()
-            self.logger.info(f'{" ".join(sys.argv)}')
-            self.logger.info(
-                "started: {0}".format(time.asctime(time.localtime(self.start_time)))
-            )
+            self.start_time = time()
+            self.logger.info(f'{" ".join(argv)}')
+            self.logger.info("started: {0}".format(asctime(localtime(self.start_time))))
             if self.run_conf_path != "":
                 self.logger.info("conf file: {}".format(self.run_conf_path))
             self.modules_conf = self.conf.get_modules_conf()
             self.write_initial_status_json()
             self.unique_logs = {}
             self.manager = SyncManager()
-            #self.manager = MyManager()
+            # self.manager = MyManager()
             self.manager.register("StatusWriter", StatusWriter)
             self.manager.start()
             self.status_writer = self.manager.StatusWriter(self.status_json_path)
@@ -343,6 +102,7 @@ class Cravat(object):
     def check_valid_modules(self, module_names):
         from .exceptions import InvalidModule
         from . import admin_util as au
+
         for module_name in module_names:
             if au.module_exists_local(module_name) == False:
                 raise InvalidModule(module_name)
@@ -352,6 +112,7 @@ class Cravat(object):
         from datetime import datetime
         import json
         from . import admin_util as au
+
         status_fname = "{}.status.json".format(self.run_name)
         self.status_json_path = os.path.join(self.output_dir, status_fname)
         if os.path.exists(self.status_json_path) == True:
@@ -375,9 +136,7 @@ class Cravat(object):
                     os.path.basename(x) for x in self.inputs
                 ]
                 self.status_json["orig_input_path"] = self.inputs
-                self.status_json[
-                    "submission_time"
-                ] = datetime.now().isoformat()
+                self.status_json["submission_time"] = datetime.now().isoformat()
                 self.status_json["viewable"] = False
                 self.status_json["note"] = self.args.note
                 self.status_json["status"] = "Starting"
@@ -424,6 +183,7 @@ class Cravat(object):
     def get_logger(self):
         import os
         import logging
+
         if self.args.newlog == True:
             self.logmode = "w"
         else:
@@ -452,6 +212,7 @@ class Cravat(object):
 
     def close_logger(self):
         import logging
+
         self.log_handler.close()
         self.logger.removeHandler(self.log_handler)
         self.error_log_handler.close()
@@ -465,6 +226,7 @@ class Cravat(object):
     def run(self):
         import asyncio
         import nest_asyncio
+
         nest_asyncio.apply()
         loop = asyncio.new_event_loop()
         response = loop.run_until_complete(self.main())
@@ -474,6 +236,7 @@ class Cravat(object):
     def delete_output_files(self):
         import os
         import glob
+
         fns = glob.glob(os.path.join(self.output_dir, self.run_name + ".*"))
         for fn in fns:
             if not self.args.silent:
@@ -483,6 +246,7 @@ class Cravat(object):
     def log_versions(self):
         import os
         from . import admin_util as au
+
         self.logger.info(
             f"version: oakvar {au.get_current_package_version()} {os.path.dirname(os.path.abspath(__file__))}"
         )
@@ -505,7 +269,8 @@ class Cravat(object):
             )
 
     async def main(self):
-        import time
+        from time import time, asctime, localtime
+
         no_problem_in_run = True
         report_response = None
         exception = None
@@ -531,9 +296,9 @@ class Cravat(object):
             ):
                 if not self.args.silent:
                     print("Running converter...")
-                stime = time.time()
+                stime = time()
                 self.run_converter()
-                rtime = time.time() - stime
+                rtime = time() - stime
                 if not self.args.silent:
                     print("finished in {0:.3f}s".format(rtime))
                 converter_ran = True
@@ -551,7 +316,7 @@ class Cravat(object):
             ):
                 if not self.args.silent:
                     print(f'Running gene mapper...{" "*18}', end="", flush=True)
-                stime = time.time()
+                stime = time()
                 multicore_mapper_mode = self.conf.get_cravat_conf()[
                     "multicore_mapper_mode"
                 ]
@@ -559,7 +324,7 @@ class Cravat(object):
                     self.run_genemapper_mp()
                 else:
                     self.run_genemapper()
-                rtime = time.time() - stime
+                rtime = time() - stime
                 if not self.args.silent:
                     print("finished in {0:.3f}s".format(rtime))
                 self.mapper_ran = True
@@ -581,9 +346,9 @@ class Cravat(object):
             ):
                 if not self.args.silent:
                     print("Running annotators...")
-                stime = time.time()
+                stime = time()
                 self.run_annotators_mp()
-                rtime = time.time() - stime
+                rtime = time() - stime
                 if not self.args.silent:
                     print("\tannotator(s) finished in {0:.3f}s".format(rtime))
             if (
@@ -626,8 +391,8 @@ class Cravat(object):
             exception = e
             self.handle_exception(e)
         finally:
-            end_time = time.time()
-            display_time = time.asctime(time.localtime(end_time))
+            end_time = time()
+            display_time = asctime(localtime(end_time))
             runtime = end_time - self.start_time
             if no_problem_in_run:
                 self.logger.info("finished: {0}".format(display_time))
@@ -665,6 +430,7 @@ class Cravat(object):
         import os
         import aiosqlite
         from .admin_util import get_admindb_path
+
         if runtime is None or numinput is None:
             return
         if os.path.exists(get_admindb_path()) == False:
@@ -684,12 +450,13 @@ class Cravat(object):
         await db.close()
 
     def write_smartfilters(self):
-        import time
+        from time import time
         import os
         import json
         import sqlite3
         from .util import filter_affected_cols
         from .constants import base_smartfilters
+
         if not self.args.silent:
             print("Indexing")
         dbpath = os.path.join(self.output_dir, self.run_name + ".sqlite")
@@ -724,20 +491,20 @@ class Cravat(object):
                     q = f"create index if not exists {index_name} on variant ({col})"
                     if not self.args.silent:
                         print(f"\tvariant {col}", end="", flush=True)
-                    st = time.time()
+                    st = time()
                     cursor.execute(q)
                     if not self.args.silent:
-                        print(f"\tfinished in {time.time()-st:.3f}s")
+                        print(f"\tfinished in {time()-st:.3f}s")
             if col in gene_cols:
                 index_name = f"sf_gene_{col}"
                 if index_name not in existing_indices:
                     q = f"create index if not exists {index_name} on gene ({col})"
                     if not self.args.silent:
                         print(f"\tgene {col}", end="", flush=True)
-                    st = time.time()
+                    st = time()
                     cursor.execute(q)
                     if not self.args.silent:
-                        print(f"\tfinished in {time.time()-st:.3f}s")
+                        print(f"\tfinished in {time()-st:.3f}s")
         # Package filter
         if hasattr(self.args, "filter") and self.args.filter is not None:
             q = "create table if not exists viewersetup (datatype text, name text, viewersetup text, unique (datatype, name))"
@@ -752,6 +519,7 @@ class Cravat(object):
     def handle_exception(self, e):
         import traceback
         from .exceptions import ExpectedException, InvalidData, InvalidModule
+
         exc_str = traceback.format_exc()
         exc_class = e.__class__
         if exc_class == InvalidModule:
@@ -774,6 +542,7 @@ class Cravat(object):
 
     def set_package_conf(self, supplied_args):
         from . import admin_util as au
+
         if "package" in supplied_args:
             package_name = supplied_args["package"]
             del supplied_args["package"]
@@ -787,7 +556,8 @@ class Cravat(object):
     def make_self_args_considering_package_conf(self, supplied_args):
         from .util import get_argument_parser_defaults
         from types import SimpleNamespace
-        full_args = get_argument_parser_defaults(parser_fn_run)
+
+        full_args = get_argument_parser_defaults(get_parser_fn_run())
         # package
         if "run" in self.package_conf:
             package_conf_run = {
@@ -838,6 +608,7 @@ class Cravat(object):
 
     def make_run_conf_path(self):
         import os
+
         self.run_conf_path = ""
         if hasattr(self.args, "conf") and os.path.exists(self.args.conf):
             self.run_conf_path = self.args.conf
@@ -845,6 +616,7 @@ class Cravat(object):
     def make_self_conf(self):
         from .config_loader import ConfigLoader
         import json
+
         self.conf = ConfigLoader(job_conf_path=self.run_conf_path)
         if self.args.confs != None:
             conf_bak = self.conf
@@ -896,6 +668,7 @@ class Cravat(object):
 
     def download_url_input(self, input_no):
         from .util import is_url, humanize_bytes
+
         ip = self.inputs[input_no]
         if " " in ip:
             print(f"Space is not allowed in input file paths ({ip})")
@@ -903,6 +676,7 @@ class Cravat(object):
         if is_url(ip):
             import os
             import requests
+
             if not self.args.silent:
                 print(f"Fetching {ip}... ")
             try:
@@ -939,6 +713,7 @@ class Cravat(object):
 
     def process_url_and_pipe_inputs(self):
         from .util import is_url
+
         self.first_non_url_input = None
         if (
             self.args.inputs is not None
@@ -948,6 +723,7 @@ class Cravat(object):
             self.pipeinput = True
         if self.args.inputs is not None:
             import os
+
             self.inputs = [
                 os.path.abspath(x) if not is_url(x) and x != "-" else x
                 for x in self.args.inputs
@@ -963,6 +739,7 @@ class Cravat(object):
 
     def set_run_name(self):
         import os
+
         self.run_name = self.args.run_name
         if self.run_name == None:
             if self.num_input == 0 or self.pipeinput:
@@ -975,6 +752,7 @@ class Cravat(object):
     def set_append_mode(self):
         import os
         import shutil
+
         if self.num_input > 0 and self.inputs[0].endswith(".sqlite"):
             self.append_mode = True
             if self.args.skip is None:
@@ -997,6 +775,7 @@ class Cravat(object):
 
     def set_output_dir(self):
         import os
+
         self.output_dir = self.args.output_dir
         if self.output_dir == None:
             if self.num_input == 0 or self.first_non_url_input is None:
@@ -1013,6 +792,7 @@ class Cravat(object):
     def set_genome_assembly(self):
         from .constants import default_assembly_key, assembly_choices
         from .admin_util import get_main_conf_path
+
         if self.args.genome is None:
             if default_assembly_key in self.cravat_conf:
                 self.input_assembly = self.cravat_conf[default_assembly_key]
@@ -1040,6 +820,7 @@ class Cravat(object):
 
     def make_args_namespace(self, supplied_args):
         from . import admin_util as au
+
         self.set_package_conf(supplied_args)
         self.make_self_args_considering_package_conf(supplied_args)
         if self.args.show_version:
@@ -1065,11 +846,13 @@ class Cravat(object):
 
     def set_md(self):
         from .constants import custom_modules_dir
+
         if self.args.md is not None:
             custom_modules_dir = self.args.md
 
     def set_annotators(self):
         from . import admin_util as au
+
         self.excludes = self.args.excludes
         if len(self.args.annotators) > 0:
             if self.args.annotators == ["all"]:
@@ -1100,6 +883,7 @@ class Cravat(object):
 
     def set_mapper(self):
         from . import admin_util as au
+
         if len(self.args.mapper_name) > 0:
             self.mapper_name = self.args.mapper_name[0]
         elif (
@@ -1116,6 +900,7 @@ class Cravat(object):
     def set_postaggregators(self):
         from .constants import default_postaggregator_names
         from . import admin_util as au
+
         if len(self.args.postaggregators) > 0:
             self.postaggregator_names = self.args.postaggregators
         elif (
@@ -1152,6 +937,7 @@ class Cravat(object):
 
     def set_reporters(self):
         from . import admin_util as au
+
         if len(self.args.reports) > 0:
             self.report_names = self.args.reports
         elif (
@@ -1171,6 +957,7 @@ class Cravat(object):
 
     def set_and_check_input_files(self):
         import os
+
         self.crvinput = os.path.join(self.output_dir, self.run_name + ".crv")
         self.crxinput = os.path.join(self.output_dir, self.run_name + ".crx")
         self.crginput = os.path.join(self.output_dir, self.run_name + ".crg")
@@ -1193,6 +980,7 @@ class Cravat(object):
         import sqlite3
         from .constants import crv_def, crx_def, crg_def
         from .inout import CravatWriter
+
         dbpath = self.inputs[0]
         db = sqlite3.connect(dbpath)
         c = db.cursor()
@@ -1242,6 +1030,7 @@ class Cravat(object):
 
     def populate_secondary_annotators(self):
         import os
+
         secondaries = {}
         for module in self.annotators.values():
             self._find_secondary_annotators(module, secondaries)
@@ -1274,6 +1063,7 @@ class Cravat(object):
 
     def get_module_output_path(self, module):
         import os
+
         if module.level == "variant":
             postfix = ".var"
         elif module.level == "gene":
@@ -1287,6 +1077,7 @@ class Cravat(object):
 
     def check_module_output(self, module):
         import os
+
         path = self.get_module_output_path(module)
         if os.path.exists(path):
             return path
@@ -1295,6 +1086,7 @@ class Cravat(object):
 
     def get_secondary_modules(self, primary_module):
         from . import admin_util as au
+
         secondary_modules = [
             au.get_local_module_info(module_name)
             for module_name in primary_module.secondary_module_names
@@ -1306,6 +1098,7 @@ class Cravat(object):
         from .util import load_class
         from types import SimpleNamespace
         import json
+
         converter_path = os.path.join(os.path.dirname(__file__), "cravat_convert.py")
         module = SimpleNamespace(
             title="Converter", name="converter", script_path=converter_path
@@ -1347,6 +1140,7 @@ class Cravat(object):
         from .util import load_class
         import json
         from . import admin_util as au
+
         module = au.get_local_module_info(self.cravat_conf["genemapper"])
         self.genemapper = module
         cmd = [
@@ -1380,6 +1174,7 @@ class Cravat(object):
         from .mp_runners import init_worker, mapper_runner
         from .inout import CravatReader
         from . import admin_util as au
+
         num_workers = au.get_max_num_concurrent_annotators_per_job()
         if self.args.mp is not None:
             try:
@@ -1532,12 +1327,13 @@ class Cravat(object):
         del unique_trs
 
     def run_aggregator(self):
-        import time
+        from time import time
         from .aggregator import Aggregator
+
         # Variant level
         if not self.args.silent:
             print("\t{0:30s}\t".format("Variants"), end="", flush=True)
-        stime = time.time()
+        stime = time()
         cmd = [
             "donotremove",
             "-i",
@@ -1562,13 +1358,13 @@ class Cravat(object):
         )
         v_aggregator = Aggregator(cmd, self.status_writer)
         v_aggregator.run()
-        rtime = time.time() - stime
+        rtime = time() - stime
         if not self.args.silent:
             print("finished in {0:.3f}s".format(rtime))
         # Gene level
         if not self.args.silent:
             print("\t{0:30s}\t".format("Genes"), end="", flush=True)
-        stime = time.time()
+        stime = time()
         cmd = [
             "donotremove",
             "-i",
@@ -1591,14 +1387,14 @@ class Cravat(object):
         )
         g_aggregator = Aggregator(cmd, self.status_writer)
         g_aggregator.run()
-        rtime = time.time() - stime
+        rtime = time() - stime
         if not self.args.silent:
             print("finished in {0:.3f}s".format(rtime))
         # Sample level
         if not self.append_mode:
             if not self.args.silent:
                 print("\t{0:30s}\t".format("Samples"), end="", flush=True)
-            stime = time.time()
+            stime = time()
             cmd = [
                 "donotremove",
                 "-i",
@@ -1619,7 +1415,7 @@ class Cravat(object):
             )
             s_aggregator = Aggregator(cmd, self.status_writer)
             s_aggregator.run()
-            rtime = time.time() - stime
+            rtime = time() - stime
             if not self.args.silent:
                 print("finished in {0:.3f}s".format(rtime))
         # Mapping level
@@ -1646,15 +1442,16 @@ class Cravat(object):
             )
             m_aggregator = Aggregator(cmd, self.status_writer)
             m_aggregator.run()
-            rtime = time.time() - stime
+            rtime = time() - stime
             if not self.args.silent:
                 print("finished in {0:.3f}s".format(rtime))
         return v_aggregator.db_path
 
     def run_postaggregators(self):
-        import time
+        from time import time
         from .util import load_class
         import json
+
         for module_name, module in self.postaggregators.items():
             cmd = [module.script_path, "-d", self.output_dir, "-n", self.run_name]
             postagg_conf = {}
@@ -1675,19 +1472,20 @@ class Cravat(object):
             post_agg = post_agg_cls(cmd, self.status_writer)
             if post_agg.should_run_annotate:
                 self.announce_module(module)
-            stime = time.time()
+            stime = time()
             post_agg.run()
-            rtime = time.time() - stime
+            rtime = time() - stime
             if not self.args.silent and post_agg.should_run_annotate:
                 print("finished in {0:.3f}s".format(rtime))
 
     async def run_reporter(self):
-        import time
+        from time import time
         import os
         import re
         import traceback
         from .util import load_class, write_log_msg
         from . import admin_util as au
+
         if len(self.reports) > 0:
             module_names = [v for v in list(self.reports.keys())]
         else:
@@ -1743,7 +1541,7 @@ class Cravat(object):
                 Reporter = load_class(module.script_path, "Reporter")
                 reporter = Reporter(arg_dict)
                 await reporter.prep()
-                stime = time.time()
+                stime = time()
                 response_t = await reporter.run()
                 output_fns = None
                 if self.args.silent == False:
@@ -1755,7 +1553,7 @@ class Cravat(object):
                     if output_fns is not None:
                         print(f"report created: {output_fns} ", end="", flush=True)
                 response[re.sub("reporter$", "", module_name)] = response_t
-                rtime = time.time() - stime
+                rtime = time() - stime
                 if not self.args.silent:
                     print("finished in {0:.3f}s".format(rtime))
             except Exception as e:
@@ -1764,6 +1562,7 @@ class Cravat(object):
                 else:
                     if not hasattr(e, "notraceback") or e.notraceback != True:
                         import traceback
+
                         traceback.print_exc()
                         self.logger.exception(e)
                     else:
@@ -1781,6 +1580,7 @@ class Cravat(object):
         from .mp_runners import init_worker, annot_from_queue
         from . import admin_util as au
         from multiprocessing import Pool
+
         num_workers = au.get_max_num_concurrent_annotators_per_job()
         if self.args.mp is not None:
             try:
@@ -1900,6 +1700,7 @@ class Cravat(object):
 
     async def get_converter_format_from_crv(self):
         import os
+
         converter_format = None
         fn = os.path.join(self.output_dir, self.run_name + ".crv")
         if os.path.exists(fn):
@@ -1913,6 +1714,7 @@ class Cravat(object):
 
     async def get_mapper_info_from_crx(self):
         import os
+
         title = None
         version = None
         modulename = None
@@ -1937,6 +1739,7 @@ class Cravat(object):
         from datetime import datetime
         import json
         from . import admin_util as au
+
         dbpath = os.path.join(self.output_dir, self.run_name + ".sqlite")
         conn = await aiosqlite.connect(dbpath)
         cursor = await conn.cursor()
@@ -2067,6 +1870,7 @@ class Cravat(object):
 
     def run_summarizer(self, module):
         from .util import load_class
+
         cmd = [module.script_path, "-l", "variant"]
         if self.run_name != None:
             cmd.extend(["-n", self.run_name])
@@ -2093,6 +1897,7 @@ class Cravat(object):
 
     def clean_up_at_end(self):
         import os
+
         fns = os.listdir(self.output_dir)
         for fn in fns:
             fn_path = os.path.join(self.output_dir, fn)
@@ -2108,32 +1913,36 @@ class Cravat(object):
 
 class StatusWriter:
     def __init__(self, status_json_path):
-        import time
+        from time import time
+
         self.status_json_path = status_json_path
         self.status_queue = []
         self.load_status_json()
-        self.t = time.time()
+        self.t = time()
         self.lock = False
 
     def load_status_json(self):
         import json
+
         f = open(self.status_json_path)
         lines = "\n".join(f.readlines())
         self.status_json = json.loads(lines)
         f.close()
 
     def queue_status_update(self, k, v, force=False):
-        import time
+        from time import time
+
         self.status_json[k] = v
-        tdif = time.time() - self.t
+        tdif = time() - self.t
         if force == True or (tdif > 3 and self.lock == False):
             self.lock = True
             self.update_status_json()
-            self.t = time.time()
+            self.t = time()
             self.lock = False
 
     def update_status_json(self):
         import json
+
         with open(self.status_json_path, "w") as wf:
             json.dump(self.status_json, wf, indent=2, sort_keys=True)
 
@@ -2141,8 +1950,259 @@ class StatusWriter:
         return self.status_json
 
     def flush(self):
-        import time
+        from time import time
+
         self.lock = True
         self.update_status_json()
-        self.t = time.time()
+        self.t = time()
         self.lock = False
+
+def get_parser_fn_run():
+    from argparse import ArgumentParser, SUPPRESS
+    parser_fn_run = ArgumentParser(
+        prog="ov run input_file_path_1 input_file_path_2 ...",
+        description="OakVar genomic variant interpreter. https://github.com/rkimoakbioinformatics/oakvar. Use input_file_path arguments before any option or define them in a conf file (option -c).",
+        epilog="inputs should be the first option",
+    )
+    parser_fn_run.add_argument(
+        "inputs",
+        nargs="*",
+        default=None,
+        help="Input file(s). One or more variant files in a supported format like VCF.  "
+        + "See the -i/--input-format flag for supported formats. In the special case "
+        + "where you want to add annotations to an existing OakVar analysis, "
+        + "provide the output sqlite database from the previous run as input instead of a variant input file.",
+    )
+    parser_fn_run.add_argument(
+        "-a",
+        nargs="+",
+        dest="annotators",
+        default=[],
+        help="Annotator module names or directories. If --package is used also, annotator modules defined with -a will be added.",
+    )
+    parser_fn_run.add_argument(
+        "-A",
+        nargs="+",
+        dest="annotators_replace",
+        default=[],
+        help="Annotator module names or directories. If --package is used also, annotator modules defined with -A will replace those defined with --package. -A has priority over -a.",
+    )
+    parser_fn_run.add_argument(
+        "-e", nargs="+", dest="excludes", default=[], help="annotators to exclude"
+    )
+    parser_fn_run.add_argument("-n", dest="run_name", help="name of oakvar run")
+    parser_fn_run.add_argument(
+        "-d", dest="output_dir", default=None, help="directory for output files"
+    )
+    parser_fn_run.add_argument(
+        "--startat",
+        dest="startat",
+        choices=[
+            "converter",
+            "mapper",
+            "annotator",
+            "aggregator",
+            "postaggregator",
+            "reporter",
+        ],
+        default=None,
+        help="starts at given stage",
+    )
+    parser_fn_run.add_argument(
+        "--endat",
+        dest="endat",
+        choices=[
+            "converter",
+            "mapper",
+            "annotator",
+            "aggregator",
+            "postaggregator",
+            "reporter",
+        ],
+        default=None,
+        help="ends after given stage.",
+    )
+    parser_fn_run.add_argument(
+        "--skip",
+        dest="skip",
+        nargs="+",
+        choices=[
+            "converter",
+            "mapper",
+            "annotator",
+            "aggregator",
+            "postaggregator",
+            "reporter",
+        ],
+        default=None,
+        help="skips given stage(s).",
+    )
+    parser_fn_run.add_argument(
+        "-c", dest="conf", default="oc.yml", help="path to a conf file"
+    )
+    parser_fn_run.add_argument(
+        "--cs", dest="confs", default=None, help="configuration string"
+    )
+    parser_fn_run.add_argument(
+        "-v", dest="verbose", action="store_true", default=None, help="verbose"
+    )
+    parser_fn_run.add_argument(
+        "-t",
+        nargs="+",
+        dest="reports",
+        default=[],
+        help="Reporter types or reporter module directories",
+    )
+    parser_fn_run.add_argument(
+        "-l",
+        "--liftover",
+        dest="genome",
+        default=None,
+        help="reference genome of input. OakVar will lift over to hg38 if needed.",
+    )
+    parser_fn_run.add_argument(
+        "-x",
+        dest="cleandb",
+        action="store_true",
+        help="deletes the existing result database and creates a new one.",
+    )
+    parser_fn_run.add_argument(
+        "--newlog",
+        dest="newlog",
+        action="store_true",
+        default=None,
+        help="deletes the existing log file and creates a new one.",
+    )
+    parser_fn_run.add_argument(
+        "--note",
+        dest="note",
+        default=None,
+        help="note will be written to the run status file (.status.json)",
+    )
+    parser_fn_run.add_argument(
+        "--mp", dest="mp", default=None, help="number of processes to use to run annotators"
+    )
+    parser_fn_run.add_argument(
+        "-i",
+        "--input-format",
+        dest="forcedinputformat",
+        default=None,
+        help="Force input format",
+    )
+    parser_fn_run.add_argument(
+        "--temp-files",
+        dest="temp_files",
+        action="store_true",
+        default=None,
+        help="Leave temporary files after run is complete.",
+    )
+    parser_fn_run.add_argument(
+        "--writeadmindb",
+        dest="writeadmindb",
+        action="store_true",
+        default=None,
+        help="Write job information to admin db after job completion",
+    )
+    parser_fn_run.add_argument(
+        "--jobid", dest="jobid", default=None, help="Job ID for server version"
+    )
+    parser_fn_run.add_argument(
+        "--version",
+        dest="show_version",
+        action="store_true",
+        default=None,
+        help="Shows OakVar version.",
+    )
+    parser_fn_run.add_argument(
+        "--separatesample",
+        dest="separatesample",
+        action="store_true",
+        default=None,
+        help="Separate variant results by sample",
+    )
+    parser_fn_run.add_argument(
+        "--unique-variants",
+        dest="unique_variants",
+        action="store_true",
+        default=None,
+        help="Set to get only unique variants in output",
+    )
+    parser_fn_run.add_argument(
+        "--primary-transcript",
+        dest="primary_transcript",
+        nargs="+",
+        default=["mane"],
+        help='"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
+    )
+    parser_fn_run.add_argument(
+        "--cleanrun",
+        dest="clean_run",
+        action="store_true",
+        default=None,
+        help="Deletes all previous output files for the job and generate new ones.",
+    )
+    parser_fn_run.add_argument(
+        "--do-not-change-status",
+        dest="do_not_change_status",
+        action="store_true",
+        default=None,
+        help="Job status in status.json will not be changed",
+    )
+    parser_fn_run.add_argument(
+        "--module-option",
+        dest="module_option",
+        nargs="*",
+        help="Module-specific option in module_name.key=value syntax. For example, --module-option vcfreporter.type=separate",
+    )
+    parser_fn_run.add_argument(
+        "--system-option",
+        dest="system_option",
+        nargs="*",
+        help="System option in key=value syntax. For example, --system-option modules_dir=/home/user/oakvar/modules",
+    )
+    parser_fn_run.add_argument(
+        "--silent", dest="silent", action="store_true", default=None, help="Runs silently."
+    )
+    parser_fn_run.add_argument(
+        "--concise-report",
+        dest="concise_report",
+        action="store_true",
+        default=None,
+        help="Generate concise reports with default columns defined by each annotation module",
+    )
+    parser_fn_run.add_argument(
+        "--package", dest="package", default=None, help="Use package"
+    )
+    parser_fn_run.add_argument("--filtersql", default=None, help="Filter SQL")
+    parser_fn_run.add_argument(
+        "--includesample", nargs="+", default=None, help="Sample IDs to include"
+    )
+    parser_fn_run.add_argument(
+        "--excludesample", nargs="+", default=None, help="Sample IDs to exclude"
+    )
+    parser_fn_run.add_argument("--filter", default=None, help=SUPPRESS)
+    parser_fn_run.add_argument(
+        "-f", dest="filterpath", default=None, help="Path to a filter file"
+    )
+    parser_fn_run.add_argument(
+        "--md",
+        default=None,
+        help="Specify the root directory of OakVar modules (annotators, etc)",
+    )
+    parser_fn_run.add_argument(
+        "-m",
+        dest="mapper_name",
+        nargs="+",
+        default=[],
+        help="Mapper module name or mapper module directory",
+    )
+    parser_fn_run.add_argument(
+        "-p",
+        nargs="+",
+        dest="postaggregators",
+        default=[],
+        help="Postaggregators to run. Additionally, tagsampler, casecontrol, varmeta, and vcfinfo will automatically run depending on conditions.",
+    )
+    parser_fn_run.set_defaults(func=fn_run)
+    return parser_fn_run
+

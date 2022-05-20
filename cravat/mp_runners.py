@@ -1,5 +1,6 @@
 def init_worker():
     import signal
+
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
@@ -7,6 +8,7 @@ def annot_from_queue(start_queue, end_queue, queue_populated, status_writer):
     from .util import load_class
     from logging import getLogger, FileHandler, Formatter
     from queue import Empty
+
     while True:
         try:
             task = start_queue.get(True, 1)
@@ -48,6 +50,7 @@ def mapper_runner(
 ):
     from .util import load_class
     from .admin_util import get_local_module_info
+
     module = get_local_module_info(module_name)
     kwargs = {
         "script_path": module.script_path,

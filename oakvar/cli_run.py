@@ -1,306 +1,53 @@
-from argparse import ArgumentParser, SUPPRESS
-import sys
-
-
-def fn_run(*args, **kwargs):
-    import asyncio
-    import inspect
-    from .util import get_args
+def fn_run(args):
+    from asyncio import run
+    from inspect import currentframe
+    from .util import get_dict_from_namespace
     from . import admin_util as au
+    # nested asyncio
     import nest_asyncio
-
     nest_asyncio.apply()
-    fnname = inspect.currentframe().f_code.co_name
-    parser = globals()["parser_" + fnname]
-    args = get_args(parser, args, kwargs)
+    # Windows event loop patch
+    from sys import platform, version_info, argv
+    if platform == "win32" and version_info >= (3, 8):
+        from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy
+        set_event_loop_policy(WindowsSelectorEventLoopPolicy())
+    # Custom system conf
+    from argparse import ArgumentParser
+    pre_parser = ArgumentParser(add_help=False)
+    pre_parser.add_argument(
+        "--system-option", dest="system_option", nargs="*", default=None
+    )
+    pre_args, unknown_args = pre_parser.parse_known_args(argv[1:])
+    if pre_args.system_option is not None:
+        custom_system_conf = {}
+        for kv in pre_args.system_option:
+            if "=" not in kv:
+                continue
+            toks = kv.split("=")
+            if len(toks) != 2:
+                continue
+            [k, v] = toks
+            try:
+                v = int(v)
+            except ValueError:
+                pass
+            custom_system_conf[k] = v
+        from . import admin_util
+        custom_system_conf = custom_system_conf
+        update_mic()
+    else:
+        from . import admin_util
+        admin_util.custom_system_conf = {}
+    fnname = currentframe().f_code.co_name
+    parser_fn_run = get_parser_fn_run()
+    args = get_dict_from_namespace(args)
     au.ready_resolution_console()
     module = Cravat(**args)
     try:
-        response = asyncio.run(module.main())
+        response = run(module.main())
         return response
     except Exception as e:
         raise e
-
-
-if sys.platform == "win32" and sys.version_info >= (3, 8):
-    from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy
-
-    set_event_loop_policy(WindowsSelectorEventLoopPolicy())
-
-# Custom system conf
-pre_parser = ArgumentParser(add_help=False)
-pre_parser.add_argument(
-    "--system-option", dest="system_option", nargs="*", default=None
-)
-args, unknown_args = pre_parser.parse_known_args(sys.argv[1:])
-if args.system_option is not None:
-    custom_system_conf = {}
-    for kv in args.system_option:
-        if "=" not in kv:
-            continue
-        toks = kv.split("=")
-        if len(toks) != 2:
-            continue
-        [k, v] = toks
-        try:
-            v = int(v)
-        except ValueError:
-            pass
-        custom_system_conf[k] = v
-    from . import admin_util as au
-
-    au.custom_system_conf = custom_system_conf
-    au.update_mic()
-else:
-    from . import admin_util
-
-    admin_util.custom_system_conf = {}
-
-parser_fn_run = ArgumentParser(
-    prog="ov run input_file_path_1 input_file_path_2 ...",
-    description="OakVar genomic variant interpreter. https://github.com/rkimoakbioinformatics/oakvar. Use input_file_path arguments before any option or define them in a conf file (option -c).",
-    epilog="inputs should be the first option",
-)
-parser_fn_run.add_argument(
-    "inputs",
-    nargs="*",
-    default=None,
-    help="Input file(s). One or more variant files in a supported format like VCF.  "
-    + "See the -i/--input-format flag for supported formats. In the special case "
-    + "where you want to add annotations to an existing OakVar analysis, "
-    + "provide the output sqlite database from the previous run as input instead of a variant input file.",
-)
-parser_fn_run.add_argument(
-    "-a",
-    nargs="+",
-    dest="annotators",
-    default=[],
-    help="Annotator module names or directories. If --package is used also, annotator modules defined with -a will be added.",
-)
-parser_fn_run.add_argument(
-    "-A",
-    nargs="+",
-    dest="annotators_replace",
-    default=[],
-    help="Annotator module names or directories. If --package is used also, annotator modules defined with -A will replace those defined with --package. -A has priority over -a.",
-)
-parser_fn_run.add_argument(
-    "-e", nargs="+", dest="excludes", default=[], help="annotators to exclude"
-)
-parser_fn_run.add_argument("-n", dest="run_name", help="name of oakvar run")
-parser_fn_run.add_argument(
-    "-d", dest="output_dir", default=None, help="directory for output files"
-)
-parser_fn_run.add_argument(
-    "--startat",
-    dest="startat",
-    choices=[
-        "converter",
-        "mapper",
-        "annotator",
-        "aggregator",
-        "postaggregator",
-        "reporter",
-    ],
-    default=None,
-    help="starts at given stage",
-)
-parser_fn_run.add_argument(
-    "--endat",
-    dest="endat",
-    choices=[
-        "converter",
-        "mapper",
-        "annotator",
-        "aggregator",
-        "postaggregator",
-        "reporter",
-    ],
-    default=None,
-    help="ends after given stage.",
-)
-parser_fn_run.add_argument(
-    "--skip",
-    dest="skip",
-    nargs="+",
-    choices=[
-        "converter",
-        "mapper",
-        "annotator",
-        "aggregator",
-        "postaggregator",
-        "reporter",
-    ],
-    default=None,
-    help="skips given stage(s).",
-)
-parser_fn_run.add_argument(
-    "-c", dest="conf", default="oc.yml", help="path to a conf file"
-)
-parser_fn_run.add_argument(
-    "--cs", dest="confs", default=None, help="configuration string"
-)
-parser_fn_run.add_argument(
-    "-v", dest="verbose", action="store_true", default=None, help="verbose"
-)
-parser_fn_run.add_argument(
-    "-t",
-    nargs="+",
-    dest="reports",
-    default=[],
-    help="Reporter types or reporter module directories",
-)
-parser_fn_run.add_argument(
-    "-l",
-    "--liftover",
-    dest="genome",
-    default=None,
-    help="reference genome of input. OakVar will lift over to hg38 if needed.",
-)
-parser_fn_run.add_argument(
-    "-x",
-    dest="cleandb",
-    action="store_true",
-    help="deletes the existing result database and creates a new one.",
-)
-parser_fn_run.add_argument(
-    "--newlog",
-    dest="newlog",
-    action="store_true",
-    default=None,
-    help="deletes the existing log file and creates a new one.",
-)
-parser_fn_run.add_argument(
-    "--note",
-    dest="note",
-    default=None,
-    help="note will be written to the run status file (.status.json)",
-)
-parser_fn_run.add_argument(
-    "--mp", dest="mp", default=None, help="number of processes to use to run annotators"
-)
-parser_fn_run.add_argument(
-    "-i",
-    "--input-format",
-    dest="forcedinputformat",
-    default=None,
-    help="Force input format",
-)
-parser_fn_run.add_argument(
-    "--temp-files",
-    dest="temp_files",
-    action="store_true",
-    default=None,
-    help="Leave temporary files after run is complete.",
-)
-parser_fn_run.add_argument(
-    "--writeadmindb",
-    dest="writeadmindb",
-    action="store_true",
-    default=None,
-    help="Write job information to admin db after job completion",
-)
-parser_fn_run.add_argument(
-    "--jobid", dest="jobid", default=None, help="Job ID for server version"
-)
-parser_fn_run.add_argument(
-    "--version",
-    dest="show_version",
-    action="store_true",
-    default=None,
-    help="Shows OakVar version.",
-)
-parser_fn_run.add_argument(
-    "--separatesample",
-    dest="separatesample",
-    action="store_true",
-    default=None,
-    help="Separate variant results by sample",
-)
-parser_fn_run.add_argument(
-    "--unique-variants",
-    dest="unique_variants",
-    action="store_true",
-    default=None,
-    help="Set to get only unique variants in output",
-)
-parser_fn_run.add_argument(
-    "--primary-transcript",
-    dest="primary_transcript",
-    nargs="+",
-    default=["mane"],
-    help='"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
-)
-parser_fn_run.add_argument(
-    "--cleanrun",
-    dest="clean_run",
-    action="store_true",
-    default=None,
-    help="Deletes all previous output files for the job and generate new ones.",
-)
-parser_fn_run.add_argument(
-    "--do-not-change-status",
-    dest="do_not_change_status",
-    action="store_true",
-    default=None,
-    help="Job status in status.json will not be changed",
-)
-parser_fn_run.add_argument(
-    "--module-option",
-    dest="module_option",
-    nargs="*",
-    help="Module-specific option in module_name.key=value syntax. For example, --module-option vcfreporter.type=separate",
-)
-parser_fn_run.add_argument(
-    "--system-option",
-    dest="system_option",
-    nargs="*",
-    help="System option in key=value syntax. For example, --system-option modules_dir=/home/user/oakvar/modules",
-)
-parser_fn_run.add_argument(
-    "--silent", dest="silent", action="store_true", default=None, help="Runs silently."
-)
-parser_fn_run.add_argument(
-    "--concise-report",
-    dest="concise_report",
-    action="store_true",
-    default=None,
-    help="Generate concise reports with default columns defined by each annotation module",
-)
-parser_fn_run.add_argument(
-    "--package", dest="package", default=None, help="Use package"
-)
-parser_fn_run.add_argument("--filtersql", default=None, help="Filter SQL")
-parser_fn_run.add_argument(
-    "--includesample", nargs="+", default=None, help="Sample IDs to include"
-)
-parser_fn_run.add_argument(
-    "--excludesample", nargs="+", default=None, help="Sample IDs to exclude"
-)
-parser_fn_run.add_argument("--filter", default=None, help=SUPPRESS)
-parser_fn_run.add_argument(
-    "-f", dest="filterpath", default=None, help="Path to a filter file"
-)
-parser_fn_run.add_argument(
-    "--md",
-    default=None,
-    help="Specify the root directory of OakVar modules (annotators, etc)",
-)
-parser_fn_run.add_argument(
-    "-m",
-    dest="mapper_name",
-    nargs="+",
-    default=[],
-    help="Mapper module name or mapper module directory",
-)
-parser_fn_run.add_argument(
-    "-p",
-    nargs="+",
-    dest="postaggregators",
-    default=[],
-    help="Postaggregators to run. Additionally, tagsampler, casecontrol, varmeta, and vcfinfo will automatically run depending on conditions.",
-)
-parser_fn_run.set_defaults(func=fn_run)
 
 
 class Cravat(object):
@@ -310,6 +57,7 @@ class Cravat(object):
     def __init__(self, **kwargs):
         from time import time, asctime, localtime
         from multiprocessing.managers import SyncManager
+        from sys import executable, argv
 
         self.runlevels = {
             "converter": 1,
@@ -324,7 +72,7 @@ class Cravat(object):
         self.should_run_annotators = True
         self.should_run_aggregator = True
         self.should_run_reporter = True
-        self.pythonpath = sys.executable
+        self.pythonpath = executable
         self.annotators = {}
         self.append_mode = False
         self.pipeinput = False
@@ -336,7 +84,7 @@ class Cravat(object):
                 self.delete_output_files()
             self.get_logger()
             self.start_time = time()
-            self.logger.info(f'{" ".join(sys.argv)}')
+            self.logger.info(f'{" ".join(argv)}')
             self.logger.info("started: {0}".format(asctime(localtime(self.start_time))))
             if self.run_conf_path != "":
                 self.logger.info("conf file: {}".format(self.run_conf_path))
@@ -521,7 +269,7 @@ class Cravat(object):
             )
 
     async def main(self):
-        import time
+        from time import time, asctime, localtime
 
         no_problem_in_run = True
         report_response = None
@@ -809,7 +557,7 @@ class Cravat(object):
         from .util import get_argument_parser_defaults
         from types import SimpleNamespace
 
-        full_args = get_argument_parser_defaults(parser_fn_run)
+        full_args = get_argument_parser_defaults(get_parser_fn_run())
         # package
         if "run" in self.package_conf:
             package_conf_run = {
@@ -2208,3 +1956,253 @@ class StatusWriter:
         self.update_status_json()
         self.t = time()
         self.lock = False
+
+def get_parser_fn_run():
+    from argparse import ArgumentParser, SUPPRESS
+    parser_fn_run = ArgumentParser(
+        prog="ov run input_file_path_1 input_file_path_2 ...",
+        description="OakVar genomic variant interpreter. https://github.com/rkimoakbioinformatics/oakvar. Use input_file_path arguments before any option or define them in a conf file (option -c).",
+        epilog="inputs should be the first option",
+    )
+    parser_fn_run.add_argument(
+        "inputs",
+        nargs="*",
+        default=None,
+        help="Input file(s). One or more variant files in a supported format like VCF.  "
+        + "See the -i/--input-format flag for supported formats. In the special case "
+        + "where you want to add annotations to an existing OakVar analysis, "
+        + "provide the output sqlite database from the previous run as input instead of a variant input file.",
+    )
+    parser_fn_run.add_argument(
+        "-a",
+        nargs="+",
+        dest="annotators",
+        default=[],
+        help="Annotator module names or directories. If --package is used also, annotator modules defined with -a will be added.",
+    )
+    parser_fn_run.add_argument(
+        "-A",
+        nargs="+",
+        dest="annotators_replace",
+        default=[],
+        help="Annotator module names or directories. If --package is used also, annotator modules defined with -A will replace those defined with --package. -A has priority over -a.",
+    )
+    parser_fn_run.add_argument(
+        "-e", nargs="+", dest="excludes", default=[], help="annotators to exclude"
+    )
+    parser_fn_run.add_argument("-n", dest="run_name", help="name of oakvar run")
+    parser_fn_run.add_argument(
+        "-d", dest="output_dir", default=None, help="directory for output files"
+    )
+    parser_fn_run.add_argument(
+        "--startat",
+        dest="startat",
+        choices=[
+            "converter",
+            "mapper",
+            "annotator",
+            "aggregator",
+            "postaggregator",
+            "reporter",
+        ],
+        default=None,
+        help="starts at given stage",
+    )
+    parser_fn_run.add_argument(
+        "--endat",
+        dest="endat",
+        choices=[
+            "converter",
+            "mapper",
+            "annotator",
+            "aggregator",
+            "postaggregator",
+            "reporter",
+        ],
+        default=None,
+        help="ends after given stage.",
+    )
+    parser_fn_run.add_argument(
+        "--skip",
+        dest="skip",
+        nargs="+",
+        choices=[
+            "converter",
+            "mapper",
+            "annotator",
+            "aggregator",
+            "postaggregator",
+            "reporter",
+        ],
+        default=None,
+        help="skips given stage(s).",
+    )
+    parser_fn_run.add_argument(
+        "-c", dest="conf", default="oc.yml", help="path to a conf file"
+    )
+    parser_fn_run.add_argument(
+        "--cs", dest="confs", default=None, help="configuration string"
+    )
+    parser_fn_run.add_argument(
+        "-v", dest="verbose", action="store_true", default=None, help="verbose"
+    )
+    parser_fn_run.add_argument(
+        "-t",
+        nargs="+",
+        dest="reports",
+        default=[],
+        help="Reporter types or reporter module directories",
+    )
+    parser_fn_run.add_argument(
+        "-l",
+        "--liftover",
+        dest="genome",
+        default=None,
+        help="reference genome of input. OakVar will lift over to hg38 if needed.",
+    )
+    parser_fn_run.add_argument(
+        "-x",
+        dest="cleandb",
+        action="store_true",
+        help="deletes the existing result database and creates a new one.",
+    )
+    parser_fn_run.add_argument(
+        "--newlog",
+        dest="newlog",
+        action="store_true",
+        default=None,
+        help="deletes the existing log file and creates a new one.",
+    )
+    parser_fn_run.add_argument(
+        "--note",
+        dest="note",
+        default=None,
+        help="note will be written to the run status file (.status.json)",
+    )
+    parser_fn_run.add_argument(
+        "--mp", dest="mp", default=None, help="number of processes to use to run annotators"
+    )
+    parser_fn_run.add_argument(
+        "-i",
+        "--input-format",
+        dest="forcedinputformat",
+        default=None,
+        help="Force input format",
+    )
+    parser_fn_run.add_argument(
+        "--temp-files",
+        dest="temp_files",
+        action="store_true",
+        default=None,
+        help="Leave temporary files after run is complete.",
+    )
+    parser_fn_run.add_argument(
+        "--writeadmindb",
+        dest="writeadmindb",
+        action="store_true",
+        default=None,
+        help="Write job information to admin db after job completion",
+    )
+    parser_fn_run.add_argument(
+        "--jobid", dest="jobid", default=None, help="Job ID for server version"
+    )
+    parser_fn_run.add_argument(
+        "--version",
+        dest="show_version",
+        action="store_true",
+        default=None,
+        help="Shows OakVar version.",
+    )
+    parser_fn_run.add_argument(
+        "--separatesample",
+        dest="separatesample",
+        action="store_true",
+        default=None,
+        help="Separate variant results by sample",
+    )
+    parser_fn_run.add_argument(
+        "--unique-variants",
+        dest="unique_variants",
+        action="store_true",
+        default=None,
+        help="Set to get only unique variants in output",
+    )
+    parser_fn_run.add_argument(
+        "--primary-transcript",
+        dest="primary_transcript",
+        nargs="+",
+        default=["mane"],
+        help='"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
+    )
+    parser_fn_run.add_argument(
+        "--cleanrun",
+        dest="clean_run",
+        action="store_true",
+        default=None,
+        help="Deletes all previous output files for the job and generate new ones.",
+    )
+    parser_fn_run.add_argument(
+        "--do-not-change-status",
+        dest="do_not_change_status",
+        action="store_true",
+        default=None,
+        help="Job status in status.json will not be changed",
+    )
+    parser_fn_run.add_argument(
+        "--module-option",
+        dest="module_option",
+        nargs="*",
+        help="Module-specific option in module_name.key=value syntax. For example, --module-option vcfreporter.type=separate",
+    )
+    parser_fn_run.add_argument(
+        "--system-option",
+        dest="system_option",
+        nargs="*",
+        help="System option in key=value syntax. For example, --system-option modules_dir=/home/user/oakvar/modules",
+    )
+    parser_fn_run.add_argument(
+        "--silent", dest="silent", action="store_true", default=None, help="Runs silently."
+    )
+    parser_fn_run.add_argument(
+        "--concise-report",
+        dest="concise_report",
+        action="store_true",
+        default=None,
+        help="Generate concise reports with default columns defined by each annotation module",
+    )
+    parser_fn_run.add_argument(
+        "--package", dest="package", default=None, help="Use package"
+    )
+    parser_fn_run.add_argument("--filtersql", default=None, help="Filter SQL")
+    parser_fn_run.add_argument(
+        "--includesample", nargs="+", default=None, help="Sample IDs to include"
+    )
+    parser_fn_run.add_argument(
+        "--excludesample", nargs="+", default=None, help="Sample IDs to exclude"
+    )
+    parser_fn_run.add_argument("--filter", default=None, help=SUPPRESS)
+    parser_fn_run.add_argument(
+        "-f", dest="filterpath", default=None, help="Path to a filter file"
+    )
+    parser_fn_run.add_argument(
+        "--md",
+        default=None,
+        help="Specify the root directory of OakVar modules (annotators, etc)",
+    )
+    parser_fn_run.add_argument(
+        "-m",
+        dest="mapper_name",
+        nargs="+",
+        default=[],
+        help="Mapper module name or mapper module directory",
+    )
+    parser_fn_run.add_argument(
+        "-p",
+        nargs="+",
+        dest="postaggregators",
+        default=[],
+        help="Postaggregators to run. Additionally, tagsampler, casecontrol, varmeta, and vcfinfo will automatically run depending on conditions.",
+    )
+    parser_fn_run.set_defaults(func=fn_run)
+    return parser_fn_run
+

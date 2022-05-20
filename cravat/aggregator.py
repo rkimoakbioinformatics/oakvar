@@ -5,6 +5,7 @@ class Aggregator(object):
 
     def __init__(self, cmd_args, status_writer):
         from os.path import abspath
+
         self.status_writer = status_writer
         self.annotators = []
         self.ipaths = {}
@@ -26,6 +27,7 @@ class Aggregator(object):
         from os.path import abspath, exists
         from os import makedirs
         from argparse import ArgumentParser
+
         parser = ArgumentParser()
         parser.add_argument("path", help="Path to this aggregator module")
         parser.add_argument(
@@ -75,6 +77,7 @@ class Aggregator(object):
 
     def _setup_logger(self):
         from logging import getLogger
+
         self.logger = getLogger("oakvar.aggregator")
         self.logger.info("level: {0}".format(self.level))
         self.logger.info("input directory: %s" % self.input_dir)
@@ -83,6 +86,7 @@ class Aggregator(object):
 
     def run(self):
         from time import time, asctime, localtime
+
         self._setup()
         if self.input_base_fname == None:
             return
@@ -167,6 +171,7 @@ class Aggregator(object):
 
     def make_reportsub(self):
         from json import loads
+
         if self.level in ["variant", "gene"]:
             q = f"select * from {self.level}_reportsub"
             self.cursor.execute(q)
@@ -190,6 +195,7 @@ class Aggregator(object):
         from distutils.version import LooseVersion
         from oakvar.inout import ColumnDefinition
         from oakvar.admin_util import get_current_package_version
+
         header_table = self.level + "_header"
         coldefs = []
         if LooseVersion(get_current_package_version()) >= LooseVersion("1.5.0"):
@@ -244,6 +250,7 @@ class Aggregator(object):
 
     def set_input_base_fname(self):
         from os import listdir
+
         crv_fname = self.name + ".crv"
         crx_fname = self.name + ".crx"
         crg_fname = self.name + ".crg"
@@ -268,6 +275,7 @@ class Aggregator(object):
     def _setup(self):
         from os.path import join
         from os import listdir
+
         if self.level == "variant":
             self.key_name = "uid"
         elif self.level == "gene":
@@ -304,6 +312,7 @@ class Aggregator(object):
         from json import loads, dumps
         from collections import OrderedDict
         from oakvar.inout import ColumnDefinition
+
         columns = []
         unique_names = set()
         # annotator table
@@ -441,6 +450,7 @@ class Aggregator(object):
         from os import remove
         from sqlite3 import connect
         from oakvar.inout import CravatReader
+
         self.base_reader = CravatReader(self.base_fpath)
         for annot_name in self.annotators:
             self.readers[annot_name] = CravatReader(self.ipaths[annot_name])
@@ -453,6 +463,7 @@ class Aggregator(object):
 
     def _log_runtime_error(self, ln, line, e):
         from traceback import format_exc
+
         err_str = format_exc().rstrip()
         if ln is not None and line is not None:
             if err_str not in self.unique_excs:
@@ -467,5 +478,6 @@ class Aggregator(object):
 
 if __name__ == "__main__":
     import sys
+
     aggregator = Aggregator(sys.argv)
     aggregator.run()

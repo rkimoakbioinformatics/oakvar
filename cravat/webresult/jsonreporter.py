@@ -1,4 +1,4 @@
-from oakvar.cmd_report import CravatReport
+from oakvar.cli_report import CravatReport
 import sys
 import datetime
 from oakvar.config_loader import ConfigLoader
