@@ -1,9 +1,23 @@
-class InvalidData(Exception):
-    notraceback = True
+class ExpectedException(Exception):
+    halt = None
+
+class NormalExit(ExpectedException):
     pass
 
+class NoGenomeException(ExpectedException):
+    def __init__(self):
+        super().__init__("error: genome assembly should be selected.")
+        self.halt = True
 
-class ConfigurationError(Exception):
+class InvalidGenomeAssembly(ExpectedException):
+    def __init__(self, genome_assembly):
+        super().__init__(f"error: {genome_assembly} is an invalid genome assembly.")
+        self.halt = True
+
+class InvalidData(ExpectedException):
+    nolog = True
+
+class ConfigurationError(ExpectedException):
     pass
 
 
@@ -20,20 +34,11 @@ class FileIntegrityError(Exception):
         super().__init__(path)
 
 
-class CravatProfileException:
-    def __init__(self, msg):
-        super().__init__(msg)
-
-
-class ExpectedException(Exception):
+class KillInstallException(ExpectedException):
     pass
 
 
-class KillInstallException(Exception):
-    pass
-
-
-class InvalidFilter(Exception):
+class InvalidFilter(ExpectedException):
     notraceback = True
 
     def __init__(self, wrong_samples, wrong_colnames):
@@ -51,14 +56,23 @@ class InvalidFilter(Exception):
         return str(self.msg)
 
 
-class InvalidModule(Exception):
+class InvalidModule(ExpectedException):
     def __init__(self, module_name):
-        self.msg = "Invalid module: {}".format(module_name)
-
-    def __str__(self):
-        return self.msg
+        super().__init__("error: module [{}] does not exist.".format(module_name))
 
 
-class NoVariantError(Exception):
+class NoVariantError(ExpectedException):
     def __init__(self):
         super().__init__("Reference and alternate alleles are the same.")
+
+class NoInputException(ExpectedException):
+    def __init__(self):
+        super().__init__("error: no input was given.")
+
+class SystemMissingException(ExpectedException):
+    def __init__(self, msg=""):
+        if msg is not None and msg != "":
+            msg = f"OakVar is not ready ({msg}). 'ov system setup' to set up OakVar."
+        else:
+            msg = f"OakVar is not ready. 'ov system setup' to set up OakVar."
+        super().__init__(msg)

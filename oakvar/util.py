@@ -263,6 +263,7 @@ def translate_codon(bases, fallback=None):
 
 
 def valid_so(so):
+    from .constants import so_severity
     return so in so_severity
 
 

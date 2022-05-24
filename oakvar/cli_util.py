@@ -138,7 +138,7 @@ def converttohg38(args):
 def fn_util_updateresult(args):
     import sqlite3
     from os import listdir
-    from os.path import join, isdir
+    from os.path import join, isdir, exists
     from shutil import copy
     from distutils.version import LooseVersion
     from .util import get_dict_from_namespace
@@ -233,7 +233,7 @@ def fn_util_addjob(args):
     from time import sleep
     from pathlib import Path
     from datetime import datetime
-    from .admin_util import get_jobs_dir
+    from .sysadmin import get_jobs_dir
 
     dbpath = args.path
     user = args.user
@@ -295,11 +295,14 @@ def fn_util_showsqliteinfo(args):
     dbpaths = args["paths"]
     width_colname = 30
     width_coltitle = 40
+    ret = None
     for dbpath in dbpaths:
         if fmt == "text":
+            ret = []
             s = f"# SQLite file:\n{dbpath}"
             ret.append(s)
         elif fmt in ["json", "yaml"]:
+            ret = {}
             ret["dbpath"] = dbpath
         conn = sqlite3.connect(dbpath)
         c = conn.cursor()
@@ -724,19 +727,14 @@ def get_parser_fn_util():
     parser_fn_util = ArgumentParser()
     _subparsers = parser_fn_util.add_subparsers(title="Commands")
     # test
-    from .cli_test import fn_util_test
-    parser_fn_util_test = _subparsers.add_parser("test", help="Test installed modules")
-    parser_fn_util_test.add_argument("-d", "--rundir", help="Directory for output")
-    parser_fn_util_test.add_argument(
-        "-m", "--modules", nargs="+", help="Name of module(s) to test. (e.g. gnomad)"
+    from .cli_test import get_parser_fn_util_test
+    parser_fn_util_test = _subparsers.add_parser(
+            "test", 
+            parents=[get_parser_fn_util_test()],
+            add_help=False,
+            description="Test modules",
+            help="Test installed modules"
     )
-    parser_fn_util_test.add_argument(
-        "-t", "--mod_types", nargs="+", help="Type of module(s) to test (e.g. annotators)"
-    )
-    parser_fn_util_test.add_argument(
-        "--to", default="stdout", help="stdout to print / return to return"
-    )
-    parser_fn_util_test.set_defaults(func=fn_util_test)
     # converts db coordinate to hg38
     parser_fn_util_convert = _subparsers.add_parser(
         "converttohg38", help="converts hg19 coordinates in SQLite3 database to hg38 ones."
@@ -856,6 +854,8 @@ def get_parser_fn_util():
     parser_fn_util_filtersqlite.set_defaults(func=fn_util_filtersqlite)
     return parser_fn_util
 
+def main():
+    pass
 
 if __name__ == "__main__":
     main()

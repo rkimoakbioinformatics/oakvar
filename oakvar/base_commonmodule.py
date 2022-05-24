@@ -10,8 +10,9 @@ class BaseCommonModule(object):
                 self.logger.exception(e)
 
     def _define_cmd_parser(self):
+        from argparse import ArgumentParser
         try:
-            parser = argparse.ArgumentParser()
+            parser = ArgumentParser()
             self.cmd_arg_parser = parser
         except Exception as e:
             self._log_exception(e)
@@ -27,29 +28,31 @@ class BaseCommonModule(object):
         pass
 
     def _setup_logger(self):
+        from logging import getLogger, FileHandler, Formatter, StreamHandler
+        from os.path import join
         try:
-            self.logger = logging.getLogger("oakvar." + self.module_name)
+            self.logger = getLogger("oakvar." + self.module_name)
             if self.output_basename != "__dummy__":
-                self.log_path = os.path.join(
+                self.log_path = join(
                     self.output_dir, self.output_basename + ".log"
                 )
-                log_handler = logging.FileHandler(self.log_path, "a")
+                log_handler = FileHandler(self.log_path, "a")
             else:
-                log_handler = logging.StreamHandler()
-            formatter = logging.Formatter(
+                log_handler = StreamHandler()
+            formatter = Formatter(
                 "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
             )
             log_handler.setFormatter(formatter)
             self.logger.addHandler(log_handler)
-            self.error_logger = logging.getLogger("error." + self.module_name)
+            self.error_logger = getLogger("error." + self.module_name)
             if self.output_basename != "__dummy__":
-                error_log_path = os.path.join(
+                error_log_path = join(
                     self.output_dir, self.output_basename + ".err"
                 )
-                error_log_handler = logging.FileHandler(error_log_path, "a")
+                error_log_handler = FileHandler(error_log_path, "a")
             else:
-                error_log_handler = logging.StreamHandler()
-            formatter = logging.Formatter("SOURCE:%(name)-20s %(message)s")
+                error_log_handler = StreamHandler()
+            formatter = Formatter("SOURCE:%(name)-20s %(message)s")
             error_log_handler.setFormatter(formatter)
             self.error_logger.addHandler(error_log_handler)
         except Exception as e:

@@ -52,7 +52,7 @@ code {
     background-color: #94d1eb;
     height: 20px;
     border-radius: 2px 2px 0px 0px;
-    border: 1px solid #939393
+    border: 1px solid #939393;
     border-bottom: 0px;
     margin-left: 2px;
     font-family: roboto-medium;
@@ -209,7 +209,7 @@ button {
 }
 
 .logo {
-    width: 68px;
+    width: 42px;
     padding: 3px;
 }
 

@@ -134,7 +134,7 @@ class CravatReader(CravatFile):
 
     def loop_data(self):
         from .exceptions import BadFormatError
-        from json import dumps
+        from json import loads, dumps
 
         for lnum, l in self._loop_data():
             toks = l.split("\t")
@@ -222,9 +222,16 @@ class CravatWriter(CravatFile):
         include_titles=True,
         titles_prefix="#",
         columns=[],
+        fmt="old",
     ):
         super().__init__(path)
-        self.wf = open(self.path, "w", encoding="utf-8")
+        self.fmt = fmt
+        if fmt == "csv":
+            self.wf = open(self.path, "w", newline="", encoding="utf-8")
+            from csv import reader
+            self.csvwriter = reader(self.wf)
+        else:
+            self.wf = open(self.path, "w", encoding="utf-8")
         self._ready_to_write = False
         self.ordered_columns = []
         self.name_to_col_index = {}
@@ -346,9 +353,14 @@ class CravatWriter(CravatFile):
                 wtoks[col_index] = str(data[col_name])
             else:
                 wtoks[col_index] = ""
-        self.wf.write("\t".join(wtoks) + "\n")
+        if self.fmt == "csv":
+            self.csvwriter.writerow(wtoks)
+        else:
+            self.wf.write("\t".join(wtoks) + "\n")
 
     def close(self):
+        if self.fmt == "csv":
+            self.csvwriter.close()
         self.wf.close()
 
 

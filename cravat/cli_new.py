@@ -9,7 +9,7 @@ def fn_new_exampleinput(args):
 def fn_new_annotator(args):
     from .admin_util import new_annotator, get_local_module_info
     from .util import get_dict_from_namespace
-    from .constants import custom_modules_dir
+    from .sysadmin_const import custom_modules_dir
 
     args = get_dict_from_namespace(args)
     if args["md"] is not None:

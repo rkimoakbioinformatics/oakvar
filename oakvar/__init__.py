@@ -55,9 +55,9 @@ wgs = None
 
 
 def get_live_annotator(module_name):
+    module = None
     try:
         import os
-
         ModuleClass = get_module(module_name)
         module = ModuleClass(input_file="__dummy__", live=True)
         # module.module_name = module_name
@@ -69,9 +69,9 @@ def get_live_annotator(module_name):
         # module.conf = config_loader.get_module_conf(module_name)
         module.setup()
     except:
-        print("    module loading error: {}".format(module.module_name))
+        if module is not None:
+            print("    module loading error: {}".format(module.module_name))
         import traceback
-
         traceback.print_exc()
         return None
     return module

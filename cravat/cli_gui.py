@@ -1,18 +1,10 @@
 from os.path import join
-from .admin_util import get_system_conf
+from .sysadmin import get_system_conf
 from aiohttp import web, web_runner
 import logging
-from .constants import log_dir_key, modules_dir_key
+from .sysadmin_const import log_dir_key, modules_dir_key
 
 SERVER_ALREADY_RUNNING = -1
-
-sysconf = get_system_conf()
-log_dir = sysconf[log_dir_key]
-modules_dir = sysconf[modules_dir_key]
-log_path = join(log_dir, "wcravat.log")
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-
 headless = None
 servermode = None
 server_ready = None
@@ -22,6 +14,13 @@ http_only = None
 sc = None
 loop = None
 debug = False
+loop = None
+sysconf = None
+log_dir = None
+modules_dir = None
+log_path = None
+logger = None
+
 
 
 def setup(args):
@@ -29,7 +28,7 @@ def setup(args):
     from .webresult import webresult as wr
     from .webstore import webstore as ws
     from .websubmit import websubmit as wu
-    from asyncio import get_event_loop
+    from asyncio import get_event_loop, set_event_loop
     from importlib.util import find_spec
     from os.path import join, exists
 
@@ -50,9 +49,7 @@ def setup(args):
         debug = args["debug"]
         if servermode and find_spec("cravat_multiuser") is not None:
             try:
-                global cravat_multiuser
                 import cravat_multiuser
-
                 loop.create_task(cravat_multiuser.setup_module())
                 global server_ready
                 server_ready = True
@@ -78,6 +75,7 @@ def setup(args):
         wu.filerouter.server_ready = server_ready
         wr.wu = wu
         if server_ready:
+            import cravat_multiuser
             cravat_multiuser.servermode = servermode
             cravat_multiuser.server_ready = server_ready
             cravat_multiuser.logger = logger
@@ -128,6 +126,14 @@ def fn_gui(args):
     from .util import get_dict_from_namespace, is_compatible_version
     from logging.handlers import TimedRotatingFileHandler
     from os.path import abspath, exists
+    global sysconf, log_dir, modules_dir, log_path, logger
+
+    sysconf = get_system_conf()
+    log_dir = sysconf[log_dir_key]
+    modules_dir = sysconf[modules_dir_key]
+    log_path = join(log_dir, "wcravat.log")
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
 
     args = get_dict_from_namespace(args)
     log_handler = TimedRotatingFileHandler(log_path, when="d", backupCount=30)
@@ -209,7 +215,7 @@ def fn_gui(args):
 
 
 def get_server():
-    from .admin_util import get_system_conf
+    from .sysadmin import get_system_conf
     import platform
 
     global args
@@ -299,6 +305,7 @@ class TCPSitePatched(web_runner.BaseSite):
 
     @property
     def name(self):
+        from aiohttp.web_request import URL
         global ssl_enabled
         scheme = "https" if ssl_enabled else "http"
         return str(URL.build(scheme=scheme, host=self._host, port=self._port))
@@ -392,6 +399,7 @@ class WebServer(object):
         global server_ready
         self.app = web.Application(loop=self.loop, middlewares=[middleware])
         if server_ready:
+            import cravat_multiuser
             cravat_multiuser.setup(self.app)
         self.setup_routes()
         self.runner = web.AppRunner(self.app)
@@ -434,7 +442,6 @@ class WebServer(object):
         from .webstore import webstore as ws
         from .websubmit import websubmit as wu
         from os.path import dirname, realpath, join, exists
-
         source_dir = dirname(realpath(__file__))
         routes = list()
         routes.extend(ws.routes)
@@ -442,6 +449,7 @@ class WebServer(object):
         routes.extend(wu.routes)
         global server_ready
         if server_ready:
+            import cravat_multiuser
             cravat_multiuser.add_routes(self.app.router)
         for route in routes:
             method, path, func_name = route
@@ -488,6 +496,7 @@ async def heartbeat(request):
 
     ws = web.WebSocketResponse(timeout=60 * 60 * 24 * 365)
     if servermode and server_ready:
+        import cravat_multiuser
         get_event_loop().create_task(cravat_multiuser.update_last_active(request))
     await ws.prepare(request)
     try:
@@ -504,7 +513,6 @@ async def is_system_ready(request):
     return web.json_response(dict(system_ready()))
 
 
-loop = None
 
 
 def main(url=None, host=None, port=None):
@@ -579,8 +587,8 @@ def main(url=None, host=None, port=None):
             """
             Clean sessions periodically.
             """
-            from .admin_util import get_system_conf
-
+            from .sysadmin import get_system_conf
+            import cravat_multiuser
             try:
                 max_age = get_system_conf().get(
                     "max_session_age", 604800

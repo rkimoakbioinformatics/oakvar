@@ -208,7 +208,8 @@ class LocalModuleInfo(object):
 class ModuleInfoCache(object):
     def __init__(self):
         from oakvar.store_utils import PathBuilder
-
+        from .sysadmin import get_system_conf
+        from .sysadmin import get_modules_dir
         self._sys_conf = get_system_conf()
         self._modules_dir = get_modules_dir()
         self.local = LocalInfoCache()
@@ -223,6 +224,7 @@ class ModuleInfoCache(object):
         self._counts_fetched = False
 
     def get_local(self):
+        from .sysadmin import get_modules_dir
         modules_dir = get_modules_dir()
         if self._modules_dir != modules_dir:
             self._modules_dir = modules_dir
@@ -245,9 +247,12 @@ class ModuleInfoCache(object):
     def update_local(self):
         import os
         from .constants import install_tempdir_name
-
+        from .sysadmin import get_modules_dir
         self.local = LocalInfoCache()
         self._modules_dir = get_modules_dir()
+        if self._modules_dir is None:
+            from .exceptions import SystemMissingException
+            raise SystemMissingException(msg="Modules directory is not set")
         if not (os.path.exists(self._modules_dir)):
             return None
         for mg in os.listdir(self._modules_dir):
@@ -423,6 +428,7 @@ class RemoteModuleInfo(object):
 
 def change_password(username, cur_pw, new_pw):
     from requests import post
+    from .sysadmin import get_system_conf
 
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
@@ -438,6 +444,7 @@ def change_password(username, cur_pw, new_pw):
 
 def check_login(username, password):
     from requests import get
+    from .sysadmin import get_system_conf
 
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
@@ -466,6 +473,7 @@ def compare_version(v1, v2):
 
 def create_account(username, password):
     from requests import post
+    from .sysadmin import get_system_conf
 
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
@@ -485,7 +493,7 @@ def create_account(username, password):
 
 def get_annotator_dir(module_name):
     import os
-
+    from .sysadmin import get_modules_dir
     module_dir = os.path.join(get_modules_dir(), "annotators", module_name)
     if os.path.exists(module_dir) == False:
         module_dir = None
@@ -494,7 +502,7 @@ def get_annotator_dir(module_name):
 
 def get_annotator_script_path(module_name):
     import os
-
+    from .sysadmin import get_modules_dir
     module_path = os.path.join(
         get_modules_dir(), "annotators", module_name, module_name + ".py"
     )
@@ -503,17 +511,10 @@ def get_annotator_script_path(module_name):
     return module_path
 
 
-def get_conf_dir():
-    from .constants import conf_dir_key
-
-    conf = get_system_conf()
-    conf_dir = conf[conf_dir_key]
-    return conf_dir
-
 
 def get_cravat_conf():
     from oakvar.config_loader import ConfigLoader
-
+    from .sysadmin import get_main_conf_path
     confpath = get_main_conf_path()
     conf = ConfigLoader()
     cravat_conf = conf.get_cravat_conf()
@@ -521,6 +522,7 @@ def get_cravat_conf():
 
 
 def get_cravat_conf_info():
+    from .sysadmin import get_main_conf_path
     cravat_conf = get_cravat_conf()
     cravat_conf.update({"cravat_conf_path": get_main_conf_path()})
     return cravat_conf
@@ -600,13 +602,6 @@ def get_install_deps(module_name, version=None, skip_installed=True):
         deps_pypi[req_pypi] = True
     return deps, deps_pypi
 
-
-def get_jobs_dir():
-    from .constants import jobs_dir_key
-
-    conf = get_system_conf()
-    jobs_dir = conf[jobs_dir_key]
-    return jobs_dir
 
 
 def get_last_assembly():
@@ -698,29 +693,11 @@ def get_local_module_types():
     return types
 
 
-def get_main_conf_path():
-    """
-    Get the path to where the main oakvar config (cravat.yml) should be.
-    """
-    import os
-    from .constants import main_conf_fname
-
-    return os.path.join(get_conf_dir(), main_conf_fname)
-
-
-def get_main_default_path():
-    """
-    Get the path to the default main oakvar config.(backup lives in the pip package)
-    """
-    import os
-    from .constants import main_conf_fname
-
-    return os.path.join(get_packagedir(), main_conf_fname)
 
 
 def get_mapper_script_path(module_name):
     import os
-
+    from .sysadmin import get_modules_dir
     module_path = os.path.join(
         get_modules_dir(), "mappers", module_name, module_name + ".py"
     )
@@ -729,13 +706,10 @@ def get_mapper_script_path(module_name):
     return module_path
 
 
-def get_max_num_concurrent_annotators_per_job():
-    return get_system_conf()["max_num_concurrent_annotators_per_job"]
-
 
 def get_module_conf_path(module_name, module_type=None):
     import os
-
+    from .sysadmin import get_modules_dir
     conf_path = None
     modules_dir = get_modules_dir()
     yml_fn = os.path.basename(module_name) + ".yml"
@@ -767,26 +741,6 @@ def get_module_conf_path(module_name, module_type=None):
                 if conf_path is not None:
                     break
     return conf_path
-
-
-def get_modules_dir():
-    """
-    Get the current modules directory
-    """
-    import os
-    from .constants import custom_modules_dir, modules_dir_env_key, modules_dir_key
-
-    if custom_modules_dir is not None:
-        modules_dir = custom_modules_dir
-    else:
-        modules_dir = os.environ.get(modules_dir_env_key, None)
-        if modules_dir is not None and modules_dir != "":
-            modules_dir = os.environ.get(modules_dir_env_key)
-        else:
-            conf = get_system_conf()
-            modules_dir = conf[modules_dir_key]
-    modules_dir = os.path.abspath(modules_dir)
-    return modules_dir
 
 
 def get_package_versions():
@@ -830,10 +784,7 @@ def get_readme(module_name, version=None):
             local_readme = open(local_info.readme_path).read()
         else:
             local_readme = ""
-    else:
-        local_readme = ""
-    if exists_remote == True:
-        if exists_local:
+        if exists_remote == True:
             remote_version = get_remote_latest_version(module_name)
             local_version = local_info.version
             if compare_version(remote_version, local_version) > 0:
@@ -841,9 +792,13 @@ def get_readme(module_name, version=None):
             else:
                 return local_readme
         else:
-            return remote_readme
+            return local_readme
     else:
-        return local_readme
+        local_readme = ""
+        if exists_remote == True:
+            return remote_readme
+        else:
+            return local_readme
 
 
 def get_remote_data_version(module_name, version):
@@ -910,72 +865,6 @@ def get_remote_module_readme(module_name, version=None):
     return get_mic().get_remote_readme(module_name, version=version)
 
 
-def get_system_conf(custom_system_conf_path=None, file_only=False):
-    """
-    Get the system config. Fill in the default modules dir if not set.
-    """
-    import os
-    from .constants import (
-        system_conf_path_env_key,
-        modules_dir_key,
-        conf_dir_key,
-        jobs_dir_key,
-        log_dir_key,
-        default_num_input_line_warning_cutoff,
-        default_settings_gui_input_size_limit,
-        default_max_num_concurrent_jobs,
-        default_max_num_concurrent_annotators_per_job,
-    )
-
-    if custom_system_conf_path is not None:
-        conf = load_yml_conf(custom_system_conf_path)
-    elif os.environ.get(system_conf_path_env_key) is not None:
-        conf = load_yml_conf(os.environ.get(system_conf_path_env_key))
-    else:
-        conf = load_yml_conf(get_system_conf_path())
-    if file_only:
-        return conf
-    if modules_dir_key not in conf:
-        conf[modules_dir_key] = get_default_modules_dir()
-    if conf_dir_key not in conf:
-        conf[conf_dir_key] = get_default_conf_dir()
-    if jobs_dir_key not in conf:
-        conf[jobs_dir_key] = get_default_jobs_dir()
-    if log_dir_key not in conf:
-        conf[log_dir_key] = get_default_log_dir()
-    key = "num_input_line_warning_cutoff"
-    if key not in conf:
-        conf[key] = default_num_input_line_warning_cutoff
-    key = "gui_input_size_limit"
-    if key not in conf:
-        conf[key] = default_settings_gui_input_size_limit
-    key = "max_num_concurrent_jobs"
-    if key not in conf:
-        conf[key] = default_max_num_concurrent_jobs
-    key = "max_num_concurrent_annotators_per_job"
-    if key not in conf:
-        conf[key] = default_max_num_concurrent_annotators_per_job
-    if "custom_system_conf" in globals():
-        global custom_system_conf
-        for k, v in custom_system_conf.items():
-            conf[k] = v
-    return conf
-
-
-def get_system_conf_info(**kwargs):
-    import os
-
-    confpath = get_system_conf_path()
-    if os.path.exists(confpath):
-        conf = get_system_conf()
-        confexists = True
-    else:
-        conf = {}
-        confexists = False
-    conf["package_path"] = os.path.dirname(os.path.abspath(__file__))
-    system_conf_info = conf
-    system_conf_info.update({"conf_path": confpath, "conf_exists": confexists})
-    return system_conf_info
 
 
 async def get_updatable_async(modules=[], strategy="consensus"):
@@ -1086,7 +975,7 @@ def get_widgets_for_annotator(annotator_name, skip_installed=False):
 
 def input_formats():
     import os
-
+    from .sysadmin import get_modules_dir
     formats = set()
     d = os.path.join(get_modules_dir(), "converters")
     if os.path.exists(d):
@@ -1120,17 +1009,18 @@ def install_module(
     from .exceptions import KillInstallException
     import signal
     import subprocess
-
+    from .sysadmin import get_system_conf
+    from .sysadmin import get_modules_dir
     modules_dir = get_modules_dir()
     temp_dir = os.path.join(modules_dir, install_tempdir_name, module_name)
     shutil.rmtree(temp_dir, ignore_errors=True)
     os.makedirs(temp_dir)
+    # Ctrl-c in this func must be caught to delete temp_dir
+    def raise_kbi(a, b):
+        raise KeyboardInterrupt
+    original_sigint = signal.signal(signal.SIGINT, raise_kbi)
     try:
-        # Ctrl-c in this func must be caught to delete temp_dir
-        def raise_kbi(a, b):
-            raise KeyboardInterrupt
 
-        original_sigint = signal.signal(signal.SIGINT, raise_kbi)
         if stage_handler is None:
             stage_handler = InstallProgressHandler(module_name, version)
         if version is None:
@@ -1367,6 +1257,7 @@ def list_local():
     """
     Returns a list of locally installed modules.
     """
+    from .sysadmin import get_modules_dir
     modules_dir = get_modules_dir()
     if get_mic()._modules_dir != modules_dir:
         get_mic()._modules_dir = modules_dir
@@ -1387,10 +1278,9 @@ def load_yml_conf(yml_conf_path):
     Load a .yml file into a dictionary. Return an empty dictionary if file is
     empty.
     """
-    import oyaml as yaml
-
+    from oyaml import safe_load
     with open(yml_conf_path, encoding="utf-8") as f:
-        conf = yaml.safe_load(f)
+        conf = safe_load(f)
     if conf == None:
         conf = {}
     return conf
@@ -1433,7 +1323,7 @@ def module_exists_remote(module_name, version=None, private=False):
     """
     from oakvar.store_utils import PathBuilder
     from requests import get
-
+    from .sysadmin import get_system_conf
     get_mic().update_remote()
     found = False
     if module_name in get_mic().remote:
@@ -1456,7 +1346,7 @@ def module_exists_remote(module_name, version=None, private=False):
 def new_annotator(annot_name):
     import shutil
     import os
-
+    from .sysadmin import get_modules_dir
     annot_root = os.path.join(get_modules_dir(), "annotators", annot_name)
     template_root = os.path.join(get_packagedir(), "annotator_template")
     shutil.copytree(template_root, annot_root)
@@ -1489,7 +1379,8 @@ def publish_module(module_name, user, password, overwrite=False, include_data=Tr
         stream_multipart_post,
     )
     from requests import get
-
+    from .sysadmin import get_modules_dir
+    from .sysadmin import get_system_conf
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
     get_mic().update_local()
@@ -1568,19 +1459,12 @@ def publish_module(module_name, user, password, overwrite=False, include_data=Tr
     os.remove(zf_path)
 
 
-def read_system_conf_template():
-    import oyaml as yaml
-    from .constants import system_conf_template_path
-
-    with open(system_conf_template_path) as f:
-        d = yaml.safe_load(f)
-        return d
-
 
 def ready_resolution_console():
     import os
     from types import SimpleNamespace
-
+    from .sysadmin import get_modules_dir
+    from .sysadmin import set_modules_dir
     rs = system_ready()
     if rs:
         return
@@ -1601,9 +1485,8 @@ def ready_resolution_console():
         yn = input("Do you want to install base modules now? (y/n)>")
         if yn == "y":
             args = SimpleNamespace(force_data=False, force=False, md=None)
-            from .cli_admin import install_base
-
-            install_base(args)
+            from .cli_module import fn_module_installbase
+            fn_module_installbase(args)
             print("Base modules have been installed.")
     exit()
 
@@ -1653,7 +1536,7 @@ def search_local(*patterns):
     Return local module names which match any of supplied patterns
     """
     from re import fullmatch
-
+    from .sysadmin import get_modules_dir
     modules_dir = get_modules_dir()
     if get_mic()._modules_dir != modules_dir:
         get_mic()._modules_dir = modules_dir
@@ -1680,7 +1563,7 @@ def search_remote(*patterns):
 
 def send_reset_email(username):
     from requests import post
-
+    from .sysadmin import get_system_conf
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
     reset_pw_url = publish_url + "/reset-password"
@@ -1693,7 +1576,7 @@ def send_reset_email(username):
 
 def send_verify_email(username):
     from requests import post
-
+    from .sysadmin import get_system_conf
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
     reset_pw_url = publish_url + "/verify-email"
@@ -1706,7 +1589,7 @@ def send_verify_email(username):
 
 def set_cravat_conf_prop(key, val):
     import oyaml as yaml
-
+    from .sysadmin import get_main_conf_path
     conf = get_cravat_conf()
     conf[key] = val
     wf = open(get_main_conf_path(), "w")
@@ -1715,28 +1598,9 @@ def set_cravat_conf_prop(key, val):
 
 
 def set_jobs_dir(d):
+    from .sysadmin import update_system_conf_file
     update_system_conf_file({"jobs_dir": d})
 
-
-def set_modules_dir(path, overwrite=False):
-    """
-    Set the modules_dir to the directory in path.
-    """
-    import shutil
-    import os
-    from .constants import modules_dir_key
-
-    path = os.path.abspath(os.path.expanduser(path))
-    if not (os.path.isdir(path)):
-        os.makedirs(path)
-    old_conf_path = get_main_conf_path()
-    update_system_conf_file({modules_dir_key: path})
-    if not (os.path.exists(get_main_conf_path())):
-        if os.path.exists(old_conf_path):
-            overwrite_conf_path = old_conf_path
-        else:
-            overwrite_conf_path = get_main_default_path()
-        shutil.copy(overwrite_conf_path, get_main_conf_path())
 
 
 # return a list of module types (e.g. annotators) in the local install
@@ -1759,23 +1623,10 @@ def oakvar_version():
     return version
 
 
-def show_system_conf(**kwargs):
-    import oyaml as yaml
-
-    kwargs.setdefault("fmt", "yaml")
-    kwargs.setdefault("to", "stdout")
-    system_conf_info = get_system_conf_info(**kwargs)
-    if kwargs["fmt"] == "yaml":
-        system_conf_info = yaml.dump(system_conf_info, default_flow_style=False)
-    if kwargs["to"] == "stdout":
-        print(system_conf_info)
-    else:
-        return system_conf_info
-
 
 def system_ready():
     import os
-
+    from .sysadmin import get_modules_dir
     modules_dir = get_modules_dir()
     if not (os.path.exists(modules_dir)):
         return ReadyState(code=ReadyState.MISSING_MD)
@@ -1800,34 +1651,14 @@ def uninstall_module(module_name):
         get_mic().update_local()
 
 
-def update_system_conf_file(d):
-    """
-    Recursively update the system config and re-write to disk.
-    """
-    sys_conf = get_system_conf(file_only=True)
-    sys_conf = recursive_update(sys_conf, d)
-    write_system_conf_file(sys_conf)
-    refresh_cache()
-    return True
-
 
 def write_cravat_conf(cravat_conf):
     import oyaml as yaml
-
+    from .sysadmin import get_main_conf_path
     confpath = get_main_conf_path()
     wf = open(confpath, "w")
     yaml.dump(cravat_conf, wf, default_flow_style=False)
     wf.close()
-
-
-def write_system_conf_file(d):
-    """
-    Fully overwrite the system config file with a new system config.
-    """
-    import oyaml as yaml
-
-    with open(get_system_conf_path(), "w") as wf:
-        wf.write(yaml.dump(d, default_flow_style=False))
 
 
 def update_mic():
@@ -1868,181 +1699,15 @@ def get_platform():
     return pl
 
 
-def get_ov_root_dir():
-    from os.path import exists as pathexists
-    from os.path import join as pathjoin
-    from os.path import expandvars as pathexpandvars
-    from os import sep
-    from os import mkdir
-    from os import environ
 
-    pl = get_platform()
-    root_dir = None
-    if pl == "windows":
-        root_dir = pathjoin(pathexpandvars("%systemdrive%"), sep, "open-cravat")
-        if pathexists(root_dir) == False:  # OakVar first installation
-            root_dir = pathjoin(pathexpandvars("%systemdrive%"), sep, "oakvar")
-    elif pl == "linux":
-        root_dir = packagedir
-        if pathexists(pathjoin(root_dir, "conf")) == False:  # OakVar first installation
-            if "SUDO_USER" in environ:
-                root_dir = pathjoin("/home", environ["SUDO_USER"], ".oakvar")
-            else:
-                root_dir = path.join("/home", environ["USER"], ".oakvar")
-    elif pl == "macos":
-        root_dir = "/Users/Shared/open-cravat"
-        if pathexists(root_dir) == False:  # OakVar first installation
-            root_dir = "Users/Shared/oakvar"
-    if pathexists(root_dir) == False:
-        mkdir(root_dir)
-    return root_dir
-
-
-def setup_system():
-    from os.path import exists as pathexists
-    from os.path import join as pathjoin
-    from os import mkdir
-
-    if pathexists(default_conf_dir) == False:
-        mkdir(default_conf_dir)
-    linux_first_time = False
-    # conf
-    main_conf_path = get_main_conf_path()
-    if pathexists(main_conf_path) == False:
-        import shutil
-
-        shutil.copyfile(pathjoin(packagedir, main_conf_fname), main_conf_path)
-    f = open(system_conf_path)
-    conf = yaml.safe_load(f)
-    f.close()
-    default_modules_dir = get_default_modules_dir()
-    if not modules_dir_key in conf:
-        if pathexists(default_modules_dir) == False:
-            mkdir(default_modules_dir)
-        conf[modules_dir_key] = default_modules_dir
-        if linux_first_time:
-            import subprocess
-
-            subprocess.call(["sudo", "chmod", "777", get_system_conf_path()])
-        wf = open(get_system_conf_path(), "w")
-        yaml.dump(conf, wf, default_flow_style=False)
-        wf.close()
-        if linux_first_time:
-            import subprocess
-
-            subprocess.call(["sudo", "chmod", "644", get_system_conf_path()])
-            print(
-                """
-    System configuration file and folders have been set up.
-
-Remember to run `ov module installbase` to install
-base modules before running any job.
-
-===
-"""
-            )
-    system_conf_path = get_system_conf_path()
-    if pathexists(system_conf_path) == False:
-        try:
-            import shutil
-
-            shutil.copyfile(system_conf_template_path, system_conf_path)
-        except PermissionError:
-            if pl == "linux":
-                print(
-                    """
-    It seems that OakVar has been installed as root 
-    and that you are running it for the first time. 
-    To configure OakVar properly, you can do one of 
-    the following:
-
-    1) Stop at this point with Ctrl-C and run 
-    `sudo oc` just once to create a system configration 
-    file and system folders.
-
-    OR
-
-    2) Type Enter and continue. OakVar will need to 
-    access `sudo` three times, once to create a system
-    configration file, then to modify it, and then to
-    change its file permission back. 
-
-    Either way, afterwards, normal users will be able 
-    to use `oc` commands without sudo privilege, 
-    except when making changes to system settings.
-    """
-                )
-                _ = input("Ctrl-C to stop or Enter to continue>")
-                linux_first_time = True
-                import subprocess
-
-                subprocess.call(
-                    ["sudo", "cp", system_conf_template_path, system_conf_path]
-                )
-            else:
-                raise
-    if not jobs_dir_key in conf:
-        if pathexists(default_jobs_dir) == False:
-            mkdir(default_jobs_dir)
-        conf[jobs_dir_key] = default_jobs_dir
-    if not log_dir_key in conf:
-        if pathexists(default_log_dir) == False:
-            mkdir(default_log_dir)
-        conf[log_dir_key] = default_log_dir
-
-
-def get_default_conf_dir():
-    from os.path import join as pathjoin
-    from .constants import conf_dir_name
-
-    return pathjoin(get_ov_root_dir(), conf_dir_name)
-
-
-def get_default_modules_dir():
-    from os.path import join as pathjoin
-    from .constants import modules_dir_name
-
-    return pathjoin(get_ov_root_dir(), modules_dir_name)
-
-
-def get_default_jobs_dir():
-    from os.path import join as pathjoin
-    from .constants import jobs_dir_name
-
-    return pathjoin(get_ov_root_dir(), jobs_dir_name)
-
-
-def get_default_log_dir():
-    from os.path import join as pathjoin
-    from .constants import log_dir_name
-
-    return pathjoin(get_ov_root_dir(), log_dir_name)
 
 
 def get_admindb_path():
     from os.path import join as pathjoin
-
-    return pathjoin(get_default_conf_dir(), "admin.sqlite")
-
-
-def get_system_conf_path():
-    from .constants import system_conf_fname
-    from os.path import join as pathjoin
-    from .constants import system_conf_fname
-
-    pl = get_platform()
-    if pl in ["windows", "macos"]:
-        return pathjoin(get_default_conf_dir(), system_conf_fname)
-    else:
-        return pathjoin(get_packagedir(), system_conf_fname)
+    from .sysadmin import get_conf_dir
+    return pathjoin(get_conf_dir(), "admin.sqlite")
 
 
-def get_system_conf_template_path():
-    from .constants import system_conf_template_fname
-    from .constants import system_conf_template_fname
-    from os.path import join as pathjoin
-
-    return pathjoin(get_packagedir(), system_conf_template_fname)
 
 
 def get_liftover_chains_dir():

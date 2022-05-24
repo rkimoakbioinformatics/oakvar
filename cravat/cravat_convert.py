@@ -174,9 +174,8 @@ class MasterCravatConverter(object):
             if self.input_assembly not in liftover_chain_paths:
                 from sys import stderr
                 from sys import exit as sysexit
-
-                stderr.write(f"{self.input_assembly} is not supported.")
-                sysexit(1)
+                from oakvar.exceptions import InvalidGenomeAssembly
+                raise InvalidGenomeAssembly(self.input_assembly)
             else:
                 self.lifter = LiftOver(liftover_chain_paths[self.input_assembly])
         else:
@@ -449,10 +448,12 @@ class MasterCravatConverter(object):
                 cur_fname = STDIN
             else:
                 cur_fname = basename(f.name)
+            last_read_lnum = None
             for read_lnum, l, all_wdicts in converter.convert_file(
                 f, exc_handler=self._log_conversion_error
             ):
                 samp_prefix = cur_fname
+                last_read_lnum = read_lnum
                 try:
                     # all_wdicts is a list, since one input line can become
                     # multiple output lines. False is returned if converter
@@ -576,7 +577,7 @@ class MasterCravatConverter(object):
                     self.status_writer.queue_status_update(
                         "status",
                         "Running {} ({}): line {}".format(
-                            "Converter", cur_fname, read_lnum
+                            "Converter", cur_fname, last_read_lnum
                         ),
                     )
                 last_status_update_time = cur_time

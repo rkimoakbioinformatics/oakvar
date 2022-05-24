@@ -4,7 +4,6 @@ import datetime
 import subprocess
 import yaml
 import json
-#from oakvar import admin_util as au
 from .. import admin_util as au
 from ..config_loader import ConfigLoader
 import sys
@@ -29,6 +28,8 @@ import logging
 cfl = ConfigLoader()
 report_generation_ps = {}
 valid_report_types = None
+servermode = False
+server_ready = False
 
 class FileRouter(object):
 
@@ -46,8 +47,10 @@ class FileRouter(object):
         self.job_statuses = {}
 
     async def get_jobs_dirs (self, request, given_username=None):
-        root_jobs_dir = au.get_jobs_dir()
+        from ..sysadmin import get_jobs_dir
+        root_jobs_dir = get_jobs_dir()
         if self.servermode and self.server_ready:
+            import cravat_multiuser
             username = await cravat_multiuser.get_username(request)
         else:
             username = 'default'
@@ -76,6 +79,7 @@ class FileRouter(object):
                 if given_username is not None:
                     username = given_username
                 else:
+                    import cravat_multiuser
                     username = await cravat_multiuser.get_username(request)
                 if username is None:
                     job_dir = None
@@ -250,6 +254,7 @@ async def resubmit (request):
     global filerouter
     global servermode
     if servermode and server_ready:
+        import cravat_multiuser
         r = await cravat_multiuser.is_loggedin(request)
         if r == False:
             return web.json_response({'status': 'notloggedin'})
@@ -314,7 +319,8 @@ async def resubmit (request):
 async def submit (request):
     global filerouter
     global servermode
-    sysconf = au.get_system_conf()
+    from ..sysadmin import get_system_conf
+    sysconf = get_system_conf()
     size_cutoff = sysconf['gui_input_size_limit']
     if request.content_length is None:
         return web.HTTPLengthRequired(
@@ -329,6 +335,7 @@ async def submit (request):
                 'msg': f'Input is too big. Limit is {size_cutoff}MB.'
         }))
     if servermode and server_ready:
+        import cravat_multiuser
         r = await cravat_multiuser.is_loggedin(request)
         if r == False:
             return web.json_response({'status': 'notloggedin'})
@@ -403,9 +410,11 @@ async def submit (request):
     if 'assembly' in job_options:
         assembly = job_options['assembly']
     else:
-        assembly = constants.default_assembly
+        from ..sysadmin_const import default_assembly
+        assembly = default_assembly
     run_args.append(assembly)
     if servermode and server_ready:
+        import cravat_multiuser
         await cravat_multiuser.update_user_settings(request, {'lastAssembly':assembly})
     else:
         au.set_cravat_conf_prop('last_assembly', assembly)
@@ -421,6 +430,8 @@ async def submit (request):
         if note != '':
             run_args.append('--note')
             run_args.append(note)
+    else:
+        note = ""
     # Forced input format
     if 'forcedinputformat' in job_options and job_options['forcedinputformat']:
         run_args.append('--input-format')
@@ -441,6 +452,7 @@ async def submit (request):
     status = {'status': 'Submitted'}
     job.set_info_values(status=status)
     if servermode and server_ready:
+        import cravat_multiuser
         await cravat_multiuser.add_job_info(request, job)
     # makes temporary status.json
     status_json = {}
@@ -615,6 +627,7 @@ async def get_jobs (request):
 async def get_all_jobs (request):
     global servermode
     if servermode and server_ready:
+        import cravat_multiuser
         r = await cravat_multiuser.is_loggedin(request)
         if r == False:
             return web.json_response({'status': 'notloggedin'})
@@ -736,7 +749,8 @@ async def download_report(request):
         raise web.HTTPNotFound
 
 def get_jobs_dir (request):
-    jobs_dir = au.get_jobs_dir()
+    from ..sysadmin import get_jobs_dir
+    jobs_dir = get_jobs_dir()
     return web.json_response(jobs_dir)
 
 def set_jobs_dir (request):
@@ -746,12 +760,16 @@ def set_jobs_dir (request):
     return web.json_response(d)
 
 async def get_system_conf_info (request):
-    info = au.get_system_conf_info(json=True)
+    from ..sysadmin import get_system_conf_info
+    info = get_system_conf_info(json=True)
     return web.json_response(info)
 
 async def update_system_conf (request):
+    from ..sysadmin import update_system_conf_file
+    from ..sysadmin import set_modules_dir
     global servermode
     if servermode and server_ready:
+        import cravat_multiuser
         username = await cravat_multiuser.get_username(request)
         if username != 'admin':
             return web.json_response({'success': False, 'msg': 'Only admin can change the settings.'})
@@ -761,12 +779,12 @@ async def update_system_conf (request):
     queries = request.rel_url.query
     sysconf = json.loads(queries['sysconf'])
     try:
-        success = au.update_system_conf_file(sysconf)
+        success = update_system_conf_file(sysconf)
         if 'modules_dir' in sysconf:
             modules_dir = sysconf['modules_dir']
             cravat_yml_path = os.path.join(modules_dir, 'cravat.yml')
             if os.path.exists(cravat_yml_path) == False:
-                au.set_modules_dir(modules_dir)
+                set_modules_dir(modules_dir)
         global job_queue
         qitem = {
             'cmd': 'set_max_num_concurrent_jobs', 
@@ -780,12 +798,16 @@ async def update_system_conf (request):
     return web.json_response({'success': success, 'sysconf': sysconf})
 
 def reset_system_conf (request):
-    d = au.read_system_conf_template()
-    md = au.get_modules_dir()
-    jobs_dir = au.get_jobs_dir()
+    from ..sysadmin import get_modules_dir
+    from ..sysadmin import get_system_conf_template
+    from ..sysadmin import get_jobs_dir
+    from ..sysadmin import write_system_conf_file
+    d = get_system_conf_template()
+    md = get_modules_dir()
+    jobs_dir = get_jobs_dir()
     d['modules_dir'] = md
     d['jobs_dir'] = jobs_dir
-    au.write_system_conf_file(d)
+    write_system_conf_file(d)
     return web.json_response({'status':'success', 'dict':yaml.dump(d)})
 
 def get_servermode (request):
@@ -859,11 +881,14 @@ async def delete_job (request):
             await asyncio.sleep(0.5)
     return web.Response()
 
-system_conf = au.get_system_conf()
+from ..sysadmin import get_system_conf
+system_conf = get_system_conf()
+from ..sysadmin_const import default_max_num_concurrent_jobs
+from ..sysadmin import write_system_conf_file
 if 'max_num_concurrent_jobs' not in system_conf:
-    max_num_concurrent_jobs = constants.default_max_num_concurrent_jobs
+    max_num_concurrent_jobs = default_max_num_concurrent_jobs
     system_conf['max_num_concurrent_jobs'] = max_num_concurrent_jobs
-    au.write_system_conf_file(system_conf)
+    write_system_conf_file(system_conf)
 else:
     max_num_concurrent_jobs = system_conf['max_num_concurrent_jobs']
 job_worker = None
@@ -1002,6 +1027,7 @@ async def redirect_to_index (request):
     global servermode
     global server_ready
     if servermode and server_ready:
+        import cravat_multiuser
         r = await cravat_multiuser.is_loggedin(request)
         if r == False:
             url = '/server/nocache/login.html'
@@ -1016,8 +1042,8 @@ async def load_live_modules (module_names=[]):
     global live_mapper
     global include_live_modules
     global exclude_live_modules
-    print('populating live annotators')
-    conf = au.get_system_conf()
+    from ..sysadmin import get_system_conf
+    conf = get_system_conf()
     if 'live' in conf:
         live_conf = conf['live']
         if 'include' in live_conf:
@@ -1123,6 +1149,7 @@ async def get_live_annotation (queries):
         t = time.time()
         dt = t - time_of_log_single_api_access
         if dt > interval_log_single_api_access:
+            import cravat_multiuser
             await cravat_multiuser.admindb.write_single_api_access_count_to_db(t, count_single_api_access)
             time_of_log_single_api_access = t
             count_single_api_access = 0

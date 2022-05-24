@@ -1,7 +1,8 @@
 def fn_store_publish(args):
-    from .admin_util import get_system_conf, publish_module
+    from .sysadmin import get_system_conf
+    from .admin_util import publish_module
     from .util import get_dict_from_namespace
-    from .constants import custom_modules_dir
+    from .sysadmin_const import custom_modules_dir
     from getpass import getpass
 
     args = get_dict_from_namespace(args)

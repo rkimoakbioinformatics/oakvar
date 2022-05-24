@@ -19,14 +19,17 @@ import shutil
 import copy
 import importlib
 import concurrent.futures
+from ..sysadmin import get_system_conf
 
-system_conf = au.get_system_conf()
+system_conf = get_system_conf()
 pathbuilder = su.PathBuilder(system_conf['store_url'],'url')
 install_manager = None
 install_queue = None
 install_state = None
 install_worker = None
 local_modules_changed = None
+server_ready = False
+servermode = None
 
 def get_filepath (path):
     filepath = os.sep.join(path.split('/'))
@@ -144,7 +147,8 @@ async def get_local_manifest (request):
     return web.json_response(content)
 
 async def get_storeurl (request):
-    conf = au.get_system_conf()
+    from ..sysadmin import get_system_conf
+    conf = get_system_conf()
     store_url = conf['store_url']
     if request.scheme == 'https':
         store_url = store_url.replace('http://', 'https://')
@@ -168,6 +172,7 @@ async def install_widgets_for_module (request):
 async def uninstall_module (request):
     global servermode
     if servermode and server_ready:
+        import cravat_multiuser
         r = await cravat_multiuser.is_admin_loggedin(request)
         if r == False:
             response = 'failure'
@@ -232,6 +237,7 @@ async def queue_install (request):
     global install_queue
     global servermode
     if servermode and server_ready:
+        import cravat_multiuser
         r = await cravat_multiuser.is_admin_loggedin(request)
         if r == False:
             response = 'notadmin'
@@ -257,18 +263,21 @@ async def get_base_modules (request):
 async def install_base_modules (request):
     global servermode
     if servermode and server_ready:
+        import cravat_multiuser
         r = await cravat_multiuser.is_admin_loggedin(request)
         if r == False:
             response = 'failed'
             return web.json_response(response)
-    base_modules = system_conf.get(constants.base_modules_key,[])
+    from ..sysadmin_const import base_modules_key
+    base_modules = system_conf.get(base_modules_key,[])
     for module in base_modules:
         install_queue.put({'module': module, 'version': None})
     response = 'queued'
     return web.json_response(response)
 
 async def get_md (request):
-    modules_dir = au.get_modules_dir()
+    from ..sysadmin_const import get_modules_dir
+    modules_dir = get_modules_dir()
     return web.Response(text=modules_dir)
 
 async def get_module_updates (request):
@@ -291,14 +300,15 @@ async def get_module_updates (request):
     return web.json_response(out)
 
 async def get_free_modules_space (request):
-    modules_dir = au.get_modules_dir()
+    from ..sysadmin_const import get_modules_dir
+    modules_dir = get_modules_dir()
     free_space = shutil.disk_usage(modules_dir).free
     return web.json_response(free_space)
 
 def unqueue (module):
     global install_queue
+    tmp_queue_data = []
     if module is not None:
-        tmp_queue_data = []
         while True:
             if install_queue.empty():
                 break
@@ -336,6 +346,7 @@ async def get_tag_desc (request):
 
 async def update_remote (request):
     if servermode and server_ready:
+        import cravat_multiuser
         r = await cravat_multiuser.is_admin_loggedin(request)
         if r == False:
             response = 'notadmin'
