@@ -44,7 +44,7 @@ class CravatReport:
         from . import admin_util as au
         from .config_loader import ConfigLoader
         from .util import get_args
-        from .constants import custom_modules_dir
+        from .sysadmin_const import custom_modules_dir
 
         args = get_args(get_parser_fn_report(), inargs, inkwargs)
         self.args = args
@@ -239,106 +239,6 @@ class CravatReport:
             row[sub.index] = value
         return row
 
-    def process_datarow(self, args):
-        import json
-        from asyncio import get_event_loop, ensure_future
-
-        datarow = args[0]
-        should_skip_some_cols = args[1]
-        level = args[2]
-        gene_summary_datas = args[3]
-        if datarow is None:
-            return None
-        datarow = list(datarow)
-        if should_skip_some_cols:
-            datarow = [
-                datarow[colno]
-                for colno in range(num_total_cols)
-                if colno not in colnos_to_skip
-            ]
-        if level == "variant":
-            # adds gene level data to variant level.
-            if self.nogenelevelonvariantlevel == False and hugo_present:
-                hugo = datarow[self.colnos["variant"]["base__hugo"]]
-                loop = get_event_loop()
-                future = ensure_future(self.cf.get_gene_row(hugo), loop)
-                generow = future.result()
-                if generow is None:
-                    datarow.extend([None for i in range(len(self.var_added_cols))])
-                else:
-                    datarow.extend(
-                        [
-                            generow[self.colnos["gene"][colname]]
-                            for colname in self.var_added_cols
-                        ]
-                    )
-        elif level == "gene":
-            # adds summary data to gene level.
-            hugo = datarow[0]
-            for mi, _, _ in self.summarizing_modules:
-                module_name = mi.name
-                [gene_summary_data, cols] = gene_summary_datas[module_name]
-                if (
-                    hugo in gene_summary_data
-                    and gene_summary_data[hugo] is not None
-                    and len(gene_summary_data[hugo]) == len(cols)
-                ):
-                    datarow.extend(
-                        [gene_summary_data[hugo][col["name"]] for col in cols]
-                    )
-                else:
-                    datarow.extend([None for v in cols])
-        # re-orders data row.
-        new_datarow = []
-        colnos = self.colnos[level]
-        for colname in [col["col_name"] for col in self.colinfo[level]["columns"]]:
-            if colname in self.colname_conversion[level]:
-                newcolname = self.colname_conversion[level][colname]
-                if newcolname in colnos:
-                    colno = colnos[newcolname]
-                else:
-                    self.logger.info(
-                        "column name does not exist in data: {}".format(colname)
-                    )
-                    continue
-            else:
-                colno = colnos[colname]
-            value = datarow[colno]
-            new_datarow.append(value)
-        # does report substitution.
-        new_datarow = self.substitute_val(level, new_datarow)
-        if hasattr(self, "keep_json_all_mapping") == False and level == "variant":
-            colno = self.colnos["variant"]["base__all_mappings"]
-            all_map = json.loads(new_datarow[colno])
-            newvals = []
-            for hugo in all_map:
-                for maprow in all_map[hugo]:
-                    [protid, protchange, so, transcript, rnachange] = maprow
-                    if protid == None:
-                        protid = "(na)"
-                    if protchange == None:
-                        protchange = "(na)"
-                    if rnachange == None:
-                        rnachange = "(na)"
-                    newval = (
-                        transcript
-                        + ":"
-                        + hugo
-                        + ":"
-                        + protid
-                        + ":"
-                        + so
-                        + ":"
-                        + protchange
-                        + ":"
-                        + rnachange
-                    )
-                    newvals.append(newval)
-            newvals.sort()
-            newcell = "; ".join(newvals)
-            new_datarow[colno] = newcell
-        return new_datarow
-
     def get_extracted_header_columns(self, level):
         cols = []
         for col in self.colinfo[level]["columns"]:
@@ -374,6 +274,8 @@ class CravatReport:
                 gene_summary_datas[mi.name] = [gene_summary_data, cols]
                 for col in cols:
                     if "category" in col and col["category"] in ["single", "multi"]:
+                        colinfo_col = {}
+                        colno = None
                         for i in range(len(self.colinfo[level]["columns"])):
                             colinfo_col = self.colinfo[level]["columns"][i]
                             if mi.name in ["hg38", "tagsampler"]:
@@ -381,19 +283,23 @@ class CravatReport:
                             else:
                                 grp_name = mi.name
                             if colinfo_col["col_name"] == grp_name + "__" + col["name"]:
+                                colno = i
                                 break
                         cats = []
                         for hugo in gene_summary_data:
                             val = gene_summary_data[hugo][col["name"]]
-                            if len(colinfo_col["reportsub"]) > 0:
-                                if val in colinfo_col["reportsub"]:
-                                    val = colinfo_col["reportsub"][val]
+                            repsub = colinfo_col.get("reportsub", [])
+                            if len(repsub) > 0:
+                                if val in repsub:
+                                    val = repsub[val]
                             if val not in cats:
                                 cats.append(val)
-                        self.colinfo[level]["columns"][i]["col_cats"] = cats
+                        if colno is not None:
+                            self.colinfo[level]["columns"][colno]["col_cats"] = cats
         self.write_preface(level)
         self.extracted_cols[level] = self.get_extracted_header_columns(level)
         self.write_header(level)
+        hugo_present = None
         if level == "variant":
             hugo_present = "base__hugo" in self.colnos["variant"]
         datacols, datarows = await self.cf.exec_db(self.cf.get_filtered_iterator, level)
@@ -404,6 +310,7 @@ class CravatReport:
                 if datacols[colno] in legacy_gene_level_cols_to_skip:
                     colnos_to_skip.append(colno)
         should_skip_some_cols = len(colnos_to_skip) > 0
+        sample_newcolno = None
         if level == "variant" and self.args["separatesample"]:
             write_variant_sample_separately = True
             sample_newcolno = self.newcolnos["variant"]["base__samples"]
@@ -533,9 +440,8 @@ class CravatReport:
     async def run(self, tab="all"):
         from time import time, asctime, localtime
         import oyaml as yaml
-
+        start_time = time()
         try:
-            start_time = time()
             if not (hasattr(self, "no_log") and self.no_log):
                 self.logger.info("started: %s" % asctime(localtime(start_time)))
                 if self.cf.filter:
@@ -568,7 +474,7 @@ class CravatReport:
                             await self.exec_db(self.make_col_info, level)
                 else:
                     await self.exec_db(self.make_col_info, tab)
-                self.level = level
+                self.level = tab
                 await self.run_level(tab)
             await self.close_db()
             if self.module_conf is not None and self.status_writer is not None:
@@ -585,7 +491,9 @@ class CravatReport:
                 run_time = end_time - start_time
                 self.logger.info("runtime: {0:0.3f}".format(run_time))
             ret = self.end()
-        except:
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
             await self.close_db()
             if self.module_conf is not None and self.status_writer is not None:
                 if self.args["do_not_change_status"] == False:
@@ -671,7 +579,6 @@ class CravatReport:
         from .inout import ColumnDefinition
         from .util import load_class
         from types import SimpleNamespace
-
         self.colnames_to_display[level] = []
         await self.exec_db(self.store_mapper)
         cravat_conf = self.conf.get_cravat_conf()
@@ -800,6 +707,7 @@ class CravatReport:
             for module_name in summarizer_module_names:
                 mi = local_modules[module_name]
                 sys.path = sys.path + [os.path.dirname(mi.script_path)]
+                annot_cls = None
                 if module_name in done_var_annotators:
                     annot_cls = load_class(mi.script_path, "CravatAnnotator")
                 elif module_name == self.mapper_name:
@@ -1009,7 +917,7 @@ def run_reporter(args):
     from .util import get_dict_from_namespace, is_compatible_version
     from . import admin_util as au
     from .util import write_log_msg
-    from .constants import custom_modules_dir
+    from .sysadmin_const import custom_modules_dir
     import importlib
     from .exceptions import InvalidModule
 
@@ -1082,8 +990,6 @@ def run_reporter(args):
     for report_type in report_types:
         module_info = au.get_local_module_info(report_type + "reporter")
         if module_info is None:
-            # if args["silent"] == False:
-            #    print(f"Report module for {report_type} does not exist. Skipping...")
             raise InvalidModule(report_type + "reporter")
         if args["silent"] == False:
             print(f"Generating {report_type} report... ", end="", flush=True)
@@ -1120,7 +1026,7 @@ def run_reporter(args):
                     traceback.print_exc()
                 else:
                     if hasattr(reporter, "logger"):
-                        write_log_msg(self.logger, e)
+                        write_log_msg(reporter.logger, e)
             if args["silent"] == False:
                 print("report generation failed for {} report.".format(report_type))
             response_t = None

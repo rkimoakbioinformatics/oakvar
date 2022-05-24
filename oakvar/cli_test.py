@@ -1,4 +1,3 @@
-from argparse import ArgumentParser
 import sys
 from abc import ABC, abstractmethod
 
@@ -240,6 +239,7 @@ class VcfReportReader(ReportReader):
             columns.append(record.ID)
             lineitems = record.INFO["CRV"][0].split("|")
             i = 1
+            line_id = None
             while i < len(headers):
                 columns.append(lineitems[i].strip('"'))
                 i += 1
@@ -501,7 +501,7 @@ class Tester:
         from os import makedirs
 
         self.args = args
-        rundir = args["rundir"]
+        rundir = args.get("rundir")
         cur_dir = dirname(abspath(__file__))
         if type(module) == str:
             from .admin_util import get_local_module_info
@@ -608,6 +608,7 @@ class Tester:
         return exit_code
 
     def verify(self):
+        from .admin_util import get_local_module_info
         self.test_passed = True
         if self.module.type == "annotator":
             self.verify_level(self.module.level, [self.module.title])
@@ -762,14 +763,13 @@ class Tester:
                 return "FAIL"
 
 
-def fn_util_test(*inargs, **inkwargs):
-    from .util import get_args
+def fn_util_test(args):
+    from .util import get_dict_from_namespace
     from os.path import exists
     from os import makedirs
     from .admin_util import get_local_module_types, get_local_module_info
-
-    args = get_args(parser_fn_util_test, inargs, inkwargs)
-    rundir = args["rundir"]
+    args = get_dict_from_namespace(args)
+    rundir = args.get("rundir")
     if rundir is None:
         num = 1
         while True:
@@ -778,15 +778,16 @@ def fn_util_test(*inargs, **inkwargs):
                 break
             else:
                 num += 1
+        args["rundir"] = rundir
     # create run output directory
-    if not exists(args["rundir"]):
-        makedirs(args["rundir"])
+    if not exists(rundir):
+        makedirs(rundir)
     # installed module types
     module_types = get_local_module_types()
     passed = 0
     failed = 0
     modules_failed = []
-    module_names = args["modules"]
+    module_names = args.get("modules")
     module_names.sort()
     result = {}
     for module_name in module_names:
@@ -813,30 +814,31 @@ def fn_util_test(*inargs, **inkwargs):
     if passed == 0 and failed == 0:
         return None
     modules_failed.sort()
-    if args["to"] == "stdout":
+    if args.get("to") == "stdout":
         print(f"passed {passed} failed {failed}")
-        print(result)
     else:
         return (passed, failed, result)
 
 
+def get_parser_fn_util_test():
+    from argparse import ArgumentParser
+    parser_fn_util_test = ArgumentParser()
+    parser_fn_util_test.add_argument("-d", "--rundir", help="Directory for output")
+    parser_fn_util_test.add_argument(
+        "-m", "--modules", nargs="+", help="Name of module(s) to test. (e.g. gnomad)"
+    )
+    parser_fn_util_test.add_argument(
+        "-t", "--mod_types", nargs="+", help="Type of module(s) to test (e.g. annotators)"
+    )
+    parser_fn_util_test.add_argument(
+        "--to", default="stdout", help="stdout to print / return to return"
+    )
+    parser_fn_util_test.set_defaults(func=fn_util_test)
+    return parser_fn_util_test
+
 def main():
-    args = parser_fn_util_test.parse_args()
+    args = get_parser_fn_util_test().parse_args()
     fn_util_test(args)
-
-
-parser_fn_util_test = ArgumentParser()
-parser_fn_util_test.add_argument("-d", "--rundir", help="Directory for output")
-parser_fn_util_test.add_argument(
-    "-m", "--modules", nargs="+", help="Name of module(s) to test. (e.g. gnomad)"
-)
-parser_fn_util_test.add_argument(
-    "-t", "--mod_types", nargs="+", help="Type of module(s) to test (e.g. annotators)"
-)
-parser_fn_util_test.add_argument(
-    "--to", default="stdout", help="stdout to print / return to return"
-)
-parser_fn_util_test.set_defaults(func=fn_util_test)
 
 
 if __name__ == "__main__":

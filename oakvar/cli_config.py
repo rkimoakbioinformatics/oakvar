@@ -1,5 +1,5 @@
 def fn_config_md(args):
-    from .admin_util import set_modules_dir, get_modules_dir
+    from .sysadmin import set_modules_dir, get_modules_dir
     from .util import get_dict_from_namespace
 
     args = get_dict_from_namespace(args)
@@ -9,7 +9,7 @@ def fn_config_md(args):
 
 
 def fn_config_system(args):
-    from .admin_util import show_system_conf
+    from .sysadmin import show_system_conf
     from .util import get_dict_from_namespace
 
     args = get_dict_from_namespace(args)

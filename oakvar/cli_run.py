@@ -19,6 +19,7 @@ def fn_run(args):
     )
     pre_args, unknown_args = pre_parser.parse_known_args(argv[1:])
     if pre_args.system_option is not None:
+        from .admin_util import update_mic
         custom_system_conf = {}
         for kv in pre_args.system_option:
             if "=" not in kv:
@@ -33,7 +34,7 @@ def fn_run(args):
                 pass
             custom_system_conf[k] = v
         from . import admin_util
-        custom_system_conf = custom_system_conf
+        admin_util.custom_system_conf = custom_system_conf
         update_mic()
     else:
         from . import admin_util
@@ -41,9 +42,10 @@ def fn_run(args):
     fnname = currentframe().f_code.co_name
     parser_fn_run = get_parser_fn_run()
     args = get_dict_from_namespace(args)
-    au.ready_resolution_console()
-    module = Cravat(**args)
+    module = None
     try:
+        au.ready_resolution_console()
+        module = Cravat(**args)
         response = run(module.main())
         return response
     except Exception as e:
@@ -55,10 +57,6 @@ class Cravat(object):
     #    pass
 
     def __init__(self, **kwargs):
-        from time import time, asctime, localtime
-        from multiprocessing.managers import SyncManager
-        from sys import executable, argv
-
         self.runlevels = {
             "converter": 1,
             "mapper": 2,
@@ -72,32 +70,12 @@ class Cravat(object):
         self.should_run_annotators = True
         self.should_run_aggregator = True
         self.should_run_reporter = True
+        from sys import executable
         self.pythonpath = executable
         self.annotators = {}
         self.append_mode = False
         self.pipeinput = False
-        try:
-            self.make_args_namespace(kwargs)
-            if self.args.clean_run:
-                if not self.args.silent:
-                    print("Deleting previous output files...")
-                self.delete_output_files()
-            self.get_logger()
-            self.start_time = time()
-            self.logger.info(f'{" ".join(argv)}')
-            self.logger.info("started: {0}".format(asctime(localtime(self.start_time))))
-            if self.run_conf_path != "":
-                self.logger.info("conf file: {}".format(self.run_conf_path))
-            self.modules_conf = self.conf.get_modules_conf()
-            self.write_initial_status_json()
-            self.unique_logs = {}
-            self.manager = SyncManager()
-            # self.manager = MyManager()
-            self.manager.register("StatusWriter", StatusWriter)
-            self.manager.start()
-            self.status_writer = self.manager.StatusWriter(self.status_json_path)
-        except Exception as e:
-            self.handle_exception(e)
+        self.inkwargs = kwargs
 
     def check_valid_modules(self, module_names):
         from .exceptions import InvalidModule
@@ -223,15 +201,15 @@ class Cravat(object):
         if self.args.do_not_change_status != True:
             self.status_writer.queue_status_update("status", status, force=force)
 
-    def run(self):
-        import asyncio
-        import nest_asyncio
-
-        nest_asyncio.apply()
-        loop = asyncio.new_event_loop()
-        response = loop.run_until_complete(self.main())
-        loop.close()
-        return response
+    #def run(self):
+    #    import asyncio
+    #    import nest_asyncio
+    #
+    #    nest_asyncio.apply()
+    #    loop = asyncio.new_event_loop()
+    #    response = loop.run_until_complete(self.main())
+    #    loop.close()
+    #    return response
 
     def delete_output_files(self):
         import os
@@ -270,20 +248,41 @@ class Cravat(object):
 
     async def main(self):
         from time import time, asctime, localtime
-
+        from .exceptions import ExpectedException
+        from multiprocessing.managers import SyncManager
+        from sys import argv
         no_problem_in_run = True
-        report_response = None
         exception = None
+        report_response = None
+        self.aggregator_ran = False
         try:
-            self.aggregator_ran = False
+            self.start_time = time()
+            self.make_args_namespace(self.inkwargs)
+            if self.args.clean_run:
+                if not self.args.silent:
+                    print("Deleting previous output files...")
+                self.delete_output_files()
+            self.get_logger()
+            self.logger.info(f'{" ".join(argv)}')
+            self.logger.info("started: {0}".format(asctime(localtime(self.start_time))))
+            if self.run_conf_path != "":
+                self.logger.info("conf file: {}".format(self.run_conf_path))
+            self.modules_conf = self.conf.get_modules_conf()
+            self.write_initial_status_json()
+            self.unique_logs = {}
+            self.manager = SyncManager()
+            # self.manager = MyManager()
+            self.manager.register("StatusWriter", StatusWriter)
+            self.manager.start()
+            self.status_writer = self.manager.StatusWriter(self.status_json_path)
             self.update_status("Started OakVar", force=True)
             if self.pipeinput == False:
                 input_files_str = ", ".join(self.inputs)
             else:
                 input_files_str = "stdin"
-            if not self.args.silent:
-                print("Input file(s): {}".format(input_files_str))
-                print("Genome assembly: {}".format(self.input_assembly))
+            #if not self.args.silent:
+            #    print("Input file(s): {}".format(input_files_str))
+            #    print("Genome assembly: {}".format(self.input_assembly))
             self.logger.info("input files: {}".format(input_files_str))
             self.logger.info("input assembly: {}".format(self.input_assembly))
             self.log_versions()
@@ -394,37 +393,50 @@ class Cravat(object):
             end_time = time()
             display_time = asctime(localtime(end_time))
             runtime = end_time - self.start_time
+            logger_exist = hasattr(self, "logger")
+            status_writer_exist = hasattr(self, "status_writer")
             if no_problem_in_run:
-                self.logger.info("finished: {0}".format(display_time))
-                self.logger.info("runtime: {0:0.3f}s".format(runtime))
+                if logger_exist:
+                    self.logger.info("finished: {0}".format(display_time))
+                    self.logger.info("runtime: {0:0.3f}s".format(runtime))
                 if not self.args.silent:
                     print("Finished normally. Runtime: {0:0.3f}s".format(runtime))
             else:
-                self.logger.info("finished with an exception: {0}".format(display_time))
-                self.logger.info("runtime: {0:0.3f}s".format(runtime))
+                #if logger_exist:
+                    #self.logger.info("finished with an exception: {0}".format(display_time))
+                    #self.logger.info("runtime: {0:0.3f}s".format(runtime))
                 if not self.args.silent:
-                    print(
-                        "Finished with an exception. Runtime: {0:0.3f}s".format(runtime)
-                    )
-                    print("Check {}".format(self.log_path))
-                self.update_status("Error", force=True)
-            self.close_logger()
-            if self.args.do_not_change_status != True:
+                    #print(
+                    #    "Finished with an exception. Runtime: {0:0.3f}s".format(runtime)
+                    #)
+                    if isinstance(exception, ExpectedException):
+                        if logger_exist:
+                            from sys import stderr
+                            stderr.write("Log file at {}".format(self.log_path) + "\n")
+                            stderr.flush()
+                    if status_writer_exist:
+                        self.update_status("Error", force=True)
+            if logger_exist:
+                self.close_logger()
+            if status_writer_exist and self.args.do_not_change_status != True:
                 self.status_writer.flush()
             if no_problem_in_run and not self.args.temp_files and self.aggregator_ran:
                 self.clean_up_at_end()
             if self.args.writeadmindb:
                 await self.write_admin_db(runtime, self.numinput)
-            if exception is not None:
+            if exception is not None and not isinstance(exception, ExpectedException):
                 raise exception
-            if (
-                report_response is not None
-                and type(report_response) == list
-                and len(report_response) == 1
-            ):
-                return report_response[list(report_response.keys())[0]]
+            if hasattr(self, "report_response"):
+                if (
+                    report_response is not None
+                    and type(report_response) == list
+                    and len(report_response) == 1
+                ):
+                    return report_response[list(report_response.keys())[0]]
+                else:
+                    return report_response
             else:
-                return report_response
+                return None
 
     async def write_admin_db(self, runtime, numinput):
         import os
@@ -517,28 +529,30 @@ class Cravat(object):
         conn.close()
 
     def handle_exception(self, e):
-        import traceback
-        from .exceptions import ExpectedException, InvalidData, InvalidModule
-
-        exc_str = traceback.format_exc()
-        exc_class = e.__class__
-        if exc_class == InvalidModule:
-            if hasattr(self, "logger"):
-                self.logger.error(str(e))
-            if not self.args.silent:
-                print(e)
-            exit(-1)
-        elif exc_class == InvalidData:
-            pass
-        elif exc_class == ExpectedException:
-            self.logger.exception("An expected exception occurred.")
-            self.logger.error(e)
-        else:
-            if hasattr(self, "logger"):
-                self.logger.exception("An unexpected exception occurred.")
-            if not self.args.silent:
-                print(exc_str)
-            return e
+        from sys import stderr
+        try:
+            from sys import exc_info
+            (t, v, tb) = exc_info()
+            import traceback
+            from .exceptions import ExpectedException
+            exc_str = repr(traceback.format_exception(t, v, tb))
+            if isinstance(e, ExpectedException):
+                if hasattr(self, "logger") and (not hasattr(e, "nolog") or not e.nolog):
+                    #self.logger.exception("An expected exception occurred.")
+                    self.logger.error(e)
+                stderr.write(str(e) + "\n")
+                stderr.flush()
+            else:
+                if hasattr(self, "logger"):
+                    self.logger.exception("An unexpected exception occurred.")
+                if not self.args.silent:
+                    from sys import stderr
+                    stderr.write(exc_str + "\n")
+                    stderr.flush()
+        except Exception as e2:
+            stderr.write(str(e) + "\n")
+            stderr.flush()
+            raise e2
 
     def set_package_conf(self, supplied_args):
         from . import admin_util as au
@@ -660,7 +674,7 @@ class Cravat(object):
                     if not self.args.silent:
                         print("inputs in conf file is invalid")
             else:
-                parser_fn_run.print_help()
+                get_parser_fn_run().print_help()
                 print("\nNo input file was given.")
                 exit()
         self.process_url_and_pipe_inputs()
@@ -743,7 +757,7 @@ class Cravat(object):
         self.run_name = self.args.run_name
         if self.run_name == None:
             if self.num_input == 0 or self.pipeinput:
-                self.run_name = "cravat_run"
+                self.run_name = "ovjob"
             else:
                 self.run_name = os.path.basename(self.inputs[0])
                 if self.num_input > 1:
@@ -790,19 +804,15 @@ class Cravat(object):
             os.mkdir(self.output_dir)
 
     def set_genome_assembly(self):
-        from .constants import default_assembly_key, assembly_choices
-        from .admin_util import get_main_conf_path
-
+        from .sysadmin import get_main_conf_path
+        from .sysadmin_const import default_assembly_key
         if self.args.genome is None:
             if default_assembly_key in self.cravat_conf:
                 self.input_assembly = self.cravat_conf[default_assembly_key]
             else:
-                msg = "Genome assembly should be given (as one of {}) with -l option or a default genome assembly should be defined in {} as default_assembly.".format(
-                    ", ".join(assembly_choices),
-                    get_main_conf_path(),
-                )
-                print(msg)
-                exit()
+                from .exceptions import NoGenomeException
+                #msg = "Genome assembly should be given with -l option or a default genome assembly should be defined in {} as 'default_assembly'.".format(get_main_conf_path())
+                raise NoGenomeException()
         else:
             self.input_assembly = self.args.genome
 
@@ -824,8 +834,10 @@ class Cravat(object):
         self.set_package_conf(supplied_args)
         self.make_self_args_considering_package_conf(supplied_args)
         if self.args.show_version:
-            au.show_cravat_version()
-            exit()
+            from .cli_version import fn_version
+            from .exceptions import NormalExit
+            fn_version({"to": "stdout"})
+            raise NormalExit
         self.set_self_inputs()
         self.set_output_dir()
         self.set_run_name()
@@ -845,7 +857,7 @@ class Cravat(object):
             self.args.note = ""
 
     def set_md(self):
-        from .constants import custom_modules_dir
+        from .sysadmin_const import custom_modules_dir
 
         if self.args.md is not None:
             custom_modules_dir = self.args.md
@@ -898,7 +910,7 @@ class Cravat(object):
         self.mapper = au.get_local_module_info_by_name(self.mapper_name)
 
     def set_postaggregators(self):
-        from .constants import default_postaggregator_names
+        from .sysadmin_const import default_postaggregator_names
         from . import admin_util as au
 
         if len(self.args.postaggregators) > 0:
@@ -957,7 +969,9 @@ class Cravat(object):
 
     def set_and_check_input_files(self):
         import os
-
+        if len(self.inputs) == 0:
+            from .exceptions import NoInputException
+            raise NoInputException
         self.crvinput = os.path.join(self.output_dir, self.run_name + ".crv")
         self.crxinput = os.path.join(self.output_dir, self.run_name + ".crx")
         self.crginput = os.path.join(self.output_dir, self.run_name + ".crg")
@@ -975,6 +989,7 @@ class Cravat(object):
             self.crg_present = False
         if self.append_mode:
             self.regenerate_from_db()
+        return True
 
     def regenerate_from_db(self):
         import sqlite3
@@ -1173,9 +1188,9 @@ class Cravat(object):
         import multiprocessing as mp
         from .mp_runners import init_worker, mapper_runner
         from .inout import CravatReader
-        from . import admin_util as au
+        from .sysadmin import get_max_num_concurrent_annotators_per_job
 
-        num_workers = au.get_max_num_concurrent_annotators_per_job()
+        num_workers = get_max_num_concurrent_annotators_per_job()
         if self.args.mp is not None:
             try:
                 self.args.mp = int(self.args.mp)
@@ -1496,6 +1511,7 @@ class Cravat(object):
         all_reporters_ran_well = True
         response = {}
         for module_name in module_names:
+            reporter = None
             try:
                 module = au.get_local_module_info(module_name)
                 self.announce_module(module)
@@ -1569,7 +1585,7 @@ class Cravat(object):
                         print(e)
                         if hasattr(self, "logger"):
                             write_log_msg(self.logger, e)
-                    if "reporter" in locals() and hasattr(reporter, "close_db"):
+                    if reporter is not None and hasattr(reporter, "close_db"):
                         await reporter.close_db()
                 all_reporters_ran_well = False
         return all_reporters_ran_well, response
@@ -1578,10 +1594,10 @@ class Cravat(object):
         import os
         import logging
         from .mp_runners import init_worker, annot_from_queue
-        from . import admin_util as au
         from multiprocessing import Pool
+        from .sysadmin import get_max_num_concurrent_annotators_per_job
 
-        num_workers = au.get_max_num_concurrent_annotators_per_job()
+        num_workers = get_max_num_concurrent_annotators_per_job()
         if self.args.mp is not None:
             try:
                 self.args.mp = int(self.args.mp)
@@ -1592,6 +1608,7 @@ class Cravat(object):
         self.logger.info("num_workers: {}".format(num_workers))
         run_args = {}
         for module in self.run_annotators.values():
+            inputpath = None
             # Make command
             if module.level == "variant":
                 if "input_format" in module.conf:

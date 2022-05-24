@@ -564,14 +564,14 @@ class CravatFilter:
     def getvariantcount(self):
         from asyncio import get_event_loop
 
-        loop = asyncio.get_event_loop()
+        loop = get_event_loop()
         count = loop.run_until_complete(self.exec_db(self.getcount, "variant"))
         return count
 
     def getgenecount(self):
         from asyncio import get_event_loop
 
-        loop = asyncio.get_event_loop()
+        loop = get_event_loop()
         count = loop.run_until_complete(self.exec_db(self.getcount, "gene"))
         return count
 
@@ -590,6 +590,7 @@ class CravatFilter:
             ftable = level + "_filtered"
         q = "select count(*) from " + ftable
         await cursor.execute(q)
+        n = None
         for row in await cursor.fetchone():
             n = row
         if self.stdout == True:
@@ -600,14 +601,14 @@ class CravatFilter:
     def getvariantrows(self):
         from asyncio import get_event_loop
 
-        loop = asyncio.get_event_loop()
+        loop = get_event_loop()
         rows = loop.run_until_complete(self.exec_db(self.getrows, "variant"))
         return rows
 
     def getgenerows(self):
         from asyncio import get_event_loop
 
-        loop = asyncio.get_event_loop()
+        loop = get_event_loop()
         rows = loop.run_until_complete(self.exec_db(self.getrows, "gene"))
         return rows
 
@@ -654,14 +655,14 @@ class CravatFilter:
     def getvariantiterator(self):
         from asyncio import get_event_loop
 
-        loop = asyncio.get_event_loop()
+        loop = get_event_loop()
         iterator = loop.run_until_complete(self.exec_db(self.getiterator, "variant"))
         return iterator
 
     def getgeneiterator(self):
         from asyncio import get_event_loop
 
-        loop = asyncio.get_event_loop()
+        loop = get_event_loop()
         iterator = loop.run_until_complete(self.exec_db(self.getiterator, "gene"))
         return iterator
 
@@ -686,6 +687,9 @@ class CravatFilter:
             and self.includesample is None
             and self.excludesample is None
         )
+        ftable = None
+        kcol = None
+        sql = None
         if level == "variant":
             kcol = "base__uid"
             if bypassfilter:
@@ -722,12 +726,15 @@ class CravatFilter:
                 )
             else:
                 sql = "select v.* from " + table + " as v"
-                if bypassfilter == False:
+                if bypassfilter == False and ftable is not None and kcol is not None:
                     sql += " inner join " + ftable + " as f on v." + kcol + "=f." + kcol
-        await cursor.execute(sql)
-        cols = [v[0] for v in cursor.description]
-        rows = await cursor.fetchall()
-        return cols, rows
+        if sql is not None:
+            await cursor.execute(sql)
+            cols = [v[0] for v in cursor.description]
+            rows = await cursor.fetchall()
+            return cols, rows
+        else:
+            return None, None
 
     async def make_filtered_sample_table(self, conn=None, cursor=None):
         q = "drop table if exists fsample"
@@ -1121,7 +1128,7 @@ def main():
     import sys
     from asyncio import new_event_loop
 
-    loop = asyncio.new_event_loop()
+    loop = new_event_loop()
     cv = loop.run_until_complete(CravatFilter.create(mode="main"))
     loop.run_until_complete(cv.run(args=sys.argv[1:]))
     loop.close()

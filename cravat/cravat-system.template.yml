@@ -1,6 +1,5 @@
 publish_url: https://publish.opencravat.org
 store_url: https://store.opencravat.org
-
 base_modules:
 - cravat-converter
 - vcf-converter
@@ -9,7 +8,8 @@ base_modules:
 - excelreporter
 - tagsampler
 - vcfinfo
-- hg38
+- vcfreporter
+- gencode
 - casecontrol
 - wgbase
 - wghg19
@@ -26,3 +26,9 @@ base_modules:
 - hg38wgs
 - varmeta
 - wgrankscore
+num_input_line_warning_cutoff: 25000
+gui_input_size_limit: 500
+max_num_concurrent_jobs: 4
+max_num_concurrent_annotators_per_job: 1
+gui_port: 8080
+gui_port_ssl: 8444

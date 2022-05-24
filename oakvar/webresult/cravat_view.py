@@ -67,6 +67,7 @@ def serve_service (handler):
     handler.send_response(200)
     handler.send_header('Content-type', 'application/json')
     handler.end_headers()
+    content = ""
     if head == 'variantcols':
         content = get_variant_cols(queries)
     #if head == 'conf':
@@ -384,8 +385,9 @@ def get_variant_cols (queries):
     return content
 
 def get_webviewerconf ():
+    from ..sysadmin import get_system_conf
     conf_path = os.path.join(
-            au.get_system_conf()['home'], 
+            get_system_conf()['home'], 
             'viewers',
             'webviewer',
             'webviewer.yml')
@@ -476,9 +478,10 @@ def table_exists (cursor, table):
 ### widgetfiles ###
 
 def serve_widgetfile (handler):
+    from ..sysadmin import get_modules_dir
     module_name, ext = os.path.splitext(handler.request_path)
     filepath = os.path.join(
-        au.get_modules_dir(),
+        get_modules_dir(),
         'webviewerwidgets',
         handler.request_path)
         #module_name,

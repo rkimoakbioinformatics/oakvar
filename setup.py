@@ -36,7 +36,7 @@ for root, dirs, files in os.walk(os.path.join('oakvar', 'websubmit')):
     oakvar_files.extend(root_files)
 setup(
     name='oakvar',
-    version='2.4.1',
+    version='2.4.2',
     description='A genomic variant analysis platform',
     long_description=long_description,
     long_description_content_type='text/x-rst',

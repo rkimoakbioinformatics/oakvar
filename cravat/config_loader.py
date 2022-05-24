@@ -1,6 +1,7 @@
 class ConfigLoader:
     def __init__(self, job_conf_path=None):
-        from .admin_util import get_main_conf_path
+        from .sysadmin import get_main_conf_path
+        from .exceptions import SystemMissingException
 
         self.job_conf_path = job_conf_path
         self.main_conf_path = get_main_conf_path()
@@ -15,7 +16,7 @@ class ConfigLoader:
         self._build_all()
 
     def _load_system_conf(self, build_all=True):
-        from .admin_util import get_system_conf
+        from .sysadmin import get_system_conf
 
         self._system = get_system_conf()
         if build_all:
@@ -26,7 +27,7 @@ class ConfigLoader:
         import copy
         from .admin_util import load_yml_conf, get_packagedir
         import shutil
-        from .constants import default_multicore_mapper_mode
+        from .sysadmin_const import default_multicore_mapper_mode
 
         self._main = {}
         if os.path.exists(self.main_conf_path) == False:

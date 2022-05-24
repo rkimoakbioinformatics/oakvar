@@ -1,4 +1,3 @@
 converter: converter
-genemapper: hg38
+genemapper: gencode
 aggregator: aggregator
-gui_port: 8060

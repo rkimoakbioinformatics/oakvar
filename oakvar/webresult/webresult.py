@@ -17,6 +17,8 @@ from aiohttp import web
 import time
 from concurrent.futures import ProcessPoolExecutor
 
+wu = None
+
 def get_filepath (path):
     filepath = os.sep.join(path.split('/'))
     filepath = os.path.join(
@@ -72,8 +74,10 @@ async def get_nowg_annot_modules (request):
 async def get_filter_save_names (request):
     queries = request.rel_url.query
     job_id, dbpath = await get_jobid_dbpath(request)
-    conn = await get_db_conn(dbpath)
+    conn = None
+    cursor = None
     try:
+        conn = await get_db_conn(dbpath)
         cursor = await conn.cursor()
         table = 'viewersetup'
         content = []
@@ -89,7 +93,8 @@ async def get_filter_save_names (request):
         await cursor.close()
         await conn.close()
     except:
-        await cursor.close()
+        if cursor is not None:
+            await cursor.close()
         await conn.close()
         raise
     return web.json_response(content)
@@ -401,6 +406,7 @@ async def get_result_levels (request):
 async def get_jobid_dbpath (request):
     global servermode
     method = request.method
+    queries = None
     if method == 'GET':
         queries = request.rel_url.query
     elif method == 'POST':
@@ -420,13 +426,16 @@ async def get_jobid_dbpath (request):
     if dbpath == '':
         if 'job_id' != '':
             global wu
-            if given_username != '':
-                job_dir = await wu.filerouter.job_dir(request, job_id, given_username=given_username)
-            else:
-                job_dir = await wu.filerouter.job_dir(request, job_id)
-            status_json = wu.get_status_json_in_dir(job_dir)
-            if status_json is not None and 'db_path' in status_json:
-                dbpath = status_json['db_path']
+            if wu is not None:
+                if given_username != '':
+                    job_dir = await wu.filerouter.job_dir(request, job_id, given_username=given_username)
+                else:
+                    job_dir = await wu.filerouter.job_dir(request, job_id)
+                status_json = wu.get_status_json_in_dir(job_dir)
+                if status_json is not None and 'db_path' in status_json:
+                    dbpath = status_json['db_path']
+                else:
+                    dbpath = None
             else:
                 dbpath = None
         else:
@@ -590,8 +599,9 @@ async def table_exists (cursor, table):
         return True
 
 def serve_widgetfile (request):
+    from ..sysadmin import get_modules_dir
     filepath = os.path.join(
-        au.get_modules_dir(),
+        get_modules_dir(),
         'webviewerwidgets',
         request.match_info['module_dir'],
         request.match_info['filename']
@@ -602,6 +612,7 @@ def serve_widgetfile (request):
         return response
 
 async def serve_runwidget (request):
+    from ..sysadmin import get_modules_dir
     path = 'wg' + request.match_info['module']
     queries = request.rel_url.query
     job_id, dbpath = await get_jobid_dbpath(request)
@@ -613,13 +624,14 @@ async def serve_runwidget (request):
                 new_queries[key] = queries[key]
         queries = new_queries
     f, fn, d = imp.find_module(path, 
-        [os.path.join(au.get_modules_dir(), 
+        [os.path.join(get_modules_dir(), 
                       'webviewerwidgets', path)])
     m = imp.load_module(path, f, fn, d)
     content = await m.get_data(queries)
     return web.json_response(content)
 
 async def serve_webapp_runwidget (request):
+    from ..sysadmin import get_modules_dir
     module_name = request.match_info['module']
     widget_name = request.match_info['widget']
     queries = request.rel_url.query
@@ -629,13 +641,14 @@ async def serve_webapp_runwidget (request):
     queries = tmp_queries
     f, fn, d = imp.find_module(
         'wg' + widget_name,
-        [os.path.join(au.get_modules_dir(), 'webapps', module_name, 'widgets', 'wg' + widget_name)]
+        [os.path.join(get_modules_dir(), 'webapps', module_name, 'widgets', 'wg' + widget_name)]
     )
     m = imp.load_module(widget_name, f, fn, d)
     content = await m.get_data(queries)
     return web.json_response(content)
 
 async def serve_runwidget_post (request):
+    from ..sysadmin import get_modules_dir
     path = 'wg' + request.match_info['module']
     job_id, dbpath = await get_jobid_dbpath(request)
     queries = await request.post()
@@ -663,7 +676,7 @@ async def serve_runwidget_post (request):
                 new_queries[key] = queries[key]
         queries = new_queries
     f, fn, d = imp.find_module(path, 
-        [os.path.join(au.get_modules_dir(), 
+        [os.path.join(get_modules_dir(), 
                       'webviewerwidgets', path)])
     m = imp.load_module(path, f, fn, d)
     content = await m.get_data(queries)

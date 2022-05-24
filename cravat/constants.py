@@ -260,33 +260,7 @@ module_tag_desc = {
 }
 
 legacy_gene_level_cols_to_skip = ["base__num_variants", "base__so", "base__all_so"]
-default_num_input_line_warning_cutoff = 25000
-default_settings_gui_input_size_limit = 500
-default_max_num_concurrent_jobs = 4
-default_max_num_concurrent_annotators_per_job = 1  # max(1, os.cpu_count() - 1)
-default_multicore_mapper_mode = True
-default_assembly = "hg38"
-default_assembly_key = "default_assembly"
 assembly_choices = ["hg38", "hg19", "hg18"]
 publish_time_fmt = "%Y-%m-%dT%H:%M:%S.%f%z"
 install_tempdir_name = "temp"
 cannonical_chroms = ["chr" + str(n) for n in range(1, 23)] + ["chrX", "chrY"]
-default_postaggregator_names = ["tagsampler", "casecontrol", "varmeta", "vcfinfo"]
-# env keys
-modules_dir_env_key = "OAKVAR_MD"
-system_conf_path_env_key = "OAKVAR_SYSTEM_CONF_PATH"
-# Directories
-custom_modules_dir = None
-conf_dir_name = "conf"
-conf_dir_key = "conf_dir"
-system_conf_fname = "cravat-system.yml"
-system_conf_template_fname = "cravat-system.template.yml"
-modules_dir_key = "modules_dir"
-modules_dir_name = "modules"
-jobs_dir_key = "jobs_dir"
-jobs_dir_name = "jobs"
-log_dir_key = "log_dir"
-log_dir_name = "logs"
-live_conf_fname = "live.yml"
-base_modules_key = "base_modules"
-main_conf_fname = "cravat.yml"

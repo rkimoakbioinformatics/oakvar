@@ -1,7 +1,5 @@
 def fn_module_ls(args):
     from .util import get_dict_from_namespace
-    from inspect import currentframe
-    fnname = currentframe().f_code.co_name
     args = get_dict_from_namespace(args)
     if args["available"]:
         ret = list_available_modules(**args)
@@ -31,7 +29,7 @@ def fn_module_info(args):
         get_remote_module_config,
     )
     from .util import get_dict_from_namespace
-    from .constants import custom_modules_dir
+    from .sysadmin_const import custom_modules_dir
 
     args = get_dict_from_namespace(args)
     ret = {}
@@ -119,9 +117,8 @@ def fn_module_install(args):
         install_module,
     )
     from .util import get_dict_from_namespace
-    from .constants import custom_modules_dir
+    from .sysadmin_const import custom_modules_dir
     from distutils.version import LooseVersion
-
     args = get_dict_from_namespace(args)
     if args["md"] is not None:
         custom_modules_dir = args["md"]
@@ -233,7 +230,7 @@ def fn_module_install(args):
 def fn_module_update(args):
     from .admin_util import search_local, get_updatable
     from .util import get_dict_from_namespace, humanize_bytes
-    from .constants import custom_modules_dir
+    from .sysadmin_const import custom_modules_dir
 
     args = get_dict_from_namespace(args)
     if args["md"] is not None:
@@ -278,7 +275,7 @@ def fn_module_update(args):
 def fn_module_uninstall(args):
     from .admin_util import search_local, uninstall_module
     from .util import get_dict_from_namespace
-    from .constants import custom_modules_dir
+    from .sysadmin_const import custom_modules_dir
 
     args = get_dict_from_namespace(args)
     if args["md"] is not None:
@@ -303,24 +300,23 @@ def fn_module_uninstall(args):
 
 
 def fn_module_installbase(args):
-    from .admin_util import get_system_conf
+    from .sysadmin import get_system_conf
     from .util import get_dict_from_namespace
-    from .constants import base_modules_key
+    from .sysadmin_const import base_modules_key
     from types import SimpleNamespace
-
     args = get_dict_from_namespace(args)
-    sys_conf = get_system_conf()
+    sys_conf = get_system_conf(conf=args.get("conf"))
     base_modules = sys_conf.get(base_modules_key, [])
     args = SimpleNamespace(
         modules=base_modules,
-        force_data=args["force_data"],
+        force_data=args.get("force_data", True),
         version=None,
         yes=True,
         private=False,
         skip_dependencies=False,
-        force=args["force"],
+        force=args.get("force", False),
         skip_data=False,
-        md=args["md"],
+        md=args.get("md", None),
     )
     fn_module_install(args)
 
@@ -332,6 +328,7 @@ def list_available_modules(**kwargs):
 
     fmt = kwargs["fmt"]
     quiet = kwargs["quiet"]
+    all_toks = []
     if fmt == "tabular":
         if quiet:
             all_toks = []
@@ -374,6 +371,7 @@ def list_available_modules(**kwargs):
             size = remote_info.size
         else:
             size = humanize_bytes(remote_info.size)
+        toks = []
         if fmt == "tabular":
             if quiet:
                 toks = [module_name]
