@@ -84,9 +84,11 @@ def fn_module_info(args):
                 desc = ""
                 if "desc" in col:
                     desc = col["desc"]
-                ret["output_columns"].append(
-                    {"name": col["name"], "title": col["title"], "desc": desc}
-                )
+                ret["output_columns"].append({
+                    "name": col["name"],
+                    "title": col["title"],
+                    "desc": desc
+                })
     else:
         ret["store_availability"] = False
     ret["installed"] = installed
@@ -163,8 +165,8 @@ def fn_module_install(args):
                     local_ver = local_info.version
                     remote_ver = remote_info.latest_version
                     if not args["force"] and LooseVersion(
-                        local_info.version
-                    ) >= LooseVersion(remote_info.latest_version):
+                            local_info.version) >= LooseVersion(
+                                remote_info.latest_version):
                         print(
                             f"{module_name}: latest version is already installed.",
                             flush=True,
@@ -173,16 +175,13 @@ def fn_module_install(args):
                 selected_install[module_name] = remote_info.latest_version
         else:
             if not module_exists_remote(
-                module_name, version=version, private=args["private"]
-            ):
+                    module_name, version=version, private=args["private"]):
                 print(f"{module_name}=={version} does not exist.", flush=True)
                 continue
             else:
-                if (
-                    not args["force"]
-                    and local_info is not None
-                    and LooseVersion(local_info.version) == LooseVersion(version)
-                ):
+                if (not args["force"] and local_info is not None
+                        and LooseVersion(
+                            local_info.version) == LooseVersion(version)):
                     print(
                         f"{module_name}=={args['version']} is already installed. Use -f/--force to overwrite",
                         flush=True,
@@ -241,13 +240,12 @@ def fn_module_update(args):
         requested_modules = []
     update_strategy = args["strategy"]
     status_table = [["Name", "New Version", "Size"]]
-    updates, _, reqs_failed = get_updatable(requested_modules, strategy=update_strategy)
+    updates, _, reqs_failed = get_updatable(requested_modules,
+                                            strategy=update_strategy)
     if reqs_failed:
         print(
-            "Newer versions of ({}) are available, but would break dependencies. You may use --strategy=force to force installation.".format(
-                ", ".join(reqs_failed.keys())
-            )
-        )
+            "Newer versions of ({}) are available, but would break dependencies. You may use --strategy=force to force installation."
+            .format(", ".join(reqs_failed.keys())))
     if not updates:
         print("No module updates are needed")
         exit()
@@ -349,7 +347,8 @@ def list_available_modules(**kwargs):
         all_toks = []
     for module_name in search_remote(kwargs["pattern"]):
         remote_info = get_remote_module_info(module_name)
-        if len(kwargs["types"]) > 0 and remote_info.type not in kwargs["types"]:
+        if len(kwargs["types"]
+               ) > 0 and remote_info.type not in kwargs["types"]:
             continue
         if len(kwargs["tags"]) > 0:
             if remote_info.tags is None:
@@ -423,7 +422,9 @@ def list_local_modules(
     if quiet or fmt == "json" or fmt == "yaml":
         all_toks = []
     else:
-        header = ["Name", "Title", "Type", "Version", "Data source ver", "Size"]
+        header = [
+            "Name", "Title", "Type", "Version", "Data source ver", "Size"
+        ]
         all_toks = [header]
     for module_name in search_local(pattern):
         module_info = get_local_module_info(module_name)
@@ -502,6 +503,7 @@ from .admin_util import InstallProgressHandler
 
 
 class InstallProgressStdout(InstallProgressHandler):
+
     def __init__(self, module_name, module_version):
         super().__init__(module_name, module_version)
 
@@ -519,14 +521,14 @@ class InstallProgressStdout(InstallProgressHandler):
         perc = cur_size / total_size * 100
         # trailing spaces needed to avoid leftover characters on resize
         out = (
-            "\r[{cur_prog}{rem_prog}] {cur_size} / {total_size} ({perc:.0f}%)  ".format(
+            "\r[{cur_prog}{rem_prog}] {cur_size} / {total_size} ({perc:.0f}%)  "
+            .format(
                 cur_prog="*" * cur_chunk,
                 rem_prog=" " * rem_chunks,
                 cur_size=humanize_bytes(cur_size),
                 total_size=humanize_bytes(total_size),
                 perc=perc,
-            )
-        )
+            ))
         sys.stdout.write(out)
         if cur_chunk == total_chunks:
             sys.stdout.write("\n")
@@ -535,13 +537,16 @@ class InstallProgressStdout(InstallProgressHandler):
 def get_parser_fn_module():
     from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
-    parser_fn_module = ArgumentParser(formatter_class=RawDescriptionHelpFormatter)
-    _subparsers = parser_fn_module.add_subparsers(title="Commands", dest="command")
+    parser_fn_module = ArgumentParser(
+        formatter_class=RawDescriptionHelpFormatter)
+    _subparsers = parser_fn_module.add_subparsers(title="Commands",
+                                                  dest="command")
 
     # install-base
     parser_fn_module_installbase = _subparsers.add_parser(
-        "installbase", help="installs base modules.", description="installs base modules."
-    )
+        "installbase",
+        help="installs base modules.",
+        description="installs base modules.")
     parser_fn_module_installbase.add_argument(
         "-f",
         "--force",
@@ -555,17 +560,20 @@ def get_parser_fn_module():
         help="Download data even if latest data is already installed",
     )
     parser_fn_module_installbase.add_argument(
-        "--md", default=None, help="Specify the root directory of OakVar modules"
-    )
+        "--md",
+        default=None,
+        help="Specify the root directory of OakVar modules")
     parser_fn_module_installbase.set_defaults(func=fn_module_installbase)
 
     # install
     parser_fn_module_install = _subparsers.add_parser(
-        "install", help="installs OakVar modules.", description="Installs OakVar modules."
-    )
+        "install",
+        help="installs OakVar modules.",
+        description="Installs OakVar modules.")
     parser_fn_module_install.add_argument(
-        "modules", nargs="+", help="Modules to install. May be regular expressions."
-    )
+        "modules",
+        nargs="+",
+        help="Modules to install. May be regular expressions.")
     parser_fn_module_install.add_argument(
         "-f",
         "--force",
@@ -578,21 +586,24 @@ def get_parser_fn_module():
         action="store_true",
         help="Download data even if latest data is already installed",
     )
+    parser_fn_module_install.add_argument("-y",
+                                          "--yes",
+                                          action="store_true",
+                                          help="Proceed without prompt")
+    parser_fn_module_install.add_argument("--skip-dependencies",
+                                          action="store_true",
+                                          help="Skip installing dependencies")
+    parser_fn_module_install.add_argument("-p",
+                                          "--private",
+                                          action="store_true",
+                                          help="Install a private module")
+    parser_fn_module_install.add_argument("--skip-data",
+                                          action="store_true",
+                                          help="Skip installing data")
     parser_fn_module_install.add_argument(
-        "-y", "--yes", action="store_true", help="Proceed without prompt"
-    )
-    parser_fn_module_install.add_argument(
-        "--skip-dependencies", action="store_true", help="Skip installing dependencies"
-    )
-    parser_fn_module_install.add_argument(
-        "-p", "--private", action="store_true", help="Install a private module"
-    )
-    parser_fn_module_install.add_argument(
-        "--skip-data", action="store_true", help="Skip installing data"
-    )
-    parser_fn_module_install.add_argument(
-        "--md", default=None, help="Specify the root directory of OakVar modules"
-    )
+        "--md",
+        default=None,
+        help="Specify the root directory of OakVar modules")
     parser_fn_module_install.set_defaults(func=fn_module_install)
 
     # update
@@ -602,49 +613,60 @@ def get_parser_fn_module():
         description="updates modules.",
         formatter_class=RawDescriptionHelpFormatter,
     )
-    parser_fn_module_update.add_argument("modules", nargs="*", help="Modules to update.")
-    parser_fn_module_update.add_argument(
-        "-y", action="store_true", help="Proceed without prompt"
-    )
+    parser_fn_module_update.add_argument("modules",
+                                         nargs="*",
+                                         help="Modules to update.")
+    parser_fn_module_update.add_argument("-y",
+                                         action="store_true",
+                                         help="Proceed without prompt")
     parser_fn_module_update.add_argument(
         "--strategy",
-        help='Dependency resolution strategy. "consensus" will attempt to resolve dependencies. "force" will install the highest available version. "skip" will skip modules with constraints.',
+        help=
+        'Dependency resolution strategy. "consensus" will attempt to resolve dependencies. "force" will install the highest available version. "skip" will skip modules with constraints.',
         default="consensus",
         type=str,
         choices=("consensus", "force", "skip"),
     )
     parser_fn_module_update.add_argument(
-        "--md", default=None, help="Specify the root directory of OakVar modules"
-    )
+        "--md",
+        default=None,
+        help="Specify the root directory of OakVar modules")
     parser_fn_module_update.set_defaults(func=fn_module_update)
 
     # uninstall
     parser_fn_module_uninstall = _subparsers.add_parser(
-        "uninstall", help="uninstalls modules."
-    )
+        "uninstall", help="uninstalls modules.")
+    parser_fn_module_uninstall.add_argument("modules",
+                                            nargs="+",
+                                            help="Modules to uninstall")
+    parser_fn_module_uninstall.add_argument("-y",
+                                            "--yes",
+                                            action="store_true",
+                                            help="Proceed without prompt")
     parser_fn_module_uninstall.add_argument(
-        "modules", nargs="+", help="Modules to uninstall"
-    )
-    parser_fn_module_uninstall.add_argument(
-        "-y", "--yes", action="store_true", help="Proceed without prompt"
-    )
-    parser_fn_module_uninstall.add_argument(
-        "--md", default=None, help="Specify the root directory of OakVar modules"
-    )
+        "--md",
+        default=None,
+        help="Specify the root directory of OakVar modules")
     parser_fn_module_uninstall.set_defaults(func=fn_module_uninstall)
 
     # info
-    parser_fn_module_info = _subparsers.add_parser("info", help="shows module information.")
-    parser_fn_module_info.add_argument("module", help="Module to get info about")
+    parser_fn_module_info = _subparsers.add_parser(
+        "info", help="shows module information.")
+    parser_fn_module_info.add_argument("module",
+                                       help="Module to get info about")
+    parser_fn_module_info.add_argument("-l",
+                                       "--local",
+                                       dest="local",
+                                       help="Include local info",
+                                       action="store_true")
     parser_fn_module_info.add_argument(
-        "-l", "--local", dest="local", help="Include local info", action="store_true"
-    )
+        "--md",
+        default=None,
+        help="Specify the root directory of OakVar modules")
     parser_fn_module_info.add_argument(
-        "--md", default=None, help="Specify the root directory of OakVar modules"
-    )
-    parser_fn_module_info.add_argument(
-        "--to", default="stdout", help='"print" to stdout / "return" to return'
-    )
+        "--to",
+        default="stdout",
+        help='"print" to stdout / "return" to return')
     parser_fn_module_info.set_defaults(func=fn_module_info)
 
     # ls
@@ -655,34 +677,44 @@ def get_parser_fn_module():
         formatter_class=RawDescriptionHelpFormatter,
     )
     parser_fn_module_ls.add_argument(
-        "pattern", nargs="?", default=r".*", help="Regular expression for module names"
-    )
+        "pattern",
+        nargs="?",
+        default=r".*",
+        help="Regular expression for module names")
+    parser_fn_module_ls.add_argument("-a",
+                                     "--available",
+                                     action="store_true",
+                                     help="Include available modules")
+    parser_fn_module_ls.add_argument("-t",
+                                     "--types",
+                                     nargs="+",
+                                     default=[],
+                                     help="Only list modules of certain types")
+    parser_fn_module_ls.add_argument("-i",
+                                     "--include-hidden",
+                                     action="store_true",
+                                     help="Include hidden modules")
+    parser_fn_module_ls.add_argument("--tags",
+                                     nargs="+",
+                                     default=[],
+                                     help="Only list modules of given tag(s)")
+    parser_fn_module_ls.add_argument("-q",
+                                     "--quiet",
+                                     action="store_true",
+                                     help="Only list module names")
+    parser_fn_module_ls.add_argument("--bytes",
+                                     action="store_true",
+                                     dest="raw_bytes",
+                                     help="Machine readable data sizes")
     parser_fn_module_ls.add_argument(
-        "-a", "--available", action="store_true", help="Include available modules"
-    )
-    parser_fn_module_ls.add_argument(
-        "-t", "--types", nargs="+", default=[], help="Only list modules of certain types"
-    )
-    parser_fn_module_ls.add_argument(
-        "-i", "--include-hidden", action="store_true", help="Include hidden modules"
-    )
-    parser_fn_module_ls.add_argument(
-        "--tags", nargs="+", default=[], help="Only list modules of given tag(s)"
-    )
-    parser_fn_module_ls.add_argument(
-        "-q", "--quiet", action="store_true", help="Only list module names"
-    )
-    parser_fn_module_ls.add_argument(
-        "--bytes", action="store_true", dest="raw_bytes", help="Machine readable data sizes"
-    )
-    parser_fn_module_ls.add_argument(
-        "--md", default=None, help="Specify the root directory of OakVar modules"
-    )
-    parser_fn_module_ls.add_argument(
-        "--fmt", default="tabular", help="Output format. tabular or json"
-    )
-    parser_fn_module_ls.add_argument(
-        "--to", default="stdout", help="stdout to print / return to return"
-    )
+        "--md",
+        default=None,
+        help="Specify the root directory of OakVar modules")
+    parser_fn_module_ls.add_argument("--fmt",
+                                     default="tabular",
+                                     help="Output format. tabular or json")
+    parser_fn_module_ls.add_argument("--to",
+                                     default="stdout",
+                                     help="stdout to print / return to return")
     parser_fn_module_ls.set_defaults(func=fn_module_ls)
     return parser_fn_module

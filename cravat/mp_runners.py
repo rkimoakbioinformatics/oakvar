@@ -20,9 +20,8 @@ def annot_from_queue(start_queue, end_queue, queue_populated, status_writer):
         module, kwargs = task
         logger = getLogger(module.name)
         log_handler = FileHandler(kwargs["log_path"], "a")
-        formatter = Formatter(
-            "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
-        )
+        formatter = Formatter("%(asctime)s %(name)-20s %(message)s",
+                              "%Y/%m/%d %H:%M:%S")
         log_handler.setFormatter(formatter)
         logger.addHandler(log_handler)
         try:

@@ -53,23 +53,27 @@ class BaseMapper(object):
 
         self.cmd_parser = argparse.ArgumentParser()
         self.cmd_parser.add_argument("input_file", help="Input crv file")
-        self.cmd_parser.add_argument(
-            "-n", dest="name", help="Name of job. " + "Default is input file name."
-        )
+        self.cmd_parser.add_argument("-n",
+                                     dest="name",
+                                     help="Name of job. " +
+                                     "Default is input file name.")
         self.cmd_parser.add_argument(
             "-d",
             dest="output_dir",
             help="Output directory. " + "Default is input file directory.",
         )
-        self.cmd_parser.add_argument(
-            "--confs", dest="confs", default="{}", help="Configuration string"
-        )
-        self.cmd_parser.add_argument(
-            "--seekpos", dest="seekpos", default=None, help=argparse.SUPPRESS
-        )
-        self.cmd_parser.add_argument(
-            "--chunksize", dest="chunksize", default=None, help=argparse.SUPPRESS
-        )
+        self.cmd_parser.add_argument("--confs",
+                                     dest="confs",
+                                     default="{}",
+                                     help="Configuration string")
+        self.cmd_parser.add_argument("--seekpos",
+                                     dest="seekpos",
+                                     default=None,
+                                     help=argparse.SUPPRESS)
+        self.cmd_parser.add_argument("--chunksize",
+                                     dest="chunksize",
+                                     default=None,
+                                     help=argparse.SUPPRESS)
         self.cmd_parser.add_argument(
             "--slavemode",
             dest="slavemode",
@@ -77,22 +81,25 @@ class BaseMapper(object):
             default=False,
             help=argparse.SUPPRESS,
         )
-        self.cmd_parser.add_argument(
-            "--postfix", dest="postfix", default="", help=argparse.SUPPRESS
-        )
+        self.cmd_parser.add_argument("--postfix",
+                                     dest="postfix",
+                                     default="",
+                                     help=argparse.SUPPRESS)
         self.cmd_parser.add_argument(
             "--primary-transcript",
             dest="primary_transcript",
             nargs="*",
             default=["mane"],
-            help='"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
+            help=
+            '"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
         )
-        self.cmd_parser.add_argument(
-            "--live", action="store_true", default=False, help=argparse.SUPPRESS
-        )
-        self.cmd_parser.add_argument(
-            "--status_writer", default=None, help=argparse.SUPPRESS
-        )
+        self.cmd_parser.add_argument("--live",
+                                     action="store_true",
+                                     default=False,
+                                     help=argparse.SUPPRESS)
+        self.cmd_parser.add_argument("--status_writer",
+                                     default=None,
+                                     help=argparse.SUPPRESS)
 
     def _define_additional_cmd_args(self):
         """This method allows sub-classes to override and provide addittional command line args"""
@@ -157,7 +164,8 @@ class BaseMapper(object):
         from .constants import crx_def, crx_idx, crg_def, crg_idx, crt_def, crt_idx
 
         # Reader
-        if self.args["seekpos"] is not None and self.args["chunksize"] is not None:
+        if self.args["seekpos"] is not None and self.args[
+                "chunksize"] is not None:
             self.reader = CravatReader(
                 self.input_path,
                 seekpos=int(self.args["seekpos"]),
@@ -166,7 +174,8 @@ class BaseMapper(object):
         else:
             self.reader = CravatReader(self.input_path)
         # Various output files
-        output_base_path = os.path.join(self.output_dir, self.output_base_fname)
+        output_base_path = os.path.join(self.output_dir,
+                                        self.output_base_fname)
         output_toks = self.output_base_fname.split(".")
         if output_toks[-1] == "crv":
             output_toks = output_toks[:-1]
@@ -187,8 +196,8 @@ class BaseMapper(object):
             self.crx_writer.write_meta_line("primary_transcript_paths", "")
         else:
             self.crx_writer.write_meta_line(
-                "primary_transcript_paths", ",".join(self.primary_transcript_paths)
-            )
+                "primary_transcript_paths",
+                ",".join(self.primary_transcript_paths))
         # .crg
         crg_fname = ".".join(output_toks) + ".crg"
         self.crg_path = os.path.join(self.output_dir, crg_fname)
@@ -222,8 +231,8 @@ class BaseMapper(object):
         self.logger.info("started: %s" % asctime(localtime(start_time)))
         if self.status_writer is not None:
             self.status_writer.queue_status_update(
-                "status", "Started {} ({})".format(self.conf["title"], self.module_name)
-            )
+                "status", "Started {} ({})".format(self.conf["title"],
+                                                   self.module_name))
         count = 0
         last_status_update_time = time()
         crx_data = None
@@ -236,8 +245,8 @@ class BaseMapper(object):
                 if self.status_writer is not None:
                     if count % 10000 == 0 or cur_time - last_status_update_time > 3:
                         self.status_writer.queue_status_update(
-                            "status", "Running gene mapper: line {}".format(count)
-                        )
+                            "status",
+                            "Running gene mapper: line {}".format(count))
                         last_status_update_time = cur_time
                 if crv_data["alt_base"] == "*":
                     crx_data = crv_data
@@ -259,7 +268,8 @@ class BaseMapper(object):
         runtime = stop_time - start_time
         self.logger.info("runtime: %6.3f" % runtime)
         if self.status_writer is not None:
-            self.status_writer.queue_status_update("status", "Finished gene mapper")
+            self.status_writer.queue_status_update("status",
+                                                   "Finished gene mapper")
         self.end()
         return output
 
@@ -276,8 +286,8 @@ class BaseMapper(object):
         self.logger.info(f"started: {tstamp} | {self.args['seekpos']}")
         if self.status_writer is not None:
             self.status_writer.queue_status_update(
-                "status", "Started {} ({})".format(self.conf["title"], self.module_name)
-            )
+                "status", "Started {} ({})".format(self.conf["title"],
+                                                   self.module_name))
         count = 0
         last_status_update_time = time()
         crx_data = None
@@ -288,8 +298,8 @@ class BaseMapper(object):
                 if self.status_writer is not None:
                     if count % 10000 == 0 or cur_time - last_status_update_time > 3:
                         self.status_writer.queue_status_update(
-                            "status", "Running gene mapper: line {}".format(count)
-                        )
+                            "status",
+                            "Running gene mapper: line {}".format(count))
                         last_status_update_time = cur_time
                 if crv_data["alt_base"] == "*":
                     crx_data = crv_data
@@ -354,9 +364,8 @@ class BaseMapper(object):
         if err_str not in self.unique_excs:
             self.unique_excs.append(err_str)
             self.logger.error(err_str)
-        self.error_logger.error(
-            "\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(ln, line[:-1], str(e))
-        )
+        self.error_logger.error("\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(
+            ln, line[:-1], str(e)))
         # if not(isinstance(e, InvalidData)):
         #     raise e
 
@@ -370,8 +379,7 @@ class BaseMapper(object):
         # Below is to fix opening oc 1.8.0 jobs with oc 1.8.1.
         # TODO: Remove it after a while and add 1.8.0 to the db update chain in cmd_util.
         cols = [
-            "base__" + coldef["name"]
-            for coldef in crx_def
+            "base__" + coldef["name"] for coldef in crx_def
             if coldef["name"] != "cchange"
         ]
         cols.extend(["tagsampler__numsample"])
@@ -408,9 +416,8 @@ class BaseMapper(object):
                 value = d[colname]
                 if colname in ["all_mappings", "all_so"]:
                     for target in list(rs_dic[colname].keys()):
-                        value = re.sub(
-                            "\\b" + target + "\\b", rs_dic[colname][target], value
-                        )
+                        value = re.sub("\\b" + target + "\\b",
+                                       rs_dic[colname][target], value)
                 else:
                     if value in rs_dic[colname]:
                         value = rs_dic[colname][value]

@@ -29,7 +29,8 @@ def fn_config_oakvar(args):
 def get_parser_fn_config():
     from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
-    parser_fn_config = ArgumentParser(formatter_class=RawDescriptionHelpFormatter)
+    parser_fn_config = ArgumentParser(
+        formatter_class=RawDescriptionHelpFormatter)
     _subparsers = parser_fn_config.add_subparsers(title="Commands")
 
     # md
@@ -39,30 +40,26 @@ def get_parser_fn_config():
         description="displays or changes OakVar modules directory.",
         formatter_class=RawDescriptionHelpFormatter,
     )
-    parser_fn_config_md.add_argument("directory", nargs="?", help="sets modules directory.")
+    parser_fn_config_md.add_argument("directory",
+                                     nargs="?",
+                                     help="sets modules directory.")
     parser_fn_config_md.set_defaults(func=fn_config_md)
 
     # shows system conf content.
     parser_fn_config_system = _subparsers.add_parser(
-        "system", help="shows system configuration."
-    )
+        "system", help="shows system configuration.")
     parser_fn_config_system.add_argument(
-        "--fmt", default="yaml", help="Format of output. json or yaml."
-    )
+        "--fmt", default="yaml", help="Format of output. json or yaml.")
     parser_fn_config_system.add_argument(
-        "--to", default="stdout", help='"stdout" to print. "return" to return'
-    )
+        "--to", default="stdout", help='"stdout" to print. "return" to return')
     parser_fn_config_system.set_defaults(func=fn_config_system)
 
     # shows oakvar conf content.
     parser_fn_config_oakvar = _subparsers.add_parser(
-        "oakvar", help="shows oakvar configuration."
-    )
+        "oakvar", help="shows oakvar configuration.")
     parser_fn_config_oakvar.add_argument(
-        "--fmt", default="yaml", help="Format of output. json or yaml."
-    )
+        "--fmt", default="yaml", help="Format of output. json or yaml.")
     parser_fn_config_oakvar.add_argument(
-        "--to", default="stdout", help='"stdout" to print. "return" to return'
-    )
+        "--to", default="stdout", help='"stdout" to print. "return" to return')
     parser_fn_config_oakvar.set_defaults(func=fn_config_oakvar)
     return parser_fn_config

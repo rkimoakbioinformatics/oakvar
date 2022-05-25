@@ -31,19 +31,16 @@ class PathBuilder(object):
         return self._build_path(self.module_dir(module_name), version)
 
     def module_conf(self, module_name, version):
-        return self._build_path(
-            self.module_version_dir(module_name, version), module_name + ".yml"
-        )
+        return self._build_path(self.module_version_dir(module_name, version),
+                                module_name + ".yml")
 
     def module_readme(self, module_name, version):
-        return self._build_path(
-            self.module_version_dir(module_name, version), module_name + ".md"
-        )
+        return self._build_path(self.module_version_dir(module_name, version),
+                                module_name + ".md")
 
     def module_code(self, module_name, version):
-        return self._build_path(
-            self.module_version_dir(module_name, version), module_name + ".code.zip"
-        )
+        return self._build_path(self.module_version_dir(module_name, version),
+                                module_name + ".code.zip")
 
     def module_code_manifest(self, module_name, version):
         return self._build_path(
@@ -52,9 +49,8 @@ class PathBuilder(object):
         )
 
     def module_data(self, module_name, version):
-        return self._build_path(
-            self.module_version_dir(module_name, version), module_name + ".data.zip"
-        )
+        return self._build_path(self.module_version_dir(module_name, version),
+                                module_name + ".data.zip")
 
     def module_data_manifest(self, module_name, version):
         return self._build_path(
@@ -63,14 +59,12 @@ class PathBuilder(object):
         )
 
     def module_logo(self, module_name, version):
-        return self._build_path(
-            self.module_version_dir(module_name, version), "logo.png"
-        )
+        return self._build_path(self.module_version_dir(module_name, version),
+                                "logo.png")
 
     def module_meta(self, module_name, version):
-        return self._build_path(
-            self.module_version_dir(module_name, version), "meta.yml"
-        )
+        return self._build_path(self.module_version_dir(module_name, version),
+                                "meta.yml")
 
     def manifest(self, version=None):
         from pkg_resources import get_distribution
@@ -99,7 +93,10 @@ class ProgressStager(object):
         cur_stage, total_stages, cur_size, total_size
     """
 
-    def __init__(self, total_size, total_stages=100, stage_handler=blank_stage_handler):
+    def __init__(self,
+                 total_size,
+                 total_stages=100,
+                 stage_handler=blank_stage_handler):
         self.first_block = True
         self.total_size = total_size
         self.total_stages = total_stages
@@ -108,7 +105,8 @@ class ProgressStager(object):
         self.stage_handler = stage_handler
 
     def get_cur_state(self):
-        return (self.cur_stage, self.total_stages, self.cur_size, self.total_size)
+        return (self.cur_stage, self.total_stages, self.cur_size,
+                self.total_size)
 
     def increase_cur_size(self, dsize):
         self.cur_size += dsize
@@ -122,13 +120,18 @@ class ProgressStager(object):
         from math import floor
 
         old_stage = self.cur_stage
-        self.cur_stage = floor(self.cur_size / self.total_size * self.total_stages)
+        self.cur_stage = floor(self.cur_size / self.total_size *
+                               self.total_stages)
         if self.cur_stage != old_stage or self.first_block:
             self.first_block = False
             self.stage_handler(*self.get_cur_state())
 
 
-def stream_multipart_post(url, fields, stage_handler=None, stages=50, **kwargs):
+def stream_multipart_post(url,
+                          fields,
+                          stage_handler=None,
+                          stages=50,
+                          **kwargs):
     """
     Post the fields in fields to the url in url using a streamed
     multipart/form-data request. Optionally pass in a callback function which
@@ -141,9 +144,9 @@ def stream_multipart_post(url, fields, stage_handler=None, stages=50, **kwargs):
     from requests import post
 
     encoder = MultipartEncoder(fields=fields)
-    stager = ProgressStager(
-        encoder.len, total_stages=stages, stage_handler=stage_handler
-    )
+    stager = ProgressStager(encoder.len,
+                            total_stages=stages,
+                            stage_handler=stage_handler)
 
     def stager_caller(monitor):
         stager.set_cur_size(monitor.bytes_read)
@@ -154,9 +157,12 @@ def stream_multipart_post(url, fields, stage_handler=None, stages=50, **kwargs):
     return r
 
 
-def stream_to_file(
-    url, fpath, stage_handler=None, stages=50, install_state=None, **kwargs
-):
+def stream_to_file(url,
+                   fpath,
+                   stage_handler=None,
+                   stages=50,
+                   install_state=None,
+                   **kwargs):
     """
     Stream the content at a url to a file. Optionally pass in a callback
     function which is called when the uploaded size passes each of
@@ -175,12 +181,13 @@ def stream_to_file(
     if r.status_code == 200:
         total_size = int(r.headers.get("content-length", 0))
         chunk_size = 8192
-        stager = ProgressStager(
-            total_size, total_stages=stages, stage_handler=stage_handler
-        )
+        stager = ProgressStager(total_size,
+                                total_stages=stages,
+                                stage_handler=stage_handler)
         with open(fpath, "wb") as wf:
             for chunk in r.iter_content(chunk_size):
-                if install_state is not None and install_state["kill_signal"] == True:
+                if install_state is not None and install_state[
+                        "kill_signal"] == True:
                     raise KillInstallException()
                 wf.write(chunk)
                 stager.increase_cur_size(len(chunk))
@@ -218,13 +225,16 @@ def file_checksum(path):
 
 
 class ModuleArchiveBuilder(object):
+
     def __init__(self, archive_path, base_path=None):
         from os import getcwd
         from zipfile import ZipFile, ZIP_DEFLATED
 
         if base_path is None:
             base_path = getcwd()
-        self._archive = ZipFile(archive_path, compression=ZIP_DEFLATED, mode="w")
+        self._archive = ZipFile(archive_path,
+                                compression=ZIP_DEFLATED,
+                                mode="w")
         self._base_path = base_path
         self._manifest = {}
 
@@ -268,7 +278,10 @@ def add_to_zipfile(full_path, zf, start=None, compress_type=None):
     if isdir(full_path):
         for item_name in listdir(full_path):
             item_path = join(full_path, item_name)
-            add_to_zipfile(item_path, zf, start=start, compress_type=compress_type)
+            add_to_zipfile(item_path,
+                           zf,
+                           start=start,
+                           compress_type=compress_type)
 
 
 def nest_value_in_dict(d, v, keys):
@@ -302,7 +315,8 @@ def verify_against_manifest(dirpath, manifest):
         item_path = join(dirpath, item_name)
         if exists(item_path):
             if type(v) == dict:
-                correct = isdir(item_path) and verify_against_manifest(item_path, v)
+                correct = isdir(item_path) and verify_against_manifest(
+                    item_path, v)
             else:
                 correct = v == file_checksum(item_path)
         else:
