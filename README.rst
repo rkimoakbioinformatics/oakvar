@@ -1,8 +1,18 @@
-OakVar is a genomic variant analysis platform, based on OpenCRAVAT and further developed by Ryangguk Kim, the former lead architect of OpenCRAVAT.
+OakVar: Genomic Variant Analysis Platform
+******
 
-OakVar uses the same commands as OpenCRAVAT. Thus, to use OakVar, OpenCRAVAT should be uninstalled first and then OakVar should be installed. The same `oc` commands will work. OavVar's own command `ov` will work just like `oc` at this moment.
+* Annotate genomic variants with diverse annotation sources.
+* Make databases of annotated variants.
+* Query annotated variants with filter sets.
+* Make reports in diverse formats.
+* Visualize annotated variants with graphical user interface.
+* Works via CLI and GUI.
+* Easily develop, run, and distribute CLI and GUI genomics apps. OakVar acts as an operating system for genomics apps.
 
-For documentation, see `OakVar Documentation`_.
+Documentation is being made at `OakVar Documentation`_. For questions not answered in the documentation, ask on the Issues channel or email to rkim@oakbioinformatics.com.
 
 .. _OakVar Documentation: https://oakvar.readthedocs.org
 
+Be in the loop and notified of new releases and news of OakVar. `Subscribe to the mailing list`_.
+
+.. _Subscribe to the mailing list: https://dashboard.mailerlite.com/forms/21170/56038572068701589/share
