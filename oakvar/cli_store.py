@@ -42,9 +42,8 @@ def fn_store_changepassword(args):
     from .util import get_dict_from_namespace
 
     args = get_dict_from_namespace(args)
-    ret = change_password(
-        args["username"], args["current_password"], args["new_password"]
-    )
+    ret = change_password(args["username"], args["current_password"],
+                          args["new_password"])
     return ret
 
 
@@ -78,13 +77,16 @@ def fn_store_checklogin(args):
 def get_parser_fn_store():
     from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
-    parser_fn_store = ArgumentParser(formatter_class=RawDescriptionHelpFormatter)
+    parser_fn_store = ArgumentParser(
+        formatter_class=RawDescriptionHelpFormatter)
     _subparsers = parser_fn_store.add_subparsers(title="Commands")
 
     # publish
-    parser_fn_store_publish = _subparsers.add_parser("publish", help="publishes a module.")
+    parser_fn_store_publish = _subparsers.add_parser(
+        "publish", help="publishes a module.")
     parser_fn_store_publish.add_argument("module", help="module to publish")
-    data_group = parser_fn_store_publish.add_mutually_exclusive_group(required=True)
+    data_group = parser_fn_store_publish.add_mutually_exclusive_group(
+        required=True)
     data_group.add_argument(
         "-d",
         "--data",
@@ -92,12 +94,15 @@ def get_parser_fn_store():
         default=False,
         help="publishes module with data.",
     )
-    data_group.add_argument(
-        "-c", "--code", action="store_true", help="publishes module without data."
-    )
+    data_group.add_argument("-c",
+                            "--code",
+                            action="store_true",
+                            help="publishes module without data.")
     parser_fn_store_publish.add_argument(
-        "-u", "--user", default=None, help="user to publish as. Typically your email."
-    )
+        "-u",
+        "--user",
+        default=None,
+        help="user to publish as. Typically your email.")
     parser_fn_store_publish.add_argument(
         "-p",
         "--password",
@@ -117,47 +122,45 @@ def get_parser_fn_store():
         help="overwrites a published module/version",
     )
     parser_fn_store_publish.add_argument(
-        "--md", default=None, help="Specify the root directory of OakVar modules"
-    )
+        "--md",
+        default=None,
+        help="Specify the root directory of OakVar modules")
     parser_fn_store_publish.set_defaults(func=fn_store_publish)
 
     # create-account
     parser_fn_store_newaccount = _subparsers.add_parser(
-        "createaccount", help="creates a OakVar store developer account."
-    )
+        "createaccount", help="creates a OakVar store developer account.")
     parser_fn_store_newaccount.add_argument(
-        "username", help="use your email as your username."
-    )
-    parser_fn_store_newaccount.add_argument("password", help="this is your password.")
+        "username", help="use your email as your username.")
+    parser_fn_store_newaccount.add_argument("password",
+                                            help="this is your password.")
     parser_fn_store_newaccount.set_defaults(func=fn_store_newaccount)
 
     # change-password
     parser_fn_store_changepassword = _subparsers.add_parser(
-        "changepassword", help="changes OakVar store account password."
-    )
+        "changepassword", help="changes OakVar store account password.")
     parser_fn_store_changepassword.add_argument("username", help="username")
-    parser_fn_store_changepassword.add_argument("current_password", help="current password")
-    parser_fn_store_changepassword.add_argument("new_password", help="new password")
+    parser_fn_store_changepassword.add_argument("current_password",
+                                                help="current password")
+    parser_fn_store_changepassword.add_argument("new_password",
+                                                help="new password")
     parser_fn_store_changepassword.set_defaults(func=fn_store_changepassword)
 
     # reset-password
     parser_fn_store_resetpassword = _subparsers.add_parser(
-        "resetpassword", help="resets OakVar store account password."
-    )
+        "resetpassword", help="resets OakVar store account password.")
     parser_fn_store_resetpassword.add_argument("username", help="username")
     parser_fn_store_resetpassword.set_defaults(func=fn_store_resetpassword)
 
     # verify-email
     parser_fn_store_verifyemail = _subparsers.add_parser(
-        "verifyemail", help="sends a verification email."
-    )
+        "verifyemail", help="sends a verification email.")
     parser_fn_store_verifyemail.add_argument("username", help="username")
     parser_fn_store_verifyemail.set_defaults(func=fn_store_verifyemail)
 
     # check-login
     parser_fn_store_checklogin = _subparsers.add_parser(
-        "checklogin", help="checks username and password."
-    )
+        "checklogin", help="checks username and password.")
     parser_fn_store_checklogin.add_argument("username", help="username")
     parser_fn_store_checklogin.add_argument("password", help="password")
     parser_fn_store_checklogin.set_defaults(func=fn_store_checklogin)

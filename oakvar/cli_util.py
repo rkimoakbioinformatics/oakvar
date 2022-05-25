@@ -12,7 +12,8 @@ def converttohg38(args):
     if exists(args.db) == False:
         print(args.db, "does not exist.")
         exit()
-    liftover = LiftOver(get_liftover_chain_path_for_src_genome(args.sourcegenome))
+    liftover = LiftOver(
+        get_liftover_chain_path_for_src_genome(args.sourcegenome))
     print("Extracting table schema from DB...")
     cmd = ["sqlite3", args.db, ".schema"]
     output = check_output(cmd)
@@ -93,19 +94,14 @@ def converttohg38(args):
                     print("- no liftover mapping:", chrom + ":" + str(pos))
                     continue
                 if liftover_out == []:
-                    wf.write(table + ":" + ",".join([str(v) for v in row]) + "\n")
+                    wf.write(table + ":" + ",".join([str(v)
+                                                     for v in row]) + "\n")
                     continue
                 newpos = liftover_out[0][1]
                 row[colno] = newpos
-            q = (
-                "insert into "
-                + table
-                + " values("
-                + ",".join(
-                    ['"' + v + '"' if type(v) == type("a") else str(v) for v in row]
-                )
-                + ")"
-            )
+            q = ("insert into " + table + " values(" + ",".join([
+                '"' + v + '"' if type(v) == type("a") else str(v) for v in row
+            ]) + ")")
             newc.execute(q)
             count += 1
             if count % count_interval == 0:
@@ -118,15 +114,9 @@ def converttohg38(args):
         c.execute("select * from " + table)
         for row in c.fetchall():
             row = list(row)
-            q = (
-                "insert into "
-                + table
-                + " values("
-                + ",".join(
-                    ['"' + v + '"' if type(v) == type("a") else str(v) for v in row]
-                )
-                + ")"
-            )
+            q = ("insert into " + table + " values(" + ",".join([
+                '"' + v + '"' if type(v) == type("a") else str(v) for v in row
+            ]) + ")")
             newc.execute(q)
             count += 1
             if count % count_interval == 0:
@@ -144,7 +134,9 @@ def fn_util_updateresult(args):
     from .util import get_dict_from_namespace
 
     migrate_functions = {}
-    migrate_checkpoints = [LooseVersion(v) for v in list(migrate_functions.keys())]
+    migrate_checkpoints = [
+        LooseVersion(v) for v in list(migrate_functions.keys())
+    ]
     migrate_checkpoints.sort()
     args = get_dict_from_namespace(args)
 
@@ -187,17 +179,16 @@ def fn_util_updateresult(args):
             else:
                 oc_ver = LooseVersion(r[0])
         except:
-            print(
-                "  [{}] is not OakVar result DB or too old for migration.".format(
-                    dbpath
-                )
-            )
+            print("  [{}] is not OakVar result DB or too old for migration.".
+                  format(dbpath))
             continue
         if oc_ver >= max(migrate_checkpoints):
             print(f"  OakVar version of {oc_ver} does not need migration.")
             continue
         elif oc_ver < LooseVersion("1.4.4"):
-            print(f"  OakVar version of {oc_ver} is not supported for migration.")
+            print(
+                f"  OakVar version of {oc_ver} is not supported for migration."
+            )
             continue
         try:
             if args["backup"]:
@@ -218,7 +209,7 @@ def fn_util_updateresult(args):
                 with sqlite3.connect(dbpath) as db:
                     db.execute(
                         'update info set colval=? where colkey="oakvar"',
-                        (target_ver,),
+                        (target_ver, ),
                     )
         except:
             from traceback import print_exc
@@ -243,7 +234,7 @@ def fn_util_addjob(args):
         exit(f"User {user} not found")
     attempts = 0
     while (
-        True
+            True
     ):  # TODO this will currently overwrite if called in parallel. is_dir check and creation is not atomic
         job_id = datetime.now().strftime(r"%y%m%d-%H%M%S")
         job_dir = user_dir / job_id
@@ -336,13 +327,14 @@ def fn_util_showsqliteinfo(args):
                 s = f"{col_name.ljust(width_colname)} {col_def['title'].ljust(width_coltitle)} {col_def['type']}"
                 ret.append(s)
             elif fmt in ["json", "yaml"]:
-                ret["output_columns"]["variant"].append(
-                    {
-                        "name": col_name,
-                        "title": col_def["title"],
-                        "type": col_def["type"],
-                    }
-                )
+                ret["output_columns"]["variant"].append({
+                    "name":
+                    col_name,
+                    "title":
+                    col_def["title"],
+                    "type":
+                    col_def["type"],
+                })
         c.execute("select col_name, col_def from gene_header")
         rs = c.fetchall()
         for r in rs:
@@ -352,13 +344,11 @@ def fn_util_showsqliteinfo(args):
                 s = f"{col_name.ljust(width_colname)} {col_def['title'].ljust(width_coltitle)} {col_def['type']}"
                 ret.append(s)
             elif fmt in ["json", "yaml"]:
-                ret["output_columns"]["gene"].append(
-                    {
-                        "name": col_name,
-                        "title": col_def["title"],
-                        "type": col_def["type"],
-                    }
-                )
+                ret["output_columns"]["gene"].append({
+                    "name": col_name,
+                    "title": col_def["title"],
+                    "type": col_def["type"],
+                })
         c.close()
         conn.close()
         if to == "stdout":
@@ -462,9 +452,8 @@ def fn_util_mergesqlite(args):
         uid_dic = {}
         c.execute("select * from variant order by rowid")
         for r in c.fetchall():
-            vid = variant_id(
-                r[v_chrom_colno], r[v_pos_colno], r[v_ref_colno], r[v_alt_colno]
-            )
+            vid = variant_id(r[v_chrom_colno], r[v_pos_colno], r[v_ref_colno],
+                             r[v_alt_colno])
             if vid in variants:
                 continue
             old_uid = r[0]
@@ -486,7 +475,8 @@ def fn_util_mergesqlite(args):
                 q = f'insert into sample values ({",".join(["?" for v in range(len(r))])})'
                 outc.execute(q, r)
         # File numbers
-        c.execute('select colkey, colval from info where colkey="_input_paths"')
+        c.execute(
+            'select colkey, colval from info where colkey="_input_paths"')
         ips = loads(c.fetchone()[1].replace("'", '"'))
         fileno_dic = {}
         for fileno, filepath in ips.items():
@@ -509,9 +499,10 @@ def fn_util_mergesqlite(args):
     q = 'update info set colval=? where colkey="_input_paths"'
     outc.execute(q, [dumps(input_paths)])
     q = 'update info set colval=? where colkey="Input file name"'
-    v = ";".join(
-        [input_paths[str(v)] for v in sorted(input_paths.keys(), key=lambda v: int(v))]
-    )
+    v = ";".join([
+        input_paths[str(v)]
+        for v in sorted(input_paths.keys(), key=lambda v: int(v))
+    ])
     outc.execute(q, [v])
     outconn.commit()
 
@@ -528,7 +519,8 @@ def fn_util_filtersqlite(args):
 def filtersqlite_async_drop_copy_table(c, table_name):
     print(f"- {table_name}")
     c.execute(f"drop table if exists main.{table_name}")
-    c.execute(f"create table main.{table_name} as select * from old_db.{table_name}")
+    c.execute(
+        f"create table main.{table_name} as select * from old_db.{table_name}")
 
 
 async def filtersqlite_async(args):
@@ -559,19 +551,19 @@ async def filtersqlite_async(args):
             )
             await cf.exec_db(cf.loadfilter)
             for table_name in [
-                "info",
-                "smartfilters",
-                "viewersetup",
-                "variant_annotator",
-                "variant_header",
-                "variant_reportsub",
-                "gene_annotator",
-                "gene_header",
-                "gene_reportsub",
-                "sample_annotator",
-                "sample_header",
-                "mapping_annotator",
-                "mapping_header",
+                    "info",
+                    "smartfilters",
+                    "viewersetup",
+                    "variant_annotator",
+                    "variant_header",
+                    "variant_reportsub",
+                    "gene_annotator",
+                    "gene_header",
+                    "gene_reportsub",
+                    "sample_annotator",
+                    "sample_header",
+                    "mapping_annotator",
+                    "mapping_header",
             ]:
                 filtersqlite_async_drop_copy_table(c, table_name)
             # Variant
@@ -602,13 +594,11 @@ async def filtersqlite_async(args):
             if len(req) > 0 or len(rej) > 0:
                 q = "create table sample as select s.* from old_db.sample as s, old_db.variant_filtered as v where s.base__uid=v.base__uid"
                 if req:
-                    q += " and s.base__sample_id in ({})".format(
-                        ", ".join(['"{}"'.format(sid) for sid in req])
-                    )
+                    q += " and s.base__sample_id in ({})".format(", ".join(
+                        ['"{}"'.format(sid) for sid in req]))
                 for s in rej:
                     q += ' except select * from sample where base__sample_id="{}"'.format(
-                        s
-                    )
+                        s)
             else:
                 q = "create table sample as select s.* from old_db.sample as s, old_db.variant_filtered as v where s.base__uid=v.base__uid"
             c.execute(q)
@@ -617,7 +607,9 @@ async def filtersqlite_async(args):
                 "create table mapping as select m.* from old_db.mapping as m, old_db.variant_filtered as v where m.base__uid=v.base__uid"
             )
             # Indices
-            c.execute("select name, sql from old_db.sqlite_master where type='index'")
+            c.execute(
+                "select name, sql from old_db.sqlite_master where type='index'"
+            )
             for r in c.fetchall():
                 index_name = r[0]
                 sql = r[1]
@@ -712,7 +704,8 @@ def status_from_db(dbpath):
         d["reports"] = []
         d["run_name"] = str(dbpath.stem)
         d["status"] = "Finished"
-        d["submission_time"] = fromtimestamp(dbpath.stat().st_ctime).isoformat()
+        d["submission_time"] = fromtimestamp(
+            dbpath.stat().st_ctime).isoformat()
         d["viewable"] = True
     except:
         raise
@@ -729,43 +722,46 @@ def get_parser_fn_util():
     # test
     from .cli_test import get_parser_fn_util_test
     parser_fn_util_test = _subparsers.add_parser(
-            "test", 
-            parents=[get_parser_fn_util_test()],
-            add_help=False,
-            description="Test modules",
-            help="Test installed modules"
-    )
+        "test",
+        parents=[get_parser_fn_util_test()],
+        add_help=False,
+        description="Test modules",
+        help="Test installed modules")
     # converts db coordinate to hg38
     parser_fn_util_convert = _subparsers.add_parser(
-        "converttohg38", help="converts hg19 coordinates in SQLite3 database to hg38 ones."
-    )
+        "converttohg38",
+        help="converts hg19 coordinates in SQLite3 database to hg38 ones.")
+    parser_fn_util_convert.add_argument("--db",
+                                        nargs="?",
+                                        required=True,
+                                        help="path to SQLite3 database file")
     parser_fn_util_convert.add_argument(
-        "--db", nargs="?", required=True, help="path to SQLite3 database file"
-    )
-    parser_fn_util_convert.add_argument(
-        "--sourcegenome", required=True, help="genome assembly of source database"
-    )
-    parser_fn_util_convert.add_argument(
-        "--cols", nargs="+", required=True, help="names of the columns to convert"
-    )
+        "--sourcegenome",
+        required=True,
+        help="genome assembly of source database")
+    parser_fn_util_convert.add_argument("--cols",
+                                        nargs="+",
+                                        required=True,
+                                        help="names of the columns to convert")
     parser_fn_util_convert.add_argument(
         "--tables",
         nargs="*",
-        help="table(s) to convert. If omitted, table name will be used as chromosome name.",
+        help=
+        "table(s) to convert. If omitted, table name will be used as chromosome name.",
     )
     parser_fn_util_convert.add_argument(
         "--chromcol",
         required=False,
-        help="chromosome column. If omitted, all tables will be tried to be converted.",
+        help=
+        "chromosome column. If omitted, all tables will be tried to be converted.",
     )
     parser_fn_util_convert.set_defaults(func=converttohg38)
     # migrate old result db
     parser_fn_util_updateresult = _subparsers.add_parser(
-        "migrate-result", help="migrates result db made with older versions of oakvar"
-    )
+        "migrate-result",
+        help="migrates result db made with older versions of oakvar")
     parser_fn_util_updateresult.add_argument(
-        "dbpath", help="path to a result db file or a directory"
-    )
+        "dbpath", help="path to a result db file or a directory")
     parser_fn_util_updateresult.add_argument(
         "-r",
         dest="recursive",
@@ -783,8 +779,7 @@ def get_parser_fn_util():
     parser_fn_util_updateresult.set_defaults(func=fn_util_updateresult)
     # Make job accessible through the gui
     parser_fn_util_addjob = _subparsers.add_parser(
-        "addjob", help="Copy a command line job into the GUI submission list"
-    )
+        "addjob", help="Copy a command line job into the GUI submission list")
     parser_fn_util_addjob.add_argument("path", help="Path to result database")
     parser_fn_util_addjob.add_argument(
         "-u",
@@ -796,47 +791,51 @@ def get_parser_fn_util():
     parser_fn_util_addjob.set_defaults(func=fn_util_addjob)
     # Merge SQLite files
     parser_fn_util_mergesqlite = _subparsers.add_parser(
-        "mergesqlite", help="Merge SQLite result files"
-    )
-    parser_fn_util_mergesqlite.add_argument(
-        "path", nargs="+", help="Path to result database"
-    )
-    parser_fn_util_mergesqlite.add_argument(
-        "-o", dest="outpath", required=True, help="Output SQLite file path"
-    )
+        "mergesqlite", help="Merge SQLite result files")
+    parser_fn_util_mergesqlite.add_argument("path",
+                                            nargs="+",
+                                            help="Path to result database")
+    parser_fn_util_mergesqlite.add_argument("-o",
+                                            dest="outpath",
+                                            required=True,
+                                            help="Output SQLite file path")
     parser_fn_util_mergesqlite.set_defaults(func=fn_util_mergesqlite)
     # Show SQLite info
     parser_fn_util_showsqliteinfo = _subparsers.add_parser(
-        "showsqliteinfo", help="Show SQLite result file information"
-    )
+        "showsqliteinfo", help="Show SQLite result file information")
+    parser_fn_util_showsqliteinfo.add_argument("paths",
+                                               nargs="+",
+                                               help="SQLite result file paths")
     parser_fn_util_showsqliteinfo.add_argument(
-        "paths", nargs="+", help="SQLite result file paths"
-    )
+        "--fmt", default="text", help="Output format. text / json / yaml")
     parser_fn_util_showsqliteinfo.add_argument(
-        "--fmt", default="text", help="Output format. text / json / yaml"
-    )
-    parser_fn_util_showsqliteinfo.add_argument(
-        "--to", default="stdout", help="Output to. stdout / return"
-    )
+        "--to", default="stdout", help="Output to. stdout / return")
     parser_fn_util_showsqliteinfo.set_defaults(func=fn_util_showsqliteinfo)
     parser_fn_util_filtersqlite = _subparsers.add_parser(
         "filtersqlite",
-        help="Filter SQLite result files to produce filtered SQLite result files",
+        help=
+        "Filter SQLite result files to produce filtered SQLite result files",
     )
     # Filter SQLite
+    parser_fn_util_filtersqlite.add_argument("paths",
+                                             nargs="+",
+                                             help="Path to result database")
+    parser_fn_util_filtersqlite.add_argument("-o",
+                                             dest="out",
+                                             default=".",
+                                             help="Output SQLite file folder")
     parser_fn_util_filtersqlite.add_argument(
-        "paths", nargs="+", help="Path to result database"
-    )
-    parser_fn_util_filtersqlite.add_argument(
-        "-o", dest="out", default=".", help="Output SQLite file folder"
-    )
-    parser_fn_util_filtersqlite.add_argument(
-        "-s", dest="suffix", default="filtered", help="Suffix for output SQLite files"
-    )
-    parser_fn_util_filtersqlite.add_argument(
-        "-f", dest="filterpath", default=None, help="Path to a filter JSON file"
-    )
-    parser_fn_util_filtersqlite.add_argument("--filtersql", default=None, help="Filter SQL")
+        "-s",
+        dest="suffix",
+        default="filtered",
+        help="Suffix for output SQLite files")
+    parser_fn_util_filtersqlite.add_argument("-f",
+                                             dest="filterpath",
+                                             default=None,
+                                             help="Path to a filter JSON file")
+    parser_fn_util_filtersqlite.add_argument("--filtersql",
+                                             default=None,
+                                             help="Filter SQL")
     parser_fn_util_filtersqlite.add_argument(
         "--includesample",
         dest="includesample",
@@ -854,8 +853,10 @@ def get_parser_fn_util():
     parser_fn_util_filtersqlite.set_defaults(func=fn_util_filtersqlite)
     return parser_fn_util
 
+
 def main():
     pass
+
 
 if __name__ == "__main__":
     main()

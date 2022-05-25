@@ -20,6 +20,7 @@ def fn_system_md(args):
     else:
         return d
 
+
 def fn_system_config(args):
     from .sysadmin import show_system_conf
     from .util import get_dict_from_namespace
@@ -28,13 +29,20 @@ def fn_system_config(args):
     ret = show_system_conf(args)
     return ret
 
+
 def get_parser_fn_system():
     from argparse import ArgumentParser
     # opens issue report
     parser_fn_system = ArgumentParser()
     _subparsers = parser_fn_system.add_subparsers(title="Commands")
-    parser_fn_system_setup = _subparsers.add_parser("setup", help="Sets up OakVar system", description="Sets up OakVar system")
-    parser_fn_system_setup.add_argument("-f", dest="setup_file", default=None, help="setup file to use")
+    parser_fn_system_setup = _subparsers.add_parser(
+        "setup",
+        help="Sets up OakVar system",
+        description="Sets up OakVar system")
+    parser_fn_system_setup.add_argument("-f",
+                                        dest="setup_file",
+                                        default=None,
+                                        help="setup file to use")
     parser_fn_system_setup.set_defaults(func=fn_system_setup)
     # md
     parser_fn_system_md = _subparsers.add_parser(
@@ -42,18 +50,20 @@ def get_parser_fn_system():
         help="displays or changes OakVar modules directory.",
         description="displays or changes OakVar modules directory.",
     )
-    parser_fn_system_md.add_argument("directory", nargs="?", help="sets modules directory.")
-    parser_fn_system_md.add_argument("--to", default="stdout", help="'stdout' to print. 'return' to return.")
+    parser_fn_system_md.add_argument("directory",
+                                     nargs="?",
+                                     help="sets modules directory.")
+    parser_fn_system_md.add_argument(
+        "--to",
+        default="stdout",
+        help="'stdout' to print. 'return' to return.")
     parser_fn_system_md.set_defaults(func=fn_system_md)
     # shows system conf content.
     parser_fn_system_config = _subparsers.add_parser(
-        "config", help="show or change system configuration."
-    )
+        "config", help="show or change system configuration.")
     parser_fn_system_config.add_argument(
-        "--fmt", default="yaml", help="Format of output. json or yaml."
-    )
+        "--fmt", default="yaml", help="Format of output. json or yaml.")
     parser_fn_system_config.add_argument(
-        "--to", default="stdout", help='"stdout" to print. "return" to return'
-    )
+        "--to", default="stdout", help='"stdout" to print. "return" to return')
     parser_fn_system_config.set_defaults(func=fn_system_config)
     return parser_fn_system

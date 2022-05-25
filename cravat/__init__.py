@@ -82,13 +82,14 @@ def get_live_mapper(module_name):
         import os
 
         ModuleClass = get_module(module_name)
-        module = ModuleClass(
-            {
-                "script_path": os.path.abspath(ModuleClass.script_path),
-                "input_file": "__dummy__",
-                "live": True,
-            }
-        )
+        module = ModuleClass({
+            "script_path":
+            os.path.abspath(ModuleClass.script_path),
+            "input_file":
+            "__dummy__",
+            "live":
+            True,
+        })
         module.base_setup()
     except Exception as e:
         print("    module loading error: {}".format(module_name))
@@ -133,6 +134,7 @@ def get_wgs_reader(assembly="hg38"):
 
 
 class LiveAnnotator:
+
     def __init__(self, mapper="hg38", annotators=[]):
         self.live_annotators = {}
         self.load_live_modules(mapper, annotators)
@@ -180,7 +182,8 @@ class LiveAnnotator:
         response = {}
         crx_data = self.live_mapper.map(crv)
         crx_data = self.live_mapper.live_report_substitute(crx_data)
-        crx_data["tmp_mapper"] = AllMappingsParser(crx_data[all_mappings_col_name])
+        crx_data["tmp_mapper"] = AllMappingsParser(
+            crx_data[all_mappings_col_name])
         for k, v in self.live_annotators.items():
             try:
                 annot_data = v.annotate(input_data=crx_data)

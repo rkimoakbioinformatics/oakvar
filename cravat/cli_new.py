@@ -28,8 +28,7 @@ def get_parser_fn_new():
 
     # test input file
     parser_fn_new_exampleinput = _subparsers.add_parser(
-        "exampleinput", help="makes a file with example input variants."
-    )
+        "exampleinput", help="makes a file with example input variants.")
     parser_fn_new_exampleinput.add_argument(
         "-d",
         dest="directory",
@@ -40,13 +39,14 @@ def get_parser_fn_new():
 
     # new-annotator
     parser_fn_new_annotator = _subparsers.add_parser(
-        "annotator", help="creates a new annotator"
-    )
+        "annotator", help="creates a new annotator")
+    parser_fn_new_annotator.add_argument("-n",
+                                         dest="annotator_name",
+                                         default="annotator",
+                                         help="Annotator name")
     parser_fn_new_annotator.add_argument(
-        "-n", dest="annotator_name", default="annotator", help="Annotator name"
-    )
-    parser_fn_new_annotator.add_argument(
-        "--md", default=None, help="Specify the root directory of OakVar modules"
-    )
+        "--md",
+        default=None,
+        help="Specify the root directory of OakVar modules")
     parser_fn_new_annotator.set_defaults(func=fn_new_annotator)
     return parser_fn_new
