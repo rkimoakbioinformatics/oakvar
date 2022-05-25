@@ -1,3 +1,7 @@
+.. image:: /oakvar/websubmit/logo.png
+  :width: 300
+  :alt: OakVar logo
+
 OakVar: Genomic Variant Analysis Platform
 ******
 
