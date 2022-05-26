@@ -270,13 +270,11 @@ def variant_id(chrom, pos, ref, alt):
     return chrom + str(pos) + ref + alt
 
 
-def fn_util_showsqliteinfo(args):
+def get_sqliteinfo(args):
     import sqlite3
     from json import loads
-    from .util import get_dict_from_namespace
     from oyaml import dump
 
-    args = get_dict_from_namespace(args)
     fmt = args["fmt"]
     to = args["to"]
     if fmt == "text":
@@ -364,6 +362,14 @@ def fn_util_showsqliteinfo(args):
             elif fmt == "yaml":
                 return dump(ret, default_flow_style=False)
 
+
+def fn_util_sqliteinfo(args):
+    from .util import get_dict_from_namespace
+
+    args = get_dict_from_namespace(args)
+    args["fmt"] = "yaml"
+    args["to"] = "stdout"
+    get_sqliteinfo(args)
 
 # For now, only jobs with same annotators are allowed.
 def fn_util_mergesqlite(args):
@@ -727,7 +733,16 @@ def get_parser_fn_util():
         add_help=False,
         description="Test modules",
         help="Test installed modules")
+    parser_fn_util_test.r_return = "A boolean. TRUE if successful, FALSE if not"
+    parser_fn_util_test.r_examples = [
+        "# Test the ClinVar module",
+        "ov.util.test(modules=\"clinvar\")",
+        "# Test the ClinVar and the COSMIC modules",
+        "ov.util.test(modules=list(\"clinvar\", \"cosmic\"))"
+    ]
+
     # converts db coordinate to hg38
+    """
     parser_fn_util_convert = _subparsers.add_parser(
         "converttohg38",
         help="converts hg19 coordinates in SQLite3 database to hg38 ones.")
@@ -741,11 +756,12 @@ def get_parser_fn_util():
         help="genome assembly of source database")
     parser_fn_util_convert.add_argument("--cols",
                                         nargs="+",
-                                        required=True,
+                                        default=["base__pos"],
                                         help="names of the columns to convert")
     parser_fn_util_convert.add_argument(
         "--tables",
         nargs="*",
+        default=["variant"],
         help=
         "table(s) to convert. If omitted, table name will be used as chromosome name.",
     )
@@ -756,9 +772,17 @@ def get_parser_fn_util():
         "chromosome column. If omitted, all tables will be tried to be converted.",
     )
     parser_fn_util_convert.set_defaults(func=converttohg38)
+    parser_fn_util_convert.r_return = "A boolean. TRUE if successful, FALSE if not"
+    parser_fn_util_convert.r_examples = [
+        "# Convert the hg19 coordinates in \"base__pos\" column of an OakVar result database into hg38",
+        "ov.util.convert(db=\"example.sqlite\", cols=\"base__pos\", tables=\"variant\")"
+    ]
+    """
+
     # migrate old result db
+    """
     parser_fn_util_updateresult = _subparsers.add_parser(
-        "migrate-result",
+        "updateresult",
         help="migrates result db made with older versions of oakvar")
     parser_fn_util_updateresult.add_argument(
         "dbpath", help="path to a result db file or a directory")
@@ -777,6 +801,9 @@ def get_parser_fn_util():
         help="backup original copy with .bak extension",
     )
     parser_fn_util_updateresult.set_defaults(func=fn_util_updateresult)
+    parser_fn_util_updateresult.r_return = "A boolean. TRUE if successful, FALSE if not"
+    """
+
     # Make job accessible through the gui
     parser_fn_util_addjob = _subparsers.add_parser(
         "addjob", help="Copy a command line job into the GUI submission list")
@@ -789,6 +816,12 @@ def get_parser_fn_util():
         default="default",
     )
     parser_fn_util_addjob.set_defaults(func=fn_util_addjob)
+    parser_fn_util_addjob.r_return = "A boolean. TRUE if successful, FALSE if not"
+    parser_fn_util_addjob.r_examples = [
+        "# Add a result file to the job list of a user",
+        "ov.util.addjob(path=\"example.sqlite\", user=\"user1\")"
+    ]
+
     # Merge SQLite files
     parser_fn_util_mergesqlite = _subparsers.add_parser(
         "mergesqlite", help="Merge SQLite result files")
@@ -800,23 +833,35 @@ def get_parser_fn_util():
                                             required=True,
                                             help="Output SQLite file path")
     parser_fn_util_mergesqlite.set_defaults(func=fn_util_mergesqlite)
+    parser_fn_util_mergesqlite.r_return = "A boolean. TRUE if successful, FALSE if not"
+    parser_fn_util_mergesqlite.r_examples = [
+        "# Merge two OakVar analysis result files into one SQLite file",
+        "ov.util.mergesqlite(path=list(\"example1.sqlite\", \"example2.sqlite\"), outpath=\"merged.sqlite\")"
+    ]
+
     # Show SQLite info
     parser_fn_util_showsqliteinfo = _subparsers.add_parser(
-        "showsqliteinfo", help="Show SQLite result file information")
+        "sqliteinfo", help="Show SQLite result file information")
     parser_fn_util_showsqliteinfo.add_argument("paths",
                                                nargs="+",
                                                help="SQLite result file paths")
     parser_fn_util_showsqliteinfo.add_argument(
-        "--fmt", default="text", help="Output format. text / json / yaml")
+        "--fmt", default="json", help="Output format. text / json / yaml")
     parser_fn_util_showsqliteinfo.add_argument(
-        "--to", default="stdout", help="Output to. stdout / return")
-    parser_fn_util_showsqliteinfo.set_defaults(func=fn_util_showsqliteinfo)
+        "--to", default="return", help="Output to. stdout / return")
+    parser_fn_util_showsqliteinfo.set_defaults(func=fn_util_sqliteinfo)
+    parser_fn_util_showsqliteinfo.r_return = "A named list. Information of a job SQLite file"
+    parser_fn_util_showsqliteinfo.r_examples = [
+        "# Get the named list of the information of an analysis result file",
+        "ov.util.sqliteinfo(paths=\"example.sqlite\")"
+    ]
+
+    # Filter SQLite
     parser_fn_util_filtersqlite = _subparsers.add_parser(
         "filtersqlite",
         help=
         "Filter SQLite result files to produce filtered SQLite result files",
     )
-    # Filter SQLite
     parser_fn_util_filtersqlite.add_argument("paths",
                                              nargs="+",
                                              help="Path to result database")
@@ -851,6 +896,13 @@ def get_parser_fn_util():
         help="Sample IDs to exclude",
     )
     parser_fn_util_filtersqlite.set_defaults(func=fn_util_filtersqlite)
+    parser_fn_util_filtersqlite.r_return = "A boolean. TRUE if successful, FALSE if not"
+    parser_fn_util_filtersqlite.r_examples = [
+        "# Filter an analysis result file with an SQL filter set",
+        'ov.util.filtersqlite(paths="example.sqlite", filtersql=\'base__so=="MIS" and gnomad__af>0.01\')'
+        "# Filter two analysis result files with a filter definition file",
+        "ov.util.filtersqlite(paths=list(\"example1.sqlite\", \"example2.sqlite\"), filterpath=\"filter.json\")"
+    ]
     return parser_fn_util
 
 

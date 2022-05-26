@@ -528,3 +528,10 @@ def get_dict_from_namespace(n):
     if type(n) == SimpleNamespace or type(n) == Namespace:
         n = vars(n)
     return n
+
+def quiet_print(msg, args=None):
+    quiet = True
+    if args is not None:
+        quiet = args.get("quiet", True)
+    if not quiet:
+        print(msg, flush=True)
