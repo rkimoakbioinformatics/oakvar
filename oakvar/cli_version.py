@@ -16,7 +16,6 @@ def get_parser_fn_version():
     # shows version
     parser_fn_version = ArgumentParser()
     parser_fn_version.add_argument(
-        "--to", default="stdout", help='"stdout" to print. "return" to return'
-    )
+        "--to", default="stdout", help='"stdout" to print. "return" to return')
     parser_fn_version.set_defaults(func=fn_version)
     return parser_fn_version

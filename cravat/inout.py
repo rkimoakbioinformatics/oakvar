@@ -11,9 +11,7 @@ class CravatFile(object):
         if col_type not in self.valid_types:
             raise Exception(
                 "Invalid column type {} in {}. Choose from {}".format(
-                    col_type, self.path, ", ".join(self.valid_types)
-                )
-            )
+                    col_type, self.path, ", ".join(self.valid_types)))
 
     def get_col_def(self, col_index):
         return self.columns[col_index]
@@ -23,6 +21,7 @@ class CravatFile(object):
 
 
 class CravatReader(CravatFile):
+
     def __init__(self, path, seekpos=None, chunksize=None):
         from .util import detect_encoding
 
@@ -71,9 +70,13 @@ class CravatReader(CravatFile):
     def get_index_columns(self):
         return self.index_columns
 
-    def override_column(
-        self, index, name, title=None, data_type="string", cats=[], category=None
-    ):
+    def override_column(self,
+                        index,
+                        name,
+                        title=None,
+                        data_type="string",
+                        cats=[],
+                        category=None):
         if title == None:
             title = " ".join(x.title() for x in name.split("_"))
         if index not in self.columns:
@@ -215,6 +218,7 @@ class CravatReader(CravatFile):
 
 
 class CravatWriter(CravatFile):
+
     def __init__(
         self,
         path,
@@ -253,16 +257,15 @@ class CravatWriter(CravatFile):
         if not (override):
             try:
                 self.columns[col_index]
-                raise Exception(
-                    "A column is already defined for index %d." % col_index
-                    + " Choose another index,"
-                    + " or set override to True"
-                )
+                raise Exception("A column is already defined for index %d." %
+                                col_index + " Choose another index," +
+                                " or set override to True")
             except KeyError:
                 pass
         for i in self.columns:
             if self.columns[i].name == col_def.name:
-                raise Exception("A column with name %s already exists." % col_def.name)
+                raise Exception("A column with name %s already exists." %
+                                col_def.name)
         self.columns[col_index] = col_def
 
     def add_columns(self, col_list, append=False):
@@ -290,7 +293,8 @@ class CravatWriter(CravatFile):
             self.name_to_col_index[col_def.name] = col_index
         self._ready_to_write = True
 
-    def write_names(self, annotator_name, annotator_display_name, annotator_version):
+    def write_names(self, annotator_name, annotator_display_name,
+                    annotator_version):
         line = "#name={:}\n".format(annotator_name)
         self.wf.write(line)
         line = "#displayname={:}\n".format(annotator_display_name)
@@ -317,9 +321,8 @@ class CravatWriter(CravatFile):
         for col_def in self.ordered_columns:
             self.write_meta_line("column", col_def.get_json())
         if conf and "report_substitution" in conf:
-            self.write_meta_line(
-                "report_substitution", dumps(conf["report_substitution"])
-            )
+            self.write_meta_line("report_substitution",
+                                 dumps(conf["report_substitution"]))
         self._definition_written = True
         self.wf.flush()
 
@@ -365,6 +368,7 @@ class CravatWriter(CravatFile):
 
 
 class CrxMapping(object):
+
     def __init__(self):
         from re import compile
 
@@ -380,7 +384,8 @@ class CrxMapping(object):
         self.aref = None
         self.apos_start = None
         self.aalt = None
-        self.tchange_re = compile(r"([AaTtCcGgUuNn_-]+)(\d+)([AaTtCcGgUuNn_-]+)")
+        self.tchange_re = compile(
+            r"([AaTtCcGgUuNn_-]+)(\d+)([AaTtCcGgUuNn_-]+)")
         self.achange_re = compile(r"([a-zA-Z_\*]+)(\d+)([AaTtCcGgUuNn_\*]+)")
 
     def load_tchange(self, tchange):
@@ -409,6 +414,7 @@ class CrxMapping(object):
 
 
 class AllMappingsParser(object):
+
     def __init__(self, s):
         from json import loads
         from collections import OrderedDict
@@ -571,7 +577,7 @@ class ColumnDefinition(object):
         from csv import reader
 
         l = list(reader([row], dialect="oakvar"))[0]
-        self._load_dict(dict(zip(self.csv_order[: len(l)], l)))
+        self._load_dict(dict(zip(self.csv_order[:len(l)], l)))
         self.index = int(self.index)
         if isinstance(self.categories, str):
             self.categories = loads(self.categories)

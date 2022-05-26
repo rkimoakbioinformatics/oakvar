@@ -1,5 +1,6 @@
 custom_system_conf = None
 
+
 def setup_system(args, quiet=False):
     from os.path import exists, join
     from shutil import copyfile
@@ -38,25 +39,31 @@ def setup_system(args, quiet=False):
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
     fn_module_installbase({"conf": conf})
 
+
 def get_root_dir(conf=None):
     from .sysadmin_const import root_dir_key
     return get_conf_dirvalue(root_dir_key, conf=conf)
+
 
 def get_conf_dir(conf=None):
     from .sysadmin_const import conf_dir_key
     return get_conf_dirvalue(conf_dir_key, conf=conf)
 
+
 def get_modules_dir(conf=None):
     from .sysadmin_const import modules_dir_key
     return get_conf_dirvalue(modules_dir_key, conf=conf)
+
 
 def get_jobs_dir(conf=None):
     from .sysadmin_const import jobs_dir_key
     return get_conf_dirvalue(jobs_dir_key, conf=conf)
 
+
 def get_log_dir(conf=None):
     from .sysadmin_const import log_dir_key
     return get_conf_dirvalue(log_dir_key, conf=conf)
+
 
 def get_conf_dirvalue(conf_key, conf=None):
     from os.path import abspath
@@ -64,6 +71,7 @@ def get_conf_dirvalue(conf_key, conf=None):
     if d is not None:
         d = abspath(d)
     return d
+
 
 def get_sys_conf_value(conf_key, sys_conf_path=None, conf=None):
     from os import environ
@@ -94,7 +102,11 @@ def get_sys_conf_value(conf_key, sys_conf_path=None, conf=None):
         return template[conf_key]
     return None
 
-def get_system_conf(sys_conf_path=None, conf=None, no_default=False, no_custom=True):
+
+def get_system_conf(sys_conf_path=None,
+                    conf=None,
+                    no_default=False,
+                    no_custom=True):
     from os import environ
     from os.path import exists, dirname, abspath
     from .sysadmin_const import sys_conf_path_key
@@ -161,10 +173,11 @@ def get_system_conf(sys_conf_path=None, conf=None, no_default=False, no_custom=T
             final_conf[k] = v
     return final_conf
 
+
 def show_system_conf(args):
     from oyaml import dump
     from os.path import exists
-    args.setdefault("fmt", "yaml")
+    args.setdefault("fmt", "json")
     args.setdefault("to", "return")
     sys_conf_path = get_system_conf_path()
     if not exists(sys_conf_path):
@@ -178,6 +191,7 @@ def show_system_conf(args):
     else:
         return confyaml
 
+
 def update_system_conf_file(d):
     """
     Recursively update the system config and re-write to disk.
@@ -190,6 +204,7 @@ def update_system_conf_file(d):
     refresh_cache()
     return True
 
+
 def get_main_conf_path(conf=None):
     import os
     from .sysadmin_const import main_conf_fname
@@ -199,11 +214,13 @@ def get_main_conf_path(conf=None):
         raise SystemMissingException(msg="conf_dir is missing")
     return os.path.join(conf_dir, main_conf_fname)
 
+
 def get_main_default_path():
     import os
     from .sysadmin_const import main_conf_fname
     from .admin_util import get_packagedir
     return os.path.join(get_packagedir(), main_conf_fname)
+
 
 def set_modules_dir(path, overwrite=False):
     """
@@ -224,6 +241,7 @@ def set_modules_dir(path, overwrite=False):
             overwrite_conf_path = get_main_default_path()
         shutil.copy(overwrite_conf_path, get_main_conf_path())
 
+
 def create_dir_if_absent(d, quiet=True):
     from os.path import exists
     from os import makedirs
@@ -231,6 +249,7 @@ def create_dir_if_absent(d, quiet=True):
         if not exists(d):
             makedirs(d)
             if not quiet: print(f"Created {d}")
+
 
 def is_root_user():
     from os import environ
@@ -241,16 +260,18 @@ def is_root_user():
     elif pl == "linux":
         if environ.get("SUDO_USER") is not None:
             return True
-        elif environ.get("HOME") == "/root": # docker ubuntu
+        elif environ.get("HOME") == "/root":  # docker ubuntu
             return True
         else:
             return False
     elif pl == "macos":
         return False
 
+
 def get_env_key(conf_key):
     from .sysadmin_const import env_key_prefix
     return env_key_prefix + conf_key.upper()
+
 
 def get_system_conf_path(conf=None):
     from os import environ
@@ -262,10 +283,11 @@ def get_system_conf_path(conf=None):
         return conf.get(sys_conf_path_key)
     # ENV
     sys_conf_path = environ.get(get_env_key(sys_conf_path_key))
-    if sys_conf_path is not None: 
+    if sys_conf_path is not None:
         return sys_conf_path
     # default
     return join(get_default_conf_dir(conf=conf), system_conf_fname)
+
 
 def get_default_conf_dir(conf=None):
     from os.path import join as pathjoin
@@ -294,6 +316,7 @@ def get_default_log_dir(conf=None):
 
     return pathjoin(get_default_root_dir(conf=conf), log_dir_name)
 
+
 def get_default_root_dir(conf=None):
     from os.path import exists, join, expandvars
     from os import sep, environ
@@ -312,13 +335,15 @@ def get_default_root_dir(conf=None):
     elif pl == "linux":
         path = ".oakvar"
         root_dir = get_packagedir()
-        if exists(join(root_dir, "conf")) == False:  # packagedir/conf is the old conf dir of OpenCRAVAT.
+        if exists(
+                join(root_dir, "conf")
+        ) == False:  # packagedir/conf is the old conf dir of OpenCRAVAT.
             if is_root_user():
                 sudo_user = environ.get("SUDO_USER")
                 home = environ.get("HOME")
                 if sudo_user is not None:
                     root_dir = join("/home", sudo_user, path)
-                elif home is not None and home == "/root": # Ubuntu in docker
+                elif home is not None and home == "/root":  # Ubuntu in docker
                     root_dir = join(home, ".oakvar")
                 else:
                     root_dir = join(str(Path.home()), path)
@@ -334,16 +359,21 @@ def get_default_root_dir(conf=None):
             root_dir = "Users/Shared/oakvar"
     return root_dir
 
+
 def get_max_num_concurrent_annotators_per_job():
     from .sysadmin_const import max_num_concurrent_annotators_per_job_key
     return get_system_conf().get(max_num_concurrent_annotators_per_job_key)
+
 
 def get_system_conf_dir():
     from os.path import dirname
     from .sysadmin import get_system_conf_path
     return dirname(get_system_conf_path())
 
-def copy_system_conf_template_if_absent(sys_conf_path=None, sys_conf_template_path=None, quiet=False):
+
+def copy_system_conf_template_if_absent(sys_conf_path=None,
+                                        sys_conf_template_path=None,
+                                        quiet=False):
     from os.path import exists, join, dirname
     from os import makedirs
     from shutil import copy
@@ -356,9 +386,11 @@ def copy_system_conf_template_if_absent(sys_conf_path=None, sys_conf_template_pa
         sys_conf_dir = dirname(sys_conf_path)
         if not exists(sys_conf_dir):
             makedirs(sys_conf_dir)
-        sys_conf_template_path = join(get_packagedir(), system_conf_template_fname)
+        sys_conf_template_path = join(get_packagedir(),
+                                      system_conf_template_fname)
         copy(sys_conf_template_path, sys_conf_path)
         if not quiet: print(f"Created {sys_conf_path}")
+
 
 def save_system_conf(conf):
     from .sysadmin_const import sys_conf_path_key
@@ -376,11 +408,13 @@ def save_system_conf(conf):
     dump(conf, wf, default_flow_style=False)
     wf.close()
 
+
 def get_system_conf_template_path():
     from os.path import join
     from .sysadmin_const import system_conf_template_fname
     from .admin_util import get_packagedir
     return join(get_packagedir(), system_conf_template_fname)
+
 
 def get_system_conf_template():
     from oyaml import safe_load
@@ -388,10 +422,12 @@ def get_system_conf_template():
         d = safe_load(f)
         return d
 
+
 def write_system_conf_file(d):
     from oyaml import dump
     with open(get_system_conf_path(), "w") as wf:
         wf.write(dump(d, default_flow_style=False))
+
 
 def get_system_conf_info(conf=None, json=False):
     from os.path import exists

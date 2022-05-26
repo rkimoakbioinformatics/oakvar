@@ -20,9 +20,8 @@ class AnnotatorOptions(object):
         self.secondary_paths = {}
         self.annotator_dir = os.path.abspath(annotator_dir)
         self.annotator_name = os.path.basename(self.annotator_dir)
-        self.annotator_conf_path = os.path.join(
-            self.annotator_dir, self.annotator_name + ".yml"
-        )
+        self.annotator_conf_path = os.path.join(self.annotator_dir,
+                                                self.annotator_name + ".yml")
 
     # Parse the default conf files and the optional job conf
     def parse_all_conf_files(self):
@@ -43,7 +42,8 @@ class AnnotatorOptions(object):
                 err_msg = 'Required key "%s" not found in configuration' % k
                 raise ConfigurationError(err_msg)
         if d["level"] in self.valid_levels:
-            d["output_columns"] = [self.id_col_defs[d["level"]]] + d["output_columns"]
+            d["output_columns"] = [self.id_col_defs[d["level"]]
+                                   ] + d["output_columns"]
         else:
             err_msg = "%s is not a valid level. Valid levels are %s" % (
                 d["level"],
