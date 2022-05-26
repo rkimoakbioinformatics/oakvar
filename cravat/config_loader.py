@@ -1,4 +1,5 @@
 class ConfigLoader:
+
     def __init__(self, job_conf_path=None):
         from .sysadmin import get_main_conf_path
         from .exceptions import SystemMissingException
@@ -31,9 +32,8 @@ class ConfigLoader:
 
         self._main = {}
         if os.path.exists(self.main_conf_path) == False:
-            shutil.copy(
-                os.path.join(get_packagedir(), "cravat.yml"), self.main_conf_path
-            )
+            shutil.copy(os.path.join(get_packagedir(), "cravat.yml"),
+                        self.main_conf_path)
         self._main = load_yml_conf(self.main_conf_path)
         conf_modified = False
         k = "multicore_mapper_mode"
@@ -165,7 +165,8 @@ class ConfigLoader:
     def override_cravat_conf(self, cravat_conf):
         from .admin_util import recursive_update
 
-        self._all["cravat"] = recursive_update(self._all["cravat"], cravat_conf)
+        self._all["cravat"] = recursive_update(self._all["cravat"],
+                                               cravat_conf)
 
     def override_all_conf(self, conf):
         from .admin_util import recursive_update

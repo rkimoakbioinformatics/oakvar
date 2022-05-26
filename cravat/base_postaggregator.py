@@ -54,9 +54,10 @@ class BasePostAggregator(object):
             default="variant",
             help="Summarize level. " + "Default is variant.",
         )
-        parser.add_argument(
-            "--confs", dest="confs", default="{}", help="Configuration string"
-        )
+        parser.add_argument("--confs",
+                            dest="confs",
+                            default="{}",
+                            help="Configuration string")
         self.cmd_arg_parser = parser
 
     def parse_cmd_args(self, cmd_args):
@@ -88,8 +89,8 @@ class BasePostAggregator(object):
             return
         start_time = time()
         self.status_writer.queue_status_update(
-            "status", "Started {} ({})".format(self.conf["title"], self.module_name)
-        )
+            "status", "Started {} ({})".format(self.conf["title"],
+                                               self.module_name))
         last_status_update_time = time()
         self.logger.info("started: {0}".format(asctime(localtime(start_time))))
         self.base_setup()
@@ -124,7 +125,8 @@ class BasePostAggregator(object):
                                     pass
                                 elif type(row) is dict:
                                     tmp = []
-                                    for i in range(len(table_headers[colname])):
+                                    for i in range(len(
+                                            table_headers[colname])):
                                         h = table_headers[colname][i]
                                         if h in row:
                                             v = row[h]
@@ -147,8 +149,7 @@ class BasePostAggregator(object):
                     self.status_writer.queue_status_update(
                         "status",
                         "Running {} ({}): row {}".format(
-                            self.conf["title"], self.module_name, lnum
-                        ),
+                            self.conf["title"], self.module_name, lnum),
                     )
                     last_status_update_time = cur_time
             except Exception as e:
@@ -161,8 +162,8 @@ class BasePostAggregator(object):
         self.logger.info("finished: {0}".format(asctime(localtime(end_time))))
         self.logger.info("runtime: {0:0.3f}".format(run_time))
         self.status_writer.queue_status_update(
-            "status", "Finished {} ({})".format(self.conf["title"], self.module_name)
-        )
+            "status", "Finished {} ({})".format(self.conf["title"],
+                                                self.module_name))
 
     def fill_categories(self):
         from oakvar.inout import ColumnDefinition
@@ -182,7 +183,8 @@ class BasePostAggregator(object):
                         col_cats.append(col_cat)
             col_cats.sort()
             col_def.categories = col_cats
-            q = "update {}_header set col_def=? where col_name=?".format(self.level)
+            q = "update {}_header set col_def=? where col_name=?".format(
+                self.level)
             self.cursor.execute(q, [col_def.get_json(), col_def.name])
 
     def write_output(self, input_data, output_dict):
@@ -221,9 +223,8 @@ class BasePostAggregator(object):
             if err_str not in self.unique_excs:
                 self.unique_excs.append(err_str)
                 self.logger.error(err_str)
-            self.error_logger.error(
-                "\nINPUT:{}\nERROR:{}\n#".format(str(input_data), str(e))
-            )
+            self.error_logger.error("\nINPUT:{}\nERROR:{}\n#".format(
+                str(input_data), str(e)))
         except Exception as e:
             self._log_exception(e, halt=False)
 
@@ -275,20 +276,16 @@ class BasePostAggregator(object):
             coltype = col_def.type
             # data table
             try:
-                self.cursor.execute(f"select {colname} from {self.level} limit 1")
+                self.cursor.execute(
+                    f"select {colname} from {self.level} limit 1")
             except:
-                q = (
-                    "alter table "
-                    + self.level
-                    + " add column "
-                    + colname
-                    + " "
-                    + self.cr_type_to_sql[coltype]
-                )
+                q = ("alter table " + self.level + " add column " + colname +
+                     " " + self.cr_type_to_sql[coltype])
                 self.cursor_w.execute(q)
             # header table
             # use prepared statement to allow " characters in colcats and coldesc
-            q = "insert or replace into {} values (?, ?)".format(header_table_name)
+            q = "insert or replace into {} values (?, ?)".format(
+                header_table_name)
             self.cursor_w.execute(q, [colname, col_def.get_json()])
         self.dbconn.commit()
 

@@ -19,8 +19,7 @@ def get_ucsc_bins(start, stop=None):
             stop_bin >>= SHIFT_NEXT
 
     return [
-        x
-        for first, last in range_per_level(start, stop)
+        x for first, last in range_per_level(start, stop)
         for x in range(first, last + 1)
     ]
 
@@ -115,7 +114,7 @@ def aa_abbv_to_let(abbvs):
         raise ValueError("Must be evenly divisible by 3")
     out = ""
     for i in range(0, len(abbvs), 3):
-        abbv = abbvs[i].upper() + abbvs[i + 1 : i + 3].lower()
+        abbv = abbvs[i].upper() + abbvs[i + 1:i + 3].lower()
         out += aa_321[abbv]
     return out
 
@@ -336,8 +335,7 @@ def get_directory_size(start_path):
 def get_argument_parser_defaults(parser):
     return {
         action.dest: action.default
-        for action in parser._actions
-        if action.dest != "help"
+        for action in parser._actions if action.dest != "help"
     }
 
 
@@ -390,7 +388,8 @@ def is_compatible_version(dbpath):
     import sqlite3
     from pkg_resources import get_distribution
 
-    max_version_supported_for_migration = get_max_version_supported_for_migration()
+    max_version_supported_for_migration = get_max_version_supported_for_migration(
+    )
     db = sqlite3.connect(dbpath)
     c = db.cursor()
     try:
@@ -529,3 +528,10 @@ def get_dict_from_namespace(n):
     if type(n) == SimpleNamespace or type(n) == Namespace:
         n = vars(n)
     return n
+
+def quiet_print(msg, args=None):
+    quiet = True
+    if args is not None:
+        quiet = args.get("quiet", True)
+    if not quiet:
+        print(msg, flush=True)

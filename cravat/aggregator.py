@@ -36,10 +36,14 @@ class Aggregator(object):
             required=True,
             help="Directory containing annotator outputs",
         )
-        parser.add_argument(
-            "-l", dest="level", required=True, help="Level to aggregate"
-        )
-        parser.add_argument("-n", dest="name", required=True, help="Name of run")
+        parser.add_argument("-l",
+                            dest="level",
+                            required=True,
+                            help="Level to aggregate")
+        parser.add_argument("-n",
+                            dest="name",
+                            required=True,
+                            help="Name of run")
         parser.add_argument(
             "-d",
             dest="output_dir",
@@ -92,8 +96,7 @@ class Aggregator(object):
             return
         start_time = time()
         self.status_writer.queue_status_update(
-            "status", "Started {} ({})".format("Aggregator", self.level)
-        )
+            "status", "Started {} ({})".format("Aggregator", self.level))
         last_status_update_time = time()
         self.logger.info("started: %s" % asctime(localtime(start_time)))
         self.dbconn.commit()
@@ -129,7 +132,8 @@ class Aggregator(object):
             reader = self.readers[annot_name]
             n = 0
             ordered_cnames = [
-                cname for cname in reader.get_column_names() if cname != self.key_name
+                cname for cname in reader.get_column_names()
+                if cname != self.key_name
             ]
             if len(ordered_cnames) == 0:
                 continue
@@ -166,8 +170,7 @@ class Aggregator(object):
         self.logger.info("runtime: %s" % round(runtime, 3))
         self._cleanup()
         self.status_writer.queue_status_update(
-            "status", "Finished {} ({})".format("Aggregator", self.level)
-        )
+            "status", "Finished {} ({})".format("Aggregator", self.level))
 
     def make_reportsub(self):
         from json import loads
@@ -198,7 +201,8 @@ class Aggregator(object):
 
         header_table = self.level + "_header"
         coldefs = []
-        if LooseVersion(get_current_package_version()) >= LooseVersion("1.5.0"):
+        if LooseVersion(
+                get_current_package_version()) >= LooseVersion("1.5.0"):
             sql = f"select col_def from {header_table}"
             self.cursor.execute(sql)
             for row in self.cursor:
@@ -211,9 +215,11 @@ class Aggregator(object):
             self.cursor.execute(sql)
             header_cols = [row[1] for row in self.cursor.fetchall()]
             select_order = [
-                cname for cname in ColumnDefinition.db_order if cname in header_cols
+                cname for cname in ColumnDefinition.db_order
+                if cname in header_cols
             ]
-            sql = "select {} from {}".format(", ".join(select_order), header_table)
+            sql = "select {} from {}".format(", ".join(select_order),
+                                             header_table)
             self.cursor.execute(sql)
             column_headers = self.cursor.fetchall()
             for column_header in column_headers:
@@ -232,9 +238,11 @@ class Aggregator(object):
                             continue
                         col_set.update(r[0].split(";"))
                     col_cats = list(col_set)
-                    col_cats = self.do_reportsub_col_cats(coldef.name, col_cats)
+                    col_cats = self.do_reportsub_col_cats(
+                        coldef.name, col_cats)
                 else:
-                    col_cats = self.do_reportsub_col_cats(coldef.name, col_cats)
+                    col_cats = self.do_reportsub_col_cats(
+                        coldef.name, col_cats)
                 col_cats.sort()
                 coldef.categories = col_cats
                 self.update_col_def(coldef)
@@ -340,8 +348,7 @@ class Aggregator(object):
             annotator_version = reader.get_annotator_version()
             q = f"insert or replace into {annotator_table} values (?, ?, ?)"
             self.cursor.execute(
-                q, [annotator_name, annotator_displayname, annotator_version]
-            )
+                q, [annotator_name, annotator_displayname, annotator_version])
             orded_col_index = sorted(list(reader.get_all_col_defs().keys()))
             for col_index in orded_col_index:
                 col_def = reader.get_col_def(col_index)
@@ -470,8 +477,8 @@ class Aggregator(object):
                 self.unique_excs.append(err_str)
                 self.logger.error(err_str)
             self.error_logger.error(
-                "\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(ln, line[:-1], str(e))
-            )
+                "\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(
+                    ln, line[:-1], str(e)))
         else:
             self.logger.error(err_str)
 

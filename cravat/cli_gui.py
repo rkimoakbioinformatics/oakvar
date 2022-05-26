@@ -22,7 +22,6 @@ log_path = None
 logger = None
 
 
-
 def setup(args):
     from sys import platform as sysplatform
     from .webresult import webresult as wr
@@ -57,10 +56,8 @@ def setup(args):
                 logger.exception(e)
                 logger.info("Exiting...")
                 print(
-                    "Error occurred while loading oakvar-multiuser.\nCheck {} for details.".format(
-                        log_path
-                    )
-                )
+                    "Error occurred while loading oakvar-multiuser.\nCheck {} for details."
+                    .format(log_path))
                 exit()
         else:
             servermode = False
@@ -115,10 +112,8 @@ def setup(args):
             print_exc()
         logger.info("Exiting...")
         print(
-            "Error occurred while starting OakVar server.\nCheck {} for details.".format(
-                log_path
-            )
-        )
+            "Error occurred while starting OakVar server.\nCheck {} for details."
+            .format(log_path))
         exit()
 
 
@@ -137,7 +132,8 @@ def fn_gui(args):
 
     args = get_dict_from_namespace(args)
     log_handler = TimedRotatingFileHandler(log_path, when="d", backupCount=30)
-    log_formatter = logging.Formatter("%(asctime)s: %(message)s", "%Y/%m/%d %H:%M:%S")
+    log_formatter = logging.Formatter("%(asctime)s: %(message)s",
+                                      "%Y/%m/%d %H:%M:%S")
     log_handler.setFormatter(log_formatter)
     logger.addHandler(log_handler)
     if args["servermode"]:
@@ -163,7 +159,8 @@ def fn_gui(args):
             port = server.get("port")
         if not headless:
             if args["webapp"] is not None:
-                index_path = join(modules_dir, "webapps", args["webapp"], "index.html")
+                index_path = join(modules_dir, "webapps", args["webapp"],
+                                  "index.html")
                 if exists(index_path) == False:
                     print(f"Webapp {args['webapp']} does not exist. Exiting.")
                     return
@@ -204,10 +201,8 @@ def fn_gui(args):
             print_exc()
         logger.info("Exiting...")
         print(
-            "Error occurred while starting OakVar server.\nCheck {} for details.".format(
-                log_path
-            )
-        )
+            "Error occurred while starting OakVar server.\nCheck {} for details."
+            .format(log_path))
     finally:
         for handler in logger.handlers:
             handler.close()
@@ -259,11 +254,8 @@ def get_server():
         if debug:
             print_exc()
         logger.info("Exiting...")
-        print(
-            "Error occurred while OakVar server.\nCheck {} for details.".format(
-                log_path
-            )
-        )
+        print("Error occurred while OakVar server.\nCheck {} for details.".
+              format(log_path))
         exit()
 
 
@@ -350,13 +342,20 @@ async def middleware(request, handler):
         if debug:
             print(msg)
             print_exc()
-        return web.HTTPInternalServerError(
-            text=dumps({"status": "error", "msg": str(e)})
-        )
+        return web.HTTPInternalServerError(text=dumps({
+            "status": "error",
+            "msg": str(e)
+        }))
 
 
 class WebServer(object):
-    def __init__(self, host=None, port=None, loop=None, ssl_context=None, url=None):
+
+    def __init__(self,
+                 host=None,
+                 port=None,
+                 loop=None,
+                 ssl_context=None,
+                 url=None):
         from asyncio import get_event_loop, sleep
 
         serv = get_server()
@@ -463,9 +462,8 @@ class WebServer(object):
         self.app.router.add_static("/result", join(source_dir, "webresult"))
         self.app.router.add_static("/submit", join(source_dir, "websubmit"))
         if exists(join(modules_dir, "annotators")):
-            self.app.router.add_static(
-                "/modules/annotators/", join(modules_dir, "annotators")
-            )
+            self.app.router.add_static("/modules/annotators/",
+                                       join(modules_dir, "annotators"))
         self.app.router.add_static("/webapps", join(modules_dir, "webapps"))
         ws.start_worker()
         wu.start_worker()
@@ -497,7 +495,8 @@ async def heartbeat(request):
     ws = web.WebSocketResponse(timeout=60 * 60 * 24 * 365)
     if servermode and server_ready:
         import cravat_multiuser
-        get_event_loop().create_task(cravat_multiuser.update_last_active(request))
+        get_event_loop().create_task(
+            cravat_multiuser.update_last_active(request))
     await ws.prepare(request)
     try:
         async for msg in ws:
@@ -511,8 +510,6 @@ async def is_system_ready(request):
     from .admin_util import system_ready
 
     return web.json_response(dict(system_ready()))
-
-
 
 
 def main(url=None, host=None, port=None):
@@ -554,9 +551,8 @@ def main(url=None, host=None, port=None):
                 logger.info(
                     "wcravat already running. Exiting from this instance of wcravat..."
                 )
-                print(
-                    "OakVar is already running at {}{}:{}.".format(protocol, host, port)
-                )
+                print("OakVar is already running at {}{}:{}.".format(
+                    protocol, host, port))
                 global SERVER_ALREADY_RUNNING
                 if url and not headless:
                     webbrowseropen(url)
@@ -590,12 +586,10 @@ def main(url=None, host=None, port=None):
             from .sysadmin import get_system_conf
             import cravat_multiuser
             try:
-                max_age = get_system_conf().get(
-                    "max_session_age", 604800
-                )  # default 1 week
-                interval = get_system_conf().get(
-                    "session_clean_interval", 3600
-                )  # default 1 hr
+                max_age = get_system_conf().get("max_session_age",
+                                                604800)  # default 1 week
+                interval = get_system_conf().get("session_clean_interval",
+                                                 3600)  # default 1 hr
                 while True:
                     await cravat_multiuser.admindb.clean_sessions(max_age)
                     await sleep(interval)
@@ -612,7 +606,11 @@ def main(url=None, host=None, port=None):
         global ssl_enabled
         if ssl_enabled:
             global sc
-            server = WebServer(loop=loop, ssl_context=sc, url=url, host=host, port=port)
+            server = WebServer(loop=loop,
+                               ssl_context=sc,
+                               url=url,
+                               host=host,
+                               port=port)
         else:
             server = WebServer(loop=loop, url=url, host=host, port=port)
         loop.run_forever()
@@ -624,10 +622,8 @@ def main(url=None, host=None, port=None):
             print_exc()
         logger.info("Exiting...")
         print(
-            "Error occurred while starting OakVar server.\nCheck {} for details.".format(
-                log_path
-            )
-        )
+            "Error occurred while starting OakVar server.\nCheck {} for details."
+            .format(log_path))
         exit()
 
 
@@ -660,9 +656,9 @@ def get_parser_fn_gui():
         default=False,
         help="Console echoes exceptions written to log file.",
     )
-    parser_fn_gui.add_argument(
-        "result", nargs="?", help="Path to a OakVar result SQLite file"
-    )
+    parser_fn_gui.add_argument("result",
+                               nargs="?",
+                               help="Path to a OakVar result SQLite file")
     parser_fn_gui.add_argument(
         "--webapp",
         dest="webapp",
@@ -684,6 +680,7 @@ def get_parser_fn_gui():
     )
     parser_fn_gui.set_defaults(func=fn_gui)
     return parser_fn_gui
+
 
 if __name__ == "__main__":
     main()

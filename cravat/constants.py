@@ -1,8 +1,23 @@
 # built-in file column definitions
 crm_def = [
-    {"name": "original_line", "title": "Original Line", "type": "int", "width": 90},
-    {"name": "tags", "title": "User Tags", "type": "string", "width": 90},
-    {"name": "uid", "title": "UID", "type": "int", "width": 70},
+    {
+        "name": "original_line",
+        "title": "Original Line",
+        "type": "int",
+        "width": 90
+    },
+    {
+        "name": "tags",
+        "title": "User Tags",
+        "type": "string",
+        "width": 90
+    },
+    {
+        "name": "uid",
+        "title": "UID",
+        "type": "int",
+        "width": 70
+    },
     {
         "name": "fileno",
         "title": "Input File Number",
@@ -14,8 +29,18 @@ crm_def = [
 ]
 crm_idx = [["uid"], ["tags"]]
 crs_def = [
-    {"name": "uid", "title": "UID", "type": "int", "width": 70},
-    {"name": "sample_id", "title": "Sample", "type": "string", "width": 90},
+    {
+        "name": "uid",
+        "title": "UID",
+        "type": "int",
+        "width": 70
+    },
+    {
+        "name": "sample_id",
+        "title": "Sample",
+        "type": "string",
+        "width": 90
+    },
 ]
 crs_idx = [["uid"], ["sample_id"], ["sample_id", "uid"]]
 crv_def = [
@@ -56,7 +81,12 @@ crv_def = [
         "width": 50,
         "filterable": False,
     },
-    {"name": "note", "title": "Note", "type": "string", "width": 50},
+    {
+        "name": "note",
+        "title": "Note",
+        "type": "string",
+        "width": 50
+    },
 ]
 crv_idx = [["uid"]]
 crx_def = crv_def + [
@@ -123,20 +153,58 @@ crg_def = [
         "width": 70,
         "filterable": True,
     },
-    {"name": "note", "title": "Note", "type": "string", "width": 50},
+    {
+        "name": "note",
+        "title": "Note",
+        "type": "string",
+        "width": 50
+    },
 ]
 crg_idx = [["hugo"]]
 crt_def = [
-    {"name": "primary_transcript", "title": "Primary transcript", "type": "string"},
-    {"name": "alt_transcript", "title": "Alternate transcript", "type": "string"},
+    {
+        "name": "primary_transcript",
+        "title": "Primary transcript",
+        "type": "string"
+    },
+    {
+        "name": "alt_transcript",
+        "title": "Alternate transcript",
+        "type": "string"
+    },
 ]
 crt_idx = [["primary_transcript"]]
 crl_def = [
-    {"name": "uid", "title": "UID", "type": "int", "width": 70},
-    {"name": "chrom", "title": "Chrom", "type": "string", "width": 80},
-    {"name": "pos", "title": "Pos", "type": "int", "width": 80},
-    {"name": "ref_base", "title": "Reference allele", "type": "string", "width": 80},
-    {"name": "alt_base", "title": "Alternate allele", "type": "string", "width": 80},
+    {
+        "name": "uid",
+        "title": "UID",
+        "type": "int",
+        "width": 70
+    },
+    {
+        "name": "chrom",
+        "title": "Chrom",
+        "type": "string",
+        "width": 80
+    },
+    {
+        "name": "pos",
+        "title": "Pos",
+        "type": "int",
+        "width": 80
+    },
+    {
+        "name": "ref_base",
+        "title": "Reference allele",
+        "type": "string",
+        "width": 80
+    },
+    {
+        "name": "alt_base",
+        "title": "Alternate allele",
+        "type": "string",
+        "width": 80
+    },
 ]
 
 exit_codes = {"alreadycrv": 2, 2: "alreadycrv"}
@@ -161,32 +229,42 @@ base_smartfilters = [
             "defaultValue": "0.1",
         },
         "filter": {
-            "operator": "and",
+            "operator":
+            "and",
             "rules": [
                 {
-                    "operator": "or",
+                    "operator":
+                    "or",
                     "rules": [
                         {
                             "column": "gnomad3__af",
                             "test": "lessThanEq",
                             "value": "${value}",
                         },
-                        {"column": "gnomad3__af", "test": "noData"},
+                        {
+                            "column": "gnomad3__af",
+                            "test": "noData"
+                        },
                     ],
                 },
                 {
-                    "operator": "or",
+                    "operator":
+                    "or",
                     "rules": [
                         {
                             "column": "gnomad__af",
                             "test": "lessThanEq",
                             "value": "${value}",
                         },
-                        {"column": "gnomad__af", "test": "noData"},
+                        {
+                            "column": "gnomad__af",
+                            "test": "noData"
+                        },
                     ],
                 },
                 {
-                    "operator": "or",
+                    "operator":
+                    "or",
                     "rules": [
                         {
                             "column": "thousandgenomes__af",
@@ -212,7 +290,11 @@ base_smartfilters = [
             "multiple": True,
             "defaultValue": ["MIS"],
         },
-        "filter": {"column": "base__so", "test": "select", "value": "${value}"},
+        "filter": {
+            "column": "base__so",
+            "test": "select",
+            "value": "${value}"
+        },
     },
     {
         "name": "chrom",
@@ -223,7 +305,11 @@ base_smartfilters = [
             "multiple": True,
             "optionsColumn": "base__chrom",
         },
-        "filter": {"column": "base__chrom", "test": "select", "value": "${value}"},
+        "filter": {
+            "column": "base__chrom",
+            "test": "select",
+            "value": "${value}"
+        },
     },
     {
         "name": "coding",
@@ -231,18 +317,27 @@ base_smartfilters = [
         "description": "Include only coding/noncoding variants",
         "selector": {
             "type": "select",
-            "options": {"No": True, "Yes": False},
+            "options": {
+                "No": True,
+                "Yes": False
+            },
             "defaultValue": False,
         },
-        "filter": {"column": "base__coding", "test": "hasData", "negate": "${value}"},
+        "filter": {
+            "column": "base__coding",
+            "test": "hasData",
+            "negate": "${value}"
+        },
     },
 ]
 
 module_tag_desc = {
-    "allele frequency": "modules for studying allele frequency across populations",
+    "allele frequency":
+    "modules for studying allele frequency across populations",
     "cancer": "tools for cancer research",
     "clinical relevance": "tools for assessing clinical relevance of variants",
-    "converters": "modules for using the result of other tools as oakvar input",
+    "converters":
+    "modules for using the result of other tools as oakvar input",
     "dbnsfp": "modules ported from dbNSFP",
     "denovo": "modules related to denovo variants",
     "evolution": "modules for studying variants in evolutionary context",
@@ -252,14 +347,17 @@ module_tag_desc = {
     "literature": "modules for variant-related literature",
     "multiple assays": "modules for multiplex assays",
     "non coding": "modules for studying noncoding variants",
-    "protein visualization": "modules to visualize variants on protein structures",
+    "protein visualization":
+    "modules to visualize variants on protein structures",
     "reporters": "modules for generating output formats",
     "variant effect prediction": "modules to predict variant effects",
     "variants": "modules to study variants at the variant level",
     "visualization widgets": "modules for visualizing variants",
 }
 
-legacy_gene_level_cols_to_skip = ["base__num_variants", "base__so", "base__all_so"]
+legacy_gene_level_cols_to_skip = [
+    "base__num_variants", "base__so", "base__all_so"
+]
 assembly_choices = ["hg38", "hg19", "hg18"]
 publish_time_fmt = "%Y-%m-%dT%H:%M:%S.%f%z"
 install_tempdir_name = "temp"
