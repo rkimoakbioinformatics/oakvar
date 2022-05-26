@@ -126,6 +126,11 @@ def get_parser_fn_store():
         default=None,
         help="Specify the root directory of OakVar modules")
     parser_fn_store_publish.set_defaults(func=fn_store_publish)
+    parser_fn_store_publish.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"
+    parser_fn_store_publish.r_examples = [
+        "# Publish \"customannot\" module to the store",
+        "ov.store.publish(module=\"customannot\", user=\"user1\", password=\"password\")"
+    ]
 
     # create-account
     parser_fn_store_newaccount = _subparsers.add_parser(
@@ -135,6 +140,11 @@ def get_parser_fn_store():
     parser_fn_store_newaccount.add_argument("password",
                                             help="this is your password.")
     parser_fn_store_newaccount.set_defaults(func=fn_store_newaccount)
+    parser_fn_store_newaccount.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"
+    parser_fn_store_newaccount.r_examples = [
+        "# Create a store account",
+        "ov.store.newaccount(username=\"user1\", password=\"password\")"
+    ]
 
     # change-password
     parser_fn_store_changepassword = _subparsers.add_parser(
@@ -145,18 +155,33 @@ def get_parser_fn_store():
     parser_fn_store_changepassword.add_argument("new_password",
                                                 help="new password")
     parser_fn_store_changepassword.set_defaults(func=fn_store_changepassword)
+    parser_fn_store_changepassword.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"
+    parser_fn_store_changepassword.r_examples = [
+        "# Change the password of a store account",
+        "ov.store.changepassword(username=\"user1\", current_password=\"password\", new_password=\"newpassword\")"
+    ]
 
     # reset-password
     parser_fn_store_resetpassword = _subparsers.add_parser(
         "resetpassword", help="resets OakVar store account password.")
     parser_fn_store_resetpassword.add_argument("username", help="username")
     parser_fn_store_resetpassword.set_defaults(func=fn_store_resetpassword)
+    parser_fn_store_resetpassword.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"
+    parser_fn_store_resetpassword.r_examples = [
+        "# Ask the store to send an email to reset the password of a store account",
+        "ov.store.resetpassword(username=\"user1\")"
+    ]
 
     # verify-email
     parser_fn_store_verifyemail = _subparsers.add_parser(
         "verifyemail", help="sends a verification email.")
     parser_fn_store_verifyemail.add_argument("username", help="username")
     parser_fn_store_verifyemail.set_defaults(func=fn_store_verifyemail)
+    parser_fn_store_verifyemail.r_return = "`NULL`"
+    parser_fn_store_verifyemail.r_examples = [
+        "# Ask the store to send an email to verify the email of a user account",
+        "ov.store.verifyemail(username=\"user1\")"
+    ]
 
     # check-login
     parser_fn_store_checklogin = _subparsers.add_parser(
@@ -164,4 +189,9 @@ def get_parser_fn_store():
     parser_fn_store_checklogin.add_argument("username", help="username")
     parser_fn_store_checklogin.add_argument("password", help="password")
     parser_fn_store_checklogin.set_defaults(func=fn_store_checklogin)
+    parser_fn_store_checklogin.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"
+    parser_fn_store_checklogin.r_examples = [
+        "# Check if the login information of a user is correct",
+        "ov.store.checklogin(username=\"user1\", password=\"password\")"
+    ]
     return parser_fn_store

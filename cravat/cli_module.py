@@ -1,22 +1,23 @@
 def fn_module_ls(args):
     from .util import get_dict_from_namespace
+    from .util import quiet_print
     args = get_dict_from_namespace(args)
     if args["available"]:
         ret = list_available_modules(**args)
         if args["to"] == "stdout":
             if args["fmt"] == "tabular":
-                print_tabular_lines(ret)
+                print_tabular_lines(ret, args=args)
             else:
-                print(ret)
+                quiet_print(ret, args=args)
         else:
             return ret
     else:
         ret = list_local_modules(**args)
         if args["to"] == "stdout":
             if args["fmt"] == "tabular":
-                print_tabular_lines(ret)
+                print_tabular_lines(ret, args=args)
             else:
-                print(ret)
+                quiet_print(ret, args=args)
         else:
             return ret
 
@@ -30,13 +31,11 @@ def fn_module_info(args):
     )
     from .util import get_dict_from_namespace
     from .sysadmin_const import custom_modules_dir
+    from .util import quiet_print
 
     args = get_dict_from_namespace(args)
     ret = {}
-    md = args.get("md", None)
     module_name = args.get("module", None)
-    if md is not None:
-        custom_modules_dir = md
     if module_name is None:
         return ret
     installed = False
@@ -104,7 +103,7 @@ def fn_module_info(args):
             up_to_date = False
         ret["latest_installed"] = up_to_date
     if args["to"] == "stdout":
-        print(dump(ret))
+        quiet_print(dump(ret), args=args)
     else:
         return ret
 
@@ -121,9 +120,9 @@ def fn_module_install(args):
     from .util import get_dict_from_namespace
     from .sysadmin_const import custom_modules_dir
     from distutils.version import LooseVersion
+    from .util import quiet_print
     args = get_dict_from_namespace(args)
-    if args["md"] is not None:
-        custom_modules_dir = args["md"]
+    quiet = args.get("quiet", True)
     # split module name and version
     module_name_versions = {}
     for mv in args["modules"]:
@@ -135,7 +134,7 @@ def fn_module_install(args):
                 version = None
             module_name_versions[module_name] = version
         except:
-            print(f"Wrong module name==version format: {mv}")
+            quiet_print(f"Wrong module name==version format: {mv}", args=args)
     module_names = list(module_name_versions.keys())
     # handles regex in module name.
     for module_name in module_names:
@@ -143,7 +142,7 @@ def fn_module_install(args):
         del module_name_versions[module_name]
         matching_names = search_remote(module_name)
         if len(matching_names) == 0:
-            print(f"invalid module name: {module_name}")
+            quiet_print(f"invalid module name: {module_name}", args=args)
             continue
         for mn in matching_names:
             module_name_versions[mn] = version
@@ -155,9 +154,9 @@ def fn_module_install(args):
         version = module_name_versions[module_name]
         if version is None:
             if args["private"]:
-                print(
+                quiet_print(
                     f"{module_name}: a version should be given for a private module",
-                    flush=True,
+                    args=args
                 )
                 continue
             else:
@@ -167,24 +166,24 @@ def fn_module_install(args):
                     if not args["force"] and LooseVersion(
                             local_info.version) >= LooseVersion(
                                 remote_info.latest_version):
-                        print(
+                        quiet_print(
                             f"{module_name}: latest version is already installed.",
-                            flush=True,
+                            args=args
                         )
                         continue
                 selected_install[module_name] = remote_info.latest_version
         else:
             if not module_exists_remote(
                     module_name, version=version, private=args["private"]):
-                print(f"{module_name}=={version} does not exist.", flush=True)
+                quiet_print(f"{module_name}=={version} does not exist.", args=args)
                 continue
             else:
                 if (not args["force"] and local_info is not None
                         and LooseVersion(
                             local_info.version) == LooseVersion(version)):
-                    print(
+                    quiet_print(
                         f"{module_name}=={args['version']} is already installed. Use -f/--force to overwrite",
-                        flush=True,
+                        args=args
                     )
                     continue
             selected_install[module_name] = version
@@ -200,11 +199,11 @@ def fn_module_install(args):
     to_install = selected_install
     to_install.update(deps_install)
     if len(to_install) == 0:
-        print("No module to install found", flush=True)
+        quiet_print("No module to install found", args=args)
     else:
-        print("The following modules will be installed:", flush=True)
+        quiet_print("The following modules will be installed:", args=args)
         for name in sorted(list(to_install.keys())):
-            print(f"- {name}=={to_install[name]}", flush=True)
+            quiet_print(f"- {name}=={to_install[name]}", args=args)
         if not (args["yes"]):
             while True:
                 resp = input("Proceed? ([y]/n) > ")
@@ -224,77 +223,86 @@ def fn_module_install(args):
                 force=args["force"],
                 skip_data=args["skip_data"],
             )
+    return True
 
 
 def fn_module_update(args):
     from .admin_util import search_local, get_updatable
     from .util import get_dict_from_namespace, humanize_bytes
-    from .sysadmin_const import custom_modules_dir
+    from .util import quiet_print
+    from types import SimpleNamespace
 
     args = get_dict_from_namespace(args)
-    if args["md"] is not None:
-        custom_modules_dir = args["md"]
-    if len(args["modules"]) > 0:
-        requested_modules = search_local(*args["modules"])
+    quiet = args.get("quiet", True)
+    ret = {"msg": []}
+    modules = args.get("modules", [])
+    if len(modules) > 0:
+        requested_modules = search_local(*modules)
     else:
         requested_modules = []
-    update_strategy = args["strategy"]
+    update_strategy = args.get("strategy")
     status_table = [["Name", "New Version", "Size"]]
     updates, _, reqs_failed = get_updatable(requested_modules,
                                             strategy=update_strategy)
     if reqs_failed:
-        print(
-            "Newer versions of ({}) are available, but would break dependencies. You may use --strategy=force to force installation."
-            .format(", ".join(reqs_failed.keys())))
+        msg = "Newer versions of ({}) are available, but would break dependencies. You may use --strategy=force to force installation.".format(", ".join(reqs_failed.keys()))
+        quiet_print(msg, args=args)
     if not updates:
-        print("No module updates are needed")
-        exit()
+        msg = "No module updates are needed"
+        quiet_print(msg, args=args)
+        return True
     for mname, update_info in updates.items():
         version = update_info.version
         size = update_info.size
         status_table.append([mname, version, humanize_bytes(size)])
-    print_tabular_lines(status_table)
+    print_tabular_lines(status_table, args=args)
     if not args["y"]:
-        user_cont = input("Update the above modules? (y/n) > ")
-        if user_cont.lower() not in ["y", "yes"]:
-            exit()
+        if not quiet:
+            user_cont = input("Proceed to update? (y/n) > ")
+            if user_cont.lower() not in ["y", "yes"]:
+                return True
     for mname, update_info in updates.items():
-        args["modules"] = [mname]
-        args["force_data"] = False
-        args["version"] = update_info.version
-        args["yes"] = True
-        args["private"] = False
-        args["skip_dependencies"] = False
-        args["force"] = False
-        args["skip_data"] = False
-        fn_module_install(args)
+        args = SimpleNamespace(
+            modules=[mname],
+            force_data=False,
+            version=update_info.version,
+            yes=True,
+            private=False,
+            skip_dependencies=False,
+            force=False,
+            skip_data=False,
+            md=args.get("md", None),
+        )
+        if fn_module_install(args) == False:
+            return False
+    return True
 
 
 def fn_module_uninstall(args):
     from .admin_util import search_local, uninstall_module
     from .util import get_dict_from_namespace
     from .sysadmin_const import custom_modules_dir
+    from .util import quiet_print
 
     args = get_dict_from_namespace(args)
-    if args["md"] is not None:
-        custom_modules_dir = args["md"]
     matching_names = search_local(*args["modules"])
     if len(matching_names) > 0:
-        print("Uninstalling: {:}".format(", ".join(matching_names)))
+        quiet_print("Uninstalling: {:}".format(", ".join(matching_names)), args=args)
         if not (args["yes"]):
             while True:
                 resp = input("Proceed? (y/n) > ")
                 if resp == "y":
                     break
                 elif resp == "n":
-                    exit()
+                    raise False
                 else:
-                    print("Response '{:}' not one of (y/n).".format(resp))
+                    quiet_print("Response '{:}' not one of (y/n).".format(resp), args=args)
         for module_name in matching_names:
             uninstall_module(module_name)
-            print("Uninstalled %s" % module_name)
+            quiet_print("Uninstalled %s" % module_name, args=args)
     else:
-        print("No modules to uninstall found")
+        quiet_print("No modules to uninstall found", args=args)
+    return True
 
 
 def fn_module_installbase(args):
@@ -315,8 +323,10 @@ def fn_module_installbase(args):
         force=args.get("force", False),
         skip_data=False,
         md=args.get("md", None),
+        quiet=args.get("quiet", False),
     )
-    fn_module_install(args)
+    ret = fn_module_install(args)
+    return ret
 
 
 def list_available_modules(**kwargs):
@@ -474,9 +484,10 @@ def list_local_modules(
         return dump(all_toks, default_flow_style=False)
 
 
-def print_tabular_lines(l, *kwargs):
-    for line in yield_tabular_lines(l, *kwargs):
-        print(line)
+def print_tabular_lines(l, args=None):
+    if args is None or not args.get("quiet", True):
+        for line in yield_tabular_lines(l):
+            print(line)
 
 
 def yield_tabular_lines(l, col_spacing=2, indent=0):
@@ -542,7 +553,7 @@ def get_parser_fn_module():
     _subparsers = parser_fn_module.add_subparsers(title="Commands",
                                                   dest="command")
 
-    # install-base
+    # installbase
     parser_fn_module_installbase = _subparsers.add_parser(
         "installbase",
         help="installs base modules.",
@@ -563,7 +574,17 @@ def get_parser_fn_module():
         "--md",
         default=None,
         help="Specify the root directory of OakVar modules")
+    parser_fn_module_installbase.add_argument(
+        "--quiet",
+        default=False,
+        action="store_true",
+        help="suppress stdout output")
     parser_fn_module_installbase.set_defaults(func=fn_module_installbase)
+    parser_fn_module_installbase.r_return = "A boolean. TRUE if successful, FALSE if not"
+    parser_fn_module_installbase.r_examples = [
+        "# Install OakVar system modules",
+        "ov.module.installbase()"
+    ]
 
     # install
     parser_fn_module_install = _subparsers.add_parser(
@@ -604,7 +625,25 @@ def get_parser_fn_module():
         "--md",
         default=None,
         help="Specify the root directory of OakVar modules")
+    parser_fn_module_install.add_argument(
+        "--to",
+        default="return",
+        help="'stdout' to print. 'return' to return")
+    parser_fn_module_install.add_argument(
+        "--quiet",
+        default=False,
+        action="store_true",
+        help="suppress stdout output")
     parser_fn_module_install.set_defaults(func=fn_module_install)
+    parser_fn_module_install.r_return = "A boolean. TRUE if successful, FALSE if not"
+    parser_fn_module_install.r_examples = [
+        "# Install the ClinVar module",
+        "ov.module.install(modules=\"clinvar\")",
+        "# Install the ClinVar and the COSMIC modules",
+        "ov.module.install(modules=list(\"clinvar\", \"cosmic\")",
+        "# Re-install the ClinVar module overwriting the already installed copy",
+        "ov.module.install(modules=\"clinvar\", force=TRUE)"
+    ]
 
     # update
     parser_fn_module_update = _subparsers.add_parser(
@@ -631,11 +670,24 @@ def get_parser_fn_module():
         "--md",
         default=None,
         help="Specify the root directory of OakVar modules")
+    parser_fn_module_update.add_argument(
+        "--quiet",
+        default=False,
+        action="store_true",
+        help="suppress stodout output")
     parser_fn_module_update.set_defaults(func=fn_module_update)
+    parser_fn_module_update.r_return = "A boolean. TRUE if successful, FALSE if not"
+    parser_fn_module_update.r_examples = [
+        "# Update the ClinVar module",
+        "ov.module.update(modules=\"clinvar\")",
+        "# Update all the installed modules",
+        "ov.module.update()"
+    ]
 
     # uninstall
     parser_fn_module_uninstall = _subparsers.add_parser(
-        "uninstall", help="uninstalls modules.")
+        "uninstall", 
+        help="uninstalls modules.")
     parser_fn_module_uninstall.add_argument("modules",
                                             nargs="+",
                                             help="Modules to uninstall")
@@ -648,10 +700,19 @@ def get_parser_fn_module():
         default=None,
         help="Specify the root directory of OakVar modules")
     parser_fn_module_uninstall.set_defaults(func=fn_module_uninstall)
+    parser_fn_module_uninstall.r_return = "A boolean. TRUE if successful, FALSE if not"
+    parser_fn_module_uninstall.r_examples = [
+        "# Uninstall the ClinVar module",
+        "ov.module.uninstall(modules=\"clinvar\")"
+        "# Uninstall the ClinVar and the COSMIC modules",
+        "ov.module.uninstall(modules=(\"clinvar\", \"cosmic\")"
+    ]
 
     # info
     parser_fn_module_info = _subparsers.add_parser(
-        "info", help="shows module information.")
+        "info", 
+        epilog="returns information of the queried module",
+        help="shows module information.")
     parser_fn_module_info.add_argument("module",
                                        help="Module to get info about")
     parser_fn_module_info.add_argument("-l",
@@ -668,6 +729,11 @@ def get_parser_fn_module():
         default="stdout",
         help='"print" to stdout / "return" to return')
     parser_fn_module_info.set_defaults(func=fn_module_info)
+    parser_fn_module_info.r_return = "A named list. Information of the queried module"
+    parser_fn_module_info.r_examples = [
+        "# Get the information of the ClinVar module",
+        "ov.module.info(module=\"clinvar\")"
+    ]
 
     # ls
     parser_fn_module_ls = _subparsers.add_parser(
@@ -717,4 +783,13 @@ def get_parser_fn_module():
                                      default="stdout",
                                      help="stdout to print / return to return")
     parser_fn_module_ls.set_defaults(func=fn_module_ls)
+    parser_fn_module_ls.r_return = "A named list. List of modules"
+    parser_fn_module_ls.r_examples = [
+        "# Get the list of all installed modules",
+        "ov.module.ls()",
+        "# Get the list of all available modules",
+        "ov.module.ls(available=TRUE)",
+        "# Get the list of all available modules of the type \"converter\"",
+        "ov.module.ls(available=TRUE, types=\"converter\")"
+    ]
     return parser_fn_module

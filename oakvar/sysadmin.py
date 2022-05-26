@@ -177,7 +177,7 @@ def get_system_conf(sys_conf_path=None,
 def show_system_conf(args):
     from oyaml import dump
     from os.path import exists
-    args.setdefault("fmt", "yaml")
+    args.setdefault("fmt", "json")
     args.setdefault("to", "return")
     sys_conf_path = get_system_conf_path()
     if not exists(sys_conf_path):
