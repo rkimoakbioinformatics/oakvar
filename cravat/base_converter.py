@@ -6,6 +6,8 @@ class BaseConverter(object):
         self.output_dir = None
         self.run_name = None
         self.input_assembly = None
+        self.format_name = None
+        self.module_name = None
 
     def check_format(self, *args, **kwargs):
         err_msg = ("Converter for %s format has no method check_format" %

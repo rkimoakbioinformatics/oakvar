@@ -18,6 +18,7 @@ class AnnotatorOptions(object):
     def __init__(self, annotator_dir):
         self.secondary_inputs = {}
         self.secondary_paths = {}
+        self.job_conf_path = None
         self.annotator_dir = os.path.abspath(annotator_dir)
         self.annotator_name = os.path.basename(self.annotator_dir)
         self.annotator_conf_path = os.path.join(self.annotator_dir,

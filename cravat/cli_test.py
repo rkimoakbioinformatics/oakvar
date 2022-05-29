@@ -1,6 +1,10 @@
 import sys
 from abc import ABC, abstractmethod
+from .exceptions import ExpectedException
 
+class NoReportReader(ExpectedException):
+    def __init__(self, p):
+        super().__init__(f"error: no test reader {p}")
 
 class ReportReader(ABC):
 
@@ -31,10 +35,8 @@ class TextReportReader(ReportReader):
         level_hdr = "Report level:"
         level = ""
         headers = None
-        if bDict:
-            rows = {}
-        else:
-            rows = []
+        rows_list = []
+        rows_dict = {}
         with open(self.rsltFile, encoding="latin-1") as f:
             line = f.readline().strip("\n")
             while line:
@@ -57,15 +59,17 @@ class TextReportReader(ReportReader):
                     headers = self.readSectionHeader(line, line2)
                     line = f.readline().strip("\n")
                     continue
-
                 columns = line.split("\t")
                 line_id = self.getRowID(headers, columns, level)
                 if bDict:
-                    rows[line_id] = columns
+                    rows_dict[line_id] = columns
                 else:
-                    rows.append((line_id, columns))
+                    rows_list.append((line_id, columns))
                 line = f.readline().strip("\n")
-        return headers, rows
+        if bDict:
+            return headers, rows_dict
+        else:
+            return headers, rows_list
 
     # Read the two report header columns that define the module/column
     # for each data column.  Returned as list of: module|column
@@ -123,7 +127,6 @@ class ExcelReportReader(ReportReader):
     # Based on the level selected, return column headers and row values.
     def readReport(self, test_level, bDict):
         from openpyxl import load_workbook
-
         headers = None
         tabNbr = "Variant"
         if test_level == "gene":
@@ -132,17 +135,13 @@ class ExcelReportReader(ReportReader):
             tabNbr = "Sample"
         elif test_level == "mapping":
             tabNbr = "Mapping"
-
         # To open Workbook
         xlxsFile = (self.rsltFile
                     if ".xlsx" in self.rsltFile else self.rsltFile + ".xlsx")
         wb = load_workbook(filename=xlxsFile)
         sheet = wb[tabNbr]
-
-        if bDict:
-            rows = {}
-        else:
-            rows = []
+        rows_dict = {}
+        rows_list = []
         if headers == None:
             headers = self.readSectionHeader(test_level, sheet)
         for i in range(3, sheet.max_row + 1):
@@ -152,10 +151,13 @@ class ExcelReportReader(ReportReader):
                                cell(i, j).value)
             line_id = self.getRowID(headers, columns, test_level)
             if bDict:
-                rows[line_id] = columns
+                rows_dict[line_id] = columns
             else:
-                rows.append((line_id, columns))
-        return headers, rows
+                rows_list.append((line_id, columns))
+        if bDict:
+            return headers, rows_dict
+        else:
+            return headers, rows_list
 
     # Read the two report header columns that define the module/column
     # for each data column.  Returned as list of: module|column
@@ -211,12 +213,9 @@ class VcfReportReader(ReportReader):
     # Based on the level selected, return column headers and row values.
     def readReport(self, test_level, bDict):
         headers = None
-        if bDict:
-            rows = {}
-        else:
-            rows = []
+        rows_dict = {}
+        rows_list = []
         import vcf
-
         reader = vcf.Reader(filename=self.rsltFile)
         if headers == None:
             headers = self.readSectionHeader(reader)
@@ -231,11 +230,13 @@ class VcfReportReader(ReportReader):
                 i += 1
                 line_id = self.getRowID(headers, lineitems)
             if bDict:
-                rows[line_id] = columns
+                rows_dict[line_id] = columns
             else:
-                rows.append((line_id, columns))
-        return headers, rows
-
+                rows_list.append((line_id, columns))
+        if bDict:
+            return headers, rows_dict
+        else:
+            return headers, rows_list
     # Read the two report header columns that define the module/column
     # for each data column.  Returned as list of: module|column
     def readSectionHeader(self, reader):
@@ -299,10 +300,8 @@ class TsvReportReader(ReportReader):
         level_hdr = "level="
         level = ""
         headers = None
-        if bDict:
-            rows = {}
-        else:
-            rows = []
+        rows_dict = {}
+        rows_list = []
         with open(self.rsltFile, encoding="latin-1") as f:
             line = f.readline().strip("\n")
             while line:
@@ -327,11 +326,14 @@ class TsvReportReader(ReportReader):
                 columns = line.split("\t")
                 line_id = self.getRowID(headers, columns, level)
                 if bDict:
-                    rows[line_id] = columns
+                    rows_dict[line_id] = columns
                 else:
-                    rows.append((line_id, columns))
+                    rows_list.append((line_id, columns))
                 line = f.readline().strip("\n")
-        return headers, rows
+        if bDict:
+            return headers, rows_dict
+        else:
+            return headers, rows_list
 
     # Read the two report header columns that define the module/column
     # for each data column.  Returned as list of: module|column
@@ -388,10 +390,8 @@ class CsvReportReader(ReportReader):
         level_hdr = "level="
         level = ""
         headers = None
-        if bDict:
-            rows = {}
-        else:
-            rows = []
+        rows_dict = {}
+        rows_list = []
         with open(self.rsltFile, encoding="latin-1") as f:
             rdr = csv.reader(f)
             for row in rdr:
@@ -415,10 +415,13 @@ class CsvReportReader(ReportReader):
                 # load headers for the section
                 line_id = self.getRowID(headers, row, level)
                 if bDict:
-                    rows[line_id] = row
+                    rows_dict[line_id] = row
                 else:
-                    rows.append((line_id, row))
-        return headers, rows
+                    rows_list.append((line_id, row))
+        if bDict:
+            return headers, rows_dict
+        else:
+            return headers, rows_list
 
     # Read the two report header column that define the module/column
     # for each data column.  Returned as list of: module|column
@@ -470,14 +473,20 @@ class Tester:
     def __init__(self, module, args, input_file):
         from os.path import dirname, exists, join, abspath
         from os import makedirs
-
+        self.parms = None
+        self.name = None
         self.args = args
         rundir = args.get("rundir")
         cur_dir = dirname(abspath(__file__))
+        self.module_name = None
         if type(module) == str:
+            self.module_name = module
             from .admin_util import get_local_module_info
-            module = get_local_module_info(module)
+            module = get_local_module_info(self.module_name)
         self.module = module
+        if module is None:
+            from .exceptions import ModuleLoadingError
+            raise ModuleLoadingError(self.module_name)
         if not exists(module.directory) or not module.script_exists:
             raise Exception("No runnable module installed at path %s" %
                             module.directory)
@@ -509,7 +518,6 @@ class Tester:
     # dictionary.
     def parse_parms(self):
         from os.path import exists
-
         self.parms = {}
         if exists(self.parms_path):
             with open(self.parms_path) as f:
@@ -526,13 +534,18 @@ class Tester:
         from .admin_util import get_local_module_info
         from time import time
         from subprocess import call, STDOUT
-
         input_msg = (
             "" if self.input_file == "input" else self.input_file
         )  # if there is more than one test for the module, include the test file in the log.
+        if self.module is None:
+            from .exceptions import ModuleLoadingError
+            raise ModuleLoadingError(self.module_name)
         self._report(f"{self.module.name}: started {input_msg}")
         self.start_time = time()
         self.parse_parms()
+        if self.parms is None:
+            from .exceptions import SetupError
+            raise SetupError(module_name=self.module_name)
         python_exc = sys.executable
         # default is to run 'text' report but it can be overridden in the optional parms file.
         if "Report_Type" in self.parms:
@@ -581,6 +594,9 @@ class Tester:
 
     def verify(self):
         from .admin_util import get_local_module_info
+        if self.module is None:
+            from .exceptions import ModuleLoadingError
+            raise ModuleLoadingError(self.module_name)
         self.test_passed = True
         if self.module.type == "annotator":
             self.verify_level(self.module.level, [self.module.title])
@@ -664,12 +680,22 @@ class Tester:
     # level (variant, gene, etc) and specified module's columns
     def verify_level(self, level, module_name):
         # self._report("  Verifying " + level + " level values.")
+        if self.module is None:
+            from .exceptions import ModuleLoadingError
+            raise ModuleLoadingError(self.module_name)
         key_reader = self.create_report_reader(self.report_type, self.key_path)
+        if key_reader is None:
+            raise NoReportReader(self.key_path)
         report_extension = key_reader.reportFileExtension()
+        report_path = self.out_path + report_extension
         result_reader = self.create_report_reader(
-            self.report_type, self.out_path + report_extension)
+            self.report_type, report_path)
+        if result_reader is None:
+            raise NoReportReader(report_path)
         key_header, key_rows = key_reader.readReport(level, False)
         result_header, result_rows = result_reader.readReport(level, True)
+        if result_header is None:
+            raise NoReportReader(report_path + ":" + level)
         for key in key_rows:
             variant, key_row = key
             if variant not in result_rows:
@@ -714,8 +740,13 @@ class Tester:
 
     # Log success /failure of test.
     def write_results(self, stdout=True):
+        if self.module is None:
+            from .exceptions import ModuleLoadingError
+            raise ModuleLoadingError(self.module_name)
+        if self.start_time is None:
+            from .exceptions import ExpectedException
+            raise ExpectedException("start_time does not exist.")
         from time import time
-
         self.end_time = time()
         elapsed_time = self.end_time - self.start_time
         self._report(f"{self.module.name}: finished in %.2f seconds" %
@@ -732,12 +763,16 @@ class Tester:
                 return "FAIL"
 
 
-def fn_util_test(args):
+def cli_util_test(args):
     from .util import get_dict_from_namespace
+    args = get_dict_from_namespace(args)
+    args["quiet"] = False
+    fn_util_test(args)
+
+def fn_util_test(args):
     from os.path import exists
     from os import makedirs
     from .admin_util import get_local_module_types, get_local_module_info
-    args = get_dict_from_namespace(args)
     rundir = args.get("rundir")
     if rundir is None:
         num = 1
@@ -788,32 +823,33 @@ def fn_util_test(args):
         return (passed, failed, result)
 
 
-def get_parser_fn_util_test():
+def get_parser_cli_util_test():
     from argparse import ArgumentParser
-    parser_fn_util_test = ArgumentParser()
-    parser_fn_util_test.add_argument("-d",
+    parser_cli_util_test = ArgumentParser()
+    parser_cli_util_test.add_argument("-d",
                                      "--rundir",
                                      help="Directory for output")
-    parser_fn_util_test.add_argument(
+    parser_cli_util_test.add_argument(
         "-m",
         "--modules",
         nargs="+",
         help="Name of module(s) to test. (e.g. gnomad)")
-    parser_fn_util_test.add_argument(
+    parser_cli_util_test.add_argument(
         "-t",
         "--mod_types",
         nargs="+",
         help="Type of module(s) to test (e.g. annotators)")
-    parser_fn_util_test.add_argument("--to",
+    parser_cli_util_test.add_argument("--to",
                                      default="stdout",
                                      help="stdout to print / return to return")
-    parser_fn_util_test.set_defaults(func=fn_util_test)
-    return parser_fn_util_test
+    parser_cli_util_test.add_argument("--quiet", default=True, help="Run quietly")
+    parser_cli_util_test.set_defaults(func=cli_util_test)
+    return parser_cli_util_test
 
 
 def main():
-    args = get_parser_fn_util_test().parse_args()
-    fn_util_test(args)
+    args = get_parser_cli_util_test().parse_args()
+    cli_util_test(args)
 
 
 if __name__ == "__main__":

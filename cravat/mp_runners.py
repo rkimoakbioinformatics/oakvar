@@ -31,9 +31,9 @@ def annot_from_queue(start_queue, end_queue, queue_populated, status_writer):
             annotator.run()
             end_queue.put(module.name)
         except Exception as e:
-            print(f"        Error with {module.name}: {e}")
-            logger.error(e)
-            raise
+            from .exceptions import ModuleLoadingError
+            err = ModuleLoadingError(module.name)
+            logger.exception(err)
 
 
 def mapper_runner(
@@ -49,22 +49,23 @@ def mapper_runner(
 ):
     from .util import load_class
     from .admin_util import get_local_module_info
-
+    output = None
     module = get_local_module_info(module_name)
-    kwargs = {
-        "script_path": module.script_path,
-        "input_file": crv_path,
-        "run_name": run_name,
-        "seekpos": seekpos,
-        "chunksize": chunksize,
-        "slavemode": True,
-        "postfix": f".{pos_no:010.0f}",
-        "output_dir": output_dir,
-    }
-    if primary_transcript is not None:
-        kwargs["primary_transcript"] = primary_transcript.split(";")
-    kwargs["status_writer"] = status_writer
-    genemapper_class = load_class(module.script_path, "Mapper")
-    genemapper = genemapper_class(kwargs)
-    output = genemapper.run_as_slave(pos_no)
+    if module is not None:
+        kwargs = {
+            "script_path": module.script_path,
+            "input_file": crv_path,
+            "run_name": run_name,
+            "seekpos": seekpos,
+            "chunksize": chunksize,
+            "slavemode": True,
+            "postfix": f".{pos_no:010.0f}",
+            "output_dir": output_dir,
+        }
+        if primary_transcript is not None:
+            kwargs["primary_transcript"] = primary_transcript.split(";")
+        kwargs["status_writer"] = status_writer
+        genemapper_class = load_class(module.script_path, "Mapper")
+        genemapper = genemapper_class(kwargs)
+        output = genemapper.run_as_slave(pos_no)
     return output

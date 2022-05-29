@@ -42,7 +42,7 @@ from .base_annotator import BaseAnnotator
 from .base_mapper import BaseMapper
 from .base_postaggregator import BasePostAggregator
 from .base_commonmodule import BaseCommonModule
-from .cli_report import CravatReport, run_reporter
+from .cli_report import CravatReport, fn_ov_report
 from .config_loader import ConfigLoader
 from .cravat_filter import CravatFilter
 from .cli_run import Cravat
@@ -55,33 +55,24 @@ wgs = None
 
 
 def get_live_annotator(module_name):
+    import os
     module = None
-    try:
-        import os
-        ModuleClass = get_module(module_name)
+    ModuleClass = get_module(module_name)
+    if ModuleClass is not None:
         module = ModuleClass(input_file="__dummy__", live=True)
-        # module.module_name = module_name
         module.annotator_name = module_name
-        # module.module_dir = os.path.dirname(script_path)
         module.annotator_dir = os.path.dirname(module.script_path)
         module.data_dir = os.path.join(module.module_dir, "data")
         module._open_db_connection()
-        # module.conf = config_loader.get_module_conf(module_name)
         module.setup()
-    except:
-        if module is not None:
-            print("    module loading error: {}".format(module.module_name))
-        import traceback
-        traceback.print_exc()
-        return None
     return module
 
 
 def get_live_mapper(module_name):
-    try:
-        import os
-
-        ModuleClass = get_module(module_name)
+    import os
+    module = None
+    ModuleClass = get_module(module_name)
+    if ModuleClass is not None:
         module = ModuleClass({
             "script_path":
             os.path.abspath(ModuleClass.script_path),
@@ -91,36 +82,24 @@ def get_live_mapper(module_name):
             True,
         })
         module.base_setup()
-    except Exception as e:
-        print("    module loading error: {}".format(module_name))
-        import traceback
-
-        traceback.print_exc()
-        return None
     return module
 
 
 def get_module(module_name):
-    try:
-        import os
-        from .admin_util import get_local_module_info
-        from .util import load_class
-
-        config_loader = ConfigLoader()
-        module_info = get_local_module_info(module_name)
+    import os
+    from .admin_util import get_local_module_info
+    from .util import load_class
+    ModuleClass = None
+    config_loader = ConfigLoader()
+    module_info = get_local_module_info(module_name)
+    if module_info is not None:
         script_path = module_info.script_path
         ModuleClass = load_class(script_path)
         ModuleClass.script_path = script_path
         ModuleClass.module_name = module_name
         ModuleClass.module_dir = os.path.dirname(script_path)
         ModuleClass.conf = config_loader.get_module_conf(module_name)
-        return ModuleClass
-    except Exception as e:
-        print("    module loading error: {}".format(module_name))
-        import traceback
-
-        traceback.print_exc()
-        return None
+    return ModuleClass
 
 
 def get_wgs_reader(assembly="hg38"):
@@ -139,10 +118,10 @@ class LiveAnnotator:
         self.live_annotators = {}
         self.load_live_modules(mapper, annotators)
         self.variant_uid = 1
+        self.live_mapper = None
 
     def load_live_modules(self, mapper, annotator_names):
         from .admin_util import get_mic
-
         self.live_mapper = get_live_mapper(mapper)
         for module_name in get_mic().local.keys():
             if module_name in annotator_names:
@@ -180,24 +159,29 @@ class LiveAnnotator:
             crv["uid"] = self.variant_uid
             self.variant_uid += 1
         response = {}
-        crx_data = self.live_mapper.map(crv)
-        crx_data = self.live_mapper.live_report_substitute(crx_data)
-        crx_data["tmp_mapper"] = AllMappingsParser(
-            crx_data[all_mappings_col_name])
+        crx_data = None
+        if self.live_mapper is not None:
+            crx_data = self.live_mapper.map(crv)
+            crx_data = self.live_mapper.live_report_substitute(crx_data)
+            crx_data["tmp_mapper"] = AllMappingsParser(
+                crx_data[all_mappings_col_name])
         for k, v in self.live_annotators.items():
             try:
-                annot_data = v.annotate(input_data=crx_data)
-                annot_data = v.live_report_substitute(annot_data)
-                if annot_data == "" or annot_data == {}:
-                    annot_data = None
-                elif type(annot_data) is dict:
-                    annot_data = self.clean_annot_dict(annot_data)
-                response[k] = annot_data
+                if crx_data is not None:
+                    annot_data = v.annotate(input_data=crx_data)
+                    annot_data = v.live_report_substitute(annot_data)
+                    if annot_data == "" or annot_data == {}:
+                        annot_data = None
+                    elif type(annot_data) is dict:
+                        annot_data = self.clean_annot_dict(annot_data)
+                    response[k] = annot_data
             except Exception as e:
                 import traceback
 
                 traceback.print_exc()
                 response[k] = None
-        del crx_data["tmp_mapper"]
-        response["base"] = crx_data
+        if crx_data is not None and "tmp_mapper" in crx_data:
+            del crx_data["tmp_mapper"]
+        if crx_data is not None:
+            response["base"] = crx_data
         return response

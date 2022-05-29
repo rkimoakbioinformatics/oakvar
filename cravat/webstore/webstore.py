@@ -30,6 +30,8 @@ install_worker = None
 local_modules_changed = None
 server_ready = False
 servermode = None
+logger = None
+cravat_multiuser = None
 
 def get_filepath (path):
     filepath = os.sep.join(path.split('/'))
@@ -41,11 +43,12 @@ def get_filepath (path):
 
 class InstallProgressMpDict(au.InstallProgressHandler):
 
-    def __init__(self, module_name, module_version, install_state):
+    def __init__(self, module_name, module_version, install_state, quiet=True):
         super().__init__(module_name, module_version)
         self.module_name = module_name
         self.module_version = module_version
         self.install_state = install_state
+        self.quiet = quiet
 
     def _reset_progress(self, update_time=False):
         self.install_state['cur_chunk'] = 0
@@ -56,6 +59,7 @@ class InstallProgressMpDict(au.InstallProgressHandler):
             self.install_state['update_time'] = time.time()
 
     def stage_start(self, stage):
+        from ..util import quiet_print
         global install_worker
         global last_update_time
         if self.install_state == None or len(self.install_state.keys()) == 0:
@@ -77,7 +81,7 @@ class InstallProgressMpDict(au.InstallProgressHandler):
         self.install_state['kill_signal'] = False
         self._reset_progress()
         self.install_state['update_time'] = time.time()
-        print(self.install_state['message'])
+        quiet_print(self.install_state['message'], {"quiet": self.quiet})
 
     def stage_progress(self, cur_chunk, total_chunks, cur_size, total_size):
         self.install_state['cur_chunk'] = cur_chunk
@@ -94,7 +98,7 @@ def fetch_install_queue (install_queue, install_state, local_modules_changed):
             module_name = data['module']
             module_version = data['version']
             install_state['kill_signal'] = False
-            stage_handler = InstallProgressMpDict(module_name, module_version, install_state)
+            stage_handler = InstallProgressMpDict(module_name, module_version, install_state, quiet=False)
             au.install_module(module_name, version=module_version, stage_handler=stage_handler, stages=100)
             au.mic.update_local()
             local_modules_changed.set()
@@ -114,20 +118,21 @@ async def get_remote_manifest(request):
         content = {'data': {}, 'tagdesc': {}}
     global install_queue
     temp_q = []
-    while install_queue.empty() == False:
-        q = install_queue.get()
-        temp_q.append([q['module'], q['version']])
-    for module, version in temp_q:
-        content['data'][module]['queued'] = True
-        install_queue.put({'module': module, 'version': version})
-    try:
-        counts = au.get_download_counts()
-    except:
-        traceback.print_exc()
-        counts = {}
-    for mname in content['data']:
-        content['data'][mname]['downloads'] = counts.get(mname,0)
-    content['tagdesc'] = await get_tag_desc(request)
+    if install_queue is not None:
+        while install_queue.empty() == False:
+            q = install_queue.get()
+            temp_q.append([q['module'], q['version']])
+        for module, version in temp_q:
+            content['data'][module]['queued'] = True
+            install_queue.put({'module': module, 'version': version})
+        try:
+            counts = au.get_download_counts()
+        except:
+            traceback.print_exc()
+            counts = {}
+        for mname in content['data']:
+            content['data'][mname]['downloads'] = counts.get(mname,0)
+        content['tagdesc'] = await get_tag_desc(request)
     return web.json_response(content)
 
 async def get_remote_module_config (request):
@@ -198,19 +203,26 @@ def start_worker ():
         install_worker = Process(target=fetch_install_queue, args=(install_queue, install_state, local_modules_changed))
         install_worker.start()
 
-async def send_socket_msg (install_ws):
-    data = {}
-    data['module'] = install_state['module_name']
-    data['msg'] = install_state['message']
-    if 'Downloading ' in data['msg']:
-        data['msg'] = data['msg'] + ' ' + str(install_state['cur_chunk']) + '%'
-    await install_ws.send_str(json.dumps(data))
-    last_update_time = install_state['update_time']
-    return last_update_time
+async def send_socket_msg (install_ws=None):
+    global install_state
+    if install_state is not None:
+        data = {}
+        data['module'] = install_state['module_name']
+        data['msg'] = install_state['message']
+        if 'Downloading ' in data['msg']:
+            data['msg'] = data['msg'] + ' ' + str(install_state['cur_chunk']) + '%'
+        if install_ws is not None:
+            await install_ws.send_str(json.dumps(data))
+        last_update_time = install_state['update_time']
+        return last_update_time
+    else:
+        return None
 
 async def connect_websocket (request):
     global install_state
-    if not install_state:
+    last_update_time = None
+    if install_state is None:
+        install_state = {}
         install_state['stage'] = ''
         install_state['message'] = ''
         install_state['module_name'] = ''
@@ -221,7 +233,7 @@ async def connect_websocket (request):
         install_state['total_size'] = 0
         install_state['update_time'] = time.time()
         install_state['kill_signal'] = False
-    last_update_time = install_state['update_time']
+        last_update_time = install_state['update_time']
     install_ws = web.WebSocketResponse(timeout=60*60*24*365)
     await install_ws.prepare(request)
     while True:
@@ -229,9 +241,9 @@ async def connect_websocket (request):
             await asyncio.sleep(1)
         except concurrent.futures._base.CancelledError:
             return install_ws
-        if last_update_time < install_state['update_time']:
-            last_update_time = await send_socket_msg(install_ws)
-    return install_ws
+        if last_update_time is not None and last_update_time < install_state['update_time']:
+            last_update_time = await send_socket_msg()
+    #return install_ws
 
 async def queue_install (request):
     global install_queue
@@ -249,10 +261,12 @@ async def queue_install (request):
         module_version = None
     module_name = queries['module']
     data = {'module': module_name, 'version': module_version}
-    install_queue.put(data)
+    if install_queue is not None:
+        install_queue.put(data)
     deps = au.get_install_deps(module_name, module_version)
     for dep_name, dep_version in deps.items():
-        install_queue.put({'module':dep_name,'version':dep_version})
+        if install_queue is not None:
+            install_queue.put({'module':dep_name,'version':dep_version})
     return web.Response(text = 'queued ' + queries['module'])
 
 async def get_base_modules (request):
@@ -271,12 +285,13 @@ async def install_base_modules (request):
     from ..sysadmin_const import base_modules_key
     base_modules = system_conf.get(base_modules_key,[])
     for module in base_modules:
-        install_queue.put({'module': module, 'version': None})
+        if install_queue is not None:
+            install_queue.put({'module': module, 'version': None})
     response = 'queued'
     return web.json_response(response)
 
 async def get_md (request):
-    from ..sysadmin_const import get_modules_dir
+    from ..sysadmin import get_modules_dir
     modules_dir = get_modules_dir()
     return web.Response(text=modules_dir)
 
@@ -300,7 +315,7 @@ async def get_module_updates (request):
     return web.json_response(out)
 
 async def get_free_modules_space (request):
-    from ..sysadmin_const import get_modules_dir
+    from ..sysadmin import get_modules_dir
     modules_dir = get_modules_dir()
     free_space = shutil.disk_usage(modules_dir).free
     return web.json_response(free_space)
@@ -310,21 +325,24 @@ def unqueue (module):
     tmp_queue_data = []
     if module is not None:
         while True:
-            if install_queue.empty():
-                break
-            data = install_queue.get()
-            if data['module'] != module:
-                tmp_queue_data.append([data['module'], data.get('version', '')])
+            if install_queue is not None:
+                if install_queue.empty():
+                    break
+                data = install_queue.get()
+                if data['module'] != module:
+                    tmp_queue_data.append([data['module'], data.get('version', '')])
     for data in tmp_queue_data:
-        install_queue.put({'module': data[0], 'version': data[1]})
+        if install_queue is not None:
+            install_queue.put({'module': data[0], 'version': data[1]})
 
 async def kill_install (request):
     global install_queue
     global install_state
     queries = request.rel_url.query
     module = queries.get('module', None)
-    if 'module_name' in install_state and install_state['module_name'] == module:
-        install_state['kill_signal'] = True
+    if install_state is not None:
+        if 'module_name' in install_state and install_state['module_name'] == module:
+            install_state['kill_signal'] = True
     return web.json_response('done')
 
 async def unqueue_install (request):
@@ -332,13 +350,14 @@ async def unqueue_install (request):
     queries = request.rel_url.query
     module = queries.get('module', None)
     unqueue(module)
-    module_name_bak = install_state['module_name']
-    msg_bak = install_state['message']
-    install_state['module_name'] = module
-    install_state['message'] = 'Unqueued'
-    await send_socket_msg()
-    install_state['module_name'] = module_name_bak
-    install_state['message'] = msg_bak
+    if install_state is not None:
+        module_name_bak = install_state['module_name']
+        msg_bak = install_state['message']
+        install_state['module_name'] = module
+        install_state['message'] = 'Unqueued'
+        await send_socket_msg()
+        install_state['module_name'] = module_name_bak
+        install_state['message'] = msg_bak
     return web.json_response('done')
 
 async def get_tag_desc (request):

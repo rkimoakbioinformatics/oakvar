@@ -1,7 +1,7 @@
 def fn_issue(args):
     from .admin_util import report_issue
 
-    report_issue()
+    return report_issue()
 
 
 def get_parser_fn_issue():
@@ -11,5 +11,6 @@ def get_parser_fn_issue():
     parser_fn_feedback = (
         ArgumentParser()
     )  # "feedback", help="opens a browser window to report issues")
+    parser_fn_feedback.add_argument("--quiet", default=True, help="Run quietly")
     parser_fn_feedback.set_defaults(func=fn_issue)
     return parser_fn_feedback

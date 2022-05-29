@@ -30,6 +30,33 @@ class CravatReport:
         self.extracted_cols = {}
         self.conn = None
         self.levels_to_write = None
+        self.args = None
+        self.dbpath = None
+        self.filterpath = None
+        self.filtername = None
+        self.filterstring = None
+        self.filtersql = None
+        self.filter = None
+        self.confs = {}
+        self.output_dir = None
+        self.savepath = None
+        self.confpath = None
+        self.conf = None
+        self.module_name = None
+        self.module_conf = None
+        self.report_types = None
+        self.output_basename = None
+        self.status_fpath = None
+        self.nogenelevelonvariantlevel = None
+        self.status_writer = None
+        self.concise_report = None
+        self.extract_columns_multilevel = {}
+        self.logger = None
+        self.error_logger = None
+        self.unique_excs = None
+        self.mapper_name = None
+        self.level = None
+        self.no_log = False
         self.parse_cmd_args(inargs, inkwargs)
         for ag in get_parser_fn_report()._action_groups:
             if ag.title == "optional arguments":
@@ -46,7 +73,6 @@ class CravatReport:
         from .config_loader import ConfigLoader
         from .util import get_args
         from .sysadmin_const import custom_modules_dir
-
         args = get_args(get_parser_fn_report(), inargs, inkwargs)
         self.args = args
         if args["md"] is not None:
@@ -136,27 +162,31 @@ class CravatReport:
 
     async def prep(self):
         from .util import write_log_msg
-
+        from .exceptions import ExpectedException
         try:
             await self.connect_db()
             await self.load_filter()
         except Exception as e:
-            if hasattr(self, "cf"):
-                await self.cf.close_db()
-            if not hasattr(e, "notraceback") or e.notraceback != True:
+            await self.close_db()
+            if not isinstance(e, ExpectedException) or e.traceback:
                 import traceback
-
                 traceback.print_exc()
-                self.logger.error(e)
+                if self.logger:
+                    self.logger.exception(e)
             else:
-                if hasattr(self, "logger"):
-                    write_log_msg(self.logger, e)
-            e.handled = True
+                if self.logger:
+                    if self.args is not None:
+                        write_log_msg(self.logger, e, quiet=self.args.get("quiet"))
+                    else:
+                        write_log_msg(self.logger, e, quiet=False)
+            setattr(e, "handled", True)
             raise
 
     def _setup_logger(self):
+        if self.module_name is None:
+            from .exceptions import SetupError
+            raise SetupError("no module name")
         import logging
-
         if hasattr(self, "no_log") and self.no_log:
             return
         try:
@@ -177,6 +207,9 @@ class CravatReport:
 
     async def exec_db(self, func, *args, **kwargs):
         conn = await self.get_db_conn()
+        if conn is None:
+            from .exceptions import DatabaseConnectionError
+            raise DatabaseConnectionError(self.module_name)
         cursor = await conn.cursor()
         try:
             ret = await func(*args, conn=conn, cursor=cursor, **kwargs)
@@ -194,18 +227,21 @@ class CravatReport:
                 self.logger.exception(e)
 
     async def getjson(self, level):
+        if self.cf is None:
+            from .exceptions import SetupError
+            raise SetupError()
         import json
-
         ret = None
         if await self.exec_db(self.table_exists, level) == False:
             return ret
-        for row in await self.cf.exec_db(self.cf.getiterator, level):
-            row = self.substitute_val(level, row)
-            return json.dumps(row)
+        rows = await self.cf.exec_db(self.cf.getiterator, level)
+        if rows is not None:
+            for row in rows:
+                row = self.substitute_val(level, row)
+                return json.dumps(row)
 
     def substitute_val(self, level, row):
         import json
-
         for sub in self.column_subs.get(level, []):
             value = row[sub.index]
             if value is None or value == "":
@@ -240,9 +276,12 @@ class CravatReport:
         return cols
 
     async def run_level(self, level):
+        if self.cf is None or self.args is None:
+            from .exceptions import SetupError
+            raise SetupError(self.module_name)
         import json
         from .constants import legacy_gene_level_cols_to_skip
-
+        from .util import quiet_print
         ret = await self.exec_db(self.table_exists, level)
         if ret == False:
             return
@@ -258,8 +297,7 @@ class CravatReport:
                     msg = "Obsolete module [{}] for gene level summarization. Update the module to get correct gene level summarization.".format(
                         mi.name)
                     self.warning_msgs.append(msg)
-                    if self.args["silent"] == False:
-                        print("===Warning: {}".format(msg))
+                    quiet_print("===Warning: {}".format(msg), self.args)
                     gene_summary_data = {}
                 else:
                     gene_summary_data = await o.get_gene_summary_data(self.cf)
@@ -299,7 +337,7 @@ class CravatReport:
         hugo_present = None
         if level == "variant":
             hugo_present = "base__hugo" in self.colnos["variant"]
-        datacols, datarows = await self.cf.exec_db(
+        datacols, datarows = await self.cf.exec_db( # type: ignore
             self.cf.get_filtered_iterator, level)
         num_total_cols = len(datacols)
         colnos_to_skip = []
@@ -369,9 +407,10 @@ class CravatReport:
                     if oldcolname in colnos:
                         colno = colnos[oldcolname]
                     else:
-                        self.logger.info(
-                            "column name does not exist in data: {}".format(
-                                oldcolname))
+                        if self.logger:
+                            self.logger.info(
+                                "column name does not exist in data: {}".format(
+                                    oldcolname))
                         continue
                 else:
                     colno = colnos[colname]
@@ -416,8 +455,9 @@ class CravatReport:
                 self.write_table_row(self.get_extracted_row(new_datarow))
 
     async def store_mapper(self, conn=None, cursor=None):
-        # conn = await self.get_db_conn()
-        # cursor = await conn.cursor()
+        if conn is None or cursor is None:
+            from .exceptions import DatabaseConnectionError
+            raise DatabaseConnectionError(self.module_name)
         q = 'select colval from info where colkey="_mapper"'
         await cursor.execute(q)
         r = await cursor.fetchone()
@@ -425,20 +465,23 @@ class CravatReport:
             self.mapper_name = "hg38"
         else:
             self.mapper_name = r[0].split(":")[0]
-        # await cursor.close()
-        # await conn.close()
 
     async def run(self, tab="all"):
+        if self.args is None or self.cf is None or self.logger is None:
+            from .exceptions import SetupError
+            raise SetupError(self.module_name)
         from time import time, asctime, localtime
         import oyaml as yaml
         start_time = time()
+        ret = None
         try:
-            if not (hasattr(self, "no_log") and self.no_log):
-                self.logger.info("started: %s" %
-                                 asctime(localtime(start_time)))
-                if self.cf.filter:
-                    s = f"filter:\n{yaml.dump(self.filter)}"
-                    self.logger.info(s)
+            if not getattr(self, "no_log", False):
+                if self.logger:
+                    self.logger.info("started: %s" %
+                                    asctime(localtime(start_time)))
+                    if self.cf and self.cf.filter:
+                        s = f"filter:\n{yaml.dump(self.filter)}"
+                        self.logger.info(s)
             if self.module_conf is not None and self.status_writer is not None:
                 if self.args["do_not_change_status"] == False:
                     self.status_writer.queue_status_update(
@@ -450,14 +493,16 @@ class CravatReport:
                 await self.close_db()
                 return
             if tab == "all":
-                for level in await self.cf.exec_db(self.cf.get_result_levels):
-                    self.level = level
-                    if await self.exec_db(self.table_exists, level):
-                        await self.exec_db(self.make_col_info, level)
-                for level in await self.cf.exec_db(self.cf.get_result_levels):
-                    self.level = level
-                    if await self.exec_db(self.table_exists, level):
-                        await self.run_level(level)
+                levels = await self.cf.exec_db(self.cf.get_result_levels)
+                if levels:
+                    for level in levels:
+                        self.level = level
+                        if await self.exec_db(self.table_exists, level):
+                            await self.exec_db(self.make_col_info, level)
+                    for level in levels:
+                        self.level = level
+                        if await self.exec_db(self.table_exists, level):
+                            await self.run_level(level)
             else:
                 if tab in ["variant", "gene"]:
                     for level in ["variant", "gene"]:
@@ -562,13 +607,17 @@ class CravatReport:
             else:
                 self.colnames_to_display[level].append(col_name)
 
-    async def make_col_info(self, level, conn=None, cursor=None):
+    async def make_col_info(self, level: str, conn=None, cursor=None):
+        if self.conf is None or cursor is None:
+            from .exceptions import SetupError
+            raise SetupError()
         import os
         import json
         from . import admin_util as au
         from .inout import ColumnDefinition
         from .util import load_class
         from types import SimpleNamespace
+        from .util import quiet_print
         self.colnames_to_display[level] = []
         await self.exec_db(self.store_mapper)
         cravat_conf = self.conf.get_cravat_conf()
@@ -686,11 +735,10 @@ class CravatReport:
                 ]:
                     continue
                 if module_name not in local_modules:
-                    if self.args[
-                            "silent"] == False and module_name != "original_input":
-                        print(
+                    if module_name != "original_input":
+                        quiet_print(
                             "            [{}] module does not exist in the system. Gene level summary for this module is skipped."
-                            .format(module_name))
+                            .format(module_name), self.args)
                     continue
                 module = local_modules[module_name]
                 if "can_summarize_by_gene" in module.conf:
@@ -700,6 +748,8 @@ class CravatReport:
             summarizer_module_names = [self.mapper_name
                                        ] + summarizer_module_names
             for module_name in summarizer_module_names:
+                if module_name is None:
+                    continue
                 mi = local_modules[module_name]
                 sys.path = sys.path + [os.path.dirname(mi.script_path)]
                 annot_cls = None
@@ -707,6 +757,9 @@ class CravatReport:
                     annot_cls = load_class(mi.script_path, "CravatAnnotator")
                 elif module_name == self.mapper_name:
                     annot_cls = load_class(mi.script_path, "Mapper")
+                if annot_cls is None:
+                    from .exceptions import ModuleLoadingError
+                    raise ModuleLoadingError(module_name)
                 cmd = {
                     "script_path": mi.script_path,
                     "input_file": "__dummy__",
@@ -880,8 +933,10 @@ class CravatReport:
             self.cf = None
 
     async def load_filter(self):
+        if self.args is None:
+            from .exceptions import SetupError
+            raise SetupError()
         from .cravat_filter import CravatFilter
-
         self.cf = await CravatFilter.create(dbpath=self.dbpath)
         await self.cf.exec_db(
             self.cf.loadfilter,
@@ -895,6 +950,9 @@ class CravatReport:
         )
 
     async def table_exists(self, tablename, conn=None, cursor=None):
+        if cursor is None:
+            from .exceptions import SetupError
+            raise SetupError()
         sql = ("select name from sqlite_master where " +
                'type="table" and name="' + tablename + '"')
         await cursor.execute(sql)
@@ -906,18 +964,24 @@ class CravatReport:
         return ret
 
 
-def run_reporter(args):
+def cli_ov_report(args):
+    from .util import get_dict_from_namespace
+    args = get_dict_from_namespace(args)
+    args["quiet"] = False
+    return fn_ov_report(args)
+
+def fn_ov_report(args):
     import sqlite3
     import os
     from asyncio import get_event_loop
-    from .util import get_dict_from_namespace, is_compatible_version
+    from .util import is_compatible_version
     from . import admin_util as au
     from .util import write_log_msg
     from .sysadmin_const import custom_modules_dir
     import importlib
-    from .exceptions import InvalidModule
-
-    args = get_dict_from_namespace(args)
+    from .exceptions import ModuleNotExist
+    from .exceptions import IncompatibleResult
+    from .util import quiet_print
     dbpath = args["dbpath"]
     # Check if exists
     if not os.path.exists(dbpath):
@@ -930,14 +994,7 @@ def run_reporter(args):
         exit(f"{dbpath} is not an OC database")
     compatible_version, db_version, oc_version = is_compatible_version(dbpath)
     if not compatible_version:
-        if args["silent"] == False:
-            print(
-                f"DB version {db_version} of {dbpath} is not compatible with the current OakVar ({oc_version})."
-            )
-            print(
-                f'Consider running "oc util update-result {dbpath}" and running "oc gui {dbpath}" again.'
-            )
-        return
+        raise IncompatibleResult()
     report_types = args["reporttypes"]
     if args["md"] is not None:
         custom_modules_dir = args["md"]
@@ -963,17 +1020,17 @@ def run_reporter(args):
         for opt_str in args["module_option"]:
             toks = opt_str.split("=")
             if len(toks) != 2:
-                if not args["silent"]:
-                    print(
-                        "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value."
-                    )
+                quiet_print(
+                    "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value.",
+                    args
+                )
                 continue
             k = toks[0]
             if k.count(".") != 1:
-                if not args["silent"]:
-                    print(
-                        "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value."
-                    )
+                quiet_print(
+                    "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value.",
+                    args
+                )
                 continue
             [module_name, key] = k.split(".")
             if module_name not in module_options:
@@ -986,13 +1043,12 @@ def run_reporter(args):
     for report_type in report_types:
         module_info = au.get_local_module_info(report_type + "reporter")
         if module_info is None:
-            raise InvalidModule(report_type + "reporter")
-        if args["silent"] == False:
-            print(f"Generating {report_type} report... ", end="", flush=True)
+            raise ModuleNotExist(report_type + "reporter")
+        quiet_print(f"Generating {report_type} report... ", args)
         module_name = module_info.name
-        spec = importlib.util.spec_from_file_location(module_name,
+        spec = importlib.util.spec_from_file_location(module_name, # type: ignore
                                                       module_info.script_path)
-        module = importlib.util.module_from_spec(spec)
+        module = importlib.util.module_from_spec(spec) # type: ignore
         spec.loader.exec_module(module)
         args["module_name"] = module_name
         args["do_not_change_status"] = True
@@ -1004,27 +1060,24 @@ def run_reporter(args):
             loop.run_until_complete(reporter.prep())
             response_t = loop.run_until_complete(reporter.run())
             output_fns = None
-            if args["silent"] == False:
-                if type(response_t) == list:
-                    output_fns = " ".join(response_t)
-                else:
-                    output_fns = response_t
-                if output_fns is not None and type(output_fns) == str:
-                    print(f"report created: {output_fns}")
+            if type(response_t) == list:
+                output_fns = " ".join(response_t)
+            else:
+                output_fns = response_t
+            if output_fns is not None and type(output_fns) == str:
+                quiet_print(f"report created: {output_fns}", args)
         except Exception as e:
             if hasattr(reporter, "cf"):
                 loop.run_until_complete(reporter.cf.close_db())
-            if hasattr(e, "handled") and e.handled == True:
-                if not hasattr(e, "notraceback") or e.notraceback != True:
+            if getattr(e, "handled", False):
+                if getattr(e, "traceback", False):
                     import traceback
-
                     traceback.print_exc()
                 else:
                     if hasattr(reporter, "logger"):
-                        write_log_msg(reporter.logger, e)
-            if args["silent"] == False:
-                print("report generation failed for {} report.".format(
-                    report_type))
+                        write_log_msg(reporter.logger, e, quiet=args.get("quiet"))
+            quiet_print("report generation failed for {} report.".format(
+                report_type), args)
             response_t = None
         response[report_type] = response_t
     if len(report_types) == 1 and len(response) == 1:
@@ -1035,7 +1088,7 @@ def run_reporter(args):
 
 def cravat_report_entrypoint():
     args = get_parser_fn_report().parse_args(sys.argv[1:])
-    run_reporter(args)
+    cli_ov_report(args)
 
 
 def get_parser_fn_report():
@@ -1119,10 +1172,9 @@ def get_parser_fn_report():
         help="Job status in status.json will not be changed",
     )
     parser_fn_report.add_argument(
-        "--silent",
-        dest="silent",
+        "--quiet",
         action="store_true",
-        default=False,
+        default=True,
         help="Suppress output to STDOUT",
     )
     parser_fn_report.add_argument(
@@ -1168,5 +1220,5 @@ def get_parser_fn_report():
         default=None,
         help="Specify the root directory of OakVar modules (annotators, etc)",
     )
-    parser_fn_report.set_defaults(func=run_reporter)
+    parser_fn_report.set_defaults(func=cli_ov_report)
     return parser_fn_report

@@ -6,7 +6,7 @@ from .cli_gui import get_parser_fn_gui
 from .cli_report import get_parser_fn_report
 from .cli_new import get_parser_fn_new
 from .cli_issue import get_parser_fn_issue
-from .cli_version import get_parser_fn_version
+from .cli_version import get_parser_cli_version
 from .cli_store import get_parser_fn_store
 from .cli_system import get_parser_fn_system
 
@@ -28,8 +28,8 @@ def get_entry_parser():
         help="Run a job",
         epilog="inputs should be the first argument",
     )
-    p_run.r_return = "A string, a named list, or a dataframe. Output of reporters"
-    p_run.r_examples = [
+    p_run.r_return = "A string, a named list, or a dataframe. Output of reporters" # type: ignore
+    p_run.r_examples = [ # type: ignore
         "# Annotate the input file `input` with ClinVar and COSMIC modules and make a VCF-format report of annotated variants.", 
         "ov.run.input(inputs=\"input\", annotators=list(\"clinvar\", \"cosmic\"), reports=\"vcf\")"
     ]
@@ -43,8 +43,8 @@ def get_entry_parser():
         help="Generate a report from a job",
         epilog="dbpath must be the first argument",
     )
-    p_report.r_return = "A string, a named list, or a dataframe. Output of reporters"
-    p_report.r_examples = [
+    p_report.r_return = "A string, a named list, or a dataframe. Output of reporters" # type: ignore
+    p_report.r_examples = [ # type: ignore
         "# Generate a CSV-format report file from the job result file example.sqlite",
         "ov.report(dbpath=\"example.sqlite\", reporttypes=\"csv\")"
     ]
@@ -54,8 +54,8 @@ def get_entry_parser():
                                 parents=[get_parser_fn_gui()],
                                 add_help=False,
                                 help="Start the GUI")
-    p_gui.r_return = "`NULL`"
-    p_gui.r_examples = [
+    p_gui.r_return = "`NULL`" # type: ignore
+    p_gui.r_examples = [ # type: ignore
         "# Launch OakVar GUI",
         "ov.gui()",
         "# Launch OakVar Interactive Result Viewer for the OakVar analysis file example.sqlite",
@@ -71,6 +71,7 @@ def get_entry_parser():
         help="Manages OakVar modules",
     )
     # config
+    """
     p_config = sp_entry.add_parser(
         "config",
         parents=[get_parser_fn_config()],
@@ -78,6 +79,7 @@ def get_entry_parser():
         add_help=False,
         help="View and change configurations",
     )
+    """
     # new
     p_new = sp_entry.add_parser(
         "new",
@@ -104,11 +106,11 @@ def get_entry_parser():
     )
     # version
     p_version = sp_entry.add_parser("version",
-                                    parents=[get_parser_fn_version()],
+                                    parents=[get_parser_cli_version()],
                                     add_help=False,
                                     help="Show version")
-    p_version.r_return = "A string. OakVar version"
-    p_version.r_examples = [
+    p_version.r_return = "A string. OakVar version" # type: ignore
+    p_version.r_examples = [ # type: ignore
         "# Get the version of the installed OakVar",
         "ov.version()"
     ]
@@ -118,8 +120,8 @@ def get_entry_parser():
                                      parents=[get_parser_fn_issue()],
                                      add_help=False,
                                      help="Send an issue report")
-    p_issue.r_return = "`NULL`"
-    p_issue.r_examples = [
+    p_issue.r_return = "`NULL`" # type: ignore
+    p_issue.r_examples = [ # type: ignore
         "# Open the Issues page of the OakVar GitHub website",
         "ov.issue()"
     ]
@@ -147,6 +149,9 @@ def main():
         from sys import stderr
         stderr.write(str(e) + "\n")
         stderr.flush()
+        if hasattr(e, "traceback") and e.traceback:
+            from traceback import print_exc
+            print_exc()
     except SystemExit as e:
         raise e
     except Exception as e:

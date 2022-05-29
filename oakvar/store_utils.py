@@ -153,7 +153,7 @@ def stream_multipart_post(url,
 
     monitor = MultipartEncoderMonitor(encoder, stager_caller)
     headers = {"Content-Type": monitor.content_type}
-    r = post(url, data=monitor, headers=headers, **kwargs)
+    r = post(url, data=monitor, headers=headers, **kwargs)  # type: ignore
     return r
 
 
@@ -203,7 +203,7 @@ def get_file_to_string(url):
         if r.status_code == 200:
             return r.text
         else:
-            raise HTTPError(url, r.status_code, "", None, None)
+            raise HTTPError(url, r.status_code, "", None, None)  # type: ignore
     except Exception as e:
         return ""
 
@@ -243,14 +243,14 @@ class ModuleArchiveBuilder(object):
         from os import listdir, sep
 
         rel_path = relpath(item_path, start=self._base_path)
-        self._archive.write(item_path, rel_path)
+        self._archive.write(item_path, str(rel_path))
         if isdir(item_path):
             for child_name in listdir(item_path):
                 child_path = join(item_path, child_name)
                 self.add_item(child_path)
         else:
             checksum = file_checksum(item_path)
-            path_list = rel_path.split(sep)
+            path_list = rel_path.split(sep)  # type: ignore
             nest_value_in_dict(self._manifest, checksum, path_list)
 
     def get_manifest(self):

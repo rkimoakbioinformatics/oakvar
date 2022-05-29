@@ -35,6 +35,7 @@ class CravatReader(CravatFile):
         self.no_aggregate_cols = []
         self.index_columns = []
         self.report_substitution = None
+        self.f = None
         self._setup_definition()
 
     def _setup_definition(self):
@@ -104,8 +105,9 @@ class CravatReader(CravatFile):
         return self.no_aggregate_cols
 
     def get_lines(self, seekpos, chunksize):
-        self.f.seek(seekpos)
-        return self.f.readlines(chunksize)
+        if self.f is not None:
+            self.f.seek(seekpos)
+            return self.f.readlines(chunksize)
 
     def get_chunksize(self, num_core):
         f = open(self.path)
@@ -120,7 +122,7 @@ class CravatReader(CravatFile):
         f.close()
         chunksize = max(int(max_num_lines / num_core), 1)
         f = open(self.path)
-        poss = [(0, 0)]
+        poss = [[0, 0]]
         num_lines = 0
         while True:
             line = f.readline()
@@ -130,14 +132,14 @@ class CravatReader(CravatFile):
                 continue
             num_lines += 1
             if num_lines % chunksize == 0 and len(poss) < num_core:
-                poss.append((f.tell(), num_lines))
+                poss.append([f.tell(), num_lines])
         f.close()
         len_poss = len(poss)
         return num_lines, chunksize, poss, len_poss, max_num_lines
 
     def loop_data(self):
         from .exceptions import BadFormatError
-        from json import loads, dumps
+        from json import loads
 
         for lnum, l in self._loop_data():
             toks = l.split("\t")
@@ -183,7 +185,8 @@ class CravatReader(CravatFile):
         self.f = open(self.path, "rb")
 
     def _close_file(self):
-        self.f.close()
+        if self.f is not None:
+            self.f.close()
 
     def get_data(self):
         all_data = [d for _, _, d in self.loop_data()]
@@ -205,12 +208,13 @@ class CravatReader(CravatFile):
             f.seek(self.seekpos)
         lnum = 0
         for l in f:
-            l = l.decode(self.encoding)
-            l = l.rstrip("\r\n")
-            if l.startswith("#"):
-                continue
-            else:
-                yield lnum, l
+            if self.encoding is not None:
+                l = l.decode(self.encoding)
+                l = l.rstrip("\r\n")
+                if l.startswith("#"):
+                    continue
+                else:
+                    yield lnum, l
             lnum += 1
             if self.chunksize is not None and lnum == self.chunksize:
                 break
@@ -230,6 +234,7 @@ class CravatWriter(CravatFile):
     ):
         super().__init__(path)
         self.fmt = fmt
+        self.csvwriter = None
         if fmt == "csv":
             self.wf = open(self.path, "w", newline="", encoding="utf-8")
             from csv import reader
@@ -357,13 +362,15 @@ class CravatWriter(CravatFile):
             else:
                 wtoks[col_index] = ""
         if self.fmt == "csv":
-            self.csvwriter.writerow(wtoks)
+            if self.csvwriter is not None:
+                self.csvwriter.writerow(wtoks) # type: ignore
         else:
             self.wf.write("\t".join(wtoks) + "\n")
 
     def close(self):
         if self.fmt == "csv":
-            self.csvwriter.close()
+            if self.csvwriter is not None:
+                self.csvwriter.close() # type: ignore
         self.wf.close()
 
 
@@ -545,6 +552,19 @@ class ColumnDefinition(object):
     }
 
     def __init__(self, d):
+        self.index = None
+        self.name = None
+        self.title = None
+        self.type = None
+        self.categories = None
+        self.width = None
+        self.desc = None
+        self.hidden = None
+        self.category = None
+        self.filterable = None
+        self.link_format = None
+        self.genesummary = None
+        self.table = None
         self._load_dict(d)
 
     def _load_dict(self, d):

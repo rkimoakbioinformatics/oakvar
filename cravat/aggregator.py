@@ -18,6 +18,20 @@ class Aggregator(object):
         self.output_base_fname = None
         self.key_name = None
         self.table_name = None
+        self.name = None
+        self.delete = None
+        self.append = None
+        self.logger = None
+        self.error_logger = None
+        self.unique_excs = []
+        self.base_reader = None
+        self.reportsub = None
+        self.cursor = None
+        self.db_path = None
+        self.dbconn = None
+        self.db_fname = None
+        self.header_table_name = None
+        self.reportsub_table_name = None
         self.base_prefix = "base"
         self.base_dir = abspath(__file__)
         self.parse_cmd_args(cmd_args)
@@ -90,18 +104,26 @@ class Aggregator(object):
 
     def run(self):
         from time import time, asctime, localtime
-
         self._setup()
         if self.input_base_fname == None:
+            return
+        if self.dbconn is None or self.cursor is None:
+            return
+        if self.base_reader is None:
+            return
+        if self.key_name is None:
             return
         start_time = time()
         self.status_writer.queue_status_update(
             "status", "Started {} ({})".format("Aggregator", self.level))
         last_status_update_time = time()
-        self.logger.info("started: %s" % asctime(localtime(start_time)))
-        self.dbconn.commit()
-        self.cursor.execute("pragma synchronous=0;")
-        self.cursor.execute("pragma journal_mode=WAL;")
+        if self.logger is not None:
+            self.logger.info("started: %s" % asctime(localtime(start_time)))
+        if self.dbconn is not None:
+            self.dbconn.commit()
+        if self.cursor is not None:
+            self.cursor.execute("pragma synchronous=0;")
+            self.cursor.execute("pragma journal_mode=WAL;")
         n = 0
         # Insert rows
         if not self.append:
@@ -127,7 +149,7 @@ class Aggregator(object):
                         last_status_update_time = cur_time
                 except Exception as e:
                     self._log_runtime_error(lnum, line, e)
-        self.dbconn.commit()
+            self.dbconn.commit()
         for annot_name in self.annotators:
             reader = self.readers[annot_name]
             n = 0
@@ -165,16 +187,17 @@ class Aggregator(object):
         self.cursor.execute("pragma synchronous=2;")
         self.cursor.execute("pragma journal_mode=delete;")
         end_time = time()
-        self.logger.info("finished: %s" % asctime(localtime(end_time)))
-        runtime = end_time - start_time
-        self.logger.info("runtime: %s" % round(runtime, 3))
+        if self.logger is not None:
+            self.logger.info("finished: %s" % asctime(localtime(end_time)))
+            runtime = end_time - start_time
+            self.logger.info("runtime: %s" % round(runtime, 3))
         self._cleanup()
         self.status_writer.queue_status_update(
             "status", "Finished {} ({})".format("Aggregator", self.level))
 
     def make_reportsub(self):
+        if self.cursor is None: return
         from json import loads
-
         if self.level in ["variant", "gene"]:
             q = f"select * from {self.level}_reportsub"
             self.cursor.execute(q)
@@ -186,6 +209,7 @@ class Aggregator(object):
             self.reportsub = {}
 
     def do_reportsub_col_cats(self, col_name, col_cats):
+        if self.reportsub is None: return
         (module_name, col) = col_name.split("__")
         if module_name in self.reportsub and col in self.reportsub[module_name]:
             sub = self.reportsub[module_name][col]
@@ -195,10 +219,11 @@ class Aggregator(object):
         return col_cats
 
     def fill_categories(self):
+        if self.level is None: return
+        if self.dbconn is None or self.cursor is None: return
         from distutils.version import LooseVersion
         from oakvar.inout import ColumnDefinition
         from oakvar.admin_util import get_current_package_version
-
         header_table = self.level + "_header"
         coldefs = []
         if LooseVersion(
@@ -243,22 +268,25 @@ class Aggregator(object):
                 else:
                     col_cats = self.do_reportsub_col_cats(
                         coldef.name, col_cats)
-                col_cats.sort()
+                if col_cats is not None:
+                    col_cats.sort()
                 coldef.categories = col_cats
                 self.update_col_def(coldef)
         self.dbconn.commit()
 
     def update_col_def(self, col_def):
+        if self.cursor is None: return
         q = f"update {self.level}_header set col_def=? where col_name=?"
         self.cursor.execute(q, [col_def.get_json(), col_def.name])
 
     def _cleanup(self):
+        if self.dbconn is None or self.cursor is None: return
         self.cursor.close()
         self.dbconn.close()
 
     def set_input_base_fname(self):
+        if self.name is None: return
         from os import listdir
-
         crv_fname = self.name + ".crv"
         crx_fname = self.name + ".crx"
         crg_fname = self.name + ".crg"
@@ -281,9 +309,11 @@ class Aggregator(object):
         self.output_base_fname = self.name
 
     def _setup(self):
+        if self.level is None: return
+        if self.name is None: return
+        if self.input_base_fname is None: return
         from os.path import join
         from os import listdir
-
         if self.level == "variant":
             self.key_name = "uid"
         elif self.level == "gene":
@@ -316,11 +346,13 @@ class Aggregator(object):
         self._setup_table()
 
     def _setup_table(self):
+        if self.level is None: return
+        if self.dbconn is None or self.cursor is None: return
+        if self.base_reader is None: return
         import sys
         from json import loads, dumps
         from collections import OrderedDict
         from oakvar.inout import ColumnDefinition
-
         columns = []
         unique_names = set()
         # annotator table
@@ -453,11 +485,11 @@ class Aggregator(object):
         self.dbconn.commit()
 
     def _setup_io(self):
+        if self.output_base_fname is None: return
         from os.path import join, exists
         from os import remove
         from sqlite3 import connect
         from oakvar.inout import CravatReader
-
         self.base_reader = CravatReader(self.base_fpath)
         for annot_name in self.annotators:
             self.readers[annot_name] = CravatReader(self.ipaths[annot_name])
@@ -469,8 +501,9 @@ class Aggregator(object):
         self.cursor = self.dbconn.cursor()
 
     def _log_runtime_error(self, ln, line, e):
+        if self.logger is None: return
+        if self.error_logger is None: return
         from traceback import format_exc
-
         err_str = format_exc().rstrip()
         if ln is not None and line is not None:
             if err_str not in self.unique_excs:
@@ -481,10 +514,3 @@ class Aggregator(object):
                     ln, line[:-1], str(e)))
         else:
             self.logger.error(err_str)
-
-
-if __name__ == "__main__":
-    import sys
-
-    aggregator = Aggregator(sys.argv)
-    aggregator.run()

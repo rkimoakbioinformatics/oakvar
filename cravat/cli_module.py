@@ -1,9 +1,15 @@
-def fn_module_ls(args):
+def cli_module_ls(args):
     from .util import get_dict_from_namespace
-    from .util import quiet_print
     args = get_dict_from_namespace(args)
+    args["fmt"] = "yaml"
+    args["to"] = "stdout"
+    args["quiet"] = False
+    return fn_module_ls(args)
+
+def fn_module_ls(args):
+    from .util import quiet_print
     if args["available"]:
-        ret = list_available_modules(**args)
+        ret = list_available_modules(args)
         if args["to"] == "stdout":
             if args["fmt"] == "tabular":
                 print_tabular_lines(ret, args=args)
@@ -12,7 +18,7 @@ def fn_module_ls(args):
         else:
             return ret
     else:
-        ret = list_local_modules(**args)
+        ret = list_local_modules(args)
         if args["to"] == "stdout":
             if args["fmt"] == "tabular":
                 print_tabular_lines(ret, args=args)
@@ -22,6 +28,13 @@ def fn_module_ls(args):
             return ret
 
 
+def cli_module_info(args):
+    from .util import get_dict_from_namespace
+    args = get_dict_from_namespace(args)
+    args["quiet"] = False
+    args["to"] = "stdout"
+    return fn_module_info(args)
+
 def fn_module_info(args):
     from oyaml import dump
     from .admin_util import (
@@ -29,11 +42,9 @@ def fn_module_info(args):
         get_remote_module_info,
         get_remote_module_config,
     )
-    from .util import get_dict_from_namespace
     from .sysadmin_const import custom_modules_dir
     from .util import quiet_print
 
-    args = get_dict_from_namespace(args)
     ret = {}
     module_name = args.get("module", None)
     if module_name is None:
@@ -61,7 +72,7 @@ def fn_module_info(args):
             installed = False
     except LookupError:
         installed = False
-    if remote_available:
+    if remote_available and remote_info is not None:
         versions = remote_info.versions
         data_sources = remote_info.data_sources
         new_versions = []
@@ -96,7 +107,7 @@ def fn_module_info(args):
             ret.update(local_info)
     else:
         pass
-    if installed and remote_available:
+    if installed and remote_available and local_info is not None and remote_info is not None:
         if installed and local_info.version == remote_info.latest_version:
             up_to_date = True
         else:
@@ -108,6 +119,12 @@ def fn_module_info(args):
         return ret
 
 
+def cli_module_install(args):
+    from .util import get_dict_from_namespace
+    args = get_dict_from_namespace(args)
+    args["quiet"] = False
+    return fn_module_install(args)
+
 def fn_module_install(args):
     from .admin_util import (
         search_remote,
@@ -117,11 +134,9 @@ def fn_module_install(args):
         get_install_deps,
         install_module,
     )
-    from .util import get_dict_from_namespace
     from .sysadmin_const import custom_modules_dir
     from distutils.version import LooseVersion
     from .util import quiet_print
-    args = get_dict_from_namespace(args)
     quiet = args.get("quiet", True)
     # split module name and version
     module_name_versions = {}
@@ -160,18 +175,19 @@ def fn_module_install(args):
                 )
                 continue
             else:
-                if local_info is not None:
-                    local_ver = local_info.version
-                    remote_ver = remote_info.latest_version
-                    if not args["force"] and LooseVersion(
-                            local_info.version) >= LooseVersion(
-                                remote_info.latest_version):
-                        quiet_print(
-                            f"{module_name}: latest version is already installed.",
-                            args=args
-                        )
-                        continue
-                selected_install[module_name] = remote_info.latest_version
+                if remote_info is not None:
+                    if local_info is not None:
+                        local_ver = local_info.version
+                        remote_ver = remote_info.latest_version
+                        if not args["force"] and LooseVersion(
+                                local_info.version) >= LooseVersion(
+                                    remote_info.latest_version):
+                            quiet_print(
+                                f"{module_name}: latest version is already installed.",
+                                args=args
+                            )
+                            continue
+                    selected_install[module_name] = remote_info.latest_version
         else:
             if not module_exists_remote(
                     module_name, version=version, private=args["private"]):
@@ -214,7 +230,7 @@ def fn_module_install(args):
                 else:
                     continue
         for module_name, module_version in sorted(to_install.items()):
-            stage_handler = InstallProgressStdout(module_name, module_version)
+            stage_handler = InstallProgressStdout(module_name, module_version, quiet=args["quiet"])
             install_module(
                 module_name,
                 version=module_version,
@@ -222,17 +238,24 @@ def fn_module_install(args):
                 stage_handler=stage_handler,
                 force=args["force"],
                 skip_data=args["skip_data"],
+                quiet=args.get("quiet")
             )
     return True
 
 
+def cli_module_update(args):
+    from .util import get_dict_from_namespace
+
+    args = get_dict_from_namespace(args)
+    args["quiet"] = False
+    return fn_module_update(args)
+
 def fn_module_update(args):
     from .admin_util import search_local, get_updatable
-    from .util import get_dict_from_namespace, humanize_bytes
+    from .util import humanize_bytes
     from .util import quiet_print
     from types import SimpleNamespace
 
-    args = get_dict_from_namespace(args)
     quiet = args.get("quiet", True)
     ret = {"msg": []}
     modules = args.get("modules", [])
@@ -273,18 +296,22 @@ def fn_module_update(args):
             skip_data=False,
             md=args.get("md", None),
         )
-        if fn_module_install(args) == False:
+        if not fn_module_install(args):
             return False
     return True
 
 
-def fn_module_uninstall(args):
-    from .admin_util import search_local, uninstall_module
+def cli_module_uninstall(args):
     from .util import get_dict_from_namespace
-    from .sysadmin_const import custom_modules_dir
-    from .util import quiet_print
 
     args = get_dict_from_namespace(args)
+    args["quiet"] = False
+    return fn_module_uninstall(args)
+
+def fn_module_uninstall(args):
+    from .admin_util import search_local, uninstall_module
+    from .sysadmin_const import custom_modules_dir
+    from .util import quiet_print
     matching_names = search_local(*args["modules"])
     if len(matching_names) > 0:
         quiet_print("Uninstalling: {:}".format(", ".join(matching_names)), args=args)
@@ -294,7 +321,7 @@ def fn_module_uninstall(args):
                 if resp == "y":
                     break
                 elif resp == "n":
-                    raise False
+                    return False
                 else:
                     quiet_print("Response '{:}' not one of (y/n).".format(resp), args=args)
         for module_name in matching_names:
@@ -305,12 +332,18 @@ def fn_module_uninstall(args):
     return True
 
 
+def cli_module_installbase(args):
+    from .util import get_dict_from_namespace
+
+    args = get_dict_from_namespace(args)
+    args["quiet"] = False
+    return fn_module_installbase(args)
+
 def fn_module_installbase(args):
     from .sysadmin import get_system_conf
-    from .util import get_dict_from_namespace
     from .sysadmin_const import base_modules_key
     from types import SimpleNamespace
-    args = get_dict_from_namespace(args)
+
     sys_conf = get_system_conf(conf=args.get("conf"))
     base_modules = sys_conf.get(base_modules_key, [])
     args = SimpleNamespace(
@@ -329,17 +362,19 @@ def fn_module_installbase(args):
     return ret
 
 
-def list_available_modules(**kwargs):
+def list_available_modules(args):
     from oyaml import dump
     from .admin_util import search_remote, get_local_module_info, get_remote_module_info
     from .util import humanize_bytes
-
-    fmt = kwargs["fmt"]
-    quiet = kwargs["quiet"]
-    all_toks = []
+    fmt = args.get("fmt", "return")
+    quiet = args.get("quiet", True)
+    nameonly = args.get("nameonly", False)
+    all_toks_name = []
+    all_toks_text = []
+    all_toks_json = []
     if fmt == "tabular":
-        if quiet:
-            all_toks = []
+        if nameonly:
+            all_toks_name = []
         else:
             header = [
                 "Name",
@@ -352,142 +387,157 @@ def list_available_modules(**kwargs):
                 "Local data ver",
                 "Size",
             ]
-            all_toks = [header]
+            all_toks_all = [header]
     elif fmt in ["json", "yaml"]:
-        all_toks = []
-    for module_name in search_remote(kwargs["pattern"]):
+        all_toks_json = []
+    for module_name in search_remote(args.get("pattern")):
         remote_info = get_remote_module_info(module_name)
-        if len(kwargs["types"]
-               ) > 0 and remote_info.type not in kwargs["types"]:
-            continue
-        if len(kwargs["tags"]) > 0:
-            if remote_info.tags is None:
+        if remote_info is not None:
+            if len(args.get("types")
+                ) > 0 and remote_info.type not in args["types"]:
                 continue
-            if len(set(kwargs["tags"]).intersection(remote_info.tags)) == 0:
+            if len(args.get("tags")) > 0:
+                if remote_info.tags is None:
+                    continue
+                if len(set(args.get("tags")).intersection(remote_info.tags)) == 0:
+                    continue
+            if remote_info.hidden and not args.get("include_hidden"):
                 continue
-        if remote_info.hidden and not kwargs["include_hidden"]:
-            continue
-        local_info = get_local_module_info(module_name)
-        if local_info is not None:
-            installed = "yes"
-            local_version = local_info.version
-            local_datasource = local_info.datasource
-        else:
-            installed = ""
-            local_version = ""
-            local_datasource = ""
-        if kwargs["raw_bytes"]:
-            size = remote_info.size
-        else:
-            size = humanize_bytes(remote_info.size)
-        toks = []
-        if fmt == "tabular":
-            if quiet:
-                toks = [module_name]
+            local_info = get_local_module_info(module_name)
+            if local_info is not None:
+                installed = "yes"
+                local_version = local_info.version
+                local_datasource = local_info.datasource
             else:
-                toks = [
-                    module_name,
-                    remote_info.title,
-                    remote_info.type,
-                    installed,
-                    remote_info.latest_version,
-                    remote_info.datasource,
-                    local_version,
-                    local_datasource,
-                    size,
-                ]
-        elif fmt in ["json", "yaml"]:
-            toks = {
-                "name": module_name,
-                "title": remote_info.title,
-                "type": remote_info.type,
-                "installed": installed,
-                "latest_version": remote_info.latest_version,
-                "datasource": remote_info.datasource,
-                "local_version": local_version,
-                "local_datasource": local_datasource,
-                "size": size,
-            }
-        all_toks.append(toks)
-    if fmt in ["tabular", "json"]:
-        return all_toks
+                installed = ""
+                local_version = ""
+                local_datasource = ""
+            if args.get("raw_bytes"):
+                size = remote_info.size
+            else:
+                size = humanize_bytes(remote_info.size)
+            toks = []
+            if fmt == "tabular":
+                if args["nameonly"]:
+                    toks = [module_name]
+                    all_toks_name.append(toks)
+                else:
+                    toks = [
+                        module_name,
+                        remote_info.title,
+                        remote_info.type,
+                        installed,
+                        remote_info.latest_version,
+                        remote_info.datasource,
+                        local_version,
+                        local_datasource,
+                        size,
+                    ]
+                    all_toks_text.append(toks)
+            elif fmt in ["json", "yaml"]:
+                toks = {
+                    "name": module_name,
+                    "title": remote_info.title,
+                    "type": remote_info.type,
+                    "installed": installed,
+                    "latest_version": remote_info.latest_version,
+                    "datasource": remote_info.datasource,
+                    "local_version": local_version,
+                    "local_datasource": local_datasource,
+                    "size": size,
+                }
+                all_toks_json.append(toks)
+    if fmt == "tabular":
+        if nameonly:
+            return all_toks_name
+        else:
+            return all_toks_text
+    elif fmt == "json":
+        return all_toks_json
     elif fmt == "yaml":
-        return dump(all_toks, default_flow_style=False)
+        return dump(all_toks_json, default_flow_style=False)
+    else:
+        return None
 
 
-def list_local_modules(
-    pattern=r".*",
-    types=[],
-    include_hidden=False,
-    tags=[],
-    quiet=False,
-    raw_bytes=False,
-    fmt="tabular",
-    **kwargs,
-):
+def list_local_modules(args):
     from oyaml import dump
     from .admin_util import search_local, get_local_module_info
     from .util import humanize_bytes
-
-    if quiet or fmt == "json" or fmt == "yaml":
-        all_toks = []
-    else:
+    pattern = args.get("pattern", r".*")
+    types = args.get("types", [])
+    include_hidden = args.get("include_hidden", False)
+    tags = args.get("tags", [])
+    quiet = args.get("quiet", True)
+    raw_bytes = args.get("raw_bytes", False)
+    fmt = args.get("fmt", "json")
+    nameonly = args.get("nameonly", False)
+    all_toks_nameonly = []
+    all_toks_text = []
+    all_toks_json = []
+    if fmt == "tabular" and not nameonly:
         header = [
             "Name", "Title", "Type", "Version", "Data source ver", "Size"
         ]
-        all_toks = [header]
+        all_toks_text = [header]
     for module_name in search_local(pattern):
         module_info = get_local_module_info(module_name)
-        if len(types) > 0 and module_info.type not in types:
-            continue
-        if len(tags) > 0:
-            if module_info.tags is None:
+        if module_info is not None:
+            if len(types) > 0 and module_info.type not in types:
                 continue
-            if len(set(tags).intersection(module_info.tags)) == 0:
+            if len(tags) > 0:
+                if module_info.tags is None:
+                    continue
+                if len(set(tags).intersection(module_info.tags)) == 0:
+                    continue
+            if module_info.hidden and not include_hidden:
                 continue
-        if module_info.hidden and not include_hidden:
-            continue
-        if quiet:
-            toks = [module_name]
+            if nameonly:
+                toks = [module_name]
+                all_toks_nameonly.append(toks)
+            else:
+                size = module_info.get_size()
+                if fmt in ["json", "yaml"]:
+                    toks = {
+                        "name": module_name,
+                        "title": module_info.title,
+                        "type": module_info.type,
+                        "version": module_info.version,
+                        "datasource": module_info.datasource,
+                    }
+                    if raw_bytes:
+                        toks["size"] = size
+                    else:
+                        toks["size"] = humanize_bytes(size)
+                    all_toks_json.append(toks)
+                else:
+                    toks = [
+                        module_name,
+                        module_info.title,
+                        module_info.type,
+                        module_info.version,
+                        module_info.datasource,
+                    ]
+                    if raw_bytes:
+                        toks.append(size)
+                    else:
+                        toks.append(humanize_bytes(size))
+                    all_toks_text.append(toks)
+    if fmt == "tabular":
+        if nameonly:
+            return all_toks_nameonly
         else:
-            size = module_info.get_size()
-            if fmt in ["json", "yaml"]:
-                toks = {
-                    "name": module_name,
-                    "title": module_info.title,
-                    "type": module_info.type,
-                    "version": module_info.version,
-                    "datasource": module_info.datasource,
-                }
-            else:
-                toks = [
-                    module_name,
-                    module_info.title,
-                    module_info.type,
-                    module_info.version,
-                    module_info.datasource,
-                ]
-            if raw_bytes:
-                if fmt in ["json", "yaml"]:
-                    toks["size"] = size
-                else:
-                    toks.append(size)
-            else:
-                if fmt in ["json", "yaml"]:
-                    toks["size"] = humanize_bytes(size)
-                else:
-                    toks.append(humanize_bytes(size))
-        all_toks.append(toks)
-    if fmt in ["tabular", "json"]:
-        return all_toks
+            return all_toks_text
+    elif fmt == "json":
+        return all_toks_json
     elif fmt == "yaml":
-        return dump(all_toks, default_flow_style=False)
+        return dump(all_toks_json, default_flow_style=False)
 
 
 def print_tabular_lines(l, args=None):
-    if args is None or not args.get("quiet", True):
-        for line in yield_tabular_lines(l):
-            print(line)
+    from .util import quiet_print
+    for line in yield_tabular_lines(l):
+        quiet_print(line, args=args)
 
 
 def yield_tabular_lines(l, col_spacing=2, indent=0):
@@ -515,19 +565,20 @@ from .admin_util import InstallProgressHandler
 
 class InstallProgressStdout(InstallProgressHandler):
 
-    def __init__(self, module_name, module_version):
+    def __init__(self, module_name, module_version, quiet=True):
         super().__init__(module_name, module_version)
+        self.quiet = quiet
 
     def stage_start(self, stage):
         import sys
-
+        from .util import quiet_print
         self.cur_stage = stage
-        sys.stdout.write(self._stage_msg(stage) + "\n")
+        quiet_print(self._stage_msg(stage) + "\n", {"quiet": self.quiet})
 
     def stage_progress(self, cur_chunk, total_chunks, cur_size, total_size):
         import sys
         from .util import humanize_bytes
-
+        from .util import quiet_print
         rem_chunks = total_chunks - cur_chunk
         perc = cur_size / total_size * 100
         # trailing spaces needed to avoid leftover characters on resize
@@ -540,9 +591,9 @@ class InstallProgressStdout(InstallProgressHandler):
                 total_size=humanize_bytes(total_size),
                 perc=perc,
             ))
-        sys.stdout.write(out)
+        quiet_print(out, {"quiet": self.quiet})
         if cur_chunk == total_chunks:
-            sys.stdout.write("\n")
+            quiet_print("\n", {"quiet": self.quiet})
 
 
 def get_parser_fn_module():
@@ -554,89 +605,89 @@ def get_parser_fn_module():
                                                   dest="command")
 
     # installbase
-    parser_fn_module_installbase = _subparsers.add_parser(
+    parser_cli_module_installbase = _subparsers.add_parser(
         "installbase",
         help="installs base modules.",
         description="installs base modules.")
-    parser_fn_module_installbase.add_argument(
+    parser_cli_module_installbase.add_argument(
         "-f",
         "--force",
         action="store_true",
         help="Overwrite existing modules",
     )
-    parser_fn_module_installbase.add_argument(
+    parser_cli_module_installbase.add_argument(
         "-d",
         "--force-data",
         action="store_true",
         help="Download data even if latest data is already installed",
     )
-    parser_fn_module_installbase.add_argument(
+    parser_cli_module_installbase.add_argument(
         "--md",
         default=None,
         help="Specify the root directory of OakVar modules")
-    parser_fn_module_installbase.add_argument(
+    parser_cli_module_installbase.add_argument(
         "--quiet",
-        default=False,
+        default=True,
         action="store_true",
         help="suppress stdout output")
-    parser_fn_module_installbase.set_defaults(func=fn_module_installbase)
-    parser_fn_module_installbase.r_return = "A boolean. TRUE if successful, FALSE if not"
-    parser_fn_module_installbase.r_examples = [
+    parser_cli_module_installbase.set_defaults(func=cli_module_installbase)
+    parser_cli_module_installbase.r_return = "A boolean. TRUE if successful, FALSE if not" # type: ignore
+    parser_cli_module_installbase.r_examples = [ # type: ignore
         "# Install OakVar system modules",
         "ov.module.installbase()"
     ]
 
     # install
-    parser_fn_module_install = _subparsers.add_parser(
+    parser_cli_module_install = _subparsers.add_parser(
         "install",
         help="installs OakVar modules.",
         description="Installs OakVar modules.")
-    parser_fn_module_install.add_argument(
+    parser_cli_module_install.add_argument(
         "modules",
         nargs="+",
         help="Modules to install. May be regular expressions.")
-    parser_fn_module_install.add_argument(
+    parser_cli_module_install.add_argument(
         "-f",
         "--force",
         action="store_true",
         help="Install module even if latest version is already installed",
     )
-    parser_fn_module_install.add_argument(
+    parser_cli_module_install.add_argument(
         "-d",
         "--force-data",
         action="store_true",
         help="Download data even if latest data is already installed",
     )
-    parser_fn_module_install.add_argument("-y",
+    parser_cli_module_install.add_argument("-y",
                                           "--yes",
                                           action="store_true",
                                           help="Proceed without prompt")
-    parser_fn_module_install.add_argument("--skip-dependencies",
+    parser_cli_module_install.add_argument("--skip-dependencies",
                                           action="store_true",
                                           help="Skip installing dependencies")
-    parser_fn_module_install.add_argument("-p",
+    parser_cli_module_install.add_argument("-p",
                                           "--private",
                                           action="store_true",
                                           help="Install a private module")
-    parser_fn_module_install.add_argument("--skip-data",
+    parser_cli_module_install.add_argument("--skip-data",
                                           action="store_true",
                                           help="Skip installing data")
-    parser_fn_module_install.add_argument(
+    parser_cli_module_install.add_argument(
         "--md",
         default=None,
         help="Specify the root directory of OakVar modules")
-    parser_fn_module_install.add_argument(
+    parser_cli_module_install.add_argument(
         "--to",
         default="return",
         help="'stdout' to print. 'return' to return")
-    parser_fn_module_install.add_argument(
+    parser_cli_module_install.add_argument(
         "--quiet",
-        default=False,
+        default=True,
         action="store_true",
         help="suppress stdout output")
-    parser_fn_module_install.set_defaults(func=fn_module_install)
-    parser_fn_module_install.r_return = "A boolean. TRUE if successful, FALSE if not"
-    parser_fn_module_install.r_examples = [
+    parser_cli_module_install.set_defaults(func=cli_module_install)
+    parser_cli_module_install.r_return = "A boolean. TRUE if successful, FALSE if not" # type: ignore
+    parser_cli_module_install.r_examples = [ # type: ignore
         "# Install the ClinVar module",
         "ov.module.install(modules=\"clinvar\")",
         "# Install the ClinVar and the COSMIC modules",
@@ -646,19 +697,19 @@ def get_parser_fn_module():
     ]
 
     # update
-    parser_fn_module_update = _subparsers.add_parser(
+    parser_cli_module_update = _subparsers.add_parser(
         "update",
         help="updates modules.",
         description="updates modules.",
         formatter_class=RawDescriptionHelpFormatter,
     )
-    parser_fn_module_update.add_argument("modules",
+    parser_cli_module_update.add_argument("modules",
                                          nargs="*",
                                          help="Modules to update.")
-    parser_fn_module_update.add_argument("-y",
+    parser_cli_module_update.add_argument("-y",
                                          action="store_true",
                                          help="Proceed without prompt")
-    parser_fn_module_update.add_argument(
+    parser_cli_module_update.add_argument(
         "--strategy",
         help=
         'Dependency resolution strategy. "consensus" will attempt to resolve dependencies. "force" will install the highest available version. "skip" will skip modules with constraints.',
@@ -666,18 +717,18 @@ def get_parser_fn_module():
         type=str,
         choices=("consensus", "force", "skip"),
     )
-    parser_fn_module_update.add_argument(
+    parser_cli_module_update.add_argument(
         "--md",
         default=None,
         help="Specify the root directory of OakVar modules")
-    parser_fn_module_update.add_argument(
+    parser_cli_module_update.add_argument(
         "--quiet",
-        default=False,
+        default=True,
         action="store_true",
         help="suppress stodout output")
-    parser_fn_module_update.set_defaults(func=fn_module_update)
-    parser_fn_module_update.r_return = "A boolean. TRUE if successful, FALSE if not"
-    parser_fn_module_update.r_examples = [
+    parser_cli_module_update.set_defaults(func=cli_module_update)
+    parser_cli_module_update.r_return = "A boolean. TRUE if successful, FALSE if not" # type: ignore
+    parser_cli_module_update.r_examples = [ # type: ignore
         "# Update the ClinVar module",
         "ov.module.update(modules=\"clinvar\")",
         "# Update all the installed modules",
@@ -685,23 +736,24 @@ def get_parser_fn_module():
     ]
 
     # uninstall
-    parser_fn_module_uninstall = _subparsers.add_parser(
+    parser_cli_module_uninstall = _subparsers.add_parser(
         "uninstall", 
         help="uninstalls modules.")
-    parser_fn_module_uninstall.add_argument("modules",
+    parser_cli_module_uninstall.add_argument("modules",
                                             nargs="+",
                                             help="Modules to uninstall")
-    parser_fn_module_uninstall.add_argument("-y",
+    parser_cli_module_uninstall.add_argument("-y",
                                             "--yes",
                                             action="store_true",
                                             help="Proceed without prompt")
-    parser_fn_module_uninstall.add_argument(
+    parser_cli_module_uninstall.add_argument(
         "--md",
         default=None,
         help="Specify the root directory of OakVar modules")
-    parser_fn_module_uninstall.set_defaults(func=fn_module_uninstall)
-    parser_fn_module_uninstall.r_return = "A boolean. TRUE if successful, FALSE if not"
-    parser_fn_module_uninstall.r_examples = [
+    parser_cli_module_uninstall.add_argument("--quiet", default=True, help="Run quietly")
+    parser_cli_module_uninstall.set_defaults(func=cli_module_uninstall)
+    parser_cli_module_uninstall.r_return = "A boolean. TRUE if successful, FALSE if not" # type: ignore
+    parser_cli_module_uninstall.r_examples = [ # type: ignore
         "# Uninstall the ClinVar module",
         "ov.module.uninstall(modules=\"clinvar\")"
         "# Uninstall the ClinVar and the COSMIC modules",
@@ -709,82 +761,87 @@ def get_parser_fn_module():
     ]
 
     # info
-    parser_fn_module_info = _subparsers.add_parser(
+    parser_cli_module_info = _subparsers.add_parser(
         "info", 
         epilog="returns information of the queried module",
         help="shows module information.")
-    parser_fn_module_info.add_argument("module",
+    parser_cli_module_info.add_argument("module",
                                        help="Module to get info about")
-    parser_fn_module_info.add_argument("-l",
+    parser_cli_module_info.add_argument("-l",
                                        "--local",
                                        dest="local",
                                        help="Include local info",
                                        action="store_true")
-    parser_fn_module_info.add_argument(
+    parser_cli_module_info.add_argument(
         "--md",
         default=None,
         help="Specify the root directory of OakVar modules")
-    parser_fn_module_info.add_argument(
+    parser_cli_module_info.add_argument(
         "--to",
-        default="stdout",
+        default="return",
         help='"print" to stdout / "return" to return')
-    parser_fn_module_info.set_defaults(func=fn_module_info)
-    parser_fn_module_info.r_return = "A named list. Information of the queried module"
-    parser_fn_module_info.r_examples = [
+    parser_cli_module_info.add_argument("--quiet", default=True, help="Run quietly")
+    parser_cli_module_info.set_defaults(func=cli_module_info)
+    parser_cli_module_info.r_return = "A named list. Information of the queried module" # type: ignore
+    parser_cli_module_info.r_examples = [ # type: ignore
         "# Get the information of the ClinVar module",
         "ov.module.info(module=\"clinvar\")"
     ]
 
     # ls
-    parser_fn_module_ls = _subparsers.add_parser(
+    parser_cli_module_ls = _subparsers.add_parser(
         "ls",
         help="lists modules.",
         description="lists modules.",
         formatter_class=RawDescriptionHelpFormatter,
     )
-    parser_fn_module_ls.add_argument(
+    parser_cli_module_ls.add_argument(
         "pattern",
         nargs="?",
         default=r".*",
         help="Regular expression for module names")
-    parser_fn_module_ls.add_argument("-a",
+    parser_cli_module_ls.add_argument("-a",
                                      "--available",
                                      action="store_true",
+                                     default=False,
                                      help="Include available modules")
-    parser_fn_module_ls.add_argument("-t",
+    parser_cli_module_ls.add_argument("-t",
                                      "--types",
                                      nargs="+",
                                      default=[],
                                      help="Only list modules of certain types")
-    parser_fn_module_ls.add_argument("-i",
+    parser_cli_module_ls.add_argument("-i",
                                      "--include-hidden",
                                      action="store_true",
+                                     default=False,
                                      help="Include hidden modules")
-    parser_fn_module_ls.add_argument("--tags",
+    parser_cli_module_ls.add_argument("--tags",
                                      nargs="+",
                                      default=[],
                                      help="Only list modules of given tag(s)")
-    parser_fn_module_ls.add_argument("-q",
-                                     "--quiet",
+    parser_cli_module_ls.add_argument("--nameonly",
                                      action="store_true",
+                                     default=False,
                                      help="Only list module names")
-    parser_fn_module_ls.add_argument("--bytes",
+    parser_cli_module_ls.add_argument("--bytes",
                                      action="store_true",
+                                     default=False,
                                      dest="raw_bytes",
                                      help="Machine readable data sizes")
-    parser_fn_module_ls.add_argument(
+    parser_cli_module_ls.add_argument(
         "--md",
         default=None,
         help="Specify the root directory of OakVar modules")
-    parser_fn_module_ls.add_argument("--fmt",
-                                     default="tabular",
+    parser_cli_module_ls.add_argument("--fmt",
+                                     default="json",
                                      help="Output format. tabular or json")
-    parser_fn_module_ls.add_argument("--to",
-                                     default="stdout",
+    parser_cli_module_ls.add_argument("--to",
+                                     default="return",
                                      help="stdout to print / return to return")
-    parser_fn_module_ls.set_defaults(func=fn_module_ls)
-    parser_fn_module_ls.r_return = "A named list. List of modules"
-    parser_fn_module_ls.r_examples = [
+    parser_cli_module_ls.add_argument("--quiet", default=True, help="Run quietly")
+    parser_cli_module_ls.set_defaults(func=cli_module_ls)
+    parser_cli_module_ls.r_return = "A named list. List of modules" # type: ignore
+    parser_cli_module_ls.r_examples = [ # type: ignore
         "# Get the list of all installed modules",
         "ov.module.ls()",
         "# Get the list of all available modules",

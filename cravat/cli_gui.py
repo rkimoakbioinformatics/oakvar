@@ -30,12 +30,13 @@ def setup(args):
     from asyncio import get_event_loop, set_event_loop
     from importlib.util import find_spec
     from os.path import join, exists
-
+    if logger is None or sysconf is None:
+        from .exceptions import SetupError
+        raise SetupError()
     try:
         global loop
         if sysplatform == "win32":  # Required to use asyncio subprocesses
-            from asyncio import ProactorEventLoop
-
+            from asyncio import ProactorEventLoop # type: ignore
             loop = ProactorEventLoop()
             set_event_loop(loop)
         else:
@@ -53,15 +54,19 @@ def setup(args):
                 global server_ready
                 server_ready = True
             except Exception as e:
+                from sys import stderr
                 logger.exception(e)
                 logger.info("Exiting...")
-                print(
-                    "Error occurred while loading oakvar-multiuser.\nCheck {} for details."
+                stderr.write(
+                    "Error occurred while loading oakvar-multiuser.\nCheck {} for details.\n"
                     .format(log_path))
                 exit()
         else:
             servermode = False
             server_ready = False
+        wu.logger = logger
+        ws.logger = logger
+        wr.logger = logger
         wu.servermode = args["servermode"]
         ws.servermode = args["servermode"]
         wr.servermode = args["servermode"]
@@ -80,15 +85,15 @@ def setup(args):
             wu.cravat_multiuser = cravat_multiuser
             ws.cravat_multiuser = cravat_multiuser
         if servermode and server_ready == False:
+            from sys import stderr
             msg = 'oakvar-multiuser package is required to run OakVar Server.\nRun "pip install oakvar-multiuser" to get the package.'
             logger.info(msg)
             logger.info("Exiting...")
-            print(msg)
+            stderr.write(msg + "\n")
             exit()
         global ssl_enabled
         ssl_enabled = False
         global protocol
-        protocol = None
         global http_only
         http_only = args["http_only"]
         if "conf_dir" in sysconf:
@@ -106,13 +111,14 @@ def setup(args):
             protocol = "http://"
     except Exception as e:
         from traceback import print_exc
+        from sys import stderr
 
         logger.exception(e)
         if debug:
             print_exc()
         logger.info("Exiting...")
-        print(
-            "Error occurred while starting OakVar server.\nCheck {} for details."
+        stderr.write(
+            "Error occurred while starting OakVar server.\nCheck {} for details.\n"
             .format(log_path))
         exit()
 
@@ -121,6 +127,7 @@ def fn_gui(args):
     from .util import get_dict_from_namespace, is_compatible_version
     from logging.handlers import TimedRotatingFileHandler
     from os.path import abspath, exists
+    from sys import stderr
     global sysconf, log_dir, modules_dir, log_path, logger
 
     sysconf = get_system_conf()
@@ -162,13 +169,13 @@ def fn_gui(args):
                 index_path = join(modules_dir, "webapps", args["webapp"],
                                   "index.html")
                 if exists(index_path) == False:
-                    print(f"Webapp {args['webapp']} does not exist. Exiting.")
+                    stderr.write(f"Webapp {args['webapp']} does not exist. Exiting.\n")
                     return
                 url = f"{host}:{port}/webapps/{args['webapp']}/index.html"
             elif args["result"]:
                 dbpath = args["result"]
                 if exists(dbpath) == False:
-                    print(f"{dbpath} does not exist. Exiting.")
+                    stderr.write(f"{dbpath} does not exist. Exiting.\n")
                     return
                 (
                     compatible_version,
@@ -176,11 +183,11 @@ def fn_gui(args):
                     oc_version,
                 ) = is_compatible_version(dbpath)
                 if not compatible_version:
-                    print(
-                        f"DB version {db_version} of {dbpath} is not compatible with the current OakVar ({oc_version})."
+                    stderr.write(
+                        f"DB version {db_version} of {dbpath} is not compatible with the current OakVar ({oc_version}).\n"
                     )
-                    print(
-                        f'Consider running "oc util update-result {dbpath}" and running "oc gui {dbpath}" again.'
+                    stderr.write(
+                        f'Consider running "oc util update-result {dbpath}" and running "oc gui {dbpath}" again.\n'
                     )
                     return
                 else:
@@ -191,17 +198,19 @@ def fn_gui(args):
                 else:
                     url = f"{host}:{port}/submit/nocache/index.html"
             global protocol
+            if protocol is None:
+                from .exceptions import SetupError
+                raise SetupError()
             url = protocol + url
-        main(url=url, host=host, port=port)
+        main(url=url, host=host, port=port, args=args)
     except Exception as e:
         from traceback import print_exc
-
         logger.exception(e)
         if debug:
             print_exc()
         logger.info("Exiting...")
-        print(
-            "Error occurred while starting OakVar server.\nCheck {} for details."
+        stderr.write(
+            "Error occurred while starting OakVar server.\nCheck {} for details.\n"
             .format(log_path))
     finally:
         for handler in logger.handlers:
@@ -212,7 +221,9 @@ def fn_gui(args):
 def get_server():
     from .sysadmin import get_system_conf
     import platform
-
+    if sysconf is None or logger is None:
+        from .exceptions import SetupError
+        raise SetupError()
     global args
     try:
         server = {}
@@ -249,12 +260,12 @@ def get_server():
         return server
     except Exception as e:
         from traceback import print_exc
-
+        from sys import stderr
         logger.exception(e)
         if debug:
             print_exc()
         logger.info("Exiting...")
-        print("Error occurred while OakVar server.\nCheck {} for details.".
+        stderr.write("Error occurred while OakVar server.\nCheck {} for details.\n".
               format(log_path))
         exit()
 
@@ -297,18 +308,21 @@ class TCPSitePatched(web_runner.BaseSite):
 
     @property
     def name(self):
-        from aiohttp.web_request import URL
+        from yarl import URL
         global ssl_enabled
         scheme = "https" if ssl_enabled else "http"
         return str(URL.build(scheme=scheme, host=self._host, port=self._port))
 
     async def start(self):
         await super().start()
+        if self._runner.server is None:
+            from .exceptions import SetupError
+            raise SetupError()
         self._server = await self.loop.create_server(
             self._runner.server,
             self._host,
             self._port,
-            ssl=self._ssl_context,
+            ssl=self._ssl_context, # type: ignore
             backlog=self._backlog,
             reuse_address=self._reuse_address,
             reuse_port=self._reuse_port,
@@ -318,7 +332,9 @@ class TCPSitePatched(web_runner.BaseSite):
 @web.middleware
 async def middleware(request, handler):
     from json import dumps
-
+    if logger is None:
+        from .exceptions import SetupError
+        raise SetupError()
     global loop
     global args
     try:
@@ -335,12 +351,12 @@ async def middleware(request, handler):
         return response
     except Exception as e:
         from traceback import print_exc
-
+        from sys import stderr
         msg = "Exception with {}".format(request.rel_url)
         logger.info(msg)
         logger.exception(e)
         if debug:
-            print(msg)
+            stderr.write(msg + "\n")
             print_exc()
         return web.HTTPInternalServerError(text=dumps({
             "status": "error",
@@ -357,7 +373,9 @@ class WebServer(object):
                  ssl_context=None,
                  url=None):
         from asyncio import get_event_loop, sleep
-
+        self.app = None
+        self.runner = None
+        self.site = None
         serv = get_server()
         if host is None:
             host = serv["host"]
@@ -377,6 +395,9 @@ class WebServer(object):
             self.loop.create_task(self.open_url(url))
 
     def server_done(self, task):
+        if logger is None:
+            from .exceptions import LoggerError
+            raise LoggerError()
         try:
             task.result()
         except Exception as e:
@@ -417,7 +438,9 @@ class WebServer(object):
         from importlib.util import spec_from_file_location, module_from_spec
         from os.path import join, exists
         from os import listdir
-
+        if logger is None:
+            from .exceptions import LoggerError
+            raise LoggerError()
         global modules_dir
         webapps_dir = join(modules_dir, "webapps")
         if exists(webapps_dir) == False:
@@ -428,8 +451,17 @@ class WebServer(object):
             pypath = join(module_dir, "route.py")
             if exists(pypath):
                 spec = spec_from_file_location("route", pypath)
+                if spec is None:
+                    from .exceptions import ModuleLoadingError
+                    raise ModuleLoadingError(module_name)
                 module = module_from_spec(spec)
+                if spec.loader is None:
+                    from .exceptions import ModuleLoadingError
+                    raise ModuleLoadingError(module_name)
                 spec.loader.exec_module(module)
+                if self.app is None:
+                    from .exceptions import SetupError
+                    raise SetupError()
                 for route in module.routes:
                     method, path, func_name = route
                     path = f"/webapps/{module_name}/" + path
@@ -441,6 +473,9 @@ class WebServer(object):
         from .webstore import webstore as ws
         from .websubmit import websubmit as wu
         from os.path import dirname, realpath, join, exists
+        if self.app is None:
+            from .exceptions import SetupError
+            raise SetupError()
         source_dir = dirname(realpath(__file__))
         routes = list()
         routes.extend(ws.routes)
@@ -512,23 +547,32 @@ async def is_system_ready(request):
     return web.json_response(dict(system_ready()))
 
 
-def main(url=None, host=None, port=None):
+def main(url=None, host=None, port=None, args={}):
     from .webstore import webstore as ws
     import socket
     from asyncio import get_event_loop, sleep
     from requests.exceptions import ConnectionError
     from webbrowser import open as webbrowseropen
-
-    global args
+    from .util import quiet_print
+    global logger
+    if logger is None:
+        from .exceptions import SetupError
+        raise SetupError()
     try:
         global loop
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(1)
 
         def wakeup():
+            if loop is None:
+                from .exceptions import SetupError
+                raise SetupError()
             loop.call_later(0.1, wakeup)
 
         def check_local_update(interval):
+            if loop is None:
+                from .exceptions import SetupError
+                raise SetupError()
             try:
                 ws.handle_modules_changed()
             except:
@@ -548,11 +592,10 @@ def main(url=None, host=None, port=None):
             sr = s.connect_ex((host, port))
             s.close()
             if sr == 0:
-                logger.info(
-                    "wcravat already running. Exiting from this instance of wcravat..."
-                )
-                print("OakVar is already running at {}{}:{}.".format(
-                    protocol, host, port))
+                msg = "OakVar is already running at {}{}:{}.".format(
+                    protocol, host, port)
+                logger.info(msg)
+                quiet_print(msg, args)
                 global SERVER_ALREADY_RUNNING
                 if url and not headless:
                     webbrowseropen(url)
@@ -583,6 +626,9 @@ def main(url=None, host=None, port=None):
             """
             Clean sessions periodically.
             """
+            if logger is None:
+                from .exceptions import SetupError
+                raise SetupError()
             from .sysadmin import get_system_conf
             import cravat_multiuser
             try:
@@ -595,7 +641,6 @@ def main(url=None, host=None, port=None):
                     await sleep(interval)
             except Exception as e:
                 from traceback import print_exc
-
                 logger.exception(e)
                 if debug:
                     print_exc()
@@ -615,14 +660,15 @@ def main(url=None, host=None, port=None):
             server = WebServer(loop=loop, url=url, host=host, port=port)
         loop.run_forever()
     except Exception as e:
+        from sys import stderr
         logger.exception(e)
         if debug:
             from traceback import print_exc
 
             print_exc()
         logger.info("Exiting...")
-        print(
-            "Error occurred while starting OakVar server.\nCheck {} for details."
+        stderr.write(
+            "Error occurred while starting OakVar server.\nCheck {} for details.\n"
             .format(log_path))
         exit()
 
@@ -678,6 +724,7 @@ def get_parser_fn_gui():
         action="store_true",
         help="Disables guest mode",
     )
+    parser_fn_gui.add_argument("--quiet", default=True, help="Run quietly")
     parser_fn_gui.set_defaults(func=fn_gui)
     return parser_fn_gui
 
