@@ -51,8 +51,8 @@ class ConfigLoader:
             if os.path.exists(self.job_conf_path):
                 self._job = load_yml_conf(self.job_conf_path)
             else:
-                print("Job conf file", self.job_conf_path, "does not exist.")
-                exit()
+                from .exceptions import AbsentJobConf
+                raise AbsentJobConf(self.job_conf_path)
         if build_all:
             self._build_all()
 

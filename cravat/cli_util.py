@@ -1,3 +1,4 @@
+"""
 def converttohg38(args):
     from subprocess import check_output
     import sqlite3
@@ -5,7 +6,6 @@ def converttohg38(args):
     from pyliftover import LiftOver
     from os.path import exists
     from os import remove
-
     if args.sourcegenome not in ["hg18", "hg19"]:
         print("Source genome should be either hg18 or hg19.")
         exit()
@@ -123,7 +123,7 @@ def converttohg38(args):
                 print("  " + str(count) + "...")
         print("  " + table + ": done.", count, "rows converted")
     newdb.commit()
-
+"""
 
 def fn_util_updateresult(args):
     import sqlite3
@@ -284,48 +284,47 @@ def get_sqliteinfo(args):
     dbpaths = args["paths"]
     width_colname = 30
     width_coltitle = 40
-    ret = None
+    ret_list = []
+    ret_dict = {}
     for dbpath in dbpaths:
         if fmt == "text":
-            ret = []
             s = f"# SQLite file:\n{dbpath}"
-            ret.append(s)
+            ret_list.append(s)
         elif fmt in ["json", "yaml"]:
-            ret = {}
-            ret["dbpath"] = dbpath
+            ret_dict["dbpath"] = dbpath
         conn = sqlite3.connect(dbpath)
         c = conn.cursor()
         c.execute('select colval from info where colkey="_input_paths"')
         input_paths = loads(c.fetchone()[0].replace("'", '"'))
         if fmt == "text":
             s = f"\n# Input files:"
-            ret.append(s)
+            ret_list.append(s)
             for p in input_paths.values():
                 s = f"{p}"
-                ret.append(s)
+                ret_list.append(s)
         elif fmt in ["json", "yaml"]:
-            ret["inputs"] = list(input_paths.values())
+            ret_dict["inputs"] = list(input_paths.values())
         if fmt == "text":
             s = f"\n# Output columns"
-            ret.append(s)
+            ret_list.append(s)
             s = f'{"# Name".ljust(width_colname)} {"Title".ljust(width_coltitle)} Type'
-            ret.append(s)
+            ret_list.append(s)
         else:
-            ret["output_columns"] = {}
+            ret_dict["output_columns"] = {}
         c.execute("select col_name, col_def from variant_header")
         rs = c.fetchall()
         if fmt in ["json", "yaml"]:
-            ret["output_columns"] = {}
-            ret["output_columns"]["variant"] = []
-            ret["output_columns"]["gene"] = []
+            ret_dict["output_columns"] = {}
+            ret_dict["output_columns"]["variant"] = []
+            ret_dict["output_columns"]["gene"] = []
         for r in rs:
             col_name, col_def = r
             col_def = loads(col_def)
             if fmt == "text":
                 s = f"{col_name.ljust(width_colname)} {col_def['title'].ljust(width_coltitle)} {col_def['type']}"
-                ret.append(s)
+                ret_list.append(s)
             elif fmt in ["json", "yaml"]:
-                ret["output_columns"]["variant"].append({
+                ret_dict["output_columns"]["variant"].append({
                     "name":
                     col_name,
                     "title":
@@ -340,9 +339,9 @@ def get_sqliteinfo(args):
             col_def = loads(col_def)
             if fmt == "text":
                 s = f"{col_name.ljust(width_colname)} {col_def['title'].ljust(width_coltitle)} {col_def['type']}"
-                ret.append(s)
+                ret_list.append(s)
             elif fmt in ["json", "yaml"]:
-                ret["output_columns"]["gene"].append({
+                ret_dict["output_columns"]["gene"].append({
                     "name": col_name,
                     "title": col_def["title"],
                     "type": col_def["type"],
@@ -351,16 +350,18 @@ def get_sqliteinfo(args):
         conn.close()
         if to == "stdout":
             if fmt == "text":
-                print("\n".join(ret))
+                print("\n".join(ret_list))
             elif fmt == "json":
-                print(ret)
+                print(ret_dict)
             elif fmt == "yaml":
-                print(dump(ret, default_flow_style=False))
+                print(dump(ret_dict, default_flow_style=False))
         else:
-            if fmt in ["text", "json"]:
-                return ret
+            if fmt == "text":
+                return ret_list
+            elif fmt == "json":
+                return ret_dict
             elif fmt == "yaml":
-                return dump(ret, default_flow_style=False)
+                return dump(ret_dict, default_flow_style=False)
 
 
 def fn_util_sqliteinfo(args):
@@ -534,7 +535,6 @@ async def filtersqlite_async(args):
     from os import remove
     from os.path import exists
     from .cravat_filter import CravatFilter
-
     dbpaths = args["paths"]
     for dbpath in dbpaths:
         if not dbpath.endswith(".sqlite"):
@@ -556,6 +556,9 @@ async def filtersqlite_async(args):
                 excludesample=args["excludesample"],
             )
             await cf.exec_db(cf.loadfilter)
+            if hasattr(cf, "filter") == False or cf.filter is None or type(cf.filter) is not dict:
+                from .exceptions import FilterLoadingError
+                raise FilterLoadingError()
             for table_name in [
                     "info",
                     "smartfilters",
@@ -647,8 +650,7 @@ def status_from_db(dbpath):
     """
     import sqlite3
     from pathlib import Path
-    from datetime import fromtimestamp
-
+    from datetime import date
     if not isinstance(dbpath, Path):
         dbpath = Path(dbpath)
     d = {}
@@ -710,7 +712,7 @@ def status_from_db(dbpath):
         d["reports"] = []
         d["run_name"] = str(dbpath.stem)
         d["status"] = "Finished"
-        d["submission_time"] = fromtimestamp(
+        d["submission_time"] = date.fromtimestamp(
             dbpath.stat().st_ctime).isoformat()
         d["viewable"] = True
     except:
@@ -726,15 +728,15 @@ def get_parser_fn_util():
     parser_fn_util = ArgumentParser()
     _subparsers = parser_fn_util.add_subparsers(title="Commands")
     # test
-    from .cli_test import get_parser_fn_util_test
-    parser_fn_util_test = _subparsers.add_parser(
+    from .cli_test import get_parser_cli_util_test
+    parser_cli_util_test = _subparsers.add_parser(
         "test",
-        parents=[get_parser_fn_util_test()],
+        parents=[get_parser_cli_util_test()],
         add_help=False,
         description="Test modules",
         help="Test installed modules")
-    parser_fn_util_test.r_return = "A boolean. TRUE if successful, FALSE if not"
-    parser_fn_util_test.r_examples = [
+    parser_cli_util_test.r_return = "A named list. Module names as names, TRUE or FALSE as elements" # type: ignore
+    parser_cli_util_test.r_examples = [ # type: ignore
         "# Test the ClinVar module",
         "ov.util.test(modules=\"clinvar\")",
         "# Test the ClinVar and the COSMIC modules",
@@ -816,8 +818,8 @@ def get_parser_fn_util():
         default="default",
     )
     parser_fn_util_addjob.set_defaults(func=fn_util_addjob)
-    parser_fn_util_addjob.r_return = "A boolean. TRUE if successful, FALSE if not"
-    parser_fn_util_addjob.r_examples = [
+    parser_fn_util_addjob.r_return = "A boolean. TRUE if successful, FALSE if not" # type: ignore
+    parser_fn_util_addjob.r_examples = [ # type: ignore
         "# Add a result file to the job list of a user",
         "ov.util.addjob(path=\"example.sqlite\", user=\"user1\")"
     ]
@@ -833,8 +835,8 @@ def get_parser_fn_util():
                                             required=True,
                                             help="Output SQLite file path")
     parser_fn_util_mergesqlite.set_defaults(func=fn_util_mergesqlite)
-    parser_fn_util_mergesqlite.r_return = "A boolean. TRUE if successful, FALSE if not"
-    parser_fn_util_mergesqlite.r_examples = [
+    parser_fn_util_mergesqlite.r_return = "A boolean. TRUE if successful, FALSE if not" # type: ignore
+    parser_fn_util_mergesqlite.r_examples = [ # type: ignore
         "# Merge two OakVar analysis result files into one SQLite file",
         "ov.util.mergesqlite(path=list(\"example1.sqlite\", \"example2.sqlite\"), outpath=\"merged.sqlite\")"
     ]
@@ -850,8 +852,8 @@ def get_parser_fn_util():
     parser_fn_util_showsqliteinfo.add_argument(
         "--to", default="return", help="Output to. stdout / return")
     parser_fn_util_showsqliteinfo.set_defaults(func=fn_util_sqliteinfo)
-    parser_fn_util_showsqliteinfo.r_return = "A named list. Information of a job SQLite file"
-    parser_fn_util_showsqliteinfo.r_examples = [
+    parser_fn_util_showsqliteinfo.r_return = "A named list. Information of a job SQLite file" # type: ignore
+    parser_fn_util_showsqliteinfo.r_examples = [ # type: ignore
         "# Get the named list of the information of an analysis result file",
         "ov.util.sqliteinfo(paths=\"example.sqlite\")"
     ]
@@ -896,8 +898,8 @@ def get_parser_fn_util():
         help="Sample IDs to exclude",
     )
     parser_fn_util_filtersqlite.set_defaults(func=fn_util_filtersqlite)
-    parser_fn_util_filtersqlite.r_return = "A boolean. TRUE if successful, FALSE if not"
-    parser_fn_util_filtersqlite.r_examples = [
+    parser_fn_util_filtersqlite.r_return = "A boolean. TRUE if successful, FALSE if not" # type: ignore
+    parser_fn_util_filtersqlite.r_examples = [ # type: ignore
         "# Filter an analysis result file with an SQL filter set",
         'ov.util.filtersqlite(paths="example.sqlite", filtersql=\'base__so=="MIS" and gnomad__af>0.01\')'
         "# Filter two analysis result files with a filter definition file",

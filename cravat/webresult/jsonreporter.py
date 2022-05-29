@@ -10,11 +10,13 @@ class Reporter (CravatReport):
         self.no_log = True
         self.no_status_update = True
         self.levels_to_write = None
+        self.data = {}
+        self.keep_json_all_mapping = True
+        self.data = {}
+        self.table = None
         super().__init__(cmd_args, status_writer)
 
     def setup (self):
-        self.data = {}
-        self.keep_json_all_mapping = True
         self.conf = ConfigLoader()
         
     def write_preface (self, level):
@@ -24,7 +26,8 @@ class Reporter (CravatReport):
     
     def write_table_row (self, row):
         row = self.substitute_val(self.level, row)
-        self.table.append(list(row))
+        if self.table is not None:
+            self.table.append(list(row))
     
     def end (self):
         info = {}

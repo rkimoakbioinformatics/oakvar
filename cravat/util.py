@@ -261,11 +261,6 @@ def translate_codon(bases, fallback=None):
         return codon_table[bases]
 
 
-def valid_so(so):
-    from .constants import so_severity
-    return so in so_severity
-
-
 def get_caller_name(path):
     from os.path import abspath, basename
 
@@ -285,7 +280,6 @@ def load_class(path, class_name=None):
     import sys
     import inspect
     from logging import getLogger
-
     path_dir = dirname(path)
     sys.path = [path_dir] + sys.path
     module = None
@@ -296,13 +290,13 @@ def load_class(path, class_name=None):
     except:
         try:
             spec = spec_from_file_location(class_name, path)
-            module = module_from_spec(spec)
-            spec.loader.exec_module(module)
+            if spec is not None:
+                module = module_from_spec(spec)
+                loader = spec.loader
+                if loader is not None:
+                    loader.exec_module(module)
         except:
             raise
-            logger = logging.getLogger("oakvar")
-            logger.exception(f"{module_name} could not be loaded.")
-            print(f"{module_name} is not found")
     if module is not None:
         if class_name is not None:
             module_class = getattr(module, class_name)
@@ -499,18 +493,21 @@ def humanize_bytes(num, binary=False):
     return "{quotient} {unit}".format(quotient=quot_str, unit=unit)
 
 
-def write_log_msg(logger, e):
+def write_log_msg(logger, e, quiet=True):
     if hasattr(e, "msg"):
         if type(e.msg) == list:
             for l in e.msg:
                 logger.info(l)
-                print(l)
+                if not quiet:
+                    print(l)
         else:
             logger.info(e)
-            print(e)
+            if not quiet:
+                print(e)
     else:
         logger.info(e)
-        print(e)
+        if not quiet:
+            print(e)
 
 
 def get_simplenamespace(d):
@@ -530,6 +527,7 @@ def get_dict_from_namespace(n):
     return n
 
 def quiet_print(msg, args=None):
+    args = get_dict_from_namespace(args)
     quiet = True
     if args is not None:
         quiet = args.get("quiet", True)

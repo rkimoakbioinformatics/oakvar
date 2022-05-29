@@ -1,7 +1,7 @@
 custom_system_conf = None
 
 
-def setup_system(args, quiet=False):
+def setup_system(args):
     from os.path import exists, join
     from shutil import copyfile
     from .sysadmin_const import root_dir_key
@@ -177,19 +177,19 @@ def get_system_conf(sys_conf_path=None,
 def show_system_conf(args):
     from oyaml import dump
     from os.path import exists
-    args.setdefault("fmt", "json")
-    args.setdefault("to", "return")
+    from .util import quiet_print
+    #args.setdefault("fmt", "json")
+    #args.setdefault("to", "return")
     sys_conf_path = get_system_conf_path()
     if not exists(sys_conf_path):
         return None
     conf = get_system_conf()
-    confyaml = None
     if args.get("fmt") == "yaml":
-        confyaml = dump(conf, default_flow_style=False)
+        conf = dump(conf, default_flow_style=False)
     if args.get("to") == "stdout":
-        print(confyaml)
+        quiet_print(conf, args=args)
     else:
-        return confyaml
+        return conf
 
 
 def update_system_conf_file(d):
@@ -245,10 +245,11 @@ def set_modules_dir(path, overwrite=False):
 def create_dir_if_absent(d, quiet=True):
     from os.path import exists
     from os import makedirs
+    from .util import quiet_print
     if d is not None:
         if not exists(d):
             makedirs(d)
-            if not quiet: print(f"Created {d}")
+            quiet_print(f"Created {d}", args={"quiet": quiet})
 
 
 def is_root_user():
@@ -380,6 +381,7 @@ def copy_system_conf_template_if_absent(sys_conf_path=None,
     from .sysadmin_const import system_conf_template_fname
     from .sysadmin import get_system_conf_path
     from .admin_util import get_packagedir
+    from .util import quiet_print
     if sys_conf_path is None:
         sys_conf_path = get_system_conf_path()
     if not exists(sys_conf_path):
@@ -389,7 +391,7 @@ def copy_system_conf_template_if_absent(sys_conf_path=None,
         sys_conf_template_path = join(get_packagedir(),
                                       system_conf_template_fname)
         copy(sys_conf_template_path, sys_conf_path)
-        if not quiet: print(f"Created {sys_conf_path}")
+        quiet_print(f"Created {sys_conf_path}", args={"quiet": quiet})
 
 
 def save_system_conf(conf):

@@ -10,26 +10,34 @@ import sys
 import traceback
 import shutil
 from aiohttp import web
-import hashlib
 from distutils.version import LooseVersion
 import glob
 import platform
 import signal
-import multiprocessing as mp
 import asyncio
-import importlib
-from multiprocessing import Process, Pipe, Value, Manager, Queue
+from multiprocessing import Process, Manager, Queue
 from queue import Empty
-from .. import constants
-import signal
-import gzip
-import logging
 
 cfl = ConfigLoader()
 report_generation_ps = {}
 valid_report_types = None
 servermode = False
 server_ready = False
+VIEW_PROCESS = None
+live_modules = {}
+include_live_modules = None
+exclude_live_modules = None
+live_mapper = None
+job_statuses = {}
+count_single_api_access = 0
+time_of_log_single_api_access = time.time()
+interval_log_single_api_access = 60
+job_worker = None
+job_queue = None
+run_jobs_info = {}
+logger = None
+cravat_multiuser = None
+
 
 class FileRouter(object):
 
@@ -45,6 +53,8 @@ class FileRouter(object):
         self.log_extension = '.log'
         self.status_extension = '.status.json'
         self.job_statuses = {}
+        self.server_ready = False
+        self.servermode = False
 
     async def get_jobs_dirs (self, request, given_username=None):
         from ..sysadmin import get_jobs_dir
@@ -137,13 +147,17 @@ class FileRouter(object):
         return run_path
 
     async def job_db(self, request, job_id):
+        output_fname = None
         run_path = await self.job_run_path(request, job_id)
-        output_fname = run_path + self.db_extension
+        if run_path is not None:
+            output_fname = run_path + self.db_extension
         return output_fname
 
     async def job_status_path (self, request, job_id):
+        output_fname = None
         run_path = await self.job_run_path(request, job_id)
-        output_fname = run_path + self.status_extension
+        if run_path is not None:
+            output_fname = run_path + self.status_extension
         return output_fname
 
     async def job_report (self, request, job_id, report_type):
@@ -206,6 +220,12 @@ class FileRouter(object):
             log_path = None
         return log_path
 
+def get_filerouter():
+    global filerouter
+    if filerouter is None:
+        filerouter = FileRouter()
+    return filerouter
+
 class WebJob(object):
     def __init__(self, job_dir, job_status_fpath):
         self.info = {}
@@ -251,7 +271,6 @@ def get_next_job_id():
     return datetime.datetime.now().strftime(r'%y%m%d-%H%M%S')
 
 async def resubmit (request):
-    global filerouter
     global servermode
     if servermode and server_ready:
         import cravat_multiuser
@@ -310,15 +329,17 @@ async def resubmit (request):
         job_ids.append(job_id)
         run_jobs_info['job_ids'] = job_ids
     qitem = {'cmd': 'submit', 'job_id': job_id, 'run_args': run_args}
-    job_queue.put(qitem)
-    status_json['status'] = 'Submitted'
-    with open(status_json_path, 'w') as wf:
-        json.dump(status_json, wf, indent=2, sort_keys=True)
+    if job_queue is not None:
+        job_queue.put(qitem)
+        status_json['status'] = 'Submitted'
+    if status_json_path is not None:
+        with open(status_json_path, 'w') as wf:
+            json.dump(status_json, wf, indent=2, sort_keys=True)
     return web.json_response({'status': 'resubmitted'})
 
 async def submit (request):
-    global filerouter
     global servermode
+    filerouter = get_filerouter()
     from ..sysadmin import get_system_conf
     sysconf = get_system_conf()
     size_cutoff = sysconf['gui_input_size_limit']
@@ -328,8 +349,11 @@ async def submit (request):
                 'status': 'fail', 
                 'msg': 'Content-Length header required'
         }))
-    if request.content_length > size_cutoff * 1024 * 1024:
+    size_cutoff_mb = size_cutoff * 1024 * 1024
+    if request.content_length > size_cutoff_mb:
         return web.HTTPRequestEntityTooLarge(
+            max_size=size_cutoff,
+            actual_size=request.content_length,
             text=json.dumps({
                 'status': 'fail', 
                 'msg': f'Input is too big. Limit is {size_cutoff}MB.'
@@ -448,35 +472,36 @@ async def submit (request):
     job_ids.append(job_id)
     run_jobs_info['job_ids'] = job_ids
     qitem = {'cmd': 'submit', 'job_id': job_id, 'run_args': run_args}
-    job_queue.put(qitem)
-    status = {'status': 'Submitted'}
-    job.set_info_values(status=status)
-    if servermode and server_ready:
-        import cravat_multiuser
-        await cravat_multiuser.add_job_info(request, job)
-    # makes temporary status.json
-    status_json = {}
-    status_json['job_dir'] = job_dir
-    status_json['id'] = job_id
-    status_json['run_name'] = run_name
-    status_json['assembly'] = assembly
-    status_json['db_path'] = ''
-    status_json['orig_input_fname'] = input_fnames
-    status_json['orig_input_path'] = input_fpaths
-    status_json['submission_time'] = datetime.datetime.now().isoformat()
-    status_json['viewable'] = False
-    status_json['note'] = note
-    status_json['status'] = 'Submitted'
-    status_json['reports'] = []
-    pkg_ver = au.get_current_package_version()
-    status_json['open_cravat_version'] = pkg_ver
-    status_json['annotators'] = annotators
-    if cc_cohorts_path is not None:
-        status_json['cc_cohorts_path'] = cc_cohorts_path
-    else:
-        status_json['cc_cohorts_path'] = ''
-    with open(os.path.join(job_dir, run_name + '.status.json'), 'w') as wf:
-        json.dump(status_json, wf, indent=2, sort_keys=True)
+    if job_queue is not None:
+        job_queue.put(qitem)
+        status = {'status': 'Submitted'}
+        job.set_info_values(status=status)
+        if servermode and server_ready:
+            import cravat_multiuser
+            await cravat_multiuser.add_job_info(request, job)
+        # makes temporary status.json
+        status_json = {}
+        status_json['job_dir'] = job_dir
+        status_json['id'] = job_id
+        status_json['run_name'] = run_name
+        status_json['assembly'] = assembly
+        status_json['db_path'] = ''
+        status_json['orig_input_fname'] = input_fnames
+        status_json['orig_input_path'] = input_fpaths
+        status_json['submission_time'] = datetime.datetime.now().isoformat()
+        status_json['viewable'] = False
+        status_json['note'] = note
+        status_json['status'] = 'Submitted'
+        status_json['reports'] = []
+        pkg_ver = au.get_current_package_version()
+        status_json['open_cravat_version'] = pkg_ver
+        status_json['annotators'] = annotators
+        if cc_cohorts_path is not None:
+            status_json['cc_cohorts_path'] = cc_cohorts_path
+        else:
+            status_json['cc_cohorts_path'] = ''
+        with open(os.path.join(job_dir, run_name + '.status.json'), 'w') as wf:
+            json.dump(status_json, wf, indent=2, sort_keys=True)
     return web.json_response(job.get_info_dict())
 
 def count_lines(f):
@@ -516,7 +541,7 @@ def find_files_by_ending (d, ending):
 
 async def get_job (request, job_id):
     from ..admin_util import get_max_version_supported_for_migration
-    global filerouter
+    filerouter = get_filerouter()
     job_dir = await filerouter.job_dir(request, job_id)
     if os.path.exists(job_dir) == False:
         job = WebJob(job_dir, None)
@@ -604,7 +629,7 @@ async def get_job (request, job_id):
     return job
 
 async def get_jobs (request):
-    global filerouter
+    filerouter = get_filerouter()
     jobs_dirs = await filerouter.get_jobs_dirs(request)
     jobs_dir = jobs_dirs[0]
     if jobs_dir is None:
@@ -631,7 +656,7 @@ async def get_all_jobs (request):
         r = await cravat_multiuser.is_loggedin(request)
         if r == False:
             return web.json_response({'status': 'notloggedin'})
-    global filerouter
+    filerouter = get_filerouter()
     jobs_dirs = await filerouter.get_jobs_dirs(request)
     if jobs_dirs is None:
         return web.json_response([])
@@ -652,36 +677,45 @@ async def get_all_jobs (request):
 
 async def view_job(request):
     global VIEW_PROCESS
-    global filerouter
+    filerouter = get_filerouter()
     job_id = request.match_info['job_id']
     db_path = await filerouter.job_db(request, job_id)
-    if os.path.exists(db_path):
-        if type(VIEW_PROCESS) == subprocess.Popen:
-            VIEW_PROCESS.kill()
-        VIEW_PROCESS = subprocess.Popen(['ov gui', db_path])
+    if db_path is not None:
+        if os.path.exists(db_path):
+            if VIEW_PROCESS is not None and type(VIEW_PROCESS) == subprocess.Popen:
+                VIEW_PROCESS.kill()
+            VIEW_PROCESS = subprocess.Popen(['ov gui', db_path])
+            return web.Response()
+        else:
+            return web.Response(status=404)
+    else:
         return web.Response()
+
+async def get_job_status (request):
+    filerouter = get_filerouter()
+    job_id = request.match_info['job_id']
+    status_path = await filerouter.job_status_path(request, job_id)
+    if status_path is not None:
+        f = open(status_path)
+        status = yaml.safe_load(f)
+        f.close()
+        return web.json_response(status)
     else:
         return web.Response(status=404)
 
-async def get_job_status (request):
-    global filerouter
-    job_id = request.match_info['job_id']
-    status_path = await filerouter.job_status_path(request, job_id)
-    f = open(status_path)
-    status = yaml.safe_load(f)
-    f.close()
-    return web.json_response(status)
-
 async def download_db(request):
-    global filerouter
+    filerouter = get_filerouter()
     job_id = request.match_info['job_id']
     db_path = await filerouter.job_db(request, job_id)
     db_fname = job_id+'.sqlite'
     headers = {'Content-Disposition': 'attachment; filename='+db_fname}
-    return web.FileResponse(db_path, headers=headers)
+    if db_path is not None:
+        return web.FileResponse(db_path, headers=headers)
+    else:
+        return web.Response(status=404)
 
 async def get_job_log (request):
-    global filerouter
+    filerouter = get_filerouter()
     job_id = request.match_info['job_id']
     log_path = await filerouter.job_log(request, job_id)
     if log_path is not None:
@@ -704,10 +738,12 @@ async def get_report_types(request):
     return web.json_response({'valid': valid_types})
 
 async def generate_report(request):
-    global filerouter
+    filerouter = get_filerouter()
     job_id = request.match_info['job_id']
     report_type = request.match_info['report_type']
     job_db_path = await filerouter.job_db(request, job_id)
+    if job_db_path is None:
+        return web.Response(status=404)
     run_args = ['oc', 'report', job_db_path]
     run_args.extend(['-t', report_type])
     if job_id not in report_generation_ps:
@@ -726,16 +762,19 @@ async def generate_report(request):
         del report_generation_ps[job_id]
     response = 'done'
     if len(err) > 0:
-        logger = logging.getLogger()
+        from logging import getLogger
+        logger = getLogger()
         logger.error(err.decode('utf-8'))
         response = 'fail'
     return web.json_response(response)
 
 async def download_report(request):
-    global filerouter
+    filerouter = get_filerouter()
     job_id = request.match_info['job_id']
     report_type = request.match_info['report_type']
     report_filenames = await filerouter.job_report(request, job_id, report_type) 
+    if report_filenames is None:
+        return web.Response(status=404)
     job_dir = await filerouter.job_dir(request, job_id)
     # For now, handles only one file-download.
     report_paths = [os.path.join(job_dir, v) for v in report_filenames]
@@ -790,11 +829,12 @@ async def update_system_conf (request):
             'cmd': 'set_max_num_concurrent_jobs', 
             'max_num_concurrent_jobs': sysconf['max_num_concurrent_jobs']
         }
-        job_queue.put(qitem)
+        if job_queue is None:
+            return web.Response(status=500)
+        else:
+            job_queue.put(qitem)
     except:
         raise
-        sysconf = {}
-        success = False
     return web.json_response({'success': success, 'sysconf': sysconf})
 
 def reset_system_conf (request):
@@ -870,10 +910,13 @@ def get_last_assembly (request):
 async def delete_job (request):
     global job_queue
     job_id = request.match_info['job_id']
-    global filerouter
+    filerouter = get_filerouter()
     job_dir = await filerouter.job_dir(request, job_id)
     qitem = {'cmd': 'delete', 'job_id': job_id, 'job_dir': job_dir}
-    job_queue.put(qitem)
+    if job_queue is None:
+        return web.Response(status=500)
+    else:
+        job_queue.put(qitem)
     while True:
         if os.path.exists(job_dir) == False:
             break
@@ -891,9 +934,7 @@ if 'max_num_concurrent_jobs' not in system_conf:
     write_system_conf_file(system_conf)
 else:
     max_num_concurrent_jobs = system_conf['max_num_concurrent_jobs']
-job_worker = None
-job_queue = None
-run_jobs_info = None
+
 def start_worker ():
     global job_worker
     global job_queue
@@ -926,32 +967,33 @@ def fetch_job_queue (job_queue, run_jobs_info):
 
         async def cancel_job(self, uid):
             p = self.running_jobs.get(uid)
-            p.poll()
-            pl = platform.platform().lower()
-            if p:
-                if pl.startswith('windows'):
-                    # proc.kill() doesn't work well on windows
-                    subprocess.Popen("TASKKILL /F /PID {pid} /T".format(pid=p.pid),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-                    while True:
-                        await asyncio.sleep(0.25)
-                        if p.poll() is not None:
-                            break
-                elif pl.startswith('darwin') or pl.startswith('macos'):
-                    lines = subprocess.check_output('ps -ef | grep {} | grep "ov"'.format(uid), shell=True)
-                    lines = lines.decode('utf-8')
-                    lines = lines.split('\n')
-                    pids = [int(l.strip().split(' ')[0]) for l in lines if l != '']
-                    for pid in pids:
-                        if pid == p.pid:
-                            p.kill()
-                        else:
-                            try:
-                                os.kill(pid, signal.SIGTERM)
-                            except ProcessLookupError:
-                                continue
-                else:
-                    p.kill()
-            self.clean_jobs(id)
+            if p is not None:
+                p.poll()
+                pl = platform.platform().lower()
+                if p:
+                    if pl.startswith('windows'):
+                        # proc.kill() doesn't work well on windows
+                        subprocess.Popen("TASKKILL /F /PID {pid} /T".format(pid=p.pid),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                        while True:
+                            await asyncio.sleep(0.25)
+                            if p.poll() is not None:
+                                break
+                    elif pl.startswith('darwin') or pl.startswith('macos'):
+                        lines = subprocess.check_output('ps -ef | grep {} | grep "ov"'.format(uid), shell=True)
+                        lines = lines.decode('utf-8')
+                        lines = lines.split('\n')
+                        pids = [int(l.strip().split(' ')[0]) for l in lines if l != '']
+                        for pid in pids:
+                            if pid == p.pid:
+                                p.kill()
+                            else:
+                                try:
+                                    os.kill(pid, signal.SIGTERM)
+                                except ProcessLookupError:
+                                    continue
+                    else:
+                        p.kill()
+                self.clean_jobs(id)
 
         def clean_jobs(self, uid):
             # Clean up completed jobs
@@ -981,10 +1023,12 @@ def fetch_job_queue (job_queue, run_jobs_info):
                         self.running_jobs[job_id] = p
 
         async def delete_job (self, qitem):
-            global filerouter
+            from logging import getLogger
+            logger = getLogger()
             job_id = qitem['job_id']
             if self.get_process(job_id) is not None:
-                print('\nKilling job {}'.format(job_id))
+                msg = '\nKilling job {}'.format(job_id)
+                logger.info(msg)
                 await self.cancel_job(job_id)
             job_dir = qitem['job_dir']
             if os.path.exists(job_dir):
@@ -995,7 +1039,9 @@ def fetch_job_queue (job_queue, run_jobs_info):
             try:
                 self.max_num_concurrent_jobs = int(value)
             except:
-                print('Invalid maximum number of concurrent jobs [{}]'.format(value))
+                from logging import getLogger
+                logger = getLogger()
+                logger.info('Invalid maximum number of concurrent jobs [{}]'.format(value))
 
     async def job_worker_main ():
         while True:
@@ -1013,7 +1059,9 @@ def fetch_job_queue (job_queue, run_jobs_info):
             except Empty:
                 pass
             except Exception as e:
-                print(e)
+                from logging import getLogger
+                logger = getLogger()
+                logger.exception(e)
             finally:
                 await asyncio.sleep(1)
 
@@ -1081,7 +1129,6 @@ async def load_live_modules (module_names=[]):
         if annotator is None:
             continue
         live_modules[module.name] = annotator
-    print('done populating live annotators')
 
 def clean_annot_dict (d):
     keys = d.keys()
@@ -1108,26 +1155,27 @@ async def live_annotate (input_data, annotators):
     global live_modules
     global live_mapper
     response = {}
-    crx_data = live_mapper.map(input_data)
-    crx_data = live_mapper.live_report_substitute(crx_data)
-    crx_data[mapping_parser_name] = AllMappingsParser(crx_data[all_mappings_col_name])
-    for k, v in live_modules.items():
-        if annotators is not None and k not in annotators:
-            continue
-        try:
-            annot_data = v.annotate(input_data=crx_data)
-            annot_data = v.live_report_substitute(annot_data)
-            if annot_data == '' or annot_data == {}:
-                annot_data = None
-            elif type(annot_data) is dict:
-                annot_data = clean_annot_dict(annot_data)
-            response[k] = annot_data
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            response[k] = None
-    del crx_data[mapping_parser_name]
-    response['crx'] = crx_data
+    if live_mapper is not None:
+        crx_data = live_mapper.map(input_data)
+        crx_data = live_mapper.live_report_substitute(crx_data)
+        crx_data[mapping_parser_name] = AllMappingsParser(crx_data[all_mappings_col_name])
+        for k, v in live_modules.items():
+            if annotators is not None and k not in annotators:
+                continue
+            try:
+                annot_data = v.annotate(input_data=crx_data)
+                annot_data = v.live_report_substitute(annot_data)
+                if annot_data == '' or annot_data == {}:
+                    annot_data = None
+                elif type(annot_data) is dict:
+                    annot_data = clean_annot_dict(annot_data)
+                response[k] = annot_data
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                response[k] = None
+        del crx_data[mapping_parser_name]
+        response['crx'] = crx_data
     return response
 
 async def get_live_annotation_post (request):
@@ -1177,7 +1225,7 @@ async def get_live_annotation (queries):
 
 async def get_available_report_types (request):
     job_id = request.match_info['job_id']
-    global filerouter
+    filerouter = get_filerouter()
     job_dir = await filerouter.job_dir(request, job_id)
     existing_reports = []
     for report_type in get_valid_report_types():
@@ -1209,7 +1257,7 @@ async def update_result_db (request):
     from ..util import is_compatible_version
     queries = request.rel_url.query
     job_id = queries['job_id']
-    global filerouter
+    filerouter = get_filerouter()
     job_dir = await filerouter.job_dir(request, job_id)
     fns = find_files_by_ending(job_dir, '.sqlite')
     db_path = os.path.join(job_dir, fns[0])
@@ -1233,7 +1281,7 @@ async def update_result_db (request):
 
 async def import_job (request):
     from ..cli_util import status_from_db
-    global filerouter
+    filerouter = get_filerouter()
     jobs_dirs = await filerouter.get_jobs_dirs(request)
     jobs_dir = jobs_dirs[0]
     job_id = get_next_job_id()
@@ -1251,16 +1299,6 @@ async def import_job (request):
     return web.Response()
 
 filerouter = FileRouter()
-VIEW_PROCESS = None
-live_modules = {}
-include_live_modules = None
-exclude_live_modules = None
-live_mapper = None
-job_statuses = {}
-count_single_api_access = 0
-time_of_log_single_api_access = time.time()
-interval_log_single_api_access = 60
-
 routes = []
 routes.append(['POST','/submit/submit',submit])
 routes.append(['GET','/submit/annotators',get_annotators])

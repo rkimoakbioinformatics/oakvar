@@ -1,21 +1,30 @@
+def cli_new_exampleinput(args):
+    from .util import get_dict_from_namespace
+    args = get_dict_from_namespace(args)
+    fn_new_exampleinput(args)
+
 def fn_new_exampleinput(args):
     from .admin_util import fn_new_exampleinput
+    return fn_new_exampleinput(args["directory"])
+
+def cli_new_annotator(args):
     from .util import get_dict_from_namespace
-
     args = get_dict_from_namespace(args)
-    fn_new_exampleinput(args["directory"])
-
+    args["quiet"] = False
+    return fn_new_annotator(args)
 
 def fn_new_annotator(args):
     from .admin_util import new_annotator, get_local_module_info
-    from .util import get_dict_from_namespace
     from .sysadmin_const import custom_modules_dir
+    from .util import quiet_print
 
-    args = get_dict_from_namespace(args)
     new_annotator(args["annotator_name"])
     module_info = get_local_module_info(args["annotator_name"])
-    print(f"created {module_info.directory}")
-    return module_info.directory
+    if module_info is not None:
+        quiet_print(f"created {module_info.directory}", args)
+        return module_info.directory
+    else:
+        return None
 
 
 def get_parser_fn_new():
@@ -25,17 +34,18 @@ def get_parser_fn_new():
     _subparsers = parser_fn_new.add_subparsers(title="Commands")
 
     # test input file
-    parser_fn_new_exampleinput = _subparsers.add_parser(
+    parser_cli_new_exampleinput = _subparsers.add_parser(
         "exampleinput", help="makes a file with example input variants.")
-    parser_fn_new_exampleinput.add_argument(
+    parser_cli_new_exampleinput.add_argument(
         "-d",
         dest="directory",
         default=".",
         help="Directory to make the example input file in",
     )
-    parser_fn_new_exampleinput.set_defaults(func=fn_new_exampleinput)
-    parser_fn_new_exampleinput.r_return = "A string. Location of the example input file"
-    parser_fn_new_exampleinput.r_examples = [
+    parser_cli_new_exampleinput.add_argument("--quiet", default=True, help="Run quietly")
+    parser_cli_new_exampleinput.set_defaults(func=cli_new_exampleinput)
+    parser_cli_new_exampleinput.r_return = "A string. Location of the example input file" # type: ignore
+    parser_cli_new_exampleinput.r_examples = [ # type: ignore
         "# Create an example input file in the current working directory",
         "ov.new.exampleinput()",
         "# Create an example input file at /home/user1/",
@@ -43,19 +53,20 @@ def get_parser_fn_new():
     ]
 
     # new-annotator
-    parser_fn_new_annotator = _subparsers.add_parser(
+    parser_cli_new_annotator = _subparsers.add_parser(
         "annotator", help="creates a new annotator")
-    parser_fn_new_annotator.add_argument("-n",
+    parser_cli_new_annotator.add_argument("-n",
                                          dest="annotator_name",
                                          default="exampleannotator",
                                          help="Annotator name")
-    parser_fn_new_annotator.add_argument(
+    parser_cli_new_annotator.add_argument(
         "--md",
         default=None,
         help="Specify the root directory of OakVar modules")
-    parser_fn_new_annotator.set_defaults(func=fn_new_annotator)
-    parser_fn_new_annotator.r_return = "A string. Location of the new annotator module"
-    parser_fn_new_annotator.r_examples = [
+    parser_cli_new_annotator.add_argument("--quiet", default=True, help="No print to stdout")
+    parser_cli_new_annotator.set_defaults(func=cli_new_annotator)
+    parser_cli_new_annotator.r_return = "A string. Location of the new annotator module" # type: ignore
+    parser_cli_new_annotator.r_examples = [ # type: ignore
         "# Create an annotator template at the OakVar modules directory/annotators/annotatortest",
         "ov.new.annotator(annotator_name=\"annotatortest\")"
     ]

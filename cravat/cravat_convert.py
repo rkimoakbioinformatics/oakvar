@@ -53,7 +53,6 @@ class MasterCravatConverter(object):
     def __init__(self, *inargs, **inkwargs):
         from oakvar.constants import crs_def
 
-        self._parse_cmd_args(inargs, inkwargs)
         self.logger = None
         self.crv_writer = None
         self.crs_writer = None
@@ -63,6 +62,29 @@ class MasterCravatConverter(object):
         self.converters = {}
         self.possible_formats = []
         self.ready_to_convert = False
+        self.input_format = None
+        self.pipeinput = False
+        self.input_paths = None
+        self.input_dir = None
+        self.input_path_dict = None
+        self.input_path_dict2 = None
+        self.output_dir = None
+        self.output_base_fname = None
+        self.input_assembly = None
+        self.do_liftover = False
+        self.lifter = None
+        self.status_fpath = None
+        self.conf = None
+        self.unique_variants = None
+        self.status_writer = None
+        self.error_logger = None
+        self.unique_excs = []
+        self.wpath = None
+        self.err_path = None
+        self.crm_path = None
+        self.crs_path = None
+        self.crl_path = None
+        self.error_lines = 0
         self.chromdict = {
             "chrx": "chrX",
             "chry": "chrY",
@@ -71,13 +93,12 @@ class MasterCravatConverter(object):
             "chr23": "chrX",
             "chr24": "chrY",
         }
+        self._parse_cmd_args(inargs, inkwargs)
         self._setup_logger()
         self.vtracker = VTracker(deduplicate=not (self.unique_variants))
         from oakvar import get_wgs_reader
-
         self.wgsreader = get_wgs_reader(assembly="hg38")
         self.crs_def = crs_def.copy()
-        self.error_lines = 0
 
     def _parse_cmd_args(self, inargs, inkwargs):
         """Parse the arguments in sys.argv"""
@@ -90,7 +111,6 @@ class MasterCravatConverter(object):
         from oakvar.exceptions import ExpectedException
         from pyliftover import LiftOver
         from oakvar.util import get_args
-
         parser = ArgumentParser()
         parser.add_argument("path",
                             help="Path to this converter's python module")
@@ -198,8 +218,6 @@ class MasterCravatConverter(object):
         self.unique_variants = parsed_args["unique_variants"]
         if "status_write" in parsed_args:
             self.status_writer = parsed_args["status_writer"]
-        else:
-            self.status_writer = None
 
     def open_input_file(self, input_path):
         import gzip
@@ -216,7 +234,9 @@ class MasterCravatConverter(object):
         import gzip
         from sys import stdin
         from oakvar.util import detect_encoding
-
+        if self.input_paths is None:
+            from oakvar.exceptions import NoInputException
+            raise NoInputException()
         if self.pipeinput == False:
             input_path = self.input_paths[0]
             encoding = detect_encoding(input_path)
@@ -236,7 +256,6 @@ class MasterCravatConverter(object):
         self._initialize_converters()
         # Select the converter that matches the input format
         self._select_primary_converter()
-
         # Open the output files
         self._open_output_files()
         self.ready_to_convert = True
@@ -245,10 +264,9 @@ class MasterCravatConverter(object):
         """Open a log file and set up log handler"""
         from logging import getLogger
         from time import asctime
-
         self.logger = getLogger("oakvar.converter")
         self.logger.info("started: %s" % asctime())
-        if self.pipeinput == False:
+        if self.pipeinput == False and self.input_paths:
             self.logger.info("Input file(s): %s" % ", ".join(self.input_paths))
         else:
             self.logger.info(f"Input file(s): {STDIN}")
@@ -267,15 +285,21 @@ class MasterCravatConverter(object):
         from importlib.util import spec_from_file_location, module_from_spec
         from oakvar.exceptions import ExpectedException
         from oakvar.admin_util import get_local_module_infos_of_type
-
         for module_info in get_local_module_infos_of_type(
                 "converter").values():
             # path based import from https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
             spec = spec_from_file_location(module_info.name,
                                            module_info.script_path)
+            if spec is None or spec.loader is None:
+                from oakvar.exceptions import ModuleLoadingError
+                raise ModuleLoadingError(module_info.name)
             module = module_from_spec(spec)
             spec.loader.exec_module(module)
             converter = module.CravatConverter()
+            if not hasattr(converter, "format_name"):
+                from .exceptions import InvalidModule
+                raise InvalidModule(module_info.name)
+            converter.module_name = module_info.name
             if converter.format_name not in self.converters:
                 self.converters[converter.format_name] = converter
             else:
@@ -292,13 +316,13 @@ class MasterCravatConverter(object):
         converter which can parse the input file.
         """
         from os.path import basename
-        from oakvar.exceptions import ExpectedException
-
+        from oakvar.exceptions import InvalidInputFormat
+        if self.logger is None:
+            from oakvar.exceptions import LoggerError
+            raise LoggerError()
         if self.input_format is not None:
             if self.input_format not in self.possible_formats:
-                raise ExpectedException(
-                    "Invalid input format. Please select from [%s]" %
-                    ", ".join(self.possible_formats))
+                raise InvalidInputFormat(self.input_format)
         else:
             if self.pipeinput == False:
                 valid_formats = []
@@ -313,34 +337,31 @@ class MasterCravatConverter(object):
                     if check_success:
                         valid_formats.append(converter_name)
                 if len(valid_formats) == 0:
-                    fn = basename(first_file.name)
-                    msg = f'Input format could not be determined for file {fn}. Additional input format converters are available. View available converters in the store or with "oc module ls -a -t converter"'
-                    raise ExpectedException(msg)
+                    raise InvalidInputFormat()
                 elif len(valid_formats) > 1:
-                    raise ExpectedException(
-                        "Input format ambiguous in [%s]. " %
-                        ", ".join(valid_formats) +
-                        "Please specify an input format.")
+                    raise InvalidInputFormat(f"ambiguous {','.join(valid_formats)}")
                 else:
                     self.input_format = valid_formats[0]
             else:
                 if self.input_format is None:
-                    msg = "Input should be specified with --input-format option when input is given through pipe"
-                    print(f"\n{msg}")
-                    raise ExpectedException(msg)
+                    raise InvalidInputFormat()
         self.primary_converter = self.converters[self.input_format]
         self._set_converter_properties(self.primary_converter)
+        if self.input_paths is None:
+            from oakvar.exceptions import NoInputException
+            raise NoInputException()
         if self.pipeinput == False:
             if len(self.input_paths) > 1:
                 for fn in self.input_paths[1:]:
                     f = self.open_input_file(fn)
                     if not self.primary_converter.check_format(f):
-                        raise ExpectedException("Inconsistent file types")
-                    # else:
-                    #    f.seek(0)
+                        raise InvalidInputFormat("inconsistent input formats")
         self.logger.info("input format: %s" % self.input_format)
 
     def _set_converter_properties(self, converter):
+        if self.primary_converter is None or self.conf is None:
+            from oakvar.exceptions import SetupError
+            raise SetupError()
         converter.output_dir = self.output_dir
         converter.run_name = self.output_base_fname
         converter.input_assembly = self.input_assembly
@@ -358,6 +379,9 @@ class MasterCravatConverter(object):
         .map file contains two columns showing which lines in input
         correspond to which lines in output.
         """
+        if self.output_base_fname is None or self.primary_converter is None:
+            from oakvar.exceptions import SetupError
+            raise SetupError()
         from oakvar.constants import (
             crv_def,
             crv_idx,
@@ -368,7 +392,6 @@ class MasterCravatConverter(object):
         )
         from oakvar.inout import CravatWriter
         from os.path import join
-
         # Setup CravatWriter
         self.wpath = join(self.output_dir, self.output_base_fname + ".crv")
         self.crv_writer = CravatWriter(self.wpath)
@@ -420,16 +443,30 @@ class MasterCravatConverter(object):
         from re import compile
         from oakvar.exceptions import BadFormatError, ExpectedException, NoVariantError
         from oakvar.base_converter import BaseConverter
-
+        from oakvar.exceptions import SetupError
         self.setup()
+        if self.wgsreader is None or self.crv_writer is None or self.crl_writer is None or self.crm_writer is None \
+                or self.crs_writer is None or self.input_path_dict2 is None or self.primary_converter is None:
+            raise SetupError()
+        if self.logger is None:
+            from .exceptions import LoggerError
+            raise LoggerError()
+        if not hasattr(self.primary_converter, "format_name"):
+            from .exceptions import InvalidModule
+            if hasattr(self.primary_converter, "module_name"):
+                raise InvalidModule(self.primary_converter.module_name)
+            else:
+                raise InvalidModule("unknown module")
         start_time = time()
         if self.status_writer is not None:
             self.status_writer.queue_status_update(
                 "status",
                 "Started {} ({})".format("Converter",
-                                         self.primary_converter.format_name),
+                                         self.primary_converter.format_name), # type: ignore
             )
         last_status_update_time = time()
+        if self.input_paths is None:
+            raise SetupError()
         multiple_files = len(self.input_paths) > 1
         fileno = 0
         total_lnum = 0
@@ -446,8 +483,10 @@ class MasterCravatConverter(object):
                 fname = f.name
             fileno += 1
             converter = self.primary_converter.__class__()
+            if converter is None:
+                raise SetupError()
             self._set_converter_properties(converter)
-            converter.setup(f)
+            converter.setup(f) # type: ignore
             if self.pipeinput == False:
                 f.seek(0)
             if self.pipeinput:
@@ -455,7 +494,7 @@ class MasterCravatConverter(object):
             else:
                 cur_fname = basename(f.name)
             last_read_lnum = None
-            for read_lnum, l, all_wdicts in converter.convert_file(
+            for read_lnum, l, all_wdicts in converter.convert_file( # type: ignore
                     f, exc_handler=self._log_conversion_error):
                 samp_prefix = cur_fname
                 last_read_lnum = read_lnum
@@ -553,7 +592,7 @@ class MasterCravatConverter(object):
                                     self.crl_writer.write_data(prelift_wdict)
                                     # addl_operation errors shouldnt prevent variant from writing
                                     try:
-                                        converter.addl_operation_for_unique_variant(
+                                        converter.addl_operation_for_unique_variant( # type: ignore
                                             wdict, no_unique_var)
                                     except Exception as e:
                                         self._log_conversion_error(
@@ -616,23 +655,29 @@ class MasterCravatConverter(object):
         return total_lnum, self.primary_converter.format_name
 
     def liftover_one_pos(self, chrom, pos):
+        if self.lifter is None:
+            from .exceptions import SetupError
+            raise SetupError("no lifter")
         res = self.lifter.convert_coordinate(chrom, pos - 1)
-        if len(res) == 0:
+        if res is None or len(res) == 0:
             res_prev = self.lifter.convert_coordinate(chrom, pos - 2)
             res_next = self.lifter.convert_coordinate(chrom, pos)
-            if len(res_prev) == 1 and len(res_next) == 1:
-                pos_prev = res_prev[0][1]
-                pos_next = res_next[0][1]
-                if pos_prev == pos_next - 2:
-                    res = [(res_prev[0][0], pos_prev + 1)]
-                elif pos_prev == pos_next + 2:
-                    res = [(res_prev[0][0], pos_prev - 1)]
+            if res_prev is not None and res_next is not None:
+                if len(res_prev) == 1 and len(res_next) == 1:
+                    pos_prev = res_prev[0][1]
+                    pos_next = res_next[0][1]
+                    if pos_prev == pos_next - 2:
+                        res = [(res_prev[0][0], pos_prev + 1)]
+                    elif pos_prev == pos_next + 2:
+                        res = [(res_prev[0][0], pos_prev - 1)]
         return res
 
     def liftover(self, chrom, pos, ref, alt):
         from oakvar.exceptions import LiftoverFailure
         from oakvar.util import reverse_complement
-
+        if self.lifter is None or self.wgsreader is None: 
+            from .exceptions import SetupError
+            raise SetupError("no lifter")
         reflen = len(ref)
         altlen = len(alt)
         if reflen == 1 and altlen == 1:
@@ -708,14 +753,16 @@ class MasterCravatConverter(object):
         and message. Exceptions are also written to the log file once, with the
         traceback.
         """
+        if self.logger is None or self.error_logger is None:
+            from .exceptions import LoggerError
+            raise LoggerError()
         from traceback import format_exc
-
         if full_line_error:
             self.error_lines += 1
         err_str = format_exc().rstrip()
         if err_str not in self.unique_excs:
             self.unique_excs.append(err_str)
-            if hasattr(e, "notraceback") and e.notraceback:
+            if not hasattr(e, "traceback") or e.traceback == False:
                 pass
             else:
                 self.logger.error(err_str)
@@ -724,11 +771,12 @@ class MasterCravatConverter(object):
 
     def _close_files(self):
         """Close the input and output files."""
-        # for f in self.input_files:
-        #    f.close()
-        self.crv_writer.close()
-        self.crm_writer.close()
-        self.crs_writer.close()
+        if self.crv_writer is not None:
+            self.crv_writer.close()
+        if self.crm_writer is not None:
+            self.crm_writer.close()
+        if self.crs_writer is not None:
+            self.crs_writer.close()
 
     def end(self):
         pass
