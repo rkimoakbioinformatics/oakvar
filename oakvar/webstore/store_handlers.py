@@ -12,8 +12,7 @@ def get_module_readme(request):
     if version == 'latest': version=None
     readme_md = au.get_readme(module_name, version=version)
     if readme_md is None:
-        response = Response()
-        response.status = 404
+        response = Response(status=404)
     else:
         readme_html = markdown.markdown(readme_md)
         response = Response(body=readme_html,
@@ -27,13 +26,14 @@ def get_local_manifest():
     out = {}
     for module_name in module_names:
         local_info = au.get_local_module_info(module_name)
-        out[module_name] = {
-                            'version':local_info.version,
-                            'type':local_info.type,
-                            'title':local_info.title,
-                            'description':local_info.description,
-                            'developer':local_info.developer
-                           }
+        if local_info is not None:
+            out[module_name] = {
+                                'version':local_info.version,
+                                'type':local_info.type,
+                                'title':local_info.title,
+                                'description':local_info.description,
+                                'developer':local_info.developer
+                            }
     return json_response(out)
 
 def install_module(request):
@@ -47,7 +47,6 @@ def install_module(request):
 def uninstall_module(request):
     from aiohttp.web import Response
     module = request.json()
-    print('Uninstall requested for %s' %str(module))
     module_name = module['name']
     au.uninstall_module(module_name)
     return Response()

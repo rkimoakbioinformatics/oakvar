@@ -12,7 +12,6 @@ class BaseMapper(object):
         from time import time
         from oakvar.config_loader import ConfigLoader
         import pkg_resources
-
         self.cmd_parser = None
         self.input_path = None
         self.input_dir = None
@@ -25,9 +24,20 @@ class BaseMapper(object):
         self.crx_writer = None
         self.crg_writer = None
         self.crt_writer = None
+        self.input_fname = None
+        self.slavemode = False
+        self.confs = None
+        self.postfix = None
+        self.primary_transcript_paths = None
+        self.args = None
+        self.logger = None
+        self.error_logger = None
+        self.unique_excs = None
+        self.written_primary_transc = None
         self._define_main_cmd_args()
         self._define_additional_cmd_args()
         self._parse_cmd_args(inargs, inkwargs)
+        if self.args is None: return
         self.live = self.args["live"]
         self.t = time()
         self.status_writer = self.args["status_writer"]
@@ -50,7 +60,6 @@ class BaseMapper(object):
 
     def _define_main_cmd_args(self):
         import argparse
-
         self.cmd_parser = argparse.ArgumentParser()
         self.cmd_parser.add_argument("input_file", help="Input crv file")
         self.cmd_parser.add_argument("-n",
@@ -110,7 +119,6 @@ class BaseMapper(object):
         from os import makedirs
         from json import loads
         from .util import get_args
-
         args = get_args(self.cmd_parser, inargs, inkwargs)
         self.input_path = abspath(args["input_file"])
         self.input_dir, self.input_fname = split(self.input_path)
@@ -146,7 +154,6 @@ class BaseMapper(object):
 
     def _setup_logger(self):
         import logging
-
         self.logger = logging.getLogger("oakvar.mapper")
         self.logger.info("input file: %s" % self.input_path)
         self.error_logger = logging.getLogger("error.mapper")
@@ -162,10 +169,12 @@ class BaseMapper(object):
         from .inout import CravatReader
         from .inout import CravatWriter
         from .constants import crx_def, crx_idx, crg_def, crg_idx, crt_def, crt_idx
-
+        if self.output_base_fname is None or self.postfix is None or self.conf is None or self.output_dir is None:
+            from .exceptions import SetupError
+            raise SetupError()
         # Reader
-        if self.args["seekpos"] is not None and self.args[
-                "chunksize"] is not None:
+        if self.args is not None and self.args[
+                "seekpos"] is not None and self.args["chunksize"] is not None:
             self.reader = CravatReader(
                 self.input_path,
                 seekpos=int(self.args["seekpos"]),
@@ -174,8 +183,6 @@ class BaseMapper(object):
         else:
             self.reader = CravatReader(self.input_path)
         # Various output files
-        output_base_path = os.path.join(self.output_dir,
-                                        self.output_base_fname)
         output_toks = self.output_base_fname.split(".")
         if output_toks[-1] == "crv":
             output_toks = output_toks[:-1]
@@ -225,9 +232,12 @@ class BaseMapper(object):
         crx dict to the crx file and add information in crx dict to gene_info
         """
         from time import time, asctime, localtime
-
         self.base_setup()
         start_time = time()
+        if self.logger is None or self.conf is None or self.reader is None or not hasattr(
+                self, "map"):
+            from .exceptions import SetupError
+            raise SetupError()
         self.logger.info("started: %s" % asctime(localtime(start_time)))
         if self.status_writer is not None:
             self.status_writer.queue_status_update(
@@ -252,7 +262,7 @@ class BaseMapper(object):
                     crx_data = crv_data
                     crx_data["all_mappings"] = "{}"
                 else:
-                    crx_data = self.map(crv_data)
+                    crx_data = self.map(crv_data)  # type: ignore
                 # Skip cases where there was no change. Can result if ref_base not in original input
                 if crx_data["ref_base"] == crx_data["alt_base"]:
                     continue
@@ -260,7 +270,7 @@ class BaseMapper(object):
                 self._log_runtime_error(ln, line, e)
                 continue
             if crx_data is not None:
-                self.crx_writer.write_data(crx_data)
+                self.crx_writer.write_data(crx_data)  # type: ignore
                 self._add_crx_to_gene_info(crx_data)
         self._write_crg()
         stop_time = time()
@@ -273,14 +283,16 @@ class BaseMapper(object):
         self.end()
         return output
 
-    def run_as_slave(self, pos_no):
+    def run_as_slave(self, __pos_no__):
         """
         Read crv file and use map() function to convert to crx dict. Write the
         crx dict to the crx file and add information in crx dict to gene_info
         """
         from time import time, asctime, localtime
-
         self.base_setup()
+        if self.args is None or self.logger is None or self.conf is None or self.reader is None or self.crx_writer is None:
+            from .exceptions import SetupError
+            raise SetupError()
         start_time = time()
         tstamp = asctime(localtime(start_time))
         self.logger.info(f"started: {tstamp} | {self.args['seekpos']}")
@@ -305,7 +317,7 @@ class BaseMapper(object):
                     crx_data = crv_data
                     crx_data["all_mappings"] = "{}"
                 else:
-                    crx_data = self.map(crv_data)
+                    crx_data = self.map(crv_data)  # type: ignore
                 if crx_data is None:
                     continue
             except Exception as e:
@@ -322,19 +334,19 @@ class BaseMapper(object):
         self.end()
 
     def _write_to_crt(self, alt_transcripts):
+        if self.crt_writer is None: return
         for primary, alts in alt_transcripts.items():
             if primary not in self.written_primary_transc:
                 for alt in alts:
                     d = {"primary_transcript": primary, "alt_transcript": alt}
                     self.crt_writer.write_data(d)
-                self.written_primary_transc.add(primary)
+                self.written_primary_transc.add(primary)  # type: ignore
 
     def _add_crx_to_gene_info(self, crx_data):
         """
         Add information in a crx dict to persistent gene_info dict
         """
         from .inout import AllMappingsParser
-
         tmap_json = crx_data["all_mappings"]
         # Return if no tmap
         if tmap_json == "":
@@ -347,34 +359,28 @@ class BaseMapper(object):
         """
         Convert gene_info to crg dict and write to crg file
         """
+        if self.crg_writer is None: return
         from .constants import crg_def
-
         sorted_hugos = list(self.gene_info.keys())
         sorted_hugos.sort()
         for hugo in sorted_hugos:
-            gene = self.gene_info[hugo]
             crg_data = {x["name"]: "" for x in crg_def}
             crg_data["hugo"] = hugo
             self.crg_writer.write_data(crg_data)
 
     def _log_runtime_error(self, ln, line, e):
         import traceback
-
         err_str = traceback.format_exc().rstrip()
-        if err_str not in self.unique_excs:
+        if self.logger is not None and self.unique_excs is not None and err_str not in self.unique_excs:
             self.unique_excs.append(err_str)
             self.logger.error(err_str)
-        self.error_logger.error("\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(
-            ln, line[:-1], str(e)))
-        # if not(isinstance(e, InvalidData)):
-        #     raise e
+        if self.error_logger is not None:
+            self.error_logger.error(
+                "\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(
+                    ln, line[:-1], str(e)))
 
     async def get_gene_summary_data(self, cf):
-        # print('            {}: started getting gene summary data'.format(self.module_name))
-        from time import time
         from .constants import crx_def
-
-        t = time()
         hugos = await cf.exec_db(cf.get_filtered_hugo_list)
         # Below is to fix opening oc 1.8.0 jobs with oc 1.8.1.
         # TODO: Remove it after a while and add 1.8.0 to the db update chain in cmd_util.
@@ -384,30 +390,26 @@ class BaseMapper(object):
         ]
         cols.extend(["tagsampler__numsample"])
         data = {}
-        t = time()
         rows = await cf.exec_db(cf.get_variant_data_for_cols, cols)
         rows_by_hugo = {}
-        t = time()
         for row in rows:
             hugo = row[-1]
             if hugo not in rows_by_hugo:
                 rows_by_hugo[hugo] = []
             rows_by_hugo[hugo].append(row)
-        t = time()
         for hugo in hugos:
             rows = rows_by_hugo[hugo]
             input_data = {}
             for i in range(len(cols)):
                 input_data[cols[i].split("__")[1]] = [row[i] for row in rows]
-            out = self.summarize_by_gene(hugo, input_data)
-            data[hugo] = out
-        # print('            {}: finished getting gene summary data in {:0.3f}s'.format(self.module_name, time() - t))
+            if hasattr(self, "summarize_by_gene"):
+                out = self.summarize_by_gene(hugo, input_data)  # type: ignore
+                data[hugo] = out
         return data
 
     def live_report_substitute(self, d):
         import re
-
-        if "report_substitution" not in self.conf:
+        if self.conf is None or "report_substitution" not in self.conf:
             return
         rs_dic = self.conf["report_substitution"]
         rs_dic_keys = list(rs_dic.keys())

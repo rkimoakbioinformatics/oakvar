@@ -5,9 +5,17 @@ class BasePostAggregator(object):
     def __init__(self, cmd_args, status_writer):
         from oakvar.util import get_caller_name
         from oakvar.config_loader import ConfigLoader
-
         self.status_writer = status_writer
-        # self.module_name = get_caller_name(sys.modules[self.__module__].__file__)
+        self.cmd_arg_parser = None
+        self.run_name = None
+        self.output_dir = None
+        self.level = None
+        self.levelno = None
+        self.confs = None
+        self.db_path = None
+        self.logger = None
+        self.error_logger = None
+        self.unique_excs = None
         self.module_name = get_caller_name(cmd_args[0])
         self.parse_cmd_args(cmd_args)
         self._setup_logger()
@@ -28,6 +36,9 @@ class BasePostAggregator(object):
         return True
 
     def fix_col_names(self):
+        if self.conf is None:
+            from .exceptions import ConfigurationError
+            raise ConfigurationError()
         for col in self.conf["output_columns"]:
             col["name"] = self.module_name + "__" + col["name"]
 
@@ -40,7 +51,6 @@ class BasePostAggregator(object):
 
     def _define_cmd_parser(self):
         import argparse
-
         parser = argparse.ArgumentParser()
         parser.add_argument("-n", dest="run_name", help="name of oakvar run")
         parser.add_argument(
@@ -64,8 +74,10 @@ class BasePostAggregator(object):
         import os
         import json
         from oakvar.constants import LEVELS
-
         self._define_cmd_parser()
+        if self.cmd_arg_parser is None:
+            from .exceptions import ParserError
+            raise ParserError("postaggregator")
         parsed_args = self.cmd_arg_parser.parse_args(cmd_args[1:])
         if parsed_args.run_name:
             self.run_name = parsed_args.run_name
@@ -73,8 +85,14 @@ class BasePostAggregator(object):
             self.output_dir = parsed_args.output_dir
         if parsed_args.level:
             self.level = parsed_args.level
+        if self.level is None or self.output_dir is None:
+            from .exceptions import SetupError
+            raise SetupError()
         self.levelno = LEVELS[self.level]
-        self.dbpath = os.path.join(self.output_dir, self.run_name + ".sqlite")
+        if self.run_name is None:
+            from .exceptions import ParserError
+            raise ParserError("postaggregator run_name")
+        self.db_path = os.path.join(self.output_dir, self.run_name + ".sqlite")
         self.confs = None
         if parsed_args.confs is not None:
             confs = parsed_args.confs.lstrip("'").rstrip("'").replace("'", '"')
@@ -83,7 +101,12 @@ class BasePostAggregator(object):
     def run(self):
         from time import time, asctime, localtime
         import json
-
+        if self.conf is None:
+            from .exceptions import ConfigurationError
+            raise ConfigurationError()
+        if self.logger is None:
+            from .exceptions import LoggerError
+            raise LoggerError()
         if not self.should_run_annotate:
             self.base_cleanup()
             return
@@ -141,7 +164,6 @@ class BasePostAggregator(object):
                     output_dict[colname] = out
                     if delflag:
                         del output_dict[shortcolname]
-                fixed_output = {}
                 self.write_output(input_data, output_dict)
                 cur_time = time()
                 lnum += 1
@@ -155,6 +177,9 @@ class BasePostAggregator(object):
             except Exception as e:
                 self._log_runtime_exception(input_data, e)
         self.fill_categories()
+        if self.dbconn is None:
+            from .exceptions import SetupError
+            raise SetupError(module_name=self.module_name)
         self.dbconn.commit()
         self.base_cleanup()
         end_time = time()
@@ -166,8 +191,13 @@ class BasePostAggregator(object):
                                                 self.module_name))
 
     def fill_categories(self):
+        if self.conf is None:
+            from .exceptions import ConfigurationError
+            raise ConfigurationError()
+        if self.cursor is None:
+            from .exceptions import SetupError
+            raise SetupError()
         from oakvar.inout import ColumnDefinition
-
         for col_d in self.conf["output_columns"]:
             col_def = ColumnDefinition(col_d)
             if col_def.category not in ["single", "multi"]:
@@ -188,8 +218,13 @@ class BasePostAggregator(object):
             self.cursor.execute(q, [col_def.get_json(), col_def.name])
 
     def write_output(self, input_data, output_dict):
+        if self.conf is None:
+            from .exceptions import ConfigurationError
+            raise ConfigurationError()
+        if self.level is None or self.cursor is None or self.cursor_w is None:
+            from .exceptions import SetupError
+            raise SetupError()
         from oakvar.constants import VARIANT, GENE
-
         q = ""
         for col_def in self.conf["output_columns"]:
             col_name = col_def["name"]
@@ -216,8 +251,13 @@ class BasePostAggregator(object):
         self.cursor_w.execute(q)
 
     def _log_runtime_exception(self, input_data, e):
+        if self.unique_excs is None:
+            from .exceptions import SetupError
+            raise SetupError()
+        if self.logger is None or self.error_logger is None:
+            from .exceptions import LoggerError
+            raise LoggerError(module_name=self.module_name)
         import traceback
-
         try:
             err_str = traceback.format_exc().rstrip()
             if err_str not in self.unique_excs:
@@ -237,29 +277,34 @@ class BasePostAggregator(object):
     def _open_db_connection(self):
         import sqlite3
         import os
-
-        self.db_path = os.path.join(self.output_dir, self.run_name + ".sqlite")
+        if self.db_path is None:
+            from .exceptions import SetupError
+            raise SetupError()
         if os.path.exists(self.db_path):
             self.dbconn = sqlite3.connect(self.db_path)
             self.cursor = self.dbconn.cursor()
             self.cursor_w = self.dbconn.cursor()
             self.cursor_w.execute('pragma journal_mode="wal"')
         else:
-            msg = self.db_path + " not found"
+            msg = str(self.db_path) + " not found"
             if self.logger:
                 self.logger.error(msg)
             import sys
-
             sys.exit(msg)
 
     def _close_db_connection(self):
-        self.cursor.close()
-        self.cursor_w.close()
-        self.dbconn.close()
+        if self.cursor is not None:
+            self.cursor.close()
+        if self.cursor_w is not None:
+            self.cursor_w.close()
+        if self.dbconn is not None:
+            self.dbconn.close()
 
     def _alter_tables(self):
+        if self.level is None or self.conf is None or self.dbconn is None or self.cursor is None or self.cursor_w is None:
+            from .exceptions import SetupError
+            raise SetupError()
         from oakvar.inout import ColumnDefinition
-
         # annotator table
         q = 'insert or replace into {:} values ("{:}", "{:}", "{}")'.format(
             self.level + "_annotator",
@@ -279,9 +324,10 @@ class BasePostAggregator(object):
                 self.cursor.execute(
                     f"select {colname} from {self.level} limit 1")
             except:
-                q = ("alter table " + self.level + " add column " + colname +
-                     " " + self.cr_type_to_sql[coltype])
-                self.cursor_w.execute(q)
+                if coltype is not None:
+                    q = ("alter table " + self.level + " add column " +
+                         colname + " " + self.cr_type_to_sql[coltype])
+                    self.cursor_w.execute(q)
             # header table
             # use prepared statement to allow " characters in colcats and coldesc
             q = "insert or replace into {} values (?, ?)".format(
@@ -303,7 +349,6 @@ class BasePostAggregator(object):
 
     def _setup_logger(self):
         import logging
-
         try:
             self.logger = logging.getLogger("oakvar." + self.module_name)
         except Exception as e:
@@ -312,8 +357,10 @@ class BasePostAggregator(object):
         self.unique_excs = []
 
     def _get_input(self):
+        if self.db_path is None or self.level is None:
+            from .exceptions import SetupError
+            raise SetupError()
         import sqlite3
-
         dbconnloop = sqlite3.connect(self.db_path)
         cursorloop = dbconnloop.cursor()
         q = "select * from " + self.level
@@ -327,5 +374,5 @@ class BasePostAggregator(object):
             except Exception as e:
                 self._log_runtime_exception(row, e)
 
-    def annotate(self, input_data):
+    def annotate(self, __input_data__):
         raise NotImplementedError()
