@@ -1,5 +1,4 @@
 from collections.abc import MutableMapping
-from threading import local
 
 
 class InstallProgressHandler(object):
@@ -15,10 +14,10 @@ class InstallProgressHandler(object):
         ver_str = self.module_version if self.module_version is not None else ""
         self.display_name = ":".join([self.module_name, ver_str])
 
-    def stage_start(self, stage):
+    def stage_start(self, __stage__):
         pass
 
-    def stage_progress(self, cur_chunk, total_chunks, cur_size, total_size):
+    def stage_progress(self, __cur_chunk__, __total_chunks__, __cur_size__, __total_size__):
         pass
 
     def set_module_version(self, module_version):
@@ -72,6 +71,7 @@ class LocalInfoCache(MutableMapping):
     """
 
     def __init__(self, *args, **kwargs):
+        self.version = None
         self.store = dict()
         self.update(dict(*args, **kwargs))  # use the free update to set keys
 
@@ -101,9 +101,8 @@ class LocalInfoCache(MutableMapping):
 
 class LocalModuleInfo(object):
 
-    def __init__(self, dir_path, module_type=None, name=None):
+    def __init__(self, dir_path, __module_type__=None, name=None):
         import os
-
         self.directory = dir_path
         if name is None:
             self.name = os.path.basename(self.directory)
@@ -145,7 +144,7 @@ class LocalModuleInfo(object):
         self.version = self.conf.get("version")
         self.description = self.conf.get("description")
         self.hidden = self.conf.get("hidden", False)
-        dev_dict = self.conf.get("developer")
+        dev_dict = self.conf.get("developer", {})
         if not (type(dev_dict) == dict):
             dev_dict = {}
         self.developer = get_developer_dict(**dev_dict)
@@ -230,11 +229,6 @@ class ModuleInfoCache(object):
         self._counts_fetched = False
 
     def get_local(self):
-        from .sysadmin import get_modules_dir
-        #modules_dir = get_modules_dir()
-        #if self._modules_dir != modules_dir:
-        #    self._modules_dir = modules_dir
-        #    self.update_local()
         return self.local
 
     def update_download_counts(self, force=False):
@@ -282,7 +276,6 @@ class ModuleInfoCache(object):
                     self.local[module_name] = module_dir
 
     def update_remote(self, force=False):
-        import sys
         import oyaml as yaml
         from oakvar.store_utils import get_file_to_string
 
@@ -389,7 +382,7 @@ class ReadyState(object):
 
 class RemoteModuleInfo(object):
 
-    def __init__(self, name, **kwargs):
+    def __init__(self, __name__, **kwargs):
         self.data = kwargs
         self.data.setdefault("versions", [])
         self.data.setdefault("latest_version", "")
@@ -420,11 +413,7 @@ class RemoteModuleInfo(object):
         self.hidden = self.data.get("hidden")
         self.tags = self.data.get("tags")
         self.publish_time = self.data.get("publish_time")
-        # if self.datasource == None:
-        #    self.datasource = ""
-        dev_dict = self.data.get("developer")
-        # if not (type(dev_dict) == dict):
-        #    dev_dict = {}
+        dev_dict = self.data.get("developer", {})
         self.developer = get_developer_dict(**dev_dict)
         self.data_sources = {
             x: str(y)
@@ -526,8 +515,6 @@ def get_annotator_script_path(module_name):
 
 def get_cravat_conf():
     from oakvar.config_loader import ConfigLoader
-    from .sysadmin import get_main_conf_path
-    confpath = get_main_conf_path()
     conf = ConfigLoader()
     cravat_conf = conf.get_cravat_conf()
     return cravat_conf
@@ -638,7 +625,6 @@ def get_local_module_info(module_name):
     Returns a LocalModuleInfo object for a module.
     """
     import os
-
     if module_name in get_mic().get_local():
         module_info = get_mic().get_local()[module_name]
     else:
@@ -931,7 +917,7 @@ def get_updatable(modules=[], strategy="consensus"):
                 passing_versions = []
                 for version in versions:
                     version_passes = True
-                    for requester, requirement in reqs.items():
+                    for _, requirement in reqs.items():
                         version_passes = version in requirement
                         if not version_passes:
                             break
@@ -1024,7 +1010,7 @@ def install_module(
     os.makedirs(temp_dir)
 
     # Ctrl-c in this func must be caught to delete temp_dir
-    def raise_kbi(a, b):
+    def raise_kbi(__a__, __b__):
         raise KeyboardInterrupt
 
     original_sigint = signal.signal(signal.SIGINT, raise_kbi)
@@ -1356,7 +1342,7 @@ def new_annotator(annot_name):
     get_mic().update_local()
 
 
-def print_stage_handler(cur_stage, total_stages, cur_size, total_size):
+def print_stage_handler(cur_stage, total_stages, __cur_size__, __total_size__):
     import sys
 
     rem_stages = total_stages - cur_stage
@@ -1441,7 +1427,10 @@ def publish_module(module_name,
             zip_builder.add_item(item_path)
     manifest = zip_builder.get_manifest()
     zip_builder.close()
-    post_url = "/".join([publish_url, module_name, local_info.version])
+    if local_info.version is None:
+        post_url = "/".join([publish_url, module_name])
+    else:
+        post_url = "/".join([publish_url, module_name, local_info.version])
     if overwrite:
         post_url += "?overwrite=1"
     with open(zf_path, "rb") as zf:
@@ -1464,11 +1453,6 @@ def publish_module(module_name,
 
 
 def ready_resolution_console():
-    import os
-    from types import SimpleNamespace
-    from .sysadmin import get_modules_dir
-    from .sysadmin import set_modules_dir
-    from sys import stderr
     return system_ready()
 
 

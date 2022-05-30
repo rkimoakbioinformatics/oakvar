@@ -161,7 +161,7 @@ class ExcelReportReader(ReportReader):
 
     # Read the two report header columns that define the module/column
     # for each data column.  Returned as list of: module|column
-    def readSectionHeader(self, test_level, sheet):
+    def readSectionHeader(self, __test_level__, sheet):
         headers = []
         # To open Workbook
         header1 = sheet.cell(1, 1).value
@@ -211,7 +211,7 @@ class VcfReportReader(ReportReader):
         return ".vcf"
 
     # Based on the level selected, return column headers and row values.
-    def readReport(self, test_level, bDict):
+    def readReport(self, __test_level__, bDict):
         headers = None
         rows_dict = {}
         rows_list = []
@@ -477,7 +477,7 @@ class Tester:
         self.name = None
         self.args = args
         rundir = args.get("rundir")
-        cur_dir = dirname(abspath(__file__))
+        __cur_dir__ = dirname(abspath(__file__))
         self.module_name = None
         if type(module) == str:
             self.module_name = module
@@ -546,7 +546,7 @@ class Tester:
         if self.parms is None:
             from .exceptions import SetupError
             raise SetupError(module_name=self.module_name)
-        python_exc = sys.executable
+        __python_exc__ = sys.executable
         # default is to run 'text' report but it can be overridden in the optional parms file.
         if "Report_Type" in self.parms:
             self.report_type = self.parms["Report_Type"]
@@ -687,7 +687,7 @@ class Tester:
         if key_reader is None:
             raise NoReportReader(self.key_path)
         report_extension = key_reader.reportFileExtension()
-        report_path = self.out_path + report_extension
+        report_path = str(self.out_path) + report_extension
         result_reader = self.create_report_reader(
             self.report_type, report_path)
         if result_reader is None:
@@ -704,27 +704,28 @@ class Tester:
                 self.test_passed = False
                 continue
             result = result_rows[variant]
-            for idx, header in enumerate(key_header):
-                # just check the columns from the module we are testing
-                if ((self.getModule(header) not in module_name)
-                        or "uid" in header or "UID" in header):
-                    continue
-                if header not in result_header:
-                    self._report(
-                        f"{self.module.name}: header {header} did not appear in results"
-                    )
-                    self.test_passed = False
-                    continue
-                result_idx = result_header.index(header)
-                if (result[result_idx] != key_row[idx]) and self.floats_differ(
-                        result[result_idx], key_row[idx]):
-                    headLabel = header
-                    if "|" in header:
-                        headLabel = header[header.index("|") + 1:]
-                    self._report(
-                        f"{self.module.name}: {variant}/{headLabel}/{key_row[idx]}/{result[result_idx]}"
-                    )
-                    self.test_passed = False
+            if key_header is not None:
+                for idx, header in enumerate(key_header):
+                    # just check the columns from the module we are testing
+                    if ((self.getModule(header) not in module_name)
+                            or "uid" in header or "UID" in header):
+                        continue
+                    if header not in result_header:
+                        self._report(
+                            f"{self.module.name}: header {header} did not appear in results"
+                        )
+                        self.test_passed = False
+                        continue
+                    result_idx = result_header.index(header)
+                    if (result[result_idx] != key_row[idx]) and self.floats_differ(
+                            result[result_idx], key_row[idx]):
+                        headLabel = header
+                        if "|" in header:
+                            headLabel = header[header.index("|") + 1:]
+                        self._report(
+                            f"{self.module.name}: {variant}/{headLabel}/{key_row[idx]}/{result[result_idx]}"
+                        )
+                        self.test_passed = False
 
     # headers are <module name>|<header> - this extracts the module name
     def getModule(self, header):
@@ -787,7 +788,7 @@ def fn_util_test(args):
     if not exists(rundir):
         makedirs(rundir)
     # installed module types
-    module_types = get_local_module_types()
+    __module_types__ = get_local_module_types()
     passed = 0
     failed = 0
     modules_failed = []

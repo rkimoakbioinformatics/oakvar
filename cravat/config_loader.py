@@ -2,8 +2,6 @@ class ConfigLoader:
 
     def __init__(self, job_conf_path=None):
         from .sysadmin import get_main_conf_path
-        from .exceptions import SystemMissingException
-
         self.job_conf_path = job_conf_path
         self.main_conf_path = get_main_conf_path()
         self._system = {}
@@ -25,7 +23,6 @@ class ConfigLoader:
 
     def _load_main_conf(self, build_all=True):
         import os
-        import copy
         from .admin_util import load_yml_conf, get_packagedir
         import shutil
         from .sysadmin_const import default_multicore_mapper_mode
@@ -35,7 +32,6 @@ class ConfigLoader:
             shutil.copy(os.path.join(get_packagedir(), "cravat.yml"),
                         self.main_conf_path)
         self._main = load_yml_conf(self.main_conf_path)
-        conf_modified = False
         k = "multicore_mapper_mode"
         if k not in self._main:
             self._main[k] = default_multicore_mapper_mode
@@ -126,7 +122,7 @@ class ConfigLoader:
     def get_all_conf(self):
         return self._all
 
-    def get_module_conf(self, module_name, module_type=None):
+    def get_module_conf(self, module_name, __module_type__=None):
         if module_name not in self._modules:
             self._load_module_conf(module_name)
         if "modules" in self._all and module_name in self._all["modules"]:

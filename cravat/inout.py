@@ -378,12 +378,13 @@ class CrxMapping(object):
 
     def __init__(self):
         from re import compile
+        from typing import Optional
 
-        self.protein = None
+        self.protein: Optional[str] = None
         self.achange = None
-        self.transcript = None
+        self.transcript: Optional[str] = None
         self.tchange = None
-        self.so = None
+        self.so: Optional[str] = None
         self.gene = None
         self.tref = None
         self.tpos_start = None
@@ -391,6 +392,7 @@ class CrxMapping(object):
         self.aref = None
         self.apos_start = None
         self.aalt = None
+        self.mapping = None
         self.tchange_re = compile(
             r"([AaTtCcGgUuNn_-]+)(\d+)([AaTtCcGgUuNn_-]+)")
         self.achange_re = compile(r"([a-zA-Z_\*]+)(\d+)([AaTtCcGgUuNn_\*]+)")
@@ -401,11 +403,12 @@ class CrxMapping(object):
             self.parse_tchange()
 
     def parse_tchange(self):
-        tchange_match = self.tchange_re.match(self.tchange)
-        if tchange_match:
-            self.tref = tchange_match.group(1)
-            self.tpos_start = int(tchange_match.group(2))
-            self.talt = tchange_match.group(3)
+        if self.tchange is not None:
+            tchange_match = self.tchange_re.match(self.tchange)
+            if tchange_match:
+                self.tref = tchange_match.group(1)
+                self.tpos_start = int(tchange_match.group(2))
+                self.talt = tchange_match.group(3)
 
     def load_achange(self, achange):
         self.achange = achange
@@ -413,11 +416,12 @@ class CrxMapping(object):
             self.parse_achange()
 
     def parse_achange(self):
-        achange_match = self.achange_re.match(self.achange)
-        if achange_match:
-            self.aref = achange_match.group(1)
-            self.apos_start = int(achange_match.group(2))
-            self.aalt = achange_match.group(3)
+        if self.achange is not None:
+            achange_match = self.achange_re.match(self.achange)
+            if achange_match:
+                self.aref = achange_match.group(1)
+                self.apos_start = int(achange_match.group(2))
+                self.aalt = achange_match.group(3)
 
 
 class AllMappingsParser(object):
@@ -596,19 +600,20 @@ class ColumnDefinition(object):
         from json import loads
         from csv import reader
 
-        l = list(reader([row], dialect="oakvar"))[0]
-        self._load_dict(dict(zip(self.csv_order[:len(l)], l)))
-        self.index = int(self.index)
-        if isinstance(self.categories, str):
-            self.categories = loads(self.categories)
-        if self.categories is None:
-            self.categories = []
-        if isinstance(self.hidden, str):
-            self.hidden = loads(self.hidden.lower())
-        if isinstance(self.filterable, str):
-            self.filterable = loads(self.filterable.lower())
-        if self.link_format == "":
-            self.link_format = None
+        if self.index is not None:
+            l = list(reader([row], dialect="oakvar"))[0]
+            self._load_dict(dict(zip(self.csv_order[:len(l)], l)))
+            self.index = int(self.index)
+            if isinstance(self.categories, str):
+                self.categories = loads(self.categories)
+            if self.categories is None:
+                self.categories = []
+            if isinstance(self.hidden, str):
+                self.hidden = loads(self.hidden.lower())
+            if isinstance(self.filterable, str):
+                self.filterable = loads(self.filterable.lower())
+            if self.link_format == "":
+                self.link_format = None
 
     def from_json(self, sjson):
         from json import loads

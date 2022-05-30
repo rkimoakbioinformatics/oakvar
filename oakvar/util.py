@@ -279,7 +279,6 @@ def load_class(path, class_name=None):
     from importlib.util import spec_from_file_location, module_from_spec
     import sys
     import inspect
-    from logging import getLogger
     path_dir = dirname(path)
     sys.path = [path_dir] + sys.path
     module = None
@@ -289,16 +288,17 @@ def load_class(path, class_name=None):
         module = __import__(module_name)
     except:
         try:
-            spec = spec_from_file_location(class_name, path)
-            if spec is not None:
-                module = module_from_spec(spec)
-                loader = spec.loader
-                if loader is not None:
-                    loader.exec_module(module)
+            if class_name:
+                spec = spec_from_file_location(class_name, path)
+                if spec is not None:
+                    module = module_from_spec(spec)
+                    loader = spec.loader
+                    if loader is not None:
+                        loader.exec_module(module)
         except:
             raise
     if module is not None:
-        if class_name is not None:
+        if class_name:
             module_class = getattr(module, class_name)
         else:
             for n in dir(module):
@@ -379,13 +379,10 @@ def get_job_version(dbpath, platform_name):
 def is_compatible_version(dbpath):
     from .admin_util import get_max_version_supported_for_migration
     from distutils.version import LooseVersion
-    import sqlite3
     from pkg_resources import get_distribution
 
     max_version_supported_for_migration = get_max_version_supported_for_migration(
     )
-    db = sqlite3.connect(dbpath)
-    c = db.cursor()
     try:
         ov_version = LooseVersion(get_distribution("oakvar").version)
     except:
@@ -410,7 +407,7 @@ def is_compatible_version(dbpath):
             compatible = False
         else:
             compatible = True
-        return compatible, job_version_ov, oc_version
+        return compatible, job_version_ov, ov_version
 
 
 def is_url(s):

@@ -72,6 +72,9 @@ class BasePostAggregator(object):
         self.cmd_arg_parser = parser
 
     def parse_cmd_args(self, cmd_args):
+        if self.level is None or self.output_dir is None:
+            from .exceptions import SetupError
+            raise SetupError()
         import os
         import json
         from oakvar.constants import LEVELS
@@ -162,7 +165,6 @@ class BasePostAggregator(object):
                     output_dict[colname] = out
                     if delflag:
                         del output_dict[shortcolname]
-                fixed_output = {}
                 self.write_output(input_data, output_dict)
                 cur_time = time()
                 lnum += 1
@@ -285,7 +287,7 @@ class BasePostAggregator(object):
             self.cursor_w = self.dbconn.cursor()
             self.cursor_w.execute('pragma journal_mode="wal"')
         else:
-            msg = self.db_path + " not found"
+            msg = str(self.db_path) + " not found"
             if self.logger:
                 self.logger.error(msg)
             import sys
@@ -324,9 +326,10 @@ class BasePostAggregator(object):
                 self.cursor.execute(
                     f"select {colname} from {self.level} limit 1")
             except:
-                q = ("alter table " + self.level + " add column " + colname +
-                     " " + self.cr_type_to_sql[coltype])
-                self.cursor_w.execute(q)
+                if coltype is not None:
+                    q = ("alter table " + self.level + " add column " + colname +
+                         " " + self.cr_type_to_sql[coltype])
+                    self.cursor_w.execute(q)
             # header table
             # use prepared statement to allow " characters in colcats and coldesc
             q = "insert or replace into {} values (?, ?)".format(
@@ -373,5 +376,5 @@ class BasePostAggregator(object):
             except Exception as e:
                 self._log_runtime_exception(row, e)
 
-    def annotate(self, input_data):
+    def annotate(self, __input_data__):
         raise NotImplementedError()

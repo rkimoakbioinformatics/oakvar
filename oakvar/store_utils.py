@@ -81,7 +81,7 @@ class PathBuilder(object):
         return self._build_path(self.base(), "download-counts.yml")
 
 
-def blank_stage_handler(*args, **kwargs):
+def blank_stage_handler(*__args__, **__kwargs__):
     pass
 
 
@@ -162,7 +162,7 @@ def stream_to_file(url,
                    stage_handler=None,
                    stages=50,
                    install_state=None,
-                   **kwargs):
+                   **__kwargs__):
     """
     Stream the content at a url to a file. Optionally pass in a callback
     function which is called when the uploaded size passes each of
@@ -204,7 +204,7 @@ def get_file_to_string(url):
             return r.text
         else:
             raise HTTPError(url, r.status_code, "", None, None)  # type: ignore
-    except Exception as e:
+    except Exception as _:
         return ""
 
 

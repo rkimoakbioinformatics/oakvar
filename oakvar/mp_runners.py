@@ -30,7 +30,7 @@ def annot_from_queue(start_queue, end_queue, queue_populated, status_writer):
             annotator = annotator_class(kwargs)
             annotator.run()
             end_queue.put(module.name)
-        except Exception as e:
+        except Exception as _:
             from .exceptions import ModuleLoadingError
             err = ModuleLoadingError(module.name)
             logger.exception(err)

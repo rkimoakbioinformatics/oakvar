@@ -277,10 +277,6 @@ def get_sqliteinfo(args):
 
     fmt = args["fmt"]
     to = args["to"]
-    if fmt == "text":
-        ret = []
-    elif fmt in ["json", "yaml"]:
-        ret = {}
     dbpaths = args["paths"]
     width_colname = 30
     width_coltitle = 40
@@ -452,7 +448,7 @@ def fn_util_mergesqlite(args):
             hugo = r[g_hugo_colno]
             if hugo in genes:
                 continue
-            q = f'insert into gene values ({",".join(["?" for v in range(len(r))])})'
+            q = f'insert into gene values ({",".join(["?" for _ in range(len(r))])})'
             outc.execute(q, r)
             genes.add(hugo)
         # Variant
@@ -468,7 +464,7 @@ def fn_util_mergesqlite(args):
             r[0] = new_uid
             uid_dic[old_uid] = new_uid
             new_uid += 1
-            q = f'insert into variant values ({",".join(["?" for v in range(len(r))])})'
+            q = f'insert into variant values ({",".join(["?" for _ in range(len(r))])})'
             outc.execute(q, r)
             variants.add(vid)
         # Sample
@@ -479,7 +475,7 @@ def fn_util_mergesqlite(args):
                 new_uid = uid_dic[uid]
                 r = list(r)
                 r[s_uid_colno] = new_uid
-                q = f'insert into sample values ({",".join(["?" for v in range(len(r))])})'
+                q = f'insert into sample values ({",".join(["?" for _ in range(len(r))])})'
                 outc.execute(q, r)
         # File numbers
         c.execute(
@@ -501,7 +497,7 @@ def fn_util_mergesqlite(args):
                 r = list(r)
                 r[m_uid_colno] = new_uid
                 r[m_fileno_colno] = fileno_dic[r[m_fileno_colno]]
-                q = f'insert into mapping values ({",".join(["?" for v in range(len(r))])})'
+                q = f'insert into mapping values ({",".join(["?" for _ in range(len(r))])})'
                 outc.execute(q, r)
     q = 'update info set colval=? where colkey="_input_paths"'
     outc.execute(q, [dumps(input_paths)])

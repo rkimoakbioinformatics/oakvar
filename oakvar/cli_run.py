@@ -1,6 +1,3 @@
-from tkinter import W
-
-
 def cli_run(args):
     from .util import get_dict_from_namespace
     args = get_dict_from_namespace(args)
@@ -9,7 +6,6 @@ def cli_run(args):
 
 def fn_run(args):
     from asyncio import run
-    from inspect import currentframe
     from . import admin_util as au
     # nested asyncio
     import nest_asyncio
@@ -26,7 +22,7 @@ def fn_run(args):
                             dest="system_option",
                             nargs="*",
                             default=None)
-    pre_args, unknown_args = pre_parser.parse_known_args(argv[1:])
+    pre_args, _ = pre_parser.parse_known_args(argv[1:])
     if pre_args.system_option is not None:
         from .admin_util import update_mic
         custom_system_conf = {}
@@ -144,7 +140,7 @@ class Cravat(object):
                 raise ModuleNotExist(module_name)
 
     def write_initial_status_json(self):
-        if self.run_name is None or self.inputs is None or self.args is None:
+        if self.run_name is None or self.inputs is None or self.args is None or self.output_dir is None:
             from .exceptions import SetupError
             raise SetupError()
         import os
@@ -218,7 +214,7 @@ class Cravat(object):
                                     sort_keys=True))
 
     def get_logger(self):
-        if self.args is None or self.run_name is None:
+        if self.args is None or self.run_name is None or self.output_dir is None or self.run_name is None:
             from .exceptions import SetupError
             raise SetupError()
         import os
@@ -273,7 +269,7 @@ class Cravat(object):
                                                     force=force)
 
     def delete_output_files(self):
-        if self.run_name is None:
+        if self.run_name is None or self.output_dir is None:
             from .exceptions import SetupError
             raise SetupError()
         import os
@@ -297,7 +293,7 @@ class Cravat(object):
             if self.package_conf is not None and len(self.package_conf) > 0:
                 self.logger.info(
                     f'package: {self.args.package} {self.package_conf["version"]}')
-            for mname, module in self.annotators.items():
+            for _, module in self.annotators.items():
                 self.logger.info(
                     f"version: {module.name} {module.conf['version']} {os.path.dirname(module.script_path)}"
                 )
@@ -309,7 +305,7 @@ class Cravat(object):
                 self.logger.info(
                     f'version: {module.name} {module.conf["version"]} {os.path.dirname(module.script_path)}'
                 )
-            for mname, module in self.reports.items():
+            for _, module in self.reports.items():
                 self.logger.info(
                     f"version: {module.name} {module.conf['version']} {os.path.dirname(module.script_path)}"
                 )
@@ -364,7 +360,6 @@ class Cravat(object):
                 self.logger.info("input assembly: {}".format(self.input_assembly))
             self.log_versions()
             self.set_and_check_input_files()
-            converter_ran = False
             if (self.endlevel >= self.runlevels["converter"]
                     and self.startlevel <= self.runlevels["converter"]
                     and not "converter" in self.args.skip):
@@ -373,7 +368,6 @@ class Cravat(object):
                 self.run_converter()
                 rtime = time() - stime
                 quiet_print("finished in {0:.3f}s".format(rtime), self.args)
-                converter_ran = True
                 if self.numinput == 0:
                     msg = "No variant found in input"
                     quiet_print(msg, self.args)
@@ -504,7 +498,7 @@ class Cravat(object):
         await db.close()
 
     def write_smartfilters(self):
-        if self.run_name is None or self.args is None:
+        if self.run_name is None or self.args is None or self.output_dir is None:
             from .exceptions import SetupError
             raise SetupError()
         from time import time
@@ -666,7 +660,6 @@ class Cravat(object):
         if self.args is None:
             from .exceptions import SetupError
             raise SetupError()
-        import os
         self.run_conf_path = self.args.conf
 
     def make_self_conf(self):
@@ -682,7 +675,7 @@ class Cravat(object):
             try:
                 confs_conf = json.loads(self.args.confs.replace("'", '"'))
                 self.conf.override_all_conf(confs_conf)
-            except Exception as e:
+            except Exception:
                 quiet_print(
                     "Error in processing cs option. --cs option was not applied.",
                     self.args
@@ -879,14 +872,12 @@ class Cravat(object):
         if self.args is None:
             from .exceptions import SetupError
             raise SetupError()
-        from .sysadmin import get_main_conf_path
         from .sysadmin_const import default_assembly_key
         if self.args.genome is None:
             if default_assembly_key in self.cravat_conf:
                 self.input_assembly = self.cravat_conf[default_assembly_key]
             else:
                 from .exceptions import NoGenomeException
-                #msg = "Genome assembly should be given with -l option or a default genome assembly should be defined in {} as 'default_assembly'.".format(get_main_conf_path())
                 raise NoGenomeException()
         else:
             self.input_assembly = self.args.genome
@@ -907,7 +898,6 @@ class Cravat(object):
             self.endlevel = max(self.runlevels.values())
 
     def make_args_namespace(self, supplied_args):
-        from . import admin_util as au
         self.set_package_conf(supplied_args)
         self.make_self_args_considering_package_conf(supplied_args)
         if self.args is None:
@@ -940,9 +930,9 @@ class Cravat(object):
         if self.args is None:
             from .exceptions import SetupError
             raise SetupError()
-        from .sysadmin_const import custom_modules_dir
+        from . import sysadmin_const
         if self.args.md is not None:
-            custom_modules_dir = self.args.md
+            sysadmin_const.custom_modules_dir = self.args.md
 
     def set_annotators(self):
         if self.args is None:
@@ -1041,7 +1031,7 @@ class Cravat(object):
                 self.reporter_names)
 
     def set_and_check_input_files(self):
-        if self.run_name is None:
+        if self.run_name is None or self.output_dir is None:
             from .exceptions import SetupError
             raise SetupError()
         if self.inputs is None or len(self.inputs) == 0:
@@ -1154,7 +1144,7 @@ class Cravat(object):
                 self._find_secondary_annotators(sannot, ret)
 
     def get_module_output_path(self, module):
-        if self.run_name is None:
+        if self.run_name is None or self.output_dir is None:
             from .exceptions import SetupError
             raise SetupError()
         import os
@@ -1190,7 +1180,6 @@ class Cravat(object):
         from .util import load_class
         from types import SimpleNamespace
         import json
-        from .util import quiet_print
         if self.conf is None or self.modules_conf is None or self.args is None:
             from .exceptions import SetupError
             raise SetupError()
@@ -1270,7 +1259,7 @@ class Cravat(object):
         genemapper.run()
 
     def run_genemapper_mp(self):
-        if self.args is None:
+        if self.args is None or self.output_dir is None:
             from .exceptions import SetupError
             raise SetupError()
         import os
@@ -1301,7 +1290,7 @@ class Cravat(object):
         pos_no = 0
         while pos_no < len_poss:
             jobs = []
-            for i in range(num_workers):
+            for _ in range(num_workers):
                 if pos_no == len_poss:
                     break
                 (seekpos, num_lines) = poss[pos_no]
@@ -1687,7 +1676,7 @@ class Cravat(object):
         return all_reporters_ran_well, response
 
     def run_annotators_mp(self):
-        if self.args is None or self.manager is None or self.run_name is None:
+        if self.args is None or self.manager is None or self.run_name is None or self.output_dir is None:
             from .exceptions import SetupError
             raise SetupError()
         import os
@@ -1766,10 +1755,10 @@ class Cravat(object):
             start_queue, end_queue, queue_populated, self.status_writer
         ]] * num_workers
         with Pool(num_workers, init_worker) as pool:
-            results = pool.starmap_async(
+            _ = pool.starmap_async(
                 annot_from_queue,
                 pool_args,
-                error_callback=lambda e, mp_pool=pool: mp_pool.terminate(),
+                error_callback=lambda _, mp_pool=pool: mp_pool.terminate(),
             )
             pool.close()
             for mname, module in self.run_annotators.items():
@@ -1808,7 +1797,7 @@ class Cravat(object):
             return True
 
     async def get_converter_format_from_crv(self):
-        if self.run_name is None:
+        if self.run_name is None or self.output_dir is None:
             from .exceptions import SetupError
             raise SetupError()
         import os
@@ -1824,7 +1813,7 @@ class Cravat(object):
         return converter_format
 
     async def get_mapper_info_from_crx(self):
-        if self.run_name is None:
+        if self.run_name is None or self.output_dir is None:
             from .exceptions import SetupError
             raise SetupError()
         import os
@@ -1847,7 +1836,7 @@ class Cravat(object):
         return title, version, modulename
 
     async def write_job_info(self):
-        if self.run_name is None or self.input_assembly is None or self.args is None:
+        if self.run_name is None or self.input_assembly is None or self.args is None or self.output_dir is None:
             from .exceptions import SetupError
             raise SetupError()
         if self.inputs is None:
@@ -2007,8 +1996,10 @@ class Cravat(object):
         )
 
     def clean_up_at_end(self):
+        if self.output_dir is None or self.run_name is None:
+            from .exceptions import SetupError
+            raise SetupError()
         import os
-
         fns = os.listdir(self.output_dir)
         for fn in fns:
             fn_path = os.path.join(self.output_dir, fn)
