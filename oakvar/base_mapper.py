@@ -286,16 +286,17 @@ class BaseMapper(object):
         self.end()
         return output
 
-    def run_as_slave(self, __pos_no__):
+    def run_as_slave(self, pos_no):
         """
         Read crv file and use map() function to convert to crx dict. Write the
         crx dict to the crx file and add information in crx dict to gene_info
         """
+        from time import time, asctime, localtime
+        self.base_setup()
+        from sys import stderr
         if self.args is None or self.logger is None or self.conf is None or self.reader is None or self.crx_writer is None:
             from .exceptions import SetupError
             raise SetupError()
-        from time import time, asctime, localtime
-        self.base_setup()
         start_time = time()
         tstamp = asctime(localtime(start_time))
         self.logger.info(f"started: {tstamp} | {self.args['seekpos']}")

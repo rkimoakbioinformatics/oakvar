@@ -51,6 +51,7 @@ def get_conf_dir(conf=None):
 
 def get_modules_dir(conf=None):
     from .sysadmin_const import modules_dir_key
+    d = get_conf_dirvalue(modules_dir_key, conf=conf)
     return get_conf_dirvalue(modules_dir_key, conf=conf)
 
 
@@ -285,7 +286,7 @@ def get_system_conf_path(conf=None):
     if sys_conf_path is not None:
         return sys_conf_path
     # default
-    root_dir = get_default_root_dir(conf=conf)
+    root_dir = get_default_conf_dir(conf=conf)
     if root_dir:
         return join(root_dir, system_conf_fname)
     else:

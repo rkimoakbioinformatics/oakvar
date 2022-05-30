@@ -72,9 +72,6 @@ class BasePostAggregator(object):
         self.cmd_arg_parser = parser
 
     def parse_cmd_args(self, cmd_args):
-        if self.level is None or self.output_dir is None:
-            from .exceptions import SetupError
-            raise SetupError()
         import os
         import json
         from oakvar.constants import LEVELS
@@ -89,6 +86,9 @@ class BasePostAggregator(object):
             self.output_dir = parsed_args.output_dir
         if parsed_args.level:
             self.level = parsed_args.level
+        if self.level is None or self.output_dir is None:
+            from .exceptions import SetupError
+            raise SetupError()
         self.levelno = LEVELS[self.level]
         if self.run_name is None:
             from .exceptions import ParserError
