@@ -1,11 +1,5 @@
 from setuptools import setup
-from setuptools.command.install import install
-import sys
 import os
-import time
-import atexit
-import traceback
-import shutil
 
 from pathlib import Path
 this_directory = Path(__file__).parent
@@ -44,7 +38,7 @@ setup(
     author='Ryangguk Kim',
     author_email='rkim@oakbioinformatics.com',
     license='MIT',
-    classifiers='',
+    classifiers=[''],
     keywords='genomic variant analysis interpretation genome',
     project_urls={
         'Documentation': 'https://oakvar.readthedocs.io',

@@ -385,7 +385,7 @@ class CravatFilter:
             await conn.create_function("regexp", 2, regexp)
             await self.exec_db(self.set_aliases)
 
-    async def set_aliases(self, __conn__=None, cursor=None):
+    async def set_aliases(self, conn=None, cursor=None):
         self.table_aliases = {"variant": "v", "gene": "g"}
         self.column_prefixes = {}
         q = "pragma table_info(variant)"
@@ -434,7 +434,7 @@ class CravatFilter:
         filter=None,
         includesample=None,
         excludesample=None,
-        __conn__=None,
+        conn=None,
         cursor=None,
     ):
         from os.path import exists
@@ -640,7 +640,7 @@ class CravatFilter:
                     print("\t".join([str(v) for v in row]))
         return ret
 
-    async def make_generows(self, __conn__=None, cursor=None):
+    async def make_generows(self, conn=None, cursor=None):
         if cursor is not None:
             q = "select * from gene"
             await cursor.execute(q)
@@ -674,7 +674,7 @@ class CravatFilter:
             self.exec_db(self.getiterator, "gene"))
         return iterator
 
-    async def getiterator(self, level="variant", __conn__=None, cursor=None):
+    async def getiterator(self, level="variant", conn=None, cursor=None):
         if cursor is not None:
             (__sample_needed__, __tag_needed__, include_where,
             exclude_where) = self.getwhere(level)
@@ -688,11 +688,12 @@ class CravatFilter:
 
     async def get_filtered_iterator(self,
                                     level="variant",
-                                    __conn__=None,
+                                    conn=None,
                                     cursor=None):
         bypassfilter = (self.filter == {} and self.filtersql is None
                         and self.includesample is None
                         and self.excludesample is None)
+        if conn is None: pass
         ftable = None
         kcol = None
         sql = None
@@ -775,7 +776,7 @@ class CravatFilter:
         else:
             return False
 
-    async def make_filter_where(self, __conn__=None, __cursor__=None):
+    async def make_filter_where(self, conn=None, cursor=None):
         q = ""
         if len(self.filter) == 0:
             if self.includesample is not None or self.excludesample is not None:
@@ -926,7 +927,7 @@ class CravatFilter:
             await cursor.execute(sql)
             await conn.commit()
 
-    async def listfilter(self, name=None, __conn__=None, cursor=None):
+    async def listfilter(self, name=None, conn=None, cursor=None):
         ret = {}
         if cursor is not None:
             from json import loads
@@ -984,7 +985,7 @@ class CravatFilter:
         if level in self.filter and column in self.filter[level]:
             del self.filter[level][column]
 
-    async def table_exists(self, table, __conn__=None, cursor=None):
+    async def table_exists(self, table, conn=None, cursor=None):
         if cursor is not None:
             sql = ('select name from sqlite_master where type="table" and ' +
                 'name="' + table + '"')
@@ -999,7 +1000,7 @@ class CravatFilter:
 
     async def get_variant_iterator_filtered_uids_cols(self,
                                                       cols,
-                                                      __conn__=None,
+                                                      conn=None,
                                                       cursor=None):
         if cursor is not None:
             if cols[0] == "base__uid":
@@ -1018,7 +1019,7 @@ class CravatFilter:
                     d[cols[i].split("__")[1]] = row[i]
                 yield d
 
-    async def get_filtered_hugo_list(self, __conn__=None, cursor=None):
+    async def get_filtered_hugo_list(self, conn=None, cursor=None):
         if cursor is not None:
             bypassfilter = (self.filter == {} and self.filtersql is None
                             and self.includesample is None
@@ -1032,7 +1033,7 @@ class CravatFilter:
             hugos = [row[0] for row in rows]
             return hugos
 
-    async def get_variant_data_for_cols(self, cols, __conn__=None, cursor=None):
+    async def get_variant_data_for_cols(self, cols, conn=None, cursor=None):
         if cursor is not None:
             bypassfilter = (self.filter == {} and self.filtersql is None
                             and self.includesample is None
@@ -1051,7 +1052,7 @@ class CravatFilter:
     async def get_variant_data_for_hugo(self,
                                         hugo,
                                         cols,
-                                        __conn__=None,
+                                        conn=None,
                                         cursor=None):
         if cursor is not None:
             bypassfilter = (self.filter == {} and self.filtersql is None
@@ -1069,7 +1070,7 @@ class CravatFilter:
             rows = await cursor.fetchall()
             return rows
 
-    async def get_result_levels(self, __conn__=None, cursor=None):
+    async def get_result_levels(self, conn=None, cursor=None):
         table_names = []
         if cursor is not None:
             q = ('select name from sqlite_master where type="table" and ' +
@@ -1081,7 +1082,7 @@ class CravatFilter:
 
     async def get_stored_output_columns(self,
                                         module_name,
-                                        __conn__=None,
+                                        conn=None,
                                         cursor=None):
         output_columns = []
         if cursor is not None:

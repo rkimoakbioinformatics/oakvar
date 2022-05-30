@@ -1,3 +1,6 @@
+from traceback import print_exception
+
+
 def cli_run(args):
     from .util import get_dict_from_namespace
     args = get_dict_from_namespace(args)
@@ -45,8 +48,18 @@ def fn_run(args):
         from . import admin_util
         admin_util.custom_system_conf = {}
     au.ready_resolution_console()
-    module = Cravat(**args)
-    response = run(module.main())
+    module = None
+    response = None
+    try:
+        module = Cravat(**args)
+        response = run(module.main())
+    except Exception as e:
+        from .exceptions import ExpectedException
+        if isinstance(e, ExpectedException):
+            from sys import stderr
+            stderr.write(str(e) + "\n")
+        else:
+            raise e
     return response
 
 
@@ -130,6 +143,7 @@ class Cravat(object):
         self.append_mode = False
         self.pipeinput = False
         self.inkwargs = kwargs
+        self.exception = None
 
     def check_valid_modules(self, module_names):
         from .exceptions import ModuleNotExist
@@ -316,7 +330,6 @@ class Cravat(object):
         from .exceptions import ExpectedException
         from multiprocessing.managers import SyncManager
         from sys import argv
-        no_problem_in_run = True
         exception = None
         report_response = None
         self.aggregator_ran = False
@@ -428,48 +441,46 @@ class Cravat(object):
                     and not "reporter" in self.args.skip
                     and self.aggregator_ran and self.reports):
                 quiet_print("Running reporter...", self.args)
-                no_problem_in_run, report_response = await self.run_reporter()
+                report_response = await self.run_reporter()
             self.update_status("Finished", force=True)
         except Exception as e:
-            no_problem_in_run = False
-            exception = e
-            self.handle_exception(e)
+            self.exception = e
+            #self.handle_exception(e)
         finally:
             end_time = time()
             display_time = asctime(localtime(end_time))
-            logger_exist = hasattr(self, "logger")
-            status_writer_exist = hasattr(self, "status_writer")
+            self.logger = getattr(self, "logger", None)
+            self.status_writer = getattr(self, "status_writer", None)
             runtime = None
             if self.start_time:
                 runtime = end_time - self.start_time
-            if no_problem_in_run:
-                if logger_exist and self.logger:
+            if not self.exception:
+                if self.logger:
                     self.logger.info("finished: {0}".format(display_time))
                     if runtime:
                         self.logger.info("runtime: {0:0.3f}s".format(runtime))
                     quiet_print("Finished normally. Runtime: {0:0.3f}s".format(
                             runtime), self.args)
             else:
-                if self.args and not self.args.quiet:
-                    if isinstance(exception, ExpectedException):
-                        if logger_exist and self.log_path:
-                            from sys import stderr
-                            stderr.write(
-                                "Log file at {}".format(self.log_path) + "\n")
-                            stderr.flush()
-                    if status_writer_exist:
-                        self.update_status("Error", force=True)
-            if logger_exist:
+                #if self.args and not self.args.quiet:
+                    #if isinstance(exception, ExpectedException):
+                        #if self.logger and self.log_path:
+                            #from sys import stderr
+                            #stderr.write(
+                            #    "Log file at {}".format(self.log_path) + "\n")
+                            #stderr.flush()
+                if self.status_writer:
+                    self.update_status("Error", force=True)
+            if self.logger:
                 self.close_logger()
-            if status_writer_exist and self.status_writer and self.args and self.args.do_not_change_status != True:
+            if self.status_writer and self.status_writer and self.args and self.args.do_not_change_status != True:
                 self.status_writer.flush()
-            if no_problem_in_run and self.args and not self.args.temp_files and self.aggregator_ran:
+            if not self.exception and self.args and not self.args.temp_files and self.aggregator_ran:
                 self.clean_up_at_end()
             if self.args and self.args.writeadmindb:
                 await self.write_admin_db(runtime, self.numinput)
-            if exception is not None and not isinstance(
-                    exception, ExpectedException):
-                raise exception
+            if self.exception:
+                raise self.exception
             return report_response
 
     async def write_admin_db(self, runtime, numinput):
@@ -581,10 +592,12 @@ class Cravat(object):
             else:
                 if hasattr(self, "logger") and self.logger:
                     self.logger.exception("An unexpected exception occurred.")
+                """
                 if not self.args.quiet:
                     from sys import stderr
                     stderr.write(exc_str + "\n")
                     stderr.flush()
+                """
         except Exception as e2:
             stderr.write(str(e) + "\n")
             stderr.flush()
@@ -1573,7 +1586,7 @@ class Cravat(object):
                 quiet_print("finished in {0:.3f}s".format(rtime), self.args)
 
     async def run_reporter(self):
-        if self.run_name is None or self.conf is None or self.args is None:
+        if self.run_name is None or self.conf is None or self.args is None or self.output_dir is None:
             from .exceptions import SetupError
             raise SetupError()
         if self.inputs is None:
@@ -1581,99 +1594,83 @@ class Cravat(object):
             raise NoInputException()
         from time import time
         import os
-        import re
         import traceback
         from .util import load_class, write_log_msg
         from . import admin_util as au
         from .util import quiet_print
         if len(self.reports) > 0:
-            module_names = [v for v in list(self.reports.keys())]
+            module_names = [v for v in self.reports.keys()]
+            report_types = [v.replace("reporter", "") for v in self.reports.keys()]
         else:
             if "reporter" in self.cravat_conf:
                 module_names = [self.cravat_conf["reporter"]]
+                report_types = [v.replace("reporter", "") for v in module_names]
             else:
                 module_names = []
-        all_reporters_ran_well = True
+                report_types = []
         response = {}
-        for module_name in module_names:
+        for report_type, module_name in zip(report_types, module_names):
             reporter = None
-            try:
-                module = au.get_local_module_info(module_name)
-                self.announce_module(module)
-                if module is None:
-                    quiet_print("        {} does not exist.".format(module_name), self.args)
-                    continue
-                arg_dict = {
-                    "script_path":
-                    module.script_path,
-                    "dbpath":
-                    os.path.join(self.output_dir, self.run_name + ".sqlite"),
-                    "savepath":
-                    os.path.join(self.output_dir, self.run_name),
-                    "output_dir":
-                    self.output_dir,
-                    "module_name":
-                    module_name,
-                }
-                if self.run_conf_path is not None:
-                    arg_dict["confpath"] = self.run_conf_path
-                if module_name in self.conf._all:
-                    arg_dict["conf"] = self.conf._all[module_name]
-                elif "run" in self.conf._all and module_name in self.conf._all[
-                        "run"]:
-                    arg_dict["conf"] = self.conf._all["run"][module_name]
-                if self.pipeinput == False:
-                    arg_dict["inputfiles"] = []
-                    for input_file in self.inputs:
-                        arg_dict["inputfiles"].append(f"{input_file}")
-                if self.args.separatesample:
-                    arg_dict["separatesample"] = True
-                if self.verbose:
-                    print(" ".join([
-                        str(k) + "=" + str(v) for k, v in arg_dict.items()
-                    ]), self.args)
-                arg_dict["status_writer"] = self.status_writer
-                arg_dict["reporttypes"] = [module_name.replace("reporter", "")]
-                arg_dict["concise_report"] = self.args.concise_report
-                arg_dict["package"] = self.args.package
-                arg_dict["filtersql"] = self.args.filtersql
-                arg_dict["includesample"] = self.args.includesample
-                arg_dict["excludesample"] = self.args.excludesample
-                arg_dict["filter"] = self.args.filter
-                arg_dict["filterpath"] = self.args.filterpath
-                Reporter = load_class(module.script_path, "Reporter")
-                reporter = Reporter(arg_dict)
-                await reporter.prep()
-                stime = time()
-                response_t = await reporter.run()
-                output_fns = None
-                response_type = type(response_t)
-                if response_type == list:
-                    output_fns = " ".join(response_t)
-                elif response_type == str:
-                    output_fns = response_t
-                if output_fns is not None:
-                    quiet_print(f"report created: {output_fns} ", self.args)
-                response[re.sub("reporter$", "", module_name)] = response_t
-                rtime = time() - stime
-                quiet_print("finished in {0:.3f}s".format(rtime), self.args)
-            except Exception as e:
-                if getattr(e, "handled", False):
-                    pass
-                else:
-                    if getattr(e, "traceback", False):
-                        import traceback
-                        traceback.print_exc()
-                        if self.logger:
-                            self.logger.exception(e)
-                    else:
-                        print(e)
-                        if hasattr(self, "logger"):
-                            write_log_msg(self.logger, e, quiet=self.args.get("quiet"))
-                    if reporter is not None and hasattr(reporter, "close_db"):
-                        await reporter.close_db()
-                all_reporters_ran_well = False
-        return all_reporters_ran_well, response
+            module = au.get_local_module_info(module_name)
+            self.announce_module(module)
+            if module is None:
+                quiet_print("        {} does not exist.".format(module_name), self.args)
+                continue
+            arg_dict = {
+                "script_path":
+                module.script_path,
+                "dbpath":
+                os.path.join(self.output_dir, self.run_name + ".sqlite"),
+                "savepath":
+                os.path.join(self.output_dir, self.run_name),
+                "output_dir":
+                self.output_dir,
+                "module_name":
+                module_name,
+            }
+            if self.run_conf_path is not None:
+                arg_dict["confpath"] = self.run_conf_path
+            if module_name in self.conf._all:
+                arg_dict["conf"] = self.conf._all[module_name]
+            elif "run" in self.conf._all and module_name in self.conf._all[
+                    "run"]:
+                arg_dict["conf"] = self.conf._all["run"][module_name]
+            if self.pipeinput == False:
+                arg_dict["inputfiles"] = []
+                for input_file in self.inputs:
+                    arg_dict["inputfiles"].append(f"{input_file}")
+            if self.args.separatesample:
+                arg_dict["separatesample"] = True
+            if self.verbose:
+                print(" ".join([
+                    str(k) + "=" + str(v) for k, v in arg_dict.items()
+                ]), self.args)
+            arg_dict["status_writer"] = self.status_writer
+            arg_dict["reporttypes"] = [module_name.replace("reporter", "")]
+            arg_dict["concise_report"] = self.args.concise_report
+            arg_dict["package"] = self.args.package
+            arg_dict["filtersql"] = self.args.filtersql
+            arg_dict["includesample"] = self.args.includesample
+            arg_dict["excludesample"] = self.args.excludesample
+            arg_dict["filter"] = self.args.filter
+            arg_dict["filterpath"] = self.args.filterpath
+            Reporter = load_class(module.script_path, "Reporter")
+            reporter = Reporter(arg_dict)
+            await reporter.prep()
+            stime = time()
+            response_t = await reporter.run()
+            output_fns = None
+            response_type = type(response_t)
+            if response_type == list:
+                output_fns = " ".join(response_t)
+            elif response_type == str:
+                output_fns = response_t
+            if output_fns is not None:
+                quiet_print(f"report created: {output_fns} ", self.args)
+            response[report_type] = response_t
+            rtime = time() - stime
+            quiet_print("finished in {0:.3f}s".format(rtime), self.args)
+        return response
 
     def run_annotators_mp(self):
         if self.args is None or self.manager is None or self.run_name is None or self.output_dir is None:

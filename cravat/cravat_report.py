@@ -527,10 +527,10 @@ class CravatReport:
                 run_time = end_time - start_time
                 self.logger.info("runtime: {0:0.3f}".format(run_time))
             ret = self.end()
-        except Exception as _:
-            import traceback
-            traceback.print_exc()
+        except Exception as e:
+            #from .exceptions import ExpectedException
             await self.close_db()
+            """
             if self.module_conf is not None and self.status_writer is not None:
                 if self.args["do_not_change_status"] == False:
                     self.status_writer.queue_status_update(
@@ -544,7 +544,9 @@ class CravatReport:
                     asctime(localtime(end_time))))
                 run_time = end_time - start_time
                 self.logger.info("runtime: {0:0.3f}".format(run_time))
-            raise
+            setattr(e, "handled", True)
+            """
+            raise e
         return ret
 
     async def get_variant_colinfo(self):
@@ -607,7 +609,8 @@ class CravatReport:
             else:
                 self.colnames_to_display[level].append(col_name)
 
-    async def make_col_info(self, level: str, __conn__=None, cursor=None):
+    async def make_col_info(self, level: str, conn=None, cursor=None):
+        if conn is None: pass
         if self.conf is None or cursor is None:
             from .exceptions import SetupError
             raise SetupError()
@@ -949,7 +952,8 @@ class CravatReport:
             excludesample=self.args["excludesample"],
         )
 
-    async def table_exists(self, tablename, __conn__=None, cursor=None):
+    async def table_exists(self, tablename, conn=None, cursor=None):
+        if conn is None: pass
         if cursor is None:
             from .exceptions import SetupError
             raise SetupError()
@@ -991,7 +995,7 @@ def fn_ov_report(args):
         with sqlite3.connect(dbpath) as db:
             db.execute("select * from info")
     except:
-        exit(f"{dbpath} is not an OC database")
+        exit(f"{dbpath} is not an OakVar database")
     compatible_version, _, _ = is_compatible_version(dbpath)
     if not compatible_version:
         raise IncompatibleResult()
@@ -1040,8 +1044,12 @@ def fn_ov_report(args):
     del args["module_option"]
     loop = get_event_loop()
     response = {}
-    for report_type in report_types:
-        module_info = au.get_local_module_info(report_type + "reporter")
+    if len(report_types) > 0:
+        module_names = [v + "reporter" for v in report_types]
+    else:
+        module_names = []
+    for report_type, module_name in zip(report_types, module_names):
+        module_info = au.get_local_module_info(module_name)
         if module_info is None:
             raise ModuleNotExist(report_type + "reporter")
         quiet_print(f"Generating {report_type} report... ", args)
@@ -1067,7 +1075,7 @@ def fn_ov_report(args):
             if output_fns is not None and type(output_fns) == str:
                 quiet_print(f"report created: {output_fns}", args)
         except Exception as e:
-            if hasattr(reporter, "cf"):
+            if getattr(reporter, "cf") and reporter.cf:
                 loop.run_until_complete(reporter.cf.close_db())
             if getattr(e, "handled", False):
                 if getattr(e, "traceback", False):

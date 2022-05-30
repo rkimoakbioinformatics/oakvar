@@ -137,7 +137,7 @@ def main():
             p_entry.parse_args(argv[1:] + ["--help"])
     except ExpectedException as e:
         from sys import stderr
-        stderr.write(str(e) + "\n")
+        stderr.write(e.msg + "\n")
         stderr.flush()
         if hasattr(e, "traceback") and e.traceback:
             from traceback import print_exc

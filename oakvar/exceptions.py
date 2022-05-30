@@ -2,11 +2,10 @@ class ExpectedException(Exception):
     halt = False
     traceback = False
     handled = False
-    def __init__(self, msg=None):
-        if msg is not None:
-            super().__init__(f"error: {msg}")
-        else:
-            super().__init__()
+    msg = ""
+    def __init__(self, msg=""):
+        self.msg = msg
+        super().__init__(f"error: {msg}")
 
 
 class NormalExit(ExpectedException):

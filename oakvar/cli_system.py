@@ -13,12 +13,12 @@ def cli_system_md(args):
     from .util import get_dict_from_namespace
     args = get_dict_from_namespace(args)
     args["quiet"] = False
+    args["to"] = "stdout"
     return fn_system_md(args)
 
 def fn_system_md(args):
     from .sysadmin import set_modules_dir, get_modules_dir
     from .util import quiet_print
-    #args.setdefault("to", "return")
     d = args.get("directory")
     if d:
         set_modules_dir(d)
