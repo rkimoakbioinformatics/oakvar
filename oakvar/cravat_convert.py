@@ -336,7 +336,8 @@ class MasterCravatConverter(object):
                 if len(valid_formats) == 0:
                     raise InvalidInputFormat()
                 elif len(valid_formats) > 1:
-                    raise InvalidInputFormat(f"ambiguous {','.join(valid_formats)}")
+                    raise InvalidInputFormat(
+                        f"ambiguous {','.join(valid_formats)}")
                 else:
                     self.input_format = valid_formats[0]
             else:
@@ -458,8 +459,9 @@ class MasterCravatConverter(object):
         if self.status_writer is not None:
             self.status_writer.queue_status_update(
                 "status",
-                "Started {} ({})".format("Converter",
-                                         self.primary_converter.format_name), # type: ignore
+                "Started {} ({})".format(
+                    "Converter",
+                    self.primary_converter.format_name),  # type: ignore
             )
         last_status_update_time = time()
         if self.input_paths is None:
@@ -483,7 +485,7 @@ class MasterCravatConverter(object):
             if converter is None:
                 raise SetupError()
             self._set_converter_properties(converter)
-            converter.setup(f) # type: ignore
+            converter.setup(f)  # type: ignore
             if self.pipeinput == False:
                 f.seek(0)
             if self.pipeinput:
@@ -491,7 +493,7 @@ class MasterCravatConverter(object):
             else:
                 cur_fname = basename(f.name)
             last_read_lnum = None
-            for read_lnum, l, all_wdicts in converter.convert_file( # type: ignore
+            for read_lnum, l, all_wdicts in converter.convert_file(  # type: ignore
                     f, exc_handler=self._log_conversion_error):
                 samp_prefix = cur_fname
                 last_read_lnum = read_lnum
@@ -589,7 +591,7 @@ class MasterCravatConverter(object):
                                     self.crl_writer.write_data(prelift_wdict)
                                     # addl_operation errors shouldnt prevent variant from writing
                                     try:
-                                        converter.addl_operation_for_unique_variant( # type: ignore
+                                        converter.addl_operation_for_unique_variant(  # type: ignore
                                             wdict, no_unique_var)
                                     except Exception as e:
                                         self._log_conversion_error(
@@ -672,7 +674,7 @@ class MasterCravatConverter(object):
     def liftover(self, chrom, pos, ref, alt):
         from oakvar.exceptions import LiftoverFailure
         from oakvar.util import reverse_complement
-        if self.lifter is None or self.wgsreader is None: 
+        if self.lifter is None or self.wgsreader is None:
             from .exceptions import SetupError
             raise SetupError("no lifter")
         reflen = len(ref)

@@ -4,6 +4,7 @@ def cli_store_publish(args):
     args["quiet"] = False
     return fn_store_publish(args)
 
+
 def fn_store_publish(args):
     from .sysadmin import get_system_conf
     from .admin_util import publish_module
@@ -22,14 +23,12 @@ def fn_store_publish(args):
             args["password"] = sys_conf["publish_password"]
         else:
             args["password"] = getpass()
-    return publish_module(
-        args["module"],
-        args["user"],
-        args["password"],
-        overwrite=args["overwrite"],
-        include_data=args["data"],
-        quiet=args.get("quiet")
-    )
+    return publish_module(args["module"],
+                          args["user"],
+                          args["password"],
+                          overwrite=args["overwrite"],
+                          include_data=args["data"],
+                          quiet=args.get("quiet"))
 
 
 def cli_store_createaccount(args):
@@ -37,6 +36,7 @@ def cli_store_createaccount(args):
     args = get_dict_from_namespace(args)
     args["quiet"] = False
     return fn_store_createaccount(args)
+
 
 def fn_store_createaccount(args):
     from .admin_util import create_account
@@ -51,6 +51,7 @@ def cli_store_changepassword(args):
     args = get_dict_from_namespace(args)
     args["quiet"] = False
     return fn_store_changepassword(args)
+
 
 def fn_store_changepassword(args):
     from .admin_util import change_password
@@ -68,6 +69,7 @@ def cli_store_resetpassword(args):
     args["quiet"] = False
     return fn_store_resetpassword(args)
 
+
 def fn_store_resetpassword(args):
     from .admin_util import send_reset_email
     ret = send_reset_email(args["username"], args=args)
@@ -80,6 +82,7 @@ def cli_store_verifyemail(args):
     args["quiet"] = False
     return fn_store_verifyemail(args)
 
+
 def fn_store_verifyemail(args):
     from .admin_util import send_verify_email
     ret = send_verify_email(args["username"], args=args)
@@ -91,6 +94,7 @@ def cli_store_checklogin(args):
     args = get_dict_from_namespace(args)
     args["quiet"] = False
     return fn_store_verifyemail(args)
+
 
 def fn_store_checklogin(args):
     from .admin_util import check_login
@@ -148,10 +152,12 @@ def get_parser_fn_store():
         "--md",
         default=None,
         help="Specify the root directory of OakVar modules")
-    parser_cli_store_publish.add_argument("--quiet", default=True, help="Run quietly")
+    parser_cli_store_publish.add_argument("--quiet",
+                                          default=True,
+                                          help="Run quietly")
     parser_cli_store_publish.set_defaults(func=cli_store_publish)
-    parser_cli_store_publish.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not" # type: ignore
-    parser_cli_store_publish.r_examples = [ # type: ignore
+    parser_cli_store_publish.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
+    parser_cli_store_publish.r_examples = [  # type: ignore
         "# Publish \"customannot\" module to the store",
         "ov.store.publish(module=\"customannot\", user=\"user1\", password=\"password\")"
     ]
@@ -162,11 +168,13 @@ def get_parser_fn_store():
     parser_cli_store_createaccount.add_argument(
         "username", help="use your email as your username.")
     parser_cli_store_createaccount.add_argument("password",
-                                            help="this is your password.")
-    parser_cli_store_createaccount.add_argument("--quiet", default=True, help="Run quietly")
+                                                help="this is your password.")
+    parser_cli_store_createaccount.add_argument("--quiet",
+                                                default=True,
+                                                help="Run quietly")
     parser_cli_store_createaccount.set_defaults(func=cli_store_createaccount)
-    parser_cli_store_createaccount.r_return = "A string. Response from the store server" # type: ignore
-    parser_cli_store_createaccount.r_examples = [ # type: ignore
+    parser_cli_store_createaccount.r_return = "A string. Response from the store server"  # type: ignore
+    parser_cli_store_createaccount.r_examples = [  # type: ignore
         "# Create a store account",
         "ov.store.newaccount(username=\"user1\", password=\"password\")"
     ]
@@ -176,13 +184,15 @@ def get_parser_fn_store():
         "changepassword", help="changes OakVar store account password.")
     parser_cli_store_changepassword.add_argument("username", help="username")
     parser_cli_store_changepassword.add_argument("current_password",
-                                                help="current password")
+                                                 help="current password")
     parser_cli_store_changepassword.add_argument("new_password",
-                                                help="new password")
-    parser_cli_store_changepassword.add_argument("--quiet", default=True, help="Run quietly")
+                                                 help="new password")
+    parser_cli_store_changepassword.add_argument("--quiet",
+                                                 default=True,
+                                                 help="Run quietly")
     parser_cli_store_changepassword.set_defaults(func=cli_store_changepassword)
-    parser_cli_store_changepassword.r_return = "A string. Response from the store server" # type: ignore
-    parser_cli_store_changepassword.r_examples = [ # type: ignore
+    parser_cli_store_changepassword.r_return = "A string. Response from the store server"  # type: ignore
+    parser_cli_store_changepassword.r_examples = [  # type: ignore
         "# Change the password of a store account",
         "ov.store.changepassword(username=\"user1\", current_password=\"password\", new_password=\"newpassword\")"
     ]
@@ -190,11 +200,13 @@ def get_parser_fn_store():
     # reset-password
     parser_cli_store_resetpassword = _subparsers.add_parser(
         "resetpassword", help="resets OakVar store account password.")
-    parser_cli_store_resetpassword.add_argument("--quiet", default=True, help="Run quietly")
+    parser_cli_store_resetpassword.add_argument("--quiet",
+                                                default=True,
+                                                help="Run quietly")
     parser_cli_store_resetpassword.add_argument("username", help="username")
     parser_cli_store_resetpassword.set_defaults(func=cli_store_resetpassword)
-    parser_cli_store_resetpassword.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not" # type: ignore
-    parser_cli_store_resetpassword.r_examples = [ # type: ignore
+    parser_cli_store_resetpassword.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
+    parser_cli_store_resetpassword.r_examples = [  # type: ignore
         "# Ask the store to send an email to reset the password of a store account",
         "ov.store.resetpassword(username=\"user1\")"
     ]
@@ -203,10 +215,12 @@ def get_parser_fn_store():
     parser_cli_store_verifyemail = _subparsers.add_parser(
         "verifyemail", help="sends a verification email.")
     parser_cli_store_verifyemail.add_argument("username", help="username")
-    parser_cli_store_verifyemail.add_argument("--quiet", default=True, help="Run quietly")
+    parser_cli_store_verifyemail.add_argument("--quiet",
+                                              default=True,
+                                              help="Run quietly")
     parser_cli_store_verifyemail.set_defaults(func=cli_store_verifyemail)
-    parser_cli_store_verifyemail.r_return = "`NULL`" # type: ignore
-    parser_cli_store_verifyemail.r_examples = [ # type: ignore
+    parser_cli_store_verifyemail.r_return = "`NULL`"  # type: ignore
+    parser_cli_store_verifyemail.r_examples = [  # type: ignore
         "# Ask the store to send an email to verify the email of a user account",
         "ov.store.verifyemail(username=\"user1\")"
     ]
@@ -216,10 +230,12 @@ def get_parser_fn_store():
         "checklogin", help="checks username and password.")
     parser_cli_store_checklogin.add_argument("username", help="username")
     parser_cli_store_checklogin.add_argument("password", help="password")
-    parser_cli_store_checklogin.add_argument("--quiet", default=True, help="Run quietly")
+    parser_cli_store_checklogin.add_argument("--quiet",
+                                             default=True,
+                                             help="Run quietly")
     parser_cli_store_checklogin.set_defaults(func=cli_store_checklogin)
-    parser_cli_store_checklogin.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not" # type: ignore
-    parser_cli_store_checklogin.r_examples = [ # type: ignore
+    parser_cli_store_checklogin.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
+    parser_cli_store_checklogin.r_examples = [  # type: ignore
         "# Check if the login information of a user is correct",
         "ov.store.checklogin(username=\"user1\", password=\"password\")"
     ]

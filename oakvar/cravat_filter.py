@@ -621,7 +621,7 @@ class CravatFilter:
             await conn.commit()
             q = f"select v.* from variant as v join fsample as s on v.base__uid=s.base__uid"
             if isinstance(self.filter,
-                        dict) and len(self.filter.get("genes", [])) > 0:
+                          dict) and len(self.filter.get("genes", [])) > 0:
                 q += " join gene_list as gl on v.base__hugo=gl.base__hugo"
             if "g." in where:
                 q += " join gene as g on v.base__hugo=g.base__hugo"
@@ -670,9 +670,9 @@ class CravatFilter:
         if conn is None: pass
         if cursor is not None:
             (__sample_needed__, __tag_needed__, include_where,
-            exclude_where) = self.getwhere(level)
+             exclude_where) = self.getwhere(level)
             sql = ("select *  from " + level + include_where +
-                " except select * from " + level + exclude_where)
+                   " except select * from " + level + exclude_where)
             await cursor.execute(sql)
             it = await cursor.fetchall()
             return it
@@ -721,7 +721,9 @@ class CravatFilter:
                     sql = "pragma table_info(gene)"
                     await cursor.execute(sql)
                     rs = await cursor.fetchall()
-                    colnames = ["gene." + r[1] for r in rs if r[1] != "base__hugo"]
+                    colnames = [
+                        "gene." + r[1] for r in rs if r[1] != "base__hugo"
+                    ]
                     sql = "select distinct variant.base__hugo, {} from variant inner join gene on variant.base__hugo==gene.base__hugo".format(
                         ", ".join(colnames))
             else:
@@ -907,16 +909,16 @@ class CravatFilter:
                     name = "default"
             # Creates filter save table if not exists.
             await cursor.execute("select name from sqlite_master where " +
-                                'type="table" and name="' + self.filtertable +
-                                '"')
+                                 'type="table" and name="' + self.filtertable +
+                                 '"')
             for ret in await cursor.fetchone():
                 if ret == None:
                     await cursor.execute("create table " + self.filtertable +
-                                        " (name text unique, criteria text)")
+                                         " (name text unique, criteria text)")
             # Saves the filter.
             filterstr = dumps(self.filter)
-            sql = ("insert or replace into " + self.filtertable + ' values ("' +
-                name + "\", '" + filterstr + "')")
+            sql = ("insert or replace into " + self.filtertable +
+                   ' values ("' + name + "\", '" + filterstr + "')")
             await cursor.execute(sql)
             await conn.commit()
 
@@ -932,12 +934,12 @@ class CravatFilter:
                     name = "default"
             # Creates filter save table if not exists.
             await cursor.execute("select name from sqlite_master where " +
-                                'type="table" and name="' + self.filtertable +
-                                '"')
+                                 'type="table" and name="' + self.filtertable +
+                                 '"')
             for ret in await cursor.fetchone():
                 if ret == None:
                     await cursor.execute("create table " + self.filtertable +
-                                        " (name text, criteria text)")
+                                         " (name text, criteria text)")
             sql = "select name, criteria from " + self.filtertable
             await cursor.execute(sql)
             for row in await cursor.fetchall():
@@ -950,9 +952,8 @@ class CravatFilter:
                         print("    " + level + ":")
                         for column in criteria[level]:
                             print("        " + column + ": " +
-                                criteria[level][column])
+                                  criteria[level][column])
         return ret
-
 
     def addvariantfilter(self, column, condition):
         self.addfilter(column, condition, "variant")
@@ -983,7 +984,7 @@ class CravatFilter:
         if conn is None: pass
         if cursor is not None:
             sql = ('select name from sqlite_master where type="table" and ' +
-                'name="' + table + '"')
+                   'name="' + table + '"')
             await cursor.execute(sql)
             for row in await cursor.fetchone():
                 if row == None:
@@ -1074,7 +1075,7 @@ class CravatFilter:
         table_names = []
         if cursor is not None:
             q = ('select name from sqlite_master where type="table" and ' +
-                'name like "%_header"')
+                 'name like "%_header"')
             await cursor.execute(q)
             for row in await cursor.fetchall():
                 table_names.append(row[0].replace("_header", ""))

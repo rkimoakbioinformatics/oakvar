@@ -513,6 +513,7 @@ def get_dict_from_namespace(n):
         n = vars(n)
     return n
 
+
 def quiet_print(msg, args=None):
     args = get_dict_from_namespace(args)
     quiet = True

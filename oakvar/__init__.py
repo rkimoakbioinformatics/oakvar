@@ -8,7 +8,7 @@ def raise_break(__signal_number__, __stack_frame__):
         for child in psutil.Process(pid).children(recursive=True):
             try:
                 child.kill()
-            except psutil.NoSuchProcess: # keep
+            except psutil.NoSuchProcess:  # keep
                 pass
         os.kill(pid, signal.SIGTERM)
     elif pl.startswith("Linux"):
@@ -16,7 +16,7 @@ def raise_break(__signal_number__, __stack_frame__):
         for child in psutil.Process(pid).children(recursive=True):
             try:
                 child.kill()
-            except psutil.NoSuchProcess: # keep
+            except psutil.NoSuchProcess:  # keep
                 pass
         os.kill(pid, signal.SIGTERM)
     elif pl.startswith("Darwin") or pl.startswith("macOS"):
@@ -24,12 +24,13 @@ def raise_break(__signal_number__, __stack_frame__):
         for child in psutil.Process(pid).children(recursive=True):
             try:
                 child.kill()
-            except psutil.NoSuchProcess: # keep
+            except psutil.NoSuchProcess:  # keep
                 pass
         os.kill(pid, signal.SIGTERM)
 
 
 import signal
+
 signal.signal(signal.SIGINT, raise_break)
 
 from .base_converter import BaseConverter
@@ -59,6 +60,7 @@ if constants is None: raise NotImplemented
 if cli is None: raise NotImplemented
 
 wgs = None
+
 
 def get_live_annotator(module_name):
     import os

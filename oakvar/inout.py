@@ -357,14 +357,14 @@ class CravatWriter(CravatFile):
                 wtoks[col_index] = ""
         if self.fmt == "csv":
             if self.csvwriter is not None:
-                self.csvwriter.writerow(wtoks) # type: ignore
+                self.csvwriter.writerow(wtoks)  # type: ignore
         else:
             self.wf.write("\t".join(wtoks) + "\n")
 
     def close(self):
         if self.fmt == "csv":
             if self.csvwriter is not None:
-                self.csvwriter.close() # type: ignore
+                self.csvwriter.close()  # type: ignore
         self.wf.close()
 
 

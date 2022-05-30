@@ -175,7 +175,9 @@ class CravatReport:
             else:
                 if self.logger:
                     if self.args is not None:
-                        write_log_msg(self.logger, e, quiet=self.args.get("quiet"))
+                        write_log_msg(self.logger,
+                                      e,
+                                      quiet=self.args.get("quiet"))
                     else:
                         write_log_msg(self.logger, e, quiet=False)
             setattr(e, "handled", True)
@@ -335,7 +337,7 @@ class CravatReport:
         hugo_present = None
         if level == "variant":
             hugo_present = "base__hugo" in self.colnos["variant"]
-        datacols, datarows = await self.cf.exec_db( # type: ignore
+        datacols, datarows = await self.cf.exec_db(  # type: ignore
             self.cf.get_filtered_iterator, level)
         num_total_cols = len(datacols)
         colnos_to_skip = []
@@ -407,8 +409,8 @@ class CravatReport:
                     else:
                         if self.logger:
                             self.logger.info(
-                                "column name does not exist in data: {}".format(
-                                    oldcolname))
+                                "column name does not exist in data: {}".
+                                format(oldcolname))
                         continue
                 else:
                     colno = colnos[colname]
@@ -476,7 +478,7 @@ class CravatReport:
             if not getattr(self, "no_log", False):
                 if self.logger:
                     self.logger.info("started: %s" %
-                                    asctime(localtime(start_time)))
+                                     asctime(localtime(start_time)))
                     if self.cf and self.cf.filter:
                         s = f"filter:\n{yaml.dump(self.filter)}"
                         self.logger.info(s)
@@ -971,6 +973,7 @@ def cli_ov_report(args):
     args["quiet"] = False
     return fn_ov_report(args)
 
+
 def fn_ov_report(args):
     import sqlite3
     import os
@@ -1023,15 +1026,13 @@ def fn_ov_report(args):
             if len(toks) != 2:
                 quiet_print(
                     "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value.",
-                    args
-                )
+                    args)
                 continue
             k = toks[0]
             if k.count(".") != 1:
                 quiet_print(
                     "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value.",
-                    args
-                )
+                    args)
                 continue
             [module_name, key] = k.split(".")
             if module_name not in module_options:
@@ -1051,9 +1052,10 @@ def fn_ov_report(args):
             raise ModuleNotExist(report_type + "reporter")
         quiet_print(f"Generating {report_type} report... ", args)
         module_name = module_info.name
-        spec = importlib.util.spec_from_file_location(module_name, # type: ignore
-                                                      module_info.script_path)
-        module = importlib.util.module_from_spec(spec) # type: ignore
+        spec = importlib.util.spec_from_file_location(
+            module_name,  # type: ignore
+            module_info.script_path)
+        module = importlib.util.module_from_spec(spec)  # type: ignore
         spec.loader.exec_module(module)
         args["module_name"] = module_name
         args["do_not_change_status"] = True
@@ -1080,9 +1082,12 @@ def fn_ov_report(args):
                     traceback.print_exc()
                 else:
                     if hasattr(reporter, "logger"):
-                        write_log_msg(reporter.logger, e, quiet=args.get("quiet"))
-            quiet_print("report generation failed for {} report.".format(
-                report_type), args)
+                        write_log_msg(reporter.logger,
+                                      e,
+                                      quiet=args.get("quiet"))
+            quiet_print(
+                "report generation failed for {} report.".format(report_type),
+                args)
             response_t = None
         response[report_type] = response_t
     if len(report_types) == 1 and len(response) == 1:

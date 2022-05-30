@@ -125,6 +125,7 @@ def converttohg38(args):
     newdb.commit()
 """
 
+
 def fn_util_updateresult(args):
     import sqlite3
     from os import listdir
@@ -334,9 +335,12 @@ def get_sqliteinfo(args):
                 ret_list.append(s)
             elif fmt in ["json", "yaml"]:
                 ret_dict["output_columns"]["gene"].append({
-                    "name": col_name,
-                    "title": col_def["title"],
-                    "type": col_def["type"],
+                    "name":
+                    col_name,
+                    "title":
+                    col_def["title"],
+                    "type":
+                    col_def["type"],
                 })
         c.close()
         conn.close()
@@ -362,6 +366,7 @@ def fn_util_sqliteinfo(args):
     args["fmt"] = "yaml"
     args["to"] = "stdout"
     get_sqliteinfo(args)
+
 
 # For now, only jobs with same annotators are allowed.
 def fn_util_mergesqlite(args):
@@ -545,7 +550,8 @@ async def filtersqlite_async(args):
                 excludesample=args["excludesample"],
             )
             await cf.exec_db(cf.loadfilter)
-            if hasattr(cf, "filter") == False or cf.filter is None or type(cf.filter) is not dict:
+            if hasattr(cf, "filter") == False or cf.filter is None or type(
+                    cf.filter) is not dict:
                 from .exceptions import FilterLoadingError
                 raise FilterLoadingError()
             for table_name in [
@@ -724,10 +730,9 @@ def get_parser_fn_util():
         add_help=False,
         description="Test modules",
         help="Test installed modules")
-    parser_cli_util_test.r_return = "A named list. Module names as names, TRUE or FALSE as elements" # type: ignore
-    parser_cli_util_test.r_examples = [ # type: ignore
-        "# Test the ClinVar module",
-        "ov.util.test(modules=\"clinvar\")",
+    parser_cli_util_test.r_return = "A named list. Module names as names, TRUE or FALSE as elements"  # type: ignore
+    parser_cli_util_test.r_examples = [  # type: ignore
+        "# Test the ClinVar module", "ov.util.test(modules=\"clinvar\")",
         "# Test the ClinVar and the COSMIC modules",
         "ov.util.test(modules=list(\"clinvar\", \"cosmic\"))"
     ]
@@ -807,8 +812,8 @@ def get_parser_fn_util():
         default="default",
     )
     parser_fn_util_addjob.set_defaults(func=fn_util_addjob)
-    parser_fn_util_addjob.r_return = "A boolean. TRUE if successful, FALSE if not" # type: ignore
-    parser_fn_util_addjob.r_examples = [ # type: ignore
+    parser_fn_util_addjob.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
+    parser_fn_util_addjob.r_examples = [  # type: ignore
         "# Add a result file to the job list of a user",
         "ov.util.addjob(path=\"example.sqlite\", user=\"user1\")"
     ]
@@ -824,8 +829,8 @@ def get_parser_fn_util():
                                             required=True,
                                             help="Output SQLite file path")
     parser_fn_util_mergesqlite.set_defaults(func=fn_util_mergesqlite)
-    parser_fn_util_mergesqlite.r_return = "A boolean. TRUE if successful, FALSE if not" # type: ignore
-    parser_fn_util_mergesqlite.r_examples = [ # type: ignore
+    parser_fn_util_mergesqlite.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
+    parser_fn_util_mergesqlite.r_examples = [  # type: ignore
         "# Merge two OakVar analysis result files into one SQLite file",
         "ov.util.mergesqlite(path=list(\"example1.sqlite\", \"example2.sqlite\"), outpath=\"merged.sqlite\")"
     ]
@@ -841,8 +846,8 @@ def get_parser_fn_util():
     parser_fn_util_showsqliteinfo.add_argument(
         "--to", default="return", help="Output to. stdout / return")
     parser_fn_util_showsqliteinfo.set_defaults(func=fn_util_sqliteinfo)
-    parser_fn_util_showsqliteinfo.r_return = "A named list. Information of a job SQLite file" # type: ignore
-    parser_fn_util_showsqliteinfo.r_examples = [ # type: ignore
+    parser_fn_util_showsqliteinfo.r_return = "A named list. Information of a job SQLite file"  # type: ignore
+    parser_fn_util_showsqliteinfo.r_examples = [  # type: ignore
         "# Get the named list of the information of an analysis result file",
         "ov.util.sqliteinfo(paths=\"example.sqlite\")"
     ]
@@ -887,8 +892,8 @@ def get_parser_fn_util():
         help="Sample IDs to exclude",
     )
     parser_fn_util_filtersqlite.set_defaults(func=fn_util_filtersqlite)
-    parser_fn_util_filtersqlite.r_return = "A boolean. TRUE if successful, FALSE if not" # type: ignore
-    parser_fn_util_filtersqlite.r_examples = [ # type: ignore
+    parser_fn_util_filtersqlite.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
+    parser_fn_util_filtersqlite.r_examples = [  # type: ignore
         "# Filter an analysis result file with an SQL filter set",
         'ov.util.filtersqlite(paths="example.sqlite", filtersql=\'base__so=="MIS" and gnomad__af>0.01\')'
         "# Filter two analysis result files with a filter definition file",

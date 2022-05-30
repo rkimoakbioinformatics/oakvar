@@ -276,8 +276,10 @@ class BaseAnnotator(object):
         try:
             start_time = time()
             self.logger.info("started: %s" % asctime(localtime(start_time)))
-            quiet_print("        {}: started at {}".format(
-                self.module_name, asctime(localtime(start_time))), self.args)
+            quiet_print(
+                "        {}: started at {}".format(
+                    self.module_name, asctime(localtime(start_time))),
+                self.args)
             self.base_setup()
             self.last_status_update_time = time()
             self.output_columns = self.conf["output_columns"]
@@ -293,7 +295,8 @@ class BaseAnnotator(object):
                     if secondary_data == {}:
                         output_dict = self.annotate(input_data)
                     else:
-                        output_dict = self.annotate(input_data, secondary_data=secondary_data)
+                        output_dict = self.annotate(
+                            input_data, secondary_data=secondary_data)
                     # This enables summarizing without writing for now.
                     if output_dict is None:
                         continue
@@ -316,12 +319,14 @@ class BaseAnnotator(object):
             end_time = time()
             self.logger.info("finished: {0}".format(
                 asctime(localtime(end_time))))
-            quiet_print("        {}: finished at {}".format(
-                self.module_name, asctime(localtime(end_time))), self.args)
+            quiet_print(
+                "        {}: finished at {}".format(
+                    self.module_name, asctime(localtime(end_time))), self.args)
             run_time = end_time - start_time
             self.logger.info("runtime: {0:0.3f}s".format(run_time))
-            quiet_print("        {}: runtime {:0.3f}s".format(
-                self.module_name, run_time), self.args)
+            quiet_print(
+                "        {}: runtime {:0.3f}s".format(self.module_name,
+                                                      run_time), self.args)
             if self.update_status_json_flag and self.status_writer is not None:
                 self.status_writer.queue_status_update(
                     "status",

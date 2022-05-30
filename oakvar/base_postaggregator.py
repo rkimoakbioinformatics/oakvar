@@ -325,8 +325,8 @@ class BasePostAggregator(object):
                     f"select {colname} from {self.level} limit 1")
             except:
                 if coltype is not None:
-                    q = ("alter table " + self.level + " add column " + colname +
-                         " " + self.cr_type_to_sql[coltype])
+                    q = ("alter table " + self.level + " add column " +
+                         colname + " " + self.cr_type_to_sql[coltype])
                     self.cursor_w.execute(q)
             # header table
             # use prepared statement to allow " characters in colcats and coldesc
