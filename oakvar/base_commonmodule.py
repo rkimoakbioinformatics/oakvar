@@ -45,18 +45,18 @@ class BaseCommonModule(object):
                 self.logger = getLogger("oakvar." + self.module_name)
                 if self.output_basename != "__dummy__":
                     self.log_path = join(self.output_dir,
-                                        self.output_basename + ".log")
+                                         self.output_basename + ".log")
                     log_handler = FileHandler(self.log_path, "a")
                 else:
                     log_handler = StreamHandler()
                 formatter = Formatter("%(asctime)s %(name)-20s %(message)s",
-                                    "%Y/%m/%d %H:%M:%S")
+                                      "%Y/%m/%d %H:%M:%S")
                 log_handler.setFormatter(formatter)
                 self.logger.addHandler(log_handler)
                 self.error_logger = getLogger("error." + self.module_name)
                 if self.output_basename != "__dummy__":
                     error_log_path = join(self.output_dir,
-                                        self.output_basename + ".err")
+                                          self.output_basename + ".err")
                     error_log_handler = FileHandler(error_log_path, "a")
                 else:
                     error_log_handler = StreamHandler()

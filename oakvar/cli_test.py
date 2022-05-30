@@ -2,9 +2,12 @@ import sys
 from abc import ABC, abstractmethod
 from .exceptions import ExpectedException
 
+
 class NoReportReader(ExpectedException):
+
     def __init__(self, p):
         super().__init__(f"error: no test reader {p}")
+
 
 class ReportReader(ABC):
 
@@ -237,6 +240,7 @@ class VcfReportReader(ReportReader):
             return headers, rows_dict
         else:
             return headers, rows_list
+
     # Read the two report header columns that define the module/column
     # for each data column.  Returned as list of: module|column
     def readSectionHeader(self, reader):
@@ -687,8 +691,8 @@ class Tester:
             raise NoReportReader(self.key_path)
         report_extension = key_reader.reportFileExtension()
         report_path = str(self.out_path) + report_extension
-        result_reader = self.create_report_reader(
-            self.report_type, report_path)
+        result_reader = self.create_report_reader(self.report_type,
+                                                  report_path)
         if result_reader is None:
             raise NoReportReader(report_path)
         key_header, key_rows = key_reader.readReport(level, False)
@@ -716,8 +720,9 @@ class Tester:
                         self.test_passed = False
                         continue
                     result_idx = result_header.index(header)
-                    if (result[result_idx] != key_row[idx]) and self.floats_differ(
-                            result[result_idx], key_row[idx]):
+                    if (result[result_idx] !=
+                            key_row[idx]) and self.floats_differ(
+                                result[result_idx], key_row[idx]):
                         headLabel = header
                         if "|" in header:
                             headLabel = header[header.index("|") + 1:]
@@ -768,6 +773,7 @@ def cli_util_test(args):
     args = get_dict_from_namespace(args)
     args["quiet"] = False
     fn_util_test(args)
+
 
 def fn_util_test(args):
     from os.path import exists
@@ -827,8 +833,8 @@ def get_parser_cli_util_test():
     from argparse import ArgumentParser
     parser_cli_util_test = ArgumentParser()
     parser_cli_util_test.add_argument("-d",
-                                     "--rundir",
-                                     help="Directory for output")
+                                      "--rundir",
+                                      help="Directory for output")
     parser_cli_util_test.add_argument(
         "-m",
         "--modules",
@@ -839,10 +845,11 @@ def get_parser_cli_util_test():
         "--mod_types",
         nargs="+",
         help="Type of module(s) to test (e.g. annotators)")
-    parser_cli_util_test.add_argument("--to",
-                                     default="stdout",
-                                     help="stdout to print / return to return")
-    parser_cli_util_test.add_argument("--quiet", default=True, help="Run quietly")
+    parser_cli_util_test.add_argument(
+        "--to", default="stdout", help="stdout to print / return to return")
+    parser_cli_util_test.add_argument("--quiet",
+                                      default=True,
+                                      help="Run quietly")
     parser_cli_util_test.set_defaults(func=cli_util_test)
     return parser_cli_util_test
 

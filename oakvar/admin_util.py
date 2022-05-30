@@ -17,7 +17,8 @@ class InstallProgressHandler(object):
     def stage_start(self, __stage__):
         pass
 
-    def stage_progress(self, __cur_chunk__, __total_chunks__, __cur_size__, __total_size__):
+    def stage_progress(self, __cur_chunk__, __total_chunks__, __cur_size__,
+                       __total_size__):
         pass
 
     def set_module_version(self, module_version):
@@ -409,7 +410,7 @@ class RemoteModuleInfo(object):
         self.developer = get_developer_dict(**dev_dict)
         self.data_sources = {
             x: str(y)
-            for x, y in self.data.get("data_sources").items() # type: ignore
+            for x, y in self.data.get("data_sources").items()  # type: ignore
         }
 
     def has_version(self, version):
@@ -909,9 +910,9 @@ def get_updatable(modules=[], strategy="consensus"):
                         passing_versions.append(version)
                 selected_version = passing_versions[
                     -1] if passing_versions else None
-        if (selected_version and remote_info and local_info and local_info.version
-                and LooseVersion(selected_version) > LooseVersion(
-                    local_info.version)):
+        if (selected_version and remote_info and local_info
+                and local_info.version and LooseVersion(selected_version) >
+                LooseVersion(local_info.version)):
             update_data_version = get_remote_data_version(
                 mname, selected_version)
             installed_data_version = get_remote_data_version(
@@ -1006,7 +1007,7 @@ def install_module(
             version = get_remote_latest_version(module_name)
             stage_handler.set_module_version(version)
         if hasattr(stage_handler, "install_state") == True:
-            install_state = stage_handler.install_state # type: ignore
+            install_state = stage_handler.install_state  # type: ignore
         else:
             install_state = None
         stage_handler.stage_start("start")
@@ -1029,11 +1030,11 @@ def install_module(
         if len(pypi_deps) > 0:
             quiet_print(
                 f"Following PyPI dependencies should be met before installing {module_name}.",
-                args=quiet_args
-            )
+                args=quiet_args)
             for dep in pypi_deps:
                 quiet_print(f"- {dep}", args=quiet_args)
-            quiet_print(f"Installing required PyPI packages...", args=quiet_args)
+            quiet_print(f"Installing required PyPI packages...",
+                        args=quiet_args)
             idx = 0
             while idx < len(pypi_deps):
                 dep = pypi_deps[idx]
@@ -1043,20 +1044,20 @@ def install_module(
                 else:
                     idx += 1
             if len(pypi_deps) > 0:
-                quiet_print(f"Following PyPI dependencies could not be installed.", args=quiet_args)
+                quiet_print(
+                    f"Following PyPI dependencies could not be installed.",
+                    args=quiet_args)
                 for dep in pypi_deps:
                     quiet_print(f"- {dep}", args=quiet_args)
         if len(pypi_deps) > 0:
             if version is not None:
                 quiet_print(
                     f"Skipping installation of {module_name}=={version} due to unmet requirement for PyPI packages",
-                    args=quiet_args
-                )
+                    args=quiet_args)
             else:
                 quiet_print(
                     f"Skipping installation of {module_name} due to unmet requirement for PyPI packages",
-                    args=quiet_args
-                )
+                    args=quiet_args)
             return False
         sys_conf = get_system_conf()
         store_url = sys_conf["store_url"]

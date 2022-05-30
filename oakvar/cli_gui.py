@@ -36,7 +36,7 @@ def setup(args):
     try:
         global loop
         if sysplatform == "win32":  # Required to use asyncio subprocesses
-            from asyncio import ProactorEventLoop # type: ignore
+            from asyncio import ProactorEventLoop  # type: ignore
             loop = ProactorEventLoop()
             set_event_loop(loop)
         else:
@@ -167,7 +167,8 @@ def fn_gui(args):
                 index_path = join(modules_dir, "webapps", args["webapp"],
                                   "index.html")
                 if exists(index_path) == False:
-                    stderr.write(f"Webapp {args['webapp']} does not exist. Exiting.\n")
+                    stderr.write(
+                        f"Webapp {args['webapp']} does not exist. Exiting.\n")
                     return
                 url = f"{host}:{port}/webapps/{args['webapp']}/index.html"
             elif args["result"]:
@@ -263,8 +264,9 @@ def get_server():
         if debug:
             print_exc()
         logger.info("Exiting...")
-        stderr.write("Error occurred while OakVar server.\nCheck {} for details.\n".
-              format(log_path))
+        stderr.write(
+            "Error occurred while OakVar server.\nCheck {} for details.\n".
+            format(log_path))
         exit()
 
 
@@ -319,7 +321,7 @@ class TCPSitePatched(web_runner.BaseSite):
             self._runner.server,
             self._host,
             self._port,
-            ssl=self._ssl_context, # type: ignore
+            ssl=self._ssl_context,  # type: ignore
             backlog=self._backlog,
             reuse_address=self._reuse_address,
             reuse_port=self._reuse_port,
@@ -498,7 +500,8 @@ class WebServer(object):
             if exists(join(modules_dir, "annotators")):
                 self.app.router.add_static("/modules/annotators/",
                                            join(modules_dir, "annotators"))
-            self.app.router.add_static("/webapps", join(modules_dir, "webapps"))
+            self.app.router.add_static("/webapps",
+                                       join(modules_dir, "webapps"))
         ws.start_worker()
         wu.start_worker()
 
@@ -646,10 +649,10 @@ def main(url=None, host=None, port=None, args={}):
         if ssl_enabled:
             global sc
             _ = WebServer(loop=loop,
-                               ssl_context=sc,
-                               url=url,
-                               host=host,
-                               port=port)
+                          ssl_context=sc,
+                          url=url,
+                          host=host,
+                          port=port)
         else:
             _ = WebServer(loop=loop, url=url, host=host, port=port)
         loop.run_forever()

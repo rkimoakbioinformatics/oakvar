@@ -4,6 +4,7 @@ def cli_run(args):
     args["quiet"] = False
     return fn_run(args)
 
+
 def fn_run(args):
     from asyncio import run
     from . import admin_util as au
@@ -13,7 +14,7 @@ def fn_run(args):
     # Windows event loop patch
     from sys import platform, version_info, argv
     if platform == "win32" and version_info >= (3, 8):
-        from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy # type: ignore
+        from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy  # type: ignore
         set_event_loop_policy(WindowsSelectorEventLoopPolicy())
     # Custom system conf
     from argparse import ArgumentParser
@@ -258,7 +259,8 @@ class Cravat(object):
         try:
             from .exceptions import ExpectedException
             if isinstance(e, ExpectedException):
-                if hasattr(self, "logger") and self.logger and not getattr(e, "nolog", False):
+                if hasattr(self, "logger") and self.logger and not getattr(
+                        e, "nolog", False):
                     self.logger.error(e)
                 stderr.write(str(e) + "\n")
                 stderr.flush()
@@ -282,7 +284,8 @@ class Cravat(object):
             )
             if self.package_conf is not None and len(self.package_conf) > 0:
                 self.logger.info(
-                    f'package: {self.args.package} {self.package_conf["version"]}')
+                    f'package: {self.args.package} {self.package_conf["version"]}'
+                )
             for _, module in self.annotators.items():
                 self.logger.info(
                     f"version: {module.name} {module.conf['version']} {os.path.dirname(module.script_path)}"
@@ -322,7 +325,8 @@ class Cravat(object):
                 self.logger.info("started: {0}".format(
                     asctime(localtime(self.start_time))))
                 if self.run_conf_path != "":
-                    self.logger.info("conf file: {}".format(self.run_conf_path))
+                    self.logger.info("conf file: {}".format(
+                        self.run_conf_path))
             if self.conf is None:
                 from .exceptions import ConfigurationError
                 raise ConfigurationError()
@@ -332,7 +336,7 @@ class Cravat(object):
             self.manager = SyncManager()
             self.manager.register("StatusWriter", StatusWriter)
             self.manager.start()
-            self.status_writer = self.manager.StatusWriter( # type: ignore
+            self.status_writer = self.manager.StatusWriter(  # type: ignore
                 self.status_json_path)
             self.update_status("Started OakVar", force=True)
             if self.inputs is None:
@@ -344,7 +348,8 @@ class Cravat(object):
                 input_files_str = "stdin"
             if self.logger:
                 self.logger.info("input files: {}".format(input_files_str))
-                self.logger.info("input assembly: {}".format(self.input_assembly))
+                self.logger.info("input assembly: {}".format(
+                    self.input_assembly))
             self.log_versions()
             self.set_and_check_input_files()
             if (self.endlevel >= self.runlevels["converter"]
@@ -394,7 +399,9 @@ class Cravat(object):
                 stime = time()
                 self.run_annotators_mp()
                 rtime = time() - stime
-                quiet_print("\tannotator(s) finished in {0:.3f}s".format(rtime), self.args)
+                quiet_print(
+                    "\tannotator(s) finished in {0:.3f}s".format(rtime),
+                    self.args)
             if (self.endlevel >= self.runlevels["aggregator"]
                     and self.startlevel <= self.runlevels["aggregator"]
                     and not "aggregator" in self.args.skip
@@ -433,16 +440,17 @@ class Cravat(object):
                     self.logger.info("finished: {0}".format(display_time))
                     if runtime:
                         self.logger.info("runtime: {0:0.3f}s".format(runtime))
-                    quiet_print("Finished normally. Runtime: {0:0.3f}s".format(
+                    quiet_print(
+                        "Finished normally. Runtime: {0:0.3f}s".format(
                             runtime), self.args)
             else:
                 #if self.args and not self.args.quiet:
-                    #if isinstance(exception, ExpectedException):
-                        #if self.logger and self.log_path:
-                            #from sys import stderr
-                            #stderr.write(
-                            #    "Log file at {}".format(self.log_path) + "\n")
-                            #stderr.flush()
+                #if isinstance(exception, ExpectedException):
+                #if self.logger and self.log_path:
+                #from sys import stderr
+                #stderr.write(
+                #    "Log file at {}".format(self.log_path) + "\n")
+                #stderr.flush()
                 if self.status_writer:
                     self.update_status("Error", force=True)
             if self.logger:
@@ -464,8 +472,8 @@ class Cravat(object):
         if self.args.do_not_change_status != True:
             if self.status_writer:
                 self.status_writer.queue_status_update("status",
-                                                    status,
-                                                    force=force)
+                                                       status,
+                                                       force=force)
 
     def make_args_namespace(self, supplied_args):
         self.set_package_conf(supplied_args)
@@ -571,8 +579,7 @@ class Cravat(object):
             except Exception:
                 quiet_print(
                     "Error in processing cs option. --cs option was not applied.",
-                    self.args
-                )
+                    self.args)
                 self.conf = conf_bak
 
     def populate_secondary_annotators(self):
@@ -594,7 +601,8 @@ class Cravat(object):
                     if annot_name not in annot_names:
                         annot_names.append(annot_name)
         annot_names.sort()
-        if self.status_writer is not None and self.startlevel <= self.runlevels["annotator"]:
+        if self.status_writer is not None and self.startlevel <= self.runlevels[
+                "annotator"]:
             self.status_writer.queue_status_update("annotators",
                                                    annot_names,
                                                    force=True)
@@ -611,15 +619,13 @@ class Cravat(object):
                 if len(toks) != 2:
                     quiet_print(
                         "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value.",
-                        self.args
-                    )
+                        self.args)
                     continue
                 k = toks[0]
                 if k.count(".") != 1:
                     quiet_print(
                         "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value.",
-                        self.args
-                    )
+                        self.args)
                     continue
                 [module_name, key] = k.split(".")
                 if module_name not in self.conf._all:
@@ -638,7 +644,8 @@ class Cravat(object):
             self.pipeinput = True
             if self.args.forcedinputformat is None:
                 from .exceptions import InvalidInputFormat
-                raise InvalidInputFormat(fmt="--input-format is needed for pipe input.")
+                raise InvalidInputFormat(
+                    fmt="--input-format is needed for pipe input.")
         if self.args.inputs is not None:
             import os
             self.inputs = [
@@ -1042,8 +1049,9 @@ class Cravat(object):
             arg_dict["unique_variants"] = True
         self.announce_module(module)
         if self.verbose:
-            print(" ".join(
-                [str(k) + "=" + str(v) for k, v in arg_dict.items()]), self.args)
+            print(
+                " ".join([str(k) + "=" + str(v) for k, v in arg_dict.items()]),
+                self.args)
         arg_dict["status_writer"] = self.status_writer
         converter_class = load_class(module.script_path,
                                      "MasterCravatConverter")
@@ -1413,11 +1421,15 @@ class Cravat(object):
         from .util import quiet_print
         if len(self.reports) > 0:
             module_names = [v for v in self.reports.keys()]
-            report_types = [v.replace("reporter", "") for v in self.reports.keys()]
+            report_types = [
+                v.replace("reporter", "") for v in self.reports.keys()
+            ]
         else:
             if "reporter" in self.cravat_conf:
                 module_names = [self.cravat_conf["reporter"]]
-                report_types = [v.replace("reporter", "") for v in module_names]
+                report_types = [
+                    v.replace("reporter", "") for v in module_names
+                ]
             else:
                 module_names = []
                 report_types = []
@@ -1427,19 +1439,16 @@ class Cravat(object):
             module = au.get_local_module_info(module_name)
             self.announce_module(module)
             if module is None:
-                quiet_print("        {} does not exist.".format(module_name), self.args)
+                quiet_print("        {} does not exist.".format(module_name),
+                            self.args)
                 continue
             arg_dict = {
-                "script_path":
-                module.script_path,
-                "dbpath":
-                os.path.join(self.output_dir, self.run_name + ".sqlite"),
-                "savepath":
-                os.path.join(self.output_dir, self.run_name),
-                "output_dir":
-                self.output_dir,
-                "module_name":
-                module_name,
+                "script_path": module.script_path,
+                "dbpath": os.path.join(self.output_dir,
+                                       self.run_name + ".sqlite"),
+                "savepath": os.path.join(self.output_dir, self.run_name),
+                "output_dir": self.output_dir,
+                "module_name": module_name,
             }
             if self.run_conf_path is not None:
                 arg_dict["confpath"] = self.run_conf_path
@@ -1455,9 +1464,10 @@ class Cravat(object):
             if self.args.separatesample:
                 arg_dict["separatesample"] = True
             if self.verbose:
-                print(" ".join([
-                    str(k) + "=" + str(v) for k, v in arg_dict.items()
-                ]), self.args)
+                print(
+                    " ".join(
+                        [str(k) + "=" + str(v) for k, v in arg_dict.items()]),
+                    self.args)
             arg_dict["status_writer"] = self.status_writer
             arg_dict["reporttypes"] = [module_name.replace("reporter", "")]
             arg_dict["concise_report"] = self.args.concise_report
@@ -1533,12 +1543,14 @@ class Cravat(object):
                         secondary_module)
                     if secondary_output_path is None:
                         if self.logger:
-                            self.logger.warning(f"secondary output file does not exist for {secondary_module_name}")
+                            self.logger.warning(
+                                f"secondary output file does not exist for {secondary_module_name}"
+                            )
                     else:
                         secondary_inputs.append(
                             secondary_module.name.replace("=", r"\=") + "=" +
                             os.path.join(self.output_dir, secondary_output_path
-                                        ).replace("=", r"\="))
+                                         ).replace("=", r"\="))
             kwargs = {
                 "script_path": module.script_path,
                 "input_file": inputpath,
@@ -1755,8 +1767,8 @@ class Cravat(object):
         if self.args.do_not_change_status != True:
             if self.status_writer:
                 self.status_writer.queue_status_update("annotator_version",
-                                                    annotator_version,
-                                                    force=True)
+                                                       annotator_version,
+                                                       force=True)
         q = ('insert or replace into info values ("Annotators", "' +
              annotators_str + '")')
         await cursor.execute(q)

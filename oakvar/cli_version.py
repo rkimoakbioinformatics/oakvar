@@ -21,6 +21,8 @@ def get_parser_cli_version():
     parser_cli_version = ArgumentParser()
     parser_cli_version.add_argument(
         "--to", default="stdout", help='"stdout" to print. "return" to return')
-    parser_cli_version.add_argument("--quiet", default=True, help="Run quietly")
+    parser_cli_version.add_argument("--quiet",
+                                    default=True,
+                                    help="Run quietly")
     parser_cli_version.set_defaults(func=cli_version)
     return parser_cli_version

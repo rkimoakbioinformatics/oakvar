@@ -173,8 +173,8 @@ class BaseMapper(object):
             from .exceptions import SetupError
             raise SetupError()
         # Reader
-        if self.args is not None and self.args["seekpos"] is not None and self.args[
-                "chunksize"] is not None:
+        if self.args is not None and self.args[
+                "seekpos"] is not None and self.args["chunksize"] is not None:
             self.reader = CravatReader(
                 self.input_path,
                 seekpos=int(self.args["seekpos"]),
@@ -234,7 +234,8 @@ class BaseMapper(object):
         from time import time, asctime, localtime
         self.base_setup()
         start_time = time()
-        if self.logger is None or self.conf is None or self.reader is None or not hasattr(self, "map"):
+        if self.logger is None or self.conf is None or self.reader is None or not hasattr(
+                self, "map"):
             from .exceptions import SetupError
             raise SetupError()
         self.logger.info("started: %s" % asctime(localtime(start_time)))
@@ -261,7 +262,7 @@ class BaseMapper(object):
                     crx_data = crv_data
                     crx_data["all_mappings"] = "{}"
                 else:
-                    crx_data = self.map(crv_data) # type: ignore
+                    crx_data = self.map(crv_data)  # type: ignore
                 # Skip cases where there was no change. Can result if ref_base not in original input
                 if crx_data["ref_base"] == crx_data["alt_base"]:
                     continue
@@ -269,7 +270,7 @@ class BaseMapper(object):
                 self._log_runtime_error(ln, line, e)
                 continue
             if crx_data is not None:
-                self.crx_writer.write_data(crx_data) # type: ignore
+                self.crx_writer.write_data(crx_data)  # type: ignore
                 self._add_crx_to_gene_info(crx_data)
         self._write_crg()
         stop_time = time()
@@ -316,7 +317,7 @@ class BaseMapper(object):
                     crx_data = crv_data
                     crx_data["all_mappings"] = "{}"
                 else:
-                    crx_data = self.map(crv_data) # type: ignore
+                    crx_data = self.map(crv_data)  # type: ignore
                 if crx_data is None:
                     continue
             except Exception as e:
@@ -339,7 +340,7 @@ class BaseMapper(object):
                 for alt in alts:
                     d = {"primary_transcript": primary, "alt_transcript": alt}
                     self.crt_writer.write_data(d)
-                self.written_primary_transc.add(primary) # type: ignore
+                self.written_primary_transc.add(primary)  # type: ignore
 
     def _add_crx_to_gene_info(self, crx_data):
         """
@@ -374,8 +375,9 @@ class BaseMapper(object):
             self.unique_excs.append(err_str)
             self.logger.error(err_str)
         if self.error_logger is not None:
-            self.error_logger.error("\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(
-                ln, line[:-1], str(e)))
+            self.error_logger.error(
+                "\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(
+                    ln, line[:-1], str(e)))
 
     async def get_gene_summary_data(self, cf):
         from .constants import crx_def
@@ -401,7 +403,7 @@ class BaseMapper(object):
             for i in range(len(cols)):
                 input_data[cols[i].split("__")[1]] = [row[i] for row in rows]
             if hasattr(self, "summarize_by_gene"):
-                out = self.summarize_by_gene(hugo, input_data) # type: ignore
+                out = self.summarize_by_gene(hugo, input_data)  # type: ignore
                 data[hugo] = out
         return data
 
