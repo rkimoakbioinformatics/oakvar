@@ -173,7 +173,7 @@ class BaseMapper(object):
         from .inout import CravatReader
         from .inout import CravatWriter
         from .constants import crx_def, crx_idx, crg_def, crg_idx, crt_def, crt_idx
-        if self.output_base_fname is None or self.postfix is None or self.conf is None:
+        if self.output_base_fname is None or self.postfix is None or self.conf is None or self.output_dir is None:
             from .exceptions import SetupError
             raise SetupError()
         # Reader
@@ -187,8 +187,6 @@ class BaseMapper(object):
         else:
             self.reader = CravatReader(self.input_path)
         # Various output files
-        output_base_path = os.path.join(self.output_dir,
-                                        self.output_base_fname)
         output_toks = self.output_base_fname.split(".")
         if output_toks[-1] == "crv":
             output_toks = output_toks[:-1]
@@ -288,7 +286,7 @@ class BaseMapper(object):
         self.end()
         return output
 
-    def run_as_slave(self, pos_no):
+    def run_as_slave(self, __pos_no__):
         """
         Read crv file and use map() function to convert to crx dict. Write the
         crx dict to the crx file and add information in crx dict to gene_info
@@ -370,7 +368,6 @@ class BaseMapper(object):
         sorted_hugos = list(self.gene_info.keys())
         sorted_hugos.sort()
         for hugo in sorted_hugos:
-            gene = self.gene_info[hugo]
             crg_data = {x["name"]: "" for x in crg_def}
             crg_data["hugo"] = hugo
             self.crg_writer.write_data(crg_data)
@@ -386,10 +383,8 @@ class BaseMapper(object):
                 ln, line[:-1], str(e)))
 
     async def get_gene_summary_data(self, cf):
-        from time import time
         from .constants import crx_def
 
-        t = time()
         hugos = await cf.exec_db(cf.get_filtered_hugo_list)
         # Below is to fix opening oc 1.8.0 jobs with oc 1.8.1.
         # TODO: Remove it after a while and add 1.8.0 to the db update chain in cmd_util.
@@ -399,16 +394,13 @@ class BaseMapper(object):
         ]
         cols.extend(["tagsampler__numsample"])
         data = {}
-        t = time()
         rows = await cf.exec_db(cf.get_variant_data_for_cols, cols)
         rows_by_hugo = {}
-        t = time()
         for row in rows:
             hugo = row[-1]
             if hugo not in rows_by_hugo:
                 rows_by_hugo[hugo] = []
             rows_by_hugo[hugo].append(row)
-        t = time()
         for hugo in hugos:
             rows = rows_by_hugo[hugo]
             input_data = {}

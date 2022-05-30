@@ -94,7 +94,7 @@ class BaseAnnotator(object):
         else:
             self.annotator_version = ""
 
-    def summarize_by_gene(self, hugo, input_data):
+    def summarize_by_gene(self, __hugo__, __input_data__):
         pass
 
     def _log_exception(self, e, halt=True):
@@ -302,12 +302,14 @@ class BaseAnnotator(object):
                     # Handles empty table-format column data.
                     output_dict = self.handle_jsondata(output_dict)
                     # Preserves the first column
-                    output_dict[self._id_col_name] = input_data[
-                        self._id_col_name]
+                    if output_dict:
+                        output_dict[self._id_col_name] = input_data[
+                            self._id_col_name]
                     # Fill absent columns with empty strings
                     output_dict = self.fill_empty_output(output_dict)
                     # Writes output.
-                    self.output_writer.write_data(output_dict)
+                    if self.output_writer:
+                        self.output_writer.write_data(output_dict)
                 except Exception as e:
                     self._log_runtime_exception(lnum, line, input_data, e)
             # This does summarizing.
@@ -323,7 +325,6 @@ class BaseAnnotator(object):
             quiet_print("        {}: runtime {:0.3f}s".format(
                 self.module_name, run_time), self.args)
             if self.update_status_json_flag and self.status_writer is not None:
-                version = self.conf.get("version", "unknown")
                 self.status_writer.queue_status_update(
                     "status",
                     "Finished {} ({})".format(self.conf["title"],
@@ -342,11 +343,6 @@ class BaseAnnotator(object):
         pass
 
     async def get_gene_summary_data(self, cf):
-        from time import time
-
-        t = time()
-        module_ver = await cf.exec_db(cf.get_module_version_in_job,
-                                      self.module_name)
         hugos = await cf.exec_db(cf.get_filtered_hugo_list)
         output_columns = await cf.exec_db(cf.get_stored_output_columns,
                                           self.module_name)
@@ -355,16 +351,13 @@ class BaseAnnotator(object):
             for coldef in output_columns if coldef["name"] != "uid"
         ]
         data = {}
-        t = time()
         rows = await cf.exec_db(cf.get_variant_data_for_cols, cols)
         rows_by_hugo = {}
-        t = time()
         for row in rows:
             hugo = row[-1]
             if hugo not in rows_by_hugo:
                 rows_by_hugo[hugo] = []
             rows_by_hugo[hugo].append(row)
-        t = time()
         for hugo in hugos:
             rows = rows_by_hugo[hugo]
             input_data = {}
@@ -374,7 +367,7 @@ class BaseAnnotator(object):
             data[hugo] = out
         return data
 
-    def _log_runtime_exception(self, lnum, line, input_data, e):
+    def _log_runtime_exception(self, lnum, line, __input_data__, e):
         import traceback
         err_str = traceback.format_exc().rstrip()
         lines = err_str.split("\n")
@@ -466,7 +459,7 @@ class BaseAnnotator(object):
 
     # Open the output files (.var, .gen, .ncd) that are needed
     def _setup_outputs(self):
-        if self.conf is None:
+        if self.conf is None or self.output_dir is None or self.output_basename is None:
             from .exceptions import SetupError
             raise SetupError(module_name=self.module_name)
         import os
@@ -567,7 +560,7 @@ class BaseAnnotator(object):
 
     # Setup the logging utility
     def _setup_logger(self):
-        if self.output_basename is None:
+        if self.output_basename is None or self.output_dir is None:
             from .exceptions import SetupError
             raise SetupError(self.module_name)
         import logging
@@ -625,10 +618,11 @@ class BaseAnnotator(object):
                 continue
 
     def annotate(self, input_data, secondary_data=None):
-        import sys
-        sys.stdout.write("        annotate method should be implemented. " +
-                         "Exiting " + self.annotator_display_name + "...\n")
-        exit(-1)
+        return {
+            "default__annotation": "no annotate has been defined",
+            "input_data": input_data,
+            "secondary_data": secondary_data
+        }
 
     def live_report_substitute(self, d):
         if self.conf is None:
@@ -684,7 +678,7 @@ class SecondaryInputFetcher:
         self.load_input()
 
     def load_input(self):
-        for _, line, all_col_data in self.input_reader.loop_data():
+        for _, _, all_col_data in self.input_reader.loop_data():
             key_data = all_col_data[self.key_col]
             # if key_data not in self.data:
             #    self.data[key_data] = [None] * len(self.fetch_cols)

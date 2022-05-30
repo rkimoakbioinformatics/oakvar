@@ -42,9 +42,7 @@ def fn_module_info(args):
         get_remote_module_info,
         get_remote_module_config,
     )
-    from .sysadmin_const import custom_modules_dir
     from .util import quiet_print
-
     ret = {}
     module_name = args.get("module", None)
     if module_name is None:
@@ -103,7 +101,8 @@ def fn_module_info(args):
         ret["store_availability"] = False
     ret["installed"] = installed
     if installed:
-        if args.get("local", None):
+        from .admin_util import LocalInfoCache
+        if args.get("local", None) and isinstance(local_info, LocalInfoCache):
             ret.update(local_info)
     else:
         pass
@@ -134,10 +133,8 @@ def fn_module_install(args):
         get_install_deps,
         install_module,
     )
-    from .sysadmin_const import custom_modules_dir
     from distutils.version import LooseVersion
     from .util import quiet_print
-    quiet = args.get("quiet", True)
     # split module name and version
     module_name_versions = {}
     for mv in args["modules"]:
@@ -177,8 +174,8 @@ def fn_module_install(args):
             else:
                 if remote_info is not None:
                     if local_info is not None:
-                        local_ver = local_info.version
-                        remote_ver = remote_info.latest_version
+                        #local_ver = local_info.version
+                        #remote_ver = remote_info.latest_version
                         if not args["force"] and LooseVersion(
                                 local_info.version) >= LooseVersion(
                                     remote_info.latest_version):
@@ -257,7 +254,7 @@ def fn_module_update(args):
     from types import SimpleNamespace
 
     quiet = args.get("quiet", True)
-    ret = {"msg": []}
+    #ret = {"msg": []}
     modules = args.get("modules", [])
     if len(modules) > 0:
         requested_modules = search_local(*modules)
@@ -310,7 +307,6 @@ def cli_module_uninstall(args):
 
 def fn_module_uninstall(args):
     from .admin_util import search_local, uninstall_module
-    from .sysadmin_const import custom_modules_dir
     from .util import quiet_print
     matching_names = search_local(*args["modules"])
     if len(matching_names) > 0:
@@ -367,7 +363,6 @@ def list_available_modules(args):
     from .admin_util import search_remote, get_local_module_info, get_remote_module_info
     from .util import humanize_bytes
     fmt = args.get("fmt", "return")
-    quiet = args.get("quiet", True)
     nameonly = args.get("nameonly", False)
     all_toks_name = []
     all_toks_text = []
@@ -387,7 +382,7 @@ def list_available_modules(args):
                 "Local data ver",
                 "Size",
             ]
-            all_toks_all = [header]
+            all_toks_text = [header]
     elif fmt in ["json", "yaml"]:
         all_toks_json = []
     for module_name in search_remote(args.get("pattern")):
@@ -468,7 +463,6 @@ def list_local_modules(args):
     types = args.get("types", [])
     include_hidden = args.get("include_hidden", False)
     tags = args.get("tags", [])
-    quiet = args.get("quiet", True)
     raw_bytes = args.get("raw_bytes", False)
     fmt = args.get("fmt", "json")
     nameonly = args.get("nameonly", False)
@@ -570,13 +564,11 @@ class InstallProgressStdout(InstallProgressHandler):
         self.quiet = quiet
 
     def stage_start(self, stage):
-        import sys
         from .util import quiet_print
         self.cur_stage = stage
         quiet_print(self._stage_msg(stage) + "\n", {"quiet": self.quiet})
 
     def stage_progress(self, cur_chunk, total_chunks, cur_size, total_size):
-        import sys
         from .util import humanize_bytes
         from .util import quiet_print
         rem_chunks = total_chunks - cur_chunk

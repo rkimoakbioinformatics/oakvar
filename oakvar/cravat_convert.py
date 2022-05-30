@@ -185,6 +185,9 @@ class MasterCravatConverter(object):
             self.output_dir = parsed_args["output_dir"]
         else:
             self.output_dir = self.input_dir
+        if self.output_dir is None:
+            from .exceptions import SetupError
+            raise SetupError("output directory")
         if not (exists(self.output_dir)):
             makedirs(self.output_dir)
         self.output_base_fname = None
@@ -197,8 +200,6 @@ class MasterCravatConverter(object):
         liftover_chain_paths = get_liftover_chain_paths()
         if self.do_liftover:
             if self.input_assembly not in liftover_chain_paths:
-                from sys import stderr
-                from sys import exit as sysexit
                 from oakvar.exceptions import InvalidGenomeAssembly
                 raise InvalidGenomeAssembly(self.input_assembly)
             else:
@@ -315,7 +316,6 @@ class MasterCravatConverter(object):
         check_format() method of the CravatConverters to identify a
         converter which can parse the input file.
         """
-        from os.path import basename
         from oakvar.exceptions import InvalidInputFormat
         if self.logger is None:
             from oakvar.exceptions import LoggerError
@@ -379,7 +379,7 @@ class MasterCravatConverter(object):
         .map file contains two columns showing which lines in input
         correspond to which lines in output.
         """
-        if self.output_base_fname is None or self.primary_converter is None:
+        if self.output_base_fname is None or self.primary_converter is None or self.output_dir is None:
             from oakvar.exceptions import SetupError
             raise SetupError()
         from oakvar.constants import (
@@ -706,7 +706,6 @@ class MasterCravatConverter(object):
             el2 = res2[0]
             newchrom1 = el1[0]
             newpos1 = el1[1] + 1
-            newchrom2 = el2[0]
             newpos2 = el2[1] + 1
             newchrom = newchrom1
             newpos = newpos1
@@ -734,7 +733,6 @@ class MasterCravatConverter(object):
             el2 = res2[0]
             newchrom1 = el1[0]
             newpos1 = el1[1] + 1
-            newchrom2 = el2[0]
             newpos2 = el2[1] + 1
             newchrom = newchrom1
             newpos = min(newpos1, newpos2)

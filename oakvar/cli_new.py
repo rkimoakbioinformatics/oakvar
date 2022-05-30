@@ -15,7 +15,6 @@ def cli_new_annotator(args):
 
 def fn_new_annotator(args):
     from .admin_util import new_annotator, get_local_module_info
-    from .sysadmin_const import custom_modules_dir
     from .util import quiet_print
 
     new_annotator(args["annotator_name"])

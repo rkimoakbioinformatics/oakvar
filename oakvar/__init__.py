@@ -1,12 +1,10 @@
-def raise_break(signal_number, stack_frame):
+def raise_break(__signal_number__, __stack_frame__):
     import os
     import platform
     import psutil
-
     pl = platform.platform()
     if pl.startswith("Windows"):
         pid = os.getpid()
-        ppid = os.getppid()
         for child in psutil.Process(pid).children(recursive=True):
             try:
                 child.kill()
@@ -15,7 +13,6 @@ def raise_break(signal_number, stack_frame):
         os.kill(pid, signal.SIGTERM)
     elif pl.startswith("Linux"):
         pid = os.getpid()
-        ppid = os.getppid()
         for child in psutil.Process(pid).children(recursive=True):
             try:
                 child.kill()
@@ -24,7 +21,6 @@ def raise_break(signal_number, stack_frame):
         os.kill(pid, signal.SIGTERM)
     elif pl.startswith("Darwin") or pl.startswith("macOS"):
         pid = os.getpid()
-        ppid = os.getppid()
         for child in psutil.Process(pid).children(recursive=True):
             try:
                 child.kill()
@@ -34,25 +30,45 @@ def raise_break(signal_number, stack_frame):
 
 
 import signal
-
 signal.signal(signal.SIGINT, raise_break)
 
 from .base_converter import BaseConverter
+if BaseConverter is None:
+    raise NotImplemented
 from .base_annotator import BaseAnnotator
+if BaseAnnotator is None:
+    raise NotImplemented
 from .base_mapper import BaseMapper
+if BaseMapper is None:
+    raise NotImplemented
 from .base_postaggregator import BasePostAggregator
+if BasePostAggregator is None:
+    raise NotImplemented
 from .base_commonmodule import BaseCommonModule
+if BaseCommonModule is None:
+    raise NotImplemented
 from .cli_report import CravatReport, fn_ov_report
+if CravatReport is None or fn_ov_report is None:
+    raise NotImplemented
 from .config_loader import ConfigLoader
 from .cravat_filter import CravatFilter
+if CravatFilter is None:
+    raise NotImplemented
 from .cli_run import Cravat
+if Cravat is None:
+    raise NotImplemented
 from .constants import crx_def
+if crx_def is None:
+    raise NotImplemented
 from .exceptions import *
 from . import constants
+if constants is None:
+    raise NotImplemented
 from . import __main__ as cli
+if cli is None:
+    raise NotImplemented
 
 wgs = None
-
 
 def get_live_annotator(module_name):
     import os
@@ -175,7 +191,7 @@ class LiveAnnotator:
                     elif type(annot_data) is dict:
                         annot_data = self.clean_annot_dict(annot_data)
                     response[k] = annot_data
-            except Exception as e:
+            except Exception as _:
                 import traceback
 
                 traceback.print_exc()

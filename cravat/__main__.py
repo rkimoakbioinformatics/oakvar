@@ -1,5 +1,4 @@
 from .cli_module import get_parser_fn_module
-from .cli_config import get_parser_fn_config
 from .cli_util import get_parser_fn_util
 from .cli_run import get_parser_fn_run
 from .cli_gui import get_parser_fn_gui
@@ -63,7 +62,7 @@ def get_entry_parser():
     ]
 
     # module
-    p_module = sp_entry.add_parser(
+    _ = sp_entry.add_parser(
         "module",
         parents=[get_parser_fn_module()],
         description="Manages OakVar modules",
@@ -71,17 +70,8 @@ def get_entry_parser():
         help="Manages OakVar modules",
     )
     # config
-    """
-    p_config = sp_entry.add_parser(
-        "config",
-        parents=[get_parser_fn_config()],
-        description="View and change configuration settings",
-        add_help=False,
-        help="View and change configurations",
-    )
-    """
     # new
-    p_new = sp_entry.add_parser(
+    _ = sp_entry.add_parser(
         "new",
         parents=[get_parser_fn_new()],
         description="Create new modules",
@@ -89,7 +79,7 @@ def get_entry_parser():
         help="Create OakVar example input files and module templates",
     )
     # store
-    p_store = sp_entry.add_parser(
+    _ = sp_entry.add_parser(
         "store",
         parents=[get_parser_fn_store()],
         description="Publish modules to the store",
@@ -97,7 +87,7 @@ def get_entry_parser():
         help="Publish modules to the store",
     )
     # util
-    p_util = sp_entry.add_parser(
+    _ = sp_entry.add_parser(
         "util",
         parents=[get_parser_fn_util()],
         description="Utilities",
@@ -127,7 +117,7 @@ def get_entry_parser():
     ]
 
     # system
-    p_system = sp_entry.add_parser(name="system",
+    _ = sp_entry.add_parser(name="system",
                                    parents=[get_parser_fn_system()],
                                    add_help=False,
                                    help="Setup OakVar")

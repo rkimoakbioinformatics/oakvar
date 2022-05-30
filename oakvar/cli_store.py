@@ -10,7 +10,8 @@ def fn_store_publish(args):
     from getpass import getpass
 
     if args["md"] is not None:
-        custom_modules_dir = args["md"]
+        from . import sysadmin_const
+        sysadmin_const.custom_modules_dir = args["md"]
     sys_conf = get_system_conf()
     if args["user"] is None:
         if "publish_username" in sys_conf:

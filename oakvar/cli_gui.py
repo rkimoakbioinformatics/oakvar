@@ -372,7 +372,7 @@ class WebServer(object):
                  loop=None,
                  ssl_context=None,
                  url=None):
-        from asyncio import get_event_loop, sleep
+        from asyncio import get_event_loop
         self.app = None
         self.runner = None
         self.site = None
@@ -435,13 +435,15 @@ class WebServer(object):
         self.server_started = True
 
     def setup_webapp_routes(self):
-        from importlib.util import spec_from_file_location, module_from_spec
-        from os.path import join, exists
-        from os import listdir
         if logger is None:
             from .exceptions import LoggerError
             raise LoggerError()
+        from importlib.util import spec_from_file_location, module_from_spec
+        from os.path import join, exists
+        from os import listdir
         global modules_dir
+        if modules_dir is None:
+            return False
         webapps_dir = join(modules_dir, "webapps")
         if exists(webapps_dir) == False:
             return False
@@ -496,16 +498,16 @@ class WebServer(object):
         self.app.router.add_static("/store", join(source_dir, "webstore"))
         self.app.router.add_static("/result", join(source_dir, "webresult"))
         self.app.router.add_static("/submit", join(source_dir, "websubmit"))
-        if exists(join(modules_dir, "annotators")):
-            self.app.router.add_static("/modules/annotators/",
-                                       join(modules_dir, "annotators"))
-        self.app.router.add_static("/webapps", join(modules_dir, "webapps"))
+        if modules_dir:
+            if exists(join(modules_dir, "annotators")):
+                self.app.router.add_static("/modules/annotators/",
+                                           join(modules_dir, "annotators"))
+            self.app.router.add_static("/webapps", join(modules_dir, "webapps"))
         ws.start_worker()
         wu.start_worker()
 
 
 async def get_webapp_index(request):
-    queries = request.rel_url.query
     url = request.path + "/index.html"
     if len(request.query) > 0:
         url = url + "?"
@@ -515,7 +517,7 @@ async def get_webapp_index(request):
     return web.HTTPFound(url)
 
 
-async def serve_favicon(request):
+async def serve_favicon(__request__):
     from os.path import dirname, realpath, join
 
     source_dir = dirname(realpath(__file__))
@@ -534,14 +536,14 @@ async def heartbeat(request):
             cravat_multiuser.update_last_active(request))
     await ws.prepare(request)
     try:
-        async for msg in ws:
+        async for _ in ws:
             pass
     except CancelledError:
         pass
     return ws
 
 
-async def is_system_ready(request):
+async def is_system_ready(__request__):
     from .admin_util import system_ready
 
     return web.json_response(dict(system_ready()))
@@ -651,13 +653,13 @@ def main(url=None, host=None, port=None, args={}):
         global ssl_enabled
         if ssl_enabled:
             global sc
-            server = WebServer(loop=loop,
+            _ = WebServer(loop=loop,
                                ssl_context=sc,
                                url=url,
                                host=host,
                                port=port)
         else:
-            server = WebServer(loop=loop, url=url, host=host, port=port)
+            _ = WebServer(loop=loop, url=url, host=host, port=port)
         loop.run_forever()
     except Exception as e:
         from sys import stderr

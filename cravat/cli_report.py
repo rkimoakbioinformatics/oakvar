@@ -72,11 +72,11 @@ class CravatReport:
         from . import admin_util as au
         from .config_loader import ConfigLoader
         from .util import get_args
-        from .sysadmin_const import custom_modules_dir
+        from . import sysadmin_const
         args = get_args(get_parser_fn_report(), inargs, inkwargs)
         self.args = args
         if args["md"] is not None:
-            custom_modules_dir = args["md"]
+            sysadmin_const.custom_modules_dir = args["md"]
         self.dbpath = args["dbpath"]
         self.filterpath = args["filterpath"]
         self.filtername = args["filtername"]
@@ -376,7 +376,7 @@ class CravatReport:
                     generow = await self.cf.get_gene_row(hugo)
                     if generow is None:
                         datarow.extend(
-                            [None for i in range(len(self.var_added_cols))])
+                            [None for _ in range(len(self.var_added_cols))])
                     else:
                         datarow.extend([
                             generow[self.colnos["gene"][colname]]
@@ -396,7 +396,7 @@ class CravatReport:
                             for col in cols
                         ])
                     else:
-                        datarow.extend([None for v in cols])
+                        datarow.extend([None for _ in cols])
             # re-orders data row.
             new_datarow = []
             for colname in [
@@ -527,7 +527,7 @@ class CravatReport:
                 run_time = end_time - start_time
                 self.logger.info("runtime: {0:0.3f}".format(run_time))
             ret = self.end()
-        except Exception as e:
+        except Exception as _:
             import traceback
             traceback.print_exc()
             await self.close_db()
@@ -563,13 +563,13 @@ class CravatReport:
     def end(self):
         pass
 
-    def write_preface(self, level):
+    def write_preface(self, __level__):
         pass
 
-    def write_header(self, level):
+    def write_header(self, __level__):
         pass
 
-    def write_table_row(self, row):
+    def write_table_row(self, __row__):
         pass
 
     def get_extracted_row(self, row):
@@ -607,7 +607,7 @@ class CravatReport:
             else:
                 self.colnames_to_display[level].append(col_name)
 
-    async def make_col_info(self, level: str, conn=None, cursor=None):
+    async def make_col_info(self, level: str, __conn__=None, cursor=None):
         if self.conf is None or cursor is None:
             from .exceptions import SetupError
             raise SetupError()
@@ -949,7 +949,7 @@ class CravatReport:
             excludesample=self.args["excludesample"],
         )
 
-    async def table_exists(self, tablename, conn=None, cursor=None):
+    async def table_exists(self, tablename, __conn__=None, cursor=None):
         if cursor is None:
             from .exceptions import SetupError
             raise SetupError()
@@ -977,7 +977,7 @@ def fn_ov_report(args):
     from .util import is_compatible_version
     from . import admin_util as au
     from .util import write_log_msg
-    from .sysadmin_const import custom_modules_dir
+    from . import sysadmin_const
     import importlib
     from .exceptions import ModuleNotExist
     from .exceptions import IncompatibleResult
@@ -992,12 +992,12 @@ def fn_ov_report(args):
             db.execute("select * from info")
     except:
         exit(f"{dbpath} is not an OC database")
-    compatible_version, db_version, oc_version = is_compatible_version(dbpath)
+    compatible_version, _, _ = is_compatible_version(dbpath)
     if not compatible_version:
         raise IncompatibleResult()
     report_types = args["reporttypes"]
     if args["md"] is not None:
-        custom_modules_dir = args["md"]
+        sysadmin_const.custom_modules_dir = args["md"]
     local = au.get_mic().get_local()
     if len(report_types) == 0:
         if args["package"] is not None and args["package"] in local:

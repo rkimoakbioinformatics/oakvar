@@ -312,6 +312,9 @@ class Aggregator(object):
         if self.level is None: return
         if self.name is None: return
         if self.input_base_fname is None: return
+        if self.input_dir is None:
+            from .exceptions import SetupError
+            raise SetupError()
         from os.path import join
         from os import listdir
         if self.level == "variant":
@@ -486,6 +489,9 @@ class Aggregator(object):
 
     def _setup_io(self):
         if self.output_base_fname is None: return
+        if self.output_dir is None:
+            from .exceptions import SetupError
+            raise SetupError()
         from os.path import join, exists
         from os import remove
         from sqlite3 import connect
