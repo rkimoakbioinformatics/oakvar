@@ -1,23 +1,15 @@
 from oakvar import admin_util as au
-from oakvar import ConfigLoader
 import os
-import yaml
 import json
-from multiprocessing import Process, Pipe, Value, Manager, Queue
+from multiprocessing import Process, Manager
 import time
 import traceback
-import sys
-import urllib
 import asyncio
 from aiohttp import web
-from html.parser import HTMLParser
 from oakvar import store_utils as su
 from oakvar import constants
 import oakvar.admin_util as au
-import markdown
 import shutil
-import copy
-import importlib
 import concurrent.futures
 from ..sysadmin import get_system_conf
 
@@ -103,7 +95,7 @@ def fetch_install_queue (install_queue, install_state, local_modules_changed):
             au.mic.update_local()
             local_modules_changed.set()
             time.sleep(1)
-        except Exception as e:
+        except Exception as _:
             traceback.print_exc()
             local_modules_changed.set()
 
@@ -144,7 +136,7 @@ async def get_remote_module_config (request):
     response = conf
     return web.json_response(response)
 
-async def get_local_manifest (request):
+async def get_local_manifest (_):
     handle_modules_changed()
     content = {}
     for k, v in au.mic.local.items():
@@ -269,7 +261,7 @@ async def queue_install (request):
             install_queue.put({'module':dep_name,'version':dep_version})
     return web.Response(text = 'queued ' + queries['module'])
 
-async def get_base_modules (request):
+async def get_base_modules (_):
     global system_conf
     base_modules = system_conf['base_modules']
     return web.json_response(base_modules)
@@ -290,7 +282,7 @@ async def install_base_modules (request):
     response = 'queued'
     return web.json_response(response)
 
-async def get_md (request):
+async def get_md (_):
     from ..sysadmin import get_modules_dir
     modules_dir = get_modules_dir()
     return web.Response(text=modules_dir)
@@ -314,7 +306,7 @@ async def get_module_updates (request):
     out = {'updates':updatesd,'conflicts':sconflicts}
     return web.json_response(out)
 
-async def get_free_modules_space (request):
+async def get_free_modules_space (_):
     from ..sysadmin import get_modules_dir
     modules_dir = get_modules_dir()
     free_space = shutil.disk_usage(modules_dir).free
@@ -360,7 +352,7 @@ async def unqueue_install (request):
         install_state['message'] = msg_bak
     return web.json_response('done')
 
-async def get_tag_desc (request):
+async def get_tag_desc (_):
     return constants.module_tag_desc
 
 async def update_remote (request):
@@ -419,7 +411,6 @@ async def get_local_module_logo (request):
     queries = request.rel_url.query
     module = queries.get('module', None)
     module_info = au.mic.local[module]
-    module_conf = module_info.conf
     module_dir = module_info.directory
     logo_path = os.path.join(module_dir, 'logo.png')
     return web.FileResponse(logo_path)

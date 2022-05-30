@@ -8,7 +8,6 @@ def fn_store_publish(args):
     from .sysadmin import get_system_conf
     from .admin_util import publish_module
     from getpass import getpass
-
     if args["md"] is not None:
         from . import sysadmin_const
         sysadmin_const.custom_modules_dir = args["md"]
@@ -42,7 +41,6 @@ def cli_store_createaccount(args):
 def fn_store_createaccount(args):
     from .admin_util import create_account
     from .util import get_dict_from_namespace
-
     args = get_dict_from_namespace(args)
     ret = create_account(args["username"], args["password"])
     return ret
@@ -57,7 +55,6 @@ def cli_store_changepassword(args):
 def fn_store_changepassword(args):
     from .admin_util import change_password
     from .util import get_dict_from_namespace
-
     args = get_dict_from_namespace(args)
     ret = change_password(args["username"], args["current_password"],
                           args["new_password"])
@@ -73,7 +70,6 @@ def cli_store_resetpassword(args):
 
 def fn_store_resetpassword(args):
     from .admin_util import send_reset_email
-
     ret = send_reset_email(args["username"], args=args)
     return ret
 
@@ -86,7 +82,6 @@ def cli_store_verifyemail(args):
 
 def fn_store_verifyemail(args):
     from .admin_util import send_verify_email
-
     ret = send_verify_email(args["username"], args=args)
     return ret
 
@@ -99,14 +94,12 @@ def cli_store_checklogin(args):
 
 def fn_store_checklogin(args):
     from .admin_util import check_login
-
     ret = check_login(args.username, args["password"])
     return ret
 
 
 def get_parser_fn_store():
     from argparse import ArgumentParser, RawDescriptionHelpFormatter
-
     parser_fn_store = ArgumentParser(
         formatter_class=RawDescriptionHelpFormatter)
     _subparsers = parser_fn_store.add_subparsers(title="Commands")

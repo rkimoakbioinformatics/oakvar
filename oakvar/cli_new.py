@@ -16,7 +16,6 @@ def cli_new_annotator(args):
 def fn_new_annotator(args):
     from .admin_util import new_annotator, get_local_module_info
     from .util import quiet_print
-
     new_annotator(args["annotator_name"])
     module_info = get_local_module_info(args["annotator_name"])
     if module_info is not None:
@@ -28,7 +27,6 @@ def fn_new_annotator(args):
 
 def get_parser_fn_new():
     from argparse import ArgumentParser, RawDescriptionHelpFormatter
-
     parser_fn_new = ArgumentParser(formatter_class=RawDescriptionHelpFormatter)
     _subparsers = parser_fn_new.add_subparsers(title="Commands")
 

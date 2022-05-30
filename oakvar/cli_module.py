@@ -242,7 +242,6 @@ def fn_module_install(args):
 
 def cli_module_update(args):
     from .util import get_dict_from_namespace
-
     args = get_dict_from_namespace(args)
     args["quiet"] = False
     return fn_module_update(args)
@@ -252,7 +251,6 @@ def fn_module_update(args):
     from .util import humanize_bytes
     from .util import quiet_print
     from types import SimpleNamespace
-
     quiet = args.get("quiet", True)
     #ret = {"msg": []}
     modules = args.get("modules", [])
@@ -300,7 +298,6 @@ def fn_module_update(args):
 
 def cli_module_uninstall(args):
     from .util import get_dict_from_namespace
-
     args = get_dict_from_namespace(args)
     args["quiet"] = False
     return fn_module_uninstall(args)
@@ -330,7 +327,6 @@ def fn_module_uninstall(args):
 
 def cli_module_installbase(args):
     from .util import get_dict_from_namespace
-
     args = get_dict_from_namespace(args)
     args["quiet"] = False
     return fn_module_installbase(args)
@@ -339,7 +335,6 @@ def fn_module_installbase(args):
     from .sysadmin import get_system_conf
     from .sysadmin_const import base_modules_key
     from types import SimpleNamespace
-
     sys_conf = get_system_conf(conf=args.get("conf"))
     base_modules = sys_conf.get(base_modules_key, [])
     args = SimpleNamespace(
@@ -555,8 +550,6 @@ def yield_tabular_lines(l, col_spacing=2, indent=0):
 
 
 from .admin_util import InstallProgressHandler
-
-
 class InstallProgressStdout(InstallProgressHandler):
 
     def __init__(self, module_name, module_version, quiet=True):
@@ -590,7 +583,6 @@ class InstallProgressStdout(InstallProgressHandler):
 
 def get_parser_fn_module():
     from argparse import ArgumentParser, RawDescriptionHelpFormatter
-
     parser_fn_module = ArgumentParser(
         formatter_class=RawDescriptionHelpFormatter)
     _subparsers = parser_fn_module.add_subparsers(title="Commands",

@@ -263,7 +263,6 @@ def translate_codon(bases, fallback=None):
 
 def get_caller_name(path):
     from os.path import abspath, basename
-
     path = abspath(path)
     basename = basename(path)
     if "." in basename:
@@ -317,7 +316,6 @@ def get_directory_size(start_path):
     """
     from os import walk
     from os.path import join, getsize
-
     total_size = 0
     for dirpath, _, filenames in walk(start_path):
         for fname in filenames:
@@ -336,7 +334,6 @@ def get_argument_parser_defaults(parser):
 def detect_encoding(path):
     from chardet.universaldetector import UniversalDetector
     from gzip import open as gzipopen
-
     if " " not in path:
         path = path.strip('"')
     if path.endswith(".gz"):
@@ -364,7 +361,6 @@ def detect_encoding(path):
 def get_job_version(dbpath, platform_name):
     from distutils.version import LooseVersion
     import sqlite3
-
     db = sqlite3.connect(dbpath)
     c = db.cursor()
     sql = f'select colval from info where colkey="{platform_name}"'
@@ -380,7 +376,6 @@ def is_compatible_version(dbpath):
     from .admin_util import get_max_version_supported_for_migration
     from distutils.version import LooseVersion
     from pkg_resources import get_distribution
-
     max_version_supported_for_migration = get_max_version_supported_for_migration(
     )
     try:
@@ -419,7 +414,6 @@ def is_url(s):
 
 def get_current_time_str():
     from datetime import datetime
-
     t = datetime.now()
     return t.strftime("%Y:%m:%d %H:%M:%S")
 
@@ -427,7 +421,6 @@ def get_current_time_str():
 def get_args(parser, inargs, inkwargs):
     from types import SimpleNamespace
     from argparse import Namespace
-
     # Combines arguments in various formats.
     inarg_dict = {}
     if inargs is not None:
@@ -464,7 +457,6 @@ def filter_affected_cols(filter):
 def humanize_bytes(num, binary=False):
     """Human friendly file size"""
     from math import floor, log
-
     exp2unit_dec = {0: "B", 1: "kB", 2: "MB", 3: "GB"}
     exp2unit_bin = {0: "B", 1: "KiB", 2: "MiB", 3: "GiB"}
     max_exponent = 3
@@ -509,7 +501,6 @@ def write_log_msg(logger, e, quiet=True):
 
 def get_simplenamespace(d):
     from types import SimpleNamespace
-
     if type(d) == dict:
         d = SimpleNamespace(**d)
     return d
@@ -518,7 +509,6 @@ def get_simplenamespace(d):
 def get_dict_from_namespace(n):
     from types import SimpleNamespace
     from argparse import Namespace
-
     if type(n) == SimpleNamespace or type(n) == Namespace:
         n = vars(n)
     return n

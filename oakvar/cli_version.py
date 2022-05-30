@@ -17,7 +17,6 @@ def fn_version(args):
 
 def get_parser_cli_version():
     from argparse import ArgumentParser
-
     # shows version
     parser_cli_version = ArgumentParser()
     parser_cli_version.add_argument(

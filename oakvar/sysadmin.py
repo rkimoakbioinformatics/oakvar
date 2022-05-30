@@ -52,7 +52,7 @@ def get_conf_dir(conf=None):
 def get_modules_dir(conf=None):
     from .sysadmin_const import modules_dir_key
     d = get_conf_dirvalue(modules_dir_key, conf=conf)
-    return get_conf_dirvalue(modules_dir_key, conf=conf)
+    return d
 
 
 def get_jobs_dir(conf=None):
@@ -296,7 +296,6 @@ def get_system_conf_path(conf=None):
 def get_default_conf_dir(conf=None):
     from os.path import join as pathjoin
     from .sysadmin_const import conf_dir_name
-
     root_dir = get_default_root_dir(conf=conf)
     if root_dir:
         return pathjoin(root_dir, conf_dir_name)
@@ -307,7 +306,6 @@ def get_default_conf_dir(conf=None):
 def get_default_modules_dir(conf=None):
     from os.path import join as pathjoin
     from .sysadmin_const import modules_dir_name
-
     root_dir = get_default_root_dir(conf=conf)
     if root_dir:
         return pathjoin(root_dir, modules_dir_name)
@@ -318,7 +316,6 @@ def get_default_modules_dir(conf=None):
 def get_default_jobs_dir(conf=None):
     from os.path import join as pathjoin
     from .sysadmin_const import jobs_dir_name
-
     root_dir = get_default_root_dir(conf=conf)
     if root_dir:
         return pathjoin(root_dir, jobs_dir_name)
@@ -329,7 +326,6 @@ def get_default_jobs_dir(conf=None):
 def get_default_log_dir(conf=None):
     from os.path import join as pathjoin
     from .sysadmin_const import log_dir_name
-
     root_dir = get_default_root_dir(conf=conf)
     if root_dir:
         return pathjoin(root_dir, log_dir_name)

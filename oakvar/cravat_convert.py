@@ -8,7 +8,6 @@ class VTracker:
 
     def __init__(self, deduplicate=True):
         from collections import defaultdict
-
         self.var_by_chrom = defaultdict(dict)
         self.current_UID = 1
         self.deduplicate = deduplicate
@@ -52,7 +51,6 @@ class MasterCravatConverter(object):
 
     def __init__(self, *inargs, **inkwargs):
         from oakvar.constants import crs_def
-
         self.logger = None
         self.crv_writer = None
         self.crs_writer = None
@@ -223,7 +221,6 @@ class MasterCravatConverter(object):
     def open_input_file(self, input_path):
         import gzip
         from oakvar.util import detect_encoding
-
         encoding = detect_encoding(input_path)
         if input_path.endswith(".gz"):
             f = gzip.open(input_path, mode="rt", encoding=encoding)

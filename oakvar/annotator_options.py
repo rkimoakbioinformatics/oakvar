@@ -3,7 +3,6 @@ import oyaml as yaml
 from .exceptions import ConfigurationError
 from .constants import crv_def, crx_def, crg_def
 
-
 class AnnotatorOptions(object):
     valid_levels = ["variant", "gene"]
     valid_input_formats = ["crv", "crx", "crg"]

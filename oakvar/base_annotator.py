@@ -1,7 +1,6 @@
 class BaseAnnotator(object):
 
     from .constants import crv_def, crx_def, crg_def
-
     valid_levels = ["variant", "gene"]
     valid_input_formats = ["crv", "crx", "crg"]
     id_col_defs = {"variant": crv_def[0], "gene": crg_def[0]}
@@ -145,7 +144,6 @@ class BaseAnnotator(object):
 
     def _define_cmd_parser(self):
         import argparse
-
         parser = argparse.ArgumentParser()
         parser.add_argument("input_file", help="Input file to be annotated.")
         parser.add_argument(
@@ -334,10 +332,6 @@ class BaseAnnotator(object):
             self._log_exception(e)
         if hasattr(self, "log_handler") and self.log_handler:
             self.log_handler.close()
-        """
-        if self.output_basename == '__dummy__':
-            os.remove(self.log_path)
-        """
 
     def postprocess(self):
         pass
@@ -652,7 +646,6 @@ class SecondaryInputFetcher:
     def __init__(self, input_path, key_col, fetch_cols=[]):
         from .inout import CravatReader
         from .exceptions import ConfigurationError
-
         self.key_col = key_col
         self.input_path = input_path
         self.input_reader = CravatReader(self.input_path)

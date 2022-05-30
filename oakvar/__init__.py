@@ -8,7 +8,7 @@ def raise_break(__signal_number__, __stack_frame__):
         for child in psutil.Process(pid).children(recursive=True):
             try:
                 child.kill()
-            except psutil.NoSuchProcess:
+            except psutil.NoSuchProcess: # keep
                 pass
         os.kill(pid, signal.SIGTERM)
     elif pl.startswith("Linux"):
@@ -16,7 +16,7 @@ def raise_break(__signal_number__, __stack_frame__):
         for child in psutil.Process(pid).children(recursive=True):
             try:
                 child.kill()
-            except psutil.NoSuchProcess:
+            except psutil.NoSuchProcess: # keep
                 pass
         os.kill(pid, signal.SIGTERM)
     elif pl.startswith("Darwin") or pl.startswith("macOS"):
@@ -24,7 +24,7 @@ def raise_break(__signal_number__, __stack_frame__):
         for child in psutil.Process(pid).children(recursive=True):
             try:
                 child.kill()
-            except psutil.NoSuchProcess:
+            except psutil.NoSuchProcess: # keep
                 pass
         os.kill(pid, signal.SIGTERM)
 
@@ -33,40 +33,30 @@ import signal
 signal.signal(signal.SIGINT, raise_break)
 
 from .base_converter import BaseConverter
-if BaseConverter is None:
-    raise NotImplemented
 from .base_annotator import BaseAnnotator
-if BaseAnnotator is None:
-    raise NotImplemented
 from .base_mapper import BaseMapper
-if BaseMapper is None:
-    raise NotImplemented
 from .base_postaggregator import BasePostAggregator
-if BasePostAggregator is None:
-    raise NotImplemented
 from .base_commonmodule import BaseCommonModule
-if BaseCommonModule is None:
-    raise NotImplemented
 from .cli_report import CravatReport, fn_ov_report
-if CravatReport is None or fn_ov_report is None:
-    raise NotImplemented
 from .config_loader import ConfigLoader
 from .cravat_filter import CravatFilter
-if CravatFilter is None:
-    raise NotImplemented
 from .cli_run import Cravat
-if Cravat is None:
-    raise NotImplemented
 from .constants import crx_def
-if crx_def is None:
-    raise NotImplemented
 from .exceptions import *
 from . import constants
-if constants is None:
-    raise NotImplemented
 from . import __main__ as cli
-if cli is None:
-    raise NotImplemented
+if BaseConverter is None: raise NotImplemented
+if BaseAnnotator is None: raise NotImplemented
+if BaseMapper is None: raise NotImplemented
+if BasePostAggregator is None: raise NotImplemented
+if BaseCommonModule is None: raise NotImplemented
+if CravatReport is None or fn_ov_report is None: raise NotImplemented
+if ConfigLoader is None: raise NotImplemented
+if CravatFilter is None: raise NotImplemented
+if Cravat is None: raise NotImplemented
+if crx_def is None: raise NotImplemented
+if constants is None: raise NotImplemented
+if cli is None: raise NotImplemented
 
 wgs = None
 
@@ -170,7 +160,6 @@ class LiveAnnotator:
     def annotate(self, crv):
         from .inout import AllMappingsParser
         from oakvar.constants import all_mappings_col_name
-
         if "uid" not in crv:
             crv["uid"] = self.variant_uid
             self.variant_uid += 1
@@ -193,7 +182,6 @@ class LiveAnnotator:
                     response[k] = annot_data
             except Exception as _:
                 import traceback
-
                 traceback.print_exc()
                 response[k] = None
         if crx_data is not None and "tmp_mapper" in crx_data:

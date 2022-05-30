@@ -3,7 +3,6 @@ import sys
 
 if sys.platform == "win32" and sys.version_info >= (3, 8):
     from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy
-
     set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 
 
@@ -300,7 +299,6 @@ class CravatFilter:
 
     def parse_args(self, args):
         from argparse import ArgumentParser
-
         parser = ArgumentParser()
         parser.add_argument(
             "-d",
@@ -373,7 +371,6 @@ class CravatFilter:
             return None
         if self.conn is None:
             import aiosqlite
-
             self.conn = await aiosqlite.connect(self.dbpath)
         return self.conn
 
@@ -386,6 +383,7 @@ class CravatFilter:
             await self.exec_db(self.set_aliases)
 
     async def set_aliases(self, conn=None, cursor=None):
+        if conn is None: pass
         self.table_aliases = {"variant": "v", "gene": "g"}
         self.column_prefixes = {}
         q = "pragma table_info(variant)"
@@ -437,10 +435,10 @@ class CravatFilter:
         conn=None,
         cursor=None,
     ):
+        if conn is None: pass
         from os.path import exists
         from oyaml import safe_load
         from json import load, loads
-
         if filterpath != None:
             self.filterpath = filterpath
         if filtername != None:
@@ -487,7 +485,6 @@ class CravatFilter:
 
     async def verify_filter(self, cursor):
         from oakvar.exceptions import InvalidFilter
-
         wrong_samples = await self.verify_filter_sample(cursor)
         wrong_colnames = await self.verify_filter_module(cursor)
         if len(wrong_samples) > 0 or len(wrong_colnames) > 0:
@@ -568,14 +565,12 @@ class CravatFilter:
 
     def getvariantcount(self):
         from asyncio import get_event_loop
-
         loop = get_event_loop()
         count = loop.run_until_complete(self.exec_db(self.getcount, "variant"))
         return count
 
     def getgenecount(self):
         from asyncio import get_event_loop
-
         loop = get_event_loop()
         count = loop.run_until_complete(self.exec_db(self.getcount, "gene"))
         return count
@@ -605,14 +600,12 @@ class CravatFilter:
 
     def getvariantrows(self):
         from asyncio import get_event_loop
-
         loop = get_event_loop()
         rows = loop.run_until_complete(self.exec_db(self.getrows, "variant"))
         return rows
 
     def getgenerows(self):
         from asyncio import get_event_loop
-
         loop = get_event_loop()
         rows = loop.run_until_complete(self.exec_db(self.getrows, "gene"))
         return rows
@@ -641,6 +634,7 @@ class CravatFilter:
         return ret
 
     async def make_generows(self, conn=None, cursor=None):
+        if conn is None: pass
         if cursor is not None:
             q = "select * from gene"
             await cursor.execute(q)
@@ -660,7 +654,6 @@ class CravatFilter:
 
     def getvariantiterator(self):
         from asyncio import get_event_loop
-
         loop = get_event_loop()
         iterator = loop.run_until_complete(
             self.exec_db(self.getiterator, "variant"))
@@ -668,13 +661,13 @@ class CravatFilter:
 
     def getgeneiterator(self):
         from asyncio import get_event_loop
-
         loop = get_event_loop()
         iterator = loop.run_until_complete(
             self.exec_db(self.getiterator, "gene"))
         return iterator
 
     async def getiterator(self, level="variant", conn=None, cursor=None):
+        if conn is None: pass
         if cursor is not None:
             (__sample_needed__, __tag_needed__, include_where,
             exclude_where) = self.getwhere(level)
@@ -777,6 +770,7 @@ class CravatFilter:
             return False
 
     async def make_filter_where(self, conn=None, cursor=None):
+        if conn is None or cursor is None: pass
         q = ""
         if len(self.filter) == 0:
             if self.includesample is not None or self.excludesample is not None:
@@ -809,7 +803,6 @@ class CravatFilter:
 
     async def make_filtered_uid_table(self, conn=None, cursor=None):
         from time import time
-
         t = time()
         bypassfilter = (self.filter == {} and self.filtersql is None
                         and self.includesample is None
@@ -928,6 +921,7 @@ class CravatFilter:
             await conn.commit()
 
     async def listfilter(self, name=None, conn=None, cursor=None):
+        if conn is None: pass
         ret = {}
         if cursor is not None:
             from json import loads
@@ -986,6 +980,7 @@ class CravatFilter:
             del self.filter[level][column]
 
     async def table_exists(self, table, conn=None, cursor=None):
+        if conn is None: pass
         if cursor is not None:
             sql = ('select name from sqlite_master where type="table" and ' +
                 'name="' + table + '"')
@@ -1002,6 +997,7 @@ class CravatFilter:
                                                       cols,
                                                       conn=None,
                                                       cursor=None):
+        if conn is None: pass
         if cursor is not None:
             if cols[0] == "base__uid":
                 cols[0] = "v." + cols[0]
@@ -1020,6 +1016,7 @@ class CravatFilter:
                 yield d
 
     async def get_filtered_hugo_list(self, conn=None, cursor=None):
+        if conn is None: pass
         if cursor is not None:
             bypassfilter = (self.filter == {} and self.filtersql is None
                             and self.includesample is None
@@ -1034,6 +1031,7 @@ class CravatFilter:
             return hugos
 
     async def get_variant_data_for_cols(self, cols, conn=None, cursor=None):
+        if conn is None: pass
         if cursor is not None:
             bypassfilter = (self.filter == {} and self.filtersql is None
                             and self.includesample is None
@@ -1054,6 +1052,7 @@ class CravatFilter:
                                         cols,
                                         conn=None,
                                         cursor=None):
+        if conn is None: pass
         if cursor is not None:
             bypassfilter = (self.filter == {} and self.filtersql is None
                             and self.includesample is None
@@ -1071,6 +1070,7 @@ class CravatFilter:
             return rows
 
     async def get_result_levels(self, conn=None, cursor=None):
+        if conn is None: pass
         table_names = []
         if cursor is not None:
             q = ('select name from sqlite_master where type="table" and ' +
@@ -1084,6 +1084,7 @@ class CravatFilter:
                                         module_name,
                                         conn=None,
                                         cursor=None):
+        if conn is None: pass
         output_columns = []
         if cursor is not None:
             from json import loads
@@ -1098,7 +1099,6 @@ class CravatFilter:
 
 def regexp(y, x, search=None):
     import re
-
     if search is None:
         search = re.search
     if x is None:
@@ -1109,7 +1109,6 @@ def regexp(y, x, search=None):
 def main():
     import sys
     from asyncio import new_event_loop
-
     loop = new_event_loop()
     cv = loop.run_until_complete(CravatFilter.create(mode="main"))
     loop.run_until_complete(cv.run(args=sys.argv[1:]))

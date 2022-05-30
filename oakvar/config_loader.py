@@ -16,7 +16,6 @@ class ConfigLoader:
 
     def _load_system_conf(self, build_all=True):
         from .sysadmin import get_system_conf
-
         self._system = get_system_conf()
         if build_all:
             self._build_all()
@@ -26,7 +25,6 @@ class ConfigLoader:
         from .admin_util import load_yml_conf, get_packagedir
         import shutil
         from .sysadmin_const import default_multicore_mapper_mode
-
         self._main = {}
         if os.path.exists(self.main_conf_path) == False:
             shutil.copy(os.path.join(get_packagedir(), "cravat.yml"),
@@ -41,7 +39,6 @@ class ConfigLoader:
     def _load_job_conf(self, build_all=True):
         import os
         from .admin_util import load_yml_conf
-
         self._job = {}
         if self.job_conf_path:
             if os.path.exists(self.job_conf_path):
@@ -54,7 +51,6 @@ class ConfigLoader:
 
     def _load_module_conf(self, module_name, build_all=True):
         from .admin_util import get_module_conf_path, load_yml_conf
-
         conf_path = get_module_conf_path(module_name)
         if conf_path is not None:
             self._modules[module_name] = load_yml_conf(conf_path)
@@ -64,7 +60,6 @@ class ConfigLoader:
     def _build_all(self):
         import copy
         from .admin_util import recursive_update
-
         self._all = {}
         if self._modules:
             self._all["modules"] = copy.deepcopy(self._modules)
@@ -93,7 +88,6 @@ class ConfigLoader:
         """
         import oyaml as yaml
         from .admin_util import list_local
-
         # Load all modules, or only requested modules
         if len(modules) == 0:
             modules = list_local()
@@ -155,18 +149,15 @@ class ConfigLoader:
 
     def override_run_conf(self, run_conf):
         from .admin_util import recursive_update
-
         self._all["run"] = recursive_update(self._all["run"], run_conf)
 
     def override_cravat_conf(self, cravat_conf):
         from .admin_util import recursive_update
-
         self._all["cravat"] = recursive_update(self._all["cravat"],
                                                cravat_conf)
 
     def override_all_conf(self, conf):
         from .admin_util import recursive_update
-
         self._all = recursive_update(self._all, conf)
 
     def get_local_module_confs(self):

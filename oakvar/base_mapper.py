@@ -12,7 +12,6 @@ class BaseMapper(object):
         from time import time
         from oakvar.config_loader import ConfigLoader
         import pkg_resources
-
         self.cmd_parser = None
         self.input_path = None
         self.input_dir = None
@@ -61,7 +60,6 @@ class BaseMapper(object):
 
     def _define_main_cmd_args(self):
         import argparse
-
         self.cmd_parser = argparse.ArgumentParser()
         self.cmd_parser.add_argument("input_file", help="Input crv file")
         self.cmd_parser.add_argument("-n",
@@ -121,7 +119,6 @@ class BaseMapper(object):
         from os import makedirs
         from json import loads
         from .util import get_args
-
         args = get_args(self.cmd_parser, inargs, inkwargs)
         self.input_path = abspath(args["input_file"])
         self.input_dir, self.input_fname = split(self.input_path)
@@ -157,7 +154,6 @@ class BaseMapper(object):
 
     def _setup_logger(self):
         import logging
-
         self.logger = logging.getLogger("oakvar.mapper")
         self.logger.info("input file: %s" % self.input_path)
         self.error_logger = logging.getLogger("error.mapper")
@@ -286,14 +282,13 @@ class BaseMapper(object):
         self.end()
         return output
 
-    def run_as_slave(self, pos_no):
+    def run_as_slave(self, __pos_no__):
         """
         Read crv file and use map() function to convert to crx dict. Write the
         crx dict to the crx file and add information in crx dict to gene_info
         """
         from time import time, asctime, localtime
         self.base_setup()
-        from sys import stderr
         if self.args is None or self.logger is None or self.conf is None or self.reader is None or self.crx_writer is None:
             from .exceptions import SetupError
             raise SetupError()
@@ -351,7 +346,6 @@ class BaseMapper(object):
         Add information in a crx dict to persistent gene_info dict
         """
         from .inout import AllMappingsParser
-
         tmap_json = crx_data["all_mappings"]
         # Return if no tmap
         if tmap_json == "":
@@ -385,7 +379,6 @@ class BaseMapper(object):
 
     async def get_gene_summary_data(self, cf):
         from .constants import crx_def
-
         hugos = await cf.exec_db(cf.get_filtered_hugo_list)
         # Below is to fix opening oc 1.8.0 jobs with oc 1.8.1.
         # TODO: Remove it after a while and add 1.8.0 to the db update chain in cmd_util.

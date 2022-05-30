@@ -5,7 +5,6 @@ nest_asyncio.apply()
 
 if sys.platform == "win32" and sys.version_info >= (3, 8):
     from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy
-
     set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 
 
@@ -198,7 +197,6 @@ class CravatReport:
 
     async def get_db_conn(self):
         import aiosqlite
-
         if self.dbpath is None:
             return None
         if self.conn is None:
@@ -917,7 +915,6 @@ class CravatReport:
 
     async def connect_db(self, dbpath=None):
         import os
-
         if dbpath != None:
             self.dbpath = dbpath
         if self.dbpath == None:
