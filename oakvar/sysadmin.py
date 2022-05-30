@@ -1,7 +1,7 @@
 custom_system_conf = None
 
 
-def setup_system(args, quiet=False):
+def setup_system(args):
     from os.path import exists, join
     from shutil import copyfile
     from .sysadmin_const import root_dir_key
@@ -11,7 +11,6 @@ def setup_system(args, quiet=False):
     from .sysadmin_const import log_dir_key
     from .sysadmin_const import main_conf_fname
     from .admin_util import get_packagedir
-    is_root = is_root_user()
     # load sys conf.
     conf = None
     sys_conf_path = args.get("setup_file")
@@ -52,7 +51,8 @@ def get_conf_dir(conf=None):
 
 def get_modules_dir(conf=None):
     from .sysadmin_const import modules_dir_key
-    return get_conf_dirvalue(modules_dir_key, conf=conf)
+    d = get_conf_dirvalue(modules_dir_key, conf=conf)
+    return d
 
 
 def get_jobs_dir(conf=None):
@@ -77,7 +77,6 @@ def get_sys_conf_value(conf_key, sys_conf_path=None, conf=None):
     from os import environ
     from .admin_util import load_yml_conf
     from os.path import exists
-    value = None
     # custom conf
     if conf is not None and conf_key in conf:
         return conf[conf_key]
@@ -92,7 +91,7 @@ def get_sys_conf_value(conf_key, sys_conf_path=None, conf=None):
         return environ.get(env_key)
     # from default system conf location
     sys_conf_path = get_system_conf_path()
-    if exists(sys_conf_path):
+    if sys_conf_path and exists(sys_conf_path):
         sys_conf = load_yml_conf(sys_conf_path)
         if conf_key in sys_conf:
             return sys_conf[conf_key]
@@ -123,7 +122,7 @@ def get_system_conf(sys_conf_path=None,
     # sys conf
     if sys_conf_path is None:
         sp = get_system_conf_path()
-        if exists(sp):
+        if sp and exists(sp):
             sys_conf = load_yml_conf(sp)
             final_conf.update(sys_conf)
             final_conf[sys_conf_path_key] = sp
@@ -177,19 +176,19 @@ def get_system_conf(sys_conf_path=None,
 def show_system_conf(args):
     from oyaml import dump
     from os.path import exists
-    args.setdefault("fmt", "json")
-    args.setdefault("to", "return")
+    from .util import quiet_print
+    #args.setdefault("fmt", "json")
+    #args.setdefault("to", "return")
     sys_conf_path = get_system_conf_path()
-    if not exists(sys_conf_path):
+    if sys_conf_path is None or not exists(sys_conf_path):
         return None
     conf = get_system_conf()
-    confyaml = None
     if args.get("fmt") == "yaml":
-        confyaml = dump(conf, default_flow_style=False)
+        conf = dump(conf, default_flow_style=False)
     if args.get("to") == "stdout":
-        print(confyaml)
+        quiet_print(conf, args=args)
     else:
-        return confyaml
+        return conf
 
 
 def update_system_conf_file(d):
@@ -222,7 +221,7 @@ def get_main_default_path():
     return os.path.join(get_packagedir(), main_conf_fname)
 
 
-def set_modules_dir(path, overwrite=False):
+def set_modules_dir(path, __overwrite__=False):
     """
     Set the modules_dir to the directory in path.
     """
@@ -245,10 +244,11 @@ def set_modules_dir(path, overwrite=False):
 def create_dir_if_absent(d, quiet=True):
     from os.path import exists
     from os import makedirs
+    from .util import quiet_print
     if d is not None:
         if not exists(d):
             makedirs(d)
-            if not quiet: print(f"Created {d}")
+            quiet_print(f"Created {d}", args={"quiet": quiet})
 
 
 def is_root_user():
@@ -286,35 +286,51 @@ def get_system_conf_path(conf=None):
     if sys_conf_path is not None:
         return sys_conf_path
     # default
-    return join(get_default_conf_dir(conf=conf), system_conf_fname)
+    root_dir = get_default_conf_dir(conf=conf)
+    if root_dir:
+        return join(root_dir, system_conf_fname)
+    else:
+        return None
 
 
 def get_default_conf_dir(conf=None):
     from os.path import join as pathjoin
     from .sysadmin_const import conf_dir_name
-
-    return pathjoin(get_default_root_dir(conf=conf), conf_dir_name)
+    root_dir = get_default_root_dir(conf=conf)
+    if root_dir:
+        return pathjoin(root_dir, conf_dir_name)
+    else:
+        return None
 
 
 def get_default_modules_dir(conf=None):
     from os.path import join as pathjoin
     from .sysadmin_const import modules_dir_name
-
-    return pathjoin(get_default_root_dir(conf=conf), modules_dir_name)
+    root_dir = get_default_root_dir(conf=conf)
+    if root_dir:
+        return pathjoin(root_dir, modules_dir_name)
+    else:
+        return None
 
 
 def get_default_jobs_dir(conf=None):
     from os.path import join as pathjoin
     from .sysadmin_const import jobs_dir_name
-
-    return pathjoin(get_default_root_dir(conf=conf), jobs_dir_name)
+    root_dir = get_default_root_dir(conf=conf)
+    if root_dir:
+        return pathjoin(root_dir, jobs_dir_name)
+    else:
+        return None
 
 
 def get_default_log_dir(conf=None):
     from os.path import join as pathjoin
     from .sysadmin_const import log_dir_name
-
-    return pathjoin(get_default_root_dir(conf=conf), log_dir_name)
+    root_dir = get_default_root_dir(conf=conf)
+    if root_dir:
+        return pathjoin(root_dir, log_dir_name)
+    else:
+        return None
 
 
 def get_default_root_dir(conf=None):
@@ -368,7 +384,11 @@ def get_max_num_concurrent_annotators_per_job():
 def get_system_conf_dir():
     from os.path import dirname
     from .sysadmin import get_system_conf_path
-    return dirname(get_system_conf_path())
+    path = get_system_conf_path()
+    if path:
+        return dirname(path)
+    else:
+        return None
 
 
 def copy_system_conf_template_if_absent(sys_conf_path=None,
@@ -380,16 +400,17 @@ def copy_system_conf_template_if_absent(sys_conf_path=None,
     from .sysadmin_const import system_conf_template_fname
     from .sysadmin import get_system_conf_path
     from .admin_util import get_packagedir
+    from .util import quiet_print
     if sys_conf_path is None:
         sys_conf_path = get_system_conf_path()
-    if not exists(sys_conf_path):
+    if sys_conf_path and not exists(sys_conf_path):
         sys_conf_dir = dirname(sys_conf_path)
         if not exists(sys_conf_dir):
             makedirs(sys_conf_dir)
         sys_conf_template_path = join(get_packagedir(),
                                       system_conf_template_fname)
         copy(sys_conf_template_path, sys_conf_path)
-        if not quiet: print(f"Created {sys_conf_path}")
+        quiet_print(f"Created {sys_conf_path}", args={"quiet": quiet})
 
 
 def save_system_conf(conf):
@@ -425,12 +446,13 @@ def get_system_conf_template():
 
 def write_system_conf_file(d):
     from oyaml import dump
-    with open(get_system_conf_path(), "w") as wf:
-        wf.write(dump(d, default_flow_style=False))
+    path = get_system_conf_path()
+    if path:
+        with open(path, "w") as wf:
+            wf.write(dump(d, default_flow_style=False))
 
 
 def get_system_conf_info(conf=None, json=False):
-    from os.path import exists
     from oyaml import dump
     conf = get_system_conf(conf=conf)
     if json:

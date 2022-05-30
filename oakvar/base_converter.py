@@ -6,22 +6,19 @@ class BaseConverter(object):
         self.output_dir = None
         self.run_name = None
         self.input_assembly = None
+        self.format_name = None
+        self.module_name = None
 
-    def check_format(self, *args, **kwargs):
-        err_msg = ("Converter for %s format has no method check_format" %
-                   self.format_name)
-        raise NotImplementedError(err_msg)
+    def check_format(self, *__args__, **__kwargs__):
+        raise NotImplemented
 
-    def setup(self, *args, **kwargs):
-        err_msg = "Converter for %s format has no method setup" % self.format_name
-        raise NotImplementedError(err_msg)
+    def setup(self, *__args__, **__kwargs__):
+        raise NotImplemented
 
-    def convert_line(self, *args, **kwargs):
-        err_msg = ("Converter for %s format has no method convert_line" %
-                   self.format_name)
-        raise NotImplementedError(err_msg)
+    def convert_line(self, *__args__, **__kwargs__):
+        raise NotImplemented
 
-    def convert_file(self, file, *args, exc_handler=None, **kwargs):
+    def convert_file(self, file, *__args__, exc_handler=None, **__kwargs__):
         ln = 0
         for line in file:
             ln += 1
@@ -34,5 +31,5 @@ class BaseConverter(object):
                 else:
                     raise e
 
-    def addl_operation_for_unique_variant(self, wdict, wdict_no):
+    def addl_operation_for_unique_variant(self, __wdict__, __wdict_no__):
         pass

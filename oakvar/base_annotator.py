@@ -1,7 +1,6 @@
 class BaseAnnotator(object):
 
     from .constants import crv_def, crx_def, crg_def
-
     valid_levels = ["variant", "gene"]
     valid_input_formats = ["crv", "crx", "crg"]
     id_col_defs = {"variant": crv_def[0], "gene": crg_def[0]}
@@ -18,17 +17,35 @@ class BaseAnnotator(object):
         from oakvar.config_loader import ConfigLoader
         from oakvar.util import get_args
         from oakvar.constants import cannonical_chroms
-
-        main_fpath = os.path.abspath(sys.modules[self.__module__].__file__)
+        fp = sys.modules[self.__module__].__file__
+        if fp is None:
+            from .exceptions import ModuleLoadingError
+            raise ModuleLoadingError(self.__module__)
+        main_fpath = os.path.abspath(fp)
         self.primary_input_path = None
-        self.secondary_paths = None
+        self.secondary_paths = {}
         self.output_dir = None
         self.output_basename = None
         self.plain_output = None
         self.job_conf_path = None
         self.logger = None
+        self.error_logger = None
         self.dbconn = None
         self.cursor = None
+        self.cmd_arg_parser = None
+        self.update_status_json_flag = None
+        self.confs = None
+        self.json_colnames = None
+        self.primary_input_reader = None
+        self.output_path = None
+        self.last_status_update_time = None
+        self.output_columns = None
+        self.secondary_readers = {}
+        self.output_writer = None
+        self.invalid_path = None
+        self.log_path = None
+        self.unique_excs = []
+        self.log_handler = None
         self._define_cmd_parser()
         self.args = get_args(self.cmd_arg_parser, inargs, inkwargs)
         self.parse_cmd_args(inargs, inkwargs)
@@ -56,8 +73,14 @@ class BaseAnnotator(object):
         self._setup_logger()
         config_loader = ConfigLoader(self.job_conf_path)
         self.conf = config_loader.get_module_conf(self.module_name)
+        if self.conf is None:
+            from .exceptions import ModuleLoadingError
+            raise ModuleLoadingError(self.module_name)
         self._verify_conf()
         self._id_col_name = self.conf["output_columns"][0]["name"]
+        if self.logger is None:
+            from .exceptions import LoggerError
+            raise LoggerError(module_name=self.module_name)
         if "logging_level" in self.conf:
             self.logger.setLevel(self.conf["logging_level"].upper())
         if "title" in self.conf:
@@ -70,6 +93,9 @@ class BaseAnnotator(object):
         else:
             self.annotator_version = ""
 
+    def summarize_by_gene(self, __hugo__, __input_data__):
+        pass
+
     def _log_exception(self, e, halt=True):
         if self.logger:
             self.logger.exception(e)
@@ -79,8 +105,10 @@ class BaseAnnotator(object):
             return True
 
     def _verify_conf(self):
+        if self.conf is None:
+            from .exceptions import SetupError
+            raise SetupError(self.module_name)
         from .exceptions import ConfigurationError
-
         for k in self.required_conf_keys:
             if k not in self.conf:
                 err_msg = 'Required key "%s" not found in configuration' % k
@@ -116,7 +144,6 @@ class BaseAnnotator(object):
 
     def _define_cmd_parser(self):
         import argparse
-
         parser = argparse.ArgumentParser()
         parser.add_argument("input_file", help="Input file to be annotated.")
         parser.add_argument(
@@ -147,8 +174,8 @@ class BaseAnnotator(object):
                             dest="confs",
                             default="{}",
                             help="Configuration string")
-        parser.add_argument("--silent",
-                            dest="silent",
+        parser.add_argument("--quiet",
+                            dest="quiet",
                             default=False,
                             help="Silent operation")
         self.cmd_arg_parser = parser
@@ -159,10 +186,8 @@ class BaseAnnotator(object):
         import json
         import re
         from oakvar.util import get_args
-
         args = get_args(self.cmd_arg_parser, inargs, inkwargs)
         self.primary_input_path = os.path.abspath(args["input_file"])
-        self.secondary_paths = {}
         if args["secondary_inputs"]:
             for secondary_def in args["secondary_inputs"]:
                 sec_name, sec_path = re.split(r"(?<!\\)=", secondary_def)
@@ -191,7 +216,7 @@ class BaseAnnotator(object):
 
     def handle_jsondata(self, output_dict):
         import json
-
+        if self.json_colnames is None: return
         for colname in self.json_colnames:
             json_data = output_dict.get(colname, None)
             if json_data is not None:
@@ -200,8 +225,9 @@ class BaseAnnotator(object):
         return output_dict
 
     def log_progress(self, lnum):
+        if self.last_status_update_time is None: return
+        if self.conf is None: return
         from time import time
-
         if self.update_status_json_flag and self.status_writer is not None:
             cur_time = time()
             if lnum % 10000 == 0 or cur_time - self.last_status_update_time > 3:
@@ -213,14 +239,17 @@ class BaseAnnotator(object):
                 self.last_status_update_time = cur_time
 
     def is_star_allele(self, input_data):
+        if self.conf is None: return
         return self.conf["level"] == "variant" and input_data.get(
             "alt_base", "") == "*"
 
     def should_skip_chrom(self, input_data):
+        if self.conf is None: return
         return (self.conf["level"] == "variant"
                 and not input_data.get("chrom") in self.supported_chroms)
 
     def fill_empty_output(self, output_dict):
+        if self.conf is None: return
         for output_col in self.conf["output_columns"]:
             col_name = output_col["name"]
             if col_name not in output_dict:
@@ -228,6 +257,7 @@ class BaseAnnotator(object):
         return output_dict
 
     def make_json_colnames(self):
+        if self.output_columns is None: return
         self.json_colnames = []
         for col in self.output_columns:
             if "table" in col and col["table"] == True:
@@ -235,8 +265,10 @@ class BaseAnnotator(object):
 
     # Runs the annotator.
     def run(self):
+        if self.conf is None: return
+        if self.logger is None: return
         from time import time, asctime, localtime
-
+        from oakvar.util import quiet_print
         if self.update_status_json_flag and self.status_writer is not None:
             self.status_writer.queue_status_update(
                 "status", "Started {} ({})".format(self.conf["title"],
@@ -244,9 +276,10 @@ class BaseAnnotator(object):
         try:
             start_time = time()
             self.logger.info("started: %s" % asctime(localtime(start_time)))
-            if not self.args["silent"]:
-                print("        {}: started at {}".format(
-                    self.module_name, asctime(localtime(start_time))))
+            quiet_print(
+                "        {}: started at {}".format(
+                    self.module_name, asctime(localtime(start_time))),
+                self.args)
             self.base_setup()
             self.last_status_update_time = time()
             self.output_columns = self.conf["output_columns"]
@@ -258,22 +291,26 @@ class BaseAnnotator(object):
                     if self.is_star_allele(
                             input_data) or self.should_skip_chrom(input_data):
                         continue
+                    output_dict = None
                     if secondary_data == {}:
                         output_dict = self.annotate(input_data)
                     else:
-                        output_dict = self.annotate(input_data, secondary_data)
+                        output_dict = self.annotate(
+                            input_data, secondary_data=secondary_data)
                     # This enables summarizing without writing for now.
                     if output_dict is None:
                         continue
                     # Handles empty table-format column data.
                     output_dict = self.handle_jsondata(output_dict)
                     # Preserves the first column
-                    output_dict[self._id_col_name] = input_data[
-                        self._id_col_name]
+                    if output_dict:
+                        output_dict[self._id_col_name] = input_data[
+                            self._id_col_name]
                     # Fill absent columns with empty strings
                     output_dict = self.fill_empty_output(output_dict)
                     # Writes output.
-                    self.output_writer.write_data(output_dict)
+                    if self.output_writer:
+                        self.output_writer.write_data(output_dict)
                 except Exception as e:
                     self._log_runtime_exception(lnum, line, input_data, e)
             # This does summarizing.
@@ -282,16 +319,15 @@ class BaseAnnotator(object):
             end_time = time()
             self.logger.info("finished: {0}".format(
                 asctime(localtime(end_time))))
-            if not self.args["silent"]:
-                print("        {}: finished at {}".format(
-                    self.module_name, asctime(localtime(end_time))))
+            quiet_print(
+                "        {}: finished at {}".format(
+                    self.module_name, asctime(localtime(end_time))), self.args)
             run_time = end_time - start_time
             self.logger.info("runtime: {0:0.3f}s".format(run_time))
-            if not self.args["silent"]:
-                print("        {}: runtime {:0.3f}s".format(
-                    self.module_name, run_time))
+            quiet_print(
+                "        {}: runtime {:0.3f}s".format(self.module_name,
+                                                      run_time), self.args)
             if self.update_status_json_flag and self.status_writer is not None:
-                version = self.conf.get("version", "unknown")
                 self.status_writer.queue_status_update(
                     "status",
                     "Finished {} ({})".format(self.conf["title"],
@@ -299,23 +335,13 @@ class BaseAnnotator(object):
                 )
         except Exception as e:
             self._log_exception(e)
-        if hasattr(self, "log_handler"):
+        if hasattr(self, "log_handler") and self.log_handler:
             self.log_handler.close()
-        """
-        if self.output_basename == '__dummy__':
-            os.remove(self.log_path)
-        """
 
     def postprocess(self):
         pass
 
     async def get_gene_summary_data(self, cf):
-        from time import time
-
-        # print('            {}: getting gene summary data'.format(self.module_name))
-        t = time()
-        module_ver = await cf.exec_db(cf.get_module_version_in_job,
-                                      self.module_name)
         hugos = await cf.exec_db(cf.get_filtered_hugo_list)
         output_columns = await cf.exec_db(cf.get_stored_output_columns,
                                           self.module_name)
@@ -324,16 +350,13 @@ class BaseAnnotator(object):
             for coldef in output_columns if coldef["name"] != "uid"
         ]
         data = {}
-        t = time()
         rows = await cf.exec_db(cf.get_variant_data_for_cols, cols)
         rows_by_hugo = {}
-        t = time()
         for row in rows:
             hugo = row[-1]
             if hugo not in rows_by_hugo:
                 rows_by_hugo[hugo] = []
             rows_by_hugo[hugo].append(row)
-        t = time()
         for hugo in hugos:
             rows = rows_by_hugo[hugo]
             input_data = {}
@@ -341,12 +364,10 @@ class BaseAnnotator(object):
                 input_data[cols[i].split("__")[1]] = [row[i] for row in rows]
             out = self.summarize_by_gene(hugo, input_data)
             data[hugo] = out
-        # print('            {}: finished getting gene summary data in {:0.3f}s'.format(self.module_name, time() - t))
         return data
 
-    def _log_runtime_exception(self, lnum, line, input_data, e):
+    def _log_runtime_exception(self, lnum, line, __input_data__, e):
         import traceback
-
         err_str = traceback.format_exc().rstrip()
         lines = err_str.split("\n")
         last_line = lines[-1]
@@ -354,9 +375,11 @@ class BaseAnnotator(object):
             last_line.split(":")[:2])
         if err_str_log not in self.unique_excs:
             self.unique_excs.append(err_str_log)
-            self.logger.error(err_str_log)
-        self.error_logger.error("\n[{:d}]{}\n({})\n#".format(
-            lnum, line.rstrip(), str(e)))
+            if self.logger:
+                self.logger.error(err_str_log)
+        if self.error_logger:
+            self.error_logger.error("\n[{:d}]{}\n({})\n#".format(
+                lnum, line.rstrip(), str(e)))
 
     # Setup function for the base_annotator, different from self.setup()
     # which is intended to be for the derived annotator.
@@ -372,9 +395,11 @@ class BaseAnnotator(object):
                                         ["chrX", "chrY"])
 
     def _setup_primary_input(self):
+        if self.conf is None:
+            from .exceptions import SetupError
+            raise SetupError(module_name=self.module_name)
         from .exceptions import ConfigurationError
         from .inout import CravatReader
-
         self.primary_input_reader = CravatReader(self.primary_input_path)
         requested_input_columns = self.conf["input_columns"]
         defined_columns = self.primary_input_reader.get_column_names()
@@ -404,6 +429,9 @@ class BaseAnnotator(object):
                         col_index, col_name, data_type=data_type)
 
     def _setup_secondary_inputs(self):
+        if self.conf is None:
+            from .exceptions import SetupError
+            raise SetupError(module_name=self.module_name)
         self.secondary_readers = {}
         try:
             num_expected = len(self.conf["secondary_inputs"])
@@ -430,9 +458,11 @@ class BaseAnnotator(object):
 
     # Open the output files (.var, .gen, .ncd) that are needed
     def _setup_outputs(self):
+        if self.conf is None or self.output_dir is None or self.output_basename is None:
+            from .exceptions import SetupError
+            raise SetupError(module_name=self.module_name)
         import os
         from .inout import CravatWriter
-
         level = self.conf["level"]
         if level == "variant":
             output_suffix = "var"
@@ -479,7 +509,6 @@ class BaseAnnotator(object):
     def _open_db_connection(self):
         import os
         import sqlite3
-
         db_dirs = [self.data_dir, os.path.join("/ext", "resource", "newarch")]
         db_path = None
         for db_dir in db_dirs:
@@ -489,13 +518,18 @@ class BaseAnnotator(object):
                 self.cursor = self.dbconn.cursor()
 
     def close_db_connection(self):
-        self.cursor.close()
-        self.dbconn.close()
+        if self.cursor is not None:
+            self.cursor.close()
+        if self.dbconn is not None:
+            self.dbconn.close()
 
     def remove_log(self):
         pass
 
     def get_uid_col(self):
+        if self.conf is None:
+            from .exceptions import SetupError
+            raise SetupError(module_name=self.module_name)
         return self.conf["output_columns"][0]["name"]
 
     # Placeholder, intended to be overridded in derived class
@@ -503,7 +537,8 @@ class BaseAnnotator(object):
         pass
 
     def base_cleanup(self):
-        self.output_writer.close()
+        if self.output_writer:
+            self.output_writer.close()
         # self.invalid_file.close()
         if self.dbconn != None:
             self.close_db_connection()
@@ -515,17 +550,20 @@ class BaseAnnotator(object):
 
     def remove_log_file(self):
         import os
-
-        self.logger.removeHandler(self.log_handler)
-        self.log_handler.flush()
-        self.log_handler.close()
-        os.remove(self.log_path)
+        if self.logger and self.log_handler:
+            self.logger.removeHandler(self.log_handler)
+            self.log_handler.flush()
+            self.log_handler.close()
+        if self.log_path:
+            os.remove(self.log_path)
 
     # Setup the logging utility
     def _setup_logger(self):
+        if self.output_basename is None or self.output_dir is None:
+            from .exceptions import SetupError
+            raise SetupError(self.module_name)
         import logging
         import os
-
         self.logger = logging.getLogger("oakvar." + self.module_name)
         if self.output_basename != "__dummy__":
             self.log_path = os.path.join(self.output_dir,
@@ -552,10 +590,12 @@ class BaseAnnotator(object):
     # Gets the input dict from both the input file, and
     # any depended annotators depended annotator feature not complete.
     def _get_input(self):
+        if self.conf is None or self.primary_input_reader is None:
+            from .exceptions import SetupError
+            raise SetupError(self.module_name)
         from .inout import AllMappingsParser
         from .constants import all_mappings_col_name
         from .constants import mapping_parser_name
-
         for lnum, line, reader_data in self.primary_input_reader.loop_data():
             try:
                 input_data = {}
@@ -573,19 +613,21 @@ class BaseAnnotator(object):
                     secondary_data[module_name] = fetcher.get(input_key_data)
                 yield lnum, line, input_data, secondary_data
             except Exception as e:
-                self._log_runtime_error(lnum, e)
+                self._log_runtime_exception(lnum, line, reader_data, e)
                 continue
 
-    def annotate(self, input_data):
-        import sys
-
-        sys.stdout.write("        annotate method should be implemented. " +
-                         "Exiting " + self.annotator_display_name + "...\n")
-        exit(-1)
+    def annotate(self, input_data, secondary_data=None):
+        return {
+            "default__annotation": "no annotate has been defined",
+            "input_data": input_data,
+            "secondary_data": secondary_data
+        }
 
     def live_report_substitute(self, d):
+        if self.conf is None:
+            from .exceptions import SetupError
+            raise SetupError(self.module_name)
         import re
-
         if "report_substitution" not in self.conf:
             return d
         rs_dic = self.conf["report_substitution"]
@@ -609,7 +651,6 @@ class SecondaryInputFetcher:
     def __init__(self, input_path, key_col, fetch_cols=[]):
         from .inout import CravatReader
         from .exceptions import ConfigurationError
-
         self.key_col = key_col
         self.input_path = input_path
         self.input_reader = CravatReader(self.input_path)
@@ -635,7 +676,7 @@ class SecondaryInputFetcher:
         self.load_input()
 
     def load_input(self):
-        for _, line, all_col_data in self.input_reader.loop_data():
+        for _, _, all_col_data in self.input_reader.loop_data():
             key_data = all_col_data[self.key_col]
             # if key_data not in self.data:
             #    self.data[key_data] = [None] * len(self.fetch_cols)

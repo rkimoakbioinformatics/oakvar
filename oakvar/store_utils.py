@@ -15,7 +15,6 @@ class PathBuilder(object):
 
     def _build_path(self, *path_toks):
         from os.path import join
-
         if self.path_type == "url":
             return "/".join(path_toks)
         elif self.path_type == "file":
@@ -68,7 +67,6 @@ class PathBuilder(object):
 
     def manifest(self, version=None):
         from pkg_resources import get_distribution
-
         if version is None:
             version = get_distribution("oakvar").version
         fname = "manifest-{}.yml".format(version)
@@ -81,7 +79,7 @@ class PathBuilder(object):
         return self._build_path(self.base(), "download-counts.yml")
 
 
-def blank_stage_handler(*args, **kwargs):
+def blank_stage_handler(*__args__, **__kwargs__):
     pass
 
 
@@ -118,7 +116,6 @@ class ProgressStager(object):
 
     def _update_stage(self):
         from math import floor
-
         old_stage = self.cur_stage
         self.cur_stage = floor(self.cur_size / self.total_size *
                                self.total_stages)
@@ -142,7 +139,6 @@ def stream_multipart_post(url,
         MultipartEncoderMonitor,
     )
     from requests import post
-
     encoder = MultipartEncoder(fields=fields)
     stager = ProgressStager(encoder.len,
                             total_stages=stages,
@@ -153,7 +149,7 @@ def stream_multipart_post(url,
 
     monitor = MultipartEncoderMonitor(encoder, stager_caller)
     headers = {"Content-Type": monitor.content_type}
-    r = post(url, data=monitor, headers=headers, **kwargs)
+    r = post(url, data=monitor, headers=headers, **kwargs)  # type: ignore
     return r
 
 
@@ -162,7 +158,7 @@ def stream_to_file(url,
                    stage_handler=None,
                    stages=50,
                    install_state=None,
-                   **kwargs):
+                   **__kwargs__):
     """
     Stream the content at a url to a file. Optionally pass in a callback
     function which is called when the uploaded size passes each of
@@ -172,7 +168,6 @@ def stream_to_file(url,
     from requests.exceptions import ConnectionError
     from .exceptions import KillInstallException
     from types import SimpleNamespace
-
     try:
         r = get(url, stream=True, timeout=(3, None))
     except ConnectionError:
@@ -197,14 +192,13 @@ def stream_to_file(url,
 def get_file_to_string(url):
     from requests import get
     from urllib.error import HTTPError
-
     try:
         r = get(url, timeout=(3, None))
         if r.status_code == 200:
             return r.text
         else:
-            raise HTTPError(url, r.status_code, "", None, None)
-    except Exception as e:
+            raise HTTPError(url, r.status_code, "", None, None)  # type: ignore
+    except Exception as _:
         return ""
 
 
@@ -214,7 +208,6 @@ def file_checksum(path):
     """
     from hashlib import md5
     from os.path import isdir
-
     if isdir(path):
         raise IsADirectoryError(path)
     hasher = md5()
@@ -229,7 +222,6 @@ class ModuleArchiveBuilder(object):
     def __init__(self, archive_path, base_path=None):
         from os import getcwd
         from zipfile import ZipFile, ZIP_DEFLATED
-
         if base_path is None:
             base_path = getcwd()
         self._archive = ZipFile(archive_path,
@@ -241,16 +233,15 @@ class ModuleArchiveBuilder(object):
     def add_item(self, item_path):
         from os.path import relpath, isdir, join
         from os import listdir, sep
-
         rel_path = relpath(item_path, start=self._base_path)
-        self._archive.write(item_path, rel_path)
+        self._archive.write(item_path, str(rel_path))
         if isdir(item_path):
             for child_name in listdir(item_path):
                 child_path = join(item_path, child_name)
                 self.add_item(child_path)
         else:
             checksum = file_checksum(item_path)
-            path_list = rel_path.split(sep)
+            path_list = rel_path.split(sep)  # type: ignore
             nest_value_in_dict(self._manifest, checksum, path_list)
 
     def get_manifest(self):
@@ -268,7 +259,6 @@ def add_to_zipfile(full_path, zf, start=None, compress_type=None):
     from os.path import relpath, isdir, join
     from os import curdir, listdir
     from zipfile import ZIP_DEFLATED
-
     if compress_type is None:
         compress_type = ZIP_DEFLATED
     if start is None:
@@ -309,7 +299,6 @@ def verify_against_manifest(dirpath, manifest):
     """
     from os.path import join, exists, isdir
     from .exceptions import FileIntegrityError
-
     correct = True
     for item_name, v in manifest.items():
         item_path = join(dirpath, item_name)
@@ -328,7 +317,6 @@ def verify_against_manifest(dirpath, manifest):
 
 def hash_password(password):
     from hashlib import sha256
-
     return sha256(password.encode()).hexdigest()
 
 
@@ -374,5 +362,4 @@ class NoSuchModule(ClientError):
 
 def client_error_json(error_class):
     from json import dumps
-
     return dumps({"code": error_class.code, "message": error_class.message})

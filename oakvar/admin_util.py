@@ -6,6 +6,7 @@ class InstallProgressHandler(object):
     def __init__(self, module_name, module_version):
         self.module_name = module_name
         self.module_version = module_version
+        self.display_name = None
         self._make_display_name()
         self.cur_stage = None
 
@@ -13,10 +14,11 @@ class InstallProgressHandler(object):
         ver_str = self.module_version if self.module_version is not None else ""
         self.display_name = ":".join([self.module_name, ver_str])
 
-    def stage_start(self, stage):
+    def stage_start(self, __stage__):
         pass
 
-    def stage_progress(self, cur_chunk, total_chunks, cur_size, total_size):
+    def stage_progress(self, __cur_chunk__, __total_chunks__, __cur_size__,
+                       __total_size__):
         pass
 
     def set_module_version(self, module_version):
@@ -29,7 +31,6 @@ class InstallProgressHandler(object):
 
     def _stage_msg(self, stage):
         from oakvar.util import get_current_time_str
-
         if stage is None or stage == "":
             return ""
         elif stage == "start":
@@ -70,6 +71,7 @@ class LocalInfoCache(MutableMapping):
     """
 
     def __init__(self, *args, **kwargs):
+        self.version = None
         self.store = dict()
         self.update(dict(*args, **kwargs))  # use the free update to set keys
 
@@ -82,7 +84,6 @@ class LocalInfoCache(MutableMapping):
 
     def __setitem__(self, key, value):
         import os
-
         if not (isinstance(value, LocalModuleInfo) or os.path.isdir(value)):
             raise ValueError(value)
         self.store[key] = value
@@ -99,9 +100,8 @@ class LocalInfoCache(MutableMapping):
 
 class LocalModuleInfo(object):
 
-    def __init__(self, dir_path, module_type=None, name=None):
+    def __init__(self, dir_path, __module_type__=None, name=None):
         import os
-
         self.directory = dir_path
         if name is None:
             self.name = os.path.basename(self.directory)
@@ -143,7 +143,7 @@ class LocalModuleInfo(object):
         self.version = self.conf.get("version")
         self.description = self.conf.get("description")
         self.hidden = self.conf.get("hidden", False)
-        dev_dict = self.conf.get("developer")
+        dev_dict = self.conf.get("developer", {})
         if not (type(dev_dict) == dict):
             dev_dict = {}
         self.developer = get_developer_dict(**dev_dict)
@@ -181,7 +181,6 @@ class LocalModuleInfo(object):
         Gets the total installed size of a module
         """
         from oakvar.util import get_directory_size
-
         if self.disk_size is None:
             self.disk_size = get_directory_size(self.directory)
         return self.disk_size
@@ -191,7 +190,6 @@ class LocalModuleInfo(object):
         Gets the module test input file(s) if the module has tests.  A test is a input file / key file pair.
         """
         import os
-
         tests = []
         if self.test_dir_exists:
             for i in os.listdir(self.test_dir):
@@ -228,17 +226,11 @@ class ModuleInfoCache(object):
         self._counts_fetched = False
 
     def get_local(self):
-        from .sysadmin import get_modules_dir
-        modules_dir = get_modules_dir()
-        if self._modules_dir != modules_dir:
-            self._modules_dir = modules_dir
-            self.update_local()
         return self.local
 
     def update_download_counts(self, force=False):
         import oyaml as yaml
         from oakvar.store_utils import get_file_to_string
-
         if force or not (self._counts_fetched):
             counts_url = self._store_path_builder.download_counts()
             counts_str = get_file_to_string(counts_url)
@@ -280,10 +272,8 @@ class ModuleInfoCache(object):
                     self.local[module_name] = module_dir
 
     def update_remote(self, force=False):
-        import sys
         import oyaml as yaml
         from oakvar.store_utils import get_file_to_string
-
         if force or not (self._remote_fetched):
             if self._remote_url is None:
                 self._remote_url = self._store_path_builder.manifest()
@@ -300,13 +290,13 @@ class ModuleInfoCache(object):
                 self.remote = yaml.safe_load(manifest_str)
                 self.remote.pop("hgvs", None)  # deprecate hgvs annotator
             else:
+                from sys import stderr
                 msg = f"WARNING: Could not list modules from {self._remote_url}. The store or the internet connection can be off-line."
-                print(msg, file=sys.stderr)
+                stderr.write(msg + "\n")
             self._remote_fetched = True
 
     def get_remote_readme(self, module_name, version=None):
         from oakvar.store_utils import get_file_to_string
-
         self.update_remote()
         # Resolve name and version
         if module_name not in self.remote:
@@ -333,7 +323,6 @@ class ModuleInfoCache(object):
     def get_remote_config(self, module_name, version=None):
         import oyaml as yaml
         from oakvar.store_utils import get_file_to_string
-
         self.update_remote()
         if version == None:
             version = self.remote[module_name]["latest_version"]
@@ -386,7 +375,7 @@ class ReadyState(object):
 
 class RemoteModuleInfo(object):
 
-    def __init__(self, name, **kwargs):
+    def __init__(self, __name__, **kwargs):
         self.data = kwargs
         self.data.setdefault("versions", [])
         self.data.setdefault("latest_version", "")
@@ -404,8 +393,8 @@ class RemoteModuleInfo(object):
         self.data.setdefault("tags", [])
         self.data.setdefault("publish_time", None)
         self.name = self.data.get("name")
-        self.versions = self.data.get("versions")
-        self.latest_version = self.data.get("latest_version")
+        self.versions = self.data.get("versions", [])
+        self.latest_version = self.data.get("latest_version", "")
         self.type = self.data.get("type")
         self.title = self.data.get("title")
         self.description = self.data.get("description")
@@ -413,19 +402,15 @@ class RemoteModuleInfo(object):
         self.data_size = self.data.get("data_size")
         self.code_size = self.data.get("code_size")
         self.datasource = self.data.get("datasource")
-        self.data_versions = self.data.get("data_versions")
+        self.data_versions = self.data.get("data_versions", {})
         self.hidden = self.data.get("hidden")
         self.tags = self.data.get("tags")
         self.publish_time = self.data.get("publish_time")
-        # if self.datasource == None:
-        #    self.datasource = ""
-        dev_dict = self.data.get("developer")
-        # if not (type(dev_dict) == dict):
-        #    dev_dict = {}
+        dev_dict = self.data.get("developer", {})
         self.developer = get_developer_dict(**dev_dict)
         self.data_sources = {
             x: str(y)
-            for x, y in self.data.get("data_sources").items()
+            for x, y in self.data.get("data_sources").items()  # type: ignore
         }
 
     def has_version(self, version):
@@ -435,7 +420,6 @@ class RemoteModuleInfo(object):
 def change_password(username, cur_pw, new_pw):
     from requests import post
     from .sysadmin import get_system_conf
-
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
     change_pw_url = publish_url + "/change-password"
@@ -443,32 +427,34 @@ def change_password(username, cur_pw, new_pw):
              auth=(username, cur_pw),
              json={"newPassword": new_pw})
     if r.status_code == 500:
-        print("Server error")
+        from .exceptions import StoreServerError
+        raise StoreServerError()
     elif r.status_code == 401:
-        print("Incorrect username and password")
+        from .exceptions import StoreIncorrectLogin
+        raise StoreIncorrectLogin()
     if r.text:
-        print(r.text)
+        return r.text
 
 
 def check_login(username, password):
     from requests import get
     from .sysadmin import get_system_conf
-
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
     login_url = publish_url + "/login"
     r = get(login_url, auth=(username, password))
     if r.status_code == 200:
-        print("Correct username and password")
+        return True
     elif r.status_code == 500:
-        print("Server error")
+        from .exceptions import StoreServerError
+        raise StoreServerError()
     else:
-        print("Incorrect username and password")
+        from .exceptions import StoreIncorrectLogin
+        raise StoreIncorrectLogin()
 
 
 def compare_version(v1, v2):
     from distutils.version import LooseVersion
-
     sv1 = LooseVersion(v1)
     sv2 = LooseVersion(v2)
     if sv1 == sv2:
@@ -482,7 +468,6 @@ def compare_version(v1, v2):
 def create_account(username, password):
     from requests import post
     from .sysadmin import get_system_conf
-
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
     create_account_url = publish_url + "/create-account"
@@ -492,10 +477,9 @@ def create_account(username, password):
     }
     r = post(create_account_url, json=d)
     if r.status_code == 500:
-        print("Server error")
-        return "server error"
+        from .exceptions import StoreServerError
+        raise StoreServerError()
     if r.text:
-        print(r.text)
         return r.text
 
 
@@ -520,8 +504,6 @@ def get_annotator_script_path(module_name):
 
 def get_cravat_conf():
     from oakvar.config_loader import ConfigLoader
-    from .sysadmin import get_main_conf_path
-    confpath = get_main_conf_path()
     conf = ConfigLoader()
     cravat_conf = conf.get_cravat_conf()
     return cravat_conf
@@ -536,7 +518,6 @@ def get_cravat_conf_info():
 
 def get_current_package_version():
     from pkg_resources import get_distribution
-
     version = get_distribution("oakvar").version
     return version
 
@@ -571,7 +552,6 @@ def get_download_counts():
 def get_install_deps(module_name, version=None, skip_installed=True):
     from distutils.version import LooseVersion
     from pkg_resources import Requirement
-
     get_mic().update_remote()
     # If input module version not provided, set to highest
     if version is None:
@@ -580,18 +560,20 @@ def get_install_deps(module_name, version=None, skip_installed=True):
     req_list = config.get("requires", [])
     deps = {}
     for req_string in req_list:
-        req = Requirement(req_string)
-        rem_info = get_remote_module_info(req.name)
+        req = Requirement.parse(req_string)
+        rem_info = get_remote_module_info(req.unsafe_name)
         # Skip if module does not exist
-        if rem_info is None and get_local_module_info(req.name) is None:
+        if rem_info is None and get_local_module_info(req.unsafe_name) is None:
             continue
         if skip_installed:
             # Skip if a matching version is installed
-            local_info = get_local_module_info(req.name)
-            if local_info and local_info.version in req:
+            local_info = get_local_module_info(req.unsafe_name)
+            if local_info and local_info.version and local_info.version in req:
                 continue
         # Select the highest matching version
-        lvers = [LooseVersion(v) for v in rem_info.versions]
+        lvers = []
+        if rem_info is not None and rem_info.versions is not None:
+            lvers = [LooseVersion(v) for v in rem_info.versions]
         lvers.sort(reverse=True)
         highest_matching = None
         for lv in lvers:
@@ -600,7 +582,7 @@ def get_install_deps(module_name, version=None, skip_installed=True):
                 break
         # Dont include if no matching version exists
         if highest_matching is not None:
-            deps[req.name] = highest_matching
+            deps[req.unsafe_name] = highest_matching
     req_pypi_list = config.get("requires_pypi", [])
     req_pypi_list.extend(config.get("pypi_dependency", []))
     deps_pypi = {}
@@ -631,14 +613,14 @@ def get_local_module_info(module_name):
     Returns a LocalModuleInfo object for a module.
     """
     import os
-
     if module_name in get_mic().get_local():
-        return get_mic().get_local()[module_name]
+        module_info = get_mic().get_local()[module_name]
     else:
         if os.path.exists(module_name):
             module_info = LocalModuleInfo(module_name)
-            return module_info
-        return None
+        else:
+            module_info = None
+    return module_info
 
 
 def get_local_module_infos(types=[], names=[]):
@@ -752,12 +734,11 @@ def get_package_versions():
     from requests import get
     from requests.exceptions import ConnectionError
     from distutils.version import LooseVersion
-
     try:
         r = get("https://pypi.org/pypi/oakvar/json", timeout=(3, None))
     except ConnectionError:
-        print("Internet connection is not available.")
-        return None
+        from .exceptions import InternetConnectionError
+        raise InternetConnectionError()
     if r.status_code == 200:
         d = json.loads(r.text)
         all_vers = list(d["releases"].keys())
@@ -772,7 +753,6 @@ def get_readme(module_name, version=None):
     Get the readme. Use local if available.
     """
     import os
-
     exists_remote = module_exists_remote(module_name, version=version)
     exists_local = module_exists_local(module_name)
     if exists_remote:
@@ -781,11 +761,11 @@ def get_readme(module_name, version=None):
         remote_readme = ""
     if exists_local:
         local_info = get_local_module_info(module_name)
-        if os.path.exists(local_info.readme_path):
+        if local_info and os.path.exists(local_info.readme_path):
             local_readme = open(local_info.readme_path).read()
         else:
             local_readme = ""
-        if exists_remote == True:
+        if local_info and exists_remote == True:
             remote_version = get_remote_latest_version(module_name)
             local_version = local_info.version
             if compare_version(remote_version, local_version) > 0:
@@ -877,7 +857,6 @@ def get_updatable(modules=[], strategy="consensus"):
     from pkg_resources import Requirement
     from collections import defaultdict
     from types import SimpleNamespace
-
     if strategy not in ("consensus", "force", "skip"):
         raise ValueError('Unknown strategy "{}"'.format(strategy))
     if not modules:
@@ -890,11 +869,12 @@ def get_updatable(modules=[], strategy="consensus"):
         if remote_info:
             all_versions[mname] = sorted(remote_info.versions,
                                          key=LooseVersion)
-        req_strings = local_info.conf.get("requires", [])
-        reqs = [Requirement(s) for s in req_strings]
-        for req in reqs:
-            dep = req.name
-            reqs_by_dep[dep][mname] = req
+        if local_info is not None:
+            req_strings = local_info.conf.get("requires", [])
+            reqs = [Requirement.parse(s) for s in req_strings]
+            for req in reqs:
+                dep = req.unsafe_name
+                reqs_by_dep[dep][mname] = req
     update_vers = {}
     resolution_applied = {}
     resolution_failed = {}
@@ -908,7 +888,7 @@ def get_updatable(modules=[], strategy="consensus"):
         if not versions:
             continue
         selected_version = versions[-1]
-        if (selected_version and local_info.version
+        if (selected_version and local_info and local_info.version
                 and LooseVersion(selected_version) <= LooseVersion(
                     local_info.version)):
             continue
@@ -922,7 +902,7 @@ def get_updatable(modules=[], strategy="consensus"):
                 passing_versions = []
                 for version in versions:
                     version_passes = True
-                    for requester, requirement in reqs.items():
+                    for _, requirement in reqs.items():
                         version_passes = version in requirement
                         if not version_passes:
                             break
@@ -930,9 +910,9 @@ def get_updatable(modules=[], strategy="consensus"):
                         passing_versions.append(version)
                 selected_version = passing_versions[
                     -1] if passing_versions else None
-        if (selected_version and local_info.version
-                and LooseVersion(selected_version) > LooseVersion(
-                    local_info.version)):
+        if (selected_version and remote_info and local_info
+                and local_info.version and LooseVersion(selected_version) >
+                LooseVersion(local_info.version)):
             update_data_version = get_remote_data_version(
                 mname, selected_version)
             installed_data_version = get_remote_data_version(
@@ -957,7 +937,7 @@ def get_widgets_for_annotator(annotator_name, skip_installed=False):
     linked_widgets = []
     for widget_name in list_remote():
         widget_info = get_remote_module_info(widget_name)
-        if widget_info.type == "webviewerwidget":
+        if widget_info is not None and widget_info.type == "webviewerwidget":
             widget_config = get_mic().get_remote_config(widget_name)
             linked_annotator = widget_config.get("required_annotator")
             if linked_annotator == annotator_name:
@@ -987,6 +967,7 @@ def install_module(
     force_data=False,
     skip_data=False,
     stage_handler=None,
+    quiet=True,
     **kwargs,
 ):
     import zipfile
@@ -1006,13 +987,15 @@ def install_module(
     import subprocess
     from .sysadmin import get_system_conf
     from .sysadmin import get_modules_dir
+    from .util import quiet_print
+    quiet_args = {"quiet": quiet}
     modules_dir = get_modules_dir()
     temp_dir = os.path.join(modules_dir, install_tempdir_name, module_name)
     shutil.rmtree(temp_dir, ignore_errors=True)
     os.makedirs(temp_dir)
 
     # Ctrl-c in this func must be caught to delete temp_dir
-    def raise_kbi(a, b):
+    def raise_kbi(__a__, __b__):
         raise KeyboardInterrupt
 
     original_sigint = signal.signal(signal.SIGINT, raise_kbi)
@@ -1024,7 +1007,7 @@ def install_module(
             version = get_remote_latest_version(module_name)
             stage_handler.set_module_version(version)
         if hasattr(stage_handler, "install_state") == True:
-            install_state = stage_handler.install_state
+            install_state = stage_handler.install_state  # type: ignore
         else:
             install_state = None
         stage_handler.stage_start("start")
@@ -1045,12 +1028,13 @@ def install_module(
             else:
                 idx += 1
         if len(pypi_deps) > 0:
-            print(
-                f"Following PyPI dependencies should be met before installing {module_name}."
-            )
+            quiet_print(
+                f"Following PyPI dependencies should be met before installing {module_name}.",
+                args=quiet_args)
             for dep in pypi_deps:
-                print(f"- {dep}")
-            print(f"Installing required PyPI packages...")
+                quiet_print(f"- {dep}", args=quiet_args)
+            quiet_print(f"Installing required PyPI packages...",
+                        args=quiet_args)
             idx = 0
             while idx < len(pypi_deps):
                 dep = pypi_deps[idx]
@@ -1060,18 +1044,20 @@ def install_module(
                 else:
                     idx += 1
             if len(pypi_deps) > 0:
-                print(f"Following PyPI dependencies could not be installed.")
+                quiet_print(
+                    f"Following PyPI dependencies could not be installed.",
+                    args=quiet_args)
                 for dep in pypi_deps:
-                    print(f"- {dep}")
+                    quiet_print(f"- {dep}", args=quiet_args)
         if len(pypi_deps) > 0:
             if version is not None:
-                print(
-                    f"Skipping installation of {module_name}=={version} due to unmet requirement for PyPI packages"
-                )
+                quiet_print(
+                    f"Skipping installation of {module_name}=={version} due to unmet requirement for PyPI packages",
+                    args=quiet_args)
             else:
-                print(
-                    f"Skipping installation of {module_name} due to unmet requirement for PyPI packages"
-                )
+                quiet_print(
+                    f"Skipping installation of {module_name} due to unmet requirement for PyPI packages",
+                    args=quiet_args)
             return False
         sys_conf = get_system_conf()
         store_url = sys_conf["store_url"]
@@ -1079,7 +1065,7 @@ def install_module(
         remote_data_version = get_remote_data_version(module_name, version)
         if module_name in list_local():
             local_info = get_local_module_info(module_name)
-            if local_info.has_data:
+            if local_info and local_info.has_data:
                 local_data_version = get_remote_data_version(
                     module_name, local_info.version)
             else:
@@ -1095,6 +1081,9 @@ def install_module(
             # Private module. Fallback to remote config.
             remote_config = get_mic().get_remote_config(module_name, version)
             module_type = remote_config["type"]
+        if module_type is None:
+            from .exceptions import ModuleLoadingError
+            raise ModuleLoadingError(module_name)
         if install_state:
             if (install_state["module_name"] == module_name
                     and install_state["kill_signal"] == True):
@@ -1216,7 +1205,8 @@ def install_module(
     except (Exception, KeyboardInterrupt, SystemExit) as e:
         shutil.rmtree(temp_dir, ignore_errors=True)
         if type(e) == KillInstallException:
-            stage_handler.stage_start("killed")
+            if stage_handler:
+                stage_handler.stage_start("killed")
         elif type(e) in (KeyboardInterrupt, SystemExit):
             pass
         else:
@@ -1266,15 +1256,11 @@ def load_yml_conf(yml_conf_path):
 def fn_new_exampleinput(d):
     import shutil
     import os
-
-    try:
-        fn = "exampleinput"
-        ifn = os.path.join(get_packagedir(), fn)
-        ofn = os.path.join(d, fn)
-        shutil.copyfile(ifn, ofn)
-        return True
-    except Exception as e:
-        raise e
+    fn = "exampleinput"
+    ifn = os.path.join(get_packagedir(), fn)
+    ofn = os.path.join(d, fn)
+    shutil.copyfile(ifn, ofn)
+    return ofn
 
 
 def module_exists_local(module_name):
@@ -1282,7 +1268,6 @@ def module_exists_local(module_name):
     Returns True if a module exists locally. False otherwise.
     """
     import os
-
     if module_name in get_mic().get_local():
         return True
     else:
@@ -1315,8 +1300,9 @@ def module_exists_remote(module_name, version=None, private=False):
             check_url = path_builder.module_dir(module_name)
         else:
             check_url = path_builder.module_version_dir(module_name, version)
-        r = get(check_url)
-        found = r.status_code != 404 and r.status_code < 500
+        if check_url:
+            r = get(check_url)
+            found = r.status_code != 404 and r.status_code < 500
     return found
 
 
@@ -1336,9 +1322,8 @@ def new_annotator(annot_name):
     get_mic().update_local()
 
 
-def print_stage_handler(cur_stage, total_stages, cur_size, total_size):
+def print_stage_handler(cur_stage, total_stages, __cur_size__, __total_size__):
     import sys
-
     rem_stages = total_stages - cur_stage
     perc = cur_stage / total_stages * 100
     out = "\r[{1}{2}] {0:.0f}% ".format(perc, "*" * cur_stage,
@@ -1352,7 +1337,8 @@ def publish_module(module_name,
                    user,
                    password,
                    overwrite=False,
-                   include_data=True):
+                   include_data=True,
+                   quiet=True):
     import os
     import json
     from oakvar.store_utils import (
@@ -1363,21 +1349,22 @@ def publish_module(module_name,
     from requests import get
     from .sysadmin import get_modules_dir
     from .sysadmin import get_system_conf
+    from .util import quiet_print
+    quiet_args = {"quiet": quiet}
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
     get_mic().update_local()
     local_info = get_local_module_info(module_name)
     if local_info == None:
-        print(module_name + " does not exist.")
+        quiet_print(module_name + " does not exist.", args=quiet_args)
         return
     check_url = publish_url + "/%s/%s/check" % (module_name,
                                                 local_info.version)
     r = get(check_url, auth=(user, password))
     if r.status_code != 200:
-        print("Cannot upload")
         if r.status_code == 401:
-            print("Incorrect username or password")
-            exit()
+            from .exceptions import StoreIncorrectLogin
+            raise StoreIncorrectLogin()
         elif r.status_code == 400:
             err = json.loads(r.text)
             if err["code"] == VersionExists.code:
@@ -1390,24 +1377,22 @@ def publish_module(module_name,
                         overwrite = True
                         break
                     if resp == "n":
-                        exit()
+                        from .exceptions import NormalExit
+                        raise NormalExit()
                     else:
-                        print(
-                            "Your response ('%s') was not one of the expected responses: y, n"
-                            % resp)
                         continue
             else:
-                print(err["message"])
-                exit()
+                from .exceptions import ModuleVersionError
+                raise ModuleVersionError(module_name, local_info.version)
         elif r.status_code == 500:
-            print("Server error")
-            exit()
+            from .exceptions import StoreServerError
+            raise StoreServerError(500)
         else:
-            print("HTTP response status code: %d" % r.status_code)
-            exit()
+            from .exceptions import StoreServerError
+            raise StoreServerError(r.status_code)
     zf_name = "%s.%s.zip" % (module_name, local_info.version)
     zf_path = os.path.join(get_modules_dir(), zf_name)
-    print("Zipping module and generating checksums")
+    quiet_print("Zipping module and generating checksums", args=quiet_args)
     zip_builder = ModuleArchiveBuilder(zf_path, base_path=local_info.directory)
     for item_name in os.listdir(local_info.directory):
         item_path = os.path.join(local_info.directory, item_name)
@@ -1421,7 +1406,10 @@ def publish_module(module_name,
             zip_builder.add_item(item_path)
     manifest = zip_builder.get_manifest()
     zip_builder.close()
-    post_url = "/".join([publish_url, module_name, local_info.version])
+    if local_info.version is None:
+        post_url = "/".join([publish_url, module_name])
+    else:
+        post_url = "/".join([publish_url, module_name, local_info.version])
     if overwrite:
         post_url += "?overwrite=1"
     with open(zf_path, "rb") as zf:
@@ -1430,48 +1418,21 @@ def publish_module(module_name,
             ("manifest.json", json.dumps(manifest), "application/json"),
             "archive": (zf_name, zf, "application/octet-stream"),
         }
-        print("Uploading to store")
+        quiet_print("Uploading to store", args=quiet_args)
         r = stream_multipart_post(post_url,
                                   fields,
                                   stage_handler=print_stage_handler,
                                   auth=(user, password))
     if r.status_code != 200:
-        print("Upload failed")
-        print(r.status_code)
-        print(r.text)
+        from .exceptions import StoreServerError
+        raise StoreServerError(status_code=r.status_code, text=r.text)
     if r.text:
-        print(r.text)
+        quiet_print(r.text, args=quiet_args)
     os.remove(zf_path)
 
 
 def ready_resolution_console():
-    import os
-    from types import SimpleNamespace
-    from .sysadmin import get_modules_dir
-    from .sysadmin import set_modules_dir
-    rs = system_ready()
-    if rs:
-        return
-    print(rs.message)
-    if rs.code == ReadyState.MISSING_MD:
-        msg = "Current modules directory is {}.\nInput a new modules directory, or press enter to exit.\n> ".format(
-            get_modules_dir())
-        new_md = input(msg)
-        if new_md:
-            full_path = os.path.abspath(new_md)
-            set_modules_dir(full_path)
-            print(full_path)
-        else:
-            print("Please manually recreate/reattach the modules directory.")
-            exit()
-    elif rs.code == ReadyState.NO_BASE_MODULES:
-        yn = input("Do you want to install base modules now? (y/n)>")
-        if yn == "y":
-            args = SimpleNamespace(force_data=False, force=False, md=None)
-            from .cli_module import fn_module_installbase
-            fn_module_installbase(args)
-            print("Base modules have been installed.")
-    exit()
+    return system_ready()
 
 
 def recursive_update(d1, d2):
@@ -1482,7 +1443,6 @@ def recursive_update(d1, d2):
     level.
     """
     import copy
-
     d3 = copy.deepcopy(d1)  # Copy perhaps not needed. Test.
     for k, v in d2.items():
         if k in d3:
@@ -1510,7 +1470,6 @@ def refresh_cache():
 
 def report_issue():
     import webbrowser
-
     webbrowser.open("http://github.com/rkimoakbioinformatics/oakvar/issues")
 
 
@@ -1536,7 +1495,6 @@ def search_remote(*patterns):
     Return remote module names which match any of supplied patterns
     """
     from re import fullmatch
-
     matching_names = []
     for module_name in list_remote():
         if any([fullmatch(pattern, module_name) for pattern in patterns]):
@@ -1544,30 +1502,39 @@ def search_remote(*patterns):
     return matching_names
 
 
-def send_reset_email(username):
+def send_reset_email(username, args=None):
     from requests import post
     from .sysadmin import get_system_conf
+    from .util import quiet_print
+    if args:
+        quiet = args.get("quiet", True)
+    else:
+        quiet = True
+    quiet_args = {"quiet": quiet}
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
     reset_pw_url = publish_url + "/reset-password"
     r = post(reset_pw_url, params={"username": username})
     if r.status_code == 500:
-        print("Server error")
+        from .exceptions import StoreServerError
+        raise StoreServerError(status_code=r.status_code)
     if r.text:
-        print(r.text)
+        quiet_print(r.text, args=quiet_args)
 
 
-def send_verify_email(username):
+def send_verify_email(username, args=None):
     from requests import post
     from .sysadmin import get_system_conf
+    from .util import quiet_print
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
     reset_pw_url = publish_url + "/verify-email"
     r = post(reset_pw_url, params={"username": username})
     if r.status_code == 500:
-        print("Server error")
+        from .exceptions import StoreServerError
+        raise StoreServerError(status_code=r.status_code)
     if r.text:
-        print(r.text)
+        quiet_print(r.text, args=args)
 
 
 def set_cravat_conf_prop(key, val):
@@ -1586,16 +1553,14 @@ def set_jobs_dir(d):
 
 
 # return a list of module types (e.g. annotators) in the local install
-def show_oakvar_conf(**kwargs):
+def show_oakvar_conf(args):
     import oyaml as yaml
-
-    kwargs.setdefault("fmt", "yaml")
-    kwargs.setdefault("to", "stdout")
+    from .util import quiet_print
     conf = get_cravat_conf_info()
-    if kwargs["fmt"] == "yaml":
+    if args["fmt"] == "yaml":
         conf = yaml.dump(conf, default_flow_style=False)
-    if kwargs["to"] == "stdout":
-        print(conf)
+    if args["to"] == "stdout":
+        quiet_print(conf, args=args)
     else:
         return conf
 
@@ -1608,12 +1573,14 @@ def oakvar_version():
 def system_ready():
     import os
     from .sysadmin import get_modules_dir
+    from .exceptions import NoModulesDir
+    from .exceptions import NoSystemModule
     modules_dir = get_modules_dir()
     if not (os.path.exists(modules_dir)):
-        return ReadyState(code=ReadyState.MISSING_MD)
+        raise NoModulesDir()
     elif not (os.path.exists(
             os.path.join(modules_dir, "converters", "vcf-converter"))):
-        return ReadyState(code=ReadyState.NO_BASE_MODULES)
+        raise NoSystemModule()
     else:
         return ReadyState()
 
@@ -1623,12 +1590,12 @@ def uninstall_module(module_name):
     Uninstalls a module.
     """
     import shutil
-
     uninstalled_modules = False
     if module_name in list_local():
         local_info = get_local_module_info(module_name)
-        shutil.rmtree(local_info.directory)
-        uninstalled_modules = True
+        if local_info:
+            shutil.rmtree(local_info.directory)
+            uninstalled_modules = True
     if uninstalled_modules:
         get_mic().update_local()
 
@@ -1650,7 +1617,6 @@ def update_mic():
 
 def get_liftover_chain_paths():
     from os.path import join
-
     liftover_chains_dir = get_liftover_chains_dir()
     liftover_chain_paths = {
         "hg19": join(liftover_chains_dir, "hg19ToHg38.over.chain"),
@@ -1661,13 +1627,11 @@ def get_liftover_chain_paths():
 
 def get_packagedir():
     from os.path import dirname, abspath
-
     return dirname(abspath(__file__))
 
 
 def get_platform():
     from platform import platform
-
     pl = platform()
     if pl.startswith("Windows"):
         pl = "windows"
@@ -1688,7 +1652,6 @@ def get_admindb_path():
 
 def get_liftover_chains_dir():
     from os.path import join as pathjoin
-
     return pathjoin(get_packagedir(), "liftover")
 
 
@@ -1701,7 +1664,6 @@ def get_mic():
 
 def get_max_version_supported_for_migration():
     from distutils.version import LooseVersion
-
     return LooseVersion("1.7.0")
 
 

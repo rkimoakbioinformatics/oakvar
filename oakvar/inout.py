@@ -3,7 +3,6 @@ class CravatFile(object):
 
     def __init__(self, path):
         from os.path import abspath
-
         self.path = abspath(path)
         self.columns = {}
 
@@ -24,7 +23,6 @@ class CravatReader(CravatFile):
 
     def __init__(self, path, seekpos=None, chunksize=None):
         from .util import detect_encoding
-
         super().__init__(path)
         self.seekpos = seekpos
         self.chunksize = chunksize
@@ -35,12 +33,12 @@ class CravatReader(CravatFile):
         self.no_aggregate_cols = []
         self.index_columns = []
         self.report_substitution = None
+        self.f = None
         self._setup_definition()
 
     def _setup_definition(self):
         from json import loads
         from json.decoder import JSONDecodeError
-
         for l in self._loop_definition():
             if l.startswith("#name="):
                 self.annotator_name = l.split("=")[1]
@@ -104,8 +102,9 @@ class CravatReader(CravatFile):
         return self.no_aggregate_cols
 
     def get_lines(self, seekpos, chunksize):
-        self.f.seek(seekpos)
-        return self.f.readlines(chunksize)
+        if self.f is not None:
+            self.f.seek(seekpos)
+            return self.f.readlines(chunksize)
 
     def get_chunksize(self, num_core):
         f = open(self.path)
@@ -120,7 +119,7 @@ class CravatReader(CravatFile):
         f.close()
         chunksize = max(int(max_num_lines / num_core), 1)
         f = open(self.path)
-        poss = [(0, 0)]
+        poss = [[0, 0]]
         num_lines = 0
         while True:
             line = f.readline()
@@ -130,15 +129,14 @@ class CravatReader(CravatFile):
                 continue
             num_lines += 1
             if num_lines % chunksize == 0 and len(poss) < num_core:
-                poss.append((f.tell(), num_lines))
+                poss.append([f.tell(), num_lines])
         f.close()
         len_poss = len(poss)
         return num_lines, chunksize, poss, len_poss, max_num_lines
 
     def loop_data(self):
         from .exceptions import BadFormatError
-        from json import loads, dumps
-
+        from json import loads
         for lnum, l in self._loop_data():
             toks = l.split("\t")
             out = {}
@@ -183,7 +181,8 @@ class CravatReader(CravatFile):
         self.f = open(self.path, "rb")
 
     def _close_file(self):
-        self.f.close()
+        if self.f is not None:
+            self.f.close()
 
     def get_data(self):
         all_data = [d for _, _, d in self.loop_data()]
@@ -205,12 +204,13 @@ class CravatReader(CravatFile):
             f.seek(self.seekpos)
         lnum = 0
         for l in f:
-            l = l.decode(self.encoding)
-            l = l.rstrip("\r\n")
-            if l.startswith("#"):
-                continue
-            else:
-                yield lnum, l
+            if self.encoding is not None:
+                l = l.decode(self.encoding)
+                l = l.rstrip("\r\n")
+                if l.startswith("#"):
+                    continue
+                else:
+                    yield lnum, l
             lnum += 1
             if self.chunksize is not None and lnum == self.chunksize:
                 break
@@ -230,6 +230,7 @@ class CravatWriter(CravatFile):
     ):
         super().__init__(path)
         self.fmt = fmt
+        self.csvwriter = None
         if fmt == "csv":
             self.wf = open(self.path, "w", newline="", encoding="utf-8")
             from csv import reader
@@ -316,7 +317,6 @@ class CravatWriter(CravatFile):
 
     def write_definition(self, conf=None):
         from json import dumps
-
         self._prep_for_write()
         for col_def in self.ordered_columns:
             self.write_meta_line("column", col_def.get_json())
@@ -328,7 +328,6 @@ class CravatWriter(CravatFile):
 
     def write_input_paths(self, input_path_dict):
         from json import dumps
-
         s = "#input_paths={}\n".format(dumps(input_path_dict))
         self.wf.write(s)
         self.wf.flush()
@@ -357,13 +356,15 @@ class CravatWriter(CravatFile):
             else:
                 wtoks[col_index] = ""
         if self.fmt == "csv":
-            self.csvwriter.writerow(wtoks)
+            if self.csvwriter is not None:
+                self.csvwriter.writerow(wtoks)  # type: ignore
         else:
             self.wf.write("\t".join(wtoks) + "\n")
 
     def close(self):
         if self.fmt == "csv":
-            self.csvwriter.close()
+            if self.csvwriter is not None:
+                self.csvwriter.close()  # type: ignore
         self.wf.close()
 
 
@@ -371,12 +372,12 @@ class CrxMapping(object):
 
     def __init__(self):
         from re import compile
-
-        self.protein = None
+        from typing import Optional
+        self.protein: Optional[str] = None
         self.achange = None
-        self.transcript = None
+        self.transcript: Optional[str] = None
         self.tchange = None
-        self.so = None
+        self.so: Optional[str] = None
         self.gene = None
         self.tref = None
         self.tpos_start = None
@@ -384,6 +385,7 @@ class CrxMapping(object):
         self.aref = None
         self.apos_start = None
         self.aalt = None
+        self.mapping = None
         self.tchange_re = compile(
             r"([AaTtCcGgUuNn_-]+)(\d+)([AaTtCcGgUuNn_-]+)")
         self.achange_re = compile(r"([a-zA-Z_\*]+)(\d+)([AaTtCcGgUuNn_\*]+)")
@@ -394,11 +396,12 @@ class CrxMapping(object):
             self.parse_tchange()
 
     def parse_tchange(self):
-        tchange_match = self.tchange_re.match(self.tchange)
-        if tchange_match:
-            self.tref = tchange_match.group(1)
-            self.tpos_start = int(tchange_match.group(2))
-            self.talt = tchange_match.group(3)
+        if self.tchange is not None:
+            tchange_match = self.tchange_re.match(self.tchange)
+            if tchange_match:
+                self.tref = tchange_match.group(1)
+                self.tpos_start = int(tchange_match.group(2))
+                self.talt = tchange_match.group(3)
 
     def load_achange(self, achange):
         self.achange = achange
@@ -406,11 +409,12 @@ class CrxMapping(object):
             self.parse_achange()
 
     def parse_achange(self):
-        achange_match = self.achange_re.match(self.achange)
-        if achange_match:
-            self.aref = achange_match.group(1)
-            self.apos_start = int(achange_match.group(2))
-            self.aalt = achange_match.group(3)
+        if self.achange is not None:
+            achange_match = self.achange_re.match(self.achange)
+            if achange_match:
+                self.aref = achange_match.group(1)
+                self.apos_start = int(achange_match.group(2))
+                self.aalt = achange_match.group(3)
 
 
 class AllMappingsParser(object):
@@ -418,7 +422,6 @@ class AllMappingsParser(object):
     def __init__(self, s):
         from json import loads
         from collections import OrderedDict
-
         if type(s) == str:
             self._d = loads(s, object_pairs_hook=OrderedDict)
         else:
@@ -545,6 +548,19 @@ class ColumnDefinition(object):
     }
 
     def __init__(self, d):
+        self.index = None
+        self.name = None
+        self.title = None
+        self.type = None
+        self.categories = None
+        self.width = None
+        self.desc = None
+        self.hidden = None
+        self.category = None
+        self.filterable = None
+        self.link_format = None
+        self.genesummary = None
+        self.table = None
         self._load_dict(d)
 
     def _load_dict(self, d):
@@ -564,7 +580,6 @@ class ColumnDefinition(object):
 
     def from_row(self, row, order=None):
         from json import loads
-
         if order is None:
             order = self.db_order
         d = {self.sql_map[column]: value for column, value in zip(order, row)}
@@ -575,29 +590,27 @@ class ColumnDefinition(object):
     def from_var_csv(self, row):
         from json import loads
         from csv import reader
-
-        l = list(reader([row], dialect="oakvar"))[0]
-        self._load_dict(dict(zip(self.csv_order[:len(l)], l)))
-        self.index = int(self.index)
-        if isinstance(self.categories, str):
-            self.categories = loads(self.categories)
-        if self.categories is None:
-            self.categories = []
-        if isinstance(self.hidden, str):
-            self.hidden = loads(self.hidden.lower())
-        if isinstance(self.filterable, str):
-            self.filterable = loads(self.filterable.lower())
-        if self.link_format == "":
-            self.link_format = None
+        if self.index is not None:
+            l = list(reader([row], dialect="oakvar"))[0]
+            self._load_dict(dict(zip(self.csv_order[:len(l)], l)))
+            self.index = int(self.index)
+            if isinstance(self.categories, str):
+                self.categories = loads(self.categories)
+            if self.categories is None:
+                self.categories = []
+            if isinstance(self.hidden, str):
+                self.hidden = loads(self.hidden.lower())
+            if isinstance(self.filterable, str):
+                self.filterable = loads(self.filterable.lower())
+            if self.link_format == "":
+                self.link_format = None
 
     def from_json(self, sjson):
         from json import loads
-
         self._load_dict(loads(sjson))
 
     def get_json(self):
         from json import dumps
-
         return dumps(self.__dict__)
 
     def get_colinfo(self):
