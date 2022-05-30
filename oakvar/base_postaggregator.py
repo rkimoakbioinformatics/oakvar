@@ -51,7 +51,6 @@ class BasePostAggregator(object):
 
     def _define_cmd_parser(self):
         import argparse
-
         parser = argparse.ArgumentParser()
         parser.add_argument("-n", dest="run_name", help="name of oakvar run")
         parser.add_argument(
@@ -291,7 +290,6 @@ class BasePostAggregator(object):
             if self.logger:
                 self.logger.error(msg)
             import sys
-
             sys.exit(msg)
 
     def _close_db_connection(self):

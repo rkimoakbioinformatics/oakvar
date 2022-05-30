@@ -5,7 +5,6 @@ class Aggregator(object):
 
     def __init__(self, cmd_args, status_writer):
         from os.path import abspath
-
         self.status_writer = status_writer
         self.annotators = []
         self.ipaths = {}
@@ -41,7 +40,6 @@ class Aggregator(object):
         from os.path import abspath, exists
         from os import makedirs
         from argparse import ArgumentParser
-
         parser = ArgumentParser()
         parser.add_argument("path", help="Path to this aggregator module")
         parser.add_argument(
@@ -95,7 +93,6 @@ class Aggregator(object):
 
     def _setup_logger(self):
         from logging import getLogger
-
         self.logger = getLogger("oakvar.aggregator")
         self.logger.info("level: {0}".format(self.level))
         self.logger.info("input directory: %s" % self.input_dir)

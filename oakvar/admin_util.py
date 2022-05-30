@@ -30,7 +30,6 @@ class InstallProgressHandler(object):
 
     def _stage_msg(self, stage):
         from oakvar.util import get_current_time_str
-
         if stage is None or stage == "":
             return ""
         elif stage == "start":
@@ -84,7 +83,6 @@ class LocalInfoCache(MutableMapping):
 
     def __setitem__(self, key, value):
         import os
-
         if not (isinstance(value, LocalModuleInfo) or os.path.isdir(value)):
             raise ValueError(value)
         self.store[key] = value
@@ -182,7 +180,6 @@ class LocalModuleInfo(object):
         Gets the total installed size of a module
         """
         from oakvar.util import get_directory_size
-
         if self.disk_size is None:
             self.disk_size = get_directory_size(self.directory)
         return self.disk_size
@@ -192,7 +189,6 @@ class LocalModuleInfo(object):
         Gets the module test input file(s) if the module has tests.  A test is a input file / key file pair.
         """
         import os
-
         tests = []
         if self.test_dir_exists:
             for i in os.listdir(self.test_dir):
@@ -234,7 +230,6 @@ class ModuleInfoCache(object):
     def update_download_counts(self, force=False):
         import oyaml as yaml
         from oakvar.store_utils import get_file_to_string
-
         if force or not (self._counts_fetched):
             counts_url = self._store_path_builder.download_counts()
             counts_str = get_file_to_string(counts_url)
@@ -278,7 +273,6 @@ class ModuleInfoCache(object):
     def update_remote(self, force=False):
         import oyaml as yaml
         from oakvar.store_utils import get_file_to_string
-
         if force or not (self._remote_fetched):
             if self._remote_url is None:
                 self._remote_url = self._store_path_builder.manifest()
@@ -302,7 +296,6 @@ class ModuleInfoCache(object):
 
     def get_remote_readme(self, module_name, version=None):
         from oakvar.store_utils import get_file_to_string
-
         self.update_remote()
         # Resolve name and version
         if module_name not in self.remote:
@@ -329,7 +322,6 @@ class ModuleInfoCache(object):
     def get_remote_config(self, module_name, version=None):
         import oyaml as yaml
         from oakvar.store_utils import get_file_to_string
-
         self.update_remote()
         if version == None:
             version = self.remote[module_name]["latest_version"]
@@ -427,7 +419,6 @@ class RemoteModuleInfo(object):
 def change_password(username, cur_pw, new_pw):
     from requests import post
     from .sysadmin import get_system_conf
-
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
     change_pw_url = publish_url + "/change-password"
@@ -447,7 +438,6 @@ def change_password(username, cur_pw, new_pw):
 def check_login(username, password):
     from requests import get
     from .sysadmin import get_system_conf
-
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
     login_url = publish_url + "/login"
@@ -464,7 +454,6 @@ def check_login(username, password):
 
 def compare_version(v1, v2):
     from distutils.version import LooseVersion
-
     sv1 = LooseVersion(v1)
     sv2 = LooseVersion(v2)
     if sv1 == sv2:
@@ -478,7 +467,6 @@ def compare_version(v1, v2):
 def create_account(username, password):
     from requests import post
     from .sysadmin import get_system_conf
-
     sys_conf = get_system_conf()
     publish_url = sys_conf["publish_url"]
     create_account_url = publish_url + "/create-account"
@@ -529,7 +517,6 @@ def get_cravat_conf_info():
 
 def get_current_package_version():
     from pkg_resources import get_distribution
-
     version = get_distribution("oakvar").version
     return version
 
@@ -746,7 +733,6 @@ def get_package_versions():
     from requests import get
     from requests.exceptions import ConnectionError
     from distutils.version import LooseVersion
-
     try:
         r = get("https://pypi.org/pypi/oakvar/json", timeout=(3, None))
     except ConnectionError:
@@ -766,7 +752,6 @@ def get_readme(module_name, version=None):
     Get the readme. Use local if available.
     """
     import os
-
     exists_remote = module_exists_remote(module_name, version=version)
     exists_local = module_exists_local(module_name)
     if exists_remote:
@@ -871,7 +856,6 @@ def get_updatable(modules=[], strategy="consensus"):
     from pkg_resources import Requirement
     from collections import defaultdict
     from types import SimpleNamespace
-
     if strategy not in ("consensus", "force", "skip"):
         raise ValueError('Unknown strategy "{}"'.format(strategy))
     if not modules:
@@ -1271,15 +1255,11 @@ def load_yml_conf(yml_conf_path):
 def fn_new_exampleinput(d):
     import shutil
     import os
-
-    try:
-        fn = "exampleinput"
-        ifn = os.path.join(get_packagedir(), fn)
-        ofn = os.path.join(d, fn)
-        shutil.copyfile(ifn, ofn)
-        return ofn
-    except Exception as e:
-        raise e
+    fn = "exampleinput"
+    ifn = os.path.join(get_packagedir(), fn)
+    ofn = os.path.join(d, fn)
+    shutil.copyfile(ifn, ofn)
+    return ofn
 
 
 def module_exists_local(module_name):
@@ -1287,7 +1267,6 @@ def module_exists_local(module_name):
     Returns True if a module exists locally. False otherwise.
     """
     import os
-
     if module_name in get_mic().get_local():
         return True
     else:
@@ -1344,7 +1323,6 @@ def new_annotator(annot_name):
 
 def print_stage_handler(cur_stage, total_stages, __cur_size__, __total_size__):
     import sys
-
     rem_stages = total_stages - cur_stage
     perc = cur_stage / total_stages * 100
     out = "\r[{1}{2}] {0:.0f}% ".format(perc, "*" * cur_stage,
@@ -1464,7 +1442,6 @@ def recursive_update(d1, d2):
     level.
     """
     import copy
-
     d3 = copy.deepcopy(d1)  # Copy perhaps not needed. Test.
     for k, v in d2.items():
         if k in d3:
@@ -1492,7 +1469,6 @@ def refresh_cache():
 
 def report_issue():
     import webbrowser
-
     webbrowser.open("http://github.com/rkimoakbioinformatics/oakvar/issues")
 
 
@@ -1518,7 +1494,6 @@ def search_remote(*patterns):
     Return remote module names which match any of supplied patterns
     """
     from re import fullmatch
-
     matching_names = []
     for module_name in list_remote():
         if any([fullmatch(pattern, module_name) for pattern in patterns]):
@@ -1580,7 +1555,6 @@ def set_jobs_dir(d):
 def show_oakvar_conf(args):
     import oyaml as yaml
     from .util import quiet_print
-
     conf = get_cravat_conf_info()
     if args["fmt"] == "yaml":
         conf = yaml.dump(conf, default_flow_style=False)
@@ -1615,7 +1589,6 @@ def uninstall_module(module_name):
     Uninstalls a module.
     """
     import shutil
-
     uninstalled_modules = False
     if module_name in list_local():
         local_info = get_local_module_info(module_name)
@@ -1643,7 +1616,6 @@ def update_mic():
 
 def get_liftover_chain_paths():
     from os.path import join
-
     liftover_chains_dir = get_liftover_chains_dir()
     liftover_chain_paths = {
         "hg19": join(liftover_chains_dir, "hg19ToHg38.over.chain"),
@@ -1654,13 +1626,11 @@ def get_liftover_chain_paths():
 
 def get_packagedir():
     from os.path import dirname, abspath
-
     return dirname(abspath(__file__))
 
 
 def get_platform():
     from platform import platform
-
     pl = platform()
     if pl.startswith("Windows"):
         pl = "windows"
@@ -1681,7 +1651,6 @@ def get_admindb_path():
 
 def get_liftover_chains_dir():
     from os.path import join as pathjoin
-
     return pathjoin(get_packagedir(), "liftover")
 
 
@@ -1694,7 +1663,6 @@ def get_mic():
 
 def get_max_version_supported_for_migration():
     from distutils.version import LooseVersion
-
     return LooseVersion("1.7.0")
 
 

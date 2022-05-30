@@ -132,7 +132,6 @@ def fn_util_updateresult(args):
     from shutil import copy
     from distutils.version import LooseVersion
     from .util import get_dict_from_namespace
-
     migrate_functions = {}
     migrate_checkpoints = [
         LooseVersion(v) for v in list(migrate_functions.keys())
@@ -213,7 +212,6 @@ def fn_util_updateresult(args):
                     )
         except:
             from traceback import print_exc
-
             print_exc()
             print("  converting [{}] was not successful.".format(dbpath))
 
@@ -225,7 +223,6 @@ def fn_util_addjob(args):
     from pathlib import Path
     from datetime import datetime
     from .sysadmin import get_jobs_dir
-
     dbpath = args.path
     user = args.user
     jobs_dir = Path(get_jobs_dir())
@@ -274,7 +271,6 @@ def get_sqliteinfo(args):
     import sqlite3
     from json import loads
     from oyaml import dump
-
     fmt = args["fmt"]
     to = args["to"]
     dbpaths = args["paths"]
@@ -362,7 +358,6 @@ def get_sqliteinfo(args):
 
 def fn_util_sqliteinfo(args):
     from .util import get_dict_from_namespace
-
     args = get_dict_from_namespace(args)
     args["fmt"] = "yaml"
     args["to"] = "stdout"
@@ -374,7 +369,6 @@ def fn_util_mergesqlite(args):
     from json import loads, dumps
     from shutil import copy
     from .util import get_dict_from_namespace
-
     args = get_dict_from_namespace(args)
     dbpaths = args["path"]
     if len(dbpaths) < 2:
@@ -513,7 +507,6 @@ def fn_util_mergesqlite(args):
 def fn_util_filtersqlite(args):
     from asyncio import get_event_loop
     from .util import get_dict_from_namespace
-
     args = get_dict_from_namespace(args)
     loop = get_event_loop()
     loop.run_until_complete(filtersqlite_async(args))

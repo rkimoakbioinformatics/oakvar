@@ -386,7 +386,6 @@ class CsvReportReader(ReportReader):
     # Based on the level selected, return column headers and row values.
     def readReport(self, test_level, bDict):
         import csv
-
         level_hdr = "level="
         level = ""
         headers = None

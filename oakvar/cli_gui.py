@@ -102,7 +102,6 @@ def setup(args):
                 ssl_enabled = True
                 global sc
                 from ssl import create_default_context, Purpose
-
                 sc = create_default_context(Purpose.CLIENT_AUTH)
                 sc.load_cert_chain(pem_path)
         if ssl_enabled:
@@ -112,7 +111,6 @@ def setup(args):
     except Exception as e:
         from traceback import print_exc
         from sys import stderr
-
         logger.exception(e)
         if debug:
             print_exc()
@@ -287,7 +285,6 @@ class TCPSitePatched(web_runner.BaseSite):
         loop=None,
     ):
         from asyncio import get_event_loop
-
         super().__init__(
             runner,
             shutdown_timeout=shutdown_timeout,
@@ -408,7 +405,6 @@ class WebServer(object):
     async def open_url(self, url):
         from webbrowser import open as webbrowseropen
         from asyncio import sleep
-
         while self.server_started == False:
             await sleep(0.2)
         if self.server_started:
@@ -519,7 +515,6 @@ async def get_webapp_index(request):
 
 async def serve_favicon(__request__):
     from os.path import dirname, realpath, join
-
     source_dir = dirname(realpath(__file__))
     return web.FileResponse(join(source_dir, "favicon.ico"))
 
@@ -528,7 +523,6 @@ async def heartbeat(request):
     from .webstore import webstore as ws
     from asyncio import get_event_loop
     from concurrent.futures._base import CancelledError
-
     ws = web.WebSocketResponse(timeout=60 * 60 * 24 * 365)
     if servermode and server_ready:
         import cravat_multiuser
@@ -545,7 +539,6 @@ async def heartbeat(request):
 
 async def is_system_ready(__request__):
     from .admin_util import system_ready
-
     return web.json_response(dict(system_ready()))
 
 
@@ -579,7 +572,6 @@ def main(url=None, host=None, port=None, args={}):
                 ws.handle_modules_changed()
             except:
                 from traceback import print_exc
-
                 print_exc()
             finally:
                 loop.call_later(interval, check_local_update, interval)
@@ -666,7 +658,6 @@ def main(url=None, host=None, port=None, args={}):
         logger.exception(e)
         if debug:
             from traceback import print_exc
-
             print_exc()
         logger.info("Exiting...")
         stderr.write(

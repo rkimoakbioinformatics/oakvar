@@ -1,6 +1,5 @@
 def init_worker():
     import signal
-
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
@@ -8,7 +7,6 @@ def annot_from_queue(start_queue, end_queue, queue_populated, status_writer):
     from .util import load_class
     from logging import getLogger, FileHandler, Formatter
     from queue import Empty
-
     while True:
         try:
             task = start_queue.get(True, 1)

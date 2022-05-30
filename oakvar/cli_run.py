@@ -1,6 +1,3 @@
-from traceback import print_exception
-
-
 def cli_run(args):
     from .util import get_dict_from_namespace
     args = get_dict_from_namespace(args)
@@ -64,8 +61,6 @@ def fn_run(args):
 
 
 class Cravat(object):
-    # class MyManager(multiprocessing.managers.SyncManager):
-    #    pass
 
     def __init__(self, **kwargs):
         self.runlevels = {
@@ -148,84 +143,79 @@ class Cravat(object):
     def check_valid_modules(self, module_names):
         from .exceptions import ModuleNotExist
         from . import admin_util as au
-
         for module_name in module_names:
             if not au.module_exists_local(module_name):
                 raise ModuleNotExist(module_name)
 
-    def write_initial_status_json(self):
-        if self.run_name is None or self.inputs is None or self.args is None or self.output_dir is None:
+    def close_logger(self):
+        import logging
+        if self.log_handler:
+            self.log_handler.close()
+            if self.logger is not None:
+                self.logger.removeHandler(self.log_handler)
+        if self.error_log_handler:
+            self.error_log_handler.close()
+            if self.error_logger:
+                self.error_logger.removeHandler(self.error_log_handler)
+        logging.shutdown()
+
+    def delete_output_files(self):
+        if self.run_name is None or self.output_dir is None:
             from .exceptions import SetupError
             raise SetupError()
         import os
-        from datetime import datetime
-        import json
-        from . import admin_util as au
-        status_fname = "{}.status.json".format(self.run_name)
-        self.status_json_path = os.path.join(self.output_dir, status_fname)
-        if os.path.exists(self.status_json_path) == True:
-            with open(self.status_json_path) as f:
-                try:
-                    self.status_json = json.load(f)
-                    self.pkg_ver = self.status_json["open_cravat_version"]
-                except:
-                    self.pkg_ver = au.get_current_package_version()
-            if self.status_json and self.status_json["status"] == "Submitted":
-                self.status_json["job_dir"] = self.output_dir
-                self.status_json["id"] = os.path.basename(
-                    os.path.normpath(self.output_dir))
-                self.status_json["run_name"] = self.run_name
-                self.status_json["assembly"] = self.input_assembly
-                self.status_json["db_path"] = os.path.join(
-                    self.output_dir, self.run_name + ".sqlite")
-                self.status_json["orig_input_fname"] = [
-                    os.path.basename(x) for x in self.inputs
-                ]
-                self.status_json["orig_input_path"] = self.inputs
-                self.status_json["submission_time"] = datetime.now().isoformat(
-                )
-                self.status_json["viewable"] = False
-                self.status_json["note"] = self.args.note
-                self.status_json["status"] = "Starting"
-                self.status_json["reports"] = (
-                    self.args.reports if self.args.reports != None else [])
-                self.pkg_ver = au.get_current_package_version()
-                self.status_json["open_cravat_version"] = self.pkg_ver
-                annot_names = list(self.annotators.keys())
-                annot_names.sort()
-                if "original_input" in annot_names:
-                    annot_names.remove("original_input")
-                self.status_json["annotators"] = annot_names
-                with open(self.status_json_path, "w") as wf:
-                    wf.write(
-                        json.dumps(self.status_json, indent=2, sort_keys=True))
+        import glob
+        from .util import quiet_print
+        fns = glob.glob(os.path.join(self.output_dir, self.run_name + ".*"))
+        for fn in fns:
+            quiet_print(f"  Removing {fn}", self.args)
+            os.remove(fn)
+
+    def download_url_input(self, input_no):
+        if self.inputs is None:
+            from .exceptions import NoInputException
+            raise NoInputException()
+        from .util import is_url, humanize_bytes
+        ip = self.inputs[input_no]
+        if " " in ip:
+            print(f"Space is not allowed in input file paths ({ip})")
+            exit()
+        if is_url(ip):
+            import os
+            import requests
+            from .util import quiet_print
+            quiet_print(f"Fetching {ip}... ", self.args)
+            try:
+                r = requests.head(ip)
+                r = requests.get(ip, stream=True)
+                fn = os.path.basename(ip)
+                fpath = fn
+                cur_size = 0.0
+                num_total_star = 40.0
+                total_size = float(r.headers["content-length"])
+                with open(fpath, "wb") as wf:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        wf.write(chunk)
+                        cur_size += float(len(chunk))
+                        perc = cur_size / total_size
+                        cur_star = int(perc * num_total_star)
+                        rem_stars = int(num_total_star - cur_star)
+                        cur_prog = "*" * cur_star
+                        rem_prog = " " * rem_stars
+                        print(
+                            f"[{cur_prog}{rem_prog}] {humanize_bytes(cur_size)} / {humanize_bytes(total_size)} ({perc * 100.0:.0f}%)",
+                            end="\r",
+                            flush=True,
+                        )
+                        if cur_size == total_size:
+                            print("\n")
+                self.inputs[input_no] = os.path.abspath(fpath)
+            except:
+                print(f"File downloading unsuccessful. Exiting.")
+                exit()
+            return None
         else:
-            self.status_json = {}
-            self.status_json["job_dir"] = self.output_dir
-            self.status_json["id"] = os.path.basename(
-                os.path.normpath(self.output_dir))
-            self.status_json["run_name"] = self.run_name
-            self.status_json["assembly"] = self.input_assembly
-            self.status_json["db_path"] = os.path.join(
-                self.output_dir, self.run_name + ".sqlite")
-            self.status_json["orig_input_fname"] = [
-                os.path.basename(x) for x in self.inputs
-            ]
-            self.status_json["orig_input_path"] = self.inputs
-            self.status_json["submission_time"] = datetime.now().isoformat()
-            self.status_json["viewable"] = False
-            self.status_json["note"] = self.args.note
-            self.status_json["status"] = "Starting"
-            self.status_json["reports"] = (self.args.reports if
-                                           self.args.reports != None else [])
-            self.pkg_ver = au.get_current_package_version()
-            self.status_json["open_cravat_version"] = self.pkg_ver
-            annot_names = list(self.annotators.keys())
-            annot_names.sort()
-            self.status_json["annotators"] = annot_names
-            with open(self.status_json_path, "w") as wf:
-                wf.write(json.dumps(self.status_json, indent=2,
-                                    sort_keys=True))
+            return ip
 
     def get_logger(self):
         if self.args is None or self.run_name is None or self.output_dir is None or self.run_name is None:
@@ -260,39 +250,25 @@ class Cravat(object):
         self.error_log_handler.setFormatter(formatter)
         self.error_logger.addHandler(self.error_log_handler)
 
-    def close_logger(self):
-        import logging
-        if self.log_handler:
-            self.log_handler.close()
-            if self.logger is not None:
-                self.logger.removeHandler(self.log_handler)
-        if self.error_log_handler:
-            self.error_log_handler.close()
-            if self.error_logger:
-                self.error_logger.removeHandler(self.error_log_handler)
-        logging.shutdown()
-
-    def update_status(self, status, force=False):
+    def handle_exception(self, e):
         if self.args is None:
             from .exceptions import SetupError
             raise SetupError()
-        if self.args.do_not_change_status != True:
-            if self.status_writer:
-                self.status_writer.queue_status_update("status",
-                                                    status,
-                                                    force=force)
-
-    def delete_output_files(self):
-        if self.run_name is None or self.output_dir is None:
-            from .exceptions import SetupError
-            raise SetupError()
-        import os
-        import glob
-        from .util import quiet_print
-        fns = glob.glob(os.path.join(self.output_dir, self.run_name + ".*"))
-        for fn in fns:
-            quiet_print(f"  Removing {fn}", self.args)
-            os.remove(fn)
+        from sys import stderr
+        try:
+            from .exceptions import ExpectedException
+            if isinstance(e, ExpectedException):
+                if hasattr(self, "logger") and self.logger and not getattr(e, "nolog", False):
+                    self.logger.error(e)
+                stderr.write(str(e) + "\n")
+                stderr.flush()
+            else:
+                if hasattr(self, "logger") and self.logger:
+                    self.logger.exception("An unexpected exception occurred.")
+        except Exception as e2:
+            stderr.write(str(e) + "\n")
+            stderr.flush()
+            raise e2
 
     def log_versions(self):
         if self.args is None:
@@ -327,10 +303,8 @@ class Cravat(object):
     async def main(self):
         from .util import quiet_print
         from time import time, asctime, localtime
-        from .exceptions import ExpectedException
         from multiprocessing.managers import SyncManager
         from sys import argv
-        exception = None
         report_response = None
         self.aggregator_ran = False
         try:
@@ -483,138 +457,44 @@ class Cravat(object):
                 raise self.exception
             return report_response
 
-    async def write_admin_db(self, runtime, numinput):
+    def update_status(self, status, force=False):
         if self.args is None:
             from .exceptions import SetupError
             raise SetupError()
-        import os
-        import aiosqlite
-        from .admin_util import get_admindb_path
-        from .util import quiet_print
-        if runtime is None or numinput is None:
-            return
-        if os.path.exists(get_admindb_path()) == False:
-            s = "{} does not exist.".format(get_admindb_path())
-            if self.logger:
-                self.logger.info(s)
-            quiet_print(s, self.args)
-            return
-        db = await aiosqlite.connect(get_admindb_path())
-        cursor = await db.cursor()
-        q = 'update jobs set runtime={}, numinput={} where jobid="{}"'.format(
-            runtime, numinput, self.args.jobid)
-        await cursor.execute(q)
-        await db.commit()
-        await cursor.close()
-        await db.close()
+        if self.args.do_not_change_status != True:
+            if self.status_writer:
+                self.status_writer.queue_status_update("status",
+                                                    status,
+                                                    force=force)
 
-    def write_smartfilters(self):
-        if self.run_name is None or self.args is None or self.output_dir is None:
-            from .exceptions import SetupError
-            raise SetupError()
-        from time import time
-        import os
-        import json
-        import sqlite3
-        from .util import filter_affected_cols
-        from .constants import base_smartfilters
-        from .util import quiet_print
-        quiet_print("Indexing", self.args)
-        dbpath = os.path.join(self.output_dir, self.run_name + ".sqlite")
-        conn = sqlite3.connect(dbpath)
-        cursor = conn.cursor()
-        q = "create table if not exists smartfilters (name text primary key, definition text)"
-        cursor.execute(q)
-        ins_template = (
-            "insert or replace into smartfilters (name, definition) values (?, ?);"
-        )
-        cols_to_index = set()
-        for sf in base_smartfilters:
-            cols_to_index |= filter_affected_cols(sf["filter"])
-        if self.annotator_ran:
-            for linfo in self.annotators.values():
-                if linfo.smartfilters is not None:
-                    for sf in linfo.smartfilters:
-                        cols_to_index |= filter_affected_cols(sf["filter"])
-                    mname = linfo.name
-                    json_info = json.dumps(linfo.smartfilters)
-                    cursor.execute(ins_template, (mname, json_info))
-        cursor.execute("pragma table_info(variant)")
-        variant_cols = {row[1] for row in cursor}
-        cursor.execute("pragma table_info(gene)")
-        gene_cols = {row[1] for row in cursor}
-        cursor.execute('select name from sqlite_master where type="index"')
-        existing_indices = {row[0] for row in cursor}
-        for col in cols_to_index:
-            if col in variant_cols:
-                index_name = f"sf_variant_{col}"
-                if index_name not in existing_indices:
-                    q = f"create index if not exists {index_name} on variant ({col})"
-                    quiet_print(f"\tvariant {col}", self.args)
-                    st = time()
-                    cursor.execute(q)
-                    quiet_print(f"\tfinished in {time()-st:.3f}s", self.args)
-            if col in gene_cols:
-                index_name = f"sf_gene_{col}"
-                if index_name not in existing_indices:
-                    q = f"create index if not exists {index_name} on gene ({col})"
-                    quiet_print(f"\tgene {col}", self.args)
-                    st = time()
-                    cursor.execute(q)
-                    quiet_print(f"\tfinished in {time()-st:.3f}s", self.args)
-        # Package filter
-        if hasattr(self.args, "filter") and self.args.filter is not None:
-            q = "create table if not exists viewersetup (datatype text, name text, viewersetup text, unique (datatype, name))"
-            cursor.execute(q)
-            filter_set = json.dumps({"filterSet": self.args.filter})
-            q = f'insert or replace into viewersetup values ("filter", "quicksave-name-internal-use", \'{filter_set}\')'
-            cursor.execute(q)
-        conn.commit()
-        cursor.close()
-        conn.close()
-
-    def handle_exception(self, e):
+    def make_args_namespace(self, supplied_args):
+        self.set_package_conf(supplied_args)
+        self.make_self_args_considering_package_conf(supplied_args)
         if self.args is None:
             from .exceptions import SetupError
             raise SetupError()
-        from sys import stderr
-        try:
-            from sys import exc_info
-            (t, v, tb) = exc_info()
-            import traceback
-            from .exceptions import ExpectedException
-            exc_str = repr(traceback.format_exception(t, v, tb))
-            if isinstance(e, ExpectedException):
-                if hasattr(self, "logger") and self.logger and not getattr(e, "nolog", False):
-                    self.logger.error(e)
-                stderr.write(str(e) + "\n")
-                stderr.flush()
-            else:
-                if hasattr(self, "logger") and self.logger:
-                    self.logger.exception("An unexpected exception occurred.")
-                """
-                if not self.args.quiet:
-                    from sys import stderr
-                    stderr.write(exc_str + "\n")
-                    stderr.flush()
-                """
-        except Exception as e2:
-            stderr.write(str(e) + "\n")
-            stderr.flush()
-            raise e2
-
-    def set_package_conf(self, supplied_args):
-        from . import admin_util as au
-
-        if "package" in supplied_args:
-            package_name = supplied_args["package"]
-            del supplied_args["package"]
-            if package_name in au.get_mic().get_local():
-                self.package_conf = au.get_mic().get_local()[package_name].conf
-            else:
-                self.package_conf = {}
-        else:
-            self.package_conf = {}
+        if self.args.show_version:
+            from .cli_version import cli_version
+            from .exceptions import NormalExit
+            cli_version({"to": "stdout"})
+            raise NormalExit
+        self.set_self_inputs()
+        self.set_output_dir()
+        self.set_run_name()
+        self.set_append_mode()
+        if self.args.skip is None:
+            self.args.skip = []
+        self.set_md()
+        self.set_mapper()
+        self.set_annotators()
+        self.set_postaggregators()
+        self.set_reporters()
+        self.verbose = self.args.verbose == True
+        self.set_genome_assembly()
+        self.set_start_end_levels()
+        self.cleandb = self.args.cleandb
+        if self.args.note == None:
+            self.args.note = ""
 
     def make_self_args_considering_package_conf(self, supplied_args):
         from .util import get_argument_parser_defaults
@@ -695,6 +575,31 @@ class Cravat(object):
                 )
                 self.conf = conf_bak
 
+    def populate_secondary_annotators(self):
+        import os
+        secondaries = {}
+        for module in self.annotators.values():
+            self._find_secondary_annotators(module, secondaries)
+        self.annotators.update(secondaries)
+        annot_names = [v.name for v in self.annotators.values()]
+        annot_names = list(set(annot_names))
+        filenames = os.listdir(self.output_dir)
+        for filename in filenames:
+            toks = filename.split(".")
+            if len(toks) == 3:
+                extension = toks[2]
+                if toks[0] == self.run_name and (extension == "var"
+                                                 or extension == "gen"):
+                    annot_name = toks[1]
+                    if annot_name not in annot_names:
+                        annot_names.append(annot_name)
+        annot_names.sort()
+        if self.status_writer is not None and self.startlevel <= self.runlevels["annotator"]:
+            self.status_writer.queue_status_update("annotators",
+                                                   annot_names,
+                                                   force=True)
+        self.annot_names = annot_names
+
     def process_module_options(self):
         if self.args is None or self.conf is None:
             from .exceptions import SetupError
@@ -721,73 +626,6 @@ class Cravat(object):
                     self.conf._all[module_name] = {}
                 v = toks[1]
                 self.conf._all[module_name][key] = v
-
-    def set_self_inputs(self):
-        if self.args is None:
-            from .exceptions import SetupError
-            raise SetupError()
-        from .util import quiet_print
-        if self.args.inputs is not None and len(self.args.inputs) == 0:
-            if "inputs" in self.run_conf:
-                if type(self.run_conf["inputs"]) == list:
-                    self.args.inputs = self.run_conf["inputs"]
-                else:
-                    quiet_print("inputs in conf file is invalid", self.args)
-            else:
-                from .exceptions import NoInputException
-                raise NoInputException()
-        self.process_url_and_pipe_inputs()
-        if self.inputs is None:
-            from .exceptions import NoInputException
-            raise NoInputException()
-        self.num_input = len(self.inputs)
-
-    def download_url_input(self, input_no):
-        if self.inputs is None:
-            from .exceptions import NoInputException
-            raise NoInputException()
-        from .util import is_url, humanize_bytes
-        ip = self.inputs[input_no]
-        if " " in ip:
-            print(f"Space is not allowed in input file paths ({ip})")
-            exit()
-        if is_url(ip):
-            import os
-            import requests
-            from .util import quiet_print
-
-            quiet_print(f"Fetching {ip}... ", self.args)
-            try:
-                r = requests.head(ip)
-                r = requests.get(ip, stream=True)
-                fn = os.path.basename(ip)
-                fpath = fn
-                cur_size = 0.0
-                num_total_star = 40.0
-                total_size = float(r.headers["content-length"])
-                with open(fpath, "wb") as wf:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        wf.write(chunk)
-                        cur_size += float(len(chunk))
-                        perc = cur_size / total_size
-                        cur_star = int(perc * num_total_star)
-                        rem_stars = int(num_total_star - cur_star)
-                        cur_prog = "*" * cur_star
-                        rem_prog = " " * rem_stars
-                        print(
-                            f"[{cur_prog}{rem_prog}] {humanize_bytes(cur_size)} / {humanize_bytes(total_size)} ({perc * 100.0:.0f}%)",
-                            end="\r",
-                            flush=True,
-                        )
-                        if cur_size == total_size:
-                            print("\n")
-                self.inputs[input_no] = os.path.abspath(fpath)
-            except:
-                print(f"File downloading unsuccessful. Exiting.")
-                exit()
-            return None
-        else:
-            return ip
 
     def process_url_and_pipe_inputs(self):
         if self.args is None:
@@ -816,259 +654,6 @@ class Cravat(object):
                     self.first_non_url_input = self.inputs[input_no]
         else:
             self.inputs = []
-
-    def set_run_name(self):
-        if self.inputs is None or self.num_input is None:
-            from .exceptions import NoInputException
-            raise NoInputException()
-        if self.args is None:
-            from .exceptions import SetupError
-            raise SetupError()
-        import os
-        self.run_name = self.args.run_name
-        if self.run_name == None:
-            if self.num_input == 0 or self.pipeinput:
-                self.run_name = "ovjob"
-            else:
-                self.run_name = os.path.basename(self.inputs[0])
-                if self.num_input > 1:
-                    self.run_name += "_and_" + str(len(self.inputs) -
-                                                   1) + "_files"
-
-    def set_append_mode(self):
-        import os
-        import shutil
-        if self.inputs is None or self.num_input is None:
-            from .exceptions import NoInputException
-            raise NoInputException()
-        if self.run_name is None or self.args is None:
-            from .exceptions import SetupError
-            raise SetupError()
-        if self.num_input > 0 and self.inputs[0].endswith(".sqlite"):
-            self.append_mode = True
-            if self.args.skip is None:
-                self.args.skip = ["converter", "mapper"]
-            else:
-                if "converter" not in self.args.skip:
-                    self.args.skip.append("converter")
-                if "mapper" not in self.args.skip:
-                    self.args.skip.append("mapper")
-            if self.args.output_dir:
-                if self.run_name.endswith(".sqlite"):
-                    target_name = self.run_name
-                else:
-                    target_name = self.run_name + ".sqlite"
-                target_path = os.path.join(self.args.output_dir, target_name)
-                shutil.copyfile(self.inputs[0], target_path)
-                self.inputs[0] = target_path
-            if self.run_name.endswith(".sqlite"):
-                self.run_name = self.run_name[:-7]
-
-    def set_output_dir(self):
-        if self.args is None:
-            from .exceptions import SetupError
-            raise SetupError()
-        import os
-        self.output_dir = self.args.output_dir
-        if self.output_dir == None:
-            if self.num_input == 0 or self.first_non_url_input is None:
-                self.output_dir = os.getcwd()
-            else:
-                self.output_dir = os.path.dirname(
-                    os.path.abspath(self.first_non_url_input))
-        else:
-            self.output_dir = os.path.abspath(self.output_dir)
-        if os.path.exists(self.output_dir) == False:
-            os.mkdir(self.output_dir)
-
-    def set_genome_assembly(self):
-        if self.args is None:
-            from .exceptions import SetupError
-            raise SetupError()
-        from .sysadmin_const import default_assembly_key
-        if self.args.genome is None:
-            if default_assembly_key in self.cravat_conf:
-                self.input_assembly = self.cravat_conf[default_assembly_key]
-            else:
-                from .exceptions import NoGenomeException
-                raise NoGenomeException()
-        else:
-            self.input_assembly = self.args.genome
-
-    def set_start_end_levels(self):
-        if self.args is None:
-            from .exceptions import SetupError
-            raise SetupError()
-        if self.append_mode and self.args.endat is None:
-            self.args.endat = "aggregator"
-        try:
-            self.startlevel = self.runlevels[self.args.startat]
-        except KeyError:
-            self.startlevel = 0
-        try:
-            self.endlevel = self.runlevels[self.args.endat]
-        except KeyError:
-            self.endlevel = max(self.runlevels.values())
-
-    def make_args_namespace(self, supplied_args):
-        self.set_package_conf(supplied_args)
-        self.make_self_args_considering_package_conf(supplied_args)
-        if self.args is None:
-            from .exceptions import SetupError
-            raise SetupError()
-        if self.args.show_version:
-            from .cli_version import cli_version
-            from .exceptions import NormalExit
-            cli_version({"to": "stdout"})
-            raise NormalExit
-        self.set_self_inputs()
-        self.set_output_dir()
-        self.set_run_name()
-        self.set_append_mode()
-        if self.args.skip is None:
-            self.args.skip = []
-        self.set_md()
-        self.set_mapper()
-        self.set_annotators()
-        self.set_postaggregators()
-        self.set_reporters()
-        self.verbose = self.args.verbose == True
-        self.set_genome_assembly()
-        self.set_start_end_levels()
-        self.cleandb = self.args.cleandb
-        if self.args.note == None:
-            self.args.note = ""
-
-    def set_md(self):
-        if self.args is None:
-            from .exceptions import SetupError
-            raise SetupError()
-        from . import sysadmin_const
-        if self.args.md is not None:
-            sysadmin_const.custom_modules_dir = self.args.md
-
-    def set_annotators(self):
-        if self.args is None:
-            from .exceptions import SetupError
-            raise SetupError()
-        from . import admin_util as au
-        self.excludes = self.args.excludes
-        if len(self.args.annotators) > 0:
-            if self.args.annotators == ["all"]:
-                self.annotator_names = sorted(
-                    list(
-                        au.get_local_module_infos_of_type("annotator").keys()))
-            else:
-                self.annotator_names = self.args.annotators
-        elif (self.package_conf is not None and "run" in self.package_conf
-              and "annotators" in self.package_conf["run"]):
-            self.annotator_names = self.package_conf["run"]["annotators"]
-        else:
-            self.annotator_names = []
-        if "annotator" in self.args.skip:
-            self.annotator_names = []
-        elif len(self.excludes) > 0:
-            if "all" in self.excludes:
-                self.annotator_names = []
-            else:
-                for m in self.excludes:
-                    if m in self.annotator_names:
-                        self.annotator_names.remove(m)
-        self.check_valid_modules(self.annotator_names)
-        self.annotators = au.get_local_module_infos_by_names(
-            self.annotator_names)
-
-    def set_mapper(self):
-        if self.args is None or self.conf is None:
-            from .exceptions import SetupError
-            raise SetupError()
-        from . import admin_util as au
-        if len(self.args.mapper_name) > 0:
-            self.mapper_name = self.args.mapper_name[0]
-        elif (self.package_conf is not None and "run" in self.package_conf
-              and "mapper" in self.package_conf["run"]):
-            self.mapper_name = self.package_conf["run"]["mapper"]
-        else:
-            self.mapper_name = self.conf.get_cravat_conf()["genemapper"]
-        self.check_valid_modules([self.mapper_name])
-        self.mapper = au.get_local_module_info_by_name(self.mapper_name)
-
-    def set_postaggregators(self):
-        if self.args is None:
-            from .exceptions import SetupError
-            raise SetupError()
-        from .sysadmin_const import default_postaggregator_names
-        from . import admin_util as au
-        if len(self.args.postaggregators) > 0:
-            self.postaggregator_names = self.args.postaggregators
-        elif (self.package_conf is not None and "run" in self.package_conf
-              and "postaggregators" in self.package_conf["run"]):
-            self.postaggregator_names = sorted(
-                list(
-                    au.get_local_module_infos_by_names(
-                        self.package_conf["run"]["postaggregators"])))
-        else:
-            self.postaggregator_names = []
-        if "postaggregator" in self.args.skip:
-            self.postaggregators = {}
-        else:
-            self.postaggregator_names = sorted(
-                list(
-                    set(self.postaggregator_names).union(
-                        set(default_postaggregator_names))))
-            if "casecontrol" in self.postaggregator_names:
-                if au.module_exists_local("casecontrol") == False:
-                    self.postaggregator_names.remove("casecontrol")
-            self.check_valid_modules(self.postaggregator_names)
-            self.postaggregators = au.get_local_module_infos_by_names(
-                self.postaggregator_names)
-
-    def set_reporters(self):
-        if self.args is None:
-            from .exceptions import SetupError
-            raise SetupError()
-        from . import admin_util as au
-        if len(self.args.reports) > 0:
-            self.report_names = self.args.reports
-        elif (self.package_conf is not None and "run" in self.package_conf
-              and "reports" in self.package_conf["run"]):
-            self.report_names = self.package_conf["run"]["reports"]
-        else:
-            self.report_names = []
-        if "reporter" in self.args.skip:
-            self.reports = {}
-        else:
-            self.reporter_names = [v + "reporter" for v in self.report_names]
-            self.check_valid_modules(self.reporter_names)
-            self.reports = au.get_local_module_infos_by_names(
-                self.reporter_names)
-
-    def set_and_check_input_files(self):
-        if self.run_name is None or self.output_dir is None:
-            from .exceptions import SetupError
-            raise SetupError()
-        if self.inputs is None or len(self.inputs) == 0:
-            from .exceptions import NoInputException
-            raise NoInputException
-        import os
-        self.crvinput = os.path.join(self.output_dir, self.run_name + ".crv")
-        self.crxinput = os.path.join(self.output_dir, self.run_name + ".crx")
-        self.crginput = os.path.join(self.output_dir, self.run_name + ".crg")
-        if os.path.exists(self.crvinput):
-            self.crv_present = True
-        else:
-            self.crv_present = False
-        if os.path.exists(self.crxinput):
-            self.crx_present = True
-        else:
-            self.crx_present = False
-        if os.path.exists(self.crginput):
-            self.crg_present = True
-        else:
-            self.crg_present = False
-        if self.append_mode:
-            self.regenerate_from_db()
-        return True
 
     def regenerate_from_db(self):
         if self.inputs is None or len(self.inputs) == 0:
@@ -1124,30 +709,261 @@ class Cravat(object):
         c.close()
         db.close()
 
-    def populate_secondary_annotators(self):
+    def set_append_mode(self):
         import os
-        secondaries = {}
-        for module in self.annotators.values():
-            self._find_secondary_annotators(module, secondaries)
-        self.annotators.update(secondaries)
-        annot_names = [v.name for v in self.annotators.values()]
-        annot_names = list(set(annot_names))
-        filenames = os.listdir(self.output_dir)
-        for filename in filenames:
-            toks = filename.split(".")
-            if len(toks) == 3:
-                extension = toks[2]
-                if toks[0] == self.run_name and (extension == "var"
-                                                 or extension == "gen"):
-                    annot_name = toks[1]
-                    if annot_name not in annot_names:
-                        annot_names.append(annot_name)
-        annot_names.sort()
-        if self.status_writer is not None and self.startlevel <= self.runlevels["annotator"]:
-            self.status_writer.queue_status_update("annotators",
-                                                   annot_names,
-                                                   force=True)
-        self.annot_names = annot_names
+        import shutil
+        if self.inputs is None or self.num_input is None:
+            from .exceptions import NoInputException
+            raise NoInputException()
+        if self.run_name is None or self.args is None:
+            from .exceptions import SetupError
+            raise SetupError()
+        if self.num_input > 0 and self.inputs[0].endswith(".sqlite"):
+            self.append_mode = True
+            if self.args.skip is None:
+                self.args.skip = ["converter", "mapper"]
+            else:
+                if "converter" not in self.args.skip:
+                    self.args.skip.append("converter")
+                if "mapper" not in self.args.skip:
+                    self.args.skip.append("mapper")
+            if self.args.output_dir:
+                if self.run_name.endswith(".sqlite"):
+                    target_name = self.run_name
+                else:
+                    target_name = self.run_name + ".sqlite"
+                target_path = os.path.join(self.args.output_dir, target_name)
+                shutil.copyfile(self.inputs[0], target_path)
+                self.inputs[0] = target_path
+            if self.run_name.endswith(".sqlite"):
+                self.run_name = self.run_name[:-7]
+
+    def set_genome_assembly(self):
+        if self.args is None:
+            from .exceptions import SetupError
+            raise SetupError()
+        from .sysadmin_const import default_assembly_key
+        if self.args.genome is None:
+            if default_assembly_key in self.cravat_conf:
+                self.input_assembly = self.cravat_conf[default_assembly_key]
+            else:
+                from .exceptions import NoGenomeException
+                raise NoGenomeException()
+        else:
+            self.input_assembly = self.args.genome
+
+    def set_output_dir(self):
+        if self.args is None:
+            from .exceptions import SetupError
+            raise SetupError()
+        import os
+        self.output_dir = self.args.output_dir
+        if self.output_dir == None:
+            if self.num_input == 0 or self.first_non_url_input is None:
+                self.output_dir = os.getcwd()
+            else:
+                self.output_dir = os.path.dirname(
+                    os.path.abspath(self.first_non_url_input))
+        else:
+            self.output_dir = os.path.abspath(self.output_dir)
+        if os.path.exists(self.output_dir) == False:
+            os.mkdir(self.output_dir)
+
+    def set_package_conf(self, supplied_args):
+        from . import admin_util as au
+        if "package" in supplied_args:
+            package_name = supplied_args["package"]
+            del supplied_args["package"]
+            if package_name in au.get_mic().get_local():
+                self.package_conf = au.get_mic().get_local()[package_name].conf
+            else:
+                self.package_conf = {}
+        else:
+            self.package_conf = {}
+
+    def set_run_name(self):
+        if self.inputs is None or self.num_input is None:
+            from .exceptions import NoInputException
+            raise NoInputException()
+        if self.args is None:
+            from .exceptions import SetupError
+            raise SetupError()
+        import os
+        self.run_name = self.args.run_name
+        if self.run_name == None:
+            if self.num_input == 0 or self.pipeinput:
+                self.run_name = "ovjob"
+            else:
+                self.run_name = os.path.basename(self.inputs[0])
+                if self.num_input > 1:
+                    self.run_name += "_and_" + str(len(self.inputs) -
+                                                   1) + "_files"
+
+    def set_self_inputs(self):
+        if self.args is None:
+            from .exceptions import SetupError
+            raise SetupError()
+        from .util import quiet_print
+        if self.args.inputs is not None and len(self.args.inputs) == 0:
+            if "inputs" in self.run_conf:
+                if type(self.run_conf["inputs"]) == list:
+                    self.args.inputs = self.run_conf["inputs"]
+                else:
+                    quiet_print("inputs in conf file is invalid", self.args)
+            else:
+                from .exceptions import NoInputException
+                raise NoInputException()
+        self.process_url_and_pipe_inputs()
+        if self.inputs is None:
+            from .exceptions import NoInputException
+            raise NoInputException()
+        self.num_input = len(self.inputs)
+
+    def set_start_end_levels(self):
+        if self.args is None:
+            from .exceptions import SetupError
+            raise SetupError()
+        if self.append_mode and self.args.endat is None:
+            self.args.endat = "aggregator"
+        try:
+            self.startlevel = self.runlevels[self.args.startat]
+        except KeyError:
+            self.startlevel = 0
+        try:
+            self.endlevel = self.runlevels[self.args.endat]
+        except KeyError:
+            self.endlevel = max(self.runlevels.values())
+
+    def set_and_check_input_files(self):
+        if self.run_name is None or self.output_dir is None:
+            from .exceptions import SetupError
+            raise SetupError()
+        if self.inputs is None or len(self.inputs) == 0:
+            from .exceptions import NoInputException
+            raise NoInputException
+        import os
+        self.crvinput = os.path.join(self.output_dir, self.run_name + ".crv")
+        self.crxinput = os.path.join(self.output_dir, self.run_name + ".crx")
+        self.crginput = os.path.join(self.output_dir, self.run_name + ".crg")
+        if os.path.exists(self.crvinput):
+            self.crv_present = True
+        else:
+            self.crv_present = False
+        if os.path.exists(self.crxinput):
+            self.crx_present = True
+        else:
+            self.crx_present = False
+        if os.path.exists(self.crginput):
+            self.crg_present = True
+        else:
+            self.crg_present = False
+        if self.append_mode:
+            self.regenerate_from_db()
+        return True
+
+    def set_annotators(self):
+        if self.args is None:
+            from .exceptions import SetupError
+            raise SetupError()
+        from . import admin_util as au
+        self.excludes = self.args.excludes
+        if len(self.args.annotators) > 0:
+            if self.args.annotators == ["all"]:
+                self.annotator_names = sorted(
+                    list(
+                        au.get_local_module_infos_of_type("annotator").keys()))
+            else:
+                self.annotator_names = self.args.annotators
+        elif (self.package_conf is not None and "run" in self.package_conf
+              and "annotators" in self.package_conf["run"]):
+            self.annotator_names = self.package_conf["run"]["annotators"]
+        else:
+            self.annotator_names = []
+        if "annotator" in self.args.skip:
+            self.annotator_names = []
+        elif len(self.excludes) > 0:
+            if "all" in self.excludes:
+                self.annotator_names = []
+            else:
+                for m in self.excludes:
+                    if m in self.annotator_names:
+                        self.annotator_names.remove(m)
+        self.check_valid_modules(self.annotator_names)
+        self.annotators = au.get_local_module_infos_by_names(
+            self.annotator_names)
+
+    def set_mapper(self):
+        if self.args is None or self.conf is None:
+            from .exceptions import SetupError
+            raise SetupError()
+        from . import admin_util as au
+        if len(self.args.mapper_name) > 0:
+            self.mapper_name = self.args.mapper_name[0]
+        elif (self.package_conf is not None and "run" in self.package_conf
+              and "mapper" in self.package_conf["run"]):
+            self.mapper_name = self.package_conf["run"]["mapper"]
+        else:
+            self.mapper_name = self.conf.get_cravat_conf()["genemapper"]
+        self.check_valid_modules([self.mapper_name])
+        self.mapper = au.get_local_module_info_by_name(self.mapper_name)
+
+    def set_md(self):
+        if self.args is None:
+            from .exceptions import SetupError
+            raise SetupError()
+        from . import sysadmin_const
+        if self.args.md is not None:
+            sysadmin_const.custom_modules_dir = self.args.md
+
+    def set_postaggregators(self):
+        if self.args is None:
+            from .exceptions import SetupError
+            raise SetupError()
+        from .sysadmin_const import default_postaggregator_names
+        from . import admin_util as au
+        if len(self.args.postaggregators) > 0:
+            self.postaggregator_names = self.args.postaggregators
+        elif (self.package_conf is not None and "run" in self.package_conf
+              and "postaggregators" in self.package_conf["run"]):
+            self.postaggregator_names = sorted(
+                list(
+                    au.get_local_module_infos_by_names(
+                        self.package_conf["run"]["postaggregators"])))
+        else:
+            self.postaggregator_names = []
+        if "postaggregator" in self.args.skip:
+            self.postaggregators = {}
+        else:
+            self.postaggregator_names = sorted(
+                list(
+                    set(self.postaggregator_names).union(
+                        set(default_postaggregator_names))))
+            if "casecontrol" in self.postaggregator_names:
+                if au.module_exists_local("casecontrol") == False:
+                    self.postaggregator_names.remove("casecontrol")
+            self.check_valid_modules(self.postaggregator_names)
+            self.postaggregators = au.get_local_module_infos_by_names(
+                self.postaggregator_names)
+
+    def set_reporters(self):
+        if self.args is None:
+            from .exceptions import SetupError
+            raise SetupError()
+        from . import admin_util as au
+        if len(self.args.reports) > 0:
+            self.report_names = self.args.reports
+        elif (self.package_conf is not None and "run" in self.package_conf
+              and "reports" in self.package_conf["run"]):
+            self.report_names = self.package_conf["run"]["reports"]
+        else:
+            self.report_names = []
+        if "reporter" in self.args.skip:
+            self.reports = {}
+        else:
+            self.reporter_names = [v + "reporter" for v in self.report_names]
+            self.check_valid_modules(self.reporter_names)
+            self.reports = au.get_local_module_infos_by_names(
+                self.reporter_names)
 
     def _find_secondary_annotators(self, module, ret):
         sannots = self.get_secondary_modules(module)
@@ -1181,7 +997,6 @@ class Cravat(object):
 
     def get_secondary_modules(self, primary_module):
         from . import admin_util as au
-
         secondary_modules = [
             au.get_local_module_info(module_name)
             for module_name in primary_module.secondary_module_names
@@ -1438,7 +1253,6 @@ class Cravat(object):
         from time import time
         from .aggregator import Aggregator
         from .util import quiet_print
-
         # Variant level
         quiet_print("\t{0:30s}\t".format("Variants"), self.args)
         stime = time()
@@ -1594,8 +1408,7 @@ class Cravat(object):
             raise NoInputException()
         from time import time
         import os
-        import traceback
-        from .util import load_class, write_log_msg
+        from .util import load_class
         from . import admin_util as au
         from .util import quiet_print
         if len(self.reports) > 0:
@@ -2011,12 +1824,175 @@ class Cravat(object):
                 if fn.split(".")[-2:] == ["status", "json"]:
                     os.remove(os.path.join(self.output_dir, fn))
 
+    async def write_admin_db(self, runtime, numinput):
+        if self.args is None:
+            from .exceptions import SetupError
+            raise SetupError()
+        import os
+        import aiosqlite
+        from .admin_util import get_admindb_path
+        from .util import quiet_print
+        if runtime is None or numinput is None:
+            return
+        if os.path.exists(get_admindb_path()) == False:
+            s = "{} does not exist.".format(get_admindb_path())
+            if self.logger:
+                self.logger.info(s)
+            quiet_print(s, self.args)
+            return
+        db = await aiosqlite.connect(get_admindb_path())
+        cursor = await db.cursor()
+        q = 'update jobs set runtime={}, numinput={} where jobid="{}"'.format(
+            runtime, numinput, self.args.jobid)
+        await cursor.execute(q)
+        await db.commit()
+        await cursor.close()
+        await db.close()
+
+    def write_initial_status_json(self):
+        if self.run_name is None or self.inputs is None or self.args is None or self.output_dir is None:
+            from .exceptions import SetupError
+            raise SetupError()
+        import os
+        from datetime import datetime
+        import json
+        from . import admin_util as au
+        status_fname = "{}.status.json".format(self.run_name)
+        self.status_json_path = os.path.join(self.output_dir, status_fname)
+        if os.path.exists(self.status_json_path) == True:
+            with open(self.status_json_path) as f:
+                try:
+                    self.status_json = json.load(f)
+                    self.pkg_ver = self.status_json["open_cravat_version"]
+                except:
+                    self.pkg_ver = au.get_current_package_version()
+            if self.status_json and self.status_json["status"] == "Submitted":
+                self.status_json["job_dir"] = self.output_dir
+                self.status_json["id"] = os.path.basename(
+                    os.path.normpath(self.output_dir))
+                self.status_json["run_name"] = self.run_name
+                self.status_json["assembly"] = self.input_assembly
+                self.status_json["db_path"] = os.path.join(
+                    self.output_dir, self.run_name + ".sqlite")
+                self.status_json["orig_input_fname"] = [
+                    os.path.basename(x) for x in self.inputs
+                ]
+                self.status_json["orig_input_path"] = self.inputs
+                self.status_json["submission_time"] = datetime.now().isoformat(
+                )
+                self.status_json["viewable"] = False
+                self.status_json["note"] = self.args.note
+                self.status_json["status"] = "Starting"
+                self.status_json["reports"] = (
+                    self.args.reports if self.args.reports != None else [])
+                self.pkg_ver = au.get_current_package_version()
+                self.status_json["open_cravat_version"] = self.pkg_ver
+                annot_names = list(self.annotators.keys())
+                annot_names.sort()
+                if "original_input" in annot_names:
+                    annot_names.remove("original_input")
+                self.status_json["annotators"] = annot_names
+                with open(self.status_json_path, "w") as wf:
+                    wf.write(
+                        json.dumps(self.status_json, indent=2, sort_keys=True))
+        else:
+            self.status_json = {}
+            self.status_json["job_dir"] = self.output_dir
+            self.status_json["id"] = os.path.basename(
+                os.path.normpath(self.output_dir))
+            self.status_json["run_name"] = self.run_name
+            self.status_json["assembly"] = self.input_assembly
+            self.status_json["db_path"] = os.path.join(
+                self.output_dir, self.run_name + ".sqlite")
+            self.status_json["orig_input_fname"] = [
+                os.path.basename(x) for x in self.inputs
+            ]
+            self.status_json["orig_input_path"] = self.inputs
+            self.status_json["submission_time"] = datetime.now().isoformat()
+            self.status_json["viewable"] = False
+            self.status_json["note"] = self.args.note
+            self.status_json["status"] = "Starting"
+            self.status_json["reports"] = (self.args.reports if
+                                           self.args.reports != None else [])
+            self.pkg_ver = au.get_current_package_version()
+            self.status_json["open_cravat_version"] = self.pkg_ver
+            annot_names = list(self.annotators.keys())
+            annot_names.sort()
+            self.status_json["annotators"] = annot_names
+            with open(self.status_json_path, "w") as wf:
+                wf.write(json.dumps(self.status_json, indent=2,
+                                    sort_keys=True))
+
+    def write_smartfilters(self):
+        if self.run_name is None or self.args is None or self.output_dir is None:
+            from .exceptions import SetupError
+            raise SetupError()
+        from time import time
+        import os
+        import json
+        import sqlite3
+        from .util import filter_affected_cols
+        from .constants import base_smartfilters
+        from .util import quiet_print
+        quiet_print("Indexing", self.args)
+        dbpath = os.path.join(self.output_dir, self.run_name + ".sqlite")
+        conn = sqlite3.connect(dbpath)
+        cursor = conn.cursor()
+        q = "create table if not exists smartfilters (name text primary key, definition text)"
+        cursor.execute(q)
+        ins_template = (
+            "insert or replace into smartfilters (name, definition) values (?, ?);"
+        )
+        cols_to_index = set()
+        for sf in base_smartfilters:
+            cols_to_index |= filter_affected_cols(sf["filter"])
+        if self.annotator_ran:
+            for linfo in self.annotators.values():
+                if linfo.smartfilters is not None:
+                    for sf in linfo.smartfilters:
+                        cols_to_index |= filter_affected_cols(sf["filter"])
+                    mname = linfo.name
+                    json_info = json.dumps(linfo.smartfilters)
+                    cursor.execute(ins_template, (mname, json_info))
+        cursor.execute("pragma table_info(variant)")
+        variant_cols = {row[1] for row in cursor}
+        cursor.execute("pragma table_info(gene)")
+        gene_cols = {row[1] for row in cursor}
+        cursor.execute('select name from sqlite_master where type="index"')
+        existing_indices = {row[0] for row in cursor}
+        for col in cols_to_index:
+            if col in variant_cols:
+                index_name = f"sf_variant_{col}"
+                if index_name not in existing_indices:
+                    q = f"create index if not exists {index_name} on variant ({col})"
+                    quiet_print(f"\tvariant {col}", self.args)
+                    st = time()
+                    cursor.execute(q)
+                    quiet_print(f"\tfinished in {time()-st:.3f}s", self.args)
+            if col in gene_cols:
+                index_name = f"sf_gene_{col}"
+                if index_name not in existing_indices:
+                    q = f"create index if not exists {index_name} on gene ({col})"
+                    quiet_print(f"\tgene {col}", self.args)
+                    st = time()
+                    cursor.execute(q)
+                    quiet_print(f"\tfinished in {time()-st:.3f}s", self.args)
+        # Package filter
+        if hasattr(self.args, "filter") and self.args.filter is not None:
+            q = "create table if not exists viewersetup (datatype text, name text, viewersetup text, unique (datatype, name))"
+            cursor.execute(q)
+            filter_set = json.dumps({"filterSet": self.args.filter})
+            q = f'insert or replace into viewersetup values ("filter", "quicksave-name-internal-use", \'{filter_set}\')'
+            cursor.execute(q)
+        conn.commit()
+        cursor.close()
+        conn.close()
+
 
 class StatusWriter:
 
     def __init__(self, status_json_path):
         from time import time
-
         self.status_json_path = status_json_path
         self.status_queue = []
         self.status_json = None
@@ -2026,7 +2002,6 @@ class StatusWriter:
 
     def load_status_json(self):
         import json
-
         f = open(self.status_json_path)
         lines = "\n".join(f.readlines())
         self.status_json = json.loads(lines)
@@ -2045,7 +2020,6 @@ class StatusWriter:
 
     def update_status_json(self):
         import json
-
         with open(self.status_json_path, "w") as wf:
             json.dump(self.status_json, wf, indent=2, sort_keys=True)
 
@@ -2054,7 +2028,6 @@ class StatusWriter:
 
     def flush(self):
         from time import time
-
         self.lock = True
         self.update_status_json()
         self.t = time()

@@ -1,6 +1,5 @@
 def cli_config_md(args):
     from .util import get_dict_from_namespace
-
     args = get_dict_from_namespace(args)
     args["to"] = "stdout"
     return fn_config_md(args)
@@ -17,7 +16,6 @@ def fn_config_md(args):
 
 def cli_config_system(args):
     from .util import get_dict_from_namespace
-
     args = get_dict_from_namespace(args)
     args["fmt"] = "yaml"
     args["to"] = "stdout"
@@ -30,7 +28,6 @@ def fn_config_system(args):
 
 def cli_config_oakvar(args):
     from .util import get_dict_from_namespace
-
     args = get_dict_from_namespace(args)
     args["fmt"] = "yaml"
     args["to"] = "stdout"
@@ -44,7 +41,6 @@ def fn_config_oakvar(args):
 
 def get_parser_fn_config():
     from argparse import ArgumentParser, RawDescriptionHelpFormatter
-
     parser_fn_config = ArgumentParser(
         formatter_class=RawDescriptionHelpFormatter)
     _subparsers = parser_fn_config.add_subparsers(title="Commands")

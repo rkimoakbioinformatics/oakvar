@@ -56,7 +56,7 @@ class FileRouter(object):
         self.server_ready = False
         self.servermode = False
 
-    async def get_jobs_dirs (self, request, given_username=None):
+    async def get_jobs_dirs (self, request):
         from ..sysadmin import get_jobs_dir
         root_jobs_dir = get_jobs_dir()
         if self.servermode and self.server_ready:
@@ -290,9 +290,7 @@ async def resubmit (request):
             break
     if status_json is None:
         return web.json_response({'status': 'error', 'msg': 'no status file exists in job folder.'})
-    run_name = status_json['run_name']
     assembly = status_json['assembly']
-    input_fnames = status_json['orig_input_fname']
     input_fpaths = status_json['orig_input_path']
     note = status_json['note']
     annotators = status_json['annotators']
@@ -516,7 +514,7 @@ def get_expected_runtime(num_lines, annotators):
     agg_vps = 8000
     return num_lines*(1/mapper_vps + len(annotators)/annot_vps + 1/agg_vps)
 
-def get_annotators(request):
+def get_annotators(_):
     out = {}
     for local_info in au.get_local_module_infos(types=['annotator']):
         module_name = local_info.name
@@ -733,7 +731,7 @@ def get_valid_report_types():
     valid_report_types = [v for v in valid_report_types if not v in ['text', 'pandas', 'stdout', 'example']]
     return valid_report_types
 
-async def get_report_types(request):
+async def get_report_types(_):
     valid_types = get_valid_report_types()
     return web.json_response({'valid': valid_types})
 
@@ -754,7 +752,7 @@ async def generate_report(request):
     wf.write(report_type)
     wf.close()
     p = await asyncio.create_subprocess_shell(' '.join(run_args), stderr=asyncio.subprocess.PIPE)
-    out, err = await p.communicate()
+    _, err = await p.communicate()
     os.remove(tmp_flag_path)
     if report_type in report_generation_ps[job_id]:
         del report_generation_ps[job_id][report_type]
@@ -787,7 +785,7 @@ async def download_report(request):
     else:
         raise web.HTTPNotFound
 
-def get_jobs_dir (request):
+def get_jobs_dir (_):
     from ..sysadmin import get_jobs_dir
     jobs_dir = get_jobs_dir()
     return web.json_response(jobs_dir)
@@ -798,7 +796,7 @@ def set_jobs_dir (request):
     au.set_jobs_dir(d)
     return web.json_response(d)
 
-async def get_system_conf_info (request):
+async def get_system_conf_info (_):
     from ..sysadmin import get_system_conf_info
     info = get_system_conf_info(json=True)
     return web.json_response(info)
@@ -837,7 +835,7 @@ async def update_system_conf (request):
         raise
     return web.json_response({'success': success, 'sysconf': sysconf})
 
-def reset_system_conf (request):
+def reset_system_conf (_):
     from ..sysadmin import get_modules_dir
     from ..sysadmin import get_system_conf_template
     from ..sysadmin import get_jobs_dir
@@ -850,12 +848,12 @@ def reset_system_conf (request):
     write_system_conf_file(d)
     return web.json_response({'status':'success', 'dict':yaml.dump(d)})
 
-def get_servermode (request):
+def get_servermode (_):
     global servermode
     global server_ready
     return web.json_response({'servermode': servermode and server_ready})
 
-async def get_package_versions(request):
+async def get_package_versions(_):
     cur_ver = au.get_current_package_version()
     lat_ver = au.get_latest_package_version()
     if lat_ver is not None:
@@ -871,8 +869,7 @@ async def get_package_versions(request):
     }
     return web.json_response(d)
 
-def open_terminal (request):
-    filedir = os.path.dirname(os.path.abspath(__file__))
+def open_terminal (_):
     python_dir = os.path.dirname(sys.executable)
     p = sys.platform
     if p.startswith('win'):
@@ -896,7 +893,7 @@ end tell'
     response = 'done'
     return web.json_response(response)
 
-def get_last_assembly (request):
+def get_last_assembly (_):
     global servermode
     global server_ready
     last_assembly = au.get_last_assembly()
@@ -1014,7 +1011,7 @@ def fetch_job_queue (job_queue, run_jobs_info):
         def run_available_jobs (self):
             num_available_slot = self.max_num_concurrent_jobs - len(self.running_jobs)
             if num_available_slot > 0 and len(self.queue) > 0:
-                for i in range(num_available_slot):
+                for _ in range(num_available_slot):
                     if len(self.queue) > 0:
                         job_id = self.queue.pop(0)
                         run_args = self.run_args[job_id]
@@ -1170,7 +1167,7 @@ async def live_annotate (input_data, annotators):
                 elif type(annot_data) is dict:
                     annot_data = clean_annot_dict(annot_data)
                 response[k] = annot_data
-            except Exception as e:
+            except Exception as _:
                 import traceback
                 traceback.print_exc()
                 response[k] = None
@@ -1264,7 +1261,7 @@ async def update_result_db (request):
     cmd = ['oc', 'util', 'update-result', db_path]
     p = await asyncio.create_subprocess_shell(' '.join(cmd))
     await p.wait()
-    compatible_version, db_version, oc_version = is_compatible_version(db_path)
+    compatible_version, db_version, _ = is_compatible_version(db_path)
     if compatible_version:
         msg = 'success'
         fn = find_files_by_ending(job_dir, '.status.json')[0]

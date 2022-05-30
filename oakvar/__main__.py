@@ -9,7 +9,6 @@ from .cli_version import get_parser_cli_version
 from .cli_store import get_parser_fn_store
 from .cli_system import get_parser_fn_system
 
-
 def get_entry_parser():
     # subparsers
     from argparse import ArgumentParser
@@ -124,9 +123,26 @@ def get_entry_parser():
     return p_entry
 
 
+def handle_exception(e: Exception):
+    from sys import stderr
+    msg = getattr(e, "msg", None)
+    if msg:
+        stderr.write(msg + "\n")
+        stderr.flush()
+    trc = getattr(e, "traceback", None)
+    if trc:
+        from traceback import print_exc
+        print_exc()
+    from .exceptions import ExpectedException
+    if isinstance(e, ExpectedException):
+        exit(-1)
+    elif isinstance(e, SystemExit):
+        exit(-2)
+    else:
+        raise e
+
 def main():
     from sys import argv
-    from .exceptions import ExpectedException
     global get_entry_parser
     try:
         p_entry = get_entry_parser()
@@ -135,17 +151,8 @@ def main():
             args.func(args)
         else:
             p_entry.parse_args(argv[1:] + ["--help"])
-    except ExpectedException as e:
-        from sys import stderr
-        stderr.write(e.msg + "\n")
-        stderr.flush()
-        if hasattr(e, "traceback") and e.traceback:
-            from traceback import print_exc
-            print_exc()
-    except SystemExit as e:
-        raise e
     except Exception as e:
-        raise e
+        handle_exception(e)
 
 
 if __name__ == "__main__":
