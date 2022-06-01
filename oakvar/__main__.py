@@ -16,6 +16,7 @@ def get_entry_parser():
         description=
         "OakVar. Genomic variant analysis platform. https://github.com/rkimoakbioinformatics/oakvar"
     )
+    p_entry.add_argument("--to", default="stdout")
     sp_entry = p_entry.add_subparsers(title="Commands")
     # run
     p_ov_run = sp_entry.add_parser(
@@ -168,7 +169,7 @@ def main():
         args = p_entry.parse_args()
         if hasattr(args, "func"):
             ret = args.func(args)
-            if getattr(args, "to") != "stdout":
+            if getattr(args, "to", "return") != "stdout":
                 return ret
         else:
             p_entry.parse_args(argv[1:] + ["--help"])
