@@ -1,8 +1,7 @@
+from .decorators import cli_func
 import sys
 import nest_asyncio
-
 nest_asyncio.apply()
-
 if sys.platform == "win32" and sys.version_info >= (3, 8):
     from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy
     set_event_loop_policy(WindowsSelectorEventLoopPolicy())
@@ -10,7 +9,7 @@ if sys.platform == "win32" and sys.version_info >= (3, 8):
 
 class CravatReport:
 
-    def __init__(self, *inargs, **inkwargs):
+    def __init__(self, args):
         self.cf = None
         self.filtertable = "filter"
         self.colinfo = {}
@@ -39,7 +38,6 @@ class CravatReport:
         self.confs = {}
         self.output_dir = None
         self.savepath = None
-        self.confpath = None
         self.conf = None
         self.module_name = None
         self.module_conf = None
@@ -56,76 +54,80 @@ class CravatReport:
         self.mapper_name = None
         self.level = None
         self.no_log = False
-        self.parse_cmd_args(inargs, inkwargs)
+        self.parse_cmd_args(args)
+        """
         for ag in get_parser_fn_report()._action_groups:
             if ag.title == "optional arguments":
                 for a in ag._actions:
                     if "-t" in a.option_strings:
                         ag._actions.remove(a)
+        """
         self._setup_logger()
 
-    def parse_cmd_args(self, inargs, inkwargs):
+    def parse_cmd_args(self, args):
         import sqlite3
-        import os
+        from os.path import dirname
+        from os.path import basename
+        from os.path import join
+        from os.path import exists
         import json
-        from . import admin_util as au
-        from .config_loader import ConfigLoader
-        from .util import get_args
         from . import sysadmin_const
-        args = get_args(get_parser_fn_report(), inargs, inkwargs)
         self.args = args
-        if args["md"] is not None:
-            sysadmin_const.custom_modules_dir = args["md"]
-        self.dbpath = args["dbpath"]
-        self.filterpath = args["filterpath"]
-        self.filtername = args["filtername"]
-        self.filterstring = args["filterstring"]
-        self.filtersql = args["filtersql"]
-        self.filter = args["filter"]
+        if args.get("md"):
+            sysadmin_const.custom_modules_dir = args.get("md")
+        self.dbpath = args.get("dbpath")
+        if not exists(self.dbpath):
+            from .exceptions import WrongInput
+            raise WrongInput(msg=self.dbpath)
+        try:
+            with sqlite3.connect(self.dbpath) as db:
+                db.execute("select * from info")
+        except:
+            from .exceptions import WrongInput
+            raise WrongInput(msg=f"{self.dbpath} is not an OakVar database")
+        self.conf = args.get("conf")
+        self.filterpath = args.get("filterpath")
+        self.filtername = args.get("filtername")
+        self.filterstring = args.get("filterstring")
+        self.filtersql = args.get("filtersql")
+        self.filter = args.get("filter")
+        self.output_dir = args.get("output_dir")
+        self.module_name = args.get("module_name")
+        self.report_types = args.get("reports")
+        self.savepath = args.get("savepath")
         self.confs = {}
-        if args["output_dir"] is not None:
-            self.output_dir = args["output_dir"]
-        else:
-            self.output_dir = os.path.dirname(self.dbpath)
-        self.savepath = args["savepath"]
-        if self.savepath is not None and os.path.dirname(self.savepath) == "":
-            self.savepath = os.path.join(self.output_dir, self.savepath)
-        self.confpath = args["confpath"]
-        self.conf = ConfigLoader(job_conf_path=self.confpath)
-        self.module_name = args["module_name"]
-        if self.module_name in self.conf._all:
-            self.confs.update(self.conf._all[self.module_name])
-        if self.conf is not None:
-            self.module_conf = self.conf.get_module_conf(self.module_name)
-        else:
-            self.module_conf = None
-        if "reporttypes" in args:
-            self.report_types = args["reporttypes"]
-        if "conf" in args and args["conf"] is not None:
-            self.confs.update(args["conf"])
-        if args["confs"] is not None:
-            confs = args["confs"].lstrip("'").rstrip("'").replace("'", '"')
-            if self.confs is None:
+        if self.output_dir:
+            self.output_dir = dirname(self.dbpath)
+        if not self.output_dir:
+            from os.path import abspath
+            self.output_dir = abspath(".")
+        if self.savepath is not None and dirname(self.savepath) == "":
+            self.savepath = join(self.output_dir, self.savepath)
+        from .admin_util import get_module_conf
+        self.module_conf = get_module_conf(self.module_name, module_type="reporter")
+        # confs update from conf file
+        if self.conf and self.module_name in self.conf:
+            self.confs.update(self.conf[self.module_name])
+        # confs update from given conf
+        conf = args.get("conf")
+        if conf:
+            self.confs.update(conf)
+        # confs update from confs
+        confs = args.get("confs")
+        if confs:
+            confs = confs.lstrip("'").rstrip("'").replace("'", '"')
+            if not self.confs:
                 self.confs = json.loads(confs)
             else:
                 self.confs.update(json.loads(confs))
-        # Chooses filter.
-        if self.filter is None:
-            if self.confs is not None and "filter" in self.confs:
-                self.filter = self.confs["filter"]
-            local = au.get_mic().get_local()
-            if (self.filter is None and self.filterpath is None
-                    and self.filtername is None and self.filterstring is None
-                    and args["package"] is not None
-                    and args["package"] in local
-                    and "filter" in local[args["package"]].conf):
-                self.filter = local[args["package"]].conf["filter"]
-        self.output_basename = os.path.basename(self.dbpath)[:-7]
+        self.output_basename = basename(self.dbpath)[:-7]
         status_fname = "{}.status.json".format(self.output_basename)
-        self.status_fpath = os.path.join(self.output_dir, status_fname)
-        self.nogenelevelonvariantlevel = args["nogenelevelonvariantlevel"]
-        if args["inputfiles"] is None and args["dbpath"] is not None:
-            db = sqlite3.connect(args["dbpath"])
+        self.status_fpath = join(self.output_dir, status_fname)
+        self.nogenelevelonvariantlevel = args.get("nogenelevelonvariantlevel", False)
+        inputfiles = args.get("inputfiles")
+        dbpath = args.get("dbpath")
+        if not inputfiles and dbpath:
+            db = sqlite3.connect(dbpath)
             c = db.cursor()
             q = 'select colval from info where colkey="_input_paths"'
             c.execute(q)
@@ -142,14 +144,10 @@ class CravatReport:
                     args["inputfiles"].append(input_path)
             c.close()
             db.close()
-        if "status_write" in args:
-            self.status_writer = args["status_writer"]
-        else:
-            self.status_writer = None
-        self.concise_report = args["concise_report"]
+        self.status_writer = args.get("status_writer")
+        self.concise_report = args.get("concise_report")
         self.extract_columns_multilevel = self.get_standardized_module_option(
             self.confs.get("extract-columns", {}))
-        self.args = args
 
     def should_write_level(self, level):
         if self.levels_to_write is None:
@@ -347,7 +345,7 @@ class CravatReport:
                     colnos_to_skip.append(colno)
         should_skip_some_cols = len(colnos_to_skip) > 0
         sample_newcolno = None
-        if level == "variant" and self.args["separatesample"]:
+        if level == "variant" and self.args.get("separatesample"):
             write_variant_sample_separately = True
             sample_newcolno = self.newcolnos["variant"]["base__samples"]
         else:
@@ -483,7 +481,7 @@ class CravatReport:
                         s = f"filter:\n{yaml.dump(self.filter)}"
                         self.logger.info(s)
             if self.module_conf is not None and self.status_writer is not None:
-                if self.args["do_not_change_status"] == False:
+                if not self.args.get("do_not_change_status"):
                     self.status_writer.queue_status_update(
                         "status",
                         "Started {} ({})".format(self.module_conf["title"],
@@ -514,7 +512,7 @@ class CravatReport:
                 await self.run_level(tab)
             await self.close_db()
             if self.module_conf is not None and self.status_writer is not None:
-                if self.args["do_not_change_status"] == False:
+                if not self.args.get("do_not_change_status"):
                     self.status_writer.queue_status_update(
                         "status",
                         "Finished {} ({})".format(self.module_conf["title"],
@@ -530,22 +528,6 @@ class CravatReport:
         except Exception as e:
             #from .exceptions import ExpectedException
             await self.close_db()
-            """
-            if self.module_conf is not None and self.status_writer is not None:
-                if self.args["do_not_change_status"] == False:
-                    self.status_writer.queue_status_update(
-                        "status",
-                        "Failed {} ({})".format(self.module_conf["title"],
-                                                self.module_name),
-                    )
-            end_time = time()
-            if not (hasattr(self, "no_log") and self.no_log):
-                self.logger.info("finished: {0}".format(
-                    asctime(localtime(end_time))))
-                run_time = end_time - start_time
-                self.logger.info("runtime: {0:0.3f}".format(run_time))
-            setattr(e, "handled", True)
-            """
             raise e
         return ret
 
@@ -611,10 +593,10 @@ class CravatReport:
 
     async def make_col_info(self, level: str, conn=None, cursor=None):
         if conn is None: pass
-        if self.conf is None or cursor is None:
+        if cursor is None:
             from .exceptions import SetupError
             raise SetupError()
-        import os
+        from os.path import dirname
         import json
         from . import admin_util as au
         from .inout import ColumnDefinition
@@ -623,9 +605,10 @@ class CravatReport:
         from .util import quiet_print
         self.colnames_to_display[level] = []
         await self.exec_db(self.store_mapper)
-        cravat_conf = self.conf.get_cravat_conf()
-        if "report_module_order" in cravat_conf:
-            priority_colgroupnames = cravat_conf["report_module_order"]
+        from .admin_util import get_main_conf
+        main_conf = get_main_conf()
+        if "report_module_order" in main_conf:
+            priority_colgroupnames = main_conf["report_module_order"]
         else:
             priority_colgroupnames = [
                 "base", "hg38", "hg19", "hg18", "tagsampler"
@@ -754,7 +737,7 @@ class CravatReport:
                 if module_name is None:
                     continue
                 mi = local_modules[module_name]
-                sys.path = sys.path + [os.path.dirname(mi.script_path)]
+                sys.path = sys.path + [dirname(mi.script_path)]
                 annot_cls = None
                 if module_name in done_var_annotators:
                     annot_cls = load_class(mi.script_path, "CravatAnnotator")
@@ -916,13 +899,13 @@ class CravatReport:
         return v
 
     async def connect_db(self, dbpath=None):
-        import os
+        from os.path import exists
         if dbpath != None:
             self.dbpath = dbpath
         if self.dbpath == None:
             sys.stderr.write("Provide a path to aggregator output")
             exit()
-        if os.path.exists(self.dbpath) == False:
+        if exists(self.dbpath) == False:
             sys.stderr.write(self.dbpath + " does not exist.")
             exit()
 
@@ -947,8 +930,8 @@ class CravatReport:
             filtername=self.filtername,
             filterstring=self.filterstring,
             filtersql=self.filtersql,
-            includesample=self.args["includesample"],
-            excludesample=self.args["excludesample"],
+            includesample=self.args.get("includesample"),
+            excludesample=self.args.get("excludesample"),
         )
 
     async def table_exists(self, tablename, conn=None, cursor=None):
@@ -968,60 +951,56 @@ class CravatReport:
 
 
 def cli_ov_report(args):
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    args["quiet"] = False
-    return fn_ov_report(args)
+    args.quiet = False
+    return ov_report(args)
 
 
-def fn_ov_report(args):
-    import sqlite3
-    import os
+@cli_func
+def ov_report(args):
+    from os.path import dirname
+    from os.path import basename
+    from os.path import join
     from asyncio import get_event_loop
     from .util import is_compatible_version
     from . import admin_util as au
     from .util import write_log_msg
     from . import sysadmin_const
-    import importlib
+    from importlib.util import spec_from_file_location
+    from importlib.util import module_from_spec
     from .exceptions import ModuleNotExist
     from .exceptions import IncompatibleResult
     from .util import quiet_print
-    dbpath = args["dbpath"]
-    # Check if exists
-    if not os.path.exists(dbpath):
-        exit(f"{dbpath} not found")
-    # Check if database
-    try:
-        with sqlite3.connect(dbpath) as db:
-            db.execute("select * from info")
-    except:
-        exit(f"{dbpath} is not an OakVar database")
+    dbpath = args.get("dbpath")
     compatible_version, _, _ = is_compatible_version(dbpath)
     if not compatible_version:
         raise IncompatibleResult()
-    report_types = args["reporttypes"]
-    if args["md"] is not None:
-        sysadmin_const.custom_modules_dir = args["md"]
-    local = au.get_mic().get_local()
-    if len(report_types) == 0:
-        if args["package"] is not None and args["package"] in local:
-            package_conf = local[args["package"]].conf
-            if "run" in package_conf and "reports" in package_conf["run"]:
-                report_types = package_conf["run"]["reports"]
-    if "output_dir" in args and args["output_dir"] is not None:
-        output_dir = args["output_dir"]
+    report_types = args.get("reports")
+    md = args.get("md")
+    if md:
+        sysadmin_const.custom_modules_dir = md
+    package = args.get("package")
+    if not report_types:
+        if package:
+            m_info = au.get_local_module_info(package)
+            if m_info:
+                package_conf = m_info.conf
+                if "run" in package_conf and "reports" in package_conf["run"]:
+                    report_types = package_conf["run"]["reports"]
+    output_dir = args.get("output_dir")
+    if not output_dir:
+        output_dir = dirname(dbpath)
+    savepath = args.get("savepath")
+    if not savepath:
+        run_name = basename(dbpath).rstrip("sqlite").rstrip(".")
+        args["savepath"] = join(output_dir, run_name)
     else:
-        output_dir = os.path.dirname(dbpath)
-    if "savepath" in args and args["savepath"] is None:
-        run_name = os.path.basename(dbpath).rstrip("sqlite").rstrip(".")
-        args["savepath"] = os.path.join(output_dir, run_name)
-    else:
-        savedir = os.path.dirname(args["savepath"])
+        savedir = dirname(savepath)
         if savedir != "":
             output_dir = savedir
     module_options = {}
-    if args["module_option"] is not None:
-        for opt_str in args["module_option"]:
+    module_option = args.get("module_option")
+    if module_option:
+        for opt_str in module_option:
             toks = opt_str.split("=")
             if len(toks) != 2:
                 quiet_print(
@@ -1039,23 +1018,21 @@ def fn_ov_report(args):
                 module_options[module_name] = {}
             v = toks[1]
             module_options[module_name][key] = v
-    del args["module_option"]
     loop = get_event_loop()
     response = {}
-    if len(report_types) > 0:
-        module_names = [v + "reporter" for v in report_types]
-    else:
-        module_names = []
+    module_names = [v + "reporter" for v in report_types]
     for report_type, module_name in zip(report_types, module_names):
         module_info = au.get_local_module_info(module_name)
         if module_info is None:
             raise ModuleNotExist(report_type + "reporter")
         quiet_print(f"Generating {report_type} report... ", args)
         module_name = module_info.name
-        spec = importlib.util.spec_from_file_location(
+        spec = spec_from_file_location(  # type: ignore
             module_name,  # type: ignore
             module_info.script_path)
-        module = importlib.util.module_from_spec(spec)  # type: ignore
+        if not spec: continue
+        module = module_from_spec(spec)  # type: ignore
+        if not module or not spec.loader: continue
         spec.loader.exec_module(module)
         args["module_name"] = module_name
         args["do_not_change_status"] = True
@@ -1063,37 +1040,18 @@ def fn_ov_report(args):
             args["conf"] = module_options[module_name]
         reporter = module.Reporter(args)
         response_t = None
-        try:
-            loop.run_until_complete(reporter.prep())
-            response_t = loop.run_until_complete(reporter.run())
-            output_fns = None
-            if type(response_t) == list:
-                output_fns = " ".join(response_t)
-            else:
-                output_fns = response_t
-            if output_fns is not None and type(output_fns) == str:
-                quiet_print(f"report created: {output_fns}", args)
-        except Exception as e:
-            if getattr(reporter, "cf") and reporter.cf:
-                loop.run_until_complete(reporter.cf.close_db())
-            if getattr(e, "handled", False):
-                if getattr(e, "traceback", False):
-                    import traceback
-                    traceback.print_exc()
-                else:
-                    if hasattr(reporter, "logger"):
-                        write_log_msg(reporter.logger,
-                                      e,
-                                      quiet=args.get("quiet"))
-            quiet_print(
-                "report generation failed for {} report.".format(report_type),
-                args)
-            response_t = None
+        #try:
+        loop.run_until_complete(reporter.prep())
+        response_t = loop.run_until_complete(reporter.run())
+        output_fns = None
+        if type(response_t) == list:
+            output_fns = " ".join(response_t)
+        else:
+            output_fns = response_t
+        if output_fns is not None and type(output_fns) == str:
+            quiet_print(f"report created: {output_fns}", args)
         response[report_type] = response_t
-    if len(report_types) == 1 and len(response) == 1:
-        return response[list(response.keys())[0]]
-    else:
-        return response
+    return response
 
 
 def cravat_report_entrypoint():
@@ -1103,48 +1061,48 @@ def cravat_report_entrypoint():
 
 def get_parser_fn_report():
     from argparse import ArgumentParser, SUPPRESS
-    parser_fn_report = ArgumentParser(
+    parser_ov_report = ArgumentParser(
         prog="ov report dbpath ...",
         description="Generate reports from result SQLite files",
         epilog="dbpath must be the first argument.")
-    parser_fn_report.add_argument("dbpath", help="Path to aggregator output")
-    parser_fn_report.add_argument(
+    parser_ov_report.add_argument("dbpath", help="Path to aggregator output")
+    parser_ov_report.add_argument(
         "-t",
-        dest="reporttypes",
+        dest="reports",
         nargs="+",
         default=[],
         help="report types",
     )
-    parser_fn_report.add_argument("-f",
+    parser_ov_report.add_argument("-f",
                                   dest="filterpath",
                                   default=None,
                                   help="Path to filter file")
-    parser_fn_report.add_argument("--filter", default=None, help=SUPPRESS)
-    parser_fn_report.add_argument("--filtersql",
+    parser_ov_report.add_argument("--filter", default=None, help=SUPPRESS)
+    parser_ov_report.add_argument("--filtersql",
                                   default=None,
                                   help="Filter SQL")
-    parser_fn_report.add_argument(
+    parser_ov_report.add_argument(
         "-F",
         dest="filtername",
         default=None,
         help="Name of filter (stored in aggregator output)",
     )
-    parser_fn_report.add_argument("--filterstring",
+    parser_ov_report.add_argument("--filterstring",
                                   dest="filterstring",
                                   default=None,
                                   help=SUPPRESS)
-    parser_fn_report.add_argument("-s",
+    parser_ov_report.add_argument("-s",
                                   dest="savepath",
                                   default=None,
                                   help="Path to save file")
-    parser_fn_report.add_argument("-c",
+    parser_ov_report.add_argument("-c",
                                   dest="confpath",
                                   help="path to a conf file")
-    parser_fn_report.add_argument("--module-name",
+    parser_ov_report.add_argument("--module-name",
                                   dest="module_name",
                                   default=None,
                                   help="report module name")
-    parser_fn_report.add_argument(
+    parser_ov_report.add_argument(
         "--nogenelevelonvariantlevel",
         dest="nogenelevelonvariantlevel",
         action="store_true",
@@ -1152,56 +1110,56 @@ def get_parser_fn_report():
         help=
         "Use this option to prevent gene level result from being added to variant level result.",
     )
-    parser_fn_report.add_argument("--confs",
+    parser_ov_report.add_argument("--confs",
                                   dest="confs",
                                   default="{}",
                                   help="Configuration string")
-    parser_fn_report.add_argument(
+    parser_ov_report.add_argument(
         "--inputfiles",
         nargs="+",
         dest="inputfiles",
         default=None,
         help="Original input file path",
     )
-    parser_fn_report.add_argument(
+    parser_ov_report.add_argument(
         "--separatesample",
         dest="separatesample",
         action="store_true",
         default=False,
         help="Write each variant-sample pair on a separate line",
     )
-    parser_fn_report.add_argument("-d",
+    parser_ov_report.add_argument("-d",
                                   dest="output_dir",
                                   default=None,
                                   help="directory for output files")
-    parser_fn_report.add_argument(
+    parser_ov_report.add_argument(
         "--do-not-change-status",
         dest="do_not_change_status",
         action="store_true",
         default=False,
         help="Job status in status.json will not be changed",
     )
-    parser_fn_report.add_argument(
+    parser_ov_report.add_argument(
         "--quiet",
         action="store_true",
         default=True,
         help="Suppress output to STDOUT",
     )
-    parser_fn_report.add_argument(
+    parser_ov_report.add_argument(
         "--system-option",
         dest="system_option",
         nargs="*",
         help=
         "System option in key=value syntax. For example, --system-option modules_dir=/home/user/oakvar/modules",
     )
-    parser_fn_report.add_argument(
+    parser_ov_report.add_argument(
         "--module-option",
         dest="module_option",
         nargs="*",
         help=
         "Module-specific option in module_name.key=value syntax. For example, --module-option vcfreporter.type=separate",
     )
-    parser_fn_report.add_argument(
+    parser_ov_report.add_argument(
         "--concise-report",
         dest="concise_report",
         action="store_true",
@@ -1209,26 +1167,26 @@ def get_parser_fn_report():
         help=
         "Generate concise report with default columns defined by annotation modules",
     )
-    parser_fn_report.add_argument(
+    parser_ov_report.add_argument(
         "--includesample",
         dest="includesample",
         nargs="+",
         default=None,
         help="Sample IDs to include",
     )
-    parser_fn_report.add_argument(
+    parser_ov_report.add_argument(
         "--excludesample",
         dest="excludesample",
         nargs="+",
         default=None,
         help="Sample IDs to exclude",
     )
-    parser_fn_report.add_argument(
+    parser_ov_report.add_argument(
         "--package", help="Use filters and report types in a package")
-    parser_fn_report.add_argument(
+    parser_ov_report.add_argument(
         "--md",
         default=None,
         help="Specify the root directory of OakVar modules (annotators, etc)",
     )
-    parser_fn_report.set_defaults(func=cli_ov_report)
-    return parser_fn_report
+    parser_ov_report.set_defaults(func=cli_ov_report)
+    return parser_ov_report

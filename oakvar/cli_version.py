@@ -1,11 +1,14 @@
+from .decorators import cli_func
+
+
 def cli_version(args):
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    args["quiet"] = False
-    return fn_version(args)
+    args.to = "stdout"
+    args.quiet = False
+    return ov_version(args)
 
 
-def fn_version(args):
+@cli_func
+def ov_version(args):
     from .admin_util import oakvar_version
     from .util import quiet_print
     ret = oakvar_version()
@@ -20,7 +23,7 @@ def get_parser_cli_version():
     # shows version
     parser_cli_version = ArgumentParser()
     parser_cli_version.add_argument(
-        "--to", default="stdout", help='"stdout" to print. "return" to return')
+        "--to", default="return", help='"stdout" to print. "return" to return')
     parser_cli_version.add_argument("--quiet",
                                     default=True,
                                     help="Run quietly")

@@ -1,33 +1,30 @@
-def cli_run(args):
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    args["quiet"] = False
-    return fn_run(args)
+from .decorators import cli_func
+
+def cli_ov_run(args):
+    args.quiet = False
+    args.to = "stdout"
+    ret = ov_run(args)
+    return ret
 
 
-def fn_run(args):
+@cli_func
+def ov_run(args):
     from asyncio import run
     from . import admin_util as au
     # nested asyncio
     import nest_asyncio
     nest_asyncio.apply()
     # Windows event loop patch
-    from sys import platform, version_info, argv
+    from sys import platform, version_info
     if platform == "win32" and version_info >= (3, 8):
         from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy  # type: ignore
         set_event_loop_policy(WindowsSelectorEventLoopPolicy())
     # Custom system conf
-    from argparse import ArgumentParser
-    pre_parser = ArgumentParser(add_help=False)
-    pre_parser.add_argument("--system-option",
-                            dest="system_option",
-                            nargs="*",
-                            default=None)
-    pre_args, _ = pre_parser.parse_known_args(argv[1:])
-    if pre_args.system_option is not None:
-        from .admin_util import update_mic
+    system_option = args.get("system_option", [])
+    if system_option:
+        from . import admin_util
         custom_system_conf = {}
-        for kv in pre_args.system_option:
+        for kv in system_option:
             if "=" not in kv:
                 continue
             toks = kv.split("=")
@@ -39,26 +36,19 @@ def fn_run(args):
             except ValueError:
                 pass
             custom_system_conf[k] = v
-        from . import admin_util
         admin_util.custom_system_conf = custom_system_conf
-        update_mic()
-    else:
-        from . import admin_util
-        admin_util.custom_system_conf = {}
+        admin_util.update_mic()
     au.ready_resolution_console()
-    module = None
-    response = None
-    try:
-        module = Cravat(**args)
-        response = run(module.main())
-    except Exception as e:
-        from .exceptions import ExpectedException
-        if isinstance(e, ExpectedException):
-            from sys import stderr
-            stderr.write(str(e) + "\n")
-        else:
-            raise e
-    return response
+    #try:
+    module = Cravat(**args)
+    return run(module.main())
+    #except Exception as e:
+    #    from .exceptions import ExpectedException
+    #    if isinstance(e, ExpectedException):
+    #        from sys import stderr
+    #        stderr.write(str(e) + "\n")
+    #    else:
+    #        raise e
 
 
 class Cravat(object):
@@ -91,7 +81,6 @@ class Cravat(object):
         self.log_handler = None
         self.error_log_handler = None
         self.start_time = None
-        self.modules_conf = None
         self.unique_logs = None
         self.manager = None
         self.status_writer = None
@@ -99,10 +88,10 @@ class Cravat(object):
         self.result_path = None
         self.package_conf = {}
         self.args = None
-        self.cravat_conf = {}
-        self.run_conf = {}
-        self.run_conf_path = None
-        self.conf = None
+        self.main_conf = {}
+        self.conf_run = {}
+        self.conf_path = None
+        self.conf = {}
         self.num_input = None
         self.first_non_url_input = None
         self.inputs = None
@@ -251,7 +240,7 @@ class Cravat(object):
         self.error_log_handler.setFormatter(formatter)
         self.error_logger.addHandler(self.error_log_handler)
 
-    def handle_exception(self, e):
+    """def handle_exception(self, e):
         if self.args is None:
             from .exceptions import SetupError
             raise SetupError()
@@ -270,7 +259,7 @@ class Cravat(object):
         except Exception as e2:
             stderr.write(str(e) + "\n")
             stderr.flush()
-            raise e2
+            raise e2"""
 
     def log_versions(self):
         if self.args is None:
@@ -324,13 +313,9 @@ class Cravat(object):
                 self.logger.info(f'{" ".join(argv)}')
                 self.logger.info("started: {0}".format(
                     asctime(localtime(self.start_time))))
-                if self.run_conf_path != "":
+                if self.conf_path != "":
                     self.logger.info("conf file: {}".format(
-                        self.run_conf_path))
-            if self.conf is None:
-                from .exceptions import ConfigurationError
-                raise ConfigurationError()
-            self.modules_conf = self.conf.get_modules_conf()
+                        self.conf_path))
             self.write_initial_status_json()
             self.unique_logs = {}
             self.manager = SyncManager()
@@ -372,8 +357,7 @@ class Cravat(object):
                     and not "mapper" in self.args.skip):
                 quiet_print(f'Running gene mapper...{" "*18}', self.args)
                 stime = time()
-                multicore_mapper_mode = self.conf.get_cravat_conf(
-                )["multicore_mapper_mode"]
+                multicore_mapper_mode = self.main_conf.get("multicore_mapper_mode")
                 if multicore_mapper_mode:
                     self.run_genemapper_mp()
                 else:
@@ -475,9 +459,9 @@ class Cravat(object):
                                                        status,
                                                        force=force)
 
-    def make_args_namespace(self, supplied_args):
-        self.set_package_conf(supplied_args)
-        self.make_self_args_considering_package_conf(supplied_args)
+    def make_args_namespace(self, args):
+        self.set_package_conf(args)
+        self.make_self_args_considering_package_conf(args)
         if self.args is None:
             from .exceptions import SetupError
             raise SetupError()
@@ -504,78 +488,47 @@ class Cravat(object):
         if self.args.note == None:
             self.args.note = ""
 
-    def make_self_args_considering_package_conf(self, supplied_args):
-        from .util import get_argument_parser_defaults
+    def make_self_args_considering_package_conf(self, args):
         from types import SimpleNamespace
-        full_args = get_argument_parser_defaults(get_parser_fn_run())
-        # package
+        #full_args = get_argument_parser_defaults(get_parser_fn_run())
+        full_args = args
+        # package including -a (add) and -A (replace)
         if "run" in self.package_conf:
-            package_conf_run = {
-                k: v
-                for k, v in self.package_conf["run"].items() if v is not None
-            }
-            full_args.update(package_conf_run)
-        # command-line arguments
-        supplied_args_no_none = {
-            k: v
-            for k, v in supplied_args.items() if v is not None and v != []
-        }
-        if ("inputs" in full_args and full_args["inputs"] is not None
-                and "inputs" in supplied_args_no_none):
-            del supplied_args_no_none["inputs"]
-        # -a and -A regarding --package
-        annos_pkg = full_args.get("annotators", [])
-        annos_add = supplied_args_no_none.get("annotators", [])
-        annos_repl = supplied_args_no_none.get("annotators_replace", [])
-        if len(annos_pkg) > 0:
-            if len(annos_repl) > 0:
-                full_args["annotators"] = annos_repl
-            elif len(annos_add) > 0:
-                full_args["annotators"] = list(
-                    set(full_args["annotators"]).union(set(annos_add)))
-        else:
-            if len(annos_repl) > 0:
-                full_args["annotators"] = annos_repl
-            elif len(annos_add) > 0:
-                full_args["annotators"] = annos_add
-        # other command-line arguments
-        for k, v in supplied_args_no_none.items():
-            if k in ["annotators", "annotators_replace"]:
-                continue
-            full_args[k] = v
+            for k, v in self.package_conf["run"].items():
+                if k == "annotators" and v and isinstance(v, list):
+                    if not full_args["annotators_replace"]:
+                        for v2 in v:
+                            if v2 not in full_args["annotators"]:
+                                full_args["annotators"].append(v2)
+                else:
+                    if k not in full_args or not full_args[k]:
+                        full_args[k] = v
+        self.conf_path = full_args.get("confpath", None)
+        self.make_self_conf(full_args)
+        from .admin_util import get_main_conf
+        self.main_conf = get_main_conf()
+        self.conf_run = self.conf.get("run", {})
+        for k, v in self.conf_run.items():
+            if k not in full_args or (not full_args[k] and v):
+                full_args[k] = v
+        if full_args["annotators_replace"]:
+            full_args["annotators"] = full_args["annotators_replace"]
         self.args = SimpleNamespace(**full_args)
-        self.make_run_conf_path()
-        self.make_self_conf()
         self.process_module_options()
-        if self.conf is None:
-            from .exceptions import SetupError
-            raise SetupError()
-        self.cravat_conf = self.conf.get_cravat_conf()
-        self.run_conf = self.conf._all
-        args_keys = self.args.__dict__.keys()
-        for arg_key in args_keys:
-            if self.args.__dict__[arg_key] is None and arg_key in self.run_conf:
-                self.args.__dict__[arg_key] = self.run_conf[arg_key]
 
-    def make_run_conf_path(self):
-        if self.args is None:
+    def make_self_conf(self, args):
+        if args is None:
             from .exceptions import SetupError
             raise SetupError()
-        self.run_conf_path = self.args.conf
-
-    def make_self_conf(self):
-        if self.args is None:
-            from .exceptions import SetupError
-            raise SetupError()
-        from .config_loader import ConfigLoader
         import json
         from .util import quiet_print
-        self.conf = ConfigLoader(job_conf_path=self.run_conf_path)
-        if self.args.confs != None:
+        self.conf_run = args.get("conf", {}).get("run", {})
+        confs = args.get("confs")
+        if confs:
             conf_bak = self.conf
             try:
-                confs_conf = json.loads(self.args.confs.replace("'", '"'))
-                self.conf.override_all_conf(confs_conf)
+                confs_conf = json.loads(confs.replace("'", '"'))
+                self.conf.update(confs_conf)
             except Exception:
                 quiet_print(
                     "Error in processing cs option. --cs option was not applied.",
@@ -628,10 +581,10 @@ class Cravat(object):
                         self.args)
                     continue
                 [module_name, key] = k.split(".")
-                if module_name not in self.conf._all:
-                    self.conf._all[module_name] = {}
+                if module_name not in self.conf_run:
+                    self.conf_run[module_name] = {}
                 v = toks[1]
-                self.conf._all[module_name][key] = v
+                self.conf_run[module_name][key] = v
 
     def process_url_and_pipe_inputs(self):
         if self.args is None:
@@ -751,8 +704,8 @@ class Cravat(object):
             raise SetupError()
         from .sysadmin_const import default_assembly_key
         if self.args.genome is None:
-            if default_assembly_key in self.cravat_conf:
-                self.input_assembly = self.cravat_conf[default_assembly_key]
+            if default_assembly_key in self.main_conf:
+                self.input_assembly = self.main_conf[default_assembly_key]
             else:
                 from .exceptions import NoGenomeException
                 raise NoGenomeException()
@@ -776,11 +729,10 @@ class Cravat(object):
         if os.path.exists(self.output_dir) == False:
             os.mkdir(self.output_dir)
 
-    def set_package_conf(self, supplied_args):
+    def set_package_conf(self, args):
         from . import admin_util as au
-        if "package" in supplied_args:
-            package_name = supplied_args["package"]
-            del supplied_args["package"]
+        package_name = args.get("package", None)
+        if package_name:
             if package_name in au.get_mic().get_local():
                 self.package_conf = au.get_mic().get_local()[package_name].conf
             else:
@@ -812,9 +764,9 @@ class Cravat(object):
             raise SetupError()
         from .util import quiet_print
         if self.args.inputs is not None and len(self.args.inputs) == 0:
-            if "inputs" in self.run_conf:
-                if type(self.run_conf["inputs"]) == list:
-                    self.args.inputs = self.run_conf["inputs"]
+            if "inputs" in self.conf_run:
+                if type(self.conf_run["inputs"]) == list:
+                    self.args.inputs = self.conf_run["inputs"]
                 else:
                     quiet_print("inputs in conf file is invalid", self.args)
             else:
@@ -904,13 +856,13 @@ class Cravat(object):
             from .exceptions import SetupError
             raise SetupError()
         from . import admin_util as au
-        if len(self.args.mapper_name) > 0:
+        if self.args.mapper_name:
             self.mapper_name = self.args.mapper_name[0]
         elif (self.package_conf is not None and "run" in self.package_conf
               and "mapper" in self.package_conf["run"]):
-            self.mapper_name = self.package_conf["run"]["mapper"]
+            self.mapper_name = self.package_conf.get("run", {}).get("mapper")
         else:
-            self.mapper_name = self.conf.get_cravat_conf()["genemapper"]
+            self.mapper_name = self.main_conf.get("genemapper")
         self.check_valid_modules([self.mapper_name])
         self.mapper = au.get_local_module_info_by_name(self.mapper_name)
 
@@ -1014,8 +966,7 @@ class Cravat(object):
         import os
         from .util import load_class
         from types import SimpleNamespace
-        import json
-        if self.conf is None or self.modules_conf is None or self.args is None:
+        if self.conf is None or self.args is None:
             from .exceptions import SetupError
             raise SetupError()
         converter_path = os.path.join(os.path.dirname(__file__),
@@ -1030,19 +981,7 @@ class Cravat(object):
             "output_dir": self.output_dir,
             "genome": self.input_assembly,
         }
-        arg_dict["conf"] = {}
-        for mn in self.conf._all:
-            if mn.endswith("-converter"):
-                arg_dict["conf"][mn] = self.conf._all[mn]
-        if "run" in self.conf._all:
-            for mn in self.conf._all["run"]:
-                if mn.endswith("-converter"):
-                    arg_dict["conf"][mn] = self.conf._all[mn]
-        if module.name in self.cravat_conf:
-            if module.name in self.modules_conf:
-                confs = json.dumps(self.modules_conf[module.name])
-                confs = "'" + confs.replace("'", '"') + "'"
-                arg_dict["confs"] = confs
+        arg_dict["conf"] = self.conf_run
         if self.args.forcedinputformat is not None:
             arg_dict["format"] = self.args.forcedinputformat
         if self.args.unique_variants:
@@ -1063,13 +1002,12 @@ class Cravat(object):
             from .exceptions import SetupError
             raise SetupError()
         from .util import load_class
-        import json
         from . import admin_util as au
         from .util import quiet_print
-        module = au.get_local_module_info(self.cravat_conf["genemapper"])
+        module = au.get_local_module_info(self.main_conf.get("genemapper"))
         if module is None:
             from .exceptions import ModuleLoadingError
-            raise ModuleLoadingError(self.cravat_conf["genemapper"])
+            raise ModuleLoadingError(self.main_conf.get("genemapper"))
         self.genemapper = module
         cmd = [
             module.script_path,
@@ -1084,10 +1022,6 @@ class Cravat(object):
                 self.args.primary_transcript.append("mane")
             cmd.extend(["--primary-transcript"])
             cmd.extend(self.args.primary_transcript)
-        if module.name in self.cravat_conf:
-            confs = json.dumps(self.cravat_conf[module.name])
-            confs = "'" + confs.replace("'", '"') + "'"
-            cmd.extend(["--confs", confs])
         if self.verbose:
             quiet_print(" ".join(cmd), self.args)
         genemapper_class = load_class(module.script_path, "Mapper")
@@ -1383,13 +1317,7 @@ class Cravat(object):
                 module.script_path, "-d", self.output_dir, "-n", self.run_name
             ]
             postagg_conf = {}
-            if module.name in self.cravat_conf:
-                postagg_conf.update(self.cravat_conf[module_name])
-            if module_name in self.conf._all:
-                postagg_conf.update(self.conf._all[module_name])
-            elif "run" in self.conf._all and module_name in self.conf._all[
-                    "run"]:
-                postagg_conf.update(self.conf._all["run"][module_name])
+            postagg_conf.update(self.conf_run.get(module_name, {}))
             if postagg_conf:
                 confs = json.dumps(postagg_conf)
                 confs = "'" + confs.replace("'", '"') + "'"
@@ -1425,14 +1353,8 @@ class Cravat(object):
                 v.replace("reporter", "") for v in self.reports.keys()
             ]
         else:
-            if "reporter" in self.cravat_conf:
-                module_names = [self.cravat_conf["reporter"]]
-                report_types = [
-                    v.replace("reporter", "") for v in module_names
-                ]
-            else:
-                module_names = []
-                report_types = []
+            module_names = []
+            report_types = []
         response = {}
         for report_type, module_name in zip(report_types, module_names):
             reporter = None
@@ -1442,21 +1364,16 @@ class Cravat(object):
                 quiet_print("        {} does not exist.".format(module_name),
                             self.args)
                 continue
-            arg_dict = {
-                "script_path": module.script_path,
-                "dbpath": os.path.join(self.output_dir,
-                                       self.run_name + ".sqlite"),
-                "savepath": os.path.join(self.output_dir, self.run_name),
-                "output_dir": self.output_dir,
-                "module_name": module_name,
-            }
-            if self.run_conf_path is not None:
-                arg_dict["confpath"] = self.run_conf_path
-            if module_name in self.conf._all:
-                arg_dict["conf"] = self.conf._all[module_name]
-            elif "run" in self.conf._all and module_name in self.conf._all[
-                    "run"]:
-                arg_dict["conf"] = self.conf._all["run"][module_name]
+            arg_dict = dict(vars(self.args))
+            arg_dict["script_path"] = module.script_path
+            arg_dict["dbpath"] = os.path.join(self.output_dir, self.run_name + ".sqlite")
+            arg_dict["savepath"] = os.path.join(self.output_dir, self.run_name)
+            arg_dict["output_dir"] = self.output_dir
+            arg_dict["module_name"] = module_name
+            """
+            if self.conf_path is not None:
+                arg_dict["confpath"] = self.conf_path
+            arg_dict["conf"] = self.conf_run.get(module_name, {})
             if self.pipeinput == False:
                 arg_dict["inputfiles"] = []
                 for input_file in self.inputs:
@@ -1469,7 +1386,7 @@ class Cravat(object):
                         [str(k) + "=" + str(v) for k, v in arg_dict.items()]),
                     self.args)
             arg_dict["status_writer"] = self.status_writer
-            arg_dict["reporttypes"] = [module_name.replace("reporter", "")]
+            arg_dict["reports"] = [module_name.replace("reporter", "")]
             arg_dict["concise_report"] = self.args.concise_report
             arg_dict["package"] = self.args.package
             arg_dict["filtersql"] = self.args.filtersql
@@ -1477,6 +1394,9 @@ class Cravat(object):
             arg_dict["excludesample"] = self.args.excludesample
             arg_dict["filter"] = self.args.filter
             arg_dict["filterpath"] = self.args.filterpath
+            arg_dict["md"] = self.args.md
+            """
+            arg_dict["conf"] = self.conf
             Reporter = load_class(module.script_path, "Reporter")
             reporter = Reporter(arg_dict)
             await reporter.prep()
@@ -1562,8 +1482,6 @@ class Cravat(object):
                 kwargs["run_name"] = self.run_name
             if self.output_dir != None:
                 kwargs["output_dir"] = self.output_dir
-            if module.name in self.cravat_conf:
-                kwargs["conf"] = self.cravat_conf[module.name]
             run_args[module.name] = (module, kwargs)
         if self.logger and self.log_handler:
             self.logger.removeHandler(self.log_handler)
@@ -2048,16 +1966,16 @@ class StatusWriter:
 
 def get_parser_fn_run():
     from argparse import ArgumentParser, SUPPRESS
-    parser_fn_run = ArgumentParser(
+    parser_ov_run = ArgumentParser(
         prog="ov run input_file_path_1 input_file_path_2 ...",
         description=
         "OakVar genomic variant interpreter. https://github.com/rkimoakbioinformatics/oakvar. Use input_file_path arguments before any option or define them in a conf file (option -c).",
         epilog="inputs should be the first option",
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "inputs",
         nargs="*",
-        default=None,
+        default=[],
         help=
         "Input file(s). One or more variant files in a supported format like VCF.  "
         +
@@ -2066,7 +1984,7 @@ def get_parser_fn_run():
         "where you want to add annotations to an existing OakVar analysis, " +
         "provide the output sqlite database from the previous run as input instead of a variant input file.",
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "-a",
         nargs="+",
         dest="annotators",
@@ -2074,27 +1992,27 @@ def get_parser_fn_run():
         help=
         "Annotator module names or directories. If --package is used also, annotator modules defined with -a will be added.",
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "-A",
         nargs="+",
         dest="annotators_replace",
         default=[],
         help=
-        "Annotator module names or directories. If --package is used also, annotator modules defined with -A will replace those defined with --package. -A has priority over -a.",
+        "Annotator module names or directories. If --package option also is used, annotator modules defined with -A will replace those defined with --package. -A has priority over -a.",
     )
-    parser_fn_run.add_argument("-e",
+    parser_ov_run.add_argument("-e",
                                nargs="+",
                                dest="excludes",
                                default=[],
                                help="annotators to exclude")
-    parser_fn_run.add_argument("-n",
+    parser_ov_run.add_argument("-n",
                                dest="run_name",
                                help="name of oakvar run")
-    parser_fn_run.add_argument("-d",
+    parser_ov_run.add_argument("-d",
                                dest="output_dir",
                                default=None,
                                help="directory for output files")
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "--startat",
         dest="startat",
         choices=[
@@ -2108,7 +2026,7 @@ def get_parser_fn_run():
         default=None,
         help="starts at given stage",
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "--endat",
         dest="endat",
         choices=[
@@ -2122,7 +2040,7 @@ def get_parser_fn_run():
         default=None,
         help="ends after given stage.",
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "--skip",
         dest="skip",
         nargs="+",
@@ -2137,27 +2055,27 @@ def get_parser_fn_run():
         default=None,
         help="skips given stage(s).",
     )
-    parser_fn_run.add_argument("-c",
-                               dest="conf",
+    parser_ov_run.add_argument("-c",
+                               dest="confpath",
                                default=None,
                                help="path to a conf file")
-    parser_fn_run.add_argument("--cs",
+    parser_ov_run.add_argument("--cs",
                                dest="confs",
                                default=None,
                                help="configuration string")
-    parser_fn_run.add_argument("-v",
+    parser_ov_run.add_argument("-v",
                                dest="verbose",
                                action="store_true",
                                default=None,
                                help="verbose")
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "-t",
         nargs="+",
         dest="reports",
         default=[],
         help="Reporter types or reporter module directories",
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "-l",
         "--liftover",
         dest="genome",
@@ -2165,77 +2083,77 @@ def get_parser_fn_run():
         help=
         "reference genome of input. OakVar will lift over to hg38 if needed.",
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "-x",
         dest="cleandb",
         action="store_true",
         help="deletes the existing result database and creates a new one.",
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "--newlog",
         dest="newlog",
         action="store_true",
         default=None,
         help="deletes the existing log file and creates a new one.",
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "--note",
         dest="note",
         default=None,
         help="note will be written to the run status file (.status.json)",
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "--mp",
         dest="mp",
         default=None,
         help="number of processes to use to run annotators")
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "-i",
         "--input-format",
         dest="forcedinputformat",
         default=None,
         help="Force input format",
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "--temp-files",
         dest="temp_files",
         action="store_true",
         default=None,
         help="Leave temporary files after run is complete.",
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "--writeadmindb",
         dest="writeadmindb",
         action="store_true",
         default=None,
         help="Write job information to admin db after job completion",
     )
-    parser_fn_run.add_argument("--jobid",
+    parser_ov_run.add_argument("--jobid",
                                dest="jobid",
                                default=None,
                                help="Job ID for server version")
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "--version",
         dest="show_version",
         action="store_true",
         default=None,
         help="Shows OakVar version.",
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "--separatesample",
         dest="separatesample",
         action="store_true",
         default=None,
         help="Separate variant results by sample",
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "--unique-variants",
         dest="unique_variants",
         action="store_true",
         default=None,
         help="Set to get only unique variants in output",
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "--primary-transcript",
         dest="primary_transcript",
         nargs="+",
@@ -2243,7 +2161,7 @@ def get_parser_fn_run():
         help=
         '"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "--cleanrun",
         dest="clean_run",
         action="store_true",
@@ -2251,32 +2169,33 @@ def get_parser_fn_run():
         help=
         "Deletes all previous output files for the job and generate new ones.",
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "--do-not-change-status",
         dest="do_not_change_status",
         action="store_true",
         default=None,
         help="Job status in status.json will not be changed",
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "--module-option",
         dest="module_option",
         nargs="*",
         help=
         "Module-specific option in module_name.key=value syntax. For example, --module-option vcfreporter.type=separate",
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "--system-option",
         dest="system_option",
         nargs="*",
+        default=[],
         help=
         "System option in key=value syntax. For example, --system-option modules_dir=/home/user/oakvar/modules",
     )
-    parser_fn_run.add_argument("--quiet",
+    parser_ov_run.add_argument("--quiet",
                                action="store_true",
                                default=True,
                                help="Runs quietly.")
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "--concise-report",
         dest="concise_report",
         action="store_true",
@@ -2284,37 +2203,37 @@ def get_parser_fn_run():
         help=
         "Generate concise reports with default columns defined by each annotation module",
     )
-    parser_fn_run.add_argument("--package",
+    parser_ov_run.add_argument("--package",
                                dest="package",
                                default=None,
                                help="Use package")
-    parser_fn_run.add_argument("--filtersql", default=None, help="Filter SQL")
-    parser_fn_run.add_argument("--includesample",
+    parser_ov_run.add_argument("--filtersql", default=None, help="Filter SQL")
+    parser_ov_run.add_argument("--includesample",
                                nargs="+",
                                default=None,
                                help="Sample IDs to include")
-    parser_fn_run.add_argument("--excludesample",
+    parser_ov_run.add_argument("--excludesample",
                                nargs="+",
                                default=None,
                                help="Sample IDs to exclude")
-    parser_fn_run.add_argument("--filter", default=None, help=SUPPRESS)
-    parser_fn_run.add_argument("-f",
+    parser_ov_run.add_argument("--filter", default=None, help=SUPPRESS)
+    parser_ov_run.add_argument("-f",
                                dest="filterpath",
                                default=None,
                                help="Path to a filter file")
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "--md",
         default=None,
         help="Specify the root directory of OakVar modules (annotators, etc)",
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "-m",
         dest="mapper_name",
         nargs="+",
         default=[],
         help="Mapper module name or mapper module directory",
     )
-    parser_fn_run.add_argument(
+    parser_ov_run.add_argument(
         "-p",
         nargs="+",
         dest="postaggregators",
@@ -2322,5 +2241,5 @@ def get_parser_fn_run():
         help=
         "Postaggregators to run. Additionally, tagsampler, casecontrol, varmeta, and vcfinfo will automatically run depending on conditions.",
     )
-    parser_fn_run.set_defaults(func=cli_run)
-    return parser_fn_run
+    parser_ov_run.set_defaults(func=cli_ov_run)
+    return parser_ov_run

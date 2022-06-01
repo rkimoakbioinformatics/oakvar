@@ -1,21 +1,13 @@
 import os
-import webbrowser
-import multiprocessing
 import aiosqlite
-import urllib.parse
 import json
 import sys
-import argparse
 import imp
-import yaml
-import re
-from oakvar import ConfigLoader
 from oakvar import admin_util as au
 from oakvar import CravatFilter
 from oakvar.constants import base_smartfilters
 from aiohttp import web
 import time
-from concurrent.futures import ProcessPoolExecutor
 
 wu = None
 logger = None
@@ -29,53 +21,13 @@ def get_filepath (path):
         )
     return filepath
 
-async def get_nowg_annot_modules (request):
+async def get_nowg_annot_modules (_):
     # disabling this until required_annotator is included in the remote manifest.
     return web.json_response({})
-    # Below is not run. Delete the above and change the below so that remote manifest's required_annotator is used.
-    queries = request.rel_url.query
-    job_id, dbpath = await get_jobid_dbpath(request)
-    conn = await get_db_conn(dbpath)
-    cursor = await conn.cursor()
-    remote_widget_modules = au.get_remote_module_infos_of_type('webviewerwidget')
-    remote_widget_names = remote_widget_modules.keys()
-    remote_annot_to_widgets = {}
-    for remote_widget_name in remote_widget_names:
-        conf = au.get_remote_module_config(remote_widget_name)
-        if 'required_annotator' in conf:
-            req_annot = conf['required_annotator']
-            if req_annot not in remote_annot_to_widgets:
-                remote_annot_to_widgets[req_annot] = []
-            remote_annot_to_widgets[req_annot].append(remote_widget_name)
-    wgmodules = au.get_local_module_infos_of_type('webviewerwidget')
-    annot_modules_with_wg = []
-    for wgmodule in wgmodules:
-        conf = wgmodules[wgmodule].conf
-        if 'required_annotator' in conf:
-            annot_module = conf['required_annotator']
-            if annot_module not in annot_modules_with_wg:
-                annot_modules_with_wg.append(annot_module)
-    nowg_annot_modules = {}
-    r = await table_exists(cursor, 'variant')
-    if r:
-        q = 'select name, displayname from variant_annotator'
-        await cursor.execute(q)
-        for r in await cursor.fetchall():
-            m = r[0]
-            if m in ['example_annotator', 'testannot', 'tagsampler']:
-                continue
-            annot_module = r[0]
-            displayname = r[1]
-            if annot_module not in annot_modules_with_wg and annot_module not in nowg_annot_modules and annot_module in remote_annot_to_widgets:
-                nowg_annot_modules[annot_module] = displayname
-    content = nowg_annot_modules
-    await cursor.close()
-    await conn.close()
-    return web.json_response(content)
 
 async def get_filter_save_names (request):
-    queries = request.rel_url.query
-    job_id, dbpath = await get_jobid_dbpath(request)
+    _ = request.rel_url.query
+    _, dbpath = await get_jobid_dbpath(request)
     conn = None
     cursor = None
     content = []
@@ -104,8 +56,8 @@ async def get_filter_save_names (request):
     return web.json_response(content)
 
 async def get_layout_save_names (request):
-    queries = request.rel_url.query
-    job_id, dbpath = await get_jobid_dbpath(request)
+    _ = request.rel_url.query
+    _, dbpath = await get_jobid_dbpath(request)
     content = []
     conn = await get_db_conn(dbpath)
     if conn is not None:
@@ -124,7 +76,7 @@ async def get_layout_save_names (request):
 
 async def rename_layout_setting (request):
     queries = request.rel_url.query
-    job_id, dbpath = await get_jobid_dbpath(request)
+    _, dbpath = await get_jobid_dbpath(request)
     content = {}
     name = queries['name']
     new_name = queries['newname']
@@ -149,7 +101,7 @@ async def get_db_conn (dbpath):
 
 async def delete_layout_setting (request):
     queries = request.rel_url.query
-    job_id, dbpath = await get_jobid_dbpath(request)
+    _, dbpath = await get_jobid_dbpath(request)
     name = queries['name']
     content = {}
     conn = await get_db_conn(dbpath)
@@ -167,7 +119,7 @@ async def delete_layout_setting (request):
 
 async def load_layout_setting (request):
     queries = request.rel_url.query
-    job_id, dbpath = await get_jobid_dbpath(request)
+    _, dbpath = await get_jobid_dbpath(request)
     name = queries['name']
     conn = await get_db_conn(dbpath)
     content = {"widgetSettings": {}}
@@ -190,7 +142,7 @@ async def load_layout_setting (request):
 
 async def load_filter_setting (request):
     queries = request.rel_url.query
-    job_id, dbpath = await get_jobid_dbpath(request)
+    _, dbpath = await get_jobid_dbpath(request)
     name = queries['name']
     conn = await get_db_conn(dbpath)
     content = {"filterSet": []}
@@ -213,7 +165,7 @@ async def load_filter_setting (request):
 
 async def save_layout_setting (request):
     queries = await request.post()
-    job_id, dbpath = await get_jobid_dbpath(request)
+    _, dbpath = await get_jobid_dbpath(request)
     name = queries['name']
     savedata = queries['savedata']
     conn = await get_db_conn(dbpath)
@@ -235,7 +187,7 @@ async def save_layout_setting (request):
 
 async def save_filter_setting (request):
     queries = request.rel_url.query
-    job_id, dbpath = await get_jobid_dbpath(request)
+    _, dbpath = await get_jobid_dbpath(request)
     name = queries['name']
     savedata = queries['savedata']
     conn = await get_db_conn(dbpath)
@@ -264,7 +216,7 @@ async def save_filter_setting (request):
 
 async def delete_filter_setting (request):
     queries = request.rel_url.query
-    job_id, dbpath = await get_jobid_dbpath(request)
+    _, dbpath = await get_jobid_dbpath(request)
     name = queries['name']
     conn = await get_db_conn(dbpath)
     content = "fail"
@@ -284,7 +236,7 @@ async def delete_filter_setting (request):
     return web.json_response(content)
 
 async def get_status (request):
-    job_id, dbpath = await get_jobid_dbpath(request)
+    _, dbpath = await get_jobid_dbpath(request)
     conn = await get_db_conn(dbpath)
     content = {}
     if conn is not None:
@@ -297,7 +249,7 @@ async def get_status (request):
         await conn.close()
     return web.json_response(content)
 
-def get_widgetlist (request):
+def get_widgetlist (_):
     content = []
     modules = au.get_local_module_infos_of_type('webviewerwidget')
     for module_name in modules:
@@ -316,7 +268,10 @@ def get_widgetlist (request):
 
 async def get_count (request):
     global logger
-    job_id, dbpath = await get_jobid_dbpath(request)
+    _, dbpath = await get_jobid_dbpath(request)
+    if dbpath is None:
+        from ..exceptions import DatabaseConnectionError
+        raise DatabaseConnectionError("result database")
     queries = await request.post()
     tab = queries['tab']
     if 'filter' in queries:
@@ -341,7 +296,10 @@ async def get_count (request):
 async def get_result (request):
     global logger
     queries = await request.post()
-    job_id, dbpath = await get_jobid_dbpath(request)
+    _, dbpath = await get_jobid_dbpath(request)
+    if dbpath is None:
+        from ..exceptions import DatabaseConnectionError
+        raise DatabaseConnectionError("result database")
     dbname = os.path.basename(dbpath)
     tab = queries['tab']
     if logger is not None:
@@ -376,7 +334,7 @@ async def get_result (request):
         separatesample = False
     if separatesample:
         arg_dict['separatesample'] = True
-    arg_dict['reporttypes'] = ['text']
+    arg_dict['reports'] = ['text']
     reporter = m.Reporter(arg_dict)
     await reporter.prep()
     data = await reporter.run(tab=tab)
@@ -399,8 +357,8 @@ async def get_result (request):
     return web.json_response(content)
 
 async def get_result_levels (request):
-    queries = request.rel_url.query
-    job_id, dbpath = await get_jobid_dbpath(request)
+    _ = request.rel_url.query
+    _, dbpath = await get_jobid_dbpath(request)
     content = []
     if dbpath is None:
         content = ['NODB']
@@ -468,7 +426,7 @@ async def get_jobid_dbpath (request):
 
 async def get_variant_cols (request):
     queries = request.rel_url.query
-    job_id, dbpath = await get_jobid_dbpath(request)
+    _, dbpath = await get_jobid_dbpath(request)
     if 'confpath' in queries:
         confpath = queries['confpath']
     else:
@@ -489,10 +447,6 @@ async def get_variant_cols (request):
         data['columns']['gene'] = get_colmodel('gene', colinfo)
     content = data
     return web.json_response(content)
-
-def get_summary_widget_names (request):
-    queries = request.rel_url.query
-    runid = queries['jobid'][0]
 
 def get_datamodel (data):
     ret = []
@@ -597,7 +551,7 @@ async def get_colinfo (dbpath, confpath, filterstring):
         arg_dict['confpath'] = confpath
     if filterstring != None:
         arg_dict['filterstring'] = filterstring
-    arg_dict['reporttypes'] = ['text']
+    arg_dict['reports'] = ['text']
     reporter = m.Reporter(arg_dict)
     try:
         await reporter.prep()
@@ -639,7 +593,7 @@ async def serve_runwidget (request):
     from ..sysadmin import get_modules_dir
     path = 'wg' + request.match_info['module']
     queries = request.rel_url.query
-    job_id, dbpath = await get_jobid_dbpath(request)
+    _, dbpath = await get_jobid_dbpath(request)
     if ('dbpath' not in queries or queries['dbpath'] == '') and dbpath is not None:
         new_queries = {}
         new_queries['dbpath'] = dbpath
@@ -674,7 +628,7 @@ async def serve_webapp_runwidget (request):
 async def serve_runwidget_post (request):
     from ..sysadmin import get_modules_dir
     path = 'wg' + request.match_info['module']
-    job_id, dbpath = await get_jobid_dbpath(request)
+    _, dbpath = await get_jobid_dbpath(request)
     queries = await request.post()
     new_queries = {}
     for k in queries:
@@ -707,8 +661,8 @@ async def serve_runwidget_post (request):
     return web.json_response(content)
 
 async def get_modules_info (request):
-    queries = request.rel_url.query
-    job_id, dbpath = await get_jobid_dbpath(request)
+    _ = request.rel_url.query
+    _, dbpath = await get_jobid_dbpath(request)
     conn = await get_db_conn(dbpath)
     content = {}
     if conn is not None:
@@ -733,8 +687,8 @@ async def get_modules_info (request):
     return content
 
 async def load_smartfilters (request):
-    queries = request.rel_url.query
-    job_id, dbpath = await get_jobid_dbpath(request)
+    _ = request.rel_url.query
+    _, dbpath = await get_jobid_dbpath(request)
     sfs = {'base':base_smartfilters}
     conn = await get_db_conn(dbpath)
     if conn is not None:
@@ -768,7 +722,6 @@ async def get_samples (request):
 
 routes = []
 routes.append(['GET', '/result/service/variantcols', get_variant_cols])
-routes.append(['GET', '/result/service/getsummarywidgetnames', get_summary_widget_names])
 routes.append(['GET', '/result/service/getresulttablelevels', get_result_levels])
 routes.append(['POST', '/result/service/result', get_result])
 routes.append(['POST', '/result/service/count', get_count])

@@ -14,7 +14,6 @@ class BaseAnnotator(object):
     def __init__(self, *inargs, **inkwargs):
         import os
         import sys
-        from oakvar.config_loader import ConfigLoader
         from oakvar.util import get_args
         from oakvar.constants import cannonical_chroms
         fp = sys.modules[self.__module__].__file__
@@ -71,8 +70,8 @@ class BaseAnnotator(object):
         self.data_dir = os.path.join(self.module_dir, "data")
         # Load command line opts
         self._setup_logger()
-        config_loader = ConfigLoader(self.job_conf_path)
-        self.conf = config_loader.get_module_conf(self.module_name)
+        from .admin_util import get_module_conf
+        self.conf = get_module_conf(self.module_name, module_type="annotator")
         if self.conf is None:
             from .exceptions import ModuleLoadingError
             raise ModuleLoadingError(self.module_name)

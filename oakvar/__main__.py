@@ -9,7 +9,6 @@ from .cli_version import get_parser_cli_version
 from .cli_store import get_parser_fn_store
 from .cli_system import get_parser_fn_system
 
-
 def get_entry_parser():
     # subparsers
     from argparse import ArgumentParser
@@ -19,7 +18,7 @@ def get_entry_parser():
     )
     sp_entry = p_entry.add_subparsers(title="Commands")
     # run
-    p_run = sp_entry.add_parser(
+    p_ov_run = sp_entry.add_parser(
         "run",
         parents=[get_parser_fn_run()],
         add_help=False,
@@ -27,8 +26,8 @@ def get_entry_parser():
         help="Run a job",
         epilog="inputs should be the first argument",
     )
-    p_run.r_return = "A string, a named list, or a dataframe. Output of reporters"  # type: ignore
-    p_run.r_examples = [  # type: ignore
+    p_ov_run.r_return = "A string, a named list, or a dataframe. Output of reporters"  # type: ignore
+    p_ov_run.r_examples = [  # type: ignore
         "# Annotate the input file `input` with ClinVar and COSMIC modules and make a VCF-format report of annotated variants.",
         "ov.run.input(inputs=\"input\", annotators=list(\"clinvar\", \"cosmic\"), reports=\"vcf\")"
     ]
@@ -45,7 +44,7 @@ def get_entry_parser():
     p_report.r_return = "A string, a named list, or a dataframe. Output of reporters"  # type: ignore
     p_report.r_examples = [  # type: ignore
         "# Generate a CSV-format report file from the job result file example.sqlite",
-        "ov.report(dbpath=\"example.sqlite\", reporttypes=\"csv\")"
+        "ov.report(dbpath=\"example.sqlite\", reports=\"csv\")"
     ]
 
     # gui
@@ -132,10 +131,31 @@ def handle_exception(e: Exception):
         from traceback import print_exc
         print_exc()
     from .exceptions import ExpectedException
+    import sys
+    isatty = hasattr(sys, 'ps1')  # interactive shell?
+    halt = getattr(e, "halt", False)
     if isinstance(e, ExpectedException):
-        exit(-1)
+        if halt:
+            if isatty:
+                return False
+            else:
+                exit(-1)
+        else:
+            if isatty:
+                return False
+            else:
+                return False
     elif isinstance(e, SystemExit):
-        exit(-2)
+        if halt:
+            if isatty:
+                return False
+            else:
+                exit(-2)
+        else:
+            if isatty:
+                return False
+            else:
+                return False
     else:
         raise e
 
@@ -147,7 +167,9 @@ def main():
         p_entry = get_entry_parser()
         args = p_entry.parse_args()
         if hasattr(args, "func"):
-            args.func(args)
+            ret = args.func(args)
+            if getattr(args, "to") != "stdout":
+                return ret
         else:
             p_entry.parse_args(argv[1:] + ["--help"])
     except Exception as e:
