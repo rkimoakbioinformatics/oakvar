@@ -1,24 +1,25 @@
+from .decorators import cli_func
+
+
 def cli_system_setup(args):
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    args["quiet"] = False
-    fn_system_setup(args)
+    args.quiet = False
+    ov_system_setup(args)
 
 
-def fn_system_setup(args):
+@cli_func
+def ov_system_setup(args):
     from .sysadmin import setup_system
     setup_system(args)
 
 
 def cli_system_md(args):
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    args["quiet"] = False
-    args["to"] = "stdout"
-    return fn_system_md(args)
+    args.quiet = False
+    args.to = "stdout"
+    return ov_system_md(args)
 
 
-def fn_system_md(args):
+@cli_func
+def ov_system_md(args):
     from .sysadmin import set_modules_dir, get_modules_dir
     from .util import quiet_print
     d = args.get("directory")
@@ -33,18 +34,15 @@ def fn_system_md(args):
 
 
 def cli_system_config(args):
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    args["quiet"] = False
-    args["fmt"] = "yaml"
-    args["to"] = "stdout"
-    return fn_system_config(args)
+    args.quiet = False
+    args.fmt = "yaml"
+    args.to = "stdout"
+    return ov_system_config(args)
 
 
-def fn_system_config(args):
+@cli_func
+def ov_system_config(args):
     from .sysadmin import show_system_conf
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
     ret = show_system_conf(args)
     return ret
 

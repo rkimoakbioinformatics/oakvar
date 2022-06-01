@@ -1,12 +1,11 @@
 from oakvar.cli_report import CravatReport
 import sys
 import datetime
-from oakvar.config_loader import ConfigLoader
 import oakvar.constants as constants
 
 class Reporter (CravatReport):
 
-    def __init__ (self, cmd_args, status_writer=None):
+    def __init__ (self, args):
         self.no_log = True
         self.no_status_update = True
         self.levels_to_write = None
@@ -14,11 +13,8 @@ class Reporter (CravatReport):
         self.keep_json_all_mapping = True
         self.data = {}
         self.table = None
-        super().__init__(cmd_args, status_writer)
+        super().__init__(args)
 
-    def setup (self):
-        self.conf = ConfigLoader()
-        
     def write_preface (self, level):
         self.data[level] = []
         self.table = self.data[level]

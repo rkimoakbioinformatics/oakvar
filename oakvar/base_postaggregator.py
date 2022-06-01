@@ -4,7 +4,6 @@ class BasePostAggregator(object):
 
     def __init__(self, cmd_args, status_writer):
         from oakvar.util import get_caller_name
-        from oakvar.config_loader import ConfigLoader
         self.status_writer = status_writer
         self.cmd_arg_parser = None
         self.run_name = None
@@ -19,8 +18,8 @@ class BasePostAggregator(object):
         self.module_name = get_caller_name(cmd_args[0])
         self.parse_cmd_args(cmd_args)
         self._setup_logger()
-        config_loader = ConfigLoader()
-        self.conf = config_loader.get_module_conf(self.module_name)
+        from .admin_util import get_module_conf
+        self.conf = get_module_conf(self.module_name, module_type="postaggregator")
         self.fix_col_names()
         self.dbconn = None
         self.cursor = None

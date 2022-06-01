@@ -1,7 +1,5 @@
 def cli_config_md(args):
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    args["to"] = "stdout"
+    args.to = "stdout"
     return fn_config_md(args)
 
 
@@ -17,10 +15,8 @@ def fn_config_md(args):
 
 
 def cli_config_system(args):
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    args["fmt"] = "yaml"
-    args["to"] = "stdout"
+    args.fmt = "yaml"
+    args.to = "stdout"
     return fn_config_system(args)
 
 
@@ -31,16 +27,14 @@ def fn_config_system(args):
 
 
 def cli_config_oakvar(args):
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    args["fmt"] = "yaml"
-    args["to"] = "stdout"
+    args.fmt = "yaml"
+    args.to = "stdout"
     return fn_config_oakvar(args)
 
 
 def fn_config_oakvar(args):
-    from .admin_util import show_oakvar_conf
-    ret = show_oakvar_conf(args)
+    from .admin_util import show_main_conf
+    ret = show_main_conf(args)
     return ret
 
 

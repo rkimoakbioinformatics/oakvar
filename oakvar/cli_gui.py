@@ -3,6 +3,7 @@ from .sysadmin import get_system_conf
 from aiohttp import web, web_runner
 import logging
 from .sysadmin_const import log_dir_key, modules_dir_key
+from .decorators import cli_func
 
 SERVER_ALREADY_RUNNING = -1
 headless = None
@@ -121,8 +122,9 @@ def setup(args):
         exit()
 
 
-def fn_gui(args):
-    from .util import get_dict_from_namespace, is_compatible_version
+@cli_func
+def ov_gui(args):
+    from .util import is_compatible_version
     from logging.handlers import TimedRotatingFileHandler
     from os.path import abspath, exists
     from sys import stderr
@@ -134,8 +136,6 @@ def fn_gui(args):
     log_path = join(log_dir, "wcravat.log")
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
-
-    args = get_dict_from_namespace(args)
     log_handler = TimedRotatingFileHandler(log_path, when="d", backupCount=30)
     log_formatter = logging.Formatter("%(asctime)s: %(message)s",
                                       "%Y/%m/%d %H:%M:%S")
@@ -721,7 +721,7 @@ def get_parser_fn_gui():
         help="Disables guest mode",
     )
     parser_fn_gui.add_argument("--quiet", default=True, help="Run quietly")
-    parser_fn_gui.set_defaults(func=fn_gui)
+    parser_fn_gui.set_defaults(func=ov_gui)
     return parser_fn_gui
 
 

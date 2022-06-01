@@ -5,7 +5,6 @@ import subprocess
 import yaml
 import json
 from .. import admin_util as au
-from ..config_loader import ConfigLoader
 import sys
 import traceback
 import shutil
@@ -18,7 +17,6 @@ import asyncio
 from multiprocessing import Process, Manager, Queue
 from queue import Empty
 
-cfl = ConfigLoader()
 report_generation_ps = {}
 valid_report_types = None
 servermode = False
@@ -1103,7 +1101,7 @@ async def load_live_modules (module_names=[]):
         include_live_modules = []
         exclude_live_modules = []
     if live_mapper is None:
-        cravat_conf = au.get_cravat_conf()
+        cravat_conf = au.get_main_conf()
         if 'genemapper' in cravat_conf:
             default_mapper = cravat_conf['genemapper']
         else:
