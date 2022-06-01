@@ -10,7 +10,6 @@ class BaseMapper(object):
     def __init__(self, *inargs, **inkwargs):
         import os
         from time import time
-        from oakvar.config_loader import ConfigLoader
         import pkg_resources
         self.cmd_parser = None
         self.input_path = None
@@ -54,8 +53,8 @@ class BaseMapper(object):
         self.gene_info = {}
         # self.written_primary_transc = set([])
         self._setup_logger()
-        config_loader = ConfigLoader()
-        self.conf = config_loader.get_module_conf(self.module_name)
+        from .admin_util import get_module_conf
+        self.conf = get_module_conf(self.module_name, module_type="mapper")
         self.cravat_version = pkg_resources.get_distribution("oakvar").version
 
     def _define_main_cmd_args(self):

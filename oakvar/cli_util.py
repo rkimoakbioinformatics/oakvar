@@ -1,144 +1,18 @@
-"""
-def converttohg38(args):
-    from subprocess import check_output
-    import sqlite3
-    from .constants import get_liftover_chain_path_for_src_genome
-    from pyliftover import LiftOver
-    from os.path import exists
-    from os import remove
-    if args.sourcegenome not in ["hg18", "hg19"]:
-        print("Source genome should be either hg18 or hg19.")
-        exit()
-    if exists(args.db) == False:
-        print(args.db, "does not exist.")
-        exit()
-    liftover = LiftOver(
-        get_liftover_chain_path_for_src_genome(args.sourcegenome))
-    print("Extracting table schema from DB...")
-    cmd = ["sqlite3", args.db, ".schema"]
-    output = check_output(cmd)
-    sqlpath = args.db + ".newdb.sql"
-    wf = open(sqlpath, "w")
-    wf.write(output.decode())
-    wf.close()
-    newdbpath = ".".join(args.db.split(".")[:-1]) + ".hg38.sqlite"
-    if exists(newdbpath):
-        print("Deleting existing hg38 DB...")
-        remove(newdbpath)
-    print("Creating " + newdbpath + "...")
-    newdb = sqlite3.connect(newdbpath)
-    newc = newdb.cursor()
-    print("Creating same table(s) in " + newdbpath + "...")
-    cmd = ["sqlite3", newdbpath, ".read " + sqlpath]
-    output = check_output(cmd)
-    db = sqlite3.connect(args.db)
-    c = db.cursor()
-    if args.tables == None:
-        print("tables not given. All tables will be tried.")
-        output = check_output(["sqlite3", args.db, ".table"])
-        args.tables = output.decode().split()
-        args.tables.sort()
-        print("The following tables will be examined:", ", ".join(args.tables))
-    tables_toconvert = []
-    tables_tocopy = []
-    for table in args.tables:
-        c.execute("select * from " + table + " limit 1")
-        cols = [v[0] for v in c.description]
-        hit = False
-        if args.chromcol is not None and args.chromcol not in cols:
-            tables_tocopy.append(table)
-            continue
-        for col in args.cols:
-            if col in cols:
-                hit = True
-                break
-        if hit:
-            tables_toconvert.append(table)
-        else:
-            tables_tocopy.append(table)
-    print(
-        "Tables to convert:",
-        ", ".join(tables_toconvert) if len(tables_toconvert) > 0 else "none",
-    )
-    print(
-        "Tables to copy:",
-        ", ".join(tables_tocopy) if len(tables_tocopy) > 0 else "none",
-    )
-    wf = open(newdbpath + ".noconversion", "w")
-    count_interval = 10000
-    for table in tables_toconvert:
-        print("Converting " + table + "...")
-        c.execute("select * from " + table)
-        allcols = [v[0] for v in c.description]
-        colnos = []
-        for col in args.cols:
-            if col in allcols:
-                colnos.append(allcols.index(col))
-        if args.chromcol is None:
-            chromcolno = None
-        else:
-            chromcolno = allcols.index(args.chromcol)
-        count = 0
-        for row in c.fetchall():
-            row = list(row)
-            if chromcolno is not None:
-                chrom = row[chromcolno]
-            else:
-                chrom = table
-            if chrom.startswith("chr") == False:
-                chrom = "chr" + chrom
-            for colno in colnos:
-                pos = int(row[colno])
-                liftover_out = liftover.convert_coordinate(chrom, pos)
-                if liftover_out == None:
-                    print("- no liftover mapping:", chrom + ":" + str(pos))
-                    continue
-                if liftover_out == []:
-                    wf.write(table + ":" + ",".join([str(v)
-                                                     for v in row]) + "\n")
-                    continue
-                newpos = liftover_out[0][1]
-                row[colno] = newpos
-            q = ("insert into " + table + " values(" + ",".join([
-                '"' + v + '"' if type(v) == type("a") else str(v) for v in row
-            ]) + ")")
-            newc.execute(q)
-            count += 1
-            if count % count_interval == 0:
-                print("  " + str(count) + "...")
-        print("  " + table + ": done.", count, "rows converted")
-    wf.close()
-    for table in tables_tocopy:
-        count = 0
-        print("Copying " + table + "...")
-        c.execute("select * from " + table)
-        for row in c.fetchall():
-            row = list(row)
-            q = ("insert into " + table + " values(" + ",".join([
-                '"' + v + '"' if type(v) == type("a") else str(v) for v in row
-            ]) + ")")
-            newc.execute(q)
-            count += 1
-            if count % count_interval == 0:
-                print("  " + str(count) + "...")
-        print("  " + table + ": done.", count, "rows converted")
-    newdb.commit()
-"""
+from .decorators import cli_func
 
 
-def fn_util_updateresult(args):
+@cli_func
+def ov_util_updateresult(args):
     import sqlite3
     from os import listdir
     from os.path import join, isdir, exists
     from shutil import copy
     from distutils.version import LooseVersion
-    from .util import get_dict_from_namespace
     migrate_functions = {}
     migrate_checkpoints = [
         LooseVersion(v) for v in list(migrate_functions.keys())
     ]
     migrate_checkpoints.sort()
-    args = get_dict_from_namespace(args)
 
     def get_dbpaths(dbpaths, path):
         for fn in listdir(path):
@@ -217,7 +91,8 @@ def fn_util_updateresult(args):
             print("  converting [{}] was not successful.".format(dbpath))
 
 
-def fn_util_addjob(args):
+@cli_func
+def ov_util_addjob(args):
     from json import dump
     from shutil import copyfile
     from time import sleep
@@ -360,25 +235,23 @@ def get_sqliteinfo(args):
                 return dump(ret_dict, default_flow_style=False)
 
 
-def fn_util_sqliteinfo(args):
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    args["fmt"] = "yaml"
-    args["to"] = "stdout"
+@cli_func
+def ov_util_sqliteinfo(args):
+    args.fmt = "yaml"
+    args.to = "stdout"
     get_sqliteinfo(args)
 
 
 # For now, only jobs with same annotators are allowed.
-def fn_util_mergesqlite(args):
+@cli_func
+def ov_util_mergesqlite(args):
     import sqlite3
     from json import loads, dumps
     from shutil import copy
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    dbpaths = args["path"]
+    dbpaths = args.path
     if len(dbpaths) < 2:
         exit("Multiple sqlite file paths should be given")
-    outpath = args["outpath"]
+    outpath = args.outpath
     if outpath.endswith(".sqlite") == False:
         outpath = outpath + ".sqlite"
     # Checks columns being the same.
@@ -509,10 +382,9 @@ def fn_util_mergesqlite(args):
     outconn.commit()
 
 
-def fn_util_filtersqlite(args):
+@cli_func
+def ov_util_filtersqlite(args):
     from asyncio import get_event_loop
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
     loop = get_event_loop()
     loop.run_until_complete(filtersqlite_async(args))
 
@@ -811,7 +683,7 @@ def get_parser_fn_util():
         type=str,
         default="default",
     )
-    parser_fn_util_addjob.set_defaults(func=fn_util_addjob)
+    parser_fn_util_addjob.set_defaults(func=ov_util_addjob)
     parser_fn_util_addjob.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_fn_util_addjob.r_examples = [  # type: ignore
         "# Add a result file to the job list of a user",
@@ -828,7 +700,7 @@ def get_parser_fn_util():
                                             dest="outpath",
                                             required=True,
                                             help="Output SQLite file path")
-    parser_fn_util_mergesqlite.set_defaults(func=fn_util_mergesqlite)
+    parser_fn_util_mergesqlite.set_defaults(func=ov_util_mergesqlite)
     parser_fn_util_mergesqlite.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_fn_util_mergesqlite.r_examples = [  # type: ignore
         "# Merge two OakVar analysis result files into one SQLite file",
@@ -845,7 +717,7 @@ def get_parser_fn_util():
         "--fmt", default="json", help="Output format. text / json / yaml")
     parser_fn_util_showsqliteinfo.add_argument(
         "--to", default="return", help="Output to. stdout / return")
-    parser_fn_util_showsqliteinfo.set_defaults(func=fn_util_sqliteinfo)
+    parser_fn_util_showsqliteinfo.set_defaults(func=ov_util_sqliteinfo)
     parser_fn_util_showsqliteinfo.r_return = "A named list. Information of a job SQLite file"  # type: ignore
     parser_fn_util_showsqliteinfo.r_examples = [  # type: ignore
         "# Get the named list of the information of an analysis result file",
@@ -891,7 +763,7 @@ def get_parser_fn_util():
         default=None,
         help="Sample IDs to exclude",
     )
-    parser_fn_util_filtersqlite.set_defaults(func=fn_util_filtersqlite)
+    parser_fn_util_filtersqlite.set_defaults(func=ov_util_filtersqlite)
     parser_fn_util_filtersqlite.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_fn_util_filtersqlite.r_examples = [  # type: ignore
         "# Filter an analysis result file with an SQL filter set",

@@ -1,4 +1,3 @@
-from oakvar import admin_util as au
 import os
 import json
 from multiprocessing import Process, Manager
@@ -86,13 +85,11 @@ def fetch_install_queue (install_queue, install_state, local_modules_changed):
     while True:
         try:
             data = install_queue.get()
-            au.mic.update_local()
             module_name = data['module']
             module_version = data['version']
             install_state['kill_signal'] = False
             stage_handler = InstallProgressMpDict(module_name, module_version, install_state, quiet=False)
             au.install_module(module_name, version=module_version, stage_handler=stage_handler, stages=100)
-            au.mic.update_local()
             local_modules_changed.set()
             time.sleep(1)
         except Exception as _:

@@ -1,104 +1,96 @@
+from .decorators import cli_func
+
+
 def cli_store_publish(args):
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    args["quiet"] = False
-    return fn_store_publish(args)
+    args.quiet = False
+    return ov_store_publish(args)
 
 
-def fn_store_publish(args):
+@cli_func
+def ov_store_publish(args):
     from .sysadmin import get_system_conf
     from .admin_util import publish_module
     from getpass import getpass
-    if args["md"] is not None:
+    if args.get("md"):
         from . import sysadmin_const
-        sysadmin_const.custom_modules_dir = args["md"]
+        sysadmin_const.custom_modules_dir = args.get("md")
     sys_conf = get_system_conf()
-    if args["user"] is None:
+    if args.get("user") is None:
         if "publish_username" in sys_conf:
             args["user"] = sys_conf["publish_username"]
         else:
             args["user"] = input("Username: ")
-    if args["password"] is None:
+    if args.get("password") is None:
         if "publish_password" in sys_conf:
             args["password"] = sys_conf["publish_password"]
         else:
             args["password"] = getpass()
-    return publish_module(args["module"],
-                          args["user"],
-                          args["password"],
-                          overwrite=args["overwrite"],
-                          include_data=args["data"],
+    return publish_module(args.get("module"),
+                          args.get("user"),
+                          args.get("password"),
+                          overwrite=args.get("overwrite"),
+                          include_data=args.get("data"),
                           quiet=args.get("quiet"))
 
 
 def cli_store_createaccount(args):
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    args["quiet"] = False
-    return fn_store_createaccount(args)
+    args.quiet = False
+    return ov_store_createaccount(args)
 
 
-def fn_store_createaccount(args):
+@cli_func
+def ov_store_createaccount(args):
     from .admin_util import create_account
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    ret = create_account(args["username"], args["password"])
+    ret = create_account(args.username, args.password)
     return ret
 
 
 def cli_store_changepassword(args):
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    args["quiet"] = False
-    return fn_store_changepassword(args)
+    args.quiet = False
+    return ov_store_changepassword(args)
 
 
-def fn_store_changepassword(args):
+@cli_func
+def ov_store_changepassword(args):
     from .admin_util import change_password
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    ret = change_password(args["username"], args["current_password"],
-                          args["new_password"])
+    ret = change_password(args.username, args.current_password,
+                          args.new_password)
     return ret
 
 
 def cli_store_resetpassword(args):
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    args = get_dict_from_namespace(args)
-    args["quiet"] = False
-    return fn_store_resetpassword(args)
+    args.quiet = False
+    return ov_store_resetpassword(args)
 
 
-def fn_store_resetpassword(args):
+@cli_func
+def ov_store_resetpassword(args):
     from .admin_util import send_reset_email
-    ret = send_reset_email(args["username"], args=args)
+    ret = send_reset_email(args.get("username"), args=args)
     return ret
 
 
 def cli_store_verifyemail(args):
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    args["quiet"] = False
-    return fn_store_verifyemail(args)
+    args.quiet = False
+    return ov_store_verifyemail(args)
 
 
-def fn_store_verifyemail(args):
+@cli_func
+def ov_store_verifyemail(args):
     from .admin_util import send_verify_email
-    ret = send_verify_email(args["username"], args=args)
+    ret = send_verify_email(args.get("username"), args=args)
     return ret
 
 
 def cli_store_checklogin(args):
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    args["quiet"] = False
-    return fn_store_verifyemail(args)
+    args.quiet = False
+    return ov_store_verifyemail(args)
 
 
-def fn_store_checklogin(args):
+@cli_func
+def ov_store_checklogin(args):
     from .admin_util import check_login
-    ret = check_login(args.username, args["password"])
+    ret = check_login(args.username, args.get("password"))
     return ret
 
 

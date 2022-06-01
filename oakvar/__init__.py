@@ -32,34 +32,64 @@ def raise_break(__signal_number__, __stack_frame__):
 import signal
 
 signal.signal(signal.SIGINT, raise_break)
-
 from .base_converter import BaseConverter
 from .base_annotator import BaseAnnotator
 from .base_mapper import BaseMapper
 from .base_postaggregator import BasePostAggregator
 from .base_commonmodule import BaseCommonModule
-from .cli_report import CravatReport, fn_ov_report
-from .config_loader import ConfigLoader
+from .cli_report import CravatReport
 from .cravat_filter import CravatFilter
 from .cli_run import Cravat
 from .constants import crx_def
 from .exceptions import *
 from . import constants
 from . import __main__ as cli
-if BaseConverter is None: raise NotImplemented
-if BaseAnnotator is None: raise NotImplemented
-if BaseMapper is None: raise NotImplemented
-if BasePostAggregator is None: raise NotImplemented
-if BaseCommonModule is None: raise NotImplemented
-if CravatReport is None or fn_ov_report is None: raise NotImplemented
-if ConfigLoader is None: raise NotImplemented
-if CravatFilter is None: raise NotImplemented
-if Cravat is None: raise NotImplemented
-if crx_def is None: raise NotImplemented
-if constants is None: raise NotImplemented
-if cli is None: raise NotImplemented
+from .cli_module import ov_module_info
+from .cli_module import ov_module_install
+from .cli_module import ov_module_installbase
+from .cli_module import ov_module_ls
+from .cli_module import ov_module_uninstall
+from .cli_module import ov_module_update
+from .cli_run import ov_run
+from .cli_report import ov_report
+from .cli_gui import ov_gui
+from .cli_issue import ov_issue
+from .cli_new import ov_new_exampleinput
+from .cli_new import ov_new_annotator
+from .cli_store import ov_store_changepassword
+from .cli_store import ov_store_checklogin
+from .cli_store import ov_store_createaccount
+from .cli_store import ov_store_publish
+from .cli_store import ov_store_resetpassword
+from .cli_store import ov_store_verifyemail
+from .cli_system import ov_system_config
+from .cli_system import ov_system_md
+from .cli_system import ov_system_setup
+from .cli_test import ov_util_test
+from .cli_util import ov_util_addjob
+from .cli_util import ov_util_filtersqlite
+from .cli_util import ov_util_mergesqlite
+from .cli_util import ov_util_sqliteinfo
+from .cli_util import ov_util_updateresult
+from .cli_version import ov_version
+
 
 wgs = None
+if BaseConverter or BaseAnnotator or BaseMapper or BasePostAggregator or BaseCommonModule: pass
+if CravatReport or CravatFilter or Cravat: pass
+if crx_def or constants: pass
+if cli or wgs: pass
+if ov_module_info or ov_module_install or ov_module_installbase or ov_module_ls or ov_module_uninstall or ov_module_update: pass
+if ov_report: pass
+if ov_run: pass
+if ov_gui: pass
+if ov_issue: pass
+if ov_new_exampleinput or ov_new_annotator: pass
+if ov_store_verifyemail or ov_store_resetpassword or ov_store_publish or ov_store_createaccount or ov_store_checklogin or ov_store_changepassword: pass
+if ov_system_setup or ov_system_md or ov_system_config: pass
+if ov_util_test: pass
+if ov_util_addjob or ov_util_filtersqlite or ov_util_mergesqlite or ov_util_sqliteinfo or ov_util_updateresult: pass
+if ov_version: pass
 
 
 def get_live_annotator(module_name):
@@ -93,12 +123,13 @@ def get_live_mapper(module_name):
     return module
 
 
-def get_module(module_name):
+def get_module(module_name, module_type=None):
     import os
     from .admin_util import get_local_module_info
+    from .admin_util import get_module_conf
     from .util import load_class
     ModuleClass = None
-    config_loader = ConfigLoader()
+    module_conf = get_module_conf(module_name, module_type=module_type)
     module_info = get_local_module_info(module_name)
     if module_info is not None:
         script_path = module_info.script_path
@@ -106,7 +137,7 @@ def get_module(module_name):
         ModuleClass.script_path = script_path
         ModuleClass.module_name = module_name
         ModuleClass.module_dir = os.path.dirname(script_path)
-        ModuleClass.conf = config_loader.get_module_conf(module_name)
+        ModuleClass.conf = module_conf
     return ModuleClass
 
 
