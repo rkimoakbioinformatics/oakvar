@@ -1,3 +1,6 @@
+from asyncore import write
+
+
 STDIN = "stdin"
 
 
@@ -215,7 +218,7 @@ class MasterCravatConverter(object):
         if "conf" in parsed_args:
             self.conf.update(parsed_args["conf"])
         self.unique_variants = parsed_args["unique_variants"]
-        if "status_write" in parsed_args:
+        if "status_writer" in parsed_args:
             self.status_writer = parsed_args["status_writer"]
 
     def open_input_file(self, input_path):

@@ -418,17 +418,58 @@ def get_current_time_str():
     return t.strftime("%Y:%m:%d %H:%M:%S")
 
 
+def get_args_conf(args: dict) -> dict:
+    if args is None:
+        return {}
+    import json
+    # fill with conf string
+    confs = args.get("confs")
+    if confs:
+        try:
+            confs_json = json.loads(confs.replace("'", '"'))
+        except Exception:
+            from .exceptions import ConfigurationError
+            raise ConfigurationError()
+        for k, v in confs_json.items():
+            if k not in args or not args[k]:
+                args[k] = v
+    # fill with conf
+    conf_path = args.get("confpath")
+    if conf_path:
+        from .admin_util import load_yml_conf
+        conf = load_yml_conf(conf_path).get("run", {})
+        args["conf"] = conf
+        if conf:
+            for k, v in conf.items():
+                if k not in args or not args[k]:
+                    args[k] = v
+    return args
+
+def get_args_package(args: dict) -> dict:
+    if args is None:
+        return {}
+    package = args.get("package")
+    if package:
+        from .admin_util import get_local_module_info
+        m_info = get_local_module_info(package)
+        if m_info:
+            package_conf = m_info.conf
+            package_conf_run = package_conf.get("run")
+            if package_conf_run:
+                for k, v in package_conf_run.items():
+                    if k not in args or not args[k]:
+                        args[k] = v
+    return args
+
 def get_args(parser, inargs, inkwargs):
     from types import SimpleNamespace
     from argparse import Namespace
-    # Combines arguments in various formats.
+    # given args. Combines arguments in various formats.
     inarg_dict = {}
     if inargs is not None:
         for inarg in inargs:
             t = type(inarg)
             if t == list:  # ['-t', 'text']
-                # if inarg[0].endswith(".py"):
-                #    inarg = inarg[1:]
                 inarg_dict.update(**vars(parser.parse_args(inarg)))
             elif t == Namespace:  # already parsed by a parser.
                 inarg_dict.update(**vars(inarg))
@@ -438,9 +479,21 @@ def get_args(parser, inargs, inkwargs):
                 inarg_dict.update(inarg)
     if inkwargs is not None:
         inarg_dict.update(inkwargs)
+    # conf
+    inarg_dict = get_args_conf(inarg_dict)
+    # package
+    inarg_dict = get_args_package(inarg_dict)
+    # defaults
     arg_dict = get_argument_parser_defaults(parser)
     arg_dict.update(inarg_dict)
-    # args = SimpleNamespace(**arg_dict)
+    # convert value to list if needed.
+    for action in parser._actions:
+        if action.dest == "help": continue
+        if action.nargs in ["+", "*"]:
+            key = action.dest
+            value = arg_dict[key]
+            if value and type(value) is not list:
+                arg_dict[key] = [value]
     return arg_dict
 
 
@@ -515,7 +568,6 @@ def get_dict_from_namespace(n):
 
 
 def quiet_print(msg, args=None):
-    args = get_dict_from_namespace(args)
     quiet = True
     if args is not None:
         quiet = args.get("quiet", True)

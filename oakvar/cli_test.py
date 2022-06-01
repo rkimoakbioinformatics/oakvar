@@ -1,6 +1,7 @@
 import sys
 from abc import ABC, abstractmethod
 from .exceptions import ExpectedException
+from .decorators import cli_func
 
 
 class NoReportReader(ExpectedException):
@@ -537,6 +538,7 @@ class Tester:
         from .admin_util import get_local_module_info
         from time import time
         from subprocess import call, STDOUT
+        from .util import quiet_print
         input_msg = (
             "" if self.input_file == "input" else self.input_file
         )  # if there is more than one test for the module, include the test file in the log.
@@ -586,7 +588,7 @@ class Tester:
         else:
             cmd_list.extend(["-l", "hg38"])
         if self.args["to"] == "stdout":
-            print(" ".join(cmd_list))
+            quiet_print(" ".join(cmd_list), args=self.args)
         exit_code = call(" ".join(cmd_list),
                          shell=True,
                          stdout=self.log,
@@ -737,9 +739,10 @@ class Tester:
 
     # Write a message to the screen and to the log file.
     def _report(self, s, stdout=False):
+        from .util import quiet_print
         self.log.write(s + "\n")
         if stdout:
-            print(s, flush=True)
+            quiet_print(s, args=self.args)
         else:
             return s
 
@@ -769,16 +772,17 @@ class Tester:
 
 
 def cli_util_test(args):
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    args["quiet"] = False
-    fn_util_test(args)
+    args.quiet = False
+    args.to = "stdout"
+    return ov_util_test(args)
 
 
-def fn_util_test(args):
+@cli_func
+def ov_util_test(args):
     from os.path import exists
     from os import makedirs
     from .admin_util import get_local_module_types, get_local_module_info
+    from .util import quiet_print
     rundir = args.get("rundir")
     if rundir is None:
         num = 1
@@ -803,7 +807,6 @@ def fn_util_test(args):
     for module_name in module_names:
         module = get_local_module_info(module_name)
         if module is None:
-            # print(f"{module_name} does not exist in the system. Passing.")
             continue
         for test_input_file in module.tests:
             tester = Tester(module, args, test_input_file)
@@ -819,14 +822,12 @@ def fn_util_test(args):
                 fail_msg = module_name + ("" if test_input_file == "input" else
                                           " " + test_input_file)
                 modules_failed.append(fail_msg)
-                result[module_name] = {"passed": False, "msg": fail_msg}
-    if passed == 0 and failed == 0:
-        return None
+                result[module_name] = {"passed": False, "msg": fail_msg, "log": tester.log_path}
     modules_failed.sort()
     if args.get("to") == "stdout":
-        print(f"passed {passed} failed {failed}")
+        quiet_print(f"passed {passed} failed {failed}", args=args)
     else:
-        return (passed, failed, result)
+        return {"result": result, "num_passed": passed, "num_failed": failed}
 
 
 def get_parser_cli_util_test():
@@ -846,7 +847,7 @@ def get_parser_cli_util_test():
         nargs="+",
         help="Type of module(s) to test (e.g. annotators)")
     parser_cli_util_test.add_argument(
-        "--to", default="stdout", help="stdout to print / return to return")
+        "--to", default="return", help="stdout to print / return to return")
     parser_cli_util_test.add_argument("--quiet",
                                       default=True,
                                       help="Run quietly")

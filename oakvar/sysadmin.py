@@ -31,12 +31,12 @@ def setup_system(args):
     if not exists(main_conf_path):
         copyfile(join(get_packagedir(), main_conf_fname), main_conf_path)
     # install base modules.
-    from .cli_module import fn_module_installbase
+    from .cli_module import ov_module_installbase
     from os import environ
     from .sysadmin_const import sys_conf_path_key
     from .sysadmin import get_env_key
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
-    fn_module_installbase({"conf": conf})
+    ov_module_installbase({"conf": conf})
 
 
 def get_root_dir(conf=None):

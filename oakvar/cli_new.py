@@ -1,26 +1,26 @@
+from .decorators import cli_func
+
 def cli_new_exampleinput(args):
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    fn_new_exampleinput(args)
+    ov_new_exampleinput(args)
 
 
-def fn_new_exampleinput(args):
+@cli_func
+def ov_new_exampleinput(args):
     from .admin_util import fn_new_exampleinput
-    return fn_new_exampleinput(args["directory"])
+    return fn_new_exampleinput(args.get("directory"))
 
 
 def cli_new_annotator(args):
-    from .util import get_dict_from_namespace
-    args = get_dict_from_namespace(args)
-    args["quiet"] = False
-    return fn_new_annotator(args)
+    args.quiet = False
+    return ov_new_annotator(args)
 
 
-def fn_new_annotator(args):
+@cli_func
+def ov_new_annotator(args):
     from .admin_util import new_annotator, get_local_module_info
     from .util import quiet_print
-    new_annotator(args["annotator_name"])
-    module_info = get_local_module_info(args["annotator_name"])
+    new_annotator(args.get("annotator_name"))
+    module_info = get_local_module_info(args.get("annotator_name"))
     if module_info is not None:
         quiet_print(f"created {module_info.directory}", args)
         return module_info.directory

@@ -502,18 +502,12 @@ def get_annotator_script_path(module_name):
     return module_path
 
 
-def get_cravat_conf():
-    from oakvar.config_loader import ConfigLoader
-    conf = ConfigLoader()
-    cravat_conf = conf.get_cravat_conf()
-    return cravat_conf
-
-
-def get_cravat_conf_info():
+def get_main_conf():
     from .sysadmin import get_main_conf_path
-    cravat_conf = get_cravat_conf()
-    cravat_conf.update({"cravat_conf_path": get_main_conf_path()})
-    return cravat_conf
+    conf_path = get_main_conf_path()
+    ret = load_yml_conf(conf_path)
+    ret["conf_path"] = conf_path
+    return ret
 
 
 def get_current_package_version():
@@ -523,7 +517,7 @@ def get_current_package_version():
 
 
 def get_default_assembly():
-    conf = get_cravat_conf()
+    conf = get_main_conf()
     default_assembly = conf.get("default_assembly", None)
     return default_assembly
 
@@ -592,7 +586,7 @@ def get_install_deps(module_name, version=None, skip_installed=True):
 
 
 def get_last_assembly():
-    conf = get_cravat_conf()
+    conf = get_main_conf()
     last_assembly = conf.get("last_assembly")
     return last_assembly
 
@@ -690,40 +684,47 @@ def get_mapper_script_path(module_name):
     return module_path
 
 
-def get_module_conf_path(module_name, module_type=None):
-    import os
+def get_module_dir(module_name, module_type=None):
+    from os import listdir
+    from os.path import join
+    from os.path import exists
+    from os.path import isdir
     from .sysadmin import get_modules_dir
-    conf_path = None
+    if exists(module_name):
+        return module_name
     modules_dir = get_modules_dir()
-    yml_fn = os.path.basename(module_name) + ".yml"
-    p = os.path.join(module_name, yml_fn)
-    if os.path.exists(p):  # module folder is given.
-        conf_path = p
+    if module_type:  # module name and type are given.
+        p = join(modules_dir, module_type + "s", module_name)
+        if exists(p):
+            return p
+    else:  # module folder should be searched.
+        type_fns = listdir(modules_dir)
+        for type_fn in type_fns:
+            type_dir = join(modules_dir, type_fn)
+            if isdir(type_dir) == False:
+                continue
+            module_fns = listdir(type_dir)
+            for module_fn in module_fns:
+                if module_fn == module_name:
+                    return join(modules_dir, type_fn, module_fn)
+    return None
+
+
+def get_module_conf(module_name, module_type=None):
+    conf_path = get_module_conf_path(module_name, module_type=module_type)
+    if conf_path:
+        return load_yml_conf(conf_path)
     else:
-        if module_type is not None:  # module name and type are given.
-            p = os.path.join(modules_dir, module_type, module_name, yml_fn)
-            if os.path.exists(p):
-                conf_path = p
-        else:  # module folder should be searched.
-            typefns = os.listdir(modules_dir)
-            conf_path = None
-            for typefn in typefns:
-                typepath = os.path.join(modules_dir, typefn)
-                if os.path.isdir(typepath) == False:
-                    continue
-                modulefns = os.listdir(typepath)
-                for modulefn in modulefns:
-                    if os.path.basename(modulefn) != module_name:
-                        continue
-                    modulepath = os.path.join(typepath, modulefn)
-                    if os.path.isdir(modulepath):
-                        path = os.path.join(modulepath, module_name + ".yml")
-                        if os.path.exists(path):
-                            conf_path = path
-                            break
-                if conf_path is not None:
-                    break
-    return conf_path
+        return None
+
+
+def get_module_conf_path(module_name, module_type=None):
+    from os.path import join
+    from os.path import basename
+    module_dir = get_module_dir(module_name, module_type=module_type)
+    if not module_dir: return None
+    yml_fn = basename(module_name) + ".yml"  # module_name can be a folder path.
+    return join(module_dir, yml_fn)
 
 
 def get_package_versions():
@@ -1540,7 +1541,7 @@ def send_verify_email(username, args=None):
 def set_cravat_conf_prop(key, val):
     import oyaml as yaml
     from .sysadmin import get_main_conf_path
-    conf = get_cravat_conf()
+    conf = get_main_conf()
     conf[key] = val
     wf = open(get_main_conf_path(), "w")
     yaml.dump(conf, wf, default_flow_style=False)
@@ -1553,10 +1554,10 @@ def set_jobs_dir(d):
 
 
 # return a list of module types (e.g. annotators) in the local install
-def show_oakvar_conf(args):
+def show_main_conf(args):
     import oyaml as yaml
     from .util import quiet_print
-    conf = get_cravat_conf_info()
+    conf = get_main_conf()
     if args["fmt"] == "yaml":
         conf = yaml.dump(conf, default_flow_style=False)
     if args["to"] == "stdout":
@@ -1668,3 +1669,4 @@ def get_max_version_supported_for_migration():
 
 
 mic = None
+custom_sys_conf = {}
