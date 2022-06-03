@@ -7,7 +7,7 @@ from .cli_new import get_parser_fn_new
 from .cli_issue import get_parser_fn_issue
 from .cli_version import get_parser_cli_version
 from .cli_store import get_parser_fn_store
-from .cli_system import get_parser_fn_system
+from .cli_system import get_parser_ov_system
 
 def get_entry_parser():
     # subparsers
@@ -16,6 +16,7 @@ def get_entry_parser():
         description=
         "OakVar. Genomic variant analysis platform. https://github.com/rkimoakbioinformatics/oakvar"
     )
+    p_entry.add_argument("--to", default="stdout")
     sp_entry = p_entry.add_subparsers(title="Commands")
     # run
     p_ov_run = sp_entry.add_parser(
@@ -114,7 +115,7 @@ def get_entry_parser():
 
     # system
     _ = sp_entry.add_parser(name="system",
-                            parents=[get_parser_fn_system()],
+                            parents=[get_parser_ov_system()],
                             add_help=False,
                             help="Setup OakVar")
     return p_entry
@@ -168,8 +169,9 @@ def main():
         args = p_entry.parse_args()
         if hasattr(args, "func"):
             ret = args.func(args)
-            if getattr(args, "to") != "stdout":
+            if getattr(args, "to", "return") != "stdout":
                 return ret
+            return True
         else:
             p_entry.parse_args(argv[1:] + ["--help"])
     except Exception as e:

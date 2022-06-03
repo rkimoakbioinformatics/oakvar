@@ -1,6 +1,8 @@
 from .decorators import cli_func
+from .decorators import cli_entry
 
 
+"""
 @cli_func
 def ov_util_updateresult(args):
     import sqlite3
@@ -89,6 +91,12 @@ def ov_util_updateresult(args):
             from traceback import print_exc
             print_exc()
             print("  converting [{}] was not successful.".format(dbpath))
+"""
+
+
+@cli_entry
+def cli_ov_util_addjob(args):
+    return ov_util_addjob(args)
 
 
 @cli_func
@@ -137,6 +145,7 @@ def ov_util_addjob(args):
         new_status_path = job_dir / status_path.name
         with new_status_path.open("w") as wf:
             dump(statusd, wf, indent=2, sort_keys=True)
+    return True
 
 
 def variant_id(chrom, pos, ref, alt):
@@ -235,14 +244,22 @@ def get_sqliteinfo(args):
                 return dump(ret_dict, default_flow_style=False)
 
 
+@cli_entry
+def cli_ov_util_sqliteinfo(args):
+    ov_util_sqliteinfo(args)
+
+
 @cli_func
 def ov_util_sqliteinfo(args):
-    args.fmt = "yaml"
-    args.to = "stdout"
-    get_sqliteinfo(args)
+    return get_sqliteinfo(args)
 
+
+@cli_entry
+def cli_ov_util_mergesqlite(args):
+    ov_util_mergesqlite(args)
 
 # For now, only jobs with same annotators are allowed.
+@cli_entry
 @cli_func
 def ov_util_mergesqlite(args):
     import sqlite3
@@ -380,13 +397,19 @@ def ov_util_mergesqlite(args):
     ])
     outc.execute(q, [v])
     outconn.commit()
+    return True
+
+
+@cli_entry
+def cli_ov_util_filtersqlite(args):
+    return ov_util_filtersqlite(args)
 
 
 @cli_func
 def ov_util_filtersqlite(args):
     from asyncio import get_event_loop
     loop = get_event_loop()
-    loop.run_until_complete(filtersqlite_async(args))
+    return loop.run_until_complete(filtersqlite_async(args))
 
 
 def filtersqlite_async_drop_copy_table(c, table_name):

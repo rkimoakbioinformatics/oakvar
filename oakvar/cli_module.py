@@ -1,9 +1,10 @@
 from .decorators import cli_func
+from .decorators import cli_entry
 
+
+@cli_entry
 def cli_ov_module_ls(args):
     args.fmt = "yaml"
-    args.to = "stdout"
-    args.quiet = False
     return ov_module_ls(args)
 
 @cli_func
@@ -32,9 +33,9 @@ def ov_module_ls(args):
             return ret
 
 
+@cli_entry
 def cli_ov_module_info(args):
-    args.quiet = False
-    args.to = "stdout"
+    args.fmt = "yaml"
     return ov_module_info(args)
 
 
@@ -46,7 +47,6 @@ def ov_module_info(args):
         get_remote_module_info,
         get_remote_module_config,
     )
-    from .util import quiet_print
     ret = {}
     module_name = args.get("module", None)
     if module_name is None:
@@ -126,8 +126,8 @@ def ov_module_info(args):
         return ret
 
 
+@cli_entry
 def cli_ov_module_install(args):
-    args.quiet = False
     return ov_module_install(args)
 
 
@@ -237,7 +237,7 @@ def ov_module_install(args):
                 if resp == "y" or resp == "":
                     break
                 if resp == "n":
-                    return False
+                    return True
                 else:
                     continue
         for module_name, module_version in sorted(to_install.items()):
@@ -254,8 +254,8 @@ def ov_module_install(args):
     return True
 
 
+@cli_entry
 def cli_ov_module_update(args):
-    args.quiet = False
     return ov_module_update(args)
 
 
@@ -313,8 +313,8 @@ def ov_module_update(args):
     return True
 
 
+@cli_entry
 def cli_ov_module_uninstall(args):
-    args.quiet = False
     return ov_module_uninstall(args)
 
 
@@ -351,8 +351,8 @@ def ov_module_uninstall(args):
     return True
 
 
+@cli_entry
 def cli_ov_module_installbase(args):
-    args.quiet = False
     return ov_module_installbase(args)
 
 
@@ -598,10 +598,8 @@ class InstallProgressStdout(InstallProgressHandler):
         perc = cur_size / total_size * 100
         # trailing spaces needed to avoid leftover characters on resize
         out = (
-            "\r[{cur_prog}{rem_prog}] {cur_size} / {total_size} ({perc:.0f}%)  "
+            "\r{cur_size} / {total_size} ({perc:.0f}%)  "
             .format(
-                cur_prog="*" * cur_chunk,
-                rem_prog=" " * rem_chunks,
                 cur_size=humanize_bytes(cur_size),
                 total_size=humanize_bytes(total_size),
                 perc=perc,
