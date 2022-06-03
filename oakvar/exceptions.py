@@ -3,6 +3,7 @@ class ExpectedException(Exception):
     traceback = False
     handled = False
     msg = ""
+    returncode = 1
 
     def __init__(self, msg=""):
         self.msg = msg
@@ -10,7 +11,7 @@ class ExpectedException(Exception):
 
 
 class NormalExit(ExpectedException):
-    pass
+    returncode = 0
 
 
 class NoGenomeException(ExpectedException):
@@ -70,6 +71,9 @@ class InvalidFilter(ExpectedException):
 
 
 class ModuleNotExist(ExpectedException):
+    traceback = False
+    halt = True
+    returncode = 3
 
     def __init__(self, module_name):
         super().__init__("module [{}] does not exist.".format(module_name))

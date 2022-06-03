@@ -1,6 +1,3 @@
-from asyncore import write
-
-
 STDIN = "stdin"
 
 
