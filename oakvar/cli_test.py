@@ -2,6 +2,7 @@ import sys
 from abc import ABC, abstractmethod
 from .exceptions import ExpectedException
 from .decorators import cli_func
+from .decorators import cli_entry
 
 
 class NoReportReader(ExpectedException):
@@ -771,7 +772,8 @@ class Tester:
                 return "FAIL"
 
 
-def cli_util_test(args):
+@cli_entry
+def cli_ov_util_test(args):
     args.quiet = False
     args.to = "stdout"
     return ov_util_test(args)
@@ -851,13 +853,13 @@ def get_parser_cli_util_test():
     parser_cli_util_test.add_argument("--quiet",
                                       default=True,
                                       help="Run quietly")
-    parser_cli_util_test.set_defaults(func=cli_util_test)
+    parser_cli_util_test.set_defaults(func=cli_ov_util_test)
     return parser_cli_util_test
 
 
 def main():
     args = get_parser_cli_util_test().parse_args()
-    cli_util_test(args)
+    cli_ov_util_test(args)
 
 
 if __name__ == "__main__":

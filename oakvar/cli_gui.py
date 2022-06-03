@@ -4,6 +4,7 @@ from aiohttp import web, web_runner
 import logging
 from .sysadmin_const import log_dir_key, modules_dir_key
 from .decorators import cli_func
+from .decorators import cli_entry
 
 SERVER_ALREADY_RUNNING = -1
 headless = None
@@ -120,6 +121,11 @@ def setup(args):
             "Error occurred while starting OakVar server.\nCheck {} for details.\n"
             .format(log_path))
         exit()
+
+
+@cli_entry
+def cli_ov_gui(args):
+    return ov_gui(args)
 
 
 @cli_func
@@ -721,7 +727,8 @@ def get_parser_fn_gui():
         help="Disables guest mode",
     )
     parser_fn_gui.add_argument("--quiet", default=True, help="Run quietly")
-    parser_fn_gui.set_defaults(func=ov_gui)
+    parser_fn_gui.add_argument("--to", default="return", help="Run quietly")
+    parser_fn_gui.set_defaults(func=cli_ov_gui)
     return parser_fn_gui
 
 

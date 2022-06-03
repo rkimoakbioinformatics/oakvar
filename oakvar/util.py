@@ -568,6 +568,8 @@ def get_dict_from_namespace(n):
 
 
 def quiet_print(msg, args=None):
+    from .util import get_dict_from_namespace
+    args = get_dict_from_namespace(args)
     quiet = True
     if args is not None:
         quiet = args.get("quiet", True)
