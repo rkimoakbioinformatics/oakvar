@@ -135,23 +135,13 @@ def handle_exception(e: Exception):
     import sys
     isatty = hasattr(sys, 'ps1')  # interactive shell?
     halt = getattr(e, "halt", False)
+    returncode = getattr(e, "returncode", 1)
     if isinstance(e, ExpectedException):
         if halt:
             if isatty:
                 return False
             else:
-                exit(-1)
-        else:
-            if isatty:
-                return False
-            else:
-                return False
-    elif isinstance(e, SystemExit):
-        if halt:
-            if isatty:
-                return False
-            else:
-                exit(-2)
+                exit(returncode)
         else:
             if isatty:
                 return False

@@ -1362,9 +1362,8 @@ class Cravat(object):
             module = au.get_local_module_info(module_name)
             self.announce_module(module)
             if module is None:
-                quiet_print("        {} does not exist.".format(module_name),
-                            self.args)
-                continue
+                from .exceptions import ModuleNotExist
+                raise ModuleNotExist(module_name)
             arg_dict = dict(vars(self.args))
             arg_dict["script_path"] = module.script_path
             arg_dict["dbpath"] = os.path.join(self.output_dir, self.run_name + ".sqlite")

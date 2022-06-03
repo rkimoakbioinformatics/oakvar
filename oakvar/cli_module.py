@@ -202,9 +202,8 @@ def ov_module_install(args):
         else:
             if not module_exists_remote(
                     module_name, version=version, private=args["private"]):
-                quiet_print(f"{module_name}=={version} does not exist.",
-                            args=args)
-                continue
+                from .exceptions import ModuleNotExist
+                raise ModuleNotExist(module_name)
             else:
                 if (not args["force"] and local_info is not None
                         and LooseVersion(
