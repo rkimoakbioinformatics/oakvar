@@ -1,9 +1,9 @@
 from .decorators import cli_func
+from .decorators import cli_entry
 
 
+@cli_entry
 def cli_version(args):
-    args.to = "stdout"
-    args.quiet = False
     return ov_version(args)
 
 

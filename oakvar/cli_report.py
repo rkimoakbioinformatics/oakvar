@@ -1,4 +1,5 @@
 from .decorators import cli_func
+from .decorators import cli_entry
 import sys
 import nest_asyncio
 nest_asyncio.apply()
@@ -950,8 +951,8 @@ class CravatReport:
         return ret
 
 
+@cli_entry
 def cli_ov_report(args):
-    args.quiet = False
     return ov_report(args)
 
 

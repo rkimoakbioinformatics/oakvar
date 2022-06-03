@@ -1,8 +1,9 @@
 from .decorators import cli_func
+from .decorators import cli_entry
 
+
+@cli_entry
 def cli_ov_run(args):
-    args.quiet = False
-    args.to = "stdout"
     ret = ov_run(args)
     return ret
 

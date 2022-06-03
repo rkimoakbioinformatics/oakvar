@@ -1,6 +1,9 @@
 from .decorators import cli_func
+from .decorators import cli_entry
 
-def cli_new_exampleinput(args):
+
+@cli_entry
+def cli_ov_new_exampleinput(args):
     ov_new_exampleinput(args)
 
 
@@ -10,7 +13,8 @@ def ov_new_exampleinput(args):
     return fn_new_exampleinput(args.get("directory"))
 
 
-def cli_new_annotator(args):
+@cli_entry
+def cli_ov_new_annotator(args):
     args.quiet = False
     return ov_new_annotator(args)
 
@@ -45,7 +49,7 @@ def get_parser_fn_new():
     parser_cli_new_exampleinput.add_argument("--quiet",
                                              default=True,
                                              help="Run quietly")
-    parser_cli_new_exampleinput.set_defaults(func=cli_new_exampleinput)
+    parser_cli_new_exampleinput.set_defaults(func=cli_ov_new_exampleinput)
     parser_cli_new_exampleinput.r_return = "A string. Location of the example input file"  # type: ignore
     parser_cli_new_exampleinput.r_examples = [  # type: ignore
         "# Create an example input file in the current working directory",
@@ -68,7 +72,7 @@ def get_parser_fn_new():
     parser_cli_new_annotator.add_argument("--quiet",
                                           default=True,
                                           help="No print to stdout")
-    parser_cli_new_annotator.set_defaults(func=cli_new_annotator)
+    parser_cli_new_annotator.set_defaults(func=cli_ov_new_annotator)
     parser_cli_new_annotator.r_return = "A string. Location of the new annotator module"  # type: ignore
     parser_cli_new_annotator.r_examples = [  # type: ignore
         "# Create an annotator template at the OakVar modules directory/annotators/annotatortest",

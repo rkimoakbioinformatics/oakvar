@@ -1,9 +1,23 @@
+def cli_entry(func):
+    def change_args_for_cli(args):
+        args.quiet = False
+        args.to = "stdout"
+        return func(args)
+
+    return change_args_for_cli
+
 def cli_func(func):
 
     def run_cli_func(*args, **kwargs):
         args = get_args(*args, **kwargs)
         try:
-            return func(args)
+            ret = func(args)
+            if args.get("to") == "stdout":
+                if ret == True:
+                    ret = 0
+                elif ret == False:
+                    ret = 1
+            return ret
         except Exception as e:
             from .__main__ import handle_exception
             handle_exception(e)
@@ -11,8 +25,8 @@ def cli_func(func):
     def get_args(*args, **kwargs):
         from .util import get_args
         parser = get_parser(func.__name__)
-        final_args = get_args(parser, args, kwargs)
-        return final_args
+        args = get_args(parser, args, kwargs)
+        return args
 
     return run_cli_func
 
