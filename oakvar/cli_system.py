@@ -1,8 +1,9 @@
 from .decorators import cli_func
+from .decorators import cli_entry
 
 
-def cli_system_setup(args):
-    args.quiet = False
+@cli_entry
+def cli_ov_system_setup(args):
     ov_system_setup(args)
 
 
@@ -12,9 +13,8 @@ def ov_system_setup(args):
     setup_system(args)
 
 
-def cli_system_md(args):
-    args.quiet = False
-    args.to = "stdout"
+@cli_entry
+def cli_ov_system_md(args):
     return ov_system_md(args)
 
 
@@ -33,10 +33,9 @@ def ov_system_md(args):
         return d
 
 
-def cli_system_config(args):
-    args.quiet = False
+@cli_entry
+def cli_ov_system_config(args):
     args.fmt = "yaml"
-    args.to = "stdout"
     return ov_system_config(args)
 
 
@@ -47,32 +46,49 @@ def ov_system_config(args):
     return ret
 
 
-def get_parser_fn_system():
-    from argparse import ArgumentParser
-    # opens issue report
-    parser_fn_system = ArgumentParser()
-    _subparsers = parser_fn_system.add_subparsers(title="Commands")
-    parser_cli_system_setup = _subparsers.add_parser(
+def add_parser_ov_system_setup(subparsers):
+    parser_cli_ov_system_setup = subparsers.add_parser(
         "setup",
         help="Sets up OakVar system",
         description="Sets up OakVar system")
-    parser_cli_system_setup.add_argument("-f",
+    parser_cli_ov_system_setup.add_argument("-f",
+                                         dest="setup_file",
+                                         default=None,
+                                         help="setup file to use")
+    parser_cli_ov_system_setup.add_argument("--quiet",
+                                         default=True,
+                                         help="Run quietly")
+    parser_cli_ov_system_setup.set_defaults(func=cli_ov_system_setup)
+    parser_cli_ov_system_setup.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
+    parser_cli_ov_system_setup.r_examples = [  # type: ignore
+        "# Set up OakVar with defaults", "ov.system.setup()",
+        "# Set up OakVar with a setup file",
+        "ov.system.setup(setup_file=\"setup.yml\")"
+    ]
+
+def get_parser_ov_system():
+    from argparse import ArgumentParser
+    # opens issue report
+    parser_ov_system = ArgumentParser()
+    subparsers = parser_ov_system.add_subparsers(title="Commands", dest="commands")
+    add_parser_ov_system_setup(subparsers)
+    """parser_cli_system_setup.add_argument("-f",
                                          dest="setup_file",
                                          default=None,
                                          help="setup file to use")
     parser_cli_system_setup.add_argument("--quiet",
                                          default=True,
                                          help="Run quietly")
-    parser_cli_system_setup.set_defaults(func=cli_system_setup)
+    parser_cli_system_setup.set_defaults(func=cli_ov_system_setup)
     parser_cli_system_setup.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_cli_system_setup.r_examples = [  # type: ignore
         "# Set up OakVar with defaults", "ov.system.setup()",
         "# Set up OakVar with a setup file",
         "ov.system.setup(setup_file=\"setup.yml\")"
-    ]
+    ]"""
 
     # md
-    parser_cli_system_md = _subparsers.add_parser(
+    parser_cli_system_md = subparsers.add_parser(
         "md",
         help="displays or changes OakVar modules directory.",
         description="displays or changes OakVar modules directory.",
@@ -87,7 +103,7 @@ def get_parser_fn_system():
     parser_cli_system_md.add_argument("--quiet",
                                       default=True,
                                       help="Run quietly")
-    parser_cli_system_md.set_defaults(func=cli_system_md)
+    parser_cli_system_md.set_defaults(func=cli_ov_system_md)
     parser_cli_system_md.r_return = "A string. OakVar modules directory"  # type: ignore
     parser_cli_system_md.r_examples = [  # type: ignore
         "# Get the OakVar modules directory", "ov.system.md()",
@@ -96,7 +112,7 @@ def get_parser_fn_system():
     ]
 
     # shows system conf content.
-    parser_cli_system_config = _subparsers.add_parser(
+    parser_cli_system_config = subparsers.add_parser(
         "config", help="show or change system configuration.")
     parser_cli_system_config.add_argument(
         "--fmt", default="json", help="Format of output. json or yaml.")
@@ -105,7 +121,7 @@ def get_parser_fn_system():
     parser_cli_system_config.add_argument("--quiet",
                                           default=True,
                                           help="Run quietly")
-    parser_cli_system_config.set_defaults(func=cli_system_config)
+    parser_cli_system_config.set_defaults(func=cli_ov_system_config)
     parser_cli_system_config.r_return = "A named list. System config information"  # type: ignore
     parser_cli_system_config.r_examples = [  # type: ignore
         "# Get named list of the OakVar system configuration",
@@ -115,4 +131,4 @@ def get_parser_fn_system():
         "# Print to stdout the OakVar system configuration in YAML text",
         "ov.system.config(fmt=\"yaml\", to=\"stdout\")"
     ]
-    return parser_fn_system
+    return parser_ov_system

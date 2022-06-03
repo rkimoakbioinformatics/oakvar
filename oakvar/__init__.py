@@ -70,7 +70,7 @@ from .cli_util import ov_util_addjob
 from .cli_util import ov_util_filtersqlite
 from .cli_util import ov_util_mergesqlite
 from .cli_util import ov_util_sqliteinfo
-from .cli_util import ov_util_updateresult
+#from .cli_util import ov_util_updateresult
 from .cli_version import ov_version
 
 
