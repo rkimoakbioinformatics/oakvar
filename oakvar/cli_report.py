@@ -439,6 +439,11 @@ class CravatReport:
                 newvals.sort()
                 newcell = "; ".join(newvals)
                 new_datarow[all_mappings_newcolno] = newcell
+            # escape characters
+            for i, v in enumerate(new_datarow):
+                if isinstance(v, str):
+                    if "\n" in v:
+                        new_datarow[i] = v.replace("\n", "%0A")
             if write_variant_sample_separately:
                 samples = new_datarow[sample_newcolno]
                 if samples is not None:
