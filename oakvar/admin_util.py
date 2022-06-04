@@ -1357,8 +1357,8 @@ def publish_module(module_name,
     get_mic().update_local()
     local_info = get_local_module_info(module_name)
     if local_info == None:
-        quiet_print(module_name + " does not exist.", args=quiet_args)
-        return
+        from .exceptions import ModuleNotExist
+        raise ModuleNotExist(module_name)
     check_url = publish_url + "/%s/%s/check" % (module_name,
                                                 local_info.version)
     r = get(check_url, auth=(user, password))
