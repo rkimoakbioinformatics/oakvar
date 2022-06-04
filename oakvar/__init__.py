@@ -88,7 +88,7 @@ if ov_new_exampleinput or ov_new_annotator: pass
 if ov_store_verifyemail or ov_store_resetpassword or ov_store_publish or ov_store_createaccount or ov_store_checklogin or ov_store_changepassword: pass
 if ov_system_setup or ov_system_md or ov_system_config: pass
 if ov_util_test: pass
-if ov_util_addjob or ov_util_filtersqlite or ov_util_mergesqlite or ov_util_sqliteinfo or ov_util_updateresult: pass
+if ov_util_addjob or ov_util_filtersqlite or ov_util_mergesqlite or ov_util_sqliteinfo: pass
 if ov_version: pass
 
 
