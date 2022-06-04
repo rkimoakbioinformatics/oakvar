@@ -42,7 +42,7 @@ def cli_ov_store_createaccount(args):
 @cli_func
 def ov_store_createaccount(args):
     from .admin_util import create_account
-    ret = create_account(args.username, args.password)
+    ret = create_account(args.get("username"), args.get("password"))
     return ret
 
 
@@ -54,8 +54,8 @@ def cli_ov_store_changepassword(args):
 @cli_func
 def ov_store_changepassword(args):
     from .admin_util import change_password
-    ret = change_password(args.username, args.current_password,
-                          args.new_password)
+    ret = change_password(args.get("username"), args.get("current_password"),
+                          args.get("new_password"))
     return ret
 
 
@@ -91,7 +91,7 @@ def cli_ov_store_checklogin(args):
 @cli_func
 def ov_store_checklogin(args):
     from .admin_util import check_login
-    ret = check_login(args.username, args.get("password"))
+    ret = check_login(args.get("username"), args.get("password"))
     return ret
 
 
