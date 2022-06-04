@@ -640,7 +640,7 @@ def get_parser_fn_module():
                                                default=True,
                                                action="store_true",
                                                help="suppress stdout output")
-    parser_ov_module_installbase.set_defaults(nunc=cli_ov_module_installbase)
+    parser_ov_module_installbase.set_defaults(func=cli_ov_module_installbase)
     parser_ov_module_installbase.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_ov_module_installbase.r_examples = [  # type: ignore
         "# Install OakVar system modules", "ov.module.installbase()"
