@@ -1,9 +1,9 @@
-.. image:: /oakvar/websubmit/logo.png
+.. image:: https://github.com/rkimoakbioinformatics/oakvar/raw/master/oakvar/websubmit/logo.png
   :width: 300
   :alt: OakVar logo
 
 OakVar: Genomic Variant Analysis Platform
-******
+*****************************************
 
 * Annotate genomic variants with diverse annotation sources.
 * Make databases of annotated variants.
