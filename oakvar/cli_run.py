@@ -2056,6 +2056,7 @@ def get_parser_fn_run():
         help="skips given stage(s).",
     )
     parser_ov_run.add_argument("-c",
+                               "--confpath",
                                dest="confpath",
                                default=None,
                                help="path to a conf file")
