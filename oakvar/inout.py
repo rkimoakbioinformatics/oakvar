@@ -34,11 +34,16 @@ class CravatReader(CravatFile):
         self.index_columns = []
         self.report_substitution = None
         self.f = None
+        self.csvfmt: bool = False
         self._setup_definition()
 
     def _setup_definition(self):
         from json import loads
         from json.decoder import JSONDecodeError
+        with open(self.path, encoding=self.encoding) as f:
+            line = f.readline()[:-1]
+            if line.startswith("#fmt=csv"):
+                self.csvfmt = True
         for l in self._loop_definition():
             if l.startswith("#name="):
                 self.annotator_name = l.split("=")[1]
@@ -137,14 +142,12 @@ class CravatReader(CravatFile):
     def loop_data(self):
         from .exceptions import BadFormatError
         from json import loads
-        for lnum, l in self._loop_data():
-            toks = l.split("\t")
+        for lnum, toks in self._loop_data():
             out = {}
             if len(toks) < len(self.columns):
-                err_msg = "Too few columns. Received %s. Expected %s. data was [%s]" % (
+                err_msg = "Too few columns. Received %s. Expected %s." % (
                     len(toks),
                     len(self.columns),
-                    l,
                 )
                 return BadFormatError(err_msg)
             for col_index, col_def in self.columns.items():
@@ -175,21 +178,17 @@ class CravatReader(CravatFile):
                                 out[col_name] = float(tok)
                         except:
                             tok = None
-            yield lnum, l, out
-
-    def _open_file(self):
-        self.f = open(self.path, "rb")
-
-    def _close_file(self):
-        if self.f is not None:
-            self.f.close()
+            yield lnum, toks, out
 
     def get_data(self):
         all_data = [d for _, _, d in self.loop_data()]
         return all_data
 
     def _loop_definition(self):
-        f = open(self.path, encoding=self.encoding)
+        if self.csvfmt:
+            f = open(self.path, newline="", encoding=self.encoding)
+        else:
+            f = open(self.path, encoding=self.encoding)
         for l in f:
             l = l.rstrip().lstrip()
             if l.startswith("#"):
@@ -199,22 +198,34 @@ class CravatReader(CravatFile):
         f.close()
 
     def _loop_data(self):
-        f = open(self.path, "rb")
-        if self.seekpos is not None:
-            f.seek(self.seekpos)
-        lnum = 0
-        for l in f:
-            if self.encoding is not None:
-                l = l.decode(self.encoding)
-                l = l.rstrip("\r\n")
-                if l.startswith("#"):
-                    continue
-                else:
-                    yield lnum, l
-            lnum += 1
-            if self.chunksize is not None and lnum == self.chunksize:
-                break
-        f.close()
+        if not self.encoding: return
+        if self.csvfmt:
+            with open(self.path, newline="") as f:
+                if self.seekpos is not None:
+                    f.seek(self.seekpos)
+                lnum = 0
+                import sys
+                import csv
+                csv.field_size_limit(sys.maxsize)
+                csvreader = csv.reader(f)
+                for row in csvreader:
+                    if row[0].startswith("#"): continue
+                    yield csvreader.line_num, row
+        else:
+            with open(self.path, "rb") as f:
+                if self.seekpos is not None:
+                    f.seek(self.seekpos)
+                lnum = 0
+                for l in f:
+                    l = l.decode(self.encoding)
+                    if l.startswith("#"):
+                        continue
+                    else:
+                        l = l.rstrip("\r\n")
+                        yield lnum, l.split("\t")
+                    lnum += 1
+                    if self.chunksize is not None and lnum == self.chunksize:
+                        break
 
 
 class CravatWriter(CravatFile):
@@ -226,15 +237,18 @@ class CravatWriter(CravatFile):
         include_titles=True,
         titles_prefix="#",
         columns=[],
-        fmt="old",
+        fmt="csv",
     ):
         super().__init__(path)
-        self.fmt = fmt
+        self.csvfmt: bool = False
+        if fmt == "csv":
+            self.csvfmt = True
         self.csvwriter = None
         if fmt == "csv":
             self.wf = open(self.path, "w", newline="", encoding="utf-8")
-            from csv import reader
-            self.csvwriter = reader(self.wf)
+            from csv import writer
+            self.csvwriter = writer(self.wf)
+            self.wf.write("#fmt=csv\n")
         else:
             self.wf = open(self.path, "w", encoding="utf-8")
         self._ready_to_write = False
@@ -355,16 +369,13 @@ class CravatWriter(CravatFile):
                 wtoks[col_index] = str(data[col_name])
             else:
                 wtoks[col_index] = ""
-        if self.fmt == "csv":
+        if self.csvfmt:
             if self.csvwriter is not None:
                 self.csvwriter.writerow(wtoks)  # type: ignore
         else:
             self.wf.write("\t".join(wtoks) + "\n")
 
     def close(self):
-        if self.fmt == "csv":
-            if self.csvwriter is not None:
-                self.csvwriter.close()  # type: ignore
         self.wf.close()
 
 

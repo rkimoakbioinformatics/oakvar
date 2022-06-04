@@ -2,7 +2,8 @@ def cli_entry(func):
     def change_args_for_cli(args):
         args.quiet = False
         args.to = "stdout"
-        return func(args)
+        ret = func(args)
+        exit(ret)
 
     return change_args_for_cli
 
@@ -13,10 +14,11 @@ def cli_func(func):
         try:
             ret = func(args)
             if args.get("to") == "stdout":
-                if ret == True:
-                    ret = 0
-                elif ret == False:
-                    ret = 1
+                if ret == False:
+                    ret = 2
+                else:
+                    ret = None
+            ret = None
             return ret
         except Exception as e:
             from .__main__ import handle_exception
