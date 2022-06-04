@@ -15,10 +15,9 @@ def cli_func(func):
             ret = func(args)
             if args.get("to") == "stdout":
                 if ret == False:
-                    ret = 2
+                    ret = 1
                 else:
                     ret = None
-            ret = None
             return ret
         except Exception as e:
             from .__main__ import handle_exception

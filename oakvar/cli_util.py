@@ -625,7 +625,7 @@ def get_parser_fn_util():
         add_help=False,
         description="Test modules",
         help="Test installed modules")
-    parser_cli_util_test.r_return = "A named list. Module names as names, TRUE or FALSE as elements"  # type: ignore
+    parser_cli_util_test.r_return = "A named list. Field result is a named list showing the test result for each module. Fields num_passed and num_failed show the number of passed and failed modules."  # type: ignore
     parser_cli_util_test.r_examples = [  # type: ignore
         "# Test the ClinVar module", "ov.util.test(modules=\"clinvar\")",
         "# Test the ClinVar and the COSMIC modules",
