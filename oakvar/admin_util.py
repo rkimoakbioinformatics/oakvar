@@ -30,7 +30,7 @@ class InstallProgressHandler(object):
         self._make_display_name()
 
     def _stage_msg(self, stage):
-        from oakvar.util import get_current_time_str
+        from .util import get_current_time_str
         if stage is None or stage == "":
             return ""
         elif stage == "start":
@@ -999,9 +999,8 @@ def install_module(
     def raise_kbi(__a__, __b__):
         raise KeyboardInterrupt
 
-    original_sigint = signal.signal(signal.SIGINT, raise_kbi)
+    #original_sigint = signal.signal(signal.SIGINT, raise_kbi)
     try:
-
         if stage_handler is None:
             stage_handler = InstallProgressHandler(module_name, version)
         if version is None:
@@ -1203,17 +1202,22 @@ def install_module(
         wf.close()
         get_mic().update_local()
         stage_handler.stage_start("finish")
-    except (Exception, KeyboardInterrupt, SystemExit) as e:
+    #except (Exception, KeyboardInterrupt, SystemExit) as e:
+    except Exception as e:
         shutil.rmtree(temp_dir, ignore_errors=True)
         if type(e) == KillInstallException:
             if stage_handler:
                 stage_handler.stage_start("killed")
-        elif type(e) in (KeyboardInterrupt, SystemExit):
+        elif isinstance(e, KeyboardInterrupt):
+            #signal.signal(signal.SIGINT, original_sigint)
+            raise e
+        elif isinstance(e, SystemExit):
             pass
         else:
+            #signal.signal(signal.SIGINT, original_sigint)
             raise e
-    finally:
-        signal.signal(signal.SIGINT, original_sigint)
+    #finally:
+    #    signal.signal(signal.SIGINT, original_sigint)
 
 
 def install_widgets_for_module(module_name):

@@ -4,6 +4,7 @@ from .decorators import cli_entry
 
 @cli_entry
 def cli_ov_system_setup(args):
+    args.quiet = False
     ov_system_setup(args)
 
 
