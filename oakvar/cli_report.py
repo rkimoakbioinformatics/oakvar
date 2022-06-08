@@ -73,7 +73,7 @@ class CravatReport:
         from os.path import exists
         import json
         from . import sysadmin_const
-        self.args = args
+        if not args: return
         if args.get("md"):
             sysadmin_const.custom_modules_dir = args.get("md")
         self.dbpath = args.get("dbpath")
@@ -145,10 +145,12 @@ class CravatReport:
                     args["inputfiles"].append(input_path)
             c.close()
             db.close()
+        self.inputfiles = args.get("inputfiles")
         self.status_writer = args.get("status_writer")
         self.concise_report = args.get("concise_report")
         self.extract_columns_multilevel = self.get_standardized_module_option(
             self.confs.get("extract-columns", {}))
+        self.args = args
 
     def should_write_level(self, level):
         if self.levels_to_write is None:
@@ -184,8 +186,7 @@ class CravatReport:
 
     def _setup_logger(self):
         if self.module_name is None:
-            from .exceptions import SetupError
-            raise SetupError("no module name")
+            return
         import logging
         if hasattr(self, "no_log") and self.no_log:
             return
@@ -908,12 +909,12 @@ class CravatReport:
         from os.path import exists
         if dbpath != None:
             self.dbpath = dbpath
-        if self.dbpath == None:
-            sys.stderr.write("Provide a path to aggregator output")
-            exit()
-        if exists(self.dbpath) == False:
-            sys.stderr.write(self.dbpath + " does not exist.")
-            exit()
+        if not self.dbpath:
+            from .exceptions import NoInputException
+            raise NoInputException()
+        if not exists(self.dbpath):
+            from .exceptions import WrongInput
+            raise WrongInput()
 
     async def close_db(self):
         if hasattr(self, "conn") and self.conn is not None:
