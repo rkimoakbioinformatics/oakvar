@@ -358,11 +358,12 @@ class Cravat(object):
                     and not "mapper" in self.args.skip):
                 quiet_print(f'Running gene mapper...{" "*18}', self.args)
                 stime = time()
-                multicore_mapper_mode = self.main_conf.get("multicore_mapper_mode")
-                if multicore_mapper_mode:
-                    self.run_genemapper_mp()
-                else:
-                    self.run_genemapper()
+                #multicore_mapper_mode = self.main_conf.get("multicore_mapper_mode")
+                self.run_genemapper_mp()
+                #if multicore_mapper_mode:
+                #    self.run_genemapper_mp()
+                #else:
+                #    self.run_genemapper()
                 rtime = time() - stime
                 quiet_print("finished in {0:.3f}s".format(rtime), self.args)
                 self.mapper_ran = True

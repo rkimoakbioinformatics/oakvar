@@ -1,3 +1,4 @@
 converter: converter
 genemapper: gencode
 aggregator: aggregator
+multicore_mapper_mode: True
