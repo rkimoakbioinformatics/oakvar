@@ -243,6 +243,7 @@ def ov_module_install(args):
             stage_handler = InstallProgressStdout(module_name,
                                                   module_version,
                                                   quiet=quiet)
+            quiet_print(f"Installing {module_name}...", args=args)
             install_module(module_name,
                            version=module_version,
                            force_data=args["force_data"],
@@ -372,7 +373,7 @@ def ov_module_installbase(args):
         force=args.get("force", False),
         skip_data=False,
         md=args.get("md", None),
-        quiet=args.get("quiet", False),
+        quiet=args.get("quiet", True),
     )
     ret = ov_module_install(args)
     return ret
@@ -588,24 +589,17 @@ class InstallProgressStdout(InstallProgressHandler):
     def stage_start(self, stage):
         from .util import quiet_print
         self.cur_stage = stage
-        quiet_print(self._stage_msg(stage) + "\n", {"quiet": self.quiet})
+        quiet_print(self._stage_msg(stage), args={"quiet": self.quiet})
 
     def stage_progress(self, cur_chunk, total_chunks, cur_size, total_size):
         from .util import humanize_bytes
         from .util import quiet_print
+        from .util import get_current_time_str
         rem_chunks = total_chunks - cur_chunk
         perc = cur_size / total_size * 100
         # trailing spaces needed to avoid leftover characters on resize
-        out = (
-            "\r{cur_size} / {total_size} ({perc:.0f}%)  "
-            .format(
-                cur_size=humanize_bytes(cur_size),
-                total_size=humanize_bytes(total_size),
-                perc=perc,
-            ))
-        quiet_print(out, {"quiet": self.quiet})
-        if cur_chunk == total_chunks:
-            quiet_print("\n", {"quiet": self.quiet})
+        out = f"\033[F\033[K[{get_current_time_str()}] Downloading {humanize_bytes(cur_size)} / {humanize_bytes(total_size)} ({perc:.0f}%)"
+        quiet_print(out, args={"quiet": self.quiet})
 
 
 def get_parser_fn_module():

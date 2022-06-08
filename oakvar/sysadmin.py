@@ -11,32 +11,42 @@ def setup_system(args):
     from .sysadmin_const import log_dir_key
     from .sysadmin_const import main_conf_fname
     from .admin_util import get_packagedir
+    from .util import quiet_print
     # load sys conf.
     conf = None
     sys_conf_path = args.get("setup_file")
-    if sys_conf_path is not None:
+    if sys_conf_path:
+        quiet_print(f"Loading system configuration from {sys_conf_path}...", args=args)
         conf = get_system_conf(sys_conf_path=sys_conf_path)
     else:
+        quiet_print(f"Finding system configuration...", args=args)
         conf = get_system_conf()
     # save sys conf.
     save_system_conf(conf)
+    quiet_print(f"System configuration is at {conf['conf_path']}.", args=args)
     # make system dirs if absent.
-    create_dir_if_absent(conf[root_dir_key])
-    create_dir_if_absent(conf[conf_dir_key])
-    create_dir_if_absent(conf[modules_dir_key])
-    create_dir_if_absent(conf[jobs_dir_key])
-    create_dir_if_absent(conf[log_dir_key])
+    quiet_print(f"Checking system directories...", args=args)
+    create_dir_if_absent(conf[root_dir_key], args)
+    create_dir_if_absent(conf[conf_dir_key], args)
+    create_dir_if_absent(conf[modules_dir_key], args)
+    create_dir_if_absent(conf[jobs_dir_key], args)
+    create_dir_if_absent(conf[log_dir_key], args)
     # copy cravat conf file.
+    quiet_print(f"Checking main configuration file...", args=args)
     main_conf_path = get_main_conf_path(conf=conf)
     if not exists(main_conf_path):
         copyfile(join(get_packagedir(), main_conf_fname), main_conf_path)
+        quiet_print(f"Created main configuration file at {main_conf_path}.", args=args)
     # install base modules.
     from .cli_module import ov_module_installbase
     from os import environ
     from .sysadmin_const import sys_conf_path_key
     from .sysadmin import get_env_key
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
-    ov_module_installbase({"conf": conf})
+    quiet_print(f"Checking system modules...", args=args)
+    args.update({"conf": conf})
+    ov_module_installbase(args)
+    quiet_print(f"Done setting up the system", args=args)
 
 
 def get_root_dir(conf=None):
@@ -241,14 +251,14 @@ def set_modules_dir(path, __overwrite__=False):
         shutil.copy(overwrite_conf_path, get_main_conf_path())
 
 
-def create_dir_if_absent(d, quiet=True):
+def create_dir_if_absent(d, args=None):
     from os.path import exists
     from os import makedirs
     from .util import quiet_print
     if d is not None:
         if not exists(d):
             makedirs(d)
-            quiet_print(f"Created {d}", args={"quiet": quiet})
+            quiet_print(f"Created {d}", args=args)
 
 
 def is_root_user():

@@ -147,6 +147,8 @@ def handle_exception(e: Exception):
                 return False
             else:
                 return False
+    elif isinstance(e, KeyboardInterrupt):
+        pass
     else:
         raise e
 
