@@ -276,6 +276,7 @@ def load_class(path, class_name=None):
     """Load a class from the class's name and path. (dynamic importing)"""
     from os.path import dirname, basename
     from importlib.util import spec_from_file_location, module_from_spec
+    from importlib import import_module
     import sys
     import inspect
     path_dir = dirname(path)
@@ -284,7 +285,7 @@ def load_class(path, class_name=None):
     module_class = None
     module_name = basename(path).split(".")[0]
     try:
-        module = __import__(module_name)
+        module = import_module(module_name)
     except:
         try:
             if class_name:
@@ -296,7 +297,7 @@ def load_class(path, class_name=None):
                         loader.exec_module(module)
         except:
             raise
-    if module is not None:
+    if module:
         if class_name:
             module_class = getattr(module, class_name)
         else:
@@ -575,3 +576,73 @@ def quiet_print(msg, args=None):
         quiet = args.get("quiet", True)
     if not quiet:
         print(msg, flush=True)
+
+def trim_input(ref, alt, pos, strand):
+    pos = int(pos)
+    reflen = len(ref)
+    altlen = len(alt)
+    minlen = min(reflen, altlen)
+    new_ref = ref
+    new_alt = alt
+    new_pos = pos
+    for nt_pos in range(0, minlen):
+        if ref[reflen - nt_pos - 1] == alt[altlen - nt_pos - 1]:
+            new_ref = ref[:reflen - nt_pos - 1]
+            new_alt = alt[:altlen - nt_pos - 1]
+        else:
+            break
+    new_ref_len = len(new_ref)
+    new_alt_len = len(new_alt)
+    minlen = min(new_ref_len, new_alt_len)
+    new_ref2 = new_ref
+    new_alt2 = new_alt
+    for nt_pos in range(0, minlen):
+        if new_ref[nt_pos] == new_alt[nt_pos]:
+            if strand == "+":
+                new_pos += 1
+            elif strand == "-":
+                new_pos -= 1
+            new_ref2 = new_ref[nt_pos + 1:]
+            new_alt2 = new_alt[nt_pos + 1:]
+        else:
+            new_ref2 = new_ref[nt_pos:]
+            new_alt2 = new_alt[nt_pos:]
+            break
+    return new_ref2, new_alt2, new_pos
+
+def standardize_pos_ref_alt(strand, pos, ref, alt):
+    reflen = len(ref)
+    altlen = len(alt)
+    # Returns without change if same single nucleotide for ref and alt.
+    if reflen == 1 and altlen == 1 and ref == alt:
+        return pos, ref, alt
+    # Trimming from the start and then the end of the sequence
+    # where the sequences overlap with the same nucleotides
+    new_ref2, new_alt2, new_pos = trim_input(ref, alt, pos, strand)
+    if new_ref2 == "" or new_ref2 == ".":
+        new_ref2 = "-"
+    if new_alt2 == "" or new_alt2 == ".":
+        new_alt2 = "-"
+    return new_pos, new_ref2, new_alt2
+
+def normalize_variant(wdict):
+    chrom = wdict["chrom"]
+    if not chrom.startswith("chr"):
+        wdict["chrom"] = "chr" + chrom
+    p, r, a = (
+        int(wdict["pos"]),
+        wdict["ref_base"],
+        wdict["alt_base"],
+    )
+    (
+        new_pos,
+        new_ref,
+        new_alt,
+    ) = standardize_pos_ref_alt("+", p, r, a)
+    wdict["pos"] = new_pos
+    wdict["ref_base"] = new_ref
+    wdict["alt_base"] = new_alt
+    if wdict["ref_base"] == wdict["alt_base"]:
+        from .exceptions import NoVariantError
+        raise NoVariantError()
+    return wdict
