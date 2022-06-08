@@ -8,9 +8,11 @@ class BaseMapper(object):
     """
 
     def __init__(self, *inargs, **inkwargs):
+        print(f"@ loading mapper import")
         import os
         from time import time
         import pkg_resources
+        print(f"@ done importing mapper init")
         self.cmd_parser = None
         self.input_path = None
         self.input_dir = None
@@ -56,6 +58,7 @@ class BaseMapper(object):
         from .admin_util import get_module_conf
         self.conf = get_module_conf(self.module_name, module_type="mapper")
         self.cravat_version = pkg_resources.get_distribution("oakvar").version
+        print(f"@ done mapper init")
 
     def _define_main_cmd_args(self):
         import argparse
