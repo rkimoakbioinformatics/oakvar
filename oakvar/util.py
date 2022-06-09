@@ -326,10 +326,11 @@ def get_directory_size(start_path):
 
 
 def get_argument_parser_defaults(parser):
-    return {
+    defaults = {
         action.dest: action.default
         for action in parser._actions if action.dest != "help"
     }
+    return defaults
 
 
 def detect_encoding(path):
@@ -485,17 +486,19 @@ def get_args(parser, inargs, inkwargs):
     # package
     inarg_dict = get_args_package(inarg_dict)
     # defaults
-    arg_dict = get_argument_parser_defaults(parser)
-    arg_dict.update(inarg_dict)
+    default_args = get_argument_parser_defaults(parser)
+    for k, v in default_args.items():
+        if k not in inarg_dict or not inarg_dict[k]:
+            inarg_dict[k] = v
     # convert value to list if needed.
     for action in parser._actions:
         if action.dest == "help": continue
         if action.nargs in ["+", "*"]:
             key = action.dest
-            value = arg_dict[key]
+            value = inarg_dict[key]
             if value and type(value) is not list:
-                arg_dict[key] = [value]
-    return arg_dict
+                inarg_dict[key] = [value]
+    return inarg_dict
 
 
 def filter_affected_cols(filter):
