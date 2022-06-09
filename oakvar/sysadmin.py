@@ -190,7 +190,7 @@ def show_system_conf(args):
     #args.setdefault("fmt", "json")
     #args.setdefault("to", "return")
     sys_conf_path = get_system_conf_path()
-    if sys_conf_path is None or not exists(sys_conf_path):
+    if not sys_conf_path or not exists(sys_conf_path):
         return None
     conf = get_system_conf()
     if args.get("fmt") == "yaml":
