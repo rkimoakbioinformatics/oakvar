@@ -16,3 +16,4 @@ cravat/jobs
 */open_cravat.egg-info
 tmp/*
 makecravat.sh
+.ipynb_checkpoints
