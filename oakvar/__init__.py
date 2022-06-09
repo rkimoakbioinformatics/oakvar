@@ -32,6 +32,7 @@ def raise_break(__signal_number__, __stack_frame__):
 import signal
 
 signal.signal(signal.SIGINT, raise_break)
+from . import admin_util
 from .base_converter import BaseConverter
 from .base_annotator import BaseAnnotator
 from .base_mapper import BaseMapper
@@ -75,6 +76,7 @@ from .cli_version import ov_version
 
 
 wgs = None
+if admin_util: pass
 if BaseConverter or BaseAnnotator or BaseMapper or BasePostAggregator or BaseCommonModule: pass
 if CravatReport or CravatFilter or Cravat: pass
 if crx_def or constants: pass
@@ -103,14 +105,12 @@ def get_live_annotator(module_name):
         module.data_dir = os.path.join(module.module_dir, "data")
         module._open_db_connection()
         module.setup()
-        print(f"@ module={module}")
     return module
 
 
 def get_live_mapper(module_name):
     import os
     module = None
-    print(f"@ getting {module_name}...")
     ModuleClass = get_module(module_name)
     if ModuleClass:
         module = ModuleClass({
@@ -121,9 +121,7 @@ def get_live_mapper(module_name):
             "live":
             True,
         })
-        print(f"@ setting up {module_name}...")
         module.base_setup()
-        print(f"@ done setting up {module_name}")
     return module
 
 
@@ -132,7 +130,6 @@ def get_module(module_name, module_type=None):
     from .admin_util import get_local_module_info
     from .admin_util import get_module_conf
     from .util import load_class
-    print("@ start loading", module_name)
     ModuleClass = None
     module_conf = get_module_conf(module_name, module_type=module_type)
     module_info = get_local_module_info(module_name)
@@ -143,7 +140,6 @@ def get_module(module_name, module_type=None):
         ModuleClass.module_name = module_name
         ModuleClass.module_dir = dirname(script_path)
         ModuleClass.conf = module_conf
-    print("@ loaded", module_name)
     return ModuleClass
 
 
