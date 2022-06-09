@@ -101,7 +101,7 @@ def get_parser_ov_system():
         default="return",
         help="'stdout' to print. 'return' to return.")
     parser_cli_system_md.add_argument("--quiet",
-                                      default=True,
+                                      default=False,
                                       help="Run quietly")
     parser_cli_system_md.set_defaults(func=cli_ov_system_md)
     parser_cli_system_md.r_return = "A string. OakVar modules directory"  # type: ignore
