@@ -33,6 +33,7 @@ import signal
 
 signal.signal(signal.SIGINT, raise_break)
 from . import admin_util
+from . import inout
 from .base_converter import BaseConverter
 from .base_annotator import BaseAnnotator
 from .base_mapper import BaseMapper
@@ -76,7 +77,7 @@ from .cli_version import ov_version
 
 
 wgs = None
-if admin_util: pass
+if admin_util or inout: pass
 if BaseConverter or BaseAnnotator or BaseMapper or BasePostAggregator or BaseCommonModule: pass
 if CravatReport or CravatFilter or Cravat: pass
 if crx_def or constants: pass
