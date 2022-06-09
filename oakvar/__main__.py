@@ -1,6 +1,6 @@
 from .cli_module import get_parser_fn_module
 from .cli_util import get_parser_fn_util
-from .cli_run import get_parser_fn_run
+from .cli_run import get_parser_ov_run
 from .cli_gui import get_parser_fn_gui
 from .cli_report import get_parser_fn_report
 from .cli_new import get_parser_fn_new
@@ -21,7 +21,7 @@ def get_entry_parser():
     # run
     p_ov_run = sp_entry.add_parser(
         "run",
-        parents=[get_parser_fn_run()],
+        parents=[get_parser_ov_run()],
         add_help=False,
         description="Run a job",
         help="Run a job",

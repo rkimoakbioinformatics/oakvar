@@ -491,7 +491,6 @@ class Cravat(object):
 
     def make_self_args_considering_package_conf(self, args):
         from types import SimpleNamespace
-        #full_args = get_argument_parser_defaults(get_parser_fn_run())
         full_args = args
         # package including -a (add) and -A (replace)
         if "run" in self.package_conf:
@@ -514,6 +513,7 @@ class Cravat(object):
                 full_args[k] = v
         if full_args["annotators_replace"]:
             full_args["annotators"] = full_args["annotators_replace"]
+        from sys import stderr
         self.args = SimpleNamespace(**full_args)
         self.process_module_options()
 
@@ -1964,7 +1964,7 @@ class StatusWriter:
         self.lock = False
 
 
-def get_parser_fn_run():
+def get_parser_ov_run():
     from argparse import ArgumentParser, SUPPRESS
     parser_ov_run = ArgumentParser(
         prog="ov run input_file_path_1 input_file_path_2 ...",
