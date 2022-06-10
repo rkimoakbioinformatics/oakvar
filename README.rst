@@ -12,6 +12,7 @@ OakVar: Genomic Variant Analysis Platform
 * Visualize annotated variants with graphical user interface.
 * Works via CLI and GUI.
 * Easily develop, run, and distribute CLI and GUI genomics apps. OakVar acts as an operating system for genomics apps.
+* Connect genomic data to AI/ML models.
 
 Documentation is being made at `OakVar Documentation`_. For questions not answered in the documentation, ask on the Issues channel or email to rkim@oakbioinformatics.com.
 
