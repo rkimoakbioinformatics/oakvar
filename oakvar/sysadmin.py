@@ -16,7 +16,8 @@ def setup_system(args):
     conf = None
     sys_conf_path = args.get("setup_file")
     if sys_conf_path:
-        quiet_print(f"Loading system configuration from {sys_conf_path}...", args=args)
+        quiet_print(
+            f"Loading system configuration from {sys_conf_path}...", args=args)
         conf = get_system_conf(sys_conf_path=sys_conf_path)
     else:
         quiet_print(f"Finding system configuration...", args=args)
@@ -36,7 +37,8 @@ def setup_system(args):
     main_conf_path = get_main_conf_path(conf=conf)
     if not exists(main_conf_path):
         copyfile(join(get_packagedir(), main_conf_fname), main_conf_path)
-        quiet_print(f"Created main configuration file at {main_conf_path}.", args=args)
+        quiet_print(
+            f"Created main configuration file at {main_conf_path}.", args=args)
     # install base modules.
     from .cli_module import ov_module_installbase
     from os import environ

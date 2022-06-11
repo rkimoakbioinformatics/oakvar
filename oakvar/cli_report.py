@@ -73,7 +73,8 @@ class CravatReport:
         from os.path import exists
         import json
         from . import sysadmin_const
-        if not args: return
+        if not args:
+            return
         if args.get("md"):
             sysadmin_const.custom_modules_dir = args.get("md")
         self.dbpath = args.get("dbpath")
@@ -105,7 +106,8 @@ class CravatReport:
         if self.savepath is not None and dirname(self.savepath) == "":
             self.savepath = join(self.output_dir, self.savepath)
         from .admin_util import get_module_conf
-        self.module_conf = get_module_conf(self.module_name, module_type="reporter")
+        self.module_conf = get_module_conf(
+            self.module_name, module_type="reporter")
         # confs update from conf file
         if self.conf and self.module_name in self.conf:
             self.confs.update(self.conf[self.module_name])
@@ -124,7 +126,8 @@ class CravatReport:
         self.output_basename = basename(self.dbpath)[:-7]
         status_fname = "{}.status.json".format(self.output_basename)
         self.status_fpath = join(self.output_dir, status_fname)
-        self.nogenelevelonvariantlevel = args.get("nogenelevelonvariantlevel", False)
+        self.nogenelevelonvariantlevel = args.get(
+            "nogenelevelonvariantlevel", False)
         inputfiles = args.get("inputfiles")
         dbpath = args.get("dbpath")
         if not inputfiles and dbpath:
@@ -599,7 +602,8 @@ class CravatReport:
                 self.colnames_to_display[level].append(col_name)
 
     async def make_col_info(self, level: str, conn=None, cursor=None):
-        if conn is None: pass
+        if conn is None:
+            pass
         if cursor is None:
             from .exceptions import SetupError
             raise SetupError()
@@ -862,7 +866,7 @@ class CravatReport:
                         new_columns[i]["reportsub"] = reportsub[module][col]
         # display_select_columns
         if (level in self.extract_columns_multilevel
-                and len(self.extract_columns_multilevel[level]) > 0
+            and len(self.extract_columns_multilevel[level]) > 0
             ) or self.concise_report:
             self.display_select_columns[level] = True
         else:
@@ -942,7 +946,8 @@ class CravatReport:
         )
 
     async def table_exists(self, tablename, conn=None, cursor=None):
-        if conn is None: pass
+        if conn is None:
+            pass
         if cursor is None:
             from .exceptions import SetupError
             raise SetupError()
@@ -1037,9 +1042,11 @@ def ov_report(args):
         spec = spec_from_file_location(  # type: ignore
             module_name,  # type: ignore
             module_info.script_path)
-        if not spec: continue
+        if not spec:
+            continue
         module = module_from_spec(spec)  # type: ignore
-        if not module or not spec.loader: continue
+        if not module or not spec.loader:
+            continue
         spec.loader.exec_module(module)
         args["module_name"] = module_name
         args["do_not_change_status"] = True
@@ -1047,7 +1054,7 @@ def ov_report(args):
             args["conf"] = module_options[module_name]
         reporter = module.Reporter(args)
         response_t = None
-        #try:
+        # try:
         loop.run_until_complete(reporter.prep())
         response_t = loop.run_until_complete(reporter.run())
         output_fns = None
@@ -1114,8 +1121,7 @@ def get_parser_fn_report():
         dest="nogenelevelonvariantlevel",
         action="store_true",
         default=False,
-        help=
-        "Use this option to prevent gene level result from being added to variant level result.",
+        help="Use this option to prevent gene level result from being added to variant level result.",
     )
     parser_ov_report.add_argument("--confs",
                                   dest="confs",
@@ -1155,23 +1161,20 @@ def get_parser_fn_report():
         "--system-option",
         dest="system_option",
         nargs="*",
-        help=
-        "System option in key=value syntax. For example, --system-option modules_dir=/home/user/oakvar/modules",
+        help="System option in key=value syntax. For example, --system-option modules_dir=/home/user/oakvar/modules",
     )
     parser_ov_report.add_argument(
         "--module-option",
         dest="module_option",
         nargs="*",
-        help=
-        "Module-specific option in module_name.key=value syntax. For example, --module-option vcfreporter.type=separate",
+        help="Module-specific option in module_name.key=value syntax. For example, --module-option vcfreporter.type=separate",
     )
     parser_ov_report.add_argument(
         "--concise-report",
         dest="concise_report",
         action="store_true",
         default=False,
-        help=
-        "Generate concise report with default columns defined by annotation modules",
+        help="Generate concise report with default columns defined by annotation modules",
     )
     parser_ov_report.add_argument(
         "--includesample",

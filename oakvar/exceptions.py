@@ -249,18 +249,22 @@ class DatabaseError(ExpectedException):
         else:
             super().__init__(f"database error")
 
+
 class ArgumentError(ExpectedException):
-    halt=False
-    traceback=True
+    halt = False
+    traceback = True
+
     def __init__(self, msg=None):
         if msg is not None:
             super().__init__(f"error: argument. {msg}")
         else:
             super().__init__(f"error: argument")
 
+
 class WrongInput(ExpectedException):
-    halt=False
-    traceback=False
+    halt = False
+    traceback = False
+
     def __init__(self, msg=None):
         if msg is not None:
             super().__init__(f"error: input does not exist. {msg}")

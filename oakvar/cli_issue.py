@@ -1,6 +1,7 @@
 from .decorators import cli_func
 from .decorators import cli_entry
 
+
 @cli_entry
 @cli_func
 def ov_issue(__args__):

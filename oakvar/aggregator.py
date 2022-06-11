@@ -193,7 +193,8 @@ class Aggregator(object):
             "status", "Finished {} ({})".format("Aggregator", self.level))
 
     def make_reportsub(self):
-        if self.cursor is None: return
+        if self.cursor is None:
+            return
         from json import loads
         if self.level in ["variant", "gene"]:
             q = f"select * from {self.level}_reportsub"
@@ -206,7 +207,8 @@ class Aggregator(object):
             self.reportsub = {}
 
     def do_reportsub_col_cats(self, col_name, col_cats):
-        if self.reportsub is None: return
+        if self.reportsub is None:
+            return
         (module_name, col) = col_name.split("__")
         if module_name in self.reportsub and col in self.reportsub[module_name]:
             sub = self.reportsub[module_name][col]
@@ -216,8 +218,10 @@ class Aggregator(object):
         return col_cats
 
     def fill_categories(self):
-        if self.level is None: return
-        if self.dbconn is None or self.cursor is None: return
+        if self.level is None:
+            return
+        if self.dbconn is None or self.cursor is None:
+            return
         from distutils.version import LooseVersion
         from oakvar.inout import ColumnDefinition
         from oakvar.admin_util import get_current_package_version
@@ -272,17 +276,20 @@ class Aggregator(object):
         self.dbconn.commit()
 
     def update_col_def(self, col_def):
-        if self.cursor is None: return
+        if self.cursor is None:
+            return
         q = f"update {self.level}_header set col_def=? where col_name=?"
         self.cursor.execute(q, [col_def.get_json(), col_def.name])
 
     def _cleanup(self):
-        if self.dbconn is None or self.cursor is None: return
+        if self.dbconn is None or self.cursor is None:
+            return
         self.cursor.close()
         self.dbconn.close()
 
     def set_input_base_fname(self):
-        if self.name is None: return
+        if self.name is None:
+            return
         from os import listdir
         crv_fname = self.name + ".crv"
         crx_fname = self.name + ".crx"
@@ -306,9 +313,12 @@ class Aggregator(object):
         self.output_base_fname = self.name
 
     def _setup(self):
-        if self.level is None: return
-        if self.name is None: return
-        if self.input_base_fname is None: return
+        if self.level is None:
+            return
+        if self.name is None:
+            return
+        if self.input_base_fname is None:
+            return
         if self.input_dir is None:
             from .exceptions import SetupError
             raise SetupError()
@@ -346,9 +356,12 @@ class Aggregator(object):
         self._setup_table()
 
     def _setup_table(self):
-        if self.level is None: return
-        if self.dbconn is None or self.cursor is None: return
-        if self.base_reader is None: return
+        if self.level is None:
+            return
+        if self.dbconn is None or self.cursor is None:
+            return
+        if self.base_reader is None:
+            return
         import sys
         from json import loads, dumps
         from collections import OrderedDict
@@ -485,7 +498,8 @@ class Aggregator(object):
         self.dbconn.commit()
 
     def _setup_io(self):
-        if self.output_base_fname is None: return
+        if self.output_base_fname is None:
+            return
         if self.output_dir is None:
             from .exceptions import SetupError
             raise SetupError()
@@ -504,8 +518,10 @@ class Aggregator(object):
         self.cursor = self.dbconn.cursor()
 
     def _log_runtime_error(self, ln, line, e):
-        if self.logger is None: return
-        if self.error_logger is None: return
+        if self.logger is None:
+            return
+        if self.error_logger is None:
+            return
         from traceback import format_exc
         err_str = format_exc().rstrip()
         if ln is not None and line is not None:

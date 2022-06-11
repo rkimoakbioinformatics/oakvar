@@ -277,14 +277,14 @@ class VcfReportReader(ReportReader):
     def getRowID(self, headers, lineitems):
         Id = (lineitems[self.getColPos(
             headers, "Variant Annotation|chrom")].strip('"') + " " +
-              lineitems[self.getColPos(
-                  headers, "Variant Annotation|pos")].strip('"') + " " +
-              lineitems[self.getColPos(
-                  headers, "Variant Annotation|ref")].strip('"') + " " +
-              lineitems[self.getColPos(
-                  headers, "Variant Annotation|alt")].strip('"') + " " +
-              lineitems[self.getColPos(headers,
-                                       "Variant Annotation|tags")].strip('"'))
+            lineitems[self.getColPos(
+                headers, "Variant Annotation|pos")].strip('"') + " " +
+            lineitems[self.getColPos(
+                headers, "Variant Annotation|ref")].strip('"') + " " +
+            lineitems[self.getColPos(
+                headers, "Variant Annotation|alt")].strip('"') + " " +
+            lineitems[self.getColPos(headers,
+                                     "Variant Annotation|tags")].strip('"'))
         return Id
 
     # get the position of a specific output column
@@ -824,7 +824,8 @@ def ov_util_test(args):
                 fail_msg = module_name + ("" if test_input_file == "input" else
                                           " " + test_input_file)
                 modules_failed.append(fail_msg)
-                result[module_name] = {"passed": False, "msg": fail_msg, "log": tester.log_path}
+                result[module_name] = {"passed": False,
+                                       "msg": fail_msg, "log": tester.log_path}
     modules_failed.sort()
     if args.get("to") == "stdout":
         quiet_print(f"passed {passed} failed {failed}", args=args)

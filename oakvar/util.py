@@ -447,6 +447,7 @@ def get_args_conf(args: dict) -> dict:
                     args[k] = v
     return args
 
+
 def get_args_package(args: dict) -> dict:
     if args is None:
         return {}
@@ -462,6 +463,7 @@ def get_args_package(args: dict) -> dict:
                     if k not in args or not args[k]:
                         args[k] = v
     return args
+
 
 def get_args(parser, inargs, inkwargs):
     from types import SimpleNamespace
@@ -492,7 +494,8 @@ def get_args(parser, inargs, inkwargs):
             inarg_dict[k] = v
     # convert value to list if needed.
     for action in parser._actions:
-        if action.dest == "help": continue
+        if action.dest == "help":
+            continue
         if action.nargs in ["+", "*"]:
             key = action.dest
             value = inarg_dict[key]
@@ -580,6 +583,7 @@ def quiet_print(msg, args=None):
     if not quiet:
         print(msg, flush=True)
 
+
 def trim_input(ref, alt, pos, strand):
     pos = int(pos)
     reflen = len(ref)
@@ -613,6 +617,7 @@ def trim_input(ref, alt, pos, strand):
             break
     return new_ref2, new_alt2, new_pos
 
+
 def standardize_pos_ref_alt(strand, pos, ref, alt):
     reflen = len(ref)
     altlen = len(alt)
@@ -627,6 +632,7 @@ def standardize_pos_ref_alt(strand, pos, ref, alt):
     if new_alt2 == "" or new_alt2 == ".":
         new_alt2 = "-"
     return new_pos, new_ref2, new_alt2
+
 
 def normalize_variant(wdict):
     chrom = wdict["chrom"]

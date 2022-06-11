@@ -1,3 +1,4 @@
+from .admin_util import InstallProgressHandler
 from .decorators import cli_func
 from .decorators import cli_entry
 
@@ -6,6 +7,7 @@ from .decorators import cli_entry
 def cli_ov_module_ls(args):
     args.fmt = "yaml"
     return ov_module_ls(args)
+
 
 @cli_func
 def ov_module_ls(args):
@@ -148,7 +150,7 @@ def ov_module_install(args):
     if type(modules) == str:
         modules = [modules]
     quiet = args.get("quiet", True)
-    if not modules: 
+    if not modules:
         from .exceptions import ArgumentError
         e = ArgumentError("no module was given")
         e.traceback = False
@@ -579,7 +581,6 @@ def yield_tabular_lines(l, col_spacing=2, indent=0):
         yield jline
 
 
-from .admin_util import InstallProgressHandler
 class InstallProgressStdout(InstallProgressHandler):
 
     def __init__(self, module_name, module_version, quiet=True):
@@ -631,8 +632,8 @@ def get_parser_fn_module():
         default=None,
         help="Specify the root directory of OakVar modules")
     parser_ov_module_installbase.add_argument("--quiet",
-                                               action="store_true",
-                                               help="suppress stdout output")
+                                              action="store_true",
+                                              help="suppress stdout output")
     parser_ov_module_installbase.set_defaults(func=cli_ov_module_installbase)
     parser_ov_module_installbase.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_ov_module_installbase.r_examples = [  # type: ignore
@@ -661,19 +662,19 @@ def get_parser_fn_module():
         help="Download data even if latest data is already installed",
     )
     parser_ov_module_install.add_argument("-y",
-                                           "--yes",
-                                           action="store_true",
-                                           help="Proceed without prompt")
+                                          "--yes",
+                                          action="store_true",
+                                          help="Proceed without prompt")
     parser_ov_module_install.add_argument("--skip-dependencies",
-                                           action="store_true",
-                                           help="Skip installing dependencies")
+                                          action="store_true",
+                                          help="Skip installing dependencies")
     parser_ov_module_install.add_argument("-p",
-                                           "--private",
-                                           action="store_true",
-                                           help="Install a private module")
+                                          "--private",
+                                          action="store_true",
+                                          help="Install a private module")
     parser_ov_module_install.add_argument("--skip-data",
-                                           action="store_true",
-                                           help="Skip installing data")
+                                          action="store_true",
+                                          help="Skip installing data")
     parser_ov_module_install.add_argument(
         "--md",
         default=None,
@@ -681,8 +682,8 @@ def get_parser_fn_module():
     parser_ov_module_install.add_argument(
         "--to", default="return", help="'stdout' to print. 'return' to return")
     parser_ov_module_install.add_argument("--quiet",
-                                           action="store_true",
-                                           help="suppress stdout output")
+                                          action="store_true",
+                                          help="suppress stdout output")
     parser_ov_module_install.set_defaults(func=cli_ov_module_install)
     parser_ov_module_install.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_ov_module_install.r_examples = [  # type: ignore
@@ -702,15 +703,14 @@ def get_parser_fn_module():
         formatter_class=RawDescriptionHelpFormatter,
     )
     parser_ov_module_update.add_argument("modules",
-                                          nargs="*",
-                                          help="Modules to update.")
+                                         nargs="*",
+                                         help="Modules to update.")
     parser_ov_module_update.add_argument("-y",
-                                          action="store_true",
-                                          help="Proceed without prompt")
+                                         action="store_true",
+                                         help="Proceed without prompt")
     parser_ov_module_update.add_argument(
         "--strategy",
-        help=
-        'Dependency resolution strategy. "consensus" will attempt to resolve dependencies. "force" will install the highest available version. "skip" will skip modules with constraints.',
+        help='Dependency resolution strategy. "consensus" will attempt to resolve dependencies. "force" will install the highest available version. "skip" will skip modules with constraints.',
         default="consensus",
         type=str,
         choices=("consensus", "force", "skip"),
@@ -720,8 +720,8 @@ def get_parser_fn_module():
         default=None,
         help="Specify the root directory of OakVar modules")
     parser_ov_module_update.add_argument("--quiet",
-                                          action="store_true",
-                                          help="suppress stodout output")
+                                         action="store_true",
+                                         help="suppress stodout output")
     parser_ov_module_update.set_defaults(func=cli_ov_module_update)
     parser_ov_module_update.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_ov_module_update.r_examples = [  # type: ignore
@@ -733,19 +733,19 @@ def get_parser_fn_module():
     parser_ov_module_uninstall = _subparsers.add_parser(
         "uninstall", help="uninstalls modules.")
     parser_ov_module_uninstall.add_argument("modules",
-                                             nargs="+",
-                                             help="Modules to uninstall")
+                                            nargs="+",
+                                            help="Modules to uninstall")
     parser_ov_module_uninstall.add_argument("-y",
-                                             "--yes",
-                                             action="store_true",
-                                             help="Proceed without prompt")
+                                            "--yes",
+                                            action="store_true",
+                                            help="Proceed without prompt")
     parser_ov_module_uninstall.add_argument(
         "--md",
         default=None,
         help="Specify the root directory of OakVar modules")
     parser_ov_module_uninstall.add_argument("--quiet",
-                                             action="store_true",
-                                             help="Run quietly")
+                                            action="store_true",
+                                            help="Run quietly")
     parser_ov_module_uninstall.set_defaults(func=cli_ov_module_uninstall)
     parser_ov_module_uninstall.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_ov_module_uninstall.r_examples = [  # type: ignore
@@ -761,12 +761,12 @@ def get_parser_fn_module():
         epilog="returns information of the queried module",
         help="shows module information.")
     parser_ov_module_info.add_argument("module",
-                                        help="Module to get info about")
+                                       help="Module to get info about")
     parser_ov_module_info.add_argument("-l",
-                                        "--local",
-                                        dest="local",
-                                        help="Include local info",
-                                        action="store_true")
+                                       "--local",
+                                       dest="local",
+                                       help="Include local info",
+                                       action="store_true")
     parser_ov_module_info.add_argument(
         "--md",
         default=None,
@@ -780,8 +780,8 @@ def get_parser_fn_module():
         default="return",
         help='"stdout" to stdout / "return" to return')
     parser_ov_module_info.add_argument("--quiet",
-                                        action="store_true",
-                                        help="Run quietly")
+                                       action="store_true",
+                                       help="Run quietly")
     parser_ov_module_info.set_defaults(func=cli_ov_module_info)
     parser_ov_module_info.r_return = "A named list. Information of the queried module"  # type: ignore
     parser_ov_module_info.r_examples = [  # type: ignore
@@ -802,10 +802,10 @@ def get_parser_fn_module():
         default=r".*",
         help="Regular expression for module names")
     parser_ov_module_ls.add_argument("-a",
-                                      "--available",
-                                      action="store_true",
-                                      default=False,
-                                      help="Include available modules")
+                                     "--available",
+                                     action="store_true",
+                                     default=False,
+                                     help="Include available modules")
     parser_ov_module_ls.add_argument(
         "-t",
         "--types",
@@ -813,35 +813,35 @@ def get_parser_fn_module():
         default=[],
         help="Only list modules of certain types")
     parser_ov_module_ls.add_argument("-i",
-                                      "--include-hidden",
-                                      action="store_true",
-                                      default=False,
-                                      help="Include hidden modules")
+                                     "--include-hidden",
+                                     action="store_true",
+                                     default=False,
+                                     help="Include hidden modules")
     parser_ov_module_ls.add_argument("--tags",
-                                      nargs="+",
-                                      default=[],
-                                      help="Only list modules of given tag(s)")
+                                     nargs="+",
+                                     default=[],
+                                     help="Only list modules of given tag(s)")
     parser_ov_module_ls.add_argument("--nameonly",
-                                      action="store_true",
-                                      default=False,
-                                      help="Only list module names")
+                                     action="store_true",
+                                     default=False,
+                                     help="Only list module names")
     parser_ov_module_ls.add_argument("--bytes",
-                                      action="store_true",
-                                      default=False,
-                                      dest="raw_bytes",
-                                      help="Machine readable data sizes")
+                                     action="store_true",
+                                     default=False,
+                                     dest="raw_bytes",
+                                     help="Machine readable data sizes")
     parser_ov_module_ls.add_argument(
         "--md",
         default=None,
         help="Specify the root directory of OakVar modules")
     parser_ov_module_ls.add_argument("--fmt",
-                                      default="json",
-                                      help="Output format. tabular or json")
+                                     default="json",
+                                     help="Output format. tabular or json")
     parser_ov_module_ls.add_argument(
         "--to", default="return", help="stdout to print / return to return")
     parser_ov_module_ls.add_argument("--quiet",
-                                      action="store_true",
-                                      help="Run quietly")
+                                     action="store_true",
+                                     help="Run quietly")
     parser_ov_module_ls.set_defaults(func=cli_ov_module_ls)
     parser_ov_module_ls.r_return = "A named list. List of modules"  # type: ignore
     parser_ov_module_ls.r_examples = [  # type: ignore

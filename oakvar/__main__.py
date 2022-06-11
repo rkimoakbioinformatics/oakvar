@@ -9,12 +9,12 @@ from .cli_version import get_parser_cli_version
 from .cli_store import get_parser_fn_store
 from .cli_system import get_parser_ov_system
 
+
 def get_entry_parser():
     # subparsers
     from argparse import ArgumentParser
     p_entry = ArgumentParser(
-        description=
-        "OakVar. Genomic variant analysis platform. https://github.com/rkimoakbioinformatics/oakvar"
+        description="OakVar. Genomic variant analysis platform. https://github.com/rkimoakbioinformatics/oakvar"
     )
     p_entry.add_argument("--to", default="stdout")
     sp_entry = p_entry.add_subparsers(title="Commands")

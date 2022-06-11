@@ -40,10 +40,10 @@ def ov_run(args):
         admin_util.custom_system_conf = custom_system_conf
         admin_util.update_mic()
     au.ready_resolution_console()
-    #try:
+    # try:
     module = Cravat(**args)
     return run(module.main())
-    #except Exception as e:
+    # except Exception as e:
     #    from .exceptions import ExpectedException
     #    if isinstance(e, ExpectedException):
     #        from sys import stderr
@@ -360,9 +360,9 @@ class Cravat(object):
                 stime = time()
                 #multicore_mapper_mode = self.main_conf.get("multicore_mapper_mode")
                 self.run_genemapper_mp()
-                #if multicore_mapper_mode:
+                # if multicore_mapper_mode:
                 #    self.run_genemapper_mp()
-                #else:
+                # else:
                 #    self.run_genemapper()
                 rtime = time() - stime
                 quiet_print("finished in {0:.3f}s".format(rtime), self.args)
@@ -412,7 +412,7 @@ class Cravat(object):
             self.update_status("Finished", force=True)
         except Exception as e:
             self.exception = e
-            #self.handle_exception(e)
+            # self.handle_exception(e)
         finally:
             end_time = time()
             display_time = asctime(localtime(end_time))
@@ -430,13 +430,13 @@ class Cravat(object):
                         "Finished normally. Runtime: {0:0.3f}s".format(
                             runtime), self.args)
             else:
-                #if self.args and not self.args.quiet:
-                #if isinstance(exception, ExpectedException):
-                #if self.logger and self.log_path:
+                # if self.args and not self.args.quiet:
+                # if isinstance(exception, ExpectedException):
+                # if self.logger and self.log_path:
                 #from sys import stderr
-                #stderr.write(
+                # stderr.write(
                 #    "Log file at {}".format(self.log_path) + "\n")
-                #stderr.flush()
+                # stderr.flush()
                 if self.status_writer:
                     self.update_status("Error", force=True)
             if self.logger:
@@ -1367,7 +1367,8 @@ class Cravat(object):
                 raise ModuleNotExist(module_name)
             arg_dict = dict(vars(self.args))
             arg_dict["script_path"] = module.script_path
-            arg_dict["dbpath"] = os.path.join(self.output_dir, self.run_name + ".sqlite")
+            arg_dict["dbpath"] = os.path.join(
+                self.output_dir, self.run_name + ".sqlite")
             arg_dict["savepath"] = os.path.join(self.output_dir, self.run_name)
             arg_dict["output_dir"] = self.output_dir
             arg_dict["module_name"] = module_name
@@ -1602,7 +1603,8 @@ class Cravat(object):
         await cursor.execute(q)
         if not self.append_mode:
             created = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            q = 'insert into info values ("Result created at", "' + created + '")'
+            q = 'insert into info values ("Result created at", "' + \
+                created + '")'
             await cursor.execute(q)
             q = 'insert into info values ("Input file name", "{}")'.format(
                 ";".join(self.inputs))
@@ -1969,16 +1971,14 @@ def get_parser_ov_run():
     from argparse import ArgumentParser, SUPPRESS
     parser_ov_run = ArgumentParser(
         prog="ov run input_file_path_1 input_file_path_2 ...",
-        description=
-        "OakVar genomic variant interpreter. https://github.com/rkimoakbioinformatics/oakvar. Use input_file_path arguments before any option or define them in a conf file (option -c).",
+        description="OakVar genomic variant interpreter. https://github.com/rkimoakbioinformatics/oakvar. Use input_file_path arguments before any option or define them in a conf file (option -c).",
         epilog="inputs should be the first option",
     )
     parser_ov_run.add_argument(
         "inputs",
         nargs="*",
         default=[],
-        help=
-        "Input file(s). One or more variant files in a supported format like VCF.  "
+        help="Input file(s). One or more variant files in a supported format like VCF.  "
         +
         "See the -i/--input-format flag for supported formats. In the special case "
         +
@@ -1990,16 +1990,14 @@ def get_parser_ov_run():
         nargs="+",
         dest="annotators",
         default=[],
-        help=
-        "Annotator module names or directories. If --package is used also, annotator modules defined with -a will be added.",
+        help="Annotator module names or directories. If --package is used also, annotator modules defined with -a will be added.",
     )
     parser_ov_run.add_argument(
         "-A",
         nargs="+",
         dest="annotators_replace",
         default=[],
-        help=
-        "Annotator module names or directories. If --package option also is used, annotator modules defined with -A will replace those defined with --package. -A has priority over -a.",
+        help="Annotator module names or directories. If --package option also is used, annotator modules defined with -A will replace those defined with --package. -A has priority over -a.",
     )
     parser_ov_run.add_argument("-e",
                                nargs="+",
@@ -2082,8 +2080,7 @@ def get_parser_ov_run():
         "--liftover",
         dest="genome",
         default=None,
-        help=
-        "reference genome of input. OakVar will lift over to hg38 if needed.",
+        help="reference genome of input. OakVar will lift over to hg38 if needed.",
     )
     parser_ov_run.add_argument(
         "-x",
@@ -2160,16 +2157,14 @@ def get_parser_ov_run():
         dest="primary_transcript",
         nargs="+",
         default=["mane"],
-        help=
-        '"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
+        help='"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
     )
     parser_ov_run.add_argument(
         "--cleanrun",
         dest="clean_run",
         action="store_true",
         default=None,
-        help=
-        "Deletes all previous output files for the job and generate new ones.",
+        help="Deletes all previous output files for the job and generate new ones.",
     )
     parser_ov_run.add_argument(
         "--do-not-change-status",
@@ -2182,16 +2177,14 @@ def get_parser_ov_run():
         "--module-option",
         dest="module_option",
         nargs="*",
-        help=
-        "Module-specific option in module_name.key=value syntax. For example, --module-option vcfreporter.type=separate",
+        help="Module-specific option in module_name.key=value syntax. For example, --module-option vcfreporter.type=separate",
     )
     parser_ov_run.add_argument(
         "--system-option",
         dest="system_option",
         nargs="*",
         default=[],
-        help=
-        "System option in key=value syntax. For example, --system-option modules_dir=/home/user/oakvar/modules",
+        help="System option in key=value syntax. For example, --system-option modules_dir=/home/user/oakvar/modules",
     )
     parser_ov_run.add_argument("--quiet",
                                action="store_true",
@@ -2201,8 +2194,7 @@ def get_parser_ov_run():
         dest="concise_report",
         action="store_true",
         default=None,
-        help=
-        "Generate concise reports with default columns defined by each annotation module",
+        help="Generate concise reports with default columns defined by each annotation module",
     )
     parser_ov_run.add_argument("--package",
                                dest="package",
@@ -2239,8 +2231,7 @@ def get_parser_ov_run():
         nargs="+",
         dest="postaggregators",
         default=[],
-        help=
-        "Postaggregators to run. Additionally, tagsampler, casecontrol, varmeta, and vcfinfo will automatically run depending on conditions.",
+        help="Postaggregators to run. Additionally, tagsampler, casecontrol, varmeta, and vcfinfo will automatically run depending on conditions.",
     )
     parser_ov_run.set_defaults(func=cli_ov_run)
     return parser_ov_run

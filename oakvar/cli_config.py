@@ -55,7 +55,7 @@ def get_parser_fn_config():
     parser_cli_config_oakvar.add_argument(
         "--to", default="return", help='"stdout" to print. "return" to return')
     parser_cli_config_oakvar.add_argument("--quiet",
-            action="store_true", help="Run quietly")
+                                          action="store_true", help="Run quietly")
     parser_cli_config_oakvar.set_defaults(func=cli_config_oakvar)
     parser_cli_config_oakvar.r_return = "A named list. OakVar config information"  # type: ignore
     parser_cli_config_oakvar.r_examples = [  # type: ignore

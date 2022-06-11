@@ -259,6 +259,8 @@ def cli_ov_util_mergesqlite(args):
     ov_util_mergesqlite(args)
 
 # For now, only jobs with same annotators are allowed.
+
+
 @cli_entry
 @cli_func
 def ov_util_mergesqlite(args):
@@ -750,8 +752,7 @@ def get_parser_fn_util():
     # Filter SQLite
     parser_fn_util_filtersqlite = _subparsers.add_parser(
         "filtersqlite",
-        help=
-        "Filter SQLite result files to produce filtered SQLite result files",
+        help="Filter SQLite result files to produce filtered SQLite result files",
     )
     parser_fn_util_filtersqlite.add_argument("paths",
                                              nargs="+",
