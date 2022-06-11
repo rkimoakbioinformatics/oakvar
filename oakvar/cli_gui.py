@@ -726,7 +726,8 @@ def get_parser_fn_gui():
         action="store_true",
         help="Disables guest mode",
     )
-    parser_fn_gui.add_argument("--quiet", action="store_true", help="Run quietly")
+    parser_fn_gui.add_argument(
+        "--quiet", action="store_true", help="Run quietly")
     parser_fn_gui.add_argument("--to", default="return", help="Run quietly")
     parser_fn_gui.set_defaults(func=cli_ov_gui)
     return parser_fn_gui

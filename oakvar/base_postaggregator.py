@@ -19,7 +19,8 @@ class BasePostAggregator(object):
         self.parse_cmd_args(cmd_args)
         self._setup_logger()
         from .admin_util import get_module_conf
-        self.conf = get_module_conf(self.module_name, module_type="postaggregator")
+        self.conf = get_module_conf(
+            self.module_name, module_type="postaggregator")
         self.fix_col_names()
         self.dbconn = None
         self.cursor = None

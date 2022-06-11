@@ -722,8 +722,10 @@ def get_module_conf_path(module_name, module_type=None):
     from os.path import join
     from os.path import basename
     module_dir = get_module_dir(module_name, module_type=module_type)
-    if not module_dir: return None
-    yml_fn = basename(module_name) + ".yml"  # module_name can be a folder path.
+    if not module_dir:
+        return None
+    # module_name can be a folder path.
+    yml_fn = basename(module_name) + ".yml"
     return join(module_dir, yml_fn)
 
 
@@ -996,7 +998,7 @@ def install_module(
     os.makedirs(temp_dir)
 
     # Ctrl-c in this func must be caught to delete temp_dir
-    #def raise_kbi(__a__, __b__):
+    # def raise_kbi(__a__, __b__):
     #    raise KeyboardInterrupt
 
     #original_sigint = signal.signal(signal.SIGINT, raise_kbi)
@@ -1202,7 +1204,7 @@ def install_module(
         wf.close()
         get_mic().update_local()
         stage_handler.stage_start("finish")
-    #except (Exception, KeyboardInterrupt, SystemExit) as e:
+    # except (Exception, KeyboardInterrupt, SystemExit) as e:
     except Exception as e:
         shutil.rmtree(temp_dir, ignore_errors=True)
         if type(e) == KillInstallException:
@@ -1216,7 +1218,7 @@ def install_module(
         else:
             #signal.signal(signal.SIGINT, original_sigint)
             raise e
-    #finally:
+    # finally:
     #    signal.signal(signal.SIGINT, original_sigint)
 
 

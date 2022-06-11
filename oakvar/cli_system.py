@@ -52,12 +52,12 @@ def add_parser_ov_system_setup(subparsers):
         help="Sets up OakVar system",
         description="Sets up OakVar system")
     parser_cli_ov_system_setup.add_argument("-f",
-                                         dest="setup_file",
-                                         default=None,
-                                         help="setup file to use")
+                                            dest="setup_file",
+                                            default=None,
+                                            help="setup file to use")
     parser_cli_ov_system_setup.add_argument("--quiet",
-                                          action="store_true",
-                                         help="Run quietly")
+                                            action="store_true",
+                                            help="Run quietly")
     parser_cli_ov_system_setup.set_defaults(func=cli_ov_system_setup)
     parser_cli_ov_system_setup.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_cli_ov_system_setup.r_examples = [  # type: ignore
@@ -66,11 +66,13 @@ def add_parser_ov_system_setup(subparsers):
         "ov.system.setup(setup_file=\"setup.yml\")"
     ]
 
+
 def get_parser_ov_system():
     from argparse import ArgumentParser
     # opens issue report
     parser_ov_system = ArgumentParser()
-    subparsers = parser_ov_system.add_subparsers(title="Commands", dest="commands")
+    subparsers = parser_ov_system.add_subparsers(
+        title="Commands", dest="commands")
     add_parser_ov_system_setup(subparsers)
     """parser_cli_system_setup.add_argument("-f",
                                          dest="setup_file",

@@ -198,7 +198,8 @@ class CravatReader(CravatFile):
         f.close()
 
     def _loop_data(self):
-        if not self.encoding: return
+        if not self.encoding:
+            return
         if self.csvfmt:
             with open(self.path, newline="") as f:
                 if self.seekpos is not None:
@@ -209,7 +210,8 @@ class CravatReader(CravatFile):
                 csv.field_size_limit(sys.maxsize)
                 csvreader = csv.reader(f)
                 for row in csvreader:
-                    if row[0].startswith("#"): continue
+                    if row[0].startswith("#"):
+                        continue
                     yield csvreader.line_num, row
         else:
             with open(self.path, "rb") as f:

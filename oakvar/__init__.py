@@ -1,3 +1,47 @@
+from .cli_version import ov_version
+from .cli_util import ov_util_sqliteinfo
+from .cli_util import ov_util_mergesqlite
+from .cli_util import ov_util_filtersqlite
+from .cli_util import ov_util_addjob
+from .cli_test import ov_util_test
+from .cli_system import ov_system_setup
+from .cli_system import ov_system_md
+from .cli_system import ov_system_config
+from .cli_store import ov_store_verifyemail
+from .cli_store import ov_store_resetpassword
+from .cli_store import ov_store_publish
+from .cli_store import ov_store_createaccount
+from .cli_store import ov_store_checklogin
+from .cli_store import ov_store_changepassword
+from .cli_new import ov_new_annotator
+from .cli_new import ov_new_exampleinput
+from .cli_issue import ov_issue
+from .cli_gui import ov_gui
+from .cli_report import ov_report
+from .cli_run import ov_run
+from .cli_module import ov_module_update
+from .cli_module import ov_module_uninstall
+from .cli_module import ov_module_ls
+from .cli_module import ov_module_installbase
+from .cli_module import ov_module_install
+from .cli_module import ov_module_info
+from . import __main__ as cli
+from . import constants
+from .exceptions import *
+from .constants import crx_def
+from .cli_run import Cravat
+from .cravat_filter import CravatFilter
+from .cli_report import CravatReport
+from .base_commonmodule import BaseCommonModule
+from .base_postaggregator import BasePostAggregator
+from .base_mapper import BaseMapper
+from .base_annotator import BaseAnnotator
+from .base_converter import BaseConverter
+from . import inout
+from . import admin_util
+import signal
+
+
 def raise_break(__signal_number__, __stack_frame__):
     import os
     import platform
@@ -29,70 +73,43 @@ def raise_break(__signal_number__, __stack_frame__):
         os.kill(pid, signal.SIGTERM)
 
 
-import signal
-
 signal.signal(signal.SIGINT, raise_break)
-from . import admin_util
-from . import inout
-from .base_converter import BaseConverter
-from .base_annotator import BaseAnnotator
-from .base_mapper import BaseMapper
-from .base_postaggregator import BasePostAggregator
-from .base_commonmodule import BaseCommonModule
-from .cli_report import CravatReport
-from .cravat_filter import CravatFilter
-from .cli_run import Cravat
-from .constants import crx_def
-from .exceptions import *
-from . import constants
-from . import __main__ as cli
-from .cli_module import ov_module_info
-from .cli_module import ov_module_install
-from .cli_module import ov_module_installbase
-from .cli_module import ov_module_ls
-from .cli_module import ov_module_uninstall
-from .cli_module import ov_module_update
-from .cli_run import ov_run
-from .cli_report import ov_report
-from .cli_gui import ov_gui
-from .cli_issue import ov_issue
-from .cli_new import ov_new_exampleinput
-from .cli_new import ov_new_annotator
-from .cli_store import ov_store_changepassword
-from .cli_store import ov_store_checklogin
-from .cli_store import ov_store_createaccount
-from .cli_store import ov_store_publish
-from .cli_store import ov_store_resetpassword
-from .cli_store import ov_store_verifyemail
-from .cli_system import ov_system_config
-from .cli_system import ov_system_md
-from .cli_system import ov_system_setup
-from .cli_test import ov_util_test
-from .cli_util import ov_util_addjob
-from .cli_util import ov_util_filtersqlite
-from .cli_util import ov_util_mergesqlite
-from .cli_util import ov_util_sqliteinfo
 #from .cli_util import ov_util_updateresult
-from .cli_version import ov_version
 
 
 wgs = None
-if admin_util or inout: pass
-if BaseConverter or BaseAnnotator or BaseMapper or BasePostAggregator or BaseCommonModule: pass
-if CravatReport or CravatFilter or Cravat: pass
-if crx_def or constants: pass
-if cli or wgs: pass
-if ov_module_info or ov_module_install or ov_module_installbase or ov_module_ls or ov_module_uninstall or ov_module_update: pass
-if ov_report: pass
-if ov_run: pass
-if ov_gui: pass
-if ov_issue: pass
-if ov_new_exampleinput or ov_new_annotator: pass
-if ov_store_verifyemail or ov_store_resetpassword or ov_store_publish or ov_store_createaccount or ov_store_checklogin or ov_store_changepassword: pass
-if ov_system_setup or ov_system_md or ov_system_config: pass
-if ov_util_test: pass
-if ov_util_addjob or ov_util_filtersqlite or ov_util_mergesqlite or ov_util_sqliteinfo: pass
-if ov_version: pass
+if admin_util or inout:
+    pass
+if BaseConverter or BaseAnnotator or BaseMapper or BasePostAggregator or BaseCommonModule:
+    pass
+if CravatReport or CravatFilter or Cravat:
+    pass
+if crx_def or constants:
+    pass
+if cli or wgs:
+    pass
+if ov_module_info or ov_module_install or ov_module_installbase or ov_module_ls or ov_module_uninstall or ov_module_update:
+    pass
+if ov_report:
+    pass
+if ov_run:
+    pass
+if ov_gui:
+    pass
+if ov_issue:
+    pass
+if ov_new_exampleinput or ov_new_annotator:
+    pass
+if ov_store_verifyemail or ov_store_resetpassword or ov_store_publish or ov_store_createaccount or ov_store_checklogin or ov_store_changepassword:
+    pass
+if ov_system_setup or ov_system_md or ov_system_config:
+    pass
+if ov_util_test:
+    pass
+if ov_util_addjob or ov_util_filtersqlite or ov_util_mergesqlite or ov_util_sqliteinfo:
+    pass
+if ov_version:
+    pass
 
 
 def get_live_annotator(module_name):

@@ -36,7 +36,8 @@ class BaseMapper(object):
         self._define_main_cmd_args()
         self._define_additional_cmd_args()
         self._parse_cmd_args(inargs, inkwargs)
-        if self.args is None: return
+        if self.args is None:
+            return
         self.live = self.args["live"]
         self.t = time()
         self.status_writer = self.args["status_writer"]
@@ -98,8 +99,7 @@ class BaseMapper(object):
             dest="primary_transcript",
             nargs="*",
             default=["mane"],
-            help=
-            '"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
+            help='"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
         )
         self.cmd_parser.add_argument("--live",
                                      action="store_true",
@@ -333,7 +333,8 @@ class BaseMapper(object):
         self.end()
 
     def _write_to_crt(self, alt_transcripts):
-        if self.crt_writer is None: return
+        if self.crt_writer is None:
+            return
         for primary, alts in alt_transcripts.items():
             if primary not in self.written_primary_transc:
                 for alt in alts:
@@ -358,7 +359,8 @@ class BaseMapper(object):
         """
         Convert gene_info to crg dict and write to crg file
         """
-        if self.crg_writer is None: return
+        if self.crg_writer is None:
+            return
         from .constants import crg_def
         sorted_hugos = list(self.gene_info.keys())
         sorted_hugos.sort()

@@ -534,7 +534,7 @@ class MasterCravatConverter(object):
                                                 "T",
                                                 "C",
                                                 "G",
-                                            ]:
+                                    ]:
                                         raise BadFormatError(
                                             "Reference base required for non SNV"
                                         )

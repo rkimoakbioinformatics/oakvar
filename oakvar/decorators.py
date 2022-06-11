@@ -7,6 +7,7 @@ def cli_entry(func):
 
     return change_args_for_cli
 
+
 def cli_func(func):
 
     def run_cli_func(*args, **kwargs):
@@ -33,6 +34,7 @@ def cli_func(func):
 
     return run_cli_func
 
+
 def get_parser(parser_name):
     from .__main__ import get_entry_parser
     from typing import Any
@@ -50,6 +52,7 @@ def get_parser(parser_name):
             if cmd == parser_name:
                 return pp_parser
     return None
+
 
 def get_commands(p):
     from argparse import _SubParsersAction

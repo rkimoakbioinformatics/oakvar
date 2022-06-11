@@ -215,7 +215,8 @@ class BaseAnnotator(object):
 
     def handle_jsondata(self, output_dict):
         import json
-        if self.json_colnames is None: return
+        if self.json_colnames is None:
+            return
         for colname in self.json_colnames:
             json_data = output_dict.get(colname, None)
             if json_data is not None:
@@ -224,8 +225,10 @@ class BaseAnnotator(object):
         return output_dict
 
     def log_progress(self, lnum):
-        if self.last_status_update_time is None: return
-        if self.conf is None: return
+        if self.last_status_update_time is None:
+            return
+        if self.conf is None:
+            return
         from time import time
         if self.update_status_json_flag and self.status_writer is not None:
             cur_time = time()
@@ -238,17 +241,20 @@ class BaseAnnotator(object):
                 self.last_status_update_time = cur_time
 
     def is_star_allele(self, input_data):
-        if self.conf is None: return
+        if self.conf is None:
+            return
         return self.conf["level"] == "variant" and input_data.get(
             "alt_base", "") == "*"
 
     def should_skip_chrom(self, input_data):
-        if self.conf is None: return
+        if self.conf is None:
+            return
         return (self.conf["level"] == "variant"
                 and not input_data.get("chrom") in self.supported_chroms)
 
     def fill_empty_output(self, output_dict):
-        if self.conf is None: return
+        if self.conf is None:
+            return
         for output_col in self.conf["output_columns"]:
             col_name = output_col["name"]
             if col_name not in output_dict:
@@ -256,7 +262,8 @@ class BaseAnnotator(object):
         return output_dict
 
     def make_json_colnames(self):
-        if self.output_columns is None: return
+        if self.output_columns is None:
+            return
         self.json_colnames = []
         for col in self.output_columns:
             if "table" in col and col["table"] == True:
@@ -264,8 +271,10 @@ class BaseAnnotator(object):
 
     # Runs the annotator.
     def run(self):
-        if self.conf is None: return
-        if self.logger is None: return
+        if self.conf is None:
+            return
+        if self.logger is None:
+            return
         from time import time, asctime, localtime
         from oakvar.util import quiet_print
         if self.update_status_json_flag and self.status_writer is not None:
