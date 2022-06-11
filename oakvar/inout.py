@@ -365,7 +365,7 @@ class CravatWriter(CravatFile):
                 col_index = self.name_to_col_index[col_name]
             except KeyError:
                 continue
-            if data[col_name] is not None:
+            if data[col_name]:
                 wtoks[col_index] = str(data[col_name])
             else:
                 wtoks[col_index] = ""

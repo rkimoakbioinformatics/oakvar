@@ -277,6 +277,7 @@ class ModuleInfoCache(object):
         if force or not (self._remote_fetched):
             if self._remote_url is None:
                 self._remote_url = self._store_path_builder.manifest()
+                print(f"@ remote_url={self._remote_url}")
                 manifest_str = get_file_to_string(self._remote_url)
                 # Current version may not have a manifest if it's a dev version
                 if not manifest_str:
@@ -1073,6 +1074,7 @@ def install_module(
         else:
             local_data_version = None
         code_url = store_path_builder.module_code(module_name, version)
+        print(f"@ code_url={code_url}")
         zipfile_fname = module_name + ".zip"
         remote_info = get_remote_module_info(module_name)
         if remote_info is not None:
