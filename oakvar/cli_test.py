@@ -851,7 +851,7 @@ def get_parser_cli_util_test():
     parser_cli_util_test.add_argument(
         "--to", default="return", help="stdout to print / return to return")
     parser_cli_util_test.add_argument("--quiet",
-                                      default=True,
+                                      action="store_true",
                                       help="Run quietly")
     parser_cli_util_test.set_defaults(func=cli_ov_util_test)
     return parser_cli_util_test

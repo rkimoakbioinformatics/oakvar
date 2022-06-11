@@ -10,6 +10,8 @@ def cli_entry(func):
 def cli_func(func):
 
     def run_cli_func(*args, **kwargs):
+        if "quiet" not in kwargs:
+            kwargs["quiet"] = True
         args = get_args(*args, **kwargs)
         try:
             ret = func(args)

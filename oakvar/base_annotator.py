@@ -175,7 +175,7 @@ class BaseAnnotator(object):
                             help="Configuration string")
         parser.add_argument("--quiet",
                             dest="quiet",
-                            default=False,
+                            default=None,
                             help="Silent operation")
         self.cmd_arg_parser = parser
 

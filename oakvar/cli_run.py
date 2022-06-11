@@ -2195,7 +2195,6 @@ def get_parser_ov_run():
     )
     parser_ov_run.add_argument("--quiet",
                                action="store_true",
-                               default=True,
                                help="Runs quietly.")
     parser_ov_run.add_argument(
         "--concise-report",

@@ -1149,7 +1149,6 @@ def get_parser_fn_report():
     parser_ov_report.add_argument(
         "--quiet",
         action="store_true",
-        default=True,
         help="Suppress output to STDOUT",
     )
     parser_ov_report.add_argument(

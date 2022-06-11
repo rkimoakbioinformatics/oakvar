@@ -631,7 +631,6 @@ def get_parser_fn_module():
         default=None,
         help="Specify the root directory of OakVar modules")
     parser_ov_module_installbase.add_argument("--quiet",
-                                               default=False,
                                                action="store_true",
                                                help="suppress stdout output")
     parser_ov_module_installbase.set_defaults(func=cli_ov_module_installbase)
@@ -682,7 +681,6 @@ def get_parser_fn_module():
     parser_ov_module_install.add_argument(
         "--to", default="return", help="'stdout' to print. 'return' to return")
     parser_ov_module_install.add_argument("--quiet",
-                                           default=False,
                                            action="store_true",
                                            help="suppress stdout output")
     parser_ov_module_install.set_defaults(func=cli_ov_module_install)
@@ -722,7 +720,6 @@ def get_parser_fn_module():
         default=None,
         help="Specify the root directory of OakVar modules")
     parser_ov_module_update.add_argument("--quiet",
-                                          default=False,
                                           action="store_true",
                                           help="suppress stodout output")
     parser_ov_module_update.set_defaults(func=cli_ov_module_update)
@@ -747,7 +744,7 @@ def get_parser_fn_module():
         default=None,
         help="Specify the root directory of OakVar modules")
     parser_ov_module_uninstall.add_argument("--quiet",
-                                             default=False,
+                                             action="store_true",
                                              help="Run quietly")
     parser_ov_module_uninstall.set_defaults(func=cli_ov_module_uninstall)
     parser_ov_module_uninstall.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
@@ -783,7 +780,7 @@ def get_parser_fn_module():
         default="return",
         help='"stdout" to stdout / "return" to return')
     parser_ov_module_info.add_argument("--quiet",
-                                        default=False,
+                                        action="store_true",
                                         help="Run quietly")
     parser_ov_module_info.set_defaults(func=cli_ov_module_info)
     parser_ov_module_info.r_return = "A named list. Information of the queried module"  # type: ignore
@@ -843,7 +840,7 @@ def get_parser_fn_module():
     parser_ov_module_ls.add_argument(
         "--to", default="return", help="stdout to print / return to return")
     parser_ov_module_ls.add_argument("--quiet",
-                                      default=False,
+                                      action="store_true",
                                       help="Run quietly")
     parser_ov_module_ls.set_defaults(func=cli_ov_module_ls)
     parser_ov_module_ls.r_return = "A named list. List of modules"  # type: ignore
