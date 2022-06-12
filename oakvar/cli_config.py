@@ -1,38 +1,16 @@
-def cli_config_md(args):
-    args.to = "stdout"
-    return fn_config_md(args)
+from .decorators import cli_entry
+from .decorators import cli_func
 
 
-def fn_config_md(args):
-    from .sysadmin import set_modules_dir, get_modules_dir
-    from .util import quiet_print
-    if args["directory"]:
-        set_modules_dir(args["directory"])
-    modules_dir = get_modules_dir()
-    if args.get("to") == "stdout":
-        quiet_print(modules_dir, args=args)
-    return modules_dir
-
-
-def cli_config_system(args):
+@cli_entry
+def cli_ov_config_oakvar(args):
     args.fmt = "yaml"
     args.to = "stdout"
-    return fn_config_system(args)
+    return ov_config_oakvar(args)
 
 
-def fn_config_system(args):
-    from .sysadmin import show_system_conf
-    ret = show_system_conf(args)
-    return ret
-
-
-def cli_config_oakvar(args):
-    args.fmt = "yaml"
-    args.to = "stdout"
-    return fn_config_oakvar(args)
-
-
-def fn_config_oakvar(args):
+@cli_func
+def ov_config_oakvar(args):
     from .admin_util import show_main_conf
     ret = show_main_conf(args)
     return ret
@@ -43,7 +21,6 @@ def get_parser_fn_config():
     parser_fn_config = ArgumentParser(
         formatter_class=RawDescriptionHelpFormatter)
     _subparsers = parser_fn_config.add_subparsers(title="Commands")
-    from .cli_system import get_parser_ov_system
 
     # shows oakvar conf content.
     parser_cli_config_oakvar = _subparsers.add_parser(
@@ -57,7 +34,7 @@ def get_parser_fn_config():
     parser_cli_config_oakvar.add_argument("--quiet",
                                           action="store_true",
                                           default=None, help="Run quietly")
-    parser_cli_config_oakvar.set_defaults(func=cli_config_oakvar)
+    parser_cli_config_oakvar.set_defaults(func=cli_ov_config_oakvar)
     parser_cli_config_oakvar.r_return = "A named list. OakVar config information"  # type: ignore
     parser_cli_config_oakvar.r_examples = [  # type: ignore
         "# Get the named list of the OakVar configuration",

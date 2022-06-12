@@ -804,6 +804,9 @@ def ov_util_test(args):
     failed = 0
     modules_failed = []
     module_names = args.get("modules")
+    if not module_names:
+        from .exceptions import NoInputException
+        raise NoInputException()
     module_names.sort()
     result = {}
     for module_name in module_names:
