@@ -1,4 +1,5 @@
 from collections.abc import MutableMapping
+from typing import Optional
 
 
 class InstallProgressHandler(object):
@@ -708,7 +709,7 @@ def get_mapper_script_path(module_name):
     return module_path
 
 
-def get_module_dir(module_name, module_type=None):
+def get_module_dir(module_name, module_type=None) -> Optional[str]:
     from os import listdir
     from os.path import join
     from os.path import exists

@@ -251,29 +251,6 @@ class ModuleArchiveBuilder(object):
         self._archive.close()
 
 
-def add_to_zipfile(full_path, zf, start=None, compress_type=None):
-    """
-    Recursively add files to a zipfile. Optionally making the path within
-    the zipfile relative to a base_path, default is curdir.
-    """
-    from os.path import relpath, isdir, join
-    from os import curdir, listdir
-    from zipfile import ZIP_DEFLATED
-    if compress_type is None:
-        compress_type = ZIP_DEFLATED
-    if start is None:
-        start = curdir
-    rel_path = relpath(full_path, start=start)
-    zf.write(full_path, arcname=rel_path, compress_type=compress_type)
-    if isdir(full_path):
-        for item_name in listdir(full_path):
-            item_path = join(full_path, item_name)
-            add_to_zipfile(item_path,
-                           zf,
-                           start=start,
-                           compress_type=compress_type)
-
-
 def nest_value_in_dict(d, v, keys):
     """
     Put the value v, into dictionary d at the location defined by the list of
@@ -364,3 +341,74 @@ def client_error_json(error_class):
     from json import dumps
     return dumps({"code": error_class.code, "message": error_class.message})
 
+def pack_module(args):
+    from os.path import basename
+    from os.path import exists
+    from os.path import join
+    from os import walk
+    from os import sep
+    from .util import quiet_print
+    module_name = args.get("module")
+    if not module_name:
+        from .exceptions import NoInputException
+        raise NoInputException()
+    # get module_dir
+    if exists(module_name):
+        module_dir = module_name
+        module_name = basename(module_dir)
+    else:
+        from .admin_util import get_module_dir
+        module_dir = get_module_dir(module_name)
+    if not module_dir:
+        from .exceptions import ModuleLoadingError
+        raise ModuleLoadingError(module_name)
+    # module version
+    from .admin_util import get_module_conf
+    module_conf = get_module_conf(module_name)
+    if not module_conf:
+        from .exceptions import ModuleLoadingError
+        raise ModuleLoadingError(module_name)
+    version = module_conf.get("version", None)
+    if not version:
+        from .exceptions import ModuleVersionError
+        raise ModuleVersionError(module_name, "unknown")
+    # outdir
+    from zipfile import ZipFile
+    outdir = args.get("outdir", ".")
+    if not exists(outdir):
+        from os import mkdir
+        mkdir(outdir)
+    zip_prefix = module_name + "__" + version + "__"
+    # zip code
+    code_fn = zip_prefix + ".code.zip"
+    code_path = join(outdir, code_fn)
+    with ZipFile(code_path, "w") as z:
+        for root, _, files in walk(module_dir):
+            root_basename = basename(root)
+            if root_basename.startswith(".") or root_basename.startswith("_") or root_basename == "data":
+                continue
+            for file in files:
+                if file.startswith(".") or file == "startofinstall" or file == "endofinstall":
+                    continue
+                p = join(root, file)
+                arcname = join(root.replace(module_dir, ""), file)
+                z.write(p, arcname=arcname)
+        quiet_print(f"{code_path} written", args=args)
+    # zip data
+    data_fn = zip_prefix + ".data.zip"
+    data_path = join(outdir, data_fn)
+    data_dir = join(module_dir, "data")
+    if exists(data_dir):
+        with ZipFile(data_path, "w") as z:
+            for root, _, files in walk(data_dir):
+                root_basename = basename(root)
+                if root_basename.startswith(".") or root_basename.startswith("_"):
+                    continue
+                for file in files:
+                    if file.startswith("."):
+                        continue
+                    p = join(root, file)
+                    arcname = join(root.replace(module_dir + sep, ""), file)
+                    z.write(p, arcname=arcname)
+        quiet_print(f"{data_path} written", args=args)
+    return True

@@ -105,6 +105,16 @@ def ov_store_fetch(__args__):
     ret = fetch_and_save_oc_manifest()
     return ret
 
+@cli_entry
+def cli_ov_store_pack(args):
+    return ov_store_pack(args)
+
+@cli_func
+def ov_store_pack(args):
+    from .store_utils import pack_module
+    ret = pack_module(args)
+    return ret
+
 def get_parser_fn_store():
     from argparse import ArgumentParser, RawDescriptionHelpFormatter
     parser_fn_store = ArgumentParser(
@@ -264,6 +274,31 @@ def get_parser_fn_store():
     parser_cli_store_fetch.r_examples = [  # type: ignore
         "# Fetch the store information",
         "ov.store.fetch()"
+    ]
+
+    # pack
+    parser_cli_store_pack = _subparsers.add_parser(
+        "pack", help="pack a module to register at OakVar store")
+    parser_cli_store_pack.add_argument(
+            dest="module",
+            default=None,
+            help="Name of or path to the module to pack",
+    )
+    parser_cli_store_pack.add_argument(
+            "-d",
+            "--outdir",
+            default=".",
+            help="Directory to make code and data zip files in",
+    )
+    parser_cli_store_pack.add_argument("--quiet",
+                                         action="store_true",
+                                         default=None,
+                                         help="Run quietly")
+    parser_cli_store_pack.set_defaults(func=cli_ov_store_pack)
+    parser_cli_store_pack.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
+    parser_cli_store_pack.r_examples = [  # type: ignore
+        "# Pack a module \"mymodule\" into one zip file for its code and another zip file for its data.",
+        "ov.store.pack(module=\"mymodule\")"
     ]
 
     return parser_fn_store
