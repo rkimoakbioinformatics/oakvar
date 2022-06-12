@@ -174,6 +174,7 @@ class BaseAnnotator(object):
                             default="{}",
                             help="Configuration string")
         parser.add_argument("--quiet",
+                            action="store_true",
                             dest="quiet",
                             default=None,
                             help="Silent operation")

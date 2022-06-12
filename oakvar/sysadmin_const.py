@@ -32,3 +32,4 @@ package_dir_key = "package_dir"
 default_postaggregator_names = [
     "tagsampler", "casecontrol", "varmeta", "vcfinfo"
 ]
+oc_manifest_fn = "oc_manifest.yml"

@@ -1467,14 +1467,6 @@ def recursive_update(d1, d2):
     return d3
 
 
-def refresh_cache():
-    """
-    Refresh the local modules cache
-    """
-    global mic
-    mic = ModuleInfoCache()
-
-
 def report_issue():
     import webbrowser
     webbrowser.open("http://github.com/rkimoakbioinformatics/oakvar/issues")

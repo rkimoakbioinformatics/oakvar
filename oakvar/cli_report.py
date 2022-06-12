@@ -866,8 +866,8 @@ class CravatReport:
                         new_columns[i]["reportsub"] = reportsub[module][col]
         # display_select_columns
         if (level in self.extract_columns_multilevel
-            and len(self.extract_columns_multilevel[level]) > 0
-            ) or self.concise_report:
+                and len(self.extract_columns_multilevel[level]) > 0
+                ) or self.concise_report:
             self.display_select_columns[level] = True
         else:
             self.display_select_columns[level] = False
@@ -1155,6 +1155,7 @@ def get_parser_fn_report():
     parser_ov_report.add_argument(
         "--quiet",
         action="store_true",
+        default=None,
         help="Suppress output to STDOUT",
     )
     parser_ov_report.add_argument(

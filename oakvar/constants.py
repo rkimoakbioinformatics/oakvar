@@ -362,3 +362,4 @@ assembly_choices = ["hg38", "hg19", "hg18"]
 publish_time_fmt = "%Y-%m-%dT%H:%M:%S.%f%z"
 install_tempdir_name = "temp"
 cannonical_chroms = ["chr" + str(n) for n in range(1, 23)] + ["chrX", "chrY"]
+oc_manifest_url = "https://store.opencravat.org/manifest.yml"
