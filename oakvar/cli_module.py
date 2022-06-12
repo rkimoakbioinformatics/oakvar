@@ -5,34 +5,25 @@ from .decorators import cli_entry
 
 @cli_entry
 def cli_ov_module_ls(args):
-    args.fmt = "yaml"
+    if not args.fmt:
+        args.fmt = "yaml"
     return ov_module_ls(args)
 
 
 @cli_func
 def ov_module_ls(args):
-    from .util import quiet_print
-    avail = args.get("available", False)
+    if args.get("fmt") == None:
+        args["fmt"] = "json"
     to = args.get("to", "return")
-    fmt = args.get("fmt", "json")
-    if avail:
-        ret = list_available_modules(args)
-        if to == "stdout":
-            if fmt == "tabular":
-                print_tabular_lines(ret)
-            else:
-                quiet_print(ret, args=args)
+    fmt = args.get("fmt")
+    ret = list_modules(args)
+    if to == "stdout":
+        if fmt == "tabular":
+            print_tabular_lines(ret)
         else:
-            return ret
+            print(ret)
     else:
-        ret = list_local_modules(args)
-        if to == "stdout":
-            if fmt == "tabular":
-                print_tabular_lines(ret)
-            else:
-                print(ret)
-        else:
-            return ret
+        return ret
 
 
 @cli_entry
@@ -171,7 +162,7 @@ def ov_module_install(args):
         version = module_name_versions[module_name]
         del module_name_versions[module_name]
         matching_names = search_remote(module_name)
-        if len(matching_names) == 0:
+        if not matching_names:
             quiet_print(f"invalid module name: {module_name}", args=args)
             continue
         for mn in matching_names:
@@ -381,175 +372,126 @@ def ov_module_installbase(args):
     return ret
 
 
-def list_available_modules(args):
+from .admin_util import RemoteModuleInfo
+def add_local_module_info_to_remote_module_info(remote_info: RemoteModuleInfo):
+    from .admin_util import get_local_module_info
+    local_info = get_local_module_info(remote_info.name)
+    if local_info:
+        remote_info.installed = "yes"
+        remote_info.local_version = local_info.version
+        remote_info.local_datasource = local_info.datasource
+    else:
+        remote_info.installed = ""
+        remote_info.local_version = ""
+        remote_info.local_datasource = ""
+
+def list_modules(args):
     from oyaml import dump
-    from .admin_util import search_remote, get_local_module_info, get_remote_module_info
+    from .admin_util import search_remote
+    from .admin_util import search_local
+    from .admin_util import get_local_module_info
+    from .admin_util import get_remote_module_info
     from .util import humanize_bytes
     fmt = args.get("fmt", "return")
     nameonly = args.get("nameonly", False)
-    all_toks_name = []
-    all_toks_text = []
+    available = args.get("available", False)
+    types = args.get("types")
+    tags = args.get("tags")
+    all_toks = []
     all_toks_json = []
     if fmt == "tabular":
         if nameonly:
-            all_toks_name = []
+            all_toks = []
         else:
             header = [
                 "Name",
                 "Title",
                 "Type",
-                "Installed",
-                "Store ver",
-                "Store data ver",
-                "Local ver",
-                "Local data ver",
                 "Size",
+                "Store data ver",
             ]
-            all_toks_text = [header]
+            if available:
+                header.extend([
+                    "Installed",
+                    "Store ver",
+                    "Local ver",
+                    "Local data ver",
+                ])
+            all_toks = [header]
     elif fmt in ["json", "yaml"]:
         all_toks_json = []
-    for module_name in search_remote(args.get("pattern")):
-        remote_info = get_remote_module_info(module_name)
-        if remote_info is not None:
-            if len(args.get(
-                    "types")) > 0 and remote_info.type not in args["types"]:
-                continue
-            if len(args.get("tags")) > 0:
-                if remote_info.tags is None:
-                    continue
-                if len(set(args.get("tags")).intersection(
-                        remote_info.tags)) == 0:
-                    continue
-            if remote_info.hidden and not args.get("include_hidden"):
-                continue
-            local_info = get_local_module_info(module_name)
-            if local_info is not None:
-                installed = "yes"
-                local_version = local_info.version
-                local_datasource = local_info.datasource
+    if available:
+        l = search_remote(args.get("pattern"))
+    else:
+        l = search_local(args.get("pattern"))
+    if l:
+        for module_name in l:
+            if available:
+                module_info = get_remote_module_info(module_name)
+                if module_info:
+                    add_local_module_info_to_remote_module_info(module_info)
             else:
-                installed = ""
-                local_version = ""
-                local_datasource = ""
-            if args.get("raw_bytes"):
-                size = remote_info.size
+                module_info = get_local_module_info(module_name)
+            if not module_info:
+                continue
+            if types and module_info.type not in types:
+                continue
+            if tags:
+                if not module_info.tags:
+                    continue
+                if not set(types).intersection(module_info.tags):
+                    continue
+            if module_info.hidden and not args.get("include_hidden"):
+                continue
+            if isinstance(module_info, RemoteModuleInfo):
+                size = module_info.size
             else:
-                size = humanize_bytes(remote_info.size)
+                size = module_info.get_size()
+            if not args.get("raw_bytes"):
+                size = humanize_bytes(size)
             toks = []
             if fmt == "tabular":
-                if args["nameonly"]:
-                    toks = [module_name]
-                    all_toks_name.append(toks)
-                else:
-                    toks = [
-                        module_name,
-                        remote_info.title,
-                        remote_info.type,
-                        installed,
-                        remote_info.latest_version,
-                        remote_info.datasource,
-                        local_version,
-                        local_datasource,
+                toks = [module_name]
+                if not nameonly:
+                    toks.extend([
+                        module_info.title,
+                        module_info.type,
                         size,
-                    ]
-                    all_toks_text.append(toks)
+                        module_info.datasource
+                    ])
+                    if isinstance(module_info, RemoteModuleInfo):
+                        toks.extend([
+                            module_info.installed,
+                            module_info.latest_version,
+                            module_info.local_version,
+                            module_info.local_datasource,
+                        ])
+                all_toks.append(toks)
             elif fmt in ["json", "yaml"]:
-                toks = {
-                    "name": module_name,
-                    "title": remote_info.title,
-                    "type": remote_info.type,
-                    "installed": installed,
-                    "latest_version": remote_info.latest_version,
-                    "datasource": remote_info.datasource,
-                    "local_version": local_version,
-                    "local_datasource": local_datasource,
-                    "size": size,
-                }
+                toks = {"name": module_name}
+                if not nameonly:
+                    toks.update({
+                        "title": module_info.title,
+                        "type": module_info.type,
+                        "datasource": module_info.datasource,
+                        "size": size
+                    })
+                    if isinstance(module_info, RemoteModuleInfo):
+                        toks.update({
+                            "installed": module_info.installed,
+                            "latest_version": module_info.latest_version,
+                            "local_version": module_info.local_version,
+                            "local_datasource": module_info.local_datasource,
+                        })
                 all_toks_json.append(toks)
     if fmt == "tabular":
-        if nameonly:
-            return all_toks_name
-        else:
-            return all_toks_text
+        return all_toks
     elif fmt == "json":
         return all_toks_json
     elif fmt == "yaml":
         return dump(all_toks_json, default_flow_style=False)
     else:
         return None
-
-
-def list_local_modules(args):
-    from oyaml import dump
-    from .admin_util import search_local, get_local_module_info
-    from .util import humanize_bytes
-    pattern = args.get("pattern", r".*")
-    types = args.get("types", [])
-    include_hidden = args.get("include_hidden", False)
-    tags = args.get("tags", [])
-    raw_bytes = args.get("raw_bytes", False)
-    fmt = args.get("fmt", "json")
-    nameonly = args.get("nameonly", False)
-    all_toks_nameonly = []
-    all_toks_text = []
-    all_toks_json = []
-    if fmt == "tabular" and not nameonly:
-        header = [
-            "Name", "Title", "Type", "Version", "Data source ver", "Size"
-        ]
-        all_toks_text = [header]
-    for module_name in search_local(pattern):
-        module_info = get_local_module_info(module_name)
-        if module_info is not None:
-            if len(types) > 0 and module_info.type not in types:
-                continue
-            if len(tags) > 0:
-                if module_info.tags is None:
-                    continue
-                if len(set(tags).intersection(module_info.tags)) == 0:
-                    continue
-            if module_info.hidden and not include_hidden:
-                continue
-            if nameonly:
-                toks = [module_name]
-                all_toks_nameonly.append(toks)
-            else:
-                size = module_info.get_size()
-                if fmt in ["json", "yaml"]:
-                    toks = {
-                        "name": module_name,
-                        "title": module_info.title,
-                        "type": module_info.type,
-                        "version": module_info.version,
-                        "datasource": module_info.datasource,
-                    }
-                    if raw_bytes:
-                        toks["size"] = size
-                    else:
-                        toks["size"] = humanize_bytes(size)
-                    all_toks_json.append(toks)
-                else:
-                    toks = [
-                        module_name,
-                        module_info.title,
-                        module_info.type,
-                        module_info.version,
-                        module_info.datasource,
-                    ]
-                    if raw_bytes:
-                        toks.append(size)
-                    else:
-                        toks.append(humanize_bytes(size))
-                    all_toks_text.append(toks)
-    if fmt == "tabular":
-        if nameonly:
-            return all_toks_nameonly
-        else:
-            return all_toks_text
-    elif fmt == "json":
-        return all_toks_json
-    elif fmt == "yaml":
-        return dump(all_toks_json, default_flow_style=False)
 
 
 def print_tabular_lines(l, args=None):
@@ -592,11 +534,10 @@ class InstallProgressStdout(InstallProgressHandler):
         self.cur_stage = stage
         quiet_print(self._stage_msg(stage), args={"quiet": self.quiet})
 
-    def stage_progress(self, cur_chunk, total_chunks, cur_size, total_size):
+    def stage_progress(self, __cur_chunk__, __total_chunks__, cur_size, total_size):
         from .util import humanize_bytes
         from .util import quiet_print
         from .util import get_current_time_str
-        rem_chunks = total_chunks - cur_chunk
         perc = cur_size / total_size * 100
         # trailing spaces needed to avoid leftover characters on resize
         out = f"\033[F\033[K[{get_current_time_str()}] Downloading {humanize_bytes(cur_size)} / {humanize_bytes(total_size)} ({perc:.0f}%)"
@@ -840,7 +781,7 @@ def get_parser_fn_module():
         default=None,
         help="Specify the root directory of OakVar modules")
     parser_ov_module_ls.add_argument("--fmt",
-                                     default="json",
+                                     default=None,
                                      help="Output format. tabular or json")
     parser_ov_module_ls.add_argument(
         "--to", default="return", help="stdout to print / return to return")
@@ -857,4 +798,5 @@ def get_parser_fn_module():
         "# Get the list of all available modules of the type \"converter\"",
         "ov.module.ls(available=TRUE, types=\"converter\")"
     ]
+
     return parser_fn_module

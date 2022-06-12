@@ -43,8 +43,7 @@ def setup_system(args):
             f"Created main configuration file at {main_conf_path}.", args=args)
     # copy oc manifest
     quiet_print(f"Checking store manifest file...", args=args)
-    oc_manifest_path = get_oc_manifest_path()
-    fetch_and_save_oc_manifest(path=oc_manifest_path, args=args)
+    fetch_and_save_oc_manifest(args=args)
     # install base modules.
     from .cli_module import ov_module_installbase
     from os import environ
@@ -238,6 +237,16 @@ def get_main_default_path():
     from .admin_util import get_packagedir
     return os.path.join(get_packagedir(), main_conf_fname)
 
+
+def get_local_oc_manifest() -> Optional[dict]:
+    oc_manifest_path = get_oc_manifest_path()
+    from os.path import exists
+    if not exists(oc_manifest_path):
+        return None
+    from oyaml import safe_load
+    with open(oc_manifest_path) as f:
+        oc_manifest = safe_load(f)
+        return oc_manifest
 
 def get_oc_manifest_path() -> str:
     from os.path import join
