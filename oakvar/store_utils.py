@@ -341,18 +341,13 @@ def client_error_json(error_class):
     from json import dumps
     return dumps({"code": error_class.code, "message": error_class.message})
 
-def pack_module(args):
-    from os.path import basename
+def get_module_name_module_dir(args) -> tuple[str, str]:
     from os.path import exists
-    from os.path import join
-    from os import walk
-    from os import sep
-    from .util import quiet_print
+    from os.path import basename
     module_name = args.get("module")
     if not module_name:
-        from .exceptions import NoInputException
-        raise NoInputException()
-    # get module_dir
+        from .exceptions import ArgumentError
+        raise ArgumentError(msg="argument module is missing")
     if exists(module_name):
         module_dir = module_name
         module_name = basename(module_dir)
@@ -362,7 +357,9 @@ def pack_module(args):
     if not module_dir:
         from .exceptions import ModuleLoadingError
         raise ModuleLoadingError(module_name)
-    # module version
+    return module_name, module_dir
+
+def get_module_version(module_name: str) -> str:
     from .admin_util import get_module_conf
     module_conf = get_module_conf(module_name)
     if not module_conf:
@@ -372,43 +369,54 @@ def pack_module(args):
     if not version:
         from .exceptions import ModuleVersionError
         raise ModuleVersionError(module_name, "unknown")
-    # outdir
-    from zipfile import ZipFile
+    return version
+
+def get_pack_dir_out_dir(kind: str, args: dict, module_dir: str) -> tuple[str, str]:
+    from os.path import exists
+    from os.path import join
     outdir = args.get("outdir", ".")
     if not exists(outdir):
         from os import mkdir
         mkdir(outdir)
-    zip_prefix = module_name + "__" + version + "__"
-    # zip code
-    code_fn = zip_prefix + ".code.zip"
-    code_path = join(outdir, code_fn)
-    with ZipFile(code_path, "w") as z:
-        for root, _, files in walk(module_dir):
-            root_basename = basename(root)
-            if root_basename.startswith(".") or root_basename.startswith("_") or root_basename == "data":
-                continue
-            for file in files:
-                if file.startswith(".") or file == "startofinstall" or file == "endofinstall":
-                    continue
-                p = join(root, file)
-                arcname = join(root.replace(module_dir, ""), file)
-                z.write(p, arcname=arcname)
-        quiet_print(f"{code_path} written", args=args)
-    # zip data
-    data_fn = zip_prefix + ".data.zip"
-    data_path = join(outdir, data_fn)
-    data_dir = join(module_dir, "data")
-    if exists(data_dir):
-        with ZipFile(data_path, "w") as z:
-            for root, _, files in walk(data_dir):
+    if kind == "code":
+        pack_dir = module_dir
+    elif kind == "data":
+        pack_dir = join(module_dir, "data")
+    else:
+        from .exceptions import ArgumentError
+        raise ArgumentError(msg=f"argument kind={kind} is wrong.")
+    return pack_dir, outdir
+
+def pack_module_zip(args: dict, kind: str):
+    from os.path import join
+    from zipfile import ZipFile
+    from os import walk
+    from os import sep
+    from os.path import basename
+    from os.path import exists
+    from .util import quiet_print
+    module_name, module_dir = get_module_name_module_dir(args)
+    version = get_module_version(module_name)
+    pack_dir, outdir = get_pack_dir_out_dir(kind, args, module_dir)
+    if exists(pack_dir):
+        pack_fn = f"{module_name}__{version}__{kind}.zip"
+        pack_path = join(outdir, pack_fn)
+        with ZipFile(pack_path, "w") as z:
+            for root, _, files in walk(pack_dir):
                 root_basename = basename(root)
                 if root_basename.startswith(".") or root_basename.startswith("_"):
                     continue
+                if kind == "code" and root_basename == "data":
+                    continue
                 for file in files:
-                    if file.startswith("."):
+                    if file.startswith(".") or file == "startofinstall" or file == "endofinstall":
                         continue
                     p = join(root, file)
                     arcname = join(root.replace(module_dir + sep, ""), file)
                     z.write(p, arcname=arcname)
-        quiet_print(f"{data_path} written", args=args)
+            quiet_print(f"{pack_path} written", args=args)
+
+def pack_module(args):
+    pack_module_zip(args, "code")
+    pack_module_zip(args, "data")
     return True

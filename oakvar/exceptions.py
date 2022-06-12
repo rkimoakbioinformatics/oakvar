@@ -256,9 +256,9 @@ class ArgumentError(ExpectedException):
 
     def __init__(self, msg=None):
         if msg is not None:
-            super().__init__(f"error: argument. {msg}")
+            super().__init__(f"{msg}")
         else:
-            super().__init__(f"error: argument")
+            super().__init__(f"argument")
 
 
 class WrongInput(ExpectedException):

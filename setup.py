@@ -65,6 +65,7 @@ setup(
         'nest-asyncio',
         'psutil',
         'mpmath',
+        'pooch',
     ],
     python_requires='>=3.8',
     package_data={
