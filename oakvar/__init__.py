@@ -26,6 +26,7 @@ from .cli_module import ov_module_ls
 from .cli_module import ov_module_installbase
 from .cli_module import ov_module_install
 from .cli_module import ov_module_info
+from .cli_config import ov_config_oakvar
 from . import __main__ as cli
 from . import constants
 from .exceptions import *
@@ -111,7 +112,8 @@ if ov_util_addjob or ov_util_filtersqlite or ov_util_mergesqlite or ov_util_sqli
     pass
 if ov_version:
     pass
-
+if ov_config_oakvar:
+    pass
 
 def get_live_annotator(module_name):
     import os

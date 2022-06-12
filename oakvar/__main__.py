@@ -8,6 +8,7 @@ from .cli_issue import get_parser_fn_issue
 from .cli_version import get_parser_cli_version
 from .cli_store import get_parser_fn_store
 from .cli_system import get_parser_ov_system
+from .cli_config import get_parser_fn_config
 
 
 def get_entry_parser():
@@ -69,6 +70,13 @@ def get_entry_parser():
         help="Manages OakVar modules",
     )
     # config
+    _ = sp_entry.add_parser(
+        "config",
+        parents=[get_parser_fn_config()],
+        description="Manages OakVar configurations",
+        add_help=False,
+        help="Manages OakVar configurations",
+    )
     # new
     _ = sp_entry.add_parser(
         "new",

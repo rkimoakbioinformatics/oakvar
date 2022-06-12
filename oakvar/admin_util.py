@@ -1333,7 +1333,8 @@ def module_exists_remote(module_name, version=None, private=False):
     from .sysadmin import get_system_conf
     #get_mic().update_remote()
     mic = get_mic()
-    mic.load_remote_manifest()
+    if not mic.remote:
+        mic.load_remote_manifest()
     found = False
     if module_name in mic.remote:
         if version is None:
