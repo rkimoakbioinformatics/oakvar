@@ -48,6 +48,7 @@ def get_parser_fn_new():
     )
     parser_cli_new_exampleinput.add_argument("--quiet",
                                              action="store_true",
+                                             default=None,
                                              help="Run quietly")
     parser_cli_new_exampleinput.set_defaults(func=cli_ov_new_exampleinput)
     parser_cli_new_exampleinput.r_return = "A string. Location of the example input file"  # type: ignore
@@ -71,6 +72,7 @@ def get_parser_fn_new():
         help="Specify the root directory of OakVar modules")
     parser_cli_new_annotator.add_argument("--quiet",
                                           action="store_true",
+                                          default=None,
                                           help="No print to stdout")
     parser_cli_new_annotator.set_defaults(func=cli_ov_new_annotator)
     parser_cli_new_annotator.r_return = "A string. Location of the new annotator module"  # type: ignore

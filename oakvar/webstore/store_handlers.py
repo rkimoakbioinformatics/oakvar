@@ -21,7 +21,7 @@ def get_module_readme(request):
 
 def get_local_manifest():
     from aiohttp.web import json_response
-    au.refresh_cache()
+    au.update_mic()
     module_names = au.list_local()
     out = {}
     for module_name in module_names:

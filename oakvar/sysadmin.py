@@ -1,3 +1,5 @@
+from typing import Optional
+
 custom_system_conf = None
 
 
@@ -39,6 +41,10 @@ def setup_system(args):
         copyfile(join(get_packagedir(), main_conf_fname), main_conf_path)
         quiet_print(
             f"Created main configuration file at {main_conf_path}.", args=args)
+    # copy oc manifest
+    quiet_print(f"Checking store manifest file...", args=args)
+    oc_manifest_path = get_oc_manifest_path()
+    fetch_and_save_oc_manifest(path=oc_manifest_path, args=args)
     # install base modules.
     from .cli_module import ov_module_installbase
     from os import environ
@@ -208,11 +214,11 @@ def update_system_conf_file(d):
     Recursively update the system config and re-write to disk.
     """
     from .admin_util import recursive_update
-    from .admin_util import refresh_cache
+    from .admin_util import update_mic
     sys_conf = get_system_conf(no_default=True)
     sys_conf = recursive_update(sys_conf, d)
     write_system_conf_file(sys_conf)
-    refresh_cache()
+    update_mic()
     return True
 
 
@@ -231,6 +237,69 @@ def get_main_default_path():
     from .sysadmin_const import main_conf_fname
     from .admin_util import get_packagedir
     return os.path.join(get_packagedir(), main_conf_fname)
+
+
+def get_oc_manifest_path() -> str:
+    from os.path import join
+    from .sysadmin_const import oc_manifest_fn
+    conf_dir = get_conf_dir()
+    oc_manifest_path = join(conf_dir, oc_manifest_fn)
+    return oc_manifest_path
+
+
+def get_remote_oc_manifest_timestamp() -> Optional[float]:
+    from requests import head
+    from dateutil.parser import parse
+    from .constants import oc_manifest_url
+    response = head(oc_manifest_url)
+    if response.status_code == 200:
+        ts = parse(response.headers["Last-Modified"]).timestamp()
+        return float(ts)
+    else:
+        return None
+
+
+def fetch_oc_manifest_response():
+    from requests import get
+    from .constants import oc_manifest_url
+    response = get(oc_manifest_url)
+    if response.status_code == 200:
+        return response
+    else:
+        return None
+
+
+def has_newer_remote_oc_manifest(path: Optional[str] = None) -> bool:
+    if not path:
+        path = get_oc_manifest_path()
+    if not path:
+        return False
+    from os.path import exists
+    if not exists(path):
+        return True
+    from os.path import getmtime
+    local_oc_manifest_ts = getmtime(path)
+    remote_oc_manifest_ts = get_remote_oc_manifest_timestamp()
+    if not remote_oc_manifest_ts:
+        return False
+    if remote_oc_manifest_ts > local_oc_manifest_ts:
+        return True
+    else:
+        return False
+
+
+def fetch_and_save_oc_manifest(path: Optional[str] = None, args={}):
+    if not path:
+        path = get_oc_manifest_path()
+    if not path:
+        return
+    if has_newer_remote_oc_manifest(path=path):
+        oc_manifest_response = fetch_oc_manifest_response()
+        if oc_manifest_response:
+            with open(path, "w") as wf:
+                wf.write(oc_manifest_response.text)
+                from .util import quiet_print
+                quiet_print(f"Saved {path}", args=args)
 
 
 def set_modules_dir(path, __overwrite__=False):

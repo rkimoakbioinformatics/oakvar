@@ -11,7 +11,12 @@ def cli_entry(func):
 def cli_func(func):
 
     def run_cli_func(*args, **kwargs):
-        if "quiet" not in kwargs:
+        if len(args) > 0:
+            from argparse import Namespace
+            if isinstance(args[0], Namespace):
+                if getattr(args[0], "quiet", None) == None:
+                    setattr(args[0], "quiet", True)
+        elif "quiet" not in kwargs:
             kwargs["quiet"] = True
         args = get_args(*args, **kwargs)
         try:

@@ -26,6 +26,7 @@ def get_parser_cli_version():
         "--to", default="return", help='"stdout" to print. "return" to return')
     parser_cli_version.add_argument("--quiet",
                                     action="store_true",
+                                    default=None,
                                     help="Run quietly")
     parser_cli_version.set_defaults(func=cli_version)
     return parser_cli_version
