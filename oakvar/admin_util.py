@@ -162,7 +162,7 @@ class LocalModuleInfo(object):
             else:
                 self.output_suffix = self.name + "." + self.type
         self.title = self.conf.get("title", self.name)
-        self.disk_size = None
+        self.size = None
         self.tags = self.conf.get("tags", [])
         self.datasource = str(self.conf.get("datasource", ""))
         self.smartfilters = self.conf.get("smartfilters")
@@ -181,9 +181,9 @@ class LocalModuleInfo(object):
         Gets the total installed size of a module
         """
         from oakvar.util import get_directory_size
-        if self.disk_size is None:
-            self.disk_size = get_directory_size(self.directory)
-        return self.disk_size
+        if self.size is None:
+            self.size = get_directory_size(self.directory)
+        return self.size
 
     def get_tests(self):
         """
@@ -215,7 +215,7 @@ class ModuleInfoCache(object):
         self._modules_dir = get_modules_dir()
         self.local = LocalInfoCache()
         self._remote_url = None
-        self.remote = {}
+        self.remote = None
         self._remote_fetched = False
         self.remote_readme = {}
         self.remote_config = {}
@@ -271,9 +271,25 @@ class ModuleInfoCache(object):
                             os.path.join(module_dir, module_name + ".yml"))):
                     self.local[module_name] = module_dir
 
-    def update_remote(self, force=False):
-        import oyaml as yaml
-        from oakvar.store_utils import get_file_to_string
+    def load_remote_manifest(self):
+        from .sysadmin import get_local_oc_manifest
+        oc_manifest = get_local_oc_manifest()
+        if not oc_manifest:
+            get_mic().update_remote()
+            oc_manifest = get_local_oc_manifest()
+        self.remote = oc_manifest
+        self._remote_fetched = True
+
+    def update_remote(self):
+        from .sysadmin import fetch_and_save_oc_manifest
+        from .sysadmin import get_local_oc_manifest
+        fetch_and_save_oc_manifest()
+        oc_manifest = get_local_oc_manifest()
+        if oc_manifest:
+            self.remote = oc_manifest
+            self._remote_fetched = True
+        """
+        self._remote_fetched = True
         if force or not (self._remote_fetched):
             if self._remote_url is None:
                 self._remote_url = self._store_path_builder.manifest()
@@ -287,25 +303,27 @@ class ModuleInfoCache(object):
                 manifest_str = get_file_to_string(self._remote_url)
             self.remote = {}
             if manifest_str != "" and type(manifest_str) == str:
-                self.remote = yaml.safe_load(manifest_str)
+                self.remote = safe_load(manifest_str)
                 self.remote.pop("hgvs", None)  # deprecate hgvs annotator
             else:
                 from sys import stderr
                 msg = f"WARNING: Could not list modules from {self._remote_url}. The store or the internet connection can be off-line."
                 stderr.write(msg + "\n")
             self._remote_fetched = True
+        """
 
     def get_remote_readme(self, module_name, version=None):
         from oakvar.store_utils import get_file_to_string
-        self.update_remote()
+        #self.update_remote()
         # Resolve name and version
         if module_name not in self.remote:
             raise LookupError(module_name)
-        if version != None and version not in self.remote[module_name][
+        if version != None and self.remote and version not in self.remote[module_name][
                 "versions"]:
             raise LookupError(version)
         if version == None:
-            version = self.remote[module_name]["latest_version"]
+            if self.remote:
+                version = self.remote[module_name]["latest_version"]
         # Try for cache hit
         try:
             readme = self.remote_readme[module_name][version]
@@ -323,9 +341,10 @@ class ModuleInfoCache(object):
     def get_remote_config(self, module_name, version=None):
         import oyaml as yaml
         from oakvar.store_utils import get_file_to_string
-        self.update_remote()
+        #self.update_remote()
         if version == None:
-            version = self.remote[module_name]["latest_version"]
+            if self.remote:
+                version = self.remote[module_name]["latest_version"]
         # Check cache
         try:
             config = self.remote_config[module_name][version]
@@ -376,6 +395,7 @@ class ReadyState(object):
 class RemoteModuleInfo(object):
 
     def __init__(self, __name__, **kwargs):
+        from typing import Optional
         self.data = kwargs
         self.data.setdefault("versions", [])
         self.data.setdefault("latest_version", "")
@@ -412,6 +432,10 @@ class RemoteModuleInfo(object):
             x: str(y)
             for x, y in self.data.get("data_sources").items()  # type: ignore
         }
+        self.installed: Optional[str] = None
+        self.local_version: Optional[str] = None
+        self.local_datasource: Optional[str] = None
+
 
     def has_version(self, version):
         return version in self.versions
@@ -546,7 +570,7 @@ def get_download_counts():
 def get_install_deps(module_name, version=None, skip_installed=True):
     from distutils.version import LooseVersion
     from pkg_resources import Requirement
-    get_mic().update_remote()
+    #get_mic().update_remote()
     # If input module version not provided, set to highest
     if version is None:
         version = get_remote_latest_version(module_name)
@@ -790,9 +814,12 @@ def get_remote_data_version(module_name, version):
     Get the data version to install for a module.
     Return the input version if module_name or version is not found.
     """
-    get_mic().update_remote()
+    #get_mic().update_remote()
+    mic = get_mic()
+    if not mic or not mic.remote:
+        return None
     try:
-        manifest_entry = get_mic().remote[module_name]
+        manifest_entry = mic.remote[module_name]
     except KeyError:
         return version
     try:
@@ -805,14 +832,17 @@ def get_remote_latest_version(module_name):
     """
     Returns latest remotely available version of a module.
     """
-    get_mic().update_remote()
-    return get_mic().remote[module_name]["latest_version"]
+    #get_mic().update_remote()
+    mic = get_mic()
+    if mic and mic.remote:
+        return mic.remote[module_name]["latest_version"]
 
 
-def get_remote_manifest():
-    if len(get_mic().remote) == 0:
-        get_mic().update_remote()
-    return get_mic().remote
+def get_remote_oc_manifest():
+    mic = get_mic()
+    if not mic.remote:
+        mic.load_remote_manifest()
+    return mic.remote
 
 
 def get_remote_module_config(module_name):
@@ -824,22 +854,26 @@ def get_remote_module_info(module_name):
     """
     Returns a RemoteModuleInfo object for a module.
     """
-    get_mic().update_remote()
+    #get_mic().update_remote()
     if module_exists_remote(module_name, version=None):
-        mdict = get_mic().remote[module_name]
-        module = RemoteModuleInfo(module_name, **mdict)
-        return module
-    else:
-        return None
+        mic = get_mic()
+        if mic and mic.remote:
+            mdict = mic.remote[module_name]
+            module = RemoteModuleInfo(module_name, **mdict)
+            module.name = module_name
+            return module
 
 
 def get_remote_module_infos_of_type(t):
-    modules = {}
-    get_mic().update_remote()
-    for module_name in get_mic().remote:
-        if get_mic().remote[module_name]["type"] == t:
-            modules[module_name] = get_mic().remote[module_name]
-    return modules
+    #get_mic().update_remote()
+    mic = get_mic()
+    if mic and mic.remote:
+        modules = {}
+        for module_name in mic.remote:
+            if mic.remote[module_name]["type"] == t:
+                modules[module_name] = mic.remote[module_name]
+        return modules
+    return None
 
 
 def get_remote_module_readme(module_name, version=None):
@@ -938,7 +972,9 @@ def get_widgets_for_annotator(annotator_name, skip_installed=False):
     widgets that are already installed.
     """
     linked_widgets = []
-    for widget_name in list_remote():
+    l = list_remote()
+    if not l: return None
+    for widget_name in l:
         widget_info = get_remote_module_info(widget_name)
         if widget_info is not None and widget_info.type == "webviewerwidget":
             widget_config = get_mic().get_remote_config(widget_name)
@@ -1239,12 +1275,14 @@ def list_local():
     return sorted(list(get_mic().get_local().keys()))
 
 
-def list_remote(force=False):
+def list_remote():
     """
     Returns a list of remotely available modules.
     """
-    get_mic().update_remote(force=force)
-    return sorted(list(get_mic().remote.keys()))
+    #get_mic().update_remote()
+    oc_manifest = get_remote_oc_manifest()
+    if oc_manifest:
+        return sorted(list(oc_manifest.keys()))
 
 
 def load_yml_conf(yml_conf_path):
@@ -1293,13 +1331,15 @@ def module_exists_remote(module_name, version=None, private=False):
     from oakvar.store_utils import PathBuilder
     from requests import get
     from .sysadmin import get_system_conf
-    get_mic().update_remote()
+    #get_mic().update_remote()
+    mic = get_mic()
+    mic.load_remote_manifest()
     found = False
-    if module_name in get_mic().remote:
+    if module_name in mic.remote:
         if version is None:
             found = True
-        else:
-            found = version in get_mic().remote[module_name]["versions"]
+        elif mic and mic.remote:
+            found = version in mic.remote[module_name]["versions"]
     if private and not found:
         sys_conf = get_system_conf()
         path_builder = PathBuilder(sys_conf["store_url"], "url")
@@ -1478,12 +1518,14 @@ def search_local(*patterns):
     """
     from re import fullmatch
     from .sysadmin import get_modules_dir
+    mic = get_mic()
     modules_dir = get_modules_dir()
-    if get_mic()._modules_dir != modules_dir:
-        get_mic()._modules_dir = modules_dir
-        get_mic().update_local()
+    if mic._modules_dir != modules_dir:
+        mic._modules_dir = modules_dir
+        mic.update_local()
     matching_names = []
-    for module_name in list_local():
+    l = list_local()
+    for module_name in l:
         if any([fullmatch(pattern, module_name) for pattern in patterns]):
             matching_names.append(module_name)
     return matching_names
@@ -1495,7 +1537,10 @@ def search_remote(*patterns):
     """
     from re import fullmatch
     matching_names = []
-    for module_name in list_remote():
+    l = list_remote()
+    if not l:
+        return None
+    for module_name in l:
         if any([fullmatch(pattern, module_name) for pattern in patterns]):
             matching_names.append(module_name)
     return matching_names

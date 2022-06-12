@@ -363,3 +363,4 @@ class NoSuchModule(ClientError):
 def client_error_json(error_class):
     from json import dumps
     return dumps({"code": error_class.code, "message": error_class.message})
+

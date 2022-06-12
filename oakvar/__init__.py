@@ -13,6 +13,7 @@ from .cli_store import ov_store_publish
 from .cli_store import ov_store_createaccount
 from .cli_store import ov_store_checklogin
 from .cli_store import ov_store_changepassword
+from .cli_store import ov_store_fetch
 from .cli_new import ov_new_annotator
 from .cli_new import ov_new_exampleinput
 from .cli_issue import ov_issue
@@ -100,7 +101,7 @@ if ov_issue:
     pass
 if ov_new_exampleinput or ov_new_annotator:
     pass
-if ov_store_verifyemail or ov_store_resetpassword or ov_store_publish or ov_store_createaccount or ov_store_checklogin or ov_store_changepassword:
+if ov_store_verifyemail or ov_store_resetpassword or ov_store_publish or ov_store_createaccount or ov_store_checklogin or ov_store_changepassword or ov_store_fetch:
     pass
 if ov_system_setup or ov_system_md or ov_system_config:
     pass

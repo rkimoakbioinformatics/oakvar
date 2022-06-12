@@ -95,6 +95,16 @@ def ov_store_checklogin(args):
     return ret
 
 
+@cli_entry
+def cli_ov_store_fetch(args):
+    return ov_store_fetch(args)
+
+@cli_func
+def ov_store_fetch(__args__):
+    from .sysadmin import fetch_and_save_oc_manifest
+    ret = fetch_and_save_oc_manifest()
+    return ret
+
 def get_parser_fn_store():
     from argparse import ArgumentParser, RawDescriptionHelpFormatter
     parser_fn_store = ArgumentParser(
@@ -241,4 +251,19 @@ def get_parser_fn_store():
         "# Check if the login information of a user is correct",
         "ov.store.checklogin(username=\"user1\", password=\"password\")"
     ]
+
+    # fetch
+    parser_cli_store_fetch = _subparsers.add_parser(
+        "fetch", help="fetch store information")
+    parser_cli_store_fetch.add_argument("--quiet",
+                                         action="store_true",
+                                         default=None,
+                                         help="Run quietly")
+    parser_cli_store_fetch.set_defaults(func=cli_ov_store_fetch)
+    parser_cli_store_fetch.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
+    parser_cli_store_fetch.r_examples = [  # type: ignore
+        "# Fetch the store information",
+        "ov.store.fetch()"
+    ]
+
     return parser_fn_store

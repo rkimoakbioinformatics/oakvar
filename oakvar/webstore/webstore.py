@@ -101,7 +101,9 @@ def fetch_install_queue (install_queue, install_state, local_modules_changed):
 async def get_remote_manifest(request):
     content = {'data': {}, 'tagdesc': {}}
     try:
-        content['data'] = au.get_remote_manifest()
+        oc_manifest = au.get_remote_oc_manifest()
+        if oc_manifest:
+            content['data'] = oc_manifest
     except:
         traceback.print_exc()
         content = {'data': {}, 'tagdesc': {}}
@@ -359,7 +361,7 @@ async def update_remote (request):
         if r == False:
             response = 'notadmin'
             return web.json_response(response)
-    au.mic.update_remote(force=True)
+    au.mic.update_remote()
     au.mic.update_local()
     return web.json_response('done')
 
