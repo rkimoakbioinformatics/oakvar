@@ -462,7 +462,7 @@ def get_default_root_dir(conf=None):
     elif pl == "macos":
         root_dir = "/Users/Shared/open-cravat"
         if exists(root_dir) == False:  # OakVar first installation
-            root_dir = "Users/Shared/oakvar"
+            root_dir = "/Users/Shared/oakvar"
     return root_dir
 
 

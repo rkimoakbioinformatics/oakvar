@@ -361,8 +361,10 @@ async def middleware(request, handler):
         logger.info(msg)
         logger.exception(e)
         if debug:
-            stderr.write(msg + "\n")
-            print_exc()
+            from aiohttp.web_exceptions import HTTPNotFound
+            if not isinstance(e, HTTPNotFound):
+                stderr.write(msg + "\n")
+                print_exc()
         return web.HTTPInternalServerError(text=dumps({
             "status": "error",
             "msg": str(e)
@@ -406,9 +408,13 @@ class WebServer(object):
         try:
             task.result()
         except Exception as e:
-            logger.exception(e)
+            if logger:
+                logger.exception(e)
+            if debug:
+                from traceback import print_exc
+                print_exc()
             self.server_started = None
-            exit()
+            exit(1)
 
     async def open_url(self, url):
         from webbrowser import open as webbrowseropen
@@ -437,6 +443,7 @@ class WebServer(object):
         )
         await self.site.start()
         self.server_started = True
+
 
     def setup_webapp_routes(self):
         if logger is None:
@@ -506,8 +513,9 @@ class WebServer(object):
             if exists(join(modules_dir, "annotators")):
                 self.app.router.add_static("/modules/annotators/",
                                            join(modules_dir, "annotators"))
-            self.app.router.add_static("/webapps",
-                                       join(modules_dir, "webapps"))
+            if exists(join(modules_dir, "webapps")):
+                self.app.router.add_static("/webapps",
+                                           join(modules_dir, "webapps"))
         ws.start_worker()
         wu.start_worker()
 
@@ -559,7 +567,7 @@ def main(url=None, host=None, port=None, args={}):
     from webbrowser import open as webbrowseropen
     from .util import quiet_print
     global logger
-    if logger is None:
+    if not logger:
         from .exceptions import SetupError
         raise SetupError()
     try:
