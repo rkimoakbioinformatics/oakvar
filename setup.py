@@ -66,6 +66,7 @@ setup(
         'psutil',
         'mpmath',
         'pooch',
+        'python-dateutil',
     ],
     python_requires='>=3.8',
     package_data={

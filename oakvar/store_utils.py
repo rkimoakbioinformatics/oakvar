@@ -1,3 +1,5 @@
+from typing import Tuple
+
 class PathBuilder(object):
     """
     Used to get routes to certain resources in the cravat-store download area.
@@ -341,7 +343,7 @@ def client_error_json(error_class):
     from json import dumps
     return dumps({"code": error_class.code, "message": error_class.message})
 
-def get_module_name_module_dir(args) -> tuple[str, str]:
+def get_module_name_module_dir(args) -> Tuple[str, str]:
     from os.path import exists
     from os.path import basename
     module_name = args.get("module")
@@ -371,7 +373,7 @@ def get_module_version(module_name: str) -> str:
         raise ModuleVersionError(module_name, "unknown")
     return version
 
-def get_pack_dir_out_dir(kind: str, args: dict, module_dir: str) -> tuple[str, str]:
+def get_pack_dir_out_dir(kind: str, args: dict, module_dir: str) -> Tuple[str, str]:
     from os.path import exists
     from os.path import join
     outdir = args.get("outdir", ".")

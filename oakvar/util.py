@@ -1,3 +1,5 @@
+from typing import Dict
+
 def get_ucsc_bins(start, stop=None):
     if stop is None:
         stop = start + 1
@@ -420,7 +422,7 @@ def get_current_time_str():
     return t.strftime("%Y:%m:%d %H:%M:%S")
 
 
-def get_args_conf(args: dict) -> dict:
+def get_args_conf(args: dict) -> Dict:
     if args is None:
         return {}
     import json
@@ -448,7 +450,7 @@ def get_args_conf(args: dict) -> dict:
     return args
 
 
-def get_args_package(args: dict) -> dict:
+def get_args_package(args: dict) -> Dict:
     if args is None:
         return {}
     package = args.get("package")
