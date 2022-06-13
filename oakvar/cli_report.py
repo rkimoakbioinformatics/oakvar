@@ -2,14 +2,15 @@ from .decorators import cli_func
 from .decorators import cli_entry
 import sys
 import nest_asyncio
+
 nest_asyncio.apply()
 if sys.platform == "win32" and sys.version_info >= (3, 8):
     from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy
+
     set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 
 
 class CravatReport:
-
     def __init__(self, args):
         self.cf = None
         self.filtertable = "filter"
@@ -73,6 +74,7 @@ class CravatReport:
         from os.path import exists
         import json
         from . import sysadmin_const
+
         if not args:
             return
         if args.get("md"):
@@ -80,12 +82,14 @@ class CravatReport:
         self.dbpath = args.get("dbpath")
         if not exists(self.dbpath):
             from .exceptions import WrongInput
+
             raise WrongInput(msg=self.dbpath)
         try:
             with sqlite3.connect(self.dbpath) as db:
                 db.execute("select * from info")
         except:
             from .exceptions import WrongInput
+
             raise WrongInput(msg=f"{self.dbpath} is not an OakVar database")
         self.conf = args.get("conf")
         self.filterpath = args.get("filterpath")
@@ -102,12 +106,13 @@ class CravatReport:
             self.output_dir = dirname(self.dbpath)
         if not self.output_dir:
             from os.path import abspath
+
             self.output_dir = abspath(".")
         if self.savepath is not None and dirname(self.savepath) == "":
             self.savepath = join(self.output_dir, self.savepath)
         from .admin_util import get_module_conf
-        self.module_conf = get_module_conf(
-            self.module_name, module_type="reporter")
+
+        self.module_conf = get_module_conf(self.module_name, module_type="reporter")
         # confs update from conf file
         if self.conf and self.module_name in self.conf:
             self.confs.update(self.conf[self.module_name])
@@ -126,8 +131,7 @@ class CravatReport:
         self.output_basename = basename(self.dbpath)[:-7]
         status_fname = "{}.status.json".format(self.output_basename)
         self.status_fpath = join(self.output_dir, status_fname)
-        self.nogenelevelonvariantlevel = args.get(
-            "nogenelevelonvariantlevel", False)
+        self.nogenelevelonvariantlevel = args.get("nogenelevelonvariantlevel", False)
         inputfiles = args.get("inputfiles")
         dbpath = args.get("dbpath")
         if not inputfiles and dbpath:
@@ -152,7 +156,8 @@ class CravatReport:
         self.status_writer = args.get("status_writer")
         self.concise_report = args.get("concise_report")
         self.extract_columns_multilevel = self.get_standardized_module_option(
-            self.confs.get("extract-columns", {}))
+            self.confs.get("extract-columns", {})
+        )
         self.args = args
 
     def should_write_level(self, level):
@@ -166,6 +171,7 @@ class CravatReport:
     async def prep(self):
         from .util import write_log_msg
         from .exceptions import ExpectedException
+
         try:
             await self.connect_db()
             await self.load_filter()
@@ -173,15 +179,14 @@ class CravatReport:
             await self.close_db()
             if not isinstance(e, ExpectedException) or e.traceback:
                 import traceback
+
                 traceback.print_exc()
                 if self.logger:
                     self.logger.exception(e)
             else:
                 if self.logger:
                     if self.args is not None:
-                        write_log_msg(self.logger,
-                                      e,
-                                      quiet=self.args.get("quiet"))
+                        write_log_msg(self.logger, e, quiet=self.args.get("quiet"))
                     else:
                         write_log_msg(self.logger, e, quiet=False)
             setattr(e, "handled", True)
@@ -191,6 +196,7 @@ class CravatReport:
         if self.module_name is None:
             return
         import logging
+
         if hasattr(self, "no_log") and self.no_log:
             return
         try:
@@ -202,6 +208,7 @@ class CravatReport:
 
     async def get_db_conn(self):
         import aiosqlite
+
         if self.dbpath is None:
             return None
         if self.conn is None:
@@ -212,6 +219,7 @@ class CravatReport:
         conn = await self.get_db_conn()
         if conn is None:
             from .exceptions import DatabaseConnectionError
+
             raise DatabaseConnectionError(self.module_name)
         cursor = await conn.cursor()
         try:
@@ -232,8 +240,10 @@ class CravatReport:
     async def getjson(self, level):
         if self.cf is None:
             from .exceptions import SetupError
+
             raise SetupError()
         import json
+
         ret = None
         if await self.exec_db(self.table_exists, level) == False:
             return ret
@@ -245,12 +255,16 @@ class CravatReport:
 
     def substitute_val(self, level, row):
         import json
+
         for sub in self.column_subs.get(level, []):
             value = row[sub.index]
             if value is None or value == "":
                 continue
-            if (level == "variant" and sub.module == "base"
-                    and sub.col == "all_mappings"):
+            if (
+                level == "variant"
+                and sub.module == "base"
+                and sub.col == "all_mappings"
+            ):
                 mappings = json.loads(row[sub.index])
                 for gene in mappings:
                     for i in range(len(mappings[gene])):
@@ -281,10 +295,12 @@ class CravatReport:
     async def run_level(self, level):
         if self.cf is None or self.args is None:
             from .exceptions import SetupError
+
             raise SetupError(self.module_name)
         import json
         from .constants import legacy_gene_level_cols_to_skip
         from .util import quiet_print
+
         ret = await self.exec_db(self.table_exists, level)
         if ret == False:
             return
@@ -298,7 +314,8 @@ class CravatReport:
             for mi, o, cols in self.summarizing_modules:
                 if hasattr(o, "build_gene_collection"):
                     msg = "Obsolete module [{}] for gene level summarization. Update the module to get correct gene level summarization.".format(
-                        mi.name)
+                        mi.name
+                    )
                     self.warning_msgs.append(msg)
                     quiet_print("===Warning: {}".format(msg), self.args)
                     gene_summary_data = {}
@@ -306,9 +323,7 @@ class CravatReport:
                     gene_summary_data = await o.get_gene_summary_data(self.cf)
                 gene_summary_datas[mi.name] = [gene_summary_data, cols]
                 for col in cols:
-                    if "category" in col and col["category"] in [
-                            "single", "multi"
-                    ]:
+                    if "category" in col and col["category"] in ["single", "multi"]:
                         colinfo_col = {}
                         colno = None
                         for i in range(len(self.colinfo[level]["columns"])):
@@ -317,9 +332,7 @@ class CravatReport:
                                 grp_name = "base"
                             else:
                                 grp_name = mi.name
-                            if colinfo_col[
-                                    "col_name"] == grp_name + "__" + col[
-                                        "name"]:
+                            if colinfo_col["col_name"] == grp_name + "__" + col["name"]:
                                 colno = i
                                 break
                         cats = []
@@ -332,8 +345,7 @@ class CravatReport:
                             if val not in cats:
                                 cats.append(val)
                         if colno is not None:
-                            self.colinfo[level]["columns"][colno][
-                                "col_cats"] = cats
+                            self.colinfo[level]["columns"][colno]["col_cats"] = cats
         self.write_preface(level)
         self.extracted_cols[level] = self.get_extracted_header_columns(level)
         self.write_header(level)
@@ -341,7 +353,8 @@ class CravatReport:
         if level == "variant":
             hugo_present = "base__hugo" in self.colnos["variant"]
         datacols, datarows = await self.cf.exec_db(  # type: ignore
-            self.cf.get_filtered_iterator, level)
+            self.cf.get_filtered_iterator, level
+        )
         num_total_cols = len(datacols)
         colnos_to_skip = []
         if level == "gene":
@@ -369,7 +382,8 @@ class CravatReport:
             datarow = list(datarow)
             if should_skip_some_cols:
                 datarow = [
-                    datarow[colno] for colno in range(num_total_cols)
+                    datarow[colno]
+                    for colno in range(num_total_cols)
                     if colno not in colnos_to_skip
                 ]
             if level == "variant":
@@ -378,33 +392,33 @@ class CravatReport:
                     hugo = datarow[self.colnos["variant"]["base__hugo"]]
                     generow = await self.cf.get_gene_row(hugo)
                     if generow is None:
-                        datarow.extend(
-                            [None for _ in range(len(self.var_added_cols))])
+                        datarow.extend([None for _ in range(len(self.var_added_cols))])
                     else:
-                        datarow.extend([
-                            generow[self.colnos["gene"][colname]]
-                            for colname in self.var_added_cols
-                        ])
+                        datarow.extend(
+                            [
+                                generow[self.colnos["gene"][colname]]
+                                for colname in self.var_added_cols
+                            ]
+                        )
             elif level == "gene":
                 # adds summary data to gene level.
                 hugo = datarow[0]
                 for mi, _, _ in self.summarizing_modules:
                     module_name = mi.name
                     [gene_summary_data, cols] = gene_summary_datas[module_name]
-                    if (hugo in gene_summary_data
-                            and gene_summary_data[hugo] is not None
-                            and len(gene_summary_data[hugo]) == len(cols)):
-                        datarow.extend([
-                            gene_summary_data[hugo][col["name"]]
-                            for col in cols
-                        ])
+                    if (
+                        hugo in gene_summary_data
+                        and gene_summary_data[hugo] is not None
+                        and len(gene_summary_data[hugo]) == len(cols)
+                    ):
+                        datarow.extend(
+                            [gene_summary_data[hugo][col["name"]] for col in cols]
+                        )
                     else:
                         datarow.extend([None for _ in cols])
             # re-orders data row.
             new_datarow = []
-            for colname in [
-                    col["col_name"] for col in self.colinfo[level]["columns"]
-            ]:
+            for colname in [col["col_name"] for col in self.colinfo[level]["columns"]]:
                 if colname in self.colname_conversion[level]:
                     oldcolname = self.colname_conversion[level][colname]
                     if oldcolname in colnos:
@@ -412,8 +426,10 @@ class CravatReport:
                     else:
                         if self.logger:
                             self.logger.info(
-                                "column name does not exist in data: {}".
-                                format(oldcolname))
+                                "column name does not exist in data: {}".format(
+                                    oldcolname
+                                )
+                            )
                         continue
                 else:
                     colno = colnos[colname]
@@ -421,24 +437,31 @@ class CravatReport:
                 new_datarow.append(value)
             # does report substitution.
             new_datarow = self.substitute_val(level, new_datarow)
-            if hasattr(
-                    self,
-                    "keep_json_all_mapping") == False and level == "variant":
+            if hasattr(self, "keep_json_all_mapping") == False and level == "variant":
                 all_map = json.loads(new_datarow[all_mappings_newcolno])
                 newvals = []
                 for hugo in all_map:
                     for maprow in all_map[hugo]:
-                        [protid, protchange, so, transcript,
-                         rnachange] = maprow
+                        [protid, protchange, so, transcript, rnachange] = maprow
                         if protid == None:
                             protid = "(na)"
                         if protchange == None:
                             protchange = "(na)"
                         if rnachange == None:
                             rnachange = "(na)"
-                        newval = (transcript + ":" + hugo + ":" + protid +
-                                  ":" + so + ":" + protchange + ":" +
-                                  rnachange)
+                        newval = (
+                            transcript
+                            + ":"
+                            + hugo
+                            + ":"
+                            + protid
+                            + ":"
+                            + so
+                            + ":"
+                            + protchange
+                            + ":"
+                            + rnachange
+                        )
                         newvals.append(newval)
                 newvals.sort()
                 newcell = "; ".join(newvals)
@@ -455,8 +478,7 @@ class CravatReport:
                     for sample in samples:
                         sample_datarow = new_datarow
                         sample_datarow[sample_newcolno] = sample
-                        self.write_table_row(
-                            self.get_extracted_row(sample_datarow))
+                        self.write_table_row(self.get_extracted_row(sample_datarow))
                 else:
                     self.write_table_row(self.get_extracted_row(new_datarow))
             else:
@@ -465,6 +487,7 @@ class CravatReport:
     async def store_mapper(self, conn=None, cursor=None):
         if conn is None or cursor is None:
             from .exceptions import DatabaseConnectionError
+
             raise DatabaseConnectionError(self.module_name)
         q = 'select colval from info where colkey="_mapper"'
         await cursor.execute(q)
@@ -477,16 +500,17 @@ class CravatReport:
     async def run(self, tab="all"):
         if self.args is None or self.cf is None or self.logger is None:
             from .exceptions import SetupError
+
             raise SetupError(self.module_name)
         from time import time, asctime, localtime
         import oyaml as yaml
+
         start_time = time()
         ret = None
         try:
             if not getattr(self, "no_log", False):
                 if self.logger:
-                    self.logger.info("started: %s" %
-                                     asctime(localtime(start_time)))
+                    self.logger.info("started: %s" % asctime(localtime(start_time)))
                     if self.cf and self.cf.filter:
                         s = f"filter:\n{yaml.dump(self.filter)}"
                         self.logger.info(s)
@@ -494,8 +518,9 @@ class CravatReport:
                 if not self.args.get("do_not_change_status"):
                     self.status_writer.queue_status_update(
                         "status",
-                        "Started {} ({})".format(self.module_conf["title"],
-                                                 self.module_name),
+                        "Started {} ({})".format(
+                            self.module_conf["title"], self.module_name
+                        ),
                     )
             if self.setup() == False:
                 await self.close_db()
@@ -525,18 +550,18 @@ class CravatReport:
                 if not self.args.get("do_not_change_status"):
                     self.status_writer.queue_status_update(
                         "status",
-                        "Finished {} ({})".format(self.module_conf["title"],
-                                                  self.module_name),
+                        "Finished {} ({})".format(
+                            self.module_conf["title"], self.module_name
+                        ),
                     )
             end_time = time()
             if not (hasattr(self, "no_log") and self.no_log):
-                self.logger.info("finished: {0}".format(
-                    asctime(localtime(end_time))))
+                self.logger.info("finished: {0}".format(asctime(localtime(end_time))))
                 run_time = end_time - start_time
                 self.logger.info("runtime: {0:0.3f}".format(run_time))
             ret = self.end()
         except Exception as e:
-            #from .exceptions import ExpectedException
+            # from .exceptions import ExpectedException
             await self.close_db()
             raise e
         return ret
@@ -568,18 +593,17 @@ class CravatReport:
 
     def get_extracted_row(self, row):
         if self.display_select_columns[self.level]:
-            filtered_row = [
-                row[colno] for colno in self.colnos_to_display[self.level]
-            ]
+            filtered_row = [row[colno] for colno in self.colnos_to_display[self.level]]
         else:
             filtered_row = row
         return filtered_row
 
-    def add_conditional_to_colnames_to_display(self, level, column,
-                                               module_name):
+    def add_conditional_to_colnames_to_display(self, level, column, module_name):
         col_name = column["col_name"]
-        if (level in self.extract_columns_multilevel
-                and len(self.extract_columns_multilevel[level]) > 0):
+        if (
+            level in self.extract_columns_multilevel
+            and len(self.extract_columns_multilevel[level]) > 0
+        ):
             if col_name in self.extract_columns_multilevel[level]:
                 incl = True
             else:
@@ -594,10 +618,12 @@ class CravatReport:
         if incl and col_name not in self.colnames_to_display[level]:
             if module_name == self.mapper_name:
                 self.colnames_to_display[level].append(
-                    col_name.replace(module_name + "__", "base__"))
+                    col_name.replace(module_name + "__", "base__")
+                )
             elif module_name == "tagsampler":
                 self.colnames_to_display[level].append(
-                    col_name.replace(module_name + "__", "base__"))
+                    col_name.replace(module_name + "__", "base__")
+                )
             else:
                 self.colnames_to_display[level].append(col_name)
 
@@ -606,6 +632,7 @@ class CravatReport:
             pass
         if cursor is None:
             from .exceptions import SetupError
+
             raise SetupError()
         from os.path import dirname
         import json
@@ -614,16 +641,16 @@ class CravatReport:
         from .util import load_class
         from types import SimpleNamespace
         from .util import quiet_print
+
         self.colnames_to_display[level] = []
         await self.exec_db(self.store_mapper)
         from .admin_util import get_main_conf
+
         main_conf = get_main_conf()
         if "report_module_order" in main_conf:
             priority_colgroupnames = main_conf["report_module_order"]
         else:
-            priority_colgroupnames = [
-                "base", "hg38", "hg19", "hg18", "tagsampler"
-            ]
+            priority_colgroupnames = ["base", "hg38", "hg19", "hg18", "tagsampler"]
         # level-specific column groups
         self.columngroups[level] = []
         sql = "select name, displayname from " + level + "_annotator"
@@ -631,11 +658,9 @@ class CravatReport:
         rows = await cursor.fetchall()
         for row in rows:
             (name, displayname) = row
-            self.columngroups[level].append({
-                "name": name,
-                "displayname": displayname,
-                "count": 0
-            })
+            self.columngroups[level].append(
+                {"name": name, "displayname": displayname, "count": 0}
+            )
         # level-specific column names
         header_table = level + "_header"
         coldefs = []
@@ -653,8 +678,7 @@ class CravatReport:
         for coldef in coldefs:
             self.colnos[level][coldef.name] = colcount
             colcount += 1
-            if coldef.category in ["single", "multi"] and len(
-                    coldef.categories) == 0:
+            if coldef.category in ["single", "multi"] and len(coldef.categories) == 0:
                 sql = "select distinct {} from {}".format(coldef.name, level)
                 await cursor.execute(sql)
                 rs = await cursor.fetchall()
@@ -663,14 +687,16 @@ class CravatReport:
             [colgrpname, _] = coldef.name.split("__")
             column = coldef.get_colinfo()
             columns.append(column)
-            self.add_conditional_to_colnames_to_display(
-                level, column, colgrpname)
+            self.add_conditional_to_colnames_to_display(level, column, colgrpname)
             for columngroup in self.columngroups[level]:
                 if columngroup["name"] == colgrpname:
                     columngroup["count"] += 1
         # adds gene level columns to variant level.
-        if (self.nogenelevelonvariantlevel == False and level == "variant"
-                and await self.exec_db(self.table_exists, "gene")):
+        if (
+            self.nogenelevelonvariantlevel == False
+            and level == "variant"
+            and await self.exec_db(self.table_exists, "gene")
+        ):
             modules_to_add = []
             q = "select name from gene_annotator"
             await cursor.execute(q)
@@ -679,7 +705,8 @@ class CravatReport:
             for module in modules_to_add:
                 cols = []
                 q = 'select col_def from gene_header where col_name like "{}__%"'.format(
-                    module)
+                    module
+                )
                 await cursor.execute(q)
                 rs = await cursor.fetchall()
                 for r in rs:
@@ -687,30 +714,29 @@ class CravatReport:
                     cd.from_json(r[0])
                     cols.append(cd)
                 q = 'select displayname from gene_annotator where name="{}"'.format(
-                    module)
+                    module
+                )
                 await cursor.execute(q)
                 r = await cursor.fetchone()
                 displayname = r[0]
-                self.columngroups[level].append({
-                    "name": module,
-                    "displayname": displayname,
-                    "count": len(cols)
-                })
+                self.columngroups[level].append(
+                    {"name": module, "displayname": displayname, "count": len(cols)}
+                )
                 for coldef in cols:
                     self.colnos[level][coldef.name] = colcount
                     colcount += 1
-                    if (coldef.category in ["category", "multicategory"]
-                            and len(coldef.categories) == 0):
-                        sql = "select distinct {} from {}".format(
-                            coldef.name, level)
+                    if (
+                        coldef.category in ["category", "multicategory"]
+                        and len(coldef.categories) == 0
+                    ):
+                        sql = "select distinct {} from {}".format(coldef.name, level)
                         await cursor.execute(sql)
                         rs = await cursor.fetchall()
                         for r in rs:
                             coldef.categories.append(r[0])
                     column = coldef.get_colinfo()
                     columns.append(column)
-                    self.add_conditional_to_colnames_to_display(
-                        level, column, module)
+                    self.add_conditional_to_colnames_to_display(level, column, module)
                     self.var_added_cols.append(coldef.name)
         # Gene level summary columns
         if level == "gene":
@@ -719,31 +745,31 @@ class CravatReport:
             done_var_annotators = [v[0] for v in await cursor.fetchall()]
             self.summarizing_modules = []
             local_modules = au.get_local_module_infos_of_type("annotator")
-            local_modules.update(
-                au.get_local_module_infos_of_type("postaggregator"))
+            local_modules.update(au.get_local_module_infos_of_type("postaggregator"))
             summarizer_module_names = []
             for module_name in done_var_annotators:
                 if module_name in [
-                        "base",
-                        "hg19",
-                        "hg18",
-                        "extra_vcf_info",
-                        "extra_variant_info",
+                    "base",
+                    "hg19",
+                    "hg18",
+                    "extra_vcf_info",
+                    "extra_variant_info",
                 ]:
                     continue
                 if module_name not in local_modules:
                     if module_name != "original_input":
                         quiet_print(
-                            "            [{}] module does not exist in the system. Gene level summary for this module is skipped."
-                            .format(module_name), self.args)
+                            "            [{}] module does not exist in the system. Gene level summary for this module is skipped.".format(
+                                module_name
+                            ),
+                            self.args,
+                        )
                     continue
                 module = local_modules[module_name]
                 if "can_summarize_by_gene" in module.conf:
                     summarizer_module_names.append(module_name)
-            local_modules[self.mapper_name] = au.get_local_module_info(
-                self.mapper_name)
-            summarizer_module_names = [self.mapper_name
-                                       ] + summarizer_module_names
+            local_modules[self.mapper_name] = au.get_local_module_info(self.mapper_name)
+            summarizer_module_names = [self.mapper_name] + summarizer_module_names
             for module_name in summarizer_module_names:
                 if module_name is None:
                     continue
@@ -756,6 +782,7 @@ class CravatReport:
                     annot_cls = load_class(mi.script_path, "Mapper")
                 if annot_cls is None:
                     from .exceptions import ModuleLoadingError
+
                     raise ModuleLoadingError(module_name)
                 cmd = {
                     "script_path": mi.script_path,
@@ -776,8 +803,7 @@ class CravatReport:
                     coldef.genesummary = True
                     column = coldef.get_colinfo()
                     columns.append(column)
-                    self.add_conditional_to_colnames_to_display(
-                        level, column, mi.name)
+                    self.add_conditional_to_colnames_to_display(level, column, mi.name)
                 self.summarizing_modules.append([mi, annot, cols])
                 for col in cols:
                     fullname = module_name + "__" + col["name"]
@@ -798,8 +824,7 @@ class CravatReport:
             colgrp["lastcol"] = colpos + colgrp["count"]
             colpos = colgrp["lastcol"]
         colgrpnames = [
-            v["displayname"] for v in colgrps
-            if v["name"] not in priority_colgroupnames
+            v["displayname"] for v in colgrps if v["name"] not in priority_colgroupnames
         ]
         colgrpnames.sort()
         for colgrpname in colgrpnames:
@@ -820,9 +845,7 @@ class CravatReport:
             for col in columns:
                 colname = col["col_name"]
                 [grpname, _] = colname.split("__")
-                if colgrpname == "base" and grpname in [
-                        self.mapper_name, "tagsampler"
-                ]:
+                if colgrpname == "base" and grpname in [self.mapper_name, "tagsampler"]:
                     newcolname = "base__" + colname.split("__")[1]
                     self.colname_conversion[level][newcolname] = colname
                     col["col_name"] = newcolname
@@ -846,10 +869,7 @@ class CravatReport:
             if await self.exec_db(self.table_exists, reportsubtable):
                 q = "select * from {}".format(reportsubtable)
                 await cursor.execute(q)
-                reportsub = {
-                    r[0]: json.loads(r[1])
-                    for r in await cursor.fetchall()
-                }
+                reportsub = {r[0]: json.loads(r[1]) for r in await cursor.fetchall()}
                 self.column_subs[level] = []
                 for i, column in enumerate(new_columns):
                     module, col = column["col_name"].split("__")
@@ -862,12 +882,14 @@ class CravatReport:
                                 col=col,
                                 index=i,
                                 subs=reportsub[module][col],
-                            ))
+                            )
+                        )
                         new_columns[i]["reportsub"] = reportsub[module][col]
         # display_select_columns
-        if (level in self.extract_columns_multilevel
-                and len(self.extract_columns_multilevel[level]) > 0
-                ) or self.concise_report:
+        if (
+            level in self.extract_columns_multilevel
+            and len(self.extract_columns_multilevel[level]) > 0
+        ) or self.concise_report:
             self.display_select_columns[level] = True
         else:
             self.display_select_columns[level] = False
@@ -878,7 +900,7 @@ class CravatReport:
             count = colgroup["count"]
             if count == 0:
                 continue
-            for col in self.colinfo[level]["columns"][colno:colno + count]:
+            for col in self.colinfo[level]["columns"][colno : colno + count]:
                 module_col_name = col["col_name"]
                 if module_col_name in self.colnames_to_display[level]:
                     include_col = True
@@ -911,13 +933,16 @@ class CravatReport:
 
     async def connect_db(self, dbpath=None):
         from os.path import exists
+
         if dbpath != None:
             self.dbpath = dbpath
         if not self.dbpath:
             from .exceptions import NoInputException
+
             raise NoInputException()
         if not exists(self.dbpath):
             from .exceptions import WrongInput
+
             raise WrongInput()
 
     async def close_db(self):
@@ -931,8 +956,10 @@ class CravatReport:
     async def load_filter(self):
         if self.args is None:
             from .exceptions import SetupError
+
             raise SetupError()
         from .cravat_filter import CravatFilter
+
         self.cf = await CravatFilter.create(dbpath=self.dbpath)
         await self.cf.exec_db(
             self.cf.loadfilter,
@@ -950,9 +977,14 @@ class CravatReport:
             pass
         if cursor is None:
             from .exceptions import SetupError
+
             raise SetupError()
-        sql = ("select name from sqlite_master where " +
-               'type="table" and name="' + tablename + '"')
+        sql = (
+            "select name from sqlite_master where "
+            + 'type="table" and name="'
+            + tablename
+            + '"'
+        )
         await cursor.execute(sql)
         row = await cursor.fetchone()
         if row == None:
@@ -982,6 +1014,7 @@ def ov_report(args):
     from .exceptions import ModuleNotExist
     from .exceptions import IncompatibleResult
     from .util import quiet_print
+
     dbpath = args.get("dbpath")
     compatible_version, _, _ = is_compatible_version(dbpath)
     if not compatible_version:
@@ -1017,13 +1050,15 @@ def ov_report(args):
             if len(toks) != 2:
                 quiet_print(
                     "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value.",
-                    args)
+                    args,
+                )
                 continue
             k = toks[0]
             if k.count(".") != 1:
                 quiet_print(
                     "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value.",
-                    args)
+                    args,
+                )
                 continue
             [module_name, key] = k.split(".")
             if module_name not in module_options:
@@ -1040,8 +1075,8 @@ def ov_report(args):
         quiet_print(f"Generating {report_type} report... ", args)
         module_name = module_info.name
         spec = spec_from_file_location(  # type: ignore
-            module_name,  # type: ignore
-            module_info.script_path)
+            module_name, module_info.script_path  # type: ignore
+        )
         if not spec:
             continue
         module = module_from_spec(spec)  # type: ignore
@@ -1075,10 +1110,12 @@ def cravat_report_entrypoint():
 
 def get_parser_fn_report():
     from argparse import ArgumentParser, SUPPRESS
+
     parser_ov_report = ArgumentParser(
         prog="ov report dbpath ...",
         description="Generate reports from result SQLite files",
-        epilog="dbpath must be the first argument.")
+        epilog="dbpath must be the first argument.",
+    )
     parser_ov_report.add_argument("dbpath", help="Path to aggregator output")
     parser_ov_report.add_argument(
         "-t",
@@ -1087,35 +1124,27 @@ def get_parser_fn_report():
         default=[],
         help="report types",
     )
-    parser_ov_report.add_argument("-f",
-                                  dest="filterpath",
-                                  default=None,
-                                  help="Path to filter file")
+    parser_ov_report.add_argument(
+        "-f", dest="filterpath", default=None, help="Path to filter file"
+    )
     parser_ov_report.add_argument("--filter", default=None, help=SUPPRESS)
-    parser_ov_report.add_argument("--filtersql",
-                                  default=None,
-                                  help="Filter SQL")
+    parser_ov_report.add_argument("--filtersql", default=None, help="Filter SQL")
     parser_ov_report.add_argument(
         "-F",
         dest="filtername",
         default=None,
         help="Name of filter (stored in aggregator output)",
     )
-    parser_ov_report.add_argument("--filterstring",
-                                  dest="filterstring",
-                                  default=None,
-                                  help=SUPPRESS)
-    parser_ov_report.add_argument("-s",
-                                  dest="savepath",
-                                  default=None,
-                                  help="Path to save file")
-    parser_ov_report.add_argument("-c",
-                                  dest="confpath",
-                                  help="path to a conf file")
-    parser_ov_report.add_argument("--module-name",
-                                  dest="module_name",
-                                  default=None,
-                                  help="report module name")
+    parser_ov_report.add_argument(
+        "--filterstring", dest="filterstring", default=None, help=SUPPRESS
+    )
+    parser_ov_report.add_argument(
+        "-s", dest="savepath", default=None, help="Path to save file"
+    )
+    parser_ov_report.add_argument("-c", dest="confpath", help="path to a conf file")
+    parser_ov_report.add_argument(
+        "--module-name", dest="module_name", default=None, help="report module name"
+    )
     parser_ov_report.add_argument(
         "--nogenelevelonvariantlevel",
         dest="nogenelevelonvariantlevel",
@@ -1123,10 +1152,9 @@ def get_parser_fn_report():
         default=False,
         help="Use this option to prevent gene level result from being added to variant level result.",
     )
-    parser_ov_report.add_argument("--confs",
-                                  dest="confs",
-                                  default="{}",
-                                  help="Configuration string")
+    parser_ov_report.add_argument(
+        "--confs", dest="confs", default="{}", help="Configuration string"
+    )
     parser_ov_report.add_argument(
         "--inputfiles",
         nargs="+",
@@ -1141,10 +1169,9 @@ def get_parser_fn_report():
         default=False,
         help="Write each variant-sample pair on a separate line",
     )
-    parser_ov_report.add_argument("-d",
-                                  dest="output_dir",
-                                  default=None,
-                                  help="directory for output files")
+    parser_ov_report.add_argument(
+        "-d", dest="output_dir", default=None, help="directory for output files"
+    )
     parser_ov_report.add_argument(
         "--do-not-change-status",
         dest="do_not_change_status",
@@ -1192,7 +1219,8 @@ def get_parser_fn_report():
         help="Sample IDs to exclude",
     )
     parser_ov_report.add_argument(
-        "--package", help="Use filters and report types in a package")
+        "--package", help="Use filters and report types in a package"
+    )
     parser_ov_report.add_argument(
         "--md",
         default=None,

@@ -49,6 +49,7 @@ def raise_break(__signal_number__, __stack_frame__):
     import os
     import platform
     import psutil
+
     pl = platform.platform()
     if pl.startswith("Windows"):
         pid = os.getpid()
@@ -77,13 +78,19 @@ def raise_break(__signal_number__, __stack_frame__):
 
 
 signal.signal(signal.SIGINT, raise_break)
-#from .cli_util import ov_util_updateresult
+# from .cli_util import ov_util_updateresult
 
 
 wgs = None
 if admin_util or inout:
     pass
-if BaseConverter or BaseAnnotator or BaseMapper or BasePostAggregator or BaseCommonModule:
+if (
+    BaseConverter
+    or BaseAnnotator
+    or BaseMapper
+    or BasePostAggregator
+    or BaseCommonModule
+):
     pass
 if CravatReport or CravatFilter or Cravat:
     pass
@@ -91,7 +98,14 @@ if crx_def or constants:
     pass
 if cli or wgs:
     pass
-if ov_module_info or ov_module_install or ov_module_installbase or ov_module_ls or ov_module_uninstall or ov_module_update:
+if (
+    ov_module_info
+    or ov_module_install
+    or ov_module_installbase
+    or ov_module_ls
+    or ov_module_uninstall
+    or ov_module_update
+):
     pass
 if ov_report:
     pass
@@ -103,7 +117,16 @@ if ov_issue:
     pass
 if ov_new_exampleinput or ov_new_annotator:
     pass
-if ov_store_verifyemail or ov_store_resetpassword or ov_store_publish or ov_store_createaccount or ov_store_checklogin or ov_store_changepassword or ov_store_fetch or ov_store_pack:
+if (
+    ov_store_verifyemail
+    or ov_store_resetpassword
+    or ov_store_publish
+    or ov_store_createaccount
+    or ov_store_checklogin
+    or ov_store_changepassword
+    or ov_store_fetch
+    or ov_store_pack
+):
     pass
 if ov_system_setup or ov_system_md or ov_system_config:
     pass
@@ -116,8 +139,10 @@ if ov_version:
 if ov_config_oakvar:
     pass
 
+
 def get_live_annotator(module_name):
     import os
+
     module = None
     ModuleClass = get_module(module_name)
     if ModuleClass:
@@ -132,17 +157,17 @@ def get_live_annotator(module_name):
 
 def get_live_mapper(module_name):
     import os
+
     module = None
     ModuleClass = get_module(module_name)
     if ModuleClass:
-        module = ModuleClass({
-            "script_path":
-            os.path.abspath(ModuleClass.script_path),
-            "input_file":
-            "__dummy__",
-            "live":
-            True,
-        })
+        module = ModuleClass(
+            {
+                "script_path": os.path.abspath(ModuleClass.script_path),
+                "input_file": "__dummy__",
+                "live": True,
+            }
+        )
         module.base_setup()
     return module
 
@@ -152,6 +177,7 @@ def get_module(module_name, module_type=None):
     from .admin_util import get_local_module_info
     from .admin_util import get_module_conf
     from .util import load_class
+
     ModuleClass = None
     module_conf = get_module_conf(module_name, module_type=module_type)
     module_info = get_local_module_info(module_name)
@@ -176,7 +202,6 @@ def get_wgs_reader(assembly="hg38"):
 
 
 class LiveAnnotator:
-
     def __init__(self, mapper="hg38", annotators=[]):
         self.live_annotators = {}
         self.load_live_modules(mapper, annotators)
@@ -185,6 +210,7 @@ class LiveAnnotator:
 
     def load_live_modules(self, mapper, annotator_names):
         from .admin_util import get_mic
+
         self.live_mapper = get_live_mapper(mapper)
         for module_name in get_mic().local.keys():
             if module_name in annotator_names:
@@ -217,6 +243,7 @@ class LiveAnnotator:
     def annotate(self, crv):
         from .inout import AllMappingsParser
         from oakvar.constants import all_mappings_col_name
+
         if "uid" not in crv:
             crv["uid"] = self.variant_uid
             self.variant_uid += 1
@@ -225,8 +252,7 @@ class LiveAnnotator:
         if self.live_mapper is not None:
             crx_data = self.live_mapper.map(crv)
             crx_data = self.live_mapper.live_report_substitute(crx_data)
-            crx_data["tmp_mapper"] = AllMappingsParser(
-                crx_data[all_mappings_col_name])
+            crx_data["tmp_mapper"] = AllMappingsParser(crx_data[all_mappings_col_name])
         for k, v in self.live_annotators.items():
             try:
                 if crx_data is not None:
@@ -239,6 +265,7 @@ class LiveAnnotator:
                     response[k] = annot_data
             except Exception as _:
                 import traceback
+
                 traceback.print_exc()
                 response[k] = None
         if crx_data is not None and "tmp_mapper" in crx_data:

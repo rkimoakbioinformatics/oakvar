@@ -14,6 +14,7 @@ from .cli_config import get_parser_fn_config
 def get_entry_parser():
     # subparsers
     from argparse import ArgumentParser
+
     p_entry = ArgumentParser(
         description="OakVar. Genomic variant analysis platform. https://github.com/rkimoakbioinformatics/oakvar"
     )
@@ -31,7 +32,7 @@ def get_entry_parser():
     p_ov_run.r_return = "A string, a named list, or a dataframe. Output of reporters"  # type: ignore
     p_ov_run.r_examples = [  # type: ignore
         "# Annotate the input file `input` with ClinVar and COSMIC modules and make a VCF-format report of annotated variants.",
-        "ov.run.input(inputs=\"input\", annotators=list(\"clinvar\", \"cosmic\"), reports=\"vcf\")"
+        'ov.run.input(inputs="input", annotators=list("clinvar", "cosmic"), reports="vcf")',
     ]
 
     # report
@@ -46,19 +47,19 @@ def get_entry_parser():
     p_report.r_return = "A string, a named list, or a dataframe. Output of reporters"  # type: ignore
     p_report.r_examples = [  # type: ignore
         "# Generate a CSV-format report file from the job result file example.sqlite",
-        "ov.report(dbpath=\"example.sqlite\", reports=\"csv\")"
+        'ov.report(dbpath="example.sqlite", reports="csv")',
     ]
 
     # gui
-    p_gui = sp_entry.add_parser("gui",
-                                parents=[get_parser_fn_gui()],
-                                add_help=False,
-                                help="Start the GUI")
+    p_gui = sp_entry.add_parser(
+        "gui", parents=[get_parser_fn_gui()], add_help=False, help="Start the GUI"
+    )
     p_gui.r_return = "`NULL`"  # type: ignore
     p_gui.r_examples = [  # type: ignore
-        "# Launch OakVar GUI", "ov.gui()",
+        "# Launch OakVar GUI",
+        "ov.gui()",
         "# Launch OakVar Interactive Result Viewer for the OakVar analysis file example.sqlite",
-        "ov.gui(result=\"example.sqlite\")"
+        'ov.gui(result="example.sqlite")',
     ]
 
     # module
@@ -102,35 +103,44 @@ def get_entry_parser():
         help="OakVar utilities",
     )
     # version
-    p_version = sp_entry.add_parser("version",
-                                    parents=[get_parser_cli_version()],
-                                    add_help=False,
-                                    help="Show version")
+    p_version = sp_entry.add_parser(
+        "version",
+        parents=[get_parser_cli_version()],
+        add_help=False,
+        help="Show version",
+    )
     p_version.r_return = "A string. OakVar version"  # type: ignore
     p_version.r_examples = [  # type: ignore
-        "# Get the version of the installed OakVar", "ov.version()"
+        "# Get the version of the installed OakVar",
+        "ov.version()",
     ]
 
     # issue
-    p_issue = sp_entry.add_parser(name="issue",
-                                  parents=[get_parser_fn_issue()],
-                                  add_help=False,
-                                  help="Send an issue report")
+    p_issue = sp_entry.add_parser(
+        name="issue",
+        parents=[get_parser_fn_issue()],
+        add_help=False,
+        help="Send an issue report",
+    )
     p_issue.r_return = "`NULL`"  # type: ignore
     p_issue.r_examples = [  # type: ignore
-        "# Open the Issues page of the OakVar GitHub website", "ov.issue()"
+        "# Open the Issues page of the OakVar GitHub website",
+        "ov.issue()",
     ]
 
     # system
-    _ = sp_entry.add_parser(name="system",
-                            parents=[get_parser_ov_system()],
-                            add_help=False,
-                            help="Setup OakVar")
+    _ = sp_entry.add_parser(
+        name="system",
+        parents=[get_parser_ov_system()],
+        add_help=False,
+        help="Setup OakVar",
+    )
     return p_entry
 
 
 def handle_exception(e: Exception):
     from sys import stderr
+
     msg = getattr(e, "msg", None)
     if msg:
         stderr.write(msg + "\n")
@@ -138,10 +148,12 @@ def handle_exception(e: Exception):
     trc = getattr(e, "traceback", None)
     if trc:
         from traceback import print_exc
+
         print_exc()
     from .exceptions import ExpectedException
     import sys
-    isatty = hasattr(sys, 'ps1')  # interactive shell?
+
+    isatty = hasattr(sys, "ps1")  # interactive shell?
     halt = getattr(e, "halt", False)
     returncode = getattr(e, "returncode", 1)
     if isinstance(e, ExpectedException):
@@ -163,6 +175,7 @@ def handle_exception(e: Exception):
 
 def main():
     from sys import argv
+
     global get_entry_parser
     try:
         p_entry = get_entry_parser()

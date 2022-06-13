@@ -1,5 +1,4 @@
 class BaseCommonModule(object):
-
     def __init__(self):
         self.cmd_arg_parser = None
         self.logger = None
@@ -20,6 +19,7 @@ class BaseCommonModule(object):
 
     def _define_cmd_parser(self):
         from argparse import ArgumentParser
+
         try:
             parser = ArgumentParser()
             self.cmd_arg_parser = parser
@@ -40,23 +40,29 @@ class BaseCommonModule(object):
     def _setup_logger(self):
         from logging import getLogger, FileHandler, Formatter, StreamHandler
         from os.path import join
+
         try:
-            if self.module_name is not None and self.output_dir is not None and self.output_basename is not None:
+            if (
+                self.module_name is not None
+                and self.output_dir is not None
+                and self.output_basename is not None
+            ):
                 self.logger = getLogger("oakvar." + self.module_name)
                 if self.output_basename != "__dummy__":
-                    self.log_path = join(self.output_dir,
-                                         self.output_basename + ".log")
+                    self.log_path = join(self.output_dir, self.output_basename + ".log")
                     log_handler = FileHandler(self.log_path, "a")
                 else:
                     log_handler = StreamHandler()
-                formatter = Formatter("%(asctime)s %(name)-20s %(message)s",
-                                      "%Y/%m/%d %H:%M:%S")
+                formatter = Formatter(
+                    "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
+                )
                 log_handler.setFormatter(formatter)
                 self.logger.addHandler(log_handler)
                 self.error_logger = getLogger("error." + self.module_name)
                 if self.output_basename != "__dummy__":
-                    error_log_path = join(self.output_dir,
-                                          self.output_basename + ".err")
+                    error_log_path = join(
+                        self.output_dir, self.output_basename + ".err"
+                    )
                     error_log_handler = FileHandler(error_log_path, "a")
                 else:
                     error_log_handler = StreamHandler()

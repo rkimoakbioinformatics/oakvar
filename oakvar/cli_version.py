@@ -11,6 +11,7 @@ def cli_version(args):
 def ov_version(args):
     from .admin_util import oakvar_version
     from .util import quiet_print
+
     ret = oakvar_version()
     if args["to"] == "stdout":
         quiet_print(ret, args=args)
@@ -20,13 +21,14 @@ def ov_version(args):
 
 def get_parser_cli_version():
     from argparse import ArgumentParser
+
     # shows version
     parser_cli_version = ArgumentParser()
     parser_cli_version.add_argument(
-        "--to", default="return", help='"stdout" to print. "return" to return')
-    parser_cli_version.add_argument("--quiet",
-                                    action="store_true",
-                                    default=None,
-                                    help="Run quietly")
+        "--to", default="return", help='"stdout" to print. "return" to return'
+    )
+    parser_cli_version.add_argument(
+        "--quiet", action="store_true", default=None, help="Run quietly"
+    )
     parser_cli_version.set_defaults(func=cli_version)
     return parser_cli_version

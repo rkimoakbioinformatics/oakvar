@@ -15,14 +15,12 @@ class NormalExit(ExpectedException):
 
 
 class NoGenomeException(ExpectedException):
-
     def __init__(self):
         super().__init__("genome assembly should be selected.")
         self.halt = True
 
 
 class InvalidGenomeAssembly(ExpectedException):
-
     def __init__(self, genome_assembly):
         super().__init__(f"{genome_assembly} is an invalid genome assembly.")
         self.halt = True
@@ -45,7 +43,6 @@ class LiftoverFailure(InvalidData):
 
 
 class FileIntegrityError(Exception):
-
     def __init__(self, path):
         super().__init__(path)
 
@@ -60,11 +57,13 @@ class InvalidFilter(ExpectedException):
     def __init__(self, wrong_samples, wrong_colnames):
         self.msg = []
         if len(wrong_samples) > 0:
-            self.msg.append("Filter sample names do not exist: " +
-                            " ".join(wrong_samples))
+            self.msg.append(
+                "Filter sample names do not exist: " + " ".join(wrong_samples)
+            )
         if len(wrong_colnames) > 0:
-            self.msg.append("Filter column names do not exist: " +
-                            " ".join(wrong_colnames))
+            self.msg.append(
+                "Filter column names do not exist: " + " ".join(wrong_colnames)
+            )
 
     def __str__(self):
         return str(self.msg)
@@ -80,13 +79,11 @@ class ModuleNotExist(ExpectedException):
 
 
 class InvalidModule(ExpectedException):
-
     def __init__(self, module_name):
         super().__init__(f"module {module_name} is invalid.")
 
 
 class NoVariantError(ExpectedException):
-
     def __init__(self):
         super().__init__("Reference and alternate alleles are the same.")
 
@@ -106,7 +103,6 @@ class InvalidInputFormat(ExpectedException):
 
 
 class SystemMissingException(ExpectedException):
-
     def __init__(self, msg=""):
         if msg is not None and msg != "":
             msg = f"OakVar is not ready ({msg}). 'ov system setup' to set up OakVar."
@@ -116,23 +112,20 @@ class SystemMissingException(ExpectedException):
 
 
 class NoModulesDir(ExpectedException):
-
     def __init__(self):
-        super().__init__(
-            "no modules directory. Run `ov system setup` to setup.")
+        super().__init__("no modules directory. Run `ov system setup` to setup.")
 
 
 class NoSystemModule(ExpectedException):
-
     def __init__(self):
         super().__init__("no system module. Run `ov system setup` to setup.")
 
 
 class IncompatibleResult(ExpectedException):
-
     def __init__(self):
         super().__init__(
-            "incompatible result file version. Please report with `ov issue`.")
+            "incompatible result file version. Please report with `ov issue`."
+        )
 
 
 class ModuleLoadingError(ExpectedException):
@@ -176,13 +169,11 @@ class StoreServerError(ExpectedException):
 
 
 class InternetConnectionError(ExpectedException):
-
     def __init__(self):
         super().__init__(f"internet connection is unavailable.")
 
 
 class ModuleVersionError(ExpectedException):
-
     def __init__(self, module_name, version):
         super().__init__(f"{module_name}=={version} does not exist.")
 
@@ -209,13 +200,11 @@ class LoggerError(ExpectedException):
 
 
 class IncompleteModuleError(ExpectedException):
-
     def __init__(self, module_name):
         super().__init__(f"incomplete module {module_name}")
 
 
 class FilterLoadingError(ExpectedException):
-
     def __init__(self):
         super().__init__(f"filter loading error")
 

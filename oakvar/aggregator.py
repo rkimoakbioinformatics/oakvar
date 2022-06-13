@@ -5,6 +5,7 @@ class Aggregator(object):
 
     def __init__(self, cmd_args, status_writer):
         from os.path import abspath
+
         self.status_writer = status_writer
         self.annotators = []
         self.ipaths = {}
@@ -40,6 +41,7 @@ class Aggregator(object):
         from os.path import abspath, exists
         from os import makedirs
         from argparse import ArgumentParser
+
         parser = ArgumentParser()
         parser.add_argument("path", help="Path to this aggregator module")
         parser.add_argument(
@@ -48,14 +50,10 @@ class Aggregator(object):
             required=True,
             help="Directory containing annotator outputs",
         )
-        parser.add_argument("-l",
-                            dest="level",
-                            required=True,
-                            help="Level to aggregate")
-        parser.add_argument("-n",
-                            dest="name",
-                            required=True,
-                            help="Name of run")
+        parser.add_argument(
+            "-l", dest="level", required=True, help="Level to aggregate"
+        )
+        parser.add_argument("-n", dest="name", required=True, help="Name of run")
         parser.add_argument(
             "-d",
             dest="output_dir",
@@ -93,6 +91,7 @@ class Aggregator(object):
 
     def _setup_logger(self):
         from logging import getLogger
+
         self.logger = getLogger("oakvar.aggregator")
         self.logger.info("level: {0}".format(self.level))
         self.logger.info("input directory: %s" % self.input_dir)
@@ -101,6 +100,7 @@ class Aggregator(object):
 
     def run(self):
         from time import time, asctime, localtime
+
         self._setup()
         if self.input_base_fname == None:
             return
@@ -112,7 +112,8 @@ class Aggregator(object):
             return
         start_time = time()
         self.status_writer.queue_status_update(
-            "status", "Started {} ({})".format("Aggregator", self.level))
+            "status", "Started {} ({})".format("Aggregator", self.level)
+        )
         last_status_update_time = time()
         if self.logger is not None:
             self.logger.info("started: %s" % asctime(localtime(start_time)))
@@ -151,8 +152,7 @@ class Aggregator(object):
             reader = self.readers[annot_name]
             n = 0
             ordered_cnames = [
-                cname for cname in reader.get_column_names()
-                if cname != self.key_name
+                cname for cname in reader.get_column_names() if cname != self.key_name
             ]
             if len(ordered_cnames) == 0:
                 continue
@@ -190,12 +190,14 @@ class Aggregator(object):
             self.logger.info("runtime: %s" % round(runtime, 3))
         self._cleanup()
         self.status_writer.queue_status_update(
-            "status", "Finished {} ({})".format("Aggregator", self.level))
+            "status", "Finished {} ({})".format("Aggregator", self.level)
+        )
 
     def make_reportsub(self):
         if self.cursor is None:
             return
         from json import loads
+
         if self.level in ["variant", "gene"]:
             q = f"select * from {self.level}_reportsub"
             self.cursor.execute(q)
@@ -225,10 +227,10 @@ class Aggregator(object):
         from distutils.version import LooseVersion
         from oakvar.inout import ColumnDefinition
         from oakvar.admin_util import get_current_package_version
+
         header_table = self.level + "_header"
         coldefs = []
-        if LooseVersion(
-                get_current_package_version()) >= LooseVersion("1.5.0"):
+        if LooseVersion(get_current_package_version()) >= LooseVersion("1.5.0"):
             sql = f"select col_def from {header_table}"
             self.cursor.execute(sql)
             for row in self.cursor:
@@ -241,11 +243,9 @@ class Aggregator(object):
             self.cursor.execute(sql)
             header_cols = [row[1] for row in self.cursor.fetchall()]
             select_order = [
-                cname for cname in ColumnDefinition.db_order
-                if cname in header_cols
+                cname for cname in ColumnDefinition.db_order if cname in header_cols
             ]
-            sql = "select {} from {}".format(", ".join(select_order),
-                                             header_table)
+            sql = "select {} from {}".format(", ".join(select_order), header_table)
             self.cursor.execute(sql)
             column_headers = self.cursor.fetchall()
             for column_header in column_headers:
@@ -264,11 +264,9 @@ class Aggregator(object):
                             continue
                         col_set.update(r[0].split(";"))
                     col_cats = list(col_set)
-                    col_cats = self.do_reportsub_col_cats(
-                        coldef.name, col_cats)
+                    col_cats = self.do_reportsub_col_cats(coldef.name, col_cats)
                 else:
-                    col_cats = self.do_reportsub_col_cats(
-                        coldef.name, col_cats)
+                    col_cats = self.do_reportsub_col_cats(coldef.name, col_cats)
                 if col_cats is not None:
                     col_cats.sort()
                 coldef.categories = col_cats
@@ -291,6 +289,7 @@ class Aggregator(object):
         if self.name is None:
             return
         from os import listdir
+
         crv_fname = self.name + ".crv"
         crx_fname = self.name + ".crx"
         crg_fname = self.name + ".crg"
@@ -321,9 +320,11 @@ class Aggregator(object):
             return
         if self.input_dir is None:
             from .exceptions import SetupError
+
             raise SetupError()
         from os.path import join
         from os import listdir
+
         if self.level == "variant":
             self.key_name = "uid"
         elif self.level == "gene":
@@ -366,6 +367,7 @@ class Aggregator(object):
         from json import loads, dumps
         from collections import OrderedDict
         from oakvar.inout import ColumnDefinition
+
         columns = []
         unique_names = set()
         # annotator table
@@ -393,7 +395,8 @@ class Aggregator(object):
             annotator_version = reader.get_annotator_version()
             q = f"insert or replace into {annotator_table} values (?, ?, ?)"
             self.cursor.execute(
-                q, [annotator_name, annotator_displayname, annotator_version])
+                q, [annotator_name, annotator_displayname, annotator_version]
+            )
             orded_col_index = sorted(list(reader.get_all_col_defs().keys()))
             for col_index in orded_col_index:
                 col_def = reader.get_col_def(col_index)
@@ -502,11 +505,13 @@ class Aggregator(object):
             return
         if self.output_dir is None:
             from .exceptions import SetupError
+
             raise SetupError()
         from os.path import join, exists
         from os import remove
         from sqlite3 import connect
         from oakvar.inout import CravatReader
+
         self.base_reader = CravatReader(self.base_fpath)
         for annot_name in self.annotators:
             self.readers[annot_name] = CravatReader(self.ipaths[annot_name])
@@ -523,13 +528,14 @@ class Aggregator(object):
         if self.error_logger is None:
             return
         from traceback import format_exc
+
         err_str = format_exc().rstrip()
         if ln is not None and line is not None:
             if err_str not in self.unique_excs:
                 self.unique_excs.append(err_str)
                 self.logger.error(err_str)
             self.error_logger.error(
-                "\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(
-                    ln, line[:-1], str(e)))
+                "\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(ln, line[:-1], str(e))
+            )
         else:
             self.logger.error(err_str)
