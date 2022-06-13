@@ -14,12 +14,12 @@ def setup_system(args):
     from .sysadmin_const import main_conf_fname
     from .admin_util import get_packagedir
     from .util import quiet_print
+
     # load sys conf.
     conf = None
     sys_conf_path = args.get("setup_file")
     if sys_conf_path:
-        quiet_print(
-            f"Loading system configuration from {sys_conf_path}...", args=args)
+        quiet_print(f"Loading system configuration from {sys_conf_path}...", args=args)
         conf = get_system_conf(sys_conf_path=sys_conf_path)
     else:
         quiet_print(f"Finding system configuration...", args=args)
@@ -39,8 +39,7 @@ def setup_system(args):
     main_conf_path = get_main_conf_path(conf=conf)
     if not exists(main_conf_path):
         copyfile(join(get_packagedir(), main_conf_fname), main_conf_path)
-        quiet_print(
-            f"Created main configuration file at {main_conf_path}.", args=args)
+        quiet_print(f"Created main configuration file at {main_conf_path}.", args=args)
     # copy oc manifest
     quiet_print(f"Checking store manifest file...", args=args)
     fetch_and_save_oc_manifest(args=args)
@@ -49,6 +48,7 @@ def setup_system(args):
     from os import environ
     from .sysadmin_const import sys_conf_path_key
     from .sysadmin import get_env_key
+
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
     quiet_print(f"Checking system modules...", args=args)
     args.update({"conf": conf})
@@ -58,32 +58,38 @@ def setup_system(args):
 
 def get_root_dir(conf=None):
     from .sysadmin_const import root_dir_key
+
     return get_conf_dirvalue(root_dir_key, conf=conf)
 
 
 def get_conf_dir(conf=None):
     from .sysadmin_const import conf_dir_key
+
     return get_conf_dirvalue(conf_dir_key, conf=conf)
 
 
 def get_modules_dir(conf=None):
     from .sysadmin_const import modules_dir_key
+
     d = get_conf_dirvalue(modules_dir_key, conf=conf)
     return d
 
 
 def get_jobs_dir(conf=None):
     from .sysadmin_const import jobs_dir_key
+
     return get_conf_dirvalue(jobs_dir_key, conf=conf)
 
 
 def get_log_dir(conf=None):
     from .sysadmin_const import log_dir_key
+
     return get_conf_dirvalue(log_dir_key, conf=conf)
 
 
 def get_conf_dirvalue(conf_key, conf=None):
     from os.path import abspath
+
     d = get_sys_conf_value(conf_key, conf=conf)
     if d is not None:
         d = abspath(d)
@@ -94,6 +100,7 @@ def get_sys_conf_value(conf_key, sys_conf_path=None, conf=None):
     from os import environ
     from .admin_util import load_yml_conf
     from os.path import exists
+
     # custom conf
     if conf is not None and conf_key in conf:
         return conf[conf_key]
@@ -119,10 +126,7 @@ def get_sys_conf_value(conf_key, sys_conf_path=None, conf=None):
     return None
 
 
-def get_system_conf(sys_conf_path=None,
-                    conf=None,
-                    no_default=False,
-                    no_custom=True):
+def get_system_conf(sys_conf_path=None, conf=None, no_default=False, no_custom=True):
     from os import environ
     from os.path import exists, dirname, abspath
     from .sysadmin_const import sys_conf_path_key
@@ -133,6 +137,7 @@ def get_system_conf(sys_conf_path=None,
     from .sysadmin_const import log_dir_key
     from .sysadmin_const import package_dir_key
     from .admin_util import load_yml_conf
+
     # order is: given conf > custom conf path > env > sys conf > template
     # template
     final_conf = get_system_conf_template()
@@ -194,8 +199,9 @@ def show_system_conf(args):
     from oyaml import dump
     from os.path import exists
     from .util import quiet_print
-    #args.setdefault("fmt", "json")
-    #args.setdefault("to", "return")
+
+    # args.setdefault("fmt", "json")
+    # args.setdefault("to", "return")
     sys_conf_path = get_system_conf_path()
     if not sys_conf_path or not exists(sys_conf_path):
         return None
@@ -214,6 +220,7 @@ def update_system_conf_file(d):
     """
     from .admin_util import recursive_update
     from .admin_util import update_mic
+
     sys_conf = get_system_conf(no_default=True)
     sys_conf = recursive_update(sys_conf, d)
     write_system_conf_file(sys_conf)
@@ -224,9 +231,11 @@ def update_system_conf_file(d):
 def get_main_conf_path(conf=None):
     import os
     from .sysadmin_const import main_conf_fname
+
     conf_dir = get_conf_dir(conf=conf)
     if conf_dir is None:
         from .exceptions import SystemMissingException
+
         raise SystemMissingException(msg="conf_dir is missing")
     return os.path.join(conf_dir, main_conf_fname)
 
@@ -235,22 +244,27 @@ def get_main_default_path():
     import os
     from .sysadmin_const import main_conf_fname
     from .admin_util import get_packagedir
+
     return os.path.join(get_packagedir(), main_conf_fname)
 
 
 def get_local_oc_manifest() -> Optional[dict]:
     oc_manifest_path = get_oc_manifest_path()
     from os.path import exists
+
     if not exists(oc_manifest_path):
         return None
     from oyaml import safe_load
+
     with open(oc_manifest_path) as f:
         oc_manifest = safe_load(f)
         return oc_manifest
 
+
 def get_oc_manifest_path() -> str:
     from os.path import join
     from .sysadmin_const import oc_manifest_fn
+
     conf_dir = get_conf_dir()
     oc_manifest_path = join(conf_dir, oc_manifest_fn)
     return oc_manifest_path
@@ -260,6 +274,7 @@ def get_remote_oc_manifest_timestamp() -> Optional[float]:
     from requests import head
     from dateutil.parser import parse
     from .constants import oc_manifest_url
+
     response = head(oc_manifest_url)
     if response.status_code == 200:
         ts = parse(response.headers["Last-Modified"]).timestamp()
@@ -271,6 +286,7 @@ def get_remote_oc_manifest_timestamp() -> Optional[float]:
 def fetch_oc_manifest_response():
     from requests import get
     from .constants import oc_manifest_url
+
     response = get(oc_manifest_url)
     if response.status_code == 200:
         return response
@@ -284,9 +300,11 @@ def has_newer_remote_oc_manifest(path: Optional[str] = None) -> bool:
     if not path:
         return False
     from os.path import exists
+
     if not exists(path):
         return True
     from os.path import getmtime
+
     local_oc_manifest_ts = getmtime(path)
     remote_oc_manifest_ts = get_remote_oc_manifest_timestamp()
     if not remote_oc_manifest_ts:
@@ -308,6 +326,7 @@ def fetch_and_save_oc_manifest(path: Optional[str] = None, args={}):
             with open(path, "w") as wf:
                 wf.write(oc_manifest_response.text)
                 from .util import quiet_print
+
                 quiet_print(f"Saved {path}", args=args)
 
 
@@ -318,6 +337,7 @@ def set_modules_dir(path, __overwrite__=False):
     import shutil
     import os
     from .sysadmin_const import modules_dir_key
+
     path = os.path.abspath(os.path.expanduser(path))
     if not (os.path.isdir(path)):
         os.makedirs(path)
@@ -335,6 +355,7 @@ def create_dir_if_absent(d, args=None):
     from os.path import exists
     from os import makedirs
     from .util import quiet_print
+
     if d is not None:
         if not exists(d):
             makedirs(d)
@@ -344,6 +365,7 @@ def create_dir_if_absent(d, args=None):
 def is_root_user():
     from os import environ
     from .admin_util import get_platform
+
     pl = get_platform()
     if pl == "windows":
         return False
@@ -360,6 +382,7 @@ def is_root_user():
 
 def get_env_key(conf_key):
     from .sysadmin_const import env_key_prefix
+
     return env_key_prefix + conf_key.upper()
 
 
@@ -368,6 +391,7 @@ def get_system_conf_path(conf=None):
     from os.path import join
     from .sysadmin_const import system_conf_fname
     from .sysadmin_const import sys_conf_path_key
+
     # custom conf
     if conf is not None and sys_conf_path_key in conf:
         return conf.get(sys_conf_path_key)
@@ -386,6 +410,7 @@ def get_system_conf_path(conf=None):
 def get_default_conf_dir(conf=None):
     from os.path import join as pathjoin
     from .sysadmin_const import conf_dir_name
+
     root_dir = get_default_root_dir(conf=conf)
     if root_dir:
         return pathjoin(root_dir, conf_dir_name)
@@ -396,6 +421,7 @@ def get_default_conf_dir(conf=None):
 def get_default_modules_dir(conf=None):
     from os.path import join as pathjoin
     from .sysadmin_const import modules_dir_name
+
     root_dir = get_default_root_dir(conf=conf)
     if root_dir:
         return pathjoin(root_dir, modules_dir_name)
@@ -406,6 +432,7 @@ def get_default_modules_dir(conf=None):
 def get_default_jobs_dir(conf=None):
     from os.path import join as pathjoin
     from .sysadmin_const import jobs_dir_name
+
     root_dir = get_default_root_dir(conf=conf)
     if root_dir:
         return pathjoin(root_dir, jobs_dir_name)
@@ -416,6 +443,7 @@ def get_default_jobs_dir(conf=None):
 def get_default_log_dir(conf=None):
     from os.path import join as pathjoin
     from .sysadmin_const import log_dir_name
+
     root_dir = get_default_root_dir(conf=conf)
     if root_dir:
         return pathjoin(root_dir, log_dir_name)
@@ -430,6 +458,7 @@ def get_default_root_dir(conf=None):
     from .admin_util import get_packagedir
     from .admin_util import get_platform
     from .sysadmin_const import root_dir_key
+
     if conf is not None and root_dir_key in conf:
         return conf.get(root_dir_key)
     pl = get_platform()
@@ -441,9 +470,9 @@ def get_default_root_dir(conf=None):
     elif pl == "linux":
         path = ".oakvar"
         root_dir = get_packagedir()
-        if exists(
-                join(root_dir, "conf")
-        ) == False:  # packagedir/conf is the old conf dir of OpenCRAVAT.
+        if (
+            exists(join(root_dir, "conf")) == False
+        ):  # packagedir/conf is the old conf dir of OpenCRAVAT.
             if is_root_user():
                 sudo_user = environ.get("SUDO_USER")
                 home = environ.get("HOME")
@@ -468,12 +497,14 @@ def get_default_root_dir(conf=None):
 
 def get_max_num_concurrent_annotators_per_job():
     from .sysadmin_const import max_num_concurrent_annotators_per_job_key
+
     return get_system_conf().get(max_num_concurrent_annotators_per_job_key)
 
 
 def get_system_conf_dir():
     from os.path import dirname
     from .sysadmin import get_system_conf_path
+
     path = get_system_conf_path()
     if path:
         return dirname(path)
@@ -481,9 +512,9 @@ def get_system_conf_dir():
         return None
 
 
-def copy_system_conf_template_if_absent(sys_conf_path=None,
-                                        sys_conf_template_path=None,
-                                        quiet=False):
+def copy_system_conf_template_if_absent(
+    sys_conf_path=None, sys_conf_template_path=None, quiet=False
+):
     from os.path import exists, join, dirname
     from os import makedirs
     from shutil import copy
@@ -491,14 +522,14 @@ def copy_system_conf_template_if_absent(sys_conf_path=None,
     from .sysadmin import get_system_conf_path
     from .admin_util import get_packagedir
     from .util import quiet_print
+
     if sys_conf_path is None:
         sys_conf_path = get_system_conf_path()
     if sys_conf_path and not exists(sys_conf_path):
         sys_conf_dir = dirname(sys_conf_path)
         if not exists(sys_conf_dir):
             makedirs(sys_conf_dir)
-        sys_conf_template_path = join(get_packagedir(),
-                                      system_conf_template_fname)
+        sys_conf_template_path = join(get_packagedir(), system_conf_template_fname)
         copy(sys_conf_template_path, sys_conf_path)
         quiet_print(f"Created {sys_conf_path}", args={"quiet": quiet})
 
@@ -508,9 +539,11 @@ def save_system_conf(conf):
     from oyaml import dump
     from os import makedirs
     from os.path import dirname, exists
+
     sys_conf_path = conf.get(sys_conf_path_key)
     if sys_conf_path is None or sys_conf_path == "":
         from .exceptions import SystemMissingException
+
         raise SystemMissingException(msg="System conf file path is null")
     sys_conf_dir = dirname(sys_conf_path)
     if not exists(sys_conf_dir):
@@ -524,11 +557,13 @@ def get_system_conf_template_path():
     from os.path import join
     from .sysadmin_const import system_conf_template_fname
     from .admin_util import get_packagedir
+
     return join(get_packagedir(), system_conf_template_fname)
 
 
 def get_system_conf_template():
     from oyaml import safe_load
+
     with open(get_system_conf_template_path()) as f:
         d = safe_load(f)
         return d
@@ -536,6 +571,7 @@ def get_system_conf_template():
 
 def write_system_conf_file(d):
     from oyaml import dump
+
     path = get_system_conf_path()
     if path:
         with open(path, "w") as wf:
@@ -544,6 +580,7 @@ def write_system_conf_file(d):
 
 def get_system_conf_info(conf=None, json=False):
     from oyaml import dump
+
     conf = get_system_conf(conf=conf)
     if json:
         content = conf

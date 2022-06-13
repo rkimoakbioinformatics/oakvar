@@ -1,6 +1,7 @@
 class BaseAnnotator(object):
 
     from .constants import crv_def, crx_def, crg_def
+
     valid_levels = ["variant", "gene"]
     valid_input_formats = ["crv", "crx", "crg"]
     id_col_defs = {"variant": crv_def[0], "gene": crg_def[0]}
@@ -16,9 +17,11 @@ class BaseAnnotator(object):
         import sys
         from oakvar.util import get_args
         from oakvar.constants import cannonical_chroms
+
         fp = sys.modules[self.__module__].__file__
         if fp is None:
             from .exceptions import ModuleLoadingError
+
             raise ModuleLoadingError(self.__module__)
         main_fpath = os.path.abspath(fp)
         self.primary_input_path = None
@@ -71,22 +74,24 @@ class BaseAnnotator(object):
         # Load command line opts
         self._setup_logger()
         from .admin_util import get_module_conf
+
         self.conf = get_module_conf(self.module_name, module_type="annotator")
         if self.conf is None:
             from .exceptions import ModuleLoadingError
+
             raise ModuleLoadingError(self.module_name)
         self._verify_conf()
         self._id_col_name = self.conf["output_columns"][0]["name"]
         if self.logger is None:
             from .exceptions import LoggerError
+
             raise LoggerError(module_name=self.module_name)
         if "logging_level" in self.conf:
             self.logger.setLevel(self.conf["logging_level"].upper())
         if "title" in self.conf:
             self.annotator_display_name = self.conf["title"]
         else:
-            self.annotator_display_name = os.path.basename(
-                self.module_dir).upper()
+            self.annotator_display_name = os.path.basename(self.module_dir).upper()
         if "version" in self.conf:
             self.annotator_version = self.conf["version"]
         else:
@@ -106,8 +111,10 @@ class BaseAnnotator(object):
     def _verify_conf(self):
         if self.conf is None:
             from .exceptions import SetupError
+
             raise SetupError(self.module_name)
         from .exceptions import ConfigurationError
+
         for k in self.required_conf_keys:
             if k not in self.conf:
                 err_msg = 'Required key "%s" not found in configuration' % k
@@ -139,10 +146,12 @@ class BaseAnnotator(object):
                 self.conf["input_columns"].append(id_col_name)
         else:
             self.conf["input_columns"] = self.default_input_columns[
-                self.conf["input_format"]]
+                self.conf["input_format"]
+            ]
 
     def _define_cmd_parser(self):
         import argparse
+
         parser = argparse.ArgumentParser()
         parser.add_argument("input_file", help="Input file to be annotated.")
         parser.add_argument(
@@ -151,17 +160,15 @@ class BaseAnnotator(object):
             dest="secondary_inputs",
             help="Secondary inputs. " + "Format as <module_name>:<path>",
         )
-        parser.add_argument("-n",
-                            dest="run_name",
-                            help="Name of job. Default is input file name.")
+        parser.add_argument(
+            "-n", dest="run_name", help="Name of job. Default is input file name."
+        )
         parser.add_argument(
             "-d",
             dest="output_dir",
             help="Output directory. " + "Default is input file directory.",
         )
-        parser.add_argument("-c",
-                            dest="conf",
-                            help="Path to optional run conf file.")
+        parser.add_argument("-c", dest="conf", help="Path to optional run conf file.")
         parser.add_argument(
             "-p",
             "--plainoutput",
@@ -169,15 +176,16 @@ class BaseAnnotator(object):
             dest="plainoutput",
             help="Skip column definition writing",
         )
-        parser.add_argument("--confs",
-                            dest="confs",
-                            default="{}",
-                            help="Configuration string")
-        parser.add_argument("--quiet",
-                            action="store_true",
-                            dest="quiet",
-                            default=None,
-                            help="Silent operation")
+        parser.add_argument(
+            "--confs", dest="confs", default="{}", help="Configuration string"
+        )
+        parser.add_argument(
+            "--quiet",
+            action="store_true",
+            dest="quiet",
+            default=None,
+            help="Silent operation",
+        )
         self.cmd_arg_parser = parser
 
     # Parse the command line arguments
@@ -186,6 +194,7 @@ class BaseAnnotator(object):
         import json
         import re
         from oakvar.util import get_args
+
         args = get_args(self.cmd_arg_parser, inargs, inkwargs)
         self.primary_input_path = os.path.abspath(args["input_file"])
         if args["secondary_inputs"]:
@@ -216,6 +225,7 @@ class BaseAnnotator(object):
 
     def handle_jsondata(self, output_dict):
         import json
+
         if self.json_colnames is None:
             return
         for colname in self.json_colnames:
@@ -231,27 +241,30 @@ class BaseAnnotator(object):
         if self.conf is None:
             return
         from time import time
+
         if self.update_status_json_flag and self.status_writer is not None:
             cur_time = time()
             if lnum % 10000 == 0 or cur_time - self.last_status_update_time > 3:
                 self.status_writer.queue_status_update(
                     "status",
-                    "Running {} ({}): line {}".format(self.conf["title"],
-                                                      self.module_name, lnum),
+                    "Running {} ({}): line {}".format(
+                        self.conf["title"], self.module_name, lnum
+                    ),
                 )
                 self.last_status_update_time = cur_time
 
     def is_star_allele(self, input_data):
         if self.conf is None:
             return
-        return self.conf["level"] == "variant" and input_data.get(
-            "alt_base", "") == "*"
+        return self.conf["level"] == "variant" and input_data.get("alt_base", "") == "*"
 
     def should_skip_chrom(self, input_data):
         if self.conf is None:
             return
-        return (self.conf["level"] == "variant"
-                and not input_data.get("chrom") in self.supported_chroms)
+        return (
+            self.conf["level"] == "variant"
+            and not input_data.get("chrom") in self.supported_chroms
+        )
 
     def fill_empty_output(self, output_dict):
         if self.conf is None:
@@ -278,17 +291,20 @@ class BaseAnnotator(object):
             return
         from time import time, asctime, localtime
         from oakvar.util import quiet_print
+
         if self.update_status_json_flag and self.status_writer is not None:
             self.status_writer.queue_status_update(
-                "status", "Started {} ({})".format(self.conf["title"],
-                                                   self.module_name))
+                "status", "Started {} ({})".format(self.conf["title"], self.module_name)
+            )
         try:
             start_time = time()
             self.logger.info("started: %s" % asctime(localtime(start_time)))
             quiet_print(
                 "        {}: started at {}".format(
-                    self.module_name, asctime(localtime(start_time))),
-                self.args)
+                    self.module_name, asctime(localtime(start_time))
+                ),
+                self.args,
+            )
             self.base_setup()
             self.last_status_update_time = time()
             self.output_columns = self.conf["output_columns"]
@@ -297,15 +313,17 @@ class BaseAnnotator(object):
                 try:
                     self.log_progress(lnum)
                     # * allele and undefined non-canonical chroms are skipped.
-                    if self.is_star_allele(
-                            input_data) or self.should_skip_chrom(input_data):
+                    if self.is_star_allele(input_data) or self.should_skip_chrom(
+                        input_data
+                    ):
                         continue
                     output_dict = None
                     if secondary_data == {}:
                         output_dict = self.annotate(input_data)
                     else:
                         output_dict = self.annotate(
-                            input_data, secondary_data=secondary_data)
+                            input_data, secondary_data=secondary_data
+                        )
                     # This enables summarizing without writing for now.
                     if output_dict is None:
                         continue
@@ -313,8 +331,7 @@ class BaseAnnotator(object):
                     output_dict = self.handle_jsondata(output_dict)
                     # Preserves the first column
                     if output_dict:
-                        output_dict[self._id_col_name] = input_data[
-                            self._id_col_name]
+                        output_dict[self._id_col_name] = input_data[self._id_col_name]
                     # Fill absent columns with empty strings
                     output_dict = self.fill_empty_output(output_dict)
                     # Writes output.
@@ -326,21 +343,23 @@ class BaseAnnotator(object):
             self.postprocess()
             self.base_cleanup()
             end_time = time()
-            self.logger.info("finished: {0}".format(
-                asctime(localtime(end_time))))
+            self.logger.info("finished: {0}".format(asctime(localtime(end_time))))
             quiet_print(
                 "        {}: finished at {}".format(
-                    self.module_name, asctime(localtime(end_time))), self.args)
+                    self.module_name, asctime(localtime(end_time))
+                ),
+                self.args,
+            )
             run_time = end_time - start_time
             self.logger.info("runtime: {0:0.3f}s".format(run_time))
             quiet_print(
-                "        {}: runtime {:0.3f}s".format(self.module_name,
-                                                      run_time), self.args)
+                "        {}: runtime {:0.3f}s".format(self.module_name, run_time),
+                self.args,
+            )
             if self.update_status_json_flag and self.status_writer is not None:
                 self.status_writer.queue_status_update(
                     "status",
-                    "Finished {} ({})".format(self.conf["title"],
-                                              self.module_name),
+                    "Finished {} ({})".format(self.conf["title"], self.module_name),
                 )
         except Exception as e:
             self._log_exception(e)
@@ -352,11 +371,13 @@ class BaseAnnotator(object):
 
     async def get_gene_summary_data(self, cf):
         hugos = await cf.exec_db(cf.get_filtered_hugo_list)
-        output_columns = await cf.exec_db(cf.get_stored_output_columns,
-                                          self.module_name)
+        output_columns = await cf.exec_db(
+            cf.get_stored_output_columns, self.module_name
+        )
         cols = [
             self.module_name + "__" + coldef["name"]
-            for coldef in output_columns if coldef["name"] != "uid"
+            for coldef in output_columns
+            if coldef["name"] != "uid"
         ]
         data = {}
         rows = await cf.exec_db(cf.get_variant_data_for_cols, cols)
@@ -377,18 +398,19 @@ class BaseAnnotator(object):
 
     def _log_runtime_exception(self, lnum, line, __input_data__, e):
         import traceback
+
         err_str = traceback.format_exc().rstrip()
         lines = err_str.split("\n")
         last_line = lines[-1]
-        err_str_log = "\n".join(lines[:-1]) + "\n" + ":".join(
-            last_line.split(":")[:2])
+        err_str_log = "\n".join(lines[:-1]) + "\n" + ":".join(last_line.split(":")[:2])
         if err_str_log not in self.unique_excs:
             self.unique_excs.append(err_str_log)
             if self.logger:
                 self.logger.error(err_str_log)
         if self.error_logger:
-            self.error_logger.error("\n[{:d}]{}\n({})\n#".format(
-                lnum, line.rstrip(), str(e)))
+            self.error_logger.error(
+                "\n[{:d}]{}\n({})\n#".format(lnum, line.rstrip(), str(e))
+            )
 
     # Setup function for the base_annotator, different from self.setup()
     # which is intended to be for the derived annotator.
@@ -399,16 +421,18 @@ class BaseAnnotator(object):
         self._open_db_connection()
         self.setup()
         if not hasattr(self, "supported_chroms"):
-            self.supported_chroms = set(["chr" + str(n)
-                                         for n in range(1, 23)] +
-                                        ["chrX", "chrY"])
+            self.supported_chroms = set(
+                ["chr" + str(n) for n in range(1, 23)] + ["chrX", "chrY"]
+            )
 
     def _setup_primary_input(self):
         if self.conf is None:
             from .exceptions import SetupError
+
             raise SetupError(module_name=self.module_name)
         from .exceptions import ConfigurationError
         from .inout import CravatReader
+
         self.primary_input_reader = CravatReader(self.primary_input_path)
         requested_input_columns = self.conf["input_columns"]
         defined_columns = self.primary_input_reader.get_column_names()
@@ -416,11 +440,11 @@ class BaseAnnotator(object):
         if missing_columns:
             if len(defined_columns) > 0:
                 err_msg = "Columns not defined in input: %s" % ", ".join(
-                    missing_columns)
+                    missing_columns
+                )
                 raise ConfigurationError(err_msg)
             else:
-                default_columns = self.default_input_columns[
-                    self.conf["input_format"]]
+                default_columns = self.default_input_columns[self.conf["input_format"]]
                 for col_name in requested_input_columns:
                     try:
                         col_index = default_columns.index(col_name)
@@ -435,11 +459,13 @@ class BaseAnnotator(object):
                     else:
                         data_type = "string"
                     self.primary_input_reader.override_column(
-                        col_index, col_name, data_type=data_type)
+                        col_index, col_name, data_type=data_type
+                    )
 
     def _setup_secondary_inputs(self):
         if self.conf is None:
             from .exceptions import SetupError
+
             raise SetupError(module_name=self.module_name)
         self.secondary_readers = {}
         try:
@@ -453,25 +479,30 @@ class BaseAnnotator(object):
             )
         elif num_expected < num_provided:
             raise Exception(
-                "Too many secondary inputs. %d expected, %d provided" %
-                (num_expected, num_provided))
+                "Too many secondary inputs. %d expected, %d provided"
+                % (num_expected, num_provided)
+            )
         for sec_name, sec_input_path in self.secondary_paths.items():
-            key_col = (self.conf["secondary_inputs"][sec_name].get(
-                "match_columns", {}).get("secondary", "uid"))
-            use_columns = self.conf["secondary_inputs"][sec_name].get(
-                "use_columns", [])
-            fetcher = SecondaryInputFetcher(sec_input_path,
-                                            key_col,
-                                            fetch_cols=use_columns)
+            key_col = (
+                self.conf["secondary_inputs"][sec_name]
+                .get("match_columns", {})
+                .get("secondary", "uid")
+            )
+            use_columns = self.conf["secondary_inputs"][sec_name].get("use_columns", [])
+            fetcher = SecondaryInputFetcher(
+                sec_input_path, key_col, fetch_cols=use_columns
+            )
             self.secondary_readers[sec_name] = fetcher
 
     # Open the output files (.var, .gen, .ncd) that are needed
     def _setup_outputs(self):
         if self.conf is None or self.output_dir is None or self.output_basename is None:
             from .exceptions import SetupError
+
             raise SetupError(module_name=self.module_name)
         import os
         from .inout import CravatWriter
+
         level = self.conf["level"]
         if level == "variant":
             output_suffix = "var"
@@ -501,10 +532,10 @@ class BaseAnnotator(object):
         else:
             self.output_writer = CravatWriter(self.output_path)
             self.output_writer.write_meta_line("name", self.module_name)
-            self.output_writer.write_meta_line("displayname",
-                                               self.annotator_display_name)
-            self.output_writer.write_meta_line("version",
-                                               self.annotator_version)
+            self.output_writer.write_meta_line(
+                "displayname", self.annotator_display_name
+            )
+            self.output_writer.write_meta_line("version", self.annotator_version)
         skip_aggregation = []
         for col_index, col_def in enumerate(self.conf["output_columns"]):
             self.output_writer.add_column(col_index, col_def)
@@ -512,12 +543,14 @@ class BaseAnnotator(object):
                 skip_aggregation.append(col_def["name"])
         if not (self.plain_output):
             self.output_writer.write_definition(self.conf)
-            self.output_writer.write_meta_line("no_aggregate",
-                                               ",".join(skip_aggregation))
+            self.output_writer.write_meta_line(
+                "no_aggregate", ",".join(skip_aggregation)
+            )
 
     def _open_db_connection(self):
         import os
         import sqlite3
+
         db_dirs = [self.data_dir, os.path.join("/ext", "resource", "newarch")]
         db_path = None
         for db_dir in db_dirs:
@@ -538,6 +571,7 @@ class BaseAnnotator(object):
     def get_uid_col(self):
         if self.conf is None:
             from .exceptions import SetupError
+
             raise SetupError(module_name=self.module_name)
         return self.conf["output_columns"][0]["name"]
 
@@ -559,6 +593,7 @@ class BaseAnnotator(object):
 
     def remove_log_file(self):
         import os
+
         if self.logger and self.log_handler:
             self.logger.removeHandler(self.log_handler)
             self.log_handler.flush()
@@ -570,24 +605,27 @@ class BaseAnnotator(object):
     def _setup_logger(self):
         if self.output_basename is None or self.output_dir is None:
             from .exceptions import SetupError
+
             raise SetupError(self.module_name)
         import logging
         import os
+
         self.logger = logging.getLogger("oakvar." + self.module_name)
         if self.output_basename != "__dummy__":
-            self.log_path = os.path.join(self.output_dir,
-                                         self.output_basename + ".log")
+            self.log_path = os.path.join(self.output_dir, self.output_basename + ".log")
             log_handler = logging.FileHandler(self.log_path, "a")
         else:
             log_handler = logging.StreamHandler()
-        formatter = logging.Formatter("%(asctime)s %(name)-20s %(message)s",
-                                      "%Y/%m/%d %H:%M:%S")
+        formatter = logging.Formatter(
+            "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
+        )
         log_handler.setFormatter(formatter)
         self.logger.addHandler(log_handler)
         self.error_logger = logging.getLogger("error." + self.module_name)
         if self.output_basename != "__dummy__":
-            error_log_path = os.path.join(self.output_dir,
-                                          self.output_basename + ".err")
+            error_log_path = os.path.join(
+                self.output_dir, self.output_basename + ".err"
+            )
             error_log_handler = logging.FileHandler(error_log_path, "a")
         else:
             error_log_handler = logging.StreamHandler()
@@ -601,10 +639,12 @@ class BaseAnnotator(object):
     def _get_input(self):
         if self.conf is None or self.primary_input_reader is None:
             from .exceptions import SetupError
+
             raise SetupError(self.module_name)
         from .inout import AllMappingsParser
         from .constants import all_mappings_col_name
         from .constants import mapping_parser_name
+
         for lnum, line, reader_data in self.primary_input_reader.loop_data():
             try:
                 input_data = {}
@@ -612,12 +652,15 @@ class BaseAnnotator(object):
                     input_data[col_name] = reader_data[col_name]
                 if all_mappings_col_name in input_data:
                     input_data[mapping_parser_name] = AllMappingsParser(
-                        input_data[all_mappings_col_name])
+                        input_data[all_mappings_col_name]
+                    )
                 secondary_data = {}
                 for module_name, fetcher in self.secondary_readers.items():
                     input_key_col = (
-                        self.conf["secondary_inputs"][module_name].get(
-                            "match_columns", {}).get("primary", "uid"))
+                        self.conf["secondary_inputs"][module_name]
+                        .get("match_columns", {})
+                        .get("primary", "uid")
+                    )
                     input_key_data = input_data[input_key_col]
                     secondary_data[module_name] = fetcher.get(input_key_data)
                 yield lnum, line, input_data, secondary_data
@@ -629,14 +672,16 @@ class BaseAnnotator(object):
         return {
             "default__annotation": "no annotate has been defined",
             "input_data": input_data,
-            "secondary_data": secondary_data
+            "secondary_data": secondary_data,
         }
 
     def live_report_substitute(self, d):
         if self.conf is None:
             from .exceptions import SetupError
+
             raise SetupError(self.module_name)
         import re
+
         if "report_substitution" not in self.conf:
             return d
         rs_dic = self.conf["report_substitution"]
@@ -646,8 +691,9 @@ class BaseAnnotator(object):
                 value = d[colname]
                 if colname in ["all_mappings", "all_so"]:
                     for target in list(rs_dic[colname].keys()):
-                        value = re.sub("\\b" + target + "\\b",
-                                       rs_dic[colname][target], value)
+                        value = re.sub(
+                            "\\b" + target + "\\b", rs_dic[colname][target], value
+                        )
                 else:
                     if value in rs_dic[colname]:
                         value = rs_dic[colname][value]
@@ -656,10 +702,10 @@ class BaseAnnotator(object):
 
 
 class SecondaryInputFetcher:
-
     def __init__(self, input_path, key_col, fetch_cols=[]):
         from .inout import CravatReader
         from .exceptions import ConfigurationError
+
         self.key_col = key_col
         self.input_path = input_path
         self.input_reader = CravatReader(self.input_path)

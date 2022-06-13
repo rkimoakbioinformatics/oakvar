@@ -1,5 +1,6 @@
 def init_worker():
     import signal
+
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
@@ -7,6 +8,7 @@ def annot_from_queue(start_queue, end_queue, queue_populated, status_writer):
     from .util import load_class
     from logging import getLogger, FileHandler, Formatter
     from queue import Empty
+
     while True:
         try:
             task = start_queue.get(True, 1)
@@ -18,8 +20,9 @@ def annot_from_queue(start_queue, end_queue, queue_populated, status_writer):
         module, kwargs = task
         logger = getLogger(module.name)
         log_handler = FileHandler(kwargs["log_path"], "a")
-        formatter = Formatter("%(asctime)s %(name)-20s %(message)s",
-                              "%Y/%m/%d %H:%M:%S")
+        formatter = Formatter(
+            "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
+        )
         log_handler.setFormatter(formatter)
         logger.addHandler(log_handler)
         try:
@@ -30,6 +33,7 @@ def annot_from_queue(start_queue, end_queue, queue_populated, status_writer):
             end_queue.put(module.name)
         except Exception as _:
             from .exceptions import ModuleLoadingError
+
             err = ModuleLoadingError(module.name)
             logger.exception(err)
 
@@ -47,6 +51,7 @@ def mapper_runner(
 ):
     from .util import load_class
     from .admin_util import get_local_module_info
+
     output = None
     module = get_local_module_info(module_name)
     if module is not None:

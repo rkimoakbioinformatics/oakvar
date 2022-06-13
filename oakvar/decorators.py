@@ -9,10 +9,10 @@ def cli_entry(func):
 
 
 def cli_func(func):
-
     def run_cli_func(*args, **kwargs):
         if len(args) > 0:
             from argparse import Namespace
+
             if isinstance(args[0], Namespace):
                 if getattr(args[0], "quiet", None) == None:
                     setattr(args[0], "quiet", True)
@@ -29,10 +29,12 @@ def cli_func(func):
             return ret
         except Exception as e:
             from .__main__ import handle_exception
+
             handle_exception(e)
 
     def get_args(*args, **kwargs):
         from .util import get_args
+
         parser = get_parser(func.__name__)
         args = get_args(parser, args, kwargs)
         return args
@@ -43,6 +45,7 @@ def cli_func(func):
 def get_parser(parser_name):
     from .__main__ import get_entry_parser
     from typing import Any
+
     p_entry = get_entry_parser()
     pp_dict: dict[str, Any] = get_commands(p_entry)
     for pp_cmd, pp_parser in pp_dict.items():
@@ -62,6 +65,7 @@ def get_parser(parser_name):
 def get_commands(p):
     from argparse import _SubParsersAction
     from typing import Any
+
     cmds: dict[str, Any] = {}
     for a in p._actions:
         if type(a) == _SubParsersAction:

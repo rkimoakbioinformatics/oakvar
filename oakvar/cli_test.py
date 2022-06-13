@@ -6,13 +6,11 @@ from .decorators import cli_entry
 
 
 class NoReportReader(ExpectedException):
-
     def __init__(self, p):
         super().__init__(f"error: no test reader {p}")
 
 
 class ReportReader(ABC):
-
     def __init__(self, rsltFile):
         self.rsltFile = rsltFile
 
@@ -31,7 +29,6 @@ class ReportReader(ABC):
 
 # Derived Report Reader class for reating text reports (-t text)
 class TextReportReader(ReportReader):
-
     def reportFileExtension(self):
         return ".tsv"
 
@@ -48,8 +45,7 @@ class TextReportReader(ReportReader):
                 # skip comment lines but pull out the report level
                 if line.strip().startswith("#"):
                     if level_hdr in line:
-                        level = line[line.index(level_hdr) + len(level_hdr) +
-                                     1:]
+                        level = line[line.index(level_hdr) + len(level_hdr) + 1 :]
                     line = f.readline().strip("\n")
                     continue
 
@@ -98,19 +94,28 @@ class TextReportReader(ReportReader):
     def getRowID(self, headers, columns, level):
         Id = ""
         if level == "variant":
-            Id = (columns[self.getColPos(headers, "Chrom")] + " " +
-                  columns[self.getColPos(headers, "Position")] + " " +
-                  columns[self.getColPos(headers, "Ref Base")] + " " +
-                  columns[self.getColPos(headers, "Alt Base")] + " " +
-                  columns[self.getColPos(headers, "Tags")])
+            Id = (
+                columns[self.getColPos(headers, "Chrom")]
+                + " "
+                + columns[self.getColPos(headers, "Position")]
+                + " "
+                + columns[self.getColPos(headers, "Ref Base")]
+                + " "
+                + columns[self.getColPos(headers, "Alt Base")]
+                + " "
+                + columns[self.getColPos(headers, "Tags")]
+            )
         if level == "gene":
             pos = self.getColPos(headers, "Hugo")
             if pos == -1:
                 pos = self.getColPos(headers, "Gene")
             Id = columns[pos]
         if level == "sample":
-            Id = (columns[self.getColPos(headers, "UID")] + " " +
-                  columns[self.getColPos(headers, "Sample")])
+            Id = (
+                columns[self.getColPos(headers, "UID")]
+                + " "
+                + columns[self.getColPos(headers, "Sample")]
+            )
         if level == "mapping":
             Id = columns[self.getColPos(headers, "Original Line")]
         return Id
@@ -125,13 +130,13 @@ class TextReportReader(ReportReader):
 
 # Derived Report Reader class for reating text reports (-t text)
 class ExcelReportReader(ReportReader):
-
     def reportFileExtension(self):
         return ".xlsx"
 
     # Based on the level selected, return column headers and row values.
     def readReport(self, test_level, bDict):
         from openpyxl import load_workbook
+
         headers = None
         tabNbr = "Variant"
         if test_level == "gene":
@@ -141,8 +146,9 @@ class ExcelReportReader(ReportReader):
         elif test_level == "mapping":
             tabNbr = "Mapping"
         # To open Workbook
-        xlxsFile = (self.rsltFile
-                    if ".xlsx" in self.rsltFile else self.rsltFile + ".xlsx")
+        xlxsFile = (
+            self.rsltFile if ".xlsx" in self.rsltFile else self.rsltFile + ".xlsx"
+        )
         wb = load_workbook(filename=xlxsFile)
         sheet = wb[tabNbr]
         rows_dict = {}
@@ -152,8 +158,9 @@ class ExcelReportReader(ReportReader):
         for i in range(3, sheet.max_row + 1):
             columns = []
             for j in range(1, sheet.max_column + 1):
-                columns.append("" if sheet.cell(i, j).value is None else sheet.
-                               cell(i, j).value)
+                columns.append(
+                    "" if sheet.cell(i, j).value is None else sheet.cell(i, j).value
+                )
             line_id = self.getRowID(headers, columns, test_level)
             if bDict:
                 rows_dict[line_id] = columns
@@ -171,8 +178,7 @@ class ExcelReportReader(ReportReader):
         # To open Workbook
         header1 = sheet.cell(1, 1).value
         for i in range(1, sheet.max_column + 1):
-            if sheet.cell(
-                    1, i).value is not None and sheet.cell(1, i).value != "":
+            if sheet.cell(1, i).value is not None and sheet.cell(1, i).value != "":
                 header1 = sheet.cell(1, i).value
             header2 = sheet.cell(2, i).value
             combinedHeader = header1 + "|" + header2
@@ -184,19 +190,28 @@ class ExcelReportReader(ReportReader):
     def getRowID(self, headers, columns, level):
         Id = ""
         if level == "variant":
-            Id = (columns[self.getColPos(headers, "Chrom")] + " " +
-                  str(int(columns[self.getColPos(headers, "Position")])) +
-                  " " + columns[self.getColPos(headers, "Ref Base")] + " " +
-                  columns[self.getColPos(headers, "Alt Base")] + " " +
-                  columns[self.getColPos(headers, "Tags")])
+            Id = (
+                columns[self.getColPos(headers, "Chrom")]
+                + " "
+                + str(int(columns[self.getColPos(headers, "Position")]))
+                + " "
+                + columns[self.getColPos(headers, "Ref Base")]
+                + " "
+                + columns[self.getColPos(headers, "Alt Base")]
+                + " "
+                + columns[self.getColPos(headers, "Tags")]
+            )
         if level == "gene":
             pos = self.getColPos(headers, "Hugo")
             if pos == -1:
                 pos = self.getColPos(headers, "Gene")
             Id = columns[pos]
         if level == "sample":
-            Id = (columns[self.getColPos(headers, "UID")] + " " +
-                  columns[self.getColPos(headers, "Sample")])
+            Id = (
+                columns[self.getColPos(headers, "UID")]
+                + " "
+                + columns[self.getColPos(headers, "Sample")]
+            )
         if level == "mapping":
             Id = columns[self.getColPos(headers, "Original Line")]
         return Id
@@ -211,7 +226,6 @@ class ExcelReportReader(ReportReader):
 
 # Derived Report Reader class for reating text reports (-t text)
 class VcfReportReader(ReportReader):
-
     def reportFileExtension(self):
         return ".vcf"
 
@@ -221,6 +235,7 @@ class VcfReportReader(ReportReader):
         rows_dict = {}
         rows_list = []
         import vcf
+
         reader = vcf.Reader(filename=self.rsltFile)
         if headers == None:
             headers = self.readSectionHeader(reader)
@@ -257,8 +272,8 @@ class VcfReportReader(ReportReader):
         for col in cols:
             underscorepos = col.find("__")
             equalspos = col.find("=")
-            prevheader = col[underscorepos - 4:underscorepos]
-            postheader = col[underscorepos + 2:len(col)]
+            prevheader = col[underscorepos - 4 : underscorepos]
+            postheader = col[underscorepos + 2 : len(col)]
             hugopos = postheader.find("hugo")
             if hugopos >= 0:
                 postheader = "hugo"
@@ -275,16 +290,17 @@ class VcfReportReader(ReportReader):
     # The ID of a result row is used to match key and output.  The ID
     # differs depending on which section of the output is being checked.
     def getRowID(self, headers, lineitems):
-        Id = (lineitems[self.getColPos(
-            headers, "Variant Annotation|chrom")].strip('"') + " " +
-            lineitems[self.getColPos(
-                headers, "Variant Annotation|pos")].strip('"') + " " +
-            lineitems[self.getColPos(
-                headers, "Variant Annotation|ref")].strip('"') + " " +
-            lineitems[self.getColPos(
-                headers, "Variant Annotation|alt")].strip('"') + " " +
-            lineitems[self.getColPos(headers,
-                                     "Variant Annotation|tags")].strip('"'))
+        Id = (
+            lineitems[self.getColPos(headers, "Variant Annotation|chrom")].strip('"')
+            + " "
+            + lineitems[self.getColPos(headers, "Variant Annotation|pos")].strip('"')
+            + " "
+            + lineitems[self.getColPos(headers, "Variant Annotation|ref")].strip('"')
+            + " "
+            + lineitems[self.getColPos(headers, "Variant Annotation|alt")].strip('"')
+            + " "
+            + lineitems[self.getColPos(headers, "Variant Annotation|tags")].strip('"')
+        )
         return Id
 
     # get the position of a specific output column
@@ -297,7 +313,6 @@ class VcfReportReader(ReportReader):
 
 # Derived Report Reader class for reating text reports (-t text)
 class TsvReportReader(ReportReader):
-
     def reportFileExtension(self):
         return ".variant.tsv"
 
@@ -314,7 +329,7 @@ class TsvReportReader(ReportReader):
                 # skip comment lines but pull out the report level
                 if line.strip().startswith("#"):
                     if level_hdr in line:
-                        level = line[line.index(level_hdr) + len(level_hdr):]
+                        level = line[line.index(level_hdr) + len(level_hdr) :]
                     line = f.readline().strip("\n")
                     continue
 
@@ -358,19 +373,28 @@ class TsvReportReader(ReportReader):
     def getRowID(self, headers, columns, level):
         Id = ""
         if level == "variant":
-            Id = (columns[self.getColPos(headers, "chrom")] + " " +
-                  columns[self.getColPos(headers, "pos")] + " " +
-                  columns[self.getColPos(headers, "ref_base")] + " " +
-                  columns[self.getColPos(headers, "alt_base")] + " " +
-                  columns[self.getColPos(headers, "tags")])
+            Id = (
+                columns[self.getColPos(headers, "chrom")]
+                + " "
+                + columns[self.getColPos(headers, "pos")]
+                + " "
+                + columns[self.getColPos(headers, "ref_base")]
+                + " "
+                + columns[self.getColPos(headers, "alt_base")]
+                + " "
+                + columns[self.getColPos(headers, "tags")]
+            )
         if level == "gene":
             pos = self.getColPos(headers, "Hugo")
             if pos == -1:
                 pos = self.getColPos(headers, "Gene")
             Id = columns[pos]
         if level == "sample":
-            Id = (columns[self.getColPos(headers, "UID")] + " " +
-                  columns[self.getColPos(headers, "Sample")])
+            Id = (
+                columns[self.getColPos(headers, "UID")]
+                + " "
+                + columns[self.getColPos(headers, "Sample")]
+            )
         if level == "mapping":
             Id = columns[self.getColPos(headers, "Original Line")]
         return Id
@@ -385,13 +409,13 @@ class TsvReportReader(ReportReader):
 
 # Derived Report Reader class for reating text reports (-t text)
 class CsvReportReader(ReportReader):
-
     def reportFileExtension(self):
         return ".variant.csv"
 
     # Based on the level selected, return column headers and row values.
     def readReport(self, test_level, bDict):
         import csv
+
         level_hdr = "level="
         level = ""
         headers = None
@@ -404,8 +428,7 @@ class CsvReportReader(ReportReader):
                 if row[0].startswith("#"):
                     if level_hdr in row[0]:
                         hdr_line = row[0]
-                        level = hdr_line[hdr_line.index(level_hdr) +
-                                         len(level_hdr):]
+                        level = hdr_line[hdr_line.index(level_hdr) + len(level_hdr) :]
                     continue
 
                 # only load the level we are testing
@@ -447,19 +470,28 @@ class CsvReportReader(ReportReader):
     def getRowID(self, headers, columns, level):
         Id = ""
         if level == "variant":
-            Id = (columns[self.getColPos(headers, "chrom")] + " " +
-                  columns[self.getColPos(headers, "pos")] + " " +
-                  columns[self.getColPos(headers, "ref_base")] + " " +
-                  columns[self.getColPos(headers, "alt_base")] + " " +
-                  columns[self.getColPos(headers, "tags")])
+            Id = (
+                columns[self.getColPos(headers, "chrom")]
+                + " "
+                + columns[self.getColPos(headers, "pos")]
+                + " "
+                + columns[self.getColPos(headers, "ref_base")]
+                + " "
+                + columns[self.getColPos(headers, "alt_base")]
+                + " "
+                + columns[self.getColPos(headers, "tags")]
+            )
         if level == "gene":
             pos = self.getColPos(headers, "Hugo")
             if pos == -1:
                 pos = self.getColPos(headers, "Gene")
             Id = columns[pos]
         if level == "sample":
-            Id = (columns[self.getColPos(headers, "UID")] + " " +
-                  columns[self.getColPos(headers, "Sample")])
+            Id = (
+                columns[self.getColPos(headers, "UID")]
+                + " "
+                + columns[self.getColPos(headers, "Sample")]
+            )
         if level == "mapping":
             Id = columns[self.getColPos(headers, "Original Line")]
         return Id
@@ -474,10 +506,10 @@ class CsvReportReader(ReportReader):
 
 # class that actually runs a test of a specific module and then verifies the results.
 class Tester:
-
     def __init__(self, module, args, input_file):
         from os.path import dirname, exists, join, abspath
         from os import makedirs
+
         self.parms = None
         self.name = None
         self.args = args
@@ -487,28 +519,30 @@ class Tester:
         if type(module) == str:
             self.module_name = module
             from .admin_util import get_local_module_info
+
             module = get_local_module_info(self.module_name)
         self.module = module
         if module is None:
             from .exceptions import ModuleLoadingError
+
             raise ModuleLoadingError(self.module_name)
         if not exists(module.directory) or not module.script_exists:
-            raise Exception("No runnable module installed at path %s" %
-                            module.directory)
+            raise Exception(
+                "No runnable module installed at path %s" % module.directory
+            )
         self.out_dir = join(rundir, module.name)
         if not exists(self.out_dir):
             makedirs(self.out_dir)
         self.input_file = input_file
         self.input_path = join(module.test_dir, input_file)
-        self.key_path = join(module.test_dir,
-                             input_file.replace("input", "key"))
-        self.parms_path = join(module.test_dir,
-                               input_file.replace("input", "parms"))
+        self.key_path = join(module.test_dir, input_file.replace("input", "key"))
+        self.parms_path = join(module.test_dir, input_file.replace("input", "parms"))
         log = "test.log"
         if len(input_file.replace("input", "")) > 0:
             log = input_file + ".test.log"
-        self.log_path = join(self.out_dir,
-                             log)  # put the output of this program in test.log
+        self.log_path = join(
+            self.out_dir, log
+        )  # put the output of this program in test.log
         self.output_file = "oc_output"
         self.out_path = join(self.out_dir, self.output_file)
         self.log = open(self.log_path, "w", encoding="UTF-8")
@@ -523,6 +557,7 @@ class Tester:
     # dictionary.
     def parse_parms(self):
         from os.path import exists
+
         self.parms = {}
         if exists(self.parms_path):
             with open(self.parms_path) as f:
@@ -540,17 +575,20 @@ class Tester:
         from time import time
         from subprocess import call, STDOUT
         from .util import quiet_print
+
         input_msg = (
             "" if self.input_file == "input" else self.input_file
         )  # if there is more than one test for the module, include the test file in the log.
         if self.module is None:
             from .exceptions import ModuleLoadingError
+
             raise ModuleLoadingError(self.module_name)
         self._report(f"{self.module.name}: started {input_msg}")
         self.start_time = time()
         self.parse_parms()
         if self.parms is None:
             from .exceptions import SetupError
+
             raise SetupError(module_name=self.module_name)
         __python_exc__ = sys.executable
         # default is to run 'text' report but it can be overridden in the optional parms file.
@@ -572,36 +610,37 @@ class Tester:
         ]
         if self.module.type == "annotator":
             cmd_list.extend(["-a", self.module.name])
-        elif ((self.module.type == "reporter")
-              and (get_local_module_info("vest") is not None)
-              and (get_local_module_info("cgl") is not None)):
+        elif (
+            (self.module.type == "reporter")
+            and (get_local_module_info("vest") is not None)
+            and (get_local_module_info("cgl") is not None)
+        ):
             # when testing reporters, if the vest and cgl modules are installed, include them in the run / report.
             cmd_list.extend(["-a", "vest", "cgl"])
         else:
             cmd_list.extend(["--skip", "annotator"])
         # special case for a few converter modules that need hg19 coordinates
         if self.module.name in [
-                "ftdna-converter",
-                "ancestrydna-converter",
-                "23andme-converter",
+            "ftdna-converter",
+            "ancestrydna-converter",
+            "23andme-converter",
         ]:
             cmd_list.extend(["-l", "hg19"])
         else:
             cmd_list.extend(["-l", "hg38"])
         if self.args["to"] == "stdout":
             quiet_print(" ".join(cmd_list), args=self.args)
-        exit_code = call(" ".join(cmd_list),
-                         shell=True,
-                         stdout=self.log,
-                         stderr=STDOUT)
+        exit_code = call(" ".join(cmd_list), shell=True, stdout=self.log, stderr=STDOUT)
         if exit_code != 0:
             self._report(f"{self.module.name}: exit code {exit_code}")
         return exit_code
 
     def verify(self):
         from .admin_util import get_local_module_info
+
         if self.module is None:
             from .exceptions import ModuleLoadingError
+
             raise ModuleLoadingError(self.module_name)
         self.test_passed = True
         if self.module.type == "annotator":
@@ -626,9 +665,9 @@ class Tester:
                     ],
                 )
             else:
-                if (get_local_module_info("vest")
-                        is not None) and (get_local_module_info("cgl")
-                                          is not None):
+                if (get_local_module_info("vest") is not None) and (
+                    get_local_module_info("cgl") is not None
+                ):
                     self.verify_level(
                         "variant",
                         [
@@ -688,14 +727,14 @@ class Tester:
         # self._report("  Verifying " + level + " level values.")
         if self.module is None:
             from .exceptions import ModuleLoadingError
+
             raise ModuleLoadingError(self.module_name)
         key_reader = self.create_report_reader(self.report_type, self.key_path)
         if key_reader is None:
             raise NoReportReader(self.key_path)
         report_extension = key_reader.reportFileExtension()
         report_path = str(self.out_path) + report_extension
-        result_reader = self.create_report_reader(self.report_type,
-                                                  report_path)
+        result_reader = self.create_report_reader(self.report_type, report_path)
         if result_reader is None:
             raise NoReportReader(report_path)
         key_header, key_rows = key_reader.readReport(level, False)
@@ -705,16 +744,18 @@ class Tester:
         for key in key_rows:
             variant, key_row = key
             if variant not in result_rows:
-                self._report(
-                    f"{self.module.name}: {variant} did not appear in results")
+                self._report(f"{self.module.name}: {variant} did not appear in results")
                 self.test_passed = False
                 continue
             result = result_rows[variant]
             if key_header is not None:
                 for idx, header in enumerate(key_header):
                     # just check the columns from the module we are testing
-                    if ((self.getModule(header) not in module_name)
-                            or "uid" in header or "UID" in header):
+                    if (
+                        (self.getModule(header) not in module_name)
+                        or "uid" in header
+                        or "UID" in header
+                    ):
                         continue
                     if header not in result_header:
                         self._report(
@@ -723,12 +764,12 @@ class Tester:
                         self.test_passed = False
                         continue
                     result_idx = result_header.index(header)
-                    if (result[result_idx] !=
-                            key_row[idx]) and self.floats_differ(
-                                result[result_idx], key_row[idx]):
+                    if (result[result_idx] != key_row[idx]) and self.floats_differ(
+                        result[result_idx], key_row[idx]
+                    ):
                         headLabel = header
                         if "|" in header:
-                            headLabel = header[header.index("|") + 1:]
+                            headLabel = header[header.index("|") + 1 :]
                         self._report(
                             f"{self.module.name}: {variant}/{headLabel}/{key_row[idx]}/{result[result_idx]}"
                         )
@@ -736,11 +777,12 @@ class Tester:
 
     # headers are <module name>|<header> - this extracts the module name
     def getModule(self, header):
-        return header[:header.index("|")]
+        return header[: header.index("|")]
 
     # Write a message to the screen and to the log file.
     def _report(self, s, stdout=False):
         from .util import quiet_print
+
         self.log.write(s + "\n")
         if stdout:
             quiet_print(s, args=self.args)
@@ -751,15 +793,17 @@ class Tester:
     def write_results(self, stdout=True):
         if self.module is None:
             from .exceptions import ModuleLoadingError
+
             raise ModuleLoadingError(self.module_name)
         if self.start_time is None:
             from .exceptions import ExpectedException
+
             raise ExpectedException("start_time does not exist.")
         from time import time
+
         self.end_time = time()
         elapsed_time = self.end_time - self.start_time
-        self._report(f"{self.module.name}: finished in %.2f seconds" %
-                     elapsed_time)
+        self._report(f"{self.module.name}: finished in %.2f seconds" % elapsed_time)
         if self.test_passed:
             if stdout:
                 self._report(f"{self.module.name}: PASS", stdout=stdout)
@@ -785,6 +829,7 @@ def ov_util_test(args):
     from os import makedirs
     from .admin_util import get_local_module_types, get_local_module_info
     from .util import quiet_print
+
     rundir = args.get("rundir")
     if rundir is None:
         num = 1
@@ -806,6 +851,7 @@ def ov_util_test(args):
     module_names = args.get("modules")
     if not module_names:
         from .exceptions import NoInputException
+
         raise NoInputException()
     module_names.sort()
     result = {}
@@ -824,11 +870,15 @@ def ov_util_test(args):
                 result[module_name] = {"passed": True, "msg": ""}
             else:
                 failed += 1
-                fail_msg = module_name + ("" if test_input_file == "input" else
-                                          " " + test_input_file)
+                fail_msg = module_name + (
+                    "" if test_input_file == "input" else " " + test_input_file
+                )
                 modules_failed.append(fail_msg)
-                result[module_name] = {"passed": False,
-                                       "msg": fail_msg, "log": tester.log_path}
+                result[module_name] = {
+                    "passed": False,
+                    "msg": fail_msg,
+                    "log": tester.log_path,
+                }
     modules_failed.sort()
     if args.get("to") == "stdout":
         quiet_print(f"passed {passed} failed {failed}", args=args)
@@ -838,26 +888,24 @@ def ov_util_test(args):
 
 def get_parser_cli_util_test():
     from argparse import ArgumentParser
+
     parser_cli_util_test = ArgumentParser()
-    parser_cli_util_test.add_argument("-d",
-                                      "--rundir",
-                                      help="Directory for output")
+    parser_cli_util_test.add_argument("-d", "--rundir", help="Directory for output")
     parser_cli_util_test.add_argument(
-        "-m",
-        "--modules",
-        nargs="+",
-        help="Name of module(s) to test. (e.g. gnomad)")
+        "-m", "--modules", nargs="+", help="Name of module(s) to test. (e.g. gnomad)"
+    )
     parser_cli_util_test.add_argument(
         "-t",
         "--mod_types",
         nargs="+",
-        help="Type of module(s) to test (e.g. annotators)")
+        help="Type of module(s) to test (e.g. annotators)",
+    )
     parser_cli_util_test.add_argument(
-        "--to", default="return", help="stdout to print / return to return")
-    parser_cli_util_test.add_argument("--quiet",
-                                      action="store_true",
-                                      default=None,
-                                      help="Run quietly")
+        "--to", default="return", help="stdout to print / return to return"
+    )
+    parser_cli_util_test.add_argument(
+        "--quiet", action="store_true", default=None, help="Run quietly"
+    )
     parser_cli_util_test.set_defaults(func=cli_ov_util_test)
     return parser_cli_util_test
 

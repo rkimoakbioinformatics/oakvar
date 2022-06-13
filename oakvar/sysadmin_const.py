@@ -29,7 +29,5 @@ default_gui_port = 8080
 default_gui_port_ssl = 8443
 custom_modules_dir = None
 package_dir_key = "package_dir"
-default_postaggregator_names = [
-    "tagsampler", "casecontrol", "varmeta", "vcfinfo"
-]
+default_postaggregator_names = ["tagsampler", "casecontrol", "varmeta", "vcfinfo"]
 oc_manifest_fn = "oc_manifest.yml"

@@ -1,5 +1,6 @@
 from typing import Dict
 
+
 def get_ucsc_bins(start, stop=None):
     if stop is None:
         stop = start + 1
@@ -21,7 +22,8 @@ def get_ucsc_bins(start, stop=None):
             stop_bin >>= SHIFT_NEXT
 
     return [
-        x for first, last in range_per_level(start, stop)
+        x
+        for first, last in range_per_level(start, stop)
         for x in range(first, last + 1)
     ]
 
@@ -116,7 +118,7 @@ def aa_abbv_to_let(abbvs):
         raise ValueError("Must be evenly divisible by 3")
     out = ""
     for i in range(0, len(abbvs), 3):
-        abbv = abbvs[i].upper() + abbvs[i + 1:i + 3].lower()
+        abbv = abbvs[i].upper() + abbvs[i + 1 : i + 3].lower()
         out += aa_321[abbv]
     return out
 
@@ -265,6 +267,7 @@ def translate_codon(bases, fallback=None):
 
 def get_caller_name(path):
     from os.path import abspath, basename
+
     path = abspath(path)
     basename = basename(path)
     if "." in basename:
@@ -281,6 +284,7 @@ def load_class(path, class_name=None):
     from importlib import import_module
     import sys
     import inspect
+
     path_dir = dirname(path)
     sys.path = [path_dir] + sys.path
     module = None
@@ -319,6 +323,7 @@ def get_directory_size(start_path):
     """
     from os import walk
     from os.path import join, getsize
+
     total_size = 0
     for dirpath, _, filenames in walk(start_path):
         for fname in filenames:
@@ -330,7 +335,8 @@ def get_directory_size(start_path):
 def get_argument_parser_defaults(parser):
     defaults = {
         action.dest: action.default
-        for action in parser._actions if action.dest != "help"
+        for action in parser._actions
+        if action.dest != "help"
     }
     return defaults
 
@@ -338,6 +344,7 @@ def get_argument_parser_defaults(parser):
 def detect_encoding(path):
     from chardet.universaldetector import UniversalDetector
     from gzip import open as gzipopen
+
     if " " not in path:
         path = path.strip('"')
     if path.endswith(".gz"):
@@ -365,6 +372,7 @@ def detect_encoding(path):
 def get_job_version(dbpath, platform_name):
     from distutils.version import LooseVersion
     import sqlite3
+
     db = sqlite3.connect(dbpath)
     c = db.cursor()
     sql = f'select colval from info where colkey="{platform_name}"'
@@ -380,8 +388,8 @@ def is_compatible_version(dbpath):
     from .admin_util import get_max_version_supported_for_migration
     from distutils.version import LooseVersion
     from pkg_resources import get_distribution
-    max_version_supported_for_migration = get_max_version_supported_for_migration(
-    )
+
+    max_version_supported_for_migration = get_max_version_supported_for_migration()
     try:
         ov_version = LooseVersion(get_distribution("oakvar").version)
     except:
@@ -418,6 +426,7 @@ def is_url(s):
 
 def get_current_time_str():
     from datetime import datetime
+
     t = datetime.now()
     return t.strftime("%Y:%m:%d %H:%M:%S")
 
@@ -426,6 +435,7 @@ def get_args_conf(args: dict) -> Dict:
     if args is None:
         return {}
     import json
+
     # fill with conf string
     confs = args.get("confs")
     if confs:
@@ -433,6 +443,7 @@ def get_args_conf(args: dict) -> Dict:
             confs_json = json.loads(confs.replace("'", '"'))
         except Exception:
             from .exceptions import ConfigurationError
+
             raise ConfigurationError()
         for k, v in confs_json.items():
             if k not in args or not args[k]:
@@ -441,6 +452,7 @@ def get_args_conf(args: dict) -> Dict:
     conf_path = args.get("confpath")
     if conf_path:
         from .admin_util import load_yml_conf
+
         conf = load_yml_conf(conf_path).get("run", {})
         args["conf"] = conf
         if conf:
@@ -456,6 +468,7 @@ def get_args_package(args: dict) -> Dict:
     package = args.get("package")
     if package:
         from .admin_util import get_local_module_info
+
         m_info = get_local_module_info(package)
         if m_info:
             package_conf = m_info.conf
@@ -470,6 +483,7 @@ def get_args_package(args: dict) -> Dict:
 def get_args(parser, inargs, inkwargs):
     from types import SimpleNamespace
     from argparse import Namespace
+
     # given args. Combines arguments in various formats.
     inarg_dict = {}
     if inargs is not None:
@@ -519,6 +533,7 @@ def filter_affected_cols(filter):
 def humanize_bytes(num, binary=False):
     """Human friendly file size"""
     from math import floor, log
+
     exp2unit_dec = {0: "B", 1: "kB", 2: "MB", 3: "GB"}
     exp2unit_bin = {0: "B", 1: "KiB", 2: "MiB", 3: "GiB"}
     max_exponent = 3
@@ -563,6 +578,7 @@ def write_log_msg(logger, e, quiet=True):
 
 def get_simplenamespace(d):
     from types import SimpleNamespace
+
     if type(d) == dict:
         d = SimpleNamespace(**d)
     return d
@@ -571,6 +587,7 @@ def get_simplenamespace(d):
 def get_dict_from_namespace(n):
     from types import SimpleNamespace
     from argparse import Namespace
+
     if type(n) == SimpleNamespace or type(n) == Namespace:
         n = vars(n)
     return n
@@ -578,6 +595,7 @@ def get_dict_from_namespace(n):
 
 def quiet_print(msg, args=None):
     from .util import get_dict_from_namespace
+
     args = get_dict_from_namespace(args)
     quiet = True
     if args is not None:
@@ -596,8 +614,8 @@ def trim_input(ref, alt, pos, strand):
     new_pos = pos
     for nt_pos in range(0, minlen):
         if ref[reflen - nt_pos - 1] == alt[altlen - nt_pos - 1]:
-            new_ref = ref[:reflen - nt_pos - 1]
-            new_alt = alt[:altlen - nt_pos - 1]
+            new_ref = ref[: reflen - nt_pos - 1]
+            new_alt = alt[: altlen - nt_pos - 1]
         else:
             break
     new_ref_len = len(new_ref)
@@ -611,8 +629,8 @@ def trim_input(ref, alt, pos, strand):
                 new_pos += 1
             elif strand == "-":
                 new_pos -= 1
-            new_ref2 = new_ref[nt_pos + 1:]
-            new_alt2 = new_alt[nt_pos + 1:]
+            new_ref2 = new_ref[nt_pos + 1 :]
+            new_alt2 = new_alt[nt_pos + 1 :]
         else:
             new_ref2 = new_ref[nt_pos:]
             new_alt2 = new_alt[nt_pos:]
@@ -655,5 +673,6 @@ def normalize_variant(wdict):
     wdict["alt_base"] = new_alt
     if wdict["ref_base"] == wdict["alt_base"]:
         from .exceptions import NoVariantError
+
         raise NoVariantError()
     return wdict

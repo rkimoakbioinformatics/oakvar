@@ -107,6 +107,7 @@ def ov_util_addjob(args):
     from pathlib import Path
     from datetime import datetime
     from .sysadmin import get_jobs_dir
+
     dbpath = args.path
     user = args.user
     jobs_dir = Path(get_jobs_dir())
@@ -115,7 +116,7 @@ def ov_util_addjob(args):
         exit(f"User {user} not found")
     attempts = 0
     while (
-            True
+        True
     ):  # TODO this will currently overwrite if called in parallel. is_dir check and creation is not atomic
         job_id = datetime.now().strftime(r"%y%m%d-%H%M%S")
         job_dir = user_dir / job_id
@@ -156,6 +157,7 @@ def get_sqliteinfo(args):
     import sqlite3
     from json import loads
     from oyaml import dump
+
     fmt = args["fmt"]
     to = args["to"]
     dbpaths = args["paths"]
@@ -201,14 +203,13 @@ def get_sqliteinfo(args):
                 s = f"{col_name.ljust(width_colname)} {col_def['title'].ljust(width_coltitle)} {col_def['type']}"
                 ret_list.append(s)
             elif fmt in ["json", "yaml"]:
-                ret_dict["output_columns"]["variant"].append({
-                    "name":
-                    col_name,
-                    "title":
-                    col_def["title"],
-                    "type":
-                    col_def["type"],
-                })
+                ret_dict["output_columns"]["variant"].append(
+                    {
+                        "name": col_name,
+                        "title": col_def["title"],
+                        "type": col_def["type"],
+                    }
+                )
         c.execute("select col_name, col_def from gene_header")
         rs = c.fetchall()
         for r in rs:
@@ -218,14 +219,13 @@ def get_sqliteinfo(args):
                 s = f"{col_name.ljust(width_colname)} {col_def['title'].ljust(width_coltitle)} {col_def['type']}"
                 ret_list.append(s)
             elif fmt in ["json", "yaml"]:
-                ret_dict["output_columns"]["gene"].append({
-                    "name":
-                    col_name,
-                    "title":
-                    col_def["title"],
-                    "type":
-                    col_def["type"],
-                })
+                ret_dict["output_columns"]["gene"].append(
+                    {
+                        "name": col_name,
+                        "title": col_def["title"],
+                        "type": col_def["type"],
+                    }
+                )
         c.close()
         conn.close()
         if to == "stdout":
@@ -258,6 +258,7 @@ def ov_util_sqliteinfo(args):
 def cli_ov_util_mergesqlite(args):
     ov_util_mergesqlite(args)
 
+
 # For now, only jobs with same annotators are allowed.
 
 
@@ -267,6 +268,7 @@ def ov_util_mergesqlite(args):
     import sqlite3
     from json import loads, dumps
     from shutil import copy
+
     dbpaths = args.path
     if len(dbpaths) < 2:
         exit("Multiple sqlite file paths should be given")
@@ -346,8 +348,9 @@ def ov_util_mergesqlite(args):
         uid_dic = {}
         c.execute("select * from variant order by rowid")
         for r in c.fetchall():
-            vid = variant_id(r[v_chrom_colno], r[v_pos_colno], r[v_ref_colno],
-                             r[v_alt_colno])
+            vid = variant_id(
+                r[v_chrom_colno], r[v_pos_colno], r[v_ref_colno], r[v_alt_colno]
+            )
             if vid in variants:
                 continue
             old_uid = r[0]
@@ -369,8 +372,7 @@ def ov_util_mergesqlite(args):
                 q = f'insert into sample values ({",".join(["?" for _ in range(len(r))])})'
                 outc.execute(q, r)
         # File numbers
-        c.execute(
-            'select colkey, colval from info where colkey="_input_paths"')
+        c.execute('select colkey, colval from info where colkey="_input_paths"')
         ips = loads(c.fetchone()[1].replace("'", '"'))
         fileno_dic = {}
         for fileno, filepath in ips.items():
@@ -393,10 +395,9 @@ def ov_util_mergesqlite(args):
     q = 'update info set colval=? where colkey="_input_paths"'
     outc.execute(q, [dumps(input_paths)])
     q = 'update info set colval=? where colkey="Input file name"'
-    v = ";".join([
-        input_paths[str(v)]
-        for v in sorted(input_paths.keys(), key=lambda v: int(v))
-    ])
+    v = ";".join(
+        [input_paths[str(v)] for v in sorted(input_paths.keys(), key=lambda v: int(v))]
+    )
     outc.execute(q, [v])
     outconn.commit()
     return True
@@ -410,6 +411,7 @@ def cli_ov_util_filtersqlite(args):
 @cli_func
 def ov_util_filtersqlite(args):
     from asyncio import get_event_loop
+
     loop = get_event_loop()
     return loop.run_until_complete(filtersqlite_async(args))
 
@@ -417,8 +419,7 @@ def ov_util_filtersqlite(args):
 def filtersqlite_async_drop_copy_table(c, table_name):
     print(f"- {table_name}")
     c.execute(f"drop table if exists main.{table_name}")
-    c.execute(
-        f"create table main.{table_name} as select * from old_db.{table_name}")
+    c.execute(f"create table main.{table_name} as select * from old_db.{table_name}")
 
 
 async def filtersqlite_async(args):
@@ -426,6 +427,7 @@ async def filtersqlite_async(args):
     from os import remove
     from os.path import exists
     from .cravat_filter import CravatFilter
+
     dbpaths = args["paths"]
     for dbpath in dbpaths:
         if not dbpath.endswith(".sqlite"):
@@ -447,24 +449,28 @@ async def filtersqlite_async(args):
                 excludesample=args["excludesample"],
             )
             await cf.exec_db(cf.loadfilter)
-            if hasattr(cf, "filter") == False or cf.filter is None or type(
-                    cf.filter) is not dict:
+            if (
+                hasattr(cf, "filter") == False
+                or cf.filter is None
+                or type(cf.filter) is not dict
+            ):
                 from .exceptions import FilterLoadingError
+
                 raise FilterLoadingError()
             for table_name in [
-                    "info",
-                    "smartfilters",
-                    "viewersetup",
-                    "variant_annotator",
-                    "variant_header",
-                    "variant_reportsub",
-                    "gene_annotator",
-                    "gene_header",
-                    "gene_reportsub",
-                    "sample_annotator",
-                    "sample_header",
-                    "mapping_annotator",
-                    "mapping_header",
+                "info",
+                "smartfilters",
+                "viewersetup",
+                "variant_annotator",
+                "variant_header",
+                "variant_reportsub",
+                "gene_annotator",
+                "gene_header",
+                "gene_reportsub",
+                "sample_annotator",
+                "sample_header",
+                "mapping_annotator",
+                "mapping_header",
             ]:
                 filtersqlite_async_drop_copy_table(c, table_name)
             # Variant
@@ -495,11 +501,13 @@ async def filtersqlite_async(args):
             if len(req) > 0 or len(rej) > 0:
                 q = "create table sample as select s.* from old_db.sample as s, old_db.variant_filtered as v where s.base__uid=v.base__uid"
                 if req:
-                    q += " and s.base__sample_id in ({})".format(", ".join(
-                        ['"{}"'.format(sid) for sid in req]))
+                    q += " and s.base__sample_id in ({})".format(
+                        ", ".join(['"{}"'.format(sid) for sid in req])
+                    )
                 for s in rej:
                     q += ' except select * from sample where base__sample_id="{}"'.format(
-                        s)
+                        s
+                    )
             else:
                 q = "create table sample as select s.* from old_db.sample as s, old_db.variant_filtered as v where s.base__uid=v.base__uid"
             c.execute(q)
@@ -508,9 +516,7 @@ async def filtersqlite_async(args):
                 "create table mapping as select m.* from old_db.mapping as m, old_db.variant_filtered as v where m.base__uid=v.base__uid"
             )
             # Indices
-            c.execute(
-                "select name, sql from old_db.sqlite_master where type='index'"
-            )
+            c.execute("select name, sql from old_db.sqlite_master where type='index'")
             for r in c.fetchall():
                 index_name = r[0]
                 sql = r[1]
@@ -543,6 +549,7 @@ def status_from_db(dbpath):
     import sqlite3
     from pathlib import Path
     from datetime import date
+
     if not isinstance(dbpath, Path):
         dbpath = Path(dbpath)
     d = {}
@@ -604,8 +611,7 @@ def status_from_db(dbpath):
         d["reports"] = []
         d["run_name"] = str(dbpath.stem)
         d["status"] = "Finished"
-        d["submission_time"] = date.fromtimestamp(
-            dbpath.stat().st_ctime).isoformat()
+        d["submission_time"] = date.fromtimestamp(dbpath.stat().st_ctime).isoformat()
         d["viewable"] = True
     except:
         raise
@@ -617,21 +623,25 @@ def status_from_db(dbpath):
 
 def get_parser_fn_util():
     from argparse import ArgumentParser
+
     parser_fn_util = ArgumentParser()
     _subparsers = parser_fn_util.add_subparsers(title="Commands")
     # test
     from .cli_test import get_parser_cli_util_test
+
     parser_cli_util_test = _subparsers.add_parser(
         "test",
         parents=[get_parser_cli_util_test()],
         add_help=False,
         description="Test modules",
-        help="Test installed modules")
+        help="Test installed modules",
+    )
     parser_cli_util_test.r_return = "A named list. Field result is a named list showing the test result for each module. Fields num_passed and num_failed show the number of passed and failed modules."  # type: ignore
     parser_cli_util_test.r_examples = [  # type: ignore
-        "# Test the ClinVar module", "ov.util.test(modules=\"clinvar\")",
+        "# Test the ClinVar module",
+        'ov.util.test(modules="clinvar")',
         "# Test the ClinVar and the COSMIC modules",
-        "ov.util.test(modules=list(\"clinvar\", \"cosmic\"))"
+        'ov.util.test(modules=list("clinvar", "cosmic"))',
     ]
 
     # converts db coordinate to hg38
@@ -699,7 +709,8 @@ def get_parser_fn_util():
 
     # Make job accessible through the gui
     parser_fn_util_addjob = _subparsers.add_parser(
-        "addjob", help="Copy a command line job into the GUI submission list")
+        "addjob", help="Copy a command line job into the GUI submission list"
+    )
     parser_fn_util_addjob.add_argument("path", help="Path to result database")
     parser_fn_util_addjob.add_argument(
         "-u",
@@ -712,41 +723,44 @@ def get_parser_fn_util():
     parser_fn_util_addjob.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_fn_util_addjob.r_examples = [  # type: ignore
         "# Add a result file to the job list of a user",
-        "ov.util.addjob(path=\"example.sqlite\", user=\"user1\")"
+        'ov.util.addjob(path="example.sqlite", user="user1")',
     ]
 
     # Merge SQLite files
     parser_fn_util_mergesqlite = _subparsers.add_parser(
-        "mergesqlite", help="Merge SQLite result files")
-    parser_fn_util_mergesqlite.add_argument("path",
-                                            nargs="+",
-                                            help="Path to result database")
-    parser_fn_util_mergesqlite.add_argument("-o",
-                                            dest="outpath",
-                                            required=True,
-                                            help="Output SQLite file path")
+        "mergesqlite", help="Merge SQLite result files"
+    )
+    parser_fn_util_mergesqlite.add_argument(
+        "path", nargs="+", help="Path to result database"
+    )
+    parser_fn_util_mergesqlite.add_argument(
+        "-o", dest="outpath", required=True, help="Output SQLite file path"
+    )
     parser_fn_util_mergesqlite.set_defaults(func=ov_util_mergesqlite)
     parser_fn_util_mergesqlite.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_fn_util_mergesqlite.r_examples = [  # type: ignore
         "# Merge two OakVar analysis result files into one SQLite file",
-        "ov.util.mergesqlite(path=list(\"example1.sqlite\", \"example2.sqlite\"), outpath=\"merged.sqlite\")"
+        'ov.util.mergesqlite(path=list("example1.sqlite", "example2.sqlite"), outpath="merged.sqlite")',
     ]
 
     # Show SQLite info
     parser_fn_util_showsqliteinfo = _subparsers.add_parser(
-        "sqliteinfo", help="Show SQLite result file information")
-    parser_fn_util_showsqliteinfo.add_argument("paths",
-                                               nargs="+",
-                                               help="SQLite result file paths")
+        "sqliteinfo", help="Show SQLite result file information"
+    )
     parser_fn_util_showsqliteinfo.add_argument(
-        "--fmt", default="json", help="Output format. text / json / yaml")
+        "paths", nargs="+", help="SQLite result file paths"
+    )
     parser_fn_util_showsqliteinfo.add_argument(
-        "--to", default="return", help="Output to. stdout / return")
+        "--fmt", default="json", help="Output format. text / json / yaml"
+    )
+    parser_fn_util_showsqliteinfo.add_argument(
+        "--to", default="return", help="Output to. stdout / return"
+    )
     parser_fn_util_showsqliteinfo.set_defaults(func=ov_util_sqliteinfo)
     parser_fn_util_showsqliteinfo.r_return = "A named list. Information of a job SQLite file"  # type: ignore
     parser_fn_util_showsqliteinfo.r_examples = [  # type: ignore
         "# Get the named list of the information of an analysis result file",
-        "ov.util.sqliteinfo(paths=\"example.sqlite\")"
+        'ov.util.sqliteinfo(paths="example.sqlite")',
     ]
 
     # Filter SQLite
@@ -754,25 +768,21 @@ def get_parser_fn_util():
         "filtersqlite",
         help="Filter SQLite result files to produce filtered SQLite result files",
     )
-    parser_fn_util_filtersqlite.add_argument("paths",
-                                             nargs="+",
-                                             help="Path to result database")
-    parser_fn_util_filtersqlite.add_argument("-o",
-                                             dest="out",
-                                             default=".",
-                                             help="Output SQLite file folder")
     parser_fn_util_filtersqlite.add_argument(
-        "-s",
-        dest="suffix",
-        default="filtered",
-        help="Suffix for output SQLite files")
-    parser_fn_util_filtersqlite.add_argument("-f",
-                                             dest="filterpath",
-                                             default=None,
-                                             help="Path to a filter JSON file")
-    parser_fn_util_filtersqlite.add_argument("--filtersql",
-                                             default=None,
-                                             help="Filter SQL")
+        "paths", nargs="+", help="Path to result database"
+    )
+    parser_fn_util_filtersqlite.add_argument(
+        "-o", dest="out", default=".", help="Output SQLite file folder"
+    )
+    parser_fn_util_filtersqlite.add_argument(
+        "-s", dest="suffix", default="filtered", help="Suffix for output SQLite files"
+    )
+    parser_fn_util_filtersqlite.add_argument(
+        "-f", dest="filterpath", default=None, help="Path to a filter JSON file"
+    )
+    parser_fn_util_filtersqlite.add_argument(
+        "--filtersql", default=None, help="Filter SQL"
+    )
     parser_fn_util_filtersqlite.add_argument(
         "--includesample",
         dest="includesample",
@@ -793,7 +803,7 @@ def get_parser_fn_util():
         "# Filter an analysis result file with an SQL filter set",
         'ov.util.filtersqlite(paths="example.sqlite", filtersql=\'base__so=="MIS" and gnomad__af>0.01\')'
         "# Filter two analysis result files with a filter definition file",
-        "ov.util.filtersqlite(paths=list(\"example1.sqlite\", \"example2.sqlite\"), filterpath=\"filter.json\")"
+        'ov.util.filtersqlite(paths=list("example1.sqlite", "example2.sqlite"), filterpath="filter.json")',
     ]
     return parser_fn_util
 
