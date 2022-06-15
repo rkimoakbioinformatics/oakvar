@@ -46,8 +46,18 @@ def cli_ov_store_createaccount(args):
 @cli_func
 def ov_store_createaccount(args):
     from .admin_util import create_account
+    from .util import is_valid_email
 
-    ret = create_account(args.get("username"), args.get("password"))
+    email = args.get("email")
+    pw = args.get("pw")
+    channel = args.get("channel")
+    if not email or not pw:
+        return False
+    if channel not in ["oakvar", "open-cravat"]:
+        return False
+    if not is_valid_email(email):
+        return False
+    ret = create_account(args.get("username"), args.get("password"), args.get("channel"))
     return ret
 
 
@@ -192,11 +202,13 @@ def get_parser_fn_store():
         "createaccount", help="creates a OakVar store developer account."
     )
     parser_cli_store_createaccount.add_argument(
-        "username", help="use your email as your username."
+        "email", help="An email address is used as the account user name."
     )
     parser_cli_store_createaccount.add_argument(
-        "password", help="this is your password."
+        "pw", help="Password"
     )
+    parser_cli_store_createaccount.add_argument(
+        "--channel", default="oakvar", help="Channel to create an account in. oakvar or open-cravat")
     parser_cli_store_createaccount.add_argument(
         "--quiet", action="store_true", default=None, help="Run quietly"
     )

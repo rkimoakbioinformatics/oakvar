@@ -14,6 +14,11 @@ def setup_system(args):
     from .sysadmin_const import main_conf_fname
     from .admin_util import get_packagedir
     from .util import quiet_print
+    from .cli_module import ov_module_installbase
+    from os import environ
+    from .sysadmin_const import sys_conf_path_key
+    from .sysadmin import get_env_key
+
 
     # load sys conf.
     conf = None
@@ -44,11 +49,6 @@ def setup_system(args):
     quiet_print(f"Checking store manifest file...", args=args)
     fetch_and_save_oc_manifest(args=args)
     # install base modules.
-    from .cli_module import ov_module_installbase
-    from os import environ
-    from .sysadmin_const import sys_conf_path_key
-    from .sysadmin import get_env_key
-
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
     quiet_print(f"Checking system modules...", args=args)
     args.update({"conf": conf})
@@ -91,7 +91,7 @@ def get_conf_dirvalue(conf_key, conf=None):
     from os.path import abspath
 
     d = get_sys_conf_value(conf_key, conf=conf)
-    if d is not None:
+    if d:
         d = abspath(d)
     return d
 
@@ -316,6 +316,8 @@ def has_newer_remote_oc_manifest(path: Optional[str] = None) -> bool:
 
 
 def fetch_and_save_oc_manifest(path: Optional[str] = None, args={}):
+    from .util import quiet_print
+
     if not path:
         path = get_oc_manifest_path()
     if not path:
@@ -325,8 +327,6 @@ def fetch_and_save_oc_manifest(path: Optional[str] = None, args={}):
         if oc_manifest_response:
             with open(path, "w") as wf:
                 wf.write(oc_manifest_response.text)
-                from .util import quiet_print
-
                 quiet_print(f"Saved {path}", args=args)
 
 
@@ -587,3 +587,66 @@ def get_system_conf_info(conf=None, json=False):
     else:
         content = dump(conf, default_flow_style=False)
     return content
+
+
+def get_ov_store_cache_conn(conf=None):
+    from sqlite3 import connect
+    from .sysadmin_const import ov_store_cache_fn
+    from os.path import join
+    conf_dir: Optional[str] = get_conf_dir(conf=conf)
+    if conf_dir:
+        ov_store_cache_path = join(conf_dir, ov_store_cache_fn)
+        conn = connect(ov_store_cache_path)
+        cursor = conn.cursor()
+        return conn, cursor
+    return None, None
+
+def drop_ov_store_cache(conf=None):
+    conn, c = get_ov_store_cache_conn(conf=conf)
+    if not conn or not c:
+        return False
+    q = f"drop table if exists modules"
+    c.execute(q)
+    conn.commit()
+
+def create_ov_store_cache(conf=None):
+    conn, c = get_ov_store_cache_conn(conf=conf)
+    if not conn or not c:
+        return False
+    q = f"create table modules ( name text, type text, code_version text, data_version text, code_size int, data_size int, code_url text, data_url text, readme_url, conf_url text, description text, readme text, conf text, json text, store text )"
+    c.execute(q)
+    conn.commit()
+
+def fetch_ov_store_cache(conf: Optional[dict]=None, email: Optional[str]=None, pw: Optional[str]=None):
+    from .sysadmin_const import ov_store_email_key
+    from .sysadmin_const import ov_store_pw_key
+    from requests import Session
+    s = Session()
+    if not email:
+        email = get_sys_conf_value(ov_store_email_key)
+    if not pw:
+        pw = get_sys_conf_value(ov_store_pw_key)
+    if not email or not pw:
+        return False
+    s.headers["User-Agent"] = "oakvar"
+    store_url = get_sys_conf_value("store_url")
+    if not store_url:
+        return False
+    url = f"{store_url}/fetchstore?email={email}&pw={pw}"
+    res = s.get(url)
+    if res.status_code != 200:
+        return False
+    conn, c = get_ov_store_cache_conn()
+    if not conn or not c:
+        return False
+    q = f"delete from modules"
+    c.execute(q)
+    conn.commit()
+    data = res.json()
+    columns = data["columns"]
+    for row in data["data"]:
+        q = f"insert into modules ( name, type, code_version, data_version, code_size, data_size, code_url, data_url, readme_url, conf_url, description, conf, store ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        c.execute(q, row)
+    conn.commit()
+
+

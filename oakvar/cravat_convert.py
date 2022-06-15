@@ -217,6 +217,7 @@ class MasterCravatConverter(object):
         self.unique_variants = parsed_args["unique_variants"]
         if "status_writer" in parsed_args:
             self.status_writer = parsed_args["status_writer"]
+        self.args = parsed_args
 
     def open_input_file(self, input_path):
         import gzip
@@ -578,9 +579,9 @@ class MasterCravatConverter(object):
                                         wdict["ref_base"],
                                         wdict["alt_base"],
                                     )
-                                if base_re.fullmatch(wdict["ref_base"]) is None:
+                                if not base_re.fullmatch(wdict["ref_base"]):
                                     raise BadFormatError("Invalid reference base")
-                                if base_re.fullmatch(wdict["alt_base"]) is None:
+                                if not base_re.fullmatch(wdict["alt_base"]):
                                     raise BadFormatError("Invalid alternate base")
                                 p, r, a = (
                                     int(wdict["pos"]),
@@ -638,10 +639,9 @@ class MasterCravatConverter(object):
                         )
                 except Exception as e:
                     self._log_conversion_error(read_lnum, l, e)
-                    import traceback
+                    #import traceback
 
-                    traceback.print_exc()
-                    exit(1)
+                    #traceback.print_exc()
                     continue
             f.close()
             cur_time = time()
@@ -773,7 +773,7 @@ class MasterCravatConverter(object):
         and message. Exceptions are also written to the log file once, with the
         traceback.
         """
-        if self.logger is None or self.error_logger is None:
+        if not self.logger or not self.error_logger:
             from .exceptions import LoggerError
 
             raise LoggerError()

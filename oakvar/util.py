@@ -676,3 +676,21 @@ def normalize_variant(wdict):
 
         raise NoVariantError()
     return wdict
+
+
+def is_valid_email(email: str) -> bool:
+    from re import fullmatch
+    if fullmatch(r'([A-Za-z0-9]+[.-_])*[A-Za-z0-9]+@[A-Za-z0-9-]+(\.[A-Z|a-z]{2,})+', email):
+        return True
+    else:
+        return False
+
+
+def is_valid_pw(pw: str) -> bool:
+    from re import fullmatch
+    if fullmatch(r'[a-zA-z0-9!?@*\-&:+]', pw):
+        return True
+    else:
+        return False
+
+

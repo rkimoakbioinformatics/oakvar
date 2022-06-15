@@ -560,6 +560,7 @@ class CravatReport:
                 run_time = end_time - start_time
                 self.logger.info("runtime: {0:0.3f}".format(run_time))
             ret = self.end()
+            print(f"@ type(ret) = {type(ret)}")
         except Exception as e:
             # from .exceptions import ExpectedException
             await self.close_db()
@@ -1097,7 +1098,7 @@ def ov_report(args):
             output_fns = " ".join(response_t)
         else:
             output_fns = response_t
-        if output_fns is not None and type(output_fns) == str:
+        if output_fns and type(output_fns) == str:
             quiet_print(f"report created: {output_fns}", args)
         response[report_type] = response_t
     return response

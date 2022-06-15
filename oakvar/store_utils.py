@@ -1,4 +1,5 @@
 from typing import Tuple
+from typing import Optional
 
 
 class PathBuilder(object):
@@ -444,3 +445,120 @@ def pack_module(args):
     pack_module_zip(args, "code")
     pack_module_zip(args, "data")
     return True
+
+
+def get_latest_remote_module_version(module_name) -> Optional[str]:
+    version = get_latest_remote_module_version_from_ov_store_cache(module_name)
+    print(f"@ version={version}")
+    if not version:
+        version = get_latest_remote_module_version_old(module_name)
+        print(f"@@ version={version}")
+    return version
+
+def get_latest_remote_module_version_old(module_name):
+    """
+    Returns latest remotely available version of a module.
+    """
+    from .admin_util import get_mic
+    mic = get_mic()
+    if not mic.remote:
+        mic.update_remote()
+    if mic and mic.remote:
+        return mic.remote[module_name]["latest_version"]
+
+def db_func(func):
+    def encl_func(*args, **kwargs):
+        from .sysadmin import get_ov_store_cache_conn
+        conn, c = get_ov_store_cache_conn()
+        ret = func(*args, conn=conn, c=c, **kwargs)
+        return ret
+
+    return encl_func
+
+@db_func
+def get_latest_remote_module_version_from_ov_store_cache(module_name, conn=None, c=None):
+    if not conn or not c:
+        return None
+    q = f"select code_version from modules where name=?"
+    c.execute(q, (module_name,))
+    ret = c.fetchone()
+    if ret:
+        return ret[0]
+    else:
+        return None
+
+
+def get_remote_module_config(module_name, version=None):
+    if version == None:
+        version = get_latest_remote_module_version(module_name)
+    conf = get_remote_module_config_from_ov_store_cache(module_name, version=version)
+    print(f"@ new conf={conf}")
+    if not conf:
+        conf = get_remote_module_config_old(module_name, version=version)
+        print(f"@ old conf={conf}")
+    return conf
+
+@db_func
+def get_remote_module_config_from_ov_store_cache(module_name, version=None, conn=None, c=None):
+    if not conn or not c:
+        return None
+    q = f"select conf from modules where name=? and code_version=?"
+    c.execute(q, (module_name, version))
+    ret = c.fetchone()
+    if ret:
+        return ret[0]
+    else:
+        return None
+
+
+def get_remote_module_config_old(module_name, version=None):
+    import oyaml as yaml
+    from oakvar.store_utils import get_file_to_string
+    from .sysadmin_const import oc_store_module_url
+    from .admin_util import get_mic
+
+    if version == None:
+        version = get_latest_remote_module_version(module_name)
+    if not version:
+        return None
+    mic = get_mic()
+    config_url = "/".join(
+        [oc_store_module_url, module_name, version, module_name + ".yml"]
+    )
+    print(f"@ config_url={config_url}")
+    config = yaml.safe_load(get_file_to_string(config_url))
+    print(f"@ conf={config}")
+    return config
+
+
+@db_func
+def get_code_url_ov_store_cache(module_name: str, version=None, conn=None, c=None) -> Optional[str]:
+    if not conn or not c:
+        return None
+    if not version:
+        version = get_module_version(module_name)
+    q = f"select code_url from modules where name=? and version=?"
+    c.execute(q, (module_name, version))
+    ret = c.fetchone()
+    if not ret:
+        return None
+    else:
+        return ret[0]
+
+
+def get_code_url(module_name: str, version=None, conn=None, c=None) -> Optional[str]:
+    from .sysadmin import get_sys_conf_value
+    if not version:
+        version = get_latest_remote_module_version(module_name)
+    if not version:
+        return None
+    code_url = get_code_url_ov_store_cache(module_name, version=version)
+    if code_url:
+        return code_url
+    oc_store_module_url = get_sys_conf_value("oc_store_module_url")
+    if not oc_store_module_url:
+        return None
+    code_url = "/".join([oc_store_module_url, module_name, version, module_name + ".code.zip"])
+    return code_url
+
+

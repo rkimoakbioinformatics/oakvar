@@ -508,7 +508,7 @@ def compare_version(v1, v2):
         return -1
 
 
-def create_account(username, password):
+def create_account(username, password, channel="oakvar"):
     from requests import post
     from .sysadmin import get_system_conf
 
@@ -600,7 +600,8 @@ def get_install_deps(module_name, version=None, skip_installed=True):
     # get_mic().update_remote()
     # If input module version not provided, set to highest
     if version is None:
-        version = get_remote_latest_version(module_name)
+        from .store_utils import get_latest_remote_module_version
+        version = get_latest_remote_module_version(module_name)
     config = get_mic().get_remote_config(module_name, version=version)
     req_list = config.get("requires", [])
     deps = {}
@@ -814,6 +815,7 @@ def get_readme(module_name, version=None):
     Get the readme. Use local if available.
     """
     import os
+    from .store_utils import get_latest_remote_module_version
 
     exists_remote = module_exists_remote(module_name, version=version)
     exists_local = module_exists_local(module_name)
@@ -828,7 +830,7 @@ def get_readme(module_name, version=None):
         else:
             local_readme = ""
         if local_info and exists_remote == True:
-            remote_version = get_remote_latest_version(module_name)
+            remote_version = get_latest_remote_module_version(module_name)
             local_version = local_info.version
             if compare_version(remote_version, local_version) > 0:
                 return remote_readme
@@ -862,15 +864,6 @@ def get_remote_data_version(module_name, version):
     except KeyError:
         return version
 
-
-def get_remote_latest_version(module_name):
-    """
-    Returns latest remotely available version of a module.
-    """
-    # get_mic().update_remote()
-    mic = get_mic()
-    if mic and mic.remote:
-        return mic.remote[module_name]["latest_version"]
 
 
 def get_remote_oc_manifest():
@@ -1045,6 +1038,45 @@ def input_formats():
     return formats
 
 
+def install_pypi_dependencies(config: dict, args={}):
+    from subprocess import run
+    from .util import quiet_print
+    module_name = config.get("name")
+    pypi_deps = config.get("requires_pypi", [])
+    pypi_deps.extend(config.get("pypi_dependency", []))
+    idx = 0
+    if pypi_deps:
+        quiet_print(
+            f"Following PyPI dependencies should be met before installing {module_name}.",
+            args=args,
+        )
+        for dep in pypi_deps:
+            quiet_print(f"- {dep}", args=args)
+        quiet_print(f"Installing required PyPI packages...", args=args)
+        idx = 0
+        while idx < len(pypi_deps):
+            dep = pypi_deps[idx]
+            r = run(["pip", "install", dep])
+            if r.returncode == 0:
+                pypi_deps.remove(dep)
+            else:
+                idx += 1
+        if len(pypi_deps) > 0:
+            quiet_print(
+                f"Following PyPI dependencies could not be installed.",
+                args=args,
+            )
+            for dep in pypi_deps:
+                quiet_print(f"- {dep}", args=args)
+    if pypi_deps:
+        quiet_print(
+            f"Skipping installation of {module_name} due to unmet requirement for PyPI packages",
+            args=args,
+        )
+        return False
+    else:
+        return True
+
 def install_module(
     module_name,
     version=None,
@@ -1067,12 +1099,11 @@ def install_module(
     )
     from requests import HTTPError
     from .exceptions import KillInstallException
-
-    # import signal
-    import subprocess
     from .sysadmin import get_system_conf
     from .sysadmin import get_modules_dir
-    from .util import quiet_print
+    from .store_utils import get_latest_remote_module_version
+    from .store_utils import get_remote_module_config
+    from .store_utils import get_code_url
 
     quiet_args = {"quiet": quiet}
     modules_dir = get_modules_dir()
@@ -1089,7 +1120,7 @@ def install_module(
         if stage_handler is None:
             stage_handler = InstallProgressHandler(module_name, version)
         if version is None:
-            version = get_remote_latest_version(module_name)
+            version = get_latest_remote_module_version(module_name)
             stage_handler.set_module_version(version)
         if hasattr(stage_handler, "install_state") == True:
             install_state = stage_handler.install_state  # type: ignore
@@ -1097,59 +1128,11 @@ def install_module(
             install_state = None
         stage_handler.stage_start("start")
         # Checks and installs pip packages.
-        config = get_mic().get_remote_config(module_name, version=version)
-        pypi_deps = config.get("requires_pypi", [])
-        pypi_deps.extend(config.get("pypi_dependency", []))
-        idx = 0
-        while idx < len(pypi_deps):
-            dep = pypi_deps[idx]
-            r = subprocess.run(
-                ["pip", "show", dep],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            if r.returncode == 0:
-                pypi_deps.remove(dep)
-            else:
-                idx += 1
-        if len(pypi_deps) > 0:
-            quiet_print(
-                f"Following PyPI dependencies should be met before installing {module_name}.",
-                args=quiet_args,
-            )
-            for dep in pypi_deps:
-                quiet_print(f"- {dep}", args=quiet_args)
-            quiet_print(f"Installing required PyPI packages...", args=quiet_args)
-            idx = 0
-            while idx < len(pypi_deps):
-                dep = pypi_deps[idx]
-                r = subprocess.run(["pip", "install", dep])
-                if r.returncode == 0:
-                    pypi_deps.remove(dep)
-                else:
-                    idx += 1
-            if len(pypi_deps) > 0:
-                quiet_print(
-                    f"Following PyPI dependencies could not be installed.",
-                    args=quiet_args,
-                )
-                for dep in pypi_deps:
-                    quiet_print(f"- {dep}", args=quiet_args)
-        if len(pypi_deps) > 0:
-            if version is not None:
-                quiet_print(
-                    f"Skipping installation of {module_name}=={version} due to unmet requirement for PyPI packages",
-                    args=quiet_args,
-                )
-            else:
-                quiet_print(
-                    f"Skipping installation of {module_name} due to unmet requirement for PyPI packages",
-                    args=quiet_args,
-                )
+        config = get_remote_module_config(module_name, version=version)
+        if not config:
             return False
-        sys_conf = get_system_conf()
-        store_url = sys_conf["store_url"]
-        store_path_builder = PathBuilder(store_url, "url")
+        if not install_pypi_dependencies(config, quiet_args):
+            return False
         remote_data_version = get_remote_data_version(module_name, version)
         if module_name in list_local():
             local_info = get_local_module_info(module_name)
@@ -1161,7 +1144,7 @@ def install_module(
                 local_data_version = None
         else:
             local_data_version = None
-        code_url = store_path_builder.module_code(module_name, version)
+        code_url = get_code_url(module_name, version)
         zipfile_fname = module_name + ".zip"
         remote_info = get_remote_module_info(module_name)
         if remote_info is not None:

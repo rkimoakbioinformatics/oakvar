@@ -1,7 +1,7 @@
 class ExpectedException(Exception):
     halt = False
-    traceback = False
     handled = False
+    traceback = True
     msg = ""
     returncode = 1
 
@@ -11,19 +11,24 @@ class ExpectedException(Exception):
 
 
 class NormalExit(ExpectedException):
+    traceback = False
     returncode = 0
 
 
 class NoGenomeException(ExpectedException):
+    traceback = False
+    halt = True
+
     def __init__(self):
         super().__init__("genome assembly should be selected.")
-        self.halt = True
 
 
 class InvalidGenomeAssembly(ExpectedException):
+    traceback = False
+    halt = True
+
     def __init__(self, genome_assembly):
         super().__init__(f"{genome_assembly} is an invalid genome assembly.")
-        self.halt = True
 
 
 class InvalidData(ExpectedException):
@@ -43,11 +48,15 @@ class LiftoverFailure(InvalidData):
 
 
 class FileIntegrityError(Exception):
+    traceback = False
+
     def __init__(self, path):
         super().__init__(path)
 
 
 class KillInstallException(ExpectedException):
+    traceback = False
+
     pass
 
 
@@ -79,16 +88,21 @@ class ModuleNotExist(ExpectedException):
 
 
 class InvalidModule(ExpectedException):
+    traceback = False
+
     def __init__(self, module_name):
         super().__init__(f"module {module_name} is invalid.")
 
 
 class NoVariantError(ExpectedException):
+    traceback = False
+
     def __init__(self):
         super().__init__("Reference and alternate alleles are the same.")
 
 
 class NoInputException(ExpectedException):
+    traceback = False
     halt = True
 
     def __init__(self):
@@ -96,6 +110,7 @@ class NoInputException(ExpectedException):
 
 
 class InvalidInputFormat(ExpectedException):
+    traceback = False
     halt = True
 
     def __init__(self, fmt=""):
@@ -103,6 +118,8 @@ class InvalidInputFormat(ExpectedException):
 
 
 class SystemMissingException(ExpectedException):
+    traceback = False
+
     def __init__(self, msg=""):
         if msg is not None and msg != "":
             msg = f"OakVar is not ready ({msg}). 'ov system setup' to set up OakVar."
@@ -112,16 +129,22 @@ class SystemMissingException(ExpectedException):
 
 
 class NoModulesDir(ExpectedException):
+    traceback = False
+
     def __init__(self):
         super().__init__("no modules directory. Run `ov system setup` to setup.")
 
 
 class NoSystemModule(ExpectedException):
+    traceback = False
+
     def __init__(self):
         super().__init__("no system module. Run `ov system setup` to setup.")
 
 
 class IncompatibleResult(ExpectedException):
+    traceback = False
+
     def __init__(self):
         super().__init__(
             "incompatible result file version. Please report with `ov issue`."
@@ -129,6 +152,7 @@ class IncompatibleResult(ExpectedException):
 
 
 class ModuleLoadingError(ExpectedException):
+    traceback = False
     halt = True
 
     def __init__(self, module_name):
@@ -136,6 +160,7 @@ class ModuleLoadingError(ExpectedException):
 
 
 class UnknownInputFormat(ExpectedException):
+    traceback = False
     halt = True
 
     def __init__(self, input_format):

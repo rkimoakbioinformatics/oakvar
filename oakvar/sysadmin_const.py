@@ -31,3 +31,7 @@ custom_modules_dir = None
 package_dir_key = "package_dir"
 default_postaggregator_names = ["tagsampler", "casecontrol", "varmeta", "vcfinfo"]
 oc_manifest_fn = "oc_manifest.yml"
+ov_store_email_key = "ov_store_email"
+ov_store_pw_key = "ov_store_pw"
+ov_store_cache_fn = "store.sqlite"
+oc_store_module_url = "https://store.opencravat.org/modules"
