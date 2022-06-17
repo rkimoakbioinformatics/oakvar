@@ -300,7 +300,7 @@ class CravatReport:
         if self.should_write_level(level) == False:
             return
         gene_summary_datas = {}
-        if level == "variant":
+        if level in ["variant", "sample", "mapping"]:
             await self.cf.exec_db(self.cf.make_filtered_uid_table)
         elif level == "gene":
             await self.cf.exec_db(self.cf.make_filtered_hugo_table)
