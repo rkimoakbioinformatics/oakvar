@@ -615,7 +615,7 @@ def get_parser_fn_module():
     parser_ov_module_installbase.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_ov_module_installbase.r_examples = [  # type: ignore
         "# Install OakVar system modules",
-        "ov.module.installbase()",
+        "#ov.module.installbase()",
     ]
 
     # install
@@ -663,12 +663,8 @@ def get_parser_fn_module():
     parser_ov_module_install.set_defaults(func=cli_ov_module_install)
     parser_ov_module_install.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_ov_module_install.r_examples = [  # type: ignore
-        "# Install the ClinVar module",
-        'ov.module.install(modules="clinvar")',
-        "# Install the ClinVar and the COSMIC modules",
-        'ov.module.install(modules=list("clinvar", "cosmic")',
-        "# Re-install the ClinVar module overwriting the already installed copy",
-        'ov.module.install(modules="clinvar", force=TRUE)',
+        "# Install the ClinVar module without confirmation",
+        '#ov.module.install(modules="clinvar", force=True)',
     ]
 
     # update
@@ -700,10 +696,8 @@ def get_parser_fn_module():
     parser_ov_module_update.set_defaults(func=cli_ov_module_update)
     parser_ov_module_update.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_ov_module_update.r_examples = [  # type: ignore
-        "# Update the ClinVar module",
-        'ov.module.update(modules="clinvar")',
-        "# Update all the installed modules",
-        "ov.module.update()",
+        "# Update the ClinVar module without confirmation",
+        '#ov.module.update(modules="clinvar", force=True)',
     ]
 
     # uninstall
@@ -725,10 +719,8 @@ def get_parser_fn_module():
     parser_ov_module_uninstall.set_defaults(func=cli_ov_module_uninstall)
     parser_ov_module_uninstall.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_ov_module_uninstall.r_examples = [  # type: ignore
-        "# Uninstall the ClinVar module",
-        'ov.module.uninstall(modules="clinvar")'
-        "# Uninstall the ClinVar and the COSMIC modules",
-        'ov.module.uninstall(modules=("clinvar", "cosmic")',
+        "# Uninstall the ClinVar module without confirmation",
+        '#ov.module.uninstall(modules="clinvar", force=True)'
     ]
 
     # info
@@ -757,7 +749,7 @@ def get_parser_fn_module():
     parser_ov_module_info.r_return = "A named list. Information of the queried module"  # type: ignore
     parser_ov_module_info.r_examples = [  # type: ignore
         "# Get the information of the ClinVar module",
-        'ov.module.info(module="clinvar")',
+        '#ov.module.info(module="clinvar")',
     ]
 
     # ls
@@ -820,11 +812,11 @@ def get_parser_fn_module():
     parser_ov_module_ls.r_return = "A named list. List of modules"  # type: ignore
     parser_ov_module_ls.r_examples = [  # type: ignore
         "# Get the list of all installed modules",
-        "ov.module.ls()",
+        "#ov.module.ls()",
         "# Get the list of all available modules",
         "ov.module.ls(available=TRUE)",
         '# Get the list of all available modules of the type "converter"',
-        'ov.module.ls(available=TRUE, types="converter")',
+        '#ov.module.ls(available=TRUE, types="converter")',
     ]
 
     return parser_fn_module

@@ -57,9 +57,9 @@ def get_parser_fn_new():
     parser_cli_new_exampleinput.r_return = "A string. Location of the example input file"  # type: ignore
     parser_cli_new_exampleinput.r_examples = [  # type: ignore
         "# Create an example input file in the current working directory",
-        "ov.new.exampleinput()",
+        "#ov.new.exampleinput()",
         "# Create an example input file at /home/user1/",
-        'ov.new.exampleinput(directory="/home/user1")',
+        '#ov.new.exampleinput(directory="/home/user1")',
     ]
 
     # new-annotator
@@ -79,6 +79,6 @@ def get_parser_fn_new():
     parser_cli_new_annotator.r_return = "A string. Location of the new annotator module"  # type: ignore
     parser_cli_new_annotator.r_examples = [  # type: ignore
         "# Create an annotator template at the OakVar modules directory/annotators/annotatortest",
-        'ov.new.annotator(annotator_name="annotatortest")',
+        '#ov.new.annotator(annotator_name="annotatortest")',
     ]
     return parser_fn_new

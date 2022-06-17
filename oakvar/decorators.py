@@ -16,7 +16,7 @@ def cli_func(func):
             if isinstance(args[0], Namespace):
                 if getattr(args[0], "quiet", None) == None:
                     setattr(args[0], "quiet", True)
-        elif "quiet" not in kwargs:
+        elif kwargs.get("quiet") == None:
             kwargs["quiet"] = True
         args = get_args(*args, **kwargs)
         try:

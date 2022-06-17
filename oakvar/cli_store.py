@@ -194,7 +194,7 @@ def get_parser_fn_store():
     parser_cli_store_publish.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_cli_store_publish.r_examples = [  # type: ignore
         '# Publish "customannot" module to the store',
-        'ov.store.publish(module="customannot", user="user1", password="password")',
+        '#ov.store.publish(module="customannot", user="user1", password="password")',
     ]
 
     # create-account
@@ -216,7 +216,7 @@ def get_parser_fn_store():
     parser_cli_store_createaccount.r_return = "A string. Response from the store server"  # type: ignore
     parser_cli_store_createaccount.r_examples = [  # type: ignore
         "# Create a store account",
-        'ov.store.newaccount(username="user1", password="password")',
+        '#ov.store.newaccount(username="user1", password="password")',
     ]
 
     # change-password
@@ -235,7 +235,7 @@ def get_parser_fn_store():
     parser_cli_store_changepassword.r_return = "A string. Response from the store server"  # type: ignore
     parser_cli_store_changepassword.r_examples = [  # type: ignore
         "# Change the password of a store account",
-        'ov.store.changepassword(username="user1", current_password="password", new_password="newpassword")',
+        '#ov.store.changepassword(username="user1", current_password="password", new_password="newpassword")',
     ]
 
     # reset-password
@@ -250,7 +250,7 @@ def get_parser_fn_store():
     parser_cli_store_resetpassword.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_cli_store_resetpassword.r_examples = [  # type: ignore
         "# Ask the store to send an email to reset the password of a store account",
-        'ov.store.resetpassword(username="user1")',
+        '#ov.store.resetpassword(username="user1")',
     ]
 
     # verify-email
@@ -265,7 +265,7 @@ def get_parser_fn_store():
     parser_cli_store_verifyemail.r_return = "`NULL`"  # type: ignore
     parser_cli_store_verifyemail.r_examples = [  # type: ignore
         "# Ask the store to send an email to verify the email of a user account",
-        'ov.store.verifyemail(username="user1")',
+        '#ov.store.verifyemail(username="user1")',
     ]
 
     # check-login
@@ -281,7 +281,7 @@ def get_parser_fn_store():
     parser_cli_store_checklogin.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_cli_store_checklogin.r_examples = [  # type: ignore
         "# Check if the login information of a user is correct",
-        'ov.store.checklogin(username="user1", password="password")',
+        '#ov.store.checklogin(username="user1", password="password")',
     ]
 
     # fetch
@@ -295,7 +295,7 @@ def get_parser_fn_store():
     parser_cli_store_fetch.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_cli_store_fetch.r_examples = [  # type: ignore
         "# Fetch the store information",
-        "ov.store.fetch()",
+        "#ov.store.fetch()",
     ]
 
     # pack
@@ -320,7 +320,7 @@ def get_parser_fn_store():
     parser_cli_store_pack.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_cli_store_pack.r_examples = [  # type: ignore
         '# Pack a module "mymodule" into one zip file for its code and another zip file for its data.',
-        'ov.store.pack(module="mymodule")',
+        '#ov.store.pack(module="mymodule")',
     ]
 
     return parser_fn_store

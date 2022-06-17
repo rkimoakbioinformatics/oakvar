@@ -449,10 +449,8 @@ def pack_module(args):
 
 def get_latest_remote_module_version(module_name) -> Optional[str]:
     version = get_latest_remote_module_version_from_ov_store_cache(module_name)
-    print(f"@ version={version}")
     if not version:
         version = get_latest_remote_module_version_old(module_name)
-        print(f"@@ version={version}")
     return version
 
 def get_latest_remote_module_version_old(module_name):
@@ -492,10 +490,8 @@ def get_remote_module_config(module_name, version=None):
     if version == None:
         version = get_latest_remote_module_version(module_name)
     conf = get_remote_module_config_from_ov_store_cache(module_name, version=version)
-    print(f"@ new conf={conf}")
     if not conf:
         conf = get_remote_module_config_old(module_name, version=version)
-        print(f"@ old conf={conf}")
     return conf
 
 @db_func
@@ -515,19 +511,15 @@ def get_remote_module_config_old(module_name, version=None):
     import oyaml as yaml
     from oakvar.store_utils import get_file_to_string
     from .sysadmin_const import oc_store_module_url
-    from .admin_util import get_mic
 
     if version == None:
         version = get_latest_remote_module_version(module_name)
     if not version:
         return None
-    mic = get_mic()
     config_url = "/".join(
         [oc_store_module_url, module_name, version, module_name + ".yml"]
     )
-    print(f"@ config_url={config_url}")
     config = yaml.safe_load(get_file_to_string(config_url))
-    print(f"@ conf={config}")
     return config
 
 
@@ -537,7 +529,7 @@ def get_code_url_ov_store_cache(module_name: str, version=None, conn=None, c=Non
         return None
     if not version:
         version = get_module_version(module_name)
-    q = f"select code_url from modules where name=? and version=?"
+    q = f"select code_url from modules where name=? and code_version=?"
     c.execute(q, (module_name, version))
     ret = c.fetchone()
     if not ret:
@@ -546,7 +538,35 @@ def get_code_url_ov_store_cache(module_name: str, version=None, conn=None, c=Non
         return ret[0]
 
 
-def get_code_url(module_name: str, version=None, conn=None, c=None) -> Optional[str]:
+@db_func
+def get_data_url_ov_store_cache(module_name: str, version=None, conn=None, c=None) -> Optional[str]:
+    if not conn or not c:
+        return None
+    if not version:
+        version = get_module_version(module_name)
+    q = f"select data_url from modules where name=? and code_version=?"
+    c.execute(q, (module_name, version))
+    ret = c.fetchone()
+    if not ret:
+        return None
+    else:
+        return ret[0]
+
+@db_func
+def get_config_url_ov_store_cache(module_name: str, version=None, conn=None, c=None) -> Optional[str]:
+    if not conn or not c:
+        return None
+    if not version:
+        version = get_module_version(module_name)
+    q = f"select conf_url from modules where name=? and code_version=?"
+    c.execute(q, (module_name, version))
+    ret = c.fetchone()
+    if not ret:
+        return None
+    else:
+        return ret[0]
+
+def get_code_url(module_name: str, version=None) -> Optional[str]:
     from .sysadmin import get_sys_conf_value
     if not version:
         version = get_latest_remote_module_version(module_name)
@@ -561,4 +581,34 @@ def get_code_url(module_name: str, version=None, conn=None, c=None) -> Optional[
     code_url = "/".join([oc_store_module_url, module_name, version, module_name + ".code.zip"])
     return code_url
 
+
+def get_data_url(module_name: str, version=None) -> Optional[str]:
+    from .sysadmin import get_sys_conf_value
+    if not version:
+        version = get_latest_remote_module_version(module_name)
+    if not version:
+        return None
+    data_url = get_data_url_ov_store_cache(module_name, version=version)
+    if data_url:
+        return data_url
+    oc_store_module_url = get_sys_conf_value("oc_store_module_url")
+    if not oc_store_module_url:
+        return None
+    data_url = "/".join([oc_store_module_url, module_name, version, module_name + ".data.zip"])
+    return data_url
+
+def get_config_url(module_name: str, version=None) -> Optional[str]:
+    from .sysadmin import get_sys_conf_value
+    if not version:
+        version = get_latest_remote_module_version(module_name)
+    if not version:
+        return None
+    config_url = get_config_url_ov_store_cache(module_name, version=version)
+    if config_url:
+        return config_url
+    oc_store_module_url = get_sys_conf_value("oc_store_module_url")
+    if not oc_store_module_url:
+        return None
+    config_url = "/".join([oc_store_module_url, module_name, version, module_name + ".yml"])
+    return config_url
 

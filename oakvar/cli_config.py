@@ -42,6 +42,6 @@ def get_parser_fn_config():
     parser_cli_config_oakvar.r_return = "A named list. OakVar config information"  # type: ignore
     parser_cli_config_oakvar.r_examples = [  # type: ignore
         "# Get the named list of the OakVar configuration",
-        "ov.config.oakvar()",
+        "#ov.config.oakvar()",
     ]
     return parser_fn_config

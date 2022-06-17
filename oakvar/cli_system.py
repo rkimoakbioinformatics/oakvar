@@ -63,9 +63,9 @@ def add_parser_ov_system_setup(subparsers):
     parser_cli_ov_system_setup.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_cli_ov_system_setup.r_examples = [  # type: ignore
         "# Set up OakVar with defaults",
-        "ov.system.setup()",
+        "#ov.system.setup()",
         "# Set up OakVar with a setup file",
-        'ov.system.setup(setup_file="setup.yml")',
+        '#ov.system.setup(setup_file="setup.yml")',
     ]
 
 
@@ -89,7 +89,7 @@ def get_parser_ov_system():
     parser_cli_system_setup.r_examples = [  # type: ignore
         "# Set up OakVar with defaults", "ov.system.setup()",
         "# Set up OakVar with a setup file",
-        "ov.system.setup(setup_file=\"setup.yml\")"
+        "#ov.system.setup(setup_file=\"setup.yml\")"
     ]"""
 
     # md
@@ -111,9 +111,9 @@ def get_parser_ov_system():
     parser_cli_system_md.r_return = "A string. OakVar modules directory"  # type: ignore
     parser_cli_system_md.r_examples = [  # type: ignore
         "# Get the OakVar modules directory",
-        "ov.system.md()",
+        "#ov.system.md()",
         "# Set the OakVar modules directory to /home/user1/.oakvar/modules",
-        'ov.system.md(directory="/home/user1/.oakvar/modules")',
+        '#ov.system.md(directory="/home/user1/.oakvar/modules")',
     ]
 
     # shows system conf content.
@@ -133,10 +133,10 @@ def get_parser_ov_system():
     parser_cli_system_config.r_return = "A named list. System config information"  # type: ignore
     parser_cli_system_config.r_examples = [  # type: ignore
         "# Get named list of the OakVar system configuration",
-        "ov.system.config()",
+        "#ov.system.config()",
         "# Get the OakVar system configuration in YAML text",
-        'ov.system.config(fmt="yaml")'
+        '#ov.system.config(fmt="yaml")'
         "# Print to stdout the OakVar system configuration in YAML text",
-        'ov.system.config(fmt="yaml", to="stdout")',
+        '#ov.system.config(fmt="yaml", to="stdout")',
     ]
     return parser_ov_system

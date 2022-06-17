@@ -357,6 +357,7 @@ class ModuleInfoCache(object):
     def get_remote_config(self, module_name, version=None):
         import oyaml as yaml
         from oakvar.store_utils import get_file_to_string
+        from oakvar.store_utils import get_config_url
 
         # self.update_remote()
         if version == None:
@@ -367,8 +368,8 @@ class ModuleInfoCache(object):
             config = self.remote_config[module_name][version]
             return config
         except LookupError:
-            config_url = self._store_path_builder.module_conf(module_name, version)
-            config = yaml.safe_load(get_file_to_string(config_url))
+            conf_url = get_config_url(module_name, version)
+            config = yaml.safe_load(get_file_to_string(conf_url))
             # add to cache
             if module_name not in self.remote_config:
                 self.remote_config[module_name] = {}
@@ -508,7 +509,7 @@ def compare_version(v1, v2):
         return -1
 
 
-def create_account(username, password, channel="oakvar"):
+def create_account(username, password):
     from requests import post
     from .sysadmin import get_system_conf
 
@@ -1089,21 +1090,17 @@ def install_module(
     import zipfile
     import shutil
     import os
-    import oyaml as yaml
     from .constants import install_tempdir_name
     from oakvar.store_utils import (
-        PathBuilder,
         stream_to_file,
-        get_file_to_string,
-        verify_against_manifest,
     )
     from requests import HTTPError
     from .exceptions import KillInstallException
-    from .sysadmin import get_system_conf
     from .sysadmin import get_modules_dir
     from .store_utils import get_latest_remote_module_version
     from .store_utils import get_remote_module_config
     from .store_utils import get_code_url
+    from .store_utils import get_data_url
 
     quiet_args = {"quiet": quiet}
     modules_dir = get_modules_dir()
@@ -1191,11 +1188,11 @@ def install_module(
             ):
                 raise KillInstallException
         stage_handler.stage_start("verify_code")
-        code_manifest_url = store_path_builder.module_code_manifest(
-            module_name, version
-        )
-        code_manifest = yaml.safe_load(get_file_to_string(code_manifest_url))
-        verify_against_manifest(temp_dir, code_manifest)
+        #code_manifest_url = store_path_builder.module_code_manifest(
+        #    module_name, version
+        #)
+        #code_manifest = yaml.safe_load(get_file_to_string(code_manifest_url))
+        #verify_against_manifest(temp_dir, code_manifest)
         os.remove(zipfile_path)
         if install_state:
             if (
@@ -1210,7 +1207,7 @@ def install_module(
             and (remote_data_version != local_data_version or force_data)
         ):
             data_installed = True
-            data_url = store_path_builder.module_data(module_name, remote_data_version)
+            data_url = get_data_url(module_name, remote_data_version)
             data_fname = ".".join([module_name, "data", "zip"])
             data_path = os.path.join(temp_dir, data_fname)
             stage_handler.stage_start("download_data")
@@ -1239,11 +1236,11 @@ def install_module(
                     ):
                         raise KillInstallException
                 stage_handler.stage_start("verify_data")
-                data_manifest_url = store_path_builder.module_data_manifest(
-                    module_name, remote_data_version
-                )
-                data_manifest = yaml.safe_load(get_file_to_string(data_manifest_url))
-                verify_against_manifest(temp_dir, data_manifest)
+                #data_manifest_url = store_path_builder.module_data_manifest(
+                #    module_name, remote_data_version
+                #)
+                #data_manifest = yaml.safe_load(get_file_to_string(data_manifest_url))
+                #verify_against_manifest(temp_dir, data_manifest)
                 os.remove(data_path)
                 if install_state:
                     if (

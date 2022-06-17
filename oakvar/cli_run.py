@@ -329,7 +329,7 @@ class Cravat(object):
                 from .exceptions import SetupError
 
                 raise SetupError("Cravat")
-            if self.args.clean_run:
+            if self.args.clean:
                 quiet_print("Deleting previous output files...", self.args)
                 self.delete_output_files()
             self.get_logger()
@@ -568,7 +568,6 @@ class Cravat(object):
                 full_args[k] = v
         if full_args["annotators_replace"]:
             full_args["annotators"] = full_args["annotators_replace"]
-        from sys import stderr
 
         self.args = SimpleNamespace(**full_args)
         self.process_module_options()
@@ -2359,7 +2358,7 @@ def get_parser_ov_run():
     )
     parser_ov_run.add_argument(
         "--cleanrun",
-        dest="clean_run",
+        dest="clean",
         action="store_true",
         default=None,
         help="Deletes all previous output files for the job and generate new ones.",
