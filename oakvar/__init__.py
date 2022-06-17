@@ -35,7 +35,7 @@ from .constants import crx_def
 from .cli_run import Cravat
 from .cravat_filter import CravatFilter
 from .cli_report import CravatReport
-Report = CravatReport
+BaseReport = CravatReport
 from .base_commonmodule import BaseCommonModule
 from .base_postaggregator import BasePostAggregator
 from .base_mapper import BaseMapper

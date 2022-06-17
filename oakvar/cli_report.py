@@ -57,13 +57,6 @@ class CravatReport:
         self.level = None
         self.no_log = False
         self.parse_cmd_args(args)
-        """
-        for ag in get_parser_fn_report()._action_groups:
-            if ag.title == "optional arguments":
-                for a in ag._actions:
-                    if "-t" in a.option_strings:
-                        ag._actions.remove(a)
-        """
         self._setup_logger()
 
     def parse_cmd_args(self, args):
@@ -369,7 +362,6 @@ class CravatReport:
         else:
             write_variant_sample_separately = False
         colnos = self.colnos[level]
-        all_mappings_newcolno = self.newcolnos["variant"]["base__all_mappings"]
         cols = self.colinfo[level]["columns"]
         json_colnos = []
         for i in range(len(cols)):
@@ -438,6 +430,7 @@ class CravatReport:
             # does report substitution.
             new_datarow = self.substitute_val(level, new_datarow)
             if hasattr(self, "keep_json_all_mapping") == False and level == "variant":
+                all_mappings_newcolno = self.newcolnos["variant"]["base__all_mappings"]
                 all_map = json.loads(new_datarow[all_mappings_newcolno])
                 newvals = []
                 for hugo in all_map:
@@ -497,7 +490,7 @@ class CravatReport:
         else:
             self.mapper_name = r[0].split(":")[0]
 
-    async def run(self, tab="all"):
+    async def run(self, tab=None):
         if self.args is None or self.cf is None or self.logger is None:
             from .exceptions import SetupError
 
@@ -507,6 +500,10 @@ class CravatReport:
 
         start_time = time()
         ret = None
+        if not tab:
+            tab = self.args.get("level")
+        if not tab:
+            tab = "all"
         try:
             if not getattr(self, "no_log", False):
                 if self.logger:
@@ -1224,6 +1221,11 @@ def get_parser_fn_report():
         "--md",
         default=None,
         help="Specify the root directory of OakVar modules (annotators, etc)",
+    )
+    parser_ov_report.add_argument(
+        "--level",
+        default=None,
+        help="Level to make a report for. 'all' to include all levels. Other possible levels include 'variant' and 'gene'.",
     )
     parser_ov_report.set_defaults(func=cli_ov_report)
     return parser_ov_report
