@@ -1,33 +1,33 @@
-from .cli_version import ov_version
-from .cli_util import ov_util_sqliteinfo
-from .cli_util import ov_util_mergesqlite
-from .cli_util import ov_util_filtersqlite
-from .cli_util import ov_util_addjob
-from .cli_test import ov_util_test
-from .cli_system import ov_system_setup
-from .cli_system import ov_system_md
-from .cli_system import ov_system_config
-from .cli_store import ov_store_verifyemail
-from .cli_store import ov_store_resetpassword
-from .cli_store import ov_store_publish
-from .cli_store import ov_store_createaccount
-from .cli_store import ov_store_checklogin
-from .cli_store import ov_store_changepassword
-from .cli_store import ov_store_fetch
-from .cli_store import ov_store_pack
-from .cli_new import ov_new_annotator
-from .cli_new import ov_new_exampleinput
-from .cli_issue import ov_issue
-from .cli_gui import ov_gui
-from .cli_report import ov_report
-from .cli_run import ov_run
-from .cli_module import ov_module_update
-from .cli_module import ov_module_uninstall
-from .cli_module import ov_module_ls
-from .cli_module import ov_module_installbase
-from .cli_module import ov_module_install
-from .cli_module import ov_module_info
-from .cli_config import ov_config_oakvar
+from .cli_version import version
+from .cli_util import util_sqliteinfo
+from .cli_util import util_mergesqlite
+from .cli_util import util_filtersqlite
+from .cli_util import util_addjob
+from .cli_test import util_test
+from .cli_system import system_setup
+from .cli_system import system_md
+from .cli_system import system_config
+from .cli_store import store_verifyemail
+from .cli_store import store_resetpassword
+from .cli_store import store_publish
+from .cli_store import store_createaccount
+from .cli_store import store_checklogin
+from .cli_store import store_changepassword
+from .cli_store import store_fetch
+from .cli_store import store_pack
+from .cli_new import new_annotator
+from .cli_new import new_exampleinput
+from .cli_issue import issue
+from .cli_gui import gui
+from .cli_report import report
+from .cli_run import run
+from .cli_module import module_update
+from .cli_module import module_uninstall
+from .cli_module import module_ls
+from .cli_module import module_installbase
+from .cli_module import module_install
+from .cli_module import module_info
+from .cli_config import config_oakvar
 from . import __main__ as cli
 from . import constants
 from .exceptions import *
@@ -100,44 +100,44 @@ if crx_def or constants:
 if cli or wgs:
     pass
 if (
-    ov_module_info
-    or ov_module_install
-    or ov_module_installbase
-    or ov_module_ls
-    or ov_module_uninstall
-    or ov_module_update
+    module_info
+    or module_install
+    or module_installbase
+    or module_ls
+    or module_uninstall
+    or module_update
 ):
     pass
-if ov_report:
+if report:
     pass
-if ov_run:
+if run:
     pass
-if ov_gui:
+if gui:
     pass
-if ov_issue:
+if issue:
     pass
-if ov_new_exampleinput or ov_new_annotator:
+if new_exampleinput or new_annotator:
     pass
 if (
-    ov_store_verifyemail
-    or ov_store_resetpassword
-    or ov_store_publish
-    or ov_store_createaccount
-    or ov_store_checklogin
-    or ov_store_changepassword
-    or ov_store_fetch
-    or ov_store_pack
+    store_verifyemail
+    or store_resetpassword
+    or store_publish
+    or store_createaccount
+    or store_checklogin
+    or store_changepassword
+    or store_fetch
+    or store_pack
 ):
     pass
-if ov_system_setup or ov_system_md or ov_system_config:
+if system_setup or system_md or system_config:
     pass
-if ov_util_test:
+if util_test:
     pass
-if ov_util_addjob or ov_util_filtersqlite or ov_util_mergesqlite or ov_util_sqliteinfo:
+if util_addjob or util_filtersqlite or util_mergesqlite or util_sqliteinfo:
     pass
-if ov_version:
+if version:
     pass
-if ov_config_oakvar:
+if config_oakvar:
     pass
 
 

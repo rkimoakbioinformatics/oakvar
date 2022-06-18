@@ -817,14 +817,14 @@ class Tester:
 
 
 @cli_entry
-def cli_ov_util_test(args):
+def cli_util_test(args):
     args.quiet = False
     args.to = "stdout"
-    return ov_util_test(args)
+    return util_test(args)
 
 
 @cli_func
-def ov_util_test(args):
+def util_test(args):
     from os.path import exists
     from os import makedirs
     from .admin_util import get_local_module_types, get_local_module_info
@@ -906,13 +906,13 @@ def get_parser_cli_util_test():
     parser_cli_util_test.add_argument(
         "--quiet", action="store_true", default=None, help="Run quietly"
     )
-    parser_cli_util_test.set_defaults(func=cli_ov_util_test)
+    parser_cli_util_test.set_defaults(func=cli_util_test)
     return parser_cli_util_test
 
 
 def main():
     args = get_parser_cli_util_test().parse_args()
-    cli_ov_util_test(args)
+    cli_util_test(args)
 
 
 if __name__ == "__main__":

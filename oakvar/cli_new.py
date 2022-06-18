@@ -3,25 +3,25 @@ from .decorators import cli_entry
 
 
 @cli_entry
-def cli_ov_new_exampleinput(args):
-    ov_new_exampleinput(args)
+def cli_new_exampleinput(args):
+    new_exampleinput(args)
 
 
 @cli_func
-def ov_new_exampleinput(args):
+def new_exampleinput(args):
     from .admin_util import fn_new_exampleinput
 
     return fn_new_exampleinput(args.get("directory"))
 
 
 @cli_entry
-def cli_ov_new_annotator(args):
+def cli_new_annotator(args):
     args.quiet = False
-    return ov_new_annotator(args)
+    return new_annotator(args)
 
 
 @cli_func
-def ov_new_annotator(args):
+def new_annotator(args):
     from .admin_util import new_annotator, get_local_module_info
     from .util import quiet_print
 
@@ -53,13 +53,13 @@ def get_parser_fn_new():
     parser_cli_new_exampleinput.add_argument(
         "--quiet", action="store_true", default=None, help="Run quietly"
     )
-    parser_cli_new_exampleinput.set_defaults(func=cli_ov_new_exampleinput)
+    parser_cli_new_exampleinput.set_defaults(func=cli_new_exampleinput)
     parser_cli_new_exampleinput.r_return = "A string. Location of the example input file"  # type: ignore
     parser_cli_new_exampleinput.r_examples = [  # type: ignore
         "# Create an example input file in the current working directory",
-        "#ov.new.exampleinput()",
+        "#roakvar::new.exampleinput()",
         "# Create an example input file at /home/user1/",
-        '#ov.new.exampleinput(directory="/home/user1")',
+        '#roakvar::new.exampleinput(directory="/home/user1")',
     ]
 
     # new-annotator
@@ -75,10 +75,10 @@ def get_parser_fn_new():
     parser_cli_new_annotator.add_argument(
         "--quiet", action="store_true", default=None, help="No print to stdout"
     )
-    parser_cli_new_annotator.set_defaults(func=cli_ov_new_annotator)
+    parser_cli_new_annotator.set_defaults(func=cli_new_annotator)
     parser_cli_new_annotator.r_return = "A string. Location of the new annotator module"  # type: ignore
     parser_cli_new_annotator.r_examples = [  # type: ignore
         "# Create an annotator template at the OakVar modules directory/annotators/annotatortest",
-        '#ov.new.annotator(annotator_name="annotatortest")',
+        '#roakvar::new.annotator(annotator_name="annotatortest")',
     ]
     return parser_fn_new

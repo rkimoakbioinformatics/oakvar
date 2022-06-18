@@ -992,12 +992,12 @@ class CravatReport:
 
 
 @cli_entry
-def cli_ov_report(args):
-    return ov_report(args)
+def cli_report(args):
+    return report(args)
 
 
 @cli_func
-def ov_report(args):
+def report(args):
     from os.path import dirname
     from os.path import basename
     from os.path import join
@@ -1101,7 +1101,7 @@ def ov_report(args):
 
 def cravat_report_entrypoint():
     args = get_parser_fn_report().parse_args(sys.argv[1:])
-    cli_ov_report(args)
+    cli_report(args)
 
 
 def get_parser_fn_report():
@@ -1227,5 +1227,5 @@ def get_parser_fn_report():
         default=None,
         help="Level to make a report for. 'all' to include all levels. Other possible levels include 'variant' and 'gene'.",
     )
-    parser_ov_report.set_defaults(func=cli_ov_report)
+    parser_ov_report.set_defaults(func=cli_report)
     return parser_ov_report

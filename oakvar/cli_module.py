@@ -4,14 +4,14 @@ from .decorators import cli_entry
 
 
 @cli_entry
-def cli_ov_module_ls(args):
+def cli_module_ls(args):
     if not args.fmt:
         args.fmt = "yaml"
-    return ov_module_ls(args)
+    return module_ls(args)
 
 
 @cli_func
-def ov_module_ls(args):
+def module_ls(args):
     if args.get("fmt") == None:
         args["fmt"] = "json"
     to = args.get("to", "return")
@@ -27,13 +27,13 @@ def ov_module_ls(args):
 
 
 @cli_entry
-def cli_ov_module_info(args):
+def cli_module_info(args):
     args.fmt = "yaml"
-    return ov_module_info(args)
+    return module_info(args)
 
 
 @cli_func
-def ov_module_info(args):
+def module_info(args):
     from oyaml import dump
     from .admin_util import (
         get_local_module_info,
@@ -125,12 +125,12 @@ def ov_module_info(args):
 
 
 @cli_entry
-def cli_ov_module_install(args):
-    return ov_module_install(args)
+def cli_module_install(args):
+    return module_install(args)
 
 
 @cli_func
-def ov_module_install(args):
+def module_install(args):
     from .admin_util import (
         search_remote,
         get_local_module_info,
@@ -264,12 +264,12 @@ def ov_module_install(args):
 
 
 @cli_entry
-def cli_ov_module_update(args):
-    return ov_module_update(args)
+def cli_module_update(args):
+    return module_update(args)
 
 
 @cli_func
-def ov_module_update(args):
+def module_update(args):
     from .admin_util import search_local, get_updatable
     from .util import humanize_bytes
     from .util import quiet_print
@@ -319,18 +319,18 @@ def ov_module_update(args):
             skip_data=False,
             md=args.get("md", None),
         )
-        if not ov_module_install(args):
+        if not module_install(args):
             return False
     return True
 
 
 @cli_entry
-def cli_ov_module_uninstall(args):
-    return ov_module_uninstall(args)
+def cli_module_uninstall(args):
+    return module_uninstall(args)
 
 
 @cli_func
-def ov_module_uninstall(args):
+def module_uninstall(args):
     from .admin_util import search_local, uninstall_module
     from .util import quiet_print
 
@@ -364,12 +364,12 @@ def ov_module_uninstall(args):
 
 
 @cli_entry
-def cli_ov_module_installbase(args):
-    return ov_module_installbase(args)
+def cli_module_installbase(args):
+    return module_installbase(args)
 
 
 @cli_func
-def ov_module_installbase(args):
+def module_installbase(args):
     from .sysadmin import get_system_conf
     from .sysadmin_const import base_modules_key
     from types import SimpleNamespace
@@ -388,7 +388,7 @@ def ov_module_installbase(args):
         md=args.get("md", None),
         quiet=args.get("quiet", True),
     )
-    ret = ov_module_install(args)
+    ret = module_install(args)
     return ret
 
 
@@ -611,11 +611,11 @@ def get_parser_fn_module():
     parser_ov_module_installbase.add_argument(
         "--quiet", action="store_true", default=None, help="suppress stdout output"
     )
-    parser_ov_module_installbase.set_defaults(func=cli_ov_module_installbase)
+    parser_ov_module_installbase.set_defaults(func=cli_module_installbase)
     parser_ov_module_installbase.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_ov_module_installbase.r_examples = [  # type: ignore
         "# Install OakVar system modules",
-        "#ov.module.installbase()",
+        "#roakvar::module.installbase()",
     ]
 
     # install
@@ -660,11 +660,11 @@ def get_parser_fn_module():
     parser_ov_module_install.add_argument(
         "--quiet", action="store_true", default=None, help="suppress stdout output"
     )
-    parser_ov_module_install.set_defaults(func=cli_ov_module_install)
+    parser_ov_module_install.set_defaults(func=cli_module_install)
     parser_ov_module_install.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_ov_module_install.r_examples = [  # type: ignore
         "# Install the ClinVar module without confirmation",
-        '#ov.module.install(modules="clinvar", force=True)',
+        '#roakvar::module.install(modules="clinvar", force=True)',
     ]
 
     # update
@@ -693,11 +693,11 @@ def get_parser_fn_module():
     parser_ov_module_update.add_argument(
         "--quiet", action="store_true", default=None, help="suppress stodout output"
     )
-    parser_ov_module_update.set_defaults(func=cli_ov_module_update)
+    parser_ov_module_update.set_defaults(func=cli_module_update)
     parser_ov_module_update.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_ov_module_update.r_examples = [  # type: ignore
         "# Update the ClinVar module without confirmation",
-        '#ov.module.update(modules="clinvar", force=True)',
+        '#roakvar::module.update(modules="clinvar", force=True)',
     ]
 
     # uninstall
@@ -716,11 +716,11 @@ def get_parser_fn_module():
     parser_ov_module_uninstall.add_argument(
         "--quiet", action="store_true", default=None, help="Run quietly"
     )
-    parser_ov_module_uninstall.set_defaults(func=cli_ov_module_uninstall)
+    parser_ov_module_uninstall.set_defaults(func=cli_module_uninstall)
     parser_ov_module_uninstall.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_ov_module_uninstall.r_examples = [  # type: ignore
         "# Uninstall the ClinVar module without confirmation",
-        '#ov.module.uninstall(modules="clinvar", force=True)'
+        '#roakvar::module.uninstall(modules="clinvar", force=True)'
     ]
 
     # info
@@ -745,11 +745,11 @@ def get_parser_fn_module():
     parser_ov_module_info.add_argument(
         "--quiet", action="store_true", default=None, help="Run quietly"
     )
-    parser_ov_module_info.set_defaults(func=cli_ov_module_info)
+    parser_ov_module_info.set_defaults(func=cli_module_info)
     parser_ov_module_info.r_return = "A named list. Information of the queried module"  # type: ignore
     parser_ov_module_info.r_examples = [  # type: ignore
         "# Get the information of the ClinVar module",
-        '#ov.module.info(module="clinvar")',
+        '#roakvar::module.info(module="clinvar")',
     ]
 
     # ls
@@ -808,15 +808,15 @@ def get_parser_fn_module():
     parser_ov_module_ls.add_argument(
         "--quiet", action="store_true", default=None, help="Run quietly"
     )
-    parser_ov_module_ls.set_defaults(func=cli_ov_module_ls)
+    parser_ov_module_ls.set_defaults(func=cli_module_ls)
     parser_ov_module_ls.r_return = "A named list. List of modules"  # type: ignore
     parser_ov_module_ls.r_examples = [  # type: ignore
         "# Get the list of all installed modules",
-        "#ov.module.ls()",
+        "#roakvar::module.ls()",
         "# Get the list of all available modules",
-        "ov.module.ls(available=TRUE)",
+        "roakvar::module.ls(available=TRUE)",
         '# Get the list of all available modules of the type "converter"',
-        '#ov.module.ls(available=TRUE, types="converter")',
+        '#roakvar::module.ls(available=TRUE, types="converter")',
     ]
 
     return parser_fn_module

@@ -14,7 +14,7 @@ def setup_system(args):
     from .sysadmin_const import main_conf_fname
     from .admin_util import get_packagedir
     from .util import quiet_print
-    from .cli_module import ov_module_installbase
+    from .cli_module import module_installbase
     from os import environ
     from .sysadmin_const import sys_conf_path_key
     from .sysadmin import get_env_key
@@ -52,7 +52,7 @@ def setup_system(args):
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
     quiet_print(f"Checking system modules...", args=args)
     args.update({"conf": conf})
-    ov_module_installbase(args)
+    module_installbase(args)
     quiet_print(f"Done setting up the system", args=args)
 
 

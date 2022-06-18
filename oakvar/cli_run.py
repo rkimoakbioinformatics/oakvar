@@ -3,13 +3,13 @@ from .decorators import cli_entry
 
 
 @cli_entry
-def cli_ov_run(args):
-    ret = ov_run(args)
+def cli_run(args):
+    ret = run(args)
     return ret
 
 
 @cli_func
-def ov_run(args):
+def run(args):
     from asyncio import run
     from . import admin_util as au
 
@@ -2426,5 +2426,5 @@ def get_parser_ov_run():
         default=[],
         help="Postaggregators to run. Additionally, tagsampler, casecontrol, varmeta, and vcfinfo will automatically run depending on conditions.",
     )
-    parser_ov_run.set_defaults(func=cli_ov_run)
+    parser_ov_run.set_defaults(func=cli_run)
     return parser_ov_run

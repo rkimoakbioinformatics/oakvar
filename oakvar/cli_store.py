@@ -3,12 +3,12 @@ from .decorators import cli_entry
 
 
 @cli_entry
-def cli_ov_store_publish(args):
-    return ov_store_publish(args)
+def cli_store_publish(args):
+    return store_publish(args)
 
 
 @cli_func
-def ov_store_publish(args):
+def store_publish(args):
     from .sysadmin import get_system_conf
     from .admin_util import publish_module
     from getpass import getpass
@@ -39,12 +39,12 @@ def ov_store_publish(args):
 
 
 @cli_entry
-def cli_ov_store_createaccount(args):
-    return ov_store_createaccount(args)
+def cli_store_createaccount(args):
+    return store_createaccount(args)
 
 
 @cli_func
-def ov_store_createaccount(args):
+def store_createaccount(args):
     from .admin_util import create_account
     from .util import is_valid_email
 
@@ -57,17 +57,17 @@ def ov_store_createaccount(args):
         return False
     if not is_valid_email(email):
         return False
-    ret = create_account(args.get("username"), args.get("password"), args.get("channel"))
+    ret = create_account(args.get("username"), args.get("password"))
     return ret
 
 
 @cli_entry
-def cli_ov_store_changepassword(args):
-    return ov_store_changepassword(args)
+def cli_store_changepassword(args):
+    return store_changepassword(args)
 
 
 @cli_func
-def ov_store_changepassword(args):
+def store_changepassword(args):
     from .admin_util import change_password
 
     ret = change_password(
@@ -77,12 +77,12 @@ def ov_store_changepassword(args):
 
 
 @cli_entry
-def cli_ov_store_resetpassword(args):
-    return ov_store_resetpassword(args)
+def cli_store_resetpassword(args):
+    return store_resetpassword(args)
 
 
 @cli_func
-def ov_store_resetpassword(args):
+def store_resetpassword(args):
     from .admin_util import send_reset_email
 
     ret = send_reset_email(args.get("username"), args=args)
@@ -90,12 +90,12 @@ def ov_store_resetpassword(args):
 
 
 @cli_entry
-def cli_ov_store_verifyemail(args):
-    return ov_store_verifyemail(args)
+def cli_store_verifyemail(args):
+    return store_verifyemail(args)
 
 
 @cli_func
-def ov_store_verifyemail(args):
+def store_verifyemail(args):
     from .admin_util import send_verify_email
 
     ret = send_verify_email(args.get("username"), args=args)
@@ -103,12 +103,12 @@ def ov_store_verifyemail(args):
 
 
 @cli_entry
-def cli_ov_store_checklogin(args):
-    return ov_store_verifyemail(args)
+def cli_store_checklogin(args):
+    return store_verifyemail(args)
 
 
 @cli_func
-def ov_store_checklogin(args):
+def store_checklogin(args):
     from .admin_util import check_login
 
     ret = check_login(args.get("username"), args.get("password"))
@@ -116,12 +116,12 @@ def ov_store_checklogin(args):
 
 
 @cli_entry
-def cli_ov_store_fetch(args):
-    return ov_store_fetch(args)
+def cli_store_fetch(args):
+    return store_fetch(args)
 
 
 @cli_func
-def ov_store_fetch(__args__):
+def store_fetch(__args__):
     from .sysadmin import fetch_and_save_oc_manifest
 
     ret = fetch_and_save_oc_manifest()
@@ -129,12 +129,12 @@ def ov_store_fetch(__args__):
 
 
 @cli_entry
-def cli_ov_store_pack(args):
-    return ov_store_pack(args)
+def cli_store_pack(args):
+    return store_pack(args)
 
 
 @cli_func
-def ov_store_pack(args):
+def store_pack(args):
     from .store_utils import pack_module
 
     ret = pack_module(args)
@@ -190,11 +190,11 @@ def get_parser_fn_store():
     parser_cli_store_publish.add_argument(
         "--quiet", action="store_true", default=None, help="Run quietly"
     )
-    parser_cli_store_publish.set_defaults(func=cli_ov_store_publish)
+    parser_cli_store_publish.set_defaults(func=cli_store_publish)
     parser_cli_store_publish.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_cli_store_publish.r_examples = [  # type: ignore
         '# Publish "customannot" module to the store',
-        '#ov.store.publish(module="customannot", user="user1", password="password")',
+        '#roakvar::store.publish(module="customannot", user="user1", password="password")',
     ]
 
     # create-account
@@ -212,11 +212,11 @@ def get_parser_fn_store():
     parser_cli_store_createaccount.add_argument(
         "--quiet", action="store_true", default=None, help="Run quietly"
     )
-    parser_cli_store_createaccount.set_defaults(func=cli_ov_store_createaccount)
+    parser_cli_store_createaccount.set_defaults(func=cli_store_createaccount)
     parser_cli_store_createaccount.r_return = "A string. Response from the store server"  # type: ignore
     parser_cli_store_createaccount.r_examples = [  # type: ignore
         "# Create a store account",
-        '#ov.store.newaccount(username="user1", password="password")',
+        '#roakvar::store.newaccount(username="user1", password="password")',
     ]
 
     # change-password
@@ -231,11 +231,11 @@ def get_parser_fn_store():
     parser_cli_store_changepassword.add_argument(
         "--quiet", action="store_true", default=None, help="Run quietly"
     )
-    parser_cli_store_changepassword.set_defaults(func=cli_ov_store_changepassword)
+    parser_cli_store_changepassword.set_defaults(func=cli_store_changepassword)
     parser_cli_store_changepassword.r_return = "A string. Response from the store server"  # type: ignore
     parser_cli_store_changepassword.r_examples = [  # type: ignore
         "# Change the password of a store account",
-        '#ov.store.changepassword(username="user1", current_password="password", new_password="newpassword")',
+        '#roakvar::store.changepassword(username="user1", current_password="password", new_password="newpassword")',
     ]
 
     # reset-password
@@ -246,11 +246,11 @@ def get_parser_fn_store():
         "--quiet", action="store_true", default=None, help="Run quietly"
     )
     parser_cli_store_resetpassword.add_argument("username", help="username")
-    parser_cli_store_resetpassword.set_defaults(func=cli_ov_store_resetpassword)
+    parser_cli_store_resetpassword.set_defaults(func=cli_store_resetpassword)
     parser_cli_store_resetpassword.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_cli_store_resetpassword.r_examples = [  # type: ignore
         "# Ask the store to send an email to reset the password of a store account",
-        '#ov.store.resetpassword(username="user1")',
+        '#roakvar::store.resetpassword(username="user1")',
     ]
 
     # verify-email
@@ -261,11 +261,11 @@ def get_parser_fn_store():
     parser_cli_store_verifyemail.add_argument(
         "--quiet", action="store_true", default=None, help="Run quietly"
     )
-    parser_cli_store_verifyemail.set_defaults(func=cli_ov_store_verifyemail)
+    parser_cli_store_verifyemail.set_defaults(func=cli_store_verifyemail)
     parser_cli_store_verifyemail.r_return = "`NULL`"  # type: ignore
     parser_cli_store_verifyemail.r_examples = [  # type: ignore
         "# Ask the store to send an email to verify the email of a user account",
-        '#ov.store.verifyemail(username="user1")',
+        '#roakvar::store.verifyemail(username="user1")',
     ]
 
     # check-login
@@ -277,11 +277,11 @@ def get_parser_fn_store():
     parser_cli_store_checklogin.add_argument(
         "--quiet", action="store_true", default=None, help="Run quietly"
     )
-    parser_cli_store_checklogin.set_defaults(func=cli_ov_store_checklogin)
+    parser_cli_store_checklogin.set_defaults(func=cli_store_checklogin)
     parser_cli_store_checklogin.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_cli_store_checklogin.r_examples = [  # type: ignore
         "# Check if the login information of a user is correct",
-        '#ov.store.checklogin(username="user1", password="password")',
+        '#roakvar::store.checklogin(username="user1", password="password")',
     ]
 
     # fetch
@@ -291,11 +291,11 @@ def get_parser_fn_store():
     parser_cli_store_fetch.add_argument(
         "--quiet", action="store_true", default=None, help="Run quietly"
     )
-    parser_cli_store_fetch.set_defaults(func=cli_ov_store_fetch)
+    parser_cli_store_fetch.set_defaults(func=cli_store_fetch)
     parser_cli_store_fetch.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_cli_store_fetch.r_examples = [  # type: ignore
         "# Fetch the store information",
-        "#ov.store.fetch()",
+        "#roakvar::store.fetch()",
     ]
 
     # pack
@@ -316,11 +316,11 @@ def get_parser_fn_store():
     parser_cli_store_pack.add_argument(
         "--quiet", action="store_true", default=None, help="Run quietly"
     )
-    parser_cli_store_pack.set_defaults(func=cli_ov_store_pack)
+    parser_cli_store_pack.set_defaults(func=cli_store_pack)
     parser_cli_store_pack.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_cli_store_pack.r_examples = [  # type: ignore
         '# Pack a module "mymodule" into one zip file for its code and another zip file for its data.',
-        '#ov.store.pack(module="mymodule")',
+        '#roakvar::store.pack(module="mymodule")',
     ]
 
     return parser_fn_store

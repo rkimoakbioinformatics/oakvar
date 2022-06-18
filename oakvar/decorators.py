@@ -52,11 +52,11 @@ def get_parser(parser_name):
         ppp_dict = get_commands(pp_parser)
         if ppp_dict:
             for ppp_cmd, ppp_parser in ppp_dict.items():
-                cmd = f"ov_{pp_cmd}_{ppp_cmd}"
+                cmd = f"{pp_cmd}_{ppp_cmd}"
                 if cmd == parser_name:
                     return ppp_parser
         else:
-            cmd = f"ov_{pp_cmd}"
+            cmd = f"{pp_cmd}"
             if cmd == parser_name:
                 return pp_parser
     return None

@@ -95,12 +95,12 @@ def ov_util_updateresult(args):
 
 
 @cli_entry
-def cli_ov_util_addjob(args):
-    return ov_util_addjob(args)
+def cli_util_addjob(args):
+    return util_addjob(args)
 
 
 @cli_func
-def ov_util_addjob(args):
+def util_addjob(args):
     from json import dump
     from shutil import copyfile
     from time import sleep
@@ -245,18 +245,18 @@ def get_sqliteinfo(args):
 
 
 @cli_entry
-def cli_ov_util_sqliteinfo(args):
-    ov_util_sqliteinfo(args)
+def cli_util_sqliteinfo(args):
+    util_sqliteinfo(args)
 
 
 @cli_func
-def ov_util_sqliteinfo(args):
+def util_sqliteinfo(args):
     return get_sqliteinfo(args)
 
 
 @cli_entry
-def cli_ov_util_mergesqlite(args):
-    ov_util_mergesqlite(args)
+def cli_util_mergesqlite(args):
+    util_mergesqlite(args)
 
 
 # For now, only jobs with same annotators are allowed.
@@ -264,7 +264,7 @@ def cli_ov_util_mergesqlite(args):
 
 @cli_entry
 @cli_func
-def ov_util_mergesqlite(args):
+def util_mergesqlite(args):
     import sqlite3
     from json import loads, dumps
     from shutil import copy
@@ -404,12 +404,12 @@ def ov_util_mergesqlite(args):
 
 
 @cli_entry
-def cli_ov_util_filtersqlite(args):
-    return ov_util_filtersqlite(args)
+def cli_util_filtersqlite(args):
+    return util_filtersqlite(args)
 
 
 @cli_func
-def ov_util_filtersqlite(args):
+def util_filtersqlite(args):
     from asyncio import get_event_loop
 
     loop = get_event_loop()
@@ -639,9 +639,9 @@ def get_parser_fn_util():
     parser_cli_util_test.r_return = "A named list. Field result is a named list showing the test result for each module. Fields num_passed and num_failed show the number of passed and failed modules."  # type: ignore
     parser_cli_util_test.r_examples = [  # type: ignore
         "# Test the ClinVar module",
-        '#ov.util.test(modules="clinvar")',
+        '#roakvar::util.test(modules="clinvar")',
         "# Test the ClinVar and the COSMIC modules",
-        '#ov.util.test(modules=list("clinvar", "cosmic"))',
+        '#roakvar::util.test(modules=list("clinvar", "cosmic"))',
     ]
 
     # converts db coordinate to hg38
@@ -678,7 +678,7 @@ def get_parser_fn_util():
     parser_fn_util_convert.r_return = "A boolean. TRUE if successful, FALSE if not"
     parser_fn_util_convert.r_examples = [
         "# Convert the hg19 coordinates in \"base__pos\" column of an OakVar result database into hg38",
-        "#ov.util.convert(db=\"example.sqlite\", cols=\"base__pos\", tables=\"variant\")"
+        "#roakvar::util.convert(db=\"example.sqlite\", cols=\"base__pos\", tables=\"variant\")"
     ]
     """
 
@@ -719,11 +719,11 @@ def get_parser_fn_util():
         type=str,
         default="default",
     )
-    parser_fn_util_addjob.set_defaults(func=ov_util_addjob)
+    parser_fn_util_addjob.set_defaults(func=util_addjob)
     parser_fn_util_addjob.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_fn_util_addjob.r_examples = [  # type: ignore
         "# Add a result file to the job list of a user",
-        '#ov.util.addjob(path="example.sqlite", user="user1")',
+        '#roakvar::util.addjob(path="example.sqlite", user="user1")',
     ]
 
     # Merge SQLite files
@@ -736,11 +736,11 @@ def get_parser_fn_util():
     parser_fn_util_mergesqlite.add_argument(
         "-o", dest="outpath", required=True, help="Output SQLite file path"
     )
-    parser_fn_util_mergesqlite.set_defaults(func=ov_util_mergesqlite)
+    parser_fn_util_mergesqlite.set_defaults(func=util_mergesqlite)
     parser_fn_util_mergesqlite.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_fn_util_mergesqlite.r_examples = [  # type: ignore
         "# Merge two OakVar analysis result files into one SQLite file",
-        '#ov.util.mergesqlite(path=list("example1.sqlite", "example2.sqlite"), outpath="merged.sqlite")',
+        '#roakvar::util.mergesqlite(path=list("example1.sqlite", "example2.sqlite"), outpath="merged.sqlite")',
     ]
 
     # Show SQLite info
@@ -756,11 +756,11 @@ def get_parser_fn_util():
     parser_fn_util_showsqliteinfo.add_argument(
         "--to", default="return", help="Output to. stdout / return"
     )
-    parser_fn_util_showsqliteinfo.set_defaults(func=ov_util_sqliteinfo)
+    parser_fn_util_showsqliteinfo.set_defaults(func=util_sqliteinfo)
     parser_fn_util_showsqliteinfo.r_return = "A named list. Information of a job SQLite file"  # type: ignore
     parser_fn_util_showsqliteinfo.r_examples = [  # type: ignore
         "# Get the named list of the information of an analysis result file",
-        '#ov.util.sqliteinfo(paths="example.sqlite")',
+        '#roakvar::util.sqliteinfo(paths="example.sqlite")',
     ]
 
     # Filter SQLite
@@ -797,14 +797,14 @@ def get_parser_fn_util():
         default=None,
         help="Sample IDs to exclude",
     )
-    parser_fn_util_filtersqlite.set_defaults(func=ov_util_filtersqlite)
+    parser_fn_util_filtersqlite.set_defaults(func=util_filtersqlite)
     parser_fn_util_filtersqlite.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_fn_util_filtersqlite.r_examples = [  # type: ignore
         "# Filter an analysis result file with an SQL filter set",
-        '#ov.util.filtersqlite(paths="example.sqlite", ',
+        '#roakvar::util.filtersqlite(paths="example.sqlite", ',
         '#  filtersql=\'base__so=="MIS" and gnomad__af>0.01\')',
         "# Filter two analysis result files with a filter definition file",
-        '#ov.util.filtersqlite(paths=list("example1.sqlite", ',
+        '#roakvar::util.filtersqlite(paths=list("example1.sqlite", ',
         '#  "example2.sqlite"), filterpath="filter.json")',
     ]
     return parser_fn_util

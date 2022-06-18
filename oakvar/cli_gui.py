@@ -137,12 +137,12 @@ def setup(args):
 
 
 @cli_entry
-def cli_ov_gui(args):
-    return ov_gui(args)
+def cli_gui(args):
+    return gui(args)
 
 
 @cli_func
-def ov_gui(args):
+def gui(args):
     from .util import is_compatible_version
     from logging.handlers import TimedRotatingFileHandler
     from os.path import abspath, exists
@@ -785,7 +785,7 @@ def get_parser_fn_gui():
         "--quiet", action="store_true", default=None, help="Run quietly"
     )
     parser_fn_gui.add_argument("--to", default="return", help="Run quietly")
-    parser_fn_gui.set_defaults(func=cli_ov_gui)
+    parser_fn_gui.set_defaults(func=cli_gui)
     return parser_fn_gui
 
 

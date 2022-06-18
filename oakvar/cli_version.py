@@ -4,11 +4,11 @@ from .decorators import cli_entry
 
 @cli_entry
 def cli_version(args):
-    return ov_version(args)
+    return version(args)
 
 
 @cli_func
-def ov_version(args):
+def version(args):
     from .admin_util import oakvar_version
     from .util import quiet_print
 

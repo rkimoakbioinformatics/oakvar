@@ -33,7 +33,7 @@ def get_entry_parser():
     p_ov_run.r_examples = [  # type: ignore
         "# Annotate the input file `input` with ClinVar and COSMIC modules ",
         "# and make a VCF-format report of annotated variants.",
-        '#ov.run.input(inputs="input", annotators=list("clinvar", "cosmic"), reports="vcf")',
+        '#roakvar::run.input(inputs="input", annotators=list("clinvar", "cosmic"), reports="vcf")',
     ]
 
     # report
@@ -48,7 +48,7 @@ def get_entry_parser():
     p_report.r_return = "A string, a named list, or a dataframe. Output of reporters"  # type: ignore
     p_report.r_examples = [  # type: ignore
         "# Generate a CSV-format report file from the job result file example.sqlite",
-        '#ov.report(dbpath="example.sqlite", reports="csv")',
+        '#roakvar::report(dbpath="example.sqlite", reports="csv")',
     ]
 
     # gui
@@ -58,9 +58,9 @@ def get_entry_parser():
     p_gui.r_return = "`NULL`"  # type: ignore
     p_gui.r_examples = [  # type: ignore
         "# Launch OakVar GUI",
-        "#ov.gui()",
+        "#roakvar::gui()",
         "# Launch OakVar Interactive Result Viewer for the OakVar analysis file example.sqlite",
-        '#ov.gui(result="example.sqlite")',
+        '#roakvar::gui(result="example.sqlite")',
     ]
 
     # module
@@ -113,7 +113,7 @@ def get_entry_parser():
     p_version.r_return = "A string. OakVar version"  # type: ignore
     p_version.r_examples = [  # type: ignore
         "# Get the version of the installed OakVar",
-        "#ov.version()",
+        "#roakvar::version()",
     ]
 
     # issue
@@ -126,7 +126,7 @@ def get_entry_parser():
     p_issue.r_return = "`NULL`"  # type: ignore
     p_issue.r_examples = [  # type: ignore
         "# Open the Issues page of the OakVar GitHub website",
-        "#ov.issue()",
+        "#roakvar::issue()",
     ]
 
     # system
