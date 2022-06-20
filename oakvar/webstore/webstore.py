@@ -13,7 +13,6 @@ import concurrent.futures
 from ..sysadmin import get_system_conf
 
 system_conf = get_system_conf()
-pathbuilder = su.PathBuilder(system_conf["store_url"], "url")
 install_manager = None
 install_queue = None
 install_state = None

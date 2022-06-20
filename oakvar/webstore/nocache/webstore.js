@@ -9,9 +9,9 @@ var installQueue = [];
 var installInfo = {};
 var baseModuleNames = [];
 var storeUrl = null;
-var storeurl = $.get('/store/getstoreurl').done(function(response) {
+$.get('/store/getstoreurl').done(function(response) {
     storeUrl = response;
-});
+})
 var newModuleAvailable = false;
 var baseModuleUpdateAvailable = false;
 var storeFirstOpen = true;
