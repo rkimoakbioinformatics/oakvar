@@ -720,7 +720,7 @@ def get_parser_fn_module():
     parser_ov_module_uninstall.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_ov_module_uninstall.r_examples = [  # type: ignore
         "# Uninstall the ClinVar module without confirmation",
-        '#roakvar::module.uninstall(modules="clinvar", force=True)'
+        '#roakvar::module.uninstall(modules="clinvar", force=True)',
     ]
 
     # info

@@ -19,7 +19,6 @@ def setup_system(args):
     from .sysadmin_const import sys_conf_path_key
     from .sysadmin import get_env_key
 
-
     # load sys conf.
     conf = None
     sys_conf_path = args.get("setup_file")
@@ -593,6 +592,7 @@ def get_ov_store_cache_conn(conf=None):
     from sqlite3 import connect
     from .sysadmin_const import ov_store_cache_fn
     from os.path import join
+
     conf_dir: Optional[str] = get_conf_dir(conf=conf)
     if conf_dir:
         ov_store_cache_path = join(conf_dir, ov_store_cache_fn)
@@ -600,6 +600,7 @@ def get_ov_store_cache_conn(conf=None):
         cursor = conn.cursor()
         return conn, cursor
     return None, None
+
 
 def drop_ov_store_cache(conf=None):
     conn, c = get_ov_store_cache_conn(conf=conf)
@@ -609,6 +610,7 @@ def drop_ov_store_cache(conf=None):
     c.execute(q)
     conn.commit()
 
+
 def create_ov_store_cache(conf=None):
     conn, c = get_ov_store_cache_conn(conf=conf)
     if not conn or not c:
@@ -617,10 +619,14 @@ def create_ov_store_cache(conf=None):
     c.execute(q)
     conn.commit()
 
-def fetch_ov_store_cache(conf: Optional[dict]=None, email: Optional[str]=None, pw: Optional[str]=None):
+
+def fetch_ov_store_cache(
+    conf: Optional[dict] = None, email: Optional[str] = None, pw: Optional[str] = None
+):
     from .sysadmin_const import ov_store_email_key
     from .sysadmin_const import ov_store_pw_key
     from requests import Session
+
     s = Session()
     if not email:
         email = get_sys_conf_value(ov_store_email_key)
@@ -648,5 +654,3 @@ def fetch_ov_store_cache(conf: Optional[dict]=None, email: Optional[str]=None, p
         q = f"insert into modules ( name, type, code_version, data_version, code_size, data_size, code_url, data_url, readme_url, conf_url, description, conf, store ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         c.execute(q, row)
     conn.commit()
-
-

@@ -639,9 +639,9 @@ class MasterCravatConverter(object):
                         )
                 except Exception as e:
                     self._log_conversion_error(read_lnum, l, e)
-                    #import traceback
+                    # import traceback
 
-                    #traceback.print_exc()
+                    # traceback.print_exc()
                     continue
             f.close()
             cur_time = time()

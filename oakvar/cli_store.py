@@ -204,11 +204,12 @@ def get_parser_fn_store():
     parser_cli_store_createaccount.add_argument(
         "email", help="An email address is used as the account user name."
     )
+    parser_cli_store_createaccount.add_argument("pw", help="Password")
     parser_cli_store_createaccount.add_argument(
-        "pw", help="Password"
+        "--channel",
+        default="oakvar",
+        help="Channel to create an account in. oakvar or open-cravat",
     )
-    parser_cli_store_createaccount.add_argument(
-        "--channel", default="oakvar", help="Channel to create an account in. oakvar or open-cravat")
     parser_cli_store_createaccount.add_argument(
         "--quiet", action="store_true", default=None, help="Run quietly"
     )

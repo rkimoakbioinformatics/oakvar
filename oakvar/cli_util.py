@@ -802,7 +802,7 @@ def get_parser_fn_util():
     parser_fn_util_filtersqlite.r_examples = [  # type: ignore
         "# Filter an analysis result file with an SQL filter set",
         '#roakvar::util.filtersqlite(paths="example.sqlite", ',
-        '#  filtersql=\'base__so=="MIS" and gnomad__af>0.01\')',
+        "#  filtersql='base__so==\"MIS\" and gnomad__af>0.01')",
         "# Filter two analysis result files with a filter definition file",
         '#roakvar::util.filtersqlite(paths=list("example1.sqlite", ',
         '#  "example2.sqlite"), filterpath="filter.json")',

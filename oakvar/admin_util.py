@@ -602,6 +602,7 @@ def get_install_deps(module_name, version=None, skip_installed=True):
     # If input module version not provided, set to highest
     if version is None:
         from .store_utils import get_latest_remote_module_version
+
         version = get_latest_remote_module_version(module_name)
     config = get_mic().get_remote_config(module_name, version=version)
     req_list = config.get("requires", [])
@@ -866,7 +867,6 @@ def get_remote_data_version(module_name, version):
         return version
 
 
-
 def get_remote_oc_manifest():
     mic = get_mic()
     if not mic.remote:
@@ -1042,6 +1042,7 @@ def input_formats():
 def install_pypi_dependencies(config: dict, args={}):
     from subprocess import run
     from .util import quiet_print
+
     module_name = config.get("name")
     pypi_deps = config.get("requires_pypi", [])
     pypi_deps.extend(config.get("pypi_dependency", []))
@@ -1077,6 +1078,7 @@ def install_pypi_dependencies(config: dict, args={}):
         return False
     else:
         return True
+
 
 def install_module(
     module_name,
@@ -1188,11 +1190,11 @@ def install_module(
             ):
                 raise KillInstallException
         stage_handler.stage_start("verify_code")
-        #code_manifest_url = store_path_builder.module_code_manifest(
+        # code_manifest_url = store_path_builder.module_code_manifest(
         #    module_name, version
-        #)
-        #code_manifest = yaml.safe_load(get_file_to_string(code_manifest_url))
-        #verify_against_manifest(temp_dir, code_manifest)
+        # )
+        # code_manifest = yaml.safe_load(get_file_to_string(code_manifest_url))
+        # verify_against_manifest(temp_dir, code_manifest)
         os.remove(zipfile_path)
         if install_state:
             if (
@@ -1236,11 +1238,11 @@ def install_module(
                     ):
                         raise KillInstallException
                 stage_handler.stage_start("verify_data")
-                #data_manifest_url = store_path_builder.module_data_manifest(
+                # data_manifest_url = store_path_builder.module_data_manifest(
                 #    module_name, remote_data_version
-                #)
-                #data_manifest = yaml.safe_load(get_file_to_string(data_manifest_url))
-                #verify_against_manifest(temp_dir, data_manifest)
+                # )
+                # data_manifest = yaml.safe_load(get_file_to_string(data_manifest_url))
+                # verify_against_manifest(temp_dir, data_manifest)
                 os.remove(data_path)
                 if install_state:
                     if (

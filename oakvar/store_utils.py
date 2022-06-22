@@ -453,28 +453,35 @@ def get_latest_remote_module_version(module_name) -> Optional[str]:
         version = get_latest_remote_module_version_old(module_name)
     return version
 
+
 def get_latest_remote_module_version_old(module_name):
     """
     Returns latest remotely available version of a module.
     """
     from .admin_util import get_mic
+
     mic = get_mic()
     if not mic.remote:
         mic.update_remote()
     if mic and mic.remote:
         return mic.remote[module_name]["latest_version"]
 
+
 def db_func(func):
     def encl_func(*args, **kwargs):
         from .sysadmin import get_ov_store_cache_conn
+
         conn, c = get_ov_store_cache_conn()
         ret = func(*args, conn=conn, c=c, **kwargs)
         return ret
 
     return encl_func
 
+
 @db_func
-def get_latest_remote_module_version_from_ov_store_cache(module_name, conn=None, c=None):
+def get_latest_remote_module_version_from_ov_store_cache(
+    module_name, conn=None, c=None
+):
     if not conn or not c:
         return None
     q = f"select code_version from modules where name=?"
@@ -494,8 +501,11 @@ def get_remote_module_config(module_name, version=None):
         conf = get_remote_module_config_old(module_name, version=version)
     return conf
 
+
 @db_func
-def get_remote_module_config_from_ov_store_cache(module_name, version=None, conn=None, c=None):
+def get_remote_module_config_from_ov_store_cache(
+    module_name, version=None, conn=None, c=None
+):
     if not conn or not c:
         return None
     q = f"select conf from modules where name=? and code_version=?"
@@ -524,7 +534,9 @@ def get_remote_module_config_old(module_name, version=None):
 
 
 @db_func
-def get_code_url_ov_store_cache(module_name: str, version=None, conn=None, c=None) -> Optional[str]:
+def get_code_url_ov_store_cache(
+    module_name: str, version=None, conn=None, c=None
+) -> Optional[str]:
     if not conn or not c:
         return None
     if not version:
@@ -539,7 +551,9 @@ def get_code_url_ov_store_cache(module_name: str, version=None, conn=None, c=Non
 
 
 @db_func
-def get_data_url_ov_store_cache(module_name: str, version=None, conn=None, c=None) -> Optional[str]:
+def get_data_url_ov_store_cache(
+    module_name: str, version=None, conn=None, c=None
+) -> Optional[str]:
     if not conn or not c:
         return None
     if not version:
@@ -552,8 +566,11 @@ def get_data_url_ov_store_cache(module_name: str, version=None, conn=None, c=Non
     else:
         return ret[0]
 
+
 @db_func
-def get_config_url_ov_store_cache(module_name: str, version=None, conn=None, c=None) -> Optional[str]:
+def get_config_url_ov_store_cache(
+    module_name: str, version=None, conn=None, c=None
+) -> Optional[str]:
     if not conn or not c:
         return None
     if not version:
@@ -566,8 +583,10 @@ def get_config_url_ov_store_cache(module_name: str, version=None, conn=None, c=N
     else:
         return ret[0]
 
+
 def get_code_url(module_name: str, version=None) -> Optional[str]:
     from .sysadmin import get_sys_conf_value
+
     if not version:
         version = get_latest_remote_module_version(module_name)
     if not version:
@@ -578,12 +597,15 @@ def get_code_url(module_name: str, version=None) -> Optional[str]:
     oc_store_module_url = get_sys_conf_value("oc_store_module_url")
     if not oc_store_module_url:
         return None
-    code_url = "/".join([oc_store_module_url, module_name, version, module_name + ".code.zip"])
+    code_url = "/".join(
+        [oc_store_module_url, module_name, version, module_name + ".code.zip"]
+    )
     return code_url
 
 
 def get_data_url(module_name: str, version=None) -> Optional[str]:
     from .sysadmin import get_sys_conf_value
+
     if not version:
         version = get_latest_remote_module_version(module_name)
     if not version:
@@ -594,11 +616,15 @@ def get_data_url(module_name: str, version=None) -> Optional[str]:
     oc_store_module_url = get_sys_conf_value("oc_store_module_url")
     if not oc_store_module_url:
         return None
-    data_url = "/".join([oc_store_module_url, module_name, version, module_name + ".data.zip"])
+    data_url = "/".join(
+        [oc_store_module_url, module_name, version, module_name + ".data.zip"]
+    )
     return data_url
+
 
 def get_config_url(module_name: str, version=None) -> Optional[str]:
     from .sysadmin import get_sys_conf_value
+
     if not version:
         version = get_latest_remote_module_version(module_name)
     if not version:
@@ -609,6 +635,7 @@ def get_config_url(module_name: str, version=None) -> Optional[str]:
     oc_store_module_url = get_sys_conf_value("oc_store_module_url")
     if not oc_store_module_url:
         return None
-    config_url = "/".join([oc_store_module_url, module_name, version, module_name + ".yml"])
+    config_url = "/".join(
+        [oc_store_module_url, module_name, version, module_name + ".yml"]
+    )
     return config_url
-
