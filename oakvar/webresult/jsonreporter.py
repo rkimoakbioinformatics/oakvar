@@ -1,7 +1,5 @@
-from oakvar.cli_report import CravatReport
+from ..cli.report import CravatReport
 import sys
-import datetime
-import oakvar.constants as constants
 
 
 class Reporter(CravatReport):
@@ -41,7 +39,7 @@ def main():
 
 def test():
     reporter = Reporter(["", "d:\\git\\oakvar\\tmp\\job\\in1000.sqlite"])
-    data = reporter.run()
+    reporter.run()
     reporter = Reporter(
         [
             "",
@@ -50,8 +48,4 @@ def test():
             '{"variant": {"thousandgenomes__af": ">0.1"}}',
         ]
     )
-    data = reporter.run()
-
-    # if __name__ == '__main__':
-    # main()
-    test()
+    reporter.run()

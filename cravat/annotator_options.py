@@ -1,1 +1,1 @@
-from oakvar.annotator_options import *
+from oakvar..annotator_options import *

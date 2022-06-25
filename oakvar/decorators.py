@@ -33,9 +33,12 @@ def cli_func(func):
             handle_exception(e)
 
     def get_args(*args, **kwargs):
-        from .util import get_args
+        from .util.util import get_args
+        from inspect import signature
 
-        parser = get_parser(func.__name__)
+        s = signature(func)
+        name = s.parameters["__name__"].default
+        parser = get_parser(name)
         args = get_args(parser, args, kwargs)
         return args
 
@@ -52,9 +55,16 @@ def get_parser(parser_name):
         ppp_dict = get_commands(pp_parser)
         if ppp_dict:
             for ppp_cmd, ppp_parser in ppp_dict.items():
-                cmd = f"{pp_cmd}_{ppp_cmd}"
-                if cmd == parser_name:
-                    return ppp_parser
+                pppp_dict = get_commands(ppp_parser)
+                if pppp_dict:
+                    for pppp_cmd, pppp_parser in pppp_dict.items():
+                        cmd = f"{pp_cmd} {ppp_cmd} {pppp_cmd}"
+                        if cmd == parser_name:
+                            return pppp_parser
+                else:
+                    cmd = f"{pp_cmd} {ppp_cmd}"
+                    if cmd == parser_name:
+                        return ppp_parser
         else:
             cmd = f"{pp_cmd}"
             if cmd == parser_name:

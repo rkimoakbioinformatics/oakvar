@@ -101,7 +101,7 @@ class NoVariantError(ExpectedException):
         super().__init__("Reference and alternate alleles are the same.")
 
 
-class NoInputException(ExpectedException):
+class NoInput(ExpectedException):
     traceback = False
     halt = True
 
@@ -281,6 +281,50 @@ class WrongInput(ExpectedException):
 
     def __init__(self, msg=None):
         if msg is not None:
-            super().__init__(f"error: input does not exist. {msg}")
+            super().__init__(f"wrong input. {msg}")
         else:
-            super().__init__(f"error: input does not exist.")
+            super().__init__(f"wrong input")
+
+
+# store-related exceptions
+class ClientError(object):
+    code = 0
+    message = "Unspecified client error"
+
+
+class InvalidModuleName(ClientError):
+    code = 1
+    message = "Invalid module name"
+
+
+class InvalidVersionNumber(ClientError):
+    code = 2
+    message = "Invalid version number"
+
+
+class WrongDeveloper(ClientError):
+    code = 3
+    message = "Developer does not have permission to edit this module"
+
+
+class VersionExists(ClientError):
+    code = 4
+    message = "Version already exists"
+
+
+class VersionDecrease(ClientError):
+    code = 5
+    message = "Version must increase"
+
+
+class EmailUnverified(ClientError):
+    code = 6
+    message = "Email address unverified. Check your email for instructions to verify your email address"
+
+
+class NoSuchModule(ClientError):
+    code = 7
+    message = "Module does not exist"
+
+
+# end of store-related exceptions

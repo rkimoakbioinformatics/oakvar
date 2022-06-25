@@ -1,0 +1,7 @@
+converter: converter
+genemapper: gencode
+aggregator: aggregator
+gui_port: 8060
+multicore_mapper_mode: true
+last_assembly: hg38
+default_assembly: hg38

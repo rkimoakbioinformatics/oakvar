@@ -1,49 +1,49 @@
-from .cli_version import version
-from .cli_util import util_sqliteinfo
-from .cli_util import util_mergesqlite
-from .cli_util import util_filtersqlite
-from .cli_util import util_addjob
-from .cli_test import util_test
-from .cli_system import system_setup
-from .cli_system import system_md
-from .cli_system import system_config
-from .cli_store import store_verifyemail
-from .cli_store import store_resetpassword
-from .cli_store import store_publish
-from .cli_store import store_createaccount
-from .cli_store import store_checklogin
-from .cli_store import store_changepassword
-from .cli_store import store_fetch
-from .cli_store import store_pack
-from .cli_new import new_annotator
-from .cli_new import new_exampleinput
-from .cli_issue import issue
-from .cli_gui import gui
-from .cli_report import report
-from .cli_run import run
-from .cli_module import module_update
-from .cli_module import module_uninstall
-from .cli_module import module_ls
-from .cli_module import module_installbase
-from .cli_module import module_install
-from .cli_module import module_info
-from .cli_config import config_oakvar
+from .cli.version import version
+from .cli.util import sqliteinfo
+from .cli.util import mergesqlite
+from .cli.util import filtersqlite
+from .cli.util import addjob
+from .cli.test import test
+from .cli.system import setup
+from .cli.system import md
+from .cli.system import config
+from .cli.store import publish
+from .cli.store.account import verify
+from .cli.store.account import reset
+from .cli.store.account import create
+from .cli.store.account import check
+from .cli.store.account import change
+from .cli.store import fetch
+from .cli.store import pack
+from .cli.new import annotator
+from .cli.new import exampleinput
+from .cli.issue import issue
+from .cli.gui import gui
+from .cli.report import report
+from .cli.run import run
+from .cli.module import update
+from .cli.module import uninstall
+from .cli.module import ls
+from .cli.module import installbase
+from .cli.module import install
+from .cli.module import info
+from .cli.config import user
 from . import __main__ as cli
-from . import constants
+from . import consts
 from .exceptions import *
-from .constants import crx_def
-from .cli_run import Cravat
-from .cravat_filter import CravatFilter
-from .cli_report import CravatReport
+from .consts import crx_def
+from .cli.run import Cravat
+from .base.cravat_filter import CravatFilter
+from .cli.report import CravatReport
 
 BaseReport = CravatReport
-from .base_commonmodule import BaseCommonModule
-from .base_postaggregator import BasePostAggregator
-from .base_mapper import BaseMapper
-from .base_annotator import BaseAnnotator
-from .base_converter import BaseConverter
-from . import inout
-from . import admin_util
+from .base.commonmodule import BaseCommonModule
+from .base.postaggregator import BasePostAggregator
+from .base.mapper import BaseMapper
+from .base.annotator import BaseAnnotator
+from .base.converter import BaseConverter
+from .util import inout
+from .util import admin_util
 import signal
 
 
@@ -80,7 +80,7 @@ def raise_break(__signal_number__, __stack_frame__):
 
 
 signal.signal(signal.SIGINT, raise_break)
-# from .cli_util import ov_util_updateresult
+# from .cli.util import ov_util_updateresult
 
 
 wgs = None
@@ -96,18 +96,11 @@ if (
     pass
 if CravatReport or CravatFilter or Cravat:
     pass
-if crx_def or constants:
+if crx_def or consts:
     pass
 if cli or wgs:
     pass
-if (
-    module_info
-    or module_install
-    or module_installbase
-    or module_ls
-    or module_uninstall
-    or module_update
-):
+if info or install or installbase or ls or uninstall or update:
     pass
 if report:
     pass
@@ -117,28 +110,19 @@ if gui:
     pass
 if issue:
     pass
-if new_exampleinput or new_annotator:
+if exampleinput or annotator:
     pass
-if (
-    store_verifyemail
-    or store_resetpassword
-    or store_publish
-    or store_createaccount
-    or store_checklogin
-    or store_changepassword
-    or store_fetch
-    or store_pack
-):
+if verify or reset or publish or create or check or change or fetch or pack:
     pass
-if system_setup or system_md or system_config:
+if setup or md or config:
     pass
-if util_test:
+if test:
     pass
-if util_addjob or util_filtersqlite or util_mergesqlite or util_sqliteinfo:
+if addjob or filtersqlite or mergesqlite or sqliteinfo:
     pass
 if version:
     pass
-if config_oakvar:
+if user:
     pass
 
 
@@ -170,15 +154,15 @@ def get_live_mapper(module_name):
                 "live": True,
             }
         )
-        module.base_setup()
+        module.setup()
     return module
 
 
 def get_module(module_name, module_type=None):
     from os.path import dirname
-    from .admin_util import get_local_module_info
-    from .admin_util import get_module_conf
-    from .util import load_class
+    from .module.local import get_local_module_info
+    from .module.local import get_module_conf
+    from .util.util import load_class
 
     ModuleClass = None
     module_conf = get_module_conf(module_name, module_type=module_type)
@@ -211,12 +195,12 @@ class LiveAnnotator:
         self.live_mapper = None
 
     def load_live_modules(self, mapper, annotator_names):
-        from .admin_util import get_mic
+        from .module.cache import get_module_cache
 
         self.live_mapper = get_live_mapper(mapper)
-        for module_name in get_mic().local.keys():
+        for module_name in get_module_cache().local.keys():
             if module_name in annotator_names:
-                module = get_mic().local[module_name]
+                module = get_module_cache().local[module_name]
                 if "secondary_inputs" in module.conf:
                     continue
                 annotator = get_live_annotator(module.name)
@@ -243,8 +227,8 @@ class LiveAnnotator:
         return d
 
     def annotate(self, crv):
-        from .inout import AllMappingsParser
-        from oakvar.constants import all_mappings_col_name
+        from .util.inout import AllMappingsParser
+        from .consts import all_mappings_col_name
 
         if "uid" not in crv:
             crv["uid"] = self.variant_uid

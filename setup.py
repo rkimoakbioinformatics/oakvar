@@ -1,4 +1,4 @@
-from setuptools import setup, Extension
+from setuptools import setup
 import os
 
 from pathlib import Path
@@ -7,29 +7,26 @@ this_directory = Path(__file__).parent
 long_description = (this_directory / "README.rst").read_text()
 
 oakvar_files = [
-    "cravat.yml",
-    "cravat-system.template.yml",
-    "modules/cravat.yml",
     "exampleinput",
+    "oakvar.yml",
+    "system.yml",
 ]
-for root, dirs, files in os.walk(os.path.join("oakvar", "webviewer")):
-    root_files = [os.path.join("..", root, f) for f in files]
-    oakvar_files.extend(root_files)
-for root, dirs, files in os.walk(os.path.join("oakvar", "liftover")):
-    root_files = [os.path.join("..", root, f) for f in files]
-    oakvar_files.extend(root_files)
-for root, dirs, files in os.walk(os.path.join("oakvar", "annotator_template")):
-    root_files = [os.path.join("..", root, f) for f in files]
-    oakvar_files.extend(root_files)
-for root, dirs, files in os.walk(os.path.join("oakvar", "webresult")):
-    root_files = [os.path.join("..", root, f) for f in files]
-    oakvar_files.extend(root_files)
-for root, dirs, files in os.walk(os.path.join("oakvar", "webstore")):
-    root_files = [os.path.join("..", root, f) for f in files]
-    oakvar_files.extend(root_files)
-for root, dirs, files in os.walk(os.path.join("oakvar", "websubmit")):
-    root_files = [os.path.join("..", root, f) for f in files]
-    oakvar_files.extend(root_files)
+for d in [
+    "annotator_template",
+    "base",
+    "cli",
+    "liftover",
+    "module",
+    "store",
+    "system",
+    "util",
+    "webresult",
+    "webstore",
+    "websubmit",
+]:
+    for root, dirs, files in os.walk(os.path.join("oakvar", d)):
+        root_files = [os.path.join("..", root, f) for f in files]
+        oakvar_files.extend(root_files)
 setup(
     name="oakvar",
     version="2.4.8",

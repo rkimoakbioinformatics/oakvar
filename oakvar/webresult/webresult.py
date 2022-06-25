@@ -3,21 +3,14 @@ import aiosqlite
 import json
 import sys
 import imp
-from oakvar import admin_util as au
-from oakvar import CravatFilter
-from oakvar.constants import base_smartfilters
+from .. import CravatFilter
+from ..consts import base_smartfilters
 from aiohttp import web
 import time
 
 wu = None
 logger = None
 server_ready = None
-
-
-def get_filepath(path):
-    filepath = os.sep.join(path.split("/"))
-    filepath = os.path.join(os.path.dirname(os.path.abspath(__file__)), filepath)
-    return filepath
 
 
 async def get_nowg_annot_modules(_):
@@ -319,8 +312,10 @@ async def get_status(request):
 
 
 def get_widgetlist(_):
+    from ..module.local import get_local_module_infos_of_type
+
     content = []
-    modules = au.get_local_module_infos_of_type("webviewerwidget")
+    modules = get_local_module_infos_of_type("webviewerwidget")
     for module_name in modules:
         module = modules[module_name]
         conf = module.conf
@@ -684,7 +679,7 @@ async def table_exists(cursor, table):
 
 
 def serve_widgetfile(request):
-    from ..sysadmin import get_modules_dir
+    from ..system import get_modules_dir
 
     filepath = os.path.join(
         get_modules_dir(),
@@ -699,7 +694,7 @@ def serve_widgetfile(request):
 
 
 async def serve_runwidget(request):
-    from ..sysadmin import get_modules_dir
+    from ..system import get_modules_dir
 
     path = "wg" + request.match_info["module"]
     queries = request.rel_url.query
@@ -720,7 +715,7 @@ async def serve_runwidget(request):
 
 
 async def serve_webapp_runwidget(request):
-    from ..sysadmin import get_modules_dir
+    from ..system import get_modules_dir
 
     module_name = request.match_info["module"]
     widget_name = request.match_info["widget"]
@@ -743,7 +738,7 @@ async def serve_webapp_runwidget(request):
 
 
 async def serve_runwidget_post(request):
-    from ..sysadmin import get_modules_dir
+    from ..system import get_modules_dir
 
     path = "wg" + request.match_info["module"]
     _, dbpath = await get_jobid_dbpath(request)

@@ -1,14 +1,14 @@
-from .cli_module import get_parser_fn_module
-from .cli_util import get_parser_fn_util
-from .cli_run import get_parser_ov_run
-from .cli_gui import get_parser_fn_gui
-from .cli_report import get_parser_fn_report
-from .cli_new import get_parser_fn_new
-from .cli_issue import get_parser_fn_issue
-from .cli_version import get_parser_cli_version
-from .cli_store import get_parser_fn_store
-from .cli_system import get_parser_ov_system
-from .cli_config import get_parser_fn_config
+from .cli.module import add_parser_ov_module
+from .cli.util import get_parser_fn_util
+from .cli.run import add_parser_ov_run
+from .cli.gui import get_parser_fn_gui
+from .cli.report import get_parser_fn_report
+from .cli.new import get_parser_fn_new
+from .cli.issue import get_parser_fn_issue
+from .cli.version import get_parser_fn_version
+from .cli.store import get_parser_fn_store
+from .cli.system import add_parser_ov_system
+from .cli.config import get_parser_fn_config
 
 
 def get_entry_parser():
@@ -19,25 +19,11 @@ def get_entry_parser():
         description="OakVar. Genomic variant analysis platform. https://github.com/rkimoakbioinformatics/oakvar"
     )
     p_entry.add_argument("--to", default="stdout")
-    sp_entry = p_entry.add_subparsers(title="Commands")
+    subparsers = p_entry.add_subparsers(title="Commands")
     # run
-    p_ov_run = sp_entry.add_parser(
-        "run",
-        parents=[get_parser_ov_run()],
-        add_help=False,
-        description="Run a job",
-        help="Run a job",
-        epilog="inputs should be the first argument",
-    )
-    p_ov_run.r_return = "A string, a named list, or a dataframe. Output of reporters"  # type: ignore
-    p_ov_run.r_examples = [  # type: ignore
-        "# Annotate the input file `input` with ClinVar and COSMIC modules ",
-        "# and make a VCF-format report of annotated variants.",
-        '#roakvar::run.input(inputs="input", annotators=list("clinvar", "cosmic"), reports="vcf")',
-    ]
-
+    add_parser_ov_run(subparsers)
     # report
-    p_report = sp_entry.add_parser(
+    p_report = subparsers.add_parser(
         "report",
         parents=[get_parser_fn_report()],
         description="Generate reports from a job",
@@ -51,8 +37,10 @@ def get_entry_parser():
         '#roakvar::report(dbpath="example.sqlite", reports="csv")',
     ]
 
+    # module
+    add_parser_ov_module(subparsers)
     # gui
-    p_gui = sp_entry.add_parser(
+    p_gui = subparsers.add_parser(
         "gui", parents=[get_parser_fn_gui()], add_help=False, help="Start the GUI"
     )
     p_gui.r_return = "`NULL`"  # type: ignore
@@ -64,15 +52,8 @@ def get_entry_parser():
     ]
 
     # module
-    _ = sp_entry.add_parser(
-        "module",
-        parents=[get_parser_fn_module()],
-        description="Manages OakVar modules",
-        add_help=False,
-        help="Manages OakVar modules",
-    )
     # config
-    _ = sp_entry.add_parser(
+    _ = subparsers.add_parser(
         "config",
         parents=[get_parser_fn_config()],
         description="Manages OakVar configurations",
@@ -80,7 +61,7 @@ def get_entry_parser():
         help="Manages OakVar configurations",
     )
     # new
-    _ = sp_entry.add_parser(
+    _ = subparsers.add_parser(
         "new",
         parents=[get_parser_fn_new()],
         description="Create new modules",
@@ -88,7 +69,7 @@ def get_entry_parser():
         help="Create OakVar example input files and module templates",
     )
     # store
-    _ = sp_entry.add_parser(
+    _ = subparsers.add_parser(
         "store",
         parents=[get_parser_fn_store()],
         description="Publish modules to the store",
@@ -96,7 +77,7 @@ def get_entry_parser():
         help="Publish modules to the store",
     )
     # util
-    _ = sp_entry.add_parser(
+    _ = subparsers.add_parser(
         "util",
         parents=[get_parser_fn_util()],
         description="Utilities",
@@ -104,9 +85,9 @@ def get_entry_parser():
         help="OakVar utilities",
     )
     # version
-    p_version = sp_entry.add_parser(
+    p_version = subparsers.add_parser(
         "version",
-        parents=[get_parser_cli_version()],
+        parents=[get_parser_fn_version()],
         add_help=False,
         help="Show version",
     )
@@ -117,7 +98,7 @@ def get_entry_parser():
     ]
 
     # issue
-    p_issue = sp_entry.add_parser(
+    p_issue = subparsers.add_parser(
         name="issue",
         parents=[get_parser_fn_issue()],
         add_help=False,
@@ -130,12 +111,9 @@ def get_entry_parser():
     ]
 
     # system
-    _ = sp_entry.add_parser(
-        name="system",
-        parents=[get_parser_ov_system()],
-        add_help=False,
-        help="Setup OakVar",
-    )
+    add_parser_ov_system(subparsers)
+    """_ = subparsers.add_parser(
+    )"""
     return p_entry
 
 
