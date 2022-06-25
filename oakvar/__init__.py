@@ -35,8 +35,6 @@ from .consts import crx_def
 from .cli.run import Cravat
 from .base.cravat_filter import CravatFilter
 from .cli.report import CravatReport
-
-BaseReport = CravatReport
 from .base.commonmodule import BaseCommonModule
 from .base.postaggregator import BasePostAggregator
 from .base.mapper import BaseMapper
@@ -46,7 +44,9 @@ from .util import inout
 from .util import admin_util
 import signal
 
-
+BaseReport = CravatReport
+# for compatibility with oc
+constants = consts
 def raise_break(__signal_number__, __stack_frame__):
     import os
     import platform

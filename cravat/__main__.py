@@ -1,1 +1,1 @@
-from oakvar..__main__ import *
+from oakvar.__main__ import *

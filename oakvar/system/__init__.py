@@ -29,7 +29,6 @@ def setup_system(args=None):
     # install base modules.
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
     args.update({"conf": conf})
-    print(f"@ args={args}")
     installbase(args)
     quiet_print(f"Done setting up the system", args=args)
 

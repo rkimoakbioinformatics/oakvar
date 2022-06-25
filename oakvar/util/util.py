@@ -292,7 +292,9 @@ def load_class(path, class_name=None):
     module_name = basename(path).split(".")[0]
     try:
         module = import_module(module_name)
-    except:
+    except Exception as e:
+        from traceback import print_exc
+        print_exc()
         try:
             if class_name:
                 spec = spec_from_file_location(class_name, path)
@@ -301,7 +303,8 @@ def load_class(path, class_name=None):
                     loader = spec.loader
                     if loader is not None:
                         loader.exec_module(module)
-        except:
+        except Exception as e2:
+            print_exc()
             raise
     if module:
         if class_name:
