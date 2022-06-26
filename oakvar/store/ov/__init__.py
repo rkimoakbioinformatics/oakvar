@@ -260,6 +260,8 @@ def fetch_ov_store_cache(
     from ...system import get_user_conf
     from requests import Session
     from ...util.util import quiet_print
+    from ...exceptions import StoreServerError
+    from ...exceptions import AuthorizationError
 
     if not conn or not c:
         return False
@@ -278,10 +280,14 @@ def fetch_ov_store_cache(
     store_url = get_sys_conf_value("store_url")
     if not store_url:
         return False
-    server_last_updated = get_server_last_updated(email, pw)
+    server_last_updated, status_code = get_server_last_updated(email, pw)
     local_last_updated = get_local_last_updated()
     clean = args.get("clean")
     if not server_last_updated:
+        if status_code == 401:
+            raise AuthorizationError()
+        elif status_code == 500:
+            raise StoreServerError()
         return False
     if not clean and local_last_updated and local_last_updated >= server_last_updated:
         quiet_print("No store update to fetch", args=args)
@@ -289,6 +295,10 @@ def fetch_ov_store_cache(
     url = f"{store_url}/fetch"
     res = s.get(url, params=params)
     if res.status_code != 200:
+        if res.status_code == 401:
+            raise AuthorizationError()
+        elif res.status_code == 500:
+            raise StoreServerError()
         return False
     q = f"delete from modules"
     c.execute(q)
@@ -304,7 +314,7 @@ def fetch_ov_store_cache(
     quiet_print("OakVar store cache has been fetched.", args=args)
 
 
-def get_server_last_updated(email: str, pw: str) -> Optional[float]:
+def get_server_last_updated(email: str, pw: str) -> Tuple[Optional[float], int]:
     from requests import Session
     from ...system import get_sys_conf_value
 
@@ -312,14 +322,14 @@ def get_server_last_updated(email: str, pw: str) -> Optional[float]:
     s.headers["User-Agent"] = "oakvar"
     store_url = get_sys_conf_value("store_url")
     if not store_url:
-        return False
+        return None, 0
     url = f"{store_url}/last_updated"
     params = {"email": email, "pw": pw}
     res = s.get(url, params=params)
     if res.status_code != 200:
-        return None
+        return None, res.status_code
     server_last_updated = float(res.json())
-    return server_last_updated
+    return server_last_updated, res.status_code
 
 
 @db_func
@@ -355,6 +365,7 @@ def get_manifest(conn=None, c=None) -> Optional[dict]:
             mi[name] = info
     return mi
 
+
 @db_func
 def get_readme(module_name: str, conn=None, c=None, version=None) -> Optional[str]:
     if not conn or not c:
@@ -370,4 +381,3 @@ def get_readme(module_name: str, conn=None, c=None, version=None) -> Optional[st
         if not out or store == "ov":
             out = readme
     return out
-

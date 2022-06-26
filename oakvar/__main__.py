@@ -51,7 +51,6 @@ def get_entry_parser():
         '#roakvar::gui(result="example.sqlite")',
     ]
 
-    # module
     # config
     _ = subparsers.add_parser(
         "config",

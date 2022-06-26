@@ -327,4 +327,12 @@ class NoSuchModule(ClientError):
     message = "Module does not exist"
 
 
+class AuthorizationError(ExpectedException):
+    traceback = False
+    halt = True
+
+    def __init__(self):
+        super().__init__(f"authorization failed")
+
+
 # end of store-related exceptions

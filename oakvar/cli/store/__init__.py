@@ -66,24 +66,23 @@ def pack(args, __name__="store pack"):
 
 def get_parser_fn_store():
     from argparse import ArgumentParser, RawDescriptionHelpFormatter
-    from ..store.account import get_parser_fn_store_account
 
     parser_fn_store = ArgumentParser(formatter_class=RawDescriptionHelpFormatter)
     subparsers = parser_fn_store.add_subparsers(title="Commands")
-    subparsers.add_parser(
-        "account",
-        parents=[get_parser_fn_store_account()],
-        add_help=False,
-        description="Manage OakVar accounts.",
-        help="Manage OakVar accounts.",
-    )
-    get_parser_fn_store_publish(subparsers)
-    get_parser_fn_store_fetch(subparsers)
-    get_parser_fn_store_pack(subparsers)
+    add_parser_store_account(subparsers)
+    add_parser_fn_store_publish(subparsers)
+    add_parser_fn_store_fetch(subparsers)
+    add_parser_fn_store_pack(subparsers)
     return parser_fn_store
 
 
-def get_parser_fn_store_publish(subparsers):
+def add_parser_store_account(subparsers):
+    from ..store.account import add_parser_fn_store_account
+
+    add_parser_fn_store_account(subparsers)
+
+
+def add_parser_fn_store_publish(subparsers):
     # publish
     parser_cli_store_publish = subparsers.add_parser(
         "publish", help="publishes a module."
@@ -135,7 +134,7 @@ def get_parser_fn_store_publish(subparsers):
     ]
 
 
-def get_parser_fn_store_fetch(subparsers):
+def add_parser_fn_store_fetch(subparsers):
     # fetch
     parser_cli_store_fetch = subparsers.add_parser(
         "fetch", help="fetch store information"
@@ -157,7 +156,7 @@ def get_parser_fn_store_fetch(subparsers):
     ]
 
 
-def get_parser_fn_store_pack(subparsers):
+def add_parser_fn_store_pack(subparsers):
     # pack
     parser_cli_store_pack = subparsers.add_parser(
         "pack", help="pack a module to register at OakVar store"
