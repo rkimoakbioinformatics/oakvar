@@ -12,18 +12,17 @@ def publish(args, __name__="store publish"):
     from ...system import get_system_conf
     from ...store.oc import publish_module
     from getpass import getpass
+    from ...system import consts
 
     if args.get("md"):
-        from ...system import consts
-
         consts.custom_modules_dir = args.get("md")
     sys_conf = get_system_conf()
-    if args.get("user") is None:
+    if not args.get("user"):
         if "publish_username" in sys_conf:
             args["user"] = sys_conf["publish_username"]
         else:
-            args["user"] = input("Username: ")
-    if args.get("password") is None:
+            args["user"] = input("Email: ")
+    if not args.get("password"):
         if "publish_password" in sys_conf:
             args["password"] = sys_conf["publish_password"]
         else:
@@ -90,29 +89,21 @@ def add_parser_fn_store_publish(subparsers):
     parser_cli_store_publish.add_argument("module", help="module to publish")
     data_group = parser_cli_store_publish.add_mutually_exclusive_group(required=True)
     data_group.add_argument(
-        "-d",
         "--data",
         action="store_true",
         default=False,
         help="publishes module with data.",
     )
     data_group.add_argument(
-        "-c", "--code", action="store_true", help="publishes module without data."
+        "--code", action="store_true", help="publishes module without data."
     )
     parser_cli_store_publish.add_argument(
-        "-u", "--user", default=None, help="user to publish as. Typically your email."
+        "--email", default=None, help="email of your account"
     )
     parser_cli_store_publish.add_argument(
-        "-p",
         "--password",
         default=None,
-        help="password for the user. Enter at prompt if missing.",
-    )
-    parser_cli_store_publish.add_argument(
-        "--force-yes",
-        default=False,
-        action="store_true",
-        help="overrides yes to overwrite question",
+        help="password of your account",
     )
     parser_cli_store_publish.add_argument(
         "--overwrite",
@@ -124,7 +115,12 @@ def add_parser_fn_store_publish(subparsers):
         "--md", default=None, help="Specify the root directory of OakVar modules"
     )
     parser_cli_store_publish.add_argument(
-        "--quiet", action="store_true", default=None, help="Run quietly"
+        "--quiet", action="store_true", default=None, help="run quietly"
+    )
+    parser_cli_store_publish.add_argument(
+        "--channel",
+        default="ov",
+        help="channel to publish. oakvar or open-cravat. Modules published to open-cravat are automatically available on the OakVar Store as well.",
     )
     parser_cli_store_publish.set_defaults(func=cli_store_publish)
     parser_cli_store_publish.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
@@ -136,11 +132,9 @@ def add_parser_fn_store_publish(subparsers):
 
 def add_parser_fn_store_fetch(subparsers):
     # fetch
-    parser_cli_store_fetch = subparsers.add_parser(
-        "fetch", help="fetch store information"
-    )
+    parser_cli_store_fetch = subparsers.add_parser("fetch", help="fetch store cache")
     parser_cli_store_fetch.add_argument(
-        "--quiet", action="store_true", default=None, help="Run quietly"
+        "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_store_fetch.add_argument(
         "--email", default=None, help="email of OakVar store account"
@@ -173,7 +167,7 @@ def add_parser_fn_store_pack(subparsers):
         help="Directory to make code and data zip files in",
     )
     parser_cli_store_pack.add_argument(
-        "--quiet", action="store_true", default=None, help="Run quietly"
+        "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_store_pack.set_defaults(func=cli_store_pack)
     parser_cli_store_pack.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore

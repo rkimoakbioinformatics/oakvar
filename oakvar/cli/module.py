@@ -686,7 +686,7 @@ def add_parser_ov_module(subparsers):
         "--md", default=None, help="Specify the root directory of OakVar modules"
     )
     parser_ov_module_uninstall.add_argument(
-        "--quiet", action="store_true", default=None, help="Run quietly"
+        "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_ov_module_uninstall.set_defaults(func=cli_module_uninstall)
     parser_ov_module_uninstall.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
@@ -715,7 +715,7 @@ def add_parser_ov_module(subparsers):
         "--to", default="return", help='"stdout" to stdout / "return" to return'
     )
     parser_ov_module_info.add_argument(
-        "--quiet", action="store_true", default=None, help="Run quietly"
+        "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_ov_module_info.set_defaults(func=cli_module_info)
     parser_ov_module_info.r_return = "A named list. Information of the queried module"  # type: ignore
@@ -777,7 +777,7 @@ def add_parser_ov_module(subparsers):
         "--to", default="return", help="stdout to print / return to return"
     )
     parser_ov_module_ls.add_argument(
-        "--quiet", action="store_true", default=None, help="Run quietly"
+        "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_ov_module_ls.set_defaults(func=cli_module_ls)
     parser_ov_module_ls.r_return = "A named list. List of modules"  # type: ignore

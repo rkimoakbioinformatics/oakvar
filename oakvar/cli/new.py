@@ -52,7 +52,7 @@ def get_parser_fn_new():
         help="Directory to make the example input file in",
     )
     parser_cli_new_exampleinput.add_argument(
-        "--quiet", action="store_true", default=None, help="Run quietly"
+        "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_new_exampleinput.set_defaults(func=cli_new_exampleinput)
     parser_cli_new_exampleinput.r_return = "A string. Location of the example input file"  # type: ignore

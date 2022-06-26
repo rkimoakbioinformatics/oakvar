@@ -63,7 +63,7 @@ def add_parser_ov_system_setup(subparsers):
         help="Performs clean installation",
     )
     parser_cli_ov_system_setup.add_argument(
-        "--quiet", action="store_true", default=None, help="Run quietly"
+        "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_ov_system_setup.set_defaults(func=cli_system_setup)
     parser_cli_ov_system_setup.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
@@ -88,7 +88,7 @@ def add_parser_ov_system_md(subparsers):
         "--to", default="return", help="'stdout' to print. 'return' to return."
     )
     parser_cli_system_md.add_argument(
-        "--quiet", action="store_true", default=None, help="Run quietly"
+        "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_system_md.set_defaults(func=cli_system_md)
     parser_cli_system_md.r_return = "A string. OakVar modules directory"  # type: ignore
@@ -111,7 +111,7 @@ def add_parser_ov_system_config(subparsers):
         "--to", default="return", help='"stdout" to print. "return" to return'
     )
     parser_cli_system_config.add_argument(
-        "--quiet", action="store_true", default=None, help="Run quietly"
+        "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_system_config.set_defaults(func=cli_system_config)
     parser_cli_system_config.r_return = "A named list. System config information"  # type: ignore

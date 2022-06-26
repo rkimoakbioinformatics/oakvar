@@ -127,7 +127,7 @@ def add_parser_fn_store_account_create(subparsers):
     )
     parser_cli_store_createaccount.add_argument("--pw", help="Password")
     parser_cli_store_createaccount.add_argument(
-        "--quiet", action="store_true", default=None, help="Run quietly"
+        "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_store_createaccount.set_defaults(func=cli_store_createaccount)
     parser_cli_store_createaccount.r_return = "A boolean. TRUE if successful, FALSE if not."  # type: ignore
@@ -149,7 +149,7 @@ def add_parser_fn_store_account_delete(subparsers):
     )
     parser_cli_store_deleteaccount.add_argument("--pw", required=True, help="Password")
     parser_cli_store_deleteaccount.add_argument(
-        "--quiet", action="store_true", default=None, help="Run quietly"
+        "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_store_deleteaccount.set_defaults(func=cli_store_deleteaccount)
     parser_cli_store_deleteaccount.r_return = "A boolean. TRUE if successful, FALSE if not."  # type: ignore
@@ -172,7 +172,7 @@ def add_parser_fn_store_account_change(subparsers):
         "--newpw", required=True, help="new password"
     )
     parser_cli_store_changepassword.add_argument(
-        "--quiet", action="store_true", default=None, help="Run quietly"
+        "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_store_changepassword.set_defaults(func=cli_store_changepassword)
     parser_cli_store_changepassword.r_return = "A string. Response from the store server"  # type: ignore
@@ -188,7 +188,7 @@ def add_parser_fn_store_account_reset(subparsers):
         "reset", help="resets OakVar store account password."
     )
     parser_cli_store_resetpassword.add_argument(
-        "--quiet", action="store_true", default=None, help="Run quietly"
+        "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_store_resetpassword.add_argument("--email", required=True, help="email")
     parser_cli_store_resetpassword.set_defaults(func=cli_store_resetpassword)
@@ -206,7 +206,7 @@ def add_parser_fn_store_account_verify(subparsers):
     )
     parser_cli_store_verifyemail.add_argument("email", help="email")
     parser_cli_store_verifyemail.add_argument(
-        "--quiet", action="store_true", default=None, help="Run quietly"
+        "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_store_verifyemail.set_defaults(func=cli_store_verifyemail)
     parser_cli_store_verifyemail.r_return = "`NULL`"  # type: ignore
@@ -224,7 +224,7 @@ def add_parser_fn_store_account_check(subparsers):
     parser_cli_store_checklogin.add_argument("--email", required=True, help="email")
     parser_cli_store_checklogin.add_argument("--pw", required=True, help="password")
     parser_cli_store_checklogin.add_argument(
-        "--quiet", action="store_true", default=None, help="Run quietly"
+        "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_store_checklogin.set_defaults(func=cli_store_check)
     parser_cli_store_checklogin.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
@@ -240,7 +240,7 @@ def add_parser_fn_store_account_save(subparsers):
         "save", help="Store the email and password for OakVar store"
     )
     parser_cli_store_saveaccount.add_argument(
-        "--quiet", action="store_true", default=None, help="Run quietly"
+        "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_store_saveaccount.add_argument(
         "--email", required=True, help="email of an OakVar store account"
