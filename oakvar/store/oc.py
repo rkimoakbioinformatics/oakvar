@@ -2,16 +2,14 @@ from typing import Optional
 
 
 def oc_module_url(module_name: str) -> str:
-    from ..system import get_sys_conf_value
+    from .consts import oc_store_module_url
 
-    oc_store_module_url = get_sys_conf_value("oc_store_module_url")
     return "/".join([oc_store_module_url, "modules", module_name])
 
 
 def oc_module_download_counts_url() -> str:
-    from ..system import get_sys_conf_value
+    from .consts import oc_store_module_url
 
-    oc_store_module_url = get_sys_conf_value("oc_store_module_url")
     return "/".join([oc_store_module_url, "download-counts.yml"])
 
 

@@ -1529,7 +1529,8 @@ function addLogo(moduleName, sdiv) {
         if (moduleInfo.uselocalonstore) {
             img.src = '/store/locallogo?module=' + moduleName;
         } else {
-            img.src = storeUrl + '/modules/' + moduleName + '/' + moduleInfo['latest_version'] + '/logo.png';
+            //img.src = storeUrl + '/modules/' + moduleName + '/' + moduleInfo['latest_version'] + '/logo.png';
+            img.src = remoteModuleInfo[moduleName].logo_url
         }
         addEl(sdiv, img);
         storeLogos[moduleName] = img;

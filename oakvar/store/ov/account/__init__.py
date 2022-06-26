@@ -91,8 +91,8 @@ def delete_account(args=None) -> bool:
 def save(email: str, pw: str, args={}):
     from ....system import get_user_conf
     from ....system import get_user_conf_path
-    from ....system.consts import ov_store_email_key
-    from ....system.consts import ov_store_pw_key
+    from ....store.consts import ov_store_email_key
+    from ....store.consts import ov_store_pw_key
     from ....system import save_user_conf
     from ....util.util import quiet_print
 

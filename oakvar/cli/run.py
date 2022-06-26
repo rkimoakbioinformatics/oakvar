@@ -270,6 +270,7 @@ class Cravat(object):
         from ..exceptions import SetupError
         import os
         from ..util import admin_util as au
+
         if self.args is None:
             raise SetupError()
         if self.logger:

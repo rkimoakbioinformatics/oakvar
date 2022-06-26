@@ -103,11 +103,11 @@ def fetch_install_queue(install_queue, install_state, local_modules_changed):
 
 
 async def get_remote_manifest(request):
-    from ..store.oc import get_oc_manifest
+    from ..store.ov import get_manifest
 
     content = {"data": {}, "tagdesc": {}}
     try:
-        oc_manifest = get_oc_manifest()
+        oc_manifest = get_manifest()
         if oc_manifest:
             content["data"] = oc_manifest
     except:

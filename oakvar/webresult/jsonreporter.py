@@ -1,4 +1,4 @@
-from ..cli.report import CravatReport
+from oakvar.cli.report import CravatReport
 import sys
 
 

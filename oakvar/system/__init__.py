@@ -156,8 +156,8 @@ def show_email_verify_action_banner():
 
 
 def setup_store_account(args={}, conf=None, email=None, pw=None):
-    from .consts import ov_store_email_key
-    from .consts import ov_store_pw_key
+    from ..store.consts import ov_store_email_key
+    from ..store.consts import ov_store_pw_key
     from ..util.util import is_valid_email
     from ..util.util import is_valid_pw
     from ..store.ov.account import create
@@ -628,7 +628,7 @@ def get_default_root_dir(conf=None):
     from ..util.admin_util import get_platform
     from .consts import root_dir_key
 
-    if conf is not None and root_dir_key in conf:
+    if conf and root_dir_key in conf:
         return conf.get(root_dir_key)
     pl = get_platform()
     root_dir = None

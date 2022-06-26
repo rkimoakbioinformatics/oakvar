@@ -53,30 +53,31 @@ def module_info_latest_version(module_name, conn=None, c=None):
 
 
 @db_func
-def module_config(module_name, version=None, conn=None, c=None):
-    from requests import get
-    from json import dumps
+def module_config(module_name, version=None, conn=None, c=None) -> Optional[dict]:
     from json import loads
+    from distutils.version import LooseVersion
 
     if not conn or not c:
         return None
-    if not version:
-        return None
-    q = f"select conf, conf_url, store from modules where name=? and code_version=?"
-    c.execute(q, (module_name, version))
-    ret = c.fetchone()
-    if ret:
-        return loads(ret[0])
+    if version:
+        q = f"select code_version, conf, store from modules where name=? and code_version=?"
+        c.execute(q, (module_name, version))
     else:
-        _, conf_url, _ = ret
-        if conf_url:
-            r = get(conf_url)
-            if r.status_code == 200:
-                conf = r.json()
-                q = f"update modules set conf=? where name=? and code_version=?"
-                c.execute(q, (dumps(conf), module_name, version))
-                conn.commit()
-                return conf
+        q = f"select code_version, conf, store from modules where name=?"
+        c.execute(q, (module_name,))
+    ret = c.fetchall()
+    out = None
+    latest = None
+    if ret:
+        for v in ret:
+            code_ver, conf, store = v
+            if not out or store == "ov":
+                if not latest or LooseVersion(code_ver) > latest:
+                    out = conf
+                    latest = LooseVersion(code_ver)
+    if out:
+        return loads(out)
+    else:
         return None
 
 
@@ -235,11 +236,11 @@ def create_ov_store_cache(conf=None, args={}):
     clean = args.get("clean")
     table = "modules"
     if clean or not table_exists(table):
-        q = f"create table modules ( name text, type text, code_version text, data_version text, code_size int, data_size int, code_url text, data_url text, readme_url, conf_url text, description text, readme text, conf text, info text, store text )"
+        q = f"create table modules ( name text, type text, code_version text, data_version text, code_size int, data_size int, code_url text, data_url text, readme_url, logo_url text, conf_url text, description text, readme text, conf text, info text, store text, primary key ( name, code_version, store ) )"
         c.execute(q)
     table = "info"
     if clean or not table_exists(table):
-        q = f"create table info ( key text, value text )"
+        q = f"create table info ( key text primary key, value text )"
         c.execute(q)
     conn.commit()
 
@@ -254,6 +255,7 @@ def fetch_ov_store_cache(
 ):
     from ..consts import ov_store_email_key
     from ..consts import ov_store_pw_key
+    from ..consts import ov_store_last_updated_col
     from ...system import get_sys_conf_value
     from ...system import get_user_conf
     from requests import Session
@@ -282,6 +284,7 @@ def fetch_ov_store_cache(
     if not server_last_updated:
         return False
     if not clean and local_last_updated and local_last_updated >= server_last_updated:
+        quiet_print("No store update to fetch", args=args)
         return True
     url = f"{store_url}/fetch"
     res = s.get(url, params=params)
@@ -295,6 +298,8 @@ def fetch_ov_store_cache(
     for row in res["data"]:
         q = f"insert into modules ( {', '.join(cols)} ) values ( {', '.join(['?'] * len(cols))} )"
         c.execute(q, row)
+    q = f"insert or replace into info ( key, value ) values ( ?, ? )"
+    c.execute(q, (ov_store_last_updated_col, str(server_last_updated)))
     conn.commit()
     quiet_print("OakVar store cache has been fetched.", args=args)
 
@@ -319,12 +324,50 @@ def get_server_last_updated(email: str, pw: str) -> Optional[float]:
 
 @db_func
 def get_local_last_updated(conn=None, c=None) -> Optional[float]:
+    from ..consts import ov_store_last_updated_col
+
     if not conn or not c:
         return None
     q = "select value from info where key=?"
-    c.execute(q, ("last_updated",))
+    c.execute(q, (ov_store_last_updated_col,))
     res = c.fetchone()
     if not res:
         return None
     last_updated = float(res[0])
     return last_updated
+
+
+@db_func
+def get_manifest(conn=None, c=None) -> Optional[dict]:
+    from json import loads
+
+    if not conn or not c:
+        return None
+    q = "select name, info, logo_url, store from modules"
+    c.execute(q)
+    res = c.fetchall()
+    mi = {}
+    for r in res:
+        name, info, logo_url, store = r
+        if name not in mi or store == "ov":
+            info = loads(info)
+            info["logo_url"] = logo_url
+            mi[name] = info
+    return mi
+
+@db_func
+def get_readme(module_name: str, conn=None, c=None, version=None) -> Optional[str]:
+    if not conn or not c:
+        return None
+    if not version:
+        version = module_latest_version(module_name)
+    q = "select readme, store from modules where name=? and code_version=?"
+    c.execute(q, (module_name, version))
+    res = c.fetchall()
+    out = None
+    for r in res:
+        readme, store = r
+        if not out or store == "ov":
+            out = readme
+    return out
+

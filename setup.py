@@ -2,6 +2,7 @@ from setuptools import setup
 import os
 from pathlib import Path
 
+
 def walk_and_add(d, pkg_files):
     folders = [
         "annotator_template",
@@ -25,6 +26,7 @@ def walk_and_add(d, pkg_files):
         if root_f in folders and root_l != "__pycache__":
             root_files = [os.path.join("..", root, f) for f in files]
             pkg_files.extend(root_files)
+
 
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.rst").read_text()

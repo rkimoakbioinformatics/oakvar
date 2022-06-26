@@ -47,12 +47,6 @@ default_assembly = "hg38"
 default_postaggregator_names = ["tagsampler", "casecontrol", "varmeta", "vcfinfo"]
 
 #
-# store
-#
-ov_store_email_key = "ov_store_email"
-ov_store_pw_key = "ov_store_pw"
-
-#
 # oc
 #
 oc_system_conf_fname = "cravat-system.yml"

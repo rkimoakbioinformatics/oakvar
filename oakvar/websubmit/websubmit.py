@@ -38,7 +38,7 @@ cravat_multiuser = None
 
 class FileRouter(object):
     def __init__(self):
-        #self.root = os.path.dirname(__file__)
+        # self.root = os.path.dirname(__file__)
         self.input_fname = "input"
         self.report_extensions = {"text": ".tsv", "excel": ".xlsx", "vcf": ".vcf"}
         self.db_extension = ".sqlite"

@@ -100,14 +100,13 @@ class ModuleCache(object):
                     self.local[module_name] = module_dir
 
     def get_remote_readme(self, module_name, version=None):
-        from ..store import fetch_file_content_to_string
-        from ..store import get_module_piece_url
+        from ..store.ov import get_readme
 
-        readme_url = get_module_piece_url(module_name, "readme", version=version)
-        readme = fetch_file_content_to_string(readme_url)
-        # add to cache
         if module_name not in self.remote_readme:
             self.remote_readme[module_name] = {}
+        if version in self.remote_readme[module_name]:
+            return self.remote_readme[module_name][version]
+        readme = get_readme(module_name, version=version)
         self.remote_readme[module_name][version] = readme
         return readme
 

@@ -47,6 +47,8 @@ import signal
 BaseReport = CravatReport
 # for compatibility with oc
 constants = consts
+
+
 def raise_break(__signal_number__, __stack_frame__):
     import os
     import platform
