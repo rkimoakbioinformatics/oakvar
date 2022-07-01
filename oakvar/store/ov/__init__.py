@@ -382,9 +382,10 @@ def get_readme(module_name: str, conn=None, c=None, version=None) -> Optional[st
             out = readme
     return out
 
+
 def get_store_url() -> str:
     from ...system import get_system_conf
+
     sys_conf = get_system_conf()
     store_url = sys_conf["store_url"]
     return store_url
-

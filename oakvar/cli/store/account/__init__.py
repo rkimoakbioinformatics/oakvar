@@ -84,6 +84,7 @@ def check(args, __name__="store account check"):
 def cli_store_account_login(args):
     if not getattr(args, "pw"):
         from getpass import getpass
+
         pw = getpass()
         setattr(args, "pw", pw)
     print(f"@ args={args}")
@@ -123,7 +124,9 @@ def add_parser_fn_store_account_create(subparsers):
         "create", help="creates a OakVar store developer account."
     )
     parser_cli_store_createaccount.add_argument(
-        "--email", required=True, help="An email address is used as the account user name."
+        "--email",
+        required=True,
+        help="An email address is used as the account user name.",
     )
     parser_cli_store_createaccount.add_argument("--pw", help="Password")
     parser_cli_store_createaccount.add_argument(
@@ -249,5 +252,3 @@ def add_parser_fn_store_account_login(subparsers):
         "# Login to the OakVar Store",
         '#roakvar::store.account.login(email="user1", pw="password")',
     ]
-
-

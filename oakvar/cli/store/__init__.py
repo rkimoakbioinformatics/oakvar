@@ -126,11 +126,11 @@ def add_parser_fn_store_publish(subparsers):
     )
     parser_cli_store_publish.add_argument(
         "--code-url",
-        help="url of a code pack (made with `ov store pack`). Needed only for the OakVar Store"
+        help="url of a code pack (made with `ov store pack`). Needed only for the OakVar Store",
     )
     parser_cli_store_publish.add_argument(
         "--data-url",
-        help="url of a data pack (made with `ov store pack`). Needed only for the OakVar Store"
+        help="url of a data pack (made with `ov store pack`). Needed only for the OakVar Store",
     )
     parser_cli_store_publish.set_defaults(func=cli_store_publish)
     parser_cli_store_publish.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore

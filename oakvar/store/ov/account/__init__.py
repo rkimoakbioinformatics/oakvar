@@ -81,6 +81,7 @@ def delete(args={}) -> bool:
     from requests import post
     from ...ov import get_store_url
     from ....util.util import quiet_print
+
     token_path = get_id_token_path()
     if not exists(token_path):
         if not login(args=args):
@@ -100,6 +101,7 @@ def delete(args={}) -> bool:
     else:
         quiet_print(f"fail. {r.text}", args=args)
         return False
+
 
 def check(args={}) -> bool:
     from requests import get
@@ -162,6 +164,7 @@ def change(args={}) -> bool:
         quiet_print(f"server error", args=args)
         return False
 
+
 def login(args={}) -> bool:
     from requests import post
     from ....system import get_system_conf
@@ -191,19 +194,22 @@ def get_id_token_path():
     from os.path import join
     from ....system import get_user_conf_dir
     from ....store.consts import ov_store_id_token_fname
+
     user_conf_dir = get_user_conf_dir()
     token_path = join(user_conf_dir, ov_store_id_token_fname)
     return token_path
 
+
 def save_id_token(id_token):
     from json import dump
+
     token_path = get_id_token_path()
     print(f"@ token_path={token_path}")
     with open(token_path, "w") as wf:
         dump(id_token, wf)
 
 
-#def save(email: str, pw: str, args={}):
+# def save(email: str, pw: str, args={}):
 #    from ....system import get_user_conf
 #    from ....system import get_user_conf_path
 #    from ....store.consts import ov_store_email_key
@@ -219,7 +225,7 @@ def save_id_token(id_token):
 #    quiet_print(f"Email and password saved: {user_conf_path}", args=args)
 
 
-#def delete(args=None) -> bool:
+# def delete(args=None) -> bool:
 #    from requests import get
 #    from ....system import get_system_conf
 #    from ....util.util import quiet_print
@@ -246,5 +252,3 @@ def save_id_token(id_token):
 #            f"Deleting the account failed. The reason was: {r.reason}", args=args
 #        )
 #        return False
-
-
