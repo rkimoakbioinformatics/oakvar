@@ -27,14 +27,18 @@ def publish(args, __name__="store publish"):
             args["password"] = sys_conf["publish_password"]
         else:
             args["password"] = getpass()
-    return publish_module(
-        args.get("module"),
-        args.get("user"),
-        args.get("password"),
-        overwrite=args.get("overwrite"),
-        include_data=args.get("data"),
-        quiet=args.get("quiet"),
-    )
+    channel = args.get("channel")
+    if channel == "open-cravat":
+        return publish_module(
+            args.get("module"),
+            args.get("user"),
+            args.get("password"),
+            overwrite=args.get("overwrite"),
+            include_data=args.get("data"),
+            quiet=args.get("quiet"),
+        )
+    elif channel == "oakvar":
+        pass
 
 
 @cli_entry
@@ -89,13 +93,10 @@ def add_parser_fn_store_publish(subparsers):
     parser_cli_store_publish.add_argument("module", help="module to publish")
     data_group = parser_cli_store_publish.add_mutually_exclusive_group(required=True)
     data_group.add_argument(
-        "--data",
+        "--include-data",
         action="store_true",
         default=False,
-        help="publishes module with data.",
-    )
-    data_group.add_argument(
-        "--code", action="store_true", help="publishes module without data."
+        help="include data",
     )
     parser_cli_store_publish.add_argument(
         "--email", default=None, help="email of your account"
@@ -109,18 +110,27 @@ def add_parser_fn_store_publish(subparsers):
         "--overwrite",
         default=False,
         action="store_true",
-        help="overwrites a published module/version",
+        help="overwrites the same version module",
     )
     parser_cli_store_publish.add_argument(
-        "--md", default=None, help="Specify the root directory of OakVar modules"
+        "--md", default=None, help="custom modules root directory"
     )
     parser_cli_store_publish.add_argument(
         "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_store_publish.add_argument(
         "--channel",
-        default="ov",
-        help="channel to publish. oakvar or open-cravat. Modules published to open-cravat are automatically available on the OakVar Store as well.",
+        default="oakvar",
+        choices=["oakvar", "open-cravat"],
+        help="channel to publish. oakvar or open-cravat.",
+    )
+    parser_cli_store_publish.add_argument(
+        "--code-url",
+        help="url of a code pack (made with `ov store pack`). Needed only for the OakVar Store"
+    )
+    parser_cli_store_publish.add_argument(
+        "--data-url",
+        help="url of a data pack (made with `ov store pack`). Needed only for the OakVar Store"
     )
     parser_cli_store_publish.set_defaults(func=cli_store_publish)
     parser_cli_store_publish.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore

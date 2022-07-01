@@ -81,21 +81,21 @@ def check(args, __name__="store account check"):
 
 
 @cli_entry
-def cli_store_saveaccount(args):
-    return save(args)
+def cli_store_account_login(args):
+    if not getattr(args, "pw"):
+        from getpass import getpass
+        pw = getpass()
+        setattr(args, "pw", pw)
+    print(f"@ args={args}")
+    return login(args)
 
 
 @cli_func
-def save(args=None, email=None, pw=None, __name__="store account save"):
-    from ....store.ov.account import save
+def login(args, __name__="store account change"):
+    from ....store.ov.account import login
 
-    if not email and args:
-        email = args.get("email")
-    if not pw and args:
-        pw = args.get("pw")
-    if not email or not pw:
-        return False
-    save(email, pw)
+    ret = login(args=args)
+    return ret
 
 
 def add_parser_fn_store_account(subparsers):
@@ -113,7 +113,7 @@ def add_parser_fn_store_account(subparsers):
     add_parser_fn_store_account_check(subparsers)
     # add_parser_fn_store_account_reset(subparsers)
     # add_parser_fn_store_account_verify(subparsers)
-    add_parser_fn_store_account_save(subparsers)
+    add_parser_fn_store_account_login(subparsers)
     return parser_fn_store_account
 
 
@@ -123,7 +123,7 @@ def add_parser_fn_store_account_create(subparsers):
         "create", help="creates a OakVar store developer account."
     )
     parser_cli_store_createaccount.add_argument(
-        "--email", help="An email address is used as the account user name."
+        "--email", required=True, help="An email address is used as the account user name."
     )
     parser_cli_store_createaccount.add_argument("--pw", help="Password")
     parser_cli_store_createaccount.add_argument(
@@ -144,10 +144,9 @@ def add_parser_fn_store_account_delete(subparsers):
     )
     parser_cli_store_deleteaccount.add_argument(
         "--email",
-        required=True,
         help="An email address is used as the account user name.",
     )
-    parser_cli_store_deleteaccount.add_argument("--pw", required=True, help="Password")
+    parser_cli_store_deleteaccount.add_argument("--pw", help="Password")
     parser_cli_store_deleteaccount.add_argument(
         "--quiet", action="store_true", default=None, help="run quietly"
     )
@@ -234,23 +233,21 @@ def add_parser_fn_store_account_check(subparsers):
     ]
 
 
-def add_parser_fn_store_account_save(subparsers):
-    # store login
-    parser_cli_store_saveaccount = subparsers.add_parser(
-        "save", help="Store the email and password for OakVar store"
+def add_parser_fn_store_account_login(subparsers):
+    # verify-email
+    parser_cli_store_verifyemail = subparsers.add_parser(
+        "login", help="sends a verification email."
     )
-    parser_cli_store_saveaccount.add_argument(
+    parser_cli_store_verifyemail.add_argument("--email", required=True, help="email")
+    parser_cli_store_verifyemail.add_argument("--pw", help="email")
+    parser_cli_store_verifyemail.add_argument(
         "--quiet", action="store_true", default=None, help="run quietly"
     )
-    parser_cli_store_saveaccount.add_argument(
-        "--email", required=True, help="email of an OakVar store account"
-    )
-    parser_cli_store_saveaccount.add_argument(
-        "--pw", required=True, help="password of an OakVar store account"
-    )
-    parser_cli_store_saveaccount.set_defaults(func=cli_store_saveaccount)
-    parser_cli_store_saveaccount.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
-    parser_cli_store_saveaccount.r_examples = [  # type: ignore
-        "# Save the email and password of an OakVar account.",
-        '#roakvar::store.saveaccount(email="test@test.com", pw="testpw")',
+    parser_cli_store_verifyemail.set_defaults(func=cli_store_account_login)
+    parser_cli_store_verifyemail.r_return = "`NULL`"  # type: ignore
+    parser_cli_store_verifyemail.r_examples = [  # type: ignore
+        "# Login to the OakVar Store",
+        '#roakvar::store.account.login(email="user1", pw="password")',
     ]
+
+
