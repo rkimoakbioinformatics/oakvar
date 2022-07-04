@@ -311,6 +311,7 @@ def install_module(
                 local_data_version = None
         else:
             local_data_version = None
+        print(f"@")
         code_url = get_module_piece_url(module_name, "code", version=version)
         zipfile_fname = module_name + ".zip"
         remote_info = get_remote_module_info(module_name)

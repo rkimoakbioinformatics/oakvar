@@ -81,34 +81,51 @@ def module_config(module_name, version=None, conn=None, c=None) -> Optional[dict
         return None
 
 
-@db_func
 def module_code_url(module_name: str, version=None, conn=None, c=None) -> Optional[str]:
-    if not conn or not c:
-        return None
-    if not version:
-        version = module_latest_version(module_name)
-    q = f"select code_url from modules where name=? and code_version=?"
-    c.execute(q, (module_name, version))
-    ret = c.fetchone()
-    if not ret:
-        return None
+    from requests import Session
+    from .account import get_current_id_token
+    from ...exceptions import AuthorizationError
+    from ...exceptions import StoreServerError
+
+    id_token = get_current_id_token(args={"quiet": True})
+    s = Session()
+    s.headers["User-Agent"] = "oakvar"
+    url = get_store_url() + f"/moduleurls/{module_name}/{version}/code"
+    params = {"idToken": id_token}
+    print(f"@ params={params}")
+    res = s.post(url, data=params)
+    if res.status_code == 200:
+        code_url = res.text
+        return code_url
+    elif res.status_code == 401:
+        raise AuthorizationError()
+    elif res.status_code == 500:
+        raise StoreServerError()
     else:
-        return ret[0]
+        return None
 
 
-@db_func
 def module_data_url(module_name: str, version=None, conn=None, c=None) -> Optional[str]:
-    if not conn or not c:
-        return None
-    if not version:
-        version = module_latest_version(module_name)
-    q = f"select data_url from modules where name=? and code_version=?"
-    c.execute(q, (module_name, version))
-    ret = c.fetchone()
-    if not ret:
-        return None
+    from requests import Session
+    from .account import get_current_id_token
+    from ...exceptions import AuthorizationError
+    from ...exceptions import StoreServerError
+
+    id_token = get_current_id_token(args={"quiet": True})
+    s = Session()
+    s.headers["User-Agent"] = "oakvar"
+    url = get_store_url() + f"/moduleurls/{module_name}/{version}/data"
+    params = {"idToken": id_token}
+    res = s.post(url, data=params)
+    if res.status_code == 200:
+        data_url = res.text
+        return data_url
+    elif res.status_code == 401:
+        raise AuthorizationError()
+    elif res.status_code == 500:
+        raise StoreServerError()
     else:
-        return ret[0]
+        return None
 
 
 @db_func
@@ -236,7 +253,7 @@ def create_ov_store_cache(conf=None, args={}):
     clean = args.get("clean")
     table = "modules"
     if clean or not table_exists(table):
-        q = f"create table modules ( name text, type text, code_version text, data_version text, code_size int, data_size int, code_url text, data_url text, readme_url, logo_url text, conf_url text, description text, readme text, conf text, info text, store text, primary key ( name, code_version, store ) )"
+        q = f"create table modules ( name text, type text, code_version text, data_version text, code_size int, data_size int, readme_url, logo_url text, conf_url text, description text, readme text, conf text, info text, store text, primary key ( name, code_version, store ) )"
         c.execute(q)
     table = "info"
     if clean or not table_exists(table):
@@ -247,40 +264,29 @@ def create_ov_store_cache(conf=None, args={}):
 
 @db_func
 def fetch_ov_store_cache(
-    email: Optional[str] = None,
-    pw: Optional[str] = None,
     conn=None,
     c=None,
     args={},
 ):
-    from ..consts import ov_store_email_key
-    from ..consts import ov_store_pw_key
     from ..consts import ov_store_last_updated_col
-    from ...system import get_sys_conf_value
-    from ...system import get_user_conf
     from requests import Session
     from ...util.util import quiet_print
     from ...exceptions import StoreServerError
     from ...exceptions import AuthorizationError
+    from .account import get_current_id_token
 
     if not conn or not c:
         return False
-    if not email and args:
-        email = args.get("email")
-        pw = args.get("pw")
-    if not email:
-        user_conf = get_user_conf()
-        email = user_conf.get(ov_store_email_key)
-        pw = user_conf.get(ov_store_pw_key)
-    if not email or not pw:
-        return False
-    params = {"email": email, "pw": pw}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
-    store_url = get_sys_conf_value("store_url")
+    store_url = get_store_url()
     if not store_url:
         return False
-    server_last_updated, status_code = get_server_last_updated(email, pw)
+    id_token = get_current_id_token(args=args)
+    if not id_token:
+        quiet_print(f"not logged in", args=args)
+        return False
+    server_last_updated, status_code = get_server_last_updated()
     local_last_updated = get_local_last_updated()
     clean = args.get("clean")
     if not server_last_updated:
@@ -293,7 +299,8 @@ def fetch_ov_store_cache(
         quiet_print("No store update to fetch", args=args)
         return True
     url = f"{store_url}/fetch"
-    res = s.get(url, params=params)
+    params = {"idToken": id_token}
+    res = s.post(url, data=params)
     if res.status_code != 200:
         if res.status_code == 401:
             raise AuthorizationError()
@@ -314,20 +321,18 @@ def fetch_ov_store_cache(
     quiet_print("OakVar store cache has been fetched.", args=args)
 
 
-def get_server_last_updated(email: str, pw: str) -> Tuple[Optional[float], int]:
+def get_server_last_updated(args={}):
     from requests import Session
-    from ...system import get_sys_conf_value
+    from .account import get_current_id_token
 
+    id_token = get_current_id_token(args=args)
     s = Session()
     s.headers["User-Agent"] = "oakvar"
-    store_url = get_sys_conf_value("store_url")
-    if not store_url:
-        return None, 0
-    url = f"{store_url}/last_updated"
-    params = {"email": email, "pw": pw}
-    res = s.get(url, params=params)
+    url = get_store_url() + "/last_updated"
+    params = {"idToken": id_token}
+    res = s.post(url, data=params)
     if res.status_code != 200:
-        return None, res.status_code
+        return 0, res.status_code
     server_last_updated = float(res.json())
     return server_last_updated, res.status_code
 
@@ -389,3 +394,72 @@ def get_store_url() -> str:
     sys_conf = get_system_conf()
     store_url = sys_conf["store_url"]
     return store_url
+
+
+# @db_func
+# def fetch_ov_store_cache(
+#    email: Optional[str] = None,
+#    pw: Optional[str] = None,
+#    conn=None,
+#    c=None,
+#    args={},
+# ):
+#    from ..consts import ov_store_email_key
+#    from ..consts import ov_store_pw_key
+#    from ..consts import ov_store_last_updated_col
+#    from ...system import get_sys_conf_value
+#    from ...system import get_user_conf
+#    from requests import Session
+#    from ...util.util import quiet_print
+#    from ...exceptions import StoreServerError
+#    from ...exceptions import AuthorizationError
+#
+#    if not conn or not c:
+#        return False
+#    if not email and args:
+#        email = args.get("email")
+#        pw = args.get("pw")
+#    if not email:
+#        user_conf = get_user_conf()
+#        email = user_conf.get(ov_store_email_key)
+#        pw = user_conf.get(ov_store_pw_key)
+#    if not email or not pw:
+#        return False
+#    params = {"email": email, "pw": pw}
+#    s = Session()
+#    s.headers["User-Agent"] = "oakvar"
+#    store_url = get_sys_conf_value("store_url")
+#    if not store_url:
+#        return False
+#    server_last_updated, status_code = get_server_last_updated(email, pw)
+#    local_last_updated = get_local_last_updated()
+#    clean = args.get("clean")
+#    if not server_last_updated:
+#        if status_code == 401:
+#            raise AuthorizationError()
+#        elif status_code == 500:
+#            raise StoreServerError()
+#        return False
+#    if not clean and local_last_updated and local_last_updated >= server_last_updated:
+#        quiet_print("No store update to fetch", args=args)
+#        return True
+#    url = f"{store_url}/fetch"
+#    res = s.get(url, params=params)
+#    if res.status_code != 200:
+#        if res.status_code == 401:
+#            raise AuthorizationError()
+#        elif res.status_code == 500:
+#            raise StoreServerError()
+#        return False
+#    q = f"delete from modules"
+#    c.execute(q)
+#    conn.commit()
+#    res = res.json()
+#    cols = res["cols"]
+#    for row in res["data"]:
+#        q = f"insert into modules ( {', '.join(cols)} ) values ( {', '.join(['?'] * len(cols))} )"
+#        c.execute(q, row)
+#    q = f"insert or replace into info ( key, value ) values ( ?, ? )"
+#    c.execute(q, (ov_store_last_updated_col, str(server_last_updated)))
+#    conn.commit()
+#    quiet_print("OakVar store cache has been fetched.", args=args)

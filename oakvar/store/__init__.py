@@ -266,10 +266,13 @@ def get_module_piece_url(
         return None
     if channel != "oc":
         # ov store
+        print(f"@@ {funcs.get('ov')}")
         func = funcs.get("ov")
+        print(f"@@")
         if not func:
             return None
         url = func(module_name, version=version)
+        print(f"@ url={url}")
         if url or channel == "ov":
             return url
     # oc store

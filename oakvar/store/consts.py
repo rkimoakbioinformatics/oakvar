@@ -1,4 +1,5 @@
 oc_store_url = "https://store.opencravat.org"
+oc_publish_url = "https://publish.opencravat.org"
 oc_store_module_url = oc_store_url + "/modules"
 oc_manifest_url = oc_store_url + "/manifest.yml"
 oc_manifest_fn = "oc_manifest.yml"

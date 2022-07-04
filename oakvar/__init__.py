@@ -8,13 +8,18 @@ from .cli.system import setup
 from .cli.system import md
 from .cli.system import config
 from .cli.store import publish
-from .cli.store.account import verify
 from .cli.store.account import reset
 from .cli.store.account import create
 from .cli.store.account import check
 from .cli.store.account import change
 from .cli.store import fetch
 from .cli.store import pack
+from .cli.store.oc import oc_publish
+from .cli.store.oc import oc_newaccount
+from .cli.store.oc import oc_changepw
+from .cli.store.oc import oc_resetpw
+from .cli.store.oc import oc_verifyemail
+from .cli.store.oc import oc_checklogin
 from .cli.new import annotator
 from .cli.new import exampleinput
 from .cli.issue import issue
@@ -114,7 +119,7 @@ if issue:
     pass
 if exampleinput or annotator:
     pass
-if verify or reset or publish or create or check or change or fetch or pack:
+if reset or publish or create or check or change or fetch or pack:
     pass
 if setup or md or config:
     pass
@@ -125,6 +130,15 @@ if addjob or filtersqlite or mergesqlite or sqliteinfo:
 if version:
     pass
 if user:
+    pass
+if (
+    oc_publish
+    or oc_newaccount
+    or oc_changepw
+    or oc_resetpw
+    or oc_verifyemail
+    or oc_checklogin
+):
     pass
 
 

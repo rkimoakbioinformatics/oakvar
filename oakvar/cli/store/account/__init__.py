@@ -42,28 +42,15 @@ def change(args, __name__="store account change"):
 
 
 @cli_entry
-def cli_store_resetpassword(args):
+def cli_store_account_reset(args):
     return reset(args)
 
 
 @cli_func
 def reset(args, __name__="store account reset"):
-    from ....store.oc import send_reset_email
+    from ....store.ov.account import reset
 
-    ret = send_reset_email(args.get("email"), args=args)
-    return ret
-
-
-@cli_entry
-def cli_store_verifyemail(args):
-    return verify(args)
-
-
-@cli_func
-def verify(args, __name__="store account verify"):
-    from ....store.oc import send_verify_email
-
-    ret = send_verify_email(args.get("email"), args=args)
+    ret = reset(args=args)
     return ret
 
 
@@ -82,12 +69,6 @@ def check(args, __name__="store account check"):
 
 @cli_entry
 def cli_store_account_login(args):
-    if not getattr(args, "pw"):
-        from getpass import getpass
-
-        pw = getpass()
-        setattr(args, "pw", pw)
-    print(f"@ args={args}")
     return login(args)
 
 
@@ -96,6 +77,19 @@ def login(args, __name__="store account change"):
     from ....store.ov.account import login
 
     ret = login(args=args)
+    return ret
+
+
+@cli_entry
+def cli_store_account_logout(args):
+    return logout(args)
+
+
+@cli_func
+def logout(args, __name__="store account change"):
+    from ....store.ov.account import logout
+
+    ret = logout(args=args)
     return ret
 
 
@@ -112,20 +106,19 @@ def add_parser_fn_store_account(subparsers):
     add_parser_fn_store_account_delete(subparsers)
     add_parser_fn_store_account_change(subparsers)
     add_parser_fn_store_account_check(subparsers)
-    # add_parser_fn_store_account_reset(subparsers)
-    # add_parser_fn_store_account_verify(subparsers)
     add_parser_fn_store_account_login(subparsers)
+    add_parser_fn_store_account_logout(subparsers)
+    add_parser_fn_store_account_reset(subparsers)
     return parser_fn_store_account
 
 
 def add_parser_fn_store_account_create(subparsers):
     # create-account
     parser_cli_store_createaccount = subparsers.add_parser(
-        "create", help="creates a OakVar store developer account."
+        "create", help="create an OakVar Store account."
     )
     parser_cli_store_createaccount.add_argument(
         "--email",
-        required=True,
         help="An email address is used as the account user name.",
     )
     parser_cli_store_createaccount.add_argument("--pw", help="Password")
@@ -143,13 +136,8 @@ def add_parser_fn_store_account_create(subparsers):
 def add_parser_fn_store_account_delete(subparsers):
     # create-account
     parser_cli_store_deleteaccount = subparsers.add_parser(
-        "delete", help="creates a OakVar store developer account."
+        "delete", help="delete an OakVar Store account."
     )
-    parser_cli_store_deleteaccount.add_argument(
-        "--email",
-        help="An email address is used as the account user name.",
-    )
-    parser_cli_store_deleteaccount.add_argument("--pw", help="Password")
     parser_cli_store_deleteaccount.add_argument(
         "--quiet", action="store_true", default=None, help="run quietly"
     )
@@ -166,13 +154,7 @@ def add_parser_fn_store_account_change(subparsers):
     parser_cli_store_changepassword = subparsers.add_parser(
         "change", help="changes OakVar store account password."
     )
-    parser_cli_store_changepassword.add_argument("--email", required=True, help="email")
-    parser_cli_store_changepassword.add_argument(
-        "--pw", required=True, help="current password"
-    )
-    parser_cli_store_changepassword.add_argument(
-        "--newpw", required=True, help="new password"
-    )
+    parser_cli_store_changepassword.add_argument("--newpw", help="new password")
     parser_cli_store_changepassword.add_argument(
         "--quiet", action="store_true", default=None, help="run quietly"
     )
@@ -193,28 +175,11 @@ def add_parser_fn_store_account_reset(subparsers):
         "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_store_resetpassword.add_argument("--email", required=True, help="email")
-    parser_cli_store_resetpassword.set_defaults(func=cli_store_resetpassword)
+    parser_cli_store_resetpassword.set_defaults(func=cli_store_account_reset)
     parser_cli_store_resetpassword.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_cli_store_resetpassword.r_examples = [  # type: ignore
         "# Ask the store to send an email to reset the password of a store account",
-        '#roakvar::store.resetpassword(email="user1")',
-    ]
-
-
-def add_parser_fn_store_account_verify(subparsers):
-    # verify-email
-    parser_cli_store_verifyemail = subparsers.add_parser(
-        "verify", help="sends a verification email."
-    )
-    parser_cli_store_verifyemail.add_argument("email", help="email")
-    parser_cli_store_verifyemail.add_argument(
-        "--quiet", action="store_true", default=None, help="run quietly"
-    )
-    parser_cli_store_verifyemail.set_defaults(func=cli_store_verifyemail)
-    parser_cli_store_verifyemail.r_return = "`NULL`"  # type: ignore
-    parser_cli_store_verifyemail.r_examples = [  # type: ignore
-        "# Ask the store to send an email to verify the email of a user account",
-        '#roakvar::store.verifyemail(email="user1")',
+        '#roakvar::store.account.reset(email="user1")',
     ]
 
 
@@ -223,15 +188,13 @@ def add_parser_fn_store_account_check(subparsers):
     parser_cli_store_checklogin = subparsers.add_parser(
         "check", help="checks email and password."
     )
-    parser_cli_store_checklogin.add_argument("--email", required=True, help="email")
-    parser_cli_store_checklogin.add_argument("--pw", required=True, help="password")
     parser_cli_store_checklogin.add_argument(
         "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_store_checklogin.set_defaults(func=cli_store_check)
     parser_cli_store_checklogin.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_cli_store_checklogin.r_examples = [  # type: ignore
-        "# Check if the login information of a user is correct",
+        "# Check if the current is logged in the OakVar Store nor not. ",
         '#roakvar::store.checklogin(email="user1", password="password")',
     ]
 
@@ -239,9 +202,9 @@ def add_parser_fn_store_account_check(subparsers):
 def add_parser_fn_store_account_login(subparsers):
     # verify-email
     parser_cli_store_verifyemail = subparsers.add_parser(
-        "login", help="sends a verification email."
+        "login", help="log in to the OakVar Store"
     )
-    parser_cli_store_verifyemail.add_argument("--email", required=True, help="email")
+    parser_cli_store_verifyemail.add_argument("--email", help="email")
     parser_cli_store_verifyemail.add_argument("--pw", help="email")
     parser_cli_store_verifyemail.add_argument(
         "--quiet", action="store_true", default=None, help="run quietly"
@@ -249,6 +212,22 @@ def add_parser_fn_store_account_login(subparsers):
     parser_cli_store_verifyemail.set_defaults(func=cli_store_account_login)
     parser_cli_store_verifyemail.r_return = "`NULL`"  # type: ignore
     parser_cli_store_verifyemail.r_examples = [  # type: ignore
-        "# Login to the OakVar Store",
+        "# Log in to the OakVar Store",
         '#roakvar::store.account.login(email="user1", pw="password")',
+    ]
+
+
+def add_parser_fn_store_account_logout(subparsers):
+    # verify-email
+    parser_cli_store_verifyemail = subparsers.add_parser(
+        "logout", help="log out of the OakVar Store"
+    )
+    parser_cli_store_verifyemail.add_argument(
+        "--quiet", action="store_true", default=None, help="run quietly"
+    )
+    parser_cli_store_verifyemail.set_defaults(func=cli_store_account_logout)
+    parser_cli_store_verifyemail.r_return = "`NULL`"  # type: ignore
+    parser_cli_store_verifyemail.r_examples = [  # type: ignore
+        "# Log out from the OakVar Store",
+        "#roakvar::store.account.logout()",
     ]

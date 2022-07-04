@@ -180,7 +180,7 @@ def install(args, __name__="module install"):
             and LooseVersion(local_info.version) == LooseVersion(version)
         ):
             quiet_print(
-                f"{module_name}=={args['version']} is already installed. Use -f/--force to overwrite",
+                f"{module_name}=={version} is already installed. Use -f/--force to overwrite",
                 args=args,
             )
             continue

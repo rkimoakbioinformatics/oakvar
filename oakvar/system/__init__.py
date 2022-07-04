@@ -23,7 +23,8 @@ def setup_system(args=None):
     # quiet_print(f"Checking the user configuration file...", args=args)
     setup_user_conf_file(args=args)
     # set up a store account.
-    setup_store_account(args=args, conf=conf)
+    if not setup_store_account(args=args, conf=conf):
+        return False
     # fetch ov store cache
     setup_ov_store_cache(conf=conf, args=args)
     # install base modules.
@@ -102,21 +103,17 @@ def update_new_system_conf_with_existing(conf):
 def show_no_user_account_prelude():
     print(
         f"""
-########################################################################
-#                                                                      #
-# An OakVar account was not found in the user configration.            #
-#                                                                      #
-# An account is needed to fetch the OakVar Store data and              #
-# manage OakVar.                                                       #
-#                                                                      #
-# It's free, is securely stored, and will be used only for             #
-# the operation and communication of OakVar.                           #
-#                                                                      #
-# Please enter an email address and a password to register.            #
-#                                                                      #
-# If you already have an OakVar account, enter its information.        #
-#                                                                      #
-########################################################################
+###############################################################
+#                                                             #
+# Welcome to OakVar.                                          #
+#                                                             #
+# An OakVar Store account is needed for its proper operation. #
+# of OakVar.                                                  #
+#                                                             #
+# It's free, is securely stored, and will be used only for    #
+# the operation of and communication with OakVar.             #
+#                                                             #
+###############################################################
 """
     )
 
@@ -155,66 +152,10 @@ def show_email_verify_action_banner():
     )
 
 
-def setup_store_account(args={}, conf=None, email=None, pw=None):
-    from ..store.consts import ov_store_email_key
-    from ..store.consts import ov_store_pw_key
-    from ..util.util import is_valid_email
-    from ..util.util import is_valid_pw
-    from ..store.ov.account import create
-    from ..store.ov.account import check
-    from ..store.ov.account import save
-    from ..exceptions import ExpectedException
+def setup_store_account(args={}, conf=None, email=None, pw=None) -> bool:
+    from ..store.ov.account import total_login
 
-    if not email:
-        email = args.get("email")
-    if not pw:
-        pw = args.get("pw")
-    if not email and conf:
-        email = conf.get(ov_store_email_key)
-        pw = conf.get(ov_store_pw_key)
-    user_conf = get_user_conf()
-    if ov_store_email_key in user_conf and ov_store_pw_key in user_conf:
-        email = user_conf[ov_store_email_key]
-        pw = user_conf[ov_store_pw_key]
-    try:
-        valid_account = check(args={"email": email, "pw": pw})
-    except:
-        valid_account = False
-    if not email:
-        show_no_user_account_prelude()
-    elif not valid_account:
-        show_invalid_account_prelude()
-        email = None
-        pw = None
-    while not email:
-        email = input("Enter an email: ")
-        if is_valid_email(email):
-            break
-        else:
-            print(f"Invalid email")
-            email = None
-    while not pw:
-        pw = input("Enter a password (alphabets, numbers, and !?&@-+): ")
-        if is_valid_pw(pw):
-            break
-        else:
-            print(f"Invalid password")
-            pw = None
-    if not args:
-        args["quiet"] = False
-    args["email"] = email
-    args["pw"] = pw
-    if create(args=args):
-        while not check(args=args):
-            show_email_verify_action_banner()
-            input("")
-        save(email, pw, args=args)
-    else:
-        e = ExpectedException(
-            msg="Account creation failed. Please report with `ov issue` command"
-        )
-        e.traceback = False
-        raise e
+    return total_login(email=email, pw=pw, args=args, conf=conf)
 
 
 def setup_user_conf_file(args={}, conf=None):

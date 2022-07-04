@@ -178,6 +178,7 @@ class AbsentJobConf(ExpectedException):
 
 class StoreIncorrectLogin(ExpectedException):
     halt = True
+    traceback = False
 
     def __init__(self):
         super().__init__(f"store login is incorrect.")
@@ -185,6 +186,7 @@ class StoreIncorrectLogin(ExpectedException):
 
 class StoreServerError(ExpectedException):
     halt = True
+    traceback = False
 
     def __init__(self, status_code=500, text=None):
         if text is None:

@@ -76,6 +76,7 @@ def get_parser_fn_store():
     add_parser_fn_store_publish(subparsers)
     add_parser_fn_store_fetch(subparsers)
     add_parser_fn_store_pack(subparsers)
+    add_parser_fn_store_oc(subparsers)
     return parser_fn_store
 
 
@@ -185,3 +186,9 @@ def add_parser_fn_store_pack(subparsers):
         '# Pack a module "mymodule" into one zip file for its code and another zip file for its data.',
         '#roakvar::store.pack(module="mymodule")',
     ]
+
+
+def add_parser_fn_store_oc(subparsers):
+    from ..store.oc import add_parser_fn_store_oc
+
+    add_parser_fn_store_oc(subparsers)

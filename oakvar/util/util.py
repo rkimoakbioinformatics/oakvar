@@ -1,4 +1,6 @@
 from typing import Dict
+from typing import Tuple
+from typing import Optional
 
 
 def get_ucsc_bins(start, stop=None):
@@ -595,14 +597,16 @@ def get_dict_from_namespace(n):
     return n
 
 
-def quiet_print(msg, args=None):
+def quiet_print(msg, args=None, quiet=None):
     from .util import get_dict_from_namespace
 
     args = get_dict_from_namespace(args)
-    quiet = True
-    if args is not None:
-        quiet = args.get("quiet", True)
-    if not quiet:
+    if quiet is None:
+        if args and args.get("quiet") is not None:
+            quiet = args.get("quiet")
+        else:
+            quiet = True
+    if quiet == False:
         print(msg, flush=True)
 
 
@@ -680,7 +684,7 @@ def normalize_variant(wdict):
     return wdict
 
 
-def is_valid_email(email: str) -> bool:
+def email_is_valid(email: str) -> bool:
     from re import fullmatch
 
     if fullmatch(
@@ -691,7 +695,7 @@ def is_valid_email(email: str) -> bool:
         return False
 
 
-def is_valid_pw(pw: str) -> bool:
+def pw_is_valid(pw: str) -> bool:
     from re import fullmatch
 
     if fullmatch(r"[a-zA-Z0-9!?@*&\-\+]+", pw):
@@ -742,3 +746,54 @@ $$    $$/ $$    $$ |$$ | $$  |   $$$/   $$    $$ |$$ |
 """,
         flush=True,
     )
+
+
+def get_email_pw_from_input(pwconfirm=False) -> Tuple[str, str]:
+    from getpass import getpass
+
+    email = ""
+    pw = ""
+    done = False
+    startover = False
+    while not done:
+        while not email or startover:
+            startover = False
+            if email:
+                email = input(f"e-mail [{email}]: ") or email
+            else:
+                email = input(f"e-mail: ")
+            if not email_is_valid(email):
+                print(f"invalid e-mail")
+                email = None
+        while not pw and not startover:
+            pw = getpass("Password (or just enter to start over): ")
+            if pw == "":
+                startover = True
+                break
+            if not pw_is_valid(pw):
+                print(f"invalid password")
+                pw = None
+        if pwconfirm:
+            pwagain = None
+            while not pwagain and not startover:
+                pwagain = getpass("Password again (or just enter to start over): ")
+                if pwagain == "":
+                    pw = ""
+                    startover = True
+                    break
+                if not pw_is_valid(pwagain):
+                    print(f"invalid password")
+                    pwagain = None
+                elif pw != pwagain:
+                    print(f"password mismatch")
+                    pwagain = None
+                elif pw == pwagain:
+                    done = True
+                    break
+        else:
+            done = True
+    return email, pw
+
+
+def get_email_from_args(args={}) -> Optional[str]:
+    return args.get("email")

@@ -158,44 +158,43 @@ def fetch_and_save_oc_manifest(path: Optional[str] = None, args={}):
                 quiet_print(f"Saved {path}", args=args)
 
 
-def change_password(username, cur_pw, new_pw):
+def change_password(args={}):
     from requests import post
-    from ..system import get_system_conf
+    from .consts import oc_publish_url
+    from ..exceptions import StoreServerError
+    from ..exceptions import StoreIncorrectLogin
 
-    sys_conf = get_system_conf()
-    publish_url = sys_conf["publish_url"]
-    change_pw_url = publish_url + "/change-password"
+    username = args.get("username")
+    cur_pw = args.get("cur_pw")
+    new_pw = args.get("new_pw")
+    change_pw_url = oc_publish_url + "/change-password"
     r = post(change_pw_url, auth=(username, cur_pw), json={"newPassword": new_pw})
     if r.status_code == 500:
-        from ..exceptions import StoreServerError
-
         raise StoreServerError()
     elif r.status_code == 401:
-        from ..exceptions import StoreIncorrectLogin
-
         raise StoreIncorrectLogin()
     if r.text:
         return r.text
 
 
-def check_login(username, password):
+def check_login(args={}):
     from requests import get
-    from ..system import get_system_conf
+    from .consts import oc_publish_url
+    from ..exceptions import StoreServerError
+    from ..exceptions import StoreIncorrectLogin
+    from ..util.util import quiet_print
 
-    sys_conf = get_system_conf()
-    publish_url = sys_conf["publish_url"]
-    login_url = publish_url + "/login"
+    username = args.get("username")
+    password = args.get("password")
+    login_url = oc_publish_url + "/login"
     r = get(login_url, auth=(username, password))
     if r.status_code == 200:
         return True
     elif r.status_code == 500:
-        from ..exceptions import StoreServerError
-
         raise StoreServerError()
     else:
-        from ..exceptions import StoreIncorrectLogin
-
-        raise StoreIncorrectLogin()
+        quiet_print(f"{r.text}", args=args)
+        return False
 
 
 def print_stage_handler(cur_stage, total_stages, __cur_size__, __total_size__):
@@ -308,40 +307,50 @@ def publish_module(
     os.remove(zf_path)
 
 
-def send_reset_email(username, args=None):
+def send_reset_email(args={}):
     from requests import post
-    from ..system import get_system_conf
     from ..util.util import quiet_print
+    from .consts import oc_publish_url
+    from ..exceptions import StoreServerError
 
-    if args:
-        quiet = args.get("quiet", True)
-    else:
-        quiet = True
-    quiet_args = {"quiet": quiet}
-    sys_conf = get_system_conf()
-    publish_url = sys_conf["publish_url"]
-    reset_pw_url = publish_url + "/reset-password"
+    username = args.get("username")
+    reset_pw_url = oc_publish_url + "/reset-password"
     r = post(reset_pw_url, params={"username": username})
     if r.status_code == 500:
-        from ..exceptions import StoreServerError
-
-        raise StoreServerError(status_code=r.status_code)
-    if r.text:
-        quiet_print(r.text, args=quiet_args)
-
-
-def send_verify_email(username, args=None):
-    from requests import post
-    from ..system import get_system_conf
-    from ..util.util import quiet_print
-
-    sys_conf = get_system_conf()
-    publish_url = sys_conf["publish_url"]
-    reset_pw_url = publish_url + "/verify-email"
-    r = post(reset_pw_url, params={"username": username})
-    if r.status_code == 500:
-        from ..exceptions import StoreServerError
-
         raise StoreServerError(status_code=r.status_code)
     if r.text:
         quiet_print(r.text, args=args)
+
+
+def send_verify_email(args={}):
+    from requests import post
+    from ..util.util import quiet_print
+    from .consts import oc_publish_url
+    from ..exceptions import StoreServerError
+
+    username = args.get("email")
+    reset_pw_url = oc_publish_url + "/verify-email"
+    r = post(reset_pw_url, params={"username": username})
+    if r.status_code == 500:
+        raise StoreServerError(status_code=r.status_code)
+    if r.text:
+        quiet_print(r.text, args=args)
+
+
+def create_account(args={}):
+    from .consts import oc_publish_url
+    from ..util.util import quiet_print
+    from requests import post
+
+    create_account_url = oc_publish_url + "/create-account"
+    username = args.get("username")
+    password = args.get("password")
+    if not username or not password:
+        return
+    d = {"username": username, "password": password}
+    r = post(create_account_url, json=d)
+    if r.status_code == 200:
+        quiet_print(f"success", args=args)
+        return True
+    quiet_print(f"fail. {r.text}", args=args)
+    return False
