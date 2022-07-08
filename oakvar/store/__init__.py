@@ -1,4 +1,5 @@
 from typing import Optional
+from ..module.remote import RemoteModuleInfo
 
 
 def blank_stage_handler(*__args__, **__kwargs__):
@@ -68,37 +69,10 @@ def stream_multipart_post(url, fields, stage_handler=None, stages=50, **kwargs):
     return r
 
 
-def stream_to_file(
-    url, fpath, stage_handler=None, stages=50, install_state=None, **__kwargs__
-):
-    """
-    Stream the content at a url to a file. Optionally pass in a callback
-    function which is called when the uploaded size passes each of
-    total_size/stages.
-    """
-    from requests import get
-    from requests.exceptions import ConnectionError
-    from ..exceptions import KillInstallException
-    from types import SimpleNamespace
+def download(url, fpath):
+    from download import download
 
-    try:
-        r = get(url, stream=True, timeout=(3, None))
-    except ConnectionError:
-        r = SimpleNamespace()
-        r.status_code = 503
-    if r.status_code == 200:
-        total_size = int(r.headers.get("content-length", 0))
-        chunk_size = 8192
-        stager = ProgressStager(
-            total_size, total_stages=stages, stage_handler=stage_handler
-        )
-        with open(fpath, "wb") as wf:
-            for chunk in r.iter_content(chunk_size):
-                if install_state is not None and install_state["kill_signal"] == True:
-                    raise KillInstallException()
-                wf.write(chunk)
-                stager.increase_cur_size(len(chunk))
-    return r
+    download(url, fpath, kind="file")
 
 
 def fetch_file_content_to_string(url):
@@ -218,16 +192,16 @@ def client_error_json(error_class):
 
 
 def remote_module_latest_version(module_name) -> Optional[str]:
-    from .ov import module_latest_version
+    from .ov import module_latest_code_version
 
-    version = module_latest_version(module_name)
+    version = module_latest_code_version(module_name)
     return version
 
 
-def remote_module_info_latest_version(module_name) -> Optional[dict]:
-    from .ov import module_info_latest_version
+def remote_module_info_latest_version(module_name) -> Optional[RemoteModuleInfo]:
+    from .ov import module_info
 
-    module_info = module_info_latest_version(module_name)
+    module_info = module_info(module_name)
     return module_info
 
 
@@ -266,13 +240,10 @@ def get_module_piece_url(
         return None
     if channel != "oc":
         # ov store
-        print(f"@@ {funcs.get('ov')}")
         func = funcs.get("ov")
-        print(f"@@")
         if not func:
             return None
         url = func(module_name, version=version)
-        print(f"@ url={url}")
         if url or channel == "ov":
             return url
     # oc store

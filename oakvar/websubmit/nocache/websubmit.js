@@ -1632,6 +1632,7 @@ function openSubmitDiv () {
 function loadSystemConf () {
     $.get('/submit/getsystemconfinfo').done(function (response) {
         systemConf = response
+        systemConf["oc_store_url"] = "https://store.opencravat.org"
         var s = document.getElementById('sysconfpathspan');
         s.value = response['conf_path'];
         var s = document.getElementById('settings_jobs_dir_input');

@@ -101,13 +101,10 @@ def get_readme(module_name, version=None):
             return local_readme
 
 
-def install_pypi_dependencies(config: dict, args={}):
+def install_pypi_dependencies(module_name: str, pypi_deps, args={}):
     from subprocess import run
     from ..util.util import quiet_print
 
-    module_name = config.get("name")
-    pypi_deps = config.get("requires_pypi", [])
-    pypi_deps.extend(config.get("pypi_dependency", []))
     idx = 0
     if pypi_deps:
         quiet_print(
@@ -260,28 +257,26 @@ def install_module(
     import shutil
     import os
     from ..consts import install_tempdir_name
-    from ..store import stream_to_file
-    from requests import HTTPError
+    from ..store import download
     from ..exceptions import KillInstallException
     from ..system import get_modules_dir
     from ..store import get_module_piece_url
     from ..store import remote_module_latest_version
-    from ..store.ov import module_config
     from ..store.ov import data_version
     from .local import get_local_module_info
     from .remote import get_remote_module_info
     from .cache import get_module_cache
+    from ..exceptions import ModuleLoadingError
+    from ..store.ov import summary_col_value
 
     quiet_args = {"quiet": quiet}
     modules_dir = get_modules_dir()
     temp_dir = os.path.join(modules_dir, install_tempdir_name, module_name)
     shutil.rmtree(temp_dir, ignore_errors=True)
     os.makedirs(temp_dir)
-
     # Ctrl-c in this func must be caught to delete temp_dir
     # def raise_kbi(__a__, __b__):
     #    raise KeyboardInterrupt
-
     # original_sigint = signal.signal(signal.SIGINT, raise_kbi)
     try:
         if stage_handler is None:
@@ -295,10 +290,10 @@ def install_module(
             install_state = None
         stage_handler.stage_start("start")
         # Checks and installs pip packages.
-        config = module_config(module_name, version=version)
-        if not config:
+        pypi_dependencies = summary_col_value(module_name, "pypi_dependencies")
+        if not pypi_dependencies:
             return False
-        if not install_pypi_dependencies(config, quiet_args):
+        if not install_pypi_dependencies(module_name, pypi_dependencies, quiet_args):
             return False
         remote_data_version = data_version(module_name, version=version)
         if module_name in list_local():
@@ -311,7 +306,6 @@ def install_module(
                 local_data_version = None
         else:
             local_data_version = None
-        print(f"@")
         code_url = get_module_piece_url(module_name, "code", version=version)
         zipfile_fname = module_name + ".zip"
         remote_info = get_remote_module_info(module_name)
@@ -327,8 +321,6 @@ def install_module(
             else:
                 module_type = None
         if module_type is None:
-            from ..exceptions import ModuleLoadingError
-
             raise ModuleLoadingError(module_name)
         if install_state:
             if (
@@ -338,15 +330,10 @@ def install_module(
                 raise KillInstallException
         zipfile_path = os.path.join(temp_dir, zipfile_fname)
         stage_handler.stage_start("download_code")
-        r = stream_to_file(
+        download(
             code_url,
             zipfile_path,
-            stage_handler=stage_handler.stage_progress,
-            install_state=install_state,
-            **kwargs,
         )
-        if r.status_code != 200:
-            raise (HTTPError(r))
         if install_state:
             if (
                 install_state["module_name"] == module_name
@@ -389,12 +376,9 @@ def install_module(
             data_fname = ".".join([module_name, "data", "zip"])
             data_path = os.path.join(temp_dir, data_fname)
             stage_handler.stage_start("download_data")
-            r = stream_to_file(
+            download(
                 data_url,
                 data_path,
-                stage_handler=stage_handler.stage_progress,
-                install_state=install_state,
-                **kwargs,
             )
             if install_state:
                 if (
@@ -402,35 +386,29 @@ def install_module(
                     and install_state["kill_signal"] == True
                 ):
                     raise KillInstallException
-            if r.status_code == 200:
-                stage_handler.stage_start("extract_data")
-                zf = zipfile.ZipFile(data_path)
-                zf.extractall(temp_dir)
-                zf.close()
-                if install_state:
-                    if (
-                        install_state["module_name"] == module_name
-                        and install_state["kill_signal"] == True
-                    ):
-                        raise KillInstallException
-                stage_handler.stage_start("verify_data")
-                # data_manifest_url = store_path_builder.module_data_manifest(
-                #    module_name, remote_data_version
-                # )
-                # data_manifest = yaml.safe_load(get_file_to_string(data_manifest_url))
-                # verify_against_manifest(temp_dir, data_manifest)
-                os.remove(data_path)
-                if install_state:
-                    if (
-                        install_state["module_name"] == module_name
-                        and install_state["kill_signal"] == True
-                    ):
-                        raise KillInstallException
-            elif r.status_code == 404:
-                # Probably a private module that does not have data
-                pass
-            else:
-                raise (HTTPError(r))
+            stage_handler.stage_start("extract_data")
+            zf = zipfile.ZipFile(data_path)
+            zf.extractall(temp_dir)
+            zf.close()
+            if install_state:
+                if (
+                    install_state["module_name"] == module_name
+                    and install_state["kill_signal"] == True
+                ):
+                    raise KillInstallException
+            stage_handler.stage_start("verify_data")
+            # data_manifest_url = store_path_builder.module_data_manifest(
+            #    module_name, remote_data_version
+            # )
+            # data_manifest = yaml.safe_load(get_file_to_string(data_manifest_url))
+            # verify_against_manifest(temp_dir, data_manifest)
+            os.remove(data_path)
+            if install_state:
+                if (
+                    install_state["module_name"] == module_name
+                    and install_state["kill_signal"] == True
+                ):
+                    raise KillInstallException
         if install_state:
             if (
                 install_state["module_name"] == module_name

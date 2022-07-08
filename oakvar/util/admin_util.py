@@ -53,14 +53,6 @@ def get_default_assembly():
     return default_assembly
 
 
-def get_download_counts():
-    from ..module.cache import get_module_cache
-
-    get_module_cache().update_download_counts()
-    counts = get_module_cache().download_counts
-    return counts
-
-
 def get_last_assembly():
     conf = get_user_conf()
     last_assembly = conf.get("last_assembly")

@@ -66,6 +66,8 @@ class LocalModuleInfo(object):
                 self.output_suffix = self.name + "." + self.type
         self.title = self.conf.get("title", self.name)
         self.size = None
+        self.code_size = None
+        self.data_size = None
         self.tags = self.conf.get("tags", [])
         self.datasource = str(self.conf.get("datasource", ""))
         self.smartfilters = self.conf.get("smartfilters")
@@ -88,6 +90,18 @@ class LocalModuleInfo(object):
         if self.size is None:
             self.size = get_directory_size(self.directory)
         return self.size
+
+    def get_data_size(self):
+        from ..util.util import get_directory_size
+        from os.path import join
+
+        if self.data_size is None:
+            self.data_size = get_directory_size(join(self.directory, "data"))
+        return self.data_size
+
+    def get_code_size(self):
+        self.code_size = self.get_size() - self.get_data_size()
+        return self.code_size
 
     def get_tests(self):
         """
@@ -116,13 +130,13 @@ def get_local_module_info(module_name):
     """
     Returns a LocalModuleInfo object for a module.
     """
-    import os
+    from os.path import exists
     from .cache import get_module_cache
 
     if module_name in get_module_cache().get_local():
         module_info = get_module_cache().get_local()[module_name]
     else:
-        if os.path.exists(module_name):
+        if exists(module_name):
             module_info = LocalModuleInfo(module_name)
         else:
             module_info = None
@@ -324,3 +338,58 @@ def module_exists_local(module_name):
             if exists(join(module_name, basename(module_name) + ".yml")):
                 return True
     return False
+
+
+def get_logo_b64(module_info) -> str:
+    from base64 import b64encode
+    from os.path import join
+    from os.path import exists
+    from PIL import Image
+    from ..store.consts import logo_size
+    from io import BytesIO
+
+    p = join(module_info.directory, "logo.png")
+    if exists(p):
+        im = Image.open(p)
+        im.thumbnail(logo_size)
+        buf = BytesIO()
+        im.save(buf, format="png")
+        s = b64encode(buf.getvalue()).decode()
+        return s
+    return ""
+
+
+def get_remote_manifest_from_local(module_name: str):
+    from os.path import exists
+    from datetime import datetime
+    from json import dumps
+
+    module_info = get_local_module_info(module_name)
+    if not module_info:
+        return None
+    module_conf = module_info.conf
+    rmi = {}
+    rmi["commercial_warning"] = module_conf.get("commercial_warning", None)
+    if exists(module_info.data_dir) == False:
+        rmi["data_size"] = 0
+    else:
+        rmi["data_size"] = module_info.get_data_size()
+    rmi["code_size"] = module_info.get_code_size()
+    rmi["description"] = module_conf.get("description")
+    rmi["developer"] = module_conf.get("developer")
+    rmi["downloads"] = 0
+    rmi["groups"] = module_conf.get("groups")
+    rmi["output_columns"] = module_conf.get("output_columns")
+    rmi["publish_time"] = str(datetime.now())
+    rmi["requires"] = module_conf.get("requires", [])
+    rmi["size"] = rmi["code_size"] + rmi["data_size"]
+    rmi["title"] = module_conf.get("title", "")
+    rmi["type"] = module_conf.get("type", "")
+    rmi["tags"] = module_conf.get("tags", [])
+    rmi["version"] = module_conf.get("version")
+    rmi["code_version"] = module_conf.get("version")
+    rmi["data_version"] = module_conf.get("datasource")
+    rmi["readme"] = module_info.readme
+    rmi["conf"] = dumps(module_conf)
+    rmi["logo"] = get_logo_b64(module_info)
+    return rmi

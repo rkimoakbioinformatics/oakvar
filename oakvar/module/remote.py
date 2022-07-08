@@ -3,44 +3,50 @@ from typing import Tuple
 
 
 class RemoteModuleInfo(object):
+    def to_dict(self):
+        d = {
+            "groups": self.groups,
+            "output_columns": self.output_columns,
+            "developer": self.developer,
+            "title": self.title,
+            "type": self.type,
+            "tags": self.tags,
+            "logo": self.logo,
+            "size": self.size,
+            "publish_time": self.publish_time,
+        }
+        return d
+
     def __init__(self, __name__, **kwargs):
         from ..store import get_developer_dict
+        from ..util.util import get_latest_version
+        from json import loads
 
         self.data = kwargs
-        self.data.setdefault("versions", [])
-        self.data.setdefault("latest_version", "")
-        self.data.setdefault("type", "")
-        self.data.setdefault("title", "")
-        self.data.setdefault("description", "")
-        self.data.setdefault("size", "")
-        self.data.setdefault("data_size", 0)
-        self.data.setdefault("code_size", 0)
-        self.data.setdefault("datasource", "")
-        self.data.setdefault("hidden", False)
-        self.data.setdefault("developer", {})
-        self.data.setdefault("data_versions", {})
-        self.data.setdefault("data_sources", {})
-        self.data.setdefault("tags", [])
-        self.data.setdefault("publish_time", None)
+        self.conf = loads(self.data.get("conf") or "{}")
+        self.groups = self.conf.get("groups", {})
+        self.output_columns = self.conf.get("output_columns", [])
+        self.code_sizes = loads(self.data.get("code_sizes", "{}"))
+        self.data_sizes = loads(self.data.get("data_sizes", "{}"))
+        self.data_sources = loads(self.data.get("data_sources", "{}"))
+        self.data_versions = loads(self.data.get("data_versions", "{}"))
+        self.logo = self.data.get("logo", "")
         self.name = self.data.get("name")
         self.versions = self.data.get("versions", [])
-        self.latest_version = self.data.get("latest_version", "")
+        self.code_versions = loads(self.data.get("code_versions", "[]"))
+        self.latest_version = get_latest_version(self.code_versions)
         self.type = self.data.get("type")
         self.title = self.data.get("title")
-        self.description = self.data.get("description")
-        self.size = self.data.get("size")
-        self.data_size = self.data.get("data_size")
-        self.code_size = self.data.get("code_size")
-        self.datasource = self.data.get("datasource")
-        self.data_versions = self.data.get("data_versions", {})
-        self.hidden = self.data.get("hidden")
-        self.tags = self.data.get("tags")
+        self.description = self.conf.get("description", "")
+        self.code_size = self.code_sizes.get(self.latest_version, 0)
+        self.data_size = self.data_sizes.get(self.latest_version, 0)
+        self.size = self.code_size + self.data_size
+        self.datasource = self.data_sources.get(self.latest_version, "")
+        self.hidden = self.conf.get("hidden")
+        self.tags = loads(self.data.get("tags", "[]"))
         self.publish_time = self.data.get("publish_time")
-        dev_dict = self.data.get("developer", {})
-        self.developer = get_developer_dict(**dev_dict)
-        self.data_sources = {
-            x: str(y) for x, y in self.data.get("data_sources").items()  # type: ignore
-        }
+        self.developer = self.conf.get("developer", {})
+        self.developer = get_developer_dict(**self.developer)
         self.installed: Optional[str] = None
         self.local_version: Optional[str] = None
         self.local_datasource: Optional[str] = None
@@ -112,7 +118,7 @@ def search_remote(*patterns):
     return matching_names
 
 
-def get_remote_module_info(module_name, version=None) -> RemoteModuleInfo:
+def get_remote_module_info(module_name, version=None) -> Optional[RemoteModuleInfo]:
     from .cache import get_module_cache
     from ..store import remote_module_info_latest_version
 
@@ -123,11 +129,13 @@ def get_remote_module_info(module_name, version=None) -> RemoteModuleInfo:
         return mc.remote[module_name][version]
     else:
         module_info = remote_module_info_latest_version(module_name)
+        """
         if module_info:
             module_info = RemoteModuleInfo(module_name, **module_info)
         else:
             module_info = RemoteModuleInfo(module_name)
         module_info.name = module_name
+        """
         return module_info
 
 

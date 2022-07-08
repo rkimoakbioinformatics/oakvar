@@ -122,27 +122,19 @@ async def get_remote_manifest(request):
         for module, version in temp_q:
             content["data"][module]["queued"] = True
             install_queue.put({"module": module, "version": version})
-        try:
-            counts = au.get_download_counts()
-        except:
-            traceback.print_exc()
-            counts = {}
-        for mname in content["data"]:
-            content["data"][mname]["downloads"] = counts.get(mname, 0)
         content["tagdesc"] = await get_tag_desc(request)
     return web.json_response(content)
 
 
-async def get_remote_module_config(request):
-    from ..store.ov import module_config
+async def get_remote_module_output_columns(request):
+    from ..store.ov import summary_col_value
 
     queries = request.rel_url.query
     module = queries["module"]
-    conf = module_config(module)
-    if conf and "tags" not in conf:
-        conf["tags"] = []
-    response = conf
-    return web.json_response(response)
+    output_columns = summary_col_value(module, "output_columns")
+    if not output_columns:
+        output_columns = []
+    return web.json_response(output_columns)
 
 
 async def get_local_manifest(_):
@@ -229,7 +221,7 @@ async def send_socket_msg(install_ws=None):
         data["module"] = install_state["module_name"]
         data["msg"] = install_state["message"]
         if "Downloading " in data["msg"]:
-            data["msg"] = data["msg"] + " " + str(install_state["cur_chunk"]) + "%"
+            data["msg"] = data["msg"]  # + " " + str(install_state["cur_chunk"]) + "%"
         if install_ws is not None:
             await install_ws.send_str(json.dumps(data))
         last_update_time = install_state["update_time"]
@@ -241,7 +233,7 @@ async def send_socket_msg(install_ws=None):
 async def connect_websocket(request):
     global install_state
     last_update_time = None
-    if install_state is None:
+    if not install_state:
         install_state = {}
         install_state["stage"] = ""
         install_state["message"] = ""
@@ -261,11 +253,8 @@ async def connect_websocket(request):
             await asyncio.sleep(1)
         except concurrent.futures._base.CancelledError:
             return install_ws
-        if (
-            last_update_time is not None
-            and last_update_time < install_state["update_time"]
-        ):
-            last_update_time = await send_socket_msg()
+        if not last_update_time or last_update_time < install_state["update_time"]:
+            last_update_time = await send_socket_msg(install_ws=install_ws)
     # return install_ws
 
 
@@ -432,43 +421,14 @@ def handle_modules_changed():
 
 
 async def get_remote_manifest_from_local(request):
-    from ..module.cache import get_module_cache
+    from ..module.local import get_remote_manifest_from_local
 
     queries = request.rel_url.query
     module = queries.get("module", None)
     if module is None:
         return web.json_response({})
-    module_info = get_module_cache().local[module]
-    module_conf = module_info.conf
-    response = {}
-    module_dir = module_info.directory
-    response["code_size"] = os.path.getsize(module_dir)
-    response["commercial_warning"] = module_conf.get("commercial_warning", None)
-    if os.path.exists(module_info.data_dir) == False:
-        response["data_size"] = 0
-    else:
-        response["data_size"] = os.path.getsize(module_info.data_dir)
-    version = module_conf.get("version", "")
-    response["data_sources"] = {version: module_info.datasource}
-    response["data_versions"] = {version: version}
-    response["downloads"] = 0
-    response["groups"] = module_info.groups
-    response["has_logo"] = os.path.exists(os.path.join(module_dir, "logo.png"))
-    response["hidden"] = module_conf.get("hidden", False)
-    response["latest_version"] = version
-    import datetime
-
-    response["publish_time"] = str(datetime.datetime.now())
-    response["requires"] = module_conf.get("requires", [])
-    response["size"] = response["code_size"] + response["data_size"]
-    response["tags"] = module_conf.get("tags", [])
-    response["title"] = module_conf.get("title", "")
-    response["type"] = module_conf.get("type", "")
-    response["version"] = version
-    response["versions"] = [version]
-    response["private"] = module_conf.get("private", False)
-    response["uselocalonstore"] = module_conf.get("uselocalonstore", False)
-    return web.json_response(response)
+    rmi = get_remote_manifest_from_local(module)
+    return web.json_response(rmi)
 
 
 async def get_local_module_logo(request):
@@ -493,7 +453,7 @@ routes.append(["GET", "/store/queueinstall", queue_install])
 routes.append(["GET", "/store/modules/{module}/{version}/readme", get_module_readme])
 routes.append(["GET", "/store/getbasemodules", get_base_modules])
 routes.append(["GET", "/store/installbasemodules", install_base_modules])
-routes.append(["GET", "/store/remotemoduleconfig", get_remote_module_config])
+routes.append(["GET", "/store/remotemoduleconfig", get_remote_module_output_columns])
 routes.append(["GET", "/store/getmd", get_md])
 routes.append(["GET", "/store/updates", get_module_updates])
 routes.append(["GET", "/store/freemodulesspace", get_free_modules_space])

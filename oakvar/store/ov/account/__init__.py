@@ -399,9 +399,7 @@ def get_current_token_set(args={}) -> Optional[dict]:
     newargs = args.copy()
     newargs["quiet"] = True
     if token_set:
-        print(f"@ calling id_token_is_valid")
         valid, expired = id_token_is_valid()
-        print(f"@ valid={valid} expired={expired}")
         if not valid:
             token_set = None
         elif expired:

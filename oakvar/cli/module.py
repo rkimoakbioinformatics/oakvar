@@ -37,6 +37,7 @@ def info(args, __name__="module info"):
     from oyaml import dump
     from ..module.local import get_local_module_info
     from ..module.remote import get_remote_module_info
+    from ..store.ov import summary_col_value
 
     ret = {}
     module_name = args.get("module", None)
@@ -82,11 +83,8 @@ def info(args, __name__="module info"):
         remote_info.versions = new_versions
         ret.update(remote_info.data)
         ret["output_columns"] = []
-        from ..store.ov import module_config
-
-        conf = module_config(module_name)
-        if conf and "output_columns" in conf:
-            output_columns = conf["output_columns"]
+        output_columns = summary_col_value(module_name, "output_columns")
+        if output_columns:
             for col in output_columns:
                 desc = ""
                 if "desc" in col:
@@ -169,8 +167,11 @@ def install(args, __name__="module install"):
     for module_name, version in mn_vs.items():
         local_info = get_local_module_info(module_name)
         remote_info = get_remote_module_info(module_name, version=version)
-        if not version:
+        if not version and remote_info:
             version = remote_info.latest_version
+        if not version:
+            quiet_print(f"{module_name} does not exist.", args=args)
+            continue
         if not remote_info:
             quiet_print(f"{module_name}=={version} does not exist.", args=args)
             continue
@@ -540,9 +541,9 @@ class InstallProgressStdout(InstallProgressHandler):
         from ..util.util import quiet_print
         from ..util.util import get_current_time_str
 
-        perc = cur_size / total_size * 100
+        # perc = cur_size / total_size * 100
         # trailing spaces needed to avoid leftover characters on resize
-        out = f"\033[F\033[K[{get_current_time_str()}] Downloading {humanize_bytes(cur_size)} / {humanize_bytes(total_size)} ({perc:.0f}%)"
+        out = f"\033[F\033[K[{get_current_time_str()}] Downloading {humanize_bytes(cur_size)} / {humanize_bytes(total_size)}"
         quiet_print(out, args={"quiet": self.quiet})
 
 

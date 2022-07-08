@@ -7,7 +7,7 @@ from .cli.test import test
 from .cli.system import setup
 from .cli.system import md
 from .cli.system import config
-from .cli.store import publish
+from .cli.store import register
 from .cli.store.account import reset
 from .cli.store.account import create
 from .cli.store.account import check
@@ -119,7 +119,7 @@ if issue:
     pass
 if exampleinput or annotator:
     pass
-if reset or publish or create or check or change or fetch or pack:
+if reset or register or create or check or change or fetch or pack:
     pass
 if setup or md or config:
     pass

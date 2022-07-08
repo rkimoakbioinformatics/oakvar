@@ -797,3 +797,16 @@ def get_email_pw_from_input(pwconfirm=False) -> Tuple[str, str]:
 
 def get_email_from_args(args={}) -> Optional[str]:
     return args.get("email")
+
+
+def get_latest_version(versions: list):
+    from distutils.version import LooseVersion
+
+    latest_version = ""
+    for version in versions:
+        if not latest_version:
+            latest_version = version
+            continue
+        if LooseVersion(version) > LooseVersion(latest_version):
+            latest_version = version
+    return latest_version
