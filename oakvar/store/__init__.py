@@ -1,5 +1,5 @@
 from typing import Optional
-from ..module.remote import RemoteModuleInfo
+from ..module.remote import RemoteModule
 
 
 def blank_stage_handler(*__args__, **__kwargs__):
@@ -192,79 +192,61 @@ def client_error_json(error_class):
 
 
 def remote_module_latest_version(module_name) -> Optional[str]:
-    from .ov import module_latest_code_version
+    from .db import module_latest_code_version
 
     version = module_latest_code_version(module_name)
     return version
 
 
-def remote_module_info_latest_version(module_name) -> Optional[RemoteModuleInfo]:
-    from .ov import module_info
+def remote_module_info_latest_version(module_name) -> Optional[RemoteModule]:
+    from .db import module_info
 
     module_info = module_info(module_name)
     return module_info
 
 
-def get_module_piece_url(
-    module_name: str, kind=None, version=None, channel=None
-) -> Optional[str]:
-    if kind == None:
-        return None
-    if not version:
-        version = remote_module_latest_version(module_name)
-    if not version:
-        return None
-    from .ov import module_code_url
-    from .ov import module_data_url
-    from .ov import module_conf_url
-    from .oc import oc_module_code_url
-    from .oc import oc_module_data_url
-    from .oc import oc_module_conf_url
+def get_module_urls(module_name: str, code_version=None) -> Optional[dict]:
+    from .db import get_urls
 
-    routes = {
-        "code": {
-            "ov": module_code_url,
-            "oc": oc_module_code_url,
-        },
-        "data": {
-            "ov": module_data_url,
-            "oc": oc_module_data_url,
-        },
-        "config": {
-            "ov": module_conf_url,
-            "oc": oc_module_conf_url,
-        },
-    }
-    funcs = routes.get(kind)
-    if not funcs:
+    if not code_version:
+        code_version = remote_module_latest_version(module_name)
+    if not code_version:
         return None
-    if channel != "oc":
-        # ov store
-        func = funcs.get("ov")
-        if not func:
-            return None
-        url = func(module_name, version=version)
-        if url or channel == "ov":
-            return url
-    # oc store
-    func = funcs.get("oc")
-    if not func:
-        return None
-    url = func(module_name, version=version)
-    if url or channel == "ov":
-        return url
+    return get_urls(module_name, code_version)
 
 
-def get_developer_dict(**kwargs):
-    kwargs.setdefault("name", "")
-    kwargs.setdefault("email", "")
-    kwargs.setdefault("organization", "")
-    kwargs.setdefault("citation", "")
-    kwargs.setdefault("website", "")
-    return {
-        "name": kwargs["name"],
-        "email": kwargs["email"],
-        "organization": kwargs["organization"],
-        "citation": kwargs["citation"],
-        "website": kwargs["website"],
-    }
+def get_developer_dict(kwargs):
+    if "module" in kwargs:
+        return {
+            "module": {
+                "name": kwargs.get("module", {}).get("name", ""),
+                "email": kwargs.get("module", {}).get("email", ""),
+                "organization": kwargs.get("module", {}).get("organization", ""),
+                "citation": kwargs.get("module", {}).get("citation", ""),
+                "website": kwargs.get("module", {}).get("website", ""),
+            },
+            "data": {
+                "name": kwargs.get("data", {}).get("name", ""),
+                "email": kwargs.get("data", {}).get("email", ""),
+                "organization": kwargs.get("data", {}).get("organization", ""),
+                "citation": kwargs.get("data", {}).get("citation", ""),
+                "website": kwargs.get("data", {}).get("website", ""),
+            },
+        }
+    else:
+        return {
+            "module": {
+                "name": "",
+                "email": "",
+                "organization": "",
+                "citation": "",
+                "website": "",
+            },
+            "data": {
+                "name": kwargs.get("name", ""),
+                "email": kwargs.get("email", ""),
+                "organization": kwargs.get("organization", ""),
+                "citation": kwargs.get("citation", ""),
+                "website": kwargs.get("website", ""),
+            },
+        }

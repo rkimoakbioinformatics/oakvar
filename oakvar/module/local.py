@@ -1,7 +1,7 @@
 from typing import Optional
 
 
-class LocalModuleInfo(object):
+class LocalModule(object):
     def __init__(self, dir_path, __module_type__=None, name=None):
         import os
         from ..util.util import load_yml_conf
@@ -45,12 +45,12 @@ class LocalModuleInfo(object):
             self.conf = load_yml_conf(self.conf_path)
         self.type = self.conf.get("type")
         self.version = self.conf.get("version")
+        self.code_version = self.conf.get("version")
+        self.latest_code_version = self.code_version
+        self.latest_data_source = self.conf.get("datasource", "")
         self.description = self.conf.get("description")
         self.hidden = self.conf.get("hidden", False)
-        dev_dict = self.conf.get("developer", {})
-        if not (type(dev_dict) == dict):
-            dev_dict = {}
-        self.developer = get_developer_dict(**dev_dict)
+        self.developer = get_developer_dict(self.conf.get("developer", {}))
         if "type" not in self.conf:
             self.conf["type"] = "unknown"
         self.type = self.conf["type"]
@@ -69,9 +69,12 @@ class LocalModuleInfo(object):
         self.code_size = None
         self.data_size = None
         self.tags = self.conf.get("tags", [])
-        self.datasource = str(self.conf.get("datasource", ""))
+        self.data_source = str(self.conf.get("datasource", ""))
         self.smartfilters = self.conf.get("smartfilters")
         self.groups = self.conf.get("groups", [])
+        self.installed = True
+        self.local_code_version = self.code_version
+        self.local_data_source = self.data_source
 
     def is_valid_module(self):
         r = self.exists
@@ -137,7 +140,7 @@ def get_local_module_info(module_name):
         module_info = get_module_cache().get_local()[module_name]
     else:
         if exists(module_name):
-            module_info = LocalModuleInfo(module_name)
+            module_info = LocalModule(module_name)
         else:
             module_info = None
     return module_info

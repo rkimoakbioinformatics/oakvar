@@ -118,8 +118,6 @@ def add_parser_fn_store_oc(subparsers):
 
 
 def add_parser_fn_store_oc_checklogin(subparsers):
-    from ...store.oc import check_login
-
     parser_cli_store_oc_checklogin = subparsers.add_parser(
         "checklogin", help="checks username and password."
     )
@@ -129,8 +127,6 @@ def add_parser_fn_store_oc_checklogin(subparsers):
 
 
 def add_parser_fn_store_oc_verifyemail(subparsers):
-    from ...store.oc import send_verify_email
-
     parser_cli_store_oc_verifyemail = subparsers.add_parser(
         "verifyemail", help="sends a verification email."
     )
@@ -139,8 +135,6 @@ def add_parser_fn_store_oc_verifyemail(subparsers):
 
 
 def add_parser_fn_store_oc_resetpw(subparsers):
-    from ...store.oc import send_reset_email
-
     parser_cli_store_oc_resetpw = subparsers.add_parser(
         "resetpw", help="resets CRAVAT store account password."
     )
@@ -149,8 +143,6 @@ def add_parser_fn_store_oc_resetpw(subparsers):
 
 
 def add_parser_fn_store_oc_changepw(subparsers):
-    from ...store.oc import change_password
-
     parser_cli_store_oc_changepassword = subparsers.add_parser(
         "changepw", help="changes CRAVAT store account password."
     )
@@ -161,8 +153,6 @@ def add_parser_fn_store_oc_changepw(subparsers):
 
 
 def add_parser_fn_store_oc_newaccount(subparsers):
-    from ...store.oc import create_account
-
     parser_cli_store_oc_createaccount = subparsers.add_parser(
         "newaccount", help="creates a CRAVAT store developer account."
     )
@@ -181,8 +171,6 @@ def add_parser_fn_store_oc_newaccount(subparsers):
 
 
 def add_parser_fn_store_oc_publish(subparsers):
-    from ...store.oc import publish_module
-
     parser_cli_store_oc_publish = subparsers.add_parser(
         "publish", help="publish a module"
     )

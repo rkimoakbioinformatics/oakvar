@@ -181,7 +181,6 @@ def check_login(args={}):
     from requests import get
     from .consts import oc_publish_url
     from ..exceptions import StoreServerError
-    from ..exceptions import StoreIncorrectLogin
     from ..util.util import quiet_print
 
     username = args.get("username")

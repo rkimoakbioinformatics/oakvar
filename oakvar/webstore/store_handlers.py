@@ -14,7 +14,7 @@ def get_module_readme(request):
     version = request.match_info["version"]
     if version == "latest":
         version = None
-    readme_md = get_readme(module_name, version=version)
+    readme_md = get_readme(module_name)
     if readme_md is None:
         response = Response(status=404)
     else:
@@ -50,7 +50,7 @@ def install_module(request):
     module = request.json()
     module_name = module["name"]
     version = module["version"]
-    install_module(module_name, version=version, verbose=False)
+    install_module(module_name, version=version)  # , verbose=False)
     return Response()
 
 

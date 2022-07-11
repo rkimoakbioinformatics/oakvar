@@ -61,17 +61,17 @@ class InstallProgressHandler(object):
             raise ValueError(stage)
 
 
-def get_readme(module_name, version=None):
+def get_readme(module_name):
     from os.path import exists
     from ..store import remote_module_latest_version
-    from ..store.ov import code_version
+    from ..store.db import module_latest_code_version
     from .local import module_exists_local
     from .cache import get_module_cache
     from .local import get_local_module_info
     from ..util.util import compare_version
 
     exists_local = module_exists_local(module_name)
-    remote_ver = code_version(module_name, version=version)
+    remote_ver = module_latest_code_version(module_name)
     if remote_ver:
         remote_readme = get_module_cache().get_remote_readme(
             module_name, version=remote_ver
@@ -152,7 +152,7 @@ def list_local():
 
 
 def list_remote():
-    from ..store.ov import module_list
+    from ..store.db import module_list
 
     return module_list()
 
@@ -164,7 +164,7 @@ def get_updatable(modules=[], strategy="consensus"):
     from types import SimpleNamespace
     from .local import get_local_module_info
     from .remote import get_remote_module_info
-    from ..store.ov import data_version
+    from ..store.db import module_data_version
 
     if strategy not in ("consensus", "force", "skip"):
         raise ValueError('Unknown strategy "{}"'.format(strategy))
@@ -227,8 +227,8 @@ def get_updatable(modules=[], strategy="consensus"):
             and local_info.version
             and LooseVersion(selected_version) > LooseVersion(local_info.version)
         ):
-            update_data_version = data_version(mname, version=selected_version)
-            installed_data_version = data_version(mname, version=local_info.version)
+            update_data_version = module_data_version(mname, selected_version)
+            installed_data_version = module_data_version(mname, local_info.version)
             if (
                 update_data_version is not None
                 and update_data_version != installed_data_version
@@ -251,7 +251,7 @@ def install_module(
     skip_data=False,
     stage_handler=None,
     quiet=True,
-    **kwargs,
+    args={},
 ):
     import zipfile
     import shutil
@@ -260,14 +260,15 @@ def install_module(
     from ..store import download
     from ..exceptions import KillInstallException
     from ..system import get_modules_dir
-    from ..store import get_module_piece_url
+    from ..store import get_module_urls
     from ..store import remote_module_latest_version
-    from ..store.ov import data_version
+    from ..store.db import module_data_version
     from .local import get_local_module_info
     from .remote import get_remote_module_info
     from .cache import get_module_cache
     from ..exceptions import ModuleLoadingError
-    from ..store.ov import summary_col_value
+    from ..util.util import quiet_print
+    from .remote import get_conf
 
     quiet_args = {"quiet": quiet}
     modules_dir = get_modules_dir()
@@ -284,43 +285,47 @@ def install_module(
         if version is None:
             version = remote_module_latest_version(module_name)
             stage_handler.set_module_version(version)
+        if not version:
+            quiet_print(f"version could not be found.", args=args)
+            return
         if hasattr(stage_handler, "install_state") == True:
             install_state = stage_handler.install_state  # type: ignore
         else:
             install_state = None
         stage_handler.stage_start("start")
         # Checks and installs pip packages.
-        pypi_dependencies = summary_col_value(module_name, "pypi_dependencies")
-        if not pypi_dependencies:
-            return False
+        conf = get_conf(module_name) or {}
+        pypi_dependencies = conf.get("pypi_dependencies") or []
+        if pypi_dependencies:
+            pypi_dependencies.extend(conf.get("requires_pypi", []))
+        else:
+            pypi_dependencies = conf.get("requires_pypi") or []
         if not install_pypi_dependencies(module_name, pypi_dependencies, quiet_args):
             return False
-        remote_data_version = data_version(module_name, version=version)
+        remote_data_version = module_data_version(module_name, version)
         if module_name in list_local():
             local_info = get_local_module_info(module_name)
-            if local_info and local_info.has_data:
-                local_data_version = data_version(
-                    module_name, version=local_info.version
+            if local_info and local_info.has_data and local_info.version:
+                local_data_version = module_data_version(
+                    module_name, local_info.version
                 )
             else:
                 local_data_version = None
         else:
             local_data_version = None
-        code_url = get_module_piece_url(module_name, "code", version=version)
+        r = get_module_urls(module_name, code_version=version)
+        if not r:
+            return False
+        code_url = r.get("code_url")
+        data_url = r.get("data_url")
         zipfile_fname = module_name + ".zip"
         remote_info = get_remote_module_info(module_name)
         if remote_info is not None:
             module_type = remote_info.type
         else:
             # Private module. Fallback to remote config.
-            remote_config = get_module_cache().get_remote_module_piece_content(
-                module_name, "config"
-            )
-            if remote_config:
-                module_type = remote_config["type"]
-            else:
-                module_type = None
-        if module_type is None:
+            module_type = conf.get("type")
+        if not module_type:
             raise ModuleLoadingError(module_name)
         if install_state:
             if (
@@ -370,9 +375,6 @@ def install_module(
             and (remote_data_version != local_data_version or force_data)
         ):
             data_installed = True
-            data_url = get_module_piece_url(
-                module_name, "data", version=remote_data_version
-            )
             data_fname = ".".join([module_name, "data", "zip"])
             data_path = os.path.join(temp_dir, data_fname)
             stage_handler.stage_start("download_data")

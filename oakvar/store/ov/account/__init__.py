@@ -117,23 +117,6 @@ def delete(args={}) -> bool:
         return False
 
 
-def is_verified(args={}) -> bool:
-    from ....util.util import quiet_print
-
-    id_token = get_id_token()
-    if not id_token:
-        quiet_print(f"not logged in", args=args)
-        return False
-    if id_token_is_valid():
-        token_set = get_token_set() or {}
-        email = token_set["email"]
-        quiet_print(f"logged in as {email}", args=args)
-        return True
-    else:
-        quiet_print(f"not logged in", args=args)
-        return False
-
-
 def check(args={}) -> bool:
     from ....util.util import quiet_print
 
@@ -141,7 +124,10 @@ def check(args={}) -> bool:
     if not id_token:
         quiet_print(f"not logged in", args=args)
         return False
-    if id_token_is_valid():
+    valid, expired = id_token_is_valid()
+    if valid:
+        if expired:
+            refresh_token_set()
         token_set = get_token_set() or {}
         email = token_set["email"]
         quiet_print(f"logged in as {email}", args=args)
@@ -337,7 +323,8 @@ def change(args={}) -> bool:
     if not id_token:
         quiet_print(f"not logged in", args=args)
         return False
-    if not id_token_is_valid():
+    valid, expired = id_token_is_valid()
+    if valid and not expired:
         id_token = None
         refresh_token = get_refresh_token()
         if refresh_token:
@@ -491,10 +478,7 @@ def wait_for_email_verified(email: str, args={}, quiet=None):
         input()
 
 
-def total_login(email=None, pw=None, args={}, conf=None) -> bool:
-    from ....util.util import get_email_pw_from_input
-    from ....system import show_no_user_account_prelude
-
+def login_with_token_set(args={}) -> bool:
     token_set = get_token_set()
     if token_set:
         email = token_set["email"]
@@ -513,6 +497,10 @@ def total_login(email=None, pw=None, args={}, conf=None) -> bool:
                     return True
             else:
                 delete_token_set()
+    return False
+
+
+def login_with_email_pw(email=None, pw=None, args={}, conf={}) -> bool:
     emailpw = get_email_pw_from_settings(email=email, pw=pw, args=args, conf=conf)
     if emailpw:
         if emailpw_are_valid(emailpw):
@@ -524,17 +512,26 @@ def total_login(email=None, pw=None, args={}, conf=None) -> bool:
             wait_for_email_verified(email, args=args)
             login(email=email, pw=pw, args=args)
             return True
-    # if not already logged in nor email and pw in settings did not work, get manual input.
-    if not emailpw:
-        show_no_user_account_prelude()
-        while True:
-            email, pw = get_email_pw_from_input(pwconfirm=True)
-            if create(email=email, pw=pw, quiet=False):
-                break
-        wait_for_email_verified(email, args=args)
-        login(email=email, pw=pw, args=args)
-        return True
     return False
+
+
+def total_login(email=None, pw=None, args={}, conf=None) -> bool:
+    from ....util.util import get_email_pw_from_input
+    from ....system import show_no_user_account_prelude
+
+    if login_with_token_set(args=args):
+        return True
+    if login_with_email_pw(email=email, pw=pw, args=args, conf=conf):
+        return True
+    # if not already logged in nor email and pw in settings did not work, get manual input.
+    show_no_user_account_prelude()
+    while True:
+        email, pw = get_email_pw_from_input(pwconfirm=True)
+        if create(email=email, pw=pw, quiet=False):
+            break
+    wait_for_email_verified(email, args=args)
+    login(email=email, pw=pw, args=args)
+    return True
 
 
 # def save(email: str, pw: str, args={}):

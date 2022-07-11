@@ -37,11 +37,10 @@ def info(args, __name__="module info"):
     from oyaml import dump
     from ..module.local import get_local_module_info
     from ..module.remote import get_remote_module_info
-    from ..store.ov import summary_col_value
 
     ret = {}
     module_name = args.get("module", None)
-    if module_name is None:
+    if not module_name:
         return ret
     installed = False
     remote_available = False
@@ -51,41 +50,19 @@ def info(args, __name__="module info"):
     fmt = args.get("fmt", "json")
     to = args.get("to", "return")
     # Remote
-    try:
-        remote_info = get_remote_module_info(module_name)
-        if remote_info != None:
-            remote_available = True
-    except LookupError:
-        remote_available = False
+    remote_info = get_remote_module_info(module_name)
+    remote_available = remote_info != None
     # Local
-    release_note = {}
-    try:
-        local_info = get_local_module_info(module_name)
-        if local_info != None:
-            installed = True
-            release_note = local_info.conf.get("release_note", {})
-        else:
-            installed = False
-    except LookupError:
+    local_info = get_local_module_info(module_name)
+    if local_info:
+        installed = True
+    else:
         installed = False
     if remote_available and remote_info is not None:
-        versions = remote_info.versions
-        data_sources = remote_info.data_sources
-        new_versions = []
-        for version in versions:
-            data_source = data_sources.get(version, None)
-            note = release_note.get(version, None)
-            if data_source:
-                version = version + " (data source " + data_source + ")"
-            if note:
-                version = version + " " + note
-            new_versions.append(version)
-        remote_info.versions = new_versions
-        ret.update(remote_info.data)
+        ret.update(remote_info.to_info())
         ret["output_columns"] = []
-        output_columns = summary_col_value(module_name, "output_columns")
-        if output_columns:
-            for col in output_columns:
+        if remote_info.output_columns:
+            for col in remote_info.output_columns:
                 desc = ""
                 if "desc" in col:
                     desc = col["desc"]
@@ -108,7 +85,7 @@ def info(args, __name__="module info"):
         and local_info is not None
         and remote_info is not None
     ):
-        if installed and local_info.version == remote_info.latest_version:
+        if installed and local_info.version == remote_info.latest_code_version:
             up_to_date = True
         else:
             up_to_date = False
@@ -168,7 +145,7 @@ def install(args, __name__="module install"):
         local_info = get_local_module_info(module_name)
         remote_info = get_remote_module_info(module_name, version=version)
         if not version and remote_info:
-            version = remote_info.latest_version
+            version = remote_info.latest_code_version
         if not version:
             quiet_print(f"{module_name} does not exist.", args=args)
             continue
@@ -222,7 +199,7 @@ def install(args, __name__="module install"):
                 version=module_version,
                 force_data=args["force_data"],
                 stage_handler=stage_handler,
-                force=args["force"],
+                # force=args["force"],
                 skip_data=args["skip_data"],
                 quiet=quiet,
             )
@@ -366,12 +343,12 @@ def add_local_module_info_to_remote_module_info(remote_info):
     local_info = get_local_module_info(remote_info.name)
     if local_info:
         remote_info.installed = "yes"
-        remote_info.local_version = local_info.version
-        remote_info.local_datasource = local_info.datasource
+        remote_info.local_code_version = local_info.latest_code_version
+        remote_info.local_data_source = local_info.latest_data_source
     else:
         remote_info.installed = ""
-        remote_info.local_version = ""
-        remote_info.local_datasource = ""
+        remote_info.local_code_version = ""
+        remote_info.local_data_source = ""
 
 
 def list_modules(args):
@@ -381,7 +358,7 @@ def list_modules(args):
     from ..module.local import get_local_module_info
     from ..module.remote import get_remote_module_info
     from ..util.util import humanize_bytes
-    from ..module.remote import RemoteModuleInfo
+    from ..module.remote import RemoteModule
 
     fmt = args.get("fmt", "return")
     nameonly = args.get("nameonly", False)
@@ -394,22 +371,27 @@ def list_modules(args):
         if nameonly:
             all_toks = []
         else:
-            header = [
-                "Name",
-                "Title",
-                "Type",
-                "Size",
-                "Store data ver",
-            ]
             if available:
-                header.extend(
-                    [
-                        "Installed",
-                        "Store ver",
-                        "Local ver",
-                        "Local data ver",
-                    ]
-                )
+                header = [
+                    "Name",
+                    "Title",
+                    "Type",
+                    "Size",
+                    "Store version",
+                    "Store data source",
+                    "Installed",
+                    "Local version",
+                    "Local data source",
+                ]
+            else:
+                header = [
+                    "Name",
+                    "Title",
+                    "Type",
+                    "Size",
+                    "Version",
+                    "Data source",
+                ]
             all_toks = [header]
     elif fmt in ["json", "yaml"]:
         all_toks_json = []
@@ -436,7 +418,7 @@ def list_modules(args):
                     continue
             if module_info.hidden and not args.get("include_hidden"):
                 continue
-            if isinstance(module_info, RemoteModuleInfo):
+            if isinstance(module_info, RemoteModule):
                 size = module_info.size
             else:
                 size = module_info.get_size()
@@ -446,42 +428,54 @@ def list_modules(args):
             if fmt == "tabular":
                 toks = [module_name]
                 if not nameonly:
-                    toks.extend(
-                        [
-                            module_info.title,
-                            module_info.type,
-                            size,
-                            module_info.datasource,
-                        ]
-                    )
-                    if isinstance(module_info, RemoteModuleInfo):
+                    if available:
                         toks.extend(
                             [
+                                module_info.title,
+                                module_info.type,
+                                size,
+                                module_info.latest_code_version,
+                                module_info.latest_data_source,
                                 module_info.installed,
-                                module_info.latest_version,
-                                module_info.local_version,
-                                module_info.local_datasource,
+                                module_info.local_code_version,
+                                module_info.local_data_source,
+                            ]
+                        )
+                    else:
+                        toks.extend(
+                            [
+                                module_info.title,
+                                module_info.type,
+                                size,
+                                module_info.latest_code_version,
+                                module_info.latest_data_source,
                             ]
                         )
                 all_toks.append(toks)
             elif fmt in ["json", "yaml"]:
                 toks = {"name": module_name}
                 if not nameonly:
-                    toks.update(
-                        {
-                            "title": module_info.title,
-                            "type": module_info.type,
-                            "datasource": module_info.datasource,
-                            "size": size,
-                        }
-                    )
-                    if isinstance(module_info, RemoteModuleInfo):
+                    if available:
                         toks.update(
                             {
+                                "title": module_info.title,
+                                "type": module_info.type,
+                                "size": size,
+                                "version": module_info.latest_code_version,
+                                "data_source": module_info.latest_data_source,
                                 "installed": module_info.installed,
-                                "latest_version": module_info.latest_version,
-                                "local_version": module_info.local_version,
-                                "local_datasource": module_info.local_datasource,
+                                "local_code_version": module_info.local_code_version,
+                                "local_data_source": module_info.local_data_source,
+                            }
+                        )
+                    else:
+                        toks.update(
+                            {
+                                "title": module_info.title,
+                                "type": module_info.type,
+                                "size": size,
+                                "version": module_info.latest_code_version,
+                                "data_source": module_info.latest_data_source,
                             }
                         )
                 all_toks_json.append(toks)

@@ -8,19 +8,19 @@ class LocalModuleCache(MutableMapping):
         self.update(dict(*args, **kwargs))  # use the free update to set keys
 
     def __getitem__(self, key):
-        from .local import LocalModuleInfo
+        from .local import LocalModule
 
         if key not in self.store:
             raise KeyError(key)
-        if not isinstance(self.store[key], LocalModuleInfo):
-            self.store[key] = LocalModuleInfo(self.store[key])
+        if not isinstance(self.store[key], LocalModule):
+            self.store[key] = LocalModule(self.store[key])
         return self.store[key]
 
     def __setitem__(self, key, value):
         from os.path import isdir
-        from .local import LocalModuleInfo
+        from .local import LocalModule
 
-        if not (isinstance(value, LocalModuleInfo) or isdir(value)):
+        if not (isinstance(value, LocalModule) or isdir(value)):
             raise ValueError(value)
         self.store[key] = value
 
@@ -100,43 +100,30 @@ class ModuleCache(object):
                     self.local[module_name] = module_dir
 
     def get_remote_readme(self, module_name, version=None):
-        from ..store.ov import get_readme
+        from .remote import get_readme
 
         if module_name not in self.remote_readme:
             self.remote_readme[module_name] = {}
         if version in self.remote_readme[module_name]:
             return self.remote_readme[module_name][version]
-        readme = get_readme(module_name, version=version)
+        readme = get_readme(module_name)
         self.remote_readme[module_name][version] = readme
         return readme
 
-    def get_remote_config(self, module_name, version=None):
+    def get_remote_module_piece_url(self, module_name, kind, version=None):
         import oyaml as yaml
         from ..store import fetch_file_content_to_string
-        from ..store import get_module_piece_url
-
-        conf_url = get_module_piece_url(module_name, "config", version=version)
-        config = yaml.safe_load(fetch_file_content_to_string(conf_url))
-        # add to cache
-        if module_name not in self.remote_config:
-            self.remote_config[module_name] = {}
-        self.remote_config[module_name][version] = config
-        return config
-
-    def get_remote_module_piece_content(self, module_name, kind, version=None):
-        import oyaml as yaml
-        from ..store import fetch_file_content_to_string
-        from ..store import get_module_piece_url
+        from ..store import get_module_urls
 
         if (
             kind in self.remote_module_piece
             and module_name in self.remote_module_piece[kind]
         ):
             return self.remote_module_piece[kind][module_name]
-        conf_url = get_module_piece_url(module_name, kind, version=version)
-        if not conf_url:
+        url = get_module_urls(module_name, code_version=version)
+        if not url:
             return None
-        content = yaml.safe_load(fetch_file_content_to_string(conf_url))
+        content = yaml.safe_load(fetch_file_content_to_string(url))
         if kind not in self.remote_module_piece:
             self.remote_module_piece[kind] = {}
         if module_name not in self.remote_module_piece[kind]:

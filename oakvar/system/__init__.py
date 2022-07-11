@@ -236,6 +236,13 @@ def get_conf_dirvalue(conf_key, conf=None):
     return d
 
 
+def get_cache_dir(cache_key, conf=None):
+    from os.path import join
+
+    d = get_conf_dir(conf=conf)
+    return join(d, cache_key)
+
+
 def get_sys_conf_value(conf_key, sys_conf_path=None, conf=None):
     from os import environ
     from ..util.util import load_yml_conf

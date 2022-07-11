@@ -90,7 +90,7 @@ def fetch_install_queue(install_queue, install_state, local_modules_changed):
                 module_name,
                 version=module_version,
                 stage_handler=stage_handler,
-                stages=100,
+                # stages=100,
             )
             local_modules_changed.set()
             time.sleep(1)
@@ -103,7 +103,7 @@ def fetch_install_queue(install_queue, install_state, local_modules_changed):
 
 
 async def get_remote_manifest(request):
-    from ..store.ov import get_manifest
+    from ..store.db import get_manifest
 
     content = {"data": {}, "tagdesc": {}}
     try:
@@ -127,13 +127,12 @@ async def get_remote_manifest(request):
 
 
 async def get_remote_module_output_columns(request):
-    from ..store.ov import summary_col_value
+    from ..module.remote import get_conf
 
     queries = request.rel_url.query
     module = queries["module"]
-    output_columns = summary_col_value(module, "output_columns")
-    if not output_columns:
-        output_columns = []
+    conf = get_conf(module) or {}
+    output_columns = conf.get("output_columns") or []
     return web.json_response(output_columns)
 
 
@@ -164,7 +163,7 @@ async def get_module_readme(request):
     version = request.match_info["version"]
     if version == "latest":
         version = None
-    readme_md = get_readme(module_name, version=version)
+    readme_md = get_readme(module_name)
     return web.Response(body=readme_md)
 
 
@@ -397,7 +396,7 @@ async def get_tag_desc(_):
 
 async def update_remote(request):
     from ..module.cache import get_module_cache
-    from ..store.ov import fetch_ov_store_cache
+    from ..store.db import fetch_ov_store_cache
 
     if servermode and server_ready:
         import cravat_multiuser

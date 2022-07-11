@@ -7,6 +7,7 @@ conf_dir_name = "conf"
 modules_dir_name = "modules"
 jobs_dir_name = "jobs"
 log_dir_name = "logs"
+cache_dirs = ["readme", "logo", "conf"]
 
 #
 # file names

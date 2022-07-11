@@ -116,7 +116,7 @@ def get_widgets_for_annotator(annotator_name, skip_installed=False):
     for widget_name in l:
         widget_info = get_remote_module_info(widget_name)
         if widget_info is not None and widget_info.type == "webviewerwidget":
-            widget_config = get_module_cache().get_remote_module_piece_content(
+            widget_config = get_module_cache().get_remote_module_piece_url(
                 widget_name, "config"
             )
             if widget_config:

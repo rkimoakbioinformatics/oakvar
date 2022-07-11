@@ -2,7 +2,22 @@ from typing import Optional
 from typing import Tuple
 
 
-class RemoteModuleInfo(object):
+class RemoteModule(object):
+    def to_info(self):
+        d = {
+            "name": self.name,
+            "title": self.title,
+            "description": self.description,
+            "type": self.type,
+            "size": self.size,
+            "tags": self.tags,
+            "versions": self.versions,
+            "developer": self.developer,
+            "groups": self.groups,
+            "output_columns": self.output_columns,
+        }
+        return d
+
     def to_dict(self):
         d = {
             "groups": self.groups,
@@ -11,48 +26,96 @@ class RemoteModuleInfo(object):
             "title": self.title,
             "type": self.type,
             "tags": self.tags,
-            "logo": self.logo,
             "size": self.size,
             "publish_time": self.publish_time,
         }
         return d
 
+    def make_versions(self):
+        self.versions = {}
+        for code_version in self.code_versions:
+            self.versions[code_version] = {}
+        if self.data_versions:
+            for code_version, data_version in zip(
+                self.code_versions, self.data_versions
+            ):
+                self.versions[code_version]["data_version"] = data_version
+        else:
+            for code_version in self.code_versions:
+                self.versions[code_version]["data_version"] = ""
+        if self.data_sources:
+            for code_version, data_source in zip(self.code_versions, self.data_sources):
+                self.versions[code_version]["data_source"] = data_source
+        else:
+            for code_version in self.code_versions:
+                self.versions[code_version]["data_source"] = ""
+
     def __init__(self, __name__, **kwargs):
         from ..store import get_developer_dict
         from ..util.util import get_latest_version
-        from json import loads
+        from ..store.db import module_code_versions
+        from ..store.db import module_data_versions
+        from ..store.db import module_data_sources
+        from ..store.db import module_sizes
 
-        self.data = kwargs
-        self.conf = loads(self.data.get("conf") or "{}")
+        self.name = kwargs.get("name") or ""
+        self.conf = get_conf(self.name)
+        if not self.conf:
+            return
         self.groups = self.conf.get("groups", {})
         self.output_columns = self.conf.get("output_columns", [])
-        self.code_sizes = loads(self.data.get("code_sizes", "{}"))
-        self.data_sizes = loads(self.data.get("data_sizes", "{}"))
-        self.data_sources = loads(self.data.get("data_sources", "{}"))
-        self.data_versions = loads(self.data.get("data_versions", "{}"))
-        self.logo = self.data.get("logo", "")
-        self.name = self.data.get("name")
-        self.versions = self.data.get("versions", [])
-        self.code_versions = loads(self.data.get("code_versions", "[]"))
-        self.latest_version = get_latest_version(self.code_versions)
-        self.type = self.data.get("type")
-        self.title = self.data.get("title")
-        self.description = self.conf.get("description", "")
-        self.code_size = self.code_sizes.get(self.latest_version, 0)
-        self.data_size = self.data_sizes.get(self.latest_version, 0)
+        self.code_versions = module_code_versions(self.name) or []
+        self.data_versions = module_data_versions(self.name) or []
+        self.data_sources = module_data_sources(self.name) or []
+        self.make_versions()
+        self.latest_code_version = get_latest_version(self.code_versions)
+        self.latest_data_version = self.versions[self.latest_code_version][
+            "data_version"
+        ]
+        self.latest_data_source = self.versions[self.latest_code_version]["data_source"]
+        self.code_size, self.data_size = module_sizes(
+            self.name, self.latest_code_version
+        ) or (0, 0)
         self.size = self.code_size + self.data_size
-        self.datasource = self.data_sources.get(self.latest_version, "")
+        self.type = kwargs.get("type")
+        self.title = kwargs.get("title")
+        self.description = self.conf.get("description", "")
         self.hidden = self.conf.get("hidden")
-        self.tags = loads(self.data.get("tags", "[]"))
-        self.publish_time = self.data.get("publish_time")
-        self.developer = self.conf.get("developer", {})
-        self.developer = get_developer_dict(**self.developer)
+        self.tags = self.conf.get("tags", [])
+        self.publish_time = kwargs.get("publish_time")
+        self.developer = get_developer_dict(self.conf.get("developer", {}))
         self.installed: Optional[str] = None
-        self.local_version: Optional[str] = None
-        self.local_datasource: Optional[str] = None
+        self.local_code_version: Optional[str] = None
+        self.local_data_source: Optional[str] = None
 
-    def has_version(self, version):
-        return version in self.versions
+
+def get_conf(module_name: str) -> Optional[dict]:
+    from ..system import get_cache_dir
+    from os.path import join
+    from os.path import exists
+    from json import load
+
+    for store in ["ov", "oc"]:
+        fpath = join(get_cache_dir("conf"), store, module_name + ".json")
+        if exists(fpath):
+            with open(fpath) as f:
+                conf = load(f)
+                return conf
+    return None
+
+
+def get_readme(module_name: str) -> Optional[str]:
+    from ..system import get_cache_dir
+    from os.path import join
+    from os.path import exists
+
+    for store in ["ov", "oc"]:
+        fpath = join(get_cache_dir("readme"), store, module_name)
+        if exists(fpath):
+            with open(fpath) as f:
+                out = "\n".join(f.readlines())
+                return out
+    return None
 
 
 def get_install_deps(
@@ -61,15 +124,12 @@ def get_install_deps(
     from distutils.version import LooseVersion
     from pkg_resources import Requirement
     from .local import get_local_module_info
-    from .cache import get_module_cache
     from ..store import remote_module_latest_version
 
     # If input module version not provided, set to highest
     if version is None:
         version = remote_module_latest_version(module_name)
-    config = get_module_cache().get_remote_module_piece_content(
-        module_name, "config", version=version
-    )
+    config = get_conf(module_name) or {}
     if not config:
         return {}, {}
     req_list = config.get("requires", [])
@@ -115,10 +175,11 @@ def search_remote(*patterns):
     for module_name in l:
         if any([fullmatch(pattern, module_name) for pattern in patterns]):
             matching_names.append(module_name)
+    matching_names.sort()
     return matching_names
 
 
-def get_remote_module_info(module_name, version=None) -> Optional[RemoteModuleInfo]:
+def get_remote_module_info(module_name, version=None) -> Optional[RemoteModule]:
     from .cache import get_module_cache
     from ..store import remote_module_info_latest_version
 
@@ -129,13 +190,6 @@ def get_remote_module_info(module_name, version=None) -> Optional[RemoteModuleIn
         return mc.remote[module_name][version]
     else:
         module_info = remote_module_info_latest_version(module_name)
-        """
-        if module_info:
-            module_info = RemoteModuleInfo(module_name, **module_info)
-        else:
-            module_info = RemoteModuleInfo(module_name)
-        module_info.name = module_name
-        """
         return module_info
 
 
