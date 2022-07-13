@@ -51,11 +51,12 @@ def pack_module_zip(args: dict, kind: str):
     from os import sep
     from os.path import basename
     from os.path import exists
+    from os import sep
     from ..util.util import quiet_print
-    from ..module.local import get_module_version
+    from ..module.local import get_module_code_version
 
     module_name, module_dir = get_module_name_and_module_dir(args)
-    version = get_module_version(module_name)
+    version = get_module_code_version(module_name)
     pack_dir, outdir = get_pack_dir_out_dir(kind, args, module_dir)
     if exists(pack_dir):
         pack_fn = f"{module_name}__{version}__{kind}.zip"
@@ -75,7 +76,13 @@ def pack_module_zip(args: dict, kind: str):
                     ):
                         continue
                     p = join(root, file)
-                    arcname = join(root.replace(module_dir + sep, ""), file)
+                    arcname = join(root, file)
+                    if pack_dir in arcname:
+                        arcname = arcname[len(pack_dir) :].lstrip(sep)
+                    if kind == "code":
+                        arcname = arcname  # join(module_name, arcname)
+                    elif kind == "data":
+                        arcname = join("data", arcname)
                     z.write(p, arcname=arcname)
             quiet_print(f"{pack_path} written", args=args)
 

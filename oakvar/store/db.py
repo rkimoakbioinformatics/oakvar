@@ -127,7 +127,7 @@ def module_data_source(
 
 
 @db_func
-def module_data_version(
+def remote_module_data_version(
     module_name: str, code_version: str, conn=None, cursor=None
 ) -> Optional[str]:
     if not conn or not cursor:
@@ -199,7 +199,10 @@ def summary_col_value(module_name: str, colname: str, conn=None, cursor=None):
             if not v or store == "ov":
                 out = v
     if out:
-        return loads(out)
+        if out[0] in ["[", "{"]:
+            return loads(out)
+        else:
+            return out
     else:
         return None
 
@@ -296,6 +299,10 @@ def register(conn=None, cursor=None, args={}) -> bool:
     from ..util.util import quiet_print
     from .ov import get_register_args_of_module
     from .ov import get_store_url
+    from ..module.local import get_logo_b64
+    from ..module.local import get_readme
+    from ..module.local import get_code_size
+    from ..module.local import get_data_size
 
     if not conn or not cursor:
         return False
@@ -307,6 +314,15 @@ def register(conn=None, cursor=None, args={}) -> bool:
         if not params:
             return False
         params["idToken"] = id_token
+        params["name"] = module_name
+        params["readme"] = get_readme(module_name) or ""
+        params["logo"] = get_logo_b64(module_name) or ""
+        params["code_size"] = get_code_size(module_name)
+        params["data_size"] = get_data_size(module_name)
+        params["overwrite"] = args.get("overwrite")
+        if not params["conf"]:
+            quiet_print(f"no configuration file exists for {module_name}", args=args)
+            return False
         res = post(url, data=params)
         if res.status_code == 200:
             quiet_print(f"success", args=args)
@@ -315,7 +331,7 @@ def register(conn=None, cursor=None, args={}) -> bool:
             quiet_print(f"{res.text}", args=args)
             return False
     except Exception as e:
-        quiet_print(f"{str(e)}", args=args)
+        quiet_print(f"{e}", args=args)
         return False
 
 
@@ -331,13 +347,13 @@ def fetch_ov_store_cache(
     from ..exceptions import AuthorizationError
     from .ov.account import login_with_token_set
     from .ov import get_server_last_updated
+    from time import time
 
     if not conn or not cursor:
         return False
     if not login_with_token_set():
         quiet_print(f"not logged in", args=args)
         return False
-    fetch_summary_cache(args=args)
     server_last_updated, status_code = get_server_last_updated()
     local_last_updated = get_local_last_updated()
     clean = args.get("clean")
@@ -350,6 +366,7 @@ def fetch_ov_store_cache(
     if not clean and local_last_updated and local_last_updated >= server_last_updated:
         quiet_print("No store update to fetch", args=args)
         return True
+    args["timestamp"] = time()
     fetch_summary_cache(args=args)
     fetch_versions_cache(args=args)
     fetch_readme_cache(args=args)
@@ -388,7 +405,7 @@ def fetch_conf_cache(args={}, conn=None, cursor=None, conf={}):
     if not module_stores:
         return
     id_token = get_current_id_token(args=args)
-    params = {"idToken": id_token}
+    params = {"idToken": id_token, "timestamp": args.get("timestamp")}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
     for module_store in module_stores:
@@ -416,7 +433,7 @@ def fetch_logo_cache(args={}, conn=None, cursor=None, conf={}):
     if not module_stores:
         return
     id_token = get_current_id_token(args=args)
-    params = {"idToken": id_token}
+    params = {"idToken": id_token, "timestamp": args.get("timestamp")}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
     for module_store in module_stores:
@@ -444,7 +461,7 @@ def fetch_readme_cache(args={}, conn=None, cursor=None, conf={}):
     if not module_stores:
         return
     id_token = get_current_id_token(args=args)
-    params = {"idToken": id_token}
+    params = {"idToken": id_token, "timestamp": args.get("timestamp")}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
     for module_store in module_stores:
@@ -470,7 +487,7 @@ def fetch_summary_cache(args={}, conn=None, cursor=None):
         return
     url = f"{get_store_url()}/fetch_summary"
     id_token = get_current_id_token(args=args)
-    params = {"idToken": id_token}
+    params = {"idToken": id_token, "timestamp": args.get("timestamp")}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
     res = s.post(url, data=params)
@@ -503,7 +520,7 @@ def fetch_versions_cache(args={}, conn=None, cursor=None):
         return
     url = f"{get_store_url()}/fetch_versions"
     id_token = get_current_id_token(args=args)
-    params = {"idToken": id_token}
+    params = {"idToken": id_token, "timestamp": args.get("timestamp")}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
     res = s.post(url, data=params)

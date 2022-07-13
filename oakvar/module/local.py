@@ -44,8 +44,10 @@ class LocalModule(object):
         if self.conf_exists:
             self.conf = load_yml_conf(self.conf_path)
         self.type = self.conf.get("type")
-        self.version = self.conf.get("version")
-        self.code_version = self.conf.get("version")
+        self.code_version = self.conf.get("code_version")
+        if not self.code_version:
+            self.code_version = self.conf.get("version")
+        self.version = self.code_version
         self.latest_code_version = self.code_version
         self.latest_data_source = self.conf.get("datasource", "")
         self.description = self.conf.get("description")
@@ -243,18 +245,21 @@ def get_mapper_script_path(module_name):
     return module_path
 
 
-def get_module_version(module_name: str) -> str:
+def get_module_code_version(module_name: str) -> Optional[str]:
     module_conf = get_module_conf(module_name)
     if not module_conf:
-        from ..exceptions import ModuleLoadingError
-
-        raise ModuleLoadingError(module_name)
-    version = module_conf.get("version", None)
+        return None
+    version = module_conf.get("code_version", None)
     if not version:
-        from ..exceptions import ModuleVersionError
-
-        raise ModuleVersionError(module_name, "unknown")
+        version = module_conf.get("version", None)
     return version
+
+
+def module_data_version(module_name: str) -> Optional[str]:
+    module_conf = get_module_conf(module_name)
+    if not module_conf:
+        return None
+    return module_conf.get("data_version", None)
 
 
 def get_module_dir(module_name, module_type=None) -> Optional[str]:
@@ -274,6 +279,8 @@ def get_module_dir(module_name, module_type=None) -> Optional[str]:
     else:  # module folder should be searched.
         type_fns = listdir(modules_dir)
         for type_fn in type_fns:
+            if type_fn in ["temp"]:
+                continue
             type_dir = join(modules_dir, type_fn)
             if isdir(type_dir) == False:
                 continue
@@ -343,56 +350,150 @@ def module_exists_local(module_name):
     return False
 
 
-def get_logo_b64(module_info) -> str:
-    from base64 import b64encode
+def get_logo_path(module_name: str, module_type=None) -> Optional[str]:
     from os.path import join
     from os.path import exists
+
+    d = get_module_dir(module_name, module_type=module_type)
+    if d:
+        p = join(d, "logo.png")
+        if exists(p):
+            return p
+    return ""
+
+
+def get_logo_b64(module_name: str, module_type=None) -> Optional[str]:
+    from base64 import b64encode
     from PIL import Image
     from ..store.consts import logo_size
     from io import BytesIO
 
-    p = join(module_info.directory, "logo.png")
-    if exists(p):
+    p = get_logo_path(module_name, module_type=module_type)
+    if p:
         im = Image.open(p)
         im.thumbnail(logo_size)
         buf = BytesIO()
         im.save(buf, format="png")
         s = b64encode(buf.getvalue()).decode()
         return s
-    return ""
+    return None
 
 
-def get_remote_manifest_from_local(module_name: str):
+def get_remote_manifest_from_local(module_name: str, args={}):
     from os.path import exists
     from datetime import datetime
-    from json import dumps
+    from ..util.util import quiet_print
 
     module_info = get_local_module_info(module_name)
     if not module_info:
         return None
     module_conf = module_info.conf
     rmi = {}
-    rmi["commercial_warning"] = module_conf.get("commercial_warning", None)
+    rmi["name"] = module_name
+    rmi["commercial_warning"] = module_conf.get("commercial_warning", "")
     if exists(module_info.data_dir) == False:
         rmi["data_size"] = 0
     else:
         rmi["data_size"] = module_info.get_data_size()
     rmi["code_size"] = module_info.get_code_size()
-    rmi["description"] = module_conf.get("description")
-    rmi["developer"] = module_conf.get("developer")
+    rmi["description"] = module_conf.get("description", "")
+    rmi["developer"] = module_conf.get("developer", {})
     rmi["downloads"] = 0
-    rmi["groups"] = module_conf.get("groups")
-    rmi["output_columns"] = module_conf.get("output_columns")
+    rmi["groups"] = module_conf.get("groups", [])
+    rmi["output_columns"] = module_conf.get("output_columns", [])
     rmi["publish_time"] = str(datetime.now())
     rmi["requires"] = module_conf.get("requires", [])
     rmi["size"] = rmi["code_size"] + rmi["data_size"]
     rmi["title"] = module_conf.get("title", "")
     rmi["type"] = module_conf.get("type", "")
     rmi["tags"] = module_conf.get("tags", [])
-    rmi["version"] = module_conf.get("version")
-    rmi["code_version"] = module_conf.get("version")
-    rmi["data_version"] = module_conf.get("datasource")
+    rmi["version"] = module_conf.get("version", "")
+    rmi["code_version"] = module_conf.get("code_version", "")
+    if not rmi["code_version"]:
+        rmi["code_version"] = module_conf.get("version", "")
+    if not rmi["code_version"]:
+        quiet_print(f"code_version should be defined in {module_name}.yml", args=args)
+        return None
+    rmi["data_version"] = module_conf.get("data_version", "")
+    if not rmi["data_version"]:
+        quiet_print(f"data_version should be defined in {module_name}.yml", args=args)
+        return None
     rmi["readme"] = module_info.readme
-    rmi["conf"] = dumps(module_conf)
-    rmi["logo"] = get_logo_b64(module_info)
+    rmi["conf"] = module_conf
+    rmi["logo"] = get_logo_b64(module_name)
     return rmi
+
+
+def get_conf_path(module_name, module_type=None) -> Optional[str]:
+    from os.path import join
+    from os.path import exists
+
+    module_dir = get_module_dir(module_name, module_type=module_type)
+    if module_dir:
+        conf_path = join(module_dir, module_name + ".yml")
+        if exists(conf_path):
+            return conf_path
+    return None
+
+
+def get_conf_str(module_name, module_type=None) -> Optional[str]:
+    conf_path = get_conf_path(module_name, module_type=module_type)
+    if not conf_path:
+        return None
+    with open(conf_path) as f:
+        return "\n".join(f.readlines())
+
+
+def get_conf(module_name, module_type=None) -> Optional[dict]:
+    from ..util.util import load_yml_conf
+
+    p = get_conf_path(module_name, module_type=module_type)
+    return load_yml_conf(p)
+
+
+def get_readme_path(module_name, module_type=None) -> Optional[str]:
+    from os.path import join
+    from os.path import exists
+
+    module_dir = get_module_dir(module_name, module_type=module_type)
+    if module_dir:
+        p = join(module_dir, module_name + ".md")
+        if exists(p):
+            return p
+    return None
+
+
+def get_readme(module_name, module_type=None) -> Optional[str]:
+    p = get_readme_path(module_name, module_type=module_type)
+    if not p:
+        return None
+    with open(p) as f:
+        return "\n".join(f.readlines())
+
+
+def get_module_size(module_name, module_type=None) -> Optional[int]:
+    from ..util.util import get_directory_size
+
+    d = get_module_dir(module_name, module_type=module_type)
+    if d:
+        return get_directory_size(d)
+
+
+def get_data_size(module_name, module_type=None) -> Optional[int]:
+    from ..util.util import get_directory_size
+    from os.path import join
+    from os.path import exists
+
+    d = get_module_dir(module_name, module_type=module_type)
+    if d:
+        data_dir = join(d, "data")
+        if exists(data_dir):
+            return get_directory_size(d)
+
+
+def get_code_size(module_name, module_type=None) -> Optional[int]:
+    module_size = get_module_size(module_name, module_type=module_type)
+    data_size = get_data_size(module_name, module_type=module_type)
+    if module_size and data_size:
+        return module_size - data_size
+    return None

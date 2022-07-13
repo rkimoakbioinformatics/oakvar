@@ -83,9 +83,7 @@ def add_parser_fn_store_register(subparsers):
         help="url of a data pack (made with `ov store pack`)",
     )
     parser_cli_store_register.add_argument(
-        "--logo-url",
-        default="",
-        help="url of a module logo",
+        "--overwrite", action="store_true", help="overwrite if the same version exists"
     )
     parser_cli_store_register.set_defaults(func=cli_store_register)
     parser_cli_store_register.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore

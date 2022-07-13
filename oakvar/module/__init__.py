@@ -1,3 +1,6 @@
+from typing import Tuple
+
+
 class InstallProgressHandler(object):
     def __init__(self, module_name, module_version):
         self.module_name = module_name
@@ -101,37 +104,38 @@ def get_readme(module_name):
             return local_readme
 
 
-def install_pypi_dependencies(module_name: str, pypi_deps, args={}):
+def install_pypi_dependencies(args={}):
     from subprocess import run
     from ..util.util import quiet_print
 
+    pypi_dependency = args.get("pypi_dependency")
     idx = 0
-    if pypi_deps:
+    if pypi_dependency:
         quiet_print(
-            f"Following PyPI dependencies should be met before installing {module_name}.",
+            f"Following PyPI dependencies should be met before installing {args.get('module_name')}.",
             args=args,
         )
-        for dep in pypi_deps:
+        for dep in pypi_dependency:
             quiet_print(f"- {dep}", args=args)
         quiet_print(f"Installing required PyPI packages...", args=args)
         idx = 0
-        while idx < len(pypi_deps):
-            dep = pypi_deps[idx]
+        while idx < len(pypi_dependency):
+            dep = pypi_dependency[idx]
             r = run(["pip", "install", dep])
             if r.returncode == 0:
-                pypi_deps.remove(dep)
+                pypi_dependency.remove(dep)
             else:
                 idx += 1
-        if len(pypi_deps) > 0:
+        if len(pypi_dependency) > 0:
             quiet_print(
                 f"Following PyPI dependencies could not be installed.",
                 args=args,
             )
-            for dep in pypi_deps:
+            for dep in pypi_dependency:
                 quiet_print(f"- {dep}", args=args)
-    if pypi_deps:
+    if pypi_dependency:
         quiet_print(
-            f"Skipping installation of {module_name} due to unmet requirement for PyPI packages",
+            f"Skipping installation of {args.get('module_name')} due to unmet requirement for PyPI packages",
             args=args,
         )
         return False
@@ -164,7 +168,7 @@ def get_updatable(modules=[], strategy="consensus"):
     from types import SimpleNamespace
     from .local import get_local_module_info
     from .remote import get_remote_module_info
-    from ..store.db import module_data_version
+    from ..store.db import remote_module_data_version
 
     if strategy not in ("consensus", "force", "skip"):
         raise ValueError('Unknown strategy "{}"'.format(strategy))
@@ -227,8 +231,10 @@ def get_updatable(modules=[], strategy="consensus"):
             and local_info.version
             and LooseVersion(selected_version) > LooseVersion(local_info.version)
         ):
-            update_data_version = module_data_version(mname, selected_version)
-            installed_data_version = module_data_version(mname, local_info.version)
+            update_data_version = remote_module_data_version(mname, selected_version)
+            installed_data_version = remote_module_data_version(
+                mname, local_info.version
+            )
             if (
                 update_data_version is not None
                 and update_data_version != installed_data_version
@@ -244,6 +250,156 @@ def get_updatable(modules=[], strategy="consensus"):
     return update_vers, resolution_applied, resolution_failed
 
 
+def make_install_temp_dir(args={}):
+    from ..system import get_modules_dir
+    from os.path import join
+    from os import makedirs
+    from ..consts import install_tempdir_name
+    from shutil import rmtree
+
+    args["modules_dir"] = get_modules_dir()
+    temp_dir = join(
+        args.get("modules_dir"), install_tempdir_name, args.get("module_name")
+    )
+    rmtree(temp_dir, ignore_errors=True)
+    makedirs(temp_dir)
+    args["temp_dir"] = temp_dir
+
+
+def set_stage_handler(args={}):
+    if args:
+        pass
+    if not args.get("stage_handler"):
+        args["stage_handler"] = InstallProgressHandler(
+            args.get("module_name"), args.get("version")
+        )
+        args["stage_handler"].set_module_version(args.get("version"))
+    if hasattr(args.get("stage_handler"), "install_state") == True:
+        args["install_state"] = stage_handler.install_state  # type: ignore
+    else:
+        args["install_state"] = None
+
+
+def get_pypi_dependencies(args={}):
+    pypi_dependencies = args.get("conf").get("pypi_dependencies") or []
+    if pypi_dependencies:
+        pypi_dependencies.extend(args.get("conf").get("requires_pypi", []))
+    else:
+        pypi_dependencies = args.get("conf").get("requires_pypi") or []
+    args["pypi_dependencies"] = pypi_dependencies
+
+
+def check_install_kill(args={}):
+    from ..exceptions import KillInstallException
+
+    install_state = args.get("install_state")
+    if install_state:
+        if (
+            install_state["module_name"] == args.get("module_name")
+            and install_state["kill_signal"] == True
+        ):
+            raise KillInstallException
+
+
+def download_code(args={}):
+    from ..store import download
+    from os.path import join
+
+    check_install_kill(args=args)
+    args.get("stage_handler").stage_start("download_code")
+    zipfile_fname = (
+        args.get("module_name") + "__" + args.get("code_version") + "__code.zip"
+    )
+    zipfile_path = join(args.get("temp_dir"), zipfile_fname)
+    download(args.get("code_url"), zipfile_path)
+    args["code_zipfile_path"] = zipfile_path
+
+
+def extract_code(args={}):
+    import zipfile
+    from os import remove
+
+    check_install_kill(args=args)
+    args.get("stage_handler").stage_start("extract_code")
+    zf = zipfile.ZipFile(args.get("code_zipfile_path"))
+    zf.extractall(args.get("temp_dir"))
+    zf.close()
+    remove(args.get("code_zipfile_path"))
+
+
+def download_data(args={}):
+    from ..store import download
+    from os.path import join
+
+    check_install_kill(args=args)
+    args.get("stage_handler").stage_start("download_data")
+    zipfile_fname = (
+        args.get("module_name") + "__" + args.get("remote_data_version") + "__data.zip"
+    )
+    zipfile_path = join(args.get("temp_dir"), zipfile_fname)
+    download(args.get("code_url"), zipfile_path)
+    args["data_zipfile_path"] = zipfile_path
+
+
+def extract_data(args={}):
+    import zipfile
+    from os import remove
+
+    check_install_kill(args=args)
+    args.get("stage_handler").stage_start("extract_code")
+    zf = zipfile.ZipFile(args.get("data_zipfile_path"))
+    zf.extractall(args.get("temp_dir"))
+    zf.close()
+    remove(args.get("data_zipfile_path"))
+
+
+def cleanup_install(args={}):
+    from os.path import isdir
+    from shutil import rmtree
+    from shutil import move
+    from os import listdir
+    from os import remove
+    from os.path import join
+
+    module_dir = args.get("module_dir")
+    temp_dir = args.get("temp_dir")
+    if isdir(args.get("module_dir")):
+        # Module being updated
+        if args.get("data_installed"):
+            # Overwrite the whole module
+            rmtree(module_dir)
+            move(temp_dir, module_dir)
+        else:
+            # Remove all code items
+            for item in listdir(module_dir):
+                item_path = join(module_dir, item)
+                if item != "data":
+                    if isdir(item_path):
+                        rmtree(item_path)
+                    else:
+                        remove(item_path)
+            # Copy in new code items
+            for item in listdir(temp_dir):
+                old_path = join(temp_dir, item)
+                new_path = join(module_dir, item)
+                if item != "data":
+                    move(old_path, new_path)
+            rmtree(temp_dir)
+    else:
+        # Move the module to the right place
+        move(temp_dir, module_dir)
+
+
+def write_install_marks(args={}):
+    from os.path import join
+
+    module_dir = args.get("module_dir")
+    wf = open(join(module_dir, "startofinstall"), "w")
+    wf.close()
+    wf = open(join(module_dir, "endofinstall"), "w")
+    wf.close()
+
+
 def install_module(
     module_name,
     version=None,
@@ -253,205 +409,84 @@ def install_module(
     quiet=True,
     args={},
 ):
-    import zipfile
-    import shutil
-    import os
-    from ..consts import install_tempdir_name
-    from ..store import download
+    from shutil import rmtree
+    from os.path import join
     from ..exceptions import KillInstallException
-    from ..system import get_modules_dir
     from ..store import get_module_urls
-    from ..store import remote_module_latest_version
-    from ..store.db import module_data_version
-    from .local import get_local_module_info
-    from .remote import get_remote_module_info
+    from ..store.db import remote_module_data_version
+    from ..store.db import summary_col_value
     from .cache import get_module_cache
-    from ..exceptions import ModuleLoadingError
-    from ..util.util import quiet_print
     from .remote import get_conf
+    from .local import module_data_version as local_module_data_version
+    from ..store import remote_module_latest_version
+    from ..util.util import quiet_print
 
-    quiet_args = {"quiet": quiet}
-    modules_dir = get_modules_dir()
-    temp_dir = os.path.join(modules_dir, install_tempdir_name, module_name)
-    shutil.rmtree(temp_dir, ignore_errors=True)
-    os.makedirs(temp_dir)
+    args["quiet"] = quiet
+    args["module_name"] = module_name
+    args["version"] = version
+    args["stage_handler"] = stage_handler
+    if not args.get("version"):
+        args["version"] = remote_module_latest_version(module_name)
+        if not args.get("version"):
+            quiet_print(f"version could not be found.", args=args)
+            return False
+    args["code_version"] = args.get("version")
+    make_install_temp_dir(args=args)
     # Ctrl-c in this func must be caught to delete temp_dir
     # def raise_kbi(__a__, __b__):
     #    raise KeyboardInterrupt
     # original_sigint = signal.signal(signal.SIGINT, raise_kbi)
     try:
-        if stage_handler is None:
-            stage_handler = InstallProgressHandler(module_name, version)
-        if version is None:
-            version = remote_module_latest_version(module_name)
-            stage_handler.set_module_version(version)
-        if not version:
-            quiet_print(f"version could not be found.", args=args)
-            return
-        if hasattr(stage_handler, "install_state") == True:
-            install_state = stage_handler.install_state  # type: ignore
-        else:
-            install_state = None
-        stage_handler.stage_start("start")
+        set_stage_handler(args=args)
+        args.get("stage_handler").stage_start("start")
+        args["conf"] = get_conf(module_name) or {}
+        get_pypi_dependencies(args=args)
         # Checks and installs pip packages.
-        conf = get_conf(module_name) or {}
-        pypi_dependencies = conf.get("pypi_dependencies") or []
-        if pypi_dependencies:
-            pypi_dependencies.extend(conf.get("requires_pypi", []))
-        else:
-            pypi_dependencies = conf.get("requires_pypi") or []
-        if not install_pypi_dependencies(module_name, pypi_dependencies, quiet_args):
+        if not install_pypi_dependencies(args=args):
+            quiet_print(f"failed in installing pypi package dependence", args=args)
             return False
-        remote_data_version = module_data_version(module_name, version)
-        if module_name in list_local():
-            local_info = get_local_module_info(module_name)
-            if local_info and local_info.has_data and local_info.version:
-                local_data_version = module_data_version(
-                    module_name, local_info.version
-                )
-            else:
-                local_data_version = None
-        else:
-            local_data_version = None
+        args["remote_data_version"] = remote_module_data_version(
+            args.get("module_name"), args.get("code_version")
+        )
+        args["local_data_version"] = local_module_data_version(args.get("module_name"))
         r = get_module_urls(module_name, code_version=version)
         if not r:
+            quiet_print(f"failed in getting module versions", args=args)
             return False
-        code_url = r.get("code_url")
-        data_url = r.get("data_url")
-        zipfile_fname = module_name + ".zip"
-        remote_info = get_remote_module_info(module_name)
-        if remote_info is not None:
-            module_type = remote_info.type
-        else:
+        args["code_url"], args["data_url"] = r.get("code_url"), r.get("data_url")
+        args["module_type"] = summary_col_value(args.get("module_name"), "type")
+        if not args.get("module_type"):
             # Private module. Fallback to remote config.
-            module_type = conf.get("type")
-        if not module_type:
-            raise ModuleLoadingError(module_name)
-        if install_state:
-            if (
-                install_state["module_name"] == module_name
-                and install_state["kill_signal"] == True
-            ):
-                raise KillInstallException
-        zipfile_path = os.path.join(temp_dir, zipfile_fname)
-        stage_handler.stage_start("download_code")
-        download(
-            code_url,
-            zipfile_path,
+            args["module_type"] = args.get("conf").get("type")
+        if not args.get("module_type"):
+            quiet_print(f"module type not found", args=args)
+            return False
+        args["module_dir"] = join(
+            args.get("modules_dir"),
+            args.get("module_type") + "s",
+            args.get("module_name"),
         )
-        if install_state:
-            if (
-                install_state["module_name"] == module_name
-                and install_state["kill_signal"] == True
-            ):
-                raise KillInstallException
-        stage_handler.stage_start("extract_code")
-        zf = zipfile.ZipFile(zipfile_path)
-        zf.extractall(temp_dir)
-        zf.close()
-        if install_state:
-            if (
-                install_state["module_name"] == module_name
-                and install_state["kill_signal"] == True
-            ):
-                raise KillInstallException
-        stage_handler.stage_start("verify_code")
-        # code_manifest_url = store_path_builder.module_code_manifest(
-        #    module_name, version
-        # )
-        # code_manifest = yaml.safe_load(get_file_to_string(code_manifest_url))
-        # verify_against_manifest(temp_dir, code_manifest)
-        os.remove(zipfile_path)
-        if install_state:
-            if (
-                install_state["module_name"] == module_name
-                and install_state["kill_signal"] == True
-            ):
-                raise KillInstallException
-        data_installed = False
+        download_code(args=args)
+        extract_code(args=args)
+        args["data_installed"] = False
         if (
-            not (skip_data)
-            and (remote_data_version is not None)
-            and (remote_data_version != local_data_version or force_data)
-        ):
-            data_installed = True
-            data_fname = ".".join([module_name, "data", "zip"])
-            data_path = os.path.join(temp_dir, data_fname)
-            stage_handler.stage_start("download_data")
-            download(
-                data_url,
-                data_path,
+            not skip_data
+            and args.get("remote_data_version")
+            and (
+                args.get("remote_data_version") != args.get("local_data_version")
+                or force_data
             )
-            if install_state:
-                if (
-                    install_state["module_name"] == module_name
-                    and install_state["kill_signal"] == True
-                ):
-                    raise KillInstallException
-            stage_handler.stage_start("extract_data")
-            zf = zipfile.ZipFile(data_path)
-            zf.extractall(temp_dir)
-            zf.close()
-            if install_state:
-                if (
-                    install_state["module_name"] == module_name
-                    and install_state["kill_signal"] == True
-                ):
-                    raise KillInstallException
-            stage_handler.stage_start("verify_data")
-            # data_manifest_url = store_path_builder.module_data_manifest(
-            #    module_name, remote_data_version
-            # )
-            # data_manifest = yaml.safe_load(get_file_to_string(data_manifest_url))
-            # verify_against_manifest(temp_dir, data_manifest)
-            os.remove(data_path)
-            if install_state:
-                if (
-                    install_state["module_name"] == module_name
-                    and install_state["kill_signal"] == True
-                ):
-                    raise KillInstallException
-        if install_state:
-            if (
-                install_state["module_name"] == module_name
-                and install_state["kill_signal"] == True
-            ):
-                raise KillInstallException
-        module_dir = os.path.join(modules_dir, module_type + "s", module_name)
-        if os.path.isdir(module_dir):
-            # Module being updated
-            if data_installed:
-                # Overwrite the whole module
-                shutil.rmtree(module_dir)
-                shutil.move(temp_dir, module_dir)
-            else:
-                # Remove all code items
-                for item in os.listdir(module_dir):
-                    item_path = os.path.join(module_dir, item)
-                    if item != "data":
-                        if os.path.isdir(item_path):
-                            shutil.rmtree(item_path)
-                        else:
-                            os.remove(item_path)
-                # Copy in new code items
-                for item in os.listdir(temp_dir):
-                    old_path = os.path.join(temp_dir, item)
-                    new_path = os.path.join(module_dir, item)
-                    if item != "data":
-                        shutil.move(old_path, new_path)
-                shutil.rmtree(temp_dir)
-        else:
-            # Move the module to the right place
-            shutil.move(temp_dir, module_dir)
-        wf = open(os.path.join(module_dir, "startofinstall"), "w")
-        wf.close()
-        wf = open(os.path.join(module_dir, "endofinstall"), "w")
-        wf.close()
+        ):
+            args["data_installed"] = True
+            download_data(args=args)
+            extract_data(args=args)
+        cleanup_install(args=args)
+        write_install_marks(args=args)
         get_module_cache().update_local()
-        stage_handler.stage_start("finish")
+        args.get("stage_handler").stage_start("finish")
     # except (Exception, KeyboardInterrupt, SystemExit) as e:
     except Exception as e:
-        shutil.rmtree(temp_dir, ignore_errors=True)
+        rmtree(args.get("temp_dir"), ignore_errors=True)
         if type(e) == KillInstallException:
             if stage_handler:
                 stage_handler.stage_start("killed")

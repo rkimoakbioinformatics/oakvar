@@ -71,8 +71,12 @@ def stream_multipart_post(url, fields, stage_handler=None, stages=50, **kwargs):
 
 def download(url, fpath):
     from download import download
+    import gdown
 
-    download(url, fpath, kind="file")
+    if "drive.google.com" in url:
+        gdown.download(url=url, output=fpath, quiet=False, fuzzy=True)
+    else:
+        download(url, fpath, kind="file")
 
 
 def fetch_file_content_to_string(url):

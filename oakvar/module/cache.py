@@ -66,12 +66,11 @@ class ModuleCache(object):
         import os
         from ..consts import install_tempdir_name
         from ..system import get_modules_dir
+        from ..exceptions import SystemMissingException
 
         self.local = LocalModuleCache()
         self._modules_dir = get_modules_dir()
         if self._modules_dir is None:
-            from ..exceptions import SystemMissingException
-
             raise SystemMissingException(msg="Modules directory is not set")
         if not (os.path.exists(self._modules_dir)):
             return None

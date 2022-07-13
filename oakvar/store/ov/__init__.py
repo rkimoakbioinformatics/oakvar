@@ -67,27 +67,34 @@ def url_is_valid(url: str) -> bool:
         return False
 
 
+def get_version_from_url(url: str):
+    basename = url.split("/")[-1]
+    words = basename.split("__")
+    return words[1]
+
+
 def get_register_args_of_module(module_name: str, args={}) -> Optional[dict]:
     from ...module.local import get_remote_manifest_from_local
     from ...exceptions import ArgumentError
-    from re import fullmatch
+    from ...util.util import is_url
+    from json import dumps
 
-    rmi = get_remote_manifest_from_local(module_name)
+    rmi = get_remote_manifest_from_local(module_name, args=args)
     if not rmi or not args:
         return None
     rmi["code_url"] = args.get("code_url")
     rmi["data_url"] = args.get("data_url")
-    rmi["logo_url"] = args.get("logo_url")
-    rmi["module_name"] = module_name
-    for v in ["code", "data", "logo"]:
+    for v in ["code", "data"]:
         k = f"{v}_url"
-        if v == "logo" and rmi[k] == "":
-            continue
-        if not fullmatch(
-            r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)",
-            rmi[k],
-        ) or not url_is_valid(rmi[k]):
+        if not is_url(rmi[k]) or not url_is_valid(rmi[k]):
             raise ArgumentError(f"invalid {k}")
+    rmi["overwrite"] = args.get("overwrite")
+    rmi["conf"] = dumps(rmi["conf"])
+    rmi["developer"] = dumps(rmi["developer"])
+    del rmi["output_columns"]
+    del rmi["groups"]
+    del rmi["requires"]
+    del rmi["tags"]
     return rmi
 
 
