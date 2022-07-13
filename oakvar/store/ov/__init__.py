@@ -1,4 +1,5 @@
 from typing import Optional
+from typing import Tuple
 
 
 def module_code_url(module_name: str, version=None) -> Optional[str]:
@@ -140,7 +141,7 @@ def make_remote_module_info_from_local(module_name: str) -> Optional[dict]:
     return rmi
 
 
-def get_server_last_updated(args={}):
+def get_server_last_updated(args={}) -> Tuple[str, int]:
     from requests import Session
     from .account import get_current_id_token
 
@@ -151,8 +152,8 @@ def get_server_last_updated(args={}):
     params = {"idToken": id_token}
     res = s.post(url, data=params)
     if res.status_code != 200:
-        return 0, res.status_code
-    server_last_updated = float(res.json())
+        return "", res.status_code
+    server_last_updated = res.text
     return server_last_updated, res.status_code
 
 

@@ -1,6 +1,3 @@
-from typing import Tuple
-
-
 class InstallProgressHandler(object):
     def __init__(self, module_name, module_version):
         self.module_name = module_name

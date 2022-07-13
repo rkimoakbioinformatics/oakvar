@@ -347,7 +347,6 @@ def fetch_ov_store_cache(
     from ..exceptions import AuthorizationError
     from .ov.account import login_with_token_set
     from .ov import get_server_last_updated
-    from time import time
 
     if not conn or not cursor:
         return False
@@ -366,7 +365,10 @@ def fetch_ov_store_cache(
     if not clean and local_last_updated and local_last_updated >= server_last_updated:
         quiet_print("No store update to fetch", args=args)
         return True
-    args["timestamp"] = time()
+    if clean:
+        args["publish_time"] = ""
+    else:
+        args["publish_time"] = local_last_updated
     fetch_summary_cache(args=args)
     fetch_versions_cache(args=args)
     fetch_readme_cache(args=args)
@@ -379,11 +381,11 @@ def fetch_ov_store_cache(
 
 
 @db_func
-def get_summary_module_store_list(conn=None, cursor=None):
+def get_summary_module_store_list(args={}, conn=None, cursor=None):
     if not conn or not cursor:
         return
-    q = "select name, store from summary"
-    cursor.execute(q)
+    q = "select name, store from summary where publish_time >= ?"
+    cursor.execute(q, (args.get("publish_time"),))
     ret = cursor.fetchall()
     out = []
     for r in ret:
@@ -401,11 +403,11 @@ def fetch_conf_cache(args={}, conn=None, cursor=None, conf={}):
 
     if not conn or not cursor:
         return
-    module_stores = get_summary_module_store_list()
+    module_stores = get_summary_module_store_list(args=args)
     if not module_stores:
         return
     id_token = get_current_id_token(args=args)
-    params = {"idToken": id_token, "timestamp": args.get("timestamp")}
+    params = {"idToken": id_token, "publish_time": args.get("publish_time")}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
     for module_store in module_stores:
@@ -429,11 +431,11 @@ def fetch_logo_cache(args={}, conn=None, cursor=None, conf={}):
 
     if not conn or not cursor:
         return
-    module_stores = get_summary_module_store_list()
+    module_stores = get_summary_module_store_list(args=args)
     if not module_stores:
         return
     id_token = get_current_id_token(args=args)
-    params = {"idToken": id_token, "timestamp": args.get("timestamp")}
+    params = {"idToken": id_token, "publish_time": args.get("publish_time")}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
     for module_store in module_stores:
@@ -457,11 +459,11 @@ def fetch_readme_cache(args={}, conn=None, cursor=None, conf={}):
 
     if not conn or not cursor:
         return
-    module_stores = get_summary_module_store_list()
+    module_stores = get_summary_module_store_list(args=args)
     if not module_stores:
         return
     id_token = get_current_id_token(args=args)
-    params = {"idToken": id_token, "timestamp": args.get("timestamp")}
+    params = {"idToken": id_token, "publish_time": args.get("publish_time")}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
     for module_store in module_stores:
@@ -487,7 +489,7 @@ def fetch_summary_cache(args={}, conn=None, cursor=None):
         return
     url = f"{get_store_url()}/fetch_summary"
     id_token = get_current_id_token(args=args)
-    params = {"idToken": id_token, "timestamp": args.get("timestamp")}
+    params = {"idToken": id_token, "publish_time": args.get("publish_time")}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
     res = s.post(url, data=params)
@@ -497,13 +499,14 @@ def fetch_summary_cache(args={}, conn=None, cursor=None):
         elif res.status_code == 500:
             raise StoreServerError()
         return False
-    q = f"delete from summary"
-    cursor.execute(q)
-    conn.commit()
+    if args.get("clean"):
+        q = f"delete from summary"
+        cursor.execute(q)
+        conn.commit()
     res = res.json()
     cols = res["cols"]
     for row in res["data"]:
-        q = f"insert into summary ( {', '.join(cols)} ) values ( {', '.join(['?'] * len(cols))} )"
+        q = f"insert or replace into summary ( {', '.join(cols)} ) values ( {', '.join(['?'] * len(cols))} )"
         cursor.execute(q, row)
     conn.commit()
 
@@ -520,7 +523,7 @@ def fetch_versions_cache(args={}, conn=None, cursor=None):
         return
     url = f"{get_store_url()}/fetch_versions"
     id_token = get_current_id_token(args=args)
-    params = {"idToken": id_token, "timestamp": args.get("timestamp")}
+    params = {"idToken": id_token, "publish_time": args.get("publish_time")}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
     res = s.post(url, data=params)
@@ -530,29 +533,30 @@ def fetch_versions_cache(args={}, conn=None, cursor=None):
         elif res.status_code == 500:
             raise StoreServerError()
         return False
-    q = f"delete from versions"
-    cursor.execute(q)
-    conn.commit()
+    if args.get("clean"):
+        q = f"delete from versions"
+        cursor.execute(q)
+        conn.commit()
     res = res.json()
     cols = res["cols"]
     for row in res["data"]:
-        q = f"insert into versions ( {', '.join(cols)} ) values ( {', '.join(['?'] * len(cols))} )"
+        q = f"insert or replace into versions ( {', '.join(cols)} ) values ( {', '.join(['?'] * len(cols))} )"
         cursor.execute(q, row)
     conn.commit()
 
 
 @db_func
-def get_local_last_updated(conn=None, cursor=None) -> Optional[float]:
+def get_local_last_updated(conn=None, cursor=None) -> str:
     from .consts import ov_store_last_updated_col
 
     if not conn or not cursor:
-        return None
+        return ""
     q = "select value from info where key=?"
     cursor.execute(q, (ov_store_last_updated_col,))
     res = cursor.fetchone()
     if not res:
-        return None
-    last_updated = float(res[0])
+        return ""
+    last_updated = res[0]
     return last_updated
 
 
@@ -610,3 +614,19 @@ def get_urls(module_name: str, code_version: str, args={}, conn=None, cursor=Non
         elif res.status_code == 500:
             raise StoreServerError()
         return
+
+
+@db_func
+def set_server_last_updated(args={}, conn=None, cursor=None):
+    from .consts import ov_store_last_updated_col
+    from ..consts import publish_time_fmt
+    from datetime import datetime
+
+    if not conn or not cursor:
+        return
+    if args:
+        pass
+    dt = datetime.now().strftime(publish_time_fmt)
+    q = f"insert or replace into info ( key, value ) values ( ?, ? )"
+    cursor.execute(q, (ov_store_last_updated_col, dt))
+    conn.commit()
