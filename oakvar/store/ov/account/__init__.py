@@ -530,8 +530,8 @@ def total_login(email=None, pw=None, args={}, conf=None) -> bool:
         if create(email=email, pw=pw, quiet=False):
             break
     wait_for_email_verified(email, args=args)
-    login(email=email, pw=pw, args=args)
-    return True
+    ret = login(email=email, pw=pw, args=args)
+    return ret
 
 
 # def save(email: str, pw: str, args={}):
