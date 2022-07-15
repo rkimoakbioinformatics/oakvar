@@ -400,6 +400,7 @@ def fetch_conf_cache(args={}, conn=None, cursor=None, conf={}):
     from ..system import get_cache_dir
     from .ov import get_store_url
     from os.path import join
+    from ..util.util import quiet_print
 
     if not conn or not cursor:
         return
@@ -410,6 +411,7 @@ def fetch_conf_cache(args={}, conn=None, cursor=None, conf={}):
     params = {"idToken": id_token, "publish_time": args.get("publish_time")}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
+    quiet_print(f"fetching store cache .....", args=args)
     for module_store in module_stores:
         name = module_store["name"]
         store = module_store["store"]
@@ -428,6 +430,7 @@ def fetch_logo_cache(args={}, conn=None, cursor=None, conf={}):
     from ..system import get_cache_dir
     from .ov import get_store_url
     from os.path import join
+    from ..util.util import quiet_print
 
     if not conn or not cursor:
         return
@@ -438,6 +441,7 @@ def fetch_logo_cache(args={}, conn=None, cursor=None, conf={}):
     params = {"idToken": id_token, "publish_time": args.get("publish_time")}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
+    quiet_print(f"fetching store cache ....", args=args)
     for module_store in module_stores:
         name = module_store["name"]
         store = module_store["store"]
@@ -456,6 +460,7 @@ def fetch_readme_cache(args={}, conn=None, cursor=None, conf={}):
     from ..system import get_cache_dir
     from .ov import get_store_url
     from os.path import join
+    from ..util.util import quiet_print
 
     if not conn or not cursor:
         return
@@ -466,6 +471,7 @@ def fetch_readme_cache(args={}, conn=None, cursor=None, conf={}):
     params = {"idToken": id_token, "publish_time": args.get("publish_time")}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
+    quiet_print(f"fetching store cache ...", args=args)
     for module_store in module_stores:
         name = module_store["name"]
         store = module_store["store"]
@@ -484,6 +490,7 @@ def fetch_summary_cache(args={}, conn=None, cursor=None):
     from ..exceptions import StoreServerError
     from ..exceptions import AuthorizationError
     from .ov import get_store_url
+    from ..util.util import quiet_print
 
     if not conn or not cursor:
         return
@@ -492,6 +499,7 @@ def fetch_summary_cache(args={}, conn=None, cursor=None):
     params = {"idToken": id_token, "publish_time": args.get("publish_time")}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
+    quiet_print(f"fetching store cache .", args=args)
     res = s.post(url, data=params)
     if res.status_code != 200:
         if res.status_code == 401:
@@ -518,6 +526,7 @@ def fetch_versions_cache(args={}, conn=None, cursor=None):
     from ..exceptions import StoreServerError
     from ..exceptions import AuthorizationError
     from .ov import get_store_url
+    from ..util.util import quiet_print
 
     if not conn or not cursor:
         return
@@ -526,6 +535,7 @@ def fetch_versions_cache(args={}, conn=None, cursor=None):
     params = {"idToken": id_token, "publish_time": args.get("publish_time")}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
+    quiet_print(f"fetching store cache ..", args=args)
     res = s.post(url, data=params)
     if res.status_code != 200:
         if res.status_code == 401:

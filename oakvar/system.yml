@@ -1,5 +1,5 @@
 publish_url: https://store.oakvar.com
-store_url: http://store.oakvar.com
+store_url: https://store.oakvar.com
 base_modules:
 - cravat-converter
 - vcf-converter

@@ -17,5 +17,6 @@ versions_table_cols = [
     "data_source",
     "code_size",
     "data_size",
+    "publish_time",
 ]
 logo_size = (180, 85)

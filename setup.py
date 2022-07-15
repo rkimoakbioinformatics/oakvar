@@ -77,6 +77,7 @@ setup(
         "mpmath",
         "python-dateutil",
         "download",
+        "gdown",
         "Pillow",
     ],
     python_requires=">=3.8",

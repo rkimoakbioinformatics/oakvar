@@ -105,32 +105,32 @@ def install_pypi_dependencies(args={}):
     from subprocess import run
     from ..util.util import quiet_print
 
-    pypi_dependency = args.get("pypi_dependency")
+    pypi_dependencies = args.get("pypi_dependencies")
     idx = 0
-    if pypi_dependency:
+    if pypi_dependencies:
         quiet_print(
             f"Following PyPI dependencies should be met before installing {args.get('module_name')}.",
             args=args,
         )
-        for dep in pypi_dependency:
+        for dep in pypi_dependencies:
             quiet_print(f"- {dep}", args=args)
         quiet_print(f"Installing required PyPI packages...", args=args)
         idx = 0
-        while idx < len(pypi_dependency):
-            dep = pypi_dependency[idx]
+        while idx < len(pypi_dependencies):
+            dep = pypi_dependencies[idx]
             r = run(["pip", "install", dep])
             if r.returncode == 0:
-                pypi_dependency.remove(dep)
+                pypi_dependencies.remove(dep)
             else:
                 idx += 1
-        if len(pypi_dependency) > 0:
+        if len(pypi_dependencies) > 0:
             quiet_print(
                 f"Following PyPI dependencies could not be installed.",
                 args=args,
             )
-            for dep in pypi_dependency:
+            for dep in pypi_dependencies:
                 quiet_print(f"- {dep}", args=args)
-    if pypi_dependency:
+    if pypi_dependencies:
         quiet_print(
             f"Skipping installation of {args.get('module_name')} due to unmet requirement for PyPI packages",
             args=args,

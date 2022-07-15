@@ -240,17 +240,17 @@ def get_developer_dict(kwargs):
     else:
         return {
             "module": {
-                "name": "",
-                "email": "",
-                "organization": "",
-                "citation": "",
-                "website": "",
-            },
-            "data": {
                 "name": kwargs.get("name", ""),
                 "email": kwargs.get("email", ""),
                 "organization": kwargs.get("organization", ""),
                 "citation": kwargs.get("citation", ""),
                 "website": kwargs.get("website", ""),
+            },
+            "data": {
+                "name": "",
+                "email": "",
+                "organization": "",
+                "citation": "",
+                "website": "",
             },
         }
