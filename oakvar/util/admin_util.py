@@ -33,11 +33,15 @@ class ReadyState(object):
 def get_user_conf():
     from ..system import get_user_conf_path
     from ..util.util import load_yml_conf
+    from os.path import exists
 
     conf_path = get_user_conf_path()
-    ret = load_yml_conf(conf_path)
-    ret["conf_path"] = conf_path
-    return ret
+    if exists(conf_path):
+        ret = load_yml_conf(conf_path)
+        ret["conf_path"] = conf_path
+        return ret
+    else:
+        return None
 
 
 def get_current_package_version():
@@ -49,14 +53,16 @@ def get_current_package_version():
 
 def get_default_assembly():
     conf = get_user_conf()
-    default_assembly = conf.get("default_assembly", None)
-    return default_assembly
+    if conf:
+        default_assembly = conf.get("default_assembly", None)
+        return default_assembly
 
 
 def get_last_assembly():
     conf = get_user_conf()
-    last_assembly = conf.get("last_assembly")
-    return last_assembly
+    if conf:
+        last_assembly = conf.get("last_assembly")
+        return last_assembly
 
 
 def get_latest_package_version():
@@ -222,10 +228,11 @@ def set_user_conf_prop(key, val):
     from ..system import get_user_conf_path
 
     conf = get_user_conf()
-    conf[key] = val
-    wf = open(get_user_conf_path(), "w")
-    yaml.dump(conf, wf, default_flow_style=False)
-    wf.close()
+    if conf:
+        conf[key] = val
+        wf = open(get_user_conf_path(), "w")
+        yaml.dump(conf, wf, default_flow_style=False)
+        wf.close()
 
 
 def set_jobs_dir(d):

@@ -31,10 +31,11 @@ def ls(args, __name__="module ls"):
     fmt = args.get("fmt")
     ret = list_modules(args)
     if to == "stdout":
-        if fmt == "tabular":
-            print_tabular_lines(ret)
-        else:
-            print(ret)
+        if ret:
+            if fmt == "tabular":
+                print_tabular_lines(ret)
+            else:
+                print(ret)
     else:
         return ret
 
@@ -189,6 +190,7 @@ def install(args, __name__="module install"):
     to_install.update(deps_install)
     if len(to_install) == 0:
         quiet_print("No module to install found", args=args)
+        return True
     else:
         quiet_print("The following modules will be installed:", args=args)
         for name in sorted(list(to_install.keys())):
@@ -202,12 +204,13 @@ def install(args, __name__="module install"):
                     return True
                 else:
                     continue
+        problem_modules = []
         for module_name, module_version in sorted(to_install.items()):
             stage_handler = InstallProgressStdout(
                 module_name, module_version, quiet=quiet
             )
             quiet_print(f"Installing {module_name}...", args=args)
-            install_module(
+            ret = install_module(
                 module_name,
                 version=module_version,
                 force_data=args["force_data"],
@@ -217,7 +220,15 @@ def install(args, __name__="module install"):
                 quiet=quiet,
                 args=args,
             )
-    return True
+            if not ret:
+                problem_modules.append(module_name)
+        if problem_modules:
+            quiet_print(f"following modules were not installed due to problems:", args=args)
+            for mn in problem_modules:
+                quiet_print(f"- {mn}", args=args)
+            return False
+        else:
+            return
 
 
 @cli_entry
@@ -498,7 +509,10 @@ def list_modules(args):
     elif fmt == "json":
         return all_toks_json
     elif fmt == "yaml":
-        return dump(all_toks_json, default_flow_style=False)
+        if all_toks_json:
+            return dump(all_toks_json, default_flow_style=False)
+        else:
+            return ""
     else:
         return None
 

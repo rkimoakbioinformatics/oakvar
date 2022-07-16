@@ -481,6 +481,7 @@ def install_module(
         write_install_marks(args=args)
         get_module_cache().update_local()
         args.get("stage_handler").stage_start("finish")
+        return True
     # except (Exception, KeyboardInterrupt, SystemExit) as e:
     except Exception as e:
         rmtree(args.get("temp_dir"), ignore_errors=True)
@@ -491,7 +492,7 @@ def install_module(
             # signal.signal(signal.SIGINT, original_sigint)
             raise e
         elif isinstance(e, SystemExit):
-            pass
+            return False
         else:
             # signal.signal(signal.SIGINT, original_sigint)
             raise e

@@ -91,55 +91,19 @@ signal.signal(signal.SIGINT, raise_break)
 
 
 wgs = None
-if admin_util or inout:
-    pass
-if (
-    BaseConverter
-    or BaseAnnotator
-    or BaseMapper
-    or BasePostAggregator
-    or BaseCommonModule
-):
-    pass
-if CravatReport or CravatFilter or Cravat:
-    pass
-if crx_def or consts:
-    pass
-if cli or wgs:
-    pass
-if info or install or installbase or ls or uninstall or update:
-    pass
-if report:
-    pass
-if run:
-    pass
-if gui:
-    pass
-if issue:
-    pass
-if exampleinput or annotator:
-    pass
-if reset or register or create or check or change or fetch or pack:
-    pass
-if setup or md or config:
-    pass
-if test:
-    pass
-if addjob or filtersqlite or mergesqlite or sqliteinfo:
-    pass
-if version:
-    pass
-if user:
-    pass
-if (
-    oc_publish
-    or oc_newaccount
-    or oc_changepw
-    or oc_resetpw
-    or oc_verifyemail
-    or oc_checklogin
-):
-    pass
+_ = admin_util or inout
+_ = BaseConverter or BaseAnnotator or BaseMapper or BasePostAggregator or BaseCommonModule
+_ = CravatReport or CravatFilter or Cravat
+_ = crx_def or consts
+_ = cli or wgs
+_ = info or install or installbase or ls or uninstall or update
+_ = report or run or gui or issue or version or user
+_ = exampleinput or annotator
+_ = reset or register or create or check or change or fetch or pack
+_ = setup or md or config
+_ = test
+_ = addjob or filtersqlite or mergesqlite or sqliteinfo
+_ = oc_publish or oc_newaccount or oc_changepw or oc_resetpw or oc_verifyemail or oc_checklogin
 
 
 def get_live_annotator(module_name):

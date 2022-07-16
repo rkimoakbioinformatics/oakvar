@@ -331,8 +331,14 @@ def search_local(*patterns):
     matching_names = []
     l = list_local()
     for module_name in l:
-        if any([fullmatch(pattern, module_name) for pattern in patterns]):
-            matching_names.append(module_name)
+        for pattern in patterns:
+            try:
+                ret = fullmatch(pattern, module_name)
+                if ret:
+                    matching_names.append(module_name)
+                    break
+            except:
+                continue
     return matching_names
 
 

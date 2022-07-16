@@ -30,8 +30,13 @@ def setup_system(args=None):
     # install base modules.
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
     args.update({"conf": conf})
-    installbase(args)
-    quiet_print(f"Done setting up the system", args=args)
+    ret = installbase(args)
+    if ret == 0: # return None is converted to 0 with @cli_func.
+        quiet_print(f"Done setting up the system", args=args)
+        return True
+    else: # return False is converted to 1 with @cli_func.
+        quiet_print(f"Problem occurred while setting up the system", args=args)
+        return False
 
 
 def setup_system_dirs(conf=None, args=None):
