@@ -292,48 +292,6 @@ def create_ov_store_cache(conf=None, args={}, conn=None, cursor=None):
             mkdir(join(fp, "oc"))
 
 
-@db_func
-def register(conn=None, cursor=None, args={}) -> bool:
-    from requests import post
-    from .ov.account import get_current_id_token
-    from ..util.util import quiet_print
-    from .ov import get_register_args_of_module
-    from .ov import get_store_url
-    from ..module.local import get_logo_b64
-    from ..module.local import get_readme
-    from ..module.local import get_code_size
-    from ..module.local import get_data_size
-
-    if not conn or not cursor:
-        return False
-    id_token = get_current_id_token()
-    module_name = args.get("module_name")
-    url = get_store_url() + "/register_module"
-    try:
-        params = get_register_args_of_module(module_name, args=args)
-        if not params:
-            return False
-        params["idToken"] = id_token
-        params["name"] = module_name
-        params["readme"] = get_readme(module_name) or ""
-        params["logo"] = get_logo_b64(module_name) or ""
-        params["code_size"] = get_code_size(module_name)
-        params["data_size"] = get_data_size(module_name)
-        params["overwrite"] = args.get("overwrite")
-        if not params["conf"]:
-            quiet_print(f"no configuration file exists for {module_name}", args=args)
-            return False
-        res = post(url, data=params)
-        if res.status_code == 200:
-            quiet_print(f"success", args=args)
-            return True
-        else:
-            quiet_print(f"{res.text}", args=args)
-            return False
-    except Exception as e:
-        quiet_print(f"{e}", args=args)
-        return False
-
 
 @db_func
 def fetch_ov_store_cache(

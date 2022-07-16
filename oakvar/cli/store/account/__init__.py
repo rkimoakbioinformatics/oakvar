@@ -73,7 +73,7 @@ def cli_store_account_login(args):
 
 
 @cli_func
-def login(args, __name__="store account change"):
+def login(args, __name__="store account login"):
     from ....store.ov.account import login
 
     ret = login(args=args)
@@ -86,10 +86,23 @@ def cli_store_account_logout(args):
 
 
 @cli_func
-def logout(args, __name__="store account change"):
+def logout(args, __name__="store account logout"):
     from ....store.ov.account import logout
 
     ret = logout(args=args)
+    return ret
+
+
+@cli_entry
+def cli_store_account_url(args):
+    return url(args)
+
+
+@cli_func
+def url(args, __name__="store account url"):
+    from ....store.ov.account import url
+
+    ret = url(args=args)
     return ret
 
 
@@ -109,6 +122,7 @@ def add_parser_fn_store_account(subparsers):
     add_parser_fn_store_account_login(subparsers)
     add_parser_fn_store_account_logout(subparsers)
     add_parser_fn_store_account_reset(subparsers)
+    add_parser_fn_store_account_url(subparsers)
     return parser_fn_store_account
 
 
@@ -231,3 +245,19 @@ def add_parser_fn_store_account_logout(subparsers):
         "# Log out from the OakVar Store",
         "#roakvar::store.account.logout()",
     ]
+
+def add_parser_fn_store_account_url(subparsers):
+    # verify-email
+    parser_cli_store_verifyemail = subparsers.add_parser(
+        "url", help="log out of the OakVar Store"
+    )
+    parser_cli_store_verifyemail.add_argument(
+        "--quiet", action="store_true", default=None, help="run quietly"
+    )
+    parser_cli_store_verifyemail.set_defaults(func=cli_store_account_url)
+    parser_cli_store_verifyemail.r_return = "character"  # type: ignore
+    parser_cli_store_verifyemail.r_examples = [  # type: ignore
+        "# Returns the URL of the OakVar store.",
+        "#roakvar::store.account.url()",
+    ]
+

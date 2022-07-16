@@ -13,7 +13,7 @@ from .cli.store.account import create
 from .cli.store.account import check
 from .cli.store.account import change
 from .cli.store import fetch
-from .cli.store import pack
+from .cli.module import pack
 from .cli.store.oc import oc_publish
 from .cli.store.oc import oc_newaccount
 from .cli.store.oc import oc_changepw

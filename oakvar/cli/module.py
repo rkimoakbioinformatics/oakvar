@@ -4,6 +4,19 @@ from ..decorators import cli_entry
 
 
 @cli_entry
+def cli_module_pack(args):
+    return pack(args)
+
+
+@cli_func
+def pack(args, __name__="module pack"):
+    from ..module.local import pack_module
+
+    ret = pack_module(args)
+    return ret
+
+
+@cli_entry
 def cli_module_ls(args):
     if not args.fmt:
         args.fmt = "yaml"
@@ -202,6 +215,7 @@ def install(args, __name__="module install"):
                 # force=args["force"],
                 skip_data=args["skip_data"],
                 quiet=quiet,
+                args=args,
             )
     return True
 
@@ -541,6 +555,33 @@ class InstallProgressStdout(InstallProgressHandler):
         quiet_print(out, args={"quiet": self.quiet})
 
 
+def add_parser_fn_module_pack(subparsers):
+    # pack
+    parser_cli_module_pack = subparsers.add_parser(
+        "pack", help="pack a module to register at OakVar store"
+    )
+    parser_cli_module_pack.add_argument(
+        dest="module",
+        default=None,
+        help="Name of or path to the module to pack",
+    )
+    parser_cli_module_pack.add_argument(
+        "-d",
+        "--outdir",
+        default=".",
+        help="Directory to make code and data zip files in",
+    )
+    parser_cli_module_pack.add_argument(
+        "--quiet", action="store_true", default=None, help="run quietly"
+    )
+    parser_cli_module_pack.set_defaults(func=cli_module_pack)
+    parser_cli_module_pack.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
+    parser_cli_module_pack.r_examples = [  # type: ignore
+        '# Pack a module "mymodule" into one zip file for its code and another zip file for its data.',
+        '#roakvar::store.pack(module="mymodule")',
+    ]
+
+
 def add_parser_ov_module_installbase(subparsers):
     parser_ov_module_installbase = subparsers.add_parser(
         "installbase",
@@ -635,6 +676,8 @@ def add_parser_ov_module(subparsers):
     add_parser_ov_module_installbase(subparsers)
     # install
     add_parser_ov_module_install(subparsers)
+    # pack
+    add_parser_fn_module_pack(subparsers)
     # update
     parser_ov_module_update = subparsers.add_parser(
         "update",

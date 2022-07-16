@@ -9,7 +9,7 @@ def cli_store_register(args):
 
 @cli_func
 def register(args, __name__="store register"):
-    from ...store.db import register
+    from ...store.ov import register
 
     ret = register(args=args)
     return ret
@@ -28,19 +28,6 @@ def fetch(args, __name__="store fetch"):
     return ret
 
 
-@cli_entry
-def cli_store_pack(args):
-    return pack(args)
-
-
-@cli_func
-def pack(args, __name__="store pack"):
-    from ...store.pack import pack_module
-
-    ret = pack_module(args)
-    return ret
-
-
 def get_parser_fn_store():
     from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
@@ -49,7 +36,6 @@ def get_parser_fn_store():
     add_parser_store_account(subparsers)
     add_parser_fn_store_register(subparsers)
     add_parser_fn_store_fetch(subparsers)
-    add_parser_fn_store_pack(subparsers)
     add_parser_fn_store_oc(subparsers)
     return parser_fn_store
 
@@ -79,7 +65,6 @@ def add_parser_fn_store_register(subparsers):
     )
     parser_cli_store_register.add_argument(
         "--data-url",
-        required=True,
         help="url of a data pack (made with `ov store pack`)",
     )
     parser_cli_store_register.add_argument(
@@ -113,33 +98,6 @@ def add_parser_fn_store_fetch(subparsers):
     parser_cli_store_fetch.r_examples = [  # type: ignore
         "# Fetch the store information",
         "#roakvar::store.fetch()",
-    ]
-
-
-def add_parser_fn_store_pack(subparsers):
-    # pack
-    parser_cli_store_pack = subparsers.add_parser(
-        "pack", help="pack a module to register at OakVar store"
-    )
-    parser_cli_store_pack.add_argument(
-        dest="module",
-        default=None,
-        help="Name of or path to the module to pack",
-    )
-    parser_cli_store_pack.add_argument(
-        "-d",
-        "--outdir",
-        default=".",
-        help="Directory to make code and data zip files in",
-    )
-    parser_cli_store_pack.add_argument(
-        "--quiet", action="store_true", default=None, help="run quietly"
-    )
-    parser_cli_store_pack.set_defaults(func=cli_store_pack)
-    parser_cli_store_pack.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
-    parser_cli_store_pack.r_examples = [  # type: ignore
-        '# Pack a module "mymodule" into one zip file for its code and another zip file for its data.',
-        '#roakvar::store.pack(module="mymodule")',
     ]
 
 

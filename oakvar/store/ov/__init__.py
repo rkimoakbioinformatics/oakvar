@@ -84,8 +84,8 @@ def get_register_args_of_module(module_name: str, args={}) -> Optional[dict]:
     if not rmi or not args:
         return None
     rmi["code_url"] = args.get("code_url")
-    rmi["data_url"] = args.get("data_url")
-    for v in ["code", "data"]:
+    rmi["data_url"] = args.get("data_url") or ""
+    for v in ["code"]: #, "data"]:
         k = f"{v}_url"
         if not is_url(rmi[k]) or not url_is_valid(rmi[k]):
             raise ArgumentError(f"invalid {k}")
@@ -101,7 +101,8 @@ def get_register_args_of_module(module_name: str, args={}) -> Optional[dict]:
 
 def make_remote_module_info_from_local(module_name: str) -> Optional[dict]:
     from ...module.local import get_local_module_info
-    from time import time
+    from ...consts import publish_time_fmt
+    from datetime import datetime
 
     mi = get_local_module_info(module_name)
     if not mi:
@@ -120,7 +121,7 @@ def make_remote_module_info_from_local(module_name: str) -> Optional[dict]:
     data_versions = {}
     data_sources = {}
     tags = mi.tags
-    publish_time = str(time())
+    publish_time = datetime.now().strftime(publish_time_fmt)
     rmi = {
         "versions": versions,
         "latest_version": latest_version,
@@ -183,6 +184,46 @@ def get_store_url() -> str:
     store_url = sys_conf["store_url"]
     return store_url
 
+
+def register(args={}) -> bool:
+    from requests import post
+    from .account import get_current_id_token
+    from ...util.util import quiet_print
+    from ...module.local import get_logo_b64
+    from ...module.local import get_readme
+    from ...module.local import get_code_size
+    from ...module.local import get_data_size
+    from ...consts import publish_time_fmt
+    from datetime import datetime
+
+    id_token = get_current_id_token()
+    module_name = args.get("module_name")
+    url = get_store_url() + "/register_module"
+    try:
+        params = get_register_args_of_module(module_name, args=args)
+        if not params:
+            return False
+        params["idToken"] = id_token
+        params["name"] = module_name
+        params["readme"] = get_readme(module_name) or ""
+        params["logo"] = get_logo_b64(module_name) or ""
+        params["code_size"] = get_code_size(module_name)
+        params["data_size"] = get_data_size(module_name) or 0
+        params["overwrite"] = args.get("overwrite")
+        params["publish_time"] = datetime.now().strftime(publish_time_fmt)
+        if not params["conf"]:
+            quiet_print(f"no configuration file exists for {module_name}", args=args)
+            return False
+        res = post(url, data=params)
+        if res.status_code == 200:
+            quiet_print(f"success", args=args)
+            return True
+        else:
+            quiet_print(f"{res.text}", args=args)
+            return False
+    except Exception as e:
+        quiet_print(f"{e}", args=args)
+        return False
 
 # @db_func
 # def fetch_ov_store_cache(

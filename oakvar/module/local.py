@@ -1,4 +1,5 @@
 from typing import Optional
+from typing import Tuple
 
 
 class LocalModule(object):
@@ -138,11 +139,11 @@ def get_local_module_info(module_name):
     from os.path import exists
     from .cache import get_module_cache
 
-    if module_name in get_module_cache().get_local():
-        module_info = get_module_cache().get_local()[module_name]
+    if exists(module_name):
+        module_info = LocalModule(module_name)
     else:
-        if exists(module_name):
-            module_info = LocalModule(module_name)
+        if module_name in get_module_cache().get_local():
+            module_info = get_module_cache().get_local()[module_name]
         else:
             module_info = None
     return module_info
@@ -383,6 +384,7 @@ def get_remote_manifest_from_local(module_name: str, args={}):
     from os.path import exists
     from datetime import datetime
     from ..util.util import quiet_print
+    from ..consts import publish_time_fmt
 
     module_info = get_local_module_info(module_name)
     if not module_info:
@@ -401,7 +403,7 @@ def get_remote_manifest_from_local(module_name: str, args={}):
     rmi["downloads"] = 0
     rmi["groups"] = module_conf.get("groups", [])
     rmi["output_columns"] = module_conf.get("output_columns", [])
-    rmi["publish_time"] = str(datetime.now())
+    rmi["publish_time"] = datetime.now().strftime(publish_time_fmt)
     rmi["requires"] = module_conf.get("requires", [])
     rmi["size"] = rmi["code_size"] + rmi["data_size"]
     rmi["title"] = module_conf.get("title", "")
@@ -415,9 +417,9 @@ def get_remote_manifest_from_local(module_name: str, args={}):
         quiet_print(f"code_version should be defined in {module_name}.yml", args=args)
         return None
     rmi["data_version"] = module_conf.get("data_version", "")
-    if not rmi["data_version"]:
-        quiet_print(f"data_version should be defined in {module_name}.yml", args=args)
-        return None
+    #if not rmi["data_version"]:
+    #    quiet_print(f"data_version should be defined in {module_name}.yml", args=args)
+    #    return None
     rmi["readme"] = module_info.readme
     rmi["conf"] = module_conf
     rmi["logo"] = get_logo_b64(module_name)
@@ -493,7 +495,100 @@ def get_data_size(module_name, module_type=None) -> Optional[int]:
 
 def get_code_size(module_name, module_type=None) -> Optional[int]:
     module_size = get_module_size(module_name, module_type=module_type)
-    data_size = get_data_size(module_name, module_type=module_type)
-    if module_size and data_size:
+    data_size = get_data_size(module_name, module_type=module_type) or 0
+    if module_size:
         return module_size - data_size
     return None
+
+def get_module_name_and_module_dir(args) -> Tuple[str, str]:
+    from os.path import exists
+    from os.path import basename
+
+    module_name = args.get("module")
+    if not module_name:
+        from ..exceptions import ArgumentError
+
+        raise ArgumentError(msg="argument module is missing")
+    if exists(module_name):
+        module_dir = module_name
+        module_name = basename(module_dir)
+    else:
+        from ..module.local import get_module_dir
+
+        module_dir = get_module_dir(module_name)
+    if not module_dir:
+        from ..exceptions import ModuleLoadingError
+
+        raise ModuleLoadingError(module_name)
+    return module_name, module_dir
+
+
+def get_pack_dir_out_dir(kind: str, args: dict, module_dir: str) -> Tuple[str, str]:
+    from os.path import exists
+    from os.path import join
+
+    outdir = args.get("outdir", ".")
+    if not exists(outdir):
+        from os import mkdir
+
+        mkdir(outdir)
+    if kind == "code":
+        pack_dir = module_dir
+    elif kind == "data":
+        pack_dir = join(module_dir, "data")
+    else:
+        from ..exceptions import ArgumentError
+
+        raise ArgumentError(msg=f"argument kind={kind} is wrong.")
+    return pack_dir, outdir
+
+
+def pack_module_zip(args: dict, kind: str):
+    from os.path import join
+    from zipfile import ZipFile
+    from os import walk
+    from os import sep
+    from os.path import basename
+    from os.path import exists
+    from os import sep
+    from ..util.util import quiet_print
+    from ..module.local import get_module_code_version
+
+    module_name, module_dir = get_module_name_and_module_dir(args)
+    version = get_module_code_version(module_name)
+    pack_dir, outdir = get_pack_dir_out_dir(kind, args, module_dir)
+    if exists(pack_dir):
+        pack_fn = f"{module_name}__{version}__{kind}.zip"
+        pack_path = join(outdir, pack_fn)
+        with ZipFile(pack_path, "w") as z:
+            for root, _, files in walk(pack_dir):
+                root_basename = basename(root)
+                if root_basename.startswith(".") or root_basename.startswith("_"):
+                    continue
+                if kind == "code" and root_basename == "data":
+                    continue
+                for file in files:
+                    if (
+                        file.startswith(".")
+                        or file == "startofinstall"
+                        or file == "endofinstall"
+                    ):
+                        continue
+                    p = join(root, file)
+                    arcname = join(root, file)
+                    if pack_dir in arcname:
+                        arcname = arcname[len(pack_dir) :].lstrip(sep)
+                    if kind == "code":
+                        arcname = arcname  # join(module_name, arcname)
+                    elif kind == "data":
+                        arcname = join("data", arcname)
+                    z.write(p, arcname=arcname)
+            quiet_print(f"{pack_path} written", args=args)
+
+
+def pack_module(args):
+    from ..util.util import quiet_print
+    pack_module_zip(args, "code")
+    pack_module_zip(args, "data")
+    quiet_print(f"To register the packed module, use `ov store register`.", args=args)
+    return True
