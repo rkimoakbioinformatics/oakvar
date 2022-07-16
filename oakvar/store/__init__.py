@@ -70,13 +70,19 @@ def stream_multipart_post(url, fields, stage_handler=None, stages=50, **kwargs):
 
 
 def download(url, fpath):
-    from download import download
+    #import pooch
+    import download
     import gdown
+    #from os.path import basename
+    #from os.path import dirname
 
     if "drive.google.com" in url:
-        gdown.download(url=url, output=fpath, quiet=False, fuzzy=True)
+        gdown.download(url=url, output=fpath, quiet=True, fuzzy=True)
     else:
-        download(url, fpath, kind="file")
+        #fname = basename(fpath)
+        #d = dirname(fpath)
+        #pooch.retrieve(url=url, known_hash=None, fname=fname, path=d, progressbar=True)
+        download.download(url, fpath, kind="file", verbose=False, replace=True)
 
 
 def fetch_file_content_to_string(url):
@@ -254,3 +260,11 @@ def get_developer_dict(kwargs):
                 "website": "",
             },
         }
+
+def url(args={}):
+    from .ov import get_store_url
+    from ..util.util import quiet_print
+    u = get_store_url()
+    quiet_print(f"{u}", args=args)
+    return u
+

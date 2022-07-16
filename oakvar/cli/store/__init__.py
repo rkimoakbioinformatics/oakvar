@@ -28,6 +28,19 @@ def fetch(args, __name__="store fetch"):
     return ret
 
 
+@cli_entry
+def cli_store_url(args):
+    return url(args)
+
+
+@cli_func
+def url(args, __name__="store url"):
+    from ...store import url
+
+    ret = url(args=args)
+    return ret
+
+
 def get_parser_fn_store():
     from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
@@ -36,6 +49,7 @@ def get_parser_fn_store():
     add_parser_store_account(subparsers)
     add_parser_fn_store_register(subparsers)
     add_parser_fn_store_fetch(subparsers)
+    add_parser_fn_store_url(subparsers)
     add_parser_fn_store_oc(subparsers)
     return parser_fn_store
 
@@ -100,6 +114,21 @@ def add_parser_fn_store_fetch(subparsers):
         "#roakvar::store.fetch()",
     ]
 
+
+def add_parser_fn_store_url(subparsers):
+    # verify-email
+    parser_cli_store_verifyemail = subparsers.add_parser(
+        "url", help="returns the URL of the OakVar store"
+    )
+    parser_cli_store_verifyemail.add_argument(
+        "--quiet", action="store_true", default=None, help="run quietly"
+    )
+    parser_cli_store_verifyemail.set_defaults(func=cli_store_url)
+    parser_cli_store_verifyemail.r_return = "character"  # type: ignore
+    parser_cli_store_verifyemail.r_examples = [  # type: ignore
+        "# Returns the URL of the OakVar store.",
+        "#roakvar::store.account.url()",
+    ]
 
 def add_parser_fn_store_oc(subparsers):
     from ..store.oc import add_parser_fn_store_oc

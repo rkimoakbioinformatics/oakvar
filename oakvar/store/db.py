@@ -566,8 +566,6 @@ def get_urls(module_name: str, code_version: str, args={}, conn=None, cursor=Non
             store = r[0]
     if not store:
         return None
-    if not conn or not cursor:
-        return
     url = f"{get_store_url()}/urls/{module_name}/{code_version}"
     id_token = get_current_id_token(args=args)
     params = {"idToken": id_token}

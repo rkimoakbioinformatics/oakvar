@@ -8,7 +8,7 @@ ov_store_pw_key = "ov_store_pw"
 ov_store_cache_fn = "store.sqlite"
 ov_store_last_updated_col = "last_updated"
 ov_store_id_token_fname = ".token"
-summary_table_cols = ["name", "store", "title", "type", "tags", "publish_time"]
+summary_table_cols = ["name", "store", "title", "type", "tags", "email", "publish_time"]
 versions_table_cols = [
     "name",
     "store",

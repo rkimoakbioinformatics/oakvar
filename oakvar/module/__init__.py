@@ -334,7 +334,7 @@ def download_data(args={}):
         args.get("module_name") + "__" + args.get("remote_data_version") + "__data.zip"
     )
     zipfile_path = join(args.get("temp_dir"), zipfile_fname)
-    download(args.get("code_url"), zipfile_path)
+    download(args.get("data_url"), zipfile_path)
     args["data_zipfile_path"] = zipfile_path
 
 

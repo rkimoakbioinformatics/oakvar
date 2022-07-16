@@ -468,13 +468,6 @@ def email_is_verified(email: str, args={}, quiet=None) -> bool:
         return False
 
 
-def url(args={}):
-    from ...ov import get_store_url
-    from ....util.util import quiet_print
-    u = get_store_url()
-    quiet_print(f"{u}", args=args)
-    return u
-
 def wait_for_email_verified(email: str, args={}, quiet=None):
     from ....system import show_email_verify_action_banner
 
