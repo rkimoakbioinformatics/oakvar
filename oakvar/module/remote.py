@@ -28,6 +28,8 @@ class RemoteModule(object):
             "tags": self.tags,
             "size": self.size,
             "publish_time": self.publish_time,
+            "has_logo": self.has_logo,
+            "store": self.store,
         }
         return d
 
@@ -57,8 +59,11 @@ class RemoteModule(object):
         from ..store.db import module_data_versions
         from ..store.db import module_data_sources
         from ..store.db import module_sizes
+        from ..system import get_logo_path
+        from os.path import exists
 
         self.name = kwargs.get("name") or ""
+        self.store = kwargs.get("store") or "ov"
         self.conf = get_conf(self.name)
         if not self.conf:
             return
@@ -87,6 +92,7 @@ class RemoteModule(object):
         self.installed: Optional[str] = None
         self.local_code_version: Optional[str] = None
         self.local_data_source: Optional[str] = None
+        self.has_logo = exists(get_logo_path(self.name, self.store))
 
 
 def get_conf(module_name: str) -> Optional[dict]:

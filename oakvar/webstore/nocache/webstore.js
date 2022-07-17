@@ -1448,34 +1448,26 @@ function addLogo(moduleName, sdiv) {
     }
     var moduleInfo = remoteModuleInfo[moduleName];
     var img = null;
-    if (moduleInfo.logo != null) {
+    if (moduleInfo.has_logo) {
         img = getEl('img');
         img.className = 'moduletile-logo';
-        img.src = "data:image/png;base64," + moduleInfo.logo;
+        if (moduleInfo.uselocalonstore) {
+            img.src = '/store/locallogo?module=' + moduleName;
+        } else {
+            img.src = "/store/logo/" + moduleInfo.store + "/" + moduleName
+        }
         addEl(sdiv, img);
         storeLogos[moduleName] = img;
     } else {
-        if (moduleInfo.has_logo == true) {
-            img = getEl('img');
-            img.className = 'moduletile-logo';
-            if (moduleInfo.uselocalonstore) {
-                img.src = '/store/locallogo?module=' + moduleName;
-            } else {
-                img.src = remoteModuleInfo[moduleName].logo_url
-            }
-            addEl(sdiv, img);
-            storeLogos[moduleName] = img;
-        } else {
-            sdiv.classList.add('moduletile-nologo');
-            var span = getEl('div');
-            span.className = 'moduletile-title';
-            var title = moduleInfo.title;
-            span.textContent = title
-            if (title.length > 26) {
-                span.style.fontSize = '30px';
-            }
-            addEl(sdiv, span);
+        sdiv.classList.add('moduletile-nologo');
+        var span = getEl('div');
+        span.className = 'moduletile-title';
+        var title = moduleInfo.title;
+        span.textContent = title
+        if (title.length > 26) {
+            span.style.fontSize = '30px';
         }
+        addEl(sdiv, span);
     }
     return img;
 

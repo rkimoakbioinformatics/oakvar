@@ -441,6 +441,13 @@ async def get_local_module_logo(request):
     return web.FileResponse(logo_path)
 
 
+async def get_logo(request):
+    from ..system import get_logo_path
+    module_name = request.match_info["module_name"]
+    store = request.match_info["store"]
+    logo_path = get_logo_path(module_name, store)
+    return web.FileResponse(logo_path)
+
 routes = []
 routes.append(["GET", "/store/remote", get_remote_manifest])
 routes.append(["GET", "/store/installwidgetsformodule", install_widgets_for_module])
@@ -462,3 +469,4 @@ routes.append(["GET", "/store/tagdesc", get_tag_desc])
 routes.append(["GET", "/store/updateremote", update_remote])
 routes.append(["GET", "/store/localasremote", get_remote_manifest_from_local])
 routes.append(["GET", "/store/locallogo", get_local_module_logo])
+routes.append(["GET", "/store/logo/{store}/{module_name}", get_logo])

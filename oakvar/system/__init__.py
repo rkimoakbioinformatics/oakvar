@@ -212,7 +212,6 @@ def get_conf_dir(conf=None):
 
     return get_conf_dirvalue(conf_dir_key, conf=conf)
 
-
 def get_modules_dir(conf=None):
     from .consts import modules_dir_key
 
@@ -247,6 +246,10 @@ def get_cache_dir(cache_key, conf=None):
     d = get_conf_dir(conf=conf)
     return join(d, cache_key)
 
+
+def get_logo_path(module_name: str, store: str, conf=None) -> str:
+    from os.path import join
+    return join(get_cache_dir("logo", conf=conf), store, module_name + ".png")
 
 def get_sys_conf_value(conf_key, sys_conf_path=None, conf=None):
     from os import environ
