@@ -85,7 +85,7 @@ def get_register_args_of_module(module_name: str, args={}) -> Optional[dict]:
         return None
     rmi["code_url"] = args.get("code_url")
     rmi["data_url"] = args.get("data_url") or ""
-    for v in ["code"]: #, "data"]:
+    for v in ["code"]:  # , "data"]:
         k = f"{v}_url"
         if not is_url(rmi[k]) or not url_is_valid(rmi[k]):
             raise ArgumentError(f"invalid {k}")
@@ -224,6 +224,7 @@ def register(args={}) -> bool:
     except Exception as e:
         quiet_print(f"{e}", args=args)
         return False
+
 
 # @db_func
 # def fetch_ov_store_cache(

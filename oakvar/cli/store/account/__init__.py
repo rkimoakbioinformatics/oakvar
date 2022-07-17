@@ -231,4 +231,3 @@ def add_parser_fn_store_account_logout(subparsers):
         "# Log out from the OakVar Store",
         "#roakvar::store.account.logout()",
     ]
-

@@ -223,7 +223,9 @@ def install(args, __name__="module install"):
             if not ret:
                 problem_modules.append(module_name)
         if problem_modules:
-            quiet_print(f"following modules were not installed due to problems:", args=args)
+            quiet_print(
+                f"following modules were not installed due to problems:", args=args
+            )
             for mn in problem_modules:
                 quiet_print(f"- {mn}", args=args)
             return False

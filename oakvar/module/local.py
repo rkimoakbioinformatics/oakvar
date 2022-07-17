@@ -423,7 +423,7 @@ def get_remote_manifest_from_local(module_name: str, args={}):
         quiet_print(f"code_version should be defined in {module_name}.yml", args=args)
         return None
     rmi["data_version"] = module_conf.get("data_version", "")
-    #if not rmi["data_version"]:
+    # if not rmi["data_version"]:
     #    quiet_print(f"data_version should be defined in {module_name}.yml", args=args)
     #    return None
     rmi["readme"] = module_info.readme
@@ -505,6 +505,7 @@ def get_code_size(module_name, module_type=None) -> Optional[int]:
     if module_size:
         return module_size - data_size
     return None
+
 
 def get_module_name_and_module_dir(args) -> Tuple[str, str]:
     from os.path import exists
@@ -594,6 +595,7 @@ def pack_module_zip(args: dict, kind: str):
 
 def pack_module(args):
     from ..util.util import quiet_print
+
     pack_module_zip(args, "code")
     pack_module_zip(args, "data")
     quiet_print(f"To register the packed module, use `ov store register`.", args=args)

@@ -92,7 +92,13 @@ signal.signal(signal.SIGINT, raise_break)
 
 wgs = None
 _ = admin_util or inout
-_ = BaseConverter or BaseAnnotator or BaseMapper or BasePostAggregator or BaseCommonModule
+_ = (
+    BaseConverter
+    or BaseAnnotator
+    or BaseMapper
+    or BasePostAggregator
+    or BaseCommonModule
+)
 _ = CravatReport or CravatFilter or Cravat
 _ = crx_def or consts
 _ = cli or wgs
@@ -103,7 +109,14 @@ _ = reset or register or create or check or change or fetch or pack
 _ = setup or md or config
 _ = test
 _ = addjob or filtersqlite or mergesqlite or sqliteinfo
-_ = oc_publish or oc_newaccount or oc_changepw or oc_resetpw or oc_verifyemail or oc_checklogin
+_ = (
+    oc_publish
+    or oc_newaccount
+    or oc_changepw
+    or oc_resetpw
+    or oc_verifyemail
+    or oc_checklogin
+)
 
 
 def get_live_annotator(module_name):

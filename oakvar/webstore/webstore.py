@@ -443,10 +443,12 @@ async def get_local_module_logo(request):
 
 async def get_logo(request):
     from ..system import get_logo_path
+
     module_name = request.match_info["module_name"]
     store = request.match_info["store"]
     logo_path = get_logo_path(module_name, store)
     return web.FileResponse(logo_path)
+
 
 routes = []
 routes.append(["GET", "/store/remote", get_remote_manifest])

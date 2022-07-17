@@ -31,10 +31,10 @@ def setup_system(args=None):
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
     args.update({"conf": conf})
     ret = installbase(args)
-    if ret == 0: # return None is converted to 0 with @cli_func.
+    if ret == 0:  # return None is converted to 0 with @cli_func.
         quiet_print(f"Done setting up the system", args=args)
         return True
-    else: # return False is converted to 1 with @cli_func.
+    else:  # return False is converted to 1 with @cli_func.
         quiet_print(f"Problem occurred while setting up the system", args=args)
         return False
 
@@ -212,6 +212,7 @@ def get_conf_dir(conf=None):
 
     return get_conf_dirvalue(conf_dir_key, conf=conf)
 
+
 def get_modules_dir(conf=None):
     from .consts import modules_dir_key
 
@@ -249,7 +250,9 @@ def get_cache_dir(cache_key, conf=None):
 
 def get_logo_path(module_name: str, store: str, conf=None) -> str:
     from os.path import join
+
     return join(get_cache_dir("logo", conf=conf), store, module_name + ".png")
+
 
 def get_sys_conf_value(conf_key, sys_conf_path=None, conf=None):
     from os import environ

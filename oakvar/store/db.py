@@ -292,7 +292,6 @@ def create_ov_store_cache(conf=None, args={}, conn=None, cursor=None):
             mkdir(join(fp, "oc"))
 
 
-
 @db_func
 def fetch_ov_store_cache(
     conn=None,
