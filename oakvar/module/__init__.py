@@ -152,10 +152,10 @@ def list_local():
     return sorted(list(get_module_cache().get_local().keys()))
 
 
-def list_remote():
+def list_remote(module_type=None):
     from ..store.db import module_list
 
-    return module_list()
+    return module_list(module_type=module_type)
 
 
 def get_updatable(modules=[], strategy="consensus"):

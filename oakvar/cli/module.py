@@ -423,7 +423,12 @@ def list_modules(args):
     elif fmt in ["json", "yaml"]:
         all_toks_json = []
     if available:
-        l = search_remote(args.get("pattern"))
+        if types:
+            l = []
+            for mt in types:
+                l.extend(search_remote(args.get("pattern"), module_type=mt))
+        else:
+            l = search_remote(args.get("pattern"))
     else:
         l = search_local(args.get("pattern"))
     if l:

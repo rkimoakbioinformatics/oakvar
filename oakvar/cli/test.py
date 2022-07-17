@@ -509,6 +509,8 @@ class Tester:
     def __init__(self, module, args, input_file):
         from os.path import exists, join
         from os import makedirs
+        from ..exceptions import ModuleLoadingError
+        from ..module.local import get_local_module_info
 
         self.parms = None
         self.name = None
@@ -517,13 +519,9 @@ class Tester:
         self.module_name = None
         if type(module) == str:
             self.module_name = module
-            from ..module.local import get_local_module_info
-
             module = get_local_module_info(self.module_name)
         self.module = module
         if module is None:
-            from ..exceptions import ModuleLoadingError
-
             raise ModuleLoadingError(self.module_name)
         if not exists(module.directory) or not module.script_exists:
             raise Exception(

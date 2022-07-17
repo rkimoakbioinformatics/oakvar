@@ -208,11 +208,15 @@ def summary_col_value(module_name: str, colname: str, conn=None, cursor=None):
 
 
 @db_func
-def module_list(conn=None, cursor=None) -> List[str]:
+def module_list(module_type=None, conn=None, cursor=None) -> List[str]:
     if not conn or not cursor:
         return []
-    q = f"select distinct(name) from summary"
-    cursor.execute(q)
+    if module_type:
+        q = f"select distinct(name) from summary where type=?"
+        cursor.execute(q, (module_type,))
+    else:
+        q = f"select distinct(name) from summary"
+        cursor.execute(q)
     ret = cursor.fetchall()
     l = set()
     for v in ret:

@@ -172,12 +172,12 @@ def get_install_deps(
     return deps, deps_pypi
 
 
-def search_remote(*patterns):
+def search_remote(*patterns, module_type=None):
     from re import fullmatch
     from . import list_remote
 
     matching_names = []
-    l = list_remote()
+    l = list_remote(module_type=module_type)
     for module_name in l:
         if any([fullmatch(pattern, module_name) for pattern in patterns]):
             matching_names.append(module_name)
