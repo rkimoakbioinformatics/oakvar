@@ -727,3 +727,108 @@ def get_system_conf_info(conf=None, json=False):
     else:
         content = dump(conf, default_flow_style=False)
     return content
+
+
+def check_system_yml(args={}) -> bool:
+    from .consts import conf_dir_key
+    from .consts import modules_dir_key
+    from .consts import jobs_dir_key
+    from .consts import log_dir_key
+    from ..util.util import quiet_print
+
+    system_conf = get_system_conf()
+    if not system_conf:
+        quiet_print("system configuration file is missing", args=args)
+        return False
+    system_conf_temp = get_system_conf_template()
+    for k in system_conf_temp.keys():
+        if k not in system_conf:
+            quiet_print(f"system configuration file misses {k} field.", args=args)
+            return False
+    for k in [conf_dir_key, modules_dir_key, jobs_dir_key, log_dir_key]:
+        if k not in system_conf:
+            quiet_print(f"system configuration file misses {k} field.", args=args)
+            return False
+    return True
+
+
+def check_oakvar_yml(args={}) -> bool:
+    from ..util.util import quiet_print
+
+    user_conf = get_user_conf()
+    if not user_conf:
+        quiet_print("user configuration file is missing", args=args)
+        return False
+    user_conf_temp = get_default_user_conf()
+    for k in user_conf_temp.keys():
+        if k not in user_conf:
+            quiet_print(f"user configuration file misses {k} field.", args=args)
+            return False
+    return True
+
+
+def check_system_directories(args={}) -> bool:
+    from ..util.util import quiet_print
+    from .consts import conf_dir_key
+    from .consts import modules_dir_key
+    from .consts import jobs_dir_key
+    from .consts import log_dir_key
+    from os.path import exists
+
+    system_conf = get_system_conf(conf=None)
+    for k in [conf_dir_key, modules_dir_key, jobs_dir_key, log_dir_key]:
+        d = system_conf[k]
+        if not exists(d):
+            quiet_print(f"system directory {k} is missing.", args=args)
+            return False
+    return True
+
+
+def check_account(args={}) -> bool:
+    from ..util.util import quiet_print
+    from ..store.ov.account import token_set_exists
+    from ..store.ov.account import check
+
+    if not token_set_exists():
+        quiet_print(
+            f"store account information does not exist. Use `ov store account login` to log in or `ov store account create` to create one.",
+            args=args,
+        )
+        return False
+    if not check(args={"quiet": True}):
+        quiet_print(f"not logged in. Use `ov account login` to log in.", args=args)
+        return False
+    return True
+
+
+def check_cache_files(args={}) -> bool:
+    from os.path import join
+    from os import listdir
+    from ..util.util import quiet_print
+
+    for k in ["readme", "logo", "conf"]:
+        d = join(get_cache_dir(k), "oc")
+        if len(listdir(d)) == 0:
+            quiet_print(f"system directory {d} does not exist.", args=args)
+            return False
+    return True
+
+
+def check(args) -> bool:
+    from ..util.util import quiet_print
+    from ..store.db import check_tables
+
+    if not check_system_yml(args=args):
+        return False
+    if not check_oakvar_yml(args=args):
+        return False
+    if not check_system_directories(args=args):
+        return False
+    if not check_account(args=args):
+        return False
+    if not check_tables(args=args):
+        return False
+    if not check_cache_files(args=args):
+        return False
+    quiet_print(f"success", args=args)
+    return True

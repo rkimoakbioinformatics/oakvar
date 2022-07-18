@@ -45,6 +45,7 @@ from .base.postaggregator import BasePostAggregator
 from .base.mapper import BaseMapper
 from .base.annotator import BaseAnnotator
 from .base.converter import BaseConverter
+from .base.vcf2vcf import VCF2VCF
 from .util import inout
 from .util import admin_util
 import signal
@@ -98,6 +99,7 @@ _ = (
     or BaseMapper
     or BasePostAggregator
     or BaseCommonModule
+    or VCF2VCF
 )
 _ = CravatReport or CravatFilter or Cravat
 _ = crx_def or consts
@@ -119,14 +121,16 @@ _ = (
 )
 
 
-def get_live_annotator(module_name):
+def get_live_annotator(module_name, input_file=None):
     import os
 
     module = None
+    input_file = input_file or "__dummy__"
     ModuleClass = get_module(module_name)
     if ModuleClass:
-        module = ModuleClass(input_file="__dummy__", live=True)
+        module = ModuleClass(input_file=input_file, live=True)
         module.annotator_name = module_name
+        module.name = module_name
         module.annotator_dir = os.path.dirname(module.script_path)
         module.data_dir = os.path.join(module.module_dir, "data")
         module._open_db_connection()
@@ -134,19 +138,20 @@ def get_live_annotator(module_name):
     return module
 
 
-def get_live_mapper(module_name):
-    import os
+def get_live_mapper(module_name, input_file=None):
+    from os.path import abspath
 
     module = None
     ModuleClass = get_module(module_name)
     if ModuleClass:
         module = ModuleClass(
             {
-                "script_path": os.path.abspath(ModuleClass.script_path),
-                "input_file": "__dummy__",
+                "script_path": abspath(ModuleClass.script_path),
+                "input_file": input_file or "__dummy__",
                 "live": True,
             }
         )
+        module.name = module_name
         module.setup()
     return module
 

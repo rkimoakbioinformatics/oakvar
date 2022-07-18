@@ -19,7 +19,7 @@ def pack(args, __name__="module pack"):
 @cli_entry
 def cli_module_ls(args):
     if not args.fmt:
-        args.fmt = "yaml"
+        args.fmt = "tabular"
     return ls(args)
 
 

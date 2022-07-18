@@ -49,6 +49,19 @@ def config(args, __name__="system config"):
     return ret
 
 
+@cli_entry
+def cli_system_check(args):
+    return check(args)
+
+
+@cli_func
+def check(args, __name__="system check"):
+    from ..system import check
+
+    ret = check(args)
+    return ret
+
+
 def add_parser_ov_system_setup(subparsers):
     parser_cli_ov_system_setup = subparsers.add_parser(
         "setup", help="Sets up OakVar system", description="Sets up OakVar system"
@@ -125,6 +138,24 @@ def add_parser_ov_system_config(subparsers):
     ]
 
 
+def add_parser_ov_system_check(subparsers):
+    parser_cli_system_check = subparsers.add_parser(
+        "check", help="check if OakVar is set up correctly"
+    )
+    parser_cli_system_check.add_argument(
+        "--to", default="return", help='"stdout" to print. "return" to return'
+    )
+    parser_cli_system_check.add_argument(
+        "--quiet", action="store_true", default=None, help="run quietly"
+    )
+    parser_cli_system_check.set_defaults(func=cli_system_check)
+    parser_cli_system_check.r_return = "A boolean. true if no problem or false if not."  # type: ignore
+    parser_cli_system_check.r_examples = [  # type: ignore
+        "# Check if OakVar is set up correctly.",
+        "#roakvar::system.check()",
+    ]
+
+
 def add_parser_ov_system(subparser):
     parser_ov_system = subparser.add_parser(
         name="system",
@@ -134,4 +165,5 @@ def add_parser_ov_system(subparser):
     add_parser_ov_system_setup(subparsers)
     add_parser_ov_system_md(subparsers)
     add_parser_ov_system_config(subparsers)
+    add_parser_ov_system_check(subparsers)
     return parser_ov_system

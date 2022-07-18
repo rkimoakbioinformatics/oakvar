@@ -1,6 +1,7 @@
 from typing import Optional
 from typing import List
 from typing import Tuple
+from typing import Any
 
 
 def get_ov_store_cache_conn(conf=None):
@@ -76,9 +77,9 @@ def module_data_versions(module_name, conn=None, cursor=None) -> Optional[List[s
     return values
 
 
-def module_data_sources(module_name, conn=None, cursor=None) -> Optional[List[str]]:
-    if not conn or not cursor:
-        return None
+@db_func
+def module_data_sources(module_name, conn=Any, cursor=Any) -> Optional[List[str]]:
+    _ = conn or cursor
     r = find_name_store(module_name)
     if not r:
         return None
@@ -599,3 +600,24 @@ def set_server_last_updated(args={}, conn=None, cursor=None):
     q = f"insert or replace into info ( key, value ) values ( ?, ? )"
     cursor.execute(q, (ov_store_last_updated_col, dt))
     conn.commit()
+
+
+@db_func
+def table_has_entry(table: str, conn=Any, cursor=Any) -> bool:
+    _ = conn or cursor
+    q = f"select count(*) from {table}"
+    cursor.execute(q)
+    v = cursor.fetchone()[0]
+    return v > 0
+
+
+@db_func
+def check_tables(args={}, conn=Any, cursor=Any) -> bool:
+    from ..util.util import quiet_print
+
+    _ = conn or cursor
+    for table in ["summary", "versions", "info"]:
+        if not table_exists(table) or not table_has_entry(table):
+            quiet_print(f"store cache table {table} does not exist.", args=args)
+            return False
+    return True

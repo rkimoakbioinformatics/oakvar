@@ -144,35 +144,32 @@ class Cravat(object):
         logging.shutdown()
 
     def delete_output_files(self):
-        if self.run_name is None or self.output_dir is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
+        from ..exceptions import SetupError
+        from ..util.util import quiet_print
         import os
         import glob
-        from ..util.util import quiet_print
 
+        if self.run_name is None or self.output_dir is None:
+            raise SetupError()
         fns = glob.glob(os.path.join(self.output_dir, self.run_name + ".*"))
         for fn in fns:
             quiet_print(f"  Removing {fn}", self.args)
             os.remove(fn)
 
     def download_url_input(self, input_no):
-        if self.inputs is None:
-            from ..exceptions import NoInput
-
-            raise NoInput()
+        from ..exceptions import NoInput
         from ..util.util import is_url, humanize_bytes
+        from ..util.util import quiet_print
+        import os
+        import requests
 
+        if self.inputs is None:
+            raise NoInput()
         ip = self.inputs[input_no]
         if " " in ip:
             print(f"Space is not allowed in input file paths ({ip})")
             exit()
         if is_url(ip):
-            import os
-            import requests
-            from ..util.util import quiet_print
-
             quiet_print(f"Fetching {ip}... ", self.args)
             try:
                 r = requests.head(ip)
@@ -207,18 +204,17 @@ class Cravat(object):
             return ip
 
     def get_logger(self):
+        from ..exceptions import SetupError
+        import os
+        import logging
+
         if (
             self.args is None
             or self.run_name is None
             or self.output_dir is None
             or self.run_name is None
         ):
-            from ..exceptions import SetupError
-
             raise SetupError()
-        import os
-        import logging
-
         if self.args.newlog == True:
             self.logmode = "w"
         else:
@@ -245,31 +241,11 @@ class Cravat(object):
         self.error_log_handler.setFormatter(formatter)
         self.error_logger.addHandler(self.error_log_handler)
 
-    """def handle_exception(self, e):
-        if self.args is None:
-            from ..exceptions import SetupError
-            raise SetupError()
-        from sys import stderr
-        try:
-            from ..exceptions import ExpectedException
-            if isinstance(e, ExpectedException):
-                if hasattr(self, "logger") and self.logger and not getattr(
-                        e, "nolog", False):
-                    self.logger.error(e)
-                stderr.write(str(e) + "\n")
-                stderr.flush()
-            else:
-                if hasattr(self, "logger") and self.logger:
-                    self.logger.exception("An unexpected exception occurred.")
-        except Exception as e2:
-            stderr.write(str(e) + "\n")
-            stderr.flush()
-            raise e2"""
-
     def log_versions(self):
         from ..exceptions import SetupError
         import os
         from ..util import admin_util as au
+        from ..exceptions import ModuleLoadingError
 
         if self.args is None:
             raise SetupError()
@@ -288,8 +264,6 @@ class Cravat(object):
             if "mapper" not in self.args.skip:
                 module = self.mapper
                 if module is None:
-                    from ..exceptions import ModuleLoadingError
-
                     raise ModuleLoadingError("mapper")
                 self.logger.info(
                     f'version: {module.name} {module.conf["version"]} {os.path.dirname(module.script_path)}'
@@ -299,142 +273,195 @@ class Cravat(object):
                     f"version: {module.name} {module.conf['version']} {os.path.dirname(module.script_path)}"
                 )
 
-    async def main(self):
+    async def do_step_converter(self):
         from ..util.util import quiet_print
-        from time import time, asctime, localtime
+        from time import time
+
+        if (
+            self.endlevel >= self.runlevels["converter"]
+            and self.startlevel <= self.runlevels["converter"]
+            and (self.args and not "converter" in self.args.skip)
+        ):
+            quiet_print("Running converter...", self.args)
+            stime = time()
+            self.run_converter()
+            rtime = time() - stime
+            quiet_print("finished in {0:.3f}s".format(rtime), self.args)
+            if self.numinput == 0:
+                msg = "No variant found in input"
+                quiet_print(msg, self.args)
+                if self.logger:
+                    self.logger.info(msg)
+                exit()
+
+    async def do_step_mapper(self):
+        from ..util.util import quiet_print
+        from time import time
+
+        self.mapper_ran = False
+        if (
+            self.endlevel >= self.runlevels["mapper"]
+            and self.startlevel <= self.runlevels["mapper"]
+            and (self.args and not "mapper" in self.args.skip)
+        ):
+            quiet_print(f'Running gene mapper...{" "*18}', self.args)
+            stime = time()
+            # multicore_mapper_mode = self.main_conf.get("multicore_mapper_mode")
+            self.run_genemapper_mp()
+            # if multicore_mapper_mode:
+            #    self.run_genemapper_mp()
+            # else:
+            #    self.run_genemapper()
+            rtime = time() - stime
+            quiet_print("finished in {0:.3f}s".format(rtime), self.args)
+            self.mapper_ran = True
+
+    async def do_step_annotator(self):
+        from ..util.util import quiet_print
+        from time import time
+
+        self.annotator_ran = False
+        self.done_annotators = {}
+        self.populate_secondary_annotators()
+        for mname, module in self.annotators.items():
+            if self.check_module_output(module) is not None:
+                self.done_annotators[mname] = module
+        self.run_annotators = {
+            aname: self.annotators[aname]
+            for aname in set(self.annotators) - set(self.done_annotators)
+        }
+        if (
+            self.endlevel >= self.runlevels["annotator"]
+            and self.startlevel <= self.runlevels["annotator"]
+            and (self.args and not "annotator" in self.args.skip)
+            and (self.mapper_ran or len(self.run_annotators) > 0)
+        ):
+            quiet_print("Running annotators...", self.args)
+            stime = time()
+            self.run_annotators_mp()
+            rtime = time() - stime
+            quiet_print("\tannotator(s) finished in {0:.3f}s".format(rtime), self.args)
+
+    async def do_step_aggregator(self):
+        from ..util.util import quiet_print
+
+        if (
+            self.endlevel >= self.runlevels["aggregator"]
+            and self.startlevel <= self.runlevels["aggregator"]
+            and (self.args and not "aggregator" in self.args.skip)
+            and (
+                self.mapper_ran
+                or self.annotator_ran
+                or self.startlevel == self.runlevels["aggregator"]
+            )
+        ):
+            quiet_print("Running aggregator...", self.args)
+            self.result_path = self.run_aggregator()
+            await self.write_job_info()
+            self.write_smartfilters()
+            self.aggregator_ran = True
+
+    async def do_step_postaggregator(self):
+        from ..util.util import quiet_print
+
+        if (
+            self.endlevel >= self.runlevels["postaggregator"]
+            and self.startlevel <= self.runlevels["postaggregator"]
+            and (self.args and not "postaggregator" in self.args.skip)
+        ):
+            quiet_print("Running postaggregators...", self.args)
+            self.run_postaggregators()
+
+    async def do_step_reporter(self):
+        from ..util.util import quiet_print
+
+        if (
+            self.endlevel >= self.runlevels["reporter"]
+            and self.startlevel <= self.runlevels["reporter"]
+            and (self.args and not "reporter" in self.args.skip)
+            and self.aggregator_ran
+            and self.reports
+        ):
+            quiet_print("Running reporter...", self.args)
+            self.report_response = await self.run_reporter()
+
+    async def setup_manager(self):
         from multiprocessing.managers import SyncManager
+
+        self.manager = SyncManager()
+        self.manager.register("StatusWriter", StatusWriter)
+        self.manager.start()
+        self.status_writer = self.manager.StatusWriter(  # type: ignore
+            self.status_json_path
+        )
+
+    async def process_clean(self):
+        from ..util.util import quiet_print
+
+        if self.args and self.args.clean:
+            quiet_print("Deleting previous output files...", self.args)
+            self.delete_output_files()
+
+    def process_input(self):
+        from ..exceptions import NoInput
+
+        if self.inputs is None:
+            raise NoInput()
+        if self.pipeinput == False:
+            input_files_str = ", ".join(self.inputs)
+        else:
+            input_files_str = "stdin"
+        if self.logger:
+            self.logger.info("input files: {}".format(input_files_str))
+            self.logger.info("input assembly: {}".format(self.input_assembly))
+
+    async def start_logger(self):
+        from time import asctime, localtime
         from sys import argv
 
-        report_response = None
+        self.unique_logs = {}
+        self.get_logger()
+        if self.logger:
+            self.logger.info(f'{" ".join(argv)}')
+            self.logger.info("started: {0}".format(asctime(localtime(self.start_time))))
+            if self.conf_path != "":
+                self.logger.info("conf file: {}".format(self.conf_path))
+
+    async def main(self):
+        from ..util.util import quiet_print
+        from ..util.util import update_status
+        from time import time, asctime, localtime
+
+        self.report_response = None
         self.aggregator_ran = False
         try:
             self.start_time = time()
             self.make_args_namespace(self.inkwargs)
-            if self.args is None:
-                from ..exceptions import SetupError
-
-                raise SetupError("Cravat")
-            if self.args.clean:
-                quiet_print("Deleting previous output files...", self.args)
-                self.delete_output_files()
-            self.get_logger()
-            if self.logger:
-                self.logger.info(f'{" ".join(argv)}')
-                self.logger.info(
-                    "started: {0}".format(asctime(localtime(self.start_time)))
-                )
-                if self.conf_path != "":
-                    self.logger.info("conf file: {}".format(self.conf_path))
+            await self.process_clean()
+            await self.start_logger()
             self.write_initial_status_json()
-            self.unique_logs = {}
-            self.manager = SyncManager()
-            self.manager.register("StatusWriter", StatusWriter)
-            self.manager.start()
-            self.status_writer = self.manager.StatusWriter(  # type: ignore
-                self.status_json_path
+            await self.setup_manager()
+            update_status(
+                "Started OakVar",
+                status_writer=self.status_writer,
+                args=self.args,
+                force=True,
             )
-            self.update_status("Started OakVar", force=True)
-            if self.inputs is None:
-                from ..exceptions import NoInput
-
-                raise NoInput()
-            if self.pipeinput == False:
-                input_files_str = ", ".join(self.inputs)
-            else:
-                input_files_str = "stdin"
-            if self.logger:
-                self.logger.info("input files: {}".format(input_files_str))
-                self.logger.info("input assembly: {}".format(self.input_assembly))
+            self.process_input()
             self.log_versions()
             self.set_and_check_input_files()
-            if (
-                self.endlevel >= self.runlevels["converter"]
-                and self.startlevel <= self.runlevels["converter"]
-                and not "converter" in self.args.skip
-            ):
-                quiet_print("Running converter...", self.args)
-                stime = time()
-                self.run_converter()
-                rtime = time() - stime
-                quiet_print("finished in {0:.3f}s".format(rtime), self.args)
-                if self.numinput == 0:
-                    msg = "No variant found in input"
-                    quiet_print(msg, self.args)
-                    if self.logger:
-                        self.logger.info(msg)
-                    exit()
-            self.mapper_ran = False
-            if (
-                self.endlevel >= self.runlevels["mapper"]
-                and self.startlevel <= self.runlevels["mapper"]
-                and not "mapper" in self.args.skip
-            ):
-                quiet_print(f'Running gene mapper...{" "*18}', self.args)
-                stime = time()
-                # multicore_mapper_mode = self.main_conf.get("multicore_mapper_mode")
-                self.run_genemapper_mp()
-                # if multicore_mapper_mode:
-                #    self.run_genemapper_mp()
-                # else:
-                #    self.run_genemapper()
-                rtime = time() - stime
-                quiet_print("finished in {0:.3f}s".format(rtime), self.args)
-                self.mapper_ran = True
-            self.annotator_ran = False
-            self.done_annotators = {}
-            self.populate_secondary_annotators()
-            for mname, module in self.annotators.items():
-                if self.check_module_output(module) is not None:
-                    self.done_annotators[mname] = module
-            self.run_annotators = {
-                aname: self.annotators[aname]
-                for aname in set(self.annotators) - set(self.done_annotators)
-            }
-            if (
-                self.endlevel >= self.runlevels["annotator"]
-                and self.startlevel <= self.runlevels["annotator"]
-                and not "annotator" in self.args.skip
-                and (self.mapper_ran or len(self.run_annotators) > 0)
-            ):
-                quiet_print("Running annotators...", self.args)
-                stime = time()
-                self.run_annotators_mp()
-                rtime = time() - stime
-                quiet_print(
-                    "\tannotator(s) finished in {0:.3f}s".format(rtime), self.args
-                )
-            if (
-                self.endlevel >= self.runlevels["aggregator"]
-                and self.startlevel <= self.runlevels["aggregator"]
-                and not "aggregator" in self.args.skip
-                and (
-                    self.mapper_ran
-                    or self.annotator_ran
-                    or self.startlevel == self.runlevels["aggregator"]
-                )
-            ):
-                quiet_print("Running aggregator...", self.args)
-                self.result_path = self.run_aggregator()
-                await self.write_job_info()
-                self.write_smartfilters()
-                self.aggregator_ran = True
-            if (
-                self.endlevel >= self.runlevels["postaggregator"]
-                and self.startlevel <= self.runlevels["postaggregator"]
-                and not "postaggregator" in self.args.skip
-            ):
-                quiet_print("Running postaggregators...", self.args)
-                self.run_postaggregators()
-            if (
-                self.endlevel >= self.runlevels["reporter"]
-                and self.startlevel <= self.runlevels["reporter"]
-                and not "reporter" in self.args.skip
-                and self.aggregator_ran
-                and self.reports
-            ):
-                quiet_print("Running reporter...", self.args)
-                report_response = await self.run_reporter()
-            self.update_status("Finished", force=True)
+            if self.args and self.args.vcf2vcf:
+                await self.run_vcf2vcf()
+            else:
+                await self.do_step_converter()
+                await self.do_step_mapper()
+                await self.do_step_annotator()
+                await self.do_step_aggregator()
+                await self.do_step_postaggregator()
+                await self.do_step_reporter()
+            update_status(
+                "Finished", status_writer=self.status_writer, args=self.args, force=True
+            )
         except Exception as e:
             self.exception = e
             # self.handle_exception(e)
@@ -464,7 +491,12 @@ class Cravat(object):
                 #    "Log file at {}".format(self.log_path) + "\n")
                 # stderr.flush()
                 if self.status_writer:
-                    self.update_status("Error", force=True)
+                    update_status(
+                        "Error",
+                        status_writer=self.status_writer,
+                        args=self.args,
+                        force=True,
+                    )
             if self.logger:
                 self.close_logger()
             if (
@@ -485,28 +517,19 @@ class Cravat(object):
                 await self.write_admin_db(runtime, self.numinput)
             if self.exception:
                 raise self.exception
-            return report_response
-
-    def update_status(self, status, force=False):
-        if self.args is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
-        if self.args.do_not_change_status != True:
-            if self.status_writer:
-                self.status_writer.queue_status_update("status", status, force=force)
+            return self.report_response
 
     def make_args_namespace(self, args):
+        from ..exceptions import SetupError
+        from ..exceptions import SetupError
+        from .version import cli_version
+        from ..exceptions import NormalExit
+
         self.set_package_conf(args)
         self.make_self_args_considering_package_conf(args)
         if self.args is None:
-            from ..exceptions import SetupError
-
             raise SetupError()
         if self.args.show_version:
-            from .version import cli_version
-            from ..exceptions import NormalExit
-
             cli_version({"to": "stdout"})
             raise NormalExit
         self.set_self_inputs()
@@ -526,9 +549,12 @@ class Cravat(object):
         self.cleandb = self.args.cleandb
         if self.args.note == None:
             self.args.note = ""
+        if self.args is None:
+            raise SetupError("Cravat")
 
     def make_self_args_considering_package_conf(self, args):
         from types import SimpleNamespace
+        from ..util.admin_util import get_user_conf
 
         full_args = args
         # package including -a (add) and -A (replace)
@@ -544,9 +570,7 @@ class Cravat(object):
                         full_args[k] = v
         self.conf_path = full_args.get("confpath", None)
         self.make_self_conf(full_args)
-        from ..util.admin_util import get_user_conf
-
-        self.main_conf = get_user_conf()
+        self.main_conf = get_user_conf() or {}
         self.conf_run = self.conf.get("run", {})
         for k, v in self.conf_run.items():
             if k not in full_args or (not full_args[k] and v):
@@ -558,13 +582,12 @@ class Cravat(object):
         self.process_module_options()
 
     def make_self_conf(self, args):
-        if args is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
-        import json
+        from ..exceptions import SetupError
         from ..util.util import quiet_print
+        import json
 
+        if args is None:
+            raise SetupError()
         self.conf_run = args.get("conf", {}).get("run", {})
         confs = args.get("confs")
         if confs:
@@ -610,12 +633,11 @@ class Cravat(object):
         self.annot_names = annot_names
 
     def process_module_options(self):
-        if self.args is None or self.conf is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
+        from ..exceptions import SetupError
         from ..util.util import quiet_print
 
+        if self.args is None or self.conf is None:
+            raise SetupError()
         if self.args.module_option is not None:
             for opt_str in self.args.module_option:
                 toks = opt_str.split("=")
@@ -639,12 +661,14 @@ class Cravat(object):
                 self.conf_run[module_name][key] = v
 
     def process_url_and_pipe_inputs(self):
-        if self.args is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
+        from ..exceptions import SetupError
         from ..util.util import is_url
+        from ..exceptions import InvalidInputFormat
+        from ..exceptions import NoInput
+        import os
 
+        if self.args is None:
+            raise SetupError()
         self.first_non_url_input = None
         if (
             self.args.inputs is not None
@@ -653,19 +677,13 @@ class Cravat(object):
         ):
             self.pipeinput = True
             if self.args.forcedinputformat is None:
-                from ..exceptions import InvalidInputFormat
-
                 raise InvalidInputFormat(fmt="--input-format is needed for pipe input.")
         if self.args.inputs is not None:
-            import os
-
             self.inputs = [
                 os.path.abspath(x) if not is_url(x) and x != "-" else x
                 for x in self.args.inputs
             ]
             if self.inputs is None:
-                from ..exceptions import NoInput
-
                 raise NoInput()
             for input_no in range(len(self.inputs)):
                 if (
@@ -677,14 +695,13 @@ class Cravat(object):
             self.inputs = []
 
     def regenerate_from_db(self):
-        if self.inputs is None or len(self.inputs) == 0:
-            from ..exceptions import NoInput
-
-            raise NoInput
+        from ..exceptions import NoInput
         import sqlite3
         from ..consts import crv_def, crx_def, crg_def
         from ..util.inout import CravatWriter
 
+        if self.inputs is None or len(self.inputs) == 0:
+            raise NoInput
         dbpath = self.inputs[0]
         db = sqlite3.connect(dbpath)
         c = db.cursor()
@@ -735,14 +752,12 @@ class Cravat(object):
     def set_append_mode(self):
         import os
         import shutil
+        from ..exceptions import NoInput
+        from ..exceptions import SetupError
 
         if self.inputs is None or self.num_input is None:
-            from ..exceptions import NoInput
-
             raise NoInput()
         if self.run_name is None or self.args is None:
-            from ..exceptions import SetupError
-
             raise SetupError()
         if self.num_input > 0 and self.inputs[0].endswith(".sqlite"):
             self.append_mode = True
@@ -765,29 +780,26 @@ class Cravat(object):
                 self.run_name = self.run_name[:-7]
 
     def set_genome_assembly(self):
-        if self.args is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
         from ..system.consts import default_assembly_key
+        from ..exceptions import SetupError
+        from ..exceptions import NoGenomeException
 
+        if self.args is None:
+            raise SetupError()
         if self.args.genome is None:
             if default_assembly_key in self.main_conf:
                 self.input_assembly = self.main_conf[default_assembly_key]
             else:
-                from ..exceptions import NoGenomeException
-
                 raise NoGenomeException()
         else:
             self.input_assembly = self.args.genome
 
     def set_output_dir(self):
-        if self.args is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
         import os
+        from ..exceptions import SetupError
 
+        if self.args is None:
+            raise SetupError()
         self.output_dir = self.args.output_dir
         if self.output_dir == None:
             if self.num_input == 0 or self.first_non_url_input is None:
@@ -814,16 +826,14 @@ class Cravat(object):
             self.package_conf = {}
 
     def set_run_name(self):
-        if self.inputs is None or self.num_input is None:
-            from ..exceptions import NoInput
+        import os
+        from ..exceptions import NoInput
+        from ..exceptions import SetupError
 
+        if self.inputs is None or self.num_input is None:
             raise NoInput()
         if self.args is None:
-            from ..exceptions import SetupError
-
             raise SetupError()
-        import os
-
         self.run_name = self.args.run_name
         if self.run_name == None:
             if self.num_input == 0 or self.pipeinput:
@@ -834,12 +844,12 @@ class Cravat(object):
                     self.run_name += "_and_" + str(len(self.inputs) - 1) + "_files"
 
     def set_self_inputs(self):
-        if self.args is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
+        from ..exceptions import SetupError
         from ..util.util import quiet_print
+        from ..exceptions import NoInput
 
+        if self.args is None:
+            raise SetupError()
         if self.args.inputs is not None and len(self.args.inputs) == 0:
             if "inputs" in self.conf_run:
                 if type(self.conf_run["inputs"]) == list:
@@ -847,20 +857,16 @@ class Cravat(object):
                 else:
                     quiet_print("inputs in conf file is invalid", self.args)
             else:
-                from ..exceptions import NoInput
-
                 raise NoInput()
         self.process_url_and_pipe_inputs()
         if self.inputs is None:
-            from ..exceptions import NoInput
-
             raise NoInput()
         self.num_input = len(self.inputs)
 
     def set_start_end_levels(self):
-        if self.args is None:
-            from ..exceptions import SetupError
+        from ..exceptions import SetupError
 
+        if self.args is None:
             raise SetupError()
         if self.append_mode and self.args.endat is None:
             self.args.endat = "aggregator"
@@ -874,16 +880,14 @@ class Cravat(object):
             self.endlevel = max(self.runlevels.values())
 
     def set_and_check_input_files(self):
-        if self.run_name is None or self.output_dir is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
-        if self.inputs is None or len(self.inputs) == 0:
-            from ..exceptions import NoInput
-
-            raise NoInput
+        from ..exceptions import SetupError
+        from ..exceptions import NoInput
         import os
 
+        if self.run_name is None or self.output_dir is None:
+            raise SetupError()
+        if self.inputs is None or len(self.inputs) == 0:
+            raise NoInput
         self.crvinput = os.path.join(self.output_dir, self.run_name + ".crv")
         self.crxinput = os.path.join(self.output_dir, self.run_name + ".crx")
         self.crginput = os.path.join(self.output_dir, self.run_name + ".crg")
@@ -904,13 +908,12 @@ class Cravat(object):
         return True
 
     def set_annotators(self):
-        if self.args is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
+        from ..exceptions import SetupError
         from ..module.local import get_local_module_infos_of_type
         from ..module.local import get_local_module_infos_by_names
 
+        if self.args is None:
+            raise SetupError()
         self.excludes = self.args.excludes
         if len(self.args.annotators) > 0:
             if self.args.annotators == ["all"]:
@@ -941,45 +944,35 @@ class Cravat(object):
 
     def set_mapper(self):
         from ..module.local import get_local_module_info_by_name
+        from ..exceptions import SetupError
 
         if self.args is None or self.conf is None:
-            from ..exceptions import SetupError
-
             raise SetupError()
-
         if self.args.mapper_name:
             self.mapper_name = self.args.mapper_name[0]
-        elif (
-            self.package_conf is not None
-            and "run" in self.package_conf
-            and "mapper" in self.package_conf["run"]
-        ):
-            self.mapper_name = self.package_conf.get("run", {}).get("mapper")
-        else:
+        self.mapper_name = self.package_conf.get("run", {}).get("mapper")
+        if not self.mapper_name:
             self.mapper_name = self.main_conf.get("genemapper")
         self.check_valid_modules([self.mapper_name])
         self.mapper = get_local_module_info_by_name(self.mapper_name)
 
     def set_md(self):
+        from ..exceptions import SetupError
+        from ..system import consts
+
         if self.args is None:
-            from ..exceptions import SetupError
-
             raise SetupError()
-
         if self.args.md is not None:
-            from ..system import consts
-
             consts.custom_modules_dir = self.args.md
 
     def set_postaggregators(self):
-        if self.args is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
+        from ..exceptions import SetupError
         from ..system.consts import default_postaggregator_names
         from ..module.local import get_local_module_infos_by_names
         from ..module.local import module_exists_local
 
+        if self.args is None:
+            raise SetupError()
         if len(self.args.postaggregators) > 0:
             self.postaggregator_names = self.args.postaggregators
         elif (
@@ -1016,12 +1009,10 @@ class Cravat(object):
 
     def set_reporters(self):
         from ..module.local import get_local_module_infos_by_names
+        from ..exceptions import SetupError
 
         if self.args is None:
-            from ..exceptions import SetupError
-
             raise SetupError()
-
         if len(self.args.reports) > 0:
             self.report_names = self.args.reports
         elif (
@@ -1047,12 +1038,11 @@ class Cravat(object):
                 self._find_secondary_annotators(sannot, ret)
 
     def get_module_output_path(self, module):
-        if self.run_name is None or self.output_dir is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
+        from ..exceptions import SetupError
         import os
 
+        if not self.run_name or not self.output_dir:
+            raise SetupError()
         if module.level == "variant":
             postfix = ".var"
         elif module.level == "gene":
@@ -1088,6 +1078,7 @@ class Cravat(object):
         from types import SimpleNamespace
         from ..exceptions import SetupError
         from ..util.admin_util import get_packagedir
+        from ..util.util import announce_module
 
         if self.conf is None or self.args is None:
             raise SetupError()
@@ -1107,7 +1098,7 @@ class Cravat(object):
             arg_dict["format"] = self.args.forcedinputformat
         if self.args.unique_variants:
             arg_dict["unique_variants"] = True
-        self.announce_module(module)
+        announce_module(module, status_writer=self.status_writer, args=self.args)
         if self.verbose:
             print(
                 " ".join([str(k) + "=" + str(v) for k, v in arg_dict.items()]),
@@ -1302,6 +1293,7 @@ class Cravat(object):
         from time import time
         from ..base.aggregator import Aggregator
         from ..util.util import quiet_print
+        from ..util.util import update_status
 
         # Variant level
         quiet_print("\t{0:30s}\t".format("Variants"), self.args)
@@ -1323,8 +1315,10 @@ class Cravat(object):
             cmd.append("--append")
         if self.verbose:
             quiet_print(" ".join(cmd), self.args)
-        self.update_status(
+        update_status(
             "Running {title} ({level})".format(title="Aggregator", level="variant"),
+            status_writer=self.status_writer,
+            args=self.args,
             force=True,
         )
         v_aggregator = Aggregator(cmd, self.status_writer)
@@ -1349,8 +1343,10 @@ class Cravat(object):
             cmd.append("--append")
         if self.verbose:
             quiet_print(" ".join(cmd), self.args)
-        self.update_status(
+        update_status(
             "Running {title} ({level})".format(title="Aggregator", level="gene"),
+            status_writer=self.status_writer,
+            args=self.args,
             force=True,
         )
         g_aggregator = Aggregator(cmd, self.status_writer)
@@ -1374,8 +1370,10 @@ class Cravat(object):
             ]
             if self.verbose:
                 quiet_print(" ".join(cmd), self.args)
-            self.update_status(
+            update_status(
                 "Running {title} ({level})".format(title="Aggregator", level="sample"),
+                status_writer=self.status_writer,
+                args=self.args,
                 force=True,
             )
             s_aggregator = Aggregator(cmd, self.status_writer)
@@ -1398,8 +1396,10 @@ class Cravat(object):
             ]
             if self.verbose:
                 quiet_print(" ".join(cmd), self.args)
-            self.update_status(
+            update_status(
                 "Running {title} ({level})".format(title="Aggregator", level="mapping"),
+                status_writer=self.status_writer,
+                args=self.args,
                 force=True,
             )
             m_aggregator = Aggregator(cmd, self.status_writer)
@@ -1409,15 +1409,15 @@ class Cravat(object):
         return v_aggregator.db_path
 
     def run_postaggregators(self):
-        if self.conf is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
+        from ..util.util import announce_module
+        from ..exceptions import SetupError
         from time import time
         from ..util.util import load_class
         import json
         from ..util.util import quiet_print
 
+        if self.conf is None:
+            raise SetupError()
         for module_name, module in self.postaggregators.items():
             cmd = [module.script_path, "-d", self.output_dir, "-n", self.run_name]
             postagg_conf = {}
@@ -1431,15 +1431,73 @@ class Cravat(object):
             post_agg_cls = load_class(module.script_path, "CravatPostAggregator")
             post_agg = post_agg_cls(cmd, self.status_writer)
             if post_agg.should_run_annotate:
-                self.announce_module(module)
+                announce_module(
+                    module, status_writer=self.status_writer, args=self.args
+                )
             stime = time()
             post_agg.run()
             rtime = time() - stime
             if post_agg.should_run_annotate:
                 quiet_print("finished in {0:.3f}s".format(rtime), self.args)
 
+    async def run_vcf2vcf(self):
+        from ..exceptions import SetupError
+        from ..exceptions import NoInput
+        from time import time
+        from ..util.util import load_class
+        from ..util.util import quiet_print
+        from types import SimpleNamespace
+        from ..base import vcf2vcf
+        from os.path import abspath
+
+        if self.conf is None or self.args is None or self.output_dir is None:
+            raise SetupError()
+        if self.inputs is None:
+            raise NoInput()
+        response = {}
+        module = {
+            "name": "vcf2vcf",
+            "title": "VCF to VCF",
+            "script_path": abspath(vcf2vcf.__file__),
+        }
+        module = SimpleNamespace(**module)
+        # announce_module(module, status_writer=self.status_writer, args=self.args)
+        arg_dict = dict(vars(self.args))
+        arg_dict["output_dir"] = self.output_dir
+        arg_dict["module_name"] = module.name
+        arg_dict["conf"] = self.conf
+        arg_dict["mapper_name"] = self.mapper_name
+        arg_dict["annotator_names"] = self.annotator_names
+        arg_dict["output_dir"] = self.output_dir
+        arg_dict["run_name"] = self.run_name
+        Module = load_class(module.script_path, "VCF2VCF")
+        m = Module(arg_dict)
+        stime = time()
+        response_t = m.run()
+        output_fns = None
+        response_type = type(response_t)
+        if response_type == list:
+            output_fns = " ".join(response_t)
+        elif response_type == str:
+            output_fns = response_t
+        if output_fns is not None:
+            quiet_print(f"report created: {output_fns} ", self.args)
+        report_type = "vcf2vcf"
+        response[report_type] = response_t
+        rtime = time() - stime
+        quiet_print("finished in {0:.3f}s".format(rtime), self.args)
+        self.report_response = response
+
     async def run_reporter(self):
         from ..module.local import get_local_module_info
+        from ..exceptions import SetupError
+        from ..exceptions import NoInput
+        from time import time
+        import os
+        from ..util.util import load_class
+        from ..util.util import quiet_print
+        from ..exceptions import ModuleNotExist
+        from ..util.util import announce_module
 
         if (
             self.run_name is None
@@ -1447,18 +1505,9 @@ class Cravat(object):
             or self.args is None
             or self.output_dir is None
         ):
-            from ..exceptions import SetupError
-
             raise SetupError()
         if self.inputs is None:
-            from ..exceptions import NoInput
-
             raise NoInput()
-        from time import time
-        import os
-        from ..util.util import load_class
-        from ..util.util import quiet_print
-
         if len(self.reports) > 0:
             module_names = [v for v in self.reports.keys()]
             report_types = [v.replace("reporter", "") for v in self.reports.keys()]
@@ -1469,10 +1518,8 @@ class Cravat(object):
         for report_type, module_name in zip(report_types, module_names):
             reporter = None
             module = get_local_module_info(module_name)
-            self.announce_module(module)
+            announce_module(module, status_writer=self.status_writer, args=self.args)
             if module is None:
-                from ..exceptions import ModuleNotExist
-
                 raise ModuleNotExist(module_name)
             arg_dict = dict(vars(self.args))
             arg_dict["script_path"] = module.script_path
@@ -1482,32 +1529,6 @@ class Cravat(object):
             arg_dict["savepath"] = os.path.join(self.output_dir, self.run_name)
             arg_dict["output_dir"] = self.output_dir
             arg_dict["module_name"] = module_name
-            """
-            if self.conf_path is not None:
-                arg_dict["confpath"] = self.conf_path
-            arg_dict["conf"] = self.conf_run.get(module_name, {})
-            if self.pipeinput == False:
-                arg_dict["inputfiles"] = []
-                for input_file in self.inputs:
-                    arg_dict["inputfiles"].append(f"{input_file}")
-            if self.args.separatesample:
-                arg_dict["separatesample"] = True
-            if self.verbose:
-                print(
-                    " ".join(
-                        [str(k) + "=" + str(v) for k, v in arg_dict.items()]),
-                    self.args)
-            arg_dict["status_writer"] = self.status_writer
-            arg_dict["reports"] = [module_name.replace("reporter", "")]
-            arg_dict["concise_report"] = self.args.concise_report
-            arg_dict["package"] = self.args.package
-            arg_dict["filtersql"] = self.args.filtersql
-            arg_dict["includesample"] = self.args.includesample
-            arg_dict["excludesample"] = self.args.excludesample
-            arg_dict["filter"] = self.args.filter
-            arg_dict["filterpath"] = self.args.filterpath
-            arg_dict["md"] = self.args.md
-            """
             arg_dict["conf"] = self.conf
             Reporter = load_class(module.script_path, "Reporter")
             reporter = Reporter(arg_dict)
@@ -1528,21 +1549,20 @@ class Cravat(object):
         return response
 
     def run_annotators_mp(self):
-        if (
-            self.args is None
-            or self.manager is None
-            or self.run_name is None
-            or self.output_dir is None
-        ):
-            from ..exceptions import SetupError
-
-            raise SetupError()
+        from ..exceptions import SetupError
         import os
         import logging
         from ..base.mp_runners import init_worker, annot_from_queue
         from multiprocessing import Pool
         from ..system import get_max_num_concurrent_annotators_per_job
 
+        if (
+            self.args is None
+            or self.manager is None
+            or self.run_name is None
+            or self.output_dir is None
+        ):
+            raise SetupError()
         num_workers = get_max_num_concurrent_annotators_per_job()
         if self.args.mp is not None:
             try:
@@ -1688,12 +1708,11 @@ class Cravat(object):
         return converter_format
 
     async def get_mapper_info_from_crx(self):
-        if self.run_name is None or self.output_dir is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
+        from ..exceptions import SetupError
         import os
 
+        if self.run_name is None or self.output_dir is None:
+            raise SetupError()
         title = None
         version = None
         modulename = None
@@ -1713,25 +1732,23 @@ class Cravat(object):
         return title, version, modulename
 
     async def write_job_info(self):
-        if (
-            self.run_name is None
-            or self.input_assembly is None
-            or self.args is None
-            or self.output_dir is None
-        ):
-            from ..exceptions import SetupError
-
-            raise SetupError()
-        if self.inputs is None:
-            from ..exceptions import NoInput
-
-            raise NoInput()
+        from ..exceptions import SetupError
+        from ..exceptions import NoInput
         import os
         import aiosqlite
         from datetime import datetime
         import json
         from ..module.local import get_local_module_info
 
+        if (
+            self.run_name is None
+            or self.input_assembly is None
+            or self.args is None
+            or self.output_dir is None
+        ):
+            raise SetupError()
+        if self.inputs is None:
+            raise NoInput()
         dbpath = os.path.join(self.output_dir, self.run_name + ".sqlite")
         conn = await aiosqlite.connect(dbpath)
         cursor = await conn.cursor()
@@ -1861,8 +1878,10 @@ class Cravat(object):
         await conn.close()
 
     def run_summarizers(self):
+        from ..util.util import announce_module
+
         for module in self.ordered_summarizers:
-            self.announce_module(module)
+            announce_module(module, status_writer=self.status_writer, args=self.args)
             self.run_summarizer(module)
 
     def run_summarizer(self, module):
@@ -1883,22 +1902,6 @@ class Cravat(object):
         summarizer_cls = load_class(module.script_path, "")
         summarizer = summarizer_cls(cmd)
         summarizer.run()
-
-    def announce_module(self, module):
-        if self.args is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
-        if not self.args.quiet:
-            print(
-                "\t{0:30s}\t".format(module.title + " (" + module.name + ")"),
-                end="",
-                flush=True,
-            )
-        self.update_status(
-            "Running {title} ({name})".format(title=module.title, name=module.name),
-            force=True,
-        )
 
     def clean_up_at_end(self):
         if self.output_dir is None or self.run_name is None:
@@ -2402,5 +2405,11 @@ def add_parser_ov_run(subparsers):
         dest="postaggregators",
         default=[],
         help="Postaggregators to run. Additionally, tagsampler, casecontrol, varmeta, and vcfinfo will automatically run depending on conditions.",
+    )
+    parser_ov_run.add_argument(
+        "--vcf2vcf",
+        action="store_true",
+        default=False,
+        help="analyze with the vcf to vcf workflow. It is faster than a normal run, but only if both input and output formats are VCF.",
     )
     parser_ov_run.set_defaults(func=cli_run)

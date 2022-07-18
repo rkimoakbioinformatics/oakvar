@@ -600,3 +600,23 @@ def pack_module(args):
     pack_module_zip(args, "data")
     quiet_print(f"To register the packed module, use `ov store register`.", args=args)
     return True
+
+
+def get_default_mapper_name() -> Optional[str]:
+    from ..util.admin_util import get_user_conf
+
+    conf = get_user_conf()
+    if conf:
+        default_assembly = conf.get("default_mapper", None)
+        return default_assembly
+
+
+def load_modules(module_names: list, mapper: str, input_file=None):
+    from .. import get_live_mapper
+    from .. import get_live_annotator
+
+    modules = {}
+    modules[mapper] = get_live_mapper(mapper, input_file=input_file)
+    for module_name in module_names:
+        modules[module_name] = get_live_annotator(module_name)
+    return modules
