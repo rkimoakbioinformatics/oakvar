@@ -15,6 +15,7 @@ class RemoteModule(object):
             "developer": self.developer,
             "groups": self.groups,
             "output_columns": self.output_columns,
+            "requires": self.requires,
         }
         return d
 
@@ -30,6 +31,7 @@ class RemoteModule(object):
             "publish_time": self.publish_time,
             "has_logo": self.has_logo,
             "store": self.store,
+            "requires": self.requires,
         }
         return d
 
@@ -89,6 +91,7 @@ class RemoteModule(object):
         self.tags = self.conf.get("tags", [])
         self.publish_time = kwargs.get("publish_time")
         self.developer = get_developer_dict(self.conf.get("developer", {}))
+        self.requires = self.conf.get("requires", [])
         self.installed: Optional[str] = None
         self.local_code_version: Optional[str] = None
         self.local_data_source: Optional[str] = None

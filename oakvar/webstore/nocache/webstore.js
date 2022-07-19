@@ -1708,7 +1708,7 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
     span = getEl('span');
     span.style.fontSize = '12px';
     span.style.color = 'green';
-    span.textContent = ' | ' + mInfo.developer.organization;
+    span.textContent = ' | ' + (mInfo.developer.module.organization || mInfo.developer.organization);
     addEl(td, span);
     addEl(tr, td);
     td = getEl('td');
@@ -1957,17 +1957,32 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
     span.style.fontWeight = 'bold';
     span.textContent = 'Maintainer: ';
     addEl(d, span);
-    span = getEl('span');
-    span.textContent = mInfo['developer']['name'];
-    addEl(d, span);
+    mt = mInfo.developer.module.name || mInfo['developer']['name']
+    if (typeof(mt) == "string") {
+        mt = [mt]
+    }
+    for (var i=0; i < mt.length; i++) {
+        addEl(d, getEl('br'))
+        span = getEl('span');
+        span.textContent = mt[i]
+        addEl(d, span);
+    }
     addEl(d, getEl('br'));
     span = getEl('span');
     span.style.fontWeight = 'bold';
     span.textContent = 'e-mail: ';
     addEl(d, span);
-    span = getEl('span');
-    span.textContent = mInfo['developer']['email'];
-    addEl(d, span);
+    email = mInfo.developer.module.email || mInfo['developer']['email']
+    if (typeof(email) == "string") {
+        email = [email]
+    }
+    for (var i=0; i < email.length; i++) {
+        addEl(d, getEl('br'))
+        span = getEl('a');
+        span.textContent = email[i]
+        span.href = "mailto:" + email[i]
+        addEl(d, span);
+    }
     addEl(d, getEl('br'));
     addEl(infodiv, d);
     d = getEl('div');
@@ -1979,7 +1994,7 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
     span.style.width = 'calc(100% - 120px)';
     span.style.wordWrap = 'break-word';
     span.style.verticalAlign = 'text-top';
-    var citation = mInfo['developer']['citation'];
+    var citation = mInfo.developer.module.citation || mInfo['developer']['citation']
     if (citation != undefined && citation.startsWith('http')) {
         var a = getEl('a');
         a.href = citation;
@@ -1997,7 +2012,7 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
     span.textContent = 'Organization: ';
     addEl(d, span);
     span = getEl('span');
-    span.textContent = mInfo['developer']['organization'];
+    span.textContent = mInfo.developer.module.organization || mInfo['developer']['organization']
     addEl(d, span);
     addEl(infodiv, d);
     d = getEl('div');
@@ -2005,12 +2020,19 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
     span.style.fontWeight = 'bold';
     span.textContent = 'Website: ';
     addEl(d, span);
-    span = getEl('a');
-    span.textContent = mInfo['developer']['website'];
-    span.href = mInfo['developer']['website'];
-    span.target = '_blank';
-    span.style.wordBreak = 'break-all';
-    addEl(d, span);
+    website = mInfo.developer.module.website || mInfo.developer.website
+    if (typeof(website) == "string") {
+        website = [website]
+    }
+    for (var i=0; i < website.length; i++) {
+        addEl(d, getEl("br"))
+        span = getEl('a');
+        span.textContent = website[i]
+        span.href = website[i]
+        span.target = '_blank';
+        span.style.wordBreak = 'break-all';
+        addEl(d, span);
+    }
     addEl(infodiv, d);
     d = getEl('div');
     span = getEl('span');
@@ -2026,14 +2048,21 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
     span.style.fontWeight = 'bold';
     span.textContent = 'Required modules: ';
     addEl(d, span);
-    span = getEl('span');
-    if (mInfo['requires'] != null) {
-        span.textContent = mInfo['requires'];
+    req = mInfo.requires
+    if (req != null) {
+        if (typeof(req) == "string") {
+            req = [req]
+        }
+        for (var i=0; i < req.length; i++) {
+            addEl(d, getEl('br'))
+            span = getEl('span')
+            span.textContent = req[i]
+            span.style.wordBreak = 'break-all'
+            addEl(d, span)
+        }
     } else {
         span.textContent = 'None';
     }
-    span.style.wordBreak = 'break-all';
-    addEl(d, span);
     addEl(infodiv, d);
     if (currentTab == 'store') {
         d = getEl('div');
