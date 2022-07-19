@@ -21,10 +21,8 @@ class BaseMapper(object):
         self.output_base_fname = None
         self.crx_path = None
         self.crg_path = None
-        self.crt_path = None
         self.crx_writer = None
         self.crg_writer = None
-        self.crt_writer = None
         self.input_fname = None
         self.slavemode = False
         self.confs = None
@@ -167,7 +165,7 @@ class BaseMapper(object):
         import os
         from ..util.inout import CravatReader
         from ..util.inout import CravatWriter
-        from ..consts import crx_def, crx_idx, crg_def, crg_idx, crt_def, crt_idx
+        from ..consts import crx_def, crx_idx, crg_def, crg_idx
 
         if (
             self.output_base_fname is None
@@ -224,16 +222,6 @@ class BaseMapper(object):
         self.crg_writer.write_definition(self.conf)
         for index_columns in crg_idx:
             self.crg_writer.add_index(index_columns)
-        # .crt
-        crt_fname = ".".join(output_toks) + ".crt"
-        self.crt_path = os.path.join(self.output_dir, crt_fname)
-        if self.slavemode:
-            self.crt_path += self.postfix
-        self.crt_writer = CravatWriter(self.crt_path)
-        self.crt_writer.add_columns(crt_def)
-        self.crt_writer.write_definition()
-        for index_columns in crt_idx:
-            self.crt_writer.add_index(index_columns)
 
     def run(self):
         """
@@ -354,16 +342,6 @@ class BaseMapper(object):
         runtime = stop_time - start_time
         self.logger.info("runtime: %6.3f" % runtime)
         self.end()
-
-    def _write_to_crt(self, alt_transcripts):
-        if self.crt_writer is None:
-            return
-        for primary, alts in alt_transcripts.items():
-            if primary not in self.written_primary_transc:
-                for alt in alts:
-                    d = {"primary_transcript": primary, "alt_transcript": alt}
-                    self.crt_writer.write_data(d)
-                self.written_primary_transc.add(primary)  # type: ignore
 
     def _add_crx_to_gene_info(self, crx_data):
         """
