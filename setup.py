@@ -40,14 +40,14 @@ walk_and_add("oakvar", oakvar_files)
 walk_and_add("cravat", cravat_files)
 setup(
     name="oakvar",
-    version="2.5.0",
+    version="2.5.1",
     description="A genomic variant analysis platform",
     long_description=long_description,
     long_description_content_type="text/x-rst",
     url="https://github.com/rkimoakbioinformatics/oakvar",
     author="Ryangguk Kim",
     author_email="rkim@oakbioinformatics.com",
-    license="MIT",
+    license="",
     classifiers=[""],
     keywords="genomic variant analysis interpretation genome",
     project_urls={
