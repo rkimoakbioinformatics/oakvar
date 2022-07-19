@@ -16,6 +16,7 @@ class RemoteModule(object):
             "groups": self.groups,
             "output_columns": self.output_columns,
             "requires": self.requires,
+            "latest_version": self.latest_code_version,
         }
         return d
 
@@ -32,6 +33,7 @@ class RemoteModule(object):
             "has_logo": self.has_logo,
             "store": self.store,
             "requires": self.requires,
+            "latest_version": self.latest_code_version,
         }
         return d
 
