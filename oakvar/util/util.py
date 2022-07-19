@@ -826,3 +826,32 @@ def announce_module(module, status_writer=None, args=None):
         args=args,
         force=True,
     )
+
+
+def log_variant_exception(
+    lnum=0,
+    line="",
+    __input_data__=None,
+    unique_excs=[],
+    logger=None,
+    error_logger=None,
+    e=None,
+):
+    import traceback
+
+    if logger:
+        err_str = traceback.format_exc().rstrip()
+        if err_str.endswith("None"):
+            err_str_log = str(e)
+            logger.error(err_str_log)
+        else:
+            lines = err_str.split("\n")
+            last_line = lines[-1]
+            err_str_log = (
+                "\n".join(lines[:-1]) + "\n" + ":".join(last_line.split(":")[:2])
+            )
+            logger.error(err_str_log)
+        if err_str_log not in unique_excs:
+            unique_excs.append(err_str_log)
+    if error_logger:
+        error_logger.error("\n[{:d}]{}\n({})\n#".format(lnum, line.rstrip(), str(e)))

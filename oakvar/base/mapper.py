@@ -116,14 +116,15 @@ class BaseMapper(object):
         from ..util.util import get_args
 
         args = get_args(self.cmd_parser, inargs, inkwargs)
-        self.input_path = abspath(args["input_file"])
-        self.input_dir, self.input_fname = split(self.input_path)
-        if args["output_dir"]:
-            self.output_dir = args["output_dir"]
-        else:
-            self.output_dir = self.input_dir
-        if not (exists(self.output_dir)):
-            makedirs(self.output_dir)
+        self.input_path = abspath(args["input_file"]) if args["input_file"] else None
+        if self.input_path:
+            self.input_dir, self.input_fname = split(self.input_path)
+            if args["output_dir"]:
+                self.output_dir = args["output_dir"]
+            else:
+                self.output_dir = self.input_dir
+            if not (exists(self.output_dir)):
+                makedirs(self.output_dir)
         if hasattr(args, "run_name"):
             self.output_base_fname = args["run_name"]
         else:
@@ -152,7 +153,8 @@ class BaseMapper(object):
         import logging
 
         self.logger = logging.getLogger("oakvar.mapper")
-        self.logger.info("input file: %s" % self.input_path)
+        if self.input_path:
+            self.logger.info("input file: %s" % self.input_path)
         self.error_logger = logging.getLogger("error.mapper")
         self.unique_excs = []
 

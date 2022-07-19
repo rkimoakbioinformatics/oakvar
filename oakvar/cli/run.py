@@ -9,7 +9,7 @@ def cli_run(args):
 
 
 @cli_func
-def run(args, __name__="gui"):
+def run(args, __name__="run"):
     from asyncio import run
     from sys import platform
     from sys import version_info
@@ -255,7 +255,7 @@ class Cravat(object):
             )
             if self.package_conf is not None and len(self.package_conf) > 0:
                 self.logger.info(
-                    f'package: {self.args.package} {self.package_conf["version"]}'
+                    f'package: {self.args.package} {self.package_conf.get("version")}'
                 )
             for _, module in self.annotators.items():
                 self.logger.info(
@@ -266,7 +266,7 @@ class Cravat(object):
                 if module is None:
                     raise ModuleLoadingError("mapper")
                 self.logger.info(
-                    f'version: {module.name} {module.conf["version"]} {os.path.dirname(module.script_path)}'
+                    f'version: {module.name} {module.conf.get("version")} {os.path.dirname(module.script_path)}'
                 )
             for _, module in self.reports.items():
                 self.logger.info(
@@ -300,8 +300,8 @@ class Cravat(object):
 
         self.mapper_ran = False
         if (
-            self.endlevel >= self.runlevels["mapper"]
-            and self.startlevel <= self.runlevels["mapper"]
+            self.endlevel >= self.runlevels.get("mapper", 0)
+            and self.startlevel <= self.runlevels.get("mapper", 0)
             and (self.args and not "mapper" in self.args.skip)
         ):
             quiet_print(f'Running gene mapper...{" "*18}', self.args)
@@ -559,11 +559,11 @@ class Cravat(object):
         full_args = args
         # package including -a (add) and -A (replace)
         if "run" in self.package_conf:
-            for k, v in self.package_conf["run"].items():
+            for k, v in self.package_conf.get("run", {}).items():
                 if k == "annotators" and v and isinstance(v, list):
-                    if not full_args["annotators_replace"]:
+                    if not full_args.get("annotators_replace"):
                         for v2 in v:
-                            if v2 not in full_args["annotators"]:
+                            if v2 not in full_args.get("annotators", []):
                                 full_args["annotators"].append(v2)
                 else:
                     if k not in full_args or not full_args[k]:
@@ -575,8 +575,8 @@ class Cravat(object):
         for k, v in self.conf_run.items():
             if k not in full_args or (not full_args[k] and v):
                 full_args[k] = v
-        if full_args["annotators_replace"]:
-            full_args["annotators"] = full_args["annotators_replace"]
+        if full_args.get("annotators_replace"):
+            full_args["annotators"] = full_args.get("annotators_replace")
 
         self.args = SimpleNamespace(**full_args)
         self.process_module_options()
@@ -850,10 +850,11 @@ class Cravat(object):
 
         if self.args is None:
             raise SetupError()
-        if self.args.inputs is not None and len(self.args.inputs) == 0:
-            if "inputs" in self.conf_run:
-                if type(self.conf_run["inputs"]) == list:
-                    self.args.inputs = self.conf_run["inputs"]
+        if self.args.inputs and len(self.args.inputs) == 0:
+            inputs = self.conf_run.get("inputs")
+            if inputs:
+                if type(inputs) == list:
+                    self.args.inputs = inputs
                 else:
                     quiet_print("inputs in conf file is invalid", self.args)
             else:
@@ -870,14 +871,10 @@ class Cravat(object):
             raise SetupError()
         if self.append_mode and self.args.endat is None:
             self.args.endat = "aggregator"
-        try:
-            self.startlevel = self.runlevels[self.args.startat]
-        except KeyError:
-            self.startlevel = 0
-        try:
-            self.endlevel = self.runlevels[self.args.endat]
-        except KeyError:
-            self.endlevel = max(self.runlevels.values())
+        self.startlevel = self.runlevels.get(self.args.startat, 0)
+        self.endlevel = self.runlevels.get(
+            self.args.endat, max(self.runlevels.values())
+        )
 
     def set_and_check_input_files(self):
         from ..exceptions import SetupError
@@ -925,9 +922,9 @@ class Cravat(object):
         elif (
             self.package_conf is not None
             and "run" in self.package_conf
-            and "annotators" in self.package_conf["run"]
+            and "annotators" in self.package_conf.get("run", {})
         ):
-            self.annotator_names = self.package_conf["run"]["annotators"]
+            self.annotator_names = self.package_conf.get("run", {}).get("annotators")
         else:
             self.annotator_names = []
         if "annotator" in self.args.skip:
@@ -977,8 +974,8 @@ class Cravat(object):
             self.postaggregator_names = self.args.postaggregators
         elif (
             self.package_conf is not None
-            and "run" in self.package_conf
-            and "postaggregators" in self.package_conf["run"]
+            and self.package_conf.get("run")
+            and self.package_conf["run"].get("postaggregators")
         ):
             self.postaggregator_names = sorted(
                 list(
@@ -1017,8 +1014,8 @@ class Cravat(object):
             self.report_names = self.args.reports
         elif (
             self.package_conf is not None
-            and "run" in self.package_conf
-            and "reports" in self.package_conf["run"]
+            and self.package_conf.get("run")
+            and self.package_conf["run"].get("reports")
         ):
             self.report_names = self.package_conf["run"]["reports"]
         else:
@@ -1579,7 +1576,7 @@ class Cravat(object):
             inputpath = None
             # Make command
             if module.level == "variant":
-                if "input_format" in module.conf:
+                if module.conf.get("input_format"):
                     input_format = module.conf["input_format"]
                     if input_format == "crv":
                         inputpath = self.crvinput
@@ -1853,7 +1850,7 @@ class Cravat(object):
             annotator_version[name] = version
             module_info = get_local_module_info(name)
             if module_info is not None and module_info.conf is not None:
-                annotator_desc_dict[name] = module_info.conf["description"]
+                annotator_desc_dict[name] = module_info.conf.get("description", "")
         q = 'insert or replace into info values ("_annotator_desc", "{}")'.format(
             json.dumps(annotator_desc_dict).replace('"', "'")
         )
@@ -1971,7 +1968,7 @@ class Cravat(object):
             with open(self.status_json_path) as f:
                 try:
                     self.status_json = json.load(f)
-                    self.pkg_ver = self.status_json["open_cravat_version"]
+                    self.pkg_ver = self.status_json.get("open_cravat_version")
                 except:
                     self.pkg_ver = au.get_current_package_version()
             if self.status_json and self.status_json["status"] == "Submitted":

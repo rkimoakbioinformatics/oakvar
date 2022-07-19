@@ -10,9 +10,10 @@ def cli_entry(func):
 
 def cli_func(func):
     def run_cli_func(*args, **kwargs):
-        if len(args) > 0:
-            from argparse import Namespace
+        from argparse import Namespace
+        from .__main__ import handle_exception
 
+        if len(args) > 0:
             if isinstance(args[0], Namespace):
                 if getattr(args[0], "quiet", None) == None:
                     setattr(args[0], "quiet", True)
@@ -28,8 +29,6 @@ def cli_func(func):
                     ret = None
             return ret
         except Exception as e:
-            from .__main__ import handle_exception
-
             handle_exception(e)
 
     def get_args(*args, **kwargs):

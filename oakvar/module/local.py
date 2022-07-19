@@ -611,12 +611,13 @@ def get_default_mapper_name() -> Optional[str]:
         return default_assembly
 
 
-def load_modules(module_names: list, mapper: str, input_file=None):
+def load_modules(annotators: list = [], mapper: Optional[str] = None, input_file=None):
     from .. import get_live_mapper
     from .. import get_live_annotator
 
     modules = {}
-    modules[mapper] = get_live_mapper(mapper, input_file=input_file)
-    for module_name in module_names:
+    if mapper:
+        modules[mapper] = get_live_mapper(mapper, input_file=input_file)
+    for module_name in annotators:
         modules[module_name] = get_live_annotator(module_name)
     return modules

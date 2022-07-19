@@ -147,7 +147,7 @@ def get_live_mapper(module_name, input_file=None):
         module = ModuleClass(
             {
                 "script_path": abspath(ModuleClass.script_path),
-                "input_file": input_file or "__dummy__",
+                "input_file": input_file or None,
                 "live": True,
             }
         )

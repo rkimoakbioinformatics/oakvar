@@ -19,6 +19,7 @@ class VCF2VCF:
         self.output_columns = None
         self.log_path = None
         self.log_handler = None
+        self.unique_excs = []
         self.conf = {}
         self.module_name = "vcf2vcf"
         self.define_cmd_parser()
@@ -48,7 +49,9 @@ class VCF2VCF:
             "tags",
             "note",
         ]
-        all_col_names += [v["name"] for v in col_infos[mapper]]
+        all_col_names += [
+            v["name"] for v in col_infos[mapper] if v["name"] not in all_col_names
+        ]
         for module_name, col_info in col_infos.items():
             if module_name == mapper:
                 continue
@@ -68,9 +71,6 @@ class VCF2VCF:
             else:
                 mc = []
         return mc
-
-    def handle_exception(self, ln, line, e):
-        _ = ln or line or e
 
     def escape_vcf_value(self, v):
         if "%" in v:
@@ -200,25 +200,24 @@ class VCF2VCF:
                 )
                 self.last_status_update_time = cur_time
 
-    def is_star_allele(self, input_data):
-        if self.conf is None:
-            return
-        return self.conf["level"] == "variant" and input_data.get("alt_base", "") == "*"
-
     def run(self):
         from oakvar.util.util import normalize_variant
         from oakvar.module.local import load_modules
         from oakvar.util.util import quiet_print
+        from oakvar.util.util import log_variant_exception
+        from oakvar.exceptions import BadFormatError
         from os.path import join
-        from time import time
+        from re import compile
 
         if not self.mapper_name or not self.inputs:
             return False
-        modules = load_modules(self.annotator_names, self.mapper_name)
+        base_re = compile("^[*]|[ATGC]+|[-]+$")
+        modules = load_modules(annotators=self.annotator_names, mapper=self.mapper_name)
         col_infos = self.load_col_infos(self.annotator_names, self.mapper_name)
         all_col_names = self.get_all_col_names(col_infos, self.mapper_name)
         output_suffix = ".vcf"
         for p in self.inputs:
+            quiet_print(f"processing {p}", args=self.args)
             if self.run_name:
                 if len(self.inputs) == 1:
                     outpath = join(self.output_dir, self.run_name + output_suffix)
@@ -229,7 +228,7 @@ class VCF2VCF:
             else:
                 outpath = p + output_suffix
             f = open(p)
-            wf = open(outpath, "w")
+            wf = open(outpath, "w", 1024 * 128)
             f.seek(0)
             for line in f:
                 if line.startswith("##"):
@@ -248,7 +247,6 @@ class VCF2VCF:
                 if line.startswith("#CHROM"):
                     wf.write(line)
                     break
-            t = time()
             read_lnum = 0
             uid = 0
             for l in f:
@@ -263,93 +261,123 @@ class VCF2VCF:
                         f"{read_lnum}: {chrom} {pos} {ref} {vcf_toks[4]}",
                         args=self.args,
                     )
-                variants = []
-                for alt in alts:
-                    if "<" in alt:
-                        continue
-                    pos, ref, alt = self.trim_variant(pos, ref, alt)
-                    if ref == alt:
-                        continue
-                    variant = {
-                        "chrom": chrom,
-                        "pos": pos,
-                        "strand": "+",
-                        "ref_base": ref,
-                        "alt_base": alt,
-                    }
-                    uid += 1
-                    variant["uid"] = uid
-                    variant = normalize_variant(variant)
-                    try:
-                        res = modules[self.mapper_name].map(variant)
-                    except Exception as e:
-                        raise e
-                    if res:
-                        variant.update(res)
-                    for module_name in self.annotator_names:
-                        try:
-                            res = modules[module_name].annotate(variant)
-                        except Exception as e:
-                            raise e
-                        if res:
-                            variant.update(
-                                {module_name + "__" + k: v for k, v in res.items()}
-                            )
-                    for col_name in all_col_names:
-                        if col_name not in variant:
-                            variant[col_name] = ""
-                    variants.append(variant)
-                wf.write("\t".join(vcf_toks[:8]))
-                for col_name in all_col_names:
-                    if col_name in [
-                        "chrom",
-                        "pos",
-                        "strand",
-                        "ref_base",
-                        "alt_base",
-                        "sample_id",
-                    ]:
-                        continue
-                    values = []
-                    for variant in variants:
-                        value = variant[col_name]
-                        vt = type(value)
-                        if vt == int or vt == float:
-                            value = str(value)
+                try:
+                    variants = []
+                    for alt in alts:
+                        if "<" in alt:
+                            continue
+                        pos, ref, alt = self.trim_variant(pos, ref, alt)
+                        uid += 1
+                        variant = {"uid": uid}
+                        if ref == alt:
+                            pass
+                        elif alt == "*":
+                            pass
                         else:
-                            if vt != str:
-                                value = str(value)
-                            value = self.escape_vcf_value(value)
-                        values.append(value)
-                    if "__" not in col_name:
-                        col_name = "base__" + col_name
-                    wf.write(";" + col_name + "=" + ",".join(values))
-                wf.write("\t" + "\t".join(vcf_toks[8:]) + "\n")
+                            if not base_re.fullmatch(alt):
+                                log_variant_exception(
+                                    lnum=read_lnum,
+                                    line=l,
+                                    unique_excs=self.unique_excs,
+                                    logger=self.logger,
+                                    error_logger=self.error_logger,
+                                    e=BadFormatError("Invalid alternate base"),
+                                )
+                            else:
+                                variant = {
+                                    "uid": uid,
+                                    "chrom": chrom,
+                                    "pos": pos,
+                                    "strand": "+",
+                                    "ref_base": ref,
+                                    "alt_base": alt,
+                                }
+                                variant = normalize_variant(variant)
+                                res = modules[self.mapper_name].map(variant)
+                                if res:
+                                    variant.update(res)
+                                for module_name in self.annotator_names:
+                                    res = modules[module_name].annotate(variant)
+                                    if res:
+                                        variant.update(
+                                            {
+                                                module_name + "__" + k: v
+                                                for k, v in res.items()
+                                            }
+                                        )
+                        variants.append(variant)
+                    wf.write("\t".join(vcf_toks[:7]))
+                    if vcf_toks[7] == ".":
+                        wf.write("\t")
+                    else:
+                        wf.write("\t")
+                        wf.write(vcf_toks[7])
+                        wf.write(";")
+                    for col_name in all_col_names:
+                        if col_name in [
+                            "chrom",
+                            "pos",
+                            "strand",
+                            "ref_base",
+                            "alt_base",
+                            "sample_id",
+                        ]:
+                            continue
+                        values = []
+                        for variant in variants:
+                            value = variant.get(col_name)
+                            if value is None:
+                                value = ""
+                            else:
+                                vt = type(value)
+                                if vt == int or vt == float:
+                                    value = str(value)
+                                else:
+                                    if vt != str:
+                                        value = str(value)
+                                    value = self.escape_vcf_value(value)
+                            values.append(value)
+                        if "__" not in col_name:
+                            col_name = "base__" + col_name
+                        wf.write(col_name + "=" + ",".join(values))
+                        if col_name != all_col_names[-1]:
+                            wf.write(";")
+                    wf.write("\t" + "\t".join(vcf_toks[8:]) + "\n")
+                except Exception as e:
+                    log_variant_exception(
+                        lnum=read_lnum,
+                        line=l,
+                        unique_excs=self.unique_excs,
+                        logger=self.logger,
+                        error_logger=self.error_logger,
+                        e=e,
+                    )
+                    if hasattr(e, "halt") and getattr(e, "halt"):
+                        break
             f.close()
             wf.close()
 
     def setup_logger(self):
         import logging
-        from os.path import join
         from oakvar.exceptions import LoggerError
 
         self.logger = logging.getLogger("oakvar." + self.module_name)
-        self.log_path = join(self.output_dir, self.run_name + ".log")
-        log_handler = logging.FileHandler(self.log_path, "a")
-        formatter = logging.Formatter(
-            "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
-        )
-        log_handler.setFormatter(formatter)
-        self.logger.addHandler(log_handler)
+        # self.log_path = join(self.output_dir, self.run_name + ".log")
+        # log_handler = logging.FileHandler(self.log_path, "a")
+        # formatter = logging.Formatter(
+        #    "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
+        # )
+        # log_handler.setFormatter(formatter)
+        # self.logger.addHandler(log_handler)
         self.error_logger = logging.getLogger("error." + self.module_name)
-        if self.run_name != "__dummy__":
-            error_log_path = join(self.output_dir, self.run_name + ".err")
-            error_log_handler = logging.FileHandler(error_log_path, "a")
-        else:
-            error_log_handler = logging.StreamHandler()
-        formatter = logging.Formatter("SOURCE:%(name)-20s %(message)s")
-        error_log_handler.setFormatter(formatter)
-        self.error_logger.addHandler(error_log_handler)
+        # if self.run_name != "__dummy__":
+        #    error_log_path = join(self.output_dir, self.run_name + ".err")
+        #    error_log_handler = logging.FileHandler(error_log_path, "a")
+        # else:
+        #    error_log_handler = logging.StreamHandler()
+        # formatter = logging.Formatter("SOURCE:%(name)-20s %(message)s")
+        # error_log_handler.setFormatter(formatter)
+        # self.error_logger.addHandler(error_log_handler)
         self.unique_excs = []
         if not self.logger:
             raise LoggerError(module_name=self.module_name)

@@ -112,6 +112,8 @@ class MasterCravatConverter(object):
         from oakvar.exceptions import ExpectedException
         from pyliftover import LiftOver
         from oakvar.util.util import get_args
+        from oakvar.exceptions import SetupError
+        from oakvar.exceptions import InvalidGenomeAssembly
 
         parser = ArgumentParser()
         parser.add_argument("path", help="Path to this converter's python module")
@@ -183,8 +185,6 @@ class MasterCravatConverter(object):
         else:
             self.output_dir = self.input_dir
         if self.output_dir is None:
-            from oakvar.exceptions import SetupError
-
             raise SetupError("output directory")
         if not (exists(self.output_dir)):
             makedirs(self.output_dir)
@@ -198,8 +198,6 @@ class MasterCravatConverter(object):
         liftover_chain_paths = get_liftover_chain_paths()
         if self.do_liftover:
             if self.input_assembly not in liftover_chain_paths:
-                from oakvar.exceptions import InvalidGenomeAssembly
-
                 raise InvalidGenomeAssembly(self.input_assembly)
             else:
                 self.lifter = LiftOver(liftover_chain_paths[self.input_assembly])
@@ -234,10 +232,9 @@ class MasterCravatConverter(object):
         import gzip
         from sys import stdin
         from oakvar.util.util import detect_encoding
+        from oakvar.exceptions import NoInput
 
         if self.input_paths is None:
-            from oakvar.exceptions import NoInput
-
             raise NoInput()
         if self.pipeinput == False:
             input_path = self.input_paths[0]
@@ -288,20 +285,18 @@ class MasterCravatConverter(object):
         from importlib.util import spec_from_file_location, module_from_spec
         from oakvar.exceptions import ExpectedException
         from oakvar.module.local import get_local_module_infos_of_type
+        from oakvar.exceptions import ModuleLoadingError
+        from oakvar.exceptions import InvalidModule
 
         for module_info in get_local_module_infos_of_type("converter").values():
             # path based import from https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
             spec = spec_from_file_location(module_info.name, module_info.script_path)
             if spec is None or spec.loader is None:
-                from oakvar.exceptions import ModuleLoadingError
-
                 raise ModuleLoadingError(module_info.name)
             module = module_from_spec(spec)
             spec.loader.exec_module(module)
             converter = module.CravatConverter()
             if not hasattr(converter, "format_name"):
-                from oakvar.exceptions import InvalidModule
-
                 raise InvalidModule(module_info.name)
             converter.module_name = module_info.name
             if converter.format_name not in self.converters:
@@ -321,10 +316,10 @@ class MasterCravatConverter(object):
         converter which can parse the input file.
         """
         from oakvar.exceptions import InvalidInputFormat
+        from oakvar.exceptions import LoggerError
+        from oakvar.exceptions import NoInput
 
         if self.logger is None:
-            from oakvar.exceptions import LoggerError
-
             raise LoggerError()
         if self.input_format is not None:
             if self.input_format not in self.possible_formats:
@@ -354,8 +349,6 @@ class MasterCravatConverter(object):
         self.primary_converter = self.converters[self.input_format]
         self._set_converter_properties(self.primary_converter)
         if self.input_paths is None:
-            from oakvar.exceptions import NoInput
-
             raise NoInput()
         if self.pipeinput == False:
             if len(self.input_paths) > 1:
@@ -366,9 +359,9 @@ class MasterCravatConverter(object):
         self.logger.info("input format: %s" % self.input_format)
 
     def _set_converter_properties(self, converter):
-        if self.primary_converter is None or self.conf is None:
-            from oakvar.exceptions import SetupError
+        from oakvar.exceptions import SetupError
 
+        if self.primary_converter is None or self.conf is None:
             raise SetupError()
         converter.output_dir = self.output_dir
         converter.run_name = self.output_base_fname
@@ -380,6 +373,8 @@ class MasterCravatConverter(object):
             converter.conf.update(self.conf[module_name])
 
     def _open_output_files(self):
+        from oakvar.exceptions import SetupError
+
         """Open .crv .crs and .crm output files, plus .err file.
 
         .crv .crs and .crm files are opened using a CravatWriter.
@@ -392,8 +387,6 @@ class MasterCravatConverter(object):
             or self.primary_converter is None
             or self.output_dir is None
         ):
-            from oakvar.exceptions import SetupError
-
             raise SetupError()
         from oakvar.consts import (
             crv_def,
@@ -457,6 +450,9 @@ class MasterCravatConverter(object):
         from oakvar.exceptions import BadFormatError, ExpectedException, NoVariantError
         from oakvar.base.converter import BaseConverter
         from oakvar.exceptions import SetupError
+        from oakvar.exceptions import LoggerError
+        from oakvar.exceptions import InvalidModule
+        from oakvar.util.util import standardize_pos_ref_alt
 
         self.setup()
         if (
@@ -470,12 +466,8 @@ class MasterCravatConverter(object):
         ):
             raise SetupError()
         if self.logger is None:
-            from oakvar.exceptions import LoggerError
-
             raise LoggerError()
         if not hasattr(self.primary_converter, "format_name"):
-            from oakvar.exceptions import InvalidModule
-
             if hasattr(self.primary_converter, "module_name"):
                 raise InvalidModule(self.primary_converter.module_name)
             else:
@@ -588,8 +580,6 @@ class MasterCravatConverter(object):
                                     wdict["ref_base"],
                                     wdict["alt_base"],
                                 )
-                                from oakvar.util.util import standardize_pos_ref_alt
-
                                 (
                                     new_pos,
                                     new_ref,
@@ -628,7 +618,7 @@ class MasterCravatConverter(object):
                                             "original_line": read_lnum,
                                             "tags": wdict["tags"],
                                             "uid": UID,
-                                            "fileno": self.input_path_dict2[fname],
+                                            "fileno": f"{self.input_path_dict2[fname]}",
                                         }
                                     )
                                     UIDMap.append(UID)
@@ -676,9 +666,9 @@ class MasterCravatConverter(object):
         return total_lnum, self.primary_converter.format_name
 
     def liftover_one_pos(self, chrom, pos):
-        if self.lifter is None:
-            from oakvar.exceptions import SetupError
+        from oakvar.exceptions import SetupError
 
+        if self.lifter is None:
             raise SetupError("no lifter")
         res = self.lifter.convert_coordinate(chrom, pos - 1)
         if res is None or len(res) == 0:
@@ -697,10 +687,9 @@ class MasterCravatConverter(object):
     def liftover(self, chrom, pos, ref, alt):
         from oakvar.exceptions import LiftoverFailure
         from oakvar.util.util import reverse_complement
+        from oakvar.exceptions import SetupError
 
         if self.lifter is None or self.wgsreader is None:
-            from oakvar.exceptions import SetupError
-
             raise SetupError("no lifter")
         reflen = len(ref)
         altlen = len(alt)
