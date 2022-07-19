@@ -217,26 +217,27 @@ def publish_module(
     from ..store import stream_multipart_post
     from requests import get
     from ..system import get_modules_dir
-    from ..system import get_system_conf
     from ..util.util import quiet_print
     from ..module.cache import get_module_cache
     from ..module.local import get_local_module_info
+    from .consts import oc_publish_url
+    from ..exceptions import ModuleNotExist
+    from ..exceptions import StoreIncorrectLogin
+    from ..exceptions import NormalExit
+    from ..exceptions import ModuleVersionError
+    from ..exceptions import StoreServerError
+    from ..exceptions import StoreServerError
+    from ..exceptions import StoreServerError
 
     quiet_args = {"quiet": quiet}
-    sys_conf = get_system_conf()
-    publish_url = sys_conf["publish_url"]
     get_module_cache().update_local()
     local_info = get_local_module_info(module_name)
     if local_info == None:
-        from ..exceptions import ModuleNotExist
-
         raise ModuleNotExist(module_name)
-    check_url = publish_url + "/%s/%s/check" % (module_name, local_info.version)
+    check_url = oc_publish_url + "/%s/%s/check" % (module_name, local_info.version)
     r = get(check_url, auth=(user, password))
     if r.status_code != 200:
         if r.status_code == 401:
-            from ..exceptions import StoreIncorrectLogin
-
             raise StoreIncorrectLogin()
         elif r.status_code == 400:
             err = json.loads(r.text)
@@ -249,22 +250,14 @@ def publish_module(
                         overwrite = True
                         break
                     if resp == "n":
-                        from ..exceptions import NormalExit
-
                         raise NormalExit()
                     else:
                         continue
             else:
-                from ..exceptions import ModuleVersionError
-
                 raise ModuleVersionError(module_name, local_info.version)
         elif r.status_code == 500:
-            from ..exceptions import StoreServerError
-
             raise StoreServerError(500)
         else:
-            from ..exceptions import StoreServerError
-
             raise StoreServerError(r.status_code)
     zf_name = "%s.%s.zip" % (module_name, local_info.version)
     zf_path = os.path.join(get_modules_dir(), zf_name)
@@ -283,9 +276,9 @@ def publish_module(
     manifest = zip_builder.get_manifest()
     zip_builder.close()
     if local_info.version is None:
-        post_url = "/".join([publish_url, module_name])
+        post_url = "/".join([oc_publish_url, module_name])
     else:
-        post_url = "/".join([publish_url, module_name, local_info.version])
+        post_url = "/".join([oc_publish_url, module_name, local_info.version])
     if overwrite:
         post_url += "?overwrite=1"
     with open(zf_path, "rb") as zf:
@@ -298,8 +291,6 @@ def publish_module(
             post_url, fields, stage_handler=print_stage_handler, auth=(user, password)
         )
     if r.status_code != 200:
-        from ..exceptions import StoreServerError
-
         raise StoreServerError(status_code=r.status_code, text=r.text)
     if r.text:
         quiet_print(r.text, args=quiet_args)
