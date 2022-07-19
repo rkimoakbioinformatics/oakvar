@@ -4,7 +4,6 @@ import datetime
 import subprocess
 import yaml
 import json
-from .. import admin_util as au
 import sys
 import traceback
 import shutil
@@ -39,7 +38,7 @@ cravat_multiuser = None
 
 class FileRouter(object):
     def __init__(self):
-        self.root = os.path.dirname(__file__)
+        # self.root = os.path.dirname(__file__)
         self.input_fname = "input"
         self.report_extensions = {"text": ".tsv", "excel": ".xlsx", "vcf": ".vcf"}
         self.db_extension = ".sqlite"
@@ -50,7 +49,7 @@ class FileRouter(object):
         self.servermode = False
 
     async def get_jobs_dirs(self, request):
-        from ..sysadmin import get_jobs_dir
+        from ..system import get_jobs_dir
 
         root_jobs_dir = get_jobs_dir()
         if self.servermode and self.server_ready:
@@ -159,6 +158,8 @@ class FileRouter(object):
         return output_fname
 
     async def job_report(self, request, job_id, report_type):
+        from ..module.local import get_local_module_info
+
         run_path = await self.job_run_path(request, job_id)
         if run_path is None:
             return None
@@ -168,7 +169,7 @@ class FileRouter(object):
             ext = self.report_extensions.get(report_type, "." + report_type)
             report_path = [run_path + ext]
         else:
-            reporter = au.get_local_module_info(report_type + "reporter")
+            reporter = get_local_module_info(report_type + "reporter")
             if reporter is None:
                 return None
             conf = reporter.conf
@@ -344,9 +345,12 @@ async def resubmit(request):
 
 
 async def submit(request):
+    from ..system import get_system_conf
+    from ..util.admin_util import set_user_conf_prop
+    from ..util.admin_util import get_current_package_version
+
     global servermode
     filerouter = get_filerouter()
-    from ..sysadmin import get_system_conf
 
     sysconf = get_system_conf()
     size_cutoff = sysconf["gui_input_size_limit"]
@@ -447,7 +451,7 @@ async def submit(request):
     if "assembly" in job_options:
         assembly = job_options["assembly"]
     else:
-        from ..sysadmin_const import default_assembly
+        from ..system.consts import default_assembly
 
         assembly = default_assembly
     run_args.append(assembly)
@@ -456,7 +460,7 @@ async def submit(request):
 
         await cravat_multiuser.update_user_settings(request, {"lastAssembly": assembly})
     else:
-        au.set_cravat_conf_prop("last_assembly", assembly)
+        set_user_conf_prop("last_assembly", assembly)
     # Reports
     if "reports" in job_options and len(job_options["reports"]) > 0:
         run_args.append("-t")
@@ -509,7 +513,7 @@ async def submit(request):
         status_json["note"] = note
         status_json["status"] = "Submitted"
         status_json["reports"] = []
-        pkg_ver = au.get_current_package_version()
+        pkg_ver = get_current_package_version()
         status_json["open_cravat_version"] = pkg_ver
         status_json["annotators"] = annotators
         if cc_cohorts_path is not None:
@@ -536,8 +540,10 @@ def get_expected_runtime(num_lines, annotators):
 
 
 def get_annotators(_):
+    from ..module.local import get_local_module_infos
+
     out = {}
-    for local_info in au.get_local_module_infos(types=["annotator"]):
+    for local_info in get_local_module_infos(types=["annotator"]):
         module_name = local_info.name
         if local_info.type == "annotator":
             out[module_name] = {
@@ -561,7 +567,7 @@ def find_files_by_ending(d, ending):
 
 
 async def get_job(request, job_id):
-    from ..admin_util import get_max_version_supported_for_migration
+    from ..util.admin_util import get_max_version_supported_for_migration
 
     filerouter = get_filerouter()
     job_dir = await filerouter.job_dir(request, job_id)
@@ -769,10 +775,12 @@ async def get_job_log(request):
 
 
 def get_valid_report_types():
+    from ..module.local import get_local_module_infos
+
     global valid_report_types
     if valid_report_types is not None:
         return valid_report_types
-    reporter_infos = au.get_local_module_infos(types=["reporter"])
+    reporter_infos = get_local_module_infos(types=["reporter"])
     valid_report_types = [x.name.split("reporter")[0] for x in reporter_infos]
     valid_report_types = [
         v
@@ -845,29 +853,31 @@ async def download_report(request):
 
 
 def get_jobs_dir(_):
-    from ..sysadmin import get_jobs_dir
+    from ..system import get_jobs_dir
 
     jobs_dir = get_jobs_dir()
     return web.json_response(jobs_dir)
 
 
 def set_jobs_dir(request):
+    from ..util.admin_util import set_jobs_dir
+
     queries = request.rel_url.query
     d = queries["jobsdir"]
-    au.set_jobs_dir(d)
+    set_jobs_dir(d)
     return web.json_response(d)
 
 
 async def get_system_conf_info(_):
-    from ..sysadmin import get_system_conf_info
+    from ..system import get_system_conf_info
 
     info = get_system_conf_info(json=True)
     return web.json_response(info)
 
 
 async def update_system_conf(request):
-    from ..sysadmin import update_system_conf_file
-    from ..sysadmin import set_modules_dir
+    from ..system import update_system_conf_file
+    from ..system import set_modules_dir
 
     global servermode
     if servermode and server_ready:
@@ -910,10 +920,10 @@ async def update_system_conf(request):
 
 
 def reset_system_conf(_):
-    from ..sysadmin import get_modules_dir
-    from ..sysadmin import get_system_conf_template
-    from ..sysadmin import get_jobs_dir
-    from ..sysadmin import write_system_conf_file
+    from ..system import get_modules_dir
+    from ..system import get_system_conf_template
+    from ..system import get_jobs_dir
+    from ..system import write_system_conf_file
 
     d = get_system_conf_template()
     md = get_modules_dir()
@@ -931,8 +941,11 @@ def get_servermode(_):
 
 
 async def get_package_versions(_):
-    cur_ver = au.get_current_package_version()
-    lat_ver = au.get_latest_package_version()
+    from ..util.admin_util import get_current_package_version
+    from ..util.admin_util import get_latest_package_version
+
+    cur_ver = get_current_package_version()
+    lat_ver = get_latest_package_version()
     if lat_ver is not None:
         cur_drop_patch = ".".join(cur_ver.split(".")[:-1])
         lat_drop_patch = ".".join(lat_ver.split(".")[:-1])
@@ -974,10 +987,13 @@ end tell'
 
 
 def get_last_assembly(_):
+    from ..util.admin_util import get_last_assembly
+    from ..util.admin_util import get_default_assembly
+
     global servermode
     global server_ready
-    last_assembly = au.get_last_assembly()
-    default_assembly = au.get_default_assembly()
+    last_assembly = get_last_assembly()
+    default_assembly = get_default_assembly()
     if servermode and server_ready and default_assembly is not None:
         assembly = default_assembly
     else:
@@ -1003,11 +1019,11 @@ async def delete_job(request):
     return web.Response()
 
 
-from ..sysadmin import get_system_conf
+from ..system import get_system_conf
 
 system_conf = get_system_conf()
-from ..sysadmin_const import default_max_num_concurrent_jobs
-from ..sysadmin import write_system_conf_file
+from ..system.consts import default_max_num_concurrent_jobs
+from ..system import write_system_conf_file
 
 if "max_num_concurrent_jobs" not in system_conf:
     max_num_concurrent_jobs = default_max_num_concurrent_jobs
@@ -1187,7 +1203,9 @@ async def load_live_modules(module_names=[]):
     global live_mapper
     global include_live_modules
     global exclude_live_modules
-    from ..sysadmin import get_system_conf
+    from ..system import get_system_conf
+    from ..module.local import get_local_module_infos
+    from ..util.admin_util import get_user_conf
 
     conf = get_system_conf()
     if "live" in conf:
@@ -1204,7 +1222,7 @@ async def load_live_modules(module_names=[]):
         include_live_modules = []
         exclude_live_modules = []
     if live_mapper is None:
-        cravat_conf = au.get_main_conf()
+        cravat_conf = get_user_conf()
         if "genemapper" in cravat_conf:
             default_mapper = cravat_conf["genemapper"]
         else:
@@ -1212,7 +1230,7 @@ async def load_live_modules(module_names=[]):
         from oakvar import get_live_mapper
 
         live_mapper = get_live_mapper(default_mapper)
-    modules = au.get_local_module_infos(types=["annotator"])
+    modules = get_local_module_infos(types=["annotator"])
     for module in modules:
         if module.name in live_modules:
             continue
@@ -1254,9 +1272,9 @@ def clean_annot_dict(d):
 
 
 async def live_annotate(input_data, annotators):
-    from oakvar.constants import mapping_parser_name
-    from oakvar.constants import all_mappings_col_name
-    from oakvar.inout import AllMappingsParser
+    from ..consts import mapping_parser_name
+    from ..consts import all_mappings_col_name
+    from ..util.inout import AllMappingsParser
 
     global live_modules
     global live_mapper
@@ -1378,7 +1396,7 @@ def get_status_json_in_dir(job_dir):
 
 
 async def update_result_db(request):
-    from ..util import is_compatible_version
+    from ..util.util import is_compatible_version
 
     queries = request.rel_url.query
     job_id = queries["job_id"]
@@ -1406,7 +1424,7 @@ async def update_result_db(request):
 
 
 async def import_job(request):
-    from ..cli_util import status_from_db
+    from ..cli.util import status_from_db
 
     filerouter = get_filerouter()
     jobs_dirs = await filerouter.get_jobs_dirs(request)

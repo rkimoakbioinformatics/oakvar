@@ -1,48 +1,58 @@
-from .cli_version import ov_version
-from .cli_util import ov_util_sqliteinfo
-from .cli_util import ov_util_mergesqlite
-from .cli_util import ov_util_filtersqlite
-from .cli_util import ov_util_addjob
-from .cli_test import ov_util_test
-from .cli_system import ov_system_setup
-from .cli_system import ov_system_md
-from .cli_system import ov_system_config
-from .cli_store import ov_store_verifyemail
-from .cli_store import ov_store_resetpassword
-from .cli_store import ov_store_publish
-from .cli_store import ov_store_createaccount
-from .cli_store import ov_store_checklogin
-from .cli_store import ov_store_changepassword
-from .cli_store import ov_store_fetch
-from .cli_store import ov_store_pack
-from .cli_new import ov_new_annotator
-from .cli_new import ov_new_exampleinput
-from .cli_issue import ov_issue
-from .cli_gui import ov_gui
-from .cli_report import ov_report
-from .cli_run import ov_run
-from .cli_module import ov_module_update
-from .cli_module import ov_module_uninstall
-from .cli_module import ov_module_ls
-from .cli_module import ov_module_installbase
-from .cli_module import ov_module_install
-from .cli_module import ov_module_info
-from .cli_config import ov_config_oakvar
+from .cli.version import version
+from .cli.util import sqliteinfo
+from .cli.util import mergesqlite
+from .cli.util import filtersqlite
+from .cli.util import addjob
+from .cli.test import test
+from .cli.system import setup
+from .cli.system import md
+from .cli.system import config
+from .cli.store import register
+from .cli.store.account import reset
+from .cli.store.account import create
+from .cli.store.account import check
+from .cli.store.account import change
+from .cli.store import fetch
+from .cli.module import pack
+from .cli.store.oc import oc_publish
+from .cli.store.oc import oc_newaccount
+from .cli.store.oc import oc_changepw
+from .cli.store.oc import oc_resetpw
+from .cli.store.oc import oc_verifyemail
+from .cli.store.oc import oc_checklogin
+from .cli.new import annotator
+from .cli.new import exampleinput
+from .cli.issue import issue
+from .cli.gui import gui
+from .cli.report import report
+from .cli.run import run
+from .cli.module import update
+from .cli.module import uninstall
+from .cli.module import ls
+from .cli.module import installbase
+from .cli.module import install
+from .cli.module import info
+from .cli.config import user
 from . import __main__ as cli
-from . import constants
+from . import consts
 from .exceptions import *
-from .constants import crx_def
-from .cli_run import Cravat
-from .cravat_filter import CravatFilter
-from .cli_report import CravatReport
-from .base_commonmodule import BaseCommonModule
-from .base_postaggregator import BasePostAggregator
-from .base_mapper import BaseMapper
-from .base_annotator import BaseAnnotator
-from .base_converter import BaseConverter
-from . import inout
-from . import admin_util
+from .consts import crx_def
+from .cli.run import Cravat
+from .base.cravat_filter import CravatFilter
+from .cli.report import CravatReport
+from .base.commonmodule import BaseCommonModule
+from .base.postaggregator import BasePostAggregator
+from .base.mapper import BaseMapper
+from .base.annotator import BaseAnnotator
+from .base.converter import BaseConverter
+from .base.vcf2vcf import VCF2VCF
+from .util import inout
+from .util import admin_util
 import signal
+
+BaseReport = CravatReport
+# for compatibility with oc
+constants = consts
 
 
 def raise_break(__signal_number__, __stack_frame__):
@@ -78,76 +88,49 @@ def raise_break(__signal_number__, __stack_frame__):
 
 
 signal.signal(signal.SIGINT, raise_break)
-# from .cli_util import ov_util_updateresult
+# from .cli.util import ov_util_updateresult
 
 
 wgs = None
-if admin_util or inout:
-    pass
-if (
+_ = admin_util or inout
+_ = (
     BaseConverter
     or BaseAnnotator
     or BaseMapper
     or BasePostAggregator
     or BaseCommonModule
-):
-    pass
-if CravatReport or CravatFilter or Cravat:
-    pass
-if crx_def or constants:
-    pass
-if cli or wgs:
-    pass
-if (
-    ov_module_info
-    or ov_module_install
-    or ov_module_installbase
-    or ov_module_ls
-    or ov_module_uninstall
-    or ov_module_update
-):
-    pass
-if ov_report:
-    pass
-if ov_run:
-    pass
-if ov_gui:
-    pass
-if ov_issue:
-    pass
-if ov_new_exampleinput or ov_new_annotator:
-    pass
-if (
-    ov_store_verifyemail
-    or ov_store_resetpassword
-    or ov_store_publish
-    or ov_store_createaccount
-    or ov_store_checklogin
-    or ov_store_changepassword
-    or ov_store_fetch
-    or ov_store_pack
-):
-    pass
-if ov_system_setup or ov_system_md or ov_system_config:
-    pass
-if ov_util_test:
-    pass
-if ov_util_addjob or ov_util_filtersqlite or ov_util_mergesqlite or ov_util_sqliteinfo:
-    pass
-if ov_version:
-    pass
-if ov_config_oakvar:
-    pass
+    or VCF2VCF
+)
+_ = CravatReport or CravatFilter or Cravat
+_ = crx_def or consts
+_ = cli or wgs
+_ = info or install or installbase or ls or uninstall or update
+_ = report or run or gui or issue or version or user
+_ = exampleinput or annotator
+_ = reset or register or create or check or change or fetch or pack
+_ = setup or md or config
+_ = test
+_ = addjob or filtersqlite or mergesqlite or sqliteinfo
+_ = (
+    oc_publish
+    or oc_newaccount
+    or oc_changepw
+    or oc_resetpw
+    or oc_verifyemail
+    or oc_checklogin
+)
 
 
-def get_live_annotator(module_name):
+def get_live_annotator(module_name, input_file=None):
     import os
 
     module = None
+    input_file = input_file or "__dummy__"
     ModuleClass = get_module(module_name)
     if ModuleClass:
-        module = ModuleClass(input_file="__dummy__", live=True)
+        module = ModuleClass(input_file=input_file, live=True)
         module.annotator_name = module_name
+        module.name = module_name
         module.annotator_dir = os.path.dirname(module.script_path)
         module.data_dir = os.path.join(module.module_dir, "data")
         module._open_db_connection()
@@ -155,28 +138,29 @@ def get_live_annotator(module_name):
     return module
 
 
-def get_live_mapper(module_name):
-    import os
+def get_live_mapper(module_name, input_file=None):
+    from os.path import abspath
 
     module = None
     ModuleClass = get_module(module_name)
     if ModuleClass:
         module = ModuleClass(
             {
-                "script_path": os.path.abspath(ModuleClass.script_path),
-                "input_file": "__dummy__",
+                "script_path": abspath(ModuleClass.script_path),
+                "input_file": input_file or None,
                 "live": True,
             }
         )
-        module.base_setup()
+        module.name = module_name
+        module.setup()
     return module
 
 
 def get_module(module_name, module_type=None):
     from os.path import dirname
-    from .admin_util import get_local_module_info
-    from .admin_util import get_module_conf
-    from .util import load_class
+    from .module.local import get_local_module_info
+    from .module.local import get_module_conf
+    from .util.util import load_class
 
     ModuleClass = None
     module_conf = get_module_conf(module_name, module_type=module_type)
@@ -209,12 +193,12 @@ class LiveAnnotator:
         self.live_mapper = None
 
     def load_live_modules(self, mapper, annotator_names):
-        from .admin_util import get_mic
+        from .module.cache import get_module_cache
 
         self.live_mapper = get_live_mapper(mapper)
-        for module_name in get_mic().local.keys():
+        for module_name in get_module_cache().local.keys():
             if module_name in annotator_names:
-                module = get_mic().local[module_name]
+                module = get_module_cache().local[module_name]
                 if "secondary_inputs" in module.conf:
                     continue
                 annotator = get_live_annotator(module.name)
@@ -241,8 +225,8 @@ class LiveAnnotator:
         return d
 
     def annotate(self, crv):
-        from .inout import AllMappingsParser
-        from oakvar.constants import all_mappings_col_name
+        from .util.inout import AllMappingsParser
+        from .consts import all_mappings_col_name
 
         if "uid" not in crv:
             crv["uid"] = self.variant_uid

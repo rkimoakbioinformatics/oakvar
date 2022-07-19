@@ -177,7 +177,7 @@ function submit () {
                 h3.textContent = 'Upload Failure';
                 addEl(alertDiv, h3);
                 var span = getEl('span');
-                span.textContent = 'This is often caused by improper input files. Check that your input is in a form OxygenV accepts.'
+                span.textContent = 'This is often caused by improper input files. Check that your input is in a form OakVar accepts.'
                 addEl(alertDiv, span);
                 addEl(alertDiv,getEl('br'));
                 addEl(alertDiv,getEl('br'));
@@ -625,7 +625,7 @@ function populateJobDetailTr (job) {
     if (job.open_cravat_version != undefined) {
         var tr = getEl('tr');
         var td = getEl('td');
-        td.textContent = 'OxygenV ver';
+        td.textContent = 'OakVar ver';
         addEl(tr, td);
         var td = getEl('td');
         td.textContent = job.open_cravat_version;
@@ -1632,6 +1632,7 @@ function openSubmitDiv () {
 function loadSystemConf () {
     $.get('/submit/getsystemconfinfo').done(function (response) {
         systemConf = response
+        systemConf["oc_store_url"] = "https://store.opencravat.org"
         var s = document.getElementById('sysconfpathspan');
         s.value = response['conf_path'];
         var s = document.getElementById('settings_jobs_dir_input');

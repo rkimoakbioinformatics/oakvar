@@ -5,15 +5,14 @@ import time
 import traceback
 import asyncio
 from aiohttp import web
-from oakvar import store_utils as su
-from oakvar import constants
-import oakvar.admin_util as au
+from .. import consts
+from ..util import admin_util as au
 import shutil
 import concurrent.futures
-from ..sysadmin import get_system_conf
+from ..system import get_system_conf
+from ..module import InstallProgressHandler
 
 system_conf = get_system_conf()
-pathbuilder = su.PathBuilder(system_conf["store_url"], "url")
 install_manager = None
 install_queue = None
 install_state = None
@@ -25,13 +24,7 @@ logger = None
 cravat_multiuser = None
 
 
-def get_filepath(path):
-    filepath = os.sep.join(path.split("/"))
-    filepath = os.path.join(os.path.dirname(os.path.abspath(__file__)), filepath)
-    return filepath
-
-
-class InstallProgressMpDict(au.InstallProgressHandler):
+class InstallProgressMpDict(InstallProgressHandler):
     def __init__(self, module_name, module_version, install_state, quiet=True):
         super().__init__(module_name, module_version)
         self.module_name = module_name
@@ -48,7 +41,7 @@ class InstallProgressMpDict(au.InstallProgressHandler):
             self.install_state["update_time"] = time.time()
 
     def stage_start(self, stage):
-        from ..util import quiet_print
+        from ..util.util import quiet_print
 
         global install_worker
         global last_update_time
@@ -82,6 +75,8 @@ class InstallProgressMpDict(au.InstallProgressHandler):
 
 
 def fetch_install_queue(install_queue, install_state, local_modules_changed):
+    from ..module import install_module
+
     while True:
         try:
             data = install_queue.get()
@@ -91,11 +86,11 @@ def fetch_install_queue(install_queue, install_state, local_modules_changed):
             stage_handler = InstallProgressMpDict(
                 module_name, module_version, install_state, quiet=False
             )
-            au.install_module(
+            install_module(
                 module_name,
                 version=module_version,
                 stage_handler=stage_handler,
-                stages=100,
+                # stages=100,
             )
             local_modules_changed.set()
             time.sleep(1)
@@ -108,9 +103,11 @@ def fetch_install_queue(install_queue, install_state, local_modules_changed):
 
 
 async def get_remote_manifest(request):
+    from ..store.db import get_manifest
+
     content = {"data": {}, "tagdesc": {}}
     try:
-        oc_manifest = au.get_remote_oc_manifest()
+        oc_manifest = get_manifest()
         if oc_manifest:
             content["data"] = oc_manifest
     except:
@@ -125,37 +122,32 @@ async def get_remote_manifest(request):
         for module, version in temp_q:
             content["data"][module]["queued"] = True
             install_queue.put({"module": module, "version": version})
-        try:
-            counts = au.get_download_counts()
-        except:
-            traceback.print_exc()
-            counts = {}
-        for mname in content["data"]:
-            content["data"][mname]["downloads"] = counts.get(mname, 0)
         content["tagdesc"] = await get_tag_desc(request)
     return web.json_response(content)
 
 
-async def get_remote_module_config(request):
+async def get_remote_module_output_columns(request):
+    from ..module.remote import get_conf
+
     queries = request.rel_url.query
     module = queries["module"]
-    conf = au.get_remote_module_config(module)
-    if "tags" not in conf:
-        conf["tags"] = []
-    response = conf
-    return web.json_response(response)
+    conf = get_conf(module) or {}
+    output_columns = conf.get("output_columns") or []
+    return web.json_response(output_columns)
 
 
 async def get_local_manifest(_):
+    from ..module.cache import get_module_cache
+
     handle_modules_changed()
     content = {}
-    for k, v in au.mic.local.items():
+    for k, v in get_module_cache().local.items():
         content[k] = v.serialize()
     return web.json_response(content)
 
 
 async def get_storeurl(request):
-    from ..sysadmin import get_system_conf
+    from ..system import get_system_conf
 
     conf = get_system_conf()
     store_url = conf["store_url"]
@@ -165,11 +157,13 @@ async def get_storeurl(request):
 
 
 async def get_module_readme(request):
+    from oakvar.module import get_readme
+
     module_name = request.match_info["module"]
     version = request.match_info["version"]
     if version == "latest":
         version = None
-    readme_md = au.get_readme(module_name, version=version)
+    readme_md = get_readme(module_name)
     return web.Response(body=readme_md)
 
 
@@ -182,6 +176,9 @@ async def install_widgets_for_module(request):
 
 
 async def uninstall_module(request):
+    from oakvar.module import uninstall_module
+    from ..module.cache import get_module_cache
+
     global servermode
     if servermode and server_ready:
         import cravat_multiuser
@@ -192,8 +189,8 @@ async def uninstall_module(request):
             return web.json_response(response)
     queries = request.rel_url.query
     module_name = queries["name"]
-    au.uninstall_module(module_name)
-    au.mic.update_local()
+    uninstall_module(module_name)
+    get_module_cache().update_local()
     response = "uninstalled " + module_name
     return web.json_response(response)
 
@@ -223,7 +220,7 @@ async def send_socket_msg(install_ws=None):
         data["module"] = install_state["module_name"]
         data["msg"] = install_state["message"]
         if "Downloading " in data["msg"]:
-            data["msg"] = data["msg"] + " " + str(install_state["cur_chunk"]) + "%"
+            data["msg"] = data["msg"]  # + " " + str(install_state["cur_chunk"]) + "%"
         if install_ws is not None:
             await install_ws.send_str(json.dumps(data))
         last_update_time = install_state["update_time"]
@@ -235,7 +232,7 @@ async def send_socket_msg(install_ws=None):
 async def connect_websocket(request):
     global install_state
     last_update_time = None
-    if install_state is None:
+    if not install_state:
         install_state = {}
         install_state["stage"] = ""
         install_state["message"] = ""
@@ -255,11 +252,8 @@ async def connect_websocket(request):
             await asyncio.sleep(1)
         except concurrent.futures._base.CancelledError:
             return install_ws
-        if (
-            last_update_time is not None
-            and last_update_time < install_state["update_time"]
-        ):
-            last_update_time = await send_socket_msg()
+        if not last_update_time or last_update_time < install_state["update_time"]:
+            last_update_time = await send_socket_msg(install_ws=install_ws)
     # return install_ws
 
 
@@ -282,10 +276,11 @@ async def queue_install(request):
     data = {"module": module_name, "version": module_version}
     if install_queue is not None:
         install_queue.put(data)
-    deps = au.get_install_deps(module_name, module_version)
-    for dep_name, dep_version in deps.items():
-        if install_queue is not None:
-            install_queue.put({"module": dep_name, "version": dep_version})
+    # deps, deps_pypi = get_install_deps(module_name, module_version)
+    # if deps:
+    #    for dep_name, dep_version in deps.items():
+    #        if install_queue is not None:
+    #            install_queue.put({"module": dep_name, "version": dep_version})
     return web.Response(text="queued " + queries["module"])
 
 
@@ -304,7 +299,7 @@ async def install_base_modules(request):
         if r == False:
             response = "failed"
             return web.json_response(response)
-    from ..sysadmin_const import base_modules_key
+    from ..system.consts import base_modules_key
 
     base_modules = system_conf.get(base_modules_key, [])
     for module in base_modules:
@@ -315,7 +310,7 @@ async def install_base_modules(request):
 
 
 async def get_md(_):
-    from ..sysadmin import get_modules_dir
+    from ..system import get_modules_dir
 
     modules_dir = get_modules_dir()
     return web.Response(text=modules_dir)
@@ -345,7 +340,7 @@ async def get_module_updates(request):
 
 
 async def get_free_modules_space(_):
-    from ..sysadmin import get_modules_dir
+    from ..system import get_modules_dir
 
     modules_dir = get_modules_dir()
     free_space = shutil.disk_usage(modules_dir).free
@@ -396,10 +391,13 @@ async def unqueue_install(request):
 
 
 async def get_tag_desc(_):
-    return constants.module_tag_desc
+    return consts.module_tag_desc
 
 
 async def update_remote(request):
+    from ..module.cache import get_module_cache
+    from ..store.db import fetch_ov_store_cache
+
     if servermode and server_ready:
         import cravat_multiuser
 
@@ -407,61 +405,48 @@ async def update_remote(request):
         if r == False:
             response = "notadmin"
             return web.json_response(response)
-    au.mic.update_remote()
-    au.mic.update_local()
+    module_cache = get_module_cache()
+    fetch_ov_store_cache()
+    module_cache.update_local()
     return web.json_response("done")
 
 
 def handle_modules_changed():
+    from ..module.cache import get_module_cache
+
     if local_modules_changed and local_modules_changed.is_set():
-        au.mic.update_local()
+        get_module_cache().update_local()
         local_modules_changed.clear()
 
 
 async def get_remote_manifest_from_local(request):
+    from ..module.local import get_remote_manifest_from_local
+
     queries = request.rel_url.query
     module = queries.get("module", None)
     if module is None:
         return web.json_response({})
-    module_info = au.mic.local[module]
-    module_conf = module_info.conf
-    response = {}
-    module_dir = module_info.directory
-    response["code_size"] = os.path.getsize(module_dir)
-    response["commercial_warning"] = module_conf.get("commercial_warning", None)
-    if os.path.exists(module_info.data_dir) == False:
-        response["data_size"] = 0
-    else:
-        response["data_size"] = os.path.getsize(module_info.data_dir)
-    version = module_conf.get("version", "")
-    response["data_sources"] = {version: module_info.datasource}
-    response["data_versions"] = {version: version}
-    response["downloads"] = 0
-    response["groups"] = module_info.groups
-    response["has_logo"] = os.path.exists(os.path.join(module_dir, "logo.png"))
-    response["hidden"] = module_conf.get("hidden", False)
-    response["latest_version"] = version
-    import datetime
-
-    response["publish_time"] = str(datetime.datetime.now())
-    response["requires"] = module_conf.get("requires", [])
-    response["size"] = response["code_size"] + response["data_size"]
-    response["tags"] = module_conf.get("tags", [])
-    response["title"] = module_conf.get("title", "")
-    response["type"] = module_conf.get("type", "")
-    response["version"] = version
-    response["versions"] = [version]
-    response["private"] = module_conf.get("private", False)
-    response["uselocalonstore"] = module_conf.get("uselocalonstore", False)
-    return web.json_response(response)
+    rmi = get_remote_manifest_from_local(module)
+    return web.json_response(rmi)
 
 
 async def get_local_module_logo(request):
+    from ..module.cache import get_module_cache
+
     queries = request.rel_url.query
     module = queries.get("module", None)
-    module_info = au.mic.local[module]
+    module_info = get_module_cache().local[module]
     module_dir = module_info.directory
     logo_path = os.path.join(module_dir, "logo.png")
+    return web.FileResponse(logo_path)
+
+
+async def get_logo(request):
+    from ..system import get_logo_path
+
+    module_name = request.match_info["module_name"]
+    store = request.match_info["store"]
+    logo_path = get_logo_path(module_name, store)
     return web.FileResponse(logo_path)
 
 
@@ -476,7 +461,7 @@ routes.append(["GET", "/store/queueinstall", queue_install])
 routes.append(["GET", "/store/modules/{module}/{version}/readme", get_module_readme])
 routes.append(["GET", "/store/getbasemodules", get_base_modules])
 routes.append(["GET", "/store/installbasemodules", install_base_modules])
-routes.append(["GET", "/store/remotemoduleconfig", get_remote_module_config])
+routes.append(["GET", "/store/remotemoduleconfig", get_remote_module_output_columns])
 routes.append(["GET", "/store/getmd", get_md])
 routes.append(["GET", "/store/updates", get_module_updates])
 routes.append(["GET", "/store/freemodulesspace", get_free_modules_space])
@@ -486,3 +471,4 @@ routes.append(["GET", "/store/tagdesc", get_tag_desc])
 routes.append(["GET", "/store/updateremote", update_remote])
 routes.append(["GET", "/store/localasremote", get_remote_manifest_from_local])
 routes.append(["GET", "/store/locallogo", get_local_module_logo])
+routes.append(["GET", "/store/logo/{store}/{module_name}", get_logo])

@@ -9,9 +9,9 @@ var installQueue = [];
 var installInfo = {};
 var baseModuleNames = [];
 var storeUrl = null;
-var storeurl = $.get('/store/getstoreurl').done(function(response) {
+$.get('/store/getstoreurl').done(function(response) {
     storeUrl = response;
-});
+})
 var newModuleAvailable = false;
 var baseModuleUpdateAvailable = false;
 var storeFirstOpen = true;
@@ -65,7 +65,6 @@ function onClickStoreTagResetButton() {
         this.checked = false;
     });
     updateFilter();
-    document.getElementById('store-tag-checkbox-home').checked = false;
     document.getElementById('store-tag-checkbox-viewall').checked = true;
 }
 
@@ -261,14 +260,15 @@ function populateStorePages() {
                 makeModuleDetailDialog(currentDetailModule, null, null);
             }
         }
-        populateStoreHome();
+        //populateStoreHome();
         populateAllModulesDiv();
         var mg = document.getElementById('store-modulegroup-div').getAttribute('modulegroup');
         if (mg != undefined && mg != '') {
             populateModuleGroupDiv(mg);
         }
         if (storeFirstOpen) {
-            showStoreHome();
+            //showStoreHome();
+            showAllModulesDiv()
         }
         storeFirstOpen = false;
     } else {
@@ -364,46 +364,26 @@ function showOrHideUpdateAllButton() {
     }
 }
 
-function showStoreHome() {
-    document.getElementById('store-tag-checkbox-home').checked = true;
-    document.getElementById('store-tag-checkbox-viewall').checked = false;
-    document.getElementById('store-home-div').style.display = 'block';
-    document.getElementById('store-allmodule-div').style.display = 'none';
-    document.getElementById('store-modulegroup-div').style.display = 'none';
-}
-
-function hideStoreHome() {
-    document.getElementById('store-tag-checkbox-home').checked = false;
-    document.getElementById('store-home-div').style.display = 'none';
-    document.getElementById('store-allmodule-div').style.display = 'block';
-    document.getElementById('store-modulegroup-div').style.display = 'none';
-}
-
 function showAllModulesDiv() {
-    document.getElementById('store-tag-checkbox-home').checked = false;
-    document.getElementById('store-home-div').style.display = 'none';
     document.getElementById('store-allmodule-div').style.display = 'block';
     document.getElementById('store-modulegroup-div').style.display = 'none';
 }
 
 function showStoreModuleGroup() {
-    document.getElementById('store-tag-checkbox-home').checked = false;
-    document.getElementById('store-home-div').style.display = 'none';
     document.getElementById('store-allmodule-div').style.display = 'none';
     document.getElementById('store-modulegroup-div').style.display = 'block';
 }
 
 function hideStoreModuleGroup() {
-    document.getElementById('store-tag-checkbox-home').checked = false;
-    document.getElementById('store-home-div').style.display = 'none';
     document.getElementById('store-allmodule-div').style.display = 'block';
     document.getElementById('store-modulegroup-div').style.display = 'none';
 }
 
 function onClickModuleGroupDivBackArrow(evt) {
-    if (currentPage == 'store-home-div') {
-        showStoreHome();
-    } else if (currentPage == 'store-allmodule-div') {
+    //if (currentPage == 'store-home-div') {
+    //    showStoreHome();
+    //} else 
+    if (currentPage == 'store-allmodule-div') {
         showAllModulesDiv();
     } else if (currentPage == 'store-modulegroup-div') {
         showStoreModuleGroup();
@@ -580,61 +560,6 @@ function getHomeCarouselContent (modules, type) {
         addEl(sdiv, ssdiv)
     }
     return sdiv
-}
-
-function populateStoreHome() {
-    // Most Downloaded
-    var div = document.getElementById('store-home-featureddiv');
-    $(div).empty();
-    var featuredModules = getMostDownloadedModuleNames();
-    moduleLists['download'] = featuredModules;
-    var sdiv = getHomeCarouselContent(featuredModules, 'download')
-    addEl(div, sdiv);
-    // Newest
-    var div = document.getElementById('store-home-newestdiv');
-    $(div).empty();
-    var newestModules = getNewestModuleNames();
-    moduleLists['newest'] = newestModules;
-    var sdiv = getHomeCarouselContent(newestModules, 'newest')
-    addEl(div, sdiv);
-    // Cancer 
-    var div = document.getElementById('store-home-cancerdiv');
-    $(div).empty();
-    var sdiv = getEl('div');
-    var cancerModules = [];
-    var remoteModuleNames = Object.keys(remoteModuleInfo);
-    for (var i = 0; i < remoteModuleNames.length; i++) {
-        var remoteModuleName = remoteModuleNames[i];
-        var remoteModule = remoteModuleInfo[remoteModuleName];
-        if (remoteModule['groups'].length > 0) {
-            continue;
-        }
-        if (remoteModule['tags'].includes('cancer')) {
-            cancerModules.push(remoteModuleName);
-        }
-    }
-    moduleLists['cancer'] = cancerModules;
-    var sdiv = getHomeCarouselContent(cancerModules, 'cancer')
-    addEl(div, sdiv);
-    // Clinical Relevance
-    var div = document.getElementById('store-home-clinicaldiv');
-    $(div).empty();
-    var sdiv = getEl('div');
-    var clinicalModules = [];
-    var remoteModuleNames = Object.keys(remoteModuleInfo);
-    for (var i = 0; i < remoteModuleNames.length; i++) {
-        var remoteModuleName = remoteModuleNames[i];
-        var remoteModule = remoteModuleInfo[remoteModuleName];
-        if (remoteModule['groups'].length > 0) {
-            continue;
-        }
-        if (remoteModule['tags'].includes('clinical relevance')) {
-            clinicalModules.push(remoteModuleName);
-        }
-    }
-    moduleLists['clinical'] = clinicalModules;
-    var sdiv = getHomeCarouselContent(clinicalModules, 'clinical')
-    addEl(div, sdiv);
 }
 
 function getCarouselScrollStep (d) {
@@ -1076,7 +1001,7 @@ function populateModuleGroupDiv(moduleGroupName) {
 }
 
 function saveCurrentPage() {
-    var divIds = ['store-home-div', 'store-allmodule-div', 'store-modulegroup-div'];
+    var divIds = ['store-allmodule-div', 'store-modulegroup-div'];
     for (var i = 0; i < divIds.length; i++) {
         var divId = divIds[i];
         if (document.getElementById(divId).style.display != 'none') {
@@ -1361,7 +1286,7 @@ function getFilteredRemoteModules() {
         var remoteModuleNameLower = remoteModuleName.toLowerCase();
         var remoteModule = remoteModuleInfo[remoteModuleName];
         var newCheck = document.getElementById('store-tag-checkbox-newavailable').checked;
-        if (remoteModule['groups'].length > 0) {
+        if (remoteModule["groups"] != null && remoteModule['groups'].length > 0) {
             var pass = false;
             if (currentPage == 'storediv-modulegroup-div') {
                 pass = true;
@@ -1523,13 +1448,13 @@ function addLogo(moduleName, sdiv) {
     }
     var moduleInfo = remoteModuleInfo[moduleName];
     var img = null;
-    if (moduleInfo.has_logo == true) {
+    if (moduleInfo.has_logo) {
         img = getEl('img');
         img.className = 'moduletile-logo';
         if (moduleInfo.uselocalonstore) {
             img.src = '/store/locallogo?module=' + moduleName;
         } else {
-            img.src = storeUrl + '/modules/' + moduleName + '/' + moduleInfo['latest_version'] + '/logo.png';
+            img.src = "/store/logo/" + moduleInfo.store + "/" + moduleName
         }
         addEl(sdiv, img);
         storeLogos[moduleName] = img;
@@ -1783,7 +1708,7 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
     span = getEl('span');
     span.style.fontSize = '12px';
     span.style.color = 'green';
-    span.textContent = ' | ' + mInfo.developer.organization;
+    span.textContent = ' | ' + (mInfo.developer.module.organization || mInfo.developer.organization);
     addEl(td, span);
     addEl(tr, td);
     td = getEl('td');
@@ -1852,11 +1777,14 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
         var localRoot = window.location.origin + window.location.pathname.split('/').slice(0, -1).join('/');
         for (let img of $mdhtml.children('img')) {
             if (currentTab == 'store') {
-                var storeRoot = `${systemConf.store_url}/modules/${moduleName}/${mInfo.latest_version}`
+                if (mInfo.store == "oc") {
+                    var storeRoot = `${systemConf.oc_store_url}/modules/${moduleName}/${mInfo.latest_version}`
+                    img.src = img.src.replace(localRoot, storeRoot);
+                }
             } else if (currentTab == 'submit') {
                 var storeRoot = `/modules/annotators/${moduleName}`
+                img.src = img.src.replace(localRoot, storeRoot);
             }
-            img.src = img.src.replace(localRoot, storeRoot);
             img.style.display = 'block';
             img.style.margin = 'auto';
             img.style['max-width'] = '100%';
@@ -1923,48 +1851,40 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
                 }
             }
         } else {
-            $.ajax({
-                url: '/store/remotemoduleconfig',
-                data: {
-                    'module': moduleName
-                },
-                success: function(data) {
-                    var otbody = document.getElementById('moduledetail-' + currentTab + '-output-tbody');
-                    var outputColumnDiv = document.getElementById('moduledetail-output-column-div-' + currentTab);
-                    var outputs = data['output_columns'];
-                    if (outputs == undefined) {
-                        return;
-                    }
-                    var descs = [];
-                    for (var i1 = 0; i1 < outputs.length; i1++) {
-                        var o = outputs[i1];
-                        var desc = '';
-                        if (o['desc'] != undefined) {
-                            desc = o['desc'];
-                        }
-                        descs.push([o['title'], desc]);
-                    }
-                    if (descs.length > 0) {
-                        outputColumnDiv.style.display = 'block';
-                        for (var i1 = 0; i1 < descs.length; i1++) {
-                            var title = descs[i1][0];
-                            var desc = descs[i1][1];
-                            var otr = getEl('tr');
-                            var otd = getEl('td');
-                            var ospan = getEl('span');
-                            ospan.textContent = title;
-                            addEl(otd, ospan);
-                            addEl(otr, otd);
-                            var otd = getEl('td');
-                            var ospan = getEl('span');
-                            ospan.textContent = desc;
-                            addEl(otd, ospan);
-                            addEl(otr, otd);
-                            addEl(otbody, otr);
-                        }
-                    }
-                },
-            });
+            outputs = remoteModuleInfo[moduleName].output_columns
+            var otbody = document.getElementById('moduledetail-' + currentTab + '-output-tbody');
+            var outputColumnDiv = document.getElementById('moduledetail-output-column-div-' + currentTab);
+            if (outputs == undefined) {
+                return;
+            }
+            var descs = [];
+            for (var i1 = 0; i1 < outputs.length; i1++) {
+                var o = outputs[i1];
+                var desc = '';
+                if (o['desc'] != undefined) {
+                    desc = o['desc'];
+                }
+                descs.push([o['title'], desc]);
+            }
+            if (descs.length > 0) {
+                outputColumnDiv.style.display = 'block';
+                for (var i1 = 0; i1 < descs.length; i1++) {
+                    var title = descs[i1][0];
+                    var desc = descs[i1][1];
+                    var otr = getEl('tr');
+                    var otd = getEl('td');
+                    var ospan = getEl('span');
+                    ospan.textContent = title;
+                    addEl(otd, ospan);
+                    addEl(otr, otd);
+                    var otd = getEl('td');
+                    var ospan = getEl('span');
+                    ospan.textContent = desc;
+                    addEl(otd, ospan);
+                    addEl(otr, otd);
+                    addEl(otbody, otr);
+                }
+            }
         }
     });
     // Information div
@@ -2037,17 +1957,32 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
     span.style.fontWeight = 'bold';
     span.textContent = 'Maintainer: ';
     addEl(d, span);
-    span = getEl('span');
-    span.textContent = mInfo['developer']['name'];
-    addEl(d, span);
+    mt = mInfo.developer.module.name || mInfo['developer']['name']
+    if (typeof(mt) == "string") {
+        mt = [mt]
+    }
+    for (var i=0; i < mt.length; i++) {
+        addEl(d, getEl('br'))
+        span = getEl('span');
+        span.textContent = mt[i]
+        addEl(d, span);
+    }
     addEl(d, getEl('br'));
     span = getEl('span');
     span.style.fontWeight = 'bold';
     span.textContent = 'e-mail: ';
     addEl(d, span);
-    span = getEl('span');
-    span.textContent = mInfo['developer']['email'];
-    addEl(d, span);
+    email = mInfo.developer.module.email || mInfo['developer']['email']
+    if (typeof(email) == "string") {
+        email = [email]
+    }
+    for (var i=0; i < email.length; i++) {
+        addEl(d, getEl('br'))
+        span = getEl('a');
+        span.textContent = email[i]
+        span.href = "mailto:" + email[i]
+        addEl(d, span);
+    }
     addEl(d, getEl('br'));
     addEl(infodiv, d);
     d = getEl('div');
@@ -2059,7 +1994,7 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
     span.style.width = 'calc(100% - 120px)';
     span.style.wordWrap = 'break-word';
     span.style.verticalAlign = 'text-top';
-    var citation = mInfo['developer']['citation'];
+    var citation = mInfo.developer.module.citation || mInfo['developer']['citation']
     if (citation != undefined && citation.startsWith('http')) {
         var a = getEl('a');
         a.href = citation;
@@ -2077,7 +2012,7 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
     span.textContent = 'Organization: ';
     addEl(d, span);
     span = getEl('span');
-    span.textContent = mInfo['developer']['organization'];
+    span.textContent = mInfo.developer.module.organization || mInfo['developer']['organization']
     addEl(d, span);
     addEl(infodiv, d);
     d = getEl('div');
@@ -2085,12 +2020,19 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
     span.style.fontWeight = 'bold';
     span.textContent = 'Website: ';
     addEl(d, span);
-    span = getEl('a');
-    span.textContent = mInfo['developer']['website'];
-    span.href = mInfo['developer']['website'];
-    span.target = '_blank';
-    span.style.wordBreak = 'break-all';
-    addEl(d, span);
+    website = mInfo.developer.module.website || mInfo.developer.website
+    if (typeof(website) == "string") {
+        website = [website]
+    }
+    for (var i=0; i < website.length; i++) {
+        addEl(d, getEl("br"))
+        span = getEl('a');
+        span.textContent = website[i]
+        span.href = website[i]
+        span.target = '_blank';
+        span.style.wordBreak = 'break-all';
+        addEl(d, span);
+    }
     addEl(infodiv, d);
     d = getEl('div');
     span = getEl('span');
@@ -2106,14 +2048,21 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
     span.style.fontWeight = 'bold';
     span.textContent = 'Required modules: ';
     addEl(d, span);
-    span = getEl('span');
-    if (mInfo['requires'] != null) {
-        span.textContent = mInfo['requires'];
+    req = mInfo.requires
+    if (req != null) {
+        if (typeof(req) == "string") {
+            req = [req]
+        }
+        for (var i=0; i < req.length; i++) {
+            addEl(d, getEl('br'))
+            span = getEl('span')
+            span.textContent = req[i]
+            span.style.wordBreak = 'break-all'
+            addEl(d, span)
+        }
     } else {
         span.textContent = 'None';
     }
-    span.style.wordBreak = 'break-all';
-    addEl(d, span);
     addEl(infodiv, d);
     if (currentTab == 'store') {
         d = getEl('div');
@@ -2133,16 +2082,6 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
         span = getEl('span');
         var t = new Date(mInfo['publish_time']);
         span.textContent = t.toLocaleDateString();
-        addEl(d, span);
-        addEl(infodiv, d);
-        d = getEl('div');
-        span = getEl('span');
-        span.style.fontWeight = 'bold';
-        span.textContent = 'Downloads: ';
-        addEl(d, span);
-        span = getEl('span');
-        var t = mInfo['downloads'];
-        span.textContent = t;
         addEl(d, span);
         addEl(infodiv, d);
     }
@@ -2201,19 +2140,6 @@ function compareVersion(ver1, ver2) {
         }
     }
     return tok1.length - tok2.length;
-}
-
-function getHighestVersionForRemoteModule(module) {
-    var versions = remoteModuleInfo[module].versions;
-    var highestVersion = '0.0.0';
-    for (var i = 0; i < versions.length; i++) {
-        var version = versions[i];
-        var c = compareVersion(version, highestVersion);
-        if (c > 0) {
-            highestVersion = version;
-        }
-    }
-    return highestVersion;
 }
 
 function getSizeText(size) {

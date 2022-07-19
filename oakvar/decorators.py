@@ -10,13 +10,14 @@ def cli_entry(func):
 
 def cli_func(func):
     def run_cli_func(*args, **kwargs):
-        if len(args) > 0:
-            from argparse import Namespace
+        from argparse import Namespace
+        from .__main__ import handle_exception
 
+        if len(args) > 0:
             if isinstance(args[0], Namespace):
                 if getattr(args[0], "quiet", None) == None:
                     setattr(args[0], "quiet", True)
-        elif "quiet" not in kwargs:
+        elif kwargs.get("quiet") == None:
             kwargs["quiet"] = True
         args = get_args(*args, **kwargs)
         try:
@@ -28,14 +29,15 @@ def cli_func(func):
                     ret = None
             return ret
         except Exception as e:
-            from .__main__ import handle_exception
-
             handle_exception(e)
 
     def get_args(*args, **kwargs):
-        from .util import get_args
+        from .util.util import get_args
+        from inspect import signature
 
-        parser = get_parser(func.__name__)
+        s = signature(func)
+        name = s.parameters["__name__"].default
+        parser = get_parser(name)
         args = get_args(parser, args, kwargs)
         return args
 
@@ -52,11 +54,18 @@ def get_parser(parser_name):
         ppp_dict = get_commands(pp_parser)
         if ppp_dict:
             for ppp_cmd, ppp_parser in ppp_dict.items():
-                cmd = f"ov_{pp_cmd}_{ppp_cmd}"
-                if cmd == parser_name:
-                    return ppp_parser
+                pppp_dict = get_commands(ppp_parser)
+                if pppp_dict:
+                    for pppp_cmd, pppp_parser in pppp_dict.items():
+                        cmd = f"{pp_cmd} {ppp_cmd} {pppp_cmd}"
+                        if cmd == parser_name:
+                            return pppp_parser
+                else:
+                    cmd = f"{pp_cmd} {ppp_cmd}"
+                    if cmd == parser_name:
+                        return ppp_parser
         else:
-            cmd = f"ov_{pp_cmd}"
+            cmd = f"{pp_cmd}"
             if cmd == parser_name:
                 return pp_parser
     return None

@@ -51,7 +51,7 @@
         <img src='/submit/logo.png' class='logo' />
     </div>
     <a href='https://oxygenv-core.readthedocs.io/en/latest/Home.html' target='_blank'><img src='/result/images/question.png' class='question-icon' onclick='mailto:rkim@oakbioinformatics.com' /></a>
-    <a href='mailto:rkim@oakbioinformatics.com?Subject=OxygenV%20feedback'><img src='/result/images/mail.png' class='email-icon' onclick='mailto:support@cravat.us' /></a>
+    <a href='mailto:rkim@oakbioinformatics.com?Subject=OakVar%20feedback'><img src='/result/images/mail.png' class='email-icon' onclick='mailto:support@cravat.us' /></a>
     <div style='position: absolute; right: 0px; top: 0px; padding-right: 10px; cursor: pointer;' class='threedotsdiv'>
         <img src='/submit/menu.png' class='threedots' />
     </div>
@@ -181,14 +181,12 @@
         <div id='storemenudiv'>
             <input type='text' id='store-namefilter' name='namefilter' placeholder='Search the Store' oninput='updateFilter()'/>
             <hr />
-            <label class='checkbox-store-container'>Discover
-                <input type='checkbox' class='store-tag-checkbox' value='frontpage' id='store-tag-checkbox-home' onclick='onClickStoreHome();'/>
-                <span class='checkmark-store'>
-            </label>
+            <!--
             <label class='checkbox-store-container'>View All
                 <input type='checkbox' value='viewall' id='store-tag-checkbox-viewall' onclick='onClickStoreTagResetButton(); '/>
                 <span class='checkmark-store'>
             </label>
+            --!>
             <label id='update-available-div' class='checkbox-store-container'>Update available
                 <input type='checkbox' class='store-tag-checkbox' value='newavailable' id='store-tag-checkbox-newavailable' onclick='onStoreTagCheckboxChange();'/>
                 <span class='checkmark-store'>
@@ -203,36 +201,6 @@
             </div>-->
         </div>
         <div style = 'max-width: 100%; overflow-x: hidden'>
-            <div id='store-home-div'>
-                <div class='store-home-sectiondiv'>
-                    <div class='store-home-sectiontitle'>Most Downloaded</div>
-                    <div>The most downloaded modules to date!</div>
-                    <img src='/store/images/left_arrow.png' class='store-carousel-arrow' onclick='onClickStoreHomeLeftArrow(this);'/>
-                    <div id='store-home-featureddiv' class='store-home-carouseldiv'></div>
-                    <img src='/store/images/right_arrow.png' class='store-carousel-arrow' onclick='onClickStoreHomeRightArrow(this);'/>
-                </div>
-                <div class='store-home-sectiondiv'>
-                    <div class='store-home-sectiontitle'>Newest</div>
-                    <div>The newest and greatest!</div>
-                    <img src='/store/images/left_arrow.png' class='store-carousel-arrow' onclick='onClickStoreHomeLeftArrow(this);'/>
-                    <div id='store-home-newestdiv' class='store-home-carouseldiv'></div>
-                    <img src='/store/images/right_arrow.png' class='store-carousel-arrow' onclick='onClickStoreHomeRightArrow(this);'/>
-                </div>
-                <div class='store-home-sectiondiv'>
-                    <div class='store-home-sectiontitle'>Cancer Resources</div>
-                    <div>Cutting edge resources for cancer research!</div>
-                    <img src='/store/images/left_arrow.png' class='store-carousel-arrow' onclick='onClickStoreHomeLeftArrow(this);'/>
-                    <div id='store-home-cancerdiv' class='store-home-carouseldiv'></div>
-                    <img src='/store/images/right_arrow.png' class='store-carousel-arrow' onclick='onClickStoreHomeRightArrow(this);'/>
-                </div>
-                <div class='store-home-sectiondiv'>
-                    <div class='store-home-sectiontitle'>Clinical Relevance</div>
-                    <div>Our curation of clinically-relevant resources!</div>
-                    <img src='/store/images/left_arrow.png' class='store-carousel-arrow' onclick='onClickStoreHomeLeftArrow(this);'/>
-                    <div id='store-home-clinicaldiv' class='store-home-carouseldiv'></div>
-                    <img src='/store/images/right_arrow.png' class='store-carousel-arrow' onclick='onClickStoreHomeRightArrow(this);'/>
-                </div>
-            </div>
             <div id='store-allmodule-div'>
                 <div id='store-sort-div'>
                     <span id='store-sort-label'>Sort by</span>
@@ -313,7 +281,7 @@
         Lost connection to the server.
         <br />
         <br />
-        Please launch OxygenV again.
+        Please launch OakVar again.
     </div>
 </div>
 
