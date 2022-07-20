@@ -17,3 +17,4 @@ cravat/jobs
 tmp/*
 makecravat.sh
 .ipynb_checkpoints
+mkdocs/site

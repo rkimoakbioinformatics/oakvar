@@ -1,0 +1,12 @@
+site_name: OakVar
+site_url: https://oakvar.com
+nav:
+  - Home: index.md
+  - Install: install.md
+  - Overview: overview.md
+  - Tutorial: tutorial.md
+  - CLI: cli.md
+theme: material
+markdown_extensions:
+  - attr_list
+  - tables
