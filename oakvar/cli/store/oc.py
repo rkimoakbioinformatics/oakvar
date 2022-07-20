@@ -124,6 +124,11 @@ def add_parser_fn_store_oc_checklogin(subparsers):
     parser_cli_store_oc_checklogin.add_argument("username", help="username")
     parser_cli_store_oc_checklogin.add_argument("password", help="password")
     parser_cli_store_oc_checklogin.set_defaults(func=cli_store_oc_checklogin)
+    parser_cli_store_oc_checklogin.r_return = "A boolean. TRUE if successful, FALSE if not."  # type: ignore
+    parser_cli_store_oc_checklogin.r_examples = [  # type: ignore
+        "# Check the username and password of a developer account at the OpenCRAVAT store",
+        '#roakvar::store.oc.checklogin(username="user1")',
+    ]
 
 
 def add_parser_fn_store_oc_verifyemail(subparsers):
@@ -132,6 +137,11 @@ def add_parser_fn_store_oc_verifyemail(subparsers):
     )
     parser_cli_store_oc_verifyemail.add_argument("username", help="username")
     parser_cli_store_oc_verifyemail.set_defaults(func=cli_store_oc_verifyemail)
+    parser_cli_store_oc_verifyemail.r_return = "A boolean. TRUE if successful, FALSE if not."  # type: ignore
+    parser_cli_store_oc_verifyemail.r_examples = [  # type: ignore
+        "# Sends a verification email for a developer account at the OpenCRAVAT store",
+        '#roakvar::store.oc.verifyemail(username="user1")',
+    ]
 
 
 def add_parser_fn_store_oc_resetpw(subparsers):
@@ -140,6 +150,11 @@ def add_parser_fn_store_oc_resetpw(subparsers):
     )
     parser_cli_store_oc_resetpw.add_argument("username", help="username")
     parser_cli_store_oc_resetpw.set_defaults(func=cli_store_oc_resetpw)
+    parser_cli_store_oc_resetpw.r_return = "A boolean. TRUE if successful, FALSE if not."  # type: ignore
+    parser_cli_store_oc_resetpw.r_examples = [  # type: ignore
+        "# Reset the password of a developer account at the OpenCRAVAT store",
+        '#roakvar::store.oc.resetpw(username="user1")',
+    ]
 
 
 def add_parser_fn_store_oc_changepw(subparsers):
@@ -150,6 +165,11 @@ def add_parser_fn_store_oc_changepw(subparsers):
     parser_cli_store_oc_changepassword.add_argument("cur_pw", help="current password")
     parser_cli_store_oc_changepassword.add_argument("new_pw", help="new password")
     parser_cli_store_oc_changepassword.set_defaults(func=cli_store_oc_changepw)
+    parser_cli_store_oc_changepassword.r_return = "A boolean. TRUE if successful, FALSE if not."  # type: ignore
+    parser_cli_store_oc_changepassword.r_examples = [  # type: ignore
+        "# Change the password of a developer account at the OpenCRAVAT store",
+        '#roakvar::store.oc.changepw(username="user1", cur_pw="password", new_pw="newpassword")',
+    ]
 
 
 def add_parser_fn_store_oc_newaccount(subparsers):

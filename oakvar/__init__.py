@@ -1,38 +1,39 @@
 from .cli.version import version
-from .cli.util import sqliteinfo
-from .cli.util import mergesqlite
-from .cli.util import filtersqlite
-from .cli.util import addjob
+from .cli.util import sqliteinfo as util_sqliteinfo
+from .cli.util import mergesqlite as util_mergesqlite
+from .cli.util import filtersqlite as util_filtersqlite
+from .cli.util import addjob as util_addjob
 from .cli.test import test
-from .cli.system import setup
-from .cli.system import md
-from .cli.system import config
-from .cli.store import register
-from .cli.store.account import reset
-from .cli.store.account import create
-from .cli.store.account import check
-from .cli.store.account import change
-from .cli.store import fetch
-from .cli.module import pack
-from .cli.store.oc import oc_publish
-from .cli.store.oc import oc_newaccount
-from .cli.store.oc import oc_changepw
-from .cli.store.oc import oc_resetpw
-from .cli.store.oc import oc_verifyemail
-from .cli.store.oc import oc_checklogin
-from .cli.new import annotator
-from .cli.new import exampleinput
+from .cli.system import setup as system_setup
+from .cli.system import md as system_md
+from .cli.system import config as system_config
+from .cli.store import register as store_register
+from .cli.store.account import reset as store_account_reset
+from .cli.store.account import create as store_account_create
+from .cli.store.account import check as store_account_check
+from .cli.store.account import change as store_account_change
+from .cli.store import fetch as store_fetch
+from .cli.module import pack as module_pack
+from .cli.store.oc import oc_publish as store_oc_publish
+from .cli.store.oc import oc_newaccount as store_oc_newaccount
+from .cli.store.oc import oc_changepw as store_oc_changepw
+from .cli.store.oc import oc_resetpw as store_oc_resetpw
+from .cli.store.oc import oc_verifyemail as store_oc_verifyemail
+from .cli.store.oc import oc_checklogin as store_oc_checklogin
+from .cli.new import annotator as new_annotator
+from .cli.new import exampleinput as new_exampleinput
 from .cli.issue import issue
 from .cli.gui import gui
 from .cli.report import report
 from .cli.run import run
-from .cli.module import update
-from .cli.module import uninstall
-from .cli.module import ls
-from .cli.module import installbase
-from .cli.module import install
-from .cli.module import info
-from .cli.config import user
+from .cli.module import update as module_update
+from .cli.module import uninstall as module_uninstall
+from .cli.module import ls as module_ls
+from .cli.module import installbase as module_installbase
+from .cli.module import install as module_install
+from .cli.module import info as module_info
+from .cli.config import user as config_user
+from .cli.config import system as config_system
 from . import __main__ as cli
 from . import consts
 from .exceptions import *
@@ -104,20 +105,20 @@ _ = (
 _ = CravatReport or CravatFilter or Cravat
 _ = crx_def or consts
 _ = cli or wgs
-_ = info or install or installbase or ls or uninstall or update
-_ = report or run or gui or issue or version or user
-_ = exampleinput or annotator
-_ = reset or register or create or check or change or fetch or pack
-_ = setup or md or config
+_ = module_info or module_install or module_installbase or module_ls or module_uninstall or module_update
+_ = report or run or gui or issue or version or config_user or config_system
+_ = new_exampleinput or new_annotator
+_ = store_account_reset or store_register or store_account_create or store_account_check or store_account_change or store_fetch or module_pack
+_ = system_setup or system_md or system_config
 _ = test
-_ = addjob or filtersqlite or mergesqlite or sqliteinfo
+_ = util_addjob or util_filtersqlite or util_mergesqlite or util_sqliteinfo
 _ = (
-    oc_publish
-    or oc_newaccount
-    or oc_changepw
-    or oc_resetpw
-    or oc_verifyemail
-    or oc_checklogin
+    store_oc_publish
+    or store_oc_newaccount
+    or store_oc_changepw
+    or store_oc_resetpw
+    or store_oc_verifyemail
+    or store_oc_checklogin
 )
 
 

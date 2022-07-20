@@ -88,7 +88,9 @@ def add_parser_fn_store_register(subparsers):
     parser_cli_store_register.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_cli_store_register.r_examples = [  # type: ignore
         '# Publish "customannot" module to the store',
-        '#roakvar::store.publish(module="customannot", code_url="https://test.com/customannot__1.0.0__code.zip", data_url="https://test.com/customannot__1.0.0__data.zip")',
+        '#roakvar::store.publish(module="customannot", ',
+        '# code_url="https://test.com/customannot__1.0.0__code.zip", ',
+        '# data_url="https://test.com/customannot__1.0.0__data.zip")',
     ]
 
 

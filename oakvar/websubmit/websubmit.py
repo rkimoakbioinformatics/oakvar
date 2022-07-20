@@ -1223,7 +1223,7 @@ async def load_live_modules(module_names=[]):
         exclude_live_modules = []
     if live_mapper is None:
         cravat_conf = get_user_conf()
-        if "genemapper" in cravat_conf:
+        if cravat_conf and "genemapper" in cravat_conf:
             default_mapper = cravat_conf["genemapper"]
         else:
             default_mapper = "hg38"

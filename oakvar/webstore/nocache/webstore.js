@@ -2011,9 +2011,13 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
     span.style.fontWeight = 'bold';
     span.textContent = 'Organization: ';
     addEl(d, span);
-    span = getEl('span');
-    span.textContent = mInfo.developer.module.organization || mInfo['developer']['organization']
-    addEl(d, span);
+    orgs = mInfo.developer.module.organization || mInfo['developer']['organization']
+    for (var i=0; i < orgs.length; i++) {
+        addEl(d, getEl('br'))
+        span = getEl('span');
+        span.textContent = orgs[i]
+        addEl(d, span);
+    }
     addEl(infodiv, d);
     d = getEl('div');
     span = getEl('span');

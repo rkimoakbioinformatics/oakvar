@@ -92,7 +92,7 @@ class BaseMapper(object):
         self.cmd_parser.add_argument(
             "--primary-transcript",
             dest="primary_transcript",
-            nargs="*",
+            #nargs="*",
             default=["mane"],
             help='"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
         )
@@ -133,7 +133,7 @@ class BaseMapper(object):
             self.confs = loads(confs)
         self.slavemode = args["slavemode"]
         self.postfix = args["postfix"]
-        self.primary_transcript_paths = args["primary_transcript"]
+        self.primary_transcript_paths = [v for v in args["primary_transcript"] if v]
         self.args = args
 
     def base_setup(self):
@@ -206,7 +206,7 @@ class BaseMapper(object):
         self.crx_writer.write_meta_line("title", self.conf["title"])
         self.crx_writer.write_meta_line("version", self.conf["version"])
         self.crx_writer.write_meta_line("modulename", self.module_name)
-        if self.primary_transcript_paths is None:
+        if not self.primary_transcript_paths:
             self.crx_writer.write_meta_line("primary_transcript_paths", "")
         else:
             self.crx_writer.write_meta_line(

@@ -1,6 +1,5 @@
 from os.path import join
 from os.path import dirname
-from os import listdir
 
 # built-in file column definitions
 crm_def = [

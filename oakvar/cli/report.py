@@ -67,24 +67,21 @@ class CravatReport:
         from os.path import exists
         import json
         from ..module.local import get_module_conf
+        from os.path import abspath
+        from ..system import consts
+        from ..exceptions import WrongInput
 
         if not args:
             return
         if args.get("md"):
-            from ..system import consts
-
             consts.custom_modules_dir = args.get("md")
         self.dbpath = args.get("dbpath")
         if not exists(self.dbpath):
-            from ..exceptions import WrongInput
-
             raise WrongInput(msg=self.dbpath)
         try:
             with sqlite3.connect(self.dbpath) as db:
                 db.execute("select * from info")
         except:
-            from ..exceptions import WrongInput
-
             raise WrongInput(msg=f"{self.dbpath} is not an OakVar database")
         self.conf = args.get("conf")
         self.filterpath = args.get("filterpath")
@@ -100,12 +97,9 @@ class CravatReport:
         if self.output_dir:
             self.output_dir = dirname(self.dbpath)
         if not self.output_dir:
-            from os.path import abspath
-
             self.output_dir = abspath(".")
-        if self.savepath is not None and dirname(self.savepath) == "":
+        if self.savepath and dirname(self.savepath) == "":
             self.savepath = join(self.output_dir, self.savepath)
-
         self.module_conf = get_module_conf(self.module_name, module_type="reporter")
         # confs update from conf file
         if self.conf and self.module_name in self.conf:
@@ -644,12 +638,7 @@ class CravatReport:
 
         await self.exec_db(self.store_mapper)
         self.colnames_to_display[level] = []
-        main_conf = get_user_conf()
-        if "report_module_order" in main_conf:
-            priority_colgroupnames = main_conf["report_module_order"]
-        else:
-            priority_colgroupnames = ["base", "hg38", "hg19", "hg18", "tagsampler"]
-        # level-specific column groups
+        priority_colgroupnames = (get_user_conf() or {}).get("report_module_order") or ["base", "hg38", "hg19", "hg18", "tagsampler"] # level-specific column groups
         self.columngroups[level] = []
         sql = "select name, displayname from " + level + "_annotator"
         await cursor.execute(sql)

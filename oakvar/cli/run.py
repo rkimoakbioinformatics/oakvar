@@ -934,7 +934,7 @@ class Cravat(object):
                 self.annotator_names = []
             else:
                 for m in self.excludes:
-                    if m in self.annotator_names:
+                    if self.annotator_names and m in self.annotator_names:
                         self.annotator_names.remove(m)
         self.check_valid_modules(self.annotator_names)
         self.annotators = get_local_module_infos_by_names(self.annotator_names)

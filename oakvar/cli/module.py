@@ -844,7 +844,7 @@ def add_parser_ov_module(subparsers):
         "# Get the list of all installed modules",
         "#roakvar::module.ls()",
         "# Get the list of all available modules",
-        "roakvar::module.ls(available=TRUE)",
+        "#roakvar::module.ls(available=TRUE)",
         '# Get the list of all available modules of the type "converter"',
         '#roakvar::module.ls(available=TRUE, types="converter")',
     ]

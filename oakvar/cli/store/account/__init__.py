@@ -94,12 +94,17 @@ def logout(args, __name__="store account logout"):
 
 
 def add_parser_fn_store_account(subparsers):
-    parser_fn_store_account = subparsers.add_parser(
+    parser_cli_store_account = subparsers.add_parser(
         "account",
         description="Manage OakVar accounts.",
         help="Manage OakVar accounts.",
     )
-    subparsers = parser_fn_store_account.add_subparsers(
+    parser_cli_store_account.r_return = "A boolean. TRUE if successful, FALSE if not."  # type: ignore
+    parser_cli_store_account.r_examples = [  # type: ignore
+        "# Create a store account",
+        '#roakvar::store.createaccount(email="user1", password="password")',
+    ]
+    subparsers = parser_cli_store_account.add_subparsers(
         title="Commands", dest="command"
     )
     add_parser_fn_store_account_create(subparsers)
@@ -109,7 +114,7 @@ def add_parser_fn_store_account(subparsers):
     add_parser_fn_store_account_login(subparsers)
     add_parser_fn_store_account_logout(subparsers)
     add_parser_fn_store_account_reset(subparsers)
-    return parser_fn_store_account
+    return parser_cli_store_account
 
 
 def add_parser_fn_store_account_create(subparsers):
@@ -162,7 +167,8 @@ def add_parser_fn_store_account_change(subparsers):
     parser_cli_store_changepassword.r_return = "A string. Response from the store server"  # type: ignore
     parser_cli_store_changepassword.r_examples = [  # type: ignore
         "# Change the password of a store account",
-        '#roakvar::store.changepassword(email="user1", current_password="password", new_password="newpassword")',
+        '#roakvar::store.changepassword(email="user1", ',
+        '# current_password="password", new_password="newpassword")',
     ]
 
 
