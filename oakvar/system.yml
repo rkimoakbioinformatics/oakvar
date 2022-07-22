@@ -6,9 +6,10 @@ base_modules:
 - oldcravat-converter
 - textreporter
 - excelreporter
+- vcfreporter
+- stdoutreporter
 - tagsampler
 - vcfinfo
-- vcfreporter
 - gencode
 - casecontrol
 - wgbase

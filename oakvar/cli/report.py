@@ -143,9 +143,14 @@ class CravatReport:
         self.inputfiles = args.get("inputfiles")
         self.status_writer = args.get("status_writer")
         self.concise_report = args.get("concise_report")
-        self.extract_columns_multilevel = self.get_standardized_module_option(
-            self.confs.get("extract-columns", {})
-        )
+        if args.get("cols"):
+            self.extract_columns_multilevel = {}
+            for level in ["variant", "gene", "sample", "mapping"]:
+                self.extract_columns_multilevel[level] = args.get("cols")
+        else:
+            self.extract_columns_multilevel = self.get_standardized_module_option(
+                self.confs.get("extract_columns", {})
+            )
         self.args = args
 
     def should_write_level(self, level):
@@ -281,9 +286,9 @@ class CravatReport:
         return cols
 
     async def run_level(self, level):
-        if self.cf is None or self.args is None:
-            from ..exceptions import SetupError
+        from ..exceptions import SetupError
 
+        if self.cf is None or self.args is None:
             raise SetupError(self.module_name)
         import json
         from ..consts import legacy_gene_level_cols_to_skip
@@ -473,9 +478,9 @@ class CravatReport:
                 self.write_table_row(self.get_extracted_row(new_datarow))
 
     async def store_mapper(self, conn=None, cursor=None):
-        if conn is None or cursor is None:
-            from ..exceptions import DatabaseConnectionError
+        from ..exceptions import DatabaseConnectionError
 
+        if conn is None or cursor is None:
             raise DatabaseConnectionError(self.module_name)
         q = 'select colval from info where colkey="_mapper"'
         await cursor.execute(q)
@@ -486,13 +491,12 @@ class CravatReport:
             self.mapper_name = r[0].split(":")[0]
 
     async def run(self, tab=None):
-        if self.args is None or self.cf is None or self.logger is None:
-            from ..exceptions import SetupError
-
-            raise SetupError(self.module_name)
+        from ..exceptions import SetupError
         from time import time, asctime, localtime
         import oyaml as yaml
 
+        if self.args is None or self.cf is None or self.logger is None:
+            raise SetupError(self.module_name)
         start_time = time()
         ret = None
         if not tab:
@@ -620,12 +624,7 @@ class CravatReport:
                 self.colnames_to_display[level].append(col_name)
 
     async def make_col_info(self, level: str, conn=None, cursor=None):
-        if conn is None:
-            pass
-        if cursor is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
+        from ..exceptions import SetupError
         from os.path import dirname
         import json
         from ..util.inout import ColumnDefinition
@@ -635,7 +634,12 @@ class CravatReport:
         from ..util.admin_util import get_user_conf
         from ..module.local import get_local_module_info
         from ..module.local import get_local_module_infos_of_type
+        from ..exceptions import ModuleLoadingError
 
+        if conn is None:
+            pass
+        if cursor is None:
+            raise SetupError()
         await self.exec_db(self.store_mapper)
         self.colnames_to_display[level] = []
         priority_colgroupnames = (get_user_conf() or {}).get("report_module_order") or ["base", "hg38", "hg19", "hg18", "tagsampler"] # level-specific column groups
@@ -768,8 +772,6 @@ class CravatReport:
                 elif module_name == self.mapper_name:
                     annot_cls = load_class(mi.script_path, "Mapper")
                 if annot_cls is None:
-                    from ..exceptions import ModuleLoadingError
-
                     raise ModuleLoadingError(module_name)
                 cmd = {
                     "script_path": mi.script_path,
@@ -999,6 +1001,7 @@ def report(args, __name__="report"):
     from ..exceptions import IncompatibleResult
     from ..util.util import quiet_print
     from ..module.local import get_local_module_info
+    from ..system import consts
 
     dbpath = args.get("dbpath")
     compatible_version, _, _ = is_compatible_version(dbpath)
@@ -1007,8 +1010,6 @@ def report(args, __name__="report"):
     report_types = args.get("reports")
     md = args.get("md")
     if md:
-        from ..system import consts
-
         consts.custom_modules_dir = md
     package = args.get("package")
     if not report_types:
@@ -1212,6 +1213,13 @@ def get_parser_fn_report():
         "--md",
         default=None,
         help="Specify the root directory of OakVar modules (annotators, etc)",
+    )
+    parser_ov_report.add_argument(
+        "--cols",
+        dest="cols",
+        nargs="+",
+        default=None,
+        help="columns to include in reports",
     )
     parser_ov_report.add_argument(
         "--level",
