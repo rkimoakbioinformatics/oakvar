@@ -20,7 +20,6 @@ def setup_system(args=None):
     quiet_print(f"System configuration file: {conf[sys_conf_path_key]}", args=args)
     setup_system_dirs(conf=conf, args=args)
     # set up a user conf file.
-    # quiet_print(f"Checking the user configuration file...", args=args)
     setup_user_conf_file(args=args)
     # set up a store account.
     if not setup_store_account(args=args, conf=conf):
@@ -362,6 +361,21 @@ def add_system_dirs_to_system_conf(system_conf: dict) -> dict:
     return system_conf
 
 
+def augment_with_sys_conf_temp(conf: dict, conf_template: dict):
+    for k_t, v_t in conf_template.items():
+        if k_t not in conf:
+            conf[k_t] = v_t
+        else:
+            ty_t = type(v_t)
+            if ty_t == list:
+                for v in v_t:
+                    if v not in conf[k_t]:
+                        conf[k_t].append(v)
+            elif ty_t == dict:
+                for kk_t, vv_t in conf[k_t].items():
+                    if kk_t not in conf[k_t]:
+                        conf[k_t][kk_t] = vv_t
+
 def get_system_conf(sys_conf_path=None, conf=None):
     from os import environ
     from os.path import exists
@@ -370,6 +384,7 @@ def get_system_conf(sys_conf_path=None, conf=None):
 
     # order is: given conf > custom conf path > env > sys conf > template
     # template
+    conf_template = get_system_conf_template()
     final_conf = get_system_conf_template()
     # sys conf
     if sys_conf_path is None:
@@ -396,6 +411,7 @@ def get_system_conf(sys_conf_path=None, conf=None):
     if custom_system_conf is not None:
         for k, v in custom_system_conf.items():
             final_conf[k] = v
+    augment_with_sys_conf_temp(final_conf, conf_template)
     return final_conf
 
 
