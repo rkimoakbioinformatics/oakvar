@@ -1,8 +1,13 @@
-OakVar is a **platform** for genomic variant analyses. It has the following core functionality:
+## Modular
+
+OakVar is a **platform** for genomic variant analyses. By platform, we mean that OakVar is modular. *Modules* written in Python are the building blocks of OakVar. OakVar achieves its functions by orchestrating such modules.
+
+OakVar has the following core functionality:
 
 * Annotation
 * Query
 * Serve applications
+* Visualize
 
 ## Annotation
 
@@ -31,8 +36,13 @@ Query options can be given to `ov run` as well. The following command will gener
 
     ov run input.vcf -a clinvar cosmic -t vcf -n annotated -f filter.json
 
+## Visualize
+
+OakVar comes with a graphical user interface. `ov gui` launches a job and store management web app by default, and also works as the entry point for OakVar's web apps. 
+
 ## Applications
 
 Most common way of using OakVar is the input-to-output workflow using `ov run` and `ov report`. However, any Python-based program can access the variants annotated with OakVar since OakVar is a Python library as well. This aspect of OakVar is being actively developed and streamlined. OakVar comes with two built-in web applications - one for job submission and module management and the other for exploring annotation result, as well as one installable web application for exploring the details of a single variant.
 
 Check back this page later for exciting future development in this area.
+
