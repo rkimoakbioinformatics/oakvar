@@ -287,13 +287,12 @@ class CravatReport:
 
     async def run_level(self, level):
         from ..exceptions import SetupError
-
-        if self.cf is None or self.args is None:
-            raise SetupError(self.module_name)
         import json
         from ..consts import legacy_gene_level_cols_to_skip
         from ..util.util import quiet_print
 
+        if self.cf is None or self.args is None:
+            raise SetupError(self.module_name)
         ret = await self.exec_db(self.table_exists, level)
         if ret == False:
             return

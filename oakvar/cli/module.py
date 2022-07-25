@@ -51,6 +51,7 @@ def info(args, __name__="module info"):
     from oyaml import dump
     from ..module.local import get_local_module_info
     from ..module.remote import get_remote_module_info
+    from ..module.local import LocalModule
 
     ret = {}
     module_name = args.get("module", None)
@@ -87,10 +88,8 @@ def info(args, __name__="module info"):
         ret["store_availability"] = False
     ret["installed"] = installed
     if installed:
-        from ..module.cache import LocalModuleCache
-
-        if args.get("local", None) and isinstance(local_info, LocalModuleCache):
-            ret.update(local_info)
+        if not args.get("local") and isinstance(local_info, LocalModule):
+            ret["location"] = local_info.directory
     else:
         pass
     if (
