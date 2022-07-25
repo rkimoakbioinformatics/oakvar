@@ -6,9 +6,12 @@ nav:
   - Overview: overview.md
   - Tutorial: tutorial.md
   - Command-line interface: cli.md
+  - Publishing your module: register.md
   - VCF2VCF: vcf2vcf.md
   - Dev guide: devguide.md
   - Release notes: "https://github.com/rkimoakbioinformatics/oakvar/releases"
+  - Repository: "https://github.com/rkimoakbioinformatics/oakvar"
+  - License: license.md
 theme: material
 markdown_extensions:
   - attr_list
