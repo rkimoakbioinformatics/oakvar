@@ -16,7 +16,7 @@ OakVar: Genomic Variant Analysis Platform
 
 Documentation is being made at `OakVar Documentation`_. For questions not answered in the documentation, ask on the Issues channel or email to rkim@oakbioinformatics.com.
 
-.. _OakVar Documentation: https://oakvar.readthedocs.org
+.. _OakVar Documentation: https://docs.oakvar.com
 
 Be in the loop and notified of new releases and news of OakVar. `Subscribe to the mailing list`_.
 
