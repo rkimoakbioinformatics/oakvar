@@ -62,7 +62,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#annotation" class="md-skip">
+        <a href="#modular" class="md-skip">
           Skip to content
         </a>
       
@@ -241,6 +241,13 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#modular" class="md-nav__link">
+    Modular
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#annotation" class="md-nav__link">
     Annotation
   </a>
@@ -250,6 +257,13 @@
         <li class="md-nav__item">
   <a href="#query" class="md-nav__link">
     Query
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#visualize" class="md-nav__link">
+    Visualize
   </a>
   
 </li>
@@ -293,7 +307,52 @@
   
     <li class="md-nav__item">
       <a href="../cli/" class="md-nav__link">
-        CLI
+        Command-line interface
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vcf2vcf/" class="md-nav__link">
+        VCF2VCF
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../devguide/" class="md-nav__link">
+        Dev guide
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/rkimoakbioinformatics/oakvar/releases" class="md-nav__link">
+        Release notes
       </a>
     </li>
   
@@ -324,6 +383,13 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#modular" class="md-nav__link">
+    Modular
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#annotation" class="md-nav__link">
     Annotation
   </a>
@@ -333,6 +399,13 @@
         <li class="md-nav__item">
   <a href="#query" class="md-nav__link">
     Query
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#visualize" class="md-nav__link">
+    Visualize
   </a>
   
 </li>
@@ -360,11 +433,14 @@
 
   <h1>Overview</h1>
 
-<p>OakVar is a <strong>platform</strong> for genomic variant analyses. It has the following core functionality:</p>
+<h2 id="modular">Modular</h2>
+<p>OakVar is a <strong>platform</strong> for genomic variant analyses. By platform, we mean that OakVar is modular. <em>Modules</em> written in Python are the building blocks of OakVar. OakVar achieves its functions by orchestrating such modules.</p>
+<p>OakVar has the following core functionality:</p>
 <ul>
 <li>Annotation</li>
 <li>Query</li>
 <li>Serve applications</li>
+<li>Visualize</li>
 </ul>
 <h2 id="annotation">Annotation</h2>
 <p>Annotation is adding additional information to a variant. A certain variant may have a clinical consequence such as a genetic disease or a meaning such as being rarely observed in a population. There are many sources of such annotation, and manually finding the annotation from these many sources for many variants can be laborious and daunting.</p>
@@ -386,6 +462,8 @@
 <p>Query options can be given to <code>ov run</code> as well. The following command will generate the same <code>annotated.sqlite</code> with annotated variants, but <code>annotated.vcf</code> will already have annotated and filtered variants.</p>
 <pre><code>ov run input.vcf -a clinvar cosmic -t vcf -n annotated -f filter.json
 </code></pre>
+<h2 id="visualize">Visualize</h2>
+<p>OakVar comes with a graphical user interface. <code>ov gui</code> launches a job and store management web app by default, and also works as the entry point for OakVar's web apps. </p>
 <h2 id="applications">Applications</h2>
 <p>Most common way of using OakVar is the input-to-output workflow using <code>ov run</code> and <code>ov report</code>. However, any Python-based program can access the variants annotated with OakVar since OakVar is a Python library as well. This aspect of OakVar is being actively developed and streamlined. OakVar comes with two built-in web applications - one for job submission and module management and the other for exploring annotation result, as well as one installable web application for exploring the details of a single variant.</p>
 <p>Check back this page later for exciting future development in this area.</p>

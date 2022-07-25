@@ -1,0 +1,793 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://oakvar.com/devguide/">
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.3.1, mkdocs-material-8.3.9">
+    
+    
+      
+        <title>Dev guide - OakVar</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.1d29e8d0.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.cbb835fc.min.css">
+        
+      
+      
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="" data-md-color-primary="none" data-md-color-accent="none">
+  
+    
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#modules" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="OakVar" class="md-header__button md-logo" aria-label="OakVar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            OakVar
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Dev guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="OakVar" class="md-nav__button md-logo" aria-label="OakVar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    OakVar
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        Home
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install/" class="md-nav__link">
+        Install
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview/" class="md-nav__link">
+        Overview
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/" class="md-nav__link">
+        Tutorial
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        Command-line interface
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vcf2vcf/" class="md-nav__link">
+        VCF2VCF
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Dev guide
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Dev guide
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#modules" class="md-nav__link">
+    Modules
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#anatomy-of-a-module" class="md-nav__link">
+    Anatomy of a module
+  </a>
+  
+    <nav class="md-nav" aria-label="Anatomy of a module">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reporter" class="md-nav__link">
+    Reporter
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#annotator" class="md-nav__link">
+    Annotator
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mapper" class="md-nav__link">
+    Mapper
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#converter" class="md-nav__link">
+    Converter
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#postaggregator" class="md-nav__link">
+    Postaggregator
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflow" class="md-nav__link">
+    Workflow
+  </a>
+  
+    <nav class="md-nav" aria-label="Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ov-run" class="md-nav__link">
+    ov run
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ov-report" class="md-nav__link">
+    ov report
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ov-gui" class="md-nav__link">
+    ov gui
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/rkimoakbioinformatics/oakvar/releases" class="md-nav__link">
+        Release notes
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#modules" class="md-nav__link">
+    Modules
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#anatomy-of-a-module" class="md-nav__link">
+    Anatomy of a module
+  </a>
+  
+    <nav class="md-nav" aria-label="Anatomy of a module">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reporter" class="md-nav__link">
+    Reporter
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#annotator" class="md-nav__link">
+    Annotator
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mapper" class="md-nav__link">
+    Mapper
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#converter" class="md-nav__link">
+    Converter
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#postaggregator" class="md-nav__link">
+    Postaggregator
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflow" class="md-nav__link">
+    Workflow
+  </a>
+  
+    <nav class="md-nav" aria-label="Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ov-run" class="md-nav__link">
+    ov run
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ov-report" class="md-nav__link">
+    ov report
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ov-gui" class="md-nav__link">
+    ov gui
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content" data-md-component="content">
+            <article class="md-content__inner md-typeset">
+              
+                
+
+
+  <h1>Dev guide</h1>
+
+<p>OakVar's functionalities are mostly performed by Python modules. OakVar orchestrates their execution as well as their management. There are a few workflows of using OakVar modules.</p>
+<pre><code>ov run
+ov report
+ov gui
+</code></pre>
+<p>Before discussing workflows, let's first take a look at OakVar modules.</p>
+<h3 id="modules">Modules</h3>
+<p>To understand OakVar's modules, let's first see which modules are already installed in the system.</p>
+<pre><code>ov module ls
+</code></pre>
+<p>This will show a list of modules installed in the system. These modules are stored under OakVar <em>modules directory</em>, which can be found with </p>
+<pre><code>ov system md
+</code></pre>
+<p>Inside the <em>modules directory</em>, there are subdirectories such as the following.</p>
+<pre><code>annotators
+commons
+converters
+mappers
+postaggregators
+reporters
+webapps
+webviewerwidgets
+</code></pre>
+<p>Each subdirectory represents a <em>type</em> of OakVar module. Inside each type subdirectory, another level of subdirectories exist for the modules of the type directory. For example, in <code>reporter</code> module type directory, the following subdirectories may exist, which correspond to the reporter modules in the system.</p>
+<pre><code>csvreporter
+excelreporter
+stdoutreporter
+textreporter
+tsvreporter
+vcfreporter
+</code></pre>
+<h3 id="anatomy-of-a-module">Anatomy of a module</h3>
+<p>Details of a specific module can be shown with <code>ov module info</code>. Let's take a look at the information of <code>stdoutreporter</code> module.</p>
+<pre><code>ov module info stdoutreporter
+</code></pre>
+<p>In the output, the directory where the module is installed can be found in <code>location</code> field. In the directory of <code>stdoutreporter</code>, the following three files will exist.</p>
+<pre><code>stdoutreporter.md
+stdoutreporter.py
+stdoutreporter.yml
+</code></pre>
+<p>Among these files, <code>.py</code> and <code>.yml</code> files are the two essential files of any OakVar module. <code>.py</code> file is a Python module file which handles the operation of the module. <code>.yml</code> file is a YAML format file which has the information and the configuration of the module. <code>.md</code> file is a markdown format file which will be displayed on the OakVar web store.</p>
+<h4 id="reporter">Reporter</h4>
+<p>Let's take a look at each of these files. Below is the essential parts of <code>stdoutreporter.yml</code>.</p>
+<pre><code>title: Standard Output Reporter
+version: 1.2.0
+type: reporter
+</code></pre>
+<p>OakVar uses this information to manage modules. </p>
+<p>Below is <code>stdoutreporter.py</code>.</p>
+<pre><code>from oakvar import BaseReport
+
+class Reporter(BaseReport):
+
+    def setup (self):
+        if self.args:
+            self.levels_to_write = self.args.get("level")
+        if not self.levels_to_write:
+            self.levels_to_write = ['variant']
+
+    def write_preface (self, level):
+        self.level = level
+
+    def write_header (self, level):
+        line = '#'+'\t'.join([col['col_name'] for \
+            col in self.extracted_cols[level]])
+        print(line)
+
+    def write_table_row (self, row):
+        print('\t'.join([str(v) if v != None else '' \
+            for v in list(row)]))
+</code></pre>
+<p><code>stdoutreporter.py</code> does not have all the codes to filter and fetch annotated variants from an OakVar annotation database file. OakVar connects to <code>stdoutreporter.py</code> and calls functions <code>setup</code>, <code>write_preface</code>, <code>write_header</code>, and <code>write_table_row</code>. By defining these functions, different reporter modules can be made. More on these functions are explained in <em>Workflow</em> section.</p>
+<h4 id="annotator">Annotator</h4>
+<p>The essential function for <em>annotator</em> modules is <code>annotator</code>. Below is <code>target.py</code> of <code>target</code> annotation module.</p>
+<pre><code>from oakvar import BaseAnnotator
+import sqlite3
+
+class Annotator(BaseAnnotator):
+
+    def annotate(self, input_data):
+        self.cursor.execute('select rationale, agents_therapy ' +
+            'from target where gene="%s";'%input_data['hugo'])
+        row = self.cursor.fetchone()
+        if row:
+            out = {'rationale': row[0], 'therapy': row[1]}
+        else:
+            out = None
+        return out
+</code></pre>
+<p><code>annotate</code> function receives <code>input_data</code> which is a <code>dict</code> of a variant, such as</p>
+<pre><code>{"uid": 1834, 
+ "chrom": "chr1", 
+ "pos": 19834895, 
+ "ref_base": "A", 
+ "alt_base": "G"}
+</code></pre>
+<p>OakVar will feed into <code>annotate</code> of an annotator module with variants of the input file, one by one, and excepts a <code>dict</code> of the module's output for each given variant. In the above example, the output is a <code>dict</code> with two keys, <code>rationale</code> and <code>therapy</code>. OakVar will collect the <code>dict</code>s of input variants and feed them to the downstream steps. </p>
+<p>The two keys <code>rationale</code> and <code>therapy</code> in the above example are the output columns of the module. The output columns of a module should be defined in the module's config (<code>.yml</code>) file. <code>target</code> module's config file, <code>target.yml</code>, has the following output columns definition.</p>
+<pre><code>output_columns:
+- name: therapy
+  title: Recommended Therapy
+  type: string
+- name: rationale
+  title: Rationale
+  type: string
+</code></pre>
+<p><code>name</code>, <code>title</code>, and <code>type</code> are essential components of an output column, with <code>name</code> being the same as a key in the output <code>dict</code> by <code>annotate</code> function. OakVar will expect the keys defined as <code>name</code> in <code>output_columns</code> in a module's config file in the return value of <code>annotate</code> function of the module.</p>
+<p>Once a module's output columns are defined in its config file and the module's <code>annotate</code> function returns a <code>dict</code> with those output columns' <code>name</code> as its keys, OakVar will do the rest to include the module's output in the annotation database and reports.</p>
+<p>OakVar provides convenience variables to eahc module's <code>annotate</code> function. If a module has <code>data</code> subdirectory and if the subdirectory has an SQLite database file whose name is <code>&lt;module name&gt;.sqlite</code> (thus, in the above example, <code>target/data/target.sqlite</code>), <code>self.conn</code> and <code>self.cursor</code> are provided as an SQLite database connection and cursor objects.</p>
+<h4 id="mapper">Mapper</h4>
+<p>The essential function for <em>mapper</em> modules is <code>map</code>. A typical mapper modules will be structured as follows.</p>
+<pre><code>...
+class Mapper(BaseMapper):
+    ...
+    def map(self, input_data):
+        ...
+</code></pre>
+<p>A mapper module's <code>map</code> function is similar to an annotator module's <code>annotate</code> function, in that it receives a <code>dict</code> of an input variant, which has keys such as <code>uid</code>, <code>chrom</code>, <code>pos</code>, <code>ref_base</code>, and <code>alt_base) and is expected to return an</code>dict<code>of its output. One difference is that its output</code>dict<code>is supposed to have a pre-defined set of keys. First of all, the output</code>dict<code>of</code>map<code>function should have the keys in</code>input_data`. Then, the following keys should be defined as well.</p>
+<pre><code>coding
+hugo
+transcript
+so
+cchange
+achange
+all_mappings
+</code></pre>
+<p>More details will be explained here. Until then, you can take a look at <code>gencode</code> module's <code>gencode.py</code> to know more.</p>
+<h4 id="converter">Converter</h4>
+<p>The essential function for <em>converter</em> modules is <code>convert_line</code>. A typical converter module will be structured as follows.</p>
+<pre><code>...
+class Converter(BaseConverter):
+    ...
+    def convert_line(self, l):
+        ...
+</code></pre>
+<p>More will be explained later.</p>
+<h4 id="postaggregator">Postaggregator</h4>
+<p>The essential function for <em>postaggregator</em> modules is <code>annotate</code>. A typical postaggregator module will be structured as follows.</p>
+<pre><code>...
+class Postaggregator(BasePostaggregator):
+    ...
+    def annotate(self, input_data):
+        ...
+</code></pre>
+<p>More will be explained later.</p>
+<h3 id="workflow">Workflow</h3>
+<p>As mentioned, there are three workflows of using modules in OakVar.</p>
+<pre><code>ov run
+ov report
+ov gui
+</code></pre>
+<h4 id="ov-run">ov run</h4>
+<p>When <code>ov run</code> is called, OakVar imports and executes modules in the following manner.</p>
+<pre><code>input
+| recognizes input files' format with
+| converter modules' check_format function
+v
+converter module's convert_line function
+v
+mapper module's map function
+| imports annotator modules according to
+| -a option
+v
+annotator modules' annotate function
+| import postaggregator modules according to
+| -p option as well as default postaggregator
+| modules
+v
+postaggregator modules' annotate function
+| import reporter modules according to
+| -t option
+v
+reporter modules' write_preface, write_header, write_table_row functions
+|
+v
+report files
+</code></pre>
+<h4 id="ov-report">ov report</h4>
+<p>When <code>ov report</code> is called, OakVar imports and executes modules in the following manner.</p>
+<pre><code>annotation database file
+| import reporter modules accorging to
+| -t option
+v
+reporter modules' write_preface, write_header, write_table_row functions
+|
+v
+report files
+</code></pre>
+<h4 id="ov-gui">ov gui</h4>
+<p>Will be discussed later.</p>
+
+              
+            </article>
+            
+          </div>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+    <nav class="md-footer__inner md-grid" aria-label="Footer" >
+      
+        
+        <a href="../vcf2vcf/" class="md-footer__link md-footer__link--prev" aria-label="Previous: VCF2VCF" rel="prev">
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+          </div>
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              VCF2VCF
+            </div>
+          </div>
+        </a>
+      
+      
+    </nav>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.b97dbffb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.6c7ad80a.min.js"></script>
+      
+    
+  </body>
+</html>
