@@ -286,6 +286,7 @@ def load_class(path, class_name=None):
     from importlib import import_module
     import sys
     import inspect
+    from traceback import print_exc
 
     path_dir = dirname(path)
     sys.path = [path_dir] + sys.path
@@ -295,8 +296,6 @@ def load_class(path, class_name=None):
     try:
         module = import_module(module_name)
     except Exception as _:
-        from traceback import print_exc
-
         print_exc()
         try:
             if class_name:
@@ -311,14 +310,17 @@ def load_class(path, class_name=None):
             raise
     if module:
         if class_name:
-            module_class = getattr(module, class_name)
+            if hasattr(module, class_name):
+                module_class = getattr(module, class_name)
+                if not inspect.isclass(module_class):
+                    module_class = None
         else:
             for n in dir(module):
-                if n.startswith("Cravat") or n == "Mapper" or n == "Reporter":
-                    c = getattr(module, n)
-                    if inspect.isclass(c):
-                        module_class = c
-                        break
+                if n in ["Converter", "Mapper", "Annotator", "Postaggregator", "Reporter"] or n.startswith("Cravat"):
+                    if hasattr(module, n):
+                        module_class = getattr(module, n)
+                        if not inspect.isclass(module_class):
+                            module_class = None
     del sys.path[0]
     return module_class
 

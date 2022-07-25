@@ -53,10 +53,9 @@ class ModuleCache(object):
     def update_download_counts(self, force=False):
         import oyaml as yaml
         from ..store import fetch_file_content_to_string
+        from ..store.oc import oc_module_download_counts_url
 
         if force or not self.download_counts:
-            from ..store.oc import oc_module_download_counts_url
-
             counts_url = oc_module_download_counts_url()
             counts_str = fetch_file_content_to_string(counts_url)
             if counts_str != "" and type(counts_str) != str:

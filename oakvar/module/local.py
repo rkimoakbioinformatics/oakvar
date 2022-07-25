@@ -9,7 +9,7 @@ class LocalModule(object):
         from ..store import get_developer_dict
 
         self.directory = dir_path
-        if name is None:
+        if not name:
             self.name = os.path.basename(self.directory)
         else:
             self.name = name
