@@ -12,7 +12,9 @@ nav:
   - Release notes: "https://github.com/rkimoakbioinformatics/oakvar/releases"
   - Repository: "https://github.com/rkimoakbioinformatics/oakvar"
   - License: license.md
-theme: material
+theme: 
+  name: material
+  logo: images/logo.png
 markdown_extensions:
   - attr_list
   - tables
