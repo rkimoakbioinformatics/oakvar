@@ -1,4 +1,4 @@
-With OakVar v2.5.0 and later, a fast-track annotation workflow, `vcf2vcf`, is available. The speed-up by this workflow can be an order of magnitude compared to previous versions, depending on the number of samples. The condition to use this workflow is:
+With OakVar v2.5.0 and later, a fast-track annotation workflow, `vcf2vcf`, is available. The speed-up by this workflow can be an order of magnitude compared to previous versions, depending on the number of samples. For example, mapping the variants in the chromosome 20 of the 1000 Genomes Project data took about 10 minutes with --vcf2vcf in our test system. With ClinVar annotation added, about 15 minutes. The condition to use this workflow is:
 
 - Input file format is Variant Call Format (VCF).
 - Output file format is also VCF.

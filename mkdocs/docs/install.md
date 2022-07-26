@@ -1,7 +1,15 @@
 ## Installation
 
-    pip uninstall open-cravat # (if open-cravat is already installed)
+OakVar and open-cravat share the same package name, thus if your system already have open-cravat, then for oakvar to properly function, open-cravat should be uninstalled first.
+
+    pip uninstall open-cravat
+
+Then, install OakVar.
+
     pip install oakvar
+
+Then, set up OakVar.
+
     ov system setup
 
 ## Setup
@@ -39,4 +47,6 @@ The custom setup in the previous section can be done using environmental variabl
     export OV_MODULES_DIR=~/oakvar_modules
     export OV_LOGS_DIR=~/oakvar_logs
     ov system setup
+
+Using environmental variablse for setup can be useful in deploying OakVar with Docker containers.
 
