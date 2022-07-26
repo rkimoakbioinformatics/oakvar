@@ -477,9 +477,14 @@
   <h1>Install</h1>
 
 <h2 id="installation">Installation</h2>
-<pre><code>pip uninstall open-cravat # (if open-cravat is already installed)
-pip install oakvar
-ov system setup
+<p>OakVar and open-cravat share the same package name, thus if your system already have open-cravat, then for oakvar to properly function, open-cravat should be uninstalled first.</p>
+<pre><code>pip uninstall open-cravat
+</code></pre>
+<p>Then, install OakVar.</p>
+<pre><code>pip install oakvar
+</code></pre>
+<p>Then, set up OakVar.</p>
+<pre><code>ov system setup
 </code></pre>
 <h2 id="setup">Setup</h2>
 <p><code>ov system setup</code> will set up OakVar with sane defaults.</p>
@@ -533,6 +538,7 @@ logs_dir: ~/oakvar_logs
 export OV_LOGS_DIR=~/oakvar_logs
 ov system setup
 </code></pre>
+<p>Using environmental variablse for setup can be useful in deploying OakVar with Docker containers.</p>
 
               
             </article>
