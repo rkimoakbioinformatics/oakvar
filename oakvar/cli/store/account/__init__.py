@@ -11,7 +11,7 @@ def cli_store_createaccount(args):
 def create(args, __name__="store account create"):
     from ....store.ov.account import create
 
-    ret = create(args)
+    ret = create(args=args)
     return ret
 
 
