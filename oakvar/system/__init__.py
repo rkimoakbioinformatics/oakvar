@@ -73,7 +73,7 @@ def setup_system_conf(args={}) -> dict:
         conf[sys_conf_path_key] = sys_conf_path
     # if sys conf file does not exist,
     # this is the first time installing OakVar.
-    if not exists(sys_conf_path) or clean:
+    if not sys_conf_path or not exists(sys_conf_path) or clean:
         # use the content of an old OC sys conf if present.
         conf = update_new_system_conf_with_existing(conf)
         # create the sys conf file.
@@ -380,14 +380,20 @@ def get_system_conf(sys_conf_path=None, conf=None):
     from os import environ
     from os.path import exists
     from .consts import sys_conf_path_key
+    from .consts import root_dir_key
+    from .consts import modules_dir_key
+    from .consts import log_dir_key
+    from .consts import conf_dir_key
+    from .consts import jobs_dir_key
     from ..util.util import load_yml_conf
 
+    dir_keys = [modules_dir_key, log_dir_key, conf_dir_key, jobs_dir_key]
     # order is: given conf > custom conf path > env > sys conf > template
     # template
     conf_template = get_system_conf_template()
     final_conf = get_system_conf_template()
     # sys conf
-    if sys_conf_path is None:
+    if not sys_conf_path:
         sp = get_system_conf_path()
         if sp and exists(sp):
             sys_conf = load_yml_conf(sp)
@@ -395,21 +401,35 @@ def get_system_conf(sys_conf_path=None, conf=None):
             final_conf[sys_conf_path_key] = sp
     # ENV
     for k in final_conf.keys():
+        if k in dir_keys and final_conf.get(root_dir_key):
+            continue
         ek = get_env_key(k)
         if ek in environ:
             final_conf[k] = environ.get(ek)
+    for k in [root_dir_key, modules_dir_key, log_dir_key, conf_dir_key, jobs_dir_key]:
+        env_key = get_env_key(k)
+        if environ.get(env_key):
+            final_conf[k] = environ.get(env_key)
     # custom sys conf path. update conf_path.
-    if sys_conf_path is not None:
+    if sys_conf_path:
         custom_sys_conf = load_yml_conf(sys_conf_path)
-        if custom_sys_conf is not None:
-            final_conf.update(custom_sys_conf)
+        if custom_sys_conf:
+            for k, v in custom_sys_conf.items():
+                if k in dir_keys and final_conf.get(root_dir_key):
+                    continue
+                final_conf[k] = v
+            #final_conf.update(custom_sys_conf)
     # given conf
     if conf is not None:
         for k, v in conf.items():
+            if k in dir_keys and final_conf.get(root_dir_key):
+                continue
             final_conf[k] = v
     global custom_system_conf
-    if custom_system_conf is not None:
+    if custom_system_conf:
         for k, v in custom_system_conf.items():
+            if k in dir_keys and final_conf.get(k):
+                continue
             final_conf[k] = v
     augment_with_sys_conf_temp(final_conf, conf_template)
     return final_conf
@@ -532,14 +552,28 @@ def get_system_conf_path(conf=None):
     from os.path import join
     from .consts import sys_conf_fname
     from .consts import sys_conf_path_key
+    from .consts import root_dir_key
+    from .consts import conf_dir_key
+    from .consts import conf_dir_name
 
     # custom conf
-    if conf and sys_conf_path_key in conf:
-        return conf.get(sys_conf_path_key)
+    if conf:
+        if sys_conf_path_key in conf:
+            return conf.get(sys_conf_path_key)
+        elif conf_dir_key in conf:
+            return join(conf.get(conf_dir_key), sys_conf_fname)
+        elif root_dir_key in conf:
+            return join(conf.get(root_dir_key), conf_dir_name, sys_conf_fname)
     # ENV
-    sys_conf_path = environ.get(get_env_key(sys_conf_path_key))
-    if sys_conf_path:
-        return sys_conf_path
+    sys_conf_path_env_key = get_env_key(sys_conf_path_key)
+    conf_dir_env_key = get_env_key(conf_dir_key)
+    root_dir_env_key = get_env_key(root_dir_key)
+    if sys_conf_path_env_key in environ:
+        return environ.get(sys_conf_path_env_key)
+    elif conf_dir_env_key in environ:
+        return join(environ.get(conf_dir_env_key, ""), sys_conf_fname)
+    elif root_dir_env_key in environ:
+        return join(environ.get(root_dir_env_key, ""), conf_dir_name, sys_conf_fname)
     # default
     root_dir = get_default_conf_dir(conf=conf)
     return join(root_dir, sys_conf_fname)
