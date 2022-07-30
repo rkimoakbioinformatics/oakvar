@@ -30,7 +30,7 @@ def setup_system(args=None):
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
     args.update({"conf": conf})
     ret = installbase(args)
-    if ret == 0:  # return None is converted to 0 with @cli_func.
+    if not ret: # 0 or None?
         quiet_print(f"Done setting up the system", args=args)
         return True
     else:  # return False is converted to 1 with @cli_func.
