@@ -52,14 +52,17 @@ def get_valid_email_pw(args=None, pwconfirm=False) -> Tuple:
         return email, pw
 
 
-def create(email=None, pw=None, args=None, quiet=None) -> bool:
+def create(email=None, pw=None, args={}, quiet=None) -> bool:
     from requests import post
     from ....system import get_system_conf
     from ....util.util import quiet_print
     from ....util.util import get_email_pw_from_input
 
     if not email or not pw:
-        email, pw = get_email_pw_from_input(pwconfirm=True)
+        email = args.get("email")
+        pw = args.get("pw")
+        if not email or not pw:
+            email, pw = get_email_pw_from_input(email=email, pw=pw, pwconfirm=True)
     if not email:
         return False
     sys_conf = get_system_conf()

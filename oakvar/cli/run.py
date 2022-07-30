@@ -258,20 +258,32 @@ class Cravat(object):
                     f'package: {self.args.package} {self.package_conf.get("version")}'
                 )
             for _, module in self.annotators.items():
-                self.logger.info(
-                    f"version: {module.name} {module.conf['version']} {os.path.dirname(module.script_path)}"
-                )
+                if module.conf:
+                    version = module.conf.get("code_version")
+                    if not version:
+                        version = module.conf.get("version")
+                    self.logger.info(
+                        f"version: {module.name} {version} {os.path.dirname(module.script_path)}"
+                    )
             if "mapper" not in self.args.skip:
                 module = self.mapper
                 if module is None:
                     raise ModuleLoadingError("mapper")
-                self.logger.info(
-                    f'version: {module.name} {module.conf.get("version")} {os.path.dirname(module.script_path)}'
-                )
+                if module.conf:
+                    version = module.conf.get("code_version")
+                    if not version:
+                        version = module.conf.get("version")
+                    self.logger.info(
+                        f'version: {module.name} {version} {os.path.dirname(module.script_path)}'
+                    )
             for _, module in self.reports.items():
-                self.logger.info(
-                    f"version: {module.name} {module.conf['version']} {os.path.dirname(module.script_path)}"
-                )
+                if module.conf:
+                    version = module.conf.get("code_version")
+                    if not version:
+                        version = module.conf.get("version")
+                    self.logger.info(
+                        f"version: {module.name} {version} {os.path.dirname(module.script_path)}"
+                    )
 
     async def do_step_converter(self):
         from ..util.util import quiet_print

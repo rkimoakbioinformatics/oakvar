@@ -750,11 +750,11 @@ $$    $$/ $$    $$ |$$ | $$  |   $$$/   $$    $$ |$$ |
     )
 
 
-def get_email_pw_from_input(pwconfirm=False) -> Tuple[str, str]:
+def get_email_pw_from_input(email=None, pw=None, pwconfirm=False) -> Tuple[str, str]:
     from getpass import getpass
 
-    email = ""
-    pw = ""
+    email = email or ""
+    pw = pw or ""
     done = False
     startover = False
     while not done:
