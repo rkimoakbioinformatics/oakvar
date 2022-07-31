@@ -272,7 +272,7 @@ def set_stage_handler(args={}):
         )
         args["stage_handler"].set_module_version(args.get("version"))
     if hasattr(args.get("stage_handler"), "install_state") == True:
-        args["install_state"] = stage_handler.install_state  # type: ignore
+        args["install_state"] = args.get("stage_handler").install_state  # type: ignore
     else:
         args["install_state"] = None
 
