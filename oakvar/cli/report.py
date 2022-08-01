@@ -193,10 +193,10 @@ class CravatReport:
         if hasattr(self, "no_log") and self.no_log:
             return
         try:
-            self.logger = logging.getLogger("oakvar." + self.module_name)
+            self.logger = logging.getLogger(self.module_name)
         except Exception as e:
             self._log_exception(e)
-        self.error_logger = logging.getLogger("error." + self.module_name)
+        self.error_logger = logging.getLogger("err." + self.module_name)
         self.unique_excs = []
 
     async def get_db_conn(self):

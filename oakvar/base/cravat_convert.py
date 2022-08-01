@@ -273,7 +273,7 @@ class MasterCravatConverter(object):
             self.logger.info(f"Input file(s): {STDIN}")
         if self.do_liftover:
             self.logger.info("liftover from %s" % self.input_assembly)
-        self.error_logger = getLogger("error.converter")
+        self.error_logger = getLogger("err.converter")
         self.unique_excs = []
 
     def _initialize_converters(self):
@@ -319,6 +319,7 @@ class MasterCravatConverter(object):
         from oakvar.exceptions import InvalidInputFormat
         from oakvar.exceptions import LoggerError
         from oakvar.exceptions import NoInput
+        from logging import getLogger
 
         if self.logger is None:
             raise LoggerError()
@@ -357,10 +358,13 @@ class MasterCravatConverter(object):
                     f = self.open_input_file(fn)
                     if not self.primary_converter.check_format(f):
                         raise InvalidInputFormat("inconsistent input formats")
+        self.logger.info(f"converter: {self.primary_converter.module_name}=={self.primary_converter.version}")
         self.logger.info("input format: %s" % self.input_format)
+        self.error_logger = getLogger("err." + self.primary_converter.module_name)
 
     def _set_converter_properties(self, converter):
         from oakvar.exceptions import SetupError
+        from oakvar.module.local import get_module_code_version
 
         if self.primary_converter is None or self.conf is None:
             raise SetupError()
@@ -368,6 +372,8 @@ class MasterCravatConverter(object):
         converter.run_name = self.output_base_fname
         converter.input_assembly = self.input_assembly
         module_name = self.primary_converter.format_name + "-converter"
+        converter.module_name = module_name
+        converter.version = get_module_code_version(converter.module_name)
         if module_name in self.conf:
             if hasattr(converter, "conf") == False:
                 converter.conf = {}
@@ -448,7 +454,7 @@ class MasterCravatConverter(object):
         from time import time, asctime, localtime
         from copy import copy
         from re import compile
-        from oakvar.exceptions import BadFormatError, ExpectedException, NoVariantError
+        from oakvar.exceptions import IgnoredVariant, ExpectedException, NoVariantError
         from oakvar.base.converter import BaseConverter
         from oakvar.exceptions import SetupError
         from oakvar.exceptions import LoggerError
@@ -553,7 +559,7 @@ class MasterCravatConverter(object):
                                         "C",
                                         "G",
                                     ]:
-                                        e = BadFormatError(
+                                        e = IgnoredVariant(
                                             "Reference base required for non SNV"
                                         )
                                         e.traceback = False
@@ -576,11 +582,11 @@ class MasterCravatConverter(object):
                                         wdict["alt_base"],
                                     )
                                 if not base_re.fullmatch(wdict["ref_base"]):
-                                    e = BadFormatError("Invalid reference base")
+                                    e = IgnoredVariant("Invalid reference base")
                                     e.traceback = False
                                     raise e
                                 if not base_re.fullmatch(wdict["alt_base"]):
-                                    e = BadFormatError("Invalid alternate base")
+                                    e = IgnoredVariant("Invalid alternate base")
                                     e.traceback = False
                                     raise e
                                 p, r, a = (

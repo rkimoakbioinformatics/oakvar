@@ -628,7 +628,7 @@ class BaseAnnotator(object):
         )
         log_handler.setFormatter(formatter)
         self.logger.addHandler(log_handler)
-        self.error_logger = logging.getLogger("error." + self.module_name)
+        self.error_logger = logging.getLogger("err." + self.module_name)
         if self.output_basename != "__dummy__":
             error_log_path = os.path.join(
                 self.output_dir, self.output_basename + ".err"

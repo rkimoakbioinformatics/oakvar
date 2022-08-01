@@ -231,7 +231,7 @@ class Cravat(object):
         self.log_handler.setFormatter(formatter)
         self.logger.addHandler(self.log_handler)
         # individual input line error log
-        self.error_logger = logging.getLogger("error")
+        self.error_logger = logging.getLogger("err")
         self.error_logger.setLevel("INFO")
         error_log_path = os.path.join(self.output_dir, self.run_name + ".err")
         if os.path.exists(error_log_path):

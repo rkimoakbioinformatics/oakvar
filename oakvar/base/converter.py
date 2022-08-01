@@ -8,6 +8,7 @@ class BaseConverter(object):
         self.input_assembly = None
         self.format_name = None
         self.module_name = None
+        self.version = None
 
     def check_format(self, *__args__, **__kwargs__):
         raise NotImplemented
