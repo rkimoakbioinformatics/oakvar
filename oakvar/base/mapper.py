@@ -270,7 +270,7 @@ class BaseMapper(object):
                 if crx_data["ref_base"] == crx_data["alt_base"]:
                     continue
             except Exception as e:
-                self._log_runtime_error(ln, line, e)
+                self._log_runtime_error(ln, line, e, fn=self.reader.path)
                 continue
             if crx_data is not None:
                 self.crx_writer.write_data(crx_data)  # type: ignore
@@ -331,7 +331,7 @@ class BaseMapper(object):
                 if crx_data is None:
                     continue
             except Exception as e:
-                self._log_runtime_error(ln, line, e)
+                self._log_runtime_error(ln, line, e, fn=self.reader.path)
             if crx_data is not None:
                 self.crx_writer.write_data(crx_data)
                 self._add_crx_to_gene_info(crx_data)
@@ -372,7 +372,7 @@ class BaseMapper(object):
             crg_data["hugo"] = hugo
             self.crg_writer.write_data(crg_data)
 
-    def _log_runtime_error(self, ln, line, e):
+    def _log_runtime_error(self, ln, line, e, fn=None):
         import traceback
 
         err_str = traceback.format_exc().rstrip()
@@ -384,9 +384,10 @@ class BaseMapper(object):
             self.unique_excs.append(err_str)
             self.logger.error(err_str)
         if self.error_logger is not None:
-            self.error_logger.error(
-                "\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(ln, line[:-1], str(e))
-            )
+            self.error_logger.error(f"{fn}:{ln}\t{str(e)}")
+            #self.error_logger.error(
+            #    "\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(ln, line[:-1], str(e))
+            #)
 
     async def get_gene_summary_data(self, cf):
         from ..consts import crx_def

@@ -237,7 +237,7 @@ class Cravat(object):
         if os.path.exists(error_log_path):
             os.remove(error_log_path)
         self.error_log_handler = logging.FileHandler(error_log_path, mode=self.logmode)
-        formatter = logging.Formatter("SOURCE:%(name)-20s %(message)s")
+        formatter = logging.Formatter("%(name)s\t%(message)s")
         self.error_log_handler.setFormatter(formatter)
         self.error_logger.addHandler(self.error_log_handler)
 

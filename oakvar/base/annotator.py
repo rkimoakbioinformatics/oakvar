@@ -336,7 +336,7 @@ class BaseAnnotator(object):
                     if self.output_writer:
                         self.output_writer.write_data(output_dict)
                 except Exception as e:
-                    self._log_runtime_exception(lnum, line, input_data, e)
+                    self._log_runtime_exception(lnum, line, input_data, e, fn=self.primary_input_reader.path if self.primary_input_reader else "?")
             # This does summarizing.
             self.postprocess()
             self.base_cleanup()
@@ -394,7 +394,7 @@ class BaseAnnotator(object):
             data[hugo] = out
         return data
 
-    def _log_runtime_exception(self, lnum, line, __input_data__, e):
+    def _log_runtime_exception(self, lnum, line, __input_data__, e, fn=None):
         import traceback
 
         err_str = traceback.format_exc().rstrip()
@@ -406,9 +406,10 @@ class BaseAnnotator(object):
             if self.logger:
                 self.logger.error(err_str_log)
         if self.error_logger:
-            self.error_logger.error(
-                "\n[{:d}]{}\n({})\n#".format(lnum, line.rstrip(), str(e))
-            )
+            self.error_logger.error(f"{fn}:{lnum}\t{str(e)}")
+            #self.error_logger.error(
+            #    "\n[{:d}]{}\n({})\n#".format(lnum, line.rstrip(), str(e))
+            #)
 
     # Setup function for the base_annotator, different from self.setup()
     # which is intended to be for the derived annotator.
@@ -627,7 +628,7 @@ class BaseAnnotator(object):
             error_log_handler = logging.FileHandler(error_log_path, "a")
         else:
             error_log_handler = logging.StreamHandler()
-        formatter = logging.Formatter("SOURCE:%(name)-20s %(message)s")
+        formatter = logging.Formatter("%(name)s\t%(message)s")
         error_log_handler.setFormatter(formatter)
         self.error_logger.addHandler(error_log_handler)
         self.unique_excs = []
@@ -662,7 +663,7 @@ class BaseAnnotator(object):
                     secondary_data[module_name] = fetcher.get(input_key_data)
                 yield lnum, line, input_data, secondary_data
             except Exception as e:
-                self._log_runtime_exception(lnum, line, reader_data, e)
+                self._log_runtime_exception(lnum, line, reader_data, e, fn=self.primary_input_reader.path)
                 continue
 
     def annotate(self, input_data, secondary_data=None):
