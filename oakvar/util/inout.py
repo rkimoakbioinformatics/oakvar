@@ -206,10 +206,9 @@ class CravatReader(CravatFile):
                 if self.seekpos is not None:
                     f.seek(self.seekpos)
                 lnum = 0
-                import sys
                 import csv
 
-                csv.field_size_limit(sys.maxsize)
+                csv.field_size_limit(1147483647) # crude way. 2147483647 is the min of C long max.
                 csvreader = csv.reader(f)
                 for row in csvreader:
                     if row[0].startswith("#"):
