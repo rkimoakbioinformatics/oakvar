@@ -282,9 +282,9 @@ class BasePostAggregator(object):
                 self.unique_excs.append(err_str)
                 self.logger.error(err_str)
             self.error_logger.error(f"{input_data[0]}\t{str(e)}")
-            #self.error_logger.error(
+            # self.error_logger.error(
             #    "\nINPUT:{}\nERROR:{}\n#".format(str(input_data), str(e))
-            #)
+            # )
         except Exception as e:
             self._log_exception(e, halt=False)
 

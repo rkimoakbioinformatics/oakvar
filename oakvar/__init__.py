@@ -105,10 +105,25 @@ _ = (
 _ = CravatReport or CravatFilter or Cravat
 _ = crx_def or consts
 _ = cli or wgs
-_ = module_info or module_install or module_installbase or module_ls or module_uninstall or module_update
+_ = (
+    module_info
+    or module_install
+    or module_installbase
+    or module_ls
+    or module_uninstall
+    or module_update
+)
 _ = report or run or gui or issue or version or config_user or config_system
 _ = new_exampleinput or new_annotator
-_ = store_account_reset or store_register or store_account_create or store_account_check or store_account_change or store_fetch or module_pack
+_ = (
+    store_account_reset
+    or store_register
+    or store_account_create
+    or store_account_check
+    or store_account_change
+    or store_fetch
+    or module_pack
+)
 _ = system_setup or system_md or system_config
 _ = test
 _ = util_addjob or util_filtersqlite or util_mergesqlite or util_sqliteinfo

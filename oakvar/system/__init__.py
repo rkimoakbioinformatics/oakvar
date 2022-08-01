@@ -30,7 +30,7 @@ def setup_system(args=None):
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
     args.update({"conf": conf})
     ret = installbase(args)
-    if not ret: # 0 or None?
+    if not ret:  # 0 or None?
         quiet_print(f"Done setting up the system", args=args)
         return True
     else:  # return False is converted to 1 with @cli_func.
@@ -376,6 +376,7 @@ def augment_with_sys_conf_temp(conf: dict, conf_template: dict):
                     if kk_t not in conf[k_t]:
                         conf[k_t][kk_t] = vv_t
 
+
 def get_system_conf(sys_conf_path=None, conf=None):
     from os import environ
     from os.path import exists
@@ -418,7 +419,7 @@ def get_system_conf(sys_conf_path=None, conf=None):
                 if k in dir_keys and final_conf.get(root_dir_key):
                     continue
                 final_conf[k] = v
-            #final_conf.update(custom_sys_conf)
+            # final_conf.update(custom_sys_conf)
     # given conf
     if conf is not None:
         for k, v in conf.items():

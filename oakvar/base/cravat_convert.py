@@ -788,9 +788,9 @@ class MasterCravatConverter(object):
             else:
                 self.logger.error(err_str)
         self.error_logger.error(f"{self.cur_file}:{ln}\t{str(e)}")
-        #self.error_logger.error(
+        # self.error_logger.error(
         #    "\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(ln, line[:-1], str(e))
-        #)
+        # )
 
     def _close_files(self):
         """Close the input and output files."""

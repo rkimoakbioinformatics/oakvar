@@ -316,7 +316,13 @@ def load_class(path, class_name=None):
                     module_class = None
         else:
             for n in dir(module):
-                if n in ["Converter", "Mapper", "Annotator", "Postaggregator", "Reporter"] or n.startswith("Cravat"):
+                if n in [
+                    "Converter",
+                    "Mapper",
+                    "Annotator",
+                    "Postaggregator",
+                    "Reporter",
+                ] or n.startswith("Cravat"):
                     if hasattr(module, n):
                         module_class = getattr(module, n)
                         if not inspect.isclass(module_class):

@@ -274,7 +274,7 @@ class Cravat(object):
                     if not version:
                         version = module.conf.get("version")
                     self.logger.info(
-                        f'version: {module.name} {version} {os.path.dirname(module.script_path)}'
+                        f"version: {module.name} {version} {os.path.dirname(module.script_path)}"
                     )
             for _, module in self.reports.items():
                 if module.conf:
