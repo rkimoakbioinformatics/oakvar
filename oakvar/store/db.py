@@ -362,6 +362,7 @@ def fetch_conf_cache(args={}, conn=None, cursor=None, conf={}):
     from ..system import get_cache_dir
     from .ov import get_store_url
     from os.path import join
+    from os.path import exists
     from ..util.util import quiet_print
 
     if not conn or not cursor:
@@ -377,12 +378,20 @@ def fetch_conf_cache(args={}, conn=None, cursor=None, conf={}):
     for module_store in module_stores:
         name = module_store["name"]
         store = module_store["store"]
+        fpath = join(get_cache_dir("conf", conf=conf), store, name + ".json")
+        if exists(fpath):
+            continue
         url = f"{get_store_url()}/fetch_conf/{store}/{name}"
         res = s.post(url, data=params)
+        content = b"{}"
         if res.status_code == 200:
-            fpath = join(get_cache_dir("conf", conf=conf), store, name + ".json")
-            with open(fpath, "wb") as wf:
-                wf.write(res.content)
+            content = res.content
+        elif res.status_code == 404:
+            content = b"{}"
+        else:
+            continue
+        with open(fpath, "wb") as wf:
+            wf.write(content)
 
 
 @db_func
@@ -392,6 +401,7 @@ def fetch_logo_cache(args={}, conn=None, cursor=None, conf={}):
     from ..system import get_cache_dir
     from .ov import get_store_url
     from os.path import join
+    from os.path import exists
     from ..util.util import quiet_print
 
     if not conn or not cursor:
@@ -407,12 +417,20 @@ def fetch_logo_cache(args={}, conn=None, cursor=None, conf={}):
     for module_store in module_stores:
         name = module_store["name"]
         store = module_store["store"]
+        fpath = join(get_cache_dir("logo", conf=conf), store, name + ".png")
+        if exists(fpath):
+            continue
         url = f"{get_store_url()}/fetch_logo/{store}/{name}"
         res = s.post(url, data=params)
+        content = b""
         if res.status_code == 200:
-            fpath = join(get_cache_dir("logo", conf=conf), store, name + ".png")
-            with open(fpath, "wb") as wf:
-                wf.write(res.content)
+            content = res.content
+        elif res.status_code == 404:
+            content = b""
+        else:
+            continue
+        with open(fpath, "wb") as wf:
+            wf.write(content)
 
 
 @db_func
@@ -422,6 +440,7 @@ def fetch_readme_cache(args={}, conn=None, cursor=None, conf={}):
     from ..system import get_cache_dir
     from .ov import get_store_url
     from os.path import join
+    from os.path import exists
     from ..util.util import quiet_print
 
     if not conn or not cursor:
@@ -437,12 +456,20 @@ def fetch_readme_cache(args={}, conn=None, cursor=None, conf={}):
     for module_store in module_stores:
         name = module_store["name"]
         store = module_store["store"]
+        fpath = join(get_cache_dir("readme", conf=conf), store, name)
+        if exists(fpath):
+            continue
         url = f"{get_store_url()}/fetch_readme/{store}/{name}"
         res = s.post(url, data=params)
+        content = b"{}"
         if res.status_code == 200:
-            fpath = join(get_cache_dir("readme", conf=conf), store, name)
-            with open(fpath, "wb") as wf:
-                wf.write(res.content)
+            content = res.content
+        elif res.status_code == 404:
+            content = b"{}"
+        else:
+            continue
+        with open(fpath, "wb") as wf:
+            wf.write(content)
 
 
 @db_func
