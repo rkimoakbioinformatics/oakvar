@@ -659,7 +659,7 @@ def main(url=None, host=None, port=None, args={}):
         print("OakVar Server is served at {}:{}".format(host, port))
         logger.info("Serving OakVar server at {}:{}".format(host, port))
         print(
-            '(To quit: Press Ctrl-C or Ctrl-Break if run on a Terminal or Windows, or click "Cancel" and then "Quit" if run through OakVar app on Mac OS)',
+            '(To quit: Press Ctrl-C or Ctrl-Break)',
             flush=True,
         )
         loop = get_event_loop()
