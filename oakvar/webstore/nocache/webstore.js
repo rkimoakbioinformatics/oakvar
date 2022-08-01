@@ -1708,7 +1708,7 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
     span = getEl('span');
     span.style.fontSize = '12px';
     span.style.color = 'green';
-    span.textContent = ' | ' + (mInfo.developer.module.organization || mInfo.developer.organization);
+    span.textContent = ' | ' + (mInfo.developer.module.organization || mInfo.developer.organization || "");
     addEl(td, span);
     addEl(tr, td);
     td = getEl('td');
@@ -1957,7 +1957,7 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
     span.style.fontWeight = 'bold';
     span.textContent = 'Maintainer: ';
     addEl(d, span);
-    mt = mInfo.developer.module.name || mInfo['developer']['name']
+    mt = mInfo.developer.module.name || mInfo['developer']['name'] || ""
     if (typeof(mt) == "string") {
         mt = [mt]
     }
@@ -1972,10 +1972,11 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
     span.style.fontWeight = 'bold';
     span.textContent = 'e-mail: ';
     addEl(d, span);
-    email = mInfo.developer.module.email || mInfo['developer']['email']
+    email = mInfo.developer.module.email || mInfo['developer']['email'] || ""
     if (typeof(email) == "string") {
         email = [email]
     }
+    console.log("@ email=", email)
     for (var i=0; i < email.length; i++) {
         addEl(d, getEl('br'))
         span = getEl('a');
@@ -1994,7 +1995,7 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
     span.style.width = 'calc(100% - 120px)';
     span.style.wordWrap = 'break-word';
     span.style.verticalAlign = 'text-top';
-    var citation = mInfo.developer.module.citation || mInfo['developer']['citation']
+    var citation = mInfo.developer.module.citation || mInfo['developer']['citation'] || ""
     if (citation != undefined && citation.startsWith('http')) {
         var a = getEl('a');
         a.href = citation;
@@ -2011,7 +2012,10 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
     span.style.fontWeight = 'bold';
     span.textContent = 'Organization: ';
     addEl(d, span);
-    orgs = mInfo.developer.module.organization || mInfo['developer']['organization']
+    orgs = mInfo.developer.module.organization || mInfo['developer']['organization'] || ""
+    if (typeof(orgs) == "string") {
+        orgs = [orgs]
+    }
     for (var i=0; i < orgs.length; i++) {
         addEl(d, getEl('br'))
         span = getEl('span');
@@ -2024,7 +2028,7 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
     span.style.fontWeight = 'bold';
     span.textContent = 'Website: ';
     addEl(d, span);
-    website = mInfo.developer.module.website || mInfo.developer.website
+    website = mInfo.developer.module.website || mInfo.developer.website || ""
     if (typeof(website) == "string") {
         website = [website]
     }
