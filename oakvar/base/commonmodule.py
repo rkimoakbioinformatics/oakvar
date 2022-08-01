@@ -66,7 +66,7 @@ class BaseCommonModule(object):
                     error_log_handler = FileHandler(error_log_path, "a")
                 else:
                     error_log_handler = StreamHandler()
-                formatter = Formatter("SOURCE:%(name)-20s %(message)s")
+                formatter = Formatter("%(name)s\t%(message)s")
                 error_log_handler.setFormatter(formatter)
                 self.error_logger.addHandler(error_log_handler)
         except Exception as e:

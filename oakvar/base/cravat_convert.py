@@ -84,6 +84,7 @@ class MasterCravatConverter(object):
         self.crm_path = None
         self.crs_path = None
         self.crl_path = None
+        self.cur_file = None
         self.error_lines = 0
         self.chromdict = {
             "chrx": "chrX",
@@ -489,6 +490,7 @@ class MasterCravatConverter(object):
         base_re = compile("^[ATGC]+|[-]+$")
         write_lnum = 0
         for fn in self.input_paths:
+            self.cur_file = fn
             if self.pipeinput:
                 f = stdin
             else:
@@ -551,9 +553,11 @@ class MasterCravatConverter(object):
                                         "C",
                                         "G",
                                     ]:
-                                        raise BadFormatError(
+                                        e = BadFormatError(
                                             "Reference base required for non SNV"
                                         )
+                                        e.traceback = False
+                                        raise e
                                     elif ref_base is None or ref_base == "":
                                         wdict["ref_base"] = self.wgsreader.get_bases(
                                             chrom, int(pos)
@@ -572,9 +576,13 @@ class MasterCravatConverter(object):
                                         wdict["alt_base"],
                                     )
                                 if not base_re.fullmatch(wdict["ref_base"]):
-                                    raise BadFormatError("Invalid reference base")
+                                    e = BadFormatError("Invalid reference base")
+                                    e.traceback = False
+                                    raise e
                                 if not base_re.fullmatch(wdict["alt_base"]):
-                                    raise BadFormatError("Invalid alternate base")
+                                    e = BadFormatError("Invalid alternate base")
+                                    e.traceback = False
+                                    raise e
                                 p, r, a = (
                                     int(wdict["pos"]),
                                     wdict["ref_base"],
@@ -624,9 +632,11 @@ class MasterCravatConverter(object):
                                     UIDMap.append(UID)
                             self.crs_writer.write_data(wdict)
                     else:
-                        raise ExpectedException(
+                        e = ExpectedException(
                             "No valid alternate allele was found in any samples."
                         )
+                        e.traceback = False
+                        raise e
                 except Exception as e:
                     self._log_conversion_error(read_lnum, l, e)
                     # import traceback
@@ -777,9 +787,10 @@ class MasterCravatConverter(object):
                 pass
             else:
                 self.logger.error(err_str)
-        self.error_logger.error(
-            "\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(ln, line[:-1], str(e))
-        )
+        self.error_logger.error(f"{self.cur_file}:{ln}\t{str(e)}")
+        #self.error_logger.error(
+        #    "\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(ln, line[:-1], str(e))
+        #)
 
     def _close_files(self):
         """Close the input and output files."""

@@ -143,7 +143,7 @@ class Aggregator(object):
                         )
                         last_status_update_time = cur_time
                 except Exception as e:
-                    self._log_runtime_error(lnum, line, e)
+                    self._log_runtime_error(lnum, line, e, fn=self.base_reader.path)
             self.dbconn.commit()
         for annot_name in self.annotators:
             reader = self.readers[annot_name]
@@ -175,7 +175,7 @@ class Aggregator(object):
                         )
                         last_status_update_time = cur_time
                 except Exception as e:
-                    self._log_runtime_error(lnum, line, e)
+                    self._log_runtime_error(lnum, line, e, fn=reader.path)
             self.dbconn.commit()
         self.fill_categories()
         self.cursor.execute("pragma synchronous=2;")
@@ -519,7 +519,7 @@ class Aggregator(object):
         self.dbconn = connect(self.db_path)
         self.cursor = self.dbconn.cursor()
 
-    def _log_runtime_error(self, ln, line, e):
+    def _log_runtime_error(self, ln, line, e, fn=None):
         if self.logger is None:
             return
         if self.error_logger is None:
@@ -531,8 +531,9 @@ class Aggregator(object):
             if err_str not in self.unique_excs:
                 self.unique_excs.append(err_str)
                 self.logger.error(err_str)
-            self.error_logger.error(
-                "\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(ln, line[:-1], str(e))
-            )
+            self.error_logger.error(f"{fn}:{ln}\t{str(e)}")
+            #self.error_logger.error(
+            #    "\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(ln, line[:-1], str(e))
+            #)
         else:
             self.logger.error(err_str)

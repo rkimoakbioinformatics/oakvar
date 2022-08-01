@@ -7,7 +7,7 @@ class ExpectedException(Exception):
 
     def __init__(self, msg=""):
         self.msg = msg
-        super().__init__(f"error: {msg}")
+        super().__init__(f"{msg}")
 
 
 class NormalExit(ExpectedException):
