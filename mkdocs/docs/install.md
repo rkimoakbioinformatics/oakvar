@@ -36,6 +36,7 @@ All system configuration fields can be overridden with environment variables. To
 System configuration field | Environmental variable |
 ---------------------------|--------------|
 sys_conf_path | OV_SYS_CONF_PATH |
+root_dir | OV_ROOT_DIR |
 modules_dir | OV_MODULES_DIR |
 log_dir | OV_LOG_DIR |
 jobs_dir | OV_JOBS_DIR |
@@ -47,6 +48,13 @@ The custom setup in the previous section can be done using environmental variabl
     export OV_MODULES_DIR=~/oakvar_modules
     export OV_LOGS_DIR=~/oakvar_logs
     ov system setup
+
+Another example is installing system files in a custom directory.
+
+    export OV_ROOT_DIR=/data/oakvar
+    ov system setup
+
+This will install OakVar system files at `/data/oakvar`.
 
 Using environmental variablse for setup can be useful in deploying OakVar with Docker containers.
 
