@@ -461,11 +461,11 @@ def fetch_readme_cache(args={}, conn=None, cursor=None, conf={}):
             continue
         url = f"{get_store_url()}/fetch_readme/{store}/{name}"
         res = s.post(url, data=params)
-        content = b"{}"
+        content = b""
         if res.status_code == 200:
             content = res.content
         elif res.status_code == 404:
-            content = b"{}"
+            content = b""
         else:
             continue
         with open(fpath, "wb") as wf:
