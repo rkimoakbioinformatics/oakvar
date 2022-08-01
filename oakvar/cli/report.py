@@ -641,7 +641,13 @@ class CravatReport:
             raise SetupError()
         await self.exec_db(self.store_mapper)
         self.colnames_to_display[level] = []
-        priority_colgroupnames = (get_user_conf() or {}).get("report_module_order") or ["base", "hg38", "hg19", "hg18", "tagsampler"] # level-specific column groups
+        priority_colgroupnames = (get_user_conf() or {}).get("report_module_order") or [
+            "base",
+            "hg38",
+            "hg19",
+            "hg18",
+            "tagsampler",
+        ]  # level-specific column groups
         self.columngroups[level] = []
         sql = "select name, displayname from " + level + "_annotator"
         await cursor.execute(sql)

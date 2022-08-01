@@ -269,4 +269,6 @@ install_tempdir_name = "temp"
 cannonical_chroms = ["chr" + str(n) for n in range(1, 23)] + ["chrX", "chrY"]
 liftover_chain_paths = {}
 for g in ["hg18", "hg19"]:
-    liftover_chain_paths[g] = join(dirname(__file__), "liftover", g + "ToHg38.over.chain")
+    liftover_chain_paths[g] = join(
+        dirname(__file__), "liftover", g + "ToHg38.over.chain"
+    )

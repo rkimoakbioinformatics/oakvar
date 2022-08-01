@@ -92,7 +92,7 @@ class BaseMapper(object):
         self.cmd_parser.add_argument(
             "--primary-transcript",
             dest="primary_transcript",
-            #nargs="*",
+            # nargs="*",
             default=["mane"],
             help='"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
         )
@@ -385,9 +385,9 @@ class BaseMapper(object):
             self.logger.error(err_str)
         if self.error_logger is not None:
             self.error_logger.error(f"{fn}:{ln}\t{str(e)}")
-            #self.error_logger.error(
+            # self.error_logger.error(
             #    "\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(ln, line[:-1], str(e))
-            #)
+            # )
 
     async def get_gene_summary_data(self, cf):
         from ..consts import crx_def

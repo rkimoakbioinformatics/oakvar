@@ -532,8 +532,8 @@ class Aggregator(object):
                 self.unique_excs.append(err_str)
                 self.logger.error(err_str)
             self.error_logger.error(f"{fn}:{ln}\t{str(e)}")
-            #self.error_logger.error(
+            # self.error_logger.error(
             #    "\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(ln, line[:-1], str(e))
-            #)
+            # )
         else:
             self.logger.error(err_str)
