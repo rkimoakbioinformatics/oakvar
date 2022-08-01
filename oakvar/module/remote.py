@@ -65,6 +65,7 @@ class RemoteModule(object):
         from ..store.db import module_sizes
         from ..system import get_logo_path
         from os.path import exists
+        from os.path import getsize
 
         self.name = kwargs.get("name") or ""
         self.store = kwargs.get("store") or "ov"
@@ -97,7 +98,8 @@ class RemoteModule(object):
         self.installed: Optional[str] = None
         self.local_code_version: Optional[str] = None
         self.local_data_source: Optional[str] = None
-        self.has_logo = exists(get_logo_path(self.name, self.store))
+        logo_path = get_logo_path(self.name, self.store)
+        self.has_logo = exists(logo_path) and getsize(logo_path)
 
 
 def get_conf(module_name: str) -> Optional[dict]:
