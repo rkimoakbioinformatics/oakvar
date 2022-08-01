@@ -389,7 +389,7 @@ class BasePostAggregator(object):
             self.logger = logging.getLogger("oakvar." + self.module_name)
         except Exception as e:
             self._log_exception(e)
-        self.error_logger = logging.getLogger("error." + self.module_name)
+        self.error_logger = logging.getLogger("err." + self.module_name)
         self.unique_excs = []
 
     def _get_input(self):

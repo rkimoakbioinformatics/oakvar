@@ -153,7 +153,7 @@ class BaseMapper(object):
         self.logger = logging.getLogger("oakvar.mapper")
         if self.input_path:
             self.logger.info("input file: %s" % self.input_path)
-        self.error_logger = logging.getLogger("error.mapper")
+        self.error_logger = logging.getLogger("err." + self.module_name)
         self.unique_excs = []
 
     def _setup_io(self):

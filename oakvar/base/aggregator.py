@@ -92,7 +92,7 @@ class Aggregator(object):
         self.logger = getLogger("oakvar.aggregator")
         self.logger.info("level: {0}".format(self.level))
         self.logger.info("input directory: %s" % self.input_dir)
-        self.error_logger = getLogger("error.aggregator")
+        self.error_logger = getLogger("err.aggregator")
         self.unique_excs = []
 
     def run(self):

@@ -205,7 +205,7 @@ class VCF2VCF:
         from oakvar.module.local import load_modules
         from oakvar.util.util import quiet_print
         from oakvar.util.util import log_variant_exception
-        from oakvar.exceptions import BadFormatError
+        from oakvar.exceptions import IgnoredVariant
         from os.path import join
         from re import compile
 
@@ -281,7 +281,7 @@ class VCF2VCF:
                                     unique_excs=self.unique_excs,
                                     logger=self.logger,
                                     error_logger=self.error_logger,
-                                    e=BadFormatError("Invalid alternate base"),
+                                    e=IgnoredVariant("Invalid alternate base"),
                                 )
                             else:
                                 variant = {
@@ -361,7 +361,7 @@ class VCF2VCF:
         import logging
         from oakvar.exceptions import LoggerError
 
-        self.logger = logging.getLogger("oakvar." + self.module_name)
+        self.logger = logging.getLogger(self.module_name)
         # self.log_path = join(self.output_dir, self.run_name + ".log")
         # log_handler = logging.FileHandler(self.log_path, "a")
         # formatter = logging.Formatter(
@@ -369,7 +369,7 @@ class VCF2VCF:
         # )
         # log_handler.setFormatter(formatter)
         # self.logger.addHandler(log_handler)
-        self.error_logger = logging.getLogger("error." + self.module_name)
+        self.error_logger = logging.getLogger("err." + self.module_name)
         # if self.run_name != "__dummy__":
         #    error_log_path = join(self.output_dir, self.run_name + ".err")
         #    error_log_handler = logging.FileHandler(error_log_path, "a")
