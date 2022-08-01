@@ -8,14 +8,14 @@
       
       
       
-        <link rel="canonical" href="https://oakvar.com/overview/">
+        <link rel="canonical" href="https://oakvar.com/gui/">
       
       <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.3.1, mkdocs-material-8.3.9">
     
     
       
-        <title>Overview - OakVar</title>
+        <title>Graphical user interface - OakVar</title>
       
     
     
@@ -62,7 +62,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#modular" class="md-skip">
+        <a href="#jobs" class="md-skip">
           Skip to content
         </a>
       
@@ -94,7 +94,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Overview
+              Graphical user interface
             
           </span>
         </div>
@@ -207,76 +207,11 @@
 
   
   
-    
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          Overview
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../overview/" class="md-nav__link">
         Overview
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#modular" class="md-nav__link">
-    Modular
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#annotation" class="md-nav__link">
-    Annotation
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#query" class="md-nav__link">
-    Query
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#visualize" class="md-nav__link">
-    Visualize
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#applications" class="md-nav__link">
-    Applications
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -317,11 +252,55 @@
 
   
   
+    
   
-    <li class="md-nav__item">
-      <a href="../gui/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Graphical user interface
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         Graphical user interface
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#jobs" class="md-nav__link">
+    Jobs
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#store" class="md-nav__link">
+    Store
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -441,36 +420,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#modular" class="md-nav__link">
-    Modular
+  <a href="#jobs" class="md-nav__link">
+    Jobs
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#annotation" class="md-nav__link">
-    Annotation
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#query" class="md-nav__link">
-    Query
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#visualize" class="md-nav__link">
-    Visualize
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#applications" class="md-nav__link">
-    Applications
+  <a href="#store" class="md-nav__link">
+    Store
   </a>
   
 </li>
@@ -489,42 +447,27 @@
                 
 
 
-  <h1>Overview</h1>
+  <h1>Graphical user interface</h1>
 
-<h2 id="modular">Modular</h2>
-<p>OakVar is a <strong>platform</strong> for genomic variant analyses. By platform, we mean that OakVar is modular. <em>Modules</em> written in Python are the building blocks of OakVar. OakVar achieves its functions by orchestrating such modules.</p>
-<p>OakVar has the following core functionality:</p>
-<ul>
-<li>Annotation</li>
-<li>Query</li>
-<li>Serve applications</li>
-<li>Visualize</li>
-</ul>
-<h2 id="annotation">Annotation</h2>
-<p>Annotation is adding additional information to a variant. A certain variant may have a clinical consequence such as a genetic disease or a meaning such as being rarely observed in a population. There are many sources of such annotation, and manually finding the annotation from these many sources for many variants can be laborious and daunting.</p>
-<p>OakVar automates this annotation work by:</p>
-<ul>
-<li>Loop over variants</li>
-<li>Standardize annotation sources</li>
-<li>Manage installation of annotation sources</li>
-<li>Organize the annotation from different sources by variant</li>
-</ul>
-<p>The main OakVar command for annotation is <code>ov run</code>. For example, the following command will annotate the variants in a VCF file, <code>input.vcf</code>, with annotation sources ClinVar and COSMIC and generate an annotated VCF file, <code>annotated.vcf</code> as well as a database file, <code>annotated.sqlite</code>.</p>
-<pre><code>ov run input.vcf -a clinvar cosmic -t vcf -n annotated
+<p>OakVar's graphical user interface (GUI) is launched by</p>
+<pre><code>ov gui
 </code></pre>
-<h2 id="query">Query</h2>
-<p>Once variants are annotated, they can be filtered by their annotation, for example to know if a sample has clinically relevant variants or not. OakVar stores annotated variants as a database, and thus variants annotated with OakVar can be filtered with SQL queries. OakVar provides a standard mechanism to query variants regardless of their annotation sources.</p>
-<p>The main OakVar command for querying variants is <code>ov report</code>. For example, the following command will filter the variants in <code>annotated.sqlite</code> with the filter set defined in <code>filter.json</code> and produce a VCF file of filtered variants, <code>filtered.vcf</code>.</p>
-<pre><code>ov report annotated.sqlite -f filter.json -s filtered -t vcf
+<p>A web server will be started on the terminal and your default 
+web browser will open a new tab, which will show the graphical 
+user interface of OakVar.</p>
+<p>The log output of the web server will be at <code>wcravat.log</code> file
+under <code>conf_dir</code> shown by <code>ov system config</code>. Also,</p>
+<pre><code>ov gui --debug
 </code></pre>
-<p>Query options can be given to <code>ov run</code> as well. The following command will generate the same <code>annotated.sqlite</code> with annotated variants, but <code>annotated.vcf</code> will already have annotated and filtered variants.</p>
-<pre><code>ov run input.vcf -a clinvar cosmic -t vcf -n annotated -f filter.json
-</code></pre>
-<h2 id="visualize">Visualize</h2>
-<p>OakVar comes with a graphical user interface. <code>ov gui</code> launches a job and store management web app by default, and also works as the entry point for OakVar's web apps. </p>
-<h2 id="applications">Applications</h2>
-<p>Most common way of using OakVar is the input-to-output workflow using <code>ov run</code> and <code>ov report</code>. However, any Python-based program can access the variants annotated with OakVar since OakVar is a Python library as well. This aspect of OakVar is being actively developed and streamlined. OakVar comes with two built-in web applications - one for job submission and module management and the other for exploring annotation result, as well as one installable web application for exploring the details of a single variant.</p>
-<p>Check back this page later for exciting future development in this area.</p>
+<p>will display any error the server encounters on the terminal as well.</p>
+<p>OakVar GUI has two tabs, <code>Jobs</code> and <code>Store</code>.</p>
+<h2 id="jobs">Jobs</h2>
+<p>In <code>Jobs</code> tab of OakVar GUI, you can submit jobs and launch 
+interactive result viewer for individual jobs.</p>
+<h2 id="store">Store</h2>
+<p>In <code>Store</code> tab of OakVar GUI, you can install and uninstall OakVar
+modules as well as explore the details of each module. OakVar's
+web store brings OakVar's own modules as well as OpenCRAVAT's modules.</p>
 
               
             </article>
@@ -540,7 +483,7 @@
     <nav class="md-footer__inner md-grid" aria-label="Footer" >
       
         
-        <a href="../install/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Install" rel="prev">
+        <a href="../cli/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Command-line interface" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
           </div>
@@ -549,20 +492,20 @@
               <span class="md-footer__direction">
                 Previous
               </span>
-              Install
+              Command-line interface
             </div>
           </div>
         </a>
       
       
         
-        <a href="../tutorial/" class="md-footer__link md-footer__link--next" aria-label="Next: Tutorial" rel="next">
+        <a href="../register/" class="md-footer__link md-footer__link--next" aria-label="Next: Publishing your module" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              Tutorial
+              Publishing your module
             </div>
           </div>
           <div class="md-footer__button md-icon">
