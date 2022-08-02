@@ -149,7 +149,9 @@ def install(args, __name__="module install"):
     from ..module.remote import get_install_deps
     from ..module import install_module
     from ..util.util import quiet_print
+    from ..store.db import fetch_ov_store_cache
 
+    ret = fetch_ov_store_cache(args=args)
     modules = args.get("modules", [])
     quiet = args.get("quiet", True)
     mn_vs = collect_module_name_and_versions(modules, args=args)

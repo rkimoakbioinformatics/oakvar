@@ -46,6 +46,7 @@ class BadFormatError(InvalidData):
 class IgnoredVariant(InvalidData):
     traceback = False
 
+
 class LiftoverFailure(InvalidData):
     pass
 

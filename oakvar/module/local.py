@@ -7,8 +7,9 @@ class LocalModule(object):
         import os
         from ..util.util import load_yml_conf
         from ..store import get_developer_dict
+        from os.path import abspath
 
-        self.directory = dir_path
+        self.directory = abspath(dir_path)
         if not name:
             self.name = os.path.basename(self.directory)
         else:

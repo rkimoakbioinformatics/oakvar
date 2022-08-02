@@ -358,7 +358,9 @@ class MasterCravatConverter(object):
                     f = self.open_input_file(fn)
                     if not self.primary_converter.check_format(f):
                         raise InvalidInputFormat("inconsistent input formats")
-        self.logger.info(f"converter: {self.primary_converter.module_name}=={self.primary_converter.version}")
+        self.logger.info(
+            f"converter: {self.primary_converter.module_name}=={self.primary_converter.version}"
+        )
         self.logger.info("input format: %s" % self.input_format)
         self.error_logger = getLogger("err." + self.primary_converter.module_name)
 
