@@ -107,9 +107,7 @@ def add_parser_fn_store_fetch(subparsers):
         "--pw", default=None, help="password of OakVar store account"
     )
     parser_cli_store_fetch.add_argument(
-        "--rebuild-db",
-        action="store_true",
-        help="rebuilds the store cache db"
+        "--rebuild-db", action="store_true", help="rebuilds the store cache db"
     )
     parser_cli_store_fetch.add_argument(
         "--clean", action="store_true", help="erase cache and fetch afresh"

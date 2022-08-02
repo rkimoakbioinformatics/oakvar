@@ -252,7 +252,9 @@ def update(args, __name__="module update"):
     requested_modules = search_local(*modules)
     update_strategy = args.get("strategy")
     status_table = [["Name", "New Version", "Size"]]
-    updates, _, reqs_failed = get_updatable(modules=modules, requested_modules=requested_modules, strategy=update_strategy)
+    updates, _, reqs_failed = get_updatable(
+        modules=modules, requested_modules=requested_modules, strategy=update_strategy
+    )
     if reqs_failed:
         msg = "Newer versions of ({}) are available, but would break dependencies. You may use --strategy=force to force installation.".format(
             ", ".join(reqs_failed.keys())
@@ -585,6 +587,11 @@ def add_parser_fn_module_pack(subparsers):
         "--outdir",
         default=".",
         help="Directory to make code and data zip files in",
+    )
+    parser_cli_module_pack.add_argument(
+        "--code-only",
+        action="store_true",
+        help="pack code only",
     )
     parser_cli_module_pack.add_argument(
         "--quiet", action="store_true", default=None, help="run quietly"
