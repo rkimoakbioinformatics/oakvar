@@ -158,7 +158,7 @@ def list_remote(module_type=None):
     return module_list(module_type=module_type)
 
 
-def get_updatable(modules=[], strategy="consensus"):
+def get_updatable(modules=[], requested_modules=[], strategy="consensus"):
     from distutils.version import LooseVersion
     from pkg_resources import Requirement
     from collections import defaultdict
@@ -171,6 +171,8 @@ def get_updatable(modules=[], strategy="consensus"):
         raise ValueError('Unknown strategy "{}"'.format(strategy))
     if not modules:
         modules = list_local()
+    else:
+        modules = requested_modules
     reqs_by_dep = defaultdict(dict)
     all_versions = {}
     for mname in list_local():

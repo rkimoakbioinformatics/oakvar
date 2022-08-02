@@ -248,25 +248,18 @@ def update(args, __name__="module update"):
     from types import SimpleNamespace
 
     quiet = args.get("quiet", True)
-    # ret = {"msg": []}
     modules = args.get("modules", [])
-    if not modules:
-        from ..exceptions import ArgumentError
-
-        e = ArgumentError("no modules was given.")
-        e.traceback = False
-        raise e
     requested_modules = search_local(*modules)
     update_strategy = args.get("strategy")
     status_table = [["Name", "New Version", "Size"]]
-    updates, _, reqs_failed = get_updatable(requested_modules, strategy=update_strategy)
+    updates, _, reqs_failed = get_updatable(modules=modules, requested_modules=requested_modules, strategy=update_strategy)
     if reqs_failed:
         msg = "Newer versions of ({}) are available, but would break dependencies. You may use --strategy=force to force installation.".format(
             ", ".join(reqs_failed.keys())
         )
         quiet_print(msg, args=args)
     if not updates:
-        msg = "No module updates are needed"
+        msg = "No module to update was found"
         quiet_print(msg, args=args)
         return True
     for mname, update_info in updates.items():
