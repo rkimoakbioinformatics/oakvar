@@ -326,7 +326,12 @@ def fetch_ov_store_cache(
         elif status_code == 500:
             raise StoreServerError()
         return False
-    if not rebuild_db and not clean and local_last_updated and local_last_updated >= server_last_updated:
+    if (
+        not rebuild_db
+        and not clean
+        and local_last_updated
+        and local_last_updated >= server_last_updated
+    ):
         quiet_print("No store update to fetch", args=args)
         return True
     if clean or rebuild_db:

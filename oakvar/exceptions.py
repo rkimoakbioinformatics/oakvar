@@ -118,7 +118,7 @@ class InvalidInputFormat(ExpectedException):
     halt = True
 
     def __init__(self, fmt=""):
-        super().__init__(f"invalid input format {fmt}")
+        super().__init__(f"invalid input format: {fmt}")
 
 
 class SystemMissingException(ExpectedException):

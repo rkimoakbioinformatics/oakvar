@@ -340,14 +340,16 @@ class MasterCravatConverter(object):
                     if check_success:
                         valid_formats.append(converter_name)
                 if len(valid_formats) == 0:
-                    raise InvalidInputFormat()
+                    raise InvalidInputFormat(f"no converter for input found")
                 elif len(valid_formats) > 1:
                     raise InvalidInputFormat(f"ambiguous {','.join(valid_formats)}")
                 else:
                     self.input_format = valid_formats[0]
             else:
                 if self.input_format is None:
-                    raise InvalidInputFormat()
+                    raise InvalidInputFormat(
+                        f"--input-format should be given with pipe input"
+                    )
         self.primary_converter = self.converters[self.input_format]
         self._set_converter_properties(self.primary_converter)
         if self.input_paths is None:
