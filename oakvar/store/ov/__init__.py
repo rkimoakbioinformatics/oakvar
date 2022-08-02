@@ -79,9 +79,16 @@ def get_register_args_of_module(module_name: str, args={}) -> Optional[dict]:
     from ...exceptions import ArgumentError
     from ...util.util import is_url
     from json import dumps
+    from ...util.util import quiet_print
+    from ...module.local import get_local_module_info
 
     rmi = get_remote_manifest_from_local(module_name, args=args)
     if not rmi or not args:
+        return None
+    if not rmi.get("data_version"):
+        mi = get_local_module_info(module_name)
+        if mi:
+            quiet_print(f"data_version should be defined in {mi.conf_path}", args=args)
         return None
     rmi["code_url"] = args.get("code_url")
     rmi["data_url"] = args.get("data_url") or ""
