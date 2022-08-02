@@ -629,16 +629,17 @@ class BaseAnnotator(object):
         log_handler.setFormatter(formatter)
         self.logger.addHandler(log_handler)
         self.error_logger = logging.getLogger("err." + self.module_name)
-        if self.output_basename != "__dummy__":
-            error_log_path = os.path.join(
-                self.output_dir, self.output_basename + ".err"
-            )
-            error_log_handler = logging.FileHandler(error_log_path, "a")
-        else:
-            error_log_handler = logging.StreamHandler()
-        formatter = logging.Formatter("%(name)s\t%(message)s")
-        error_log_handler.setFormatter(formatter)
-        self.error_logger.addHandler(error_log_handler)
+        # do not add handler again. This will duplicate .err entries.
+        #if self.output_basename != "__dummy__":
+        #    error_log_path = os.path.join(
+        #        self.output_dir, self.output_basename + ".err"
+        #    )
+        #    error_log_handler = logging.FileHandler(error_log_path, "a")
+        #else:
+        #    error_log_handler = logging.StreamHandler()
+        #formatter = logging.Formatter("%(name)s\t%(message)s")
+        #error_log_handler.setFormatter(formatter)
+        #self.error_logger.addHandler(error_log_handler)
         self.unique_excs = []
 
     # Gets the input dict from both the input file, and
