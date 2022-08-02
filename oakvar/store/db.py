@@ -258,10 +258,11 @@ def drop_ov_store_cache(conf=None, conn=None, cursor=None, args={}):
             q = f"drop table if exists {table}"
             cursor.execute(q)
             conn.commit()
-    for cache_key in cache_dirs:
-        fp = get_cache_dir(cache_key)
-        if exists(fp):
-            rmtree(fp)
+    if args.get("clean"):
+        for cache_key in cache_dirs:
+            fp = get_cache_dir(cache_key)
+            if exists(fp):
+                rmtree(fp)
 
 
 @db_func
@@ -318,21 +319,28 @@ def fetch_ov_store_cache(
     server_last_updated, status_code = get_server_last_updated()
     local_last_updated = get_local_last_updated()
     clean = args.get("clean")
+    rebuild_db = args.get("rebuild_db")
     if not server_last_updated:
         if status_code == 401:
             raise AuthorizationError()
         elif status_code == 500:
             raise StoreServerError()
         return False
-    if not clean and local_last_updated and local_last_updated >= server_last_updated:
+    if not rebuild_db and not clean and local_last_updated and local_last_updated >= server_last_updated:
         quiet_print("No store update to fetch", args=args)
         return True
-    if clean:
+    if clean or rebuild_db:
+        drop_ov_store_cache(args=args)
+        create_ov_store_cache(args=args)
         args["publish_time"] = ""
     else:
         args["publish_time"] = local_last_updated
     fetch_summary_cache(args=args)
     fetch_versions_cache(args=args)
+    if clean:
+        args["publish_time"] = ""
+    else:
+        args["publish_time"] = local_last_updated
     fetch_readme_cache(args=args)
     fetch_logo_cache(args=args)
     fetch_conf_cache(args=args)
@@ -473,7 +481,7 @@ def fetch_readme_cache(args={}, conn=None, cursor=None, conf={}):
 
 
 @db_func
-def fetch_summary_cache(args={}, conn=None, cursor=None):
+def fetch_summary_cache(args={}, conn=Any, cursor=Any):
     from requests import Session
     from .ov.account import get_current_id_token
     from ..exceptions import StoreServerError
@@ -481,8 +489,7 @@ def fetch_summary_cache(args={}, conn=None, cursor=None):
     from .ov import get_store_url
     from ..util.util import quiet_print
 
-    if not conn or not cursor:
-        return
+    _ = conn
     url = f"{get_store_url()}/fetch_summary"
     id_token = get_current_id_token(args=args)
     params = {"idToken": id_token, "publish_time": args.get("publish_time")}

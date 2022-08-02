@@ -85,10 +85,10 @@ def get_register_args_of_module(module_name: str, args={}) -> Optional[dict]:
     rmi = get_remote_manifest_from_local(module_name, args=args)
     if not rmi or not args:
         return None
-    if not rmi.get("data_version"):
+    if not rmi.get("data_version") and not rmi.get("no_data"):
         mi = get_local_module_info(module_name)
         if mi:
-            quiet_print(f"data_version should be defined in {mi.conf_path}", args=args)
+            quiet_print(f"data_version should be given or no_data should be set to true in {mi.conf_path}", args=args)
         return None
     rmi["code_url"] = args.get("code_url")
     rmi["data_url"] = args.get("data_url") or ""

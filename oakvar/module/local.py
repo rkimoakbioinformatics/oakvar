@@ -424,9 +424,7 @@ def get_remote_manifest_from_local(module_name: str, args={}):
         quiet_print(f"code_version should be defined in {module_name}.yml", args=args)
         return None
     rmi["data_version"] = module_conf.get("data_version", "")
-    # if not rmi["data_version"]:
-    #    quiet_print(f"data_version should be defined in {module_name}.yml", args=args)
-    #    return None
+    rmi["no_data"] = module_conf.get("no_data", False)
     rmi["readme"] = module_info.readme
     rmi["conf"] = module_conf
     rmi["logo"] = get_logo_b64(module_name)
