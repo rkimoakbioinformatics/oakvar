@@ -782,6 +782,7 @@ class MasterCravatConverter(object):
         and message. Exceptions are also written to the log file once, with the
         traceback.
         """
+        _ = line
         if not self.logger or not self.error_logger:
             from oakvar.exceptions import LoggerError
 

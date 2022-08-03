@@ -375,6 +375,7 @@ class BaseMapper(object):
     def _log_runtime_error(self, ln, line, e, fn=None):
         import traceback
 
+        _ = line
         err_str = traceback.format_exc().rstrip()
         if (
             self.logger is not None

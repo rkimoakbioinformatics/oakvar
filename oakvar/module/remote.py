@@ -134,7 +134,7 @@ def get_readme(module_name: str) -> Optional[str]:
 def get_install_deps(
     module_name, version=None, skip_installed=True
 ) -> Tuple[dict, dict]:
-    from distutils.version import LooseVersion
+    from packaging.version import Version
     from pkg_resources import Requirement
     from .local import get_local_module_info
     from ..store import remote_module_latest_version
@@ -159,14 +159,14 @@ def get_install_deps(
             if local_info and local_info.version and local_info.version in req:
                 continue
         # Select the highest matching version
-        lvers = []
+        lvers = {}
         if rem_info and rem_info.versions is not None:
-            lvers = [LooseVersion(v) for v in rem_info.versions]
-        lvers.sort(reverse=True)
-        highest_matching = None
-        for lv in lvers:
-            if lv.vstring in req:
-                highest_matching = lv.vstring
+            lvers = {v: Version(v) for v in rem_info.versions}
+        #lvers.sort(reverse=True)
+        highest_matching = ""
+        for v, lv in lvers.items():
+            if v in req and lv > Version(highest_matching):
+                highest_matching = v
                 break
         # Dont include if no matching version exists
         if highest_matching:

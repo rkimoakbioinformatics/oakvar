@@ -221,13 +221,13 @@ class Aggregator(object):
             return
         if self.dbconn is None or self.cursor is None:
             return
-        from distutils.version import LooseVersion
+        from packaging.version import Version
         from ..util.inout import ColumnDefinition
         from ..util.admin_util import get_current_package_version
 
         header_table = self.level + "_header"
         coldefs = []
-        if LooseVersion(get_current_package_version()) >= LooseVersion("1.5.0"):
+        if Version(get_current_package_version()) >= Version("1.5.0"):
             sql = f"select col_def from {header_table}"
             self.cursor.execute(sql)
             for row in self.cursor:

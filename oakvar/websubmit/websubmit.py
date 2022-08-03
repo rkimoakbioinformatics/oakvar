@@ -8,13 +8,14 @@ import sys
 import traceback
 import shutil
 from aiohttp import web
-from distutils.version import LooseVersion
 import glob
 import platform
 import signal
 import asyncio
 from multiprocessing import Process, Manager, Queue
 from queue import Empty
+from importlib.util import find_spec
+from importlib import import_module
 
 report_generation_ps = {}
 valid_report_types = None
@@ -33,7 +34,11 @@ job_worker = None
 job_queue = None
 run_jobs_info = {}
 logger = None
-cravat_multiuser = None
+if find_spec("cravat_multiuser"):
+    cravat_multiuser = import_module("cravat_multiuser")
+else:
+    cravat_multiuser = None
+
 
 
 class FileRouter(object):
@@ -52,9 +57,7 @@ class FileRouter(object):
         from ..system import get_jobs_dir
 
         root_jobs_dir = get_jobs_dir()
-        if self.servermode and self.server_ready:
-            import cravat_multiuser
-
+        if self.servermode and self.server_ready and cravat_multiuser:
             username = await cravat_multiuser.get_username(request)
         else:
             username = "default"
@@ -82,10 +85,10 @@ class FileRouter(object):
             if self.servermode and self.server_ready:
                 if given_username is not None:
                     username = given_username
-                else:
-                    import cravat_multiuser
-
+                elif cravat_multiuser:
                     username = await cravat_multiuser.get_username(request)
+                else:
+                    username = None
                 if username is None:
                     job_dir = None
                 else:
@@ -277,9 +280,7 @@ def get_next_job_id():
 
 async def resubmit(request):
     global servermode
-    if servermode and server_ready:
-        import cravat_multiuser
-
+    if servermode and server_ready and cravat_multiuser:
         r = await cravat_multiuser.is_loggedin(request)
         if r == False:
             return web.json_response({"status": "notloggedin"})
@@ -370,9 +371,7 @@ async def submit(request):
                 }
             ),
         )
-    if servermode and server_ready:
-        import cravat_multiuser
-
+    if servermode and server_ready and cravat_multiuser:
         r = await cravat_multiuser.is_loggedin(request)
         if r == False:
             return web.json_response({"status": "notloggedin"})
@@ -455,9 +454,7 @@ async def submit(request):
 
         assembly = default_assembly
     run_args.append(assembly)
-    if servermode and server_ready:
-        import cravat_multiuser
-
+    if servermode and server_ready and cravat_multiuser:
         await cravat_multiuser.update_user_settings(request, {"lastAssembly": assembly})
     else:
         set_user_conf_prop("last_assembly", assembly)
@@ -495,9 +492,7 @@ async def submit(request):
         job_queue.put(qitem)
         status = {"status": "Submitted"}
         job.set_info_values(status=status)
-        if servermode and server_ready:
-            import cravat_multiuser
-
+        if servermode and server_ready and cravat_multiuser:
             await cravat_multiuser.add_job_info(request, job)
         # makes temporary status.json
         status_json = {}
@@ -568,6 +563,7 @@ def find_files_by_ending(d, ending):
 
 async def get_job(request, job_id):
     from ..util.admin_util import get_max_version_supported_for_migration
+    from packaging.version import Version
 
     filerouter = get_filerouter()
     job_dir = await filerouter.job_dir(request, job_id)
@@ -659,7 +655,7 @@ async def get_job(request, job_id):
     if "open_cravat_version" not in job.info:
         job.info["open_cravat_version"] = "0.0.0"
     if (
-        LooseVersion(job.info["open_cravat_version"])
+        Version(job.info["open_cravat_version"])
         < get_max_version_supported_for_migration()
     ):
         job.info["result_available"] = False
@@ -695,9 +691,7 @@ async def get_jobs(request):
 
 async def get_all_jobs(request):
     global servermode
-    if servermode and server_ready:
-        import cravat_multiuser
-
+    if servermode and server_ready and cravat_multiuser:
         r = await cravat_multiuser.is_loggedin(request)
         if r == False:
             return web.json_response({"status": "notloggedin"})
@@ -880,9 +874,7 @@ async def update_system_conf(request):
     from ..system import set_modules_dir
 
     global servermode
-    if servermode and server_ready:
-        import cravat_multiuser
-
+    if servermode and server_ready and cravat_multiuser:
         username = await cravat_multiuser.get_username(request)
         if username != "admin":
             return web.json_response(
@@ -943,13 +935,14 @@ def get_servermode(_):
 async def get_package_versions(_):
     from ..util.admin_util import get_current_package_version
     from ..util.admin_util import get_latest_package_version
+    from packaging.version import Version
 
     cur_ver = get_current_package_version()
     lat_ver = get_latest_package_version()
     if lat_ver is not None:
         cur_drop_patch = ".".join(cur_ver.split(".")[:-1])
         lat_drop_patch = ".".join(lat_ver.split(".")[:-1])
-        update = LooseVersion(lat_drop_patch) > LooseVersion(cur_drop_patch)
+        update = Version(lat_drop_patch) > Version(cur_drop_patch)
     else:
         update = False
     d = {"current": cur_ver, "latest": lat_ver, "update": update}
@@ -1185,9 +1178,7 @@ def fetch_job_queue(job_queue, run_jobs_info):
 async def redirect_to_index(request):
     global servermode
     global server_ready
-    if servermode and server_ready:
-        import cravat_multiuser
-
+    if servermode and server_ready and cravat_multiuser:
         r = await cravat_multiuser.is_loggedin(request)
         if r == False:
             url = "/server/nocache/login.html"
@@ -1327,11 +1318,10 @@ async def get_live_annotation(queries):
         t = time.time()
         dt = t - time_of_log_single_api_access
         if dt > interval_log_single_api_access:
-            import cravat_multiuser
-
-            await cravat_multiuser.admindb.write_single_api_access_count_to_db(
-                t, count_single_api_access
-            )
+            if cravat_multiuser:
+                await cravat_multiuser.admindb.write_single_api_access_count_to_db(
+                    t, count_single_api_access
+                )
             time_of_log_single_api_access = t
             count_single_api_access = 0
     chrom = queries["chrom"]

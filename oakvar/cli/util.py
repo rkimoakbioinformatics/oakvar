@@ -9,10 +9,10 @@ def ov_util_updateresult(args):
     from os import listdir
     from os.path import join, isdir, exists
     from shutil import copy
-    from distutils.version import LooseVersion
+    from packaging.version import Version
     migrate_functions = {}
     migrate_checkpoints = [
-        LooseVersion(v) for v in list(migrate_functions.keys())
+        Version(v) for v in list(migrate_functions.keys())
     ]
     migrate_checkpoints.sort()
 
@@ -53,7 +53,7 @@ def ov_util_updateresult(args):
                 print("  Result DB is too old for migration.")
                 continue
             else:
-                oc_ver = LooseVersion(r[0])
+                oc_ver = Version(r[0])
         except:
             print("  [{}] is not OakVar result DB or too old for migration.".
                   format(dbpath))
@@ -61,7 +61,7 @@ def ov_util_updateresult(args):
         if oc_ver >= max(migrate_checkpoints):
             print(f"  OakVar version of {oc_ver} does not need migration.")
             continue
-        elif oc_ver < LooseVersion("1.4.4"):
+        elif oc_ver < Version("1.4.4"):
             print(
                 f"  OakVar version of {oc_ver} is not supported for migration."
             )

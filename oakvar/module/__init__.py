@@ -159,7 +159,7 @@ def list_remote(module_type=None):
 
 
 def get_updatable(modules=[], requested_modules=[], strategy="consensus"):
-    from distutils.version import LooseVersion
+    from packaging.version import Version
     from pkg_resources import Requirement
     from collections import defaultdict
     from types import SimpleNamespace
@@ -179,7 +179,7 @@ def get_updatable(modules=[], requested_modules=[], strategy="consensus"):
         local_info = get_local_module_info(mname)
         remote_info = get_remote_module_info(mname)
         if remote_info:
-            all_versions[mname] = sorted(remote_info.versions, key=LooseVersion)
+            all_versions[mname] = sorted(remote_info.versions, key=Version)
         if local_info is not None:
             req_strings = local_info.conf.get("requires", [])
             reqs = [Requirement.parse(s) for s in req_strings]
@@ -203,7 +203,7 @@ def get_updatable(modules=[], requested_modules=[], strategy="consensus"):
             selected_version
             and local_info
             and local_info.version
-            and LooseVersion(selected_version) <= LooseVersion(local_info.version)
+            and Version(selected_version) <= Version(local_info.version)
         ):
             continue
         if reqs:
@@ -228,7 +228,7 @@ def get_updatable(modules=[], requested_modules=[], strategy="consensus"):
             and remote_info
             and local_info
             and local_info.version
-            and LooseVersion(selected_version) > LooseVersion(local_info.version)
+            and Version(selected_version) > Version(local_info.version)
         ):
             update_data_version = remote_module_data_version(mname, selected_version)
             installed_data_version = remote_module_data_version(
