@@ -159,15 +159,11 @@ def get_install_deps(
             if local_info and local_info.version and local_info.version in req:
                 continue
         # Select the highest matching version
-        lvers = {}
-        if rem_info and rem_info.versions is not None:
-            lvers = {v: Version(v) for v in rem_info.versions}
-        #lvers.sort(reverse=True)
         highest_matching = ""
-        for v, lv in lvers.items():
-            if v in req and lv > Version(highest_matching):
-                highest_matching = v
-                break
+        if rem_info and rem_info.versions:
+            for v in rem_info.versions:
+                if Version(v) > Version(highest_matching):
+                    highest_matching = v
         # Dont include if no matching version exists
         if highest_matching:
             deps[req.unsafe_name] = highest_matching
