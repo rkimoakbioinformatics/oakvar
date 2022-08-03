@@ -41,6 +41,7 @@ class ModuleCache(object):
         self._modules_dir = get_modules_dir()
         self.local = LocalModuleCache()
         self.remote = {}
+        self.remote_ls = {}
         self.remote_readme = {}
         self.remote_config = {}
         self.download_counts = {}
