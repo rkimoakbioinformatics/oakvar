@@ -2,6 +2,23 @@ from typing import Optional
 from typing import Tuple
 
 
+class RemoteModuleLs:
+    def __init__(self, __name__, **kwargs):
+        from ..store.db import latest_module_version_size
+
+        self.name = kwargs.get("name") or ""
+        self.title = kwargs.get("title")
+        self.type = kwargs.get("type")
+        latest = latest_module_version_size(self.name)
+        if not latest:
+            return
+        self.size = latest["code_size"] + latest["data_size"]
+        self.latest_code_version = latest["code_version"]
+        self.latest_data_source = latest["data_source"]
+        self.latest_data_version = latest["data_version"]
+        self.tags = kwargs.get("tags") or []
+
+
 class RemoteModule(object):
     def to_info(self):
         d = {
@@ -186,6 +203,20 @@ def search_remote(*patterns, module_type=None):
             matching_names.append(module_name)
     matching_names.sort()
     return matching_names
+
+
+def get_remote_module_info_ls(module_name, version=None) -> Optional[RemoteModuleLs]:
+    from .cache import get_module_cache
+    from ..store import remote_module_info_ls_latest_version
+
+    mc = get_module_cache()
+    if module_name not in mc.remote:
+        mc.remote_ls[module_name] = {}
+    if version in mc.remote_ls[module_name]:
+        return mc.remote_ls[module_name][version]
+    else:
+        module_info = remote_module_info_ls_latest_version(module_name)
+        return module_info
 
 
 def get_remote_module_info(module_name, version=None) -> Optional[RemoteModule]:

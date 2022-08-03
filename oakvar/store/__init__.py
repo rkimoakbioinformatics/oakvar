@@ -1,5 +1,6 @@
 from typing import Optional
 from ..module.remote import RemoteModule
+from ..module.remote import RemoteModuleLs
 
 
 def blank_stage_handler(*__args__, **__kwargs__):
@@ -207,6 +208,13 @@ def remote_module_latest_version(module_name) -> Optional[str]:
 
     version = module_latest_code_version(module_name)
     return version
+
+
+def remote_module_info_ls_latest_version(module_name) -> Optional[RemoteModuleLs]:
+    from .db import module_info_ls
+
+    module_info = module_info_ls(module_name)
+    return module_info
 
 
 def remote_module_info_latest_version(module_name) -> Optional[RemoteModule]:

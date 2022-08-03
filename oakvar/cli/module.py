@@ -379,9 +379,9 @@ def list_modules(args):
     from ..module.remote import search_remote
     from ..module.local import search_local
     from ..module.local import get_local_module_info
-    from ..module.remote import get_remote_module_info
+    from ..module.remote import get_remote_module_info_ls
     from ..util.util import humanize_bytes
-    from ..module.remote import RemoteModule
+    from ..module.remote import RemoteModuleLs
 
     fmt = args.get("fmt", "return")
     nameonly = args.get("nameonly", False)
@@ -430,7 +430,7 @@ def list_modules(args):
     if l:
         for module_name in l:
             if available:
-                module_info = get_remote_module_info(module_name)
+                module_info = get_remote_module_info_ls(module_name)
                 if module_info:
                     add_local_module_info_to_remote_module_info(module_info)
             else:
@@ -444,9 +444,9 @@ def list_modules(args):
                     continue
                 if not set(types).intersection(module_info.tags):
                     continue
-            if module_info.hidden and not args.get("include_hidden"):
-                continue
-            if isinstance(module_info, RemoteModule):
+            #if module_info.hidden and not args.get("include_hidden"):
+            #    continue
+            if isinstance(module_info, RemoteModuleLs):
                 size = module_info.size
             else:
                 size = module_info.get_size()

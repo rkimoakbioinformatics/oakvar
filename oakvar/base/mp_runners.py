@@ -29,7 +29,8 @@ def annot_from_queue(start_queue, end_queue, queue_populated, status_writer):
         try:
             kwargs["status_writer"] = status_writer
             annotator_class = load_class(module.script_path, "Annotator")
-            annotator_class = load_class(module.script_path, "CravatAnnotator")
+            if not annotator_class:
+                annotator_class = load_class(module.script_path, "CravatAnnotator")
             annotator = annotator_class(kwargs)
             annotator.run()
             end_queue.put(module.name)

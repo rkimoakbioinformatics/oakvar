@@ -50,6 +50,27 @@ def find_name_store(
 
 
 @db_func
+def latest_module_version_size(module_name: str, conn=Any, cursor=Any) -> Optional[dict]:
+    from packaging.version import Version
+    q = f"select store, code_version, data_version, data_source, code_size, data_size from versions where name=?"
+    cursor.execute(q, (module_name,))
+    ret = cursor.fetchall()
+    latest_code_version = ""
+    latest_r = None
+    for r in ret:
+        if not latest_r:
+            latest_r = r
+            latest_code_version = r[1]
+        elif Version(r[1]) > Version(latest_code_version):
+            latest_r = r
+            latest_code_version = r[1]
+    if latest_r:
+        return {"code_version": latest_r[1], "data_version": latest_r[2], "data_source": latest_r[3], "code_size": int(latest_r[4]), "data_size": int(latest_r[5])}
+    else:
+        return None
+
+
+@db_func
 def module_code_versions(module_name, conn=None, cursor=None) -> Optional[List[str]]:
     if not conn or not cursor:
         return None
@@ -160,6 +181,28 @@ def module_latest_code_version(module_name, conn=None, cursor=None):
     code_versions = [r[0] for r in cursor.fetchall()]
     latest_code_version = get_latest_version(code_versions)
     return latest_code_version
+
+
+@db_func
+def module_info_ls(module_name, conn=None, cursor=None):
+    import sqlite3
+    from .consts import summary_table_cols
+    from ..module.remote import RemoteModuleLs
+
+    if not conn or not cursor:
+        return None
+    cursor.row_factory = sqlite3.Row
+    q = f"select { ', '.join(summary_table_cols) } from summary where name=?"
+    cursor.execute(q, (module_name,))
+    ret = cursor.fetchall()
+    module_info = None
+    for r in ret:
+        info = {}
+        for col in summary_table_cols:
+            info[col] = r[col]
+        if not module_info or info["store"] == "ov":
+            module_info = RemoteModuleLs("", **info)
+    return module_info
 
 
 @db_func
