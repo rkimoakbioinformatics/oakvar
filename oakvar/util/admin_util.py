@@ -83,7 +83,7 @@ def get_package_versions():
     import json
     from requests import get
     from requests.exceptions import ConnectionError
-    from distutils.version import LooseVersion
+    from packaging.version import Version
 
     try:
         r = get("https://pypi.org/pypi/oakvar/json", timeout=(3, None))
@@ -94,7 +94,7 @@ def get_package_versions():
     if r.status_code == 200:
         d = json.loads(r.text)
         all_vers = list(d["releases"].keys())
-        all_vers.sort(key=LooseVersion)
+        all_vers.sort(key=Version)
         return all_vers
     else:
         return None
@@ -333,6 +333,6 @@ def get_liftover_chains_dir():
 
 
 def get_max_version_supported_for_migration():
-    from distutils.version import LooseVersion
+    from packaging.version import Version
 
-    return LooseVersion("1.7.0")
+    return Version("1.7.0")

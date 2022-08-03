@@ -5,6 +5,8 @@ import logging
 from ..system.consts import log_dir_key, modules_dir_key
 from ..decorators import cli_func
 from ..decorators import cli_entry
+from importlib import import_module
+from importlib.util import find_spec
 
 SERVER_ALREADY_RUNNING = -1
 headless = None
@@ -22,6 +24,10 @@ log_dir = None
 modules_dir = None
 log_path = None
 logger = None
+if find_spec("cravat_multiuser"):
+    cravat_multiuser = import_module("cravat_multiuser")
+else:
+    cravat_multiuser = None
 
 
 def setup(args):
@@ -30,7 +36,6 @@ def setup(args):
     from ..webstore import webstore as ws
     from ..websubmit import websubmit as wu
     from asyncio import get_event_loop, set_event_loop
-    from importlib.util import find_spec
     from os.path import join, exists
 
     if logger is None or sysconf is None:
@@ -52,10 +57,8 @@ def setup(args):
         servermode = args["servermode"]
         global debug
         debug = args["debug"]
-        if servermode and find_spec("cravat_multiuser") is not None:
+        if servermode and cravat_multiuser:
             try:
-                import cravat_multiuser
-
                 loop.create_task(cravat_multiuser.setup_module())
                 global server_ready
                 server_ready = True
@@ -85,13 +88,11 @@ def setup(args):
         wr.server_ready = server_ready
         wu.filerouter.server_ready = server_ready
         wr.wu = wu
-        if server_ready:
-            import cravat_multiuser
-
-            cravat_multiuser.servermode = servermode
-            cravat_multiuser.server_ready = server_ready
-            cravat_multiuser.logger = logger
-            cravat_multiuser.noguest = args["noguest"]
+        if server_ready and cravat_multiuser:
+            setattr(cravat_multiuser, "servermode", servermode)
+            setattr(cravat_multiuser, "server_ready", server_ready)
+            setattr(cravat_multiuser, "logger" ,logger)
+            setattr(cravat_multiuser, "noguest" ,args["noguest"])
             wu.cravat_multiuser = cravat_multiuser
             ws.cravat_multiuser = cravat_multiuser
         if servermode and server_ready == False:
@@ -452,9 +453,7 @@ class WebServer(object):
         global middleware
         global server_ready
         self.app = web.Application(loop=self.loop, middlewares=[middleware])
-        if server_ready:
-            import cravat_multiuser
-
+        if server_ready and cravat_multiuser:
             cravat_multiuser.setup(self.app)
         self.setup_routes()
         self.runner = web.AppRunner(self.app)
@@ -526,9 +525,7 @@ class WebServer(object):
         routes.extend(wr.routes)
         routes.extend(wu.routes)
         global server_ready
-        if server_ready:
-            import cravat_multiuser
-
+        if server_ready and cravat_multiuser:
             cravat_multiuser.add_routes(self.app.router)
         for route in routes:
             method, path, func_name = route
@@ -575,9 +572,7 @@ async def heartbeat(request):
     from concurrent.futures._base import CancelledError
 
     ws = web.WebSocketResponse(timeout=60 * 60 * 24 * 365)
-    if servermode and server_ready:
-        import cravat_multiuser
-
+    if servermode and server_ready and cravat_multiuser:
         get_event_loop().create_task(cravat_multiuser.update_last_active(request))
     await ws.prepare(request)
     try:
@@ -675,8 +670,6 @@ def main(url=None, host=None, port=None, args={}):
 
                 raise SetupError()
             from ..system import get_system_conf
-            import cravat_multiuser
-
             try:
                 max_age = get_system_conf().get(
                     "max_session_age", 604800
@@ -685,7 +678,8 @@ def main(url=None, host=None, port=None, args={}):
                     "session_clean_interval", 3600
                 )  # default 1 hr
                 while True:
-                    await cravat_multiuser.admindb.clean_sessions(max_age)
+                    if cravat_multiuser:
+                        await cravat_multiuser.admindb.clean_sessions(max_age)
                     await sleep(interval)
             except Exception as e:
                 from traceback import print_exc

@@ -521,7 +521,7 @@ class Tester:
             self.module_name = module
             module = get_local_module_info(self.module_name)
         self.module = module
-        if not module:
+        if not module or not module.name:
             raise ModuleLoadingError(self.module_name)
         if not exists(module.directory) or not module.script_exists:
             raise Exception(

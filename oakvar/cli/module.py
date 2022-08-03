@@ -143,7 +143,7 @@ def collect_module_name_and_versions(modules, args=None):
 
 @cli_func
 def install(args, __name__="module install"):
-    from distutils.version import LooseVersion
+    from packaging.version import Version
     from ..module.local import get_local_module_info
     from ..module.remote import get_remote_module_info
     from ..module.remote import get_install_deps
@@ -170,7 +170,7 @@ def install(args, __name__="module install"):
         if (
             not args.get("force")
             and local_info
-            and LooseVersion(local_info.version) == LooseVersion(version)
+            and Version(local_info.version or "") == Version(version)
         ):
             quiet_print(
                 f"{module_name}=={version} is already installed. Use -f/--force to overwrite",

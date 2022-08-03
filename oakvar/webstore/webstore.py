@@ -11,6 +11,8 @@ import shutil
 import concurrent.futures
 from ..system import get_system_conf
 from ..module import InstallProgressHandler
+from importlib import import_module
+from importlib.util import find_spec
 
 system_conf = get_system_conf()
 install_manager = None
@@ -21,8 +23,10 @@ local_modules_changed = None
 server_ready = False
 servermode = None
 logger = None
-cravat_multiuser = None
-
+if find_spec("cravat_multiuser"):
+    cravat_multiuser = import_module("cravat_multiuser")
+else:
+    cravat_multiuser = None
 
 class InstallProgressMpDict(InstallProgressHandler):
     def __init__(self, module_name, module_version, install_state, quiet=True):
@@ -180,9 +184,7 @@ async def uninstall_module(request):
     from ..module.cache import get_module_cache
 
     global servermode
-    if servermode and server_ready:
-        import cravat_multiuser
-
+    if servermode and server_ready and cravat_multiuser:
         r = await cravat_multiuser.is_admin_loggedin(request)
         if r == False:
             response = "failure"
@@ -260,9 +262,7 @@ async def connect_websocket(request):
 async def queue_install(request):
     global install_queue
     global servermode
-    if servermode and server_ready:
-        import cravat_multiuser
-
+    if servermode and server_ready and cravat_multiuser:
         r = await cravat_multiuser.is_admin_loggedin(request)
         if r == False:
             response = "notadmin"
@@ -292,9 +292,7 @@ async def get_base_modules(_):
 
 async def install_base_modules(request):
     global servermode
-    if servermode and server_ready:
-        import cravat_multiuser
-
+    if servermode and server_ready and cravat_multiuser:
         r = await cravat_multiuser.is_admin_loggedin(request)
         if r == False:
             response = "failed"
@@ -398,9 +396,7 @@ async def update_remote(request):
     from ..module.cache import get_module_cache
     from ..store.db import fetch_ov_store_cache
 
-    if servermode and server_ready:
-        import cravat_multiuser
-
+    if servermode and server_ready and cravat_multiuser:
         r = await cravat_multiuser.is_admin_loggedin(request)
         if r == False:
             response = "notadmin"

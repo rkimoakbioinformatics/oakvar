@@ -384,7 +384,7 @@ def detect_encoding(path):
 
 
 def get_job_version(dbpath, platform_name):
-    from distutils.version import LooseVersion
+    from packaging.version import Version
     import sqlite3
 
     db = sqlite3.connect(dbpath)
@@ -394,22 +394,22 @@ def get_job_version(dbpath, platform_name):
     r = c.fetchone()
     db_version = None
     if r is not None:
-        db_version = LooseVersion(r[0])
+        db_version = Version(r[0])
     return db_version
 
 
 def is_compatible_version(dbpath):
     from .admin_util import get_max_version_supported_for_migration
-    from distutils.version import LooseVersion
+    from packaging.version import Version
     from pkg_resources import get_distribution
 
     max_version_supported_for_migration = get_max_version_supported_for_migration()
     try:
-        ov_version = LooseVersion(get_distribution("oakvar").version)
+        ov_version = Version(get_distribution("oakvar").version)
     except:
         ov_version = None
     try:
-        oc_version = LooseVersion(get_distribution("open-cravat").version)
+        oc_version = Version(get_distribution("open-cravat").version)
     except:
         oc_version = None
     job_version_ov = get_job_version(dbpath, "oakvar")
@@ -727,10 +727,9 @@ def load_yml_conf(yml_conf_path):
 
 
 def compare_version(v1, v2):
-    from distutils.version import LooseVersion
-
-    sv1 = LooseVersion(v1)
-    sv2 = LooseVersion(v2)
+    from packaging.version import Version
+    sv1 = Version(v1)
+    sv2 = Version(v2)
     if sv1 == sv2:
         return 0
     elif sv1 > sv2:
@@ -808,14 +807,14 @@ def get_email_from_args(args={}) -> Optional[str]:
 
 
 def get_latest_version(versions: list):
-    from distutils.version import LooseVersion
+    from packaging.version import Version
 
     latest_version = ""
     for version in versions:
         if not latest_version:
             latest_version = version
             continue
-        if LooseVersion(version) > LooseVersion(latest_version):
+        if Version(version) > Version(latest_version):
             latest_version = version
     return latest_version
 
