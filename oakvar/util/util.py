@@ -296,7 +296,6 @@ def load_class(path, class_name=None):
     try:
         module = import_module(module_name)
     except Exception as _:
-        print_exc()
         try:
             if class_name:
                 spec = spec_from_file_location(class_name, path)
