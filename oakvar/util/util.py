@@ -286,7 +286,7 @@ def load_class(path, class_name=None):
     from importlib import import_module
     import sys
     import inspect
-    from traceback import print_exc
+    from ..exceptions import ModuleLoadingError
 
     path_dir = dirname(path)
     sys.path = [path_dir] + sys.path
@@ -305,8 +305,7 @@ def load_class(path, class_name=None):
                     if loader is not None:
                         loader.exec_module(module)
         except Exception as _:
-            print_exc()
-            raise
+            raise ModuleLoadingError(module_name)
     if module:
         if class_name:
             if hasattr(module, class_name):

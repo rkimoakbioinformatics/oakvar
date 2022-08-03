@@ -17,6 +17,9 @@ class RemoteModuleLs:
         self.latest_data_source = latest["data_source"]
         self.latest_data_version = latest["data_version"]
         self.tags = kwargs.get("tags") or []
+        self.installed = False
+        self.local_code_version = ""
+        self.local_data_source = ""
 
 
 class RemoteModule(object):
