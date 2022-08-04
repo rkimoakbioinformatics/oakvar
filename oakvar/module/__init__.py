@@ -81,7 +81,7 @@ def get_readme(module_name):
     if exists_local:
         local_info = get_local_module_info(module_name)
         if local_info and exists(local_info.readme_path):
-            local_readme = open(local_info.readme_path).read()
+            local_readme = open(local_info.readme_path, encoding='utf-8').read()
         else:
             local_readme = ""
         if local_info and remote_ver:
