@@ -180,7 +180,7 @@ def get_updatable(modules=[], requested_modules=[], strategy="consensus"):
         remote_info = get_remote_module_info(mname)
         if remote_info:
             all_versions[mname] = sorted(remote_info.versions, key=Version)
-        if local_info is not None:
+        if local_info:
             req_strings = local_info.conf.get("requires", [])
             reqs = [Requirement.parse(s) for s in req_strings]
             for req in reqs:
