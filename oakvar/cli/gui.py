@@ -485,28 +485,32 @@ class WebServer(object):
             return False
         module_names = listdir(webapps_dir)
         for module_name in module_names:
-            module_dir = join(webapps_dir, module_name)
-            pypath = join(module_dir, "route.py")
-            if exists(pypath):
-                spec = spec_from_file_location("route", pypath)
-                if spec is None:
-                    from ..exceptions import ModuleLoadingError
+            try:
+                module_dir = join(webapps_dir, module_name)
+                pypath = join(module_dir, "route.py")
+                if exists(pypath):
+                    spec = spec_from_file_location("route", pypath)
+                    if spec is None:
+                        from ..exceptions import ModuleLoadingError
 
-                    raise ModuleLoadingError(module_name)
-                module = module_from_spec(spec)
-                if spec.loader is None:
-                    from ..exceptions import ModuleLoadingError
+                        raise ModuleLoadingError(module_name)
+                    module = module_from_spec(spec)
+                    if spec.loader is None:
+                        from ..exceptions import ModuleLoadingError
 
-                    raise ModuleLoadingError(module_name)
-                spec.loader.exec_module(module)
-                if self.app is None:
-                    from ..exceptions import SetupError
+                        raise ModuleLoadingError(module_name)
+                    spec.loader.exec_module(module)
+                    if self.app is None:
+                        from ..exceptions import SetupError
 
-                    raise SetupError()
-                for route in module.routes:
-                    method, path, func_name = route
-                    path = f"/webapps/{module_name}/" + path
-                    self.app.router.add_route(method, path, func_name)
+                        raise SetupError()
+                    for route in module.routes:
+                        method, path, func_name = route
+                        path = f"/webapps/{module_name}/" + path
+                        self.app.router.add_route(method, path, func_name)
+            except Exception as e:
+                logger.error(f"error loading webapp {module_name}")
+                logger.exception(e)
         return True
 
     def setup_routes(self):
