@@ -13,6 +13,7 @@ from ..system import get_system_conf
 from ..module import InstallProgressHandler
 from importlib import import_module
 from importlib.util import find_spec
+from typing import Optional
 
 system_conf = get_system_conf()
 install_manager = None
@@ -103,11 +104,30 @@ def fetch_install_queue(install_queue, install_state, local_modules_changed):
             local_modules_changed.set()
 
 
-###################### start from store_handler #####################
+def get_remote_manifest_cache_path():
+    from ..system import get_conf_dir
+    from os.path import join
+    return join(get_conf_dir(), "remote_manifest.json")
 
+def save_remote_manifest_cache(content: dict):
+    from json import dump
+    cache_path = get_remote_manifest_cache_path()
+    with open(cache_path, "w") as wf:
+        dump(content, wf)
 
-async def get_remote_manifest(request):
+def get_remote_manifest_cache() -> Optional[dict]:
+    from os.path import exists
+    from json import load
+    cache_path = get_remote_manifest_cache_path()
+    if exists(cache_path):
+        with open(cache_path) as f:
+            content = load(f)
+            return content
+    return None
+
+def make_remote_manifest():
     from ..store.db import get_manifest
+    from ..consts import module_tag_desc
 
     content = {"data": {}, "tagdesc": {}}
     try:
@@ -126,7 +146,15 @@ async def get_remote_manifest(request):
         for module, version in temp_q:
             content["data"][module]["queued"] = True
             install_queue.put({"module": module, "version": version})
-        content["tagdesc"] = await get_tag_desc(request)
+        content["tagdesc"] = module_tag_desc
+    return content
+
+async def get_remote_manifest(_):
+    content = get_remote_manifest_cache()
+    if content:
+        return web.json_response(content)
+    content = make_remote_manifest()
+    save_remote_manifest_cache(content)
     return web.json_response(content)
 
 
@@ -404,6 +432,8 @@ async def update_remote(request):
     module_cache = get_module_cache()
     fetch_ov_store_cache()
     module_cache.update_local()
+    content = make_remote_manifest()
+    save_remote_manifest_cache(content)
     return web.json_response("done")
 
 

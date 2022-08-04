@@ -52,6 +52,7 @@ def find_name_store(
 @db_func
 def latest_module_version_size(module_name: str, conn=Any, cursor=Any) -> Optional[dict]:
     from packaging.version import Version
+    _ = conn
     q = f"select store, code_version, data_version, data_source, code_size, data_size from versions where name=?"
     cursor.execute(q, (module_name,))
     ret = cursor.fetchall()
@@ -353,6 +354,9 @@ def fetch_ov_store_cache(
     from ..exceptions import AuthorizationError
     from .ov.account import login_with_token_set
     from .ov import get_server_last_updated
+    from ..webstore.webstore import make_remote_manifest
+    from ..webstore.webstore import save_remote_manifest_cache
+
 
     if not conn or not cursor:
         return False
@@ -395,6 +399,8 @@ def fetch_ov_store_cache(
     q = f"insert or replace into info ( key, value ) values ( ?, ? )"
     cursor.execute(q, (ov_store_last_updated_col, str(server_last_updated)))
     conn.commit()
+    content = make_remote_manifest()
+    save_remote_manifest_cache(content)
     quiet_print("OakVar store cache has been fetched.", args=args)
 
 
