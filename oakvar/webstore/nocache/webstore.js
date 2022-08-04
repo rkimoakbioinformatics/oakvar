@@ -65,7 +65,6 @@ function onClickStoreTagResetButton() {
         this.checked = false;
     });
     updateFilter();
-    document.getElementById('store-tag-checkbox-viewall').checked = true;
 }
 
 function onClickStoreUpdateRemoteButton() {
@@ -794,11 +793,6 @@ function updateFilter() {
     }
     populateAllModulesDiv();
     showAllModulesDiv();
-    if (filterHasValue) {
-        document.getElementById('store-tag-checkbox-viewall').checked = false;
-    } else {
-        document.getElementById('store-tag-checkbox-viewall').checked = true;
-    }
 }
 
 function onClickModuleTileAbortButton(evt) {
