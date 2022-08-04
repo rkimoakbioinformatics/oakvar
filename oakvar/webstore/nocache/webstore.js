@@ -1976,7 +1976,6 @@ function makeModuleDetailDialog(moduleName, moduleListName, moduleListPos) {
     if (typeof(email) == "string") {
         email = [email]
     }
-    console.log("@ email=", email)
     for (var i=0; i < email.length; i++) {
         addEl(d, getEl('br'))
         span = getEl('a');
