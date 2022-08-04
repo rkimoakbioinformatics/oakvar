@@ -18,7 +18,17 @@ from typing import Optional
 system_conf = get_system_conf()
 install_manager = None
 install_queue = None
-install_state = None
+install_state = {
+        "stage": "",
+        "message": "",
+        "module_name": "",
+        "module_version": "",
+        "cur_chunk": 0,
+        "total_chunks": 0,
+        "cur_size": 0,
+        "total_size": 0,
+        "update_time": time.time()
+}
 install_worker = None
 local_modules_changed = None
 server_ready = False
@@ -50,7 +60,7 @@ class InstallProgressMpDict(InstallProgressHandler):
 
         global install_worker
         global last_update_time
-        if self.install_state == None or len(self.install_state.keys()) == 0:
+        if self.install_state is None or len(self.install_state.keys()) == 0:
             self.install_state["stage"] = ""
             self.install_state["message"] = ""
             self.install_state["module_name"] = ""
@@ -60,15 +70,15 @@ class InstallProgressMpDict(InstallProgressHandler):
             self.install_state["cur_size"] = 0
             self.install_state["total_size"] = 0
             self.install_state["update_time"] = time.time()
-            last_update_time = self.install_state["update_time"]
+            #last_update_time = self.install_state["update_time"]
         self.cur_stage = stage
         self.install_state["module_name"] = self.module_name
         self.install_state["module_version"] = self.module_version
         self.install_state["stage"] = self.cur_stage
         self.install_state["message"] = self._stage_msg(self.cur_stage)
         self.install_state["kill_signal"] = False
-        self._reset_progress()
-        self.install_state["update_time"] = time.time()
+        self._reset_progress(update_time=True)
+        #self.install_state["update_time"] = time.time()
         quiet_print(self.install_state["message"], {"quiet": self.quiet})
 
     def stage_progress(self, cur_chunk, total_chunks, cur_size, total_size):
@@ -226,6 +236,7 @@ async def uninstall_module(request):
 
 
 def start_worker():
+    from time import time
     global install_worker
     global install_queue
     global install_state
@@ -234,6 +245,15 @@ def start_worker():
     install_manager = Manager()
     install_queue = install_manager.Queue()
     install_state = install_manager.dict()
+    install_state["stage"] = ""
+    install_state["message"] = ""
+    install_state["module_name"] = ""
+    install_state["module_version"] = ""
+    install_state["cur_chunk"] = ""
+    install_state["total_chunk"] = ""
+    install_state["cur_size"] = ""
+    install_state["total_size"] = ""
+    install_state["update_time"] = time()
     local_modules_changed = install_manager.Event()
     if install_worker == None:
         install_worker = Process(
@@ -249,8 +269,8 @@ async def send_socket_msg(install_ws=None):
         data = {}
         data["module"] = install_state["module_name"]
         data["msg"] = install_state["message"]
-        if "Downloading " in data["msg"]:
-            data["msg"] = data["msg"]  # + " " + str(install_state["cur_chunk"]) + "%"
+        #if "Downloading " in data["msg"]:
+        #    data["msg"] = data["msg"]  # + " " + str(install_state["cur_chunk"]) + "%"
         if install_ws is not None:
             await install_ws.send_str(json.dumps(data))
         last_update_time = install_state["update_time"]
