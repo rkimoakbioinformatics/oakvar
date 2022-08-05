@@ -361,7 +361,7 @@ class MasterCravatConverter(object):
                     if not self.primary_converter.check_format(f):
                         raise InvalidInputFormat("inconsistent input formats")
         self.logger.info(
-            f"converter: {self.primary_converter.module_name}=={self.primary_converter.version}"
+            f"version: {self.primary_converter.module_name}=={self.primary_converter.version}"
         )
         self.logger.info("input format: %s" % self.input_format)
         self.error_logger = getLogger("err." + self.primary_converter.module_name)
@@ -586,13 +586,9 @@ class MasterCravatConverter(object):
                                         wdict["alt_base"],
                                     )
                                 if not base_re.fullmatch(wdict["ref_base"]):
-                                    e = IgnoredVariant("Invalid reference base")
-                                    e.traceback = False
-                                    raise e
+                                    raise IgnoredVariant("Invalid reference base")
                                 if not base_re.fullmatch(wdict["alt_base"]):
-                                    e = IgnoredVariant("Invalid alternate base")
-                                    e.traceback = False
-                                    raise e
+                                    raise IgnoredVariant("Invalid alternate base")
                                 p, r, a = (
                                     int(wdict["pos"]),
                                     wdict["ref_base"],
@@ -642,16 +638,9 @@ class MasterCravatConverter(object):
                                     UIDMap.append(UID)
                             self.crs_writer.write_data(wdict)
                     else:
-                        e = ExpectedException(
-                            "No valid alternate allele was found in any samples."
-                        )
-                        e.traceback = False
-                        raise e
+                        raise IgnoredVariant("No valid alternate allele was found in any samples.")
                 except Exception as e:
                     self._log_conversion_error(read_lnum, l, e)
-                    # import traceback
-
-                    # traceback.print_exc()
                     continue
             f.close()
             cur_time = time()
@@ -782,6 +771,7 @@ class MasterCravatConverter(object):
         and message. Exceptions are also written to the log file once, with the
         traceback.
         """
+        from oakvar.exceptions import IgnoredVariant
         _ = line
         if not self.logger or not self.error_logger:
             from oakvar.exceptions import LoggerError
@@ -794,7 +784,7 @@ class MasterCravatConverter(object):
         err_str = format_exc().rstrip()
         if err_str not in self.unique_excs:
             self.unique_excs.append(err_str)
-            if not hasattr(e, "traceback") or e.traceback == False:
+            if isinstance(e, IgnoredVariant) or (hasattr(e, "traceback") and e.traceback == False):
                 pass
             else:
                 self.logger.error(err_str)
