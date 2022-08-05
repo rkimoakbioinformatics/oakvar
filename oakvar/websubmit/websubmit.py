@@ -196,19 +196,13 @@ class FileRouter(object):
                     with open(os.path.join(job_dir, fn)) as f:
                         try:
                             statusjson = json.load(f)
-                        except json.JSONDecodeError as e:
-                            if job_id in self.job_statuses:
-                                statusjson = self.job_statuses[job_id]
-                            else:
-                                raise e
-                        break
-                elif fn.endswith(".info.yaml"):
-                    with open(os.path.join(job_dir, fn)) as f:
-                        statusjson = yaml.safe_load(f)
-                        break
-            if statusjson != {}:
+                        except json.JSONDecodeError:
+                            statusjson = self.job_statuses.get(job_id, {})
+                        finally:
+                            break
+            if statusjson:
                 self.job_statuses[job_id] = statusjson
-        except Exception as e:
+        except Exception:
             traceback.print_exc()
             job_dir = None
             statusjson = None
@@ -243,20 +237,21 @@ class WebJob(object):
         self.info["reports"] = []
         self.info["annotators"] = ""
         self.info["annotator_version"] = ""
-        self.info["open_cravat_version"] = ""
+        self.info["open_cravat_version"] = None
         self.info["num_input_var"] = ""
         self.info["submission_time"] = ""
         self.info["reports_being_generated"] = []
         self.job_dir = job_dir
         self.job_status_fpath = job_status_fpath
         job_id = os.path.basename(job_dir)
+        self.job_id = job_id
         self.info["id"] = job_id
 
     def save_job_options(self, job_options):
         self.set_values(**job_options)
 
     def read_info_file(self):
-        if os.path.exists(self.job_status_fpath) == False:
+        if not os.path.exists(self.job_status_fpath):
             info_dict = {"status": "Error"}
         else:
             with open(self.job_status_fpath) as f:
@@ -567,16 +562,12 @@ async def get_job(request, job_id):
 
     filerouter = get_filerouter()
     job_dir = await filerouter.job_dir(request, job_id)
-    if os.path.exists(job_dir) == False:
-        job = WebJob(job_dir, None)
-        job.info["status"] = "Error"
-        return job
-    if os.path.isdir(job_dir) == False:
+    if not os.path.exists(job_dir) or not os.path.isdir(job_dir):
         job = WebJob(job_dir, None)
         job.info["status"] = "Error"
         return job
     fns = find_files_by_ending(job_dir, ".status.json")
-    if len(fns) < 1:
+    if len(fns) == 0:
         job = WebJob(job_dir, None)
         job.info["status"] = "Error"
         return job
@@ -584,17 +575,7 @@ async def get_job(request, job_id):
     status_fpath = os.path.join(job_dir, status_fname)
     job = WebJob(job_dir, status_fpath)
     job.read_info_file()
-    """
-    fns = find_files_by_ending(job_dir, '.info.yaml')
-    if len(fns) > 0:
-        info_fpath = os.path.join(job_dir, fns[0])
-        with open (info_fpath) as f:
-            info_json = yaml.safe_load('\n'.join(f.readlines()))
-            for k, v in info_json.items():
-                if k == 'status' and 'status' in job.info:
-                    continue
-                job.info[k] = v
-    """
+    print(f"@ job.info={job.info}")
     global run_jobs_info
     global job_statuses
     if "status" not in job.info:
@@ -652,12 +633,7 @@ async def get_job(request, job_id):
     job.info["reports_being_generated"] = reports_being_generated
     job.set_info_values(reports=existing_reports)
     job.info["username"] = os.path.basename(os.path.dirname(job_dir))
-    if "open_cravat_version" not in job.info:
-        job.info["open_cravat_version"] = "0.0.0"
-    if (
-        Version(job.info["open_cravat_version"])
-        < get_max_version_supported_for_migration()
-    ):
+    if "open_cravat_version" not in job.info or not job.info["open_cravat_version"] or Version(job.info["open_cravat_version"]) < get_max_version_supported_for_migration():
         job.info["result_available"] = False
     else:
         job.info["result_available"] = True
