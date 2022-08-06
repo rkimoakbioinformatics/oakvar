@@ -575,7 +575,6 @@ async def get_job(request, job_id):
     status_fpath = os.path.join(job_dir, status_fname)
     job = WebJob(job_dir, status_fpath)
     job.read_info_file()
-    print(f"@ job.info={job.info}")
     global run_jobs_info
     global job_statuses
     if "status" not in job.info:
