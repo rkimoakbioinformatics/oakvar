@@ -145,7 +145,7 @@ def get_readme(module_name: str) -> Optional[str]:
     for store in ["ov", "oc"]:
         fpath = join(get_cache_dir("readme"), store, module_name)
         if exists(fpath):
-            with open(fpath) as f:
+            with open(fpath, encoding='utf-8') as f:
                 out = "\n".join(f.readlines())
                 return out
     return None
