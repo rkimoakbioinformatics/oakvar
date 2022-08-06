@@ -211,10 +211,12 @@ class VCF2VCF:
 
         if not self.mapper_name or not self.inputs:
             return False
+        field_suffix = "OC_"
         base_re = compile("^[*]|[ATGC]+|[-]+$")
         modules = load_modules(annotators=self.annotator_names, mapper=self.mapper_name)
         col_infos = self.load_col_infos(self.annotator_names, self.mapper_name)
         all_col_names = self.get_all_col_names(col_infos, self.mapper_name)
+        mapper = modules[self.mapper_name]
         output_suffix = ".vcf"
         for p in self.inputs:
             quiet_print(f"processing {p}", args=self.args)
@@ -293,7 +295,8 @@ class VCF2VCF:
                                     "alt_base": alt,
                                 }
                                 variant = normalize_variant(variant)
-                                res = modules[self.mapper_name].map(variant)
+                                res = mapper.map(variant)
+                                res = mapper.live_report_substitute(res)
                                 if res:
                                     variant.update(res)
                                 for module_name in self.annotator_names:
@@ -339,7 +342,7 @@ class VCF2VCF:
                             values.append(value)
                         if "__" not in col_name:
                             col_name = "base__" + col_name
-                        wf.write(col_name + "=" + ",".join(values))
+                        wf.write(field_suffix + col_name + "=" + ",".join(values))
                         if col_name != all_col_names[-1]:
                             wf.write(";")
                     wf.write("\t" + "\t".join(vcf_toks[8:]) + "\n")
