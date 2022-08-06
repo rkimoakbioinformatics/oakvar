@@ -275,7 +275,7 @@ def update(args, __name__="module update"):
             if user_cont.lower() not in ["y", "yes"]:
                 return True
     for mname, update_info in updates.items():
-        args = SimpleNamespace(
+        m_args = SimpleNamespace(
             modules=[mname],
             force_data=False,
             version=update_info.version,
@@ -285,8 +285,10 @@ def update(args, __name__="module update"):
             force=False,
             skip_data=False,
             md=args.get("md", None),
+            quiet=args.get("quiet")
         )
-        if not install(args):
+        ret = install(m_args)
+        if ret is not None:
             return False
     return True
 
