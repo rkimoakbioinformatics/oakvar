@@ -346,7 +346,7 @@ def installbase(args, __name__="module installbase"):
 
     sys_conf = get_system_conf(conf=args.get("conf"))
     base_modules = sys_conf.get(base_modules_key, [])
-    args = SimpleNamespace(
+    m_args = SimpleNamespace(
         modules=base_modules,
         force_data=args.get("force_data", True),
         version=None,
@@ -358,7 +358,7 @@ def installbase(args, __name__="module installbase"):
         md=args.get("md", None),
         quiet=args.get("quiet", True),
     )
-    ret = install(args)
+    ret = install(m_args)
     return ret
 
 
