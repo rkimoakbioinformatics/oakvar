@@ -385,7 +385,7 @@ def fetch_ov_store_cache(
     drop_ov_store_cache(args=args, force=True)
     create_ov_store_cache(args=args)
     fetch_summary_cache(args=args, force=True)
-    fetch_versions_cache(args=args)
+    fetch_versions_cache(args=args, force=True)
     if clean:
         args["publish_time"] = ""
     else:
@@ -567,7 +567,7 @@ def fetch_summary_cache(args={}, conn=Any, cursor=Any, force=False):
 
 
 @db_func
-def fetch_versions_cache(args={}, conn=None, cursor=None):
+def fetch_versions_cache(args={}, conn=None, cursor=None, force=False):
     from requests import Session
     from .ov.account import get_current_id_token
     from ..exceptions import StoreServerError
@@ -590,7 +590,7 @@ def fetch_versions_cache(args={}, conn=None, cursor=None):
         elif res.status_code == 500:
             raise StoreServerError()
         return False
-    if args.get("clean"):
+    if args.get("clean") or force==True:
         q = f"delete from versions"
         cursor.execute(q)
         conn.commit()
