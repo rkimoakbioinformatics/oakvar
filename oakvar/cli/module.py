@@ -596,6 +596,13 @@ def add_parser_fn_module_pack(subparsers):
         help="pack code only",
     )
     parser_cli_module_pack.add_argument(
+        "--split",
+        type=int,
+        default=None,
+        nargs="*",
+        help="split pack files into chunks of the given size",
+    )
+    parser_cli_module_pack.add_argument(
         "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_module_pack.set_defaults(func=cli_module_pack)
@@ -679,6 +686,9 @@ def add_parser_ov_module_install(subparsers):
     )
     parser_ov_module_install.add_argument(
         "--quiet", action="store_true", default=None, help="suppress stdout output"
+    )
+    parser_ov_module_install.add_argument(
+        "--clean", action="store_true", default=False, help="removes temporary installation directory",
     )
     parser_ov_module_install.set_defaults(func=cli_module_install)
     parser_ov_module_install.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore

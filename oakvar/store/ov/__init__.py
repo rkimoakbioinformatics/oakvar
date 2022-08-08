@@ -94,11 +94,19 @@ def get_register_args_of_module(module_name: str, args={}) -> Optional[dict]:
             )
         return None
     rmi["code_url"] = args.get("code_url")
-    rmi["data_url"] = args.get("data_url") or ""
-    for v in ["code"]:  # , "data"]:
-        k = f"{v}_url"
-        if not is_url(rmi[k]) or not url_is_valid(rmi[k]):
-            raise ArgumentError(f"invalid {k}")
+    rmi["data_url"] = args.get("data_url") or []
+    for kind in ["code", "data"]:
+        k = f"{kind}_url"
+        if len(rmi[k]) > 0:
+            for url in rmi[k]:
+                try:
+                    valid = is_url(url) and url_is_valid(url)
+                except:
+                    valid = False
+                if not valid:
+                    raise ArgumentError(msg=f"invalid {kind} URL: {url}")
+    rmi["code_url"] = dumps(rmi["code_url"])
+    rmi["data_url"] = dumps(rmi["data_url"])
     rmi["overwrite"] = args.get("overwrite")
     rmi["conf"] = dumps(rmi["conf"])
     rmi["developer"] = dumps(rmi["developer"])

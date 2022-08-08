@@ -252,6 +252,7 @@ def get_updatable(modules=[], requested_modules=[], strategy="consensus"):
 def make_install_temp_dir(args={}):
     from ..system import get_modules_dir
     from os.path import join
+    from os.path import exists
     from os import makedirs
     from ..consts import install_tempdir_name
     from shutil import rmtree
@@ -260,8 +261,10 @@ def make_install_temp_dir(args={}):
     temp_dir = join(
         args.get("modules_dir"), install_tempdir_name, args.get("module_name")
     )
-    rmtree(temp_dir, ignore_errors=True)
-    makedirs(temp_dir)
+    if args.get("clean"):
+        rmtree(temp_dir, ignore_errors=True)
+    if not exists(temp_dir):
+        makedirs(temp_dir)
     args["temp_dir"] = temp_dir
 
 
@@ -300,56 +303,74 @@ def check_install_kill(args={}):
             raise KillInstallException
 
 
-def download_code(args={}):
+def download_code_or_data(kind=None, args={}):
     from ..store import download
     from os.path import join
+    from os.path import exists
+    from os.path import getsize
+    from os import remove
+    from ..store.consts import ov_store_split_file_size
+    from ..util.util import quiet_print
+    from json import loads
 
     check_install_kill(args=args)
-    args.get("stage_handler").stage_start("download_code")
+    if not kind or kind not in ["code", "data"]:
+        return
+    if args.get("stage_handler"):
+        args.get("stage_handler").stage_start(f"download_{kind}")
     zipfile_fname = (
-        args.get("module_name") + "__" + args.get("code_version") + "__code.zip"
+        args.get("module_name") + "__" + args.get(f"version") + f"__{kind}.zip"
     )
     zipfile_path = join(args.get("temp_dir"), zipfile_fname)
-    download(args.get("code_url"), zipfile_path)
-    args["code_zipfile_path"] = zipfile_path
+    urls = args.get(f"{kind}_url")
+    if urls[0] == "[": # a list of URLs
+        urls = loads(urls)
+    urls_ty = type(urls)
+    if urls_ty == str:
+        download(args.get(f"{kind}_url"), zipfile_path)
+    elif urls_ty == list:
+        download_from = 0
+        if exists(zipfile_path):
+            zs = getsize(zipfile_path)
+            if zs % ov_store_split_file_size == 0:
+                # partial download completed
+                download_from = int(getsize(zipfile_path) / ov_store_split_file_size)
+            else:
+                remove(zipfile_path)
+        with open(zipfile_path, "ab") as wf:
+            urls_len = len(urls)
+            for i in range(urls_len):
+                if i < download_from:
+                    continue
+                part_path = f"{zipfile_path}{i:03d}"
+                if exists(part_path) and getsize(part_path) == ov_store_split_file_size:
+                    continue
+                download(urls[i], part_path)
+                if i < urls_len - 1:
+                    if getsize(part_path) != ov_store_split_file_size:
+                        quiet_print(f"corrupt download {part_path} at {urls[i]}", args=args)
+                        remove(part_path)
+                        return False
+                with open(part_path, "rb") as f:
+                    wf.write(f.read())
+                remove(part_path)
+    args[f"{kind}_zipfile_path"] = zipfile_path
+    return True
 
 
-def extract_code(args={}):
+def extract_code_or_data(kind=None, args={}):
     import zipfile
     from os import remove
 
     check_install_kill(args=args)
-    args.get("stage_handler").stage_start("extract_code")
-    zf = zipfile.ZipFile(args.get("code_zipfile_path"))
+    if not kind or kind not in ["code", "data"]:
+        return
+    if args.get("stage_handler"):
+        args.get("stage_handler").stage_start(f"extract_{kind}")
+    zf = zipfile.ZipFile(args.get(f"{kind}_zipfile_path"))
     zf.extractall(args.get("temp_dir"))
     zf.close()
-    remove(args.get("code_zipfile_path"))
-
-
-def download_data(args={}):
-    from ..store import download
-    from os.path import join
-
-    check_install_kill(args=args)
-    args.get("stage_handler").stage_start("download_data")
-    zipfile_fname = (
-        args.get("module_name") + "__" + args.get("remote_data_version") + "__data.zip"
-    )
-    zipfile_path = join(args.get("temp_dir"), zipfile_fname)
-    download(args.get("data_url"), zipfile_path)
-    args["data_zipfile_path"] = zipfile_path
-
-
-def extract_data(args={}):
-    import zipfile
-    from os import remove
-
-    check_install_kill(args=args)
-    args.get("stage_handler").stage_start("extract_code")
-    zf = zipfile.ZipFile(args.get("data_zipfile_path"))
-    zf.extractall(args.get("temp_dir"))
-    zf.close()
-    remove(args.get("data_zipfile_path"))
+    remove(args.get(f"{kind}_zipfile_path"))
 
 
 def cleanup_install(args={}):
@@ -408,7 +429,6 @@ def install_module(
     quiet=True,
     args={},
 ):
-    from shutil import rmtree
     from os.path import join
     from ..exceptions import KillInstallException
     from ..store import get_module_urls
@@ -465,8 +485,10 @@ def install_module(
             args.get("module_type") + "s",
             args.get("module_name"),
         )
-        download_code(args=args)
-        extract_code(args=args)
+        if not download_code_or_data(kind="code", args=args):
+            quiet_print(f"code download failed", args=args)
+            return False
+        extract_code_or_data(kind="code", args=args)
         args["data_installed"] = False
         if (
             not skip_data
@@ -477,8 +499,10 @@ def install_module(
             )
         ):
             args["data_installed"] = True
-            download_data(args=args)
-            extract_data(args=args)
+            if not download_code_or_data(kind="data", args=args):
+                quiet_print(f"data download failed", args=args)
+                return False
+            extract_code_or_data(kind="data", args=args)
         cleanup_install(args=args)
         write_install_marks(args=args)
         get_module_cache().update_local()
@@ -486,7 +510,6 @@ def install_module(
         return True
     # except (Exception, KeyboardInterrupt, SystemExit) as e:
     except Exception as e:
-        rmtree(args.get("temp_dir"), ignore_errors=True)
         if type(e) == KillInstallException:
             if stage_handler:
                 stage_handler.stage_start("killed")

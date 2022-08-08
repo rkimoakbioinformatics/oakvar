@@ -72,6 +72,7 @@ setup(
         "python-dateutil",
         "download",
         "gdown",
+        "split-file-reader",
         "packaging",
         "Pillow",
         # below are module-specific. move them to module's yml.

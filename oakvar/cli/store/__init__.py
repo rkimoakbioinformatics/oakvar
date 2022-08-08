@@ -75,10 +75,12 @@ def add_parser_fn_store_register(subparsers):
     parser_cli_store_register.add_argument(
         "--code-url",
         required=True,
+        nargs="+",
         help="url of a code pack (made with `ov store pack`)",
     )
     parser_cli_store_register.add_argument(
         "--data-url",
+        nargs="+",
         help="url of a data pack (made with `ov store pack`)",
     )
     parser_cli_store_register.add_argument(

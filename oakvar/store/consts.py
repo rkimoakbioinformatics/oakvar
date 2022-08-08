@@ -20,3 +20,5 @@ versions_table_cols = [
     "publish_time",
 ]
 logo_size = (180, 85)
+ov_store_split_file_size = 1_000_000_000 # 1 GB parts
+#ov_store_split_file_size = 100_000_000 # 100 MB parts

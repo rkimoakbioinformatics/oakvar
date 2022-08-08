@@ -424,6 +424,7 @@ def get_remote_manifest_from_local(module_name: str, args={}):
         quiet_print(f"code_version should be defined in {module_name}.yml", args=args)
         return None
     rmi["data_version"] = module_conf.get("data_version", "")
+    rmi["data_source"] = module_info.latest_data_source
     rmi["no_data"] = module_conf.get("no_data", False)
     rmi["readme"] = module_info.readme
     rmi["conf"] = module_conf
@@ -559,6 +560,8 @@ def pack_module_zip(args: dict, kind: str):
     from os import sep
     from ..util.util import quiet_print
     from ..module.local import get_module_code_version
+    from split_file_reader.split_file_writer import SplitFileWriter
+    from ..store.consts import ov_store_split_file_size
 
     module_name, module_dir = get_module_name_and_module_dir(args)
     version = get_module_code_version(module_name)
@@ -566,29 +569,46 @@ def pack_module_zip(args: dict, kind: str):
     if exists(pack_dir):
         pack_fn = f"{module_name}__{version}__{kind}.zip"
         pack_path = join(outdir, pack_fn)
-        with ZipFile(pack_path, "w") as z:
-            for root, _, files in walk(pack_dir):
-                root_basename = basename(root)
-                if root_basename.startswith(".") or root_basename.startswith("_"):
+        split = args.get("split")
+        sfw = None
+        z = None
+        if split is not None:
+            if len(split) == 0:
+                split_size = ov_store_split_file_size
+            else:
+                split_size = split[0]
+            sfw = SplitFileWriter(pack_path, split_size)
+            z = ZipFile(file=sfw, mode="w")
+        else:
+            z = ZipFile(pack_path, "w")
+        for root, _, files in walk(pack_dir):
+            root_basename = basename(root)
+            if root_basename.startswith(".") or root_basename.startswith("_"):
+                continue
+            if kind == "code" and root_basename == "data":
+                continue
+            for file in files:
+                if (
+                    file.startswith(".")
+                    or file == "startofinstall"
+                    or file == "endofinstall"
+                ):
                     continue
-                if kind == "code" and root_basename == "data":
-                    continue
-                for file in files:
-                    if (
-                        file.startswith(".")
-                        or file == "startofinstall"
-                        or file == "endofinstall"
-                    ):
-                        continue
-                    p = join(root, file)
-                    arcname = join(root, file)
-                    if pack_dir in arcname:
-                        arcname = arcname[len(pack_dir) :].lstrip(sep)
-                    if kind == "code":
-                        arcname = arcname  # join(module_name, arcname)
-                    elif kind == "data":
-                        arcname = join("data", arcname)
-                    z.write(p, arcname=arcname)
+                p = join(root, file)
+                arcname = join(root, file)
+                if pack_dir in arcname:
+                    arcname = arcname[len(pack_dir) :].lstrip(sep)
+                if kind == "code":
+                    arcname = arcname  # join(module_name, arcname)
+                elif kind == "data":
+                    arcname = join("data", arcname)
+                z.write(p, arcname=arcname)
+        if z:
+            z.close()
+        if sfw:
+            sfw.close()
+            quiet_print(f"{pack_path}* files written", args=args)
+        else:
             quiet_print(f"{pack_path} written", args=args)
 
 
