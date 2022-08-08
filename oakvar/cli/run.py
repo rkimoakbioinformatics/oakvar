@@ -881,9 +881,13 @@ class Cravat(object):
 
         if self.args is None:
             raise SetupError()
-        if self.append_mode and self.args.endat is None:
-            self.args.endat = "aggregator"
         self.startlevel = self.runlevels.get(self.args.startat, 0)
+        if self.append_mode:
+            if self.args.endat is None:
+                if len(self.report_names) > 0:
+                    self.args.endat = "reporter"
+                else:
+                    self.args.endat = "aggregator"
         self.endlevel = self.runlevels.get(
             self.args.endat, max(self.runlevels.values())
         )
@@ -1424,10 +1428,13 @@ class Cravat(object):
         from ..util.util import load_class
         import json
         from ..util.util import quiet_print
+        from ..system.consts import default_postaggregator_names
 
         if self.conf is None:
             raise SetupError()
         for module_name, module in self.postaggregators.items():
+            if self.append_mode and module_name in default_postaggregator_names:
+                continue
             cmd = [module.script_path, "-d", self.output_dir, "-n", self.run_name]
             postagg_conf = {}
             postagg_conf.update(self.conf_run.get(module_name, {}))

@@ -458,7 +458,7 @@ class MasterCravatConverter(object):
         from time import time, asctime, localtime
         from copy import copy
         from re import compile
-        from oakvar.exceptions import IgnoredVariant, ExpectedException, NoVariantError
+        from oakvar.exceptions import IgnoredVariant, NoVariantError
         from oakvar.base.converter import BaseConverter
         from oakvar.exceptions import SetupError
         from oakvar.exceptions import LoggerError
