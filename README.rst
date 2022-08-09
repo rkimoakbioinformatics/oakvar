@@ -21,3 +21,22 @@ Documentation is being made at `OakVar Documentation`_. For questions not answer
 Be in the loop and notified of new releases and news of OakVar. `Subscribe to the mailing list`_.
 
 .. _Subscribe to the mailing list: https://dashboard.mailerlite.com/forms/21170/56038572068701589/share
+
+Many Thanks to Our Sponsors
+=================================
+
+Organizational Sponsors
+---------------
+
+.. image:: https://dna-seq.github.io/dna-seq/just_dna_seq.png
+   :width: 225
+   :alt: Just DNA-Seq
+   :target: https://github.com/dna-seq
+
+Individual Sponsors
+------------
+
+.. image:: https://avatars.githubusercontent.com/u/110073399?v=4
+   :width: 50
+   :alt: RegenCenter
+   :target: https://github.com/RegenCenter
