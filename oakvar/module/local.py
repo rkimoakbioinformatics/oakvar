@@ -133,7 +133,7 @@ class LocalModule(object):
         return self.__dict__
 
 
-def get_local_module_info(module_name):
+def get_local_module_info(module_name, force=False):
     """
     Returns a LocalModuleInfo object for a module.
     """
@@ -143,8 +143,9 @@ def get_local_module_info(module_name):
     if exists(module_name):
         module_info = LocalModule(module_name)
     else:
-        if module_name in get_module_cache().get_local():
-            module_info = get_module_cache().get_local()[module_name]
+        mc = get_module_cache(force=force)
+        if module_name in mc.get_local():
+            module_info = mc.get_local()[module_name]
         else:
             module_info = None
     return module_info

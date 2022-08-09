@@ -56,6 +56,8 @@ function onClickStoreHome() {
     });
     showAllModulesDiv();
     updateFilter();
+    populateAllModulesDiv();
+    //showAllModulesDiv();
     showStoreHome();
 }
 
@@ -65,6 +67,8 @@ function onClickStoreTagResetButton() {
         this.checked = false;
     });
     updateFilter();
+    populateAllModulesDiv();
+    showAllModulesDiv();
 }
 
 function onClickStoreUpdateRemoteButton() {
@@ -219,6 +223,11 @@ function updateRemoteModuleTagwithUpdate() {
         var remoteTags = remoteModule.tags;
         remoteModule.tags = remoteTags;
     }
+    if (newModuleAvailable) {
+        showUpdatesAvailable()
+    } else {
+        showNoUpdatesAvailable()
+    }
 }
 
 function setBaseInstalled() {
@@ -276,7 +285,27 @@ function populateStorePages() {
     }
 }
 
-function getLocal() {
+function getUpdates(populateAllModulesDivFlag=false) {
+    showCheckingUpdates()
+    $.get('/store/updates').done(function(data) {
+        updates = data.updates;
+        updateConflicts = data.conflicts;
+        newModuleAvailable = false;
+        updateModuleGroupInfo();
+        updateRemoteModuleTagwithUpdate()
+        showOrHideSystemModuleUpdateButton();
+        showOrHideUpdateAllButton();
+        showOrHideSystemModuleUpdateButton();
+        populateStorePages()
+        if (populateAllModulesDivFlag) {
+            updateFilter();
+            populateAllModulesDiv();
+            showAllModulesDiv();
+        }
+    });
+}
+
+function getLocal(callUpdateFlag=false) {
     $.get('/store/local').done(function(data) {
         localModuleInfo = data;
         setupJobsTab()
@@ -290,16 +319,9 @@ function getLocal() {
         } else {
             disableStoreTabHead();
         }
-        $.get('/store/updates').done(function(data) {
-            updates = data.updates;
-            updateConflicts = data.conflicts;
-            newModuleAvailable = false;
-            updateModuleGroupInfo();
-            updateRemoteModuleTagwithUpdate()
-            showOrHideSystemModuleUpdateButton();
-            showOrHideUpdateAllButton();
-            showOrHideSystemModuleUpdateButton();
-        });
+        if (callUpdateFlag) {
+            getUpdates(populateAllModulesDivFlag=true)
+        }
     });
 }
 
@@ -650,7 +672,7 @@ function checkSystemReady() {
                 if (servermode == false) {
                     populateJobs();
                 }
-                getLocal();
+                getLocal(callUpdateFlag=true);
             } else {
                 hidePageselect();
                 showSystemModulePage();
@@ -788,11 +810,16 @@ function updateFilter() {
         tags.push(checkboxes[i].value);
         filterHasValue = true;
     }
+    var el = document.getElementById("store-tag-checkbox-newavailable")
+    if (el == undefined) {
+        var idx = tags.indexOf("newavailable")
+        if (idx >= 0) {
+            tags.splice(idx, 1)
+        }
+    }
     if (tags.length > 0) {
         filter['tags'] = tags;
     }
-    populateAllModulesDiv();
-    showAllModulesDiv();
 }
 
 function onClickModuleTileAbortButton(evt) {
@@ -1275,11 +1302,15 @@ function getFilteredRemoteModules() {
     var remoteModuleNames = Object.keys(remoteModuleInfo);
     var localModuleNames = Object.keys(localModuleInfo);
     var hasFilter = Object.keys(filter).length > 0;
+    var newCheckbox = document.getElementById('store-tag-checkbox-newavailable')
+    var newCheck = false
+    if (newCheckbox != undefined && document.getElementById('store-tag-checkbox-newavailable').checked) {
+        newCheck = true
+    }
     for (var i = 0; i < remoteModuleNames.length; i++) {
         var remoteModuleName = remoteModuleNames[i];
         var remoteModuleNameLower = remoteModuleName.toLowerCase();
         var remoteModule = remoteModuleInfo[remoteModuleName];
-        var newCheck = document.getElementById('store-tag-checkbox-newavailable').checked;
         if (remoteModule["groups"] != null && remoteModule['groups'].length > 0) {
             var pass = false;
             if (currentPage == 'storediv-modulegroup-div') {
@@ -2197,9 +2228,9 @@ function installModule(moduleName) {
             name: moduleName,
             version: version
         },
-        success: function(response) {
-            getLocal();
-        }
+        //success: function(response) {
+        //    getLocal();
+        //}
     });
 }
 
@@ -2323,6 +2354,13 @@ function connectWebSocket() {
         writeInstallationMsg(msg)
         if (msg.search('Finished installation of') > 0) {
             delete installInfo[module];
+            var mi = remoteModuleInfo[module]
+            if (mi != undefined) {
+                var idx = mi.tags.indexOf("newavailable")
+                if (idx >= 0) {
+                    mi.tags.splice(idx, 1)
+                }
+            }
             //installQueue = installQueue.filter(e => e != module);
             unqueue(module);
             moduleChange(null);
@@ -2332,6 +2370,8 @@ function connectWebSocket() {
                 installInfo[module] = {
                     'msg': 'installing'
                 };
+            } else {
+                getLocal(callUpdateFlag=true)
             }
         } else if (msg.search('Aborted') > 0) {
             delete installInfo[module];
@@ -2367,6 +2407,8 @@ function getBaseModuleNames() {
 
 function onStoreTagCheckboxChange() {
     updateFilter();
+    populateAllModulesDiv();
+    showAllModulesDiv();
 }
 
 function showYesNoDialog(content, yescallback, noSpace, justOk) {
@@ -2641,9 +2683,9 @@ function onClickStoreUpdateAllButton() {
 }
 
 function announceStoreUpdatingAll() {
-    var span = document.getElementById('store-update-all-span');
+    //var span = document.getElementById('store-update-all-span');
     var button = document.getElementById('store-update-all-button');
-    span.textContent = 'Updating all available modules...';
+    //span.textContent = 'Updating all available modules...';
     button.style.display = 'none';
 }
 
@@ -2659,6 +2701,34 @@ function announceStoreUpdateAllAvailable() {
 function disableUpdateAvailable() {
     var div = document.getElementById('update-available-div')
     div.classList.remove('active')
+}
+
+function showUpdatesAvailable() {
+    var div = document.getElementById("update-available-div")
+    div.textContent = "Updates available"
+    div.classList.remove('active')
+    var cbx = getEl("input")
+    cbx.id = "store-tag-checkbox-newavailable"
+    cbx.type = "checkbox"
+    cbx.className = "store-tag-checkbox"
+    cbx.value = "newavailable"
+    cbx.addEventListener("click", function() { onStoreTagCheckboxChange() })
+    addEl(div, cbx)
+    var span = getEl("span")
+    span.className = "checkmark-store"
+    addEl(div, span)
+}
+
+function showNoUpdatesAvailable() {
+    var div = document.getElementById("update-available-div")
+    div.textContent = "All modules are up to date"
+    disableUpdateAvailable()
+}
+
+function showCheckingUpdates() {
+    var div = document.getElementById("update-available-div")
+    div.textContent = "Checking updates..."
+    disableUpdateAvailable()
 }
 
 function webstore_run() {

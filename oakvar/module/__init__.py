@@ -176,7 +176,7 @@ def get_updatable(modules=[], requested_modules=[], strategy="consensus"):
     reqs_by_dep = defaultdict(dict)
     all_versions = {}
     for mname in list_local():
-        local_info = get_local_module_info(mname)
+        local_info = get_local_module_info(mname, force=True)
         remote_info = get_remote_module_info(mname)
         if remote_info:
             all_versions[mname] = sorted(remote_info.versions, key=Version)

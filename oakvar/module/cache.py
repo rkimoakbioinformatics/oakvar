@@ -137,9 +137,9 @@ def update_mic():
     module_cache = ModuleCache()
 
 
-def get_module_cache():
+def get_module_cache(force=False):
     global module_cache
-    if not module_cache:
+    if not module_cache or force:
         module_cache = ModuleCache()
     return module_cache
 

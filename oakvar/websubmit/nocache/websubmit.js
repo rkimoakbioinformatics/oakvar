@@ -1706,7 +1706,7 @@ function updateSystemConf () {
                 }
                 if (response['sysconf']['jobs_dir'] != undefined) {
                     populateJobs();
-                    getLocal();
+                    getLocal(callUpdateFlag=true);
                     populateAnnotators();
                 }
             }
