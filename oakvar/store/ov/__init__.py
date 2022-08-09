@@ -79,8 +79,10 @@ def get_register_args_of_module(module_name: str, args={}) -> Optional[dict]:
     from ...exceptions import ArgumentError
     from ...util.util import is_url
     from json import dumps
+    from oyaml import safe_load
     from ...util.util import quiet_print
     from ...module.local import get_local_module_info
+    from os.path import exists
 
     rmi = get_remote_manifest_from_local(module_name, args=args)
     if not rmi or not args:
@@ -93,8 +95,17 @@ def get_register_args_of_module(module_name: str, args={}) -> Optional[dict]:
                 args=args,
             )
         return None
-    rmi["code_url"] = args.get("code_url")
-    rmi["data_url"] = args.get("data_url") or []
+    if args.get("url_file") and exists(args.get("url_file")):
+        with open(args.get("url_file")) as f:
+            j = safe_load(f)
+            rmi["code_url"] = j.get("code_url", [])
+            rmi["data_url"] = j.get("data_url", [])
+    else:
+        rmi["code_url"] = args.get("code_url")
+        rmi["data_url"] = args.get("data_url") or []
+    if not rmi["code_url"]:
+        quiet_print(f"--code-url or -f with a file having code_url should be given.", args=args)
+        return None
     for kind in ["code", "data"]:
         k = f"{kind}_url"
         if len(rmi[k]) > 0:

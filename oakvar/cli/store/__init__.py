@@ -74,7 +74,6 @@ def add_parser_fn_store_register(subparsers):
     )
     parser_cli_store_register.add_argument(
         "--code-url",
-        required=True,
         nargs="+",
         help="url of a code pack (made with `ov store pack`)",
     )
@@ -85,6 +84,9 @@ def add_parser_fn_store_register(subparsers):
     )
     parser_cli_store_register.add_argument(
         "--overwrite", action="store_true", help="overwrite if the same version exists"
+    )
+    parser_cli_store_register.add_argument(
+        "-f", dest="url_file", default=None, help="use a yaml file for code-url and data-url",
     )
     parser_cli_store_register.set_defaults(func=cli_store_register)
     parser_cli_store_register.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
