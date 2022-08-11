@@ -772,6 +772,11 @@ def get_parser_fn_gui():
         help="Disables guest mode",
     )
     parser_fn_gui.add_argument(
+        "--pagesize",
+        default=None,
+        help="page size of data table",
+    )
+    parser_fn_gui.add_argument(
         "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_fn_gui.add_argument("--to", default="return", help="run quietly")

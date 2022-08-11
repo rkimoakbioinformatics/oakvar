@@ -497,7 +497,7 @@ def get_data_size(module_name, module_type=None) -> Optional[int]:
     if d:
         data_dir = join(d, "data")
         if exists(data_dir):
-            return get_directory_size(d)
+            return get_directory_size(data_dir)
 
 
 def get_code_size(module_name, module_type=None) -> Optional[int]:

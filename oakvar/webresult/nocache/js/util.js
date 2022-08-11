@@ -839,7 +839,7 @@ function setServerStatus (connected) {
             addEl(loadingTxtDiv, getEl('br'));
             addEl(loadingTxtDiv, getEl('br'));
 			var span = getEl('span');
-			span.textContent = 'Please launch OpenCRAVAT again.';
+			span.textContent = 'Please launch OakVar again.';
 			addEl(loadingTxtDiv, span);
 			addEl(loadingDiv, loadingTxtDiv);
 			var dW = document.body.offsetWidth;

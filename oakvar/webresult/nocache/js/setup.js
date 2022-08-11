@@ -102,7 +102,6 @@ class FilterManager {
 		this.vpropQbId = 'vprop-qb';
         this.qbRootId = 'qb-root';
 		this.qbBannedColumns = [
-			//'base__numsample',
 			'base__samples',
         ];
         this.allSamples = [];
@@ -271,7 +270,6 @@ class FilterManager {
             .text('Clear')
         )
         
-        // Line 2
         const controlsL2 = $(getEl('div'))
             .addClass(this.sampleControlClass);
         outerDiv.append(controlsL2);
@@ -617,7 +615,6 @@ class FilterManager {
         qbDiv[0].querySelector('.passthrough').remove()
 		qbDiv.attr('id', this.qbRootId);
 		outerDiv.append(qbDiv);
-        //addFilterElement(qbDiv, 'rule', undefined)
 	}
 
 	updateVpropUI (filter) {
@@ -973,11 +970,6 @@ function makeFilterTab (rightDiv) {
 		}
     );
     loadControls.append(filterCount);
-    let countWarning = $(getEl('div'))
-        .attr('id','filter-tab-count-warning')
-        .text(`Variants will not load if count is above ${NUMVAR_LIMIT.toLocaleString()}`)
-        .css('display','none');
-    loadControls.append(countWarning);
 	let filterApply = $(getEl('button'))
 		.attr('id', 'load_button')
 		.addClass('butn')
@@ -1025,7 +1017,6 @@ function makeFilterTab (rightDiv) {
             .attr('src','images/upload-material-blue.png')
         );
     loadControls.append(importLabel);
-    displayFilterCount();
     return true;
 }
 
@@ -1072,12 +1063,6 @@ function displayFilterCount(n) {
     n = n===undefined ? t : n;
 	let countDisplay = $('#filter-count-display');
 	countDisplay.text(`${n.toLocaleString()}/${t.toLocaleString()} variants`);
-    var warnDiv = $('#filter-tab-count-warning');
-    if (n > NUMVAR_LIMIT) {
-        warnDiv.css('display','');
-    } else {
-        warnDiv.css('display','none');
-    }
 }
 
 function getFilterFile () {
@@ -1466,7 +1451,6 @@ function makeVariantGeneTab (tabName, rightDiv) {
         tableDiv.className = 'tablediv';
         addEl(rightDiv, tableDiv);
     } else {
-        //$(tableDiv).empty();
     }
 
 	// Drag bar
@@ -1551,8 +1535,7 @@ function makeVariantGeneTab (tabName, rightDiv) {
     }
 }
 
-function onClickDetailRedraw () {
-	var tabName = currentTab;
+function onClickDetailRedraw (tabName=currentTab) {
 	var div = document.getElementById('detailcontainerdiv_' + tabName);
 	$(div).packery();
 }
@@ -1809,10 +1792,8 @@ function onClickWidgetPinButton (evt, tabName) {
     if (pinned) {
         button.classList.remove('pinned');
         button.classList.add('unpinned');
-        //button.src = '/result/images/pin.png';
         $(container).packery('unstamp', widget);
     } else {
-        //button.src = '/result/images/pin-2.png';
         button.classList.remove('unpinned');
         button.classList.add('pinned');
         $(container).packery('stamp', widget);
@@ -2114,8 +2095,69 @@ function makeGrid (columns, data, tabName) {
     addEl(button, getTn('Export'));
     addEl(footer, span);
     addEl(footer, button);
-    var lenStr = dataLengths[tabName] + ' total rows';
+    if (tabName == "variant") {
+        var prevBtn = getEl('button')
+        prevBtn.id = "prev-page-btn"
+        addEl(prevBtn, getTn("Prev"))
+        prevBtn.onclick = function(evt) {
+            pageNo -= 1
+            if (pageNo >= 1) {
+                updatePageNoS()
+                loadTableDataOnly()
+            }
+        }
+        addEl(footer, prevBtn)
+        var label = getEl("span")
+        label.textContent = "Page"
+        addEl(footer, label)
+        var pageNoInput = getEl('input')
+        pageNoInput.id = "page-no-input"
+        pageNoInput.type = "text"
+        pageNoInput.size = "4"
+        pageNoInput.value = pageNo
+        pageNoInput.addEventListener("keyup", function(evt) {
+            if (evt.key == "Enter") {
+                loadTableDataOnly()
+            }
+        })
+        addEl(footer, pageNoInput)
+        var nextBtn = getEl('button')
+        nextBtn.id = "next-page-btn"
+        addEl(nextBtn, getTn("Next"))
+        nextBtn.onclick = function(evt) {
+            pageNo += 1
+            updatePageNoS()
+            loadTableDataOnly()
+        }
+        addEl(footer, nextBtn)
+        var pageInput = getEl('input')
+        pageInput.id = "page-input"
+        pageInput.type = "text"
+        pageInput.size = "6"
+        pageInput.value = pageSize
+        pageInput.addEventListener("keyup", function(evt) {
+            if (evt.key == "Enter") {
+                pageNo = 1
+                updatePageNoS()
+                loadTableDataOnly()
+            }
+        })
+        addEl(footer, pageInput)
+        var label = getEl('span')
+        label.textContent = "rows per page"
+        addEl(footer, label)
+    }
+    updateTableFooterTotalRows(tabName)
+}
+
+function updateTableFooterTotalRows(tabName) {
+    var lenStr = infomgr.getData(tabName).length + ' total rows';
     document.getElementById('footertext_' + tabName).textContent = lenStr;
+}
+
+function updatePageNoS() {
+    var span = document.getElementById("page-no-input")
+    span.value = pageNo
 }
 
 function emptyElement (elem) {
@@ -2195,7 +2237,6 @@ function populateTableColumnSelectorPanel () {
         // Group div
         var groupDiv = document.createElement('fieldset');
         groupDiv.id = columnGroupPrefix + '_' + tabName + '_' + columnGroupName + '_id';
-        //groupDiv.className = columnGroupPrefix + '_' + tabName + '_class';
         groupDiv.className = 'columngroup-control-box';
         var label = getEl('label');
         label.classList.add('checkbox-container');
@@ -2265,8 +2306,6 @@ function populateTableColumnSelectorPanel () {
             addEl(label, checkbox);
             addEl(label, span);
             addEl(columnsDiv, label);
-            //var br = getEl('br');
-            //addEl(columnsDiv, br);
         }
         addEl(groupDiv, columnsDiv);
         addEl(wholeDiv, groupDiv);
@@ -2631,7 +2670,6 @@ function makeTableGroupHeaderRightClickMenu (evt, td, colgrouptitle, colgroupkey
     div.style.top = evt.pageY;
     div.style.left = evt.pageX;
     var ul = getEl('ul');
-    //
     var li = getEl('li');
     li.setAttribute('colgroupkey', colgroupkey);
     var a = getEl('a');
@@ -2646,7 +2684,6 @@ function makeTableGroupHeaderRightClickMenu (evt, td, colgrouptitle, colgroupkey
         div.style.display = 'none';
     });
     addEl(ul, addEl(li, a));
-    //
     var li = getEl('li');
     li.setAttribute('colgroupkey', colgroupkey);
     var a = getEl('a');
@@ -2671,7 +2708,6 @@ function makeTableGroupHeaderRightClickMenu (evt, td, colgrouptitle, colgroupkey
         div.style.display = 'none';
     });
     addEl(ul, addEl(li, a));
-    //
     var li = getEl('li');
     li.setAttribute('colgroupkey', colgroupkey);
     var a = getEl('a');
@@ -2685,7 +2721,6 @@ function makeTableGroupHeaderRightClickMenu (evt, td, colgrouptitle, colgroupkey
         div.style.display = 'none';
     });
     addEl(ul, addEl(li, a));
-    //
     addEl(div, ul);
     div.style.display = 'block';
     addEl(rightDiv, div);
@@ -2857,6 +2892,13 @@ function addTextToInfonoticediv (lines) {
     }
     if (lines.length > 0) {
         showInfonoticediv();
+    }
+}
+
+function updatePageNoInput() {
+    var div = document.getElementById("page-no-input")
+    if (div != null) {
+        div.textContent = pageNo
     }
 }
 

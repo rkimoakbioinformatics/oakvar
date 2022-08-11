@@ -13,6 +13,7 @@ function InfoMgr () {
 	this.widgetReq = {};
     this.colgroupdefaulthiddenexist = {};
     this.modulesInfo = {};
+    this.totalNoRows = null;
 }
 
 InfoMgr.prototype.getStatus = function (jobId) {
@@ -34,7 +35,7 @@ InfoMgr.prototype.count = function (dbPath, tabName, callback) {
 	});	
 }
 
-InfoMgr.prototype.load = function (jobId, tabName, callback, callbackArgs, fJson, fetchtype) {
+InfoMgr.prototype.load = function (jobId, tabName, callback, callbackArgs, fJson, fetchtype, setResetTab=true) {
 	var self = this;
 	if (fetchtype == 'job') {
 		if (jobDataLoadingDiv == null) {
@@ -43,17 +44,25 @@ InfoMgr.prototype.load = function (jobId, tabName, callback, callbackArgs, fJson
 		if (filterJson === []){ //TODO find and fix the cause of this
 			filterJson = {};
 		}
+        var input = document.getElementById("page-input")
+        if (input != null) {
+            pageSize = input.value
+            pageSize = parseInt(pageSize)
+        }
+        if (isNaN(pageSize) || pageSize < 0) {
+            return
+        }
 		$.ajax({
 			url: '/result/service/result', 
 			type: 'post',
 			async: true,
-			data: {'username': username, job_id: jobId, tab: tabName, dbpath: dbPath, confpath: confPath, filter: JSON.stringify(filterJson), separatesample: separateSample},
+			data: {'username': username, job_id: jobId, tab: tabName, dbpath: dbPath, confpath: confPath, filter: JSON.stringify(filterJson), separatesample: separateSample, page: pageNo, pagesize: pageSize, makefilteredtable: setResetTab},
 			success: function (jsonResponseData) {
-				self.store(self, tabName, jsonResponseData, callback, callbackArgs);
+				self.store(self, tabName, jsonResponseData, callback, callbackArgs, setResetTab=setResetTab);
 				writeLogDiv(tabName + ' data loaded');
                 addTextToInfonoticediv(jsonResponseData['warning_msgs']);
                 if (tabName == 'variant') {
-					var loaded = jsonResponseData.data.length;
+					var loaded = jsonResponseData["total_norows"]
 					var total = parseInt(infomgr.jobinfo['Number of unique input variants']);
 					var filterTab = document.getElementById('tabhead_filter');
 					var filterTitle = 'FILTER';
@@ -91,8 +100,10 @@ InfoMgr.prototype.load = function (jobId, tabName, callback, callbackArgs, fJson
 	}
 }
 
-InfoMgr.prototype.store = function (self, tabName, jsonResponseData, callback, callbackArgs) {
-	resetTab[tabName] = true;
+InfoMgr.prototype.store = function (self, tabName, jsonResponseData, callback, callbackArgs, setResetTab=true) {
+    if (setResetTab) {
+        resetTab[tabName] = true;
+    }
 	if (Object.keys(jsonResponseData).length == 0) {
 		if (callback != null) {
 			callback(callbackArgs);
@@ -100,6 +111,9 @@ InfoMgr.prototype.store = function (self, tabName, jsonResponseData, callback, c
 			return;
 		}
 	}
+    if (tabName == "variant") {
+        self.totalNoRows = jsonResponseData["total_norows"]
+    }
 	self.datas[tabName] = jsonResponseData['data'];
 	self.colModels[tabName] = jsonResponseData['columns'];
 	self.stats[tabName] = jsonResponseData['stat'];

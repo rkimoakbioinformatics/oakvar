@@ -11,6 +11,7 @@ class Reporter(CravatReport):
         self.keep_json_all_mapping = True
         self.data = {}
         self.table = None
+        self.total_norows = None
         super().__init__(args)
 
     def write_preface(self, level):
@@ -29,6 +30,7 @@ class Reporter(CravatReport):
         self.data["info"] = info
         self.data["colinfo"] = self.colinfo
         self.data["warning_msgs"] = self.warning_msgs
+        self.data["total_norows"] = self.total_norows
         return self.data
 
 

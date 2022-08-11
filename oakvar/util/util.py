@@ -335,10 +335,13 @@ def get_directory_size(start_path):
     """
     from os import walk
     from os.path import join, getsize
+    from ..store.consts import pack_ignore_fnames
 
     total_size = 0
     for dirpath, _, filenames in walk(start_path):
         for fname in filenames:
+            if fname in pack_ignore_fnames:
+                continue
             fp = join(dirpath, fname)
             total_size += getsize(fp)
     return total_size

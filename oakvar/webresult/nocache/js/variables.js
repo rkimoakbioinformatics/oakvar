@@ -76,3 +76,7 @@ var smartFilters = {};
 var showFilterTabContent = false;
 
 var lastUsedFilterName = null;
+
+var pageNo = 1;
+var pageSize = 100000
+var variantdbcols = null

@@ -11,6 +11,8 @@ import time
 wu = None
 logger = None
 server_ready = None
+default_max_num_var = 100000
+max_num_var_key = "max_num_var"
 
 
 async def get_nowg_annot_modules(_):
@@ -363,15 +365,32 @@ async def get_count(request):
 
 
 async def get_result(request):
+    from ..system import get_user_conf
+    from ..exceptions import DatabaseConnectionError
+
+    user_conf = get_user_conf()
+    if user_conf.get(max_num_var_key) is not None:
+        max_num_var = user_conf.get(max_num_var_key)
+    else:
+        max_num_var = default_max_num_var
     global logger
     queries = await request.post()
     _, dbpath = await get_jobid_dbpath(request)
     if dbpath is None:
-        from ..exceptions import DatabaseConnectionError
-
         raise DatabaseConnectionError("result database")
     dbname = os.path.basename(dbpath)
     tab = queries["tab"]
+    page = queries.get("page")
+    make_filtered_table = queries.get("makefilteredtable")
+    if not page:
+        page = 1
+    else:
+        page = int(page)
+    pagesize = queries.get("pagesize")
+    if not pagesize:
+        pagesize = max_num_var
+    else:
+        pagesize = int(pagesize)
     if logger is not None:
         logger.info("(Getting result of [{}]:[{}]...)".format(dbname, tab))
     start_time = time.time()
@@ -412,7 +431,10 @@ async def get_result(request):
     arg_dict["reports"] = ["text"]
     reporter = m.Reporter(arg_dict)
     await reporter.prep()
-    data = await reporter.run(tab=tab)
+    if tab == "variant":
+        data = await reporter.run(tab=tab, pagesize=pagesize, page=page, make_filtered_table=make_filtered_table)
+    else:
+        data = await reporter.run(tab=tab)
     data["modules_info"] = await get_modules_info(request)
     content = {}
     content["stat"] = {
@@ -420,7 +442,7 @@ async def get_result(request):
         "wherestr": "",
         "filtered": True,
         "filteredresultmessage": "",
-        "maxnorows": 100000,
+        "maxnorows": max_num_var,
         "norows": data["info"]["norows"],
     }
     content["columns"] = get_colmodel(tab, data["colinfo"])
@@ -428,6 +450,7 @@ async def get_result(request):
     content["status"] = "normal"
     content["modules_info"] = data["modules_info"]
     content["warning_msgs"] = data["warning_msgs"]
+    content["total_norows"] = data["total_norows"]
     t = round(time.time() - start_time, 3)
     if logger is not None:
         logger.info("Done getting result of [{}][{}] in {}s".format(dbname, tab, t))
@@ -837,6 +860,46 @@ async def get_samples(request):
     return web.json_response(samples)
 
 
+async def get_variants_for_hugo(request):
+    from ..exceptions import DatabaseConnectionError
+    hugo = request.match_info["hugo"]
+    _, dbpath = await get_jobid_dbpath(request)
+    if dbpath is None:
+        raise DatabaseConnectionError("result database")
+    conn = await get_db_conn(dbpath)
+    if conn:
+        cursor = await conn.cursor()
+        q = f"select * from variant where base__hugo=?"
+        await cursor.execute(q, (hugo,))
+        rows = await cursor.fetchall()
+        out = []
+        for row in rows:
+            out.append(list(row))
+        return web.json_response(out)
+
+
+async def get_variantdbcols(request):
+    from ..exceptions import DatabaseConnectionError
+    from json import loads
+    _, dbpath = await get_jobid_dbpath(request)
+    if dbpath is None:
+        raise DatabaseConnectionError("result database")
+    conn = await get_db_conn(dbpath)
+    if not conn:
+        return
+    cursor = await conn.cursor()
+    q = f"select sql from sqlite_master where name='variant'"
+    await cursor.execute(q)
+    row = await cursor.fetchone()
+    if not row:
+        return
+    out = {}
+    coldef = row[0].split("(")[1].split(")")[0]
+    for el in coldef.split(", "):
+        out[el.split(" ")[0]] = len(out)
+    return web.json_response(out)
+
+
 routes = []
 routes.append(["GET", "/result/service/variantcols", get_variant_cols])
 routes.append(["GET", "/result/service/getresulttablelevels", get_result_levels])
@@ -860,3 +923,5 @@ routes.append(["GET", "/result/service/deletefiltersetting", delete_filter_setti
 routes.append(["GET", "/result/service/smartfilters", load_smartfilters])
 routes.append(["GET", "/result/service/samples", get_samples])
 routes.append(["GET", "/webapps/{module}/widgets/{widget}", serve_webapp_runwidget])
+routes.append(["GET", "/result/service/{hugo}/variants", get_variants_for_hugo])
+routes.append(["GET", "/result/service/variantdbcols", get_variantdbcols])

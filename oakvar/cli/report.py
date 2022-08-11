@@ -285,7 +285,7 @@ class CravatReport:
                 cols.append(col)
         return cols
 
-    async def run_level(self, level):
+    async def run_level(self, level, pagesize=None, page=None, make_filtered_table=True):
         from ..exceptions import SetupError
         import json
         from ..consts import legacy_gene_level_cols_to_skip
@@ -299,9 +299,9 @@ class CravatReport:
         if self.should_write_level(level) == False:
             return
         gene_summary_datas = {}
-        if level in ["variant", "sample", "mapping"]:
+        if level in ["variant", "sample", "mapping"] and make_filtered_table:
             await self.cf.exec_db(self.cf.make_filtered_uid_table)
-        elif level == "gene":
+        elif level == "gene" and make_filtered_table:
             await self.cf.exec_db(self.cf.make_filtered_hugo_table)
             for mi, o, cols in self.summarizing_modules:
                 if hasattr(o, "build_gene_collection"):
@@ -344,9 +344,10 @@ class CravatReport:
         hugo_present = None
         if level == "variant":
             hugo_present = "base__hugo" in self.colnos["variant"]
-        datacols, datarows = await self.cf.exec_db(  # type: ignore
-            self.cf.get_filtered_iterator, level
+        datacols, datarows, total_norows = await self.cf.exec_db(  # type: ignore
+            self.cf.get_filtered_iterator, level=level, page=page, pagesize=pagesize
         )
+        self.total_norows = total_norows
         num_total_cols = len(datacols)
         colnos_to_skip = []
         if level == "gene":
@@ -367,6 +368,7 @@ class CravatReport:
             col = cols[i]
             if col["table"] == True:
                 json_colnos.append(i)
+        row_count = 0
         for datarow in datarows:
             if datarow is None:
                 continue
@@ -475,6 +477,9 @@ class CravatReport:
                     self.write_table_row(self.get_extracted_row(new_datarow))
             else:
                 self.write_table_row(self.get_extracted_row(new_datarow))
+            row_count += 1
+            if pagesize and row_count == pagesize:
+                break
 
     async def store_mapper(self, conn=None, cursor=None):
         from ..exceptions import DatabaseConnectionError
@@ -489,7 +494,7 @@ class CravatReport:
         else:
             self.mapper_name = r[0].split(":")[0]
 
-    async def run(self, tab=None):
+    async def run(self, tab=None, pagesize=None, page=None, make_filtered_table=True):
         from ..exceptions import SetupError
         from time import time, asctime, localtime
         import oyaml as yaml
@@ -530,7 +535,7 @@ class CravatReport:
                     for level in levels:
                         self.level = level
                         if await self.exec_db(self.table_exists, level):
-                            await self.run_level(level)
+                            await self.run_level(level, pagesize=pagesize, page=page, make_filtered_table=make_filtered_table)
             else:
                 if tab in ["variant", "gene"]:
                     for level in ["variant", "gene"]:
@@ -539,7 +544,7 @@ class CravatReport:
                 else:
                     await self.exec_db(self.make_col_info, tab)
                 self.level = tab
-                await self.run_level(tab)
+                await self.run_level(tab, pagesize=pagesize, page=page, make_filtered_table=make_filtered_table)
             await self.close_db()
             if self.module_conf is not None and self.status_writer is not None:
                 if not self.args.get("do_not_change_status"):

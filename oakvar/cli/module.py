@@ -170,7 +170,7 @@ def install(args, __name__="module install"):
         if (
             not args.get("force")
             and local_info
-            and Version(local_info.version or "") == Version(version)
+            and Version(local_info.code_version or "") == Version(version)
         ):
             quiet_print(
                 f"{module_name}=={version} is already installed. Use -f/--force to overwrite",

@@ -52,7 +52,10 @@ class FilterColumn(object):
                 else:
                     val = str(val)
                 ss.append(f"({self.column} = {val})")
-            s = "(" + f" or ".join(ss) + ")"
+            if ss:
+                s = "(" + f" or ".join(ss) + ")"
+            else:
+                s = ""
         else:
             s = "{col} {opr}".format(col=self.column, opr=self.test2sql[self.test])
             sql_val = None
@@ -705,7 +708,7 @@ class CravatFilter:
         else:
             return None
 
-    async def get_filtered_iterator(self, level="variant", conn=None, cursor=None):
+    async def get_filtered_iterator(self, level="variant", page=None, pagesize=None, conn=None, cursor=None):
         bypassfilter = (
             not self.filter
             and not self.filtersql
@@ -756,14 +759,28 @@ class CravatFilter:
                 sql = "select v.* from " + table + " as v"
                 if bypassfilter == False and ftable is not None and kcol is not None:
                     sql += " inner join " + ftable + " as f on v." + kcol + "=f." + kcol
-        if sql is not None:
-            if cursor is not None:
-                await cursor.execute(sql)
-                cols = [v[0] for v in cursor.description]
-                rows = await cursor.fetchall()
-                return cols, rows
+        if not cursor:
+            return None, None, None
+        if not sql:
+            return None, None, None
+        if level == "variant" and pagesize is not None:
+            if not page:
+                page = 1
+            offset = (page - 1) * pagesize
+            final_sql = sql + f" limit {pagesize} offset {offset}"
         else:
-            return None, None
+            final_sql = sql
+        await cursor.execute(final_sql)
+        cols = [v[0] for v in cursor.description]
+        rows = await cursor.fetchall()
+        if level == "variant":
+            norows_q = sql.replace("v.*", "count(*)")
+            await cursor.execute(norows_q)
+            ret = await cursor.fetchone()
+            total_norows = ret[0]
+        else:
+            total_norows = len(rows)
+        return cols, rows, total_norows
 
     async def make_filtered_sample_table(self, conn=None, cursor=None):
         if conn is not None and cursor is not None:

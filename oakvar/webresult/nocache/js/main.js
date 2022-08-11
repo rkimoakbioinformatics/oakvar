@@ -134,16 +134,16 @@ function afterDragNSBar (self, tabName) {
 	}
 }
 
-function resizesTheWindow () {
-	var pqTable = $grids[currentTab];
+function resizesTheWindow (tabName=currentTab) {
+	var pqTable = $grids[tabName];
 	if (pqTable == undefined){
 		return;
 	}
-	var tableDiv = document.getElementById('tablediv_' + currentTab);
-	var detailDiv = document.getElementById('detaildiv_' + currentTab);
-	var nsDragBar = document.getElementById('dragNorthSouthDiv_' + currentTab);
-	var rightDiv = document.getElementById('rightdiv_' + currentTab);
-	var cellValueDiv = document.getElementById('cellvaluediv_' + currentTab);
+	var tableDiv = document.getElementById('tablediv_' + tabName);
+	var detailDiv = document.getElementById('detaildiv_' + tabName);
+	var nsDragBar = document.getElementById('dragNorthSouthDiv_' + tabName);
+	var rightDiv = document.getElementById('rightdiv_' + tabName);
+	var cellValueDiv = document.getElementById('cellvaluediv_' + tabName);
 	var browserHeight = isNaN(window.innerHeight) ? window.clientHeight : window.innerHeight;
 	var rightDivHeight = browserHeight - 70;
     var tableDivHeight = 0;
@@ -172,7 +172,6 @@ function resizesTheWindow () {
             detailDivHeight = rightDivHeight - 50;
         }
 	}
-	//var tableDivHeight = rightDivHeight - nsDragBarHeight - cellValueDivHeight - detailDivHeight - 38;
 	var detailDivHeight = rightDivHeight - nsDragBarHeight - cellValueDivHeight - tableDivHeight - 28;
     detailDiv.style.height = detailDivHeight + 'px';
 	var tableDivWidth = 'calc(100% - 10px)';
@@ -188,9 +187,9 @@ function resizesTheWindow () {
         detailDiv.style.top = (nsDragBarTop + 15) + 'px';
 		$(detailDiv.getElementsByClassName('detailcontainerdiv')[0]).packery('shiftLayout');
 	}
-	shouldResizeScreen[currentTab] = false;
+	shouldResizeScreen[tabName] = false;
 	onClickDetailRedraw();
-    if (tableDetailDivSizes[currentTab]['status'] == 'detailmax') {
+    if (tableDetailDivSizes[tabName]['status'] == 'detailmax') {
         applyTableDetailDivSizes();
     }
 }
@@ -207,7 +206,7 @@ function showNoDB () {
     addEl(div, span);
     var span = getEl('p');
     span.style.fontSize = '20px';
-    span.textContent = 'OpenCRAVAT was unable to show the job result.';
+    span.textContent = 'OakVar was unable to show the job result.';
     addEl(div, span);
     addEl(div, getEl('br'));
     var span = getEl('p');
@@ -349,7 +348,6 @@ function copyColModel (colModelGroup) {
 
 function addGeneLevelToVariantLevel () {
     var oriNoColVar = infomgr.columnss.variant.length;
-    // colModel
     var geneColModels = infomgr.colModels['gene'];
     var colNo = oriNoColVar;
     var colgroupsToSkip = [];
@@ -364,13 +362,6 @@ function addGeneLevelToVariantLevel () {
             continue;
         }
         var colModel = copyColModel(geneColModels[i]);
-        /*
-        var cols = colModel.colModel;
-        for (var j = 0; j < cols.length; j++) {
-            cols[j].dataIndx = colNo;
-            colNo++;
-        }
-        */
         infomgr.colModels['variant'].push(colModel);
     }
     // Sorts colModel.
@@ -417,66 +408,6 @@ function addGeneLevelToVariantLevel () {
     infomgr.columnss.variant = varColumnss;
     infomgr.columngroupss.variant = varColumngroupss;
     infomgr.columnnoss.variant = varColumnnoss;
-    // columngroupss
-    /*
-    var geneColumnGroups = infomgr.columngroupss.gene;
-    var geneColumnGroupNames = Object.keys(geneColumnGroups);
-    for (var i = 0; i < geneColumnGroupNames.length; i++) {
-        var geneColumnGroupName = geneColumnGroupNames[i];
-        if (geneColumnGroupName == 'base' || colgroupsToSkip.indexOf(geneColumnGroupName) >= 0) {
-            continue;
-        }
-        infomgr.columngroupss.variant[geneColumnGroupName] = geneColumnGroups[geneColumnGroupName];
-    }
-    */
-    // columnnoss
-    /*
-    var geneColumnnos = infomgr.columnnoss.gene;
-    var maxColNo = Math.max(...Object.values(infomgr.columnnoss.variant));
-    var geneColumnNames = Object.keys(geneColumnnos);
-    var colNoDict = {};
-    var varColNo = 0;
-    var varColumnnoss = {};
-    var varColumnss = [];
-    var initVarColumnnossKeys = Object.keys(infomgr.columnnoss.variant);
-    var initGeneColumnnossKeys = Object.keys(infomgr.columnnoss.gene);
-        // infomgr.colModels.variant already has gene level colModels.
-    for (var j = 0; j < infomgr.colModels.variant.length; j++) {
-        var varColModel = infomgr.colModels.variant[j];
-        var varColModelName = varColModel.name;
-        var colAdded = false;
-        for (var k = 0; k < initVarColumnnossKeys.length; k++) {
-            var colkey = initVarColumnnossKeys[k];
-            var colgrp = colkey.split('__')[0];
-            if (colgrp == varColModelName) {
-                varColumnnoss[colgrp] = varColNo;
-                varColumnss.push(infomgr.columnss.variant[k]);
-                colNoDict[varColNo] = {'level': 'variant', 'colno': k};
-                varColNo++;
-                colAdded = true;
-            }
-        }
-        // does not add gene column group if variant level already has it.
-        if (colAdded) {
-            continue;
-        }
-        for (var k = 0; k < initGeneColumnnossKeys.length; k++) {
-            var colkey = initGeneColumnnossKeys[k];
-            if (colsToSkip.indexOf(colkey) >= 0) {
-                continue;
-            }
-            var colgrp = colkey.split('__')[0];
-            if (colgrp == varColModelName) {
-                varColumnnoss[colgrp] = varColNo;
-                varColumnss.push(JSON.parse(JSON.stringify(infomgr.columnss.gene[k])));
-                colNoDict[varColNo] = {'level': 'gene', 'colno': k};
-                varColNo++;
-            }
-        }
-    }
-    infomgr.columnnoss.variant = varColumnnoss;
-    infomgr.columnss.variant = varColumnss;
-    */
     // column default hidden exist
     var vcs = Object.keys(infomgr.colgroupdefaulthiddenexist.variant);
     var gcs = Object.keys(infomgr.colgroupdefaulthiddenexist.gene);
@@ -540,6 +471,57 @@ var makeVariantByGene = function () {
     }
 };
 
+function loadTableDataOnly() {
+    var pageNoInput = document.getElementById("page-no-input")
+    var pageNoS = pageNoInput.value
+    pageNo = parseInt(pageNoS)
+    if (isNaN(pageNo)) {
+        return
+    }
+	var removeSpinner = function () {
+		if (spinner != null) {
+			spinner.remove();
+		}
+        if ($grids["variant"] != undefined) {
+            $grids["variant"].pqGrid('option', 'dataModel', {data: infomgr.datas["variant"]})
+            $grids["variant"].pqGrid('refreshDataAndView')
+            updateTableFooterTotalRows("variant")
+        }
+        enableUpdateButton();
+        unlockTabs();
+        if (jobDataLoadingDiv != null) {
+            jobDataLoadingDiv.parentElement.removeChild(jobDataLoadingDiv);
+            jobDataLoadingDiv = null;
+        }
+	}
+	var loadGeneResult = function () {
+        if ($grids["gene"] == undefined) {
+			infomgr.load(jobId, 'gene', removeSpinner, null, filterJson, 'job', setResetTab=true);
+		} else {
+            removeSpinner();
+        }
+	}
+	var loadVariantResult = function () {
+		function callLoadVariant () {
+		    var callback = null;
+		    if (usedAnnotators['gene']) {
+                callback = loadGeneResult;
+		    } else {
+                callback = removeSpinner;
+		    }
+		    if (resultLevels.indexOf('variant') != -1) {
+                infomgr.load(jobId, 'variant', callback, null, filterJson, 'job', setResetTab=false);
+		    } else {
+                callback();
+		    }
+		}
+        callLoadVariant();
+	}
+	lockTabs();
+	loadVariantResult();
+    filterArmed = filterJson;
+}
+
 function loadData (alertFlag, finalcallback) {
     lockTabs();
 	var infoReset = resetTab['info'];
@@ -550,7 +532,6 @@ function loadData (alertFlag, finalcallback) {
 	infomgr.datas = {};
 	var removeSpinner = function () {
         addGeneLevelToVariantLevel();
-        makeVariantByGene();
 		if (spinner != null) {
 			spinner.remove();
 		}
@@ -569,10 +550,11 @@ function loadData (alertFlag, finalcallback) {
             console.log(e);
             console.trace();
         }
-        //clearVariantGeneTab();
 		if (currentTab == 'variant' || currentTab == 'gene') {
-			setupTab(currentTab);
-            resizesTheWindow();
+            setupTab("variant")
+            resizesTheWindow(tabName="variant")
+            setupTab("gene")
+            resizesTheWindow(tabName="gene")
 		}
         enableUpdateButton();
         unlockTabs();
@@ -580,27 +562,13 @@ function loadData (alertFlag, finalcallback) {
             jobDataLoadingDiv.parentElement.removeChild(jobDataLoadingDiv);
             jobDataLoadingDiv = null;
         }
-        //selectTab('info');
 	}
 	var loadGeneResult = function () {
 		var numvar = infomgr.getData('variant').length;
-		if (numvar > NUMVAR_LIMIT) {
-			lockTabs();
-			flagNotifyToUseFilter = true;
-			if (document.getElementById('infonoticediv')) {
-				notifyToUseFilter();
-				flagNotifyToUseFilter = false;
-			} else {
-				flagNotifyToUseFilter = true;
-			}
-			removeSpinner();
-			return;
-		} else {
-			flagNotifyToUseFilter = false;
-			if (document.getElementById('infonoticediv')) {
-				notifyOfReadyToLoad();
-			}
-		}
+        flagNotifyToUseFilter = false;
+        if (document.getElementById('infonoticediv')) {
+            notifyOfReadyToLoad();
+        }
 		if (resultLevels.indexOf('gene') != -1) {
 			infomgr.load(jobId, 'gene', removeSpinner, null, filterJson, 'job');
 		} else {
@@ -624,48 +592,19 @@ function loadData (alertFlag, finalcallback) {
 		if (firstLoad) {
 			firstLoad = false;
             var numvar = Number(infomgr.jobinfo['Number of unique input variants']);
-            if (filterJson.length == 0 && numvar > NUMVAR_LIMIT) {
-                displayFilterCount(numvar);
-                lockTabs();
-                flagNotifyToUseFilter = true;
-                if (document.getElementById('infonoticediv')) {
-                    notifyToUseFilter();
-                    flagNotifyToUseFilter = false;
-                } else {
-                    flagNotifyToUseFilter = true;
-                }
-                removeLoadingDiv();
-                firstLoad = true;
-                return;
-            }
             if (filterJson.length != 0) {
                 infomgr.count(dbPath, 'variant', function (numvar) {
-                    if (numvar > NUMVAR_LIMIT) {
-                        lockTabs();
-                        flagNotifyToUseFilter = true;
-                        if (document.getElementById('infonoticediv')) {
-                            notifyToUseFilter();
-                            flagNotifyToUseFilter = false;
-                        } else {
-                            flagNotifyToUseFilter = true;
-                        }
-                        removeLoadingDiv();
-                        return;
-                    } else {
                         if (flagNotifyToUseFilter) {
                             notifyOfReadyToLoad();
                             flagNotifyToUseFilter = false;
                         }
-                        //removeLoadingDiv();
                         callLoadVariant();
-                    }
                 });
             } else {
                 if (flagNotifyToUseFilter) {
                     notifyOfReadyToLoad();
                     flagNotifyToUseFilter = false;
                 }
-                //removeLoadingDiv();
                 callLoadVariant();
             }
 		} else {
@@ -708,7 +647,7 @@ function notifyToUseFilter () {
 	var div = document.getElementById('infonoticediv');
     div.style.background = 'red';
     div.textContent = 
-         `The OpenCRAVAT viewer cannot display more than ${NUMVAR_LIMIT} variants. `
+         `The OakVar viewer cannot display more than ${NUMVAR_LIMIT} variants. `
         +`Use the filter tab to load at most ${NUMVAR_LIMIT} variants.`;
 	showInfonoticediv();
     document.getElementById('tabhead_filter').style.pointerEvents = 'auto';
@@ -939,28 +878,6 @@ function drawingWidgetCaptureSpinnerDiv () {
 	return loadingDiv;
 }
 
-function getCheckNoRowsMessage (tabName, noRows) {
-	var msg = '';
-	var maxNoRows = infomgr.getStat(tabName)['maxnorows'];
-	if (noRows > maxNoRows) {
-		msg = 'You have more variants than OakVar Result Viewer can display. ' +
-			'Use filters below to reduce the number of variants to load. When ' +
-			maxNoRows +
-			' or less remain, they can be retrieved with the Load button.';
-	} else {
-		msg = noRows + ' variants selected. Click Load button to retrieve them.';
-	}
-
-	// Turns on/off result load button.
-	var loadButton = document.getElementById('load_button');
-	if (noRows <= maxNoRows) {
-		loadButton.style.visibility = 'visible';
-	} else {
-		loadButton.style.visibility = 'hidden';
-	}
-	return msg;
-}
-
 function writeLogDiv (msg) {
 	var div = document.getElementById('log_div');
 	div.textContent = ' ' + msg + ' ';
@@ -1016,7 +933,6 @@ function doNothing () {
 function quicksave () {
     filterJson = filterArmed;
     saveLayoutSetting(quickSaveName, 'quicksave');
-    //saveFilterSetting(quickSaveName, true);
 }
 
 function afterGetResultLevels () {
@@ -1035,7 +951,7 @@ function afterGetResultLevels () {
             resizesTheWindow();
         }
         if (tabName == 'variant' || tabName == 'gene' || tabName == 'info') {
-            $(document.getElementById('detailcontainerdiv_' + tabName)).packery();
+            $(detailContainer).packery();
         }
         changeMenu();
     });
@@ -1068,6 +984,18 @@ function afterGetResultLevels () {
 
 function selectTab (tabName) {
     document.querySelector('#tabhead_' + tabName).click();
+}
+
+function getVariantDbCols() {
+    $.ajax({
+        method: 'GET',
+        url: '/result/service/variantdbcols',
+        async: true,
+        data: {'job_id': jobId, 'username': username, 'dbpath': dbPath},
+        success: function (response) {
+            variantdbcols = response
+        },
+    });
 }
 
 function webresult_run () {
@@ -1114,6 +1042,7 @@ function webresult_run () {
         }
     }
     //window.onbeforeunload = triggerAutosave;
+    getVariantDbCols()
     getResultLevels(afterGetResultLevels);
     document.addEventListener('click', function (evt) {
         var target = evt.target;
