@@ -330,6 +330,19 @@ const populateFilterValues = (valsContainer, testName, value) => {
                 }
             }
         }
+        if (writtenOptionValues.length == 0) {
+            $(select).pqSelect({
+                checkbox: false, 
+                displayText: 'No option is available',
+                singlePlaceholder: 'No option is available',
+                multiplePlaceholder: 'No option is available',
+                maxDisplay: 0,
+                width: 200,
+                search: false,
+                selectallText: '',
+            });
+            select.disabled = true
+        }
         if (writtenOptionValues.length > 3) {
             $(select).pqSelect({
                 checkbox: true, 
