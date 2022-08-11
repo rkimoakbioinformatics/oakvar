@@ -11,8 +11,8 @@ import time
 wu = None
 logger = None
 server_ready = None
-default_max_num_var = 100000
-max_num_var_key = "max_num_var"
+default_gui_result_pagesize = 100000
+gui_result_pagesize_key = "gui_result_pagesize"
 
 
 async def get_nowg_annot_modules(_):
@@ -369,10 +369,6 @@ async def get_result(request):
     from ..exceptions import DatabaseConnectionError
 
     user_conf = get_user_conf()
-    if user_conf.get(max_num_var_key) is not None:
-        max_num_var = user_conf.get(max_num_var_key)
-    else:
-        max_num_var = default_max_num_var
     global logger
     queries = await request.post()
     _, dbpath = await get_jobid_dbpath(request)
@@ -388,7 +384,9 @@ async def get_result(request):
         page = int(page)
     pagesize = queries.get("pagesize")
     if not pagesize:
-        pagesize = max_num_var
+        pagesize = user_conf.get(gui_result_pagesize_key)
+        if not pagesize:
+            pagesize = default_gui_result_pagesize
     else:
         pagesize = int(pagesize)
     if logger is not None:
@@ -442,7 +440,6 @@ async def get_result(request):
         "wherestr": "",
         "filtered": True,
         "filteredresultmessage": "",
-        "maxnorows": max_num_var,
         "norows": data["info"]["norows"],
     }
     content["columns"] = get_colmodel(tab, data["colinfo"])
@@ -458,11 +455,14 @@ async def get_result(request):
 
 
 async def get_result_levels(request):
+    from ..system import get_user_conf
+    user_conf = get_user_conf()
+    gui_result_pagesize = user_conf.get("gui_result_pagesize", default_gui_result_pagesize)
+    content = {"gui_result_pagesize": gui_result_pagesize}
     _ = request.rel_url.query
     _, dbpath = await get_jobid_dbpath(request)
-    content = []
-    if dbpath is None:
-        content = ["NODB"]
+    if not dbpath:
+        content["levels"] = ["NODB"]
     else:
         conn = await get_db_conn(dbpath)
         if conn is not None:
@@ -474,13 +474,14 @@ async def get_result_levels(request):
             await cursor.execute(sql)
             ret = await cursor.fetchall()
             if len(ret) > 0:  # type: ignore
-                content = [v[0].split("_")[0] for v in ret]
-                content.insert(0, "info")
-                content.insert(1, "filter")
+                levels = [v[0].split("_")[0] for v in ret]
+                levels.insert(0, "info")
+                levels.insert(1, "filter")
             else:
-                content = []
-            content.remove("sample")
-            content.remove("mapping")
+                levels = []
+            levels.remove("sample")
+            levels.remove("mapping")
+            content["levels"] = levels
             await cursor.close()
             await conn.close()
     return web.json_response(content)

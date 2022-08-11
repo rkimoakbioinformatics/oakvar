@@ -26,7 +26,7 @@ Many Thanks to Our Sponsors
 =================================
 
 Organizational Sponsors
----------------
+-----------------------
 
 .. image:: https://dna-seq.github.io/dna-seq/just_dna_seq.png
    :width: 225
@@ -34,7 +34,7 @@ Organizational Sponsors
    :target: https://github.com/dna-seq
 
 Individual Sponsors
-------------
+-------------------
 
 .. image:: https://avatars.githubusercontent.com/u/110073399?v=4
    :width: 50

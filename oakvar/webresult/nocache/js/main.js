@@ -236,10 +236,12 @@ function getResultLevels (callback) {
         async: true,
         data: {'job_id': jobId, 'username': username, 'dbpath': dbPath},
         success: function (response) {
-            if (response.length > 0 && response[0] == 'NODB') {
+            var levels = response.levels
+            pageSize = parseInt(response["gui_result_pagesize"])
+            if (levels.length > 0 && levels[0] == 'NODB') {
                 showNoDB();
             } else {
-                resultLevels = response;
+                resultLevels = levels;
                 callback();
             }
         },
