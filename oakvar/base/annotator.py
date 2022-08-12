@@ -741,28 +741,24 @@ class SecondaryInputFetcher:
 
     def load_input(self):
         for _, _, all_col_data in self.input_reader.loop_data():
-            key_data = all_col_data[self.key_col]
-            # if key_data not in self.data:
-            #    self.data[key_data] = [None] * len(self.fetch_cols)
-            # else:
+            key_data = all_col_data.get(self.key_col)
+            if not key_data:
+                continue
+            if key_data not in self.data:
+                self.data[key_data] = []
             fetch_col_data = {}
-            # row_has_data = False
             for col in self.fetch_cols:
-                # if col != self.key_col:# and all_col_data[col] is not None:
-                #    row_has_data = True
-                fetch_col_data[col] = all_col_data[col]
-            # if row_has_data:
-            self.data[key_data] = fetch_col_data
-            # self.data[key_data].append(fetch_col_data)
+                val = all_col_data.get(col)
+                if val:
+                    fetch_col_data[col] = val
+            if fetch_col_data:
+                self.data[key_data].append(fetch_col_data)
 
     def get(self, key_data):
         if key_data in self.data:
             return self.data[key_data]
         else:
-            ret = {}
-            for col_name in self.fetch_cols:
-                ret[col_name] = None
-            return ret
+            return None
 
     def get_values(self, key_data, key_column):
         ret = [v[key_column] for v in self.data[key_data]]
