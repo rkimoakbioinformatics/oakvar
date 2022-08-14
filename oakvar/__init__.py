@@ -51,7 +51,7 @@ from .util import inout
 from .util import admin_util
 import signal
 
-BaseReport = CravatReport
+BaseReporter = CravatReport
 # for compatibility with oc
 constants = consts
 
