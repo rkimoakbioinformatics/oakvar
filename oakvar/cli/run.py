@@ -212,7 +212,6 @@ class Cravat(object):
             self.args is None
             or self.run_name is None
             or self.output_dir is None
-            or self.run_name is None
         ):
             raise SetupError()
         if self.args.newlog == True:
@@ -841,6 +840,7 @@ class Cravat(object):
         import os
         from ..exceptions import NoInput
         from ..exceptions import SetupError
+        from ..exceptions import ArgumentError
 
         if self.inputs is None or self.num_input is None:
             raise NoInput()
@@ -853,7 +853,10 @@ class Cravat(object):
             else:
                 self.run_name = os.path.basename(self.inputs[0])
                 if self.num_input > 1:
-                    self.run_name += "_and_" + str(len(self.inputs) - 1) + "_files"
+                    e = ArgumentError("--run_name should be given when multiple input files are given.")
+                    e.traceback = False
+                    e.halt = True
+                    raise e
 
     def set_self_inputs(self):
         from ..exceptions import SetupError

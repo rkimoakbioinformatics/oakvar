@@ -572,20 +572,19 @@ class Tester:
         from time import time
         from subprocess import call, STDOUT
         from ..util.util import quiet_print
+        from ..exceptions import ModuleLoadingError
+        from ..exceptions import SetupError
+
 
         input_msg = (
             "" if self.input_file == "input" else self.input_file
         )  # if there is more than one test for the module, include the test file in the log.
         if self.module is None:
-            from ..exceptions import ModuleLoadingError
-
             raise ModuleLoadingError(self.module_name)
         self._report(f"{self.module.name}: started {input_msg}")
         self.start_time = time()
         self.parse_parms()
         if self.parms is None:
-            from ..exceptions import SetupError
-
             raise SetupError(module_name=self.module_name)
         __python_exc__ = sys.executable
         # default is to run 'text' report but it can be overridden in the optional parms file.
@@ -634,10 +633,10 @@ class Tester:
 
     def verify(self):
         from ..module.local import get_local_module_info
+        from ..exceptions import ModuleLoadingError
+
 
         if self.module is None:
-            from ..exceptions import ModuleLoadingError
-
             raise ModuleLoadingError(self.module_name)
         self.test_passed = True
         if self.module.type == "annotator":
@@ -721,10 +720,10 @@ class Tester:
     # if expected results are not found and fail the test.    Test just the specified
     # level (variant, gene, etc) and specified module's columns
     def verify_level(self, level, module_name):
+        from ..exceptions import ModuleLoadingError
+
         # self._report("  Verifying " + level + " level values.")
         if self.module is None:
-            from ..exceptions import ModuleLoadingError
-
             raise ModuleLoadingError(self.module_name)
         key_reader = self.create_report_reader(self.report_type, self.key_path)
         if key_reader is None:
@@ -768,7 +767,7 @@ class Tester:
                         if "|" in header:
                             headLabel = header[header.index("|") + 1 :]
                         self._report(
-                            f"{self.module.name}: {variant}/{headLabel}/{key_row[idx]}/{result[result_idx]}"
+                                f"#\n{self.module.name}: {variant}\n{self.module.name}: {headLabel}\n{self.module.name}: {key_row[idx]}\n{self.module.name}: {result[result_idx]}"
                         )
                         self.test_passed = False
 
@@ -827,6 +826,8 @@ def test(args, __name__="util test"):
     from ..module.local import get_local_module_types
     from ..module.local import get_local_module_info
     from ..util.util import quiet_print
+    from ..exceptions import NoInput
+
 
     rundir = args.get("rundir")
     if rundir is None:
@@ -848,8 +849,6 @@ def test(args, __name__="util test"):
     modules_failed = []
     module_names = args.get("modules")
     if not module_names:
-        from ..exceptions import NoInput
-
         raise NoInput()
     module_names.sort()
     result = {}
