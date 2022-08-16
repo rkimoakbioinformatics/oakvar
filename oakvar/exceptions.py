@@ -48,6 +48,7 @@ class IgnoredVariant(InvalidData):
 
 
 class LiftoverFailure(InvalidData):
+    traceback = False
     pass
 
 
