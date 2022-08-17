@@ -478,7 +478,7 @@ class VCF2VCF:
         import logging
         from oakvar.exceptions import LoggerError
 
-        self.logger = logging.getLogger(self.module_name)
+        self.logger = logging.getLogger(f"oakvar.{self.module_name}")
         # self.log_path = join(self.output_dir, self.run_name + ".log")
         # log_handler = logging.FileHandler(self.log_path, "a")
         # formatter = logging.Formatter(
