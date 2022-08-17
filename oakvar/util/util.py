@@ -851,15 +851,10 @@ def log_variant_exception(
         err_str = traceback.format_exc().rstrip()
         if err_str.endswith("None"):
             err_str_log = str(e)
-            logger.error(err_str_log)
         else:
-            lines = err_str.split("\n")
-            last_line = lines[-1]
-            err_str_log = (
-                "\n".join(lines[:-1]) + "\n" + ":".join(last_line.split(":")[:2])
-            )
-            logger.error(err_str_log)
-        if err_str_log not in unique_excs:
+            err_str_log = err_str
+        if not err_str_log in unique_excs:
             unique_excs.append(err_str_log)
+            logger.error(err_str_log)
     if error_logger:
         error_logger.error("\n[{:d}]{}\n({})\n#".format(lnum, line.rstrip(), str(e)))
