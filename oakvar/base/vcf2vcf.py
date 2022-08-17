@@ -194,6 +194,8 @@ class VCF2VCF:
             v = v.replace("\t", "%09")
         if "\r" in v:
             v = v.replace("\r", "%0D")
+        if " " in v:
+            v = v.replace(" ", "%20")
         return v
 
     def trim_variant(self, pos, ref, alt):
