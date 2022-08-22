@@ -23,26 +23,24 @@
 }
 
 body * {
-	font-family: 'roboto-light';
+	font-family: Inter;
 	margin: 0px;
+    font-size: 14px;
 }
 
 .butn {
-  -webkit-border-radius: 4;
-  -moz-border-radius: 4;
-  border-radius: 2px;
-  font-family: 'roboto-medium';
-  color: #ffffff;
-  background: #c5af8d;
-  text-decoration: none;
-  border-style: none;
-  margin-left: 1px;
-  margin-right: 1px;
+  -webkit-border-radius: 3;
+  -moz-border-radius: 3;
+  border-radius: 3px;
+  font-family: Inter;
+  color: #fffefe;
+  background: #a7a7a7;
   cursor: pointer;
+  padding: 4px;
 }
 
 .butn:hover:enabled {
-  background-color: #5cb5e5;
+  background-color: #c7c7c7;
 }
 
 .butn:disabled {
@@ -61,63 +59,94 @@ body * {
 
 .rightcontentdiv {
 	width: 100%;
-	height: calc(100% - 0px);
+	height: 100%;
 	overflow: auto;
+    display: flex;
+    flex-direction: row;
+}
+
+#topbuttons {
+    position: fixed;
+    top: 100px;
+    right: 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+#tabledetailmaxbuttondiv {
+    position: fixed;
+    top: 30px;
+    right: 16px;
+    display: flex;
+    flex-direction: column;
 }
 
 .menu1_container {
 	display: inline-block;
     vertical-align: bottom;
-	position: relative;
-	background-color: #c5af8d;
-    color: white;
-	top: 0px;
-	height: 28px;
-	padding: 3px;
+	position: fixed;
+    color: black;
+	top: 4px;
 	font-size: 14px;
     border-radius: 3px 3px 0px 0px;
-    left: 5px;
+    right: 16px;
+    z-index: 2;
 }
 
 .menu1 {
 	display: inline-block;
 	position: relative;
-    color: black;
-    padding: 4px;
     font-size: 13px;
     border: none;
 	cursor: pointer;
-    font-family: roboto-medium;
-    color: white;
+    color: black;
 }
 
 .menu2_container {
 	position: absolute;
-	top: 31px;
-	left: -3px;
-	background-color: #d1d3d4;
-	width: 150px;
+	top: 22px;
+	left: -182px;
+    background-color: #ffffff;
+	width: 200px;
     z-index: 100;
+    border: 0.5px solid #cccccc;
 }
 
 .menu2 {
 	position: relative;
-	color: black;
-	width: 130px;
-	padding-left: 6px;
-	padding-top: 6px;
-	padding-bottom: 6px;
+	color: #313131;
+	width: 100%;
     z-index: 100;
+    background-color: #ffffff;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    padding-left: 14px;
+    padding-right: 14px;
+}
+
+.menu2:hover {
+    background-color: #cecece;
 }
 
 .menu3 {
     display: none;
     position: absolute;
-    top: 6px;
-    left: 150px;
-    background-color: #d1d3d4;
+    left: -400px;
+    top: -7px;
+    background-color: #ffffff;
     z-index: 100;
-    padding: 10px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    width: 400px;
+    border: 0.5px solid #cccccc;
+}
+
+.menu3.on {
+    display: block;
+}
+
+#widgets_showhide_select_div {
+    top: -100px;
 }
 
 .menu1 a {
@@ -133,13 +162,21 @@ body * {
     z-index: 100;
 }
 
+.menu3 a {
+    padding-left: 14px;
+}
+
+.menu3 a:hover {
+    background-color: #cecece;
+}
+
 .draggableDiv {
 	background-color: #d1dee3;
 	width: 100%;
 	height:	8px;
 	text-align: center;
 	cursor: row-resize;
-	position: relative;
+	position: fixed;
 }
 
 .selectedrow {
@@ -156,7 +193,8 @@ table.detailtable td {
 	padding: 3px;
 	margin: 5px;
 	font-size: 10px;
-	font-family: roboto-light;
+	/*font-family: roboto-light;*/
+	font-family: Inter;
 }
 
 .hiddencolumn[hide="true"] {
@@ -167,7 +205,7 @@ table.detailtable td {
 	background: #8e8e8e;
 }
 
-.tabhead {
+/*.tabhead {
 	margin-right: 2px;
     display: inline-block;
     height: 14px;
@@ -194,40 +232,34 @@ table.detailtable td {
 }
 
 .tabhead.hide {
-}
+}*/
+
+/*tabhead {
+    text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-2 py-2 text-sm font-medium rounded-md" onclick="changeTab('report')">
+}*/
 
 div.tabContent {
-	position: absolute;
-	top: 62px;
-    left: 0px;
-	width: calc(100% - 16px);
-	padding: 8px;
-	background-color: #ffffff; 
-	height: -moz-calc(100% - 90px);
-	height: -webkit-calc(100% - 90px);
-	height: calc(100% - 90px);
+    display: none;
 }
 
 div.tabContent.show { 
-	visibility: visible; 
+	/*visibility: visible;*/
+    display: block;
 }
 
 div.tabContent.hide { 
-    visibility: hidden;
+    display: none;
 }
 
 .pq-grid-cell {
-	font-family: roboto-light;
 	font-size: 12px;
 }
 
 .pq-grid-col {
-	font-family: roboto-light;
 	font-size: 12px;
 }
 
 .ui-widget {
-	font-family: roboto-light;
 	font-size: 12px;
 }
 
@@ -236,13 +268,16 @@ div.tabContent.hide {
 }
 
 .tablediv {
-	position: absolute;
 	width: 100%;
-	height: 500px;
+	height: 100%;
+    display: none;
+}
+
+.tablediv.on {
+    display: block;
 }
 
 .tablesidebardiv {
-	position: absolute;
 	top: 30px;
 	right: 0px;
 	width: 30px;
@@ -251,7 +286,6 @@ div.tabContent.hide {
 .detailsidebardiv {
 	width: 30px;
 	height: 100%;
-	position: absolute;
 	right: 0px;
 	top: 0px;
 }
@@ -613,10 +647,18 @@ div.pq-select-menu>.pq-select-option-label {
 }
 
 .cellvaluediv {
-	position: relative;
-	height: 18px;
-	width: 100%;
+	position: fixed;
+	height: 60px;
 	font-size: 13px;
+    bottom: 12px;
+    border: 0.5px solid #dddddd;
+    border-radius: 3px;
+    padding: 4px;
+    display: none;
+}
+
+.cellvaluediv.on {
+    display: block;
 }
 
 .cellvaluediv button {
@@ -632,8 +674,8 @@ div.pq-select-menu>.pq-select-option-label {
 }
 
 .cellvaluediv textarea {
-    width: calc(100% - 30px);
-    height: 100%;
+    width: calc(100% - 0px);
+    height: 48px;
     resize: none;
     overflow: auto;
     vertical-align: middle;
@@ -650,9 +692,9 @@ div.pq-select-menu>.pq-select-option-label {
 }
 
 #info_div {
-	display: inline-block;
+	/*display: inline-block;
     width: calc(100% - 30px);
-    border: 1px solid #acacac;
+    border: 1px solid #acacac;*/
 }
 
 #filterbutton {
@@ -790,6 +832,8 @@ div.pq-select-menu>.pq-select-option-label {
 #gene-list-text {
 	height: 8em;
 	display: block;
+    width: 100%;
+    border: 0.5px solid #dddddd;
 }
 
 #gene-list-file {
@@ -802,16 +846,21 @@ div.pq-select-menu>.pq-select-option-label {
 }
 
 .filter-header {
-	background-color: #4a87bd;
+	background-color: #e1e5e8;
 	font-size: 18px;
 	cursor: pointer;
 	display: flex;
+    position: relative;
+    color: black;
 }
 .filter-header-text {
-	color: white;
+	margin-left: 3px;
 }
 .filter-content {
 	margin: 10px;
+}
+.filter-body {
+    padding: 4px;
 }
 .filter-header.inactive + .filter-body {
 	display: none;
@@ -821,8 +870,8 @@ div.pq-select-menu>.pq-select-option-label {
 }
 .filter-section {
 	margin: 10px;
-	border: 0.5px solid #939393;
-	border-radius: 4px;
+	border: 0.5px solid #d5d5d5;
+	border-radius: 3px;
 }
 
 .sf-selector {
@@ -843,22 +892,24 @@ div.pq-select-menu>.pq-select-option-label {
 	text-align: center;
 	float: left;
 	cursor: pointer;
-	color: white;
+	color: #0b0b0b;
 }
 
 .vprop-option.active {
-	background-color: #4a87bd;
+	background-color: #797979;
+    color: white;
 }
 
 .filter-header-arrow {
-	color: white;
+    position: absolute;
+    right: 10px;
 }
 
 .filter-header-arrow::after {
-	content: "\25bd";
+	content: "\2296";
 }
 .inactive > .filter-header-arrow::after {
-	content: "\25b7";
+	content: "\2295";
 }
 #vprop-sf {
 	max-width: 500px;
@@ -867,14 +918,10 @@ div.pq-select-menu>.pq-select-option-label {
 	width: 15px;
 	height: 15px;
 }
-.filter-header-text {
-	margin-left: 3px;
-}
 #filter-load-controls {
 	display: flex;
 	border: none;
 	align-items: center;
-	font-size: 18px;
 }
 #filter-count-btn {
 	width: 20px;
@@ -887,28 +934,23 @@ div.pq-select-menu>.pq-select-option-label {
 	background-color: #4a87bd;
 }
 #filter-count-display {
-	margin-left: 5px;
 }
 #load_button {
 	margin-left: auto;
-	width: fit-content;
-	height: 34px;
-    font-family: sourcesanspro-bold;
-    font-size: 18px;
 }
 #filter-save {
 	margin-left: 0.5ch;
 	height: 2em;
 	cursor: pointer;
 }
-#filter-import-label img {
+#filter-import-label svg {
 	margin-left: 0.5ch;
 	height: 2em;
 	cursor: pointer;
 }
-#tabhead_filter.active {
+/*#tabhead_filter.active {
 	background-color: #d1dae0;
-}
+}*/
 #filter-left-panel {
 	border-right: 1px solid gray;
 	padding: 5px;
@@ -970,6 +1012,7 @@ div.pq-select-menu>.pq-select-option-label {
 #sample-select-filt {
 	margin-left: 1ch;
 	margin-right: 1ch;
+    border: 0.5px solid #dddddd;
 }
 #sample-list-file-display{
 	text-decoration: underline;
@@ -1019,16 +1062,29 @@ input:checked + .sample-rd-rej::before {
   display: block;
   position: relative;
   padding-left: 21px;
-  margin-bottom: 2px;
   cursor: pointer;
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+  height: 32px;
 }
 
-.checkbox-container:hover {
-    background-color: #888888;
+.menu3 > div:hover {
+    background-color: #cecece;
+}
+
+.menu3 label:hover {
+    background-color: #cecece;
+}
+
+.menu2:hover > .menu3.hoveron {
+    display: block;
+}
+
+.checkbox-container span {
+    position: absolute;
+    transform: translate(0%, 5px);
 }
 
 /* Hide the browser's default checkbox */
@@ -1040,16 +1096,18 @@ input:checked + .sample-rd-rej::before {
   width: 0;
   top: 0px;
   left: 0px;
+  padding-left: 4px;
 }
 
 /* Create a custom checkbox */
 .checkmark {
   position: absolute;
-  top: 0;
+  top: 3px;
   left: 0;
   height: 16px;
   width: 16px;
   background-color: #e5e6e7;
+  transform: translate(0%, 5px);
 }
 
 /* On mouse-over, add a grey background color */
@@ -1059,7 +1117,7 @@ input:checked + .sample-rd-rej::before {
 
 /* When the checkbox is checked, add a blue background */
 .checkbox-container input:checked ~ .checkmark {
-  background-color: #5eb4e5;
+  background-color: #acacac;
 }
 
 /* Create the checkmark/indicator (hidden when not checked) */
@@ -1074,7 +1132,6 @@ input:checked + .sample-rd-rej::before {
   display: block;
 }
 
-/* Style the checkmark/indicator */
 .checkbox-container .checkmark:after {
   left: 4px;
   top: 0px;
@@ -1093,10 +1150,13 @@ input:checked + .sample-rd-rej::before {
 
 .columngroup-control-box {
     border: 0;
+    width: calc(100% - 20px);
 }
 
 .menu2_container.show-block {
     display: block;
+    padding-top: 10px;
+    padding-bottom: 10px;
 }
 
 .menu2_container.hide {
@@ -1225,5 +1285,30 @@ input:checked + .sample-rd-rej::before {
     top: 0px;
     left: inherit;
     right: 2px;
+}
+
+#tabledetailmaxbuttondiv .togglebtn.on svg.on {
+    display: block;
+}
+
+#tabledetailmaxbuttondiv .togglebtn svg.on {
+    display: none;
+}
+
+#tabledetailmaxbuttondiv .togglebtn.on svg.off {
+    display: none;
+}
+
+#tabledetailmaxbuttondiv .togglebtn svg.off {
+    display: block;
+}
+
+#rightcontentdiv_job {
+    padding: 1rem;
+}
+
+#columns_showhide_select_div {
+    width: 400px;
+    overflow: auto;
 }
 

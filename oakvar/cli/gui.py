@@ -469,14 +469,16 @@ class WebServer(object):
         self.server_started = True
 
     def setup_webapp_routes(self):
-        if logger is None:
-            from ..exceptions import LoggerError
-
-            raise LoggerError()
+        from ..exceptions import ModuleLoadingError
         from importlib.util import spec_from_file_location, module_from_spec
         from os.path import join, exists
         from os import listdir
+        from ..exceptions import LoggerError
+        from ..exceptions import ModuleLoadingError
+        from ..exceptions import SetupError
 
+        if logger is None:
+            raise LoggerError()
         global modules_dir
         if modules_dir is None:
             return False
@@ -491,18 +493,12 @@ class WebServer(object):
                 if exists(pypath):
                     spec = spec_from_file_location("route", pypath)
                     if spec is None:
-                        from ..exceptions import ModuleLoadingError
-
                         raise ModuleLoadingError(module_name)
                     module = module_from_spec(spec)
                     if spec.loader is None:
-                        from ..exceptions import ModuleLoadingError
-
                         raise ModuleLoadingError(module_name)
                     spec.loader.exec_module(module)
                     if self.app is None:
-                        from ..exceptions import SetupError
-
                         raise SetupError()
                     for route in module.routes:
                         method, path, func_name = route

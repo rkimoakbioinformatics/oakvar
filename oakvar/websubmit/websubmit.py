@@ -16,6 +16,7 @@ from multiprocessing import Process, Manager, Queue
 from queue import Empty
 from importlib.util import find_spec
 from importlib import import_module
+from logging import getLogger
 
 report_generation_ps = {}
 valid_report_types = None
@@ -78,10 +79,15 @@ class FileRouter(object):
                 jobs_dirs = [jobs_dir]
         return jobs_dirs
 
-    async def job_dir(self, request, job_id, given_username=None):
+    async def job_dir(self, request, job_id_or_dbpath, given_username=None):
+        from os.path import exists
+        from os.path import dirname
+        from os.path import abspath
+        if exists(job_id_or_dbpath):
+            return dirname(abspath(job_id_or_dbpath))
         jobs_dirs = await self.get_jobs_dirs(request)
         job_dir = None
-        if jobs_dirs is not None:
+        if jobs_dirs:
             if self.servermode and self.server_ready:
                 if given_username is not None:
                     username = given_username
@@ -94,20 +100,21 @@ class FileRouter(object):
                 else:
                     if username != "admin":
                         job_dir = os.path.join(
-                            os.path.dirname(jobs_dirs[0]), username, job_id
+                            os.path.dirname(jobs_dirs[0]), username, job_id_or_dbpath
                         )
                         # job_dir = os.path.join(jobs_dirs[0], job_id)
                     else:
                         for jobs_dir in jobs_dirs:
-                            job_dir = os.path.join(jobs_dir, job_id)
+                            job_dir = os.path.join(jobs_dir, job_id_or_dbpath)
                             if os.path.exists(job_dir):
                                 break
             else:
-                job_dir = os.path.join(jobs_dirs[0], job_id)
+                job_dir = os.path.join(jobs_dirs[0], job_id_or_dbpath)
         return job_dir
 
-    async def job_input(self, request, job_id):
-        job_dir, statusjson = await self.job_status(request, job_id)
+    async def job_input(self, request, job_id_or_dbpath):
+        job_dir = await self.job_dir(request, job_id_or_dbpath)
+        statusjson = await self.job_status(request, job_dir, job_id_or_dbpath)
         orig_input_fname = None
         if "orig_input_fname" in statusjson:
             orig_input_fname = statusjson["orig_input_fname"]
@@ -123,8 +130,11 @@ class FileRouter(object):
             orig_input_path = None
         return orig_input_path
 
-    async def job_run_name(self, request, job_id):
-        job_dir, statusjson = await self.job_status(request, job_id)
+    async def job_run_name(self, request, job_id_or_dbpath):
+        job_dir = await self.job_dir(request, job_id_or_dbpath)
+        statusjson = await self.job_status(request, job_dir, job_id_or_dbpath)
+        if not statusjson:
+            return None
         run_name = statusjson.get("run_name")
         if run_name is None:
             fns = os.listdir(job_dir)
@@ -134,12 +144,12 @@ class FileRouter(object):
                     break
         return run_name
 
-    async def job_run_path(self, request, job_id):
-        job_dir, _ = await self.job_status(request, job_id)
+    async def job_run_path(self, request, job_id_or_dbpath):
+        job_dir = await self.job_dir(request, job_id_or_dbpath)
         if job_dir is None:
             run_path = None
         else:
-            run_name = await self.job_run_name(request, job_id)
+            run_name = await self.job_run_name(request, job_id_or_dbpath)
             if run_name is not None:
                 run_path = os.path.join(job_dir, run_name)
             else:
@@ -160,10 +170,10 @@ class FileRouter(object):
             output_fname = run_path + self.status_extension
         return output_fname
 
-    async def job_report(self, request, job_id, report_type):
+    async def job_report(self, request, job_id_or_dbpath, report_type):
         from ..module.local import get_local_module_info
 
-        run_path = await self.job_run_path(request, job_id)
+        run_path = await self.job_run_path(request, job_id_or_dbpath)
         if run_path is None:
             return None
         run_name = os.path.basename(run_path)
@@ -186,27 +196,43 @@ class FileRouter(object):
                     report_path.append(output_filename)
         return report_path
 
-    async def job_status(self, request, job_id):
+    async def job_status(self, request, job_dir, job_id_or_dbpath, new=False):
+        from os.path import exists
+        from os.path import join
+        from os.path import basename
+        from os.path import abspath
+        from oakvar.consts import status_prefix
         try:
-            job_dir = await self.job_dir(request, job_id)
-            fns = os.listdir(job_dir)
-            statusjson = {}
-            for fn in fns:
-                if fn.endswith(".status.json"):
-                    with open(os.path.join(job_dir, fn)) as f:
-                        try:
-                            statusjson = json.load(f)
-                        except json.JSONDecodeError:
-                            statusjson = self.job_statuses.get(job_id, {})
-                        finally:
-                            break
-            if statusjson:
-                self.job_statuses[job_id] = statusjson
-        except Exception:
-            traceback.print_exc()
-            job_dir = None
+            if not new:
+                if job_id_or_dbpath in self.job_statuses:
+                    return self.job_statuses[job_id_or_dbpath]
             statusjson = None
-        return job_dir, statusjson
+            status_fn = None
+            if exists(job_id_or_dbpath):
+                job_id_or_dbpath = abspath(job_id_or_dbpath)
+                if not job_id_or_dbpath.endswith(".sqlite"):
+                    return None, None
+                run_name = job_id_or_dbpath[:-7]
+                status_fn = run_name + status_prefix
+            else:
+                fns = os.listdir(job_dir)
+                for fn in fns:
+                    if fn.endswith(".status.json"):
+                        status_fn = join(job_dir, fn)
+                        break
+            if not status_fn:
+                return None, None
+            with open(status_fn) as f:
+                try:
+                    statusjson = json.load(f)
+                except json.JSONDecodeError:
+                    statusjson = self.job_statuses.get(job_id_or_dbpath, None)
+            self.job_statuses[job_id_or_dbpath] = statusjson
+        except Exception as e:
+            logger = getLogger()
+            logger.exception(e)
+            statusjson = None
+        return statusjson
 
     async def job_log(self, request, job_id):
         run_path = await self.job_run_path(request, job_id)
@@ -764,20 +790,52 @@ async def get_report_types(_):
     return web.json_response({"valid": valid_types})
 
 
+async def get_job_id_or_dbpath(request):
+    from urllib.parse import unquote
+    try:
+        json_data = await request.json()
+    except:
+        json_data = None
+    text_data = await request.text()
+    text_data = unquote(text_data, encoding='utf-8', errors='replace')
+    if text_data and "=" in text_data:
+        return text_data.split("=")[1]
+    post_data = await request.post() # post with form
+    queries = request.rel_url.query # get
+    if json_data:
+        job_id = json_data.get("job_id", None)
+        dbpath = json_data.get("dbpath", None)
+    elif post_data:
+        job_id = post_data.get("job_id", None)
+        dbpath = post_data.get("dbpath", None)
+    elif queries:
+        job_id = queries.get("job_id", None)
+        dbpath = queries.get("dbpath", None)
+    else:
+        return None
+    if job_id:
+        return job_id
+    elif dbpath:
+        return dbpath
+    else:
+        return None
+
 async def generate_report(request):
     filerouter = get_filerouter()
-    job_id = request.match_info["job_id"]
-    report_type = request.match_info["report_type"]
-    job_db_path = await filerouter.job_db(request, job_id)
-    if job_db_path is None:
+    job_id_or_dbpath = await get_job_id_or_dbpath(request)
+    if not job_id_or_dbpath:
         return web.Response(status=404)
-    run_args = ["oc", "report", job_db_path]
+    report_type = request.match_info["report_type"]
+    job_db_path = await filerouter.job_db(request, job_id_or_dbpath)
+    if not job_db_path:
+        return web.Response(status=404)
+    run_args = ["ov", "report", job_db_path]
     run_args.extend(["-t", report_type])
-    if job_id not in report_generation_ps:
-        report_generation_ps[job_id] = {}
-    report_generation_ps[job_id][report_type] = True
+    if job_id_or_dbpath not in report_generation_ps:
+        report_generation_ps[job_id_or_dbpath] = {}
+    report_generation_ps[job_id_or_dbpath][report_type] = True
     tmp_flag_path = os.path.join(
-        os.path.dirname(job_db_path), job_id + ".report_being_generated." + report_type
+        os.path.dirname(job_db_path), job_id_or_dbpath + ".report_being_generated." + report_type
     )
     wf = open(tmp_flag_path, "w")
     wf.write(report_type)
@@ -787,32 +845,40 @@ async def generate_report(request):
     )
     _, err = await p.communicate()
     os.remove(tmp_flag_path)
-    if report_type in report_generation_ps[job_id]:
-        del report_generation_ps[job_id][report_type]
-    if job_id in report_generation_ps and len(report_generation_ps[job_id]) == 0:
-        del report_generation_ps[job_id]
+    if report_type in report_generation_ps[job_id_or_dbpath]:
+        del report_generation_ps[job_id_or_dbpath][report_type]
+    if job_id_or_dbpath in report_generation_ps and len(report_generation_ps[job_id_or_dbpath]) == 0:
+        del report_generation_ps[job_id_or_dbpath]
     response = "done"
     if len(err) > 0:
-        from logging import getLogger
-
         logger = getLogger()
         logger.error(err.decode("utf-8"))
         response = "fail"
     return web.json_response(response)
 
 
-async def download_report(request):
-    filerouter = get_filerouter()
-    job_id = request.match_info["job_id"]
-    report_type = request.match_info["report_type"]
-    report_filenames = await filerouter.job_report(request, job_id, report_type)
+async def get_report_paths(request, job_id_or_dbpath, report_type):
+    report_filenames = await filerouter.job_report(request, job_id_or_dbpath, report_type)
     if report_filenames is None:
-        return web.Response(status=404)
-    job_dir = await filerouter.job_dir(request, job_id)
+        return None
+    job_dir = await filerouter.job_dir(request, job_id_or_dbpath)
     # For now, handles only one file-download.
     report_paths = [os.path.join(job_dir, v) for v in report_filenames]
+    return report_paths
+
+async def download_report(request):
+    from os.path import exists
+    job_id_or_dbpath = await get_job_id_or_dbpath(request)
+    if not job_id_or_dbpath:
+        return web.HTTPNotFound
+    report_type = request.match_info["report_type"]
+    report_paths = await get_report_paths(request, job_id_or_dbpath, report_type)
+    if not report_paths:
+        raise web.HTTPNotFound
     report_path = report_paths[0]
-    if os.path.exists(report_path):
+    if not exists(report_path):
+        await generate_report(request)
+    if exists(report_path):
         report_filename = os.path.basename(report_path)
         headers = {"Content-Disposition": "attachment; filename=" + report_filename}
         response = web.FileResponse(report_path, headers=headers)
@@ -1096,8 +1162,6 @@ def fetch_job_queue(job_queue, run_jobs_info):
                         self.running_jobs[job_id] = p
 
         async def delete_job(self, qitem):
-            from logging import getLogger
-
             logger = getLogger()
             job_id = qitem["job_id"]
             if self.get_process(job_id) is not None:
@@ -1113,8 +1177,6 @@ def fetch_job_queue(job_queue, run_jobs_info):
             try:
                 self.max_num_concurrent_jobs = int(value)
             except:
-                from logging import getLogger
-
                 logger = getLogger()
                 logger.info(
                     "Invalid maximum number of concurrent jobs [{}]".format(value)
@@ -1136,8 +1198,6 @@ def fetch_job_queue(job_queue, run_jobs_info):
             except Empty:
                 pass
             except Exception as e:
-                from logging import getLogger
-
                 logger = getLogger()
                 logger.exception(e)
             finally:
@@ -1329,13 +1389,13 @@ async def get_live_annotation(queries):
 
 
 async def get_available_report_types(request):
-    job_id = request.match_info["job_id"]
+    job_id_or_dbpath = await get_job_id_or_dbpath(request)
     filerouter = get_filerouter()
-    job_dir = await filerouter.job_dir(request, job_id)
+    job_dir = await filerouter.job_dir(request, job_id_or_dbpath)
     existing_reports = []
     for report_type in get_valid_report_types():
-        report_paths = await filerouter.job_report(request, job_id, report_type)
-        if report_paths is not None:
+        report_paths = await filerouter.job_report(request, job_id_or_dbpath, report_type)
+        if report_paths:
             report_exist = True
             for p in report_paths:
                 if os.path.exists(os.path.join(job_dir, p)) == False:
@@ -1409,6 +1469,15 @@ async def import_job(request):
     return web.Response()
 
 
+async def get_local_module_info_web(request):
+    from ..module.local import get_local_module_info
+    module_name = request.match_info["module"]
+    mi = get_local_module_info(module_name)
+    if mi:
+        return web.json_response(mi.serialize())
+    else:
+        return web.json_response({})
+
 filerouter = FileRouter()
 routes = []
 routes.append(["POST", "/submit/submit", submit])
@@ -1417,10 +1486,10 @@ routes.append(["GET", "/submit/jobs", get_all_jobs])
 routes.append(["GET", "/submit/jobs/{job_id}", view_job])
 routes.append(["DELETE", "/submit/jobs/{job_id}", delete_job])
 routes.append(["GET", "/submit/jobs/{job_id}/db", download_db])
-routes.append(["GET", "/submit/reports", get_report_types])
-routes.append(["GET", "/submit/jobs/{job_id}/reports", get_available_report_types])
-routes.append(["POST", "/submit/jobs/{job_id}/reports/{report_type}", generate_report])
-routes.append(["GET", "/submit/jobs/{job_id}/reports/{report_type}", download_report])
+routes.append(["GET", "/submit/reporttypes", get_report_types])
+routes.append(["POST", "/submit/jobs/reports", get_available_report_types])
+routes.append(["POST", "/submit/makereport/{report_type}", generate_report])
+routes.append(["POST", "/submit/downloadreport/{report_type}", download_report])
 routes.append(["GET", "/submit/jobs/{job_id}/log", get_job_log])
 routes.append(["GET", "/submit/getjobsdir", get_jobs_dir])
 routes.append(["GET", "/submit/setjobsdir", set_jobs_dir])
@@ -1439,6 +1508,7 @@ routes.append(["GET", "/submit/jobs/{job_id}/status", get_job_status])
 routes.append(["GET", "/submit/updateresultdb", update_result_db])
 routes.append(["POST", "/submit/import", import_job])
 routes.append(["GET", "/submit/resubmit", resubmit])
+routes.append(["GET", "/submit/localmodules/{module}", get_local_module_info_web])
 
 if __name__ == "__main__":
     app = web.Application()

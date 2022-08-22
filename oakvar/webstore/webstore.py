@@ -476,15 +476,32 @@ async def get_remote_manifest_from_local(request):
     return web.json_response(rmi)
 
 
+async def local_module_logo_exists(request):
+    from ..module.cache import get_module_cache
+    from os.path import exists
+    module_name = request.match_info["module_name"]
+    module_info = get_module_cache().local[module_name]
+    module_dir = module_info.directory
+    logo_path = os.path.join(module_dir, "logo.png")
+    if exists(logo_path):
+        return web.json_response("success")
+    else:
+        return web.json_response("fail")
+
 async def get_local_module_logo(request):
     from ..module.cache import get_module_cache
-
+    from os.path import exists
     queries = request.rel_url.query
     module = queries.get("module", None)
     module_info = get_module_cache().local[module]
     module_dir = module_info.directory
     logo_path = os.path.join(module_dir, "logo.png")
-    return web.FileResponse(logo_path)
+    if exists(logo_path):
+        return web.FileResponse(logo_path)
+    else:
+        #p = join(dirname(abspath(__file__)), "images", "genericmodulelogo.png")
+        #return web.FileResponse(p)
+        return web.HTTPNotFound()
 
 
 async def get_logo(request):
@@ -517,4 +534,5 @@ routes.append(["GET", "/store/tagdesc", get_tag_desc])
 routes.append(["GET", "/store/updateremote", update_remote])
 routes.append(["GET", "/store/localasremote", get_remote_manifest_from_local])
 routes.append(["GET", "/store/locallogo", get_local_module_logo])
+routes.append(["GET", "/store/locallogoexists/{module_name}", local_module_logo_exists])
 routes.append(["GET", "/store/logo/{store}/{module_name}", get_logo])

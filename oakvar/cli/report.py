@@ -320,7 +320,7 @@ class CravatReport:
                         colno = None
                         for i in range(len(self.colinfo[level]["columns"])):
                             colinfo_col = self.colinfo[level]["columns"][i]
-                            if mi.name in ["hg38", "tagsampler"]:
+                            if mi.name in ["gencode", "hg38", "tagsampler"]:
                                 grp_name = "base"
                             else:
                                 grp_name = mi.name
@@ -648,6 +648,7 @@ class CravatReport:
         self.colnames_to_display[level] = []
         priority_colgroupnames = (get_user_conf() or {}).get("report_module_order") or [
             "base",
+            "gencode",
             "hg38",
             "hg19",
             "hg18",
@@ -705,19 +706,15 @@ class CravatReport:
             modules_to_add = [m for m in gene_annotators if m != "base"]
             for module in modules_to_add:
                 cols = []
-                q = 'select col_def from gene_header where col_name like "{}__%"'.format(
-                    module
-                )
-                await cursor.execute(q)
+                q = f"select col_def from gene_header where col_name like ?"
+                await cursor.execute(q, (module + "__%",))
                 rs = await cursor.fetchall()
                 for r in rs:
                     cd = ColumnDefinition({})
                     cd.from_json(r[0])
                     cols.append(cd)
-                q = 'select displayname from gene_annotator where name="{}"'.format(
-                    module
-                )
-                await cursor.execute(q)
+                q = 'select displayname from gene_annotator where name=?'
+                await cursor.execute(q, (module,))
                 r = await cursor.fetchone()
                 displayname = r[0]
                 self.columngroups[level].append(
@@ -750,6 +747,7 @@ class CravatReport:
             summarizer_module_names = []
             for module_name in done_var_annotators:
                 if module_name in [
+                    "gencode",
                     "base",
                     "hg19",
                     "hg18",
@@ -775,6 +773,8 @@ class CravatReport:
                 if module_name is None:
                     continue
                 mi = local_modules[module_name]
+                if not mi:
+                    continue
                 sys.path = sys.path + [dirname(mi.script_path)]
                 annot_cls = None
                 if module_name in done_var_annotators:

@@ -415,7 +415,7 @@ class Aggregator(object):
         for col_def in columns:
             name = col_def.name
             sql_type = self.cr_type_to_sql[col_def.type]
-            s = '"' + name + '" ' + sql_type
+            s = name + ' ' + sql_type
             col_def_strings.append(s)
         if not self.append:
             q = f"drop table if exists {self.table_name}"

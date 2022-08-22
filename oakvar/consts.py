@@ -272,3 +272,4 @@ for g in ["hg18", "hg19"]:
     liftover_chain_paths[g] = join(
         dirname(__file__), "liftover", g + "ToHg38.over.chain"
     )
+status_prefix = ".status.json"

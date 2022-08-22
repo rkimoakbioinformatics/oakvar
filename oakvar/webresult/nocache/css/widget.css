@@ -22,37 +22,33 @@
 	url('/result/fonts/sourcesanspro-bold-webfont.woff2') format('woff2');
 }
 
-body * {
-	font-family: 'roboto-light';
-	margin: 0px;
-}
-
 .detaildiv {
-	overflow: auto;
-	position: absolute;
-    font-family: monospace;
+	position: relative;
+    display: none;
 }
 
 .detaildiv.resultviewer {
-	width: calc(100% - 8px);
-	bottom: 10px;
-	height: 350px;
+    width: 100%;
+	height: 100%;
+}
+
+.detaildiv.on {
+    display: block;
 }
 
 .detailcontainerdiv {
-    /*padding-top: 8px;*/
+    width: 100%;
+    height: 100%;
 }
 
 .detailcontainerwrapdiv {
-	width: 100%;
-	height: 100%;
-	overflow: auto;
-	position: relative;
+    height: 100%;
+    width: 100%;
 }
 
 .detailcontentdiv {
 	overflow: auto;
-	height: calc(100% - 32px);
+	height: calc(100% - 40px);
 	padding: 0px;
     padding-left: 7px;
     padding-right: 7px;
@@ -70,24 +66,20 @@ body * {
 }
 
 .detailwidgetheader {
-	font-size: 14px;
-	font-weight: bold;
 	display: flex;
 	width: 100%;
     vertical-align: middle;
     border-radius: 6px 6px 0 0;
-    background-color: #1a4a75;
+    background-color: #d9e7ee;
     justify-content: space-between;
     align-items: center;
-    color: white;
 }
 
 .detailwidgettitle {
-	display: inline-block;
-    font-family: sourcesanspro-bold;
-	font-size: 13px;
-    height: 18px;
-    padding: 9px;
+	font-size: 12px;
+    height: 36px;
+    padding: 6px;
+    color: #373737;
 }
 
 .detailwidget-hr {
@@ -103,44 +95,39 @@ body * {
 }
 
 .detailwidget-closebutton {
-	width: 16px;
+	/*width: 16px;
 	height: 16px;
     cursor: pointer;
     margin: 2px;
-    padding: 2px;
+    padding: 2px;*/
 }
 
-.detailwidgetpinbutton {
-	font-size: 12px;
+.detailwidget-pinbutton {
+	/*font-size: 12px;
 	text-align: center;
 	width: 14px;
 	cursor: pointer;
     margin: 2px;
-    padding: 2px;
+    padding: 2px;*/
+    color: gray;
 }
 
-.detailwidgetpinbutton.unpinned {
-	color: black;
-    background-color: #1a4a75;
-}
-
-.detailwidgetpinbutton.pinned {
-	color: white;
-	background-color: #848484;
+.detailwidget-pinbutton.pinned {
+	color: #373737;
 }
 
 .detailwidget-downloadbutton {
-    height: 16px;
+    /*height: 16px;
     cursor: pointer;
     margin: 2px;
-    padding: 2px;
+    padding: 2px;*/
 }
 
 .detailwidget-camerabutton {
-    height: 16px;
+    /*height: 16px;
     cursor: pointer;
     margin: 2px;
-    padding: 2px;
+    padding: 2px;*/
 }
 
 .detailwidgetselect {

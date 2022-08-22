@@ -1,6 +1,6 @@
 <meta charset="utf-8"/>
 
-<html>
+<html class="h-full">
 
 <head>
 	<script>CLOSURE_NO_DEPS = true;</script>
@@ -12,6 +12,8 @@
     <script src="/result/js/jquery-ui-1.12.1.custom/jquery-ui.min.js"></script>
     <link rel='stylesheet' href='/result/js/jquery-ui-1.12.1.custom/jquery-ui.css' />
 	
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
 	<!-- ParamQuery -->
 	<script type="text/javascript" src="/result/js/paramquery-pro-3/pqgrid.dev.js" ></script>
 	<link rel="stylesheet" href="/result/js/paramquery-pro-3/pqgrid.dev.css" />
@@ -35,8 +37,9 @@
 	<script src='/result/nocache/js/filter.js'></script>
 	<script src='/result/nocache/js/widgethelper.js'></script>
 	
-	<!-- Packery -->
-	<script src='/result/js/packery.pkgd.js'></script>
+	<script src='/result/js/masonry.pkgd.min.js'></script>
+    <script src='/result/js/packery.pkgd.js'></script>
+    <script src='/result/js/draggabilly.pkgd.min.js'></script>
 
 	<!-- GraphicsJS -->	
 	<script src='/result/js/graphics.js'></script>
@@ -44,6 +47,49 @@
 	<!-- CSS -->
 	<link rel='stylesheet' href='/result/nocache/css/style.css' />
 	<link rel='stylesheet' href='/result/nocache/css/widget.css' />
+
+    <!-- tailwind css -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/result/fonts/Inter_Web/inter.css" />
+    <script> 
+        tailwind.config = {
+          theme: {
+            extend: {
+              colors: {
+                clifford: '#da373d',
+              },
+            }
+          }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer components {
+            .tabhead {
+                @apply text-gray-600;
+                @apply hover:bg-gray-50;
+                @apply hover:text-gray-900;
+                @apply flex;
+                @apply items-center;
+                @apply px-2;
+                @apply py-2;
+                @apply text-sm;
+                @apply font-medium;
+                @apply rounded-md;
+            }
+            .tabhead.selected {
+                @apply bg-gray-100;
+                @apply text-gray-900;
+            }
+            .tabheadicon {
+                @apply text-gray-400;
+                @apply group-hover:text-gray-500;
+                @apply mr-3;
+                @apply flex-shrink-0;
+                @apply h-6;
+                @apply w-6;
+            }
+        }
+    </style>
 
     <!-- Font -->
     <link href="https://fonts.googleapis.com/css?family=Gothic+A1" rel="stylesheet" crossorigin="anonymous">
@@ -54,16 +100,15 @@
 	<title>OakVar: Result Viewer</title>
 </head>
 
-<body style='min-width: 800px;'>
-<div style='border-bottom: 1px solid #dfdfdf;'>
-    <div style='display: inline-block; background-color: white; vertical-align: bottom; position: relative; top: -3px;'>
-        <img src='/submit/logo.png' style='height: 50px; vertical-align: bottom; cursor: pointer;' onclick='window.open("/submit/nocache/index.html");'/>
-    </div>
+<body class="h-full">
     <div id="menu_div" class='menu1_container'>
-        <div class='menu1' id='layout_menu' onclick="onClickMenu1(this);">Layout
-            <div class='menu2_container hide' >
-                <div class='menu2' onclick="saveLayoutSettingAs(event);">Save as...</div>
-                <div class='menu2' onclick="loadLayoutSettingAs(event);">Load...
+        <div class='menu1' id='layout_menu' onclick="onClickMenu1(this);">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            <div class='menu2_container hide shadow'>
+                <div class='menu2' id="save_layout_div" onclick="saveLayoutSettingAs(event);">Save as...</div>
+                <div class='menu2' id="load_layout_div" onclick="loadLayoutSettingAs(event);">Load...
                     <div class='menu3' id='load_layout_select_div'></div>
                 </div>
                 <div class='menu2' onclick="deleteLayoutSettingAs(event);">Delete...
@@ -72,32 +117,250 @@
                 <div class='menu2' onclick="renameLayoutSettingAs(event);">Rename...
                     <div class='menu3' id='rename_layout_select_div'></div>
                 </div>
-                <div class='menu2' id='layout_columns_menu' style='display: none;' onclick="onClickColumnsMenu(event);">Columns...
-                    <div class='menu3' id='columns_showhide_select_div'></div>
+                <div class='menu2' id='layout_columns_menu' style='display: none;' onclick="return; onClickColumnsMenu(event);">Columns...
+                    <div class='menu3 hoveron shadow' id='columns_showhide_select_div'></div>
                 </div>
-                <div class='menu2' id='layout_widgets_menu' style='display: none;' onclick="onClickWidgetsMenu(event);">Widgets...
-                    <div class='menu3' id='widgets_showhide_select_div'></div>
+                <div class='menu2' id='layout_widgets_menu' style='display: none;' onclick="return; onClickWidgetsMenu(event);">Widgets...
+                    <div class='menu3 hoveron shadow' id='widgets_showhide_select_div'></div>
                 </div>
             </div>
         </div>
     </div>
-
-    <div style='display: inline-block;'>
-        <div id='tabheads' style='position: relative; display: inline-block; vertical-align: bottom;'>
-            &nbsp;&nbsp;&nbsp;&nbsp;
-        </div>
+    <div id='tabledetailmaxbuttondiv'>
+        <a id="tabletogglebtn" class="togglebtn on" href="#" title="Toggle table" onclick="onClickTableToggleBtn();">
+            <svg class="off h-5 w-5" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            <svg class="on h-5 w-5" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" stroke-width="1">
+              <path fill-rule="evenodd" d="M5 4a3 3 0 00-3 3v6a3 3 0 003 3h10a3 3 0 003-3V7a3 3 0 00-3-3H5zm-1 9v-1h5v2H5a1 1 0 01-1-1zm7 1h4a1 1 0 001-1v-1h-5v2zm0-4h5V8h-5v2zM9 8H4v2h5V8z" clip-rule="evenodd" />
+            </svg>
+        </a>
+        <a id="detailtogglebtn" class="togglebtn on" href="#" title="Toggle widgets" onclick="onClickDetailToggleBtn();">
+            <svg class="off h-5 w-5" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+            </svg>
+            <svg class="on h-5 w-5" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" stroke-width="1">
+              <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
+              <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" />
+            </svg>
+        </a>
     </div>
-    <div id='tabledetailmaxbuttondiv' style='position: absolute; top: 2px; right: 88px;'>
-        <button id='tabledetailmaxbutton' class='butn' onclick='onClickTableDetailMinMaxButton();'>View table</button>
-    </div>
-    <div style='position: absolute; top: 0px; right: 0px;'>
-        <a href='https://github.com/KarchinLab/open-cravat/wiki/3.-Viewing-Results#interactive-viewer' target='_blank' title='Help Wiki'><img src='/result/images/question.png' class='question-icon' onclick='mailto:rkim@oakbioinformatics.com' /></a>
-        <a href='mailto:support@cravat.us?Subject=open-cravat%20feedback'><img src='/result/images/mail.png' title='Email for support' class='email-icon' onclick='mailto:rkim@oakbioinformatics.com' /></a>
-        <input type='image' onclick='quicksave();' src='images/save_new.png' title='Quick save' style='width: 21px; padding: 2px;' />
+    <div id='topbuttons'>
+        <a href='https://docs.oakvar.com' target='_blank' title='Documentation'>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </a>
+        <a href='mailto:rkim@oakbioinformatics.com?Subject=OakVar%20Feedback' title='Email feedback'>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+            </svg>
+        </a>
+        <a href="#" onclick='quicksave()' title='Quick save'>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+            </svg>
+        </a>
     </div>
 </div>
+<div>
+  <!-- Off-canvas menu for mobile, show/hide based on off-canvas menu state. -->
+  <div class="relative z-40 md:hidden" role="dialog" aria-modal="true">
+    <!--
+      Off-canvas menu backdrop, show/hide based on off-canvas menu state.
 
-<div id="log_div" style="position:absolute; bottom:0px; left:0px; font-size: 13px;">
+      Entering: "transition-opacity ease-linear duration-300"
+        From: "opacity-0"
+        To: "opacity-100"
+      Leaving: "transition-opacity ease-linear duration-300"
+        From: "opacity-100"
+        To: "opacity-0"
+    -->
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-75"></div>
+
+    <div class="fixed inset-0 flex z-40">
+      <!--
+        Off-canvas menu, show/hide based on off-canvas menu state.
+
+        Entering: "transition ease-in-out duration-300 transform"
+          From: "-translate-x-full"
+          To: "translate-x-0"
+        Leaving: "transition ease-in-out duration-300 transform"
+          From: "translate-x-0"
+          To: "-translate-x-full"
+      -->
+      <div class="relative flex-1 flex flex-col max-w-xs w-full bg-white">
+        <!--
+          Close button, show/hide based on off-canvas menu state.
+
+          Entering: "ease-in-out duration-300"
+            From: "opacity-0"
+            To: "opacity-100"
+          Leaving: "ease-in-out duration-300"
+            From: "opacity-100"
+            To: "opacity-0"
+        -->
+        <div class="absolute top-0 right-0 -mr-12 pt-2">
+          <button type="button" class="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white">
+            <span class="sr-only">Close sidebar</span>
+            <!-- Heroicon name: outline/x -->
+            <svg class="h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
+          <div class="flex-shrink-0 flex items-center px-4">
+            <img class="h-8 w-auto" src="https://tailwindui.com/img/logos/workflow-mark.svg?color=indigo&shade=600" alt="Workflow">
+          </div>
+          <nav class="mt-5 px-2 space-y-1">
+            <!-- Current: "bg-gray-100 text-gray-900", Default: "text-gray-600 hover:bg-gray-50 hover:text-gray-900" -->
+            <a href="#" class="bg-gray-100 text-gray-900 group flex items-center px-2 py-2 text-base font-medium rounded-md">
+              <!--
+                Heroicon name: outline/home
+
+                Current: "text-gray-500", Default: "text-gray-400 group-hover:text-gray-500"
+              -->
+              <svg class="text-gray-500 mr-4 flex-shrink-0 h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+              Job
+            </a>
+
+            <a href="#" class="text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-2 py-2 text-base font-medium rounded-md">
+              <!-- Heroicon name: outline/users -->
+              <svg class="text-gray-400 group-hover:text-gray-500 mr-4 flex-shrink-0 h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+              Filters
+            </a>
+
+            <a href="#" class="text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-2 py-2 text-base font-medium rounded-md">
+              <!-- Heroicon name: outline/folder -->
+              <svg class="text-gray-400 group-hover:text-gray-500 mr-4 flex-shrink-0 h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+              Summary
+            </a>
+
+            <a href="#" class="text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-2 py-2 text-base font-medium rounded-md">
+              <!-- Heroicon name: outline/calendar -->
+              <svg class="text-gray-400 group-hover:text-gray-500 mr-4 flex-shrink-0 h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Variants
+            </a>
+
+            <a href="#" class="text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-2 py-2 text-base font-medium rounded-md">
+              <!-- Heroicon name: outline/inbox -->
+              <svg class="text-gray-400 group-hover:text-gray-500 mr-4 flex-shrink-0 h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+              </svg>
+              Genes
+            </a>
+
+            <a href="#" class="text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-2 py-2 text-base font-medium rounded-md">
+              <!-- Heroicon name: outline/chart-bar -->
+              <svg class="text-gray-400 group-hover:text-gray-500 mr-4 flex-shrink-0 h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Reports
+            </a>
+          </nav>
+        </div>
+      </div>
+
+      <div class="flex-shrink-0 w-14">
+        <!-- Force sidebar to shrink to fit close icon -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Static sidebar for desktop -->
+  <div id="sidebar_static" class="hidden md:flex md:w-36 md:flex-col md:fixed md:inset-y-0">
+    <!-- Sidebar component, swap this element with another sidebar if you like -->
+    <div class="flex-1 flex flex-col min-h-0 border-r border-gray-200 bg-white">
+      <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
+        <div class="flex items-center flex-shrink-0 px-4">
+          <img class="h-16 w-auto" src="/submit/logo.png" alt="Workflow">
+        </div>
+        <nav class="mt-5 flex-1 px-2 bg-white space-y-1">
+          <a id="tabhead_job" href="#" class="tabhead group " onclick="changeTab('job')">
+            <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Info
+          </a>
+
+          <a id="tabhead_filter" href="#" class="tabhead group" onclick="changeTab('filter')">
+            <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+            Filters
+          </a>
+
+          <a id="tabhead_info" href="#" class="tabhead group selected" onclick="changeTab('info')">
+            <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+            </svg>
+            Summary
+          </a>
+
+          <a id="tabhead_variant" href="#" class="tabhead group" onclick="changeTab('variant')">
+            <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+            Variants
+          </a>
+
+          <a id="tabhead_gene" href="#" class="tabhead group" onclick="changeTab('gene')">
+            <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+            Genes
+          </a>
+
+          <a id="tabhead_report" href="#" class="tabhead group" onclick="changeTab('report')">
+            <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Reports
+          </a>
+        </nav>
+      </div>
+    </div>
+  </div>
+  <div class="md:pl-36 flex flex-col flex-1">
+    <div class="sticky top-0 z-10 md:hidden pl-1 pt-1 sm:pl-3 sm:pt-3 bg-white">
+      <button type="button" class="-ml-0.5 -mt-0.5 h-12 w-12 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
+        <span class="sr-only">Open sidebar</span>
+        <!-- Heroicon name: outline/menu -->
+        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+    </div>
+    <main class="flex-1">
+      <div class="">
+          <!--<div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">-->
+        <div class="mx-auto">
+          <!-- Replace with your content -->
+          <div>
+            <div id="tab_job" class="tabcontent "></div>
+            <div id="tab_filter" class="tabcontent "></div>
+            <div id="tab_info" class="tabcontent show "></div>
+            <div id="tab_variant" class="tabcontent "></div>
+            <div id="tab_gene" class="tabcontent "></div>
+            <div id="tab_report" class="tabcontent "></div>
+          </div>
+          <!-- /End replace -->
+        </div>
+      </div>
+    </main>
+  </div>
 </div>
 
 <script>

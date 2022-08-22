@@ -192,7 +192,11 @@ async def load_filter_setting(request):
 
 
 async def save_layout_setting(request):
-    queries = await request.post()
+    from urllib.parse import unquote
+    from json import loads
+    text_data = await request.text()
+    text_data = unquote(text_data)
+    queries = loads(text_data)
     _, dbpath = await get_jobid_dbpath(request)
     name = queries["name"]
     savedata = queries["savedata"]
@@ -299,15 +303,19 @@ async def delete_filter_setting(request):
 
 
 async def get_status(request):
-    _, dbpath = await get_jobid_dbpath(request)
+    job_id, dbpath = await get_jobid_dbpath(request)
     conn = await get_db_conn(dbpath)
     content = {}
-    if conn is not None:
+    if conn:
         cursor = await conn.cursor()
         q = 'select * from info where colkey not like "\_%" escape "\\"'  # type: ignore
         await cursor.execute(q)
         for row in await cursor.fetchall():
             content[row[0]] = row[1]
+        if "dbpath" not in content:
+            content["dbpath"] = dbpath
+        if "job_id" not in content:
+            content["job_id"] = job_id
         await cursor.close()
         await conn.close()
     return web.json_response(content)
@@ -344,7 +352,7 @@ async def get_count(request):
         from ..exceptions import DatabaseConnectionError
 
         raise DatabaseConnectionError("result database")
-    queries = await request.post()
+    queries = await request.json()
     tab = queries["tab"]
     if "filter" in queries:
         filterstring = queries["filter"]
@@ -370,7 +378,7 @@ async def get_result(request):
 
     user_conf = get_user_conf()
     global logger
-    queries = await request.post()
+    queries = await request.json()
     _, dbpath = await get_jobid_dbpath(request)
     if dbpath is None:
         raise DatabaseConnectionError("result database")
@@ -496,7 +504,7 @@ async def get_jobid_dbpath(request):
     if method == "GET":
         queries = request.rel_url.query
     elif method == "POST":
-        queries = await request.post()
+        queries = await request.json()
     if queries is not None:
         if "username" in queries:
             given_username = queries["username"]
@@ -510,8 +518,8 @@ async def get_jobid_dbpath(request):
             dbpath = queries["dbpath"]
         else:
             dbpath = ""
-        if dbpath == "":
-            if "job_id" != "":
+        if not dbpath:
+            if job_id:
                 global wu
                 if wu is not None:
                     if given_username != "":
@@ -527,8 +535,6 @@ async def get_jobid_dbpath(request):
                         dbpath = None
                 else:
                     dbpath = None
-            else:
-                return web.json_response({})
     return job_id, dbpath
 
 
@@ -766,7 +772,7 @@ async def serve_runwidget_post(request):
 
     path = "wg" + request.match_info["module"]
     _, dbpath = await get_jobid_dbpath(request)
-    queries = await request.post()
+    queries = await request.json()
     new_queries = {}
     for k in queries:
         val = queries[k]
@@ -881,7 +887,6 @@ async def get_variants_for_hugo(request):
 
 async def get_variantdbcols(request):
     from ..exceptions import DatabaseConnectionError
-    from json import loads
     _, dbpath = await get_jobid_dbpath(request)
     if dbpath is None:
         raise DatabaseConnectionError("result database")
