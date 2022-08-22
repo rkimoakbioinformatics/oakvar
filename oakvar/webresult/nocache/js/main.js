@@ -519,10 +519,7 @@ function loadTableDataOnly() {
     }
     enableUpdateButton();
     unlockTabs();
-    if (jobDataLoadingDiv != null) {
-      jobDataLoadingDiv.parentElement.removeChild(jobDataLoadingDiv);
-      jobDataLoadingDiv = null;
-    }
+    removeLoadingDiv()
   };
   var loadGeneResult = function () {
     if ($grids["gene"] == undefined) {
@@ -627,10 +624,7 @@ async function loadData(alertFlag, finalcallback) {
     //}
     enableUpdateButton();
     unlockTabs();
-    if (jobDataLoadingDiv != null) {
-      jobDataLoadingDiv.parentElement.removeChild(jobDataLoadingDiv);
-      jobDataLoadingDiv = null;
-    }
+    removeLoadingDiv()
   };
   var loadGeneResult = async function () {
     var numvar = infomgr.getData("variant").length;
@@ -897,15 +891,31 @@ function drawingRetrievingDataDiv(currentTab) {
     var loadingDiv = getEl("div");
     loadingDiv.className = "data-retrieving-msg-div";
     var loadingTxtDiv = getEl("div");
-    loadingTxtDiv.className = "store-noconnect-msg-div";
-    var span = getEl("span");
-    span.textContent = "Retrieving Data...";
-    addEl(loadingTxtDiv, span);
-    addEl(loadingTxtDiv, getEl("br"));
-    var loadingSpinCircleDiv = getEl("div");
-    var loadingSpinCircleImg = getEl("img");
-    loadingSpinCircleImg.src = "images/bigSpinner.gif";
-    addEl(loadingTxtDiv, loadingSpinCircleImg);
+    //loadingTxtDiv.className = "store-noconnect-msg-div spinner";
+    loadingTxtDiv.className = "spinner";
+    var div = getEl("div")
+    div.className = "rect1"
+    addEl(loadingTxtDiv, div)
+    var div = getEl("div")
+    div.className = "rect2"
+    addEl(loadingTxtDiv, div)
+    var div = getEl("div")
+    div.className = "rect3"
+    addEl(loadingTxtDiv, div)
+    var div = getEl("div")
+    div.className = "rect4"
+    addEl(loadingTxtDiv, div)
+    var div = getEl("div")
+    div.className = "rect5"
+    addEl(loadingTxtDiv, div)
+    //var span = getEl("span");
+    //span.textContent = "Retrieving Data...";
+    //addEl(loadingTxtDiv, span);
+    //addEl(loadingTxtDiv, getEl("br"));
+    //var loadingSpinCircleDiv = getEl("div");
+    //var loadingSpinCircleImg = getEl("img");
+    //loadingSpinCircleImg.src = "images/bigSpinner.gif";
+    //addEl(loadingTxtDiv, loadingSpinCircleImg);
     addEl(loadingDiv, loadingTxtDiv);
     var dW = document.body.offsetWidth;
     var dH = document.body.offsetHeight;

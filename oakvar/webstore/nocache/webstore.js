@@ -56,9 +56,9 @@ function onClickStoreHome() {
     });
     showAllModulesDiv();
     updateFilter();
-    populateAllModulesDiv();
+    //populateAllModulesDiv();
     //showAllModulesDiv();
-    showStoreHome();
+    //showStoreHome();
 }
 
 function onClickStoreTagResetButton() {
@@ -67,8 +67,12 @@ function onClickStoreTagResetButton() {
         this.checked = false;
     });
     updateFilter();
-    populateAllModulesDiv();
-    showAllModulesDiv();
+    //populateAllModulesDiv();
+    //showAllModulesDiv();
+}
+
+function onClickCheckUpdatesButton(evt) {
+  getUpdates()
 }
 
 function onClickStoreUpdateRemoteButton() {
@@ -299,8 +303,8 @@ function getUpdates(populateAllModulesDivFlag=false) {
         populateStorePages()
         if (populateAllModulesDivFlag) {
             updateFilter();
-            populateAllModulesDiv();
-            showAllModulesDiv();
+            //populateAllModulesDiv();
+            //showAllModulesDiv();
         }
     });
 }
@@ -320,7 +324,7 @@ function getLocal(callUpdateFlag=false) {
             disableStoreTabHead();
         }
         if (callUpdateFlag) {
-            getUpdates(populateAllModulesDivFlag=true)
+            //getUpdates(populateAllModulesDivFlag=true)
         }
     });
 }
@@ -820,6 +824,8 @@ function updateFilter() {
     if (tags.length > 0) {
         filter['tags'] = tags;
     }
+    populateAllModulesDiv();
+    showAllModulesDiv();
 }
 
 function onClickModuleTileAbortButton(evt) {
@@ -2407,8 +2413,8 @@ function getBaseModuleNames() {
 
 function onStoreTagCheckboxChange() {
     updateFilter();
-    populateAllModulesDiv();
-    showAllModulesDiv();
+    //populateAllModulesDiv();
+    //showAllModulesDiv();
 }
 
 function showYesNoDialog(content, yescallback, noSpace, justOk) {
