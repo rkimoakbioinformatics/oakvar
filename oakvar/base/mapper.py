@@ -393,13 +393,9 @@ class BaseMapper(object):
     async def get_gene_summary_data(self, cf):
         from ..consts import crx_def
 
-        hugos = await cf.exec_db(cf.get_filtered_hugo_list)
-        # Below is to fix opening oc 1.8.0 jobs with oc 1.8.1.
-        # TODO: Remove it after a while and add 1.8.0 to the db update chain in cmd_util.
         cols = [
             "base__" + coldef["name"]
             for coldef in crx_def
-            if coldef["name"] != "cchange"
         ]
         cols.extend(["tagsampler__numsample"])
         data = {}
@@ -410,11 +406,12 @@ class BaseMapper(object):
             if hugo not in rows_by_hugo:
                 rows_by_hugo[hugo] = []
             rows_by_hugo[hugo].append(row)
+        hugos = await cf.exec_db(cf.get_filtered_hugo_list)
         for hugo in hugos:
             rows = rows_by_hugo[hugo]
             input_data = {}
             for i in range(len(cols)):
-                input_data[cols[i].split("__")[1]] = [row[i] for row in rows]
+                input_data[cols[i]] = [row[i] for row in rows]
             if hasattr(self, "summarize_by_gene"):
                 out = self.summarize_by_gene(hugo, input_data)  # type: ignore
                 data[hugo] = out

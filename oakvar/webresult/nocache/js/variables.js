@@ -1,5 +1,5 @@
-var gridObjs;
-var $grids = null
+var gridObjs = {}
+var $grids = {}
 var columnGroupPrefix = 'columngroup_';
 var selectedRowIds = {};
 var selectedRowNos = {};
