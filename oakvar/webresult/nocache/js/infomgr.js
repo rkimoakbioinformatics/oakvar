@@ -52,10 +52,12 @@ function getInputPageSize() {
   if (inputPageSize == null || isNaN(inputPageSize) || inputPageSize < 0) {
     inputPageSize = pageSize
   }
+  return inputPageSize
 }
 
 function isValidInputPageSize(inputPageSize) {
-  return ! (inputPageSize == null || isNaN(inputPageSize) || inputPageSize < 0)
+  console.log(inputPageSize == null, isNaN(inputPageSize), inputPageSize < 0)
+  return ! (inputPageSize == null || isNaN(inputPageSize) || inputPageSize <= 0)
 }
 
 function setPageSize(inputPageSize) {
