@@ -42,6 +42,28 @@ InfoMgr.prototype.count = async function (dbPath, tabName, callback) {
   callback(msg, jsonResponseData);
 };
 
+function getInputPageSize() {
+  var input = document.getElementById("page-input");
+  inputPageSize = null
+  if (input != null) {
+    inputPageSize = input.value;
+    inputPageSize = parseInt(inputPageSize);
+  }
+  if (inputPageSize == null || isNaN(inputPageSize) || inputPageSize < 0) {
+    inputPageSize = pageSize
+  }
+  return inputPageSize
+}
+
+function isValidInputPageSize(inputPageSize) {
+  console.log(inputPageSize == null, isNaN(inputPageSize), inputPageSize < 0)
+  return ! (inputPageSize == null || isNaN(inputPageSize) || inputPageSize <= 0)
+}
+
+function setPageSize(inputPageSize) {
+  pageSize = inputPageSize
+}
+
 InfoMgr.prototype.load = async function (
   jobId,
   tabName,
@@ -60,12 +82,10 @@ InfoMgr.prototype.load = async function (
       //TODO find and fix the cause of this
       filterJson = {};
     }
-    var input = document.getElementById("page-input");
-    if (input != null) {
-      pageSize = input.value;
-      pageSize = parseInt(pageSize);
+    var inputPageSize = getInputPageSize()
+    if (isValidInputPageSize(inputPageSize)) {
+      setPageSize(inputPageSize)
     }
-    pageSize = 500;
     if (isNaN(pageSize) || pageSize < 0) {
       return;
     }

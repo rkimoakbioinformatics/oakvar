@@ -261,7 +261,7 @@ async function getResultLevels() {
     params: { job_id: jobId, username: username, dbpath: dbPath },
   });
   var levels = response.data.levels;
-  pageSize = parseInt(response["gui_result_pagesize"]);
+  pageSize = parseInt(response.data["gui_result_pagesize"]);
   if (levels.length > 0 && levels[0] == "NODB") {
     showNoDB();
   } else {
@@ -507,6 +507,7 @@ function loadTableDataOnly() {
     return;
   }
   var removeSpinner = function () {
+    addGeneLevelToVariantLevel()
     if (spinner != null) {
       spinner.remove();
     }
