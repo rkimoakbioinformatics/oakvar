@@ -52,6 +52,7 @@ class MasterCravatConverter(object):
 
     def __init__(self, *inargs, **inkwargs):
         from oakvar.consts import crs_def
+        from oakvar import get_wgs_reader
 
         self.logger = None
         self.crv_writer = None
@@ -97,10 +98,22 @@ class MasterCravatConverter(object):
         self._parse_cmd_args(inargs, inkwargs)
         self._setup_logger()
         self.vtracker = VTracker(deduplicate=not (self.unique_variants))
-        from oakvar import get_wgs_reader
-
         self.wgsreader = get_wgs_reader(assembly="hg38")
         self.crs_def = crs_def.copy()
+
+    def setup_liftover(self):
+        from oakvar.util.admin_util import get_liftover_chain_paths
+        from oakvar.exceptions import InvalidGenomeAssembly
+        from pyliftover import LiftOver
+        self.do_liftover = self.input_assembly != "hg38"
+        liftover_chain_paths = get_liftover_chain_paths()
+        if self.do_liftover:
+            if not self.input_assembly or self.input_assembly not in liftover_chain_paths:
+                raise InvalidGenomeAssembly(self.input_assembly)
+            else:
+                self.lifter = LiftOver(liftover_chain_paths[self.input_assembly])
+        else:
+            self.lifter = None
 
     def _parse_cmd_args(self, inargs, inkwargs):
         """Parse the arguments in sys.argv"""
@@ -109,12 +122,9 @@ class MasterCravatConverter(object):
         from argparse import ArgumentParser, SUPPRESS
         from os.path import abspath, dirname, exists, basename, join
         from os import makedirs
-        from oakvar.util.admin_util import get_liftover_chain_paths
         from oakvar.exceptions import ExpectedException
-        from pyliftover import LiftOver
         from oakvar.util.util import get_args
         from oakvar.exceptions import SetupError
-        from oakvar.exceptions import InvalidGenomeAssembly
 
         parser = ArgumentParser()
         parser.add_argument("path", help="Path to this converter's python module")
@@ -195,15 +205,7 @@ class MasterCravatConverter(object):
         else:
             self.output_base_fname = basename(self.input_paths[0])
         self.input_assembly = parsed_args["genome"]
-        self.do_liftover = self.input_assembly != "hg38"
-        liftover_chain_paths = get_liftover_chain_paths()
-        if self.do_liftover:
-            if self.input_assembly not in liftover_chain_paths:
-                raise InvalidGenomeAssembly(self.input_assembly)
-            else:
-                self.lifter = LiftOver(liftover_chain_paths[self.input_assembly])
-        else:
-            self.lifter = None
+        self.setup_liftover()
         self.status_fpath = join(
             self.output_dir, self.output_base_fname + ".status.json"
         )
@@ -515,6 +517,10 @@ class MasterCravatConverter(object):
                 raise SetupError()
             self._set_converter_properties(converter)
             converter.setup(f)  # type: ignore
+            detected_assembly = getattr(converter, "detected_assembly", None)
+            if detected_assembly:
+                self.input_assembly = detected_assembly
+                self.setup_liftover()
             if self.pipeinput == False:
                 f.seek(0)
             if self.pipeinput:

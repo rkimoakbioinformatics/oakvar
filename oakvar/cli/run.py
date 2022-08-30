@@ -2318,6 +2318,13 @@ def add_parser_ov_run(subparsers):
         help="Leave temporary files after run is complete.",
     )
     parser_ov_run.add_argument(
+        "--keep-temp",
+        dest="temp_files",
+        action="store_true",
+        default=None,
+        help="Leave temporary files after run is complete.",
+    )
+    parser_ov_run.add_argument(
         "--writeadmindb",
         dest="writeadmindb",
         action="store_true",
