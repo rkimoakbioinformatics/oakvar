@@ -42,82 +42,94 @@ InfoMgr.prototype.count = async function (dbPath, tabName, callback) {
   callback(msg, jsonResponseData);
 };
 
-InfoMgr.prototype.load = async function (
-  jobId,
-  tabName,
-  callback,
-  callbackArgs,
-  _,
-  fetchtype,
-  setResetTab = true
-) {
+function getInputPageSize() {
+  var input = document.getElementById("page-input");
+  inputPageSize = null
+  if (input != null) {
+    inputPageSize = input.value;
+    inputPageSize = parseInt(inputPageSize);
+  }
+  if (inputPageSize == null || isNaN(inputPageSize) || inputPageSize < 0) {
+    inputPageSize = pageSize
+  }
+}
+
+function isValidInputPageSize(inputPageSize) {
+  return ! (inputPageSize == null || isNaN(inputPageSize) || inputPageSize < 0)
+}
+
+function setPageSize(inputPageSize) {
+  pageSize = inputPageSize
+}
+
+InfoMgr.prototype.load_job = async function (jobId, tabName, setResetTab = true) {
   var self = this;
-  if (fetchtype == "job") {
-    if (jobDataLoadingDiv == null) {
-      drawingRetrievingDataDiv(tabName);
+  if (filterJson === []) {
+    filterJson = {};
+  }
+  var inputPageSize = getInputPageSize()
+  if (isValidInputPageSize(inputPageSize)) {
+    setPageSize(inputPageSize)
+  }
+  if (!isValidInputPageSize(pageSize)) {
+    return
+  }
+  var response = await axios({
+    method: "post",
+    url: "/result/service/result",
+    headers: {
+      "Content-type": "application/json",
+    },
+    data: {
+      username: username,
+      job_id: jobId,
+      tab: tabName,
+      dbpath: dbPath,
+      confpath: confPath,
+      filter: JSON.stringify(filterJson),
+      separatesample: separateSample,
+      page: pageNo,
+      pagesize: pageSize,
+      makefilteredtable: setResetTab,
+    },
+  })
+  const jsonResponseData = response.data;
+  self.store(
+    self,
+    tabName,
+    jsonResponseData,
+    (setResetTab = setResetTab)
+  );
+  if (tabName == "variant") {
+    var loaded = jsonResponseData["total_norows"];
+    var total = parseInt(infomgr.jobinfo["Number of unique input variants"]);
+    var vCountLoad = document.getElementById("filter-count-display");
+    if (vCountLoad) {
+      vCountLoad.innerText = loaded.toLocaleString() + "/" + total.toLocaleString() + " variants"
     }
-    if (filterJson === []) {
-      //TODO find and fix the cause of this
-      filterJson = {};
+    if (Object.keys(filterJson) !== 0) {
+      filterMgr.updateAll(filterJson);
     }
-    var input = document.getElementById("page-input");
-    if (input != null) {
-      pageSize = input.value;
-      pageSize = parseInt(pageSize);
-    }
-    pageSize = 500;
-    if (isNaN(pageSize) || pageSize < 0) {
-      return;
-    }
-    var response = await axios({
-      method: "post",
-      url: "/result/service/result",
-      headers: {
-        "Content-type": "application/json",
-      },
-      data: {
-        username: username,
-        job_id: jobId,
-        tab: tabName,
-        dbpath: dbPath,
-        confpath: confPath,
-        filter: JSON.stringify(filterJson),
-        separatesample: separateSample,
-        page: pageNo,
-        pagesize: pageSize,
-        makefilteredtable: setResetTab,
-      },
-    });
-    const jsonResponseData = response.data;
-    self.store(
-      self,
-      tabName,
-      jsonResponseData,
-      callback,
-      callbackArgs,
-      (setResetTab = setResetTab)
-    );
-    writeLogDiv(tabName + " data loaded");
-    addTextToInfonoticediv(jsonResponseData["warning_msgs"]);
-    if (tabName == "variant") {
-      var loaded = jsonResponseData["total_norows"];
-      var total = parseInt(infomgr.jobinfo["Number of unique input variants"]);
-      /*var filterTab = document.getElementById('tabhead_filter');
-            var filterTitle = 'FILTER';
-            if (loaded != total) {
-                filterTitle += ` ${loaded.toLocaleString()}/${total.toLocaleString()}`;
-                filterTab.classList.add('active');
-            } else {
-                filterTab.classList.remove('active');
-            }
-            filterTab.innerText = filterTitle;*/
-      var vCountLoad = document.getElementById("filter-count-display");
-      vCountLoad.innerText = `${loaded.toLocaleString()}/${total.toLocaleString()} variants`;
-      if (Object.keys(filterJson) !== 0) {
-        filterMgr.updateAll(filterJson);
-      }
-    }
-  } else if (fetchtype == "single") {
+  }
+}
+
+InfoMgr.prototype.load_info = async function (jobId, tabName) {
+  var self = this;
+  const response = await axios.get("/result/service/status", {
+    params: { username: username, job_id: jobId, dbpath: dbPath },
+  });
+  self.jobinfo = response.data;
+  if (self.jobinfo["dbpath"] && !dbPath) {
+    dbPath = self.jobinfo["dbpath"];
+  }
+  if (self.jobinfo["job_id"] && jobId) {
+    jobId = self.jobinfo["job_id"];
+  }
+}
+
+InfoMgr.prototype.load = async function (jobId, tabName, fetchtype) {
+  var self = this;
+  if (fetchtype == "single") {
     var response = await axios.get("/submit/annotate", {
       params: { mutation: onemut, dbcolumn: true },
     });
@@ -128,40 +140,17 @@ InfoMgr.prototype.load = async function (
     if (callback != null) {
       callback(callbackArgs);
     }
-  } else if (fetchtype == "info") {
-    const response = await axios.get("/result/service/status", {
-      params: { username: username, job_id: jobId, dbpath: dbPath },
-    });
-    self.jobinfo = response.data;
-    if (self.jobinfo["dbpath"] && !dbPath) {
-      dbPath = self.jobinfo["dbpath"];
-    }
-    if (self.jobinfo["job_id"] && jobId) {
-      jobId = self.jobinfo["job_id"];
-    }
-    if (callback != null) {
-      await callback(callbackArgs);
-    }
   }
-};
+}
 
 InfoMgr.prototype.store = function (
   self,
   tabName,
   jsonResponseData,
-  callback,
-  callbackArgs,
   setResetTab = true
 ) {
   if (setResetTab) {
     resetTab[tabName] = true;
-  }
-  if (Object.keys(jsonResponseData).length == 0) {
-    if (callback != null) {
-      callback(callbackArgs);
-    } else {
-      return;
-    }
   }
   if (tabName == "variant") {
     self.totalNoRows = jsonResponseData["total_norows"];
@@ -367,17 +356,6 @@ InfoMgr.prototype.store = function (
   self.columnss[tabName] = columns;
   self.columnnoss[tabName] = columnnos;
   self.columngroupss[tabName] = columngroups;
-
-  if (callback != null) {
-    callback(callbackArgs);
-  }
-
-  /*
-	if (jobDataLoadingDiv != null) {
-		jobDataLoadingDiv.parentElement.removeChild(jobDataLoadingDiv);
-		jobDataLoadingDiv = null;
-	}
-    */
 };
 
 InfoMgr.prototype.getData = function (tabName) {

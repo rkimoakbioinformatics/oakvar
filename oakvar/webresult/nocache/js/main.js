@@ -260,8 +260,9 @@ async function getResultLevels() {
   const response = await axios.get("/result/service/getresulttablelevels", {
     params: { job_id: jobId, username: username, dbpath: dbPath },
   });
-  var levels = response.data.levels;
-  pageSize = parseInt(response["gui_result_pagesize"]);
+  var data = response.data
+  var levels = data.levels;
+  pageSize = parseInt(data["gui_result_pagesize"]);
   if (levels.length > 0 && levels[0] == "NODB") {
     showNoDB();
   } else {
@@ -312,7 +313,9 @@ function disableUpdateButton({ countHigh = false } = {}) {
 
 function enableUpdateButton() {
   var btn = document.getElementById("load_button");
-  btn.disabled = false;
+  if (btn) {
+    btn.disabled = false;
+  }
   //btn.innerText = "Load";
 }
 
@@ -499,6 +502,47 @@ var makeVariantByGene = function () {
   }
 };
 
+function removeSpinnerTableDataOnly () {
+  if (spinner != null) {
+    spinner.remove();
+  }
+  addGeneLevelToVariantLevel();
+  if ($grids["variant"] != undefined) {
+    $grids["variant"].pqGrid("option", "dataModel", {
+      data: infomgr.datas["variant"],
+    });
+    $grids["variant"].pqGrid("refreshDataAndView");
+    updateTableFooterTotalRows("variant");
+  }
+  enableUpdateButton();
+  unlockTabs();
+  removeLoadingDiv()
+};
+
+async function loadGeneResultTableDataOnly () {
+  if (! usedAnnotators["gene"]) {
+    return
+  }
+  await infomgr.load_job(jobId, "gene", (setResetTab = false))
+}
+
+function shouldVariantLevelLoaded() {
+  return (resultLevels.indexOf("variant") >= 0)
+}
+
+async function callLoadVariantTableDataOnly() {
+  if (!shouldVariantLevelLoaded()) {
+    return
+  }
+  /*var callback = null;
+  if (usedAnnotators["gene"]) {
+    callback = loadGeneResultTableDataOnly;
+  } else {
+    callback = removeSpinnerTableDataOnly;
+  }*/
+  await infomgr.load_job(jobId, "variant", (setResetTab = false))
+}
+
 function loadTableDataOnly() {
   var pageNoInput = document.getElementById("page-no-input");
   var pageNoS = pageNoInput.value;
@@ -506,62 +550,8 @@ function loadTableDataOnly() {
   if (isNaN(pageNo)) {
     return;
   }
-  var removeSpinner = function () {
-    if (spinner != null) {
-      spinner.remove();
-    }
-    if ($grids["variant"] != undefined) {
-      $grids["variant"].pqGrid("option", "dataModel", {
-        data: infomgr.datas["variant"],
-      });
-      $grids["variant"].pqGrid("refreshDataAndView");
-      updateTableFooterTotalRows("variant");
-    }
-    enableUpdateButton();
-    unlockTabs();
-    removeLoadingDiv()
-  };
-  var loadGeneResult = function () {
-    if ($grids["gene"] == undefined) {
-      infomgr.load(
-        jobId,
-        "gene",
-        removeSpinner,
-        null,
-        filterJson,
-        "job",
-        (setResetTab = true)
-      );
-    } else {
-      removeSpinner();
-    }
-  };
-  var loadVariantResult = function () {
-    function callLoadVariant() {
-      var callback = null;
-      if (usedAnnotators["gene"]) {
-        callback = loadGeneResult;
-      } else {
-        callback = removeSpinner;
-      }
-      if (resultLevels.indexOf("variant") != -1) {
-        infomgr.load(
-          jobId,
-          "variant",
-          callback,
-          null,
-          filterJson,
-          "job",
-          (setResetTab = false)
-        );
-      } else {
-        callback();
-      }
-    }
-    callLoadVariant();
-  };
-  lockTabs();
-  loadVariantResult();
+  callLoadVariantTableDataOnly()
+    .then(_ => {await loadGeneResultTableDataOnly()})
   filterArmed = filterJson;
 }
 
@@ -588,7 +578,7 @@ function selectTableFirstRow(tabName) {
   }
 }
 
-async function loadData(alertFlag, finalcallback) {
+async function loadData() {
   lockTabs();
   var infoReset = resetTab["info"];
   resetTab = { info: infoReset };
@@ -601,12 +591,6 @@ async function loadData(alertFlag, finalcallback) {
     if (spinner != null) {
       spinner.remove();
     }
-    if (alertFlag) {
-      alert("Data has been loaded.");
-    }
-    if (finalcallback) {
-      finalcallback();
-    }
     if (currentTab == "info") {
       changeMenu();
     }
@@ -616,25 +600,21 @@ async function loadData(alertFlag, finalcallback) {
       console.log(e);
       console.trace();
     }
-    //if (currentTab == 'variant' || currentTab == 'gene') {
     setupTab("variant");
-    //resizesTheWindow(tabName="variant")
     setupTab("gene");
-    //resizesTheWindow(tabName="gene")
-    //}
     enableUpdateButton();
     unlockTabs();
     removeLoadingDiv()
   };
   var loadGeneResult = async function () {
-    var numvar = infomgr.getData("variant").length;
     if (document.getElementById("infonoticediv")) {
       notifyOfReadyToLoad();
     }
     if (resultLevels.indexOf("gene") != -1) {
-      await infomgr.load(jobId, "gene", removeSpinner, null, filterJson, "job");
+      await infomgr.load_job(jobId, "gene")
+      await removeSpinner()
     } else {
-      removeSpinner();
+      await removeSpinner();
     }
   };
   var loadVariantResult = async function () {
@@ -646,27 +626,26 @@ async function loadData(alertFlag, finalcallback) {
         callback = removeSpinner;
       }
       if (resultLevels.indexOf("variant") != -1) {
-        await infomgr.load(jobId, "variant", callback, null, filterJson, "job");
+        await infomgr.load_job(jobId, "variant")
+        await callback()
       } else {
         await callback();
       }
     }
     if (firstLoad) {
       firstLoad = false;
-      var numvar = Number(infomgr.jobinfo["Number of unique input variants"]);
       if (filterJson.length != 0) {
-        infomgr.count(dbPath, "variant", function (numvar) {
-          callLoadVariant();
+        infomgr.count(dbPath, "variant", async function (_) {
+          await callLoadVariant();
         });
       } else {
-        callLoadVariant();
+        await callLoadVariant();
       }
     } else {
-      callLoadVariant();
+      await callLoadVariant();
     }
   };
-  //lockTabs();
-  loadVariantResult();
+  await loadVariantResult();
   filterArmed = filterJson;
 }
 
@@ -748,106 +727,105 @@ async function loadWidgets() {
     widgetInfo[widgetName] = widget;
     infomgr.colgroupkeytotitle[widgetName] = title;
     infomgr.widgetReq[widgetName] = req;
-    $.getScript(
-      "/result/widgetfile/" + "wg" + widgetName + "/wg" + widgetName + ".js",
-      function () {
-        writeLogDiv(widgetName + " script loaded");
-        widgetLoadCount += 1;
-        if (widgetLoadCount == widgets.length) {
-          // processes widget default_hidden
-          var widgetNames = Object.keys(widgetGenerators);
-          for (var k = 0; k < widgetNames.length; k++) {
-            var widgetName = widgetNames[k];
-            var widgetTabs = Object.keys(widgetGenerators[widgetName]);
-            if (widgetTabs.length == 1 && widgetTabs[0] == "gene") {
-              widgetTabs.unshift("variant");
-            }
-            var req = infomgr.widgetReq[widgetName];
-            var generator = widgetGenerators[widgetName];
-            if (
-              generator["gene"] != undefined &&
-              generator["variant"] == undefined
-            ) {
-              generator["variant"] = generator["gene"];
-            }
-            for (var j = 0; j < widgetTabs.length; j++) {
-              var widgetTab = widgetTabs[j];
-              if (generator[widgetTab]["variables"] == undefined) {
-                generator[widgetTab]["variables"] = {};
+    $.getScript("/result/widgetfile/" + "wg" + widgetName + "/wg" + widgetName + ".js",
+        function () {
+          writeLogDiv(widgetName + " script loaded");
+          widgetLoadCount += 1;
+          if (widgetLoadCount == widgets.length) {
+            // processes widget default_hidden
+            var widgetNames = Object.keys(widgetGenerators);
+            for (var k = 0; k < widgetNames.length; k++) {
+              var widgetName = widgetNames[k];
+              var widgetTabs = Object.keys(widgetGenerators[widgetName]);
+              if (widgetTabs.length == 1 && widgetTabs[0] == "gene") {
+                widgetTabs.unshift("variant");
               }
-              generator[widgetTab]["variables"]["widgetname"] = widgetName;
-              var dh =
-                widgetGenerators[widgetName][widgetTab]["default_hidden"];
-              if (dh != undefined) {
-                if (dh == true) {
-                  dh = "none";
-                } else {
-                  dh = "block";
+              var req = infomgr.widgetReq[widgetName];
+              var generator = widgetGenerators[widgetName];
+              if (
+                generator["gene"] != undefined &&
+                generator["variant"] == undefined
+              ) {
+                generator["variant"] = generator["gene"];
+              }
+              for (var j = 0; j < widgetTabs.length; j++) {
+                var widgetTab = widgetTabs[j];
+                if (generator[widgetTab]["variables"] == undefined) {
+                  generator[widgetTab]["variables"] = {};
                 }
-                if (viewerWidgetSettings[widgetTab] == null) {
-                  viewerWidgetSettings[widgetTab] = [];
-                }
-                var vws = getViewerWidgetSettingByWidgetkey(
-                  widgetTab,
-                  widgetName
-                );
-                if (vws == null) {
-                  viewerWidgetSettings[widgetTab].push({
-                    widgetkey: widgetName,
-                    display: dh,
-                  });
-                } else {
-                  if (vws["display"] == "") {
-                    vws["display"] = dh;
+                generator[widgetTab]["variables"]["widgetname"] = widgetName;
+                var dh =
+                  widgetGenerators[widgetName][widgetTab]["default_hidden"];
+                if (dh != undefined) {
+                  if (dh == true) {
+                    dh = "none";
+                  } else {
+                    dh = "block";
+                  }
+                  if (viewerWidgetSettings[widgetTab] == null) {
+                    viewerWidgetSettings[widgetTab] = [];
+                  }
+                  var vws = getViewerWidgetSettingByWidgetkey(
+                    widgetTab,
+                    widgetName
+                  );
+                  if (vws == null) {
+                    viewerWidgetSettings[widgetTab].push({
+                      widgetkey: widgetName,
+                      display: dh,
+                    });
+                  } else {
+                    if (vws["display"] == "") {
+                      vws["display"] = dh;
+                    }
                   }
                 }
-              }
-              if (
-                usedAnnotators[widgetTab].includes(req) &&
-                generator[widgetTab] != undefined
-              ) {
-                var len = Object.keys(detailWidgetOrder[widgetTab]).length;
-                detailWidgetOrder[widgetTab][len] = widgetName;
+                if (
+                  usedAnnotators[widgetTab].includes(req) &&
+                  generator[widgetTab] != undefined
+                ) {
+                  var len = Object.keys(detailWidgetOrder[widgetTab]).length;
+                  detailWidgetOrder[widgetTab][len] = widgetName;
+                }
               }
             }
-          }
-          var widgetTabs = Object.keys(detailWidgetOrder);
-          for (var k = 0; k < widgetTabs.length; k++) {
-            var widgetTab = widgetTabs[k];
-            if (showcaseWidgets[widgetTab] == undefined) {
-              continue;
-            }
-            var poss = Object.keys(detailWidgetOrder[widgetTab]);
-            for (var i1 = 0; i1 < poss.length - 1; i1++) {
-              var pos1 = poss[i1];
-              for (var i2 = i1 + 1; i2 < poss.length; i2++) {
-                var pos2 = poss[i2];
-                var widgetName1 = detailWidgetOrder[widgetTab][pos1];
-                var showcaseIdx1 =
-                  showcaseWidgets[widgetTab].indexOf(widgetName1);
-                var widgetName2 = detailWidgetOrder[widgetTab][pos2];
-                var showcaseIdx2 =
-                  showcaseWidgets[widgetTab].indexOf(widgetName2);
-                var changeFlag = false;
-                if (showcaseIdx2 != -1) {
-                  if (showcaseIdx1 != -1) {
-                    if (showcaseIdx2 < showcaseIdx1) {
+            var widgetTabs = Object.keys(detailWidgetOrder);
+            for (var k = 0; k < widgetTabs.length; k++) {
+              var widgetTab = widgetTabs[k];
+              if (showcaseWidgets[widgetTab] == undefined) {
+                continue;
+              }
+              var poss = Object.keys(detailWidgetOrder[widgetTab]);
+              for (var i1 = 0; i1 < poss.length - 1; i1++) {
+                var pos1 = poss[i1];
+                for (var i2 = i1 + 1; i2 < poss.length; i2++) {
+                  var pos2 = poss[i2];
+                  var widgetName1 = detailWidgetOrder[widgetTab][pos1];
+                  var showcaseIdx1 =
+                    showcaseWidgets[widgetTab].indexOf(widgetName1);
+                  var widgetName2 = detailWidgetOrder[widgetTab][pos2];
+                  var showcaseIdx2 =
+                    showcaseWidgets[widgetTab].indexOf(widgetName2);
+                  var changeFlag = false;
+                  if (showcaseIdx2 != -1) {
+                    if (showcaseIdx1 != -1) {
+                      if (showcaseIdx2 < showcaseIdx1) {
+                        changeFlag = true;
+                      }
+                    } else {
                       changeFlag = true;
                     }
-                  } else {
-                    changeFlag = true;
                   }
-                }
-                if (changeFlag) {
-                  detailWidgetOrder[widgetTab][pos1] = widgetName2;
-                  detailWidgetOrder[widgetTab][pos2] = widgetName1;
+                  if (changeFlag) {
+                    detailWidgetOrder[widgetTab][pos1] = widgetName2;
+                    detailWidgetOrder[widgetTab][pos2] = widgetName1;
+                  }
                 }
               }
             }
+            setupTab("info");
           }
-          setupTab("info");
         }
-      }
     );
   }
 }
@@ -861,18 +839,10 @@ async function firstLoadData() {
   setupTab("report")
   await loadFilterSettings(quickSaveName, true);
   await loadLayoutSetting(quickSaveName, true);
-  infomgr.load(
-    jobId,
-    "info",
-    async function () {
-      populateInfoDiv(document.getElementById("info_div"));
-      await checkWidgets();
-      loadData(false, showTab("info"));
-    },
-    null,
-    filterJson,
-    "info"
-  );
+  await infomgr.load_info(jobId, "info")
+  populateInfoDiv(document.getElementById("info_div"));
+  await checkWidgets();
+  await loadData()
   setupTab("filter");
 }
 
@@ -1014,22 +984,6 @@ function quicksave() {
 }
 
 async function getVariantCols() {
-  /*$('#tabheads .tabhead').click(function(event) {
-        var targetTab = "#" + this.id.replace('head', '');
-        var tabName = targetTab.split('_')[1];
-        currentTab = tabName;
-        showTab(tabName);
-        var tab = document.getElementById('tab_' + tabName);
-        var detailContainer = document.getElementById('detailcontainerdiv_' + tabName);
-        if (resetTab[tabName] == true || tab.innerHTML == '' || (detailContainer != null && detailContainer.innerHTML == '')) {
-            setupTab(tabName);
-            resizesTheWindow();
-        }
-        if (tabName == 'variant' || tabName == 'gene' || tabName == 'info') {
-            $(detailContainer).packery();
-        }
-        changeMenu();
-    });*/
   const response = await axios.get("/result/service/variantcols", {
     params: {
       job_id: jobId,
@@ -1083,7 +1037,7 @@ async function startData() {
   currentTab = "info";
   jobDataLoadingDiv = drawingRetrievingDataDiv(currentTab);
   await getVariantCols();
-  firstLoadData();
+  await firstLoadData();
 }
 
 function changeTab(tabName) {
@@ -1166,5 +1120,6 @@ function webresult_run() {
       turnOffLayoutMenu();
     }
   });
-  startData();
+  startData().then((res) => {
+  })
 }

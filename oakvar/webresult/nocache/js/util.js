@@ -492,17 +492,6 @@ function areSameFilters(filter1, filter2) {
   return sameFilter;
 }
 
-function showTab(tabName) {
-  $(".tabhead.show").removeClass("show").addClass("hide");
-  $("#tabhead_" + tabName)
-    .removeClass("hide")
-    .addClass("show");
-  $(".tabcontent.show").removeClass("show").addClass("hide");
-  $("#tab_" + tabName)
-    .removeClass("hide")
-    .addClass("show");
-}
-
 function applyWidgetSetting(level) {
   var settings = viewerWidgetSettings[level];
   if (settings == undefined) {
