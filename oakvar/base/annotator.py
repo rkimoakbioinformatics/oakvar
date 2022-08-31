@@ -39,7 +39,7 @@ class BaseAnnotator(object):
         self.cursor = None
         self.cmd_arg_parser = None
         self.update_status_json_flag = None
-        self.confs = None
+        #self.confs = None
         self.json_colnames = None
         self.primary_input_reader = None
         self.output_path = None
@@ -160,7 +160,7 @@ class BaseAnnotator(object):
             dest="output_dir",
             help="Output directory. " + "Default is input file directory.",
         )
-        parser.add_argument("-c", dest="conf", help="Path to optional run conf file.")
+        parser.add_argument("-c", dest="confpath", help="Path to optional run conf file.")
         parser.add_argument(
             "-p",
             "--plainoutput",
@@ -207,12 +207,12 @@ class BaseAnnotator(object):
             self.update_status_json_flag = True
         else:
             self.update_status_json_flag = False
-        if hasattr(args, "conf"):
-            self.job_conf_path = args["conf"]
-        self.confs = None
-        if hasattr(args, "confs") and args["confs"] is not None:
-            confs = args["confs"].lstrip("'").rstrip("'").replace("'", '"')
-            self.confs = json.loads(confs)
+        #if hasattr(args, "confpath"):
+        #    self.job_conf_path = args["confpath"]
+        #self.confs = None
+        #if hasattr(args, "confs") and args["confs"] is not None:
+        #    confs = args["confs"].lstrip("'").rstrip("'").replace("'", '"')
+        #    self.confs = json.loads(confs)
         self.args = args
 
     def handle_jsondata(self, output_dict):
@@ -464,9 +464,9 @@ class BaseAnnotator(object):
                     )
 
     def _setup_secondary_inputs(self):
-        if self.conf is None:
-            from ..exceptions import SetupError
+        from ..exceptions import SetupError
 
+        if self.conf is None:
             raise SetupError(module_name=self.module_name)
         self.secondary_readers = {}
         try:
@@ -570,9 +570,9 @@ class BaseAnnotator(object):
         pass
 
     def get_uid_col(self):
-        if self.conf is None:
-            from ..exceptions import SetupError
+        from ..exceptions import SetupError
 
+        if self.conf is None:
             raise SetupError(module_name=self.module_name)
         return self.conf["output_columns"][0]["name"]
 

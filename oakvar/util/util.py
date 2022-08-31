@@ -454,20 +454,25 @@ def get_current_time_str():
 
 
 def get_args_conf(args: dict) -> Dict:
-    if args is None:
-        return {}
+    from ..exceptions import ConfigurationError
     import json
 
+    if args is None:
+        return {}
     # fill with conf string
     confs = args.get("confs")
     if confs:
         try:
             confs_json = json.loads(confs.replace("'", '"'))
         except Exception:
-            from ..exceptions import ConfigurationError
-
             raise ConfigurationError()
         for k, v in confs_json.items():
+            if k not in args or not args[k]:
+                args[k] = v
+    # fill with run_conf dict
+    run_conf = args.get("run_conf")
+    if run_conf and type(run_conf) is dict:
+        for k, v in run_conf.items():
             if k not in args or not args[k]:
                 args[k] = v
     # fill with conf
