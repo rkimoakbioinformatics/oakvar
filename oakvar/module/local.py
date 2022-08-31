@@ -248,8 +248,8 @@ def get_mapper_script_path(module_name):
     return module_path
 
 
-def get_module_code_version(module_name: str) -> Optional[str]:
-    module_conf = get_module_conf(module_name)
+def get_module_code_version(module_name: str, module_dir=None) -> Optional[str]:
+    module_conf = get_module_conf(module_name, module_dir=module_dir)
     if not module_conf:
         return None
     version = module_conf.get("code_version", None)
@@ -520,22 +520,21 @@ def get_code_size(module_name, module_type=None) -> Optional[int]:
 def get_module_name_and_module_dir(args) -> Tuple[str, str]:
     from os.path import exists
     from os.path import basename
+    from ..exceptions import ArgumentError
+    from ..module.local import get_module_dir
+    from ..exceptions import ModuleLoadingError
+    from pathlib import Path
 
     module_name = args.get("module")
     if not module_name:
-        from ..exceptions import ArgumentError
-
         raise ArgumentError(msg="argument module is missing")
     if exists(module_name):
-        module_dir = module_name
-        module_name = basename(module_dir)
+        p = Path(module_name)
+        module_dir = str(p.resolve())
+        module_name = str(p.name)
     else:
-        from ..module.local import get_module_dir
-
         module_dir = get_module_dir(module_name)
     if not module_dir:
-        from ..exceptions import ModuleLoadingError
-
         raise ModuleLoadingError(module_name)
     return module_name, module_dir
 
@@ -574,7 +573,7 @@ def pack_module_zip(args: dict, kind: str):
     from ..store.consts import ov_store_split_file_size
 
     module_name, module_dir = get_module_name_and_module_dir(args)
-    version = get_module_code_version(module_name)
+    version = get_module_code_version(module_name, module_dir=module_dir)
     pack_dir, outdir = get_pack_dir_out_dir(kind, args, module_dir)
     if exists(pack_dir):
         pack_fn = f"{module_name}__{version}__{kind}.zip"
