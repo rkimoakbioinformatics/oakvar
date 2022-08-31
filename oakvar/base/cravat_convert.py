@@ -71,9 +71,6 @@ class MasterCravatConverter(object):
         self.input_path_dict2 = None
         self.output_dir = None
         self.output_base_fname = None
-        self.input_assembly = None
-        self.do_liftover = False
-        self.lifter = None
         self.status_fpath = None
         self.conf = None
         self.unique_variants = None
@@ -86,7 +83,8 @@ class MasterCravatConverter(object):
         self.crs_path = None
         self.crl_path = None
         self.cur_file = None
-        self.error_lines = 0
+        self.file_error_lines = 0
+        self.total_error_lines = 0
         self.chromdict = {
             "chrx": "chrX",
             "chry": "chrY",
@@ -101,19 +99,35 @@ class MasterCravatConverter(object):
         self.wgsreader = get_wgs_reader(assembly="hg38")
         self.crs_def = crs_def.copy()
 
-    def setup_liftover(self):
+    def get_genome_assembly(self, converter):
+        from oakvar.system.consts import default_assembly_key
+        from oakvar.exceptions import NoGenomeException
+        from oakvar.system import get_user_conf
+    
+        if self.given_input_assembly:
+            return self.given_input_assembly
+        input_assembly = getattr(converter, "input_assembly", None)
+        if input_assembly:
+            return input_assembly
+        user_conf = get_user_conf() or {}
+        genome_assembly = user_conf.get(default_assembly_key, None)
+        if genome_assembly:
+            return genome_assembly
+        raise NoGenomeException()
+
+    def get_do_liftover(self, genome_assembly):
+        return genome_assembly != "hg38"
+
+    def setup_lifter(self, genome_assembly):
         from oakvar.util.admin_util import get_liftover_chain_paths
         from oakvar.exceptions import InvalidGenomeAssembly
         from pyliftover import LiftOver
-        self.do_liftover = self.input_assembly != "hg38"
+        lifter = None
         liftover_chain_paths = get_liftover_chain_paths()
-        if self.do_liftover:
-            if not self.input_assembly or self.input_assembly not in liftover_chain_paths:
-                raise InvalidGenomeAssembly(self.input_assembly)
-            else:
-                self.lifter = LiftOver(liftover_chain_paths[self.input_assembly])
-        else:
-            self.lifter = None
+        if genome_assembly not in liftover_chain_paths:
+            raise InvalidGenomeAssembly(genome_assembly)
+        lifter = LiftOver(liftover_chain_paths[genome_assembly])
+        return lifter
 
     def _parse_cmd_args(self, inargs, inkwargs):
         """Parse the arguments in sys.argv"""
@@ -147,7 +161,7 @@ class MasterCravatConverter(object):
             "-l",
             "--genome",
             dest="genome",
-            default="hg38",
+            default=None,
             help="Input gene assembly. Will be lifted over to hg38",
         )
         parser.add_argument(
@@ -204,8 +218,7 @@ class MasterCravatConverter(object):
             self.output_base_fname = parsed_args["name"]
         else:
             self.output_base_fname = basename(self.input_paths[0])
-        self.input_assembly = parsed_args["genome"]
-        self.setup_liftover()
+        self.given_input_assembly = parsed_args["genome"]
         self.status_fpath = join(
             self.output_dir, self.output_base_fname + ".status.json"
         )
@@ -269,12 +282,6 @@ class MasterCravatConverter(object):
 
         self.logger = getLogger("oakvar.converter")
         self.logger.info("started: %s" % asctime())
-        if self.pipeinput == False and self.input_paths:
-            self.logger.info("Input file(s): %s" % ", ".join(self.input_paths))
-        else:
-            self.logger.info(f"Input file(s): {STDIN}")
-        if self.do_liftover:
-            self.logger.info("liftover from %s" % self.input_assembly)
         self.error_logger = getLogger("err.converter")
         self.unique_excs = []
 
@@ -365,7 +372,6 @@ class MasterCravatConverter(object):
         self.logger.info(
             f"version: {self.primary_converter.module_name}=={self.primary_converter.version}"
         )
-        self.logger.info("input format: %s" % self.input_format)
         self.error_logger = getLogger("err." + self.primary_converter.module_name)
 
     def _set_converter_properties(self, converter):
@@ -376,7 +382,6 @@ class MasterCravatConverter(object):
             raise SetupError()
         converter.output_dir = self.output_dir
         converter.run_name = self.output_base_fname
-        converter.input_assembly = self.input_assembly
         module_name = self.primary_converter.format_name + "-converter"
         converter.module_name = module_name
         converter.version = get_module_code_version(converter.module_name)
@@ -442,8 +447,6 @@ class MasterCravatConverter(object):
         self.crs_writer.write_definition()
         for index_columns in crs_idx:
             self.crs_writer.add_index(index_columns)
-        # Setup liftover var file
-        # if self.do_liftover or self.primary_converter.format_name == "vcf":
         self.crl_path = join(
             self.output_dir,
             ".".join([self.output_base_fname, "original_input", "var"]),
@@ -452,6 +455,16 @@ class MasterCravatConverter(object):
         self.crl_writer.add_columns(crl_def)
         self.crl_writer.write_definition()
         self.crl_writer.write_names("original_input", "Original Input", "")
+
+    def log_input_and_genome_assembly(self, input_path, genome_assembly):
+        if not self.logger:
+            return
+        if self.pipeinput:
+            self.logger.info(f"input file: {STDIN}")
+        else:
+            self.logger.info(f"input file: {input_path}")
+        self.logger.info("input format: %s" % self.input_format)
+        self.logger.info(f"genome_assembly: {genome_assembly}")
 
     def run(self):
         """Convert input file to a .crv file using the primary converter."""
@@ -501,6 +514,7 @@ class MasterCravatConverter(object):
         total_lnum = 0
         base_re = compile("^[ATGC]+|[-]+$")
         write_lnum = 0
+        genome_assemblies = set()
         for fn in self.input_paths:
             self.cur_file = fn
             if self.pipeinput:
@@ -517,10 +531,13 @@ class MasterCravatConverter(object):
                 raise SetupError()
             self._set_converter_properties(converter)
             converter.setup(f)  # type: ignore
-            detected_assembly = getattr(converter, "detected_assembly", None)
-            if detected_assembly:
-                self.input_assembly = detected_assembly
-                self.setup_liftover()
+            genome_assembly = self.get_genome_assembly(converter)
+            genome_assemblies.add(genome_assembly)
+            self.log_input_and_genome_assembly(fn, genome_assembly)
+            do_liftover = self.get_do_liftover(genome_assembly)
+            lifter = None
+            if do_liftover:
+                lifter = self.setup_lifter(genome_assembly)
             if self.pipeinput == False:
                 f.seek(0)
             if self.pipeinput:
@@ -528,6 +545,7 @@ class MasterCravatConverter(object):
             else:
                 cur_fname = basename(f.name)
             last_read_lnum = None
+            self.file_error_lines = 0
             for read_lnum, l, all_wdicts in converter.convert_file(  # type: ignore
                 f, exc_handler=self._log_conversion_error
             ):
@@ -579,7 +597,7 @@ class MasterCravatConverter(object):
                                             chrom, int(pos)
                                         )
                                 prelift_wdict = copy(wdict)
-                                if self.do_liftover:
+                                if do_liftover:
                                     (
                                         wdict["chrom"],
                                         wdict["pos"],
@@ -590,6 +608,7 @@ class MasterCravatConverter(object):
                                         int(wdict["pos"]),
                                         wdict["ref_base"],
                                         wdict["alt_base"],
+                                        lifter
                                     )
                                 if not base_re.fullmatch(wdict["ref_base"]):
                                     raise IgnoredVariant("Invalid reference base")
@@ -617,8 +636,6 @@ class MasterCravatConverter(object):
                                 if unique:
                                     write_lnum += 1
                                     self.crv_writer.write_data(wdict)
-                                    # if self.do_liftover:
-                                    # if wdict["pos"] != prelift_wdict["pos"] or wdict["ref_base"] != prelift_wdict["ref_base"] or wdict["alt_base"] != prelift_wdict["alt_base"]:
                                     prelift_wdict["uid"] = UID
                                     self.crl_writer.write_data(prelift_wdict)
                                     # addl_operation errors shouldnt prevent variant from writing
@@ -659,13 +676,14 @@ class MasterCravatConverter(object):
                         ),
                     )
                 last_status_update_time = cur_time
-        self.logger.info("error lines: %d" % self.error_lines)
+            self.logger.info("error lines: %d" % self.file_error_lines)
         self._close_files()
         self.end()
+        self.logger.info("total error lines: %d" % self.total_error_lines)
         if self.status_writer is not None:
             self.status_writer.queue_status_update("num_input_var", total_lnum)
             self.status_writer.queue_status_update("num_unique_var", write_lnum)
-            self.status_writer.queue_status_update("num_error_input", self.error_lines)
+            self.status_writer.queue_status_update("num_error_input", self.total_error_lines)
         end_time = time()
         self.logger.info("finished: %s" % asctime(localtime(end_time)))
         runtime = round(end_time - start_time, 3)
@@ -678,17 +696,17 @@ class MasterCravatConverter(object):
                     "Converter", self.primary_converter.format_name
                 ),
             )
-        return total_lnum, self.primary_converter.format_name
+        return total_lnum, self.primary_converter.format_name, genome_assemblies
 
-    def liftover_one_pos(self, chrom, pos):
+    def liftover_one_pos(self, chrom, pos, lifter):
         from oakvar.exceptions import SetupError
 
-        if self.lifter is None:
+        if lifter is None:
             raise SetupError("no lifter")
-        res = self.lifter.convert_coordinate(chrom, pos - 1)
+        res = lifter.convert_coordinate(chrom, pos - 1)
         if res is None or len(res) == 0:
-            res_prev = self.lifter.convert_coordinate(chrom, pos - 2)
-            res_next = self.lifter.convert_coordinate(chrom, pos)
+            res_prev = lifter.convert_coordinate(chrom, pos - 2)
+            res_next = lifter.convert_coordinate(chrom, pos)
             if res_prev is not None and res_next is not None:
                 if len(res_prev) == 1 and len(res_next) == 1:
                     pos_prev = res_prev[0][1]
@@ -699,17 +717,17 @@ class MasterCravatConverter(object):
                         res = [(res_prev[0][0], pos_prev - 1)]
         return res
 
-    def liftover(self, chrom, pos, ref, alt):
+    def liftover(self, chrom, pos, ref, alt, lifter):
         from oakvar.exceptions import LiftoverFailure
         from oakvar.util.util import reverse_complement
         from oakvar.exceptions import SetupError
 
-        if self.lifter is None or self.wgsreader is None:
+        if lifter is None or self.wgsreader is None:
             raise SetupError("no lifter")
         reflen = len(ref)
         altlen = len(alt)
         if reflen == 1 and altlen == 1:
-            res = self.liftover_one_pos(chrom, pos)
+            res = self.liftover_one_pos(chrom, pos, lifter)
             if res is None or len(res) == 0:
                 raise LiftoverFailure("Liftover failure")
             if len(res) > 1:
@@ -723,8 +741,8 @@ class MasterCravatConverter(object):
         elif reflen >= 1 and altlen == 0:  # del
             pos1 = pos
             pos2 = pos + reflen - 1
-            res1 = self.lifter.convert_coordinate(chrom, pos1 - 1)
-            res2 = self.lifter.convert_coordinate(chrom, pos2 - 1)
+            res1 = lifter.convert_coordinate(chrom, pos1 - 1)
+            res2 = lifter.convert_coordinate(chrom, pos2 - 1)
             if res1 is None or res2 is None or len(res1) == 0 or len(res2) == 0:
                 raise LiftoverFailure("Liftover failure")
             if len(res1) > 1 or len(res2) > 1:
@@ -738,7 +756,7 @@ class MasterCravatConverter(object):
             newpos = newpos1
             newpos = min(newpos1, newpos2)
         elif reflen == 0 and altlen >= 1:  # ins
-            res = self.lifter.convert_coordinate(chrom, pos - 1)
+            res = lifter.convert_coordinate(chrom, pos - 1)
             if res is None or len(res) == 0:
                 raise LiftoverFailure("Liftover failure")
             if len(res) > 1:
@@ -749,8 +767,8 @@ class MasterCravatConverter(object):
         else:
             pos1 = pos
             pos2 = pos + reflen - 1
-            res1 = self.lifter.convert_coordinate(chrom, pos1 - 1)
-            res2 = self.lifter.convert_coordinate(chrom, pos2 - 1)
+            res1 = lifter.convert_coordinate(chrom, pos1 - 1)
+            res2 = lifter.convert_coordinate(chrom, pos2 - 1)
             if res1 is None or res2 is None or len(res1) == 0 or len(res2) == 0:
                 raise LiftoverFailure("Liftover failure")
             if len(res1) > 1 or len(res2) > 1:
@@ -786,7 +804,8 @@ class MasterCravatConverter(object):
         from traceback import format_exc
 
         if full_line_error:
-            self.error_lines += 1
+            self.file_error_lines += 1
+            self.total_error_lines += 1
         err_str = format_exc().rstrip()
         if err_str not in self.unique_excs:
             self.unique_excs.append(err_str)

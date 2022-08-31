@@ -90,7 +90,6 @@ class Cravat(object):
         self.inputs = None
         self.run_name = None
         self.output_dir = None
-        self.input_assembly = None
         self.startlevel = self.runlevels["converter"]
         self.endlevel = self.runlevels["postaggregator"]
         self.verbose = False
@@ -120,6 +119,7 @@ class Cravat(object):
         self.append_mode = False
         self.pipeinput = False
         self.exception = None
+        self.genome_assembiles = None
         self.inkwargs = kwargs
 
     def check_valid_modules(self, module_names):
@@ -250,7 +250,7 @@ class Cravat(object):
             raise SetupError()
         if self.logger:
             self.logger.info(
-                f"version: oakvar {au.get_current_package_version()} {au.get_packagedir()}"
+                f"version: oakvar {au.get_current_package_version()}=={au.get_packagedir()}"
             )
             if self.package_conf is not None and len(self.package_conf) > 0:
                 self.logger.info(
@@ -424,7 +424,6 @@ class Cravat(object):
             input_files_str = "stdin"
         if self.logger:
             self.logger.info("input files: {}".format(input_files_str))
-            self.logger.info("input assembly: {}".format(self.input_assembly))
 
     async def start_logger(self):
         from time import asctime, localtime
@@ -555,7 +554,6 @@ class Cravat(object):
         self.set_postaggregators()
         self.set_reporters()
         self.verbose = self.args.verbose == True
-        self.set_genome_assembly()
         self.set_start_end_levels()
         self.cleandb = self.args.cleandb
         if self.args.note == None:
@@ -789,21 +787,6 @@ class Cravat(object):
                 self.inputs[0] = target_path
             if self.run_name.endswith(".sqlite"):
                 self.run_name = self.run_name[:-7]
-
-    def set_genome_assembly(self):
-        from ..system.consts import default_assembly_key
-        from ..exceptions import SetupError
-        from ..exceptions import NoGenomeException
-
-        if self.args is None:
-            raise SetupError()
-        if self.args.genome is None:
-            if default_assembly_key in self.main_conf:
-                self.input_assembly = self.main_conf[default_assembly_key]
-            else:
-                raise NoGenomeException()
-        else:
-            self.input_assembly = self.args.genome
 
     def set_output_dir(self):
         import os
@@ -1107,7 +1090,7 @@ class Cravat(object):
             "inputs": self.inputs,
             "name": self.run_name,
             "output_dir": self.output_dir,
-            "genome": self.input_assembly,
+            "genome": self.args.genome,
         }
         arg_dict["conf"] = self.conf_run
         if self.args.forcedinputformat is not None:
@@ -1123,7 +1106,7 @@ class Cravat(object):
         arg_dict["status_writer"] = self.status_writer
         converter_class = load_class(module.script_path, "MasterCravatConverter")
         converter = converter_class(arg_dict)
-        self.numinput, self.converter_format = converter.run()
+        self.numinput, self.converter_format, self.genome_assembiles = converter.run()
 
     def run_genemapper(self):
         from ..module.local import get_local_module_info
@@ -1758,10 +1741,10 @@ class Cravat(object):
         from datetime import datetime
         import json
         from ..module.local import get_local_module_info
+        from ..exceptions import DatabaseError
 
         if (
             self.run_name is None
-            or self.input_assembly is None
             or self.args is None
             or self.output_dir is None
         ):
@@ -1785,24 +1768,17 @@ class Cravat(object):
         await cursor.execute(q)
         if not self.append_mode:
             created = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            q = 'insert into info values ("Result created at", "' + created + '")'
-            await cursor.execute(q)
-            q = 'insert into info values ("Input file name", "{}")'.format(
-                ";".join(self.inputs)
-            )
-            await cursor.execute(q)
-            q = (
-                'insert into info values ("Input genome", "'
-                + self.input_assembly
-                + '")'
-            )
-            await cursor.execute(q)
+            q = "insert into info values (?, ?)"
+            await cursor.execute(q, ("Result create at", created))
+            q = "insert into info values (?, ?)"
+            await cursor.execute(q, ("Input file name", ";".join(self.inputs)))
+            genome_assembiles = ",".join(self.genome_assembiles or [])
+            q = f"insert into info values (?, ?)"
+            await cursor.execute(q, ("Input genome", genome_assembiles))
             q = "select count(*) from variant"
             await cursor.execute(q)
             r = await cursor.fetchone()
             if r is None:
-                from ..exceptions import DatabaseError
-
                 raise DatabaseError(msg="table variant does not exist.")
             no_input = str(r[0])
             q = (
@@ -1999,7 +1975,6 @@ class Cravat(object):
                     os.path.normpath(self.output_dir)
                 )
                 self.status_json["run_name"] = self.run_name
-                self.status_json["assembly"] = self.input_assembly
                 self.status_json["db_path"] = os.path.join(
                     self.output_dir, self.run_name + ".sqlite"
                 )
@@ -2028,7 +2003,6 @@ class Cravat(object):
             self.status_json["job_dir"] = self.output_dir
             self.status_json["id"] = os.path.basename(os.path.normpath(self.output_dir))
             self.status_json["run_name"] = self.run_name
-            self.status_json["assembly"] = self.input_assembly
             self.status_json["db_path"] = os.path.join(
                 self.output_dir, self.run_name + ".sqlite"
             )
