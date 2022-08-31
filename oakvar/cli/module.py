@@ -89,6 +89,7 @@ def info(args, __name__="module info"):
     ret["installed"] = installed
     if installed:
         if not args.get("local") and isinstance(local_info, LocalModule):
+            ret["installed_version"] = local_info.code_version
             ret["location"] = local_info.directory
     else:
         pass
@@ -96,13 +97,17 @@ def info(args, __name__="module info"):
         installed
         and remote_available
         and local_info is not None
+        and local_info.code_version
         and remote_info is not None
     ):
-        if installed and local_info.version == remote_info.latest_code_version:
+        if installed and local_info.code_version >= remote_info.latest_code_version:
             up_to_date = True
         else:
             up_to_date = False
         ret["latest_installed"] = up_to_date
+        ret["latest_store_version"] = ret["latest_version"]
+        del ret["latest_version"]
+        ret["latest_version"] = max(local_info.code_version, remote_info.latest_code_version)
     if fmt == "yaml":
         ret = dump(ret)
     if to == "stdout":
