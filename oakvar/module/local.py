@@ -294,10 +294,15 @@ def get_module_dir(module_name, module_type=None) -> Optional[str]:
     return None
 
 
-def get_module_conf(module_name, module_type=None):
+def get_module_conf(module_name, module_type=None, module_dir=None):
     from ..util.util import load_yml_conf
+    from pathlib import Path
 
-    conf_path = get_module_conf_path(module_name, module_type=module_type)
+    if module_dir:
+        p = Path(module_dir)
+        conf_path = p / (p.stem + ".yml")
+    else:
+        conf_path = get_module_conf_path(module_name, module_type=module_type)
     if conf_path:
         return load_yml_conf(conf_path)
     else:
@@ -307,7 +312,11 @@ def get_module_conf(module_name, module_type=None):
 def get_module_conf_path(module_name, module_type=None):
     from os.path import join
     from os.path import basename
+    from pathlib import Path
 
+    p = Path(module_name)
+    if p.exists():
+        return p.parent / (p.stem + ".yml")
     module_dir = get_module_dir(module_name, module_type=module_type)
     if not module_dir:
         return None

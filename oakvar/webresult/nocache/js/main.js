@@ -261,6 +261,7 @@ async function getResultLevels() {
     params: { job_id: jobId, username: username, dbpath: dbPath },
   });
   var levels = response.data.levels;
+  pageSize = parseInt(response.data["gui_result_pagesize"]);
   if (levels.length > 0 && levels[0] == "NODB") {
     showNoDB();
   } else {
@@ -497,6 +498,73 @@ var makeVariantByGene = function () {
     }
   }
 };
+
+function loadTableDataOnly() {
+  var pageNoInput = document.getElementById("page-no-input");
+  var pageNoS = pageNoInput.value;
+  pageNo = parseInt(pageNoS);
+  if (isNaN(pageNo)) {
+    return;
+  }
+  var removeSpinner = function () {
+    addGeneLevelToVariantLevel()
+    if (spinner != null) {
+      spinner.remove();
+    }
+    if ($grids["variant"] != undefined) {
+      $grids["variant"].pqGrid("option", "dataModel", {
+        data: infomgr.datas["variant"],
+      });
+      $grids["variant"].pqGrid("refreshDataAndView");
+      updateTableFooterTotalRows("variant");
+    }
+    enableUpdateButton();
+    unlockTabs();
+    removeLoadingDiv()
+  };
+  var loadGeneResult = function () {
+    if ($grids["gene"] == undefined) {
+      infomgr.load(
+        jobId,
+        "gene",
+        removeSpinner,
+        null,
+        filterJson,
+        "job",
+        (setResetTab = true)
+      );
+    } else {
+      removeSpinner();
+    }
+  };
+  var loadVariantResult = function () {
+    function callLoadVariant() {
+      var callback = null;
+      if (usedAnnotators["gene"]) {
+        callback = loadGeneResult;
+      } else {
+        callback = removeSpinner;
+      }
+      if (resultLevels.indexOf("variant") != -1) {
+        infomgr.load(
+          jobId,
+          "variant",
+          callback,
+          null,
+          filterJson,
+          "job",
+          (setResetTab = false)
+        );
+      } else {
+        callback();
+      }
+    }
+    callLoadVariant();
+  };
+  lockTabs();
+  loadVariantResult();
+  filterArmed = filterJson;
+}
 
 function selectTableFirstRow(tabName) {
   const $grid = $grids[tabName];

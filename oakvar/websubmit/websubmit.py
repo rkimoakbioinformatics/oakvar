@@ -196,10 +196,9 @@ class FileRouter(object):
                     report_path.append(output_filename)
         return report_path
 
-    async def job_status(self, request, job_dir, job_id_or_dbpath, new=False):
+    async def job_status(self, _, job_dir, job_id_or_dbpath, new=False):
         from os.path import exists
         from os.path import join
-        from os.path import basename
         from os.path import abspath
         from oakvar.consts import status_prefix
         try:
