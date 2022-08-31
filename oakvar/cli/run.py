@@ -1622,6 +1622,7 @@ class Cravat(object):
                 "secondary_inputs": secondary_inputs,
                 "quiet": self.args.quiet,
                 "log_path": self.log_path,
+                "run_conf": self.conf_run.get(module.name, {})
             }
             if self.run_name != None:
                 kwargs["run_name"] = self.run_name

@@ -117,7 +117,6 @@ class BaseReporter:
                 db.execute("select * from info")
         except:
             raise WrongInput(msg=f"{self.dbpath} is not an OakVar database")
-        self.conf = args.get("conf")
         self.filterpath = args.get("filterpath")
         self.filtername = args.get("filtername")
         self.filterstring = args.get("filterstring")
@@ -127,7 +126,6 @@ class BaseReporter:
         self.module_name = args.get("module_name")
         self.report_types = args.get("reports")
         self.savepath = args.get("savepath")
-        self.confs = {}
         if self.output_dir:
             self.output_dir = dirname(self.dbpath)
         if not self.output_dir:
@@ -135,13 +133,13 @@ class BaseReporter:
         if self.savepath and dirname(self.savepath) == "":
             self.savepath = join(self.output_dir, self.savepath)
         self.module_conf = get_module_conf(self.module_name, module_type="reporter")
-        # confs update from conf file
-        if self.conf and self.module_name in self.conf:
-            self.confs.update(self.conf[self.module_name])
-        # confs update from given conf
-        conf = args.get("conf")
-        if conf:
-            self.confs.update(conf)
+        self.confs = {}
+        self.conf = args.get("conf")
+        if self.conf:
+            if self.module_name in self.conf:
+                self.confs.update(self.conf[self.module_name])
+            else:
+                self.confs.update(self.conf)
         # confs update from confs
         confs = args.get("confs")
         if confs:
