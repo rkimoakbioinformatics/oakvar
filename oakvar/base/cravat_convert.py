@@ -292,10 +292,8 @@ class MasterCravatConverter(object):
         python modules. Initializes the CravatConverter class from that
         module and places them in a dict keyed by their input format
         """
-        from importlib.util import spec_from_file_location, module_from_spec
         from oakvar.exceptions import ExpectedException
         from oakvar.module.local import get_local_module_infos_of_type
-        from oakvar.exceptions import ModuleLoadingError
         from oakvar.exceptions import InvalidModule
         from oakvar.util.util import load_class
 

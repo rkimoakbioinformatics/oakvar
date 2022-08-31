@@ -19,11 +19,14 @@ class BaseAnnotator(object):
         from ..consts import cannonical_chroms
         from ..module.local import get_module_conf
         from ..exceptions import ModuleLoadingError
+        from ..exceptions import ModuleLoadingError
+        from ..exceptions import LoggerError
+        from pathlib import Path
 
         fp = sys.modules[self.__module__].__file__
         if fp is None:
             raise ModuleLoadingError(self.__module__)
-        main_fpath = os.path.abspath(fp)
+        self.main_fpath = Path(fp).resolve()
         self.primary_input_path = None
         self.secondary_paths = {}
         self.output_dir = None
@@ -62,27 +65,18 @@ class BaseAnnotator(object):
         self.supported_chroms = set(cannonical_chroms)
         if live:
             return
-        main_basename = os.path.basename(main_fpath)
-        if "." in main_basename:
-            self.module_name = ".".join(main_basename.split(".")[:-1])
-        else:
-            self.module_name = main_basename
+        self.module_name = self.main_fpath.stem
         self.annotator_name = self.module_name
-        self.module_dir = os.path.dirname(main_fpath)
-        self.annotator_dir = os.path.dirname(main_fpath)
-        self.data_dir = os.path.join(self.module_dir, "data")
-        # Load command line opts
+        self.module_dir = self.main_fpath.parent
+        self.annotator_dir = self.main_fpath.parent
+        self.data_dir = self.module_dir / "data"
         self._setup_logger()
-        self.conf = get_module_conf(self.module_name, module_type="annotator")
+        self.conf = get_module_conf(self.module_name, module_type="annotator", module_dir=self.module_dir)
         if self.conf is None:
-            from ..exceptions import ModuleLoadingError
-
             raise ModuleLoadingError(self.module_name)
         self._verify_conf()
         self._id_col_name = self.conf["output_columns"][0]["name"]
         if self.logger is None:
-            from ..exceptions import LoggerError
-
             raise LoggerError(module_name=self.module_name)
         if "logging_level" in self.conf:
             self.logger.setLevel(self.conf["logging_level"].upper())
