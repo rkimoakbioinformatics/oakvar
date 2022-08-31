@@ -250,7 +250,7 @@ class Cravat(object):
             raise SetupError()
         if self.logger:
             self.logger.info(
-                f"version: oakvar {au.get_current_package_version()}=={au.get_packagedir()}"
+                f"version: oakvar=={au.get_current_package_version()} {au.get_packagedir()}"
             )
             if self.package_conf is not None and len(self.package_conf) > 0:
                 self.logger.info(
@@ -262,7 +262,7 @@ class Cravat(object):
                     if not version:
                         version = module.conf.get("version")
                     self.logger.info(
-                        f"version: {module.name} {version} {os.path.dirname(module.script_path)}"
+                        f"version: {module.name}=={version} {os.path.dirname(module.script_path)}"
                     )
             if "mapper" not in self.args.skip:
                 module = self.mapper

@@ -320,7 +320,14 @@ def load_class(path, class_name=None):
                     "Annotator",
                     "Postaggregator",
                     "Reporter",
-                ] or n.startswith("Cravat"):
+                    "CommonModule",
+                    "CravatConverter",
+                    "CravatMapper",
+                    "CravatAnnotator",
+                    "CravatPostaggregator",
+                    "CravatReporter",
+                    "CravatCommonModule",
+                    ]:
                     if hasattr(module, n):
                         module_class = getattr(module, n)
                         if not inspect.isclass(module_class):

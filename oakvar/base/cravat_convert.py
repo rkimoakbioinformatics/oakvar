@@ -297,15 +297,12 @@ class MasterCravatConverter(object):
         from oakvar.module.local import get_local_module_infos_of_type
         from oakvar.exceptions import ModuleLoadingError
         from oakvar.exceptions import InvalidModule
+        from oakvar.util.util import load_class
 
         for module_info in get_local_module_infos_of_type("converter").values():
-            # path based import from https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
-            spec = spec_from_file_location(module_info.name, module_info.script_path)
-            if spec is None or spec.loader is None:
-                raise ModuleLoadingError(module_info.name)
-            module = module_from_spec(spec)
-            spec.loader.exec_module(module)
-            converter = module.CravatConverter()
+            cls = load_class(module_info.script_path)
+            converter = cls()
+            converter.script_path = module_info.script_path
             if not hasattr(converter, "format_name"):
                 raise InvalidModule(module_info.name)
             converter.module_name = module_info.name
@@ -370,7 +367,7 @@ class MasterCravatConverter(object):
                     if not self.primary_converter.check_format(f):
                         raise InvalidInputFormat("inconsistent input formats")
         self.logger.info(
-            f"version: {self.primary_converter.module_name}=={self.primary_converter.version}"
+            f"version: {self.primary_converter.module_name}=={self.primary_converter.version} {self.primary_converter.script_path}"
         )
         self.error_logger = getLogger("err." + self.primary_converter.module_name)
 
