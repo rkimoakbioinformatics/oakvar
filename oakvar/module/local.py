@@ -519,7 +519,6 @@ def get_code_size(module_name, module_type=None) -> Optional[int]:
 
 def get_module_name_and_module_dir(args) -> Tuple[str, str]:
     from os.path import exists
-    from os.path import basename
     from ..exceptions import ArgumentError
     from ..module.local import get_module_dir
     from ..exceptions import ModuleLoadingError

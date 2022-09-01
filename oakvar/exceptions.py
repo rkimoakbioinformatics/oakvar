@@ -84,6 +84,13 @@ class InvalidFilter(ExpectedException):
         return str(self.msg)
 
 
+class ModuleInstallationError(ExpectedException):
+    traceback = False
+    halt = False
+
+    def __init__(self, msg):
+        super().__init__(msg)
+
 class ModuleNotExist(ExpectedException):
     traceback = False
     halt = True
