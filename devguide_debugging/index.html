@@ -8,14 +8,14 @@
       
       
       
-        <link rel="canonical" href="https://oakvar.com/install/">
+        <link rel="canonical" href="https://oakvar.com/devguide_debugging/">
       
       <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.3.1, mkdocs-material-8.3.9">
     
     
       
-        <title>Install - OakVar</title>
+        <title>Debugging - OakVar</title>
       
     
     
@@ -62,7 +62,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#installation" class="md-skip">
+        <a href="#entrypoints" class="md-skip">
           Skip to content
         </a>
       
@@ -94,7 +94,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Install
+              Debugging
             
           </span>
         </div>
@@ -192,75 +192,11 @@
 
   
   
-    
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          Install
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../install/" class="md-nav__link">
         Install
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#installation" class="md-nav__link">
-    Installation
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#setup" class="md-nav__link">
-    Setup
-  </a>
-  
-    <nav class="md-nav" aria-label="Setup">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#setup-with-a-file" class="md-nav__link">
-    Setup with a file
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#setup-with-environment-variables" class="md-nav__link">
-    Setup with environment variables
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -361,12 +297,14 @@
 
   
   
+    
+  
   
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
       
-        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_9" type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_9" type="checkbox" id="__nav_9" checked>
       
       
       
@@ -415,11 +353,55 @@
               
   
   
+    
   
-    <li class="md-nav__item">
-      <a href="../devguide_debugging/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Debugging
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         Debugging
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#entrypoints" class="md-nav__link">
+    Entrypoints
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#base-classes" class="md-nav__link">
+    Base classes
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -501,36 +483,16 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#installation" class="md-nav__link">
-    Installation
+  <a href="#entrypoints" class="md-nav__link">
+    Entrypoints
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#setup" class="md-nav__link">
-    Setup
+  <a href="#base-classes" class="md-nav__link">
+    Base classes
   </a>
-  
-    <nav class="md-nav" aria-label="Setup">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#setup-with-a-file" class="md-nav__link">
-    Setup with a file
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#setup-with-environment-variables" class="md-nav__link">
-    Setup with environment variables
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -548,80 +510,84 @@
                 
 
 
-  <h1>Install</h1>
+  <h1>Debugging</h1>
 
-<h2 id="installation">Installation</h2>
-<p>OakVar and open-cravat share the same package name, thus if your system already have open-cravat, then for oakvar to properly function, open-cravat should be uninstalled first.</p>
-<pre><code>pip uninstall open-cravat
-</code></pre>
-<p>Then, install OakVar.</p>
-<pre><code>pip install oakvar
-</code></pre>
-<p>Then, set up OakVar.</p>
-<pre><code>ov system setup
-</code></pre>
-<h2 id="setup">Setup</h2>
-<p><code>ov system setup</code> will set up OakVar with sane defaults.</p>
-<p>Setup process can be customized with a setup file or environment variables, which can be useful in automated deployment.</p>
-<h3 id="setup-with-a-file">Setup with a file</h3>
-<p>A setup file in yaml format can be used. System configuration fields which are missing in the setup file will be filled with sane defaults. Setup with a file with custom locations for modules and logs can be done as</p>
-<pre><code>ov system setup -f setup.yaml
-</code></pre>
-<p>where setup.yaml is</p>
-<pre><code>modules_dir: ~/oakvar_modules
-logs_dir: ~/oakvar_logs
-</code></pre>
-<h3 id="setup-with-environment-variables">Setup with environment variables</h3>
-<p>All system configuration fields can be overridden with environment variables. To override a system config field, set the environment variable <code>OV_</code> + upper-cased field name to a desired value. For example, </p>
+<h3 id="entrypoints">Entrypoints</h3>
 <table>
 <thead>
 <tr>
-<th>System configuration field</th>
-<th>Environmental variable</th>
+<th>Command</th>
+<th>Entrypoint</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>sys_conf_path</td>
-<td>OV_SYS_CONF_PATH</td>
+<td>ov</td>
+<td>oakvar/__main__.py</td>
 </tr>
 <tr>
-<td>root_dir</td>
-<td>OV_ROOT_DIR</td>
+<td>ov run</td>
+<td>oakvar/cli/run.py</td>
 </tr>
 <tr>
-<td>modules_dir</td>
-<td>OV_MODULES_DIR</td>
+<td>ov report</td>
+<td>oakvar/cli/report.py</td>
 </tr>
 <tr>
-<td>log_dir</td>
-<td>OV_LOG_DIR</td>
-</tr>
-<tr>
-<td>jobs_dir</td>
-<td>OV_JOBS_DIR</td>
-</tr>
-<tr>
-<td>conf_dir</td>
-<td>OV_CONF_DIR</td>
-</tr>
-<tr>
-<td>gui_port</td>
-<td>OV_GUI_PORT</td>
+<td>ov gui</td>
+<td>oakvar/cli/gui.py</td>
 </tr>
 </tbody>
 </table>
-<p>The custom setup in the previous section can be done using environmental variables as</p>
-<pre><code>export OV_MODULES_DIR=~/oakvar_modules
-export OV_LOGS_DIR=~/oakvar_logs
-ov system setup
+<p>oakvar/__main__.py is intentional, to make <code>python -m oakvar</code> style of use possible.</p>
+<h3 id="base-classes">Base classes</h3>
+<p>OakVar modules inherit one of OakVar base module classes. Converters, mappers, annotators, postaggregators, and reporters have different base module classes.</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Module</th>
+<th>Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>converter</td>
+<td>oakvar/base/converter.py</td>
+<td>BaseConverter</td>
+</tr>
+<tr>
+<td>mapper</td>
+<td>oakvar/base/mapper.py</td>
+<td>BaseMapper</td>
+</tr>
+<tr>
+<td>annotator</td>
+<td>oakvar/base/annotator.py</td>
+<td>BaseAnnotator</td>
+</tr>
+<tr>
+<td>postaggregator</td>
+<td>oakvar/base/postaggregator.py</td>
+<td>BasePostAggregator</td>
+</tr>
+<tr>
+<td>reporter</td>
+<td>oakvar/cli/report.py</td>
+<td>BaseReporter</td>
+</tr>
+<tr>
+<td>common</td>
+<td>oakvar/base/commonmodule.py</td>
+<td>BaseCommonModule</td>
+</tr>
+</tbody>
+</table>
+<p>To develop a new OakVar module, it should inherit one of these base classes. For example, an annotator module's class definition should be:</p>
+<pre><code>from oakvar import BaseAnnotator
+
+class Annotator(BaseAnnotator):
 </code></pre>
-<p>Another example is installing system files in a custom directory.</p>
-<pre><code>export OV_ROOT_DIR=/data/oakvar
-ov system setup
-</code></pre>
-<p>This will install OakVar system files at <code>/data/oakvar</code>.</p>
-<p>Using environmental variablse for setup can be useful in deploying OakVar with Docker containers.</p>
 
               
             </article>
@@ -637,7 +603,7 @@ ov system setup
     <nav class="md-footer__inner md-grid" aria-label="Footer" >
       
         
-        <a href=".." class="md-footer__link md-footer__link--prev" aria-label="Previous: Home" rel="prev">
+        <a href="../devguide_workflows/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Workflows" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
           </div>
@@ -646,20 +612,20 @@ ov system setup
               <span class="md-footer__direction">
                 Previous
               </span>
-              Home
+              Workflows
             </div>
           </div>
         </a>
       
       
         
-        <a href="../overview/" class="md-footer__link md-footer__link--next" aria-label="Next: Overview" rel="next">
+        <a href="../license/" class="md-footer__link md-footer__link--next" aria-label="Next: License" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              Overview
+              License
             </div>
           </div>
           <div class="md-footer__button md-icon">

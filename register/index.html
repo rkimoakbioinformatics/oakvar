@@ -301,10 +301,71 @@
   
   
   
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_9" type="checkbox" id="__nav_9" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_9">
+          Development
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Development" data-md-level="1">
+        <label class="md-nav__title" for="__nav_9">
+          <span class="md-nav__icon md-icon"></span>
+          Development
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
     <li class="md-nav__item">
-      <a href="../devguide/" class="md-nav__link">
-        Dev guide
+      <a href="../devguide_modules/" class="md-nav__link">
+        Modules
       </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../devguide_workflows/" class="md-nav__link">
+        Workflows
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../devguide_debugging/" class="md-nav__link">
+        Debugging
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
     </li>
   
 
@@ -390,10 +451,30 @@
 <pre><code>ov module pack awesome
 </code></pre>
 <p>This will create one or two files, depending whether your module has data folder in it or not. Your module's code will be packed into <code>awesome__&lt;version&gt;__code.zip</code> where <code>version</code> is the version number defined in <code>awesome.yml</code> file in your module's directory, and if your module has <code>data</code> subdirectory, <code>awesome__&lt;version&gt;__data.zip</code> also will be created.</p>
+<p>If your module is bigger than 1GB, <code>--split</code> option can be given. This will split the code and the data of your module into zip part files of 1GB each. For example, if <code>awesome</code> module is 2.5GB big and most of the size is from its data, </p>
+<pre><code>ov module pack awesome --split
+</code></pre>
+<p>will produce the following files.</p>
+<pre><code>awesome__1.0.0__code.zip000
+awesome__1.0.0__data.zip000
+awesome__1.0.0__data.zip001
+awesome__1.0.0__data.zip002
+</code></pre>
 <p>Then, upload these zip files to somewhere people can download. Using their URLs,</p>
 <pre><code>ov store register awesome --code-url ... --data-url ...
 </code></pre>
-<p>will register your module in the OakVar store. <code>--data-url</code> is needed only if your module produced a data zip file.</p>
+<p>will register your module in the OakVar store. <code>--data-url</code> is needed only if your module produced a data zip file. If you have many split zip files, <code>-f</code> option can be given with a YAML format file with code and data URLs. For example, </p>
+<pre><code>ov store register awesome -f urls.txt
+</code></pre>
+<p>with <code>urls.txt</code> of the following content</p>
+<pre><code>code_url:
+- https://dropbox.com/xxxxxxxx/awesome__1.0.0__code.zip000
+data_url:
+- https://dropbox.com/xxxxxxxx/awesome__1.0.0__data.zip000
+- https://dropbox.com/xxxxxxxx/awesome__1.0.0__data.zip001
+- https://dropbox.com/xxxxxxxx/awesome__1.0.0__data.zip002
+</code></pre>
+<p>will register the module.</p>
 <p>This way, you have total control of your module's publication. You can just delete the module zip files from where you stored them and OakVar store will automatically deregister those deleted versions. If you move the module zip files to new locations you can just register them again with new URLs.</p>
 
               
