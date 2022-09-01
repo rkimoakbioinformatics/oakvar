@@ -183,7 +183,6 @@ class BaseAnnotator(object):
     # Parse the command line arguments
     def parse_cmd_args(self, inargs, inkwargs):
         import os
-        import json
         import re
         from ..util.util import get_args
 
