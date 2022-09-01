@@ -9,7 +9,10 @@ nav:
   - Graphical user interface: gui.md
   - Publishing your module: register.md
   - VCF2VCF: vcf2vcf.md
-  - Dev guide: devguide.md
+  - Development: 
+    - Modules: devguide_modules.md
+    - Workflows: devguide_workflows.md
+    - Debugging: devguide_debugging.md
   - Release notes: "https://github.com/rkimoakbioinformatics/oakvar/releases"
   - Repository: "https://github.com/rkimoakbioinformatics/oakvar"
   - License: license.md
