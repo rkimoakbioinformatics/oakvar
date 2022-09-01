@@ -48,3 +48,10 @@ Individual Sponsors
    :width: 50
    :alt: RegenCenter
    :target: https://github.com/RegenCenter
+
+License
+*******
+
+OakVar is licensed under dual licensing: 1) APGL v3 or higher and 2) paid subscription for commercial use. For full license information, see `LICENSE`_.
+
+.. _LICENSE: https://github.com/rkimoakbioinformatics/oakvar/blob/master/LICENSE
