@@ -25,3 +25,13 @@ interactive result viewer for individual jobs.
 In `Store` tab of OakVar GUI, you can install and uninstall OakVar
 modules as well as explore the details of each module. OakVar's
 web store brings OakVar's own modules as well as OpenCRAVAT's modules.
+
+## Result Viewer
+
+`ov gui` with a path to an OakVar result SQLite database file will launch
+the OakVar result viewer. For example,
+
+    ov gui sample_1.vcf.sqlite
+
+will launch the OakVar result viewer on the analysis data in 
+`sample_1.vcf.sqlite`.
