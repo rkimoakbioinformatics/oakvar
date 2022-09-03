@@ -2,20 +2,23 @@ site_name: OakVar
 site_url: https://oakvar.com
 nav:
   - Home: index.md
-  - Install: install.md
+  - Install: 
+    - System: install_system.md
+    - Modules: install_modules.md
   - Overview: overview.md
   - Tutorial: tutorial.md
+  - VCF2VCF: vcf2vcf.md
   - Command-line interface: cli.md
   - Graphical user interface: gui.md
   - Publishing your module: register.md
-  - VCF2VCF: vcf2vcf.md
-  - Development: 
+  - Developer guide: 
     - Modules: devguide_modules.md
     - Workflows: devguide_workflows.md
     - Debugging: devguide_debugging.md
-  - Release notes: "https://github.com/rkimoakbioinformatics/oakvar/releases"
-  - Repository: "https://github.com/rkimoakbioinformatics/oakvar"
-  - License: license.md
+  - Release notes &#128279: "https://github.com/rkimoakbioinformatics/oakvar/releases"
+  - Repository &#128279: "https://github.com/rkimoakbioinformatics/oakvar"
+  - License &#128279: "https://github.com/rkimoakbioinformatics/oakvar/blob/master/LICENSE"
+  - Sponsor &#128279: "https://github.com/sponsors/rkimoakbioinformatics"
 theme: 
   name: material
   logo: images/logo.png
