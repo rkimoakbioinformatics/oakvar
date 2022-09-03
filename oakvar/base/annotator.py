@@ -19,11 +19,14 @@ class BaseAnnotator(object):
         from ..consts import cannonical_chroms
         from ..module.local import get_module_conf
         from ..exceptions import ModuleLoadingError
+        from ..exceptions import ModuleLoadingError
+        from ..exceptions import LoggerError
+        from pathlib import Path
 
         fp = sys.modules[self.__module__].__file__
         if fp is None:
             raise ModuleLoadingError(self.__module__)
-        main_fpath = os.path.abspath(fp)
+        self.main_fpath = Path(fp).resolve()
         self.primary_input_path = None
         self.secondary_paths = {}
         self.output_dir = None
@@ -36,7 +39,7 @@ class BaseAnnotator(object):
         self.cursor = None
         self.cmd_arg_parser = None
         self.update_status_json_flag = None
-        self.confs = None
+        #self.confs = None
         self.json_colnames = None
         self.primary_input_reader = None
         self.output_path = None
@@ -62,27 +65,18 @@ class BaseAnnotator(object):
         self.supported_chroms = set(cannonical_chroms)
         if live:
             return
-        main_basename = os.path.basename(main_fpath)
-        if "." in main_basename:
-            self.module_name = ".".join(main_basename.split(".")[:-1])
-        else:
-            self.module_name = main_basename
+        self.module_name = self.main_fpath.stem
         self.annotator_name = self.module_name
-        self.module_dir = os.path.dirname(main_fpath)
-        self.annotator_dir = os.path.dirname(main_fpath)
-        self.data_dir = os.path.join(self.module_dir, "data")
-        # Load command line opts
+        self.module_dir = self.main_fpath.parent
+        self.annotator_dir = self.main_fpath.parent
+        self.data_dir = self.module_dir / "data"
         self._setup_logger()
-        self.conf = get_module_conf(self.module_name, module_type="annotator")
+        self.conf = get_module_conf(self.module_name, module_type="annotator", module_dir=self.module_dir)
         if self.conf is None:
-            from ..exceptions import ModuleLoadingError
-
             raise ModuleLoadingError(self.module_name)
         self._verify_conf()
         self._id_col_name = self.conf["output_columns"][0]["name"]
         if self.logger is None:
-            from ..exceptions import LoggerError
-
             raise LoggerError(module_name=self.module_name)
         if "logging_level" in self.conf:
             self.logger.setLevel(self.conf["logging_level"].upper())
@@ -166,7 +160,7 @@ class BaseAnnotator(object):
             dest="output_dir",
             help="Output directory. " + "Default is input file directory.",
         )
-        parser.add_argument("-c", dest="conf", help="Path to optional run conf file.")
+        parser.add_argument("-c", dest="confpath", help="Path to optional run conf file.")
         parser.add_argument(
             "-p",
             "--plainoutput",
@@ -189,7 +183,6 @@ class BaseAnnotator(object):
     # Parse the command line arguments
     def parse_cmd_args(self, inargs, inkwargs):
         import os
-        import json
         import re
         from ..util.util import get_args
 
@@ -213,12 +206,12 @@ class BaseAnnotator(object):
             self.update_status_json_flag = True
         else:
             self.update_status_json_flag = False
-        if hasattr(args, "conf"):
-            self.job_conf_path = args["conf"]
-        self.confs = None
-        if hasattr(args, "confs") and args["confs"] is not None:
-            confs = args["confs"].lstrip("'").rstrip("'").replace("'", '"')
-            self.confs = json.loads(confs)
+        #if hasattr(args, "confpath"):
+        #    self.job_conf_path = args["confpath"]
+        #self.confs = None
+        #if hasattr(args, "confs") and args["confs"] is not None:
+        #    confs = args["confs"].lstrip("'").rstrip("'").replace("'", '"')
+        #    self.confs = json.loads(confs)
         self.args = args
 
     def handle_jsondata(self, output_dict):
@@ -470,9 +463,9 @@ class BaseAnnotator(object):
                     )
 
     def _setup_secondary_inputs(self):
-        if self.conf is None:
-            from ..exceptions import SetupError
+        from ..exceptions import SetupError
 
+        if self.conf is None:
             raise SetupError(module_name=self.module_name)
         self.secondary_readers = {}
         try:
@@ -576,9 +569,9 @@ class BaseAnnotator(object):
         pass
 
     def get_uid_col(self):
-        if self.conf is None:
-            from ..exceptions import SetupError
+        from ..exceptions import SetupError
 
+        if self.conf is None:
             raise SetupError(module_name=self.module_name)
         return self.conf["output_columns"][0]["name"]
 

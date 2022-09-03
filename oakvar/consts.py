@@ -262,7 +262,6 @@ module_tag_desc = {
     "visualization widgets": "modules for visualizing variants",
 }
 
-legacy_gene_level_cols_to_skip = ["base__num_variants", "base__so", "base__all_so"]
 assembly_choices = ["hg38", "hg19", "hg18"]
 publish_time_fmt = "%Y-%m-%dT%H:%M:%S"
 install_tempdir_name = "temp"

@@ -605,7 +605,7 @@ class Tester:
             self.report_type,
         ]
         if self.module.type == "annotator":
-            cmd_list.extend(["-a", self.module.name])
+            cmd_list.extend(["-a", self.module.directory])
         elif (
             (self.module.type == "reporter")
             and (get_local_module_info("vest") is not None)
@@ -767,7 +767,7 @@ class Tester:
                         if "|" in header:
                             headLabel = header[header.index("|") + 1 :]
                         self._report(
-                                f"#\n{self.module.name}: {variant}\n{self.module.name}: {headLabel}\n{self.module.name}: {key_row[idx]}\n{self.module.name}: {result[result_idx]}"
+                                f"#\n{self.module.name}: {variant}\ncolumn: {headLabel}\nref: {key_row[idx]}\nnew: {result[result_idx]}"
                         )
                         self.test_passed = False
 

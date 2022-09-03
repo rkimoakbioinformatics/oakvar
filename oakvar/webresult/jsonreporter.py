@@ -1,8 +1,8 @@
-from oakvar.cli.report import CravatReport
+from oakvar.cli.report import BaseReporter
 import sys
 
 
-class Reporter(CravatReport):
+class Reporter(BaseReporter):
     def __init__(self, args):
         self.no_log = True
         self.no_status_update = True

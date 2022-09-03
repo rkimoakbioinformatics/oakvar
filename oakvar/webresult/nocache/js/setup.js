@@ -65,6 +65,7 @@ function setupTab(tabName) {
   }
   changeMenu();
   setTableDetailLayout(tabName);
+  enableTabhead(tabName)
 }
 
 function filterHeaderClick(_) {
@@ -2660,13 +2661,6 @@ function updateTableColumns(tabName) {
   }
   makeColgroupkeysWithMissingCols();
   $grids[tabName].pqGrid("option", "colModel", colModel).pqGrid("refresh");
-}
-
-function showSpinner(_, elem) {
-  spinner = getEl("img");
-  spinner.src = "/result/images/spinner.gif";
-  spinner.style.width = "15px";
-  addEl(elem.parentElement, spinner);
 }
 
 function pickThroughAndChangeCursorClasses(

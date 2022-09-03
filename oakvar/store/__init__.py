@@ -70,23 +70,6 @@ def stream_multipart_post(url, fields, stage_handler=None, stages=50, **kwargs):
     return r
 
 
-def download(url, fpath):
-    # import pooch
-    import download
-    import gdown
-
-    # from os.path import basename
-    # from os.path import dirname
-
-    if "drive.google.com" in url:
-        gdown.download(url=url, output=fpath, quiet=True, fuzzy=True)
-    else:
-        # fname = basename(fpath)
-        # d = dirname(fpath)
-        # pooch.retrieve(url=url, known_hash=None, fname=fname, path=d, progressbar=True)
-        download.download(url, fpath, kind="file", verbose=False, replace=True)
-
-
 def fetch_file_content_to_string(url):
     from requests import get
     from urllib.error import HTTPError

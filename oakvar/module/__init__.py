@@ -251,21 +251,18 @@ def get_updatable(modules=[], requested_modules=[], strategy="consensus"):
 
 def make_install_temp_dir(args={}):
     from ..system import get_modules_dir
-    from os.path import join
-    from os.path import exists
-    from os import makedirs
     from ..consts import install_tempdir_name
     from shutil import rmtree
+    from pathlib import Path
 
-    args["modules_dir"] = get_modules_dir()
-    temp_dir = join(
-        args.get("modules_dir"), install_tempdir_name, args.get("module_name")
-    )
+    if not args.get("module_dir"):
+        args["modules_dir"] = get_modules_dir()
+    temp_dir = Path(args.get("modules_dir")) / install_tempdir_name / args.get("module_name")
     if args.get("clean"):
-        rmtree(temp_dir, ignore_errors=True)
-    if not exists(temp_dir):
-        makedirs(temp_dir)
-    args["temp_dir"] = temp_dir
+        rmtree(str(temp_dir), ignore_errors=True)
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    args["temp_dir"] = str(temp_dir)
+    return temp_dir
 
 
 def set_stage_handler(args={}):
@@ -304,7 +301,7 @@ def check_install_kill(args={}):
 
 
 def download_code_or_data(kind=None, args={}):
-    from ..store import download
+    from ..util.download import download
     from os.path import join
     from os.path import exists
     from os.path import getsize
@@ -418,6 +415,43 @@ def write_install_marks(args={}):
     wf.close()
     wf = open(join(module_dir, "endofinstall"), "w")
     wf.close()
+
+
+def install_module_from_url(url, args={}):
+    from pathlib import Path
+    from ..system import get_modules_dir
+    from ..util.download import download
+    from ..util.util import load_yml_conf
+    from ..util.util import quiet_print
+    from shutil import move
+    from shutil import rmtree
+
+    module_name = Path(url).name
+    args["module_name"] = module_name
+    temp_dir = make_install_temp_dir(args=args)
+    download(url, temp_dir.parent)
+    yml_conf_path = temp_dir / (args["module_name"] + ".yml")
+    if not yml_conf_path.exists():
+        quiet_print(f"{url} is not a valid OakVar module. {module_name}.yml should exist.", args=args)
+        return False
+    conf = load_yml_conf(yml_conf_path)
+    ty = conf.get("type") or ""
+    if not ty:
+        quiet_print(f"{url} is not a valid OakVar module. {module_name}.yml does not have 'type' field.", args=args)
+        return False
+    modules_dir = Path(get_modules_dir())
+    module_type_dir = modules_dir / (ty + "s")
+    if not module_type_dir.exists():
+        module_type_dir.mkdir()
+    module_dir = module_type_dir / module_name
+    if module_dir.exists():
+        if args.get("force"):
+            rmtree(str(module_dir))
+        else:
+            quiet_print(f"{module_dir} already exists.", args=args)
+            return False
+    move(str(temp_dir), str(module_type_dir))
+    return True
 
 
 def install_module(

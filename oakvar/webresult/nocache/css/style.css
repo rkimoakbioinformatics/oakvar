@@ -205,39 +205,6 @@ table.detailtable td {
 	background: #8e8e8e;
 }
 
-/*.tabhead {
-	margin-right: 2px;
-    display: inline-block;
-    height: 14px;
-    padding: 6px;
-    transition: all 0.3s ease;
-    vertical-align: bottom;
-    font-size: 13px;
-    cursor: pointer;
-    position: relative;
-    top: 5px;
-    font-family: roboto-medium;
-    color: white;
-    background-color: #d1d3d4;
-}
-
-.tabhead:hover {
-	background-color: #94d1eb;
-    height: 30px;
-}
-
-.tabhead.show {
-	background-color: #4a87bd;
-    height: 30px;
-}
-
-.tabhead.hide {
-}*/
-
-/*tabhead {
-    text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-2 py-2 text-sm font-medium rounded-md" onclick="changeTab('report')">
-}*/
-
 div.tabContent {
     display: none;
 }
@@ -948,9 +915,6 @@ div.pq-select-menu>.pq-select-option-label {
 	height: 2em;
 	cursor: pointer;
 }
-/*#tabhead_filter.active {
-	background-color: #d1dae0;
-}*/
 #filter-left-panel {
 	border-right: 1px solid gray;
 	padding: 5px;
@@ -1310,6 +1274,11 @@ input:checked + .sample-rd-rej::before {
 #columns_showhide_select_div {
     width: 400px;
     overflow: auto;
+}
+
+.tabhead.off {
+    pointer-events: none;
+    color: #aaaaaa;
 }
 
 /* Spinner start */

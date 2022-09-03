@@ -89,6 +89,7 @@ def info(args, __name__="module info"):
     ret["installed"] = installed
     if installed:
         if not args.get("local") and isinstance(local_info, LocalModule):
+            ret["installed_version"] = local_info.code_version
             ret["location"] = local_info.directory
     else:
         pass
@@ -96,13 +97,17 @@ def info(args, __name__="module info"):
         installed
         and remote_available
         and local_info is not None
+        and local_info.code_version
         and remote_info is not None
     ):
-        if installed and local_info.version == remote_info.latest_code_version:
+        if installed and local_info.code_version >= remote_info.latest_code_version:
             up_to_date = True
         else:
             up_to_date = False
         ret["latest_installed"] = up_to_date
+        ret["latest_store_version"] = ret["latest_version"]
+        del ret["latest_version"]
+        ret["latest_version"] = max(local_info.code_version, remote_info.latest_code_version)
     if fmt == "yaml":
         ret = dump(ret)
     if to == "stdout":
@@ -118,11 +123,10 @@ def cli_module_install(args):
 
 def collect_module_name_and_versions(modules, args=None):
     from ..util.util import quiet_print
+    from ..exceptions import ArgumentError
 
     mn_vs = {}
     if not modules:
-        from ..exceptions import ArgumentError
-
         e = ArgumentError("no module was given")
         e.traceback = False
         raise e
@@ -148,44 +152,48 @@ def install(args, __name__="module install"):
     from ..module.remote import get_remote_module_info
     from ..module.remote import get_install_deps
     from ..module import install_module
+    from ..module import install_module_from_url
     from ..util.util import quiet_print
+    from ..util.download import is_url
     from ..store.db import fetch_ov_store_cache
 
-    ret = fetch_ov_store_cache(args=args)
     modules = args.get("modules", [])
-    quiet = args.get("quiet", True)
     mn_vs = collect_module_name_and_versions(modules, args=args)
+    ret = fetch_ov_store_cache(args=args)
+    quiet = args.get("quiet", True)
     mn_vs_final = {}
     for module_name, version in mn_vs.items():
-        local_info = get_local_module_info(module_name)
-        remote_info = get_remote_module_info(module_name, version=version)
-        if not version and remote_info:
-            version = remote_info.latest_code_version
-        if not version:
-            quiet_print(f"{module_name} does not exist.", args=args)
-            continue
-        if not remote_info:
-            quiet_print(f"{module_name}=={version} does not exist.", args=args)
-            continue
-        if (
-            not args.get("force")
-            and local_info
-            and Version(local_info.code_version or "") == Version(version)
-        ):
-            quiet_print(
-                f"{module_name}=={version} is already installed. Use -f/--force to overwrite",
-                args=args,
-            )
-            continue
+        if not is_url(module_name):
+            local_info = get_local_module_info(module_name)
+            remote_info = get_remote_module_info(module_name, version=version)
+            if not version and remote_info:
+                version = remote_info.latest_code_version
+            if not version:
+                quiet_print(f"{module_name} does not exist.", args=args)
+                continue
+            if not remote_info:
+                quiet_print(f"{module_name}=={version} does not exist.", args=args)
+                continue
+            if (
+                not args.get("force")
+                and local_info
+                and Version(local_info.code_version or "") == Version(version)
+            ):
+                quiet_print(
+                    f"{module_name}=={version} is already installed. Use -f/--force to overwrite",
+                    args=args,
+                )
+                continue
         mn_vs_final[module_name] = version
     # Add dependencies of selected modules
     deps_install = {}
     deps_install_pypi = {}
     if not args.get("skip_dependencies"):
         for module_name, version in mn_vs_final.items():
-            deps, deps_pypi = get_install_deps(module_name, version=version)
-            deps_install.update(deps)
-            deps_install_pypi.update(deps_pypi)
+            if not is_url(module_name):
+                deps, deps_pypi = get_install_deps(module_name, version=version)
+                deps_install.update(deps)
+                deps_install_pypi.update(deps_pypi)
     # If overlap between selected modules and dependency modules, use the dependency version
     to_install = mn_vs_final
     to_install.update(deps_install)
@@ -195,7 +203,10 @@ def install(args, __name__="module install"):
     else:
         quiet_print("The following modules will be installed:", args=args)
         for name in sorted(list(to_install.keys())):
-            quiet_print(f"- {name}=={to_install[name]}", args=args)
+            if is_url(name):
+                quiet_print(f"- {name}", args=args)
+            else:
+                quiet_print(f"- {name}=={to_install[name]}", args=args)
         if not (args["yes"]):
             while True:
                 resp = input("Proceed? ([y]/n) > ")
@@ -207,10 +218,14 @@ def install(args, __name__="module install"):
                     continue
         problem_modules = []
         for module_name, module_version in sorted(to_install.items()):
+            quiet_print(f"Installing {module_name}...", args=args)
+            if is_url(module_name):
+                if not install_module_from_url(module_name, args=args):
+                    problem_modules.append(module_name)
+                continue
             stage_handler = InstallProgressStdout(
                 module_name, module_version, quiet=quiet
             )
-            quiet_print(f"Installing {module_name}...", args=args)
             ret = install_module(
                 module_name,
                 version=module_version,

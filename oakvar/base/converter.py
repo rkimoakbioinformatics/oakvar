@@ -5,7 +5,6 @@ class BaseConverter(object):
         self.format_name = None
         self.output_dir = None
         self.run_name = None
-        self.input_assembly = None
         self.format_name = None
         self.module_name = None
         self.version = None

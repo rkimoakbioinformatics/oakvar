@@ -78,10 +78,18 @@ class InvalidFilter(ExpectedException):
             self.msg.append(
                 "Filter column names do not exist: " + " ".join(wrong_colnames)
             )
+        self.msg = "\n".join(self.msg)
 
     def __str__(self):
         return str(self.msg)
 
+
+class ModuleInstallationError(ExpectedException):
+    traceback = False
+    halt = False
+
+    def __init__(self, msg):
+        super().__init__(msg)
 
 class ModuleNotExist(ExpectedException):
     traceback = False
