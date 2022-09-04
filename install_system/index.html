@@ -267,13 +267,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#clean-setup" class="md-nav__link">
-    Clean setup
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#setup-with-a-file" class="md-nav__link">
     Setup with a file
   </a>
@@ -283,6 +276,13 @@
           <li class="md-nav__item">
   <a href="#setup-with-environment-variables" class="md-nav__link">
     Setup with environment variables
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clean-setup" class="md-nav__link">
+    Clean setup
   </a>
   
 </li>
@@ -587,13 +587,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#clean-setup" class="md-nav__link">
-    Clean setup
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#setup-with-a-file" class="md-nav__link">
     Setup with a file
   </a>
@@ -603,6 +596,13 @@
           <li class="md-nav__item">
   <a href="#setup-with-environment-variables" class="md-nav__link">
     Setup with environment variables
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clean-setup" class="md-nav__link">
+    Clean setup
   </a>
   
 </li>
@@ -641,8 +641,6 @@
 <h2 id="setup">Setup</h2>
 <p><code>ov system setup</code> will set up OakVar with sane defaults.</p>
 <p>Setup process can be customized with a setup file or environment variables, which can be useful in automated deployment.</p>
-<h3 id="clean-setup">Clean setup</h3>
-<p><code>ov system setup --clean</code> provides clean installation. It will reset the system and user configuration files. --clean still do not delete <code>modules</code>, <code>jobs</code>, <code>logs</code>, and <code>conf</code> folders. The system conf file is already reset with <code>--clean</code> and the other files in <code>conf</code> are just content. What are in <code>jobs</code> and <code>logs</code> are also just content. <code>modules</code> have downloaded modules and users should manually delete this folder if they really want, because this folder can take a lot of time to recreate and also, there are users who keep this folder in a USB drive or something and move it around, while installing and deleting oakvar.</p>
 <h3 id="setup-with-a-file">Setup with a file</h3>
 <p>A setup file in yaml format can be used. System configuration fields which are missing in the setup file will be filled with sane defaults. Setup with a file with custom locations for modules and logs can be done as</p>
 <pre><code>ov system setup -f setup.yaml
@@ -702,6 +700,8 @@ ov system setup
 </code></pre>
 <p>This will install OakVar system files at <code>/data/oakvar</code>.</p>
 <p>Using environmental variablse for setup can be useful in deploying OakVar with Docker containers.</p>
+<h3 id="clean-setup">Clean setup</h3>
+<p>If you experience any problem and want to do clean installation of OakVar, <code>ov system setup --clean</code> provides such clean installation. It will reset the system and user configuration files. <code>--clean</code> still will not delete <code>modules</code>, <code>jobs</code>, <code>logs</code>, and <code>conf</code> folders. <code>modules</code> have downloaded modules and users should manually delete this folder if they really want, because this folder can take a lot of time to recreate. <code>jobs</code>, <code>logs</code>, and <code>conf</code> folders have just contents.</p>
 
               
             </article>
