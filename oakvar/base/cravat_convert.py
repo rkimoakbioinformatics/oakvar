@@ -570,10 +570,10 @@ class MasterCravatConverter(object):
                                         )
                                     else:
                                         wdict["sample_id"] = samp_prefix
-                                if "ref_base" not in wdict or wdict["ref_base"] == "":
+                                if "ref_base" not in wdict or wdict["ref_base"] in ["", "."]:
                                     wdict["ref_base"] = self.wgsreader.get_bases(
                                         chrom, int(wdict["pos"])
-                                    )
+                                    ).upper()
                                 else:
                                     ref_base = wdict["ref_base"]
                                     if ref_base == "" and wdict["alt_base"] not in [
