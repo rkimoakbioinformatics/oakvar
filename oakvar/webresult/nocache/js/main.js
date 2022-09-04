@@ -1131,6 +1131,28 @@ function setupClickHandler() {
       turnOffLayoutMenu();
     }
   });
+}
+
+async function getPageSize() {
+  const res = await axios.get("/result/service/pagesize")
+  const data = res.data
+  if (data) {
+    pageSize = data["gui_result_pagesize"]
+  }
+}
+
+function enableLoadingDiv() {
+  jobDataLoadingDiv = drawingRetrievingDataDiv(currentTab);
+}
+
+async function webresult_run() {
+  currentTab = "info";
+  enableLoadingDiv()
+  parseUrl()
+  setTitle()
+  setupResizeHandler()
+  //setupAutosave()
+  setupClickHandler()
   startData().then((res) => {
   })
 }
