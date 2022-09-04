@@ -58,3 +58,7 @@ This will install OakVar system files at `/data/oakvar`.
 
 Using environmental variablse for setup can be useful in deploying OakVar with Docker containers.
 
+### Clean setup
+
+If you experience any problem and want to do clean installation of OakVar, `ov system setup --clean` provides such clean installation. It will reset the system and user configuration files. `--clean` still will not delete `modules`, `jobs`, `logs`, and `conf` folders. `modules` have downloaded modules and users should manually delete this folder if they really want, because this folder can take a lot of time to recreate. `jobs`, `logs`, and `conf` folders have just contents.
+
