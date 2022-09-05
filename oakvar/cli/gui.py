@@ -24,10 +24,10 @@ log_dir = None
 modules_dir = None
 log_path = None
 logger = None
-if find_spec("cravat_multiuser"):
-    cravat_multiuser = import_module("cravat_multiuser")
+if find_spec("oakvar_multiuser"):
+    oakvar_multiuser = import_module("oakvar_multiuser")
 else:
-    cravat_multiuser = None
+    oakvar_multiuser = None
 
 
 def setup(args):
@@ -57,9 +57,9 @@ def setup(args):
         servermode = args["servermode"]
         global debug
         debug = args["debug"]
-        if servermode and cravat_multiuser:
+        if servermode and oakvar_multiuser:
             try:
-                loop.create_task(cravat_multiuser.setup_module())
+                loop.create_task(oakvar_multiuser.setup_module())
                 global server_ready
                 server_ready = True
             except Exception as e:
@@ -76,6 +76,8 @@ def setup(args):
         else:
             servermode = False
             server_ready = False
+            args["servermode"] = servermode
+            args["headless"] = servermode
         wu.logger = logger
         ws.logger = logger
         wr.logger = logger
@@ -88,13 +90,13 @@ def setup(args):
         wr.server_ready = server_ready
         wu.filerouter.server_ready = server_ready
         wr.wu = wu
-        if server_ready and cravat_multiuser:
-            setattr(cravat_multiuser, "servermode", servermode)
-            setattr(cravat_multiuser, "server_ready", server_ready)
-            setattr(cravat_multiuser, "logger" ,logger)
-            setattr(cravat_multiuser, "noguest" ,args["noguest"])
-            wu.cravat_multiuser = cravat_multiuser
-            ws.cravat_multiuser = cravat_multiuser
+        if server_ready and oakvar_multiuser:
+            setattr(oakvar_multiuser, "servermode", servermode)
+            setattr(oakvar_multiuser, "server_ready", server_ready)
+            setattr(oakvar_multiuser, "logger" ,logger)
+            setattr(oakvar_multiuser, "noguest" ,args["noguest"])
+            wu.oakvar_multiuser = oakvar_multiuser
+            ws.oakvar_multiuser = oakvar_multiuser
         if servermode and server_ready == False:
             from sys import stderr
 
@@ -149,7 +151,7 @@ def gui(args, __name__="gui"):
     from os.path import abspath, exists
     from sys import stderr
 
-    global sysconf, log_dir, modules_dir, log_path, logger
+    global sysconf, log_dir, modules_dir, log_path, logger, debug
 
     sysconf = get_system_conf()
     log_dir = sysconf[log_dir_key]
@@ -161,8 +163,16 @@ def gui(args, __name__="gui"):
     log_formatter = logging.Formatter("%(asctime)s: %(message)s", "%Y/%m/%d %H:%M:%S")
     log_handler.setFormatter(log_formatter)
     logger.addHandler(log_handler)
-    if args["servermode"]:
+    debug = args["debug"]
+    if args["servermode"] and oakvar_multiuser:
         args["headless"] = True
+    else:
+        args["servermode"] = False
+        args["headless"] = False
+        msg = "multiuser module not found. Running as singleuser mode"
+        logger.info(msg)
+        if debug:
+            print(msg)
     if args["result"]:
         args["headless"] = False
         args["result"] = abspath(args["result"])
@@ -369,6 +379,7 @@ async def middleware(request, handler):
     global loop
     global args
     try:
+        print(f"@ request.url={request.url}")
         url_parts = request.url.parts
         response = await handler(request)
         nocache = False
@@ -453,8 +464,8 @@ class WebServer(object):
         global middleware
         global server_ready
         self.app = web.Application(loop=self.loop, middlewares=[middleware])
-        if server_ready and cravat_multiuser:
-            cravat_multiuser.setup(self.app)
+        if server_ready and oakvar_multiuser:
+            await oakvar_multiuser.setup(self.app)
         self.setup_routes()
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()
@@ -525,8 +536,8 @@ class WebServer(object):
         routes.extend(wr.routes)
         routes.extend(wu.routes)
         global server_ready
-        if server_ready and cravat_multiuser:
-            cravat_multiuser.add_routes(self.app.router)
+        if server_ready and oakvar_multiuser:
+            oakvar_multiuser.add_routes(self.app.router)
         for route in routes:
             method, path, func_name = route
             self.app.router.add_route(method, path, func_name)
@@ -572,8 +583,8 @@ async def heartbeat(request):
     from concurrent.futures._base import CancelledError
 
     ws = web.WebSocketResponse(timeout=60 * 60 * 24 * 365)
-    if servermode and server_ready and cravat_multiuser:
-        get_event_loop().create_task(cravat_multiuser.update_last_active(request))
+    if servermode and server_ready and oakvar_multiuser:
+        get_event_loop().create_task(oakvar_multiuser.update_last_active(request))
     await ws.prepare(request)
     try:
         async for _ in ws:
@@ -678,8 +689,8 @@ def main(url=None, host=None, port=None, args={}):
                     "session_clean_interval", 3600
                 )  # default 1 hr
                 while True:
-                    if cravat_multiuser:
-                        await cravat_multiuser.admindb.clean_sessions(max_age)
+                    if oakvar_multiuser:
+                        await oakvar_multiuser.admindb.clean_sessions(max_age)
                     await sleep(interval)
             except Exception as e:
                 from traceback import print_exc

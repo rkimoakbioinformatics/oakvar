@@ -35,10 +35,10 @@ job_worker = None
 job_queue = None
 run_jobs_info = {}
 logger = None
-if find_spec("cravat_multiuser"):
-    cravat_multiuser = import_module("cravat_multiuser")
+if find_spec("oakvar_multiuser"):
+    oakvar_multiuser = import_module("oakvar_multiuser")
 else:
-    cravat_multiuser = None
+    oakvar_multiuser = None
 
 
 
@@ -58,8 +58,8 @@ class FileRouter(object):
         from ..system import get_jobs_dir
 
         root_jobs_dir = get_jobs_dir()
-        if self.servermode and self.server_ready and cravat_multiuser:
-            username = await cravat_multiuser.get_username(request)
+        if self.servermode and self.server_ready and oakvar_multiuser:
+            username = await oakvar_multiuser.get_username(request)
         else:
             username = "default"
         if username == "admin":
@@ -91,8 +91,8 @@ class FileRouter(object):
             if self.servermode and self.server_ready:
                 if given_username is not None:
                     username = given_username
-                elif cravat_multiuser:
-                    username = await cravat_multiuser.get_username(request)
+                elif oakvar_multiuser:
+                    username = await oakvar_multiuser.get_username(request)
                 else:
                     username = None
                 if username is None:
@@ -300,8 +300,8 @@ def get_next_job_id():
 
 async def resubmit(request):
     global servermode
-    if servermode and server_ready and cravat_multiuser:
-        r = await cravat_multiuser.is_loggedin(request)
+    if servermode and server_ready and oakvar_multiuser:
+        r = await oakvar_multiuser.is_loggedin(request)
         if r == False:
             return web.json_response({"status": "notloggedin"})
     queries = request.rel_url.query
@@ -391,8 +391,8 @@ async def submit(request):
                 }
             ),
         )
-    if servermode and server_ready and cravat_multiuser:
-        r = await cravat_multiuser.is_loggedin(request)
+    if servermode and server_ready and oakvar_multiuser:
+        r = await oakvar_multiuser.is_loggedin(request)
         if r == False:
             return web.json_response({"status": "notloggedin"})
     jobs_dirs = await filerouter.get_jobs_dirs(request)
@@ -474,8 +474,8 @@ async def submit(request):
 
         assembly = default_assembly
     run_args.append(assembly)
-    if servermode and server_ready and cravat_multiuser:
-        await cravat_multiuser.update_user_settings(request, {"lastAssembly": assembly})
+    if servermode and server_ready and oakvar_multiuser:
+        await oakvar_multiuser.update_user_settings(request, {"lastAssembly": assembly})
     else:
         set_user_conf_prop("last_assembly", assembly)
     # Reports
@@ -512,8 +512,8 @@ async def submit(request):
         job_queue.put(qitem)
         status = {"status": "Submitted"}
         job.set_info_values(status=status)
-        if servermode and server_ready and cravat_multiuser:
-            await cravat_multiuser.add_job_info(request, job)
+        if servermode and server_ready and oakvar_multiuser:
+            await oakvar_multiuser.add_job_info(request, job)
         # makes temporary status.json
         status_json = {}
         status_json["job_dir"] = job_dir
@@ -691,8 +691,8 @@ async def get_jobs(request):
 
 async def get_all_jobs(request):
     global servermode
-    if servermode and server_ready and cravat_multiuser:
-        r = await cravat_multiuser.is_loggedin(request)
+    if servermode and server_ready and oakvar_multiuser:
+        r = await oakvar_multiuser.is_loggedin(request)
         if r == False:
             return web.json_response({"status": "notloggedin"})
     filerouter = get_filerouter()
@@ -914,13 +914,13 @@ async def update_system_conf(request):
     from ..system import set_modules_dir
 
     global servermode
-    if servermode and server_ready and cravat_multiuser:
-        username = await cravat_multiuser.get_username(request)
+    if servermode and server_ready and oakvar_multiuser:
+        username = await oakvar_multiuser.get_username(request)
         if username != "admin":
             return web.json_response(
                 {"success": False, "msg": "Only admin can change the settings."}
             )
-        r = await cravat_multiuser.is_loggedin(request)
+        r = await oakvar_multiuser.is_loggedin(request)
         if r == False:
             return web.json_response(
                 {
@@ -1212,8 +1212,8 @@ def fetch_job_queue(job_queue, run_jobs_info):
 async def redirect_to_index(request):
     global servermode
     global server_ready
-    if servermode and server_ready and cravat_multiuser:
-        r = await cravat_multiuser.is_loggedin(request)
+    if servermode and server_ready and oakvar_multiuser:
+        r = await oakvar_multiuser.is_loggedin(request)
         if r == False:
             url = "/server/nocache/login.html"
         else:
@@ -1352,8 +1352,8 @@ async def get_live_annotation(queries):
         t = time.time()
         dt = t - time_of_log_single_api_access
         if dt > interval_log_single_api_access:
-            if cravat_multiuser:
-                await cravat_multiuser.admindb.write_single_api_access_count_to_db(
+            if oakvar_multiuser:
+                await oakvar_multiuser.admindb.write_single_api_access_count_to_db(
                     t, count_single_api_access
                 )
             time_of_log_single_api_access = t

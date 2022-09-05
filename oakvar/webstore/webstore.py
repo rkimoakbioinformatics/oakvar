@@ -34,10 +34,10 @@ local_modules_changed = None
 server_ready = False
 servermode = None
 logger = None
-if find_spec("cravat_multiuser"):
-    cravat_multiuser = import_module("cravat_multiuser")
+if find_spec("oakvar_multiuser"):
+    oakvar_multiuser = import_module("oakvar_multiuser")
 else:
-    cravat_multiuser = None
+    oakvar_multiuser = None
 
 class InstallProgressMpDict(InstallProgressHandler):
     def __init__(self, module_name, module_version, install_state, quiet=True):
@@ -222,8 +222,8 @@ async def uninstall_module(request):
     from ..module.cache import get_module_cache
 
     global servermode
-    if servermode and server_ready and cravat_multiuser:
-        r = await cravat_multiuser.is_admin_loggedin(request)
+    if servermode and server_ready and oakvar_multiuser:
+        r = await oakvar_multiuser.is_admin_loggedin(request)
         if r == False:
             response = "failure"
             return web.json_response(response)
@@ -310,8 +310,8 @@ async def connect_websocket(request):
 async def queue_install(request):
     global install_queue
     global servermode
-    if servermode and server_ready and cravat_multiuser:
-        r = await cravat_multiuser.is_admin_loggedin(request)
+    if servermode and server_ready and oakvar_multiuser:
+        r = await oakvar_multiuser.is_admin_loggedin(request)
         if r == False:
             response = "notadmin"
             return web.json_response(response)
@@ -340,8 +340,8 @@ async def get_base_modules(_):
 
 async def install_base_modules(request):
     global servermode
-    if servermode and server_ready and cravat_multiuser:
-        r = await cravat_multiuser.is_admin_loggedin(request)
+    if servermode and server_ready and oakvar_multiuser:
+        r = await oakvar_multiuser.is_admin_loggedin(request)
         if r == False:
             response = "failed"
             return web.json_response(response)
@@ -444,8 +444,8 @@ async def update_remote(request):
     from ..module.cache import get_module_cache
     from ..store.db import fetch_ov_store_cache
 
-    if servermode and server_ready and cravat_multiuser:
-        r = await cravat_multiuser.is_admin_loggedin(request)
+    if servermode and server_ready and oakvar_multiuser:
+        r = await oakvar_multiuser.is_admin_loggedin(request)
         if r == False:
             response = "notadmin"
             return web.json_response(response)
