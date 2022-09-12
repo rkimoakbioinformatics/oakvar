@@ -260,8 +260,10 @@ def update(args, __name__="module update"):
     from ..module import get_updatable
     from ..util.util import humanize_bytes
     from ..util.util import quiet_print
+    from ..store.db import fetch_ov_store_cache
     from types import SimpleNamespace
 
+    ret = fetch_ov_store_cache(args=args)
     quiet = args.get("quiet", True)
     modules = args.get("modules", [])
     requested_modules = search_local(*modules)
@@ -358,7 +360,9 @@ def installbase(args, __name__="module installbase"):
     from ..system import get_system_conf
     from ..system.consts import base_modules_key
     from types import SimpleNamespace
+    from ..store.db import fetch_ov_store_cache
 
+    ret = fetch_ov_store_cache(args=args)
     sys_conf = get_system_conf(conf=args.get("conf"))
     base_modules = sys_conf.get(base_modules_key, [])
     m_args = SimpleNamespace(
