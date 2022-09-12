@@ -374,9 +374,7 @@ def detect_encoding(path):
     else:
         f = open(path, "rb")
     detector = UniversalDetector()
-    for n, line in enumerate(f):
-        if n > 100:
-            break
+    for _, line in enumerate(f):
         detector.feed(line)
         if detector.done:
             break
