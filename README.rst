@@ -28,7 +28,7 @@ Email: rkim@oakbioinformatics.com
 
 .. _Subscribe to the mailing list: https://dashboard.mailerlite.com/forms/21170/56038572068701589/share
 
-Discord: https://discord.gg/2VQAsWsS
+Discord: https://discord.gg/wZfkTMKTjG
 
 Many Thanks to Our Sponsors
 =================================
