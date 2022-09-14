@@ -1,12 +1,7 @@
-from os.path import join
-from ..system import get_system_conf
+from logging import log
 from aiohttp import web, web_runner
-import logging
-from ..system.consts import log_dir_key, modules_dir_key
 from ..decorators import cli_func
 from ..decorators import cli_entry
-from importlib import import_module
-from importlib.util import find_spec
 
 SERVER_ALREADY_RUNNING = -1
 headless = None
@@ -24,87 +19,55 @@ log_dir = None
 modules_dir = None
 log_path = None
 logger = None
-if find_spec("oakvar_multiuser"):
-    oakvar_multiuser = import_module("oakvar_multiuser")
-else:
-    oakvar_multiuser = None
 
+
+def get_event_loop():
+    from sys import platform as sysplatform
+    from asyncio import get_event_loop
+    from asyncio import set_event_loop
+    if sysplatform == "win32":  # Required to use asyncio subprocesses
+        from asyncio import ProactorEventLoop  # type: ignore
+
+        loop = ProactorEventLoop()
+        set_event_loop(loop)
+    else:
+        loop = get_event_loop()
+    return loop
 
 def setup(args):
-    from sys import platform as sysplatform
     from ..webresult import webresult as wr
     from ..webstore import webstore as ws
     from ..websubmit import websubmit as wu
-    from asyncio import get_event_loop, set_event_loop
+    from ..websubmit import multiuser as mu
     from os.path import join, exists
+    from ..exceptions import SetupError
+
 
     if logger is None or sysconf is None:
-        from ..exceptions import SetupError
-
         raise SetupError()
     try:
         global loop
-        if sysplatform == "win32":  # Required to use asyncio subprocesses
-            from asyncio import ProactorEventLoop  # type: ignore
-
-            loop = ProactorEventLoop()
-            set_event_loop(loop)
-        else:
-            loop = get_event_loop()
         global headless
-        headless = args["headless"]
         global servermode
-        servermode = args["servermode"]
         global debug
+        loop = get_event_loop()
+        headless = args["headless"]
+        servermode = args["servermode"]
         debug = args["debug"]
-        if servermode and oakvar_multiuser:
-            try:
-                loop.create_task(oakvar_multiuser.setup_module())
-                global server_ready
-                server_ready = True
-            except Exception as e:
-                from sys import stderr
-
-                logger.exception(e)
-                logger.info("Exiting...")
-                stderr.write(
-                    "Error occurred while loading oakvar-multiuser.\nCheck {} for details.\n".format(
-                        log_path
-                    )
-                )
-                exit()
-        else:
-            servermode = False
-            server_ready = False
-            args["servermode"] = servermode
-            args["headless"] = servermode
+        loop.run_until_complete(mu.setup_module())
         wu.logger = logger
         ws.logger = logger
         wr.logger = logger
-        wu.servermode = args["servermode"]
-        ws.servermode = args["servermode"]
-        wr.servermode = args["servermode"]
-        wu.filerouter.servermode = args["servermode"]
-        wu.server_ready = server_ready
-        ws.server_ready = server_ready
-        wr.server_ready = server_ready
-        wu.filerouter.server_ready = server_ready
+        mu.logger = logger
+        wu.servermode = servermode
+        ws.servermode = servermode
+        wr.servermode = servermode
+        mu.servermode = servermode
+        wu.filerouter.servermode = servermode
+        mu.noguest = args["noguest"]
         wr.wu = wu
-        if server_ready and oakvar_multiuser:
-            setattr(oakvar_multiuser, "servermode", servermode)
-            setattr(oakvar_multiuser, "server_ready", server_ready)
-            setattr(oakvar_multiuser, "logger" ,logger)
-            setattr(oakvar_multiuser, "noguest" ,args["noguest"])
-            wu.oakvar_multiuser = oakvar_multiuser
-            ws.oakvar_multiuser = oakvar_multiuser
-        if servermode and server_ready == False:
-            from sys import stderr
-
-            msg = 'oakvar-multiuser package is required to run OakVar Server.\nRun "pip install oakvar-multiuser" to get the package.'
-            logger.info(msg)
-            logger.info("Exiting...")
-            stderr.write(msg + "\n")
-            exit()
+        wu.oakvar_multiuser = mu
+        ws.oakvar_multiuser = mu
         global ssl_enabled
         ssl_enabled = False
         global protocol
@@ -147,12 +110,17 @@ def cli_gui(args):
 @cli_func
 def gui(args, __name__="gui"):
     from ..util.util import is_compatible_version
+    import logging
     from logging.handlers import TimedRotatingFileHandler
     from os.path import abspath, exists
     from sys import stderr
+    from os.path import join
+    from traceback import print_exc
+    from ..exceptions import SetupError
+    from ..system import get_system_conf
+    from ..system.consts import log_dir_key, modules_dir_key
 
     global sysconf, log_dir, modules_dir, log_path, logger, debug
-
     sysconf = get_system_conf()
     log_dir = sysconf[log_dir_key]
     modules_dir = sysconf[modules_dir_key]
@@ -164,15 +132,7 @@ def gui(args, __name__="gui"):
     log_handler.setFormatter(log_formatter)
     logger.addHandler(log_handler)
     debug = args["debug"]
-    if args["servermode"] and oakvar_multiuser:
-        args["headless"] = True
-    else:
-        args["servermode"] = False
-        args["headless"] = False
-        msg = "multiuser module not found. Running as singleuser mode"
-        logger.info(msg)
-        if debug:
-            print(msg)
+    args["headless"] = args["servermode"]
     if args["result"]:
         args["headless"] = False
         args["result"] = abspath(args["result"])
@@ -182,16 +142,7 @@ def gui(args, __name__="gui"):
         global server_ready
         global servermode
         url = None
-        server = get_server()
-        host = server.get("host")
-        port = None
-        if args["port"] is not None:
-            try:
-                port = int(args["port"])
-            except:
-                port = None
-        if port is None:
-            port = server.get("port")
+        host, port = get_host_port(args)
         if not headless:
             if args["webapp"] is not None:
                 index_path = join(modules_dir, "webapps", args["webapp"], "index.html")
@@ -226,14 +177,10 @@ def gui(args, __name__="gui"):
                     url = f"{host}:{port}/submit/nocache/index.html"
             global protocol
             if protocol is None:
-                from ..exceptions import SetupError
-
                 raise SetupError()
             url = protocol + url
         main(url=url, host=host, port=port, args=args)
     except Exception as e:
-        from traceback import print_exc
-
         logger.exception(e)
         if debug:
             print_exc()
@@ -249,13 +196,28 @@ def gui(args, __name__="gui"):
             logger.removeHandler(handler)
 
 
+def get_host_port(args):
+    serv = get_server()
+    host = serv.get("host")
+    port = None
+    if args["port"]:
+        try:
+            port = int(args["port"])
+        except:
+            port = None
+    if not port:
+        port = serv.get("port")
+    return host, port
+
 def get_server():
     from ..system import get_system_conf
     import platform
+    from traceback import print_exc
+    from sys import stderr
+    from ..exceptions import SetupError
+
 
     if sysconf is None or logger is None:
-        from ..exceptions import SetupError
-
         raise SetupError()
     global args
     try:
@@ -292,9 +254,6 @@ def get_server():
         server["port"] = port
         return server
     except Exception as e:
-        from traceback import print_exc
-        from sys import stderr
-
         logger.exception(e)
         if debug:
             print_exc()
@@ -379,7 +338,7 @@ async def middleware(request, handler):
     global loop
     global args
     try:
-        print(f"@ request.url={request.url}")
+        print(f"@ request=", request)
         url_parts = request.url.parts
         response = await handler(request)
         nocache = False
@@ -416,11 +375,7 @@ class WebServer(object):
         self.app = None
         self.runner = None
         self.site = None
-        serv = get_server()
-        if host is None:
-            host = serv["host"]
-        if port is None:
-            port = serv["port"]
+        host, port = get_host_port({})
         self.host = host
         self.port = port
         if loop is None:
@@ -463,9 +418,10 @@ class WebServer(object):
     async def start(self):
         global middleware
         global server_ready
+        from ..websubmit import multiuser as mu
         self.app = web.Application(loop=self.loop, middlewares=[middleware])
-        if server_ready and oakvar_multiuser:
-            await oakvar_multiuser.setup(self.app)
+        if server_ready:
+            await mu.setup(self.app)
         self.setup_routes()
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()
@@ -524,6 +480,7 @@ class WebServer(object):
         from ..webresult import webresult as wr
         from ..webstore import webstore as ws
         from ..websubmit import websubmit as wu
+        from ..websubmit import multiuser as mu
         from os.path import dirname, realpath, join, exists
 
         if self.app is None:
@@ -536,8 +493,8 @@ class WebServer(object):
         routes.extend(wr.routes)
         routes.extend(wu.routes)
         global server_ready
-        if server_ready and oakvar_multiuser:
-            oakvar_multiuser.add_routes(self.app.router)
+        if server_ready:
+            mu.add_routes(self.app.router)
         for route in routes:
             method, path, func_name = route
             self.app.router.add_route(method, path, func_name)
@@ -581,10 +538,11 @@ async def heartbeat(request):
     from ..webstore import webstore as ws
     from asyncio import get_event_loop
     from concurrent.futures._base import CancelledError
+    from ..websubmit import multiuser as mu
 
     ws = web.WebSocketResponse(timeout=60 * 60 * 24 * 365)
-    if servermode and server_ready and oakvar_multiuser:
-        get_event_loop().create_task(oakvar_multiuser.update_last_active(request))
+    if servermode and server_ready:
+        get_event_loop().create_task(mu.update_last_active(request))
     await ws.prepare(request)
     try:
         async for _ in ws:
@@ -600,52 +558,74 @@ async def is_system_ready(__request__):
     return web.json_response(dict(system_ready()))
 
 
-def main(url=None, host=None, port=None, args={}):
+def wakeup():
+    from ..exceptions import SetupError
+    global loop
+    if not loop:
+        raise SetupError()
+    loop.call_later(0.1, wakeup)
+
+def check_local_update(interval):
+    from ..exceptions import SetupError
+    from traceback import print_exc
     from ..webstore import webstore as ws
+
+
+    if loop is None:
+        raise SetupError()
+    try:
+        ws.handle_modules_changed()
+    except:
+        print_exc()
+    finally:
+        loop.call_later(interval, check_local_update, interval)
+
+async def clean_sessions():
+    from ..exceptions import SetupError
+    from ..system import get_system_conf
+    from ..websubmit import multiuser as mu
+    from traceback import print_exc
+    from asyncio import sleep
+
+
+    if logger is None:
+        raise SetupError()
+    try:
+        max_age = get_system_conf().get(
+            "max_session_age", 604800
+        )  # default 1 week
+        interval = get_system_conf().get(
+            "session_clean_interval", 3600
+        )  # default 1 hr
+        while True:
+            await mu.admindb.clean_sessions(max_age)
+            await sleep(interval)
+    except Exception as e:
+        logger.exception(e)
+        if debug:
+            print_exc()
+
+def main(url=None, host=None, port=None, args={}):
     import socket
-    from asyncio import get_event_loop, sleep
     from requests.exceptions import ConnectionError
     from webbrowser import open as webbrowseropen
+    from sys import stderr
+    from traceback import print_exc
     from ..util.util import quiet_print
     from ..util.util import show_logo
+    from ..system import get_system_conf
+    from ..exceptions import SetupError
+
 
     global logger
     if not logger:
-        from ..exceptions import SetupError
-
         raise SetupError()
     try:
         global loop
+        global protocol
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(1)
-
-        def wakeup():
-            if loop is None:
-                from ..exceptions import SetupError
-
-                raise SetupError()
-            loop.call_later(0.1, wakeup)
-
-        def check_local_update(interval):
-            if loop is None:
-                from ..exceptions import SetupError
-
-                raise SetupError()
-            try:
-                ws.handle_modules_changed()
-            except:
-                from traceback import print_exc
-
-                print_exc()
-            finally:
-                loop.call_later(interval, check_local_update, interval)
-
-        serv = get_server()
-        global protocol
-        if host is None:
-            host = serv.get("host")
-        if port is None:
-            port = serv.get("port")
+        host, port = get_host_port(args)
         try:
             sr = s.connect_ex((host, port))
             s.close()
@@ -671,34 +651,6 @@ def main(url=None, host=None, port=None, args={}):
         loop = get_event_loop()
         loop.call_later(0.1, wakeup)
         loop.call_later(1, check_local_update, 5)
-
-        async def clean_sessions():
-            """
-            Clean sessions periodically.
-            """
-            if logger is None:
-                from ..exceptions import SetupError
-
-                raise SetupError()
-            from ..system import get_system_conf
-            try:
-                max_age = get_system_conf().get(
-                    "max_session_age", 604800
-                )  # default 1 week
-                interval = get_system_conf().get(
-                    "session_clean_interval", 3600
-                )  # default 1 hr
-                while True:
-                    if oakvar_multiuser:
-                        await oakvar_multiuser.admindb.clean_sessions(max_age)
-                    await sleep(interval)
-            except Exception as e:
-                from traceback import print_exc
-
-                logger.exception(e)
-                if debug:
-                    print_exc()
-
         if servermode and server_ready:
             if "max_session_age" in get_system_conf():
                 loop.create_task(clean_sessions())
@@ -710,12 +662,8 @@ def main(url=None, host=None, port=None, args={}):
             _ = WebServer(loop=loop, url=url, host=host, port=port)
         loop.run_forever()
     except Exception as e:
-        from sys import stderr
-
         logger.exception(e)
         if debug:
-            from traceback import print_exc
-
             print_exc()
         logger.info("Exiting...")
         stderr.write(
@@ -785,6 +733,3 @@ def get_parser_fn_gui():
     parser_fn_gui.set_defaults(func=cli_gui)
     return parser_fn_gui
 
-
-if __name__ == "__main__":
-    main()

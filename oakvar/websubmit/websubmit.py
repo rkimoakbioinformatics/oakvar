@@ -14,14 +14,12 @@ import signal
 import asyncio
 from multiprocessing import Process, Manager, Queue
 from queue import Empty
-from importlib.util import find_spec
-from importlib import import_module
 from logging import getLogger
+from .multiuser import *
 
 report_generation_ps = {}
 valid_report_types = None
 servermode = False
-server_ready = False
 VIEW_PROCESS = None
 live_modules = {}
 include_live_modules = None
@@ -35,11 +33,6 @@ job_worker = None
 job_queue = None
 run_jobs_info = {}
 logger = None
-if find_spec("oakvar_multiuser"):
-    oakvar_multiuser = import_module("oakvar_multiuser")
-else:
-    oakvar_multiuser = None
-
 
 
 class FileRouter(object):
@@ -51,15 +44,14 @@ class FileRouter(object):
         self.log_extension = ".log"
         self.status_extension = ".status.json"
         self.job_statuses = {}
-        self.server_ready = False
         self.servermode = False
 
     async def get_jobs_dirs(self, request):
         from ..system import get_jobs_dir
 
         root_jobs_dir = get_jobs_dir()
-        if self.servermode and self.server_ready and oakvar_multiuser:
-            username = await oakvar_multiuser.get_username(request)
+        if self.servermode:
+            username = await get_username(request)
         else:
             username = "default"
         if username == "admin":
@@ -88,14 +80,12 @@ class FileRouter(object):
         jobs_dirs = await self.get_jobs_dirs(request)
         job_dir = None
         if jobs_dirs:
-            if self.servermode and self.server_ready:
+            if self.servermode:
                 if given_username is not None:
                     username = given_username
-                elif oakvar_multiuser:
-                    username = await oakvar_multiuser.get_username(request)
                 else:
-                    username = None
-                if username is None:
+                    username = await get_username(request)
+                if not username:
                     job_dir = None
                 else:
                     if username != "admin":
@@ -300,8 +290,8 @@ def get_next_job_id():
 
 async def resubmit(request):
     global servermode
-    if servermode and server_ready and oakvar_multiuser:
-        r = await oakvar_multiuser.is_loggedin(request)
+    if servermode:
+        r = await is_loggedin(request)
         if r == False:
             return web.json_response({"status": "notloggedin"})
     queries = request.rel_url.query
@@ -391,8 +381,8 @@ async def submit(request):
                 }
             ),
         )
-    if servermode and server_ready and oakvar_multiuser:
-        r = await oakvar_multiuser.is_loggedin(request)
+    if servermode:
+        r = await is_loggedin(request)
         if r == False:
             return web.json_response({"status": "notloggedin"})
     jobs_dirs = await filerouter.get_jobs_dirs(request)
@@ -474,8 +464,8 @@ async def submit(request):
 
         assembly = default_assembly
     run_args.append(assembly)
-    if servermode and server_ready and oakvar_multiuser:
-        await oakvar_multiuser.update_user_settings(request, {"lastAssembly": assembly})
+    if servermode:
+        await update_user_settings(request, {"lastAssembly": assembly})
     else:
         set_user_conf_prop("last_assembly", assembly)
     # Reports
@@ -512,7 +502,7 @@ async def submit(request):
         job_queue.put(qitem)
         status = {"status": "Submitted"}
         job.set_info_values(status=status)
-        if servermode and server_ready and oakvar_multiuser:
+        if servermode:
             await oakvar_multiuser.add_job_info(request, job)
         # makes temporary status.json
         status_json = {}
@@ -691,7 +681,7 @@ async def get_jobs(request):
 
 async def get_all_jobs(request):
     global servermode
-    if servermode and server_ready and oakvar_multiuser:
+    if servermode:
         r = await oakvar_multiuser.is_loggedin(request)
         if r == False:
             return web.json_response({"status": "notloggedin"})
@@ -914,7 +904,7 @@ async def update_system_conf(request):
     from ..system import set_modules_dir
 
     global servermode
-    if servermode and server_ready and oakvar_multiuser:
+    if servermode:
         username = await oakvar_multiuser.get_username(request)
         if username != "admin":
             return web.json_response(
@@ -968,8 +958,7 @@ def reset_system_conf(_):
 
 def get_servermode(_):
     global servermode
-    global server_ready
-    return web.json_response({"servermode": servermode and server_ready})
+    return web.json_response({"servermode": servermode})
 
 
 async def get_package_versions(_):
@@ -1024,10 +1013,9 @@ def get_last_assembly(_):
     from ..util.admin_util import get_default_assembly
 
     global servermode
-    global server_ready
     last_assembly = get_last_assembly()
     default_assembly = get_default_assembly()
-    if servermode and server_ready and default_assembly is not None:
+    if servermode and default_assembly is not None:
         assembly = default_assembly
     else:
         assembly = last_assembly
@@ -1211,8 +1199,7 @@ def fetch_job_queue(job_queue, run_jobs_info):
 
 async def redirect_to_index(request):
     global servermode
-    global server_ready
-    if servermode and server_ready and oakvar_multiuser:
+    if servermode and oakvar_multiuser:
         r = await oakvar_multiuser.is_loggedin(request)
         if r == False:
             url = "/server/nocache/login.html"
@@ -1344,7 +1331,7 @@ async def get_live_annotation_get(request):
 
 
 async def get_live_annotation(queries):
-    if servermode and server_ready:
+    if servermode:
         global count_single_api_access
         global time_of_log_single_api_access
         global interval_log_single_api_access
