@@ -225,7 +225,6 @@ class BaseReporter:
             cols = ", ".join(missing_col_names)
             raise ResultMissingMandatoryColumnError(self.dbpath, cols)
 
-
     def _setup_logger(self):
         if self.module_name is None:
             return
