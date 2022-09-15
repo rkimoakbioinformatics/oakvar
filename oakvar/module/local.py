@@ -134,9 +134,6 @@ class LocalModule(object):
 
 
 def get_local_module_info(module_name, force=False):
-    """
-    Returns a LocalModuleInfo object for a module.
-    """
     from os.path import exists
     from .cache import get_module_cache
 
@@ -649,3 +646,5 @@ def load_modules(annotators: list = [], mapper: Optional[str] = None, input_file
     for module_name in annotators:
         modules[module_name] = get_live_annotator(module_name)
     return modules
+
+
