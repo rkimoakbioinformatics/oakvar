@@ -300,6 +300,7 @@ class BaseReporter:
         return "category" in col and col["category"] in ["single", "multi"]
 
     async def do_gene_level_summary(self, add_summary=True):
+        _ = add_summary
         self.gene_summary_datas = {}
         if not self.summarizing_modules:
             return self.gene_summary_datas
@@ -377,14 +378,11 @@ class BaseReporter:
 
     async def run(self, tab="all", add_summary=True, pagesize=None, page=None, make_filtered_table=True, user=default_user_name):
         from ..exceptions import SetupError
-        from ..exceptions import DatabaseError
-        from ..base.cravat_filter import report_filter_in_progress
-        from ..base.cravat_filter import report_filter_ready
         from time import time
         from time import asctime
         from time import localtime
-        from asyncio import sleep
 
+        _ = user
         if not self.args or not self.cf or not self.logger:
             raise SetupError(self.module_name)
         self.start_time = time()

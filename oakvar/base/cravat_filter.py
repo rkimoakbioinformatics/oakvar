@@ -480,7 +480,6 @@ class ReportFilter:
         cursor_write=Any,
         strict=None
     ):
-        from json import dumps
         from os.path import exists
         from oyaml import safe_load
         from json import load, loads
@@ -553,7 +552,7 @@ class ReportFilter:
         return ret is not None
 
     async def verify_filter_sample(self, cursor):
-        if "sample" not in self.filter:
+        if not self.filter or "sample" not in self.filter:
             return []
         ft = self.filter["sample"]
         wrong_samples = set()
@@ -909,7 +908,6 @@ class ReportFilter:
         filter_uid_status = await self.exec_db(self.get_existing_report_filter_status)
         q = f"select d.* from main.{level} as d"
         if filter_uid_status:
-            uid = filter_uid_status["uid"]
             ftable = self.get_ftable_name(uid=filter_uid_status["uid"], ftype=level)
             q += f" join {ftable} as f on d.{ref_col_name}=f.{ref_col_name}"
         if page and pagesize:

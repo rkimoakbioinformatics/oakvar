@@ -1,0 +1,245 @@
+from aiohttp import web
+from aiohttp import web_runner
+
+class WebServer(object):
+    def __init__(self, host=None, port=None, loop=None, ssl_context=None, url=None, logger=None, args={}):
+        from asyncio import get_event_loop
+        from .util import get_host_port
+
+        self.args = args
+        self.logger = logger
+        self.app = None
+        self.runner = None
+        self.site = None
+        if not host or not port:
+            host, port = get_host_port({})
+        self.host = host
+        self.port = port
+        if loop is None:
+            loop = get_event_loop()
+        self.ssl_context = ssl_context
+        self.loop = loop
+        self.server_started = False
+        task = loop.create_task(self.start())
+        task.add_done_callback(self.server_done)
+        if args["headless"] == False and url is not None:
+            self.loop.create_task(self.open_url(url))
+
+    @web.middleware
+    async def middleware(self, request, handler):
+        from json import dumps
+        from traceback import print_exc
+        from sys import stderr
+        from aiohttp.web_exceptions import HTTPNotFound
+
+        global loop
+        try:
+            print(f"@ request=", request)
+            url_parts = request.url.parts
+            response = await handler(request)
+            nocache = False
+            if url_parts[0] == "/":
+                if len(url_parts) >= 3 and url_parts[2] == "nocache":
+                    nocache = True
+            elif url_parts[0] == "nocache":
+                nocache = True
+            if nocache:
+                response.headers["Cache-Control"] = "no-cache"
+            return response
+        except Exception as e:
+            msg = "Exception with {}".format(request.rel_url)
+            if logger:
+                logger.info(msg)
+                logger.exception(e)
+            if args.get("debug"):
+                if not isinstance(e, HTTPNotFound):
+                    stderr.write(msg + "\n")
+                    print_exc()
+            return web.HTTPInternalServerError(
+                text=dumps({"status": "error", "msg": str(e)})
+            )
+
+    def server_done(self, task):
+        from traceback import print_exc
+
+        try:
+            task.result()
+        except Exception as e:
+            if self.logger:
+                self.logger.exception(e)
+            if self.args["debug"]:
+                print_exc()
+            self.server_started = None
+            exit(1)
+
+    async def open_url(self, url):
+        from webbrowser import open as webbrowseropen
+        from asyncio import sleep
+
+        while self.server_started == False:
+            await sleep(0.2)
+        if self.server_started:
+            webbrowseropen(url)
+
+    async def start(self):
+        global middleware
+        global server_ready
+        from aiohttp import web
+        from ..gui.websubmit import multiuser as mu
+        self.app = web.Application(loop=self.loop, middlewares=[middleware])
+        if server_ready:
+            await mu.setup(self.app)
+        self.setup_routes()
+        self.runner = web.AppRunner(self.app)
+        await self.runner.setup()
+        self.site = TCPSitePatched(
+            self.runner,
+            host=self.host,
+            port=self.port,
+            loop=self.loop,
+            ssl_context=self.ssl_context,
+        )
+        await self.site.start()
+        self.server_started = True
+
+    def setup_webapp_routes(self):
+        from ..exceptions import ModuleLoadingError
+        from importlib.util import spec_from_file_location, module_from_spec
+        from os.path import join, exists
+        from os import listdir
+        from ..exceptions import LoggerError
+        from ..exceptions import ModuleLoadingError
+        from ..exceptions import SetupError
+
+        if logger is None:
+            raise LoggerError()
+        global modules_dir
+        if modules_dir is None:
+            return False
+        webapps_dir = join(modules_dir, "webapps")
+        if exists(webapps_dir) == False:
+            return False
+        module_names = listdir(webapps_dir)
+        for module_name in module_names:
+            try:
+                module_dir = join(webapps_dir, module_name)
+                pypath = join(module_dir, "route.py")
+                if exists(pypath):
+                    spec = spec_from_file_location("route", pypath)
+                    if spec is None:
+                        raise ModuleLoadingError(module_name)
+                    module = module_from_spec(spec)
+                    if spec.loader is None:
+                        raise ModuleLoadingError(module_name)
+                    spec.loader.exec_module(module)
+                    if self.app is None:
+                        raise SetupError()
+                    for route in module.routes:
+                        method, path, func_name = route
+                        path = f"/webapps/{module_name}/" + path
+                        self.app.router.add_route(method, path, func_name)
+            except Exception as e:
+                logger.error(f"error loading webapp {module_name}")
+                logger.exception(e)
+        return True
+
+    def setup_routes(self):
+        from ..gui.webresult import webresult as wr
+        from ..gui.webstore import webstore as ws
+        from ..gui.websubmit import websubmit as wu
+        from ..gui.websubmit import multiuser as mu
+        from ..exceptions import SetupError
+        from os.path import dirname
+        from os.path import realpath
+        from os.path import join
+        from os.path import exists
+
+
+        if self.app is None:
+            raise SetupError()
+        source_dir = dirname(realpath(__file__))
+        routes = list()
+        routes.extend(ws.routes)
+        routes.extend(wr.routes)
+        routes.extend(wu.routes)
+        if server_ready:
+            mu.add_routes(self.app.router)
+        for route in routes:
+            method, path, func_name = route
+            self.app.router.add_route(method, path, func_name)
+        self.app.router.add_get("/issystemready", is_system_ready)
+        self.app.router.add_get("/favicon.ico", serve_favicon)
+        self.app.router.add_get("/webapps/{module}", get_webapp_index)
+        self.setup_webapp_routes()
+        self.app.router.add_static("/store", join(source_dir, "..", "gui", "webstore"))
+        self.app.router.add_static("/result", join(source_dir, "..", "gui", "webresult"))
+        self.app.router.add_static("/submit", join(source_dir, "..", "gui", "websubmit"))
+        if modules_dir:
+            if exists(join(modules_dir, "annotators")):
+                self.app.router.add_static(
+                    "/modules/annotators/", join(modules_dir, "annotators")
+                )
+            if exists(join(modules_dir, "webapps")):
+                self.app.router.add_static("/webapps", join(modules_dir, "webapps"))
+        ws.start_worker()
+        wu.start_worker()
+
+
+class TCPSitePatched(web_runner.BaseSite):
+    __slots__ = ("loop", "_host", "_port", "_reuse_address", "_reuse_port")
+
+    def __init__(
+        self,
+        runner,
+        host=None,
+        port=None,
+        shutdown_timeout=60.0,
+        ssl_context=None,
+        backlog=128,
+        reuse_address=None,
+        reuse_port=None,
+        loop=None,
+    ):
+        from asyncio import get_event_loop
+
+        super().__init__(
+            runner,
+            shutdown_timeout=shutdown_timeout,
+            ssl_context=ssl_context,
+            backlog=backlog,
+        )
+        if loop is None:
+            loop = get_event_loop()
+        self.loop = loop
+        if host is None:
+            host = "0.0.0.0"
+        self._host = host
+        if port is None:
+            port = 8443 if self._ssl_context else 8060
+        self._port = port
+        self._reuse_address = reuse_address
+        self._reuse_port = reuse_port
+
+    @property
+    def name(self, args={}):
+        from yarl import URL
+
+        scheme = "https" if args.get("ssl_enabled", False) else "http"
+        return str(URL.build(scheme=scheme, host=self._host, port=self._port))
+
+    async def start(self):
+        await super().start()
+        if self._runner.server is None:
+            from ..exceptions import SetupError
+
+            raise SetupError()
+        self._server = await self.loop.create_server(
+            self._runner.server,
+            self._host,
+            self._port,
+            ssl=self._ssl_context,  # type: ignore
+            backlog=self._backlog,
+            reuse_address=self._reuse_address,
+            reuse_port=self._reuse_port,
+        )
+

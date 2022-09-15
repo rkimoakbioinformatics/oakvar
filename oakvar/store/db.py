@@ -355,7 +355,7 @@ def fetch_ov_store_cache(
     from .ov.account import login_with_token_set
     from .ov import get_server_last_updated
     from ..module.remote import make_remote_manifest
-    from ..webstore.webstore import save_remote_manifest_cache
+    from ..gui.webstore.webstore import save_remote_manifest_cache
 
 
     if not conn or not cursor:

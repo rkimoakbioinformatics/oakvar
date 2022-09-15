@@ -475,7 +475,8 @@ async def filtersqlite_async(args):
                 filtersqlite_async_drop_copy_table(c, table_name)
             # Variant
             print(f"- variant")
-            await cf.exec_db(cf.make_filtered_uid_table)
+            if hasattr(cf, "make_filtered_uid_table"):
+                await cf.exec_db(getattr(cf, "make_filtered_uid_table"))
             c.execute(
                 "create table variant as select v.* from old_db.variant as v, old_db.variant_filtered as f where v.base__uid=f.base__uid"
             )

@@ -1,24 +1,18 @@
-from logging import log
-from aiohttp import web, web_runner
 from ..decorators import cli_func
 from ..decorators import cli_entry
+from aiohttp import web
 
 SERVER_ALREADY_RUNNING = -1
-headless = None
 servermode = None
 server_ready = None
-ssl_enabled = None
 protocol = None
 http_only = None
 sc = None
 loop = None
-debug = False
 loop = None
-sysconf = None
 log_dir = None
 modules_dir = None
 log_path = None
-logger = None
 
 
 def get_event_loop():
@@ -34,26 +28,21 @@ def get_event_loop():
         loop = get_event_loop()
     return loop
 
-def setup(args):
-    from ..webresult import webresult as wr
-    from ..webstore import webstore as ws
-    from ..websubmit import websubmit as wu
-    from ..websubmit import multiuser as mu
+def setup(args={}, logger=None):
+    from ..gui.webresult import webresult as wr
+    from ..gui.webstore import webstore as ws
+    from ..gui.websubmit import websubmit as wu
+    from ..gui.websubmit import multiuser as mu
     from os.path import join, exists
-    from ..exceptions import SetupError
+    from traceback import print_exc
+    from sys import stderr
 
 
-    if logger is None or sysconf is None:
-        raise SetupError()
     try:
         global loop
-        global headless
         global servermode
-        global debug
         loop = get_event_loop()
-        headless = args["headless"]
         servermode = args["servermode"]
-        debug = args["debug"]
         loop.run_until_complete(mu.setup_module())
         wu.logger = logger
         ws.logger = logger
@@ -66,34 +55,32 @@ def setup(args):
         wu.filerouter.servermode = servermode
         mu.noguest = args["noguest"]
         wr.wu = wu
-        wu.oakvar_multiuser = mu
-        ws.oakvar_multiuser = mu
-        global ssl_enabled
-        ssl_enabled = False
+        wu.mu = mu
+        ws.mu = mu
+        args["ssl_enabled"] = False
         global protocol
         global http_only
         http_only = args["http_only"]
+        sysconf = args.get("sysconf", {})
         if "conf_dir" in sysconf:
             pem_path = join(sysconf["conf_dir"], "cert.pem")
             if exists(pem_path) and http_only == False:
-                ssl_enabled = True
+                args["ssl_enabled"] = True
                 global sc
                 from ssl import create_default_context, Purpose
 
                 sc = create_default_context(Purpose.CLIENT_AUTH)
                 sc.load_cert_chain(pem_path)
-        if ssl_enabled:
+        if args["ssl_enabled"]:
             protocol = "https://"
         else:
             protocol = "http://"
     except Exception as e:
-        from traceback import print_exc
-        from sys import stderr
-
-        logger.exception(e)
-        if debug:
+        if logger:
+            logger.exception(e)
+            logger.info("Exiting...")
+        if args["debug"]:
             print_exc()
-        logger.info("Exiting...")
         stderr.write(
             "Error occurred while starting OakVar server.\nCheck {} for details.\n".format(
                 log_path
@@ -119,9 +106,10 @@ def gui(args, __name__="gui"):
     from ..exceptions import SetupError
     from ..system import get_system_conf
     from ..system.consts import log_dir_key, modules_dir_key
+    from ..gui.util import get_host_port
 
-    global sysconf, log_dir, modules_dir, log_path, logger, debug
     sysconf = get_system_conf()
+    args["sysconf"] = sysconf
     log_dir = sysconf[log_dir_key]
     modules_dir = sysconf[modules_dir_key]
     log_path = join(log_dir, "wcravat.log")
@@ -131,19 +119,18 @@ def gui(args, __name__="gui"):
     log_formatter = logging.Formatter("%(asctime)s: %(message)s", "%Y/%m/%d %H:%M:%S")
     log_handler.setFormatter(log_formatter)
     logger.addHandler(log_handler)
-    debug = args["debug"]
     args["headless"] = args["servermode"]
     if args["result"]:
         args["headless"] = False
         args["result"] = abspath(args["result"])
     try:
-        setup(args)
-        global headless
+        setup(args, logger=logger)
         global server_ready
         global servermode
+        print(f"@ args={args}")
         url = None
         host, port = get_host_port(args)
-        if not headless:
+        if not args["headless"]:
             if args["webapp"] is not None:
                 index_path = join(modules_dir, "webapps", args["webapp"], "index.html")
                 if exists(index_path) == False:
@@ -182,7 +169,7 @@ def gui(args, __name__="gui"):
         main(url=url, host=host, port=port, args=args)
     except Exception as e:
         logger.exception(e)
-        if debug:
+        if args["debug"]:
             print_exc()
         logger.info("Exiting...")
         stderr.write(
@@ -196,325 +183,6 @@ def gui(args, __name__="gui"):
             logger.removeHandler(handler)
 
 
-def get_host_port(args):
-    serv = get_server()
-    host = serv.get("host")
-    port = None
-    if args["port"]:
-        try:
-            port = int(args["port"])
-        except:
-            port = None
-    if not port:
-        port = serv.get("port")
-    return host, port
-
-def get_server():
-    from ..system import get_system_conf
-    import platform
-    from traceback import print_exc
-    from sys import stderr
-    from ..exceptions import SetupError
-
-
-    if sysconf is None or logger is None:
-        raise SetupError()
-    global args
-    try:
-        server = {}
-        pl = platform.platform()
-        if pl.startswith("Windows"):
-            def_host = "localhost"
-        elif pl.startswith("Linux"):
-            if "Microsoft" in pl:
-                def_host = "localhost"
-            else:
-                def_host = "0.0.0.0"
-        elif pl.startswith("Darwin"):
-            def_host = "0.0.0.0"
-        else:
-            def_host = "localhost"
-        if ssl_enabled:
-            if "gui_host_ssl" in sysconf:
-                host = sysconf["gui_host_ssl"]
-            elif "gui_host" in sysconf:
-                host = sysconf["gui_host"]
-            else:
-                host = def_host
-            if "gui_port_ssl" in sysconf:
-                port = sysconf["gui_port_ssl"]
-            elif "gui_port" in sysconf:
-                port = sysconf["gui_port"]
-            else:
-                port = 8443
-        else:
-            host = get_system_conf().get("gui_host", def_host)
-            port = get_system_conf().get("gui_port", 8080)
-        server["host"] = host
-        server["port"] = port
-        return server
-    except Exception as e:
-        logger.exception(e)
-        if debug:
-            print_exc()
-        logger.info("Exiting...")
-        stderr.write(
-            "Error occurred while OakVar server.\nCheck {} for details.\n".format(
-                log_path
-            )
-        )
-        exit()
-
-
-class TCPSitePatched(web_runner.BaseSite):
-    __slots__ = ("loop", "_host", "_port", "_reuse_address", "_reuse_port")
-
-    def __init__(
-        self,
-        runner,
-        host=None,
-        port=None,
-        *,
-        shutdown_timeout=60.0,
-        ssl_context=None,
-        backlog=128,
-        reuse_address=None,
-        reuse_port=None,
-        loop=None,
-    ):
-        from asyncio import get_event_loop
-
-        super().__init__(
-            runner,
-            shutdown_timeout=shutdown_timeout,
-            ssl_context=ssl_context,
-            backlog=backlog,
-        )
-        if loop is None:
-            loop = get_event_loop()
-        self.loop = loop
-        if host is None:
-            host = "0.0.0.0"
-        self._host = host
-        if port is None:
-            port = 8443 if self._ssl_context else 8060
-        self._port = port
-        self._reuse_address = reuse_address
-        self._reuse_port = reuse_port
-
-    @property
-    def name(self):
-        from yarl import URL
-
-        global ssl_enabled
-        scheme = "https" if ssl_enabled else "http"
-        return str(URL.build(scheme=scheme, host=self._host, port=self._port))
-
-    async def start(self):
-        await super().start()
-        if self._runner.server is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
-        self._server = await self.loop.create_server(
-            self._runner.server,
-            self._host,
-            self._port,
-            ssl=self._ssl_context,  # type: ignore
-            backlog=self._backlog,
-            reuse_address=self._reuse_address,
-            reuse_port=self._reuse_port,
-        )
-
-
-@web.middleware
-async def middleware(request, handler):
-    from json import dumps
-
-    if logger is None:
-        from ..exceptions import SetupError
-
-        raise SetupError()
-    global loop
-    global args
-    try:
-        print(f"@ request=", request)
-        url_parts = request.url.parts
-        response = await handler(request)
-        nocache = False
-        if url_parts[0] == "/":
-            if len(url_parts) >= 3 and url_parts[2] == "nocache":
-                nocache = True
-        elif url_parts[0] == "nocache":
-            nocache = True
-        if nocache:
-            response.headers["Cache-Control"] = "no-cache"
-        return response
-    except Exception as e:
-        from traceback import print_exc
-        from sys import stderr
-
-        msg = "Exception with {}".format(request.rel_url)
-        logger.info(msg)
-        logger.exception(e)
-        if debug:
-            from aiohttp.web_exceptions import HTTPNotFound
-
-            if not isinstance(e, HTTPNotFound):
-                stderr.write(msg + "\n")
-                print_exc()
-        return web.HTTPInternalServerError(
-            text=dumps({"status": "error", "msg": str(e)})
-        )
-
-
-class WebServer(object):
-    def __init__(self, host=None, port=None, loop=None, ssl_context=None, url=None):
-        from asyncio import get_event_loop
-
-        self.app = None
-        self.runner = None
-        self.site = None
-        host, port = get_host_port({})
-        self.host = host
-        self.port = port
-        if loop is None:
-            loop = get_event_loop()
-        self.ssl_context = ssl_context
-        self.loop = loop
-        self.server_started = False
-        task = loop.create_task(self.start())
-        task.add_done_callback(self.server_done)
-        global headless
-        if headless == False and url is not None:
-            self.loop.create_task(self.open_url(url))
-
-    def server_done(self, task):
-        if logger is None:
-            from ..exceptions import LoggerError
-
-            raise LoggerError()
-        try:
-            task.result()
-        except Exception as e:
-            if logger:
-                logger.exception(e)
-            if debug:
-                from traceback import print_exc
-
-                print_exc()
-            self.server_started = None
-            exit(1)
-
-    async def open_url(self, url):
-        from webbrowser import open as webbrowseropen
-        from asyncio import sleep
-
-        while self.server_started == False:
-            await sleep(0.2)
-        if self.server_started:
-            webbrowseropen(url)
-
-    async def start(self):
-        global middleware
-        global server_ready
-        from ..websubmit import multiuser as mu
-        self.app = web.Application(loop=self.loop, middlewares=[middleware])
-        if server_ready:
-            await mu.setup(self.app)
-        self.setup_routes()
-        self.runner = web.AppRunner(self.app)
-        await self.runner.setup()
-        self.site = TCPSitePatched(
-            self.runner,
-            self.host,
-            self.port,
-            loop=self.loop,
-            ssl_context=self.ssl_context,
-        )
-        await self.site.start()
-        self.server_started = True
-
-    def setup_webapp_routes(self):
-        from ..exceptions import ModuleLoadingError
-        from importlib.util import spec_from_file_location, module_from_spec
-        from os.path import join, exists
-        from os import listdir
-        from ..exceptions import LoggerError
-        from ..exceptions import ModuleLoadingError
-        from ..exceptions import SetupError
-
-        if logger is None:
-            raise LoggerError()
-        global modules_dir
-        if modules_dir is None:
-            return False
-        webapps_dir = join(modules_dir, "webapps")
-        if exists(webapps_dir) == False:
-            return False
-        module_names = listdir(webapps_dir)
-        for module_name in module_names:
-            try:
-                module_dir = join(webapps_dir, module_name)
-                pypath = join(module_dir, "route.py")
-                if exists(pypath):
-                    spec = spec_from_file_location("route", pypath)
-                    if spec is None:
-                        raise ModuleLoadingError(module_name)
-                    module = module_from_spec(spec)
-                    if spec.loader is None:
-                        raise ModuleLoadingError(module_name)
-                    spec.loader.exec_module(module)
-                    if self.app is None:
-                        raise SetupError()
-                    for route in module.routes:
-                        method, path, func_name = route
-                        path = f"/webapps/{module_name}/" + path
-                        self.app.router.add_route(method, path, func_name)
-            except Exception as e:
-                logger.error(f"error loading webapp {module_name}")
-                logger.exception(e)
-        return True
-
-    def setup_routes(self):
-        from ..webresult import webresult as wr
-        from ..webstore import webstore as ws
-        from ..websubmit import websubmit as wu
-        from ..websubmit import multiuser as mu
-        from os.path import dirname, realpath, join, exists
-
-        if self.app is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
-        source_dir = dirname(realpath(__file__))
-        routes = list()
-        routes.extend(ws.routes)
-        routes.extend(wr.routes)
-        routes.extend(wu.routes)
-        global server_ready
-        if server_ready:
-            mu.add_routes(self.app.router)
-        for route in routes:
-            method, path, func_name = route
-            self.app.router.add_route(method, path, func_name)
-        self.app.router.add_get("/heartbeat", heartbeat)
-        self.app.router.add_get("/issystemready", is_system_ready)
-        self.app.router.add_get("/favicon.ico", serve_favicon)
-        self.app.router.add_get("/webapps/{module}", get_webapp_index)
-        self.setup_webapp_routes()
-        self.app.router.add_static("/store", join(source_dir, "..", "webstore"))
-        self.app.router.add_static("/result", join(source_dir, "..", "webresult"))
-        self.app.router.add_static("/submit", join(source_dir, "..", "websubmit"))
-        if modules_dir:
-            if exists(join(modules_dir, "annotators")):
-                self.app.router.add_static(
-                    "/modules/annotators/", join(modules_dir, "annotators")
-                )
-            if exists(join(modules_dir, "webapps")):
-                self.app.router.add_static("/webapps", join(modules_dir, "webapps"))
-        ws.start_worker()
-        wu.start_worker()
 
 
 async def get_webapp_index(request):
@@ -534,41 +202,16 @@ async def serve_favicon(__request__):
     return web.FileResponse(join(source_dir, "..", "favicon.ico"))
 
 
-async def heartbeat(request):
-    from ..webstore import webstore as ws
-    from asyncio import get_event_loop
-    from concurrent.futures._base import CancelledError
-    from ..websubmit import multiuser as mu
-
-    ws = web.WebSocketResponse(timeout=60 * 60 * 24 * 365)
-    if servermode and server_ready:
-        get_event_loop().create_task(mu.update_last_active(request))
-    await ws.prepare(request)
-    try:
-        async for _ in ws:
-            pass
-    except CancelledError:
-        pass
-    return ws
-
-
 async def is_system_ready(__request__):
     from ..util.admin_util import system_ready
 
     return web.json_response(dict(system_ready()))
 
 
-def wakeup():
-    from ..exceptions import SetupError
-    global loop
-    if not loop:
-        raise SetupError()
-    loop.call_later(0.1, wakeup)
-
 def check_local_update(interval):
     from ..exceptions import SetupError
     from traceback import print_exc
-    from ..webstore import webstore as ws
+    from ..gui.webstore import webstore as ws
 
 
     if loop is None:
@@ -580,16 +223,13 @@ def check_local_update(interval):
     finally:
         loop.call_later(interval, check_local_update, interval)
 
-async def clean_sessions():
-    from ..exceptions import SetupError
+async def clean_sessions(args={}, logger=None):
     from ..system import get_system_conf
-    from ..websubmit import multiuser as mu
+    from ..gui.websubmit import multiuser as mu
     from traceback import print_exc
     from asyncio import sleep
 
 
-    if logger is None:
-        raise SetupError()
     try:
         max_age = get_system_conf().get(
             "max_session_age", 604800
@@ -601,11 +241,12 @@ async def clean_sessions():
             await mu.admindb.clean_sessions(max_age)
             await sleep(interval)
     except Exception as e:
-        logger.exception(e)
-        if debug:
+        if logger:
+            logger.exception(e)
+        if args.get("debug"):
             print_exc()
 
-def main(url=None, host=None, port=None, args={}):
+def main(url=None, host=None, port=None, logger=None, args={}):
     import socket
     from requests.exceptions import ConnectionError
     from webbrowser import open as webbrowseropen
@@ -614,12 +255,10 @@ def main(url=None, host=None, port=None, args={}):
     from ..util.util import quiet_print
     from ..util.util import show_logo
     from ..system import get_system_conf
-    from ..exceptions import SetupError
+    from ..gui.server import WebServer
+    from ..gui.util import get_host_port
 
 
-    global logger
-    if not logger:
-        raise SetupError()
     try:
         global loop
         global protocol
@@ -633,39 +272,40 @@ def main(url=None, host=None, port=None, args={}):
                 msg = "OakVar is already running at {}{}:{}.".format(
                     protocol, host, port
                 )
-                logger.info(msg)
+                if logger:
+                    logger.info(msg)
                 quiet_print(msg, args)
                 global SERVER_ALREADY_RUNNING
-                if url and not headless:
+                if url and not args["headless"]:
                     webbrowseropen(url)
                 return SERVER_ALREADY_RUNNING
         except ConnectionError:
             pass
         show_logo()
         print("OakVar Server is served at {}:{}".format(host, port))
-        logger.info("Serving OakVar server at {}:{}".format(host, port))
+        if logger:
+            logger.info("Serving OakVar server at {}:{}".format(host, port))
         print(
             "(To quit: Press Ctrl-C or Ctrl-Break)",
             flush=True,
         )
         loop = get_event_loop()
-        loop.call_later(0.1, wakeup)
         loop.call_later(1, check_local_update, 5)
         if servermode and server_ready:
             if "max_session_age" in get_system_conf():
-                loop.create_task(clean_sessions())
-        global ssl_enabled
-        if ssl_enabled:
+                loop.create_task(clean_sessions(args=args, logger=logger))
+        if args["ssl_enabled"]:
             global sc
-            _ = WebServer(loop=loop, ssl_context=sc, url=url, host=host, port=port)
+            _ = WebServer(loop=loop, ssl_context=sc, url=url, host=host, port=port, args=args)
         else:
-            _ = WebServer(loop=loop, url=url, host=host, port=port)
+            _ = WebServer(loop=loop, url=url, host=host, port=port, args=args)
         loop.run_forever()
     except Exception as e:
-        logger.exception(e)
-        if debug:
+        if logger:
+            logger.exception(e)
+            logger.info("Exiting...")
+        if args.get("debug"):
             print_exc()
-        logger.info("Exiting...")
         stderr.write(
             "Error occurred while starting OakVar server.\nCheck {} for details.\n".format(
                 log_path
