@@ -89,10 +89,10 @@ class RemoteModule(object):
 
         self.name = kwargs.get("name") or ""
         self.store = kwargs.get("store") or "ov"
-        self.conf = get_conf(self.name)
+        self.conf = get_conf(module_name=self.name)
         if not self.conf:
             return
-        self.groups = self.conf.get("groups", {})
+        self.groups = self.conf.get("groups", [])
         self.output_columns = self.conf.get("output_columns", [])
         self.code_versions = module_code_versions(self.name) or []
         self.data_versions = module_data_versions(self.name) or []
@@ -122,18 +122,32 @@ class RemoteModule(object):
         self.has_logo = exists(logo_path) and getsize(logo_path)
 
 
-def get_conf(module_name: str) -> Optional[dict]:
+def get_conf(module_name=None, conf_path=None) -> Optional[dict]:
     from ..system import get_cache_dir
     from os.path import join
     from os.path import exists
     from json import load
+    from oyaml import safe_load
 
-    for store in ["ov", "oc"]:
-        fpath = join(get_cache_dir("conf"), store, module_name + ".json")
-        if exists(fpath):
-            with open(fpath) as f:
+    fpath = None
+    if not module_name and not conf_path:
+        return fpath
+    if conf_path and exists(conf_path):
+        fpath = conf_path
+    if not fpath and module_name:
+        for store in ["ov", "oc"]:
+            tmp_fpath = join(get_cache_dir("conf"), store, module_name + ".json")
+            if exists(tmp_fpath):
+                fpath = tmp_fpath
+                break
+    if fpath and exists(fpath):
+        with open(fpath) as f:
+            conf = None
+            if fpath.endswith(".yml"):
+                conf = safe_load(f)
+            elif fpath.endswith(".json"):
                 conf = load(f)
-                return conf
+            return conf
     return None
 
 
@@ -152,17 +166,22 @@ def get_readme(module_name: str) -> Optional[str]:
 
 
 def get_install_deps(
-    module_name, version=None, skip_installed=True
+    module_name=None, version=None, conf_path=None, skip_installed=True
 ) -> Tuple[dict, dict]:
-    from packaging.version import Version
     from pkg_resources import Requirement
     from .local import get_local_module_info
     from ..store import remote_module_latest_version
+    from ..util.util import get_latest_version
 
-    # If input module version not provided, set to highest
-    if version is None:
-        version = remote_module_latest_version(module_name)
-    config = get_conf(module_name) or {}
+    config = None
+    if not module_name and not conf_path:
+        return {}, {}
+    if conf_path:
+        config = get_conf(conf_path=conf_path)
+    elif module_name:
+        if not version:
+            version = remote_module_latest_version(module_name)
+        config = get_conf(module_name=module_name) or {}
     if not config:
         return {}, {}
     req_list = config.get("requires", [])
@@ -170,21 +189,15 @@ def get_install_deps(
     for req_string in req_list:
         req = Requirement.parse(req_string)
         rem_info = get_remote_module_info(req.unsafe_name)
-        # Skip if module does not exist
-        if rem_info and get_local_module_info(req.unsafe_name) is None:
+        if not rem_info:
             continue
-        if skip_installed:
-            # Skip if a matching version is installed
-            local_info = get_local_module_info(req.unsafe_name)
-            if local_info and local_info.version and local_info.version in req:
-                continue
-        # Select the highest matching version
-        highest_matching = ""
-        if rem_info and rem_info.versions:
-            for v in rem_info.versions:
-                if Version(v) > Version(highest_matching):
-                    highest_matching = v
-        # Dont include if no matching version exists
+        local_info = get_local_module_info(req.unsafe_name)
+        if skip_installed and local_info:
+            continue
+        if local_info and local_info.version and local_info.version in req:
+            continue
+        # TODO: parse module_name>=version etc conditions
+        highest_matching = get_latest_version(rem_info.versions)
         if highest_matching:
             deps[req.unsafe_name] = highest_matching
     req_pypi_list = config.get("requires_pypi", [])
@@ -253,3 +266,28 @@ def get_remote_module_infos_of_type(t):
                 modules[module_name] = mic.remote[module_name]
         return modules
     return None
+
+def make_remote_manifest(install_queue=None):
+    from ..store.db import get_manifest
+    from ..consts import module_tag_desc
+    from traceback import print_exc
+
+    content = {"data": {}, "tagdesc": {}}
+    try:
+        oc_manifest = get_manifest()
+        if oc_manifest:
+            content["data"] = oc_manifest
+    except:
+        print_exc()
+        content = {"data": {}, "tagdesc": {}}
+    temp_q = []
+    if install_queue is not None:
+        while install_queue.empty() == False:
+            q = install_queue.get()
+            temp_q.append([q["module"], q["version"]])
+        for module, version in temp_q:
+            content["data"][module]["queued"] = True
+            install_queue.put({"module": module, "version": version})
+        content["tagdesc"] = module_tag_desc
+    return content
+

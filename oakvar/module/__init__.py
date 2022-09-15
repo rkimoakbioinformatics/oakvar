@@ -417,12 +417,22 @@ def write_install_marks(args={}):
     wf.close()
 
 
+def install_module_dependency(conf={}, args={}):
+    from ..cli.module import collect_module_name_and_versions
+    requires = conf.get("requires", [])
+    if not requires:
+        return
+    mn_vs = collect_module_name_and_versions(requires, args=args)
+    for module_name, version in mn_vs.items():
+        install_module(module_name, version=version, args=args)
+
 def install_module_from_url(url, args={}):
     from pathlib import Path
     from ..system import get_modules_dir
     from ..util.download import download
     from ..util.util import load_yml_conf
     from ..util.util import quiet_print
+    from .remote import get_install_deps
     from shutil import move
     from shutil import rmtree
 
@@ -435,6 +445,14 @@ def install_module_from_url(url, args={}):
         quiet_print(f"{url} is not a valid OakVar module. {module_name}.yml should exist.", args=args)
         return False
     conf = load_yml_conf(yml_conf_path)
+    args["conf"] = conf
+    deps, deps_pypi = get_install_deps(conf_path=str(yml_conf_path))
+    args["pypi_dependencies"] = deps_pypi
+    if not install_pypi_dependencies(args=args):
+        quiet_print(f"failed in installing pypi package dependence", args=args)
+        return False
+    for deps_mn, deps_ver in deps.items():
+        install_module(deps_mn, version=deps_ver, force_data=args["force_data"], skip_data=args["skip_data"], quiet=args["quiet"], args=args)
     ty = conf.get("type") or ""
     if not ty:
         quiet_print(f"{url} is not a valid OakVar module. {module_name}.yml does not have 'type' field.", args=args)
@@ -461,6 +479,7 @@ def install_module(
     skip_data=False,
     stage_handler=None,
     quiet=True,
+    conf_path=None,
     args={},
 ):
     from os.path import join
@@ -478,6 +497,7 @@ def install_module(
     args["module_name"] = module_name
     args["version"] = version
     args["stage_handler"] = stage_handler
+    quiet_print(f"installing {module_name}...", args=args)
     if not args.get("version"):
         args["version"] = remote_module_latest_version(module_name)
         if not args.get("version"):
@@ -492,7 +512,7 @@ def install_module(
     try:
         set_stage_handler(args=args)
         args.get("stage_handler").stage_start("start")
-        args["conf"] = get_conf(module_name) or {}
+        args["conf"] = get_conf(module_name=module_name, conf_path=conf_path) or {}
         get_pypi_dependencies(args=args)
         # Checks and installs pip packages.
         if not install_pypi_dependencies(args=args):

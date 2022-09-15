@@ -123,13 +123,8 @@ def cli_module_install(args):
 
 def collect_module_name_and_versions(modules, args=None):
     from ..util.util import quiet_print
-    from ..exceptions import ArgumentError
 
     mn_vs = {}
-    if not modules:
-        e = ArgumentError("no module was given")
-        e.traceback = False
-        raise e
     if type(modules) == str:
         modules = [modules]
     for mv in modules:
@@ -191,7 +186,7 @@ def install(args, __name__="module install"):
     if not args.get("skip_dependencies"):
         for module_name, version in mn_vs_final.items():
             if not is_url(module_name):
-                deps, deps_pypi = get_install_deps(module_name, version=version)
+                deps, deps_pypi = get_install_deps(module_name=module_name, version=version)
                 deps_install.update(deps)
                 deps_install_pypi.update(deps_pypi)
     # If overlap between selected modules and dependency modules, use the dependency version
@@ -218,7 +213,6 @@ def install(args, __name__="module install"):
                     continue
         problem_modules = []
         for module_name, module_version in sorted(to_install.items()):
-            quiet_print(f"Installing {module_name}...", args=args)
             if is_url(module_name):
                 if not install_module_from_url(module_name, args=args):
                     problem_modules.append(module_name)
