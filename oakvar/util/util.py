@@ -817,7 +817,7 @@ def get_email_from_args(args={}) -> Optional[str]:
     return args.get("email")
 
 
-def get_latest_version(versions: list):
+def get_latest_version(versions):
     from packaging.version import Version
 
     latest_version = ""

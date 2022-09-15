@@ -135,35 +135,13 @@ def get_remote_manifest_cache() -> Optional[dict]:
             return content
     return None
 
-def make_remote_manifest():
-    from ..store.db import get_manifest
-    from ..consts import module_tag_desc
-
-    content = {"data": {}, "tagdesc": {}}
-    try:
-        oc_manifest = get_manifest()
-        if oc_manifest:
-            content["data"] = oc_manifest
-    except:
-        traceback.print_exc()
-        content = {"data": {}, "tagdesc": {}}
-    global install_queue
-    temp_q = []
-    if install_queue is not None:
-        while install_queue.empty() == False:
-            q = install_queue.get()
-            temp_q.append([q["module"], q["version"]])
-        for module, version in temp_q:
-            content["data"][module]["queued"] = True
-            install_queue.put({"module": module, "version": version})
-        content["tagdesc"] = module_tag_desc
-    return content
-
 async def get_remote_manifest(_):
+    from ..module.remote import make_remote_manifest
+    global install_queue
     content = get_remote_manifest_cache()
     if content:
         return web.json_response(content)
-    content = make_remote_manifest()
+    content = make_remote_manifest(install_queue)
     save_remote_manifest_cache(content)
     return web.json_response(content)
 
@@ -173,7 +151,7 @@ async def get_remote_module_output_columns(request):
 
     queries = request.rel_url.query
     module = queries["module"]
-    conf = get_conf(module) or {}
+    conf = get_conf(module_name=module) or {}
     output_columns = conf.get("output_columns") or []
     return web.json_response(output_columns)
 
@@ -443,7 +421,9 @@ async def get_tag_desc(_):
 async def update_remote(request):
     from ..module.cache import get_module_cache
     from ..store.db import fetch_ov_store_cache
+    from ..module.remote import make_remote_manifest
 
+    global install_queue
     if servermode and server_ready and cravat_multiuser:
         r = await cravat_multiuser.is_admin_loggedin(request)
         if r == False:
@@ -452,7 +432,7 @@ async def update_remote(request):
     module_cache = get_module_cache()
     fetch_ov_store_cache()
     module_cache.update_local()
-    content = make_remote_manifest()
+    content = make_remote_manifest(install_queue)
     save_remote_manifest_cache(content)
     return web.json_response("done")
 
