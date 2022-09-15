@@ -1175,6 +1175,8 @@ def report(args, __name__="report"):
             if output_fns is not None and type(output_fns) == str:
                 quiet_print(f"report created: {output_fns}", args)
             response[report_type] = response_t
+        except Exception as e:
+            handle_exception(e)
     return response
 
 
