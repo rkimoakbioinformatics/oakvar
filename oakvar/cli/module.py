@@ -123,13 +123,8 @@ def cli_module_install(args):
 
 def collect_module_name_and_versions(modules, args=None):
     from ..util.util import quiet_print
-    from ..exceptions import ArgumentError
 
     mn_vs = {}
-    if not modules:
-        e = ArgumentError("no module was given")
-        e.traceback = False
-        raise e
     if type(modules) == str:
         modules = [modules]
     for mv in modules:
@@ -191,7 +186,7 @@ def install(args, __name__="module install"):
     if not args.get("skip_dependencies"):
         for module_name, version in mn_vs_final.items():
             if not is_url(module_name):
-                deps, deps_pypi = get_install_deps(module_name, version=version)
+                deps, deps_pypi = get_install_deps(module_name=module_name, version=version)
                 deps_install.update(deps)
                 deps_install_pypi.update(deps_pypi)
     # If overlap between selected modules and dependency modules, use the dependency version
@@ -218,7 +213,6 @@ def install(args, __name__="module install"):
                     continue
         problem_modules = []
         for module_name, module_version in sorted(to_install.items()):
-            quiet_print(f"Installing {module_name}...", args=args)
             if is_url(module_name):
                 if not install_module_from_url(module_name, args=args):
                     problem_modules.append(module_name)
@@ -260,8 +254,10 @@ def update(args, __name__="module update"):
     from ..module import get_updatable
     from ..util.util import humanize_bytes
     from ..util.util import quiet_print
+    from ..store.db import fetch_ov_store_cache
     from types import SimpleNamespace
 
+    ret = fetch_ov_store_cache(args=args)
     quiet = args.get("quiet", True)
     modules = args.get("modules", [])
     requested_modules = search_local(*modules)
@@ -358,7 +354,9 @@ def installbase(args, __name__="module installbase"):
     from ..system import get_system_conf
     from ..system.consts import base_modules_key
     from types import SimpleNamespace
+    from ..store.db import fetch_ov_store_cache
 
+    ret = fetch_ov_store_cache(args=args)
     sys_conf = get_system_conf(conf=args.get("conf"))
     base_modules = sys_conf.get(base_modules_key, [])
     m_args = SimpleNamespace(

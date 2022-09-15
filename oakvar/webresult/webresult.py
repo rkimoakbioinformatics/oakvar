@@ -3,7 +3,7 @@ import aiosqlite
 import json
 import sys
 import imp
-from .. import CravatFilter
+from .. import ReportFilter
 from ..consts import base_smartfilters
 from aiohttp import web
 import time
@@ -358,7 +358,7 @@ async def get_count(request):
         filterstring = queries["filter"]
     else:
         filterstring = None
-    cf = await CravatFilter.create(dbpath=dbpath, mode="sub", filterstring=filterstring)
+    cf = await ReportFilter.create(dbpath=dbpath, mode="sub", filterstring=filterstring)
     dbbasename = os.path.basename(dbpath)
     if logger is not None:
         logger.info("calling count for {}".format(dbbasename))
@@ -436,7 +436,7 @@ async def get_result(request):
         arg_dict["separatesample"] = True
     arg_dict["reports"] = ["text"]
     reporter = m.Reporter(arg_dict)
-    await reporter.prep()
+    #await reporter.prep()
     if tab == "variant":
         data = await reporter.run(tab=tab, pagesize=pagesize, page=page, make_filtered_table=make_filtered_table)
     else:
@@ -462,13 +462,26 @@ async def get_result(request):
     return web.json_response(content)
 
 
-async def get_result_levels(request):
+async def get_pagesize(request, valueonly=False):
     from ..system import get_user_conf
     user_conf = get_user_conf()
-    gui_result_pagesize = user_conf.get("gui_result_pagesize", default_gui_result_pagesize)
-    content = {"gui_result_pagesize": gui_result_pagesize}
+    try:
+        queries = await request.json()
+    except:
+        queries = {}
+    gui_result_pagesize = queries.get("pagesize", user_conf.get(gui_result_pagesize_key, default_gui_result_pagesize))
+    if gui_result_pagesize:
+        gui_result_pagesize = int(gui_result_pagesize)
+    if valueonly:
+        return gui_result_pagesize
+    else:
+        content = {"gui_result_pagesize": gui_result_pagesize}
+        return web.json_response(content)
+
+async def get_result_levels(request):
     _ = request.rel_url.query
     _, dbpath = await get_jobid_dbpath(request)
+    content = {}
     if not dbpath:
         content["levels"] = ["NODB"]
     else:
@@ -680,7 +693,7 @@ async def get_colinfo(dbpath, confpath, filterstring):
     arg_dict["reports"] = ["text"]
     reporter = m.Reporter(arg_dict)
     try:
-        await reporter.prep()
+        #await reporter.prep()
         colinfo = await reporter.get_variant_colinfo()
         await reporter.close_db()
         if reporter.cf is not None:
@@ -931,3 +944,4 @@ routes.append(["GET", "/result/service/samples", get_samples])
 routes.append(["GET", "/webapps/{module}/widgets/{widget}", serve_webapp_runwidget])
 routes.append(["GET", "/result/service/{hugo}/variants", get_variants_for_hugo])
 routes.append(["GET", "/result/service/variantdbcols", get_variantdbcols])
+routes.append(["GET", "/result/service/pagesize", get_pagesize])

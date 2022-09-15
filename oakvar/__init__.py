@@ -39,8 +39,8 @@ from . import consts
 from .exceptions import *
 from .consts import crx_def
 from .cli.run import Cravat
-from .base.cravat_filter import CravatFilter
-from .cli.report import CravatReport
+from .base.cravat_filter import ReportFilter
+from .cli.report import BaseReporter
 from .base.commonmodule import BaseCommonModule
 from .base.postaggregator import BasePostAggregator
 from .base.mapper import BaseMapper
@@ -51,8 +51,9 @@ from .util import inout
 from .util import admin_util
 import signal
 
-BaseReporter = CravatReport
 # for compatibility with oc
+CravatReport = BaseReporter
+CravatFilter = ReportFilter
 constants = consts
 
 
@@ -102,7 +103,7 @@ _ = (
     or BaseCommonModule
     or VCF2VCF
 )
-_ = CravatReport or CravatFilter or Cravat
+_ = CravatReport or CravatFilter or Cravat or ReportFilter
 _ = crx_def or consts
 _ = cli or wgs
 _ = (

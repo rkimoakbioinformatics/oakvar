@@ -78,6 +78,7 @@ class InvalidFilter(ExpectedException):
             self.msg.append(
                 "Filter column names do not exist: " + " ".join(wrong_colnames)
             )
+        self.msg = "\n".join(self.msg)
 
     def __str__(self):
         return str(self.msg)

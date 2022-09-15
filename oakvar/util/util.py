@@ -374,9 +374,7 @@ def detect_encoding(path):
     else:
         f = open(path, "rb")
     detector = UniversalDetector()
-    for n, line in enumerate(f):
-        if n > 100:
-            break
+    for _, line in enumerate(f):
         detector.feed(line)
         if detector.done:
             break
@@ -819,7 +817,7 @@ def get_email_from_args(args={}) -> Optional[str]:
     return args.get("email")
 
 
-def get_latest_version(versions: list):
+def get_latest_version(versions):
     from packaging.version import Version
 
     latest_version = ""

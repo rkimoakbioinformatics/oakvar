@@ -75,9 +75,6 @@ InfoMgr.prototype.load = async function (
 ) {
   var self = this;
   if (fetchtype == "job") {
-    if (jobDataLoadingDiv == null) {
-      drawingRetrievingDataDiv(tabName);
-    }
     if (filterJson === []) {
       //TODO find and fix the cause of this
       filterJson = {};
@@ -89,13 +86,8 @@ InfoMgr.prototype.load = async function (
     if (isNaN(pageSize) || pageSize < 0) {
       return;
     }
-    var response = await axios({
-      method: "post",
-      url: "/result/service/result",
-      headers: {
-        "Content-type": "application/json",
-      },
-      data: {
+    var response = await axios.post("/result/service/result",
+      {
         username: username,
         job_id: jobId,
         tab: tabName,
@@ -106,8 +98,8 @@ InfoMgr.prototype.load = async function (
         page: pageNo,
         pagesize: pageSize,
         makefilteredtable: setResetTab,
-      },
-    });
+      }
+    )
     const jsonResponseData = response.data;
     self.store(
       self,
@@ -391,13 +383,6 @@ InfoMgr.prototype.store = function (
   if (callback != null) {
     callback(callbackArgs);
   }
-
-  /*
-	if (jobDataLoadingDiv != null) {
-		jobDataLoadingDiv.parentElement.removeChild(jobDataLoadingDiv);
-		jobDataLoadingDiv = null;
-	}
-    */
 };
 
 InfoMgr.prototype.getData = function (tabName) {

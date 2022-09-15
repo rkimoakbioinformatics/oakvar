@@ -1,7 +1,10 @@
 from ..decorators import cli_func
 from ..decorators import cli_entry
+from ..base.cravat_filter import default_user_name
 import sys
 import nest_asyncio
+from typing import List
+from typing import Any
 
 nest_asyncio.apply()
 if sys.platform == "win32" and sys.version_info >= (3, 8):
@@ -10,13 +13,14 @@ if sys.platform == "win32" and sys.version_info >= (3, 8):
     set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 
 
-class CravatReport:
+class BaseReporter:
     def __init__(self, args):
+        from ..util.admin_util import get_user_conf
+        from asyncio import get_event_loop
         self.cf = None
         self.filtertable = "filter"
         self.colinfo = {}
         self.colnos = {}
-        self.newcolnos = {}
         self.var_added_cols = []
         self.summarizing_modules = []
         self.columngroups = {}
@@ -56,8 +60,38 @@ class CravatReport:
         self.mapper_name = None
         self.level = None
         self.no_log = False
+        self.colcount = {}
+        self.columns = {}
+        self.gene_summary_datas = {}
+        self.priority_colgroupnames = (get_user_conf() or {}).get("report_module_order", [
+            "base",
+            "gencode",
+            "hg38",
+            "hg19",
+            "hg18",
+            "tagsampler",
+        ])
+        self.modules_to_add_to_base = []
+        self.user = default_user_name
         self.parse_cmd_args(args)
         self._setup_logger()
+        loop = get_event_loop()
+        loop.run_until_complete(self.prep(user=self.user))
+
+    async def exec_db(self, func, *args, **kwargs):
+        from ..exceptions import DatabaseConnectionError
+
+        conn = await self.get_db_conn()
+        if conn is None:
+            raise DatabaseConnectionError(self.module_name)
+        cursor = await conn.cursor()
+        try:
+            ret = await func(*args, conn=conn, cursor=cursor, **kwargs)
+        except:
+            await cursor.close()
+            raise
+        await cursor.close()
+        return ret
 
     def parse_cmd_args(self, args):
         import sqlite3
@@ -159,18 +193,21 @@ class CravatReport:
         else:
             return False
 
-    async def prep(self):
+    async def connect_db (self, dbpath=None):
+        _ = dbpath
+
+    async def prep(self, user=default_user_name):
         from ..util.util import write_log_msg
         from ..exceptions import ExpectedException
+        import traceback
 
         try:
-            await self.connect_db()
-            await self.load_filter()
+            await self.set_dbpath()
+            await self.connect_db(dbpath=self.dbpath)
+            await self.load_filter(user=user)
         except Exception as e:
             await self.close_db()
             if not isinstance(e, ExpectedException) or e.traceback:
-                import traceback
-
                 traceback.print_exc()
                 if self.logger:
                     self.logger.exception(e)
@@ -188,7 +225,7 @@ class CravatReport:
             return
         import logging
 
-        if hasattr(self, "no_log") and self.no_log:
+        if getattr(self, "no_log", False):
             return
         try:
             self.logger = logging.getLogger(self.module_name)
@@ -206,43 +243,11 @@ class CravatReport:
             self.conn = await aiosqlite.connect(self.dbpath)
         return self.conn
 
-    async def exec_db(self, func, *args, **kwargs):
-        conn = await self.get_db_conn()
-        if conn is None:
-            from ..exceptions import DatabaseConnectionError
-
-            raise DatabaseConnectionError(self.module_name)
-        cursor = await conn.cursor()
-        try:
-            ret = await func(*args, conn=conn, cursor=cursor, **kwargs)
-        except:
-            await cursor.close()
-            raise
-        await cursor.close()
-        return ret
-
     def _log_exception(self, e, halt=True):
         if halt:
             raise e
-        else:
-            if self.logger:
-                self.logger.exception(e)
-
-    async def getjson(self, level):
-        if self.cf is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
-        import json
-
-        ret = None
-        if await self.exec_db(self.table_exists, level) == False:
-            return ret
-        rows = await self.cf.exec_db(self.cf.getiterator, level)
-        if rows is not None:
-            for row in rows:
-                row = self.substitute_val(level, row)
-                return json.dumps(row)
+        elif self.logger:
+            self.logger.exception(e)
 
     def substitute_val(self, level, row):
         import json
@@ -265,6 +270,7 @@ class CravatReport:
                 value = json.dumps(mappings)
             elif level == "gene" and sub.module == "base" and sub.col == "all_so":
                 vals = []
+                breakpoint()
                 for i, so_count in enumerate(value.split(",")):
                     so = so_count[:3]
                     so = sub.subs.get(so, so)
@@ -283,201 +289,46 @@ class CravatReport:
                 cols.append(col)
         return cols
 
-    async def run_level(self, level, pagesize=None, page=None, make_filtered_table=True):
-        from ..exceptions import SetupError
-        import json
-        from ..consts import legacy_gene_level_cols_to_skip
-        from ..util.util import quiet_print
-
-        if self.cf is None or self.args is None:
-            raise SetupError(self.module_name)
-        ret = await self.exec_db(self.table_exists, level)
-        if ret == False:
-            return
-        if self.should_write_level(level) == False:
-            return
-        gene_summary_datas = {}
-        if level in ["variant", "sample", "mapping"] and make_filtered_table:
-            await self.cf.exec_db(self.cf.make_filtered_uid_table)
-        elif level == "gene" and make_filtered_table:
-            await self.cf.exec_db(self.cf.make_filtered_hugo_table)
-            for mi, o, cols in self.summarizing_modules:
-                if hasattr(o, "build_gene_collection"):
-                    msg = "Obsolete module [{}] for gene level summarization. Update the module to get correct gene level summarization.".format(
-                        mi.name
-                    )
-                    self.warning_msgs.append(msg)
-                    quiet_print("===Warning: {}".format(msg), self.args)
-                    gene_summary_data = {}
-                else:
-                    gene_summary_data = await o.get_gene_summary_data(self.cf)
-                gene_summary_datas[mi.name] = [gene_summary_data, cols]
-                for col in cols:
-                    if "category" in col and col["category"] in ["single", "multi"]:
-                        colinfo_col = {}
-                        colno = None
-                        for i in range(len(self.colinfo[level]["columns"])):
-                            colinfo_col = self.colinfo[level]["columns"][i]
-                            if mi.name in ["gencode", "hg38", "tagsampler"]:
-                                grp_name = "base"
-                            else:
-                                grp_name = mi.name
-                            if colinfo_col["col_name"] == grp_name + "__" + col["name"]:
-                                colno = i
-                                break
-                        cats = []
-                        for hugo in gene_summary_data:
-                            val = gene_summary_data[hugo][col["name"]]
-                            repsub = colinfo_col.get("reportsub", [])
-                            if len(repsub) > 0:
-                                if val in repsub:
-                                    val = repsub[val]
-                            if val not in cats:
-                                cats.append(val)
-                        if colno is not None:
-                            self.colinfo[level]["columns"][colno]["col_cats"] = cats
-        self.write_preface(level)
-        self.extracted_cols[level] = self.get_extracted_header_columns(level)
-        self.write_header(level)
-        hugo_present = None
-        if level == "variant":
-            hugo_present = "base__hugo" in self.colnos["variant"]
-        datacols, datarows, total_norows = await self.cf.exec_db(  # type: ignore
-            self.cf.get_filtered_iterator, level=level, page=page, pagesize=pagesize
-        )
-        self.total_norows = total_norows
-        num_total_cols = len(datacols)
-        colnos_to_skip = []
-        if level == "gene":
-            for colno in range(len(datacols)):
-                if datacols[colno] in legacy_gene_level_cols_to_skip:
-                    colnos_to_skip.append(colno)
-        should_skip_some_cols = len(colnos_to_skip) > 0
-        sample_newcolno = None
-        if level == "variant" and self.args.get("separatesample"):
-            write_variant_sample_separately = True
-            sample_newcolno = self.newcolnos["variant"]["base__samples"]
+    def get_db_col_name(self, mi, col):
+        if mi.name in ["gencode", "hg38", "tagsampler"]:
+            grp_name = "base"
         else:
-            write_variant_sample_separately = False
-        colnos = self.colnos[level]
-        cols = self.colinfo[level]["columns"]
-        json_colnos = []
-        for i in range(len(cols)):
-            col = cols[i]
-            if col["table"] == True:
-                json_colnos.append(i)
-        row_count = 0
-        for datarow in datarows:
-            if datarow is None:
-                continue
-            datarow = list(datarow)
-            if should_skip_some_cols:
-                datarow = [
-                    datarow[colno]
-                    for colno in range(num_total_cols)
-                    if colno not in colnos_to_skip
-                ]
-            if level == "variant":
-                # adds gene level data to variant level.
-                if self.nogenelevelonvariantlevel == False and hugo_present:
-                    hugo = datarow[self.colnos["variant"]["base__hugo"]]
-                    generow = await self.cf.get_gene_row(hugo)
-                    if generow is None:
-                        datarow.extend([None for _ in range(len(self.var_added_cols))])
-                    else:
-                        datarow.extend(
-                            [
-                                generow[self.colnos["gene"][colname]]
-                                for colname in self.var_added_cols
-                            ]
-                        )
-            elif level == "gene":
-                # adds summary data to gene level.
-                hugo = datarow[0]
-                for mi, _, _ in self.summarizing_modules:
-                    module_name = mi.name
-                    [gene_summary_data, cols] = gene_summary_datas[module_name]
-                    if (
-                        hugo in gene_summary_data
-                        and gene_summary_data[hugo] is not None
-                        and len(gene_summary_data[hugo]) == len(cols)
-                    ):
-                        datarow.extend(
-                            [gene_summary_data[hugo][col["name"]] for col in cols]
-                        )
-                    else:
-                        datarow.extend([None for _ in cols])
-            # re-orders data row.
-            new_datarow = []
-            for colname in [col["col_name"] for col in self.colinfo[level]["columns"]]:
-                if colname in self.colname_conversion[level]:
-                    oldcolname = self.colname_conversion[level][colname]
-                    if oldcolname in colnos:
-                        colno = colnos[oldcolname]
-                    else:
-                        if self.logger:
-                            self.logger.info(
-                                "column name does not exist in data: {}".format(
-                                    oldcolname
-                                )
-                            )
-                        continue
-                else:
-                    colno = colnos[colname]
-                value = datarow[colno]
-                new_datarow.append(value)
-            # does report substitution.
-            new_datarow = self.substitute_val(level, new_datarow)
-            if hasattr(self, "keep_json_all_mapping") == False and level == "variant":
-                all_mappings_newcolno = self.newcolnos["variant"]["base__all_mappings"]
-                all_map = json.loads(new_datarow[all_mappings_newcolno])
-                newvals = []
-                for hugo in all_map:
-                    for maprow in all_map[hugo]:
-                        [protid, protchange, so, transcript, rnachange] = maprow
-                        if protid == None:
-                            protid = "(na)"
-                        if protchange == None:
-                            protchange = "(na)"
-                        if rnachange == None:
-                            rnachange = "(na)"
-                        newval = (
-                            transcript
-                            + ":"
-                            + hugo
-                            + ":"
-                            + protid
-                            + ":"
-                            + so
-                            + ":"
-                            + protchange
-                            + ":"
-                            + rnachange
-                        )
-                        newvals.append(newval)
-                newvals.sort()
-                newcell = "; ".join(newvals)
-                new_datarow[all_mappings_newcolno] = newcell
-            # escape characters
-            for i, v in enumerate(new_datarow):
-                if isinstance(v, str):
-                    if "\n" in v:
-                        new_datarow[i] = v.replace("\n", "%0A")
-            if write_variant_sample_separately:
-                samples = new_datarow[sample_newcolno]
-                if samples is not None:
-                    samples = samples.split(";")
-                    for sample in samples:
-                        sample_datarow = new_datarow
-                        sample_datarow[sample_newcolno] = sample
-                        self.write_table_row(self.get_extracted_row(sample_datarow))
-                else:
-                    self.write_table_row(self.get_extracted_row(new_datarow))
-            else:
-                self.write_table_row(self.get_extracted_row(new_datarow))
-            row_count += 1
-            if pagesize and row_count == pagesize:
-                break
+            grp_name = mi.name
+        return f"{grp_name}__{col['name']}"
+
+    def col_is_categorical(self, col):
+        return "category" in col and col["category"] in ["single", "multi"]
+
+    async def do_gene_level_summary(self, add_summary=True):
+        self.gene_summary_datas = {}
+        if not self.summarizing_modules:
+            return self.gene_summary_datas
+        for mi, module_instance, summary_cols in self.summarizing_modules:
+            print(f"@ calling get_summary_data: {mi.name}")
+            gene_summary_data = await module_instance.get_gene_summary_data(self.cf)
+            print(f"@ done get_summary_data: {mi.name}")
+            self.gene_summary_datas[mi.name] = [gene_summary_data, summary_cols]
+            columns = self.colinfo["gene"]["columns"]
+            for col in summary_cols:
+                if not self.col_is_categorical(col):
+                    continue
+                colinfo_col = {}
+                colno = None
+                for i in range(len(columns)):
+                    if columns[i]["col_name"] == self.get_db_col_name(mi, col):
+                        colno = i
+                        break
+                cats = []
+                for hugo in gene_summary_data:
+                    val = gene_summary_data[hugo][col["name"]]
+                    repsub = colinfo_col.get("reportsub", [])
+                    if len(repsub) > 0:
+                        if val in repsub:
+                            val = repsub[val]
+                    if val not in cats:
+                        cats.append(val)
+                if colno is not None:
+                    columns[colno]["col_cats"] = cats
 
     async def store_mapper(self, conn=None, cursor=None):
         from ..exceptions import DatabaseConnectionError
@@ -492,77 +343,223 @@ class CravatReport:
         else:
             self.mapper_name = r[0].split(":")[0]
 
-    async def run(self, tab=None, pagesize=None, page=None, make_filtered_table=True):
-        from ..exceptions import SetupError
-        from time import time, asctime, localtime
-        import oyaml as yaml
+    def write_log(self, msg):
+        if not self.logger:
+            return
+        self.logger.info(msg)
 
-        if self.args is None or self.cf is None or self.logger is None:
+    def write_status(self, msg):
+        if not self.status_writer or (self.args and self.args.get("do_not_change_status")):
+            return
+        self.status_writer.queue_status_update("status", msg)
+
+    def log_run_start(self):
+        from time import asctime, localtime
+        import oyaml as yaml
+        self.write_log("started: %s" % asctime(localtime(self.start_time)))
+        if self.cf and self.cf.filter:
+            self.write_log(f"filter:\n{yaml.dump(self.filter)}")
+        if self.module_conf:
+            self.write_status(f"Started {self.module_conf['title']} ({self.module_name})")
+
+    async def get_levels_to_run(self, tab: str) -> List[str]:
+        if not self.cf:
+            return []
+        if tab == "all":
+            levels = await self.cf.exec_db(self.cf.get_result_levels)
+        else:
+            levels = [tab]
+        if type(levels) is not list:
+            return []
+        if not levels:
+            return []
+        return levels
+
+    async def run(self, tab="all", add_summary=True, pagesize=None, page=None, make_filtered_table=True, user=default_user_name):
+        from ..exceptions import SetupError
+        from ..exceptions import DatabaseError
+        from ..base.cravat_filter import report_filter_in_progress
+        from ..base.cravat_filter import report_filter_ready
+        from time import time
+        from time import asctime
+        from time import localtime
+        from asyncio import sleep
+
+        if not self.args or not self.cf or not self.logger:
             raise SetupError(self.module_name)
-        start_time = time()
+        self.start_time = time()
         ret = None
-        if not tab:
-            tab = self.args.get("level")
-        if not tab:
-            tab = "all"
-        try:
-            if not getattr(self, "no_log", False):
-                if self.logger:
-                    self.logger.info("started: %s" % asctime(localtime(start_time)))
-                    if self.cf and self.cf.filter:
-                        s = f"filter:\n{yaml.dump(self.filter)}"
-                        self.logger.info(s)
-            if self.module_conf is not None and self.status_writer is not None:
-                if not self.args.get("do_not_change_status"):
-                    self.status_writer.queue_status_update(
-                        "status",
-                        "Started {} ({})".format(
-                            self.module_conf["title"], self.module_name
-                        ),
-                    )
-            if self.setup() == False:
-                await self.close_db()
-                return
-            if tab == "all":
-                levels = await self.cf.exec_db(self.cf.get_result_levels)
-                if levels:
-                    for level in levels:
-                        self.level = level
-                        if await self.exec_db(self.table_exists, level):
-                            await self.exec_db(self.make_col_info, level)
-                    for level in levels:
-                        self.level = level
-                        if await self.exec_db(self.table_exists, level):
-                            await self.run_level(level, pagesize=pagesize, page=page, make_filtered_table=make_filtered_table)
-            else:
-                if tab in ["variant", "gene"]:
-                    for level in ["variant", "gene"]:
-                        if await self.exec_db(self.table_exists, level):
-                            await self.exec_db(self.make_col_info, level)
-                else:
-                    await self.exec_db(self.make_col_info, tab)
-                self.level = tab
-                await self.run_level(tab, pagesize=pagesize, page=page, make_filtered_table=make_filtered_table)
+        tab = tab or self.args.get("level", "all")
+        self.log_run_start()
+        if self.setup() == False:
             await self.close_db()
-            if self.module_conf is not None and self.status_writer is not None:
-                if not self.args.get("do_not_change_status"):
-                    self.status_writer.queue_status_update(
-                        "status",
-                        "Finished {} ({})".format(
-                            self.module_conf["title"], self.module_name
-                        ),
-                    )
+            raise SetupError(self.module_name)
+        try:
+            self.ftable_uid = None
+            if make_filtered_table:
+                ret = await self.cf.make_ftables()
+                if ret:
+                    self.ftable_uid = ret["uid"]
+            self.levels = await self.get_levels_to_run(tab)
+            for level in self.levels:
+                self.level = level
+                print(f"@@@ level={level}")
+                await self.make_col_infos(add_summary=add_summary)
+                print(f"@ gene colnos after make_col_infos {level} ={self.colnos['gene']}")
+                await self.run_level(level, pagesize=pagesize, page=page, make_filtered_table=make_filtered_table, add_summary=add_summary)
+            await self.close_db()
+            if self.module_conf:
+                self.write_status(f"Finished {self.module_conf['title']} ({self.module_name})")
             end_time = time()
             if not (hasattr(self, "no_log") and self.no_log):
                 self.logger.info("finished: {0}".format(asctime(localtime(end_time))))
-                run_time = end_time - start_time
+                run_time = end_time - self.start_time
                 self.logger.info("runtime: {0:0.3f}".format(run_time))
             ret = self.end()
         except Exception as e:
-            # from ..exceptions import ExpectedException
             await self.close_db()
             raise e
         return ret
+
+    async def run_level(self, level, add_summary=True, pagesize=None, page=None, make_filtered_table=True):
+        from ..exceptions import SetupError
+
+        _ = make_filtered_table
+        print(f"@ colnos at start of run_level {level} ={self.colnos[level]}")
+        if self.should_write_level(level) == False:
+            return
+        if not await self.exec_db(self.table_exists, level):
+            return
+        if not self.cf or not self.args:
+            raise SetupError(self.module_name)
+        if add_summary and self.level == "gene":
+            print(f"@ colnos before gene summary={self.colnos[level]}")
+            await self.do_gene_level_summary(add_summary=add_summary)
+            print(f"@ colnos after gene summary={self.colnos[level]}")
+        self.write_preface(level)
+        self.extracted_cols[level] = self.get_extracted_header_columns(level)
+        self.write_header(level)
+        self.hugo_colno = self.colnos[level].get("base__hugo", None)
+        datacols = await self.cf.exec_db(self.cf.get_variant_data_cols)
+        total_norows = await self.cf.exec_db(self.cf.get_ftable_num_rows, level=level, uid=self.ftable_uid, ftype=level)
+        if datacols is None or total_norows is None:
+            return
+        self.sample_newcolno = None
+        if level == "variant" and self.args.get("separatesample"):
+            self.write_variant_sample_separately = True
+            self.sample_newcolno = self.colnos["variant"]["base__samples"]
+        else:
+            self.write_variant_sample_separately = False
+        datarows_iter = await self.cf.get_level_data_iterator(level, page=page, pagesize=pagesize)
+        if not datarows_iter:
+            return
+        row_count = 0
+        for datarow in datarows_iter:
+            if datarow is None:
+                continue
+            datarow = list(datarow)
+            if level == "gene" and add_summary:
+                await self.add_gene_summary_data_to_gene_level(datarow)
+            if level == "variant":
+                await self.add_gene_level_data_to_variant_level(datarow)
+            datarow = self.reorder_datarow(level, datarow)
+            datarow = self.substitute_val(level, datarow)
+            self.stringify_all_mapping(level, datarow)
+            self.escape_characters(datarow)
+            self.write_row_with_samples_separate_or_not(datarow)
+            row_count += 1
+            if pagesize and row_count == pagesize:
+                break
+
+    def write_row_with_samples_separate_or_not(self, datarow):
+        if self.write_variant_sample_separately:
+            samples = datarow[self.sample_newcolno]
+            if samples:
+                samples = samples.split(";")
+                for sample in samples:
+                    sample_datarow = datarow
+                    sample_datarow[self.sample_newcolno] = sample
+                    self.write_table_row(self.get_extracted_row(sample_datarow))
+            else:
+                self.write_table_row(self.get_extracted_row(datarow))
+        else:
+            self.write_table_row(self.get_extracted_row(datarow))
+
+    def escape_characters(self, datarow):
+        for i, v in enumerate(datarow):
+            if isinstance(v, str) and "\n" in v:
+                datarow[i] = v.replace("\n", "%0A")
+
+    def stringify_all_mapping(self, level, datarow):
+        from json import loads
+        if hasattr(self, "keep_json_all_mapping") == True or level != "variant":
+            return
+        all_mappings_newcolno = self.colnos["variant"]["base__all_mappings"]
+        all_map = loads(datarow[all_mappings_newcolno])
+        newvals = []
+        for hugo in all_map:
+            for maprow in all_map[hugo]:
+                [protid, protchange, so, transcript, rnachange] = maprow
+                if protid == None:
+                    protid = "(na)"
+                if protchange == None:
+                    protchange = "(na)"
+                if rnachange == None:
+                    rnachange = "(na)"
+                newval = (
+                    transcript
+                    + ":"
+                    + hugo
+                    + ":"
+                    + protid
+                    + ":"
+                    + so
+                    + ":"
+                    + protchange
+                    + ":"
+                    + rnachange
+                )
+                newvals.append(newval)
+        newvals.sort()
+        newcell = "; ".join(newvals)
+        datarow[all_mappings_newcolno] = newcell
+
+    def reorder_datarow(self, level, datarow):
+        new_datarow = []
+        colnos = self.colnos[level]
+        print(f"@ colnos={colnos}. len datarow={len(datarow)}")
+        for column in self.colinfo[level]["columns"]:
+            col_name = column["col_name"]
+            #col_name = self.colname_conversion[level].get(col_name, col_name)
+            colno = colnos[col_name]
+            value = datarow[colno]
+            new_datarow.append(value)
+        return new_datarow
+
+    async def add_gene_summary_data_to_gene_level(self, datarow):
+        hugo = datarow[0]
+        for mi, _, _ in self.summarizing_modules:
+            module_name = mi.name
+            [gene_summary_data, cols] = self.gene_summary_datas[module_name]
+            if (
+                hugo in gene_summary_data
+                and gene_summary_data[hugo] is not None
+                and len(gene_summary_data[hugo]) == len(cols)
+            ):
+                datarow.extend(
+                    [gene_summary_data[hugo][col["name"]] for col in cols]
+                )
+            else:
+                datarow.extend([None for _ in cols])
+
+    async def add_gene_level_data_to_variant_level(self, datarow):
+        if self.nogenelevelonvariantlevel or self.hugo_colno is None or not self.cf:
+            return
+        generow = await self.cf.exec_db(self.cf.get_gene_row, datarow[self.hugo_colno])
+        if generow is None:
+            datarow.extend([None for _ in range(len(self.var_added_cols))])
+        else:
+            datarow.extend([generow[self.colnos["gene"][colname]] for colname in self.var_added_cols])
 
     async def get_variant_colinfo(self):
         self.setup()
@@ -596,7 +593,10 @@ class CravatReport:
             filtered_row = row
         return filtered_row
 
-    def add_conditional_to_colnames_to_display(self, level, column, module_name):
+    def add_to_colnames_to_display(self, level, column):
+        """
+        include columns according to --cols option
+        """
         col_name = column["col_name"]
         if (
             level in self.extract_columns_multilevel
@@ -614,46 +614,18 @@ class CravatReport:
         else:
             incl = True
         if incl and col_name not in self.colnames_to_display[level]:
-            if module_name == self.mapper_name:
-                self.colnames_to_display[level].append(
-                    col_name.replace(module_name + "__", "base__")
-                )
-            elif module_name == "tagsampler":
-                self.colnames_to_display[level].append(
-                    col_name.replace(module_name + "__", "base__")
-                )
-            else:
-                self.colnames_to_display[level].append(col_name)
+            if self.should_be_in_base(col_name):
+                col_name = self.change_colname_to_base(col_name)
+            self.colnames_to_display[level].append(col_name)
 
-    async def make_col_info(self, level: str, conn=None, cursor=None):
-        from ..exceptions import SetupError
-        from os.path import dirname
-        import json
-        from ..util.inout import ColumnDefinition
-        from ..util.util import load_class
-        from types import SimpleNamespace
-        from ..util.util import quiet_print
-        from ..util.admin_util import get_user_conf
-        from ..module.local import get_local_module_info
-        from ..module.local import get_local_module_infos_of_type
-        from ..exceptions import ModuleLoadingError
+    def change_colname_to_base(self, col_name):
+        fieldname = self.get_field_name(col_name)
+        return f"base__{fieldname}"
 
-        if conn is None:
-            pass
-        if cursor is None:
-            raise SetupError()
-        await self.exec_db(self.store_mapper)
-        self.colnames_to_display[level] = []
-        priority_colgroupnames = (get_user_conf() or {}).get("report_module_order") or [
-            "base",
-            "gencode",
-            "hg38",
-            "hg19",
-            "hg18",
-            "tagsampler",
-        ]  # level-specific column groups
+    async def make_sorted_column_groups(self, level, conn):
+        cursor = await conn.cursor()
         self.columngroups[level] = []
-        sql = "select name, displayname from " + level + "_annotator"
+        sql = f"select name, displayname from {level}_annotator order by name"
         await cursor.execute(sql)
         rows = await cursor.fetchall()
         for row in rows:
@@ -661,228 +633,292 @@ class CravatReport:
             self.columngroups[level].append(
                 {"name": name, "displayname": displayname, "count": 0}
             )
-        # level-specific column names
-        header_table = level + "_header"
+
+    async def make_coldefs(self, level, conn, where=None):
+        from ..util.inout import ColumnDefinition
+        if not conn:
+            return
+        cursor = await conn.cursor()
+        header_table = f"{level}_header"
         coldefs = []
-        sql = "select col_def from " + header_table
+        sql = f"select col_def from {header_table}"
+        if where:
+            sql += f" where {where}"
         await cursor.execute(sql)
         for row in await cursor.fetchall():
             coljson = row[0]
             coldef = ColumnDefinition({})
             coldef.from_json(coljson)
+            coldef = await self.gather_col_categories(level, coldef, conn)
             coldefs.append(coldef)
-        columns = []
+        return coldefs
+
+    async def gather_col_categories(self, level, coldef, conn):
+        cursor = await conn.cursor()
+        if not coldef.category in ["single", "multi"] or len(coldef.categories) > 0:
+            return coldef
+        sql = f"select distinct {coldef.name} from {level}"
+        await cursor.execute(sql)
+        rs = await cursor.fetchall()
+        for r in rs:
+            coldef.categories.append(r[0])
+        return coldef
+
+    async def make_columns_colnos_colnamestodisplay_columngroup(self, level, coldefs):
+        self.columns[level] = []
         self.colnos[level] = {}
-        colcount = 0
-        # level-specific column details
+        self.colcount[level] = 0
         for coldef in coldefs:
-            self.colnos[level][coldef.name] = colcount
-            colcount += 1
-            if coldef.category in ["single", "multi"] and len(coldef.categories) == 0:
-                sql = "select distinct {} from {}".format(coldef.name, level)
-                await cursor.execute(sql)
-                rs = await cursor.fetchall()
-                for r in rs:
-                    coldef.categories.append(r[0])
-            [colgrpname, _] = coldef.name.split("__")
+            self.colnos[level][coldef.name] = self.colcount[level]
+            self.colcount[level] += 1
+            [colgrpname, _] = self.get_group_field_names(coldef.name)
             column = coldef.get_colinfo()
-            columns.append(column)
-            self.add_conditional_to_colnames_to_display(level, column, colgrpname)
+            self.columns[level].append(column)
+            self.add_to_colnames_to_display(level, column)
             for columngroup in self.columngroups[level]:
                 if columngroup["name"] == colgrpname:
                     columngroup["count"] += 1
-        # adds gene level columns to variant level.
-        if (
-            self.nogenelevelonvariantlevel == False
-            and level == "variant"
-            and await self.exec_db(self.table_exists, "gene")
-        ):
-            modules_to_add = []
-            q = "select name from gene_annotator"
-            await cursor.execute(q)
-            gene_annotators = [v[0] for v in await cursor.fetchall()]
-            modules_to_add = [m for m in gene_annotators if m != "base"]
-            for module in modules_to_add:
-                cols = []
-                q = f"select col_def from gene_header where col_name like ?"
-                await cursor.execute(q, (module + "__%",))
-                rs = await cursor.fetchall()
-                for r in rs:
-                    cd = ColumnDefinition({})
-                    cd.from_json(r[0])
-                    cols.append(cd)
-                q = 'select displayname from gene_annotator where name=?'
-                await cursor.execute(q, (module,))
-                r = await cursor.fetchone()
-                displayname = r[0]
-                self.columngroups[level].append(
-                    {"name": module, "displayname": displayname, "count": len(cols)}
-                )
-                for coldef in cols:
-                    self.colnos[level][coldef.name] = colcount
-                    colcount += 1
-                    if (
-                        coldef.category in ["category", "multicategory"]
-                        and len(coldef.categories) == 0
-                    ):
-                        sql = "select distinct {} from {}".format(coldef.name, level)
-                        await cursor.execute(sql)
-                        rs = await cursor.fetchall()
-                        for r in rs:
-                            coldef.categories.append(r[0])
-                    column = coldef.get_colinfo()
-                    columns.append(column)
-                    self.add_conditional_to_colnames_to_display(level, column, module)
-                    self.var_added_cols.append(coldef.name)
-        # Gene level summary columns
-        if level == "gene":
-            q = "select name from variant_annotator"
-            await cursor.execute(q)
-            done_var_annotators = [v[0] for v in await cursor.fetchall()]
-            self.summarizing_modules = []
-            local_modules = get_local_module_infos_of_type("annotator")
-            local_modules.update(get_local_module_infos_of_type("postaggregator"))
-            summarizer_module_names = []
-            for module_name in done_var_annotators:
-                if module_name in [
-                    "gencode",
-                    "base",
-                    "hg19",
-                    "hg18",
-                    "extra_vcf_info",
-                    "extra_variant_info",
-                ]:
-                    continue
-                if module_name not in local_modules:
-                    if module_name != "original_input":
-                        quiet_print(
-                            "            [{}] module does not exist in the system. Gene level summary for this module is skipped.".format(
-                                module_name
-                            ),
-                            self.args,
-                        )
-                    continue
-                module = local_modules[module_name]
-                if "can_summarize_by_gene" in module.conf:
-                    summarizer_module_names.append(module_name)
-            local_modules[self.mapper_name] = get_local_module_info(self.mapper_name)
-            summarizer_module_names = [self.mapper_name] + summarizer_module_names
-            for module_name in summarizer_module_names:
-                if module_name is None:
-                    continue
-                mi = local_modules[module_name]
-                if not mi:
-                    continue
-                sys.path = sys.path + [dirname(mi.script_path)]
-                annot_cls = None
-                if module_name in done_var_annotators:
-                    annot_cls = load_class(mi.script_path, "CravatAnnotator")
-                elif module_name == self.mapper_name:
-                    annot_cls = load_class(mi.script_path, "Mapper")
-                if annot_cls is None:
-                    raise ModuleLoadingError(module_name)
-                cmd = {
-                    "script_path": mi.script_path,
-                    "input_file": "__dummy__",
-                    "output_dir": self.output_dir,
-                }
-                annot = annot_cls(cmd)
-                cols = mi.conf["gene_summary_output_columns"]
-                columngroup = {
-                    "name": mi.name,
-                    "displayname": mi.title,
-                    "count": len(cols),
-                }
-                self.columngroups[level].append(columngroup)
-                for col in cols:
-                    coldef = ColumnDefinition(col)
-                    coldef.name = columngroup["name"] + "__" + coldef.name
-                    coldef.genesummary = True
-                    column = coldef.get_colinfo()
-                    columns.append(column)
-                    self.add_conditional_to_colnames_to_display(level, column, mi.name)
-                self.summarizing_modules.append([mi, annot, cols])
-                for col in cols:
-                    fullname = module_name + "__" + col["name"]
-                    self.colnos[level][fullname] = len(self.colnos[level])
-        # re-orders columns groups.
+
+    async def get_gene_level_modules_to_add_to_variant_level(self, conn):
+        cursor = await conn.cursor()
+        q = "select name from gene_annotator"
+        await cursor.execute(q)
+        gene_annotators = [v[0] for v in await cursor.fetchall()]
+        modules_to_add = [m for m in gene_annotators if m != "base"]
+        return modules_to_add
+
+    async def add_gene_level_displayname_to_variant_level_columngroups(self, module_name, coldefs, conn):
+        cursor = await conn.cursor()
+        q = 'select displayname from gene_annotator where name=?'
+        await cursor.execute(q, (module_name,))
+        r = await cursor.fetchone()
+        displayname = r[0]
+        self.columngroups["variant"].append(
+            {"name": module_name, "displayname": displayname, "count": len(coldefs)}
+        )
+
+    async def add_gene_level_columns_to_variant_level(self, conn):
+        if not await self.exec_db(self.table_exists, "gene"):
+            return
+        modules_to_add = await self.get_gene_level_modules_to_add_to_variant_level(conn)
+        for module_name in modules_to_add:
+            module_prefix = f"{module_name}__"
+            gene_coldefs = await self.make_coldefs("gene", conn, where=f"col_name like '{module_prefix}%'")
+            if not gene_coldefs:
+                continue
+            await self.add_gene_level_displayname_to_variant_level_columngroups(module_name, gene_coldefs, conn)
+            for gene_coldef in gene_coldefs:
+                self.colnos["variant"][gene_coldef.name] = self.colcount["variant"]
+                self.colcount["variant"] += 1
+                gene_column = gene_coldef.get_colinfo()
+                self.columns["variant"].append(gene_column)
+                self.add_to_colnames_to_display("variant", gene_column)
+                self.var_added_cols.append(gene_coldef.name)
+
+    async def add_gene_level_summary_columns(self, add_summary=True, conn=Any, cursor=Any):
+        from ..exceptions import ModuleLoadingError
+        from ..module.local import get_local_module_infos_of_type
+        from ..module.local import get_local_module_info
+        from ..util.util import load_class
+        from ..util.util import quiet_print
+        from ..util.inout import ColumnDefinition
+        from os.path import dirname
+        _ = conn
+        if not add_summary:
+            return
+        q = "select name from variant_annotator"
+        await cursor.execute(q)
+        done_var_annotators = [v[0] for v in await cursor.fetchall()]
+        self.summarizing_modules = []
+        local_modules = get_local_module_infos_of_type("annotator")
+        local_modules.update(get_local_module_infos_of_type("postaggregator"))
+        summarizer_module_names = []
+        for module_name in done_var_annotators:
+            if module_name in [
+                "base",
+                "gencode",
+                "hg38",
+                "hg19",
+                "hg18",
+                "extra_vcf_info",
+                "extra_variant_info",
+                "original_input"
+            ]:
+                continue
+            if module_name not in local_modules:
+                if module_name != "original_input":
+                    quiet_print(
+                        "            [{}] module does not exist in the system. Gene level summary for this module is skipped.".format(
+                            module_name
+                        ),
+                        self.args,
+                    )
+                continue
+            module = local_modules[module_name]
+            if "can_summarize_by_gene" in module.conf:
+                summarizer_module_names.append(module_name)
+        local_modules[self.mapper_name] = get_local_module_info(self.mapper_name)
+        summarizer_module_names = [self.mapper_name] + summarizer_module_names
+        for module_name in summarizer_module_names:
+            if not module_name:
+                continue
+            mi = local_modules[module_name]
+            if not mi:
+                continue
+            sys.path = sys.path + [dirname(mi.script_path)]
+            annot_cls = None
+            if mi.name in done_var_annotators or mi.name == self.mapper_name:
+                annot_cls = load_class(mi.script_path)
+            if not annot_cls:
+                raise ModuleLoadingError(mi.name)
+            cmd = {
+                "script_path": mi.script_path,
+                "input_file": "__dummy__",
+                "output_dir": self.output_dir,
+            }
+            annot = annot_cls(cmd)
+            cols = mi.conf["gene_summary_output_columns"]
+            columngroup = {
+                "name": mi.name,
+                "displayname": mi.title,
+                "count": len(cols),
+            }
+            level = "gene"
+            self.columngroups[level].append(columngroup)
+            for col in cols:
+                coldef = ColumnDefinition(col)
+                coldef.name = mi.name + "__" + coldef.name
+                coldef.genesummary = True
+                column = coldef.get_colinfo()
+                self.columns[level].append(column)
+                self.add_to_colnames_to_display(level, column)
+                self.colnos[level][coldef.name] = len(self.colnos[level])
+            self.summarizing_modules.append([mi, annot, cols])
+
+    def find_col_or_colgroup_by_name(self, l, name):
+        for el in l:
+            if el["name"] == name:
+                return el
+        return None
+
+    def get_colgroup_by_name(self, colgroups, name):
+        for colgroup in colgroups:
+            if colgroup["name"] == name:
+                return colgroup
+        return None
+
+    async def place_priority_col_groups_first(self, level):
         colgrps = self.columngroups[level]
         newcolgrps = []
-        for priority_colgrpname in priority_colgroupnames:
-            for colgrp in colgrps:
-                if colgrp["name"] == priority_colgrpname:
-                    if colgrp["name"] in [self.mapper_name, "tagsampler"]:
-                        newcolgrps[0]["count"] += colgrp["count"]
-                    else:
-                        newcolgrps.append(colgrp)
-                    break
-        colpos = 0
+        # Places priority col groups first, as defined in priority_colgroupnames. Merges
+        # mapper and tagsampler with base group.
+        base_colgroup_no = self.priority_colgroupnames.index("base")
+        for priority_colgrpname in self.priority_colgroupnames:
+            colgrp = self.find_col_or_colgroup_by_name(colgrps, priority_colgrpname)
+            if not colgrp:
+                continue
+            if self.should_be_in_base(colgrp["name"]):
+                newcolgrps[base_colgroup_no]["count"] += colgrp["count"]
+            else:
+                newcolgrps.append(colgrp)
+            colgrps.remove(colgrp)
+        # place the rest of col groups.
+        for colgroup in colgrps:
+            newcolgrps.append(colgroup)
+        # assigns last column number.
+        last_colpos = 0
         for colgrp in newcolgrps:
-            colgrp["lastcol"] = colpos + colgrp["count"]
-            colpos = colgrp["lastcol"]
+            new_last_colpos = last_colpos + colgrp["count"]
+            colgrp["lastcol"] = new_last_colpos
+            last_colpos = new_last_colpos
+        self.columngroups[level] = newcolgrps
+        """
+        # removes mapper, tagsampler, etc from col group names.
         colgrpnames = [
-            v["displayname"] for v in colgrps if v["name"] not in priority_colgroupnames
+            v["displayname"] for v in colgrps if v["name"] not in self.priority_colgroupnames
         ]
+        # sort by displayname
         colgrpnames.sort()
         for colgrpname in colgrpnames:
             for colgrp in colgrps:
                 if colgrp["displayname"] == colgrpname:
-                    colgrp["lastcol"] = colpos + colgrp["count"]
+                    colgrp["lastcol"] = last_colpos + colgrp["count"]
                     newcolgrps.append(colgrp)
-                    colpos += colgrp["count"]
+                    last_colpos += colgrp["count"]
                     break
-        # re-orders columns.
+        """
+
+    def should_be_in_base(self, name):
+        if "__" in name:
+            name = self.get_group_name(name)
+        return name in self.modules_to_add_to_base
+
+    def get_group_field_names(self, col_name):
+        return col_name.split("__")
+
+    def get_group_name(self, col_name):
+        return self.get_group_field_names(col_name)[0]
+
+    def get_field_name(self, col_name):
+        return self.get_group_field_names(col_name)[1]
+
+    async def order_columns_to_match_col_groups(self, level):
         self.colname_conversion[level] = {}
         new_columns = []
-        self.newcolnos[level] = {}
-        newcolno = 0
+        new_colnos = {}
+        new_colno = 0
         new_colnames_to_display = []
-        for colgrp in newcolgrps:
-            colgrpname = colgrp["name"]
-            for col in columns:
-                colname = col["col_name"]
-                [grpname, _] = colname.split("__")
-                if colgrpname == "base" and grpname in [self.mapper_name, "tagsampler"]:
-                    newcolname = "base__" + colname.split("__")[1]
-                    self.colname_conversion[level][newcolname] = colname
-                    col["col_name"] = newcolname
+        for colgrp_to_find in self.columngroups[level]:
+            group_name_to_find = colgrp_to_find["name"]
+            for col in self.columns[level]:
+                col_name = col["col_name"]
+                old_col_name = col_name
+                group_name = self.get_group_name(col_name)
+                if group_name_to_find == "base" and self.should_be_in_base(group_name):
+                    new_col_name = self.change_colname_to_base(col_name)
+                    col["col_name"] = new_col_name
+                    group_name = "base"
+                    self.colname_conversion[level][new_col_name] = old_col_name
+                col_name = col["col_name"]
+                if group_name == group_name_to_find:
                     new_columns.append(col)
-                    self.newcolnos[level][newcolname] = newcolno
-                    if newcolname in self.colnames_to_display[level]:
-                        new_colnames_to_display.append(newcolname)
-                elif grpname == colgrpname:
-                    new_columns.append(col)
-                    self.newcolnos[level][colname] = newcolno
-                    if colname in self.colnames_to_display[level]:
-                        new_colnames_to_display.append(colname)
-                else:
-                    continue
-                newcolno += 1
-        self.colinfo[level] = {"colgroups": newcolgrps, "columns": new_columns}
+                    new_colnos[col_name] = new_colno
+                    if col_name in self.colnames_to_display[level]:
+                        new_colnames_to_display.append(col_name)
+                    new_colno += 1
+        self.columns[level] = new_columns
+        self.colnos[level] = new_colnos
         self.colnames_to_display[level] = new_colnames_to_display
-        # report substitution
-        if level in ["variant", "gene"]:
-            reportsubtable = level + "_reportsub"
-            if await self.exec_db(self.table_exists, reportsubtable):
-                q = "select * from {}".format(reportsubtable)
-                await cursor.execute(q)
-                reportsub = {r[0]: json.loads(r[1]) for r in await cursor.fetchall()}
-                self.column_subs[level] = []
-                for i, column in enumerate(new_columns):
-                    module, col = column["col_name"].split("__")
-                    if module == self.mapper_name:
-                        module = "base"
-                    if module in reportsub and col in reportsub[module]:
-                        self.column_subs[level].append(
-                            SimpleNamespace(
-                                module=module,
-                                col=col,
-                                index=i,
-                                subs=reportsub[module][col],
-                            )
-                        )
-                        new_columns[i]["reportsub"] = reportsub[module][col]
-        # display_select_columns
+
+    async def make_report_sub(self, level, conn):
+        from json import loads
+        from types import SimpleNamespace
+        if not level in ["variant", "gene"]:
+            return
+        reportsubtable = f"{level}_reportsub"
+        if not await self.exec_db(self.table_exists, reportsubtable):
+            return
+        cursor = await conn.cursor()
+        q = f"select * from {reportsubtable}"
+        await cursor.execute(q)
+        reportsub = {r[0]: loads(r[1]) for r in await cursor.fetchall()}
+        self.column_subs[level] = []
+        for i, column in enumerate(self.columns[level]):
+            module_name, field_name = self.get_group_field_names(column["col_name"])
+            if module_name == self.mapper_name:
+                module_name = "base"
+            if module_name in reportsub and field_name in reportsub[module_name]:
+                self.column_subs[level].append(
+                    SimpleNamespace(
+                        module=module_name,
+                        col=field_name,
+                        index=i,
+                        subs=reportsub[module_name][field_name],
+                    )
+                )
+                self.columns[level][i]["reportsub"] = reportsub[module_name][field_name]
+
+    def set_display_select_columns(self, level):
         if (
             level in self.extract_columns_multilevel
             and len(self.extract_columns_multilevel[level]) > 0
@@ -890,7 +926,8 @@ class CravatReport:
             self.display_select_columns[level] = True
         else:
             self.display_select_columns[level] = False
-        # column numbers to display
+
+    def set_colnos_to_display(self, level):
         colno = 0
         self.colnos_to_display[level] = []
         for colgroup in self.colinfo[level]["colgroups"]:
@@ -906,6 +943,39 @@ class CravatReport:
                 if include_col:
                     self.colnos_to_display[level].append(colno)
                 colno += 1
+
+    async def make_col_infos(self, add_summary=True):
+        for level in self.levels:
+            await self.exec_db(self.make_col_info, level, add_summary=add_summary)
+
+    async def make_col_info(self, level: str, add_summary=True, conn=None, cursor=None):
+        from ..exceptions import SetupError
+
+        _ = cursor
+        if not conn:
+            raise SetupError()
+        if not await self.exec_db(self.table_exists, level):
+            return
+        await self.exec_db(self.store_mapper)
+        self.modules_to_add_to_base = [self.mapper_name, "tagsampler"]
+        self.colnames_to_display[level] = []
+        await self.make_sorted_column_groups(level, conn)
+        coldefs = await self.make_coldefs(level, conn)
+        if not coldefs:
+            return
+        await self.make_columns_colnos_colnamestodisplay_columngroup(level, coldefs)
+        if not self.nogenelevelonvariantlevel and self.level == "variant":
+            await self.add_gene_level_columns_to_variant_level(conn)
+        if self.level == "gene" and level == "gene" and add_summary:
+            await self.exec_db(self.add_gene_level_summary_columns, level)
+        await self.place_priority_col_groups_first(level)
+        print(f"@ {self.level}:{level} - {self.colnos[level]}")
+        await self.order_columns_to_match_col_groups(level)
+        self.colinfo[level] = {"colgroups": self.columngroups[level], "columns": self.columns[level]}
+        await self.make_report_sub(level, conn)
+        self.set_display_select_columns(level)
+        self.set_colnos_to_display(level)
+        print(f"@ {self.level}:{level} end of make_col_info - {self.colnos[level]}")
 
     def get_standardized_module_option(self, v):
         tv = type(v)
@@ -928,18 +998,16 @@ class CravatReport:
             v = False
         return v
 
-    async def connect_db(self, dbpath=None):
+    async def set_dbpath(self, dbpath=None):
         from os.path import exists
+        from ..exceptions import NoInput
+        from ..exceptions import WrongInput
 
         if dbpath != None:
             self.dbpath = dbpath
         if not self.dbpath:
-            from ..exceptions import NoInput
-
             raise NoInput()
         if not exists(self.dbpath):
-            from ..exceptions import WrongInput
-
             raise WrongInput()
 
     async def close_db(self):
@@ -950,14 +1018,13 @@ class CravatReport:
             await self.cf.close_db()
             self.cf = None
 
-    async def load_filter(self):
+    async def load_filter(self, user=default_user_name):
+        from ..exceptions import SetupError
+        from ..base.cravat_filter import ReportFilter
+
         if self.args is None:
-            from ..exceptions import SetupError
-
             raise SetupError()
-        from ..base.cravat_filter import CravatFilter
-
-        self.cf = await CravatFilter.create(dbpath=self.dbpath)
+        self.cf = await ReportFilter.create(dbpath=self.dbpath, user=user, strict=False)
         await self.cf.exec_db(
             self.cf.loadfilter,
             filter=self.filter,
@@ -1085,8 +1152,7 @@ def report(args, __name__="report"):
             args["conf"] = module_options[module_name]
         reporter = module.Reporter(args)
         response_t = None
-        # try:
-        loop.run_until_complete(reporter.prep())
+        #loop.run_until_complete(reporter.prep())
         response_t = loop.run_until_complete(reporter.run())
         output_fns = None
         if type(response_t) == list:
@@ -1233,6 +1299,11 @@ def get_parser_fn_report():
         "--level",
         default=None,
         help="Level to make a report for. 'all' to include all levels. Other possible levels include 'variant' and 'gene'.",
+    )
+    parser_ov_report.add_argument(
+        "--user",
+        default=default_user_name,
+        help=f"User who is creating this report. Default is {default_user_name}."
     )
     parser_ov_report.set_defaults(func=cli_report)
     return parser_ov_report

@@ -589,86 +589,79 @@ function selectTableFirstRow(tabName) {
   }
 }
 
-async function loadData(alertFlag, finalcallback) {
-  lockTabs();
+async function loadVariantResult(tableOnly=false) {
+  await infomgr.load(jobId, "variant", null, null, filterJson, "job", setResetTab=!tableOnly);
+  setupTab("variant")
+}
+
+async function loadGeneResult (tableOnly=false) {
+  await infomgr.load(jobId, "gene", null, null, filterJson, "job", setResetTab=!tableOnly)
+  setupTab("gene")
+}
+
+function getTabhead(tabName) {
+  return document.getElementById("tabhead_" + tabName)
+}
+
+function disableTabhead(tabName) {
+  var tabhead = getTabhead(tabName)
+  tabhead.classList.add("off")
+}
+
+function enableTabhead(tabName) {
+  var tabhead = getTabhead(tabName)
+  tabhead.classList.remove("off")
+}
+
+function disableAllTabheads() {
+  for (var i=0; i<tabNames.length; i++) {
+    disableTabhead(tabNames[i])
+  }
+}
+
+function refreshVariantTable() {
+  if ($grids["variant"] != undefined) {
+    $grids["variant"].pqGrid("option", "dataModel", {
+      data: infomgr.datas["variant"],
+    })
+    $grids["variant"].pqGrid("refreshDataAndView")
+    updateTableFooterTotalRows("variant")
+  }
+}
+
+async function loadTableDataOnly() {
+  enableLoadingDiv()
+  disableAllTabheads()
+  var pageNoInput = document.getElementById("page-no-input");
+  var pageNoS = pageNoInput.value;
+  pageNo = parseInt(pageNoS);
+  if (isNaN(pageNo)) {
+    return;
+  }
+  await loadVariantResult(tableOnly=true)
+  refreshVariantTable()
+  removeLoadingDiv()
+  await loadGeneResult(tableOnly=true)
+  addGeneLevelToVariantLevel()
+  populateSummaryWidgetDiv()
+  enableUpdateButton()
+  filterArmed = filterJson
+}
+
+async function loadData() {
   var infoReset = resetTab["info"];
   resetTab = { info: infoReset };
-  resetTab["summary"] = true;
   resetTab["variant"] = true;
   resetTab["gene"] = true;
   infomgr.datas = {};
-  var removeSpinner = async function () {
-    addGeneLevelToVariantLevel();
-    if (spinner != null) {
-      spinner.remove();
-    }
-    if (alertFlag) {
-      alert("Data has been loaded.");
-    }
-    if (finalcallback) {
-      finalcallback();
-    }
-    if (currentTab == "info") {
-      changeMenu();
-    }
-    try {
-      populateSummaryWidgetDiv();
-    } catch (e) {
-      console.log(e);
-      console.trace();
-    }
-    //if (currentTab == 'variant' || currentTab == 'gene') {
-    setupTab("variant");
-    //resizesTheWindow(tabName="variant")
-    setupTab("gene");
-    //resizesTheWindow(tabName="gene")
-    //}
-    enableUpdateButton();
-    unlockTabs();
-    removeLoadingDiv()
-  };
-  var loadGeneResult = async function () {
-    var numvar = infomgr.getData("variant").length;
-    if (document.getElementById("infonoticediv")) {
-      notifyOfReadyToLoad();
-    }
-    if (resultLevels.indexOf("gene") != -1) {
-      await infomgr.load(jobId, "gene", removeSpinner, null, filterJson, "job");
-    } else {
-      removeSpinner();
-    }
-  };
-  var loadVariantResult = async function () {
-    async function callLoadVariant() {
-      var callback = null;
-      if (usedAnnotators["gene"]) {
-        callback = loadGeneResult;
-      } else {
-        callback = removeSpinner;
-      }
-      if (resultLevels.indexOf("variant") != -1) {
-        await infomgr.load(jobId, "variant", callback, null, filterJson, "job");
-      } else {
-        await callback();
-      }
-    }
-    if (firstLoad) {
-      firstLoad = false;
-      var numvar = Number(infomgr.jobinfo["Number of unique input variants"]);
-      if (filterJson.length != 0) {
-        infomgr.count(dbPath, "variant", function (numvar) {
-          callLoadVariant();
-        });
-      } else {
-        callLoadVariant();
-      }
-    } else {
-      callLoadVariant();
-    }
-  };
-  //lockTabs();
-  loadVariantResult();
-  filterArmed = filterJson;
+  await loadVariantResult(tableOnly=false)
+  removeLoadingDiv()
+  await loadGeneResult(tableOnly=false)
+  addGeneLevelToVariantLevel()
+  populateSummaryWidgetDiv()
+  enableUpdateButton()
+  filterArmed = filterJson
+  console.log("@ load data end")
 }
 
 function setFilterButtonText() {
@@ -683,19 +676,13 @@ function setFilterButtonText() {
 }
 
 function removeLoadingDiv() {
+  console.log("@ jobDataLoadingDiv=", jobDataLoadingDiv)
   if (jobDataLoadingDiv != null) {
-    jobDataLoadingDiv.parentElement.removeChild(jobDataLoadingDiv);
-    jobDataLoadingDiv = null;
+    console.log("@ removing jobDataLoadingDiv")
+    jobDataLoadingDiv.remove()
+    jobDataLoadingDiv = null
   }
-}
-
-function lockTabs() {
-  $("#tabheads div").css("pointer-events", "none").css("opacity", "0.5");
-  $("#tabhead_info").css("pointer-events", "auto").css("opacity", "1");
-}
-
-function unlockTabs() {
-  $("#tabheads div").css("pointer-events", "auto").css("opacity", "1");
+  console.log("@ done removing jobDataLoadingDiv")
 }
 
 function notifyToUseFilter() {
@@ -853,7 +840,19 @@ async function loadWidgets() {
   }
 }
 
+async function loadJobInfo() {
+  await infomgr.load(
+    jobId,
+    "info",
+    null,
+    null,
+    filterJson,
+    "info"
+  );
+}
+
 async function firstLoadData() {
+  disableAllTabheads()
   var infoReset = resetTab["info"];
   resetTab = { info: infoReset };
   await loadWidgets();
@@ -862,18 +861,10 @@ async function firstLoadData() {
   setupTab("report")
   await loadFilterSettings(quickSaveName, true);
   await loadLayoutSetting(quickSaveName, true);
-  infomgr.load(
-    jobId,
-    "info",
-    async function () {
-      populateInfoDiv(document.getElementById("info_div"));
-      await checkWidgets();
-      loadData(false, showTab("info"));
-    },
-    null,
-    filterJson,
-    "info"
-  );
+  await loadJobInfo()
+  populateInfoDiv(document.getElementById("info_div"));
+  await checkWidgets();
+  loadData(false, showTab("info"));
   setupTab("filter");
 }
 
@@ -1077,14 +1068,11 @@ async function getVariantDbCols() {
 
 async function startData() {
   checkConnection();
-  getVariantDbCols();
+  await getPageSize()
+  await getVariantDbCols();
   await getResultLevels();
-  //addTabHeadsAndTabContentDivs()
-  //lockTabs()
-  currentTab = "info";
-  jobDataLoadingDiv = drawingRetrievingDataDiv(currentTab);
   await getVariantCols();
-  firstLoadData();
+  await firstLoadData();
 }
 
 function changeTab(tabName) {
@@ -1111,7 +1099,7 @@ function changeTab(tabName) {
   selectTableFirstRow(tabName);
 }
 
-function webresult_run() {
+function parseUrl() {
   var urlParams = new URLSearchParams(window.location.search);
   username = urlParams.get("username");
   jobId = urlParams.get("job_id");
@@ -1122,14 +1110,18 @@ function webresult_run() {
   } else {
     separateSample = false;
   }
-  $grids = {};
-  gridObjs = {};
+}
+
+function setTitle() {
   if (jobId != null) {
     document.title = "OakVar: " + jobId;
   } else if (dbPath != null) {
     var toks = dbPath.split("/");
     document.title = "OakVar: " + toks[toks.length - 1];
   }
+}
+
+function setupResizeHandler() {
   var resizeTimeout = null;
   $(window).resize(function (event) {
     shouldResizeScreen = {};
@@ -1144,16 +1136,21 @@ function webresult_run() {
       }, 200);
     }
   });
-  // Chrome won't let you directly set this as window.onbeforeunload = function(){}
-  // it wont work on a refresh then.
-  function triggerAutosave() {
-    if (autoSaveLayout) {
-      filterJson = filterArmed;
-      saveLayoutSetting(quickSaveName);
-      saveFilterSetting(quickSaveName, true);
-    }
+}
+
+function triggerAutosave() {
+  if (autoSaveLayout) {
+    filterJson = filterArmed;
+    saveLayoutSetting(quickSaveName);
+    saveFilterSetting(quickSaveName, true);
   }
+}
+
+function setupAutosave() {
   //window.onbeforeunload = triggerAutosave;
+}
+
+function setupClickHandler() {
   document.addEventListener("click", function (evt) {
     var target = evt.target;
     var tableHeaderContextmenuId = "table-header-contextmenu-" + currentTab;
@@ -1167,5 +1164,27 @@ function webresult_run() {
       turnOffLayoutMenu();
     }
   });
-  startData();
+}
+
+async function getPageSize() {
+  const res = await axios.get("/result/service/pagesize")
+  const data = res.data
+  if (data) {
+    pageSize = data["gui_result_pagesize"]
+  }
+}
+
+function enableLoadingDiv() {
+  jobDataLoadingDiv = drawingRetrievingDataDiv(currentTab);
+}
+
+async function webresult_run() {
+  currentTab = "info";
+  enableLoadingDiv()
+  parseUrl()
+  setTitle()
+  setupResizeHandler()
+  //setupAutosave()
+  setupClickHandler()
+  startData()
 }

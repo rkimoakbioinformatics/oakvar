@@ -121,7 +121,8 @@ def handle_exception(e: Exception):
 
     msg = getattr(e, "msg", None)
     if msg:
-        stderr.write(msg + "\n")
+        stderr.write(msg)
+        stderr.write("\n")
         stderr.flush()
     trc = getattr(e, "traceback", None)
     if trc:
