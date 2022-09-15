@@ -439,7 +439,6 @@ async def get_result(request):
         arg_dict["separatesample"] = True
     arg_dict["reports"] = ["text"]
     reporter = m.Reporter(arg_dict)
-    #await reporter.prep()
     if tab == "variant":
         data = await reporter.run(tab=tab, pagesize=pagesize, page=page, make_filtered_table=make_filtered_table)
     else:
@@ -696,7 +695,6 @@ async def get_colinfo(dbpath, confpath, filterstring):
     arg_dict["reports"] = ["text"]
     reporter = m.Reporter(arg_dict)
     try:
-        #await reporter.prep()
         colinfo = await reporter.get_variant_colinfo()
         await reporter.close_db()
         if reporter.cf is not None:

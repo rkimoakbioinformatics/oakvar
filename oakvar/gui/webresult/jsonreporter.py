@@ -1,4 +1,4 @@
-from oakvar.cli.report import BaseReporter
+from oakvar import BaseReporter
 import sys
 
 

@@ -4,7 +4,8 @@ from typing import List
 import sys
 
 if sys.platform == "win32" and sys.version_info >= (3, 8):
-    from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy
+    from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy # ignore: type
+
     set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 
 report_filter_db_name = "report_filter"

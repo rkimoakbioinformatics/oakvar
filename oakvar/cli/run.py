@@ -474,7 +474,6 @@ class Cravat(object):
             )
         except Exception as e:
             self.exception = e
-            # self.handle_exception(e)
         finally:
             end_time = time()
             display_time = asctime(localtime(end_time))
@@ -493,13 +492,6 @@ class Cravat(object):
                         self.args,
                     )
             else:
-                # if self.args and not self.args.quiet:
-                # if isinstance(exception, ExpectedException):
-                # if self.logger and self.log_path:
-                # from sys import stderr
-                # stderr.write(
-                #    "Log file at {}".format(self.log_path) + "\n")
-                # stderr.flush()
                 if self.status_writer:
                     update_status(
                         "Error",
@@ -1534,7 +1526,6 @@ class Cravat(object):
             arg_dict["conf"] = self.conf
             Reporter = load_class(module.script_path, "Reporter")
             reporter = Reporter(arg_dict)
-            await reporter.prep()
             stime = time()
             response_t = await reporter.run()
             output_fns = None
