@@ -197,28 +197,33 @@ class BaseReporter:
         _ = dbpath
 
     async def prep(self, user=default_user_name):
-        from ..util.util import write_log_msg
-        from ..exceptions import ExpectedException
-        import traceback
+        await self.set_dbpath()
+        await self.connect_db(dbpath=self.dbpath)
+        await self.load_filter(user=user)
 
-        try:
-            await self.set_dbpath()
-            await self.connect_db(dbpath=self.dbpath)
-            await self.load_filter(user=user)
-        except Exception as e:
-            await self.close_db()
-            if not isinstance(e, ExpectedException) or e.traceback:
-                traceback.print_exc()
-                if self.logger:
-                    self.logger.exception(e)
-            else:
-                if self.logger:
-                    if self.args is not None:
-                        write_log_msg(self.logger, e, quiet=self.args.get("quiet"))
-                    else:
-                        write_log_msg(self.logger, e, quiet=False)
-            setattr(e, "handled", True)
-            raise
+    async def check_result_db_for_mandatory_cols(self):
+        from ..exceptions import ResultMissingMandatoryColumnError
+
+        conn = await self.get_db_conn()
+        if not conn or not self.module_conf:
+            return
+        mandatory_columns = self.module_conf.get("mandatory_columns")
+        if not mandatory_columns:
+            return
+        cursor = await conn.cursor()
+        db_col_names = []
+        for level in ["variant", "gene"]:
+            q = f"select col_name from {level}_header"
+            await cursor.execute(q)
+            col_names = await cursor.fetchall()
+            db_col_names.extend([v[0] for v in col_names])
+        missing_col_names = []
+        for col_name in mandatory_columns:
+            if col_name not in db_col_names:
+                missing_col_names.append(col_name)
+        if missing_col_names:
+            cols = ", ".join(missing_col_names)
+            raise ResultMissingMandatoryColumnError(self.dbpath, cols)
 
     def _setup_logger(self):
         if self.module_name is None:
@@ -385,16 +390,17 @@ class BaseReporter:
         from time import localtime
         from asyncio import sleep
 
-        if not self.args or not self.cf or not self.logger:
-            raise SetupError(self.module_name)
-        self.start_time = time()
-        ret = None
-        tab = tab or self.args.get("level", "all")
-        self.log_run_start()
-        if self.setup() == False:
-            await self.close_db()
-            raise SetupError(self.module_name)
         try:
+            await self.prep()
+            if not self.args or not self.cf or not self.logger:
+                raise SetupError(self.module_name)
+            self.start_time = time()
+            ret = None
+            tab = tab or self.args.get("level", "all")
+            self.log_run_start()
+            if self.setup() == False:
+                await self.close_db()
+                raise SetupError(self.module_name)
             self.ftable_uid = None
             if make_filtered_table:
                 ret = await self.cf.make_ftables()
@@ -562,14 +568,21 @@ class BaseReporter:
             datarow.extend([generow[self.colnos["gene"][colname]] for colname in self.var_added_cols])
 
     async def get_variant_colinfo(self):
-        self.setup()
-        level = "variant"
-        if await self.exec_db(self.table_exists, level):
-            await self.exec_db(self.make_col_info, level)
-        level = "gene"
-        if await self.exec_db(self.table_exists, level):
-            await self.exec_db(self.make_col_info, level)
-        return self.colinfo
+        try:
+            await self.prep()
+            if not self.setup():
+                await self.close_db()
+                return None
+            level = "variant"
+            if await self.exec_db(self.table_exists, level):
+                await self.exec_db(self.make_col_info, level)
+            level = "gene"
+            if await self.exec_db(self.table_exists, level):
+                await self.exec_db(self.make_col_info, level)
+            return self.colinfo
+        except:
+            await self.close_db()
+            return None
 
     def setup(self):
         pass
@@ -1077,6 +1090,7 @@ def report(args, __name__="report"):
     from ..util.util import quiet_print
     from ..module.local import get_local_module_info
     from ..system import consts
+    from ..__main__ import handle_exception
 
     dbpath = args.get("dbpath")
     compatible_version, _, _ = is_compatible_version(dbpath)
@@ -1132,36 +1146,38 @@ def report(args, __name__="report"):
     response = {}
     module_names = [v + "reporter" for v in report_types]
     for report_type, module_name in zip(report_types, module_names):
-        module_info = get_local_module_info(module_name)
-        if module_info is None:
-            raise ModuleNotExist(report_type + "reporter")
-        quiet_print(f"Generating {report_type} report... ", args)
-        module_name = module_info.name
-        spec = spec_from_file_location(  # type: ignore
-            module_name, module_info.script_path  # type: ignore
-        )
-        if not spec:
-            continue
-        module = module_from_spec(spec)  # type: ignore
-        if not module or not spec.loader:
-            continue
-        spec.loader.exec_module(module)
-        args["module_name"] = module_name
-        args["do_not_change_status"] = True
-        if module_name in module_options:
-            args["conf"] = module_options[module_name]
-        reporter = module.Reporter(args)
-        response_t = None
-        #loop.run_until_complete(reporter.prep())
-        response_t = loop.run_until_complete(reporter.run())
-        output_fns = None
-        if type(response_t) == list:
-            output_fns = " ".join(response_t)
-        else:
-            output_fns = response_t
-        if output_fns is not None and type(output_fns) == str:
-            quiet_print(f"report created: {output_fns}", args)
-        response[report_type] = response_t
+        try:
+            module_info = get_local_module_info(module_name)
+            if module_info is None:
+                raise ModuleNotExist(report_type + "reporter")
+            quiet_print(f"Generating {report_type} report... ", args)
+            module_name = module_info.name
+            spec = spec_from_file_location(  # type: ignore
+                module_name, module_info.script_path  # type: ignore
+            )
+            if not spec:
+                continue
+            module = module_from_spec(spec)  # type: ignore
+            if not module or not spec.loader:
+                continue
+            spec.loader.exec_module(module)
+            args["module_name"] = module_name
+            args["do_not_change_status"] = True
+            if module_name in module_options:
+                args["conf"] = module_options[module_name]
+            reporter = module.Reporter(args)
+            response_t = None
+            response_t = loop.run_until_complete(reporter.run())
+            output_fns = None
+            if type(response_t) == list:
+                output_fns = " ".join(response_t)
+            else:
+                output_fns = response_t
+            if output_fns is not None and type(output_fns) == str:
+                quiet_print(f"report created: {output_fns}", args)
+            response[report_type] = response_t
+        except Exception as e:
+            handle_exception(e)
     return response
 
 
