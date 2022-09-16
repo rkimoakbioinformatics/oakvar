@@ -1,18 +1,4 @@
 from aiohttp import web
-from cryptography import fernet
-import aiohttp_session
-from aiohttp_session.cookie_storage import EncryptedCookieStorage
-import aiohttp_session
-import base64
-import aiosqlite
-import sqlite3
-import os
-import datetime
-from collections import defaultdict
-import json
-import time
-from base64 import b64decode
-import random
 from oakvar.system import get_system_conf
 
 admindb = None
@@ -26,11 +12,15 @@ class ServerAdminDb ():
     def __init__ (self):
         from oakvar.system import get_conf_dir
         from pathlib import Path
+        from base64 import urlsafe_b64decode
+        from cryptography import fernet
+        from sqlite3 import connect
+        from collections import defaultdict
         global admindb_path
         admindb_path_path = Path(get_conf_dir()) / admindb_fn
         initdb_needed = not admindb_path_path.exists()
         admindb_path = str(admindb_path_path)
-        conn = sqlite3.connect(admindb_path)
+        conn = connect(admindb_path)
         cursor = conn.cursor()
         self.sessions = defaultdict(set)
         if initdb_needed:
@@ -46,7 +36,7 @@ class ServerAdminDb ():
                 if username not in self.sessions:
                     self.sessions[username] = set()
                 self.sessions[username].add(sessionkey)
-        self.secret_key = base64.urlsafe_b64decode(fernet_key)
+        self.secret_key = urlsafe_b64decode(fernet_key)
         cursor.close()
         conn.close()
 
@@ -70,10 +60,11 @@ class ServerAdminDb ():
         pass
 
     async def get_db_conn (self):
+        from aiosqlite import connect
         global admindb_path
         if admindb_path is None:
             return None
-        conn = await aiosqlite.connect(admindb_path)
+        conn = await connect(admindb_path)
         return conn
 
     async def init (self):
@@ -182,12 +173,13 @@ class ServerAdminDb ():
             return True
 
     async def add_user (self, username, passwordhash, question, answerhash):
+        from json import dumps
         conn = await self.get_db_conn()
         if not conn:
             return
         cursor = await conn.cursor()
         default_settings = {'lastAssembly':None}
-        await cursor.execute('insert into users values (?, ?, ?, ?, ?, ?)',[username, "user", passwordhash, question, answerhash, json.dumps(default_settings)])
+        await cursor.execute('insert into users values (?, ?, ?, ?, ?, ?)',[username, "user", passwordhash, question, answerhash, dumps(default_settings)])
         await conn.commit()
         await cursor.close()
         await conn.close()
@@ -222,7 +214,8 @@ class ServerAdminDb ():
 
     async def set_temp_password (self, email):
         from hashlib import sha256
-        temppassword = ''.join([chr(random.randint(97,122)) for _ in range(8)])
+        from random import randint
+        temppassword = ''.join([chr(randint(97,122)) for _ in range(8)])
         m = sha256()
         m.update(temppassword.encode('utf-16be'))
         temppasswordhash = m.hexdigest()
@@ -237,6 +230,8 @@ class ServerAdminDb ():
         return temppassword
 
     async def set_username (self, email, newemail):
+        from os.path import join
+        from os import rename
         from ...system import get_jobs_dir
         conn = await self.get_db_conn()
         if not conn:
@@ -257,9 +252,9 @@ class ServerAdminDb ():
         await cursor.close()
         await conn.close()
         root_jobs_dir = get_jobs_dir()
-        old_job_dir = os.path.join(root_jobs_dir, email)
-        new_job_dir = os.path.join(root_jobs_dir, newemail)
-        os.rename(old_job_dir, new_job_dir)
+        old_job_dir = join(root_jobs_dir, email)
+        new_job_dir = join(root_jobs_dir, newemail)
+        rename(old_job_dir, new_job_dir)
         return ''
 
     async def set_password (self, email, passwordhash):
@@ -403,6 +398,7 @@ class ServerAdminDb ():
         return response
 
     async def get_user_settings (self, username):
+        from json import loads
         conn = await self.get_db_conn()
         if not conn:
             return None
@@ -419,9 +415,10 @@ class ServerAdminDb ():
             if settings is None:
                 return {}
             else:
-                return json.loads(settings)
+                return loads(settings)
 
     async def update_user_settings (self, username, d):
+        from json import dumps
         newsettings = await self.get_user_settings(username)
         if not newsettings:
             return
@@ -430,7 +427,7 @@ class ServerAdminDb ():
         if not conn:
             return
         cursor = await conn.cursor()
-        await cursor.execute('update users set settings=? where email=?',[json.dumps(newsettings), username])
+        await cursor.execute('update users set settings=? where email=?',[dumps(newsettings), username])
         await cursor.close()
         await conn.close()
 
@@ -463,11 +460,13 @@ class ServerAdminDb ():
         await conn.close()
 
     async def write_single_api_access_count_to_db (self, t, count):
+        from time import strftime
+        from time import localtime
         conn = await self.get_db_conn()
         if not conn:
             return
         cursor = await conn.cursor()
-        ts = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(t))
+        ts = strftime('%Y-%m-%d %H:%M:%S', localtime(t))
         q = f'insert into apilog values ("{ts}", {count})'
         await cursor.execute(q)
         await conn.commit()
@@ -494,21 +493,26 @@ async def update_last_active(request):
         await admindb.update_last_active(username, sessionkey)
 
 def get_session_key():
+    from cryptography import fernet
     fernet_key = fernet.Fernet.generate_key()
     session_key = str(fernet_key)
     return session_key
 
 async def setup(app):
+    from aiohttp_session.cookie_storage import EncryptedCookieStorage
+    from aiohttp_session import setup
     if admindb:
         cookie = EncryptedCookieStorage(admindb.secret_key)
-        aiohttp_session.setup(app, cookie)
+        setup(app, cookie)
 
 async def get_session (request):
-    session = await aiohttp_session.get_session(request)
+    from aiohttp_session import get_session
+    session = await get_session(request)
     return session
 
 async def new_session (request):
-    session = await aiohttp_session.new_session(request)
+    from aiohttp_session import new_session
+    session = await new_session(request)
     return session
 
 async def is_loggedin (request):
@@ -564,11 +568,14 @@ async def add_job_info (request, job):
         await admindb.add_job_info(username, job)
 
 def create_user_dir_if_not_exist (username):
+    from os.path import join
+    from os.path import exists
+    from os import mkdir
     from ...system import get_jobs_dir
     root_jobs_dir = get_jobs_dir()
-    user_job_dir = os.path.join(root_jobs_dir, username)
-    if os.path.exists(user_job_dir) == False:
-        os.mkdir(user_job_dir)
+    user_job_dir = join(root_jobs_dir, username)
+    if exists(user_job_dir) == False:
+        mkdir(user_job_dir)
 
 async def signup (request):
     from hashlib import sha256
@@ -606,6 +613,8 @@ async def signup (request):
 
 async def login (request):
     from hashlib import sha256
+    from base64 import urlsafe_b64decode
+    from datetime import datetime
     global servermode
     fail_string = 'fail'
 
@@ -616,7 +625,7 @@ async def login (request):
         auth_toks = auth_header.split()
         if auth_toks[0] != 'Basic' or len(auth_toks) < 2:
             return web.json_response(fail_string)
-        credential_toks = b64decode(auth_toks[1]).decode().split(':')
+        credential_toks = urlsafe_b64decode(auth_toks[1]).decode().split(':')
         if len(credential_toks) < 2:
             return web.json_response(fail_string)
         username, password = credential_toks
@@ -624,11 +633,11 @@ async def login (request):
         if username.startswith('guest_'):
             guest_login = True
             datestr = username.split('_')[2]
-            creation_date = datetime.datetime(
+            creation_date = datetime(
                 int(datestr[:4]), 
                 int(datestr[4:6]), 
                 int(datestr[6:8]))
-            current_date = datetime.datetime.now()
+            current_date = datetime.now()
             days_passed = (current_date - creation_date).days
             guest_lifetime = system_conf.get('guest_lifetime', 7)
             if days_passed > guest_lifetime:
@@ -742,6 +751,7 @@ async def change_password (request):
     return web.json_response(response)
 
 async def check_logged (request):
+    from datetime import datetime
     global servermode
     if servermode:
         if 'Cache-Control' in request.headers:
@@ -763,11 +773,11 @@ async def check_logged (request):
                 email = ''
             if username.startswith('guest_'):
                 datestr = username.split('_')[2]
-                creation_date = datetime.datetime(
+                creation_date = datetime(
                     int(datestr[:4]), 
                     int(datestr[4:6]), 
                     int(datestr[6:8]))
-                current_date = datetime.datetime.now()
+                current_date = datetime.now()
                 days_passed = (current_date - creation_date).days
                 guest_lifetime = system_conf.get('guest_lifetime', 7)
                 days_rem = guest_lifetime - days_passed
@@ -881,14 +891,18 @@ async def get_assembly_stat (request):
     return web.json_response(response)
 
 async def restart (request):
+    from os import execvp
     global servermode
     if servermode:
         r = await is_admin_loggedin(request)
         if r == False:
             return web.json_response({'success': False, 'mgs': 'Only logged-in admin can change the settings.'})
-    os.execvp('wcravat', ['wcravat', '--multiuser', '--headless'])
+    execvp('wcravat', ['wcravat', '--multiuser', '--headless'])
 
 async def show_login_page (request):
+    from os.path import join
+    from os.path import dirname
+    from os.path import abspath
     global servermode
     global server_ready
     global logger
@@ -898,7 +912,7 @@ async def show_login_page (request):
         return web.HTTPFound('/submit/index.html')
     r = await is_loggedin(request)
     if r == False:
-        p = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nocache', 'login.html')
+        p = join(dirname(abspath(__file__)), 'nocache', 'login.html')
         return web.FileResponse(p)
     else:
         if logger:
@@ -929,6 +943,9 @@ noguest = system_conf.get('noguest', False)
 enable_remote_user_header = system_conf.get('enable_remote_user_header', False)
 
 def add_routes (router):
+    from os.path import dirname
+    from os.path import realpath
+    from os.path import join
     router.add_route('GET', '/server/login', login)
     router.add_route('GET', '/server/logout', logout)
     router.add_route('GET', '/server/signup', signup)
@@ -948,6 +965,6 @@ def add_routes (router):
     router.add_route('GET', '/server/nocache/login.html', show_login_page)
     router.add_route('GET', '/server/noguest', get_noguest)
     """
-    router.add_static('/server', os.path.join(os.path.dirname(os.path.realpath(__file__))))
+    router.add_static('/server', join(dirname(realpath(__file__))))
     print(f"@ router=", router, router.items())
 
