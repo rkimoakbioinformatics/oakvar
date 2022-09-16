@@ -1,7 +1,7 @@
-function setupAllTabs() {
+async function setupAllTabs() {
   for (var i = 0; i < resultLevels.length; i++) {
     var level = resultLevels[i];
-    setupTab(level);
+    await setupTab(level);
   }
 }
 
@@ -2394,7 +2394,7 @@ function makeGrid(columns, data, tabName) {
     var prevBtn = getEl("button");
     prevBtn.id = "prev-page-btn";
     addEl(prevBtn, getTn("Prev"));
-    prevBtn.onclick = function (_) {
+    prevBtn.onclick = async function (_) {
       pageNo -= 1;
       if (pageNo >= 1) {
         updatePageNoS();
@@ -2410,7 +2410,7 @@ function makeGrid(columns, data, tabName) {
     pageNoInput.type = "text";
     pageNoInput.size = "4";
     pageNoInput.value = pageNo;
-    pageNoInput.addEventListener("keyup", function (evt) {
+    pageNoInput.addEventListener("keyup", async function (evt) {
       if (evt.key == "Enter") {
         loadTableDataOnly();
       }
@@ -2419,7 +2419,7 @@ function makeGrid(columns, data, tabName) {
     var nextBtn = getEl("button");
     nextBtn.id = "next-page-btn";
     addEl(nextBtn, getTn("Next"));
-    nextBtn.onclick = function (_) {
+    nextBtn.onclick = async function (_) {
       pageNo += 1;
       updatePageNoS();
       loadTableDataOnly();
@@ -2430,7 +2430,7 @@ function makeGrid(columns, data, tabName) {
     pageInput.type = "text";
     pageInput.size = "6";
     pageInput.value = pageSize;
-    pageInput.addEventListener("keyup", function (evt) {
+    pageInput.addEventListener("keyup", async function (evt) {
       if (evt.key == "Enter") {
         pageNo = 1;
         updatePageNoS();
@@ -3215,12 +3215,12 @@ function saveWidgetContent(widgetName, tabName) {
 
 function showInfonoticediv() {
   document.getElementById("infonoticediv").classList.add("show");
-  document.getElementById("infonoticediv").classList.remove("hide");
+  //document.getElementById("infonoticediv").classList.remove("hide");
 }
 
 function hideInfonoticediv() {
   document.getElementById("infonoticediv").classList.remove("show");
-  document.getElementById("infonoticediv").classList.add("hide");
+  //document.getElementById("infonoticediv").classList.add("hide");
 }
 
 function addTextToInfonoticediv(lines) {
@@ -3234,7 +3234,7 @@ function addTextToInfonoticediv(lines) {
     addEl(div, span);
   }
   if (lines.length > 0) {
-    showInfonoticediv();
+    //showInfonoticediv();
   }
 }
 
