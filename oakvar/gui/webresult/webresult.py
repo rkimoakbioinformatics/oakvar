@@ -442,7 +442,7 @@ async def get_result(request):
     if tab == "variant":
         data = await reporter.run(tab=tab, pagesize=pagesize, page=page, make_filtered_table=make_filtered_table)
     else:
-        data = await reporter.run(tab=tab)
+        data = await reporter.run(tab=tab, add_summary=False)
     data["modules_info"] = await get_modules_info(request)
     content = {}
     content["stat"] = {
@@ -556,19 +556,14 @@ async def get_jobid_dbpath(request):
 async def get_variant_cols(request):
     queries = request.rel_url.query
     _, dbpath = await get_jobid_dbpath(request)
-    if "confpath" in queries:
-        confpath = queries["confpath"]
-    else:
-        confpath = None
-    if "filter" in queries:
-        filterstring = queries["filter"]
-    else:
-        filterstring = None
+    confpath = queries.get("confpath")
+    filterstring = queries.get("filter")
+    add_summary = queries.get("add_summary", True)
     data = {}
     data["data"] = {}
     data["stat"] = {}
     data["status"] = {}
-    colinfo = await get_colinfo(dbpath, confpath, filterstring)
+    colinfo = await get_colinfo(dbpath, confpath=confpath, filterstring=filterstring, add_summary=add_summary)
     data["columns"] = {}
     if "variant" in colinfo:
         data["columns"]["variant"] = get_colmodel("variant", colinfo)
@@ -676,16 +671,9 @@ def get_colmodel(tab, colinfo):
     return colModel
 
 
-async def get_colinfo(dbpath, confpath, filterstring):
+async def get_colinfo(dbpath, confpath=None, filterstring=None, add_summary=True):
     reporter_name = "jsonreporter"
-    f, fn, d = imp.find_module(
-        reporter_name,
-        [
-            os.path.join(
-                os.path.dirname(__file__),
-            )
-        ],
-    )
+    f, fn, d = imp.find_module(reporter_name, [os.path.join(os.path.dirname(__file__),)],)
     m = imp.load_module(reporter_name, f, fn, d)  # type: ignore
     arg_dict = {"dbpath": dbpath, "module_name": reporter_name}
     if confpath != None:
@@ -694,8 +682,9 @@ async def get_colinfo(dbpath, confpath, filterstring):
         arg_dict["filterstring"] = filterstring
     arg_dict["reports"] = ["text"]
     reporter = m.Reporter(arg_dict)
+    reporter.levels = await reporter.get_levels_to_run("all")
     try:
-        colinfo = await reporter.get_variant_colinfo()
+        colinfo = await reporter.get_variant_colinfo(add_summary=add_summary)
         await reporter.close_db()
         if reporter.cf is not None:
             await reporter.cf.close_db()

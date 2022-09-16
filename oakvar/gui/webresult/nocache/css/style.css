@@ -1335,3 +1335,11 @@ input:checked + .sample-rd-rej::before {
   }
 }
 /* Spinner end */
+
+.ui-state-highlight,
+.ui-widget-content .ui-state-highlight,
+.ui-widget-header .ui-state-highlight {
+	/*border: 1px solid #dad55e;*/
+	background: #61b5ff;
+	color: #000000;
+}

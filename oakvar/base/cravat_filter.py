@@ -274,17 +274,17 @@ class ReportFilter:
                 await self.connect_dbs()
             await self.exec_db(self.loadfilter)
 
-    async def run_level_based_func(self, cmd):
-        ret = {}
-        if self.level != None:
-            ret[self.level] = await cmd(level=self.level)
-        else:
-            levels = ["variant", "gene"]
-            ret = {}
-            for level in levels:
-                ret_onelevel = await cmd(level=level)
-                ret[level] = ret_onelevel
-        return ret
+    #async def run_level_based_func(self, cmd):
+    #    ret = {}
+    #    if self.level != None:
+    #        ret[self.level] = await cmd(level=self.level)
+    #    else:
+    #        levels = ["variant", "gene"]
+    #        ret = {}
+    #        for level in levels:
+    #            ret_onelevel = await cmd(level=level)
+    #            ret[level] = ret_onelevel
+    #    return ret
 
     def parse_args(self, args):
         from argparse import ArgumentParser
@@ -400,15 +400,17 @@ class ReportFilter:
         await self.create_report_filter_registry_table_if_not_exists(conn)
 
     async def make_db_conns(self):
-        import aiosqlite
+        from aiosqlite import connect
+        from aiosqlite import Row
         if not self.dbpath:
             return None
         if not self.conn_read:
-            self.conn_read = await aiosqlite.connect(self.dbpath)
+            self.conn_read = await connect(self.dbpath)
+            self.conn_read.row_factory = Row
             await self.conn_read.execute("pragma journal_mode=wal")
             await self.create_and_attach_filter_database(self.conn_read)
         if not self.conn_write:
-            self.conn_write = await aiosqlite.connect(self.dbpath)
+            self.conn_write = await connect(self.dbpath)
             await self.conn_write.execute("pragma journal_mode=wal")
             await self.create_and_attach_filter_database(self.conn_write)
 

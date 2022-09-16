@@ -53,11 +53,11 @@ def get_protocol(args={}):
 def setup(args={}):
     from os.path import abspath
 
-    if args["result"]:
+    if args.get("result"):
         args["headless"] = False
-        args["result"] = abspath(args["result"])
-    else:
-        args["headless"] = args["servermode"]
+        args["result"] = abspath(args.get("result"))
+    elif args.get("servermode"):
+        args["headless"] = True
     inject_module_variables(args=args)
     args["ssl_enabled"] = False
 
@@ -322,7 +322,6 @@ def gui(args, __name__="gui"):
     args["logger"] = get_logger(args=args)
     try:
         setup(args=args)
-        print(f"@ args={args}")
         url = get_url(args=args)
         main(url=url, args=args)
     except Exception as e:

@@ -262,7 +262,7 @@ async function getResultLevels() {
   });
   var data = response.data
   var levels = data.levels;
-  pageSize = parseInt(data["gui_result_pagesize"]);
+  //pageSize = parseInt(data["gui_result_pagesize"]);
   if (levels.length > 0 && levels[0] == "NODB") {
     showNoDB();
   } else {
@@ -515,7 +515,7 @@ function removeSpinnerTableDataOnly () {
     updateTableFooterTotalRows("variant");
   }
   enableUpdateButton();
-  unlockTabs();
+  //unlockTabs();
   removeLoadingDiv()
 };
 
@@ -551,7 +551,11 @@ function loadTableDataOnly() {
     return;
   }
   callLoadVariantTableDataOnly()
-    .then(_ => {await loadGeneResultTableDataOnly()})
+  .then(function(_) {
+    loadGeneResultTableDataOnly()
+    .then(function(_) {
+    })
+  })
   filterArmed = filterJson;
 }
 
@@ -579,7 +583,7 @@ function selectTableFirstRow(tabName) {
 }
 
 async function loadData() {
-  lockTabs();
+  //lockTabs();
   var infoReset = resetTab["info"];
   resetTab = { info: infoReset };
   resetTab["variant"] = true;
@@ -602,7 +606,7 @@ async function loadData() {
     setupTab("variant");
     setupTab("gene");
     enableUpdateButton();
-    unlockTabs();
+    //unlockTabs();
     removeLoadingDiv()
   };
   var loadGeneResult = async function () {
@@ -660,13 +664,10 @@ function setFilterButtonText() {
 }
 
 function removeLoadingDiv() {
-  console.log("@ jobDataLoadingDiv=", jobDataLoadingDiv)
   if (jobDataLoadingDiv != null) {
-    console.log("@ removing jobDataLoadingDiv")
     jobDataLoadingDiv.remove()
     jobDataLoadingDiv = null
   }
-  console.log("@ done removing jobDataLoadingDiv")
 }
 
 function notifyToUseFilter() {
@@ -835,7 +836,7 @@ async function loadJobInfo() {
 }
 
 async function firstLoadData() {
-  disableAllTabheads()
+  //disableAllTabheads()
   var infoReset = resetTab["info"];
   resetTab = { info: infoReset };
   await loadWidgets();
@@ -1034,7 +1035,7 @@ async function getVariantDbCols() {
 }
 
 async function startData() {
-  checkConnection();
+  //checkConnection();
   await getPageSize()
   await getVariantDbCols();
   await getResultLevels();

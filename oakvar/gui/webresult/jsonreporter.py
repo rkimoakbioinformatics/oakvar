@@ -20,9 +20,9 @@ class Reporter(BaseReporter):
         self.level = level
 
     def write_table_row(self, row):
-        row = self.substitute_val(self.level, row)
+        #row = self.substitute_val(self.level, row)
         if self.table is not None:
-            self.table.append(list(row))
+            self.table.append([row[col] for col in self.colnames_to_display[self.level]])
 
     def end(self):
         info = {}

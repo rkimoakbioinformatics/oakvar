@@ -2172,7 +2172,7 @@ function websubmit_run() {
   username = urlParams.get("username");
   getServermode();
   connectWebSocket();
-  checkConnection();
+  //checkConnection();
   populatePackageVersions();
   getBaseModuleNames();
   addListeners();

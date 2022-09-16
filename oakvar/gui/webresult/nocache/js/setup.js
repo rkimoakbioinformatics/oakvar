@@ -65,7 +65,7 @@ function setupTab(tabName) {
   }
   changeMenu();
   setTableDetailLayout(tabName);
-  enableTabhead(tabName)
+  //enableTabhead(tabName)
 }
 
 function filterHeaderClick(_) {
@@ -2787,7 +2787,7 @@ function loadGridObject(_, data, tabName, tableTitle, _) {
       row.css("background-color", "white");
     }
     var row = $grids[tabName].pqGrid("getRow", { rowIndxPage: rowNo });
-    row.css("background-color", "#ffc500");
+    row.css("background-color", tableHightlighBackgroundColor);
     if (rowData != undefined) {
       if (
         selectedRowIds[tabName] == null ||
@@ -2833,7 +2833,7 @@ function loadGridObject(_, data, tabName, tableTitle, _) {
     var selRowNo = selectedRowNos[tabName];
     if (selRowNo >= ui.initV && selRowNo <= ui.finalV) {
       var row = $grids[tabName].pqGrid("getRow", { rowIndxPage: selRowNo });
-      row.css("background-color", "#ffc500");
+      row.css("background-color", tableHightlighBackgroundColor);
     }
   };
   gridObject.refreshHeader = function (_, _) {

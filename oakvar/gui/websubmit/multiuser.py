@@ -501,6 +501,7 @@ def get_session_key():
 async def setup(app):
     from aiohttp_session.cookie_storage import EncryptedCookieStorage
     from aiohttp_session import setup
+    admindb = await get_admindb()
     if admindb:
         cookie = EncryptedCookieStorage(admindb.secret_key)
         setup(app, cookie)
@@ -966,5 +967,4 @@ def add_routes (router):
     router.add_route('GET', '/server/noguest', get_noguest)
     """
     router.add_static('/server', join(dirname(realpath(__file__))))
-    print(f"@ router=", router, router.items())
 

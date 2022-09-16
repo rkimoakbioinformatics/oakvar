@@ -56,7 +56,6 @@ function getInputPageSize() {
 }
 
 function isValidInputPageSize(inputPageSize) {
-  console.log(inputPageSize == null, isNaN(inputPageSize), inputPageSize < 0)
   return ! (inputPageSize == null || isNaN(inputPageSize) || inputPageSize <= 0)
 }
 
