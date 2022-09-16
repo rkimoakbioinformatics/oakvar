@@ -568,7 +568,8 @@ class BaseReporter:
     async def get_variant_colinfo(self):
         try:
             await self.prep()
-            if not self.setup():
+            ret = self.setup()
+            if ret == False:
                 await self.close_db()
                 return None
             level = "variant"

@@ -1464,6 +1464,31 @@ async def get_local_module_info_web(request):
     else:
         return web.json_response({})
 
+async def is_system_ready(request):
+    from ...util.admin_util import system_ready
+
+    _ = request
+    return web.json_response(dict(system_ready()))
+
+
+async def serve_favicon(request):
+    from os.path import dirname, realpath, join
+
+    _ = request
+    source_dir = dirname(realpath(__file__))
+    return web.FileResponse(join(source_dir, "..", "favicon.ico"))
+
+
+async def get_webapp_index(request):
+    url = request.path + "/index.html"
+    if len(request.query) > 0:
+        url = url + "?"
+        for k, v in request.query.items():
+            url += k + "=" + v + "&"
+        url = url.rstrip("&")
+    return web.HTTPFound(url)
+
+
 filerouter = FileRouter()
 routes = []
 routes.append(["POST", "/submit/submit", submit])
@@ -1495,6 +1520,9 @@ routes.append(["GET", "/submit/updateresultdb", update_result_db])
 routes.append(["POST", "/submit/import", import_job])
 routes.append(["GET", "/submit/resubmit", resubmit])
 routes.append(["GET", "/submit/localmodules/{module}", get_local_module_info_web])
+routes.append(["GET", "/issystemready", is_system_ready])
+routes.append(["GET", "/favicon.ico", serve_favicon])
+routes.append(["GET", "/webapps/{module}", get_webapp_index])
 
 if __name__ == "__main__":
     app = web.Application()

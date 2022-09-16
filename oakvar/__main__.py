@@ -118,6 +118,9 @@ def get_entry_parser():
 
 def handle_exception(e: Exception):
     from sys import stderr
+    from traceback import print_exc
+    from .exceptions import ExpectedException
+    import sys
 
     msg = getattr(e, "msg", None)
     if msg:
@@ -126,12 +129,7 @@ def handle_exception(e: Exception):
         stderr.flush()
     trc = getattr(e, "traceback", None)
     if trc:
-        from traceback import print_exc
-
         print_exc()
-    from .exceptions import ExpectedException
-    import sys
-
     isatty = hasattr(sys, "ps1")  # interactive shell?
     halt = getattr(e, "halt", False)
     returncode = getattr(e, "returncode", 1)

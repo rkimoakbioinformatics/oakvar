@@ -22,18 +22,6 @@ servermode = False
 server_ready = False
 admindb_path = None
 
-async def admindb_func(func):
-    async def run_admindb_func(*args, **kwargs):
-        global admindb
-        global servermode
-        global server_ready
-        if not servermode or not server_ready or not admindb:
-            return web.HTTPUnauthorized()
-        ret = await func(admindb=admindb, *args, **kwargs)
-        return ret
-
-    return run_admindb_func
-
 class ServerAdminDb ():
     def __init__ (self):
         from oakvar.system import get_conf_dir
@@ -486,10 +474,22 @@ class ServerAdminDb ():
         await cursor.close()
         await conn.close()
 
+async def admindb_func(func):
+    async def run_admindb_func(*args, **kwargs):
+        global servermode
+        global server_ready
+        if not servermode or not server_ready:
+            return web.HTTPUnauthorized()
+        ret = await func(admindb=get_admindb(), *args, **kwargs)
+        return ret
+
+    return run_admindb_func
+
 async def update_last_active(request):
     session = await get_session(request)
     username = session.get('username')
     sessionkey = session.get('sessionkey')
+    admindb = await get_admindb()
     if username and sessionkey and admindb:
         await admindb.update_last_active(username, sessionkey)
 
@@ -914,10 +914,12 @@ async def update_user_settings (admindb, request, d):
     session = await get_session(request)
     return await admindb.update_user_settings(session['username'], d)
 
-async def setup_module ():
+async def get_admindb():
     global admindb
-    admindb = ServerAdminDb()
-    await admindb.init()
+    if not admindb:
+        admindb = ServerAdminDb()
+        await admindb.init()
+    return admindb
 
 async def get_noguest(_):
     return web.json_response(noguest)
