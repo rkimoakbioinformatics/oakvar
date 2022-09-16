@@ -1,6 +1,6 @@
 from ..decorators import cli_func
 from ..decorators import cli_entry
-from ..base.cravat_filter import default_user_name
+from ..base.cravat_filter import DEFAULT_USER_NAME
 import sys
 import nest_asyncio
 from typing import List
@@ -16,7 +16,6 @@ if sys.platform == "win32" and sys.version_info >= (3, 8):
 class BaseReporter:
     def __init__(self, args):
         from ..util.admin_util import get_user_conf
-        from asyncio import get_event_loop
         self.cf = None
         self.filtertable = "filter"
         self.colinfo = {}
@@ -62,6 +61,7 @@ class BaseReporter:
         self.no_log = False
         self.colcount = {}
         self.columns = {}
+        self.conns = []
         self.gene_summary_datas = {}
         self.priority_colgroupnames = (get_user_conf() or {}).get("report_module_order", [
             "base",
@@ -72,17 +72,15 @@ class BaseReporter:
             "hg18",
         ])
         self.modules_to_add_to_base = []
-        self.user = default_user_name
+        self.user = DEFAULT_USER_NAME
         self.parse_cmd_args(args)
         self._setup_logger()
-        loop = get_event_loop()
-        loop.run_until_complete(self.prep(user=self.user))
 
     async def exec_db(self, func, *args, **kwargs):
         from ..exceptions import DatabaseConnectionError
 
         conn = await self.get_db_conn()
-        if conn is None:
+        if not conn:
             raise DatabaseConnectionError(self.module_name)
         cursor = await conn.cursor()
         try:
@@ -183,7 +181,9 @@ class BaseReporter:
             self.extract_columns_multilevel = self.get_standardized_module_option(
                 self.confs.get("extract_columns", {})
             )
+        self.add_summary = not args.get("no_summary", False)
         self.args = args
+
 
     def should_write_level(self, level):
         if self.levels_to_write is None:
@@ -196,7 +196,7 @@ class BaseReporter:
     async def connect_db (self, dbpath=None):
         _ = dbpath
 
-    async def prep(self, user=default_user_name):
+    async def prep(self, user=DEFAULT_USER_NAME):
         await self.set_dbpath()
         await self.connect_db(dbpath=self.dbpath)
         await self.load_filter(user=user)
@@ -205,10 +205,14 @@ class BaseReporter:
         from ..exceptions import ResultMissingMandatoryColumnError
 
         conn = await self.get_db_conn()
-        if not conn or not self.module_conf:
+        if not conn:
+            return
+        if not self.module_conf:
+            await conn.close()
             return
         mandatory_columns = self.module_conf.get("mandatory_columns")
         if not mandatory_columns:
+            await conn.close()
             return
         cursor = await conn.cursor()
         db_col_names = []
@@ -221,6 +225,7 @@ class BaseReporter:
         for col_name in mandatory_columns:
             if col_name not in db_col_names:
                 missing_col_names.append(col_name)
+        await conn.close()
         if missing_col_names:
             cols = ", ".join(missing_col_names)
             raise ResultMissingMandatoryColumnError(self.dbpath, cols)
@@ -244,8 +249,9 @@ class BaseReporter:
 
         if self.dbpath is None:
             return None
-        if self.conn is None:
+        if not self.conn:
             self.conn = await aiosqlite.connect(self.dbpath)
+            self.conns.append(self.conn)
         return self.conn
 
     def _log_exception(self, e, halt=True):
@@ -376,7 +382,7 @@ class BaseReporter:
             return []
         return levels
 
-    async def run(self, tab="all", add_summary=True, pagesize=None, page=None, make_filtered_table=True, user=default_user_name):
+    async def run(self, tab="all", add_summary=None, pagesize=None, page=None, make_filtered_table=True, user=DEFAULT_USER_NAME, dictrow=False):
         from ..exceptions import SetupError
         from time import time
         from time import asctime
@@ -384,6 +390,9 @@ class BaseReporter:
 
         _ = user
         try:
+            if add_summary is None:
+                add_summary = self.add_summary
+            self.dictrow = dictrow
             await self.prep()
             if not self.args or not self.cf or not self.logger:
                 raise SetupError(self.module_name)
@@ -394,11 +403,7 @@ class BaseReporter:
             if self.setup() == False:
                 await self.close_db()
                 raise SetupError(self.module_name)
-            self.ftable_uid = None
-            if make_filtered_table:
-                ret = await self.cf.make_ftables()
-                if ret:
-                    self.ftable_uid = ret["uid"]
+            self.ftable_uid = await self.cf.make_ftables_and_ftable_uid(make_filtered_table=make_filtered_table)
             self.levels = await self.get_levels_to_run(tab)
             for level in self.levels:
                 self.level = level
@@ -435,6 +440,7 @@ class BaseReporter:
         self.write_header(level)
         self.hugo_colno = self.colnos[level].get("base__hugo", None)
         datacols = await self.cf.exec_db(self.cf.get_variant_data_cols)
+        #self.ftable_uid = await self.cf.make_ftables_and_ftable_uid(make_filtered_table=make_filtered_table)
         total_norows = await self.cf.exec_db(self.cf.get_ftable_num_rows, level=level, uid=self.ftable_uid, ftype=level)
         if datacols is None or total_norows is None:
             return
@@ -535,16 +541,17 @@ class BaseReporter:
         for mi, _, _ in self.summarizing_modules:
             module_name = mi.name
             [gene_summary_data, cols] = self.gene_summary_datas[module_name]
+            grp_name = "base" if self.should_be_in_base(module_name) else module_name
             if (
                 hugo in gene_summary_data
                 and gene_summary_data[hugo] is not None
                 and len(gene_summary_data[hugo]) == len(cols)
             ):
                 datarow.update(
-                    {col["name"]: gene_summary_data[hugo][col["name"]] for col in cols}
+                    {f"{grp_name}__{col['name']}": gene_summary_data[hugo][col["name"]] for col in cols}
                 )
             else:
-                datarow.extend({col["name"]: None for col in cols})
+                datarow.extend({f"{grp_name}__{col['name']}": None for col in cols})
 
     async def add_gene_level_data_to_variant_level(self, datarow):
         if self.nogenelevelonvariantlevel or self.hugo_colno is None or not self.cf:
@@ -562,13 +569,8 @@ class BaseReporter:
             if ret == False:
                 await self.close_db()
                 return None
+            self.levels = await self.get_levels_to_run("all")
             await self.make_col_infos(add_summary=add_summary)
-            #level = "variant"
-            #if await self.exec_db(self.table_exists, level):
-            #    await self.exec_db(self.make_col_info, level)
-            #level = "gene"
-            #if await self.exec_db(self.table_exists, level):
-            #    await self.exec_db(self.make_col_info, level)
             return self.colinfo
         except:
             await self.close_db()
@@ -590,7 +592,10 @@ class BaseReporter:
         pass
 
     def get_extracted_row(self, row):
-        filtered_row = {col: row[col] for col in self.cols_to_display[self.level]}
+        if self.dictrow:
+            filtered_row = {col: row[col] for col in self.cols_to_display[self.level]}
+        else:
+            filtered_row = [row[col] for col in self.colnames_to_display[self.level]]
         return filtered_row
 
     def add_to_colnames_to_display(self, level, column):
@@ -660,6 +665,7 @@ class BaseReporter:
             if group_name == "base" or group_name in self.modules_to_add_to_base:
                 coldef = ColumnDefinition({})
                 coldef.from_json(coljson)
+                coldef.level = level
                 coldef = await self.gather_col_categories(level, coldef, conn)
                 coldefs.append(coldef)
         for row in rows:
@@ -669,6 +675,7 @@ class BaseReporter:
                 continue
             coldef = ColumnDefinition({})
             coldef.from_json(coljson)
+            coldef.level = level
             coldef = await self.gather_col_categories(level, coldef, conn)
             coldefs.append(coldef)
         return coldefs
@@ -754,9 +761,8 @@ class BaseReporter:
         local_modules.update(get_local_module_infos_of_type("postaggregator"))
         summarizer_module_names = []
         for module_name in done_var_annotators:
-            if module_name in [
+            if module_name == self.mapper_name or module_name in [
                 "base",
-                "gencode",
                 "hg38",
                 "hg19",
                 "hg18",
@@ -807,7 +813,10 @@ class BaseReporter:
             self.columngroups[level].append(columngroup)
             for col in cols:
                 coldef = ColumnDefinition(col)
-                coldef.name = mi.name + "__" + coldef.name
+                if self.should_be_in_base(mi.name):
+                    coldef.name = f"base__{coldef.name}"
+                else:
+                    coldef.name = f"{mi.name}__{coldef.name}"
                 coldef.genesummary = True
                 column = coldef.get_colinfo()
                 self.columns[level].append(column)
@@ -1000,14 +1009,18 @@ class BaseReporter:
             raise WrongInput()
 
     async def close_db(self):
-        if hasattr(self, "conn") and self.conn is not None:
-            await self.conn.close()
-            self.conn = None
+        import sqlite3
+        for conn in self.conns:
+            if type(conn) == sqlite3.Connection:
+                conn.close()
+            else:
+                await conn.close()
+        self.conns = []
         if self.cf is not None:
             await self.cf.close_db()
             self.cf = None
 
-    async def load_filter(self, user=default_user_name):
+    async def load_filter(self, user=DEFAULT_USER_NAME):
         from ..exceptions import SetupError
         from ..base.cravat_filter import ReportFilter
 
@@ -1294,8 +1307,14 @@ def get_parser_fn_report():
     )
     parser_ov_report.add_argument(
         "--user",
-        default=default_user_name,
-        help=f"User who is creating this report. Default is {default_user_name}."
+        default=DEFAULT_USER_NAME,
+        help=f"User who is creating this report. Default is {DEFAULT_USER_NAME}."
+    )
+    parser_ov_report.add_argument(
+        "--no-summary",
+        action="store_true",
+        default=False,
+        help="Skip gene level summarization. This saves time."
     )
     parser_ov_report.set_defaults(func=cli_report)
     return parser_ov_report

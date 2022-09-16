@@ -8,22 +8,23 @@ if sys.platform == "win32" and sys.version_info >= (3, 8):
 
     set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 
-report_filter_db_name = "report_filter"
-report_filter_db_dirname = "report_filters"
-report_filter_registry_name = "registry"
-default_user_name = "default"
-default_filter_name = "default"
-sample_to_filter_table_name = "fsamplegiven"
-gene_to_filter_table_name = "fgenegiven"
-report_filter_in_progress = "in_progress"
-report_filter_ready = "ready"
-report_filter_not_needed = "not_needed"
-ref_col_names = {
+REPORT_FILTER_DB_NAME = "report_filter"
+REPORT_FILTER_DB_DIRNAME = "report_filters"
+REPORT_FILTER_REGISTRY_NAME = "registry"
+DEFAULT_USER_NAME = "default"
+DEFAULT_FILTER_NAME = "default"
+SAMPLE_TO_FILTER_TABLE_NAME = "fsamplegiven"
+GENE_TO_FILTER_TABLE_NAME = "fgenegiven"
+REPORT_FILTER_IN_PROGRESS = "in_progress"
+REPORT_FILTER_READY = "ready"
+REPORT_FILTER_NOT_NEEDED = "not_needed"
+REF_COL_NAMES = {
     "variant": "base__uid",
     "gene": "base__hugo",
     "sample": "base__uid",
     "mapping": "base__uid"
 }
+level_prefixes = {"variant": "v", "gene": "g"}
 
 class FilterColumn(object):
 
@@ -51,17 +52,18 @@ class FilterColumn(object):
         self.value = d.get("value")
         self.negate = d.get("negate", False)
         self.parent_operator = parent_operator
+        self.level = d.get("level")
 
     def __repr__(self):
         return f"{self.column} {self.test} {self.value}"
 
     def get_sql(self):
         s = ""
-        # TODO unify this to a single if/else on self.test
+        col_name = f"{level_prefixes[self.level]}.{self.column}"
         if self.test == "multicategory":
-            s = '{} like "%{}%"'.format(self.column, self.value[0])
+            s = '{} like "%{}%"'.format(col_name, self.value[0])
             for v in self.value[1:]:
-                s += ' or {} like "%{}%"'.format(self.column, v)
+                s += ' or {} like "%{}%"'.format(col_name, v)
         elif self.test in ("select", "in"):
             ss = []
             for val in self.value:
@@ -69,13 +71,13 @@ class FilterColumn(object):
                     val = '"{}"'.format(val)
                 else:
                     val = str(val)
-                ss.append(f"({self.column} = {val})")
+                ss.append(f"({col_name} = {val})")
             if ss:
                 s = "(" + f" or ".join(ss) + ")"
             else:
                 s = ""
         else:
-            s = "{col} {opr}".format(col=self.column, opr=self.test2sql[self.test])
+            s = "{col} {opr}".format(col=col_name, opr=self.test2sql[self.test])
             sql_val = None
             if self.test == "equals":
                 if type(self.value) is list:
@@ -89,7 +91,7 @@ class FilterColumn(object):
                             v = '"' + v + '"'
                         else:
                             v = str(v)
-                        sql_val += " OR {} == {}".format(self.column, v)
+                        sql_val += " OR {} == {}".format(col_name, v)
                 else:
                     if type(self.value) is str:
                         sql_val = '"{}"'.format(self.value)
@@ -174,7 +176,8 @@ class ReportFilter:
         includesample=None,
         excludesample=None,
         strict=True,
-        user=default_user_name
+        user=DEFAULT_USER_NAME,
+        uid=None,
     ):
         self = ReportFilter(
             dbpath=dbpath,
@@ -187,7 +190,8 @@ class ReportFilter:
             includesample=includesample,
             excludesample=excludesample,
             strict=strict,
-            user=user
+            user=user,
+            uid=uid,
         )
         await self.second_init()
         return self
@@ -204,7 +208,8 @@ class ReportFilter:
         excludesample=None,
         mode="sub",
         strict=True,
-        user=default_user_name
+        user=DEFAULT_USER_NAME,
+        uid=None,
     ):
         from os.path import abspath
         self.mode = mode
@@ -242,7 +247,7 @@ class ReportFilter:
         self.column_prefixes = {}
         self.conn_read = None
         self.conn_write = None
-        self.uid = None
+        self.uid = uid
         self.user = self.escape_user(user)
 
     async def get_module_version_in_job(self, module_name, cursor_read=Any, cursor_write=Any):
@@ -359,7 +364,7 @@ class ReportFilter:
         from ..system import get_user_conf_dir
         from os.path import join
         user_conf_dir = get_user_conf_dir()
-        return join(user_conf_dir, report_filter_db_dirname)
+        return join(user_conf_dir, REPORT_FILTER_DB_DIRNAME)
 
     def escape_user(self, user):
         return "".join([c if c.isalnum() else "_" for c in user])
@@ -375,11 +380,11 @@ class ReportFilter:
         return join(report_filter_db_dir, report_filter_db_fn)
 
     def get_report_filter_registry_table_name(self):
-        return f"{report_filter_db_name}.{report_filter_registry_name}"
+        return f"{REPORT_FILTER_DB_NAME}.{REPORT_FILTER_REGISTRY_NAME}"
 
     async def create_report_filter_registry_table_if_not_exists(self, conn):
         cursor = await conn.cursor()
-        q = f"create table if not exists {report_filter_db_name}.{report_filter_registry_name} ( uid int, user text, dbpath text, filterjson text, status text )"
+        q = f"create table if not exists {REPORT_FILTER_DB_NAME}.{REPORT_FILTER_REGISTRY_NAME} ( uid int, user text, dbpath text, filterjson text, status text )"
         await cursor.execute(q)
         await conn.commit()
         await cursor.close()
@@ -394,7 +399,7 @@ class ReportFilter:
         if not exists(report_filter_db_dir):
             mkdir(report_filter_db_dir)
         report_filter_db_path = self.get_report_filter_db_path()
-        q = f"attach database '{report_filter_db_path}' as {report_filter_db_name}"
+        q = f"attach database '{report_filter_db_path}' as {REPORT_FILTER_DB_NAME}"
         await cursor.execute(q)
         await cursor.close()
         await self.create_report_filter_registry_table_if_not_exists(conn)
@@ -648,7 +653,7 @@ class ReportFilter:
     def get_sample_to_filter_table_name(self, uid=None):
         if not uid:
             return None
-        return f"{report_filter_db_name}.{sample_to_filter_table_name}_{uid}"
+        return f"{REPORT_FILTER_DB_NAME}.{SAMPLE_TO_FILTER_TABLE_NAME}_{uid}"
 
     async def remove_temporary_tables(self, uid=None, cursor_read=Any, cursor_write=Any, gene_to_filter=None, sample_to_filter=None):
         if not self.conn_write:
@@ -697,14 +702,14 @@ class ReportFilter:
         if not self.filter or not self.dbpath or not cursor_read:
             return None
         filterjson = dumps(self.filter)
-        q = f"select uid, status from {report_filter_db_name}.{report_filter_registry_name} where user=? and dbpath=? and filterjson=?"
+        q = f"select uid, status from {REPORT_FILTER_DB_NAME}.{REPORT_FILTER_REGISTRY_NAME} where user=? and dbpath=? and filterjson=?"
         while True:
             await cursor_read.execute(q, (self.user, self.dbpath, filterjson))
             ret = await cursor_read.fetchone()
             if not ret:
                 return None
             [uid, status] = ret
-            if status == report_filter_in_progress:
+            if status == REPORT_FILTER_IN_PROGRESS:
                 print(f"waiting for report filter {uid} to be made...")
                 await sleep(1)
                 continue
@@ -712,7 +717,7 @@ class ReportFilter:
 
     async def get_new_report_filter_uid(self, cursor_read=Any, cursor_write=Any):
         _ = cursor_write
-        q = f"select uid from {report_filter_db_name}.{report_filter_registry_name}"
+        q = f"select uid from {REPORT_FILTER_DB_NAME}.{REPORT_FILTER_REGISTRY_NAME}"
         await cursor_read.execute(q)
         rets = await cursor_read.fetchall()
         if len(rets) == 0:
@@ -724,9 +729,6 @@ class ReportFilter:
                 return prev_uid + 1
             prev_uid = uid
         return prev_uid + 1
-
-    def get_filtered_variant_table_name(self, uid):
-        return f"filtered_variant_{uid}"
 
     async def get_filtered_hugo_list(self, cursor_read=Any, cursor_write=Any):
         _ = cursor_write
@@ -745,8 +747,8 @@ class ReportFilter:
             return
         _ = cursor_read
         filterjson = dumps(self.filter)
-        q = f"insert into {report_filter_db_name}.{report_filter_registry_name} ( uid, user, dbpath, filterjson, status) values (?, ?, ?, ?, ?)"
-        await cursor_write.execute(q, (uid, self.user, self.dbpath, filterjson, report_filter_in_progress))
+        q = f"insert into {REPORT_FILTER_DB_NAME}.{REPORT_FILTER_REGISTRY_NAME} ( uid, user, dbpath, filterjson, status) values (?, ?, ?, ?, ?)"
+        await cursor_write.execute(q, (uid, self.user, self.dbpath, filterjson, REPORT_FILTER_IN_PROGRESS))
         await self.conn_write.commit()
 
     def should_bypass_filter(self):
@@ -755,16 +757,7 @@ class ReportFilter:
     def get_ftable_name(self, uid=None, ftype=None):
         if not uid or not ftype:
             return None
-        return f"{report_filter_db_name}.f{ftype}_{uid}"
-
-    async def drop_ftable(self, uid=None, ftype=None, cursor_read=Any, cursor_write=Any):
-        if not self.conn_write or not ftype or not uid:
-            return
-        _ = cursor_read
-        table_name = self.get_ftable_name(uid=uid, ftype=ftype)
-        q = f"drop table if exists {table_name}"
-        await cursor_write.execute(q)
-        await self.conn_write.commit()
+        return f"{REPORT_FILTER_DB_NAME}.f{ftype}_{uid}"
 
     def get_fvariant_sql(self, uid=None, gene_to_filter=None, sample_to_filter=None):
         q = f"select v.base__uid from main.variant as v"
@@ -852,33 +845,56 @@ class ReportFilter:
         await cursor_write.execute(q, (status,))
         await self.conn_write.commit()
 
+    async def remove_ftables(self, uid, cursor_read=Any, cursor_write=Any):
+        _ = cursor_read
+        for level in ["variant", "gene"]:
+            q = f"drop table if exists f{level}_{uid}"
+            await cursor_write.execute(q)
+        q = f"delete from registry where uid=?"
+        await cursor_write.execute(q, (uid,))
+        if self.conn_write:
+            await self.conn_write.commit()
+
+    async def drop_ftable(self, uid=None, ftype=None, cursor_read=Any, cursor_write=Any):
+        if not self.conn_write or not ftype or not uid:
+            return
+        _ = cursor_read
+        table_name = self.get_ftable_name(uid=uid, ftype=ftype)
+        q = f"drop table if exists {table_name}"
+        await cursor_write.execute(q)
+        await self.conn_write.commit()
+
     async def make_ftables(self):
         if self.should_bypass_filter():
             return None
         if not self.filter:
-            return {"uid": None, "status": report_filter_not_needed}
+            return {"uid": None, "status": REPORT_FILTER_NOT_NEEDED}
         ret = await self.exec_db(self.get_existing_report_filter_status)
         if ret:
             self.uid = ret["uid"]
             return ret
         uid = await self.exec_db(self.get_new_report_filter_uid)
         self.uid = uid
-        # register
-        await self.exec_db(self.register_new_report_filter, uid=uid)
-        # samples to filter
-        sample_to_filter = self.get_sample_to_filter()
-        if sample_to_filter:
-            [req, rej] = sample_to_filter
-            await self.exec_db(self.make_sample_to_filter_table, uid=uid, req=req, rej=rej)
-        # genes to filter
-        gene_to_filter = self.get_gene_to_filter()
-        if gene_to_filter:
-            await self.exec_db(self.make_gene_to_filter_table, uid=uid, genes=gene_to_filter)
-        await self.make_fvariant(uid=uid, sample_to_filter=sample_to_filter, gene_to_filter=gene_to_filter)
-        await self.make_fgene(uid=uid)
-        await self.exec_db(self.remove_temporary_tables, uid=uid, gene_to_filter=gene_to_filter, sample_to_filter=sample_to_filter)
-        await self.exec_db(self.set_registry_status, uid=uid, status=report_filter_ready)
-        return {"uid": uid, "status": report_filter_ready}
+        try:
+            # register
+            await self.exec_db(self.register_new_report_filter, uid=uid)
+            # samples to filter
+            sample_to_filter = self.get_sample_to_filter()
+            if sample_to_filter:
+                [req, rej] = sample_to_filter
+                await self.exec_db(self.make_sample_to_filter_table, uid=uid, req=req, rej=rej)
+            # genes to filter
+            gene_to_filter = self.get_gene_to_filter()
+            if gene_to_filter:
+                await self.exec_db(self.make_gene_to_filter_table, uid=uid, genes=gene_to_filter)
+            await self.make_fvariant(uid=uid, sample_to_filter=sample_to_filter, gene_to_filter=gene_to_filter)
+            await self.make_fgene(uid=uid)
+            await self.exec_db(self.remove_temporary_tables, uid=uid, gene_to_filter=gene_to_filter, sample_to_filter=sample_to_filter)
+            await self.exec_db(self.set_registry_status, uid=uid, status=REPORT_FILTER_READY)
+            return {"uid": uid, "status": REPORT_FILTER_READY}
+        except Exception as e:
+            await self.exec_db(self.remove_ftables, uid)
+            raise e
 
     async def get_variant_data_cols(self, cursor_read=Any, cursor_write=Any) -> List[str]:
         _ = cursor_write
@@ -899,22 +915,25 @@ class ReportFilter:
         ret = await cursor_read.fetchone()
         return ret[0]
 
-    async def get_level_data_iterator(self, level, page=None, pagesize=None):
+    async def get_level_data_iterator(self, level, page=None, pagesize=None, uid=None):
         if not level:
             return None
         if not self.conn_read:
             return None
-        ref_col_name = ref_col_names.get(level)
+        ref_col_name = REF_COL_NAMES.get(level)
         if not ref_col_name:
             return None
         cursor_read = await self.conn_read.cursor()
-        filter_uid_status = await self.exec_db(self.get_existing_report_filter_status)
+        if not uid:
+            filter_uid_status = await self.exec_db(self.get_existing_report_filter_status)
+            if filter_uid_status:
+                uid = filter_uid_status.get("uid")
         q = f"select d.* from main.{level} as d"
-        if filter_uid_status:
-            ftable = self.get_ftable_name(uid=filter_uid_status["uid"], ftype=level)
+        if uid:
+            ftable = self.get_ftable_name(uid=uid, ftype=level)
             q += f" join {ftable} as f on d.{ref_col_name}=f.{ref_col_name}"
         if page and pagesize:
-            offset = (page - 1) * pagesize + 1
+            offset = (page - 1) * pagesize
             q += f" limit {pagesize} offset {offset}"
         await cursor_read.execute(q)
         rows = await cursor_read.fetchall()
@@ -939,7 +958,7 @@ class ReportFilter:
     def get_gene_to_filter_table_name(self, uid=None):
         if not uid:
             return None
-        return f"{report_filter_db_name}.{gene_to_filter_table_name}_{uid}"
+        return f"{REPORT_FILTER_DB_NAME}.{GENE_TO_FILTER_TABLE_NAME}_{uid}"
 
     async def make_gene_to_filter_table(self, uid=None, genes=None, cursor_read=Any, cursor_write=Any):
         if not self.conn_write:
@@ -983,7 +1002,7 @@ class ReportFilter:
             if self.savefiltername != None:
                 name = self.savefiltername
             else:
-                name = default_filter_name
+                name = DEFAULT_FILTER_NAME
         # Creates filter save table if not exists.
         await cursor_read.execute(
             "select name from sqlite_master where "
@@ -1021,7 +1040,7 @@ class ReportFilter:
             if self.savefiltername != None:
                 name = self.savefiltername
             else:
-                name = default_filter_name
+                name = DEFAULT_FILTER_NAME
         # Creates filter save table if not exists.
         await cursor_read.execute(
             "select name from sqlite_master where "
@@ -1152,6 +1171,28 @@ class ReportFilter:
             output_columns.append(d)
         return output_columns
 
+    def get_bypassfilter(self):
+        bypassfilter = (
+            not self.filter
+            and not self.filtersql
+            and not self.includesample
+            and not self.excludesample
+        )
+        return bypassfilter
+
+    async def make_ftables_and_ftable_uid(self, make_filtered_table=True):
+        self.ftable_uid = None
+        if not self.get_bypassfilter() or make_filtered_table:
+            ret = await self.make_ftables()
+            if ret:
+                ftable_uid = ret["uid"]
+                return ftable_uid
+
+    async def getcount(self, level="variant", uid=None):
+        if not uid:
+            uid = await self.make_ftables_and_ftable_uid()
+        total_norows = await self.exec_db(self.get_ftable_num_rows, level=level, uid=uid, ftype=level)
+        return total_norows
 
 def regexp(y, x, search=None):
     import re
@@ -1162,12 +1203,3 @@ def regexp(y, x, search=None):
         return 0
     return 1 if search(y, x) else 0
 
-
-def main():
-    #import sys
-    from asyncio import new_event_loop
-
-    loop = new_event_loop()
-    #cv = loop.run_until_complete(ReportFilter.create(mode="main"))
-    #loop.run_until_complete(cv.run(args=sys.argv[1:]))
-    loop.close()

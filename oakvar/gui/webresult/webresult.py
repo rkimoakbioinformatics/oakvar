@@ -346,11 +346,11 @@ def get_widgetlist(_):
 
 
 async def get_count(request):
+    from ...exceptions import DatabaseConnectionError
+
     global logger
     _, dbpath = await get_jobid_dbpath(request)
     if dbpath is None:
-        from ...exceptions import DatabaseConnectionError
-
         raise DatabaseConnectionError("result database")
     queries = await request.json()
     tab = queries["tab"]
@@ -363,10 +363,7 @@ async def get_count(request):
     if logger is not None:
         logger.info("calling count for {}".format(dbbasename))
     t = time.time()
-    if hasattr(cf, "getcount"):
-        n = await cf.exec_db(getattr(cf, "getcount"), level=tab)
-    else:
-        n = 0
+    n = await cf.getcount(level=tab)
     await cf.close_db()
     if logger is not None:
         t = round(time.time() - t, 3)
@@ -438,11 +435,14 @@ async def get_result(request):
     if separatesample:
         arg_dict["separatesample"] = True
     arg_dict["reports"] = ["text"]
+    no_summary = queries.get("no_summary")
+    arg_dict["no_summary"] = no_summary
+    add_summary = not no_summary
     reporter = m.Reporter(arg_dict)
     if tab == "variant":
-        data = await reporter.run(tab=tab, pagesize=pagesize, page=page, make_filtered_table=make_filtered_table)
+        data = await reporter.run(tab=tab, pagesize=pagesize, page=page, make_filtered_table=make_filtered_table, dictrow=True)
     else:
-        data = await reporter.run(tab=tab, add_summary=False)
+        data = await reporter.run(tab=tab, add_summary=add_summary, dictrow=True)
     data["modules_info"] = await get_modules_info(request)
     content = {}
     content["stat"] = {
@@ -458,6 +458,7 @@ async def get_result(request):
     content["modules_info"] = data["modules_info"]
     content["warning_msgs"] = data["warning_msgs"]
     content["total_norows"] = data["total_norows"]
+    content["ftable_uid"] = reporter.ftable_uid
     t = round(time.time() - start_time, 3)
     if logger is not None:
         logger.info("Done getting result of [{}][{}] in {}s".format(dbname, tab, t))
@@ -616,6 +617,7 @@ def get_colmodel(tab, colinfo):
                 "ctg": d["col_ctg"],
                 "filterable": d["col_filterable"],
                 "link_format": d.get("link_format"),
+                "level": d.get("level"),
             }
             if d["col_type"] == "string":
                 column["align"] = "left"
@@ -839,17 +841,26 @@ async def load_smartfilters(request):
     _, dbpath = await get_jobid_dbpath(request)
     sfs = {"base": base_smartfilters}
     conn = await get_db_conn(dbpath)
-    if conn is not None:
-        cursor = await conn.cursor()
-        sf_table = "smartfilters"
-        if await table_exists(cursor, sf_table):
-            q = "select name, definition from {};".format(sf_table)
-            await cursor.execute(q)
-            r = await cursor.fetchall()
-            for mname, definitions in r:
-                sfs[mname] = json.loads(definitions)
-        await cursor.close()
-        await conn.close()
+    if not conn:
+        return web.json_response(sfs)
+    cursor = await conn.cursor()
+    module_levels = {}
+    for level in ["variant", "gene"]:
+        q = f"select name from {level}_annotator"
+        await cursor.execute(q)
+        ret = await cursor.fetchall()
+        module_levels.update({v[0]: level for v in ret})
+    sf_table = "smartfilters"
+    if await table_exists(cursor, sf_table):
+        q = "select name, definition from {};".format(sf_table)
+        await cursor.execute(q)
+        r = await cursor.fetchall()
+        for mname, definitions in r:
+            sfs[mname] = json.loads(definitions)
+            for el in sfs[mname]:
+                el["level"] = module_levels[mname]
+    await cursor.close()
+    await conn.close()
     return web.json_response(sfs)
 
 

@@ -579,6 +579,7 @@ class ColumnDefinition(object):
         self.link_format = None
         self.genesummary = None
         self.table = None
+        self.level = None
         self._load_dict(d)
 
     def _load_dict(self, d):
@@ -595,6 +596,7 @@ class ColumnDefinition(object):
         self.link_format = d.get("link_format")
         self.genesummary = d.get("genesummary", False)
         self.table = d.get("table", False)
+        self.level = d.get("level")
 
     def from_row(self, row, order=None):
         from json import loads
@@ -650,6 +652,7 @@ class ColumnDefinition(object):
             "col_genesummary": self.genesummary,
             "col_index": self.index,
             "table": self.table,
+            "level": self.level,
         }
 
     def __iter__(self):  # Allows casting to dict

@@ -16,7 +16,6 @@ function getExportContent(tabName) {
   var colTitles = [];
   var colGroups = $grids[tabName].pqGrid("option", "colModel");
   var colNos = [];
-  var colNo = -1;
   var colGroupTitles = [];
   var colGroupNumCols = {};
   for (var colGroupNo = 0; colGroupNo < colGroups.length; colGroupNo++) {
@@ -25,7 +24,6 @@ function getExportContent(tabName) {
     var colExist = false;
     var numCols = 0;
     for (var j = 0; j < cols.length; j++) {
-      colNo++;
       var col = cols[j];
       if (col.hidden) {
         continue;
@@ -115,110 +113,11 @@ function getExportContent(tabName) {
   return content;
 }
 
-function afterDragNSBar(self, tabName) {
-  return;
-  var rightDiv = document.getElementById("rightdiv_" + tabName);
-  var tableDiv = document.getElementById("tablediv_" + tabName);
-  var detailDiv = document.getElementById("detaildiv_" + tabName);
-  var cellValueDiv = document.getElementById("cellvaluediv_" + currentTab);
-  var dragBar = self;
-  var height_bar = self.offsetHeight;
-  var dragBarTop = self.offsetTop;
-  var dragBarTopUpperLimit = 100;
-  if (dragBarTop < dragBarTopUpperLimit) {
-    dragBarTop = dragBarTopUpperLimit;
-  }
-  var dragBarTopLowerLimit = rightDiv.offsetHeight - 50;
-  if (dragBarTop > dragBarTopLowerLimit) {
-    dragBarTop = dragBarTopLowerLimit;
-  }
-  self.style.top = dragBarTop - 5 + "px";
-  var rightDiv_height = rightDiv.offsetHeight;
-  var rightDivTop = rightDiv.offsetTop;
-  var cellValueDivHeight = cellValueDiv.offsetHeight;
-  var cellValueDivTop = dragBarTop - cellValueDivHeight - 13;
-  var height_table = dragBarTop - rightDivTop - cellValueDivHeight;
-  var height_detail_div =
-    rightDiv_height - height_table - height_bar - cellValueDivHeight - 25;
-  var detailDivTop = cellValueDivTop + cellValueDivHeight + 8 + 15;
-  $grids[tabName].pqGrid("option", "height", height_table).pqGrid("refresh");
-  cellValueDiv.style.top = cellValueDivTop;
-  detailDiv.style.top = detailDivTop + "px";
-  detailDiv.style.height = height_detail_div;
-  var tableMinimized = tableDiv.getAttribute("minimized");
-  if (tableMinimized == "true") {
-    $(tableDiv).find(".ui-icon-circle-triangle-s")[0].click();
-  }
+function afterDragNSBar(_, _) {
 }
 
 function resizesTheWindow(tabName = currentTab) {
   setTableDetailLayout(tabName);
-  return;
-  var pqTable = $grids[tabName];
-  if (pqTable == undefined) {
-    return;
-  }
-  var tableDiv = document.getElementById("tablediv_" + tabName);
-  var detailDiv = document.getElementById("detaildiv_" + tabName);
-  var nsDragBar = document.getElementById("dragNorthSouthDiv_" + tabName);
-  var rightDiv = document.getElementById("rightdiv_" + tabName);
-  var cellValueDiv = document.getElementById("cellvaluediv_" + tabName);
-  var browserHeight = isNaN(window.innerHeight)
-    ? window.clientHeight
-    : window.innerHeight;
-  var rightDivHeight = browserHeight - 70;
-  var tableDivHeight = 0;
-  if (tableDiv) {
-    tableDivHeight = tableDiv.offsetHeight;
-    if (tableDivHeight > rightDivHeight - 50) {
-      tableDivHeight = rightDivHeight - 50;
-    }
-  }
-  var nsDragBarHeight = 0;
-  if (nsDragBar) {
-    nsDragBarHeight = nsDragBar.offsetHeight;
-  }
-  var cellValueDivHeight = 0;
-  if (cellValueDiv) {
-    cellValueDivHeight = cellValueDiv.offsetHeight;
-    if (cellValueDivHeight > rightDivHeight - tableDivHeight - 100) {
-      cellValueDivHeight = rightDivHeight - tableDivHeight - 100;
-      cellValueDiv.style.height = cellValueDivHeight + "px";
-    }
-  }
-  var detailDivHeight = 0;
-  if (detailDiv) {
-    detailDivHeight = detailDiv.offsetHeight;
-    if (detailDivHeight > rightDivHeight - 50) {
-      detailDivHeight = rightDivHeight - 50;
-    }
-  }
-  var detailDivHeight =
-    rightDivHeight - nsDragBarHeight - cellValueDivHeight - tableDivHeight - 28;
-  detailDiv.style.height = detailDivHeight + "px";
-  var tableDivWidth = "calc(100% - 10px)";
-  var cellValueDivTop = tableDivHeight - 9;
-  var nsDragBarTop = cellValueDivTop + cellValueDivHeight + 7;
-  //rightDiv.style.height = rightDivHeight + 'px';
-  tableDiv.style.width = tableDivWidth;
-  tableDiv.style.height = tableDivHeight;
-  pqTable
-    .pqGrid("option", "width", tableDivWidth)
-    .pqGrid("option", "height", tableDivHeight)
-    .pqGrid("refresh");
-  cellValueDiv.style.top = cellValueDivTop + "px";
-  nsDragBar.style.top = nsDragBarTop + "px";
-  if (detailDiv) {
-    detailDiv.style.top = nsDragBarTop + 15 + "px";
-    $(detailDiv.getElementsByClassName("detailcontainerdiv")[0]).packery(
-      "shiftLayout"
-    );
-  }
-  shouldResizeScreen[tabName] = false;
-  onClickDetailRedraw();
-  if (tableDetailDivSizes[tabName]["status"] == "detailmax") {
-    applyTableDetailDivSizes();
-  }
 }
 
 function showNoDB() {
@@ -306,7 +205,7 @@ async function getResultLevels() {
 	}
 }*/
 
-function disableUpdateButton({ countHigh = false } = {}) {
+function disableUpdateButton() {
   var btn = document.getElementById("load_button");
   btn.disabled = true;
 }
@@ -584,10 +483,9 @@ function selectTableFirstRow(tabName) {
 
 async function loadData() {
   //lockTabs();
-  var infoReset = resetTab["info"];
-  resetTab = { info: infoReset };
-  resetTab["variant"] = true;
-  resetTab["gene"] = true;
+  resetTab = { info: true }
+  resetTab["variant"] = true
+  resetTab["gene"] = true
   infomgr.datas = {};
   var removeSpinner = async function () {
     addGeneLevelToVariantLevel();
@@ -597,14 +495,16 @@ async function loadData() {
     if (currentTab == "info") {
       changeMenu();
     }
+    setupTab("variant");
+    setupTab("gene");
+    setupTab("info")
+    console.log("@ infomgr.filter_uid=", infomgr.ftable_uid)
     try {
       populateSummaryWidgetDiv();
     } catch (e) {
       console.log(e);
       console.trace();
     }
-    setupTab("variant");
-    setupTab("gene");
     enableUpdateButton();
     //unlockTabs();
     removeLoadingDiv()
@@ -614,7 +514,11 @@ async function loadData() {
       notifyOfReadyToLoad();
     }
     if (resultLevels.indexOf("gene") != -1) {
-      await infomgr.load_job(jobId, "gene")
+      var ret = await infomgr.load_job(jobId, "gene")
+      if (ret == false) {
+        removeLoadingDiv()
+        return
+      }
       await removeSpinner()
     } else {
       await removeSpinner();
@@ -629,7 +533,11 @@ async function loadData() {
         callback = removeSpinner;
       }
       if (resultLevels.indexOf("variant") != -1) {
-        await infomgr.load_job(jobId, "variant")
+        ret = await infomgr.load_job(jobId, "variant")
+        if (ret == false) {
+          removeLoadingDiv()
+          return
+        }
         await callback()
       } else {
         await callback();
@@ -722,7 +630,7 @@ async function loadWidgets() {
     infomgr.colgroupkeytotitle[widgetName] = title;
     infomgr.widgetReq[widgetName] = req;
     $.getScript("/result/widgetfile/" + "wg" + widgetName + "/wg" + widgetName + ".js",
-        function () {
+        function (d, t, j) {
           writeLogDiv(widgetName + " script loaded");
           widgetLoadCount += 1;
           if (widgetLoadCount == widgets.length) {
@@ -817,7 +725,7 @@ async function loadWidgets() {
                 }
               }
             }
-            setupTab("info");
+            //setupTab("info");
           }
         }
     );
@@ -841,29 +749,25 @@ async function firstLoadData() {
   resetTab = { info: infoReset };
   await loadWidgets();
   setupTab("job");
-  setupTab("info");
+  //setupTab("info");
   setupTab("report")
+  setupTab("filter");
   await loadFilterSettings(quickSaveName, true);
   await loadLayoutSetting(quickSaveName, true);
   await infomgr.load_info(jobId, "info")
   populateInfoDiv(document.getElementById("info_div"));
-  await checkWidgets();
+  //await checkWidgets();
   await loadData()
-  setupTab("filter");
 }
 
 async function checkWidgets() {
-  const response = await axios.get("/result/service/getnowgannotmodules", {
+  /*const response = await axios.get("/result/service/getnowgannotmodules", {
     params: { username: username, job_id: jobId, dbpath: dbPath },
-  });
-  const jsonResponseData = response.data;
-  var noWgAnnotModules = jsonResponseData;
-  //populateWgNoticeDiv(noWgAnnotModules);
+  });*/
 }
 
-function drawingRetrievingDataDiv(currentTab) {
+function drawingRetrievingDataDiv(_) {
   if (jobDataLoadingDiv == null) {
-    var currentTabDiv = document.getElementById("tab_" + currentTab);
     var loadingDiv = getEl("div");
     loadingDiv.className = "data-retrieving-msg-div";
     var loadingTxtDiv = getEl("div");
@@ -893,8 +797,6 @@ function drawingRetrievingDataDiv(currentTab) {
     //loadingSpinCircleImg.src = "images/bigSpinner.gif";
     //addEl(loadingTxtDiv, loadingSpinCircleImg);
     addEl(loadingDiv, loadingTxtDiv);
-    var dW = document.body.offsetWidth;
-    var dH = document.body.offsetHeight;
     loadingDiv.style.top = 0;
     loadingDiv.style.left = 0;
     jobDataLoadingDiv = loadingDiv;
@@ -905,7 +807,6 @@ function drawingRetrievingDataDiv(currentTab) {
 }
 
 function drawingWidgetCaptureSpinnerDiv() {
-  var currentTabDiv = document.getElementById("tab_" + currentTab);
   var loadingDiv = getEl("div");
   loadingDiv.className = "data-retrieving-msg-div";
   var loadingTxtDiv = getEl("div");
@@ -914,13 +815,10 @@ function drawingWidgetCaptureSpinnerDiv() {
   span.textContent = "Capturing widget content...";
   addEl(loadingTxtDiv, span);
   addEl(loadingTxtDiv, getEl("br"));
-  var loadingSpinCircleDiv = getEl("div");
   var loadingSpinCircleImg = getEl("img");
   loadingSpinCircleImg.src = "images/bigSpinner.gif";
   addEl(loadingTxtDiv, loadingSpinCircleImg);
   addEl(loadingDiv, loadingTxtDiv);
-  var dW = document.body.offsetWidth;
-  var dH = document.body.offsetHeight;
   loadingDiv.style.top = 0;
   loadingDiv.style.left = 0;
   jobDataLoadingDiv = loadingDiv;
@@ -929,7 +827,7 @@ function drawingWidgetCaptureSpinnerDiv() {
   return loadingDiv;
 }
 
-function writeLogDiv(msg) {
+function writeLogDiv(_) {
   /*var div = document.getElementById('log_div');
 	div.textContent = ' ' + msg + ' ';
 	$(div).stop(true, true).css({backgroundColor: "#ff0000"}).animate({backgroundColor: "#ffffff"}, 1000);*/
@@ -997,6 +895,7 @@ async function getVariantCols() {
       dbpath: dbPath,
       confpath: confPath,
       filter: JSON.stringify(filterJson),
+      add_summary: false,
     },
   });
   const jsonResponseData = response.data;
@@ -1070,6 +969,10 @@ function changeTab(tabName) {
 function parseUrl() {
   var urlParams = new URLSearchParams(window.location.search);
   username = urlParams.get("username");
+  if (!username) {
+    username = "default"
+  }
+  console.log("@ username=", username)
   jobId = urlParams.get("job_id");
   dbPath = urlParams.get("dbpath");
   confPath = urlParams.get("confpath");
@@ -1091,7 +994,7 @@ function setTitle() {
 
 function setupResizeHandler() {
   var resizeTimeout = null;
-  $(window).resize(function (event) {
+  $(window).resize(function (_) {
     shouldResizeScreen = {};
     var curWinWidth = window.innerWidth;
     var curWinHeight = window.innerHeight;
@@ -1154,6 +1057,6 @@ async function webresult_run() {
   setupResizeHandler()
   //setupAutosave()
   setupClickHandler()
-  startData().then((res) => {
+  startData().then((_) => {
   })
 }

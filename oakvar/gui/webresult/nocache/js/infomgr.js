@@ -14,6 +14,7 @@ function InfoMgr() {
   this.colgroupdefaulthiddenexist = {};
   this.modulesInfo = {};
   this.totalNoRows = null;
+  this.ftable_uid = null
 }
 
 InfoMgr.prototype.getStatus = function (jobId) {
@@ -75,6 +76,7 @@ InfoMgr.prototype.load_job = async function (jobId, tabName, setResetTab = true)
   if (!isValidInputPageSize(pageSize)) {
     return
   }
+  var errHappened = false
   var response = await axios({
     method: "post",
     url: "/result/service/result",
@@ -92,8 +94,16 @@ InfoMgr.prototype.load_job = async function (jobId, tabName, setResetTab = true)
       page: pageNo,
       pagesize: pageSize,
       makefilteredtable: setResetTab,
+      no_summary: false,
     },
+  }).catch(function(err) {
+    alert(err.response.data.msg)
+    removeLoadingDiv()
+    errHappened = true
   })
+  if (errHappened) {
+    return false
+  }
   const jsonResponseData = response.data;
   self.store(
     self,
@@ -112,6 +122,7 @@ InfoMgr.prototype.load_job = async function (jobId, tabName, setResetTab = true)
       filterMgr.updateAll(filterJson);
     }
   }
+  return true
 }
 
 InfoMgr.prototype.load_info = async function (jobId, tabName) {
@@ -161,6 +172,8 @@ InfoMgr.prototype.store = function (
   self.stats[tabName] = jsonResponseData["stat"];
   self.statuss[tabName] = jsonResponseData["status"];
   self.modulesInfo[tabName] = jsonResponseData["modules_info"];
+  self.ftable_uid = jsonResponseData["ftable_uid"]
+  console.log("@ set ftable_uid=", self.ftable_uid)
   if (tabName == "gene") {
     self.geneRows = {};
     for (var i = 0; i < self.datas[tabName].length; i++) {
@@ -357,6 +370,7 @@ InfoMgr.prototype.store = function (
   self.columnss[tabName] = columns;
   self.columnnoss[tabName] = columnnos;
   self.columngroupss[tabName] = columngroups;
+  console.log("@ end of store", infomgr.ftable_uid)
 };
 
 InfoMgr.prototype.getData = function (tabName) {

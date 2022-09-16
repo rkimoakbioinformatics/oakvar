@@ -392,6 +392,7 @@ class BaseMapper(object):
 
     async def get_gene_summary_data(self, cf):
         from ..consts import crx_def
+        from json import loads
 
         cols = [
             "base__" + coldef["name"]
@@ -402,10 +403,11 @@ class BaseMapper(object):
         rows = await cf.exec_db(cf.get_variant_data_for_cols, cols)
         rows_by_hugo = {}
         for row in rows:
-            hugo = row[-1]
-            if hugo not in rows_by_hugo:
-                rows_by_hugo[hugo] = []
-            rows_by_hugo[hugo].append(row)
+            all_mappings = loads(row["base__all_mappings"])
+            for hugo in all_mappings.keys():
+                if hugo not in rows_by_hugo:
+                    rows_by_hugo[hugo] = []
+                rows_by_hugo[hugo].append(row)
         hugos = await cf.exec_db(cf.get_filtered_hugo_list)
         for hugo in hugos:
             rows = rows_by_hugo[hugo]

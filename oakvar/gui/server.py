@@ -31,7 +31,6 @@ class WebServer(object):
 
         global loop
         try:
-            print(f"@ request=", request)
             url_parts = request.url.parts
             response = await handler(request)
             nocache = False

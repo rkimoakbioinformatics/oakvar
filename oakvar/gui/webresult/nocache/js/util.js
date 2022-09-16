@@ -96,7 +96,7 @@ function addSpinnerById(parentDivId, scaleFactor, minDim, spinnerDivId) {
 }
 
 function saveFilterSetting(name, useFilterJson) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, _) => {
     var saveData = {};
     if (useFilterJson == undefined) {
       makeFilterJson();
@@ -114,7 +114,7 @@ function saveFilterSetting(name, useFilterJson) {
         name: name,
         savedata: saveDataStr,
       },
-      success: function (response) {
+      success: function (_) {
         writeLogDiv("Filter setting has been saved.");
         resolve();
         lastUsedFilterName = name;
@@ -124,7 +124,7 @@ function saveFilterSetting(name, useFilterJson) {
 }
 
 function deleteFilterSetting(name) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, _) => {
     $.get("/result/service/deletefiltersetting", {
       username: username,
       job_id: jobId,
@@ -168,7 +168,7 @@ async function saveLayoutSettingAs(evt) {
 }
 
 function saveFilterSettingAs() {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, _) => {
     $.get("/result/service/getfiltersavenames", {
       username: username,
       job_id: jobId,
@@ -188,7 +188,7 @@ function saveFilterSettingAs() {
       }
       var name = prompt(msg, lastUsedLayoutName);
       if (name != null) {
-        saveFilterSetting(name).then((msg) => {
+        saveFilterSetting(name).then((_) => {
           resolve();
         });
       }
@@ -262,7 +262,7 @@ function saveWidgetSetting(name) {
       name: name,
       savedata: saveDataStr,
     },
-    success: function (response) {
+    success: function (_) {
       writeLogDiv("Widget setting has been saved.");
     },
   });
@@ -504,7 +504,6 @@ function applyWidgetSetting(level) {
   var widgets = outerDiv.children;
   if (widgets.length > 0) {
     var items = Packery.data(outerDiv).items;
-    var widgetsInLayout = [];
     var widgetCount = 0;
     for (var i = 0; i < settings.length; i++) {
       var setting = settings[i];
@@ -645,7 +644,7 @@ async function loadSmartFilters() {
 async function loadFilterSetting() {
   response = await axios.get("/result/service/loadfiltersetting", {
     params: { username: username, job_id: jobId, dbpath: dbPath, name: name },
-  }); //.done(function (response) {
+  })
   response = response.data;
   writeLogDiv("Filter setting loaded");
   var data = response;
@@ -669,7 +668,7 @@ function importFilterFromFile() {
   sdiv.style.bottom = "0px";
   sdiv.style.right = "0px";
   sdiv.textContent = "Import filter...";
-  sdiv.addEventListener("click", function (e) {
+  sdiv.addEventListener("click", function (_) {
     var input = getEl("input");
     input.type = "file";
     input.addEventListener("change", function (e) {
@@ -710,7 +709,7 @@ function showImportFilterDialog() {
   btnDiv.className = "buttondiv";
   var btn = getEl("button");
   btn.textContent = "Cancel";
-  btn.addEventListener("click", function (evt) {
+  btn.addEventListener("click", function (_) {
     $("#yesnodialog").remove();
   });
   addEl(btnDiv, btn);
@@ -719,7 +718,7 @@ function showImportFilterDialog() {
 }
 
 function getSavedFilter(name) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, _) => {
     $.get("/result/service/loadfiltersetting", {
       username: username,
       job_id: jobId,
@@ -920,7 +919,7 @@ async function renameLayoutSettingAs(evt) {
   }
 }
 
-function renameLayoutSetting(name, callback) {
+function renameLayoutSetting(name, _) {
   var msg = "Please enter a new name for layout " + name + ".";
   var newName = prompt(msg, lastUsedLayoutName);
   if (newName != null) {
@@ -930,7 +929,7 @@ function renameLayoutSetting(name, callback) {
       dbpath: dbPath,
       name: name,
       newname: newName,
-    }).done(function (response) {
+    }).done(function (_) {
       writeLogDiv("Layout name has been changed.");
     });
   }
@@ -938,7 +937,6 @@ function renameLayoutSetting(name, callback) {
 
 function toggleAutoLayoutSave() {
   var a = document.getElementById("layout_autosave_title");
-  var autosave = a.getAttribute("autosave");
   if (autoSaveLayout == false) {
     autoSaveLayout = true;
     a.text = "V Autosave";
@@ -968,8 +966,6 @@ function setServerStatus(connected) {
       span.textContent = "Please launch OakVar again.";
       addEl(loadingTxtDiv, span);
       addEl(loadingDiv, loadingTxtDiv);
-      var dW = document.body.offsetWidth;
-      var dH = document.body.offsetHeight;
       jobDataLoadingDiv = loadingDiv;
       var parentDiv = document.body;
       addEl(parentDiv, loadingDiv);
@@ -995,17 +991,15 @@ function checkConnection(failures) {
     wsprotocol = "wss:";
   }
   ws = new WebSocket(wsprotocol + "//" + host + "/heartbeat");
-  ws.onopen = function (evt) {
+  ws.onopen = function (_) {
     setServerStatus(true);
     failures = 0;
   };
-  ws.onclose = function (evt) {
+  ws.onclose = function (_) {
     failures += 1;
     var waitTime = 2000 * failures;
     setTimeout(function () {
       checkConnection(failures);
     }, waitTime);
   };
-  ws.onerror = function (evt) {};
-  ws.onmessage = function (evt) {};
 }

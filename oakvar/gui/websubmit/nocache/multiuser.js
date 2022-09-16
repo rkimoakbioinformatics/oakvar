@@ -13,7 +13,6 @@ function openLoginPage () {
 function loginInternal() {
   var email = document.getElementById('email').value;
   var password = document.getElementById('password').value;
-  alert("@ here")
   axios.get('/server/login', {
     headers: {
       Authorization: 'Basic ' + btoa(email+':'+password)
@@ -46,7 +45,6 @@ function logoutInternal() {
 function loginWithEmailFirebase () {
     var email = document.getElementById('email').value;
     var password = document.getElementById('password').value;
-  alert("@ here")
   firebase.auth().signInWithEmailAndPassword(email, password)
   .then(function(result) {
     console.log("@ result=", result)

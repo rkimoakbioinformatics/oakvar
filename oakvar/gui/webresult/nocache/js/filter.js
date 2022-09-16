@@ -746,10 +746,9 @@ const makeGroupFilter = (groupDiv) => {
       }
     }
     // Negate
-    colFilter.negate =
-      colDiv.children(".filter-not-toggle").attr("active") === "true";
-    colFilter.column =
-      colFilter.column === "base__tags" ? "tagsampler__tags" : colFilter.column; //TODO: unhack
+    colFilter.negate = colDiv.children(".filter-not-toggle").attr("active") === "true"
+    //colFilter.column = colFilter.column === "base__tags" ? "tagsampler__tags" : colFilter.column; //TODO: unhack
+    colFilter.level = column.level
     filter.rules.push(colFilter);
   }
   // Groups
@@ -760,8 +759,8 @@ const makeGroupFilter = (groupDiv) => {
     filter.rules.push(subGroupFilter);
   }
   // Negate
-  filter.negate =
-    groupDiv.children(".filter-not-toggle").attr("active") === "true";
+  filter.negate = groupDiv.children(".filter-not-toggle").attr("active") === "true"
+  console.log("@ filter=", filter)
   return filter;
 };
 

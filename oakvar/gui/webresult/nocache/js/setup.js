@@ -1,10 +1,3 @@
-async function setupAllTabs() {
-  for (var i = 0; i < resultLevels.length; i++) {
-    var level = resultLevels[i];
-    await setupTab(level);
-  }
-}
-
 function getRightDiv(tabName) {
   return document.getElementById("rightdiv_" + tabName);
 }
@@ -922,7 +915,7 @@ function filterDeleteIconClick(_) {
 function makeFilterTab(rightDiv) {
   rightDiv = $(rightDiv);
   rightDiv.empty();
-  if (!showFilterTabContent) {
+  /*if (!showFilterTabContent) {
     rightDiv.css("display", "grid");
     rightDiv.append(
       $(getEl("img")).attr("src", "images/bigSpinner.gif").css("margin", "auto")
@@ -930,7 +923,7 @@ function makeFilterTab(rightDiv) {
     return false;
   } else {
     rightDiv.css("display", "");
-  }
+  }*/
 
   // Left panel
   let leftPanel = $(getEl("div")).attr("id", "filter-left-panel");
@@ -992,11 +985,9 @@ function makeFilterTab(rightDiv) {
   filterApply.classList.add("butn");
   addEl(filterApply, getTn("Load"));
   filterApply.addEventListener("click", function (_) {
-    var infoReset = resetTab["info"];
-    resetTab = { info: infoReset };
     makeFilterJson();
     drawingRetrievingDataDiv("filter");
-    loadData(false, null);
+    loadData()
     loadLayoutSetting(quickSaveName, null);
   });
   loadControls.append(filterApply);
@@ -1151,6 +1142,7 @@ function makeFilterJson() {
       let sfSource = fullName.split(".")[0];
       let sfName = fullName.split(".")[1];
       let sfDef = smartFilters[sfSource].definitions[sfName];
+      sfDef.filter.level = sfDef.level
       let val = pullSfValue(sfDiv);
       let sfResult = addSfValue(sfDef.filter, val);
       fullSf.rules.push(sfResult);
@@ -2266,7 +2258,7 @@ function drawSummaryWidget(widgetName) {
       var params = JSON.stringify(callServerParams);
       $.post(
         "/result/runwidget/" + widgetName,
-        { username: username, job_id: jobId, dbpath: dbPath, params: params },
+        { username: username, job_id: jobId, dbpath: dbPath, params: params, ftable_uid: infomgr.ftable_uid },
         function (response) {
           var widgetContentDiv = document.getElementById(
             "widgetcontentdiv_" + widgetName + "_info"
@@ -2291,6 +2283,7 @@ function drawSummaryWidget(widgetName) {
           job_id: jobId,
           dbpath: dbPath,
           params: JSON.stringify(callServerParams),
+          ftable_uid: infomgr.ftable_uid,
         },
         async: true,
         method: requestmethod,

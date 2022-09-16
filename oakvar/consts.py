@@ -157,6 +157,7 @@ base_smartfilters = [
     {
         "name": "popstats",
         "title": "Population AF <=",
+        "level": "variant",
         "description": "Set a maximum allele frequency.",
         "allowPartial": True,
         "selector": {
@@ -208,6 +209,7 @@ base_smartfilters = [
     {
         "name": "so",
         "title": "Sequence Ontology",
+        "level": "variant",
         "description": "Select sequence ontologies.",
         "selector": {
             "type": "select",
@@ -220,6 +222,7 @@ base_smartfilters = [
     {
         "name": "chrom",
         "title": "Chromosome",
+        "level": "variant",
         "description": "Select chromosome(s).",
         "selector": {
             "type": "select",
@@ -231,6 +234,7 @@ base_smartfilters = [
     {
         "name": "coding",
         "title": "Coding",
+        "level": "variant",
         "description": "Include only coding/noncoding variants",
         "selector": {
             "type": "select",
