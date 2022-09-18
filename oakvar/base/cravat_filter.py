@@ -2,6 +2,7 @@
 from typing import Any
 from typing import List
 import sys
+from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
 
 if sys.platform == "win32" and sys.version_info >= (3, 8):
     from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy # ignore: type
@@ -11,7 +12,6 @@ if sys.platform == "win32" and sys.version_info >= (3, 8):
 REPORT_FILTER_DB_NAME = "report_filter"
 REPORT_FILTER_DB_DIRNAME = "report_filters"
 REPORT_FILTER_REGISTRY_NAME = "registry"
-DEFAULT_USER_NAME = "default"
 DEFAULT_FILTER_NAME = "default"
 SAMPLE_TO_FILTER_TABLE_NAME = "fsamplegiven"
 GENE_TO_FILTER_TABLE_NAME = "fgenegiven"
@@ -176,7 +176,7 @@ class ReportFilter:
         includesample=None,
         excludesample=None,
         strict=True,
-        user=DEFAULT_USER_NAME,
+        user=DEFAULT_SERVER_DEFAULT_USERNAME,
         uid=None,
     ):
         self = ReportFilter(
@@ -208,7 +208,7 @@ class ReportFilter:
         excludesample=None,
         mode="sub",
         strict=True,
-        user=DEFAULT_USER_NAME,
+        user=DEFAULT_SERVER_DEFAULT_USERNAME,
         uid=None,
     ):
         from os.path import abspath

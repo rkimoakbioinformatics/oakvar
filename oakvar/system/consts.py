@@ -52,3 +52,15 @@ default_postaggregator_names = ["tagsampler", "casecontrol", "varmeta", "vcfinfo
 #
 oc_system_conf_fname = "cravat-system.yml"
 oc_cravat_conf_fname = "cravat.yml"
+
+#
+# Server
+#
+DEFAULT_SERVER_DEFAULT_USERNAME = "default"
+DEFAULT_SERVER_ADMIN_PW = "admin"
+server_admin_pw_key = "server_admin_pw"
+server_default_username_key = "server_default_username"
+ADMIN_ROLE = "admin"
+ADMIN_DB_FN = "server.sqlite"
+
+

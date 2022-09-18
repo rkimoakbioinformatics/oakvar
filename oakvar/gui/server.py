@@ -80,9 +80,7 @@ class WebServer(object):
     async def start(self):
         global server_ready
         from aiohttp import web
-        from ..gui.websubmit import multiuser as mu
         self.app = web.Application(loop=self.loop, middlewares=[self.middleware])
-        await mu.setup(self.app)
         self.setup_routes()
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()

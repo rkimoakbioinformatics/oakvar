@@ -247,6 +247,12 @@ def get_cache_dir(cache_key, conf=None):
     return join(d, cache_key)
 
 
+def get_default_logo_path() -> str:
+    from pathlib import Path
+
+    path = Path(__file__).parent.parent / "gui" / "webstore" / "images" / "genericmodulelogo.png"
+    return str(path)
+
 def get_logo_path(module_name: str, store: str, conf=None) -> str:
     from os.path import join
 

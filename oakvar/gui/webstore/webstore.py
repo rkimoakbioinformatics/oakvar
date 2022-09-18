@@ -465,6 +465,7 @@ async def local_module_logo_exists(request):
 
 async def get_local_module_logo(request):
     from ...module.cache import get_module_cache
+    from ...system import get_default_logo_path
     from os.path import exists
     queries = request.rel_url.query
     module = queries.get("module", None)
@@ -474,18 +475,21 @@ async def get_local_module_logo(request):
     if exists(logo_path):
         return web.FileResponse(logo_path)
     else:
-        #p = join(dirname(abspath(__file__)), "images", "genericmodulelogo.png")
-        #return web.FileResponse(p)
-        return web.HTTPNotFound()
+        return web.FileResponse(get_default_logo_path())
 
 
 async def get_logo(request):
     from ...system import get_logo_path
+    from ...system import get_default_logo_path
+    from os.path import exists
 
     module_name = request.match_info["module_name"]
     store = request.match_info["store"]
     logo_path = get_logo_path(module_name, store)
-    return web.FileResponse(logo_path)
+    if exists(logo_path):
+        return web.FileResponse(logo_path)
+    else:
+        return web.FileResponse(get_default_logo_path())
 
 
 routes = []

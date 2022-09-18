@@ -661,16 +661,6 @@ input:checked + .store-switch-slider:before {
     top: 16px;
 }
 
-#verdiv {
-    position: fixed;
-    top: 43px;
-    right: 10px;
-    height: 15px;
-    font-size: 13px;
-    vertical-align: bottom;
-    z-index: 201;
-}
-
 .checkmark-store {
     position: absolute;
     top: 3px;

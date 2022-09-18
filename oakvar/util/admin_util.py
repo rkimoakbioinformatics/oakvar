@@ -319,13 +319,6 @@ def get_platform():
     return pl
 
 
-def get_admindb_path():
-    from os.path import join as pathjoin
-    from ..system import get_conf_dir
-
-    return pathjoin(get_conf_dir(), "admin.sqlite")
-
-
 def get_liftover_chains_dir():
     from os.path import join as pathjoin
 

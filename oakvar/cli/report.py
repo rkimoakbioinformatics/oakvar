@@ -1,6 +1,6 @@
 from ..decorators import cli_func
 from ..decorators import cli_entry
-from ..base.cravat_filter import DEFAULT_USER_NAME
+from ..base.cravat_filter import DEFAULT_SERVER_DEFAULT_USERNAME
 import sys
 import nest_asyncio
 from typing import List
@@ -72,7 +72,7 @@ class BaseReporter:
             "hg18",
         ])
         self.modules_to_add_to_base = []
-        self.user = DEFAULT_USER_NAME
+        self.user = DEFAULT_SERVER_DEFAULT_USERNAME
         self.parse_cmd_args(args)
         self._setup_logger()
 
@@ -196,7 +196,7 @@ class BaseReporter:
     async def connect_db (self, dbpath=None):
         _ = dbpath
 
-    async def prep(self, user=DEFAULT_USER_NAME):
+    async def prep(self, user=DEFAULT_SERVER_DEFAULT_USERNAME):
         await self.set_dbpath()
         await self.connect_db(dbpath=self.dbpath)
         await self.load_filter(user=user)
@@ -382,7 +382,7 @@ class BaseReporter:
             return []
         return levels
 
-    async def run(self, tab="all", add_summary=None, pagesize=None, page=None, make_filtered_table=True, user=DEFAULT_USER_NAME, dictrow=False):
+    async def run(self, tab="all", add_summary=None, pagesize=None, page=None, make_filtered_table=True, user=DEFAULT_SERVER_DEFAULT_USERNAME, dictrow=False):
         from ..exceptions import SetupError
         from time import time
         from time import asctime
@@ -1020,7 +1020,7 @@ class BaseReporter:
             await self.cf.close_db()
             self.cf = None
 
-    async def load_filter(self, user=DEFAULT_USER_NAME):
+    async def load_filter(self, user=DEFAULT_SERVER_DEFAULT_USERNAME):
         from ..exceptions import SetupError
         from ..base.cravat_filter import ReportFilter
 
@@ -1307,8 +1307,8 @@ def get_parser_fn_report():
     )
     parser_ov_report.add_argument(
         "--user",
-        default=DEFAULT_USER_NAME,
-        help=f"User who is creating this report. Default is {DEFAULT_USER_NAME}."
+        default=DEFAULT_SERVER_DEFAULT_USERNAME,
+        help=f"User who is creating this report. Default is {DEFAULT_SERVER_DEFAULT_USERNAME}."
     )
     parser_ov_report.add_argument(
         "--no-summary",

@@ -15,7 +15,7 @@ import asyncio
 from multiprocessing import Process, Manager, Queue
 from queue import Empty
 from logging import getLogger
-from .multiuser import *
+from typing import Any
 from ...system import get_system_conf
 from ...system.consts import default_max_num_concurrent_jobs
 from ...system import write_system_conf_file
@@ -28,7 +28,6 @@ live_modules = {}
 include_live_modules = None
 exclude_live_modules = None
 live_mapper = None
-job_statuses = {}
 count_single_api_access = 0
 time_of_log_single_api_access = time.time()
 interval_log_single_api_access = 60
@@ -36,7 +35,7 @@ job_worker = None
 job_queue = None
 run_jobs_info = {}
 logger = None
-mu = None
+mu = Any
 
 
 class FileRouter(object):
@@ -49,106 +48,6 @@ class FileRouter(object):
         self.status_extension = ".status.json"
         self.job_statuses = {}
         self.servermode = False
-
-    async def get_jobs_dirs(self, request):
-        from ...system import get_jobs_dir
-
-        root_jobs_dir = get_jobs_dir()
-        if self.servermode:
-            username = await get_username(request)
-        else:
-            username = "default"
-        if username == "admin":
-            jobs_dirs = []
-            fns = os.listdir(root_jobs_dir)
-            for fn in fns:
-                path = os.path.join(root_jobs_dir, fn)
-                if os.path.isdir(path):
-                    jobs_dirs.append(path)
-        else:
-            if username is None:
-                jobs_dirs = []
-            else:
-                jobs_dir = os.path.join(root_jobs_dir, username)
-                if os.path.exists(jobs_dir) == False:
-                    os.mkdir(jobs_dir)
-                jobs_dirs = [jobs_dir]
-        return jobs_dirs
-
-    async def job_dir(self, request, job_id_or_dbpath, given_username=None):
-        from os.path import exists
-        from os.path import dirname
-        from os.path import abspath
-        if exists(job_id_or_dbpath):
-            return dirname(abspath(job_id_or_dbpath))
-        jobs_dirs = await self.get_jobs_dirs(request)
-        job_dir = None
-        if jobs_dirs:
-            if self.servermode:
-                if given_username is not None:
-                    username = given_username
-                else:
-                    username = await get_username(request)
-                if not username:
-                    job_dir = None
-                else:
-                    if username != "admin":
-                        job_dir = os.path.join(
-                            os.path.dirname(jobs_dirs[0]), username, job_id_or_dbpath
-                        )
-                        # job_dir = os.path.join(jobs_dirs[0], job_id)
-                    else:
-                        for jobs_dir in jobs_dirs:
-                            job_dir = os.path.join(jobs_dir, job_id_or_dbpath)
-                            if os.path.exists(job_dir):
-                                break
-            else:
-                job_dir = os.path.join(jobs_dirs[0], job_id_or_dbpath)
-        return job_dir
-
-    async def job_input(self, request, job_id_or_dbpath):
-        job_dir = await self.job_dir(request, job_id_or_dbpath)
-        statusjson = await self.job_status(request, job_dir, job_id_or_dbpath)
-        orig_input_fname = None
-        if "orig_input_fname" in statusjson:
-            orig_input_fname = statusjson["orig_input_fname"]
-        else:
-            fns = os.listdir(job_dir)
-            for fn in fns:
-                if fn.endswith(".crv"):
-                    orig_input_fname = fn[:-4]
-                    break
-        if orig_input_fname is not None:
-            orig_input_path = [os.path.join(job_dir, v) for v in orig_input_fname]
-        else:
-            orig_input_path = None
-        return orig_input_path
-
-    async def job_run_name(self, request, job_id_or_dbpath):
-        job_dir = await self.job_dir(request, job_id_or_dbpath)
-        statusjson = await self.job_status(request, job_dir, job_id_or_dbpath)
-        if not statusjson:
-            return None
-        run_name = statusjson.get("run_name")
-        if run_name is None:
-            fns = os.listdir(job_dir)
-            for fn in fns:
-                if fn.endswith(".crv"):
-                    run_name = fn[:-4]
-                    break
-        return run_name
-
-    async def job_run_path(self, request, job_id_or_dbpath):
-        job_dir = await self.job_dir(request, job_id_or_dbpath)
-        if job_dir is None:
-            run_path = None
-        else:
-            run_name = await self.job_run_name(request, job_id_or_dbpath)
-            if run_name is not None:
-                run_path = os.path.join(job_dir, run_name)
-            else:
-                run_path = None
-        return run_path
 
     async def job_db(self, request, job_id):
         output_fname = None
@@ -190,43 +89,6 @@ class FileRouter(object):
                     report_path.append(output_filename)
         return report_path
 
-    async def job_status(self, _, job_dir, job_id_or_dbpath, new=False):
-        from os.path import exists
-        from os.path import join
-        from os.path import abspath
-        from oakvar.consts import status_prefix
-        try:
-            if not new:
-                if job_id_or_dbpath in self.job_statuses:
-                    return self.job_statuses[job_id_or_dbpath]
-            statusjson = None
-            status_fn = None
-            if exists(job_id_or_dbpath):
-                job_id_or_dbpath = abspath(job_id_or_dbpath)
-                if not job_id_or_dbpath.endswith(".sqlite"):
-                    return None, None
-                run_name = job_id_or_dbpath[:-7]
-                status_fn = run_name + status_prefix
-            else:
-                fns = os.listdir(job_dir)
-                for fn in fns:
-                    if fn.endswith(".status.json"):
-                        status_fn = join(job_dir, fn)
-                        break
-            if not status_fn:
-                return None, None
-            with open(status_fn) as f:
-                try:
-                    statusjson = json.load(f)
-                except json.JSONDecodeError:
-                    statusjson = self.job_statuses.get(job_id_or_dbpath, None)
-            self.job_statuses[job_id_or_dbpath] = statusjson
-        except Exception as e:
-            logger = getLogger()
-            logger.exception(e)
-            statusjson = None
-        return statusjson
-
     async def job_log(self, request, job_id):
         run_path = await self.job_run_path(request, job_id)
         if run_path is not None:
@@ -236,13 +98,6 @@ class FileRouter(object):
         else:
             log_path = None
         return log_path
-
-
-def get_filerouter():
-    global filerouter
-    if filerouter is None:
-        filerouter = FileRouter()
-    return filerouter
 
 
 class WebJob(object):
@@ -364,11 +219,10 @@ async def submit(request):
     from ...util.admin_util import set_user_conf_prop
     from ...util.admin_util import get_current_package_version
     from ...system.consts import default_assembly
+    from .userjob import get_user_jobs_dir
 
 
     global servermode
-    global admindb
-    filerouter = get_filerouter()
     sysconf = get_system_conf()
     size_cutoff = sysconf["gui_input_size_limit"]
     if request.content_length is None:
@@ -391,7 +245,7 @@ async def submit(request):
         r = await is_loggedin(request)
         if r == False:
             return web.json_response({"status": "notloggedin"})
-    jobs_dirs = await filerouter.get_jobs_dirs(request)
+    jobs_dirs = await get_user_jobs_dir(request)
     jobs_dir = jobs_dirs[0]
     job_id = get_next_job_id()
     job_dir = os.path.join(jobs_dir, job_id)
@@ -469,7 +323,7 @@ async def submit(request):
         assembly = default_assembly
     run_args.append(assembly)
     if servermode:
-        await update_user_settings(admindb, request, {"lastAssembly": assembly})
+        await update_user_settings(request, {"lastAssembly": assembly})
     else:
         set_user_conf_prop("last_assembly", assembly)
     # Reports
@@ -507,7 +361,7 @@ async def submit(request):
         status = {"status": "Submitted"}
         job.set_info_values(status=status)
         if servermode and mu:
-            await mu.add_job_info(request, job)
+            await add_job_info(request, job)
         # makes temporary status.json
         status_json = {}
         status_json["job_dir"] = job_dir
@@ -579,7 +433,6 @@ async def get_job(request, job_id):
     from ...util.admin_util import get_max_version_supported_for_migration
     from packaging.version import Version
 
-    filerouter = get_filerouter()
     job_dir = await filerouter.job_dir(request, job_id)
     if not os.path.exists(job_dir) or not os.path.isdir(job_dir):
         job = WebJob(job_dir, None)
@@ -662,8 +515,10 @@ async def get_job(request, job_id):
 
 
 async def get_jobs(request):
-    filerouter = get_filerouter()
-    jobs_dirs = await filerouter.get_jobs_dirs(request)
+    from .userjob import get_user_jobs_dir
+    jobs_dirs = await get_user_jobs_dir(request)
+    if not jobs_dirs:
+        return web.HTTPForbidden()
     jobs_dir = jobs_dirs[0]
     if jobs_dir is None:
         return web.json_response([])
@@ -684,34 +539,20 @@ async def get_jobs(request):
 
 
 async def get_all_jobs(request):
+    from .multiuser import get_admindb
+    from .multiuser import get_email_from_request
     global servermode
-    if servermode and mu:
-        r = await mu.is_loggedin(request)
-        if r == False:
-            return web.json_response({"status": "notloggedin"})
-    filerouter = get_filerouter()
-    jobs_dirs = await filerouter.get_jobs_dirs(request)
-    if jobs_dirs is None:
-        return web.json_response([])
-    all_jobs = []
-    for jobs_dir in jobs_dirs:
-        if os.path.exists(jobs_dir) == False:
-            os.makedirs(jobs_dir)
-        dir_it = os.scandir(jobs_dir)
-        direntries = [de for de in dir_it]
-        de_names = []
-        for it in direntries:
-            if it.name.startswith("."):
-                continue
-            de_names.append(it.name)
-        all_jobs.extend(de_names)
-    all_jobs.sort(reverse=True)
+    if not await mu.is_loggedin(request):
+        return web.json_response({"status": "notloggedin"})
+    admindb = await get_admindb()
+    email = get_email_from_request(request)
+    all_jobs = await admindb.get_jobs_of_email(email)
+    print(f"@ all_jobs={all_jobs}")
     return web.json_response(all_jobs)
 
 
 async def view_job(request):
     global VIEW_PROCESS
-    filerouter = get_filerouter()
     job_id = request.match_info["job_id"]
     db_path = await filerouter.job_db(request, job_id)
     if db_path is not None:
@@ -727,7 +568,6 @@ async def view_job(request):
 
 
 async def get_job_status(request):
-    filerouter = get_filerouter()
     job_id = request.match_info["job_id"]
     status_path = await filerouter.job_status_path(request, job_id)
     if status_path is not None:
@@ -740,7 +580,6 @@ async def get_job_status(request):
 
 
 async def download_db(request):
-    filerouter = get_filerouter()
     job_id = request.match_info["job_id"]
     db_path = await filerouter.job_db(request, job_id)
     db_fname = job_id + ".sqlite"
@@ -752,7 +591,6 @@ async def download_db(request):
 
 
 async def get_job_log(request):
-    filerouter = get_filerouter()
     job_id = request.match_info["job_id"]
     log_path = await filerouter.job_log(request, job_id)
     if log_path is not None:
@@ -814,7 +652,6 @@ async def get_job_id_or_dbpath(request):
         return None
 
 async def generate_report(request):
-    filerouter = get_filerouter()
     job_id_or_dbpath = await get_job_id_or_dbpath(request)
     if not job_id_or_dbpath:
         return web.Response(status=404)
@@ -1029,7 +866,6 @@ def get_last_assembly(_):
 async def delete_job(request):
     global job_queue
     job_id = request.match_info["job_id"]
-    filerouter = get_filerouter()
     job_dir = await filerouter.job_dir(request, job_id)
     qitem = {"cmd": "delete", "job_id": job_id, "job_dir": job_dir}
     if job_queue is None:
@@ -1376,7 +1212,6 @@ async def get_live_annotation(queries):
 
 async def get_available_report_types(request):
     job_id_or_dbpath = await get_job_id_or_dbpath(request)
-    filerouter = get_filerouter()
     job_dir = await filerouter.job_dir(request, job_id_or_dbpath)
     existing_reports = []
     for report_type in get_valid_report_types():
@@ -1411,7 +1246,6 @@ async def update_result_db(request):
 
     queries = request.rel_url.query
     job_id = queries["job_id"]
-    filerouter = get_filerouter()
     job_dir = await filerouter.job_dir(request, job_id)
     fns = find_files_by_ending(job_dir, ".sqlite")
     db_path = os.path.join(job_dir, fns[0])
@@ -1436,9 +1270,11 @@ async def update_result_db(request):
 
 async def import_job(request):
     from ...cli.util import status_from_db
+    from .userjob import get_user_jobs_dir
 
-    filerouter = get_filerouter()
-    jobs_dirs = await filerouter.get_jobs_dirs(request)
+    jobs_dirs = await get_user_jobs_dir(request)
+    if not jobs_dirs:
+        return web.HTTPForbidden()
     jobs_dir = jobs_dirs[0]
     job_id = get_next_job_id()
     job_dir = os.path.join(jobs_dir, job_id)
@@ -1489,7 +1325,6 @@ async def get_webapp_index(request):
     return web.HTTPFound(url)
 
 
-filerouter = FileRouter()
 routes = []
 routes.append(["POST", "/submit/submit", submit])
 routes.append(["GET", "/submit/annotators", get_annotators])

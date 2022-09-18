@@ -35,8 +35,6 @@ def inject_module_variables(args={}):
     ws.servermode = args.get("servermode")
     wr.servermode = args.get("servermode")
     mu.servermode = args.get("servermode")
-    wu.filerouter.servermode = args.get("servermode")
-    mu.noguest = args.get("noguest")
     wr.wu = wu
     wu.mu = mu
     ws.mu = mu
@@ -77,29 +75,6 @@ def check_local_update(interval):
     finally:
         loop.call_later(interval, check_local_update, interval)
 
-async def clean_sessions(args={}, logger=None):
-    from ..system import get_system_conf
-    from ..gui.websubmit import multiuser as mu
-    from traceback import print_exc
-    from asyncio import sleep
-
-
-    try:
-        max_age = get_system_conf().get(
-            "max_session_age", 604800
-        )  # default 1 week
-        interval = get_system_conf().get(
-            "session_clean_interval", 3600
-        )  # default 1 hr
-        while True:
-            await mu.admindb.clean_sessions(max_age)
-            await sleep(interval)
-    except Exception as e:
-        if logger:
-            logger.exception(e)
-        if args.get("debug"):
-            print_exc()
-
 def is_port_occupied(args={}):
     import socket
     from ..gui.util import get_host_port
@@ -139,7 +114,6 @@ def main(url=None, args={}):
     from webbrowser import open as open_browser
     from ..util.util import quiet_print
     from ..util.util import show_logo
-    from ..system import get_system_conf
     from ..gui.server import WebServer
     from ..gui.util import get_host_port
 
@@ -161,9 +135,6 @@ def main(url=None, args={}):
     quiet_print("(To quit: Press Ctrl-C or Ctrl-Break)", args=args)
     loop = get_event_loop()
     loop.call_later(1, check_local_update, 5)
-    if args.get("servermode"):
-        if "max_session_age" in get_system_conf():
-            loop.create_task(clean_sessions(args=args, logger=logger))
     if args["ssl_enabled"]:
         args["ssl_context"] = get_ssl_context(args=args)
     _ = WebServer(loop=loop, url=url, args=args)

@@ -22,8 +22,14 @@
          url('/result/fonts/sourcesanspro-bold-webfont.woff2') format('woff2');
 }
 
-body * {
-    font-family: 'roboto-light';
+@font-face {
+    font-family: SegoeUI;
+    src:
+        local("Segoe UI"),
+        url(//c.s-microsoft.com/static/fonts/segoe-ui/west-european/normal/latest.woff2) format("woff2"),
+        url(//c.s-microsoft.com/static/fonts/segoe-ui/west-european/normal/latest.woff) format("woff"),
+        url(//c.s-microsoft.com/static/fonts/segoe-ui/west-european/normal/latest.ttf) format("truetype");
+    font-weight: 400;
 }
 
 /* Need for code sections of module markdowns */
@@ -55,7 +61,6 @@ code {
     border: 1px solid #939393;
     border-bottom: 0px;
     margin-left: 2px;
-    font-family: roboto-medium;
 }
 
 #pageselect div:hover {
@@ -94,54 +99,12 @@ code {
     padding: 10px;
 }
 
-.container {
-    position: relative;
-    border: 0.5px solid #939393; 
-    border-radius: 4px 4px 0px 0px; 
-    padding-left: 30px; 
-    padding-right: 30px; 
-    padding-top: 18px; 
-    padding-bottom: 14px; 
-    margin-right: 10px;
-}
-
-.container * {
-    font-size: 13px;
-}
-
 .divtitle {
-    font-family: sourcesanspro-bold;
     font-size: 22px;
     color: #ffffff;
     top: -15px;
     position: relative;
     z-index: 1;
-}
-
-.or {
-    position: absolute;
-    top: -17px;
-    left: 30px;
-    padding-top: 5px;
-    padding-bottom: 5px;
-    width: 26px;
-    color: #4b4b4b;
-}
-
-.divbanner {
-    position: absolute;
-    background-color: #385487;
-    width: 100%;
-    height: 36px;
-    top: 0px;
-    left: 0px;
-    border-radius: 4px 4px 0px 0px;
-}
-
-button {
-    font-family: 'roboto-bold';
-    background-color: #fbfbfb;
-    font-size: 12px;
 }
 
 #jobs-table {
@@ -205,11 +168,14 @@ button {
     /*box-shadow: 0px 0px 10px 0px #c7c7c7;*/
 }
 
-#annotator-select-div span {
+#logodiv {
+    position: absolute; 
+    left: calc(50% - 65px); 
+    top: 2px;
 }
 
 .logo {
-    width: 42px;
+    width: 57px;
     padding: 3px;
 }
 
@@ -252,10 +218,6 @@ button {
     width: calc(100% - 44px);
 }
 
-#input-text {
-    width: calc(100% + 40px);
-}
-
 #refresh-jobs-table-btn {
     width: 14px; 
     height: 17px;
@@ -264,13 +226,6 @@ button {
     left: 8px;
     padding: 0px;
     background-color: transparent;
-}
-
-.threedots {
-    height: 15px;
-    top: 9px;
-    position: absolute;
-    right: 10px;
 }
 
 .email-icon {
@@ -292,14 +247,7 @@ button {
     display: flex;
 }
 
-.checkbox-group-flexbox {
-    display: flex;
-    flex-wrap: wrap;
-}
-
 .checkbox-group-element {
-    width: 50%;
-    white-space: nowrap;
 }
 
 .checkbox-group-element label {
@@ -346,23 +294,8 @@ div.checkbox-group-element[kind=group] span.label {
     content: "\2612";
 }
 
-#annotator-select-div > .checkbox-group-flexbox > .checkbox-group-element {
-    width: calc(50% - 10px);
-    border-right: 10px solid transparent;
-}
-
 #submit-input-format-select {
     width: 85px;
-}
-
-#mult-inputs-list {
-    margin-left: 10px;
-}
-
-#mult-inputs-list p {
-    margin-top: 1px;
-    margin-bottom: 1px;
-    margin-left: 40px;
 }
 
 .slider-switch {
@@ -414,43 +347,17 @@ input:checked + .slider:before {
     transform: translateX(14px);
 }
 
-#annotator-group-select-tag-div {
-    display: inline-block;
-    vertical-align: middle;
-    overflow: hidden;
-    transition: max-height .4s;
-}
-
-#annotator-group-select-tag-div.off {
-    overflow: hidden;
-    max-height: 0px;
-}
-
-#annotator-group-select-tag-div.on {
-    overflow: hidden;
-}
-
-#annotator-group-select-div {
-    display: none;
-}
-
-#annotator-group-select-div.show {
-    display: block;
-}
-
-#annotator-group-select-div div.pq-select-button {
-    background-color: white;
-}
-
 .ui-state-highlight, .ui-widget-content .ui-state-highlight, .ui-widget-header .ui-state-highlight {
     background-color: #c5af8d;
 }
 
-#annotator-group-select-div .div-header {
-    display: inline-block;
-    vertical-align: middle;
-    font-size: 12px;
-    color: #899989;
+#annotator-group-select-div.ispinned {
+    height: 4rem;
+}
+
+#annotator-group-select-div.ispinned:hover {
+    height: 400px;
+    background-color: white;
 }
 
 #submit-annotator-set-switch {
@@ -474,40 +381,10 @@ input:checked + .slider:before {
     display: none;
 }
 
-@font-face {
-    font-family: SegoeUI;
-    src:
-        local("Segoe UI"),
-        url(//c.s-microsoft.com/static/fonts/segoe-ui/west-european/normal/latest.woff2) format("woff2"),
-        url(//c.s-microsoft.com/static/fonts/segoe-ui/west-european/normal/latest.woff) format("woff"),
-        url(//c.s-microsoft.com/static/fonts/segoe-ui/west-european/normal/latest.ttf) format("truetype");
-    font-weight: 400;
-}
-
-.butn {
-  -webkit-border-radius: 4;
-  -moz-border-radius: 4;
-  border-radius: 2px;
-  font-family: 'roboto-bold';
-  color: #ffffff;
-  background-color: #c5af8d;
-  text-decoration: none;
-  border-style: none;
-  margin-left: 1px;
-  margin-right: 1px;
-  cursor: pointer;
-}
-
-.butn:hover {
-  background: #5cb5e5;
-  text-decoration: none;
-}
-
 .input-example-button {
     width: 35px;
     height: 23px;
     font-size: 11px;
-    background-color: #6e593a;
 }
 
 .submit-annotate-button {
@@ -515,9 +392,6 @@ input:checked + .slider:before {
     width: 391px;
     padding: 9px;
     background-color: #de6342;
-    position: absolute;
-    left: 1px;
-    bottom: -2px;
 }
 
 .launch-button {
@@ -654,7 +528,6 @@ input:checked + .slider:before {
 }
 
 #input-file + label {
-    font-family: roboto-medium;
     font-size: 13px;
     color: white;
     background-color: #6e593a;
@@ -669,95 +542,7 @@ input:checked + .slider:before {
     background-color: #94d1eb;
 }
 
-#submit-variant-div {
-    background-color: #dbd3c8;
-    color: black;
-}
-
-#submit-variant-div .divbanner {
-    background-color: #8c8780;
-}
-
-#annotchoosediv {
-    background-color: #96b6c6;
-	color: white;
-    margin-top: 15px;
-}
-
-#annotchoosediv .div-header {
-	color: white;
-}
-
-.chevron {
-  position: absolute;
-  text-align: center;
-  padding: 2px;
-  margin-top: 16px;
-  margin-bottom: 16px;
-  height: 2px;
-  width: 26px;
-  right: 4px;
-  bottom: -8px;
-}
-
-.chevron:before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 51%;
-  transform: skew(0deg, 23deg);
-}
-
-.chevron:after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  height: 100%;
-  width: 50%;
-  transform: skew(0deg, -23deg);
-}
-
-.chevron1to2:before {
-  background-color: #c6b08b;
-}
-
-.chevron1to2:after {
-  background-color: #5fa3c6;
-}
-
-.chevron2to3 {
-  position: relative;
-  top: -30px;
-  left: 329px;
-}
-
-.chevron2to3:before {
-  background-color: #94d1eb;
-}
-
-.chevron2to3:after {
-  background-color: #de6342;
-}
-
-#addtl-analysis-div {
-    background-color: #dbd3c8;
-	color: white;
-    margin-top: 15px;
-}
-
-#addtl-analysis-div .div-header {
-	color: white;
-}
-
-#addtl-analysis-div .divbanner {
-    background-color: #8c8780;
-}
-
 #case-control-cohorts + label {
-    font-family: roboto-medium;
     font-size: 13px;
     color: white;
     background-color: #6e593a;
@@ -874,15 +659,6 @@ input:checked + .slider:before {
     color: white;
 }
 
-#assembly-select-div {
-    width: fit-content;
-    padding: 2px;
-}
-
-.fileaddbutn {
-    font-size: 10px;
-}
-
 .btn_overlay {
     position: absolute;
     top: 0px;
@@ -908,25 +684,6 @@ input:checked + .slider:before {
 
 #report_generation_div.show {
     display: block;
-}
-
-.submit-annot-tag {
-    background-color: #6295b1;
-    border-radius: 6px;
-    color: white;
-    margin-bottom: 3px;
-    margin-right: 3px;
-    padding: 3px;
-    width: 47%;
-    white-space: nowrap;
-    font-weight: bold;
-}
-.submit-annot-tag:hover {
-    cursor: pointer;
-}
-
-.submit-annot-tag.selected {
-    background-color:#3175b0;   
 }
 
 #jobdivspinnerdiv {

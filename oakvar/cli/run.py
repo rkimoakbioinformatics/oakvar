@@ -1916,18 +1916,19 @@ class Cravat(object):
             raise SetupError()
         import os
         import aiosqlite
-        from ..util.admin_util import get_admindb_path
+        from ..gui.websubmit.serveradmindb import get_admindb_path
         from ..util.util import quiet_print
 
         if runtime is None or numinput is None:
             return
-        if os.path.exists(get_admindb_path()) == False:
-            s = "{} does not exist.".format(get_admindb_path())
+        admindb_path = get_admindb_path()
+        if admindb_path.exists() == False:
+            s = "{} does not exist.".format(str(admindb_path))
             if self.logger:
                 self.logger.info(s)
             quiet_print(s, self.args)
             return
-        db = await aiosqlite.connect(get_admindb_path())
+        db = await aiosqlite.connect(str(admindb_path))
         cursor = await db.cursor()
         q = 'update jobs set runtime={}, numinput={} where jobid="{}"'.format(
             runtime, numinput, self.args.jobid
