@@ -216,6 +216,7 @@ def get_logger(args={}):
     log_formatter = Formatter("%(asctime)s: %(message)s", "%Y/%m/%d %H:%M:%S")
     log_handler.setFormatter(log_formatter)
     logger.addHandler(log_handler)
+    return logger
 
 def get_webapp_url(args={}):
     from os.path import join
@@ -245,7 +246,7 @@ def get_result_url(args={}):
         msg = f"DB version {db_version} of {dbpath} is not compatible with the current OakVar ({oc_version}). "
         msg += f'Consider running "oc util update-result {dbpath}" and running "oc gui {dbpath}" again.'
         raise ArgumentError(msg=msg)
-    url = f"{args['host']}:{args['port']}/result/index.html?dbpath={args['result']}"
+    url = f"{args['host']}:{args['port']}/result/nocache/index.html?dbpath={args['result']}"
     return url
 
 def get_login_url(args={}):

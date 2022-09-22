@@ -84,70 +84,12 @@ function onClickStoreUpdateRemoteButton() {
   });
 }
 
-function clickTab(value) {
-  var tabs = document.getElementById("pageselect").children;
-  for (var i = 0; i < tabs.length; i++) {
-    var tab = tabs[i];
-    if (tab.getAttribute("value") == value) {
-      tab.click();
-      return;
-    }
-  }
-}
-
-function hidePageselect() {
-  document.getElementById("pageselect").style.display = "none";
-}
-
-function showPageselect() {
-  document.getElementById("pageselect").style.display = "block";
-}
-
 function onClickInstallBaseComponents() {
   document.getElementById("store-systemmodule-msg-div").textContent = "";
   var btn = document.getElementById("store-systemmodule-install-button");
   btn.classList.add("disabled");
   installBaseComponents();
   document.getElementById("messagediv").style.display = "none";
-}
-
-function showSystemModulePage() {
-  document.getElementById("store-systemmodule-div").style.display = "block";
-  if (systemReadyObj.ready == false) {
-    document.getElementById(
-      "store-systemmodule-systemnotready-div"
-    ).style.display = "block";
-    var span = document.getElementById(
-      "store-systemmodule-systemnotready-span"
-    );
-    var span2 = document.getElementById(
-      "store-systemmodule-systemnotready-span2"
-    );
-    span.textContent = systemReadyObj["message"];
-    if (systemReadyObj["code"] == 1) {
-      span2.textContent =
-        "Please use the settings menu at top right to set the correct modules directory.";
-    }
-  } else {
-    if (baseInstalled == false) {
-      document.getElementById("store-systemmodule-missing-div").style.display =
-        "block";
-    } else {
-      document.getElementById("store-systemmodule-missing-div").style.display =
-        "none";
-    }
-    document.getElementById("store-systemmodule-update-div").style.display =
-      "none";
-    if (baseToInstall.length == 0) {
-      document.getElementById(
-        "store-systemmodule-install-button"
-      ).disabled = true;
-    }
-  }
-}
-
-function hideSystemModulePage() {
-  document.getElementById("store-systemmodule-div").style.display = "none";
 }
 
 function complementRemoteWithLocal() {
@@ -175,18 +117,6 @@ function complementRemoteWithLocal() {
         });
     }
   }
-}
-
-function setupJobsTab() {
-  complementRemoteWithLocal();
-  populateInputFormats();
-  buildAnnotatorGroupSelector();
-  let annotatorsDone = populateAnnotators();
-  annotatorsDone.then(() => {
-    // Populate cc here to avoid it showing before annotators
-    // and then getting quickly shoved down. Looks bad.
-    populateAddtlAnalysis();
-  });
 }
 
 function updateRemoteModuleTagwithUpdate() {
@@ -266,8 +196,6 @@ function setBaseInstalled() {
 
 function populateStorePages() {
   if (baseInstalled) {
-    showPageselect();
-    hideSystemModulePage();
     trimRemote();
     var div = document.getElementById("messagediv");
     div.style.display = "none";
@@ -295,7 +223,7 @@ function populateStorePages() {
     storeFirstOpen = false;
   } else {
     hidePageselect();
-    showSystemModulePage();
+    showSystemNotReady();
   }
 }
 
@@ -319,24 +247,9 @@ function getUpdates(populateAllModulesDivFlag = false) {
   });
 }
 
-function getLocal(callUpdateFlag = false) {
-  $.get("/store/local").done(function (data) {
-    localModuleInfo = data;
-    setupJobsTab();
-    setBaseInstalled();
-    populateStorePages();
-    populateStoreTagPanel();
-    updateModuleGroupInfo();
-    makeInstalledGroup();
-    if (systemReadyObj.online) {
-      enableStoreTabHead();
-    } else {
-      disableStoreTabHead();
-    }
-    if (callUpdateFlag) {
-      //getUpdates(populateAllModulesDivFlag=true)
-    }
-  });
+async function getLocal() {
+  var res = await axios.get("/store/local")
+  localModuleInfo = res.data
 }
 
 function makeInstalledGroup() {
@@ -356,17 +269,6 @@ function makeInstalledGroup() {
       }
     }
   }
-}
-
-function enableStoreTabHead() {
-  document.getElementById("storediv_tabhead").setAttribute("disabled", "f");
-}
-
-function disableStoreTabHead() {
-  document.getElementById("storediv_tabhead").setAttribute("disabled", "t");
-  document.getElementById("storediv_tabhead").classList.add("disabled");
-  document.getElementById("storediv_tabhead").title =
-    "Internet connection not available";
 }
 
 function showOrHideSystemModuleUpdateButton() {
@@ -710,55 +612,38 @@ function trimRemote() {
   }
 }
 
-function checkSystemReady() {
-  $.ajax({
-    url: "/issystemready",
-    async: true,
-    success: function (response) {
-      var online = systemReadyObj.online;
-      systemReadyObj = response;
-      if (online != undefined) {
-        systemReadyObj.online = online;
-      }
-      if (systemReadyObj.ready) {
-        /*if (servermode == false) {
-                    populateJobs();
-                }*/
-        getLocal((callUpdateFlag = true));
-      } else {
-        hidePageselect();
-        showSystemModulePage();
-      }
-    },
-  });
+async function checkSystemReady() {
+  try {
+    var res = await axios.get("/issystemready")
+    systemReadyObj = res
+    return systemReadyObj.ready
+  } catch (err) {
+    console.log("@ err=", err)
+    return false
+  }
 }
 
-function getRemote() {
-  $.ajax({
-    url: "/store/remote",
-    async: true,
-    success: function (data) {
-      remoteModuleInfo = data["data"];
-      tagDesc = data["tagdesc"];
-      for (var moduleName in remoteModuleInfo) {
-        var moduleInfo = remoteModuleInfo[moduleName];
-        if (!("tags" in moduleInfo) || moduleInfo["tags"] == null) {
-          moduleInfo.tags = [];
-        }
-      }
-      var modules = Object.keys(remoteModuleInfo);
-      for (var i = 0; i < modules.length; i++) {
-        var module = modules[i];
-        var moduleInfo = remoteModuleInfo[module];
-        if (moduleInfo["queued"] == true) {
-          installInfo[module] = {
-            msg: "queued",
-          };
-        }
-      }
-      checkSystemReady();
-    },
-  });
+async function getRemote() {
+  var res = await axios.get("/store/remote")
+  var data = res.data
+  remoteModuleInfo = data["data"];
+  tagDesc = data["tagdesc"];
+  for (var moduleName in remoteModuleInfo) {
+    var moduleInfo = remoteModuleInfo[moduleName];
+    if (!("tags" in moduleInfo) || moduleInfo["tags"] == null) {
+      moduleInfo.tags = [];
+    }
+  }
+  var modules = Object.keys(remoteModuleInfo);
+  for (var i = 0; i < modules.length; i++) {
+    var module = modules[i];
+    var moduleInfo = remoteModuleInfo[module];
+    if (moduleInfo["queued"] == true) {
+      installInfo[module] = {
+        msg: "queued",
+      };
+    }
+  }
 }
 
 function removeElementFromArrayByValue(a, e) {
@@ -2714,7 +2599,7 @@ function onClickSystemModuleUpdateButton() {
 
 function startUpdatingSystemModules() {
   document.getElementById("store-systemmodule-msg-div").textContent = "";
-  showSystemModulePage();
+  showSystemNotReady();
   document.getElementById("store-systemmodule-update-div").style.display =
     "block";
   for (var i = 0; i < baseToInstall.length; i++) {

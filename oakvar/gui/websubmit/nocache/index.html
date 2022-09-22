@@ -1,9 +1,11 @@
 <!doctype html>
-<meta charset="utf-8"/>
+<meta charset="utf-8" />
 <html class="h-full">
-<head>
+  <head>
     <title>OakVar</title>
-	<script>CLOSURE_NO_DEPS = true;</script>
+    <script>
+      CLOSURE_NO_DEPS = true;
+    </script>
     <link href="https://fonts.googleapis.com/css?family=Gothic+A1" rel="stylesheet" crossorigin="anonymous">
     <link rel="shortcut icon" href='#'>
     <link rel="icon" href="/submit/images/logo_only.png" />
@@ -26,19 +28,18 @@
     <!-- tailwind css -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/result/fonts/Inter_Web/inter.css" />
-    <script> 
-        tailwind.config = {
-          theme: {
-            extend: {
-              colors: {
-                clifford: '#da373d',
-              },
-            }
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              clifford: '#da373d',
+            },
           }
         }
+      }
     </script>
-    <style type="text/tailwindcss">
-        @layer components {
+    <style type="text/tailwindcss"> @layer components {
             .tabhead {
                 @apply text-gray-600;
                 @apply hover:bg-gray-50;
@@ -66,507 +67,551 @@
         }
     </style>
     <script>
-        $(document).ready(function() {
-            websubmit_run();
-        });
-    </script> 
-</head>
-
-<body class="h-full">
+      $(document).ready(function() {
+        websubmit_run().then(function(_) {})
+      });
+    </script>
+  </head>
+  <body class="h-full">
     <div id="menu_div" class='menu1_container hidden'>
-        <div class='menu1' id='layout_menu' onclick="onClickMenu1(this);">
-            <div class='menu2_container hide shadow'>
-                <div class='menu2' id="save_layout_div" onclick="saveLayoutSettingAs(event);">Save as...</div>
-                <div class='menu2' id="load_layout_div" onclick="loadLayoutSettingAs(event);">Load...
-                    <div class='menu3' id='load_layout_select_div'></div>
-                </div>
-                <div class='menu2' onclick="deleteLayoutSettingAs(event);">Delete...
-                    <div class='menu3' id='delete_layout_select_div'></div>
-                </div>
-                <div class='menu2' onclick="renameLayoutSettingAs(event);">Rename...
-                    <div class='menu3' id='rename_layout_select_div'></div>
-                </div>
-                <div class='menu2' id='layout_columns_menu' style='display: none;' onclick="return; onClickColumnsMenu(event);">Columns...
-                    <div class='menu3 hoveron shadow' id='columns_showhide_select_div'></div>
-                </div>
-                <div class='menu2' id='layout_widgets_menu' style='display: none;' onclick="return; onClickWidgetsMenu(event);">Widgets...
-                    <div class='menu3 hoveron shadow' id='widgets_showhide_select_div'></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div id='tabledetailmaxbuttondiv_submit' class="fixed top-2 right-2 flex flex-col">
-        <button title="Settings">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-        </button>
-        <div id="logdiv" class="flex flex-col">
-            <button onclick="sendPasswordResetEmail()" title="Reset password">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3" />
-                </svg>
-            </button>
-            <button onclick="logout()" title="Logout">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-                </svg>
-            </button>
-        </div>
-        <a href='https://docs.oakvar.com' target='_blank' title='Documentation'>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-            </svg>
-        </a>
-        <a href='mailto:rkim@oakbioinformatics.com?Subject=OakVar%20Feedback' title='Email feedback'>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-            </svg>
-        </a>
-    </div>
-    <div id='topbuttons'>
-        <div class='threedotsdiv cursor-pointer'>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-            </svg>
-        </div>
-    </div>
-</div>
-
-<div>
-  <!-- Static sidebar for desktop -->
-  <div id="sidebar_static" class="hidden md:flex md:w-36 md:flex-col md:fixed md:inset-y-0">
-    <!-- Sidebar component, swap this element with another sidebar if you like -->
-    <div class="flex-1 flex flex-col min-h-0 border-r border-gray-200 bg-white">
-      <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-        <div class="flex items-center flex-shrink-0 px-4">
-          <img class="h-16 w-auto" src="/submit/images/logo_transparent.png" alt="Workflow">
-        </div>
-        <nav class="mt-5 flex-1 px-2 bg-white space-y-1">
-          <a id="tabhead_job" href="#" class="tabhead group selected" onclick="changeTab('job')">
-            <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Submit
-          </a>
-          <a id="tabhead_filter" href="#" class="tabhead group" onclick="changeTab('filter')">
-            <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-            </svg>
-            Jobs
-          </a>
-          <a id="tabhead_info" href="#" class="tabhead group" onclick="changeTab('info')">
-            <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
-            </svg>
-            Store
-          </a>
-          <a id="tabhead_variant" href="#" class="tabhead group" onclick="changeTab('variant')">
-            <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-            </svg>
-            Admin
-          </a>
-        </nav>
-        <div id='verdiv' class="text-xs absolute left-4 bottom-2">
-            <span class="text-xs">Version&nbsp;</span><span class="curverspan text-xs"></span>
+      <div class='menu1' id='layout_menu' onclick="onClickMenu1(this);">
+        <div class='menu2_container hide shadow'>
+          <div class='menu2' id="save_layout_div" onclick="saveLayoutSettingAs(event);">Save as...</div>
+          <div class='menu2' id="load_layout_div" onclick="loadLayoutSettingAs(event);">Load... <div class='menu3' id='load_layout_select_div'></div>
+          </div>
+          <div class='menu2' onclick="deleteLayoutSettingAs(event);">Delete... <div class='menu3' id='delete_layout_select_div'></div>
+          </div>
+          <div class='menu2' onclick="renameLayoutSettingAs(event);">Rename... <div class='menu3' id='rename_layout_select_div'></div>
+          </div>
+          <div class='menu2' id='layout_columns_menu' style='display: none;' onclick="return; onClickColumnsMenu(event);">Columns... <div class='menu3 hoveron shadow' id='columns_showhide_select_div'></div>
+          </div>
+          <div class='menu2' id='layout_widgets_menu' style='display: none;' onclick="return; onClickWidgetsMenu(event);">Widgets... <div class='menu3 hoveron shadow' id='widgets_showhide_select_div'></div>
+          </div>
         </div>
       </div>
     </div>
-  </div> <!-- End of menu -->
-
-  <div class="md:pl-36 flex flex-col flex-1">
-    <div class="sticky top-0 z-10 md:hidden pl-1 pt-1 sm:pl-3 sm:pt-3 bg-white">
-      <button type="button" class="-ml-0.5 -mt-0.5 h-12 w-12 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
-        <span class="sr-only">Open sidebar</span>
-        <!-- Heroicon name: outline/menu -->
-        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+    <div id='tabledetailmaxbuttondiv_submit' class="fixed top-2 right-2 flex flex-col">
+      <button title="Settings">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
       </button>
+      <div id="logdiv" class="flex flex-col">
+        <button onclick="sendPasswordResetEmail()" title="Reset password">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3" />
+          </svg>
+        </button>
+        <button onclick="logout()" title="Logout">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+          </svg>
+        </button>
+      </div>
+      <a href='https://docs.oakvar.com' target='_blank' title='Documentation'>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+        </svg>
+      </a>
+      <a href='mailto:rkim@oakbioinformatics.com?Subject=OakVar%20Feedback' title='Email feedback'>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+        </svg>
+      </a>
     </div>
-    <main class="flex-1">
-      <div class="">
-          <!--<div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">-->
-        <div class="mx-auto">
-          <!-- Replace with your content -->
-          <div>
-            <div id="tab_submit" class="tabcontent show p-4">
+    <!-- controls -->
+    <div id='topbuttons'>
+      <div class='threedotsdiv cursor-pointer'>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+        </svg>
+      </div>
+    </div>
+    <div>
+      <!-- Static sidebar for desktop -->
+      <div id="sidebar_static" class="hidden md:flex md:w-36 md:flex-col md:fixed md:inset-y-0">
+        <!-- Sidebar component, swap this element with another sidebar if you like -->
+        <div class="flex-1 flex flex-col min-h-0 border-r border-gray-200 bg-white">
+          <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
+            <div class="flex items-center flex-shrink-0 px-4">
+              <img class="h-16 w-auto" src="/submit/images/logo_transparent.png" alt="Workflow">
+            </div>
+            <nav class="mt-5 flex-1 px-2 bg-white space-y-1">
+              <a id="tabhead_job" href="#" class="tabhead group selected" onclick="changeTab('job')">
+                <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg> Submit </a>
+              <a id="tabhead_filter" href="#" class="tabhead group" onclick="changeTab('filter')">
+                <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                </svg> Jobs </a>
+              <a id="tabhead_info" href="#" class="tabhead group" onclick="changeTab('info')">
+                <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                </svg> Store </a>
+              <a id="tabhead_variant" href="#" class="tabhead group" onclick="changeTab('variant')">
+                <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg> Admin </a>
+            </nav>
+            <div id='verdiv' class="text-xs absolute left-4 bottom-2">
+              <span class="text-xs">Version&nbsp;</span>
+              <span class="curverspan text-xs"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- End of menu -->
+      <!-- Start of content -->
+      <div class="md:pl-36 flex flex-col flex-1">
+        <div class="sticky top-0 z-10 md:hidden pl-1 pt-1 sm:pl-3 sm:pt-3 bg-white">
+          <button type="button" class="-ml-0.5 -mt-0.5 h-12 w-12 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
+            <span class="sr-only">Open sidebar</span>
+            <!-- Heroicon name: outline/menu -->
+            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
+        <main class="flex-1">
+          <div class="">
+            <!--<div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">-->
+            <div class="mx-auto">
+              <!-- Replace with your content -->
+              <div>
+                <div id="tab_submit" class="tabcontent show p-4">
+                  <div id='submit-variant-div' class='container'>
+                    <div class='text-2xl mb-4'>Step one. Upload input</div>
+                    <div class="ml-4">
+                      <div class="flex">
+                        <div class="select-div relative inline-block text-left">
+                          <div>
+                            <button onclick="onClickSelectBtn(event)" type="button" class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100" id="assembly-select-div" aria-expanded="true" aria-haspopup="true"> Genome assembly <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                          </div>
+                          <div id="assembly-select" class="option-list hidden ease-in absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="menu-button" tabindex="-1">
+                            <div class="py-1" role="none">
+                              <!-- Active: "bg-gray-100 text-gray-900", Not Active: "text-gray-700" -->
+                              <a href="#" class="text-gray-700 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value="hg38" onclick="onClickSelectItem(event)">GRCh38/hg38</a>
+                              <a href="#" class="text-gray-700 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value="hg19" onclick="onClickSelectItem(event)">GRCh37/hg19</a>
+                              <a href="#" class="text-gray-700 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value="hg18" onclick="onClickSelectItem(event)">GRCh36/hg18</a>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="select-div relative inline-block text-left ml-6">
+                          <div>
+                            <button onclick="onClickSelectBtn(event)" type="button" class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100" id="assembly-select-div" aria-expanded="true" aria-haspopup="true"> Format
+                              <!-- Heroicon name: mini/chevron-down -->
+                              <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                          </div>
+                          <div id="input-format-select" class="option-list hidden ease-in absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="menu-button" tabindex="-1">
+                            <div class="py-1" role="none">
+                              <!-- Active: "bg-gray-100 text-gray-900", Not Active: "text-gray-700" -->
+                              <a href="#" class="text-gray-700 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" onclick="onClickSelectItem(event)">auto</a>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="flex items-center justify-center w-full mt-4" ondragenter="onDragEnterInputFiles(event)" ondragover="onDragOverInputFiles(event)" ondragleave="onDragLeaveInputFiles(event)" ondrop="onDropInputFiles(event)">
+                        <label id="input-drop-area" for="input-file" class="flex items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
+                          <div id="input-upload-list-div" class="w-1/2 flex flex-col justify-center items-center p-2 relative hidden h-full bg-gray-50">
+                            <button id='clear_inputfilelist_button' class='text-gray-500 bg-neutral-200 hover:bg-neutral-300 p-1 w-16 absolute top-1 left-1' onclick='clearInputFileList()' style='display: none;'>Clear</button>
+                            <div id="mult-inputs-message" class="flex w-full overflow-auto h-[13rem] absolute bottom-1 bg-gray-50">
+                              <div id="mult-inputs-list" class="h-full overflow-auto"></div>
+                            </div>
+                          </div>
+                          <div id="input-drop-box" class="w-1/2">
+                            <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                              <svg class="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                              </svg>
+                              <p class="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                                <span class="font-semibold">Click to upload</span> or drag and drop input files
+                              </p> or <button class="mb-2 text-sm text-gray-500 dark:text-gray-400 bg-neutral-200 hover:bg-neutral-300 p-2" onclick="switchToInputPaste()">paste input text instead</button>
+                            </div>
+                            <input type="file" name="input-file" id="input-file" multiple onchange="onInputFileChange(event)" />
+                          </div>
+                        </label>
+                        <div id="input-paste-area" class="hidden relative w-full h-64 border-2 border-gray-300 border-dashed rounded-lg">
+                          <textarea id="input-text" class="resize-none w-full h-full" placeholder="Copy and paste an input file's content. VCF is supported. A quick and simple format is space-delimited one:
 
-                    <div id='submit-variant-div' class='container'>
-                        <div class='text-2xl mb-4'>Step one. Upload input</div>
-                        <div class="ml-4">
-                                        <div id='assembly-select-div'>
-                                            Genome assembly:&nbsp;
-                                            <select id="assembly-select">
-                                                <option value="hg38" selected="true">hg38/GRCh38</option>
-                                                <option value="hg19">hg19/GRCh37</option>
-                                                <option value="hg18">hg18/GRCh36</option>
-                                            </select>
-                                        </div>
-                                        <div class="flex items-center justify-center w-full" ondragenter="onDragEnterInputFiles(event)" ondragover="onDragOverInputFiles(event)" ondragleave="onDragLeaveInputFiles(event)" ondrop="onDropInputFiles(event)">
-                                            <label id="input-drop-area" for="input-file" class="flex items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
-                                                <div id="input-upload-list-div" class="w-1/2 flex flex-col justify-center items-center p-2 relative hidden h-full bg-gray-50">
-                                                    <button id='clear_inputfilelist_button' class='text-gray-500 bg-neutral-200 hover:bg-neutral-300 p-1 w-16 absolute top-1 left-1' onclick='clearInputFileList()' style='display: none;'>Clear</button>
-                                                    <div id="mult-inputs-message" class="flex w-full overflow-auto h-[13rem] absolute bottom-1 bg-gray-50">
-                                                        <div id="mult-inputs-list" class="h-full overflow-auto"></div>
-                                                    </div>
-                                                </div>
-                                                <div id="input-drop-box" class="w-1/2">
-                                                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                                                        <svg class="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                                                        <p class="mb-2 text-sm text-gray-500 dark:text-gray-400"><span class="font-semibold">Click to upload</span> or drag and drop input files</p>
-                                                        or <button class="mb-2 text-sm text-gray-500 dark:text-gray-400 bg-neutral-200 hover:bg-neutral-300 p-2" onclick="switchToInputPaste()">paste input text instead</button>
-                                                    </div>
-                                                    <input type="file" name="input-file" id="input-file" multiple onchange="onInputFileChange(event)"/>
-                                                </div>
-                                            </label>
-                                            <div id="input-paste-area" class="hidden relative w-full h-64 border-2 border-gray-300 border-dashed rounded-lg" >
-                                                <textarea id="input-text" class="resize-none w-full h-full" placeholder="Copy and paste an input file's content. VCF is supported. A quick and simple format is space-delimited one:
-
-    chr1 9384934 + A T
+chr1 9384934 + A T
 
 which is chromosome, position, strand, a reference allele, and an alternate allele.
 
 Alternatively, paths to input files in the server can be used as well. For example,
 
-    /mnt/oakvar/input/sample/sample_1.vcf
+/mnt/oakvar/input/sample/sample_1.vcf
 "></textarea>
-                                                <div class="absolute top-0 right-0 cursor-pointer" onclick="switchToInputUpload()">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                                        <path class="stroke-gray-400" stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
-                                                    </svg>
-                                                </div>
-                                                <div class="absolute bottom-1 right-1 text-gray-400 text-sm">
-                                                    <button value="cravat" class='p-1 text-gray-500 bg-neutral-200 hover:bg-neutral-300' onclick="inputExampleChangeHandler(event)">Try an example</button>
-                                                </div>
-                                            </div>
-                                        </div>
+                          <div class="absolute top-0 right-0 cursor-pointer" onclick="switchToInputUpload()">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                              <path class="stroke-gray-400" stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                            </svg>
+                          </div>
+                          <div class="absolute bottom-1 right-1 text-gray-400 text-sm">
+                            <button value="cravat" class='p-1 text-gray-500 bg-neutral-200 hover:bg-neutral-300' onclick="inputExampleChangeHandler(event)">Try an example</button>
+                          </div>
                         </div>
+                      </div>
                     </div>
-                    <div id='annotchoosediv' class='container mt-4 mb-4'>
-                        <span class='text-2xl mb-4'>Step two. Choose analysis modules</span>
-                        <div id="annotdivspinnerdiv" class="spinnerdiv"><img src="/submit/nocache/broken_wheel.gif"></img></div>
-                        <div id="annotator-group-select-div" class="sticky -top-1 z-50 bg-white p-4 border-gray-200 border-2 rounded-lg ml-4 mt-4 overflow-auto flex flex-col gap-8">
-                            <div class="text-xl bold">Filter modules</div>
-                            <div id="annotator-group-filter-div" class="space-x-16 flex items-start">
-                              <div class="flex items-center">
-                                <input name="filter" type="radio" checked class="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                                <label for="filter" class="ml-3 block text-sm font-medium text-gray-700">Filter</label>
-                              </div>
-                              <div id="annotator-group-select-tag-div" class="annotator-group-select"></div>
-                            </div>
+                  </div>
+                  <div id='annotchoosediv' class='container mt-4 mb-4'>
+                    <span class='text-2xl mb-4'>Step two. Choose analysis modules</span>
+                    <div id="analysis-module-filter-div" class="sticky -top-1 bg-white p-4 border-gray-200 border-2 rounded-lg ml-4 mt-4 overflow-auto flex flex-col gap-8">
+                      <div class="text-xl bold">You can filter modules with</div>
+                      <div id="annotator-group-filter-div" class="space-x-16 flex items-start">
+                        <div id="analysis-module-filter-kinds">
+                          <div class="flex items-center">
+                            <input name="filter" type="radio" checked class="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                            <label for="filter" class="ml-3 block text-sm font-medium text-gray-700">All</label>
+                          </div>
+                          <div class="flex items-center">
+                            <input name="filter" type="radio" checked class="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                            <label for="filter" class="ml-3 block text-sm font-medium text-gray-700">Developer-provided tags</label>
+                          </div>
                         </div>
-                        <div id="annotator-select-div" class="ml-4"></div>
+                        <div id="analysis-module-filter-items" class="annotator-group-select h-64 overflow-auto"></div>
+                      </div>
                     </div>
-                    <div id='addtl-analysis-div' class='container' style='display:none'>
-                        <span class='text-2xl'>Additional Analysis</span>
-                        <div id='addtl-analysis-content'></div>
-                    </div>
-                    <div>
-                        <span style='vertical-align: top;'>Note: </span>
-                        <textarea id='jobnoteinput' rows='3' placeholder='Enter a note for the analysis (optional)'></textarea>
-                    </div>
-                    <div style='text-align: center;'><button id="submit-job-button" class='butn submit-annotate-button'>ANNOTATE</button>
+                    <div id="analysis-module-select-div" class="ml-4"></div>
+                  </div>
+                  <div id='addtl-analysis-div' class='container' style='display:none'>
+                    <span class='text-2xl'>Additional Analysis</span>
+                    <div id='addtl-analysis-content'></div>
+                  </div>
+                  <div>
+                    <span style='vertical-align: top;'>Note: </span>
+                    <textarea id='jobnoteinput' rows='3' placeholder='Enter a note for the analysis (optional)'></textarea>
+                  </div>
+                  <div style='text-align: center;'>
+                    <button id="submit-job-button" class='butn submit-annotate-button'>ANNOTATE</button>
+                  </div>
                 </div>
+                <div id="tab_jobs" class="tabcontent hidden"></div>
+                <div id="tab_store" class="tabcontent hidden"></div>
+                <div id="tab_admin" class="tabcontent hidden"></div>
+                <div id="tab_systemnotready" class="tabcontent hidden">
+                  <!-- This example requires Tailwind CSS v2.0+ -->
+                  <div class="relative z-10" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                    <!--
+    Background backdrop, show/hide based on modal state.
 
+    Entering: "ease-out duration-300"
+      From: "opacity-0"
+      To: "opacity-100"
+    Leaving: "ease-in duration-200"
+      From: "opacity-100"
+      To: "opacity-0"
+  -->
+                    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+                    <div class="fixed inset-0 z-10 overflow-y-auto">
+                      <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                        <!--
+        Modal panel, show/hide based on modal state.
+
+        Entering: "ease-out duration-300"
+          From: "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+          To: "opacity-100 translate-y-0 sm:scale-100"
+        Leaving: "ease-in duration-200"
+          From: "opacity-100 translate-y-0 sm:scale-100"
+          To: "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+      -->
+                        <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+                          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                            <div class="sm:flex sm:items-start">
+                              <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                                <!-- Heroicon name: outline/exclamation-triangle -->
+                                <svg class="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 10.5v3.75m-9.303 3.376C1.83 19.126 2.914 21 4.645 21h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 4.88c-.866-1.501-3.032-1.501-3.898 0L2.697 17.626zM12 17.25h.007v.008H12v-.008z" />
+                                </svg>
+                              </div>
+                              <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                <h3 class="text-lg font-medium leading-6 text-gray-900" id="modal-title">System not ready</h3>
+                                <div class="mt-2">
+                                  <p class="text-sm text-gray-500">OakVar server is not running or it is having a problem. Please contact your system administrator.</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- /End replace -->
             </div>
-            <div id="tab_jobs" class="tabcontent"></div>
-            <div id="tab_store" class="tabcontent"></div>
-            <div id="tab_admin" class="tabcontent"></div>
           </div>
-          <!-- /End replace -->
-        </div>
+        </main>
       </div>
-    </main>
-  </div>
-</div>
-
-<!--
-<div id='pageselect'>
-    <div id='submitdiv_tabhead' class='tabhead' selval='t' value='submitdiv' onclick='changePage("submitdiv");'>
-        JOBS
     </div>
-    <div id='storediv_tabhead' class='tabhead' value='storediv' onclick='changePage("storediv");' disabled='t'>
-        STORE
+    <div id='store-systemmoduleupdate-announce-div'> System update available <button id='store-systemmoduleupdate-button' class='butn' onclick='onClickSystemModuleUpdateButton();'>Update</button>
     </div>
-    <div id='admindiv_tabhead' class='tabhead' value='admindiv' onclick='changePage("admindiv");' disabled='t' style='display: none;'>
-        ADMIN
-    </div>
-</div>
--->
-
-<div id='store-systemmoduleupdate-announce-div'>
-    System update available
-    <button id='store-systemmoduleupdate-button' class='butn' onclick='onClickSystemModuleUpdateButton();'>Update</button>
-</div>
-
-
-<div class = 'headerdiv hidden' />
+    <!-- Below is old -->
+    <div class='headerdiv hidden' />
     <div id="controldiv" class="flex fixed right-2 top-1">
-        <span id="userdiv"></span>
-        <div id="logdiv">
-            <button onclick="sendPasswordResetEmail()">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3" />
-                </svg>
-            </button>
-            <button onclick="logout()">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-                </svg>
-            </button>
-        </div>
-        <a href='https://docs.oakvar.com' target='_blank'>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-            </svg>
-        </a>
-        <a href='mailto:rkim@oakbioinformatics.com?Subject=OakVar%20feedback'>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-            </svg>
-        </a>
-        <div class='threedotsdiv cursor-pointer'>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-            </svg>
-        </div>
+      <span id="userdiv"></span>
+      <div id="logdiv">
+        <button onclick="sendPasswordResetEmail()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3" />
+          </svg>
+        </button>
+        <button onclick="logout()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+          </svg>
+        </button>
+      </div>
+      <a href='https://docs.oakvar.com' target='_blank'>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+        </svg>
+      </a>
+      <a href='mailto:rkim@oakbioinformatics.com?Subject=OakVar%20feedback'>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+        </svg>
+      </a>
+      <div class='threedotsdiv cursor-pointer'>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+        </svg>
+      </div>
     </div>
-</div>
-
-<div id='submitdiv hidden' class='appdiv' style="display: none;">
-    <table><tr><td valign='top' style=''>
-    <div id='submitcontentdiv'>
-        <div id="submit-form">
-            <div id='submit-variant-div' class='container'>
-                <span class='divtitle'>Variants</span>
-                <table>
-                    <tr>
-                        <td>
-                            <div id='assembly-select-div'>
-                                Genome:
-                                <select id="assembly-select">
-                                    <option value="hg38" selected="true">hg38/GRCh38</option>
-                                    <option value="hg19">hg19/GRCh37</option>
-                                    <option value="hg18">hg18/GRCh36</option>
-                                </select>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td valign='top' class='variant-input-border-bottom' title="Upload file(s). Select multiple files using ctrl and shift keys">
-                                <br />
-                            <input type="file" name="input-file" id="input-file" multiple/>
-                            <label for="input-file">Add input files</label>
-                            <button id='clear_inputfilelist_button' class='butn' onclick='onClearInputFileList()' style='display: none;'>Clear file(s)</button>
-                            <div id="mult-inputs-message" style="display: none; margin-top: 4px;">
-                                <div id="mult-inputs-list"></div>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td valign='top' class='variant-input-border-bottom' style='text-align: left;'>
-                            <br />
-                            <div style='text-align: left;'>
-                                <textarea rows="3" id="input-text" style='' placeholder="Enter variants in a supported input format such as VCF or TSV, or type a list of the paths to input files in the server." onclick='onClickInputTextArea();' onblur='onBlurInputTextArea();'></textarea>
-                            </div>
-                            <select id='submit-input-format-select' disabled style='display: none;'>
-                                <option value=''>Detect</option>
-                            </select>
-                            <span style='font-size: 13px;'>Example:</span>
-                            <button value="vcf" class='butn input-example-button'>VCF</button>
-                            <button value="cravat" class='butn input-example-button'>TSV</button>
-                            <div class='or'>OR</div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <div style='margin-top: 14px;'>
-                                <span style='vertical-align: top;'>Note: </span>
-                                <textarea id='jobnoteinput' rows='1' placeholder='Enter a note for the analysis (optional)'></textarea>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-                <div class='divbanner'></div>
-            </div>
-            <div id='annotchoosediv' class='container'>
-                <span class='divtitle'>Annotations</span>
-                <div id="annotdivspinnerdiv" class="spinnerdiv"><img src="/submit/nocache/broken_wheel.gif"></img></div>
-                <div id="annotator-group-select-div"></div>
-                <div id="annotator-select-div"></div>
-                <div class='divbanner' style='background-color: #3175b0;'></div>
-            </div>
-            <div id='addtl-analysis-div' class='container' style='display:none'>
-                <span class='divtitle'>Additional Analysis</span>
-                <div id='addtl-analysis-content'></div>
-                <div class='divbanner'></div>
-            </div>
-        </div>
-        <div style='text-align: center;'><button id="submit-job-button" class='butn submit-annotate-button'>ANNOTATE</button></div>
     </div>
-
-    </td><td valign='top' style='padding-left: 5px; width: 100%;'>
-    <div id="jobdiv">
-        <div id="jobdivspinnerdiv" class="spinnerdiv"><img src="/submit/nocache/broken_wheel.gif"></img></div>
-        <div style='width: 100%; text-align: right;'>
-            <button id='refresh-jobs-table-btn' class='butn'>&#x21ba;</button>
-        </div>
-        <table id="jobs-table">
-            <thead>
-            <tr>
-                <th class='tableheadercell'>Job ID</th>
-                <th class='tableheadercell'>Input File</th>
-                <th class='tableheadercell' style='width: 100px; cursor: default;' title='Number of unique variants'>Variants</th>
-                <th class='tableheadercell' style='width: 100px;'>Annotators</th>
-                <th class='tableheadercell'>Genome</th>
-                <th class='tableheadercell'>Note</th>
-                <th class='tableheadercell'>Status</th>
-                <th class='tableheadercell'>Download</th>
-                <th class='tableheadercell'>Delete</th>
-            </tr>
-            </thead>
-            <tbody>
-            </tbody>
-        </table>
-        <div id='jobs-table-pagination-div' style='float: right;'>
-            <button id='jobs-table-pagination-prev-button' class='butn inactive-download-button' onclick='onClickJobsListPrevPage();'><</button>
-            <button id='jobs-table-pagination-next-button' class='butn inactive-download-button' onclick='onClickJobsListNextPage();'>></button>
-        </div>
-        <br />
-    </div>  
-    </td></tr></table>
-
-    <iframe id="download-area" style="display:none;"></iframe>
-
-</div> <!-- submitdiv -->
-
-<div id='storediv' class='appdiv' style='display: none;'>
-    <div id='messagediv'></div>
-    <div id='storebodydiv'>
+    <div id='submitdiv hidden' class='appdiv' style="display: none;">
+      <table>
+        <tr>
+          <td valign='top' style=''>
+            <div id='submitcontentdiv'>
+              <div id="submit-form">
+                <div id='submit-variant-div' class='container'>
+                  <span class='divtitle'>Variants</span>
+                  <table>
+                    <tr>
+                      <td>
+                        <div id='assembly-select-div'> Genome: <select id="assembly-select">
+                            <option value="hg38" selected="true">hg38/GRCh38</option>
+                            <option value="hg19">hg19/GRCh37</option>
+                            <option value="hg18">hg18/GRCh36</option>
+                          </select>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td valign='top' class='variant-input-border-bottom' title="Upload file(s). Select multiple files using ctrl and shift keys">
+                        <br />
+                        <input type="file" name="input-file" id="input-file" multiple />
+                        <label for="input-file">Add input files</label>
+                        <button id='clear_inputfilelist_button' class='butn' onclick='onClearInputFileList()' style='display: none;'>Clear file(s)</button>
+                        <div id="mult-inputs-message" style="display: none; margin-top: 4px;">
+                          <div id="mult-inputs-list"></div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td valign='top' class='variant-input-border-bottom' style='text-align: left;'>
+                        <br />
+                        <div style='text-align: left;'>
+                          <textarea rows="3" id="input-text" style='' placeholder="Enter variants in a supported input format such as VCF or TSV, or type a list of the paths to input files in the server." onclick='onClickInputTextArea();' onblur='onBlurInputTextArea();'></textarea>
+                        </div>
+                        <select id='submit-input-format-select' disabled style='display: none;'>
+                          <option value=''>Detect</option>
+                        </select>
+                        <span style='font-size: 13px;'>Example:</span>
+                        <button value="vcf" class='butn input-example-button'>VCF</button>
+                        <button value="cravat" class='butn input-example-button'>TSV</button>
+                        <div class='or'>OR</div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <div style='margin-top: 14px;'>
+                          <span style='vertical-align: top;'>Note: </span>
+                          <textarea id='jobnoteinput' rows='1' placeholder='Enter a note for the analysis (optional)'></textarea>
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
+                  <div class='divbanner'></div>
+                </div>
+                <div id='annotchoosediv' class='container'>
+                  <span class='divtitle'>Annotations</span>
+                  <div id="annotdivspinnerdiv" class="spinnerdiv">
+                    <img src="/submit/nocache/broken_wheel.gif"></img>
+                  </div>
+                  <div id="analysis-module-filter-div"></div>
+                  <div id="analysis-module-select-div"></div>
+                  <div class='divbanner' style='background-color: #3175b0;'></div>
+                </div>
+                <div id='addtl-analysis-div' class='container' style='display:none'>
+                  <span class='divtitle'>Additional Analysis</span>
+                  <div id='addtl-analysis-content'></div>
+                  <div class='divbanner'></div>
+                </div>
+              </div>
+              <div style='text-align: center;'>
+                <button id="submit-job-button" class='butn submit-annotate-button'>ANNOTATE</button>
+              </div>
+            </div>
+          </td>
+          <td valign='top' style='padding-left: 5px; width: 100%;'>
+            <div id="jobdiv">
+              <div id="jobdivspinnerdiv" class="spinnerdiv">
+                <img src="/submit/nocache/broken_wheel.gif"></img>
+              </div>
+              <div style='width: 100%; text-align: right;'>
+                <button id='refresh-jobs-table-btn' class='butn'>&#x21ba;</button>
+              </div>
+              <table id="jobs-table">
+                <thead>
+                  <tr>
+                    <th class='tableheadercell'>Job ID</th>
+                    <th class='tableheadercell'>Input File</th>
+                    <th class='tableheadercell' style='width: 100px; cursor: default;' title='Number of unique variants'>Variants</th>
+                    <th class='tableheadercell' style='width: 100px;'>Annotators</th>
+                    <th class='tableheadercell'>Genome</th>
+                    <th class='tableheadercell'>Note</th>
+                    <th class='tableheadercell'>Status</th>
+                    <th class='tableheadercell'>Download</th>
+                    <th class='tableheadercell'>Delete</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+              <div id='jobs-table-pagination-div' style='float: right;'>
+                <button id='jobs-table-pagination-prev-button' class='butn inactive-download-button' onclick='onClickJobsListPrevPage();'>
+                  < </button>
+                    <button id='jobs-table-pagination-next-button' class='butn inactive-download-button' onclick='onClickJobsListNextPage();'>></button>
+              </div>
+              <br />
+            </div>
+          </td>
+        </tr>
+      </table>
+      <iframe id="download-area" style="display:none;"></iframe>
+    </div>
+    <!-- submitdiv -->
+    <div id='storediv' class='appdiv' style='display: none;'>
+      <div id='messagediv'></div>
+      <div id='storebodydiv'>
         <div id='installationprogressmsgdiv'>
-            <img id="progressdivcloseicon" src="/store/images/x-lg.svg" onclick="onClickProgressDivCloseIcon()"></img>
+          <img id="progressdivcloseicon" src="/store/images/x-lg.svg" onclick="onClickProgressDivCloseIcon()"></img>
         </div>
         <div id='chaticondiv'>
-            <img id="chaticon"></img>
+          <img id="chaticon"></img>
         </div>
         <div id='storemenudiv'>
-            <input type='text' id='store-namefilter' name='namefilter' placeholder='Search the Store' oninput='updateFilter()'/>
-            <hr />
-            <label id='update-available-div' class='checkbox-store-container'>Update available
-                <input type='checkbox' class='store-tag-checkbox' value='newavailable' id='store-tag-checkbox-newavailable' onclick='onStoreTagCheckboxChange();'/>
-                <span class='checkmark-store'>
-            </label>
-            <hr />
-            <div id='bycategory-div'>By Category</div>
-            <div id='store-tag-custom-div'>
-            </div>
-            <hr />
-            <!--<div id='store-install-all-button-div'>
-                <button id='store-install-all-button' onclick='onClickStoreInstallAllButton();' style='font-size: 18px; display: none;'>Install All</button>
-            </div>-->
+          <input type='text' id='store-namefilter' name='namefilter' placeholder='Search the Store' oninput='updateFilter()' />
+          <hr />
+          <label id='update-available-div' class='checkbox-store-container'>Update available <input type='checkbox' class='store-tag-checkbox' value='newavailable' id='store-tag-checkbox-newavailable' onclick='onStoreTagCheckboxChange();' />
+            <span class='checkmark-store'>
+          </label>
+          <hr />
+          <div id='bycategory-div'>By Category</div>
+          <div id='store-tag-custom-div'></div>
+          <hr />
+          <!--<div id='store-install-all-button-div'><button id='store-install-all-button' onclick='onClickStoreInstallAllButton();' style='font-size: 18px; display: none;'>Install All</button></div>-->
         </div>
-        <div style = 'max-width: 100%; overflow-x: hidden'>
-            <div id='store-allmodule-div'>
-                <div id='store-sort-div'>
-                    <span id='store-sort-label'>Sort by</span>
-                    <select id='store-sort-select' onchange='populateAllModulesDiv(true);'>
-                        <option value='name'>Name</option>
-                        <option value='date'>Date</option>
-                        <option value='size'>Size</option>
-                    </select>
-                </div>
-                <div id='store-update-all-div' >
-                    <button id='store-update-all-button' class='butn' onclick='onClickStoreUpdateAllButton();' style='font-size: 12px;'>Update All</button>
-                </div>
-                <div id='remotemodulepanels' ></div>
+        <div style='max-width: 100%; overflow-x: hidden'>
+          <div id='store-allmodule-div'>
+            <div id='store-sort-div'>
+              <span id='store-sort-label'>Sort by</span>
+              <select id='store-sort-select' onchange='populateAllModulesDiv(true);'>
+                <option value='name'>Name</option>
+                <option value='date'>Date</option>
+                <option value='size'>Size</option>
+              </select>
             </div>
-            <div id='store-modulegroup-div'>
-                <div>
-                    <img src='/result/images/back_arrow.png' class='back-arrow' onclick='onClickModuleGroupDivBackArrow();'>
-                    <span id='store-modulegroup-title-span'></span>
-                </div>
-                <div id='store-modulegroup-content-div'></div>
+            <div id='store-update-all-div'>
+              <button id='store-update-all-button' class='butn' onclick='onClickStoreUpdateAllButton();' style='font-size: 12px;'>Update All</button>
             </div>
+            <div id='remotemodulepanels'></div>
+          </div>
+          <div id='store-modulegroup-div'>
+            <div>
+              <img src='/result/images/back_arrow.png' class='back-arrow' onclick='onClickModuleGroupDivBackArrow();'>
+              <span id='store-modulegroup-title-span'></span>
+            </div>
+            <div id='store-modulegroup-content-div'></div>
+          </div>
         </div>
+      </div>
     </div>
-</div> <!-- storediv -->
-
-<div id='admindiv' class='appdiv' style='display: none;'>
-</div> <!-- admindiv -->
-
-<div id='store-systemmodule-div'>
-    <div id='store-systemmodule-systemnotready-div' style='display: none;'>
+    <!-- storediv -->
+    <div id='admindiv' class='appdiv' style='display: none;'></div>
+    <!-- admindiv -->
+    <div id='store-systemmodule-div' class="hidden">
+      <div id='store-systemmodule-systemnotready-div' style='display: none;'>
         <span id='store-systemmodule-systemnotready-span'></span>
         <br />
         <br />
         <span id='store-systemmodule-systemnotready-span2'></span>
-    </div>
-    <div id='store-systemmodule-missing-div' style='display: none;'>
-        There are missing system modules which OakVar needs.
+      </div>
+      <div id='store-systemmodule-missing-div' class="hidden"> There are missing system modules which OakVar needs. <br /> Click this button to install them: <button id='store-systemmodule-install-button' class="butn" style='position: relative; top: -2px;' onclick="onClickInstallBaseComponents();">Install system modules</button>
         <br />
-        Click this button to install them:
-        <button id='store-systemmodule-install-button' class="butn" style='position: relative; top: -2px;' onclick="onClickInstallBaseComponents();">Install system modules</button>
-        <br />
+      </div>
+      <div id='store-systemmodule-update-div' style='display: none;'> System updates in progress... </div>
+      <div id='store-systemmodule-msg-div'></div>
     </div>
-    <div id='store-systemmodule-update-div' style='display: none;'>
-        System updates in progress...
-    </div>
-    <div id='store-systemmodule-msg-div'>
-    </div>
-</div> <!-- systemmodule-div -->
-
-<div id='settingsdiv' >
-    <span class="settingsdiv-elem">System configuration file:</span>
-    <br />
-    <input id='sysconfpathspan' class="settingsdiv-elem" type='text' size='60' disabled />
-    <br />
-    <span class="settingsdiv-elem">Jobs dir: </span><input id='settings_jobs_dir_input' class="settingsdiv-elem" type='text' size='30' autocomplete="on" /><span id='server_user_span'></span>
-    <br />
-    <span class="settingsdiv-elem">Modules dir: </span><input id='settings_modules_dir_input' class="settingsdiv-elem" autocomplete="on" type='text' size='60' />
-    <br />
-    <span class="settingsdiv-elem">Limit the sum of input file sizes to: </span><input id='settings_gui_input_size_limit' class="settingsdiv-elem" type='text' size='5' /><span>MB</span>
-    <br />
-    <span class="settingsdiv-elem">Maximum number of concurrent jobs: </span><input id='settings_max_num_concurrent_jobs' class="settingsdiv-elem" type='text' size='10' />
-    <br />
-    <span class="settingsdiv-elem">Maximum number of concurrent annotators per job: </span><input id='settings_max_num_concurrent_annotators_per_job' class="settingsdiv-elem" type='text' size='10' />
-    <br />
-    <button class="settingdsiv-elem butn" onclick='onClickStoreUpdateRemoteButton()'>Refresh store</button>
-    <br />
-    <br />
-    <button class="settingdsiv-elem butn" onclick='onClickCheckUpdatesButton()'>Check updates</button>
-    <p>
-        <button id='job-import' class='butn' onclick="document.getElementById('job-import-file').click()">
-            Import Job
-            <input type="file" id="job-import-file" style='display:none;' onchange="importJob()">
+    <!-- systemmodule-div -->
+    <div id='settingsdiv'>
+      <span class="settingsdiv-elem">System configuration file:</span>
+      <br />
+      <input id='sysconfpathspan' class="settingsdiv-elem" type='text' size='60' disabled />
+      <br />
+      <span class="settingsdiv-elem">Jobs dir: </span>
+      <input id='settings_jobs_dir_input' class="settingsdiv-elem" type='text' size='30' autocomplete="on" />
+      <span id='server_user_span'></span>
+      <br />
+      <span class="settingsdiv-elem">Modules dir: </span>
+      <input id='settings_modules_dir_input' class="settingsdiv-elem" autocomplete="on" type='text' size='60' />
+      <br />
+      <span class="settingsdiv-elem">Limit the sum of input file sizes to: </span>
+      <input id='settings_gui_input_size_limit' class="settingsdiv-elem" type='text' size='5' />
+      <span>MB</span>
+      <br />
+      <span class="settingsdiv-elem">Maximum number of concurrent jobs: </span>
+      <input id='settings_max_num_concurrent_jobs' class="settingsdiv-elem" type='text' size='10' />
+      <br />
+      <span class="settingsdiv-elem">Maximum number of concurrent annotators per job: </span>
+      <input id='settings_max_num_concurrent_annotators_per_job' class="settingsdiv-elem" type='text' size='10' />
+      <br />
+      <button class="settingdsiv-elem butn" onclick='onClickStoreUpdateRemoteButton()'>Refresh store</button>
+      <br />
+      <br />
+      <button class="settingdsiv-elem butn" onclick='onClickCheckUpdatesButton()'>Check updates</button>
+      <p>
+        <button id='job-import' class='butn' onclick="document.getElementById('job-import-file').click()"> Import Job <input type="file" id="job-import-file" style='display:none;' onchange="importJob()">
         </button>
-    </p>
-    <button class="settingsdiv-elem butn" onclick='onClickSaveSystemConf();'>Save</button>
-    <button class="settingsdiv-elem butn" onclick='resetSystemConf();'>Reset</button>
-</div> <!-- settingsdiv -->
-
-<div id='spinner-div'>
-    <div id='spinner-div-progress-title'>Uploading input file(s)...</div>
-    <div id='spinner-div-progress-div'>
-        <div id='spinner-div-progress-bar'></div>
+      </p>
+      <button class="settingsdiv-elem butn" onclick='onClickSaveSystemConf();'>Save</button>
+      <button class="settingsdiv-elem butn" onclick='resetSystemConf();'>Reset</button>
     </div>
-    <div id='spinner-div-progress-num'></div>
-</div>
-
-<div id='update-remote-spinner-div'>
-    <div id='update-remote-spinner-div-text'>Updating store information...</div>
-</div>
-
-<div id='report_generation_div'>
-    Choose a report type:
-    <select id='report_generation_div_select'></select>
-    <br />
-    <br />
-    <button id='report_generation_generate_button' onclick='createJobReport'>Generate</button><button id='report_generation_close_button' onclick='closeReportGenerationDiv'>Cancel</button>
-</div>
-
-</body>
+    <!-- settingsdiv -->
+    <div id='spinner-div' class="hidden">
+      <div id='spinner-div-progress-title'>Uploading input file(s)...</div>
+      <div id='spinner-div-progress-div'>
+        <div id='spinner-div-progress-bar'></div>
+      </div>
+      <div id='spinner-div-progress-num'></div>
+    </div>
+    <div id='update-remote-spinner-div' class="hidden">
+      <div id='update-remote-spinner-div-text'>Updating store information...</div>
+    </div>
+    <div id='report_generation_div'> Choose a report type: <select id='report_generation_div_select'></select>
+      <br />
+      <br />
+      <button id='report_generation_generate_button' onclick='createJobReport'>Generate</button>
+      <button id='report_generation_close_button' onclick='closeReportGenerationDiv'>Cancel</button>
+    </div>
+  </body>
 </html>

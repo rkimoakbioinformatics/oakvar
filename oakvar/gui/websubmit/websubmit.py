@@ -420,6 +420,23 @@ def get_annotators(_):
     return web.json_response(out)
 
 
+def get_postaggregators(_):
+    from ...module.local import get_local_module_infos
+
+    out = {}
+    for local_info in get_local_module_infos(types=["postaggregator"]):
+        module_name = local_info.name
+        if local_info.type == "postaggregator":
+            out[module_name] = {
+                "name": module_name,
+                "version": local_info.version,
+                "type": local_info.type,
+                "title": local_info.title,
+                "description": local_info.description,
+                "developer": local_info.developer,
+            }
+    return web.json_response(out)
+
 def find_files_by_ending(d, ending):
     fns = os.listdir(d)
     files = []
@@ -1328,6 +1345,7 @@ async def get_webapp_index(request):
 routes = []
 routes.append(["POST", "/submit/submit", submit])
 routes.append(["GET", "/submit/annotators", get_annotators])
+routes.append(["GET", "/submit/postaggregators", get_postaggregators])
 routes.append(["GET", "/submit/jobs", get_all_jobs])
 routes.append(["GET", "/submit/jobs/{job_id}", view_job])
 routes.append(["DELETE", "/submit/jobs/{job_id}", delete_job])

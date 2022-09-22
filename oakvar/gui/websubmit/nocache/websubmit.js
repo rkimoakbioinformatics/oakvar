@@ -14,7 +14,7 @@ var GLOBALS = {
 var currentTab = "submit";
 var websubmitReportBeingGenerated = {};
 var jobRunning = {};
-var tagsCollectedForSubmit = [];
+var collectedTags = [];
 var jobsPerPageInList = 15;
 var jobsListCurStart = 0;
 var jobsListCurEnd = jobsPerPageInList;
@@ -75,7 +75,7 @@ function submit() {
     annotators: [],
     reports: [],
   };
-  var annotChecks = $("#annotator-select-div").find(
+  var annotChecks = $("#analysis-module-select-div").find(
     "input[type=checkbox][kind=module]"
   );
   for (var i = 0; i < annotChecks.length; i++) {
@@ -221,23 +221,19 @@ function submit() {
 }
 
 function showSpinner() {
-  document.querySelector("#spinner-div").classList.add("show");
-  document.querySelector("#spinner-div").classList.remove("hide");
+  document.querySelector("#spinner-div").classList.remove("hidden");
 }
 
 function hideSpinner() {
-  document.querySelector("#spinner-div").classList.remove("show");
-  document.querySelector("#spinner-div").classList.add("hide");
+  document.querySelector("#spinner-div").classList.add("hidden");
 }
 
 function showUpdateRemoteSpinner() {
-  document.querySelector("#update-remote-spinner-div").classList.remove("hide");
-  document.querySelector("#update-remote-spinner-div").classList.add("show");
+  document.querySelector("#update-remote-spinner-div").classList.remove("hidden");
 }
 
 function hideUpdateRemoteSpinner() {
-  document.querySelector("#update-remote-spinner-div").classList.remove("show");
-  document.querySelector("#update-remote-spinner-div").classList.add("hide");
+  document.querySelector("#update-remote-spinner-div").classList.add("hidden");
 }
 
 function sortJobs() {
@@ -1088,26 +1084,12 @@ function refreshJobsTable() {
   populateJobs();
 }
 
-function populateAnnotators() {
-  document.querySelector("#annotdivspinnerdiv").classList.remove("hide");
-  document
-    .querySelector("#annotator-group-select-div")
-  return new Promise((resolve, reject) => {
-    $.ajax({
-      url: "/submit/annotators",
-      type: "GET",
-      success: function (data) {
-        document.querySelector("#annotdivspinnerdiv").classList.add("hide");
-        document
-          .querySelector("#annotator-group-select-div")
-        GLOBALS.annotators = data;
-        setTimeout(function () {
-          buildAnnotatorsSelector();
-          resolve();
-        }, 100);
-      },
-    });
-  });
+async function populateAnnotators() {
+  var res = await axios.get("/submit/annotators")
+  GLOBALS.annotators = res.data
+  res = await axios.get("/submit/postaggregators")
+  GLOBALS.postaggregators = res.data
+  buildAnalysisModuleSelector();
 }
 
 function titleCase(str) {
@@ -1116,65 +1098,25 @@ function titleCase(str) {
   });
 }
 
-function buildAnnotatorGroupSelector() {
-  tagsCollectedForSubmit = [];
-  tagMembership = {};
+function collectDeveloperProvidedTags() {
+  collectedTags = [];
   for (var module in localModuleInfo) {
-    if (localModuleInfo[module].type != "annotator") {
+    var ty = localModuleInfo[module].type;
+    if (ty != "annotator" && ty != "postaggregator") {
       continue;
     }
     var tags = localModuleInfo[module].tags;
     for (var i = 0; i < tags.length; i++) {
       var tag = tags[i];
-      if (tagsCollectedForSubmit.indexOf(tag) == -1) {
-        tagsCollectedForSubmit.push(tag);
-        tagMembership[tag] = 1;
-      } else {
-        tagMembership[tag]++;
+      if (collectedTags.indexOf(tag) == -1) {
+        collectedTags.push(tag);
       }
     }
   }
-  tagsCollectedForSubmit.sort((a, b) => {
-    return tagMembership[b] - tagMembership[a];
-  });
-  var annotCheckDiv = document.getElementById("annotator-group-select-div");
-  /*
-  $(annotCheckDiv).empty();
-  var annotCheckTitleDiv = getEl("div");
-  annotCheckTitleDiv.classList.add("w-32")
-  addEl(annotCheckDiv, annotCheckTitleDiv);
-  var div = getEl("div");
-  div.classList.add("space-y-4")
-  addEl(annotCheckTitleDiv, div);
-  var div2 = getEl("div")
-  div2.classList.add("flex", "items-center")
-  addEl(div, div2)
-  var input = getEl("input")
-  input.type = "radio"
-  input.name = "filter"
-  input.classList.add("h-4", "w-4", "border-gray-300", "text-indigo-600", "focus:ring-indigo-500")
-  addEl(div2, input)
-  var label = getEl("label")
-  label.setAttribute("for", "filter")
-  label.classList.add("ml-3", "block", "text-sm", "font-medium", "text-gray-700")
-  label.textContent = "Filter"
-  addEl(div2, label)
-  div.innerText = "Filters";
-  div.style["font-size"] = "1.2em";
-  div.style["font-weight"] = "bold";
-  var div = getEl("div");
-  addEl(annotCheckTitleDiv, div);
-  div.innerText = "Show";
-  div.style["margin-left"] = "auto";
-  div.style["margin-right"] = "0.5ch";
-  div.style["font-weight"] = "bold";
-  div.style["padding"] = "1px";
-  var wrapper = getEl("div");
-  wrapper.id = "annotator-group-select-tag-div";
-  wrapper.className = "annotator-group-select";
-  addEl(annotCheckDiv, wrapper);
-  */
-  var wrapper = document.querySelector("#annotator-group-select-tag-div")
+  collectedTags.sort()
+}
+
+function collectDeveloperProvidedTagData() {
   var checkDatas = [];
   checkDatas.push({
     name: "selected",
@@ -1183,8 +1125,8 @@ function buildAnnotatorGroupSelector() {
     checked: false,
     kind: "collect",
   });
-  for (var i = 0; i < tagsCollectedForSubmit.length; i++) {
-    var tag = tagsCollectedForSubmit[i];
+  for (var i = 0; i < collectedTags.length; i++) {
+    var tag = collectedTags[i];
     checkDatas.push({
       name: tag,
       value: tag,
@@ -1193,16 +1135,22 @@ function buildAnnotatorGroupSelector() {
       kind: "tag",
     });
   }
+  return checkDatas
+}
+
+function buildDeveloperTagSelector() {
+  collectDeveloperProvidedTags();
+  var wrapper = document.querySelector("#analysis-module-filter-items");
   var select = getEl("select");
   addEl(wrapper, select);
   select.id = "annotator-group-select-select";
   select.multiple = true;
-  for (var i = 0; i < tagsCollectedForSubmit.length; i++) {
-    var tagName = tagsCollectedForSubmit[i];
+  for (var i = 0; i < collectedTags.length; i++) {
+    var tagName = collectedTags[i];
     var option = new Option(tagName, tagName);
     addEl(select, option);
   }
-  select.addEventListener("change", function (evt) {
+  select.addEventListener("change", function (_) {
     var tags = $(this).val();
     onChangeAnnotatorGroupCheckbox(tags);
   });
@@ -1210,19 +1158,26 @@ function buildAnnotatorGroupSelector() {
   var tagWrapper = getEl("div");
   tagWrapper.classList.add("checkbox-group-flexbox");
   addEl(wrapper, tagWrapper);
-  for (let tag of tagsCollectedForSubmit) {
+  for (let tag of collectedTags) {
     let tagDiv = getEl("div");
     tagDiv.classList.add("submit-annot-tag");
-    tagDiv.classList.add("relatve", "flex", "items-start")
+    tagDiv.classList.add("relatve", "flex", "items-start");
     addEl(tagWrapper, tagDiv);
-    var div2 = getEl("div")
-    div2.classList.add("flex", "h-5", "items-center")
-    addEl(tagDiv, div2)
-    var cb = getEl("input")
-    cb.type = "checkbox"
-    cb.classList.add("h-4", "w-4", "rounded", "border-gray-300", "text-indigo-600", "focus:ring-indigo-500")
+    var div2 = getEl("div");
+    div2.classList.add("flex", "h-5", "items-center");
+    addEl(tagDiv, div2);
+    var cb = getEl("input");
+    cb.type = "checkbox";
+    cb.classList.add(
+      "h-4",
+      "w-4",
+      "rounded",
+      "border-gray-300",
+      "text-indigo-600",
+      "focus:ring-indigo-500"
+    );
     cb.addEventListener("change", (event) => {
-      console.log("@ cb change evt", event)
+      console.log("@ cb change evt", event);
       for (let option of select.options) {
         if (option.value === tag) {
           option.selected = event.target.checked;
@@ -1231,122 +1186,25 @@ function buildAnnotatorGroupSelector() {
       select.dispatchEvent(new Event("change"));
       tagDiv.classList.toggle("selected");
     });
-    addEl(div2, cb)
-    var div3 = getEl("div")
-    div3.classList.add("ml-3", "text-sm")
-    addEl(tagDiv, div3)
-    var label = getEl("label")
-    label.classList.add("font-medium", "text-gray-700")
-    label.textContent = titleCase(tag)
-    addEl(div3, label)
-    var p = getEl("p")
-    p.classList.add("text-gray-500")
-    addEl(div3, p)
-    /*
-    let tagCb = getEl("input");
-    addEl(tagDiv, tagCb);
-    tagCb.classList.add("submit-annot-tag-cb");
-    tagCb.type = "checkbox";
-    tagCb.value = tag;
-    tagCb.style.display = "none";
-    tagCb.addEventListener("change", (event) => {
-      for (let option of select.options) {
-        if (option.value === tag) {
-          option.selected = event.target.checked;
-        }
-      }
-      select.dispatchEvent(new Event("change"));
-      tagDiv.classList.toggle("selected");
-    });
-    let cbId = `annot-control-${tag}`;
-    tagCb.id = cbId;
-    let tagSpan = getEl("label");
-    addEl(tagDiv, tagSpan);
-    // tagSpan.setAttribute('for', cbId);
-    tagSpan.innerText = titleCase(tag);
-    tagSpan.style.cursor = "pointer";
-    tagSpan.style["user-select"] = "none";
-    //TODO do without jquery
-    tagDiv.addEventListener("click", () => {
-      $(tagCb).click();
-    });
-    */
+    addEl(div2, cb);
+    var div3 = getEl("div");
+    div3.classList.add("ml-3", "text-sm");
+    addEl(tagDiv, div3);
+    var label = getEl("label");
+    label.classList.add("font-medium", "text-gray-700");
+    label.textContent = titleCase(tag);
+    addEl(div3, label);
+    var p = getEl("p");
+    p.classList.add("text-gray-500");
+    addEl(div3, p);
   }
-  // Way down here to use local variables in listener
-  /*
-  var allCatsBtn = getEl("button");
-  addEl(annotCheckTitleDiv, allCatsBtn);
-  allCatsBtn.classList.add("butn");
-  allCatsBtn.innerText = "All";
-  allCatsBtn.addEventListener("click", () => {
-    document.querySelectorAll(".submit-annot-tag").forEach((tagDiv) => {
-      tagDiv.classList.add("selected");
-    });
-    document.querySelectorAll(".submit-annot-tag-cb").forEach((cb) => {
-      cb.checked = true;
-    });
-    for (let option of select.options) {
-      option.selected = true;
-    }
-    select.dispatchEvent(new Event("change"));
-  });
-  var clearCatsBtn = getEl("button");
-  addEl(annotCheckTitleDiv, clearCatsBtn);
-  clearCatsBtn.classList.add("butn");
-  clearCatsBtn.innerText = "None";
-  clearCatsBtn.addEventListener("click", () => {
-    document.querySelectorAll(".submit-annot-tag").forEach((tagDiv) => {
-      tagDiv.classList.remove("selected");
-    });
-    document.querySelectorAll(".submit-annot-tag-cb").forEach((cb) => {
-      cb.checked = false;
-    });
-    for (let option of select.options) {
-      option.selected = false;
-    }
-    select.dispatchEvent(new Event("change"));
-  });
-  var showSelBtn = getEl("button");
-  addEl(annotCheckTitleDiv, showSelBtn);
-  showSelBtn.classList.add("butn");
-  showSelBtn.innerText = "Selected";
-
-  showSelBtn.addEventListener("click", () => {
-    document.querySelectorAll(".submit-annot-tag").forEach((tagDiv) => {
-      tagDiv.classList.remove("selected");
-    });
-    document.querySelectorAll(".submit-annot-tag-cb").forEach((cb) => {
-      cb.checked = false;
-    });
-    for (let option of select.options) {
-      option.selected = false;
-    }
-    onChangeAnnotatorGroupCheckbox(["selected"]);
-  });
-  */
 }
 
-function buildAnnotatorsSelector() {
-  var annotCheckDiv = document.getElementById("annotator-select-div");
-  var annotators = GLOBALS.annotators;
-  var annotInfos = Object.values(annotators);
-  var groupNames = Object.keys(installedGroups);
-  for (var i = 0; i < groupNames.length; i++) {
-    var name = groupNames[i];
-    var module = localModuleInfo[name];
-    if (module == undefined) {
-      continue;
-    }
-    var title = module.title;
-    annotInfos.push({
-      name: name,
-      title: title,
-      type: module.type,
-      groups: module["groups"],
-    });
-  }
+function getModuleSelectorData() {
+  var modules = Object.assign({}, GLOBALS.annotators, GLOBALS.postaggregators)
+  var moduleInfos = Object.values(modules);
   // Sort by title
-  annotInfos.sort((a, b) => {
+  moduleInfos.sort((a, b) => {
     var x = a.title.toLowerCase();
     var y = b.title.toLowerCase();
     if (x < y) {
@@ -1357,31 +1215,32 @@ function buildAnnotatorsSelector() {
     }
     return 0;
   });
-  let checkDatas = [];
-  for (let i = 0; i < annotInfos.length; i++) {
-    var annotInfo = annotInfos[i];
+  let moduleData = [];
+  for (let i = 0; i < moduleInfos.length; i++) {
+    var annotInfo = moduleInfos[i];
     var module = localModuleInfo[annotInfo.name];
     var kind = null;
-    if (module.type == "annotator") {
-      kind = "module";
-    } else if (module.type == "group") {
-      kind = "group";
-    }
-    checkDatas.push({
+    moduleData.push({
       name: annotInfo.name,
       value: annotInfo.name,
       title: annotInfo.title,
       type: annotInfo.type,
       checked: false,
-      kind: kind,
+      kind: "module",
       groups: module["groups"],
       desc: annotInfo.description,
     });
   }
-  buildCheckBoxGroup(checkDatas, annotCheckDiv);
+  return moduleData
 }
 
-function buildCheckBoxGroup(checkDatas, parentDiv) {
+function buildAnalysisModuleSelector() {
+  var annotCheckDiv = document.getElementById("analysis-module-select-div");
+  var moduleData = getModuleSelectorData()
+  buildCheckBoxGroup(moduleData, annotCheckDiv);
+}
+
+function buildCheckBoxGroup(moduleData, parentDiv) {
   parentDiv = parentDiv === undefined ? getEl("div") : parentDiv;
   emptyElement(parentDiv);
   parentDiv.classList.add("checkbox-group");
@@ -1390,7 +1249,7 @@ function buildCheckBoxGroup(checkDatas, parentDiv) {
   addEl(parentDiv, allNoneDiv);
   allNoneDiv.className = "checkbox-group-all-none-div";
   var parentId = parentDiv.id;
-  if (parentId == "annotator-select-div") {
+  if (parentId == "analysis-module-select-div") {
     var span = getEl("span");
     span.classList.add("checkbox-group-all-button");
     span.addEventListener("click", function (evt) {
@@ -1408,134 +1267,71 @@ function buildCheckBoxGroup(checkDatas, parentDiv) {
   var flexbox = getEl("div");
   addEl(parentDiv, flexbox);
   flexbox.classList.add("checkbox-group-flexbox");
-  flexbox.classList.add("grid", "grid-cols-1", "gap-4", "sm:grid-cols-2", "xl:grid-cols-3")
+  flexbox.classList.add(
+    "grid",
+    "grid-cols-1",
+    "gap-4",
+    "sm:grid-cols-2",
+    "xl:grid-cols-3",
+    "2xl:grid-cols-4"
+  );
   var checkDivs = [];
   // checks
   var checkDivsForGroup = {};
-  for (let i = 0; i < checkDatas.length; i++) {
-    var checkData = checkDatas[i];
+  for (let i = 0; i < moduleData.length; i++) {
+    var checkData = moduleData[i];
     if (checkData.kind == "group") {
-      continue
+      continue;
     }
     var checkDiv = getEl("div");
     checkDiv.classList.add("checkbox-group-element");
-    checkDiv.classList.add("relative", "flex", "items-center", "space-x-3", "rounded-lg", "border", "border-gray-300", "bg-white", "px-6", "py-5", "shadow-sm", "focus-within:ring-2", "focus-within:ring-indigo-500", "focus-within:ring-offset-2", "hover:border-gray-400")
+    checkDiv.classList.add(
+      "relative",
+      "flex",
+      "items-center",
+      "space-x-3",
+      "rounded-lg",
+      "border",
+      "border-gray-300",
+      "bg-white",
+      "px-6",
+      "py-5",
+      "shadow-sm",
+      "focus-within:ring-2",
+      "focus-within:ring-indigo-500",
+      "focus-within:ring-offset-2",
+      "hover:border-gray-400"
+    );
     //checkDiv.classList.add("hide");
     checkDiv.setAttribute("name", checkData.name);
     checkDiv.setAttribute("kind", checkData.kind);
-    addEl(flexbox, checkDiv)
-    var div3 = getEl("div")
-    div3.classList.add("flex-shrink-0")
-    addEl(checkDiv, div3)
-    var img = getEl("img")
-    img.classList.add("h-10", "w-10", "rounded-lg")
-    img.src = "/store/locallogo?module=" + checkData.name
-    addEl(div3, img)
-    var div4 = getEl("div")
-    div4.classList.add("min-w-0", "flex-1")
-    addEl(checkDiv, div4)
-    var a = getEl("a")
-    a.href = "#"
-    a.classList.add("focus:outline-none")
-    addEl(div4, a)
-    var span = getEl("span")
-    span.classList.add("absolute", "inset-0")
-    span.setAttribute("aria-hidden", true)
-    addEl(a, span)
-    var p = getEl("p")
-    p.classList.add("text-sm", "font-medium", "text-gray-900")
-    p.textContent = checkData.title
-    addEl(a, p)
-    var p2 = getEl("p")
-    p2.classList.add("text-sm", "text-gray-500")
-    p2.textContent = checkData.desc
-    addEl(a, p2)
-    /*
-    var label = getEl("label");
-    label.classList.add("checkbox-container");
-    label.textContent = checkData.label + " ";
-    var check = getEl("input");
-    check.setAttribute("type", "checkbox");
-    check.setAttribute("name", checkData.name);
-    check.setAttribute("value", checkData.value);
-    check.checked = checkData.checked;
-    check.setAttribute("kind", checkData.kind);
-    if (parentId == "annotator-select-div") {
-      check.id = "annotator-select-div-input-" + checkData.name;
-    }
+    addEl(flexbox, checkDiv);
+    var div3 = getEl("div");
+    div3.classList.add("flex-shrink-0");
+    addEl(checkDiv, div3);
+    var img = getEl("img");
+    img.classList.add("h-10", "w-10", "rounded-lg");
+    img.src = "/store/locallogo?module=" + checkData.name;
+    addEl(div3, img);
+    var div4 = getEl("div");
+    div4.classList.add("min-w-0", "flex-1");
+    addEl(checkDiv, div4);
+    var a = getEl("a");
+    a.href = "#";
+    a.classList.add("focus:outline-none");
+    addEl(div4, a);
     var span = getEl("span");
-    span.className = "checkmark";
-    span.setAttribute("module", checkData.value);
-    if (checkData.type == "group") {
-      var t = getEl("span");
-      t.textContent = checkData.label + " ";
-      t.style.marginLeft = "9px";
-      t.style.cursor = "default";
-      t.addEventListener("click", function (evt) {
-        var btn = evt.target.previousSibling;
-        var state = btn.getAttribute("state");
-        var name = btn.getAttribute("name");
-        var text = null;
-        var grpDiv = document.querySelector(
-          "div.checkbox-group-element-sdiv[name=" + name + "]"
-        );
-        if (state == "collapsed") {
-          state = "expanded";
-          text = "\u25BE";
-          grpDiv.classList.add("on");
-          grpDiv.classList.remove("off");
-        } else {
-          state = "collapsed";
-          text = "\u25B8";
-          grpDiv.classList.add("off");
-          grpDiv.classList.remove("on");
-        }
-        btn.setAttribute("state", state);
-        btn.textContent = text;
-      });
-      var btn = getEl("span");
-      btn.className = "icon";
-      btn.textContent = "\u25B8";
-      btn.style.cursor = "default";
-      btn.setAttribute("state", "collapsed");
-      btn.setAttribute("name", checkData.name);
-      btn.addEventListener("click", function (evt) {
-        var btn = evt.target;
-        var state = btn.getAttribute("state");
-        var name = btn.getAttribute("name");
-        var text = null;
-        var grpDiv = document.querySelector(
-          "div.checkbox-group-element-sdiv[name=" + name + "]"
-        );
-        if (state == "collapsed") {
-          state = "expanded";
-          text = "\u25BE";
-          grpDiv.classList.add("on");
-          grpDiv.classList.remove("off");
-        } else {
-          state = "collapsed";
-          text = "\u25B8";
-          grpDiv.classList.add("off");
-          grpDiv.classList.remove("on");
-        }
-        btn.setAttribute("state", state);
-        btn.textContent = text;
-      });
-      addEl(checkDiv, btn);
-      addEl(checkDiv, t);
-      var sdiv = getEl("div");
-      sdiv.id = "submit-annotator-group-sdiv-" + checkData.name;
-      sdiv.classList.add("checkbox-group-element-sdiv");
-      sdiv.setAttribute("kind", "annotator-group-div");
-      sdiv.setAttribute("name", checkData.name);
-      addEl(checkDiv, sdiv);
-    } else {
-      addEl(checkDiv, label);
-      addEl(label, check);
-      addEl(label, span);
-      //addEl(checkDiv, sp);
-    }
-    */
+    span.classList.add("absolute", "inset-0");
+    span.setAttribute("aria-hidden", true);
+    addEl(a, span);
+    var p = getEl("p");
+    p.classList.add("text-sm", "font-medium", "text-gray-900");
+    p.textContent = checkData.title;
+    addEl(a, p);
+    var p2 = getEl("p");
+    p2.classList.add("text-sm", "text-gray-500");
+    p2.textContent = checkData.desc;
+    addEl(a, p2);
     checkDivs.push(checkDiv);
   }
   var groups = Object.keys(checkDivsForGroup);
@@ -1648,7 +1444,7 @@ function onChangeAnnotatorGroupCheckbox(tags) {
   if (
     !checkVisible(
       document
-        .querySelector("#annotator-select-div")
+        .querySelector("#analysis-module-select-div")
         .querySelector(".checkbox-group-flexbox")
     )
   ) {
@@ -1761,32 +1557,27 @@ function openSubmitDiv() {
   div.style.display = "block";
 }
 
-function loadSystemConf() {
-  $.get("/submit/getsystemconfinfo").done(function (response) {
-    systemConf = response;
-    systemConf["oc_store_url"] = "https://store.opencravat.org";
-    var s = document.getElementById("sysconfpathspan");
-    s.value = response["conf_path"];
-    var s = document.getElementById("settings_jobs_dir_input");
-    s.value = response["jobs_dir"];
-    var span = document.getElementById("server_user_span");
-    //if (!servermode) {
-    //  span.textContent = "/default";
-    //} else {
-    span.textContent = "";
-    //}
-    var s = document.getElementById("settings_modules_dir_input");
-    s.value = response["modules_dir"];
-    var s = document.getElementById("settings_gui_input_size_limit");
-    var cutoff = parseInt(response["gui_input_size_limit"]);
-    s.value = cutoff;
-    var s = document.getElementById("settings_max_num_concurrent_jobs");
-    s.value = parseInt(response["max_num_concurrent_jobs"]);
-    var s = document.getElementById(
-      "settings_max_num_concurrent_annotators_per_job"
-    );
-    s.value = parseInt(response["max_num_concurrent_annotators_per_job"]);
-  });
+async function loadSystemConf() {
+  var response = await axios.get("/submit/getsystemconfinfo")
+  systemConf = response;
+  systemConf["oc_store_url"] = "https://store.opencravat.org";
+  var s = document.getElementById("sysconfpathspan");
+  s.value = response["conf_path"];
+  var s = document.getElementById("settings_jobs_dir_input");
+  s.value = response["jobs_dir"];
+  var span = document.getElementById("server_user_span");
+  span.textContent = "";
+  var s = document.getElementById("settings_modules_dir_input");
+  s.value = response["modules_dir"];
+  var s = document.getElementById("settings_gui_input_size_limit");
+  var cutoff = parseInt(response["gui_input_size_limit"]);
+  s.value = cutoff;
+  var s = document.getElementById("settings_max_num_concurrent_jobs");
+  s.value = parseInt(response["max_num_concurrent_jobs"]);
+  var s = document.getElementById(
+    "settings_max_num_concurrent_annotators_per_job"
+  );
+  s.value = parseInt(response["max_num_concurrent_annotators_per_job"]);
 }
 
 function onClickSaveSystemConf() {
@@ -1845,7 +1636,7 @@ function updateSystemConf() {
         if (response["sysconf"]["jobs_dir"] != undefined) {
           populateJobs();
           getLocal((callUpdateFlag = true));
-          populateAnnotators();
+          populateAnnotators().then(function(res) {})
         }
       },
     });
@@ -1856,46 +1647,30 @@ function resetSystemConf() {
   loadSystemConf();
 }
 
-function setupNoServerMode() {
-  setLastAssembly();
+async function loadUserSettings() {
+  var res = await axios.get("/server/usersettings")
+  console.log("usersettings=", res)
+  GLOBALS.usersettings = res
+  setLastAssembly()
 }
 
-function setupServerMode() {
-  checkLogged(username);
-  document.getElementById("settingsdiv").style.display = "none";
-  document.querySelector(".threedotsdiv").style.display = "none";
-  axios.get("/server/usersettings")
-  .then(function (response) {
-    console.log("usersettings=", response)
-      GLOBALS.usersettings = response;
-      setLastAssembly();
-    }).catch(function(err) { console.error(err) })
-}
-
-function populatePackageVersions() {
-  $.get("/submit/reporttypes").done(function (data) {
-    GLOBALS.reports = data;
-    $.get("/submit/packageversions").done(function (data) {
-      systemReadyObj.online = data.latest != null;
-      if (systemReadyObj.online == false) {
-        document.querySelector("#nointernetdiv").style.display = "block";
-      }
-      var curverspan = document.querySelector("#verdiv .curverspan");
-      curverspan.textContent = data.current;
-      if (data.update) {
-        s.textContent = s.textContent + "\xa0";
-        var a = getEl("a");
-        a.href =
-          "https://github.com/KarchinLab/open-cravat/wiki/Update-Instructions";
-        a.target = "_blank";
-        //a.textContent = '(' + data.latest + ')';
-        a.textContent = "new release available";
-        a.style.color = "red";
-        addEl(curverspan, a);
-      }
-      getRemote();
-    });
-  });
+async function populatePackageVersions() {
+  var res = await axios.get("/submit/reporttypes")
+  var data = res.data
+  GLOBALS.reports = data;
+  var res = await axios.get("/submit/packageversions")
+  var data = res.data
+  var curverspan = document.querySelector("#verdiv .curverspan")
+  if (data.update) {
+    var a = getEl("a")
+    a.href = "https://github.com/rkimoakbioinformatics/oakvar"
+    a.target = "_blank";
+    a.textContent = data.current
+    a.style.color = "red";
+    addEl(curverspan, a);
+  } else {
+    curverspan.textContent = data.current
+  }
 }
 
 function onClickThreeDots(evt) {
@@ -1916,21 +1691,12 @@ function openTerminal() {
   });
 }
 
-function resizePage() {
-  var div = document.getElementById("submit-form");
-  var h = window.innerHeight - 148;
-  div.style.height = h + "px";
-  var div = document.getElementById("jobdiv");
-  var h = window.innerHeight - 85;
-  div.style.height = h + "px";
-}
-
 function showInputUploadList() {
-  document.querySelector("#input-upload-list-div").classList.remove("hidden")
+  document.querySelector("#input-upload-list-div").classList.remove("hidden");
 }
 
 function hideInputUploadList() {
-  document.querySelector("#input-upload-list-div").classList.add("hidden")
+  document.querySelector("#input-upload-list-div").classList.add("hidden");
 }
 
 function clearInputFileList() {
@@ -1939,49 +1705,40 @@ function clearInputFileList() {
   $(document.querySelector("#mult-inputs-list")).empty();
   //document.querySelector("#input-file").value = "";
   inputFileList = [];
-  hideInputUploadList()
+  hideInputUploadList();
 }
 
 function onDragEnterInputFiles(evt) {
-  evt.preventDefault()
+  evt.preventDefault();
 }
 
 function onDragOverInputFiles(evt) {
-  evt.preventDefault()
+  evt.preventDefault();
 }
 
 function onDragLeaveInputFiles(evt) {
-  evt.preventDefault()
+  evt.preventDefault();
 }
 
 function onDropInputFiles(evt) {
-  evt.stopPropagation()
-  evt.preventDefault()
-  var files = evt.dataTransfer.files
-  var inputFile = document.getElementById("input-file")
-  inputFile.files = files
-  populateMultInputsMessage()
-  return false
+  evt.stopPropagation();
+  evt.preventDefault();
+  var files = evt.dataTransfer.files;
+  var inputFile = document.getElementById("input-file");
+  inputFile.files = files;
+  setUploadedInputFilesDiv();
+  return false;
 }
 
-function onInputFileChange(event) {
-  /*var target = $(event.target);
-  var id = target.attr("id");
-  if (id === "input-file") {
-    $("#input-text").val("");
-  } else if (id === "input-text") {
-    var elem = $("#input-file");
-    elem.wrap("<form>").closest("form").get(0).reset();
-    elem.unwrap();
-  }*/
-  populateMultInputsMessage();
+function onInputFileChange(_) {
+  setUploadedInputFilesDiv();
 }
 
-function populateMultInputsMessage() {
+function setUploadedInputFilesDiv() {
   var fileInputElem = document.getElementById("input-file");
   var files = fileInputElem.files;
   if (files.length >= 1) {
-    showInputUploadList()
+    showInputUploadList();
     $("#mult-inputs-message").css("display", "block");
     var $fileListDiv = $("#mult-inputs-list");
     for (var i = 0; i < files.length; i++) {
@@ -1996,11 +1753,20 @@ function populateMultInputsMessage() {
       }
       if (inputFileList.indexOf(file.name) == -1) {
         var sdiv = getEl("span");
-        sdiv.classList.add("pl-2", "text-sm", "text-gray-600", "hover:line-through", "cursor-pointer", "round-md", "inline-block", "w-5/6")
+        sdiv.classList.add(
+          "pl-2",
+          "text-sm",
+          "text-gray-600",
+          "hover:line-through",
+          "cursor-pointer",
+          "round-md",
+          "inline-block",
+          "w-5/6"
+        );
         sdiv.textContent = file.name;
-        sdiv.title = "Click to remove"
+        sdiv.title = "Click to remove";
         sdiv.addEventListener("click", function (evt) {
-          evt.preventDefault()
+          evt.preventDefault();
           var fileName = evt.target.textContent;
           for (var j = 0; j < inputFileList.length; j++) {
             if (inputFileList[j].name == fileName) {
@@ -2008,9 +1774,9 @@ function populateMultInputsMessage() {
               break;
             }
           }
-          evt.target.remove()
+          evt.target.remove();
           if (inputFileList.length == 0) {
-            hideInputUploadList()
+            hideInputUploadList();
           }
         });
         $fileListDiv.append($(sdiv));
@@ -2030,7 +1796,7 @@ function populateMultInputsMessage() {
   document.querySelector("#input-file").value = "";
 }
 
-function addListeners() {
+function setupEventListeners() {
   $("#submit-job-button").click(submit);
   $("#input-text").change(onInputFileChange);
   $("#input-file").change(onInputFileChange);
@@ -2146,7 +1912,7 @@ function updateRunningJobTrs(job) {
 }
 
 function onSubmitClickTagBoxCheck(evt) {
-  var div = document.getElementById("annotator-group-select-div");
+  var div = document.getElementById("analysis-module-filter-div");
   if (evt.target.checked) {
     div.className = "on";
   } else {
@@ -2154,17 +1920,36 @@ function onSubmitClickTagBoxCheck(evt) {
   }
 }
 
+function getChevronDown() {
+  var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.classList.add("-mr-1", "ml-2", "h-5", "w-5")
+  svg.setAttribute("viewBox", "0 0 20 20")
+  svg.setAttribute("fill", "currentColor")
+  svg.setAttribute("aria-hidden", "true")
+  var path = document.createElementNS("http://www.w3.org/2000/svg", "path")
+  path.setAttribute("fill-rule", "evenodd")
+  path.setAttribute("clip-rule", "evenodd")
+  path.setAttribute("d", "M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z")
+  addEl(svg, path)
+  return svg
+}
+
 function populateInputFormats() {
-  let inputSel = $("#submit-input-format-select");
-  inputSel.prop("disabled", true);
+  var div = document.querySelector("#input-format-select").querySelector("div")
+  console.log("@ div=", div)
   for (moduleName in localModuleInfo) {
-    if (moduleName.endsWith("-converter")) {
-      let inputName = moduleName.split("-")[0];
-      let opt = $(getEl("option")).val(inputName).text(inputName);
-      inputSel.append(opt);
+    if (localModuleInfo[moduleName].type == "converter") {
+      let format = moduleName.split("-")[0];
+      let a = getEl("a")
+      a.classList.add("text-gray-700", "block", "px-4", "py-2", "text-sm", "text-right", "hover:bg-gray-100", "hover:text-gray-900")
+      a.setAttribute("role", "menuitem")
+      a.addEventListener("click", function(evt) {
+        onClickSelectItem(evt)
+      })
+      a.textContent = format
+      addEl(div, a)
     }
   }
-  inputSel.prop("disabled", false);
 }
 
 function importJob() {
@@ -2287,45 +2072,118 @@ function switchToInputUpload() {
 
 function addIntersectionObserver() {
   var options = {
-    root: null, //document.querySelector("#annotchoosediv"),
-    rootMargin: '0px',
-    threshold: 1
+    root: null,
+    rootMargin: "0px",
+    threshold: 1,
+  };
+  var observer = new IntersectionObserver(function (entries, _) {
+    console.log("@@@@")
+    entries[0].target.classList.toggle(
+      "ispinned",
+      entries[0].intersectionRatio < 1
+    );
+  }, options);
+  var annotGroupFilterDiv = document.querySelector(
+    "#analysis-module-filter-div"
+  );
+  observer.observe(annotGroupFilterDiv);
+}
+
+function getOptionList(evt) {
+  return evt.target.closest(".select-div").querySelector(".option-list")
+}
+
+function getSelectDiv(evt) {
+  return evt.target.closest(".select-div").querySelector("button")
+}
+
+function onClickSelectBtn(evt) {
+  var el = getOptionList(evt)
+  el.classList.toggle("hidden")
+}
+
+function getAssemblySelectBtn() {
+  return document.querySelector("#assembly-select-div")
+}
+
+function onClickSelectItem(evt) {
+  var btn = getSelectDiv(evt)
+  btn.innerHTML = ""
+  addEl(btn, getTn(evt.target.textContent))
+  addEl(btn, getChevronDown())
+  var el = getOptionList(evt)
+  el.classList.toggle("hidden")
+}
+
+function onClickInputFormatBtn(evt) {
+  document.querySelector("#input-format-select").classList.toggle("hidden")
+}
+
+function hideAllTabs() {
+  document.querySelectorAll(".tabcontent").forEach(function(el) {
+    el.classList.add("hidden")
+  })
+}
+
+function showTab(tabName) {
+  var el = document.querySelector("#tab_" + tabName)
+  console.log("@ el=", el)
+  if (el) {
+    el.classList.remove("hidden")
   }
-  var observer = new IntersectionObserver(function(entries, observer) {
-    entries[0].target.classList.toggle("ispinned", entries[0].intersectionRatio < 1)
-  }, options)
-  var annotGroupFilterDiv = document.querySelector("#annotator-group-select-div")
-  observer.observe(annotGroupFilterDiv)
 }
 
-function websubmit_run() {
-  hideSpinner();
-  hideUpdateRemoteSpinner();
+function showSystemNotReady() {
+  hideAllTabs()
+  showTab("systemnotready")
+}
+
+async function websubmit_run() {
   addIntersectionObserver()
-  axios
-    .get("/server/username")
-    .then(function (res) {
-      username = res.data["email"];
-      console.log("@ username=", username)
-      if (username == null) {
-        openLoginPage()
-      }
-      multiuser_run()
-      setupServerMode()
-      connectWebSocket();
-      populatePackageVersions();
-      getBaseModuleNames();
-      addListeners();
-      resizePage();
-      window.onresize = function (_) {
-        resizePage();
-      };
-      loadSystemConf();
-      populateMultInputsMessage();
-      hideSpinner();
-    })
-    .catch(function (err) {
-      console.error(err);
-    });
+  if (await checkSystemReady() == false) {
+    showSystemNotReady()
+    return
+  }
+  multiuser_setup()
+  if (await checkLogged(username) == false) {
+    openLoginPage()
+  }
+  console.log("@ username=", username);
+  await loadUserSettings()
+  connectWebSocket()
+  await populatePackageVersions()
+  // Submit
+  await getLocal()
+  console.log("@ 1")
+  populateInputFormats();
+  console.log("@ 1")
+  buildDeveloperTagSelector();
+  console.log("@ 1")
+  await populateAnnotators()
+  console.log("@ 1")
+  populateAddtlAnalysis();
+  console.log("@ 1")
+  // Store
+  await getRemote();
+  console.log("@ remote=", remoteModuleInfo)
+  console.log("@ 1")
+  complementRemoteWithLocal();
+  console.log("@ 1")
+  setBaseInstalled();
+  console.log("@ 1")
+  populateStorePages();
+  console.log("@ 1")
+  populateStoreTagPanel();
+  console.log("@ 1")
+  updateModuleGroupInfo();
+  console.log("@ 1")
+  makeInstalledGroup();
+  console.log("@ 1")
+  getBaseModuleNames();
+  console.log("@ 1")
+  setupEventListeners();
+  console.log("@ 1")
+  await loadSystemConf();
+  console.log("@ 1")
+  setUploadedInputFilesDiv();
 }
-

@@ -202,44 +202,23 @@ function processSignup(username, password, retypepassword, question, answer) {
     });*/
 }
 
-function checkLogged(inUsername) {
-  console.log("@ start. checkLogged")
-  $.ajax({
-    url: "/server/checklogged",
-    data: { username: inUsername },
-    success: function (response) {
-      logged = response["logged"];
-      if (logged == true) {
-        username = response["email"];
-        noRemDays = response["days_rem"];
-        adminMode = response["admin"];
-        doAfterLogin(username);
-      } else {
-        showUnloggedControl();
-      }
-    },
-  });
+async function checkLogged(inUsername) {
+  var res = await axios.get("/server/checklogged", { params: { username: inUsername } })
+  var data = res.data
+  logged = data["logged"]
+  if (logged == true) {
+    username = data["email"]
+    adminMode = data["admin"]
+    return true
+  } else {
+    username = null
+    adminMode = null
+    return false
+  }
 }
 
 function showUnloggedControl() {
   openLoginPage();
-}
-
-function doAfterLogin(username) {
-  if (adminMode == true) {
-    setupAdminMode();
-  }
-  populateJobs();
-}
-
-function setupAdminMode() {
-  document.getElementById("settingsdiv").style.display = "none";
-  document.querySelector(".threedotsdiv").style.display = "block";
-  $("#storediv_tabhead[value=storediv]")[0].style.display = "inline-block";
-  $("#admindiv_tabhead[value=admindiv]")[0].style.display = "inline-block";
-  document.getElementById("admindiv_tabhead").setAttribute("disabled", "f");
-  document.getElementById("submitcontentdiv").style.display = "none";
-  populateAdminTab();
 }
 
 function getDateStr(d) {
@@ -747,7 +726,7 @@ function exportContentAdminPanel(tabName) {
   document.body.removeChild(a);
 }
 
-function multiuser_run() {
+function multiuser_setup() {
   const firebaseConfig = {
     apiKey: "AIzaSyAX9a9qLUzLoVFy9YrRprTWuf7lwZ-cEi0",
     authDomain: "fabled-pivot-305219.firebaseapp.com",

@@ -351,11 +351,13 @@ input:checked + .slider:before {
     background-color: #c5af8d;
 }
 
-#annotator-group-select-div.ispinned {
+#analysis-module-filter-div.ispinned {
+    z-index: 50;
     height: 4rem;
 }
 
-#annotator-group-select-div.ispinned:hover {
+#analysis-module-filter-div.ispinned:hover {
+    z-index: 50;
     height: 400px;
     background-color: white;
 }
