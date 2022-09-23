@@ -26,6 +26,9 @@ var JOB_IDS = [];
 var jobListUpdateIntervalFn = null;
 var reportRunning = {};
 var systemConf;
+var moduleDatas = []
+var moduleNames = []
+var NO_TAG = "no tag"
 
 function submit() {
   if (logged == false) {
@@ -997,7 +1000,6 @@ function showJobListPage() {
   axios
     .get("/submit/getjobs", { params: { ids: JSON.stringify(jis) } })
     .then(function (response) {
-      console.log("@ getjobs. response=", response);
       document.querySelector("#jobdivspinnerdiv").classList.add("hide");
       for (var i = 0; i < response.length; i++) {
         var job = response[i];
@@ -1089,7 +1091,7 @@ async function populateAnnotators() {
   GLOBALS.annotators = res.data
   res = await axios.get("/submit/postaggregators")
   GLOBALS.postaggregators = res.data
-  buildAnalysisModuleSelector();
+  makeModuleDatas()
 }
 
 function titleCase(str) {
@@ -1099,7 +1101,7 @@ function titleCase(str) {
 }
 
 function collectDeveloperProvidedTags() {
-  collectedTags = [];
+  collectedTags = [NO_TAG];
   for (var module in localModuleInfo) {
     var ty = localModuleInfo[module].type;
     if (ty != "annotator" && ty != "postaggregator") {
@@ -1116,45 +1118,13 @@ function collectDeveloperProvidedTags() {
   collectedTags.sort()
 }
 
-function collectDeveloperProvidedTagData() {
-  var checkDatas = [];
-  checkDatas.push({
-    name: "selected",
-    value: "selected",
-    label: "selected",
-    checked: false,
-    kind: "collect",
-  });
-  for (var i = 0; i < collectedTags.length; i++) {
-    var tag = collectedTags[i];
-    checkDatas.push({
-      name: tag,
-      value: tag,
-      label: tag,
-      checked: false,
-      kind: "tag",
-    });
-  }
-  return checkDatas
+function escapeTag(s) {
+  return s.replace(" ", "_")
 }
 
 function buildDeveloperTagSelector() {
   collectDeveloperProvidedTags();
   var wrapper = document.querySelector("#analysis-module-filter-items");
-  var select = getEl("select");
-  addEl(wrapper, select);
-  select.id = "annotator-group-select-select";
-  select.multiple = true;
-  for (var i = 0; i < collectedTags.length; i++) {
-    var tagName = collectedTags[i];
-    var option = new Option(tagName, tagName);
-    addEl(select, option);
-  }
-  select.addEventListener("change", function (_) {
-    var tags = $(this).val();
-    onChangeAnnotatorGroupCheckbox(tags);
-  });
-  select.style.display = "none";
   var tagWrapper = getEl("div");
   tagWrapper.classList.add("checkbox-group-flexbox");
   addEl(wrapper, tagWrapper);
@@ -1164,43 +1134,53 @@ function buildDeveloperTagSelector() {
     tagDiv.classList.add("relatve", "flex", "items-start");
     addEl(tagWrapper, tagDiv);
     var div2 = getEl("div");
-    div2.classList.add("flex", "h-5", "items-center");
+    div2.classList.add("flex", "items-center");
     addEl(tagDiv, div2);
     var cb = getEl("input");
-    cb.type = "checkbox";
+    console.log("@ tag=", tag)
+    var tagEscaped = escapeTag(tag)
+    var uid = "module-tag-radio-" + tagEscaped
+    cb.id = uid
+    cb.type = "radio";
+    cb.name = "module-tag"
+    cb.setAttribute("value", tag)
     cb.classList.add(
       "h-4",
       "w-4",
-      "rounded",
       "border-gray-300",
       "text-indigo-600",
       "focus:ring-indigo-500"
     );
-    cb.addEventListener("change", (event) => {
-      console.log("@ cb change evt", event);
-      for (let option of select.options) {
-        if (option.value === tag) {
-          option.selected = event.target.checked;
-        }
-      }
-      select.dispatchEvent(new Event("change"));
-      tagDiv.classList.toggle("selected");
+    cb.addEventListener("change", (evt) => {
+      onChangeModuleTag(evt)
     });
     addEl(div2, cb);
-    var div3 = getEl("div");
-    div3.classList.add("ml-3", "text-sm");
-    addEl(tagDiv, div3);
     var label = getEl("label");
-    label.classList.add("font-medium", "text-gray-700");
+    label.setAttribute("for", uid)
+    label.classList.add("ml-3", "block", "text-sm", "font-medium", "text-gray-700")
     label.textContent = titleCase(tag);
-    addEl(div3, label);
-    var p = getEl("p");
-    p.classList.add("text-gray-500");
-    addEl(div3, p);
+    addEl(div2, label);
   }
 }
 
-function getModuleSelectorData() {
+function getFilteredModulesDiv() {
+  return document.querySelector("#filtered-modules-div")
+}
+
+function onChangeModuleTag(evt) {
+  var div = getFilteredModulesDiv()
+  div.replaceChildren()
+  var tag = evt.target.value
+  for (var moduleName of moduleNames) {
+    var data = moduleDatas[moduleName]
+    if ((tag == NO_TAG && data.tags.length == 0) || data.tags.indexOf(tag) >= 0) {
+      var card = getModuleCard(data)
+      addEl(div, card)
+    }
+  }
+}
+
+function makeModuleDatas() {
   var modules = Object.assign({}, GLOBALS.annotators, GLOBALS.postaggregators)
   var moduleInfos = Object.values(modules);
   // Sort by title
@@ -1215,12 +1195,13 @@ function getModuleSelectorData() {
     }
     return 0;
   });
-  let moduleData = [];
+  moduleDatas = {}
+  moduleNames = []
   for (let i = 0; i < moduleInfos.length; i++) {
     var annotInfo = moduleInfos[i];
     var module = localModuleInfo[annotInfo.name];
     var kind = null;
-    moduleData.push({
+    moduleDatas[annotInfo.name] = {
       name: annotInfo.name,
       value: annotInfo.name,
       title: annotInfo.title,
@@ -1229,227 +1210,74 @@ function getModuleSelectorData() {
       kind: "module",
       groups: module["groups"],
       desc: annotInfo.description,
-    });
+      tags: module.tags,
+    }
+    moduleNames.push(annotInfo.name)
   }
-  return moduleData
 }
 
-function buildAnalysisModuleSelector() {
-  var annotCheckDiv = document.getElementById("analysis-module-select-div");
-  var moduleData = getModuleSelectorData()
-  buildCheckBoxGroup(moduleData, annotCheckDiv);
-}
-
-function buildCheckBoxGroup(moduleData, parentDiv) {
-  parentDiv = parentDiv === undefined ? getEl("div") : parentDiv;
-  emptyElement(parentDiv);
-  parentDiv.classList.add("checkbox-group");
-  // all-none buttons
-  var allNoneDiv = getEl("div");
-  addEl(parentDiv, allNoneDiv);
-  allNoneDiv.className = "checkbox-group-all-none-div";
-  var parentId = parentDiv.id;
-  if (parentId == "analysis-module-select-div") {
-    var span = getEl("span");
-    span.classList.add("checkbox-group-all-button");
-    span.addEventListener("click", function (evt) {
-      checkBoxGroupAllNoneHandler(evt);
-    });
-    addEl(allNoneDiv, span);
-    var span = getEl("span");
-    span.classList.add("checkbox-group-none-button");
-    span.addEventListener("click", function (evt) {
-      checkBoxGroupAllNoneHandler(evt);
-    });
-    addEl(allNoneDiv, span);
+function getModuleCard(moduleData) {
+  if (moduleData.kind == "group") {
+    return null;
   }
-  // flexbox
-  var flexbox = getEl("div");
-  addEl(parentDiv, flexbox);
-  flexbox.classList.add("checkbox-group-flexbox");
-  flexbox.classList.add(
-    "grid",
-    "grid-cols-1",
-    "gap-4",
-    "sm:grid-cols-2",
-    "xl:grid-cols-3",
-    "2xl:grid-cols-4"
+  var moduleCardDiv = getEl("div");
+  moduleCardDiv.classList.add("modulecard");
+  moduleCardDiv.classList.add(
+    "relative",
+    "flex",
+    "items-center",
+    "space-x-3",
+    "rounded-lg",
+    "border",
+    "border-gray-300",
+    "bg-white",
+    "px-6",
+    "py-5",
+    "shadow-sm",
+    "focus-within:ring-2",
+    "focus-within:ring-indigo-500",
+    "focus-within:ring-offset-2",
+    "hover:border-gray-400"
   );
-  var checkDivs = [];
-  // checks
-  var checkDivsForGroup = {};
-  for (let i = 0; i < moduleData.length; i++) {
-    var checkData = moduleData[i];
-    if (checkData.kind == "group") {
-      continue;
-    }
-    var checkDiv = getEl("div");
-    checkDiv.classList.add("checkbox-group-element");
-    checkDiv.classList.add(
-      "relative",
-      "flex",
-      "items-center",
-      "space-x-3",
-      "rounded-lg",
-      "border",
-      "border-gray-300",
-      "bg-white",
-      "px-6",
-      "py-5",
-      "shadow-sm",
-      "focus-within:ring-2",
-      "focus-within:ring-indigo-500",
-      "focus-within:ring-offset-2",
-      "hover:border-gray-400"
-    );
-    //checkDiv.classList.add("hide");
-    checkDiv.setAttribute("name", checkData.name);
-    checkDiv.setAttribute("kind", checkData.kind);
-    addEl(flexbox, checkDiv);
-    var div3 = getEl("div");
-    div3.classList.add("flex-shrink-0");
-    addEl(checkDiv, div3);
-    var img = getEl("img");
-    img.classList.add("h-10", "w-10", "rounded-lg");
-    img.src = "/store/locallogo?module=" + checkData.name;
-    addEl(div3, img);
-    var div4 = getEl("div");
-    div4.classList.add("min-w-0", "flex-1");
-    addEl(checkDiv, div4);
-    var a = getEl("a");
-    a.href = "#";
-    a.classList.add("focus:outline-none");
-    addEl(div4, a);
-    var span = getEl("span");
-    span.classList.add("absolute", "inset-0");
-    span.setAttribute("aria-hidden", true);
-    addEl(a, span);
-    var p = getEl("p");
-    p.classList.add("text-sm", "font-medium", "text-gray-900");
-    p.textContent = checkData.title;
-    addEl(a, p);
-    var p2 = getEl("p");
-    p2.classList.add("text-sm", "text-gray-500");
-    p2.textContent = checkData.desc;
-    addEl(a, p2);
-    checkDivs.push(checkDiv);
+  if (moduleData.checked) {
+    moduleCardDiv.classList.add("checked")
   }
-  var groups = Object.keys(checkDivsForGroup);
-  for (var i = 0; i < groups.length; i++) {
-    var group = groups[i];
-    var sdiv = $("div[kind=annotator-group-div][name=" + group + "]")[0];
-    if (sdiv == undefined) {
-      continue;
-    }
-    var checkDivs = checkDivsForGroup[group];
-    for (var j = 0; j < checkDivs.length; j++) {
-      var checkDiv = checkDivs[j];
-      checkDiv.style.width = "100%";
-      addEl(sdiv, checkDiv);
-    }
-  }
-  $("div[kind=annotator-group-div]").each(function () {
-    var name = this.getAttribute("name");
-    var height = this.clientHeight;
-    var divid = "#submit-annotator-group-sdiv-" + name;
-    var stylesheets = window.document.styleSheets;
-    for (var i = 0; i <= stylesheets.length; i++) {
-      var stylesheet = stylesheets[i];
-      if (stylesheet.href.indexOf("websubmit.css") >= 0) {
-        //stylesheet.insertRule(divid + ' {overflow: hidden; width: 99%; transition: max-height .4s; max-height: ' + height + 'px;}');
-        stylesheet.insertRule(
-          divid +
-            " {overflow: hidden; width: 99%; transition: max-height .4s; max-height: inherit;}"
-        );
-        stylesheet.insertRule(
-          divid + ".off {overflow: hidden; max-height: 0px;}"
-        );
-        stylesheet.insertRule(
-          divid + ".on {overflow: hidden; border: 1px dotted #aaaaaa;}"
-        );
-        break;
-      }
-    }
-    this.classList.add("off");
-  });
-  return parentDiv;
-}
-
-function onChangeAnnotatorGroupCheckbox(tags) {
-  var $moduleCheckboxes = $(
-    "div.checkbox-group-element[kind=module],div.checkbox-group-element[kind=group]"
-  );
-  var $selectCheckbox = $(
-    "div.checkbox-group-element[kind=collect] input:checked"
-  );
-  var idx = tags.indexOf("selected");
-  var selectChecked = idx >= 0;
-  if (selectChecked) {
-    tags.splice(idx, 1);
-  }
-  var $groupCheckboxes = $(
-    "div.checkbox-group-element[kind=tag] input:checked,div.checkbox-group-element[kind=group] input:checked"
-  );
-  if (tags.length == 0) {
-    if (selectChecked) {
-      $moduleCheckboxes.addClass("hide").removeClass("show");
-      $moduleCheckboxes.each(function () {
-        if (this.querySelector("input").checked == true) {
-          this.classList.add("show");
-          this.classList.remove("hide");
-        }
-      });
-    } else {
-      $moduleCheckboxes.addClass("hide").removeClass("show");
-    }
-  } else {
-    $moduleCheckboxes.addClass("hide").removeClass("show");
-    var localModules = Object.keys(localModuleInfo);
-    for (var j = 0; j < tags.length; j++) {
-      var tag = tags[j];
-      for (var i = 0; i < localModules.length; i++) {
-        var module = localModuleInfo[localModules[i]];
-        var c = $(
-          "div.checkbox-group-element[kind=module][name=" +
-            module.name +
-            "],div.checkbox-group-element[kind=group][name=" +
-            module.name +
-            "]"
-        )[0];
-        if (c != undefined) {
-          if (module.tags.indexOf(tag) >= 0) {
-            if (selectChecked) {
-              if (c.querySelector("input").checked == true) {
-                c.classList.add("show");
-                c.classList.remove("hide");
-              }
-            } else {
-              c.classList.add("show");
-              c.classList.remove("hide");
-              var groups = localModuleInfo[c.getAttribute("name")].groups;
-              for (var groupNo = 0; groupNo < groups.length; groupNo++) {
-                var group = groups[groupNo];
-                var groupDiv = document.querySelector(
-                  'div.checkbox-group-element[name="' + group + '"]'
-                );
-                groupDiv.classList.add("show");
-                groupDiv.classList.remove("hide");
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  if (
-    !checkVisible(
-      document
-        .querySelector("#analysis-module-select-div")
-        .querySelector(".checkbox-group-flexbox")
-    )
-  ) {
-    document.querySelector("#annotchoosediv").scrollIntoView();
-  }
+  moduleCardDiv.setAttribute("name", moduleData.name);
+  moduleCardDiv.setAttribute("kind", moduleData.kind);
+  moduleCardDiv.addEventListener("click", function(evt) {
+    var target = evt.target.closest(".modulecard")
+    var moduleName = target.getAttribute("name")
+    var data = moduleDatas[moduleName]
+    data.checked = ! data.checked
+    var card = getModuleCard(data)
+    target.replaceWith(card)
+  })
+  var div3 = getEl("div");
+  div3.classList.add("flex-shrink-0");
+  addEl(moduleCardDiv, div3);
+  var img = getEl("img");
+  img.classList.add("h-10", "w-10", "rounded-lg");
+  img.src = "/store/locallogo?module=" + moduleData.name;
+  addEl(div3, img);
+  var div4 = getEl("div");
+  div4.classList.add("min-w-0", "flex-1");
+  addEl(moduleCardDiv, div4);
+  var a = getEl("div");
+  a.classList.add("focus:outline-none");
+  addEl(div4, a);
+  var span = getEl("span");
+  span.classList.add("absolute", "inset-0");
+  span.setAttribute("aria-hidden", true);
+  addEl(a, span);
+  var p = getEl("p");
+  p.classList.add("text-sm", "font-medium", "text-gray-900");
+  p.textContent = moduleData.title;
+  addEl(a, p);
+  var p2 = getEl("p");
+  p2.classList.add("text-sm", "text-gray-500");
+  p2.textContent = moduleData.desc;
+  addEl(a, p2);
+  return moduleCardDiv
 }
 
 function checkVisible(elm) {
@@ -1460,23 +1288,6 @@ function checkVisible(elm) {
     window.innerHeight
   );
   return !(rect.bottom < 0 || rect.top - viewHeight >= 0);
-}
-
-function checkBoxGroupAllNoneHandler(event) {
-  var $elem = $(event.target);
-  let checked;
-  if ($elem.hasClass("checkbox-group-all-button")) {
-    checked = true;
-  } else {
-    checked = false;
-  }
-  $elem
-    .parent()
-    .siblings(".checkbox-group-flexbox")
-    .children(".checkbox-group-element.show")
-    .each(function (i, elem) {
-      $(elem).find("input").prop("checked", checked);
-    });
 }
 
 function onTabChange() {
@@ -1936,7 +1747,6 @@ function getChevronDown() {
 
 function populateInputFormats() {
   var div = document.querySelector("#input-format-select").querySelector("div")
-  console.log("@ div=", div)
   for (moduleName in localModuleInfo) {
     if (localModuleInfo[moduleName].type == "converter") {
       let format = moduleName.split("-")[0];
@@ -2077,7 +1887,6 @@ function addIntersectionObserver() {
     threshold: 1,
   };
   var observer = new IntersectionObserver(function (entries, _) {
-    console.log("@@@@")
     entries[0].target.classList.toggle(
       "ispinned",
       entries[0].intersectionRatio < 1
@@ -2127,7 +1936,6 @@ function hideAllTabs() {
 
 function showTab(tabName) {
   var el = document.querySelector("#tab_" + tabName)
-  console.log("@ el=", el)
   if (el) {
     el.classList.remove("hidden")
   }
@@ -2154,36 +1962,20 @@ async function websubmit_run() {
   await populatePackageVersions()
   // Submit
   await getLocal()
-  console.log("@ 1")
   populateInputFormats();
-  console.log("@ 1")
   buildDeveloperTagSelector();
-  console.log("@ 1")
   await populateAnnotators()
-  console.log("@ 1")
   populateAddtlAnalysis();
-  console.log("@ 1")
   // Store
   await getRemote();
-  console.log("@ remote=", remoteModuleInfo)
-  console.log("@ 1")
   complementRemoteWithLocal();
-  console.log("@ 1")
   setBaseInstalled();
-  console.log("@ 1")
   populateStorePages();
-  console.log("@ 1")
   populateStoreTagPanel();
-  console.log("@ 1")
   updateModuleGroupInfo();
-  console.log("@ 1")
   makeInstalledGroup();
-  console.log("@ 1")
   getBaseModuleNames();
-  console.log("@ 1")
   setupEventListeners();
-  console.log("@ 1")
   await loadSystemConf();
-  console.log("@ 1")
   setUploadedInputFilesDiv();
 }
