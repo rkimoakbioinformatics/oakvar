@@ -19,12 +19,11 @@ class BaseAnnotator(object):
         from ..consts import cannonical_chroms
         from ..module.local import get_module_conf
         from ..exceptions import ModuleLoadingError
-        from ..exceptions import ModuleLoadingError
         from ..exceptions import LoggerError
         from pathlib import Path
 
         fp = sys.modules[self.__module__].__file__
-        if fp is None:
+        if not fp:
             raise ModuleLoadingError(self.__module__)
         self.main_fpath = Path(fp).resolve()
         self.primary_input_path = None
@@ -338,7 +337,6 @@ class BaseAnnotator(object):
                         if self.primary_input_reader
                         else "?",
                     )
-            # This does summarizing.
             self.postprocess()
             self.base_cleanup()
             end_time = time()
