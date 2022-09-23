@@ -83,6 +83,9 @@ class MasterCravatConverter(object):
         self.crs_path = None
         self.crl_path = None
         self.cur_file = None
+        self.do_liftover = None
+        self.do_liftover_chrM = None
+        self.lifter = None
         self.file_error_lines = 0
         self.total_error_lines = 0
         self.chromdict = {
@@ -115,19 +118,21 @@ class MasterCravatConverter(object):
             return genome_assembly
         raise NoGenomeException()
 
-    def get_do_liftover(self, genome_assembly):
-        return genome_assembly != "hg38"
+    def set_do_liftover(self, genome_assembly, converter, f):
+        self.do_liftover = genome_assembly != "hg38"
+        if hasattr(converter, "get_do_liftover_chrM"):
+            self.do_liftover_chrM = converter.get_do_liftover_chrM(genome_assembly, f, self.do_liftover)
+        else:
+            self.do_liftover_chrM = self.do_liftover
 
     def setup_lifter(self, genome_assembly):
         from oakvar.util.admin_util import get_liftover_chain_paths
         from oakvar.exceptions import InvalidGenomeAssembly
         from pyliftover import LiftOver
-        lifter = None
         liftover_chain_paths = get_liftover_chain_paths()
         if genome_assembly not in liftover_chain_paths:
             raise InvalidGenomeAssembly(genome_assembly)
-        lifter = LiftOver(liftover_chain_paths[genome_assembly])
-        return lifter
+        self.lifter = LiftOver(liftover_chain_paths[genome_assembly])
 
     def _parse_cmd_args(self, inargs, inkwargs):
         """Parse the arguments in sys.argv"""
@@ -355,7 +360,7 @@ class MasterCravatConverter(object):
                         f"--input-format should be given with pipe input"
                     )
         self.primary_converter = self.converters[self.input_format]
-        self._set_converter_properties(self.primary_converter)
+        self.set_converter_properties(self.primary_converter)
         if self.input_paths is None:
             raise NoInput()
         if self.pipeinput == False:
@@ -369,7 +374,7 @@ class MasterCravatConverter(object):
         )
         self.error_logger = getLogger("err." + self.primary_converter.module_name)
 
-    def _set_converter_properties(self, converter):
+    def set_converter_properties(self, converter):
         from oakvar.exceptions import SetupError
         from oakvar.module.local import get_module_code_version
 
@@ -524,15 +529,14 @@ class MasterCravatConverter(object):
             converter = self.primary_converter.__class__()
             if converter is None:
                 raise SetupError()
-            self._set_converter_properties(converter)
+            self.set_converter_properties(converter)
             converter.setup(f)  # type: ignore
             genome_assembly = self.get_genome_assembly(converter)
             genome_assemblies.add(genome_assembly)
             self.log_input_and_genome_assembly(fn, genome_assembly)
-            do_liftover = self.get_do_liftover(genome_assembly)
-            lifter = None
-            if do_liftover:
-                lifter = self.setup_lifter(genome_assembly)
+            self.set_do_liftover(genome_assembly, converter, f)
+            if self.do_liftover or self.do_liftover_chrM:
+                self.setup_lifter(genome_assembly)
             if self.pipeinput == False:
                 f.seek(0)
             if self.pipeinput:
@@ -592,19 +596,7 @@ class MasterCravatConverter(object):
                                             chrom, int(pos)
                                         )
                                 prelift_wdict = copy(wdict)
-                                if do_liftover:
-                                    (
-                                        wdict["chrom"],
-                                        wdict["pos"],
-                                        wdict["ref_base"],
-                                        wdict["alt_base"],
-                                    ) = self.liftover(
-                                        wdict["chrom"],
-                                        int(wdict["pos"]),
-                                        wdict["ref_base"],
-                                        wdict["alt_base"],
-                                        lifter
-                                    )
+                                self.perform_liftover_if_needed(wdict)
                                 if not base_re.fullmatch(wdict["ref_base"]):
                                     raise IgnoredVariant("Invalid reference base")
                                 if not base_re.fullmatch(wdict["alt_base"]):
@@ -693,15 +685,36 @@ class MasterCravatConverter(object):
             )
         return total_lnum, self.primary_converter.format_name, genome_assemblies
 
-    def liftover_one_pos(self, chrom, pos, lifter):
+    def perform_liftover_if_needed(self, wdict):
+        if self.is_chrM(wdict):
+            needed = self.do_liftover_chrM
+        else:
+            needed = self.do_liftover
+        if needed:
+            (
+                wdict["chrom"],
+                wdict["pos"],
+                wdict["ref_base"],
+                wdict["alt_base"],
+            ) = self.liftover(
+                wdict["chrom"],
+                int(wdict["pos"]),
+                wdict["ref_base"],
+                wdict["alt_base"],
+            )
+
+    def is_chrM(self, wdict):
+        return wdict["chrom"] == "chrM"
+
+    def liftover_one_pos(self, chrom, pos):
         from oakvar.exceptions import SetupError
 
-        if lifter is None:
+        if not self.lifter:
             raise SetupError("no lifter")
-        res = lifter.convert_coordinate(chrom, pos - 1)
+        res = self.lifter.convert_coordinate(chrom, pos - 1)
         if res is None or len(res) == 0:
-            res_prev = lifter.convert_coordinate(chrom, pos - 2)
-            res_next = lifter.convert_coordinate(chrom, pos)
+            res_prev = self.lifter.convert_coordinate(chrom, pos - 2)
+            res_next = self.lifter.convert_coordinate(chrom, pos)
             if res_prev is not None and res_next is not None:
                 if len(res_prev) == 1 and len(res_next) == 1:
                     pos_prev = res_prev[0][1]
@@ -712,17 +725,17 @@ class MasterCravatConverter(object):
                         res = [(res_prev[0][0], pos_prev - 1)]
         return res
 
-    def liftover(self, chrom, pos, ref, alt, lifter):
+    def liftover(self, chrom, pos, ref, alt):
         from oakvar.exceptions import LiftoverFailure
         from oakvar.util.util import reverse_complement
         from oakvar.exceptions import SetupError
 
-        if lifter is None or self.wgsreader is None:
+        if not self.lifter or not self.wgsreader:
             raise SetupError("no lifter")
         reflen = len(ref)
         altlen = len(alt)
         if reflen == 1 and altlen == 1:
-            res = self.liftover_one_pos(chrom, pos, lifter)
+            res = self.liftover_one_pos(chrom, pos)
             if res is None or len(res) == 0:
                 raise LiftoverFailure("Liftover failure")
             if len(res) > 1:
@@ -736,8 +749,8 @@ class MasterCravatConverter(object):
         elif reflen >= 1 and altlen == 0:  # del
             pos1 = pos
             pos2 = pos + reflen - 1
-            res1 = lifter.convert_coordinate(chrom, pos1 - 1)
-            res2 = lifter.convert_coordinate(chrom, pos2 - 1)
+            res1 = self.lifter.convert_coordinate(chrom, pos1 - 1)
+            res2 = self.lifter.convert_coordinate(chrom, pos2 - 1)
             if res1 is None or res2 is None or len(res1) == 0 or len(res2) == 0:
                 raise LiftoverFailure("Liftover failure")
             if len(res1) > 1 or len(res2) > 1:
@@ -751,7 +764,7 @@ class MasterCravatConverter(object):
             newpos = newpos1
             newpos = min(newpos1, newpos2)
         elif reflen == 0 and altlen >= 1:  # ins
-            res = lifter.convert_coordinate(chrom, pos - 1)
+            res = self.lifter.convert_coordinate(chrom, pos - 1)
             if res is None or len(res) == 0:
                 raise LiftoverFailure("Liftover failure")
             if len(res) > 1:
@@ -762,8 +775,8 @@ class MasterCravatConverter(object):
         else:
             pos1 = pos
             pos2 = pos + reflen - 1
-            res1 = lifter.convert_coordinate(chrom, pos1 - 1)
-            res2 = lifter.convert_coordinate(chrom, pos2 - 1)
+            res1 = self.lifter.convert_coordinate(chrom, pos1 - 1)
+            res2 = self.lifter.convert_coordinate(chrom, pos2 - 1)
             if res1 is None or res2 is None or len(res1) == 0 or len(res2) == 0:
                 raise LiftoverFailure("Liftover failure")
             if len(res1) > 1 or len(res2) > 1:
