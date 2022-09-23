@@ -39,7 +39,7 @@ from . import consts
 from .exceptions import *
 from .consts import crx_def
 from .cli.run import Cravat
-from .base.cravat_filter import CravatFilter
+from .base.cravat_filter import ReportFilter
 from .cli.report import BaseReporter
 from .base.commonmodule import BaseCommonModule
 from .base.postaggregator import BasePostAggregator
@@ -52,6 +52,7 @@ from .util import admin_util
 import signal
 
 CravatReport = BaseReporter
+CravatFilter = ReportFilter
 # for compatibility with oc
 constants = consts
 

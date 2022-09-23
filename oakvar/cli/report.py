@@ -572,7 +572,7 @@ class BaseReporter:
     async def get_variant_colinfo(self):
         try:
             await self.prep()
-            if not self.setup():
+            if self.setup() == False:
                 await self.close_db()
                 return None
             level = "variant"
@@ -963,11 +963,11 @@ class BaseReporter:
 
     async def load_filter(self):
         from ..exceptions import SetupError
-        from ..base.cravat_filter import CravatFilter
+        from .. import ReportFilter
 
         if self.args is None:
             raise SetupError()
-        self.cf = await CravatFilter.create(dbpath=self.dbpath)
+        self.cf = await ReportFilter.create(dbpath=self.dbpath)
         await self.cf.exec_db(
             self.cf.loadfilter,
             filter=self.filter,

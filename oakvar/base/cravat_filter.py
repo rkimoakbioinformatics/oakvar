@@ -141,7 +141,7 @@ class FilterGroup(object):
         return s
 
 
-class CravatFilter:
+class ReportFilter:
     @classmethod
     async def create(
         cls,
@@ -155,7 +155,7 @@ class CravatFilter:
         includesample=None,
         excludesample=None,
     ):
-        self = CravatFilter(
+        self = ReportFilter(
             dbpath=dbpath,
             filterpath=filterpath,
             filtername=filtername,
@@ -1207,6 +1207,6 @@ def main():
     from asyncio import new_event_loop
 
     loop = new_event_loop()
-    cv = loop.run_until_complete(CravatFilter.create(mode="main"))
+    cv = loop.run_until_complete(ReportFilter.create(mode="main"))
     loop.run_until_complete(cv.run(args=sys.argv[1:]))
     loop.close()

@@ -426,7 +426,7 @@ async def filtersqlite_async(args):
     import sqlite3
     from os import remove
     from os.path import exists
-    from ..base.cravat_filter import CravatFilter
+    from .. import ReportFilter
 
     dbpaths = args["paths"]
     for dbpath in dbpaths:
@@ -441,7 +441,7 @@ async def filtersqlite_async(args):
         c = conn.cursor()
         try:
             c.execute("attach database '" + dbpath + "' as old_db")
-            cf = await CravatFilter.create(
+            cf = await ReportFilter.create(
                 dbpath=dbpath,
                 filterpath=args["filterpath"],
                 filtersql=args["filtersql"],
