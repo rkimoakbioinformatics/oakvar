@@ -191,6 +191,7 @@ class BasePostAggregator(object):
 
             raise SetupError(module_name=self.module_name)
         self.dbconn.commit()
+        self.postprocess()
         self.base_cleanup()
         end_time = time()
         run_time = end_time - start_time
@@ -199,6 +200,9 @@ class BasePostAggregator(object):
         self.status_writer.queue_status_update(
             "status", "Finished {} ({})".format(self.conf["title"], self.module_name)
         )
+
+    def postprocess(self):
+        pass
 
     def fill_categories(self):
         if self.conf is None:
