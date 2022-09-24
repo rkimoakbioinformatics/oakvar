@@ -1,11 +1,4 @@
 class BaseMapper(object):
-    """
-    BaseMapper is the parent class for Cravat Mapper objects.
-    It receives a crv file and writes crx and crg files based on it's child
-    mapper's map() function.
-    It handles command line arguments, option parsing and file io for the
-    mapping process.
-    """
 
     def __init__(self, *inargs, **inkwargs):
         import os
@@ -157,14 +150,9 @@ class BaseMapper(object):
         self.unique_excs = []
 
     def _setup_io(self):
-        """
-        Open input and output files
-        Open CravatReader for crv input. Open  CravatWriters for crx, and crg
-        output. Open plain file for err output.
-        """
         import os
-        from ..util.inout import CravatReader
-        from ..util.inout import CravatWriter
+        from ..util.inout import FileReader
+        from ..util.inout import FileWriter
         from ..consts import crx_def, crx_idx, crg_def, crg_idx
 
         if (
@@ -182,13 +170,13 @@ class BaseMapper(object):
             and self.args["seekpos"] is not None
             and self.args["chunksize"] is not None
         ):
-            self.reader = CravatReader(
+            self.reader = FileReader(
                 self.input_path,
                 seekpos=int(self.args["seekpos"]),
                 chunksize=int(self.args["chunksize"]),
             )
         else:
-            self.reader = CravatReader(self.input_path)
+            self.reader = FileReader(self.input_path)
         # Various output files
         output_toks = self.output_base_fname.split(".")
         if output_toks[-1] == "crv":
@@ -198,7 +186,7 @@ class BaseMapper(object):
         self.crx_path = os.path.join(self.output_dir, crx_fname)
         if self.slavemode:
             self.crx_path += self.postfix
-        self.crx_writer = CravatWriter(self.crx_path)
+        self.crx_writer = FileWriter(self.crx_path)
         self.crx_writer.add_columns(crx_def)
         self.crx_writer.write_definition(self.conf)
         for index_columns in crx_idx:
@@ -217,7 +205,7 @@ class BaseMapper(object):
         self.crg_path = os.path.join(self.output_dir, crg_fname)
         if self.slavemode:
             self.crg_path += self.postfix
-        self.crg_writer = CravatWriter(self.crg_path)
+        self.crg_writer = FileWriter(self.crg_path)
         self.crg_writer.add_columns(crg_def)
         self.crg_writer.write_definition(self.conf)
         for index_columns in crg_idx:

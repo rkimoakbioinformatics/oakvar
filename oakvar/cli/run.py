@@ -569,7 +569,7 @@ class Runner(object):
         if self.args.note == None:
             self.args.note = ""
         if self.args is None:
-            raise SetupError("Cravat")
+            raise SetupError("Runner")
 
     def make_self_args_considering_package_conf(self, args):
         from types import SimpleNamespace
@@ -716,7 +716,7 @@ class Runner(object):
         from ..exceptions import NoInput
         import sqlite3
         from ..consts import crv_def, crx_def, crg_def
-        from ..util.inout import CravatWriter
+        from ..util.inout import FileWriter
 
         if self.inputs is None or len(self.inputs) == 0:
             raise NoInput
@@ -725,12 +725,12 @@ class Runner(object):
         c = db.cursor()
         # Variant
         if not self.crv_present:
-            crv = CravatWriter(self.crvinput, columns=crv_def)
+            crv = FileWriter(self.crvinput, columns=crv_def)
             crv.write_definition()
         else:
             crv = None
         if not self.crx_present:
-            crx = CravatWriter(self.crxinput, columns=crx_def)
+            crx = FileWriter(self.crxinput, columns=crx_def)
             crx.write_definition()
         else:
             crx = None
@@ -753,7 +753,7 @@ class Runner(object):
             self.crx_present = True
         # Gene
         if not self.crg_present:
-            crg = CravatWriter(self.crginput, columns=crg_def)
+            crg = FileWriter(self.crginput, columns=crg_def)
             crg.write_definition()
             colnames = [x["name"] for x in crg_def]
             sel_cols = ", ".join(["base__" + x for x in colnames])
@@ -1116,7 +1116,7 @@ class Runner(object):
 
         if self.conf is None or self.args is None:
             raise SetupError()
-        converter_path = os.path.join(get_packagedir(), "base", "cravat_convert.py")
+        converter_path = os.path.join(get_packagedir(), "base", "master_converter.py")
         module = SimpleNamespace(
             title="Converter", name="converter", script_path=converter_path
         )
@@ -1139,7 +1139,9 @@ class Runner(object):
                 self.args,
             )
         arg_dict["status_writer"] = self.status_writer
-        converter_class = load_class(module.script_path, "MasterCravatConverter")
+        converter_class = load_class(module.script_path, "MasterConverter")
+        if not converter_class:
+            converter_class = load_class(module.script_path, "MasterCravatConverter")
         converter = converter_class(arg_dict)
         self.numinput, self.converter_format, self.genome_assembiles = converter.run()
 
@@ -1292,13 +1294,13 @@ class Runner(object):
     def run_genemapper_mp(self):
         import multiprocessing as mp
         from ..base.mp_runners import init_worker, mapper_runner
-        from ..util.inout import CravatReader
+        from ..util.inout import FileReader
         from ..exceptions import SetupError
 
         if self.args is None or self.output_dir is None:
             raise SetupError()
         num_workers = self.get_num_workers()
-        reader = CravatReader(self.crvinput)
+        reader = FileReader(self.crvinput)
         num_lines, chunksize, poss, len_poss, max_num_lines = reader.get_chunksize(
             num_workers
         )
@@ -1494,7 +1496,9 @@ class Runner(object):
                 cmd.extend(["--confs", confs])
             if self.verbose:
                 quiet_print(" ".join(cmd), self.args)
-            post_agg_cls = load_class(module.script_path, "CravatPostAggregator")
+            post_agg_cls = load_class(module.script_path, "PostAggregator")
+            if not post_agg_cls:
+                post_agg_cls = load_class(module.script_path, "CravatPostAggregator")
             post_agg = post_agg_cls(cmd, self.status_writer)
             announce_module(
                 module, status_writer=self.status_writer, args=self.args

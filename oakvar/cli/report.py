@@ -788,7 +788,9 @@ class BaseReporter:
                 sys.path = sys.path + [dirname(mi.script_path)]
                 annot_cls = None
                 if module_name in done_var_annotators:
-                    annot_cls = load_class(mi.script_path, "CravatAnnotator")
+                    annot_cls = load_class(mi.script_path, "Annotator")
+                    if not annot_cls:
+                        annot_cls = load_class(mi.script_path, "CravatAnnotator")
                 elif module_name == self.mapper_name:
                     annot_cls = load_class(mi.script_path, "Mapper")
                 if annot_cls is None:
@@ -1248,3 +1250,5 @@ def get_parser_fn_report():
     )
     parser_ov_report.set_defaults(func=cli_report)
     return parser_ov_report
+
+CravatReport = BaseReporter

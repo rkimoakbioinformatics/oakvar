@@ -507,11 +507,11 @@ class Aggregator(object):
         from os.path import join, exists
         from os import remove
         from sqlite3 import connect
-        from ..util.inout import CravatReader
+        from ..util.inout import FileReader
 
-        self.base_reader = CravatReader(self.base_fpath)
+        self.base_reader = FileReader(self.base_fpath)
         for annot_name in self.annotators:
-            self.readers[annot_name] = CravatReader(self.ipaths[annot_name])
+            self.readers[annot_name] = FileReader(self.ipaths[annot_name])
         self.db_fname = self.output_base_fname + ".sqlite"
         self.db_path = join(self.output_dir, self.db_fname)
         if self.delete and exists(self.db_path):

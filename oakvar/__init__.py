@@ -44,18 +44,20 @@ from .base.preparer import BasePreparer
 from .base.mapper import BaseMapper
 from .base.annotator import BaseAnnotator
 from .base.postaggregator import BasePostAggregator
-from .base.cravat_filter import ReportFilter
+from .base.report_filter import ReportFilter
 from .cli.report import BaseReporter
 from .base.commonmodule import BaseCommonModule
 from .base.vcf2vcf import VCF2VCF
+from .util.inout import FileReader
+from .util.inout import FileWriter
 from .util import inout
 from .util import admin_util
 import signal
 
+# for compatibility with oc
 Cravat = Runner
 CravatReport = BaseReporter
 CravatFilter = ReportFilter
-# for compatibility with oc
 constants = consts
 
 
@@ -106,7 +108,8 @@ _ = (
     or BaseCommonModule
     or VCF2VCF
 )
-_ = CravatReport or CravatFilter or Runner
+_ = CravatReport or ReportFilter or Runner
+_ = FileReader or FileWriter
 _ = crx_def or consts
 _ = cli or wgs
 _ = (

@@ -3,7 +3,7 @@ import aiosqlite
 import json
 import sys
 import imp
-from .. import CravatFilter
+from .. import ReportFilter
 from ..consts import base_smartfilters
 from aiohttp import web
 import time
@@ -358,7 +358,7 @@ async def get_count(request):
         filterstring = queries["filter"]
     else:
         filterstring = None
-    cf = await CravatFilter.create(dbpath=dbpath, mode="sub", filterstring=filterstring)
+    cf = await ReportFilter.create(dbpath=dbpath, mode="sub", filterstring=filterstring)
     dbbasename = os.path.basename(dbpath)
     if logger is not None:
         logger.info("calling count for {}".format(dbbasename))

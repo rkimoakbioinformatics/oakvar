@@ -41,12 +41,7 @@ class VTracker:
                 return False, chr_dict[pos][change]
 
 
-class MasterCravatConverter(object):
-    """Convert a file of ambiguous format to .crv format.
-
-    Reads in CravatConverter classes in the same directory, selects the
-    correct converter, and writes a crv file.
-    """
+class MasterConverter(object):
 
     ALREADYCRV = 2
 
@@ -291,12 +286,6 @@ class MasterCravatConverter(object):
         self.unique_excs = []
 
     def _initialize_converters(self):
-        """Reads in available converters.
-
-        Loads any python files in same directory that start with _ as
-        python modules. Initializes the CravatConverter class from that
-        module and places them in a dict keyed by their input format
-        """
         from oakvar.exceptions import ExpectedException
         from oakvar.module.local import get_local_module_infos_of_type
         from oakvar.exceptions import InvalidModule
@@ -319,12 +308,6 @@ class MasterCravatConverter(object):
         self.possible_formats = list(self.converters.keys())
 
     def _select_primary_converter(self):
-        """Choose the converter which matches the input format.
-
-        If a input format was not specified in the cmd args, uses the
-        check_format() method of the CravatConverters to identify a
-        converter which can parse the input file.
-        """
         from oakvar.exceptions import InvalidInputFormat
         from oakvar.exceptions import LoggerError
         from oakvar.exceptions import NoInput
@@ -393,13 +376,6 @@ class MasterCravatConverter(object):
     def _open_output_files(self):
         from oakvar.exceptions import SetupError
 
-        """Open .crv .crs and .crm output files, plus .err file.
-
-        .crv .crs and .crm files are opened using a CravatWriter.
-        .err file will contain all errors which occur during conversion.
-        .map file contains two columns showing which lines in input
-        correspond to which lines in output.
-        """
         if (
             self.output_base_fname is None
             or self.primary_converter is None
@@ -414,12 +390,12 @@ class MasterCravatConverter(object):
             crs_idx,
             crl_def,
         )
-        from oakvar.util.inout import CravatWriter
+        from oakvar.util.inout import FileWriter
         from os.path import join
 
-        # Setup CravatWriter
+        # Setup writer
         self.wpath = join(self.output_dir, self.output_base_fname + ".crv")
-        self.crv_writer = CravatWriter(self.wpath)
+        self.crv_writer = FileWriter(self.wpath)
         self.crv_writer.add_columns(crv_def)
         self.crv_writer.write_definition()
         for index_columns in crv_idx:
@@ -431,7 +407,7 @@ class MasterCravatConverter(object):
         self.err_path = join(self.output_dir, self.output_base_fname + ".converter.err")
         # Setup crm line mappings file
         self.crm_path = join(self.output_dir, self.output_base_fname + ".crm")
-        self.crm_writer = CravatWriter(self.crm_path)
+        self.crm_writer = FileWriter(self.crm_path)
         self.crm_writer.add_columns(crm_def)
         self.crm_writer.write_definition()
         for index_columns in crm_idx:
@@ -439,7 +415,7 @@ class MasterCravatConverter(object):
         self.crm_writer.write_input_paths(self.input_path_dict)
         # Setup crs sample file
         self.crs_path = join(self.output_dir, self.output_base_fname + ".crs")
-        self.crs_writer = CravatWriter(self.crs_path)
+        self.crs_writer = FileWriter(self.crs_path)
         self.crs_writer.add_columns(self.crs_def)
         if hasattr(self.primary_converter, "addl_cols"):
             self.crs_writer.add_columns(self.primary_converter.addl_cols, append=True)
@@ -451,7 +427,7 @@ class MasterCravatConverter(object):
             self.output_dir,
             ".".join([self.output_base_fname, "original_input", "var"]),
         )
-        self.crl_writer = CravatWriter(self.crl_path)
+        self.crl_writer = FileWriter(self.crl_path)
         self.crl_writer.add_columns(crl_def)
         self.crl_writer.write_definition()
         self.crl_writer.write_names("original_input", "Original Input", "")
@@ -840,10 +816,10 @@ class MasterCravatConverter(object):
 
 
 def main():
-    master_cravat_converter = MasterCravatConverter()
-    master_cravat_converter.run()
+    master_converter = MasterConverter()
+    master_converter.run()
 
 
 if __name__ == "__main__":
-    master_cravat_converter = MasterCravatConverter()
-    master_cravat_converter.run()
+    master_converter = MasterConverter()
+    master_converter.run()

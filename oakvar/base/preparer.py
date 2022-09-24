@@ -19,6 +19,7 @@ class BasePreparer(object):
         self.logger = None
         self.error_logger = None
         self.unique_excs = None
+        self.uid = 0
         fp = sys.modules[self.__module__].__file__
         if not fp:
             raise ModuleLoadingError(self.__module__)
@@ -26,7 +27,6 @@ class BasePreparer(object):
         self.module_name = self.main_fpath.stem
         self._define_main_cmd_args()
         self._parse_cmd_args(inargs, inkwargs)
-        print(f"@ args={self.args}")
         if self.args is None:
             return
         self.status_writer = self.args["status_writer"]
@@ -39,7 +39,6 @@ class BasePreparer(object):
         self.module_dir = os.path.dirname(main_fpath)
         self._setup_logger()
         self.conf = get_module_conf(self.module_name, module_type="preparer")
-        print(f"@ end of __init__")
 
     def _define_main_cmd_args(self):
         import argparse
@@ -91,11 +90,11 @@ class BasePreparer(object):
             confs = args.get("confs").lstrip("'").rstrip("'").replace("'", '"')
             self.confs.update(loads(confs))
         self.args = args
-        print(f"@ args={self.args}")
 
     def run_setups(self):
         self.setup()
         self.setup_io()
+        self.open_output_files()
 
     def setup(self):
         pass
@@ -111,8 +110,8 @@ class BasePreparer(object):
         self.unique_excs = []
 
     def setup_io(self):
-        from ..util.inout import CravatReader
-        from ..util.inout import CravatWriter
+        from ..util.inout import FileReader
+        from ..util.inout import FileWriter
         from ..exceptions import SetupError
 
         if (
@@ -121,8 +120,24 @@ class BasePreparer(object):
             or self.output_dir is None
         ):
             raise SetupError()
-        self.reader = CravatReader(self.input_path)
-        self.writer = CravatWriter(self.output_path)
+        self.reader = FileReader(self.input_path)
+        self.writer = FileWriter(self.output_path)
+
+    def open_output_files(self):
+        from oakvar.exceptions import SetupError
+
+        if (
+            self.output_base_fname is None
+            or self.output_dir is None
+        ):
+            raise SetupError()
+        from oakvar.consts import crv_def
+        from oakvar.consts import crv_idx
+
+        self.writer.add_columns(crv_def)
+        self.writer.write_definition()
+        for index_columns in crv_idx:
+            self.writer.add_index(index_columns)
 
     def run(self):
         from time import time, asctime, localtime
@@ -156,13 +171,17 @@ class BasePreparer(object):
                             "status", "Running gene mapper: line {}".format(count)
                         )
                         last_status_update_time = cur_time
+                uid = crv_data.get("uid")
+                if not uid:
+                    continue
+                if uid > self.uid:
+                    self.uid = uid
                 out_data = self.prepare(crv_data)  # type: ignore
             except Exception as e:
                 self._log_runtime_error(ln, line, e, fn=self.reader.path)
                 continue
             if out_data:
                 self.writer.write_data(out_data)  # type: ignore
-        breakpoint()
         self.postloop()
         stop_time = time()
         self.logger.info("finished: %s" % asctime(localtime(stop_time)))
@@ -170,6 +189,7 @@ class BasePreparer(object):
         self.logger.info("runtime: %6.3f" % runtime)
         if self.status_writer is not None:
             self.status_writer.queue_status_update("status", "Finished gene mapper")
+        self.replace_crv()
         self.end()
         return output
 
@@ -194,3 +214,12 @@ class BasePreparer(object):
         if self.error_logger is not None:
             self.error_logger.error(f"{fn}:{ln}\t{str(e)}")
 
+    def get_new_uid(self):
+        self.uid += 1
+        return self.uid
+
+    def replace_crv(self):
+        from os import replace
+
+        if self.output_path and self.input_path:
+            replace(self.output_path, self.input_path)
