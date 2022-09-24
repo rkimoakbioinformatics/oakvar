@@ -13,7 +13,7 @@ def download(url, fpath):
 def download_git_file(el, folder):
     import download as download_util
     from re import search
-    if search("\.zip[0-9]*$", el["download_url"]):
+    if search(r"\.zip[0-9]*$", el["download_url"]):
         download_util.download(el["download_url"], str(folder), kind="file", verbose=False, replace=True)
     else:
         download_util.download(el["download_url"], str(folder / el["name"]), kind="file", verbose=False, replace=True)

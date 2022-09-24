@@ -39,30 +39,35 @@ def run(args, __name__="run"):
             except ValueError:
                 pass
             custom_system_conf[k] = v
-    module = Cravat(**args)
+    module = Runner(**args)
     return run(module.main())
 
 
-class Cravat(object):
+class Runner(object):
     def __init__(self, **kwargs):
         from sys import executable
 
         self.runlevels = {
             "converter": 1,
-            "mapper": 2,
-            "annotator": 3,
-            "aggregator": 4,
-            "postaggregator": 5,
-            "reporter": 6,
+            "preparer": 2,
+            "mapper": 3,
+            "annotator": 4,
+            "aggregator": 5,
+            "postaggregator": 6,
+            "reporter": 7,
         }
         self.should_run_converter = False
+        self.should_run_preparer = False
         self.should_run_genemapper = False
-        self.should_run_annotators = True
-        self.should_run_aggregator = True
-        self.should_run_reporter = True
+        self.should_run_annotators = False
+        self.should_run_aggregator = False
+        self.should_run_postaggregator = False
+        self.should_run_reporter = False
+        self.preparer_ran = False
         self.mapper_ran = False
         self.annotator_ran = False
         self.aggregator_ran = False
+        self.run_annotators = {}
         self.done_annotators = {}
         self.status_json_path = None
         self.status_json = None
@@ -77,7 +82,6 @@ class Cravat(object):
         self.unique_logs = None
         self.manager = None
         self.status_writer = None
-        self.run_annotators = {}
         self.result_path = None
         self.package_conf = {}
         self.args = None
@@ -95,27 +99,28 @@ class Cravat(object):
         self.verbose = False
         self.cleandb = False
         self.excludes = []
-        self.annotator_names = []
+        self.preparer_names = []
         self.mapper_name = None
-        self.mapper = None
+        self.annotator_names = []
         self.postaggregator_names = []
-        self.postaggregators = {}
-        self.report_names = []
-        self.reports = {}
         self.reporter_names = []
+        self.report_names = []
+        self.preparers = {}
+        self.mapper = None
+        self.annotators = {}
+        self.postaggregators = {}
+        self.reports = {}
         self.crvinput = None
         self.crxinput = None
         self.crginput = None
         self.crv_present = False
         self.crx_present = False
         self.crg_present = False
-        self.annot_names = []
         self.numinput = None
         self.converter_format = None
         self.genemapper = None
         self.ordered_summarizers = []
         self.pythonpath = executable
-        self.annotators = {}
         self.append_mode = False
         self.pipeinput = False
         self.exception = None
@@ -305,6 +310,22 @@ class Cravat(object):
                     self.logger.info(msg)
                 exit()
 
+    async def do_step_preparer(self):
+        from ..util.util import quiet_print
+        from time import time
+
+        if (
+            self.endlevel >= self.runlevels["preparer"]
+            and self.startlevel <= self.runlevels["preparer"]
+            and (self.args and not "preparer" in self.args.skip)
+        ):
+            quiet_print("Running preparers...", self.args)
+            stime = time()
+            self.run_preparers()
+            rtime = time() - stime
+            quiet_print("finished in {0:.3f}s".format(rtime), self.args)
+            self.mapper_ran = True
+
     async def do_step_mapper(self):
         from ..util.util import quiet_print
         from time import time
@@ -317,12 +338,7 @@ class Cravat(object):
         ):
             quiet_print(f'Running gene mapper...{" "*18}', self.args)
             stime = time()
-            # multicore_mapper_mode = self.main_conf.get("multicore_mapper_mode")
             self.run_genemapper_mp()
-            # if multicore_mapper_mode:
-            #    self.run_genemapper_mp()
-            # else:
-            #    self.run_genemapper()
             rtime = time() - stime
             quiet_print("finished in {0:.3f}s".format(rtime), self.args)
             self.mapper_ran = True
@@ -464,6 +480,7 @@ class Cravat(object):
                 await self.run_vcf2vcf()
             else:
                 await self.do_step_converter()
+                await self.do_step_preparer()
                 await self.do_step_mapper()
                 await self.do_step_annotator()
                 await self.do_step_aggregator()
@@ -541,6 +558,7 @@ class Cravat(object):
         if self.args.skip is None:
             self.args.skip = []
         self.set_md()
+        self.set_preparers()
         self.set_mapper()
         self.set_annotators()
         self.set_postaggregators()
@@ -551,7 +569,7 @@ class Cravat(object):
         if self.args.note == None:
             self.args.note = ""
         if self.args is None:
-            raise SetupError("Cravat")
+            raise SetupError("Runner")
 
     def make_self_args_considering_package_conf(self, args):
         from types import SimpleNamespace
@@ -631,7 +649,6 @@ class Cravat(object):
             self.status_writer.queue_status_update(
                 "annotators", annot_names, force=True
             )
-        self.annot_names = annot_names
 
     def process_module_options(self):
         from ..exceptions import SetupError
@@ -699,7 +716,7 @@ class Cravat(object):
         from ..exceptions import NoInput
         import sqlite3
         from ..consts import crv_def, crx_def, crg_def
-        from ..util.inout import CravatWriter
+        from ..util.inout import FileWriter
 
         if self.inputs is None or len(self.inputs) == 0:
             raise NoInput
@@ -708,12 +725,12 @@ class Cravat(object):
         c = db.cursor()
         # Variant
         if not self.crv_present:
-            crv = CravatWriter(self.crvinput, columns=crv_def)
+            crv = FileWriter(self.crvinput, columns=crv_def)
             crv.write_definition()
         else:
             crv = None
         if not self.crx_present:
-            crx = CravatWriter(self.crxinput, columns=crx_def)
+            crx = FileWriter(self.crxinput, columns=crx_def)
             crx.write_definition()
         else:
             crx = None
@@ -736,7 +753,7 @@ class Cravat(object):
             self.crx_present = True
         # Gene
         if not self.crg_present:
-            crg = CravatWriter(self.crginput, columns=crg_def)
+            crg = FileWriter(self.crginput, columns=crg_def)
             crg.write_definition()
             colnames = [x["name"] for x in crg_def]
             sel_cols = ", ".join(["base__" + x for x in colnames])
@@ -897,6 +914,32 @@ class Cravat(object):
         if self.append_mode:
             self.regenerate_from_db()
         return True
+
+    def set_preparers(self):
+        from ..exceptions import SetupError
+        from ..module.local import get_local_module_infos_by_names
+
+        if self.args is None:
+            raise SetupError()
+        self.excludes = self.args.excludes
+        if len(self.args.preparers) > 0:
+            self.preparer_names = self.args.preparers
+        elif (
+            self.package_conf is not None
+            and "run" in self.package_conf
+            and "preparers" in self.package_conf.get("run", {})
+        ):
+            self.preparer_names = self.package_conf.get("run", {}).get("preparers")
+        else:
+            self.preparer_names = []
+        if "preparer" in self.args.skip:
+            self.preparer_names = []
+        elif len(self.excludes) > 0:
+            for m in self.excludes:
+                if self.preparer_names and m in self.preparer_names:
+                    self.preparer_names.remove(m)
+        self.check_valid_modules(self.preparer_names)
+        self.preparers = get_local_module_infos_by_names(self.preparer_names)
 
     def set_annotators(self):
         from ..exceptions import SetupError
@@ -1073,7 +1116,7 @@ class Cravat(object):
 
         if self.conf is None or self.args is None:
             raise SetupError()
-        converter_path = os.path.join(get_packagedir(), "base", "cravat_convert.py")
+        converter_path = os.path.join(get_packagedir(), "base", "master_converter.py")
         module = SimpleNamespace(
             title="Converter", name="converter", script_path=converter_path
         )
@@ -1096,9 +1139,40 @@ class Cravat(object):
                 self.args,
             )
         arg_dict["status_writer"] = self.status_writer
-        converter_class = load_class(module.script_path, "MasterCravatConverter")
+        converter_class = load_class(module.script_path, "MasterConverter")
+        if not converter_class:
+            converter_class = load_class(module.script_path, "MasterCravatConverter")
         converter = converter_class(arg_dict)
         self.numinput, self.converter_format, self.genome_assembiles = converter.run()
+
+    def run_preparers(self):
+        from ..util.util import announce_module
+        from ..exceptions import SetupError
+        from time import time
+        from ..util.util import load_class
+        from ..util.util import quiet_print
+
+        if self.conf is None:
+            raise SetupError()
+        for module_name, module in self.preparers.items():
+            module_conf = self.conf_run.get(module_name, {})
+            kwargs = {
+                "script_path": module.script_path,
+                "input_file": self.crvinput,
+                "run_name": self.run_name,
+                "output_dir": self.output_dir,
+                "confs": module_conf,
+                "status_writer": self.status_writer
+            }
+            module_cls = load_class(module.script_path, "Preparer")
+            module_ins = module_cls(kwargs)
+            announce_module(
+                module, status_writer=self.status_writer, args=self.args
+            )
+            stime = time()
+            module_ins.run()
+            rtime = time() - stime
+            quiet_print("finished in {0:.3f}s".format(rtime), self.args)
 
     def run_genemapper(self):
         from ..module.local import get_local_module_info
@@ -1220,13 +1294,13 @@ class Cravat(object):
     def run_genemapper_mp(self):
         import multiprocessing as mp
         from ..base.mp_runners import init_worker, mapper_runner
-        from ..util.inout import CravatReader
+        from ..util.inout import FileReader
         from ..exceptions import SetupError
 
         if self.args is None or self.output_dir is None:
             raise SetupError()
         num_workers = self.get_num_workers()
-        reader = CravatReader(self.crvinput)
+        reader = FileReader(self.crvinput)
         num_lines, chunksize, poss, len_poss, max_num_lines = reader.get_chunksize(
             num_workers
         )
@@ -1422,17 +1496,17 @@ class Cravat(object):
                 cmd.extend(["--confs", confs])
             if self.verbose:
                 quiet_print(" ".join(cmd), self.args)
-            post_agg_cls = load_class(module.script_path, "CravatPostAggregator")
+            post_agg_cls = load_class(module.script_path, "PostAggregator")
+            if not post_agg_cls:
+                post_agg_cls = load_class(module.script_path, "CravatPostAggregator")
             post_agg = post_agg_cls(cmd, self.status_writer)
-            if post_agg.should_run_annotate:
-                announce_module(
-                    module, status_writer=self.status_writer, args=self.args
-                )
+            announce_module(
+                module, status_writer=self.status_writer, args=self.args
+            )
             stime = time()
             post_agg.run()
             rtime = time() - stime
-            if post_agg.should_run_annotate:
-                quiet_print("finished in {0:.3f}s".format(rtime), self.args)
+            quiet_print("finished in {0:.3f}s".format(rtime), self.args)
 
     async def run_vcf2vcf(self):
         from ..exceptions import SetupError
@@ -2173,7 +2247,7 @@ def add_parser_ov_run(subparsers):
         help="Annotator module names or directories. If --package option also is used, annotator modules defined with -A will replace those defined with --package. -A has priority over -a.",
     )
     parser_ov_run.add_argument(
-        "-e", nargs="+", dest="excludes", default=[], help="annotators to exclude"
+        "-e", nargs="+", dest="excludes", default=[], help="modules to exclude"
     )
     parser_ov_run.add_argument("-n", dest="run_name", help="name of oakvar run")
     parser_ov_run.add_argument(
@@ -2184,6 +2258,7 @@ def add_parser_ov_run(subparsers):
         dest="startat",
         choices=[
             "converter",
+            "preparer",
             "mapper",
             "annotator",
             "aggregator",
@@ -2198,6 +2273,7 @@ def add_parser_ov_run(subparsers):
         dest="endat",
         choices=[
             "converter",
+            "preparer",
             "mapper",
             "annotator",
             "aggregator",
@@ -2213,6 +2289,7 @@ def add_parser_ov_run(subparsers):
         nargs="+",
         choices=[
             "converter",
+            "preparer",
             "mapper",
             "annotator",
             "aggregator",
@@ -2384,6 +2461,13 @@ def add_parser_ov_run(subparsers):
         "--md",
         default=None,
         help="Specify the root directory of OakVar modules (annotators, etc)",
+    )
+    parser_ov_run.add_argument(
+        "--pp",
+        dest="preparers",
+        nargs="+",
+        default=[],
+        help="Names or directories of preparer modules, which will be run in the given order.",
     )
     parser_ov_run.add_argument(
         "-m",

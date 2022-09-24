@@ -290,6 +290,13 @@ def get_module_dir(module_name, module_type=None) -> Optional[str]:
                     return join(modules_dir, type_fn, module_fn)
     return None
 
+def get_module_data_dir(module_name, module_type=None) -> Optional[str]:
+    from os.path import join
+
+    module_dir = get_module_dir(module_name, module_type=module_type)
+    if not module_dir:
+        return None
+    return join(module_dir, "data")
 
 def get_module_conf(module_name, module_type=None, module_dir=None):
     from ..util.util import load_yml_conf
