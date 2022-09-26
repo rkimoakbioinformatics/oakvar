@@ -868,3 +868,8 @@ def log_variant_exception(
             logger.error(err_str_log)
     if error_logger:
         error_logger.error("\n[{:d}]{}\n({})\n#".format(lnum, line.rstrip(), str(e)))
+
+def escape_glob_pattern(pattern):
+    new_pattern = "[[]".join(["[]]".join(v.split("]")) for v in pattern.split("[")])
+    return new_pattern.replace("*", "[*]").replace("?", "[?]")
+

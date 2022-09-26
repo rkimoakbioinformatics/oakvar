@@ -151,12 +151,13 @@ class Runner(object):
     def delete_output_files(self):
         from ..exceptions import SetupError
         from ..util.util import quiet_print
+        from ..util.util import escape_glob_pattern
         import os
-        import glob
+        from pathlib import Path
 
         if self.run_name is None or self.output_dir is None:
             raise SetupError()
-        fns = glob.glob(os.path.join(self.output_dir, self.run_name + ".*"))
+        fns = [v for v in Path(self.output_dir).glob(escape_glob_pattern(self.run_name) + ".*")]
         for fn in fns:
             quiet_print(f"  Removing {fn}", self.args)
             os.remove(fn)
@@ -474,8 +475,8 @@ class Runner(object):
                 force=True,
             )
             self.process_input()
-            self.log_versions()
             self.set_and_check_input_files()
+            self.log_versions()
             if self.args and self.args.vcf2vcf:
                 await self.run_vcf2vcf()
             else:
@@ -678,6 +679,15 @@ class Runner(object):
                 v = toks[1]
                 self.conf_run[module_name][key] = v
 
+    def remove_absent_inputs(self):
+        from pathlib import Path
+
+        if not self.inputs:
+            return
+        inputs_to_remove = [v for v in self.inputs if not Path(v).exists()]
+        for v in inputs_to_remove:
+            self.inputs.remove(v)
+
     def process_url_and_pipe_inputs(self):
         from ..exceptions import SetupError
         from ..util.util import is_url
@@ -867,7 +877,8 @@ class Runner(object):
             else:
                 raise NoInput()
         self.process_url_and_pipe_inputs()
-        if self.inputs is None:
+        self.remove_absent_inputs()
+        if not self.inputs:
             raise NoInput()
         self.num_input = len(self.inputs)
 
@@ -1228,14 +1239,14 @@ class Runner(object):
         return num_workers
 
     def collect_crxs(self):
-        from os.path import join
-        from glob import glob
+        from ..util.util import escape_glob_pattern
         from os import remove
+        from pathlib import Path
 
         if self.output_dir:
-            crx_path = join(self.output_dir, f"{self.run_name}.crx")
-            wf = open(crx_path, "w")
-            fns = sorted(glob(crx_path + "[.]*"))
+            crx_path = Path(self.output_dir) / f"{self.run_name}.crx"
+            wf = open(str(crx_path), "w")
+            fns = sorted([str(v) for v in crx_path.parent.glob(escape_glob_pattern(crx_path.name) + ".*")])
             fn = fns[0]
             f = open(fn)
             for line in f:
@@ -1252,15 +1263,15 @@ class Runner(object):
             wf.close()
 
     def collect_crgs(self):
-        from os.path import join
-        from glob import glob
+        from ..util.util import escape_glob_pattern
         from os import remove
+        from pathlib import Path
 
         if self.output_dir:
-            crg_path = join(self.output_dir, f"{self.run_name}.crg")
-            wf = open(crg_path, "w")
+            crg_path = Path(self.output_dir) / f"{self.run_name}.crg"
+            wf = open(str(crg_path), "w")
             unique_hugos = {}
-            fns = sorted(glob(crg_path + "[.]*"))
+            fns = sorted([str(v) for v in crg_path.parent.glob(escape_glob_pattern(crg_path.name) + ".*")])
             fn = fns[0]
             f = open(fn)
             for line in f:
