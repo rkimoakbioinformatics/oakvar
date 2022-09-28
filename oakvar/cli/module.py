@@ -172,10 +172,10 @@ def install(args, __name__="module install"):
             if (
                 not args.get("force")
                 and local_info
-                and Version(local_info.code_version or "") == Version(version)
+                and Version(local_info.code_version or "") >= Version(version)
             ):
                 quiet_print(
-                    f"{module_name}=={version} is already installed. Use -f/--force to overwrite",
+                    f"{module_name}>={version} is already installed. Use -f/--force to overwrite",
                     args=args,
                 )
                 continue
@@ -457,7 +457,7 @@ def list_modules(args):
             if tags:
                 if not module_info.tags:
                     continue
-                if not set(types).intersection(module_info.tags):
+                if not set(tags).intersection(module_info.tags):
                     continue
             #if module_info.hidden and not args.get("include_hidden"):
             #    continue
