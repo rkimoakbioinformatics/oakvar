@@ -12,7 +12,11 @@ def download(url, fpath):
 
 def download_git_file(el, folder):
     import download as download_util
-    download_util.download(el["download_url"], str(folder / el["name"]), kind="file", verbose=False, replace=True)
+    from re import search
+    if search(r"\.zip[0-9]*$", el["download_url"]):
+        download_util.download(el["download_url"], str(folder), kind="file", verbose=False, replace=True)
+    else:
+        download_util.download(el["download_url"], str(folder / el["name"]), kind="file", verbose=False, replace=True)
 
 def get_git_api_url(url):
     from re import compile
@@ -39,12 +43,12 @@ def download_git_folder(url=None, install_dir=None):
         return
     res = get(api_url)
     data = res.json()
+    if isinstance(data, dict) and data.get("type") == "file":
+        download_git_file(data, install_dir)
+        return
     folder = install_dir / Path(url).stem
     if not folder.exists():
         folder.mkdir(parents=True, exist_ok=True)
-    if isinstance(data, dict) and data.get("type") == "file":
-        download_git_file(data, folder)
-        return
     for el in data:
         if el["type"] == "dir":
             download_git_folder(url=el["html_url"], install_dir=folder)

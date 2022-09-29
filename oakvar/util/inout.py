@@ -1,4 +1,4 @@
-class CravatFile(object):
+class BaseFile(object):
     valid_types = ["string", "int", "float"]
 
     def __init__(self, path):
@@ -22,7 +22,7 @@ class CravatFile(object):
         return self.columns
 
 
-class CravatReader(CravatFile):
+class FileReader(BaseFile):
     def __init__(self, path, seekpos=None, chunksize=None):
         from .util import detect_encoding
 
@@ -233,7 +233,7 @@ class CravatReader(CravatFile):
                         break
 
 
-class CravatWriter(CravatFile):
+class FileWriter(BaseFile):
     def __init__(
         self,
         path,
@@ -658,3 +658,6 @@ class ColumnDefinition(object):
     def __iter__(self):  # Allows casting to dict
         for k, v in self.__dict__.items():
             yield k, v
+
+CravatReader = FileReader
+CravatWriter = FileWriter

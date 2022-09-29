@@ -2,7 +2,7 @@ import sys
 from oakvar import BaseAnnotator
 
 
-class CravatAnnotator(BaseAnnotator):
+class Annotator(BaseAnnotator):
     def setup(self):
         pass
 
@@ -18,5 +18,5 @@ class CravatAnnotator(BaseAnnotator):
 
 
 if __name__ == "__main__":
-    annotator = CravatAnnotator(sys.argv)
+    annotator = Annotator(sys.argv)
     annotator.run()

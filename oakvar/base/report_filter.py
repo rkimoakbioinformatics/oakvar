@@ -162,7 +162,6 @@ class FilterGroup(object):
 
 
 class ReportFilter:
-
     @classmethod
     async def create(
         cls,

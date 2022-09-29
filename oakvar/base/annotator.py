@@ -19,12 +19,11 @@ class BaseAnnotator(object):
         from ..consts import cannonical_chroms
         from ..module.local import get_module_conf
         from ..exceptions import ModuleLoadingError
-        from ..exceptions import ModuleLoadingError
         from ..exceptions import LoggerError
         from pathlib import Path
 
         fp = sys.modules[self.__module__].__file__
-        if fp is None:
+        if not fp:
             raise ModuleLoadingError(self.__module__)
         self.main_fpath = Path(fp).resolve()
         self.primary_input_path = None
@@ -338,7 +337,6 @@ class BaseAnnotator(object):
                         if self.primary_input_reader
                         else "?",
                     )
-            # This does summarizing.
             self.postprocess()
             self.base_cleanup()
             end_time = time()
@@ -431,9 +429,9 @@ class BaseAnnotator(object):
 
             raise SetupError(module_name=self.module_name)
         from ..exceptions import ConfigurationError
-        from ..util.inout import CravatReader
+        from ..util.inout import FileReader
 
-        self.primary_input_reader = CravatReader(self.primary_input_path)
+        self.primary_input_reader = FileReader(self.primary_input_path)
         requested_input_columns = self.conf["input_columns"]
         defined_columns = self.primary_input_reader.get_column_names()
         missing_columns = set(requested_input_columns) - set(defined_columns)
@@ -501,7 +499,7 @@ class BaseAnnotator(object):
 
             raise SetupError(module_name=self.module_name)
         import os
-        from ..util.inout import CravatWriter
+        from ..util.inout import FileWriter
 
         level = self.conf["level"]
         if level == "variant":
@@ -523,14 +521,14 @@ class BaseAnnotator(object):
             ".".join([self.output_basename, self.module_name, "err"]),
         )
         if self.plain_output:
-            self.output_writer = CravatWriter(
+            self.output_writer = FileWriter(
                 self.output_path,
                 include_definition=False,
                 include_titles=True,
                 titles_prefix="",
             )
         else:
-            self.output_writer = CravatWriter(self.output_path)
+            self.output_writer = FileWriter(self.output_path)
             self.output_writer.write_meta_line("name", self.module_name)
             self.output_writer.write_meta_line(
                 "displayname", self.annotator_display_name
@@ -705,12 +703,12 @@ class BaseAnnotator(object):
 
 class SecondaryInputFetcher:
     def __init__(self, input_path, key_col, fetch_cols=[]):
-        from ..util.inout import CravatReader
+        from ..util.inout import FileReader
         from ..exceptions import ConfigurationError
 
         self.key_col = key_col
         self.input_path = input_path
-        self.input_reader = CravatReader(self.input_path)
+        self.input_reader = FileReader(self.input_path)
         valid_cols = self.input_reader.get_column_names()
         if key_col not in valid_cols:
             err_msg = "Key column %s not present in secondary input %s" % (

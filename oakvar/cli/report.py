@@ -565,8 +565,7 @@ class BaseReporter:
     async def get_variant_colinfo(self, add_summary=True):
         try:
             await self.prep()
-            ret = self.setup()
-            if ret == False:
+            if self.setup() == False:
                 await self.close_db()
                 return None
             self.levels = await self.get_levels_to_run("all")
@@ -1022,7 +1021,7 @@ class BaseReporter:
 
     async def load_filter(self, user=DEFAULT_USER_NAME):
         from ..exceptions import SetupError
-        from ..base.cravat_filter import ReportFilter
+        from .. import ReportFilter
 
         if self.args is None:
             raise SetupError()
@@ -1318,3 +1317,5 @@ def get_parser_fn_report():
     )
     parser_ov_report.set_defaults(func=cli_report)
     return parser_ov_report
+
+CravatReport = BaseReporter

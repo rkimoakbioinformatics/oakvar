@@ -290,6 +290,13 @@ def get_module_dir(module_name, module_type=None) -> Optional[str]:
                     return join(modules_dir, type_fn, module_fn)
     return None
 
+def get_module_data_dir(module_name, module_type=None) -> Optional[str]:
+    from os.path import join
+
+    module_dir = get_module_dir(module_name, module_type=module_type)
+    if not module_dir:
+        return None
+    return join(module_dir, "data")
 
 def get_module_conf(module_name, module_type=None, module_dir=None):
     from ..util.util import load_yml_conf
@@ -365,16 +372,29 @@ def module_exists_local(module_name):
     return False
 
 
-def get_logo_path(module_name: str, module_type=None) -> Optional[str]:
+def get_logo_b64_path(module_name: str, module_type=None, module_dir=None) -> Optional[str]:
     from os.path import join
     from os.path import exists
 
-    d = get_module_dir(module_name, module_type=module_type)
-    if d:
-        p = join(d, "logo.png")
+    if not module_dir:
+        module_dir = get_module_dir(module_name, module_type=module_type)
+    if module_dir:
+        p = join(module_dir, "logo.png.b64")
         if exists(p):
             return p
     return ""
+
+def get_logo_path(module_name: str, module_type=None, module_dir=None) -> Optional[str]:
+    from os.path import join
+    from os.path import exists
+
+    if not module_dir:
+        module_dir = get_module_dir(module_name, module_type=module_type)
+    if module_dir:
+        p = join(module_dir, "logo.png")
+        if exists(p):
+            return p
+    return None
 
 
 def get_logo_b64(module_name: str, module_type=None) -> Optional[str]:
@@ -383,7 +403,10 @@ def get_logo_b64(module_name: str, module_type=None) -> Optional[str]:
     from ..store.consts import logo_size
     from io import BytesIO
 
-    p = get_logo_path(module_name, module_type=module_type)
+    module_dir = get_module_dir(module_name, module_type=module_type)
+    p = get_logo_b64_path(module_name, module_type=module_type, module_dir=module_dir)
+    if not p:
+        p = get_logo_path(module_name, module_type=module_type, module_dir=module_dir)
     if p:
         im = Image.open(p)
         im.thumbnail(logo_size)
