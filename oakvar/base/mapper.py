@@ -380,6 +380,9 @@ class BaseMapper(object):
 
     async def get_gene_summary_data(self, cf):
         from ..consts import crx_def
+        from ..consts import result_viewer_num_var_limit_for_gene_summary_key
+        from ..consts import DEFAULT_RESULT_VIEWER_NUM_VAR_LIMIT_FOR_GENE_SUMMARY
+        from ..system import get_system_conf
 
         hugos = await cf.exec_db(cf.get_filtered_hugo_list)
         # Below is to fix opening oc 1.8.0 jobs with oc 1.8.1.
@@ -392,6 +395,12 @@ class BaseMapper(object):
         cols.extend(["tagsampler__numsample"])
         data = {}
         rows = await cf.exec_db(cf.get_variant_data_for_cols, cols)
+        # TODO: gene level summary only for <100k variants is a temporary fix.
+        # Remove this when async gene level summary is implemented.
+        sys_conf = get_system_conf()
+        result_viewer_num_var_limit_for_gene_summary = sys_conf.get(result_viewer_num_var_limit_for_gene_summary_key, DEFAULT_RESULT_VIEWER_NUM_VAR_LIMIT_FOR_GENE_SUMMARY)
+        if len(rows) > result_viewer_num_var_limit_for_gene_summary:
+            return {}
         rows_by_hugo = {}
         for row in rows:
             hugo = row[-1]

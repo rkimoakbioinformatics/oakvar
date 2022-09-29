@@ -273,3 +273,5 @@ for g in ["hg18", "hg19"]:
         dirname(__file__), "liftover", g + "ToHg38.over.chain"
     )
 status_prefix = ".status.json"
+DEFAULT_RESULT_VIEWER_NUM_VAR_LIMIT_FOR_GENE_SUMMARY = 100000
+result_viewer_num_var_limit_for_gene_summary_key = "result_viewer_num_var_limit_for_gene_summary"
