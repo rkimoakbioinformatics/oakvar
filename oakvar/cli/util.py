@@ -426,7 +426,7 @@ async def filtersqlite_async(args):
     import sqlite3
     from os import remove
     from os.path import exists
-    from ..base.report_filter import ReportFilter
+    from .. import ReportFilter
 
     dbpaths = args["paths"]
     for dbpath in dbpaths:

@@ -108,8 +108,8 @@ _ = (
     or BaseCommonModule
     or VCF2VCF
 )
-_ = CravatReport or CravatFilter or Cravat or ReportFilter
 _ = CravatReport or ReportFilter or Runner
+_ = CravatFilter or Cravat
 _ = FileReader or FileWriter
 _ = crx_def or consts
 _ = cli or wgs

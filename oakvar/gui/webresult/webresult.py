@@ -3,7 +3,7 @@ import aiosqlite
 import json
 import sys
 import imp
-from ...base.report_filter import ReportFilter
+from ... import ReportFilter
 from ...consts import base_smartfilters
 from aiohttp import web
 import time

@@ -1021,7 +1021,7 @@ class BaseReporter:
 
     async def load_filter(self, user=DEFAULT_SERVER_DEFAULT_USERNAME):
         from ..exceptions import SetupError
-        from ..base.report_filter import ReportFilter
+        from .. import ReportFilter
 
         if self.args is None:
             raise SetupError()
