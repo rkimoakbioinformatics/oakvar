@@ -462,9 +462,9 @@ async def get_result(request):
 
 
 async def get_result_levels(request):
-    from ..system import get_user_conf
-    user_conf = get_user_conf()
-    gui_result_pagesize = user_conf.get("gui_result_pagesize", default_gui_result_pagesize)
+    from ..system import get_system_conf
+    sys_conf = get_system_conf()
+    gui_result_pagesize = sys_conf.get("gui_result_pagesize", default_gui_result_pagesize)
     content = {"gui_result_pagesize": gui_result_pagesize}
     _ = request.rel_url.query
     _, dbpath = await get_jobid_dbpath(request)
