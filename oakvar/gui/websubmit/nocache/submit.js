@@ -85,7 +85,7 @@ function processInputServerFiles(inputText, inputServerFiles) {
 
 function makeInputTextFile(inputText, inputFiles) {
   var textBlob = new Blob([inputText], { type: "text/plain" });
-  inputFiles.push(new File([textBlob], "input"));
+  inputFiles.push(new File([textBlob], "example_input"));
 }
 
 function processInputText(inputFiles, inputServerFiles) {

@@ -107,67 +107,6 @@ code {
     z-index: 1;
 }
 
-#jobs-table {
-    width: calc(100% - 1px);
-    border-collapse: collapse;
-    border-spacing: 10px;
-    text-align: center;
-}
-
-#jobs-table thead tr {
-    height: 34px;
-    background-color: #4a87bd;
-    color: white;
-}
-
-#jobs-table tr.job-table-tr:hover {
-    background-color: #dddddd;
-}
-
-.job-table-tr {
-    border-bottom: 1px dotted #aaaaaa;
-}
-
-.job-detail-tr {
-    background-color: #f2f2f2;
-}
-
-.job-detail-tr td table tr td:first-of-type {
-    text-align: right;
-    text-decoration: underline;
-}
-
-.highlighted-tr {
-    background-color: #949494;
-    color: black;
-}
-
-.hidden-tr {
-    display: none;
-}
-
-#jobs-table tbody td {
-    padding-top: 9px;
-    padding-bottom: 9px;
-    cursor: default;
-    font-size: 15px;
-}
-
-#jobs-table thead td {
-    border: 1px solid #dddddd;
-}
-
-#jobs-table tbody tr.job-table-main-tr td {
-    border: 1px solid #dddddd;
-}
-
-#jobs-table thead th {
-    font-size: 13px;
-    font-weight: bold;
-    border-bottom: 1px solid #cccccc;
-    /*box-shadow: 0px 0px 10px 0px #c7c7c7;*/
-}
-
 #logodiv {
     position: absolute; 
     left: calc(50% - 65px); 
@@ -212,20 +151,6 @@ code {
 
 #submitcontentdiv {
     width: 390px;
-}
-
-#jobnoteinput {
-    width: calc(100% - 44px);
-}
-
-#refresh-jobs-table-btn {
-    width: 14px; 
-    height: 17px;
-    position: absolute; 
-    top: 8px; 
-    left: 8px;
-    padding: 0px;
-    background-color: transparent;
 }
 
 .email-icon {
@@ -513,11 +438,6 @@ transition-duration: 150ms;
     width: calc(100% - 10px);
 }
 
-#jobdiv {
-    position: relative;
-    overflow: auto;
-}
-
 #input-file {
     width: 0.1px;
     height: 0.1px;
@@ -680,18 +600,6 @@ transition-duration: 150ms;
 
 #report_generation_div.show {
     display: block;
-}
-
-#jobdivspinnerdiv {
-    position: absolute;
-    width: 60px;
-    height: 60px;
-    left: calc(50% - 30px);
-    top: calc(50% - 30px);
-}
-
-#jobdivspinnerdiv.hide {
-    display: none;
 }
 
 #annotdivspinnerdiv {

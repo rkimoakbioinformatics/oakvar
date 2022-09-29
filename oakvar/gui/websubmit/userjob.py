@@ -204,10 +204,13 @@ def get_log_path_in_job_dir(job_dir: Optional[str], run_name: Optional[str]=None
     return str(log_paths[0])
 
 def get_job_runtime_in_job_dir(job_dir: Optional[str], run_name: Optional[str]) -> Optional[float]:
+    from pathlib import Path
     log_path = get_log_path_in_job_dir(job_dir, run_name=run_name)
     if not log_path:
         return None
     runtime = None
+    if not Path(log_path).exists():
+        return None
     with open(log_path) as f:
         for line in f:
             if "runtime:" in line:

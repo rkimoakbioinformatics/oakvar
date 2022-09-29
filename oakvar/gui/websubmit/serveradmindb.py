@@ -1,3 +1,4 @@
+from logging import getLogger
 from typing import Any
 
 
@@ -442,14 +443,43 @@ class ServerAdminDb ():
         await conn.close()
 
     @db_func
-    async def get_jobs_of_email(self, email, pageno=0, pagesize=30, conn=Any, cursor=Any):
-        _ = conn or pagesize or pageno
+    async def get_jobs_of_email(self, email, pageno=None, pagesize=None, search_text=None, conn=Any, cursor=Any):
+        from json import loads
+        from ...system import get_sys_conf_value
+        from ..consts import job_table_pagesize_key
+        from ..consts import DEFAULT_JOB_TABLE_PAGESIZE
+        if not pagesize:
+            try:
+                pagesize = get_sys_conf_value(job_table_pagesize_key)
+                if pagesize:
+                    pagesize = int(pagesize)
+            except Exception as e:
+                logger = getLogger()
+                logger.exception(e)
+        if not pagesize:
+            pagesize = DEFAULT_JOB_TABLE_PAGESIZE
+        try:
+            if pageno:
+                pageno = int(pageno)
+        except Exception as e:
+            logger = getLogger()
+            logger.exception(e)
+        if not pageno:
+            pageno = 1
+        offset = (pageno - 1) * pagesize
+        limit = pagesize
+        _ = conn
         if not email:
             return
-        q = f"select jobid, statusjson from jobs where username=? order by submit desc"
+        q = f"select name, statusjson from jobs where username=? order by jobid desc limit {limit} offset {offset}"
         await cursor.execute(q, (email,))
         ret = await cursor.fetchall()
         ret = [dict(v) for v in ret]
+        for d in ret:
+            try:
+                d["statusjson"] = loads(d["statusjson"])
+            except:
+                d["statusjson"] = {"status": "Error"}
         return ret
 
     def retrieve_user_jobs_into_db(self):
@@ -466,6 +496,7 @@ class ServerAdminDb ():
     def retrieve_jobs_of_user_into_db(self, email):
         from pathlib import Path
         from sqlite3 import connect
+        from json import dumps
         from ...system import get_user_jobs_dir
         from ...system import get_job_status
         from .userjob import get_job_runtime_in_job_dir
@@ -498,11 +529,12 @@ class ServerAdminDb ():
             runtime = get_job_runtime_in_job_dir(job_dir, run_name=run_name)
             assembly = job_status.get("assembly")
             note = job_status.get("note")
+            statusjson = dumps(job_status)
             if not job_name or not submit:
                 print(f"@ skipping. {job_name}. {run_name}. {submit}. {numinput}. {modules}. {assembly}. {note}.")
                 continue
-            q = "insert into jobs (username, dir, name, submit, runtime, numinput, modules, assembly, note) values (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            values = (email, job_dir, job_name, submit, runtime, numinput, modules, assembly, note)
+            q = "insert into jobs (username, dir, name, submit, runtime, numinput, modules, assembly, note, statusjson) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            values = (email, job_dir, job_name, submit, runtime, numinput, modules, assembly, note, statusjson)
             print(f"@ values={values}")
             cursor.execute(q, values)
         conn.commit()

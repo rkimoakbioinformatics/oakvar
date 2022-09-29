@@ -838,27 +838,36 @@ class Runner(object):
         else:
             self.package_conf = {}
 
+    def get_unique_run_name(self, run_name: str):
+        from pathlib import Path
+        from ..consts import result_db_suffix
+        if not self.output_dir:
+            return run_name
+        dbpath_p = Path(self.output_dir) / f"{run_name}{result_db_suffix}"
+        if not dbpath_p.exists():
+            return run_name
+        count = 1
+        while dbpath_p.exists():
+            dbpath_p = Path(self.output_dir) / f"{run_name}_{count}{result_db_suffix}"
+            count += 1
+        return f"{run_name}_{count}"
+
     def set_run_name(self):
         import os
         from ..exceptions import NoInput
         from ..exceptions import SetupError
-        from ..exceptions import ArgumentError
 
         if self.inputs is None or self.num_input is None:
             raise NoInput()
         if self.args is None:
             raise SetupError()
         self.run_name = self.args.run_name
-        if self.run_name == None:
+        if not self.run_name:
             if self.num_input == 0 or self.pipeinput:
-                self.run_name = "ovjob"
+                self.run_name = "oakvar_run"
             else:
-                self.run_name = os.path.basename(self.inputs[0])
-                if self.num_input > 1:
-                    e = ArgumentError("--run_name should be given when multiple input files are given.")
-                    e.traceback = False
-                    e.halt = True
-                    raise e
+                self.run_name = os.path.basename(self.inputs[0]) + "_etc"
+                self.run_name = self.get_unique_run_name(self.run_name)
 
     def set_self_inputs(self):
         from ..exceptions import SetupError
@@ -880,6 +889,7 @@ class Runner(object):
         self.remove_absent_inputs()
         if not self.inputs:
             raise NoInput()
+        self.inputs.sort()
         self.num_input = len(self.inputs)
 
     def set_start_end_levels(self):
@@ -1997,14 +2007,14 @@ class Runner(object):
                     os.remove(os.path.join(self.output_dir, fn))
 
     async def write_admin_db(self, runtime, numinput):
-        if self.args is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
         import aiosqlite
+        from json import dumps
+        from ..exceptions import SetupError
         from ..gui.websubmit.serveradmindb import get_admindb_path
         from ..util.util import quiet_print
 
+        if self.args is None:
+            raise SetupError()
         if runtime is None or numinput is None:
             return
         admindb_path = get_admindb_path()
@@ -2014,11 +2024,14 @@ class Runner(object):
                 self.logger.info(s)
             quiet_print(s, self.args)
             return
+        try:
+            statusjson = dumps(self.status_json)
+        except:
+            statusjson = ""
         db = await aiosqlite.connect(str(admindb_path))
         cursor = await db.cursor()
-        q = 'update jobs set runtime=?, numinput=? where dir=? and name="?"'
-        print(f"@ dir={self.output_dir}. name={self.args.job_name}")
-        await cursor.execute(q, (runtime, numinput, self.output_dir, self.args.job_name))
+        q = 'update jobs set runtime=?, numinput=?, statusjson=? where dir=? and name=?'
+        await cursor.execute(q, (runtime, numinput, statusjson, self.output_dir, self.args.job_name))
         await db.commit()
         await cursor.close()
         await db.close()

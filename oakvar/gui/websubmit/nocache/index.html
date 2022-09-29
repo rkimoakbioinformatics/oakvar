@@ -17,15 +17,17 @@
     <script src="/submit/js/axios.min.js"></script>
     <script src="/submit/js/firebase-app.js"></script>
     <script src="/submit/js/firebase-auth.js"></script>
-    <script src="/submit/nocache/websubmit.js"></script>
     <script src="/submit/nocache/element_getters.js"></script>
     <script src="/submit/nocache/select_modules.js"></script>
     <script src="/submit/nocache/input.js"></script>
     <script src="/submit/nocache/submit.js"></script>
     <script src="/submit/nocache/alerts.js"></script>
+    <script src="/submit/nocache/showhide.js"></script>
+    <script src="/submit/nocache/jobstable.js"></script>
     <script src="/submit/nocache/util.js"></script>
     <script src='/store/nocache/webstore.js'></script>
     <script src="/submit/nocache/multiuser.js"></script>
+    <script src="/submit/nocache/websubmit.js"></script>
     <link rel="stylesheet" href="/submit/nocache/websubmit.css">
     <link rel="stylesheet" href="/store/nocache/webstore.css">
     <link rel='stylesheet' href='/result/css/pqselect.min.css' />
@@ -46,46 +48,25 @@
     </script>
     <style type="text/tailwindcss"> @layer components {
       .tabhead {
-          @apply text-gray-600;
-          @apply hover:bg-gray-50;
-          @apply hover:text-gray-900;
-          @apply flex;
-          @apply items-center;
-          @apply px-2;
-          @apply py-2;
-          @apply text-sm;
-          @apply font-medium;
-          @apply rounded-md;
+          @apply text-gray-600 hover:bg-gray-50 hover:text-gray-900 flex items-center px-2 py-2 text-sm font-medium rounded-md;
       }
       .tabhead.selected {
-          @apply bg-gray-200;
-          @apply text-gray-900;
+          @apply bg-gray-200 text-gray-900;
       }
       .tabheadicon {
-          @apply text-gray-400;
-          @apply group-hover:text-gray-500;
-          @apply mr-3;
-          @apply flex-shrink-0;
-          @apply h-6;
-          @apply w-6;
+          @apply text-gray-400 group-hover:text-gray-500 mr-3 flex-shrink-0 h-6 w-6;
       }
       .filter-category {
-        @apply text-gray-500;
-        @apply hover:text-gray-900;
-        @apply bg-white;
-        @apply hover:bg-gray-100;
-        @apply rounded-md;
-        @apply border;
-        @apply border-transparent;
-        @apply px-3;
-        @apply py-1.5;
-        @apply text-sm;
-        @apply font-medium;
+        @apply text-gray-500 hover:text-gray-900 bg-white hover:bg-gray-100 rounded-md border border-transparent px-3 py-1.5 text-sm font-medium;
       }
       .filter-category.pinned {
-        @apply text-gray-900;
-        @apply bg-gray-100;
-        @apply hover:bg-gray-200;
+        @apply text-gray-900 bg-gray-100 hover:bg-gray-200;
+      }
+      .jobs-table-th {
+        @apply px-3 py-3.5 text-left text-sm font-semibold text-gray-900;
+      }
+      .jobs-table-td {
+        @apply px-3 py-4 text-sm text-gray-500 break-words;
       }
     }
     </style>
@@ -162,27 +143,27 @@
               <img class="h-16 w-auto" src="/submit/images/logo_transparent.png" alt="Workflow">
             </div>
             <nav class="mt-5 flex-1 px-2 space-y-1">
-              <a id="tabhead_submit" href="#" class="tabhead group selected" onclick="changeTab('submit')">
+              <a id="tabhead_submit" href="#" class="tabhead selected" onclick="changeTab(event)" value="submit">
                 <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg> Submit </a>
-              <a id="tabhead_jobs" href="#" class="tabhead group" onclick="changeTab('jobs')">
+              <a id="tabhead_jobs" href="#" class="tabhead" onclick="changeTab(event)" value="jobs">
                 <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                 </svg> Jobs </a>
-              <a id="tabhead_store" href="#" class="tabhead group" onclick="changeTab('store')">
+              <a id="tabhead_store" href="#" class="tabhead" onclick="changeTab(event)" value="store">
                 <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
                   <path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
                 </svg> Store </a>
-              <a id="tabhead_apps" href="#" class="tabhead group" onclick="changeTab('apps')">
+              <a id="tabhead_apps" href="#" class="tabhead" onclick="changeTab(event)" value="apps">
                 <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" >
                   <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
                 </svg> Apps </a>
-              <a id="tabhead_variant" href="#" class="tabhead group" onclick="changeTab('admin')">
-                <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg> Admin </a>
+              <a id="tabhead_admin" href="#" class="tabhead" onclick="changeTab(event)" value="admin">
+                <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+                </svg> Settings </a>
             </nav>
             <div id='verdiv' class="text-xs absolute left-4 bottom-2 text-gray-400">
               <span class="text-xs">v</span>
@@ -209,7 +190,7 @@
             <div class="mx-auto">
               <!-- Replace with your content -->
               <div>
-                <div id="tab_submit" class="tabcontent show p-4 snap-y snap-mandatory h-screen overflow-y-auto">
+                <div id="tab_submit" class="tabcontent p-4 snap-y snap-mandatory h-screen overflow-y-auto">
                   <div id='submit-variant-div' class='relative container flex gap-8 snap-center max-w-7xl h-[95vh] justify-center items-center'><!-- input variant panel -->
                     <div id="input-div" class="w-[40rem] justify-center items-center">
                       <div class="flex">
@@ -366,8 +347,77 @@ Alternatively, paths to input files in the server can be used as well. For examp
                     </div>
                   </div><!-- analysis module choice -->
                 </div>
-                <div id="tab_jobs" class="tabcontent hidden"></div>
+                <div id="tab_jobs" class="tabcontent px-6 hidden">
+<div>
+    <div class="flex bg-white px-4 pb-2 sm:px-6">
+      <div class="hidden sm:flex sm:flex-1 justify-end sm:items-center">
+        <div>
+          <nav class="isolate inline-flex rounded-md shadow-sm" aria-label="Pagination">
+            <a href="#" class="jobs-table-page-nav-btn relative inline-flex items-center rounded-l-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20" value="-1" onclick="onClickJobsTablePageNav(event)">
+              <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clip-rule="evenodd" />
+              </svg>
+            </a>
+            <!-- Current: "z-10 bg-indigo-50 border-indigo-500 text-indigo-600", Default: "bg-white border-gray-300 text-gray-500 hover:bg-gray-50" -->
+            <span id="jobs-table-pageno" aria-current="page" class="relative z-10 inline-flex items-center border bg-white border-gray-300 text-gray-500 px-4 py-2 text-sm font-medium focus:z-20" value="1">1</span>
+            <a href="#" class="jobs-table-page-nav-btn relative inline-flex items-center rounded-r-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20" value="1" onclick="onClickJobsTablePageNav(event)">
+              <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+              </svg>
+            </a>
+            <span class="relative inline-flex items-center border-gray-300 bg-white ml-4 px-2 py-2 text-sm font-medium text-gray-500">
+              Go to page
+            </span>
+            <input id="jobs-table-jump-pageno" type="text" class="relative inline-flex items-center rounded-md w-12 border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500" onkeyup="onKeyupJobsTablePageJumpBtn(event)" />
+            <a href="#" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20" onclick="onClickJobsTablePageJumpBtn()">
+              Go
+            </a>
+          </nav>
+        </div>
+      </div>
+    </div>
+  <div class="flex flex-col">
+        <div class="relative shadow ring-1 ring-black ring-opacity-5 md:rounded-lg overflow-auto">
+          <table id="jobs-table" class="table-fixed divide-y divide-gray-300">
+            <thead class="table-header-group bg-gray-50 block">
+              <tr>
+                <th scope="col" class="relative w-12 px-6 sm:w-16 sm:px-8">
+                  <input type="checkbox" class="absolute left-4 top-1/2 -mt-2 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 sm:left-6">
+                </th>
+                <th scope="col" class="jobs-table-th min-w-[20rem]">Name</th>
+                <th scope="col" class="jobs-table-th min-w-[10rem]">Input</th>
+                <th scope="col" class="jobs-table-th min-w-[10rem]">Submitted</th>
+                <th scope="col" class="jobs-table-th min-w-[5rem]">State</th>
+                <th scope="col" class="jobs-table-th min-w-[20rem]">Note</th>
+                <th scope="col" class="jobs-table-th min-w-[5rem]">View</th>
+              </tr>
+            </thead>
+            <tbody id="jobs-tbody" class="table-row-group divide-y divide-gray-200 bg-white block overflow-auto h-[36rem]">
+              <!-- Selected: "bg-gray-50" -->
+              <tr>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+    <div class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
+        <div>
+          <p class="text-sm text-gray-700">
+            Showing
+            <span class="font-medium">1</span>
+            to
+            <span class="font-medium">10</span>
+            of
+            <span class="font-medium">97</span>
+            results
+          </p>
+        </div>
+    </div>
+  </div>
+</div>
+
+                </div>
                 <div id="tab_store" class="tabcontent hidden"></div>
+                <div id="tab_apps" class="tabcontent hidden"></div>
                 <div id="tab_admin" class="tabcontent hidden"></div>
                 <div id="tab_systemnotready" class="tabcontent hidden">
                   <div class="relative z-10" aria-labelledby="modal-title" role="dialog" aria-modal="true">

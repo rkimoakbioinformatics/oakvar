@@ -29,6 +29,7 @@ class BaseReporter:
         self.warning_msgs = []
         self.colnames_to_display = {}
         self.cols_to_display = {}
+        self.colnos_to_display = {}
         self.display_select_columns = {}
         self.extracted_cols = {}
         self.conn = None
@@ -551,7 +552,7 @@ class BaseReporter:
                     {f"{grp_name}__{col['name']}": gene_summary_data[hugo][col["name"]] for col in cols}
                 )
             else:
-                datarow.extend({f"{grp_name}__{col['name']}": None for col in cols})
+                datarow.update({f"{grp_name}__{col['name']}": None for col in cols})
 
     async def add_gene_level_data_to_variant_level(self, datarow):
         if self.nogenelevelonvariantlevel or self.hugo_colno is None or not self.cf:
@@ -939,10 +940,14 @@ class BaseReporter:
 
     def set_cols_to_display(self, level):
         self.cols_to_display[level] = []
+        self.colnos_to_display[level] = []
+        colno = 0
         for col in self.columns[level]:
             col_name = col["col_name"]
             if col_name in self.colnames_to_display[level]:
                 self.cols_to_display[level].append(col_name)
+                self.colnos_to_display[level].append(colno)
+            colno += 1
 
     async def make_col_infos(self, add_summary=True):
         prev_level = self.level

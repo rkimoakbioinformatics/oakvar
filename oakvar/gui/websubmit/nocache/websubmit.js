@@ -26,12 +26,12 @@ var JOB_IDS = [];
 var jobListUpdateIntervalFn = null;
 var reportRunning = {};
 var systemConf;
-var moduleDatas = {}
-var moduleNames = {}
+var moduleDatas = {};
+var moduleNames = {};
 var NO_TAG = "no tag";
 var DEFAULT_GENOME_ASSEMBLY = "hg38";
-var AP_KEY = "ap"
-var R_KEY = "r"
+var AP_KEY = "ap";
+var R_KEY = "r";
 
 function showUpdateRemoteSpinner() {
   document
@@ -184,231 +184,6 @@ function emptyElement(elem) {
   while (elem.firstChild) {
     elem.removeChild(elem.firstChild);
   }
-}
-
-function populateJobTr(job) {
-  var jobTr = $("tr.job-table-main-tr[jobid=" + job.id + "]")[0];
-  emptyElement(jobTr);
-  // Username
-  if (adminMode == true) {
-    var td = getEl("td");
-    addEl(td, getTn(job.username));
-    addEl(jobTr, td);
-  }
-  // Job ID
-  addEl(jobTr, addEl(getEl("td"), getTn(job.id)));
-  // Input file name
-  if (Array.isArray(job.orig_input_fname)) {
-    input_fname = job.orig_input_fname.join(", ");
-  } else {
-    var input_fname = job.orig_input_fname;
-  }
-  var input_fname_display = input_fname;
-  var input_fname_display_limit = 30;
-  if (input_fname.length > input_fname_display_limit) {
-    input_fname_display =
-      input_fname.substring(0, input_fname_display_limit) + "...";
-  }
-  addEl(jobTr, addEl(getEl("td"), getTn(input_fname_display)));
-  // Number of unique variants
-  var td = getEl("td");
-  td.style.textAlign = "center";
-  var num = "";
-  if (job.num_unique_var != undefined) {
-    num = "" + job.num_unique_var;
-  }
-  td.textContent = num;
-  addEl(jobTr, td);
-  // Number of annotators
-  var annots = job.annotators;
-  if (annots == undefined) {
-    annots = "";
-  }
-  var num = annots.length;
-  var td = getEl("td");
-  td.style.textAlign = "center";
-  td.textContent = "" + num;
-  addEl(jobTr, td);
-  // Genome assembly
-  var td = getEl("td");
-  td.style.textAlign = "center";
-  addEl(td, getTn(job.assembly));
-  addEl(jobTr, td);
-  // Note
-  var td = getEl("td");
-  addEl(jobTr, addEl(td, getTn(job.note)));
-  // Status
-  var statusC = job.status["status"];
-  if (statusC == undefined) {
-    if (job.status != undefined) {
-      statusC = job.status;
-    } else {
-      return null;
-    }
-  }
-  var viewTd = getEl("td");
-  viewTd.style.textAlign = "center";
-  if (statusC == "Finished") {
-    if (job.result_available) {
-      var a = getEl("a");
-      a.setAttribute("href", "/result/index.html?job_id=" + job.id);
-      a.setAttribute("target", "_blank");
-      var button = getEl("button");
-      addEl(button, getTn("Open Result Viewer"));
-      button.classList.add("butn");
-      button.classList.add("launch-button");
-      button.disabled = !job.viewable;
-      addEl(a, button);
-      addEl(viewTd, a);
-    } else {
-      var button = getEl("button");
-      button.textContent = "Update to View";
-      button.classList.add("butn");
-      button.classList.add("launch-button");
-      button.disabled = !job.viewable;
-      button.setAttribute("job_id", job.id);
-      button.addEventListener("click", function (_) {
-        this.textContent = "Updating DB...";
-        var jobId = this.getAttribute("job_id");
-        $.ajax({
-          url: "/submit/updateresultdb",
-          type: "GET",
-          data: { job_id: jobId },
-          success: function (_) {
-            showJobListPage();
-          },
-        });
-      });
-      addEl(viewTd, button);
-    }
-  } else {
-    var span = getEl("span");
-    span.textContent = statusC;
-    addEl(viewTd, span);
-    if (statusC == "Aborted" || statusC == "Error") {
-      var btn = getEl("button");
-      btn.classList.add("butn");
-      btn.textContent = "Resubmit";
-      btn.addEventListener("click", function (_) {
-        $.get("/submit/resubmit", {
-          job_id: job.id,
-          job_dir: job.job_dir,
-        }).done(function (_) {
-          setTimeout(function () {
-            populateJobs();
-          }, 3000);
-        });
-      });
-      addEl(viewTd, btn);
-    }
-  }
-  addEl(jobTr, viewTd);
-  var dbTd = getEl("td");
-  dbTd.style.textAlign = "center";
-  // Reports
-  for (var i = 0; i < GLOBALS.reports.valid.length; i++) {
-    var reportType = GLOBALS.reports.valid[i];
-    if (
-      (websubmitReportBeingGenerated[job.id] != undefined &&
-        websubmitReportBeingGenerated[job.id][reportType] == true) ||
-      job.reports_being_generated.includes(reportType)
-    ) {
-      var btn = getEl("button");
-      btn.classList.add("butn");
-      btn.setAttribute("jobid", job.id);
-      btn.setAttribute("report-type", reportType);
-      addEl(btn, getTn(reportType.toUpperCase()));
-      btn.setAttribute("disabled", true);
-      btn.classList.add("inactive-download-button");
-      var spinner = getEl("img");
-      spinner.classList.add("btn_overlay");
-      spinner.src = "/result/images/arrow-spinner.gif";
-      addEl(btn, spinner);
-      if (job.status == "Finished") {
-        addEl(dbTd, btn);
-      }
-    } else {
-      if (job.reports.includes(reportType) == false) {
-      } else {
-        var btn = getEl("button");
-        btn.classList.add("butn");
-        btn.setAttribute("jobid", job.id);
-        btn.setAttribute("report-type", reportType);
-        addEl(btn, getTn(reportType.toUpperCase()));
-        btn.classList.add("active-download-button");
-        btn.addEventListener("click", function (evt) {
-          jobReportDownloadButtonHandler(evt);
-        });
-        btn.title = "Click to download.";
-        if (job.status == "Finished") {
-          addEl(dbTd, btn);
-        }
-      }
-    }
-  }
-  // Log
-  var logLink = getEl("a");
-  logLink.setAttribute("href", "/submit/jobs/" + job.id + "/log");
-  logLink.setAttribute("target", "_blank");
-  logLink.setAttribute("title", "Click to download.");
-  var button = getEl("button");
-  button.classList.add("butn");
-  button.classList.add("active-download-button");
-  addEl(button, getTn("Log"));
-  addEl(logLink, button);
-  addEl(dbTd, logLink);
-  addEl(jobTr, dbTd);
-  // + button
-  var btn = getEl("button");
-  btn.classList.add("butn");
-  btn.setAttribute("jobid", job.id);
-  addEl(btn, getTn("+"));
-  btn.classList.add("inactive-download-button");
-  btn.addEventListener("click", function (evt) {
-    var repSelDiv = document.querySelector("#report_generation_div");
-    if (repSelDiv.classList.contains("show")) {
-      repSelDiv.classList.remove("show");
-      return;
-    }
-    var jobId = evt.target.getAttribute("jobid");
-    var job = GLOBALS.idToJob[jobId];
-    var select = document.querySelector("#report_generation_div_select");
-    while (select.options.length > 0) {
-      select.remove(0);
-    }
-    for (var i = 0; i < GLOBALS.reports.valid.length; i++) {
-      var reportType = GLOBALS.reports.valid[i];
-      if (
-        websubmitReportBeingGenerated[job.id] != undefined &&
-        websubmitReportBeingGenerated[job.id][reportType] == true
-      ) {
-      } else {
-        var option = new Option(reportType, reportType);
-        select.add(option);
-      }
-    }
-    var div2 = document.querySelector("#report_generation_div");
-    div2.setAttribute("jobid", jobId);
-    div2.style.top = evt.clientY + 2 + "px";
-    div2.style.right = window.innerWidth - evt.clientX + "px";
-    div2.classList.add("show");
-  });
-  btn.title = "Click to open report generator.";
-  addEl(dbTd, btn);
-  // Delete
-  var deleteTd = getEl("td");
-  deleteTd.title = "Click to delete.";
-  deleteTd.style.textAlign = "center";
-  var deleteBtn = getEl("button");
-  deleteBtn.classList.add("butn");
-  deleteBtn.classList.add("inactive-download-button");
-  /*deleteBtn.classList.add('active-download-button');*/
-  addEl(deleteBtn, getTn("X"));
-  addEl(deleteTd, deleteBtn);
-  deleteBtn.setAttribute("jobId", job.id);
-  deleteBtn.addEventListener("click", jobDeleteButtonHandler);
-  addEl(jobTr, deleteTd);
-  return true;
 }
 
 function closeReportGenerationDiv(_) {
@@ -764,26 +539,25 @@ function getGenomeAssemblySelection() {
 }
 
 function inputExampleChangeHandler(evt) {
-  var format = evt.target.value
-  var assembly = getGenomeAssemblySelection()
-  var formatAssembly = format + "." + assembly
+  var format = evt.target.value;
+  var assembly = getGenomeAssemblySelection();
+  var formatAssembly = format + "." + assembly;
   if (GLOBALS.inputExamples[formatAssembly] == undefined) {
-    var fname = formatAssembly + ".txt"
-    axios.get("/submit/input-examples/" + fname)
-    .then(function(res) {
-      var data = res.data
-      document.querySelector("#input-file").value = ""
-      GLOBALS.inputExamples[formatAssembly] = data
-      var inputArea = getInputTextarea()
-      inputArea.value = GLOBALS.inputExamples[formatAssembly]
-    })
+    var fname = formatAssembly + ".txt";
+    axios.get("/submit/input-examples/" + fname).then(function (res) {
+      var data = res.data;
+      document.querySelector("#input-file").value = "";
+      GLOBALS.inputExamples[formatAssembly] = data;
+      var inputArea = getInputTextarea();
+      inputArea.value = GLOBALS.inputExamples[formatAssembly];
+    });
   } else {
-    var inputArea = getInputTextarea()
-    inputArea.value = GLOBALS.inputExamples[formatAssembly]
+    var inputArea = getInputTextarea();
+    inputArea.value = GLOBALS.inputExamples[formatAssembly];
   }
-  setTimeout(function() {
-    doSmartShowHideAnalysisModuleChoiceDiv()
-  }, 100)
+  setTimeout(function () {
+    doSmartShowHideAnalysisModuleChoiceDiv();
+  }, 100);
 }
 
 function allNoAnnotatorsHandler(event) {
@@ -799,94 +573,6 @@ function allNoAnnotatorsHandler(event) {
     var cb = annotCheckBoxes[i];
     cb.checked = checked;
   }
-}
-
-function showJobListPage() {
-  var jis = GLOBALS.jobs.slice(jobsListCurStart, jobsListCurEnd);
-  document.querySelector("#jobdivspinnerdiv").classList.remove("hide");
-  axios
-    .get("/submit/getjobs", { params: { ids: JSON.stringify(jis) } })
-    .then(function (response) {
-      document.querySelector("#jobdivspinnerdiv").classList.add("hide");
-      for (var i = 0; i < response.length; i++) {
-        var job = response[i];
-        addJob(job);
-      }
-      buildJobsTable();
-      if (jobListUpdateIntervalFn == null) {
-        jobListUpdateIntervalFn = setInterval(function () {
-          var runningJobIds = Object.keys(jobRunning);
-          var runningReportIds = Object.keys(reportRunning);
-          var combinedIds = runningJobIds.concat(runningReportIds);
-          if (combinedIds.length == 0) {
-            return;
-          }
-          axios
-            .get("/submit/getjobs", {
-              params: { ids: JSON.stringify(combinedIds) },
-            })
-            .then(function (response) {
-              try {
-                for (var i = 0; i < response.length; i++) {
-                  var job = response[i];
-                  GLOBALS.idToJob[job.id] = job;
-                  if (
-                    job.status == "Finished" ||
-                    job.status == "Aborted" ||
-                    job.status == "Error"
-                  ) {
-                    delete jobRunning[job.id];
-                  }
-                  if (reportRunning[job.id] != undefined) {
-                    var reportTypes = Object.keys(reportRunning[job.id]);
-                    for (var j = 0; j < reportTypes.length; j++) {
-                      var reportType = reportTypes[j];
-                      if (job.reports.includes(reportType)) {
-                        delete reportRunning[job.id][reportType];
-                        delete websubmitReportBeingGenerated[job.id][
-                          reportType
-                        ];
-                        if (Object.keys(reportRunning[job.id]).length == 0) {
-                          delete reportRunning[job.id];
-                          delete websubmitReportBeingGenerated[job.id];
-                        }
-                      }
-                    }
-                  }
-                  updateRunningJobTrs(job);
-                }
-              } catch (e) {
-                console.error(e);
-              }
-            })
-            .catch(function (_) {
-              console.error(e);
-            });
-        }, 1000);
-      }
-    })
-    .catch(function (err) {
-      console.error(err);
-    });
-}
-
-function populateJobs() {
-  return new Promise((_a, _) => {
-    $.ajax({
-      url: "/submit/jobs",
-      type: "GET",
-      async: true,
-      success: function (response) {
-        GLOBALS.jobs = response;
-        jobsListCurStart = 0;
-        jobsListCurEnd = jobsListCurStart + jobsPerPageInList;
-        showJobListPage();
-      },
-      fail: function (_) {
-        alert("fail at populate jobs");
-      },
-    });
-  });
 }
 
 function refreshJobsTable() {
@@ -923,9 +609,9 @@ function escapeTag(s) {
 
 function getModuleFilterItem(value, kind, handler) {
   let div = getEl("div");
-  div.classList.add(...stringToArray("relatve flex items-start mb-2"))
+  div.classList.add(...stringToArray("relatve flex items-start mb-2"));
   var div2 = getEl("div");
-  div2.classList.add(...stringToArray("flex items-center"))
+  div2.classList.add(...stringToArray("flex items-center"));
   addEl(div, div2);
   var cb = getEl("input");
   var valueEscaped = escapeTag(value);
@@ -934,7 +620,11 @@ function getModuleFilterItem(value, kind, handler) {
   cb.type = "radio";
   cb.name = "module-" + kind;
   cb.setAttribute("value", value);
-  cb.classList.add(...stringToArray("h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500"))
+  cb.classList.add(
+    ...stringToArray(
+      "h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500"
+    )
+  );
   if (handler) {
     cb.addEventListener("change", function (evt) {
       handler(evt);
@@ -943,7 +633,9 @@ function getModuleFilterItem(value, kind, handler) {
   addEl(div2, cb);
   var label = getEl("label");
   label.setAttribute("for", uid);
-  label.classList.add(...stringToArray("ml-3 block text-sm font-medium text-gray-600"))
+  label.classList.add(
+    ...stringToArray("ml-3 block text-sm font-medium text-gray-600")
+  );
   label.textContent = titleCase(value);
   addEl(div2, label);
   return div;
@@ -980,7 +672,7 @@ function populateFilteredModules(kind, func) {
   for (var moduleName of moduleNames[AP_KEY]) {
     var data = moduleDatas[AP_KEY][moduleName];
     if (func(data)) {
-      var card = getModuleCard(data, callbackClickModuleCardAP)
+      var card = getModuleCard(data, callbackClickModuleCardAP);
       addEl(div, card);
     }
   }
@@ -997,12 +689,12 @@ function onChangeModuleTag(evt) {
 }
 
 function getModuleInfoByTypes(...types) {
-  var modules = []
-  for (var i=0; i<types.length; i++) {
-    modules = modules.concat(getModuleInfoByType(types[i]))
+  var modules = [];
+  for (var i = 0; i < types.length; i++) {
+    modules = modules.concat(getModuleInfoByType(types[i]));
   }
-  modules.sort(titleSortFunc)
-  return modules
+  modules.sort(titleSortFunc);
+  return modules;
 }
 
 function getModuleData(module) {
@@ -1016,46 +708,44 @@ function getModuleData(module) {
     groups: module["groups"],
     desc: module.description,
     tags: module.tags,
-  }
+  };
 }
 
 function makeModuleDatas(key, types) {
-  var modules = getModuleInfoByTypes(...types)
-  moduleDatas[key] = {}
-  moduleNames[key] = []
+  var modules = getModuleInfoByTypes(...types);
+  moduleDatas[key] = {};
+  moduleNames[key] = [];
   for (let i = 0; i < modules.length; i++) {
     var module = modules[i];
-    moduleDatas[key][module.name] = getModuleData(module)
-    moduleNames[key].push(module.name)
+    moduleDatas[key][module.name] = getModuleData(module);
+    moduleNames[key].push(module.name);
   }
 }
 
 function removeNonfileReporterModuleDatas() {
   for (var name in moduleDatas[R_KEY]) {
-    var conf = localModuleInfo[name].conf
-    if (! conf || conf["output_filename_schema"] == undefined) {
-      delete moduleDatas[R_KEY][name]
+    var conf = localModuleInfo[name].conf;
+    if (!conf || conf["output_filename_schema"] == undefined) {
+      delete moduleDatas[R_KEY][name];
     }
   }
 }
 
 async function makeAllModuleDatas() {
-  makeModuleDatas(AP_KEY, ["annotator", "postaggregator"])
-  makeModuleDatas(R_KEY, ["reporter"])
-  removeNonfileReporterModuleDatas()
+  makeModuleDatas(AP_KEY, ["annotator", "postaggregator"]);
+  makeModuleDatas(R_KEY, ["reporter"]);
+  removeNonfileReporterModuleDatas();
 }
 
-function onTabChange() {
-  var submitcontentdiv = document.getElementById("submitcontentdiv");
-  var jobdiv = document.getElementById("jobdiv");
-  var tab = document.getElementById("tabselect").selectedIndex;
-  if (tab == 0) {
-    submitcontentdiv.style.display = "block";
-    jobdiv.style.display = "none";
-  } else if (tab == 1) {
-    submitcontentdiv.style.display = "none";
-    jobdiv.style.display = "block";
+function changeTab(evt) {
+  var tabName = evt.target.closest(".tabhead").getAttribute("value");
+  var tabs = getTabContentDivs();
+  for (var i = 0; i < tabs.length; i++) {
+    hide(tabs[i]);
   }
+  show(getTabContentDiv(tabName));
+  deselectAllTabHeads();
+  selectTabHead(tabName);
 }
 
 function getJobsDir() {
@@ -1096,28 +786,6 @@ function transitionToSettings() {
   settingsdiv.style.display = "block";
 }
 
-function changePage(selectedPageId) {
-  var pageselect = document.getElementById("pageselect");
-  var pageIdDivs = pageselect.children;
-  for (var i = 0; i < pageIdDivs.length; i++) {
-    var pageIdDiv = pageIdDivs[i];
-    var pageId = pageIdDiv.getAttribute("value");
-    var page = document.getElementById(pageId);
-    if (page.id == selectedPageId) {
-      page.style.display = "block";
-      pageIdDiv.setAttribute("selval", "t");
-      if (selectedPageId == "storediv") {
-        currentTab = "store";
-      } else if (selectedPageId == "submitdiv") {
-        currentTab = "submit";
-      }
-    } else {
-      page.style.display = "none";
-      pageIdDiv.setAttribute("selval", "f");
-    }
-  }
-}
-
 function openSubmitDiv() {
   var div = document.getElementById("submitcontentdiv");
   div.style.display = "block";
@@ -1126,7 +794,7 @@ function openSubmitDiv() {
 async function loadSystemConf() {
   var response = await axios.get("/submit/getsystemconfinfo");
   systemConf = response;
-  systemConf["oc_store_url"] = "https://store.opencravat.org";
+  systemConf["store_url"] = "https://store.oakvar.com";
   var s = document.getElementById("sysconfpathspan");
   s.value = response["conf_path"];
   var s = document.getElementById("settings_jobs_dir_input");
@@ -1201,7 +869,7 @@ function updateSystemConf() {
         }
         if (response["sysconf"]["jobs_dir"] != undefined) {
           populateJobs();
-          getLocal((callUpdateFlag = true)).then()
+          getLocal((callUpdateFlag = true)).then();
           makeModuleDatas().then(function (_) {});
         }
       },
@@ -1215,13 +883,12 @@ function resetSystemConf() {
 
 async function loadUserSettings() {
   var res = await axios.get("/server/usersettings");
-  console.log("usersettings=", res);
   GLOBALS.usersettings = res;
   setLastAssembly();
 }
 
 async function populatePackageVersions() {
-  res = await axios.get("/submit/packageversions")
+  res = await axios.get("/submit/packageversions");
   var data = res.data;
   var curverspan = document.querySelector("#verdiv .curverspan");
   if (data.update) {
@@ -1249,13 +916,13 @@ function onClickThreeDots(evt) {
 }
 
 function hideAnalysisModuleChoiceDiv() {
-  var div = getAnalysisModuleChoiceDiv()
-  div.classList.add("hidden")
+  var div = getAnalysisModuleChoiceDiv();
+  div.classList.add("hidden");
 }
 
 function showAnalysisModuleChoiceDiv() {
-  var div = getAnalysisModuleChoiceDiv()
-  div.classList.remove("hidden")
+  var div = getAnalysisModuleChoiceDiv();
+  div.classList.remove("hidden");
 }
 
 function setupEventListeners() {
@@ -1401,8 +1068,8 @@ function getChevronDown() {
 
 function populateInputFormats() {
   var div = document.querySelector("#input-format-select").querySelector("div");
-  var modules = getModuleInfoByType("converter")
-  for (var i=0; i<modules.length; i++) {
+  var modules = getModuleInfoByType("converter");
+  for (var i = 0; i < modules.length; i++) {
     let format = modules[i].name.split("-")[0];
     let a = getEl("a");
     a.classList.add(
@@ -1449,95 +1116,95 @@ function importJob() {
 }
 
 function switchToInputPaste() {
-  hide(getInputDropArea())
-  show(getInputPasteArea())
-  doSmartShowHideAnalysisModuleChoiceDiv()
+  hide(getInputDropArea());
+  show(getInputPasteArea());
+  doSmartShowHideAnalysisModuleChoiceDiv();
 }
 
 function switchToInputUpload() {
-  show(getInputDropArea())
-  hide(getInputPasteArea())
-  doSmartShowHideAnalysisModuleChoiceDiv()
+  show(getInputDropArea());
+  hide(getInputPasteArea());
+  doSmartShowHideAnalysisModuleChoiceDiv();
 }
 
 function showReportChoiceItemsDiv() {
-  show(getReportChoiceDiv())
+  show(getReportChoiceDiv());
 }
 
 function hideReportChoiceItemsDiv() {
-  hide(getReportChoiceDiv())
+  hide(getReportChoiceDiv());
 }
 
 function showSubmitNoteDiv() {
-  show(getSubmitNoteDiv())
+  show(getSubmitNoteDiv());
 }
 
 function hideSubmitNoteDiv() {
-  hide(getSubmitNoteDiv())
+  hide(getSubmitNoteDiv());
 }
 
 function showSubmitJobButtonDiv() {
-  show(getSubmitJobButtonDiv())
+  show(getSubmitJobButtonDiv());
 }
 
 function hideSubmitJobButtonDiv() {
-  hide(getSubmitJobButtonDiv())
+  hide(getSubmitJobButtonDiv());
 }
 
 function showCtaAnalysisModuleChoice() {
-  show(getCtaAnalysisModuleChoice())
+  show(getCtaAnalysisModuleChoice());
 }
 
 function hideCtaAnalysisModuleChoice() {
-  hide(getCtaAnalysisModuleChoice())
+  hide(getCtaAnalysisModuleChoice());
 }
 
 function showJobNameDir() {
-  show(getJobNameDir())
+  show(getJobNameDir());
 }
 
 function hideJobNameDir() {
-  hide(getJobNameDir())
+  hide(getJobNameDir());
 }
 
 function hide(el) {
-  el.classList.add("hidden")
+  el.classList.add("hidden");
 }
 
 function show(el) {
-  el.classList.remove("hidden")
+  el.classList.remove("hidden");
 }
 
 function showDivsWhenInputPresent() {
-  showAnalysisModuleChoiceDiv()
-  showReportChoiceItemsDiv()
-  showSubmitNoteDiv()
-  showSubmitJobButtonDiv()
-  showCtaAnalysisModuleChoice()
-  showJobNameDir()
+  showAnalysisModuleChoiceDiv();
+  showReportChoiceItemsDiv();
+  showSubmitNoteDiv();
+  showSubmitJobButtonDiv();
+  showCtaAnalysisModuleChoice();
+  showJobNameDir();
 }
 
 function hideDivsWhenInputPresent() {
-  hideAnalysisModuleChoiceDiv()
-  hideReportChoiceItemsDiv()
-  hideSubmitNoteDiv()
-  hideSubmitJobButtonDiv()
-  hideCtaAnalysisModuleChoice()
-  hideJobNameDir()
+  hideAnalysisModuleChoiceDiv();
+  hideReportChoiceItemsDiv();
+  hideSubmitNoteDiv();
+  hideSubmitJobButtonDiv();
+  hideCtaAnalysisModuleChoice();
+  hideJobNameDir();
 }
 
 function doSmartShowHideAnalysisModuleChoiceDiv() {
-  if (! getInputDropArea().classList.contains("hidden")) {
+  if (!getInputDropArea().classList.contains("hidden")) {
     if (inputFileList.length > 0) {
-      showDivsWhenInputPresent()
+      showDivsWhenInputPresent();
     } else {
-      hideDivsWhenInputPresent()
+      hideDivsWhenInputPresent();
     }
-  } else if (! getInputPasteArea().classList.contains("hidden")) {
+  } else if (!getInputPasteArea().classList.contains("hidden")) {
     if (getInputTextarea().value != "") {
-      showDivsWhenInputPresent()
+      showDivsWhenInputPresent();
     } else {
-      hideDivsWhenInputPresent()
+      hideDivsWhenInputPresent();
     }
   }
 }
@@ -1564,7 +1231,7 @@ function onClickSelectItem(evt) {
   btn.innerHTML = "";
   addEl(btn, getTn(btn.title + ": " + evt.target.textContent));
   addEl(btn, getChevronDown());
-  btn.setAttribute("value", evt.target.getAttribute("value"))
+  btn.setAttribute("value", evt.target.getAttribute("value"));
   var el = getOptionList(evt);
   el.classList.toggle("hidden");
 }
@@ -1618,9 +1285,9 @@ function populateModuleFilterPanel(kind) {
 }
 
 function unpinAnalysisModuleFilterKindBtns() {
-  var els = document.querySelector("#analysis-module-filter-kinds").children
+  var els = document.querySelector("#analysis-module-filter-kinds").children;
   for (var i = 0; i < els.length; i++) {
-    els[i].classList.remove("pinned")
+    els[i].classList.remove("pinned");
   }
 }
 
@@ -1628,28 +1295,31 @@ function callbackClickModuleCardAP(evt) {
   var target = evt.target.closest(".modulecard");
   var moduleName = target.getAttribute("name");
   var data = moduleDatas[AP_KEY][moduleName];
-  toggleSelectedModule(data)
+  toggleSelectedModule(data);
 }
 
 function callbackClickModuleCardR(evt) {
-  var target = evt.target.closest(".modulecard")
-  var moduleName = target.getAttribute("name")
-  var data = moduleDatas[R_KEY][moduleName]
-  data.checked = ! data.checked
-  setModuleCardCheckedStatus(target, data.checked)
+  var target = evt.target.closest(".modulecard");
+  var moduleName = target.getAttribute("name");
+  var data = moduleDatas[R_KEY][moduleName];
+  data.checked = !data.checked;
+  setModuleCardCheckedStatus(target, data.checked);
 }
 
 function populateReportTypes() {
-  var div = getReportChoiceItemsDiv()
+  var div = getReportChoiceItemsDiv();
   for (var name in moduleDatas[R_KEY]) {
-    var card = getModuleCard(moduleDatas[R_KEY][name], callbackClickModuleCardR)
-    card.classList.add("max-w-xs")
-    addEl(div, card)
+    var card = getModuleCard(
+      moduleDatas[R_KEY][name],
+      callbackClickModuleCardR
+    );
+    card.classList.add("max-w-xs");
+    addEl(div, card);
   }
 }
 
 function onClickCtaAnalysisModuleChoice() {
-  getAnalysisModuleChoiceDiv().scrollIntoView({behavior: "smooth"})
+  getAnalysisModuleChoiceDiv().scrollIntoView({ behavior: "smooth" });
 }
 
 async function websubmit_run() {
@@ -1665,23 +1335,34 @@ async function websubmit_run() {
   await loadUserSettings();
   connectWebSocket();
   // Submit
-  var taskLocal = getLocal().then(async function() {
-    await makeAllModuleDatas()
-    populateInputFormats()
-    populateReportTypes()
-    changeFilterCategory("all")
-  })
+  var taskLocal = getLocal().then(async function () {
+    await makeAllModuleDatas();
+    populateInputFormats();
+    populateReportTypes();
+    changeFilterCategory("all");
+  });
+  // Jobs
+  var taskJobs = populateJobs(pageno=1, pagesize=null).then(async function () {});
   // Store
-  await getRemote();
-  complementRemoteWithLocal();
-  setBaseInstalled();
-  populateStorePages();
-  populateStoreTagPanel();
-  updateModuleGroupInfo();
-  makeInstalledGroup();
-  getBaseModuleNames();
-  //setupEventListeners();
-  await loadSystemConf();
-  //setUploadedInputFilesDiv();
-  populatePackageVersions();
+  var taskRemote = getRemote().then(async function () {
+    complementRemoteWithLocal();
+    setBaseInstalled();
+    populateStorePages();
+    populateStoreTagPanel();
+    updateModuleGroupInfo();
+    makeInstalledGroup();
+    getBaseModuleNames();
+  });
+  // Settings
+  var taskSettings = loadSystemConf().then(async function () {});
+  // Version
+  var taskVersion = populatePackageVersions().then(async function () {});
+  Promise.all([
+    taskLocal,
+    taskJobs,
+    taskRemote,
+    taskSettings,
+    taskVersion,
+  ]).then(function () {
+  });
 }

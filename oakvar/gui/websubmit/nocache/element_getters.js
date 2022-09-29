@@ -172,3 +172,31 @@ function getSpinner() {
   return div
 }
 
+function getTabContentDivs() {
+  return document.querySelectorAll(".tabcontent")
+}
+
+function getTabContentDiv(tabName) {
+  return document.querySelector("#tab_" + tabName)
+}
+
+function getTabHeads() {
+  return document.querySelectorAll(".tabhead")
+}
+
+function getTabHead(tabName) {
+  return document.querySelector("#tabhead_" + tabName)
+}
+
+function getJobsTbody() {
+  return document.querySelector("#jobs-tbody")
+}
+
+function getJobsTablePageNoEl() {
+  return document.querySelector("#jobs-table-pageno")
+}
+
+function getJobsTableJumpPageNoEl() {
+  return document.querySelector("#jobs-table-jump-pageno")
+}
+

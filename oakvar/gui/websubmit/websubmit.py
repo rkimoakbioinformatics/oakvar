@@ -1,19 +1,4 @@
-import os
 import time
-import datetime
-import subprocess
-import yaml
-import json
-import sys
-import shutil
-from aiohttp import web
-import glob
-import platform
-import signal
-import asyncio
-from multiprocessing import Process, Manager, Queue
-from queue import Empty
-from logging import getLogger
 from typing import Any, Optional
 
 report_generation_ps = {}
@@ -25,7 +10,7 @@ include_live_modules = None
 exclude_live_modules = None
 live_mapper = None
 count_single_api_access = 0
-time_of_log_single_api_access = time.time()
+time_of_log_single_api_access = None
 interval_log_single_api_access = 60
 job_worker = None
 job_queue = None
@@ -36,6 +21,7 @@ job_statuses = {}
 
 class WebJob(object):
     def __init__(self, job_dir, job_status_fpath, job_id=None):
+        from os.path import basename
         self.info = {}
         self.info["dir"] = job_dir
         self.info["orig_input_fname"] = ""
@@ -53,7 +39,7 @@ class WebJob(object):
         self.job_dir = job_dir
         self.job_status_fpath = job_status_fpath
         if not job_id:
-            job_id = os.path.basename(job_dir)
+            job_id = basename(job_dir)
         self.job_id = job_id
         self.info["id"] = job_id
 
@@ -61,11 +47,13 @@ class WebJob(object):
         self.set_values(**job_options)
 
     def read_info_file(self):
-        if not os.path.exists(self.job_status_fpath):
+        from yaml import safe_load
+        from os.path import exists
+        if not exists(self.job_status_fpath):
             info_dict = {"status": "Error"}
         else:
             with open(self.job_status_fpath) as f:
-                info_dict = yaml.safe_load(f)
+                info_dict = safe_load(f)
         if info_dict != None:
             self.set_values(**info_dict)
 
@@ -80,27 +68,33 @@ class WebJob(object):
 
 
 def get_next_job_id():
-    return datetime.datetime.now().strftime(r"%y%m%d-%H%M%S")
+    from datetime import datetime
+    return datetime.now().strftime(r"%y%m%d-%H%M%S")
 
 
 async def resubmit(request):
+    from os import listdir
+    from os.path import join
+    from aiohttp.web import json_response
+    from json import load
+    from json import dump
     global servermode
     if servermode:
         if await mu.is_loggedin(request) == False:
-            return web.json_response({"status": "notloggedin"})
+            return json_response({"status": "notloggedin"})
     queries = request.rel_url.query
     job_id = queries["job_id"]
     job_dir = queries["job_dir"]
     status_json = None
     status_json_path = None
-    for fn in os.listdir(job_dir):
+    for fn in listdir(job_dir):
         if fn.endswith(".status.json"):
-            status_json_path = os.path.join(job_dir, fn)
+            status_json_path = join(job_dir, fn)
             with open(status_json_path) as f:
-                status_json = json.load(f)
+                status_json = load(f)
             break
     if status_json is None:
-        return web.json_response(
+        return json_response(
             {"status": "error", "msg": "no status file exists in job folder."}
         )
     assembly = status_json["assembly"]
@@ -145,24 +139,27 @@ async def resubmit(request):
         status_json["status"] = "Submitted"
     if status_json_path is not None:
         with open(status_json_path, "w") as wf:
-            json.dump(status_json, wf, indent=2, sort_keys=True)
-    return web.json_response({"status": "resubmitted"})
+            dump(status_json, wf, indent=2, sort_keys=True)
+    return json_response({"status": "resubmitted"})
 
 
 def check_submit_input_size(request):
+    from aiohttp.web import HTTPLengthRequired
+    from aiohttp.web import HTTPRequestEntityTooLarge
+    from json import dumps
     from ...system import get_system_conf
     sysconf = get_system_conf()
     size_cutoff = sysconf["gui_input_size_limit"]
     if request.content_length is None:
-        return web.HTTPLengthRequired(
-            text=json.dumps({"status": "fail", "msg": "Content-Length header required"})
+        return HTTPLengthRequired(
+            text=dumps({"status": "fail", "msg": "Content-Length header required"})
         )
     size_cutoff_mb = size_cutoff * 1024 * 1024
     if request.content_length > size_cutoff_mb:
-        return web.HTTPRequestEntityTooLarge(
+        return HTTPRequestEntityTooLarge(
             max_size=size_cutoff,
             actual_size=request.content_length,
-            text=json.dumps(
+            text=dumps(
                 {
                     "status": "fail",
                     "msg": f"Input is too big. Limit is {size_cutoff}MB.",
@@ -171,6 +168,13 @@ def check_submit_input_size(request):
         )
 
 async def submit(request):
+    from os.path import join
+    from os.path import basename
+    from os import makedirs
+    from datetime import datetime
+    from aiohttp.web import json_response
+    from aiohttp.web import HTTPForbidden
+    from json import dump
     from ...util.admin_util import set_user_conf_prop
     from ...util.admin_util import get_current_package_version
     from ...system.consts import default_assembly
@@ -183,14 +187,13 @@ async def submit(request):
     if ret:
         return ret
     if not await mu.is_loggedin(request):
-        return web.json_response({"status": "notloggedin"})
+        return json_response({"status": "notloggedin"})
     jobs_dir = get_user_jobs_dir(request)
-    print(f"@ jobs_dir={jobs_dir}")
     if not jobs_dir:
-        return web.HTTPForbidden()
+        return HTTPForbidden()
     job_id = get_next_job_id()
-    job_dir = os.path.join(jobs_dir, job_id)
-    os.makedirs(job_dir, exist_ok=True)
+    job_dir = join(jobs_dir, job_id)
+    makedirs(job_dir, exist_ok=True)
     reader = await request.multipart()
     job_options = {}
     input_files = []
@@ -202,19 +205,19 @@ async def submit(request):
         if part.name.startswith("file_"):
             input_files.append(part)
             wfname = part.filename
-            wpath = os.path.join(job_dir, wfname)
+            wpath = join(job_dir, wfname)
             with open(wpath, "wb") as wf:
                 wf.write(await part.read())
         elif part.name == "options":
             job_options = await part.json()
         elif part.name == "casecontrol":
-            cc_cohorts_path = os.path.join(job_dir, part.filename)
+            cc_cohorts_path = join(job_dir, part.filename)
             with open(cc_cohorts_path, "wb") as wf:
                 wf.write(await part.read())
     use_server_input_files = False
     if "inputServerFiles" in job_options and len(job_options["inputServerFiles"]) > 0:
         input_files = job_options["inputServerFiles"]
-        input_fnames = [os.path.basename(fn) for fn in input_files]
+        input_fnames = [basename(fn) for fn in input_files]
         use_server_input_files = True
     else:
         input_fnames = [fp.filename for fp in input_files]
@@ -222,7 +225,7 @@ async def submit(request):
     if len(input_fnames) > 1:
         run_name += "_and_" + str(len(input_fnames) - 1) + "_files"
     info_fname = f"{run_name}{status_suffix}"
-    job_info_fpath = os.path.join(job_dir, info_fname)
+    job_info_fpath = join(job_dir, info_fname)
     # Job name
     job_name = job_options.get("job_name", "")
     if job_name:
@@ -233,11 +236,11 @@ async def submit(request):
     job.set_info_values(
         orig_input_fname=input_fnames,
         run_name=run_name,
-        submission_time=datetime.datetime.now().isoformat(),
+        submission_time=datetime.now().isoformat(),
         viewable=False,
     )
     # Subprocess arguments
-    input_fpaths = [os.path.join(job_dir, fn) for fn in input_fnames]
+    input_fpaths = [join(job_dir, fn) for fn in input_fnames]
     run_args = ["ov", "run"]
     if use_server_input_files:
         for fp in input_files:
@@ -245,7 +248,7 @@ async def submit(request):
         run_args.extend(["-d", job_dir])
     else:
         for fn in input_fnames:
-            run_args.append(os.path.join(job_dir, fn))
+            run_args.append(join(job_dir, fn))
     # Annotators
     if (
         "annotators" in job_options
@@ -287,7 +290,7 @@ async def submit(request):
         run_args.append("--input-format")
         run_args.append(job_options["forcedinputformat"])
     run_args.append("--writeadmindb")
-    run_args.extend(["--jobname", f"\"{job_id}\""])
+    run_args.extend(["--jobname", f"{job_id}"])
     run_args.append("--temp-files")
     if cc_cohorts_path is not None:
         run_args.extend(["--module-option", f"casecontrol.cohorts={cc_cohorts_path}"])
@@ -312,7 +315,7 @@ async def submit(request):
         status_json["db_path"] = ""
         status_json["orig_input_fname"] = input_fnames
         status_json["orig_input_path"] = input_fpaths
-        status_json["submission_time"] = datetime.datetime.now().isoformat()
+        status_json["submission_time"] = datetime.now().isoformat()
         status_json["viewable"] = False
         status_json["note"] = note
         status_json["status"] = "Submitted"
@@ -324,9 +327,9 @@ async def submit(request):
             status_json["cc_cohorts_path"] = cc_cohorts_path
         else:
             status_json["cc_cohorts_path"] = ""
-        with open(os.path.join(job_dir, run_name + ".status.json"), "w") as wf:
-            json.dump(status_json, wf, indent=2, sort_keys=True)
-    return web.json_response(job.get_info_dict())
+        with open(join(job_dir, run_name + ".status.json"), "w") as wf:
+            dump(status_json, wf, indent=2, sort_keys=True)
+    return json_response(job.get_info_dict())
 
 
 def count_lines(f):
@@ -344,6 +347,7 @@ def get_expected_runtime(num_lines, annotators):
 
 
 def get_annotators(_):
+    from aiohttp.web import json_response
     from ...module.local import get_local_module_infos
 
     out = {}
@@ -358,10 +362,11 @@ def get_annotators(_):
                 "description": local_info.description,
                 "developer": local_info.developer,
             }
-    return web.json_response(out)
+    return json_response(out)
 
 
 def get_postaggregators(_):
+    from aiohttp.web import json_response
     from ...module.local import get_local_module_infos
 
     out = {}
@@ -376,10 +381,11 @@ def get_postaggregators(_):
                 "description": local_info.description,
                 "developer": local_info.developer,
             }
-    return web.json_response(out)
+    return json_response(out)
 
 def find_files_by_ending(d, ending):
-    fns = os.listdir(d)
+    from os import listdir
+    fns = listdir(d)
     files = []
     for fn in fns:
         if fn.endswith(ending):
@@ -388,6 +394,10 @@ def find_files_by_ending(d, ending):
 
 
 async def get_job(request, job_id):
+    from os.path import join
+    from os.path import exists
+    from os.path import basename
+    from os.path import dirname
     from packaging.version import Version
     from pathlib import Path
     from ...util.admin_util import get_max_version_supported_for_migration
@@ -428,10 +438,10 @@ async def get_job(request, job_id):
         del job_statuses[job_id]
     fns = find_files_by_ending(job_dir, ".sqlite")
     if len(fns) > 0:
-        db_path = os.path.join(job_dir, fns[0])
+        db_path = join(job_dir, fns[0])
     else:
         db_path = ""
-    job_viewable = os.path.exists(db_path)
+    job_viewable = exists(db_path)
     job.set_info_values(
         viewable=job_viewable,
         db_path=db_path,
@@ -444,11 +454,11 @@ async def get_job(request, job_id):
         if report_paths is not None:
             report_exist = True
             for p in report_paths:
-                if os.path.exists(os.path.join(job_dir, p)) == False:
+                if exists(join(job_dir, p)) == False:
                     report_exist = False
                     break
-            if os.path.exists(
-                os.path.join(job_dir, job_id + ".report_being_generated." + report_type)
+            if exists(
+                join(job_dir, job_id + ".report_being_generated." + report_type)
             ):
                 report_exist = False
             if report_exist:
@@ -467,7 +477,7 @@ async def get_job(request, job_id):
                     reports_being_generated.append(report_type)
     job.info["reports_being_generated"] = reports_being_generated
     job.set_info_values(reports=existing_reports)
-    job.info["username"] = os.path.basename(os.path.dirname(job_dir))
+    job.info["username"] = basename(dirname(job_dir))
     if "open_cravat_version" not in job.info or not job.info["open_cravat_version"] or Version(job.info["open_cravat_version"]) < get_max_version_supported_for_migration():
         job.info["result_available"] = False
     else:
@@ -479,89 +489,82 @@ async def get_job(request, job_id):
 
 
 async def get_jobs(request):
-    from pathlib import Path
-    from .userjob import get_user_jobs_dir
-    jobs_dir = get_user_jobs_dir(request)
-    if not jobs_dir or not Path(jobs_dir).exists():
-        return web.HTTPNotFound()
-    queries = request.rel_url.query
-    ids = json.loads(queries["ids"])
-    jobs = []
-    for job_id in ids:
-        try:
-            job = await get_job(request, job_id)
-            if job is not None:
-                jobs.append(job)
-        except:
-            logger = getLogger()
-            logger.exception("Exception while getting a job information")
-    return web.json_response([job.get_info_dict() for job in jobs])
-
-
-async def get_all_jobs(request):
+    from aiohttp.web import json_response
     from .multiuser import get_admindb
     from .multiuser import get_email_from_request
     global servermode
     if not await mu.is_loggedin(request):
-        return web.json_response({"status": "notloggedin"})
+        return json_response({"status": "notloggedin"})
+    queries = request.rel_url.query # get
+    pageno = queries.get("pageno")
+    pagesize = queries.get("pagesize")
     admindb = await get_admindb()
     email = get_email_from_request(request)
-    all_jobs = await admindb.get_jobs_of_email(email)
-    return web.json_response(all_jobs)
+    jobs = await admindb.get_jobs_of_email(email, pageno=pageno, pagesize=pagesize)
+    print(f"@ jobs=", jobs)
+    return json_response(jobs)
 
 
 async def view_job(request):
+    from aiohttp.web import Response
     from pathlib import Path
+    from subprocess import Popen
     from .userjob import get_user_job_dbpath
 
     global VIEW_PROCESS
     job_id_or_dbpath = await get_job_id_or_dbpath(request)
     db_path = await get_user_job_dbpath(request, job_id_or_dbpath)
     if not db_path:
-        return web.Response(status=404)
+        return Response(status=404)
     if not Path(db_path).exists():
-        return web.Response(status=404)
-    if VIEW_PROCESS and type(VIEW_PROCESS) == subprocess.Popen:
+        return Response(status=404)
+    if VIEW_PROCESS and type(VIEW_PROCESS) == Popen:
         VIEW_PROCESS.kill()
-    VIEW_PROCESS = subprocess.Popen(["ov", "gui", db_path])
-    return web.Response()
+    VIEW_PROCESS = Popen(["ov", "gui", db_path])
+    return Response()
 
 
 async def get_job_status(request):
+    from aiohttp.web import json_response
+    from aiohttp.web import Response
+    from yaml import safe_load
     from .userjob import get_user_job_status_path
 
     job_id_or_dbpath = await get_job_id_or_dbpath(request)
     status_path = await get_user_job_status_path(request, job_id_or_dbpath)
     if not status_path:
-        return web.Response(status=404)
+        return Response(status=404)
     with open(status_path) as f:
-        status = yaml.safe_load(f)
-        return web.json_response(status)
+        status = safe_load(f)
+        return json_response(status)
 
 
 async def download_db(request):
+    from aiohttp.web import Response
+    from aiohttp.web import FileResponse
     from .userjob import get_user_job_dbpath
 
     job_id_or_dbpath = await get_job_id_or_dbpath(request)
     if not job_id_or_dbpath:
-        return web.Response(status=404)
+        return Response(status=404)
     db_path = await get_user_job_dbpath(request, job_id_or_dbpath)
     db_fname = job_id_or_dbpath + ".sqlite"
     headers = {"Content-Disposition": "attachment; filename=" + db_fname}
     if not db_path:
-        return web.Response(status=404)
-    return web.FileResponse(db_path, headers=headers)
+        return Response(status=404)
+    return FileResponse(db_path, headers=headers)
 
 
 async def get_job_log(request):
+    from aiohttp.web import Response
     from .userjob import get_user_job_log
 
     job_id_or_dbpath = await get_job_id_or_dbpath(request)
     log_path = await get_user_job_log(request, job_id_or_dbpath)
     if not log_path:
-        return web.Response(text="log file does not exist.")
+        return Response(text="log file does not exist.")
     with open(log_path) as f:
-        return web.Response(text=f.read())
+        return Response(text=f.read())
 
 
 def get_valid_report_types():
@@ -581,8 +584,9 @@ def get_valid_report_types():
 
 
 async def get_report_types(_):
+    from aiohttp.web import json_response
     valid_types = get_valid_report_types()
-    return web.json_response({"valid": valid_types})
+    return json_response({"valid": valid_types})
 
 
 async def get_job_id_or_dbpath(request) -> Optional[str]:
@@ -616,31 +620,39 @@ async def get_job_id_or_dbpath(request) -> Optional[str]:
         return None
 
 async def generate_report(request):
+    from os.path import join
+    from os.path import dirname
+    from os import remove
+    from aiohttp.web import json_response
+    from aiohttp.web import Response
+    from asyncio import create_subprocess_shell
+    from asyncio.subprocess import PIPE
+    from logging import getLogger
     from .userjob import get_user_job_dbpath
 
     job_id_or_dbpath = await get_job_id_or_dbpath(request)
     if not job_id_or_dbpath:
-        return web.Response(status=404)
+        return Response(status=404)
     report_type = request.match_info["report_type"]
     job_db_path = await get_user_job_dbpath(request, job_id_or_dbpath)
     if not job_db_path:
-        return web.Response(status=404)
+        return Response(status=404)
     run_args = ["ov", "report", job_db_path]
     run_args.extend(["-t", report_type])
     if job_id_or_dbpath not in report_generation_ps:
         report_generation_ps[job_id_or_dbpath] = {}
     report_generation_ps[job_id_or_dbpath][report_type] = True
-    tmp_flag_path = os.path.join(
-        os.path.dirname(job_db_path), job_id_or_dbpath + ".report_being_generated." + report_type
+    tmp_flag_path = join(
+        dirname(job_db_path), job_id_or_dbpath + ".report_being_generated." + report_type
     )
     wf = open(tmp_flag_path, "w")
     wf.write(report_type)
     wf.close()
-    p = await asyncio.create_subprocess_shell(
-        " ".join(run_args), stderr=asyncio.subprocess.PIPE
+    p = await create_subprocess_shell(
+        " ".join(run_args), stderr=PIPE
     )
     _, err = await p.communicate()
-    os.remove(tmp_flag_path)
+    remove(tmp_flag_path)
     if report_type in report_generation_ps[job_id_or_dbpath]:
         del report_generation_ps[job_id_or_dbpath][report_type]
     if job_id_or_dbpath in report_generation_ps and len(report_generation_ps[job_id_or_dbpath]) == 0:
@@ -650,7 +662,7 @@ async def generate_report(request):
         logger = getLogger()
         logger.error(err.decode("utf-8"))
         response = "fail"
-    return web.json_response(response)
+    return json_response(response)
 
 
 async def get_report_paths(request, job_id_or_dbpath, report_type):
@@ -668,50 +680,61 @@ async def get_report_paths(request, job_id_or_dbpath, report_type):
     return report_paths
 
 async def download_report(request):
+    from aiohttp.web import HTTPNotFound
+    from aiohttp.web import FileResponse
     from os.path import exists
+    from os.path import basename
     job_id_or_dbpath = await get_job_id_or_dbpath(request)
     if not job_id_or_dbpath:
-        return web.HTTPNotFound
+        return HTTPNotFound
     report_type = request.match_info["report_type"]
     report_paths = await get_report_paths(request, job_id_or_dbpath, report_type)
     if not report_paths:
-        raise web.HTTPNotFound
+        raise HTTPNotFound
     report_path = report_paths[0]
     if not exists(report_path):
         await generate_report(request)
     if exists(report_path):
-        report_filename = os.path.basename(report_path)
+        report_filename = basename(report_path)
         headers = {"Content-Disposition": "attachment; filename=" + report_filename}
-        response = web.FileResponse(report_path, headers=headers)
+        response = FileResponse(report_path, headers=headers)
         return response
     else:
-        raise web.HTTPNotFound
+        raise HTTPNotFound
 
 
 def get_jobs_dir(_):
+    from aiohttp.web import json_response
     from ...system import get_jobs_dir
 
     jobs_dir = get_jobs_dir()
-    return web.json_response(jobs_dir)
+    return json_response(jobs_dir)
 
 
 def set_jobs_dir(request):
+    from aiohttp.web import json_response
     from ...util.admin_util import set_jobs_dir
 
     queries = request.rel_url.query
     d = queries["jobsdir"]
     set_jobs_dir(d)
-    return web.json_response(d)
+    return json_response(d)
 
 
 async def get_system_conf_info(_):
+    from aiohttp.web import json_response
     from ...system import get_system_conf_info
 
     info = get_system_conf_info(json=True)
-    return web.json_response(info)
+    return json_response(info)
 
 
 async def update_system_conf(request):
+    from os.path import join
+    from os.path import exists
+    from aiohttp.web import json_response
+    from aiohttp.web import Response
+    from json import loads
     from ...system import update_system_conf_file
     from ...system import set_modules_dir
 
@@ -719,25 +742,25 @@ async def update_system_conf(request):
     if servermode and mu:
         username = await mu.get_username(request)
         if username != "admin":
-            return web.json_response(
+            return json_response(
                 {"success": False, "msg": "Only admin can change the settings."}
             )
         r = await mu.is_loggedin(request)
         if r == False:
-            return web.json_response(
+            return json_response(
                 {
                     "success": False,
                     "mgs": "Only logged-in admin can change the settings.",
                 }
             )
     queries = request.rel_url.query
-    sysconf = json.loads(queries["sysconf"])
+    sysconf = loads(queries["sysconf"])
     try:
         success = update_system_conf_file(sysconf)
         if "modules_dir" in sysconf:
             modules_dir = sysconf["modules_dir"]
-            cravat_yml_path = os.path.join(modules_dir, "cravat.yml")
-            if os.path.exists(cravat_yml_path) == False:
+            cravat_yml_path = join(modules_dir, "cravat.yml")
+            if exists(cravat_yml_path) == False:
                 set_modules_dir(modules_dir)
         global job_queue
         qitem = {
@@ -745,15 +768,17 @@ async def update_system_conf(request):
             "max_num_concurrent_jobs": sysconf["max_num_concurrent_jobs"],
         }
         if job_queue is None:
-            return web.Response(status=500)
+            return Response(status=500)
         else:
             job_queue.put(qitem)
     except:
         raise
-    return web.json_response({"success": success, "sysconf": sysconf})
+    return json_response({"success": success, "sysconf": sysconf})
 
 
 def reset_system_conf(_):
+    from aiohttp.web import json_response
+    from yaml import dump
     from ...system import get_modules_dir
     from ...system import get_system_conf_template
     from ...system import get_jobs_dir
@@ -765,53 +790,26 @@ def reset_system_conf(_):
     d["modules_dir"] = md
     d["jobs_dir"] = jobs_dir
     write_system_conf_file(d)
-    return web.json_response({"status": "success", "dict": yaml.dump(d)})
+    return json_response({"status": "success", "dict": dump(d)})
 
 
 def get_servermode(_):
+    from aiohttp.web import json_response
     global servermode
-    return web.json_response({"servermode": servermode})
+    return json_response({"servermode": servermode})
 
 
 async def get_package_versions(_):
+    from aiohttp.web import json_response
     from ...util.admin_util import get_current_package_version
 
     cur_ver = get_current_package_version()
     d = {"current": cur_ver}
-    return web.json_response(d)
-
-
-def open_terminal(_):
-    python_dir = os.path.dirname(sys.executable)
-    p = sys.platform
-    if p.startswith("win"):
-        cmd = {"cmd": ["start", "cmd"], "shell": True}
-    elif p.startswith("darwin"):
-        cmd = {
-            "cmd": """
-osascript -e 'tell app "Terminal"
-do script "export PATH="""
-            + python_dir
-            + """:$PATH"
-do script "echo Welcome to OakVar" in window 1
-end tell'
-""",
-            "shell": True,
-        }
-    elif p.startswith("linux"):
-        p2 = platform.platform()
-        if p2.startswith("Linux") and "Microsoft" in p2:
-            cmd = {"cmd": ["ubuntu1804.exe"], "shell": True}
-        else:
-            return
-    else:
-        return
-    subprocess.call(cmd["cmd"], shell=cmd["shell"])
-    response = "done"
-    return web.json_response(response)
+    return json_response(d)
 
 
 def get_last_assembly(_):
+    from aiohttp.web import json_response
     from ...util.admin_util import get_last_assembly
     from ...util.admin_util import get_default_assembly
 
@@ -822,35 +820,40 @@ def get_last_assembly(_):
         assembly = default_assembly
     else:
         assembly = last_assembly
-    return web.json_response(assembly)
+    return json_response(assembly)
 
 
 async def delete_job(request):
+    from aiohttp.web import Response
     from pathlib import Path
+    from asyncio import sleep
     from .userjob import get_user_job_dir
 
     global job_queue
     job_id_or_dbpath = await get_job_id_or_dbpath(request)
     job_dir = await get_user_job_dir(request, job_id_or_dbpath)
     if not job_dir:
-        return web.Response(status=404)
+        return Response(status=404)
     qitem = {"cmd": "delete", "job_id": job_id_or_dbpath, "job_dir": job_dir}
     if job_queue is None:
-        return web.Response(status=500)
+        return Response(status=500)
     job_queue.put(qitem)
     job_dir_p = Path(job_dir)
     while True:
         if not job_dir_p.exists():
             break
         else:
-            await asyncio.sleep(1)
-    return web.Response()
+            await sleep(1)
+    return Response()
 
 
 def start_worker():
     global job_worker
     global job_queue
     global run_jobs_info
+    from multiprocessing import Process
+    from multiprocessing import Manager
+    from multiprocessing import Queue
     job_queue = Queue()
     run_jobs_info = Manager().dict()
     if job_worker == None:
@@ -859,6 +862,7 @@ def start_worker():
 
 
 def fetch_job_queue(job_queue, run_jobs_info):
+    from asyncio import new_event_loop
     class JobTracker(object):
         def __init__(self, main_loop):
             from ...system import get_system_conf
@@ -884,24 +888,31 @@ def fetch_job_queue(job_queue, run_jobs_info):
             return self.running_jobs.get(uid)
 
         async def cancel_job(self, uid):
+            from subprocess import Popen
+            from subprocess import PIPE
+            from subprocess import check_output
+            from os import kill
+            from platform import platform
+            from signal import SIGTERM
+            from asyncio import sleep
             p = self.running_jobs.get(uid)
             if p is not None:
                 p.poll()
-                pl = platform.platform().lower()
+                pl = platform().lower()
                 if p:
                     if pl.startswith("windows"):
                         # proc.kill() doesn't work well on windows
-                        subprocess.Popen(
+                        Popen(
                             "TASKKILL /F /PID {pid} /T".format(pid=p.pid),
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE,
+                            stdout=PIPE,
+                            stderr=PIPE,
                         )
                         while True:
-                            await asyncio.sleep(0.25)
+                            await sleep(0.25)
                             if p.poll() is not None:
                                 break
                     elif pl.startswith("darwin") or pl.startswith("macos"):
-                        lines = subprocess.check_output(
+                        lines = check_output(
                             'ps -ef | grep {} | grep "ov"'.format(uid), shell=True
                         )
                         lines = lines.decode("utf-8")
@@ -912,7 +923,7 @@ def fetch_job_queue(job_queue, run_jobs_info):
                                 p.kill()
                             else:
                                 try:
-                                    os.kill(pid, signal.SIGTERM)
+                                    kill(pid, SIGTERM)
                                 except ProcessLookupError:
                                     continue
                     else:
@@ -936,18 +947,21 @@ def fetch_job_queue(job_queue, run_jobs_info):
             return list(self.running_jobs.keys())
 
         def run_available_jobs(self):
+            from subprocess import Popen
             num_available_slot = self.max_num_concurrent_jobs - len(self.running_jobs)
             if num_available_slot > 0 and len(self.queue) > 0:
                 for _ in range(num_available_slot):
                     if len(self.queue) > 0:
                         job_id = self.queue.pop(0)
                         run_args = self.run_args[job_id]
-                        print(f"@@@", run_args)
                         del self.run_args[job_id]
-                        p = subprocess.Popen(run_args)
+                        p = Popen(run_args)
                         self.running_jobs[job_id] = p
 
         async def delete_job(self, qitem):
+            from os.path import exists
+            from shutil import rmtree
+            from logging import getLogger
             logger = getLogger()
             job_id = qitem["job_id"]
             if self.get_process(job_id) is not None:
@@ -955,10 +969,11 @@ def fetch_job_queue(job_queue, run_jobs_info):
                 logger.info(msg)
                 await self.cancel_job(job_id)
             job_dir = qitem["job_dir"]
-            if os.path.exists(job_dir):
-                shutil.rmtree(job_dir)
+            if exists(job_dir):
+                rmtree(job_dir)
 
         def set_max_num_concurrent_jobs(self, qitem):
+            from logging import getLogger
             value = qitem["max_num_concurrent_jobs"]
             try:
                 self.max_num_concurrent_jobs = int(value)
@@ -969,6 +984,9 @@ def fetch_job_queue(job_queue, run_jobs_info):
                 )
 
     async def job_worker_main():
+        from asyncio import sleep
+        from queue import Empty
+        from logging import getLogger
         while True:
             job_tracker.clean_jobs(None)
             job_tracker.run_available_jobs()
@@ -987,9 +1005,9 @@ def fetch_job_queue(job_queue, run_jobs_info):
                 logger = getLogger()
                 logger.exception(e)
             finally:
-                await asyncio.sleep(1)
+                await sleep(1)
 
-    main_loop = asyncio.new_event_loop()
+    main_loop = new_event_loop()
     job_tracker = JobTracker(main_loop)
     main_loop.run_until_complete(job_worker_main())
     job_tracker.loop.close()
@@ -997,6 +1015,7 @@ def fetch_job_queue(job_queue, run_jobs_info):
 
 
 async def redirect_to_index(request):
+    from aiohttp.web import HTTPFound
     global servermode
     if servermode and mu:
         r = await mu.is_loggedin(request)
@@ -1006,7 +1025,7 @@ async def redirect_to_index(request):
             url = "/submit/nocache/index.html"
     else:
         url = "/submit/nocache/index.html"
-    return web.HTTPFound(url)
+    return HTTPFound(url)
 
 
 async def load_live_modules(module_names=[]):
@@ -1118,15 +1137,17 @@ async def live_annotate(input_data, annotators):
 
 
 async def get_live_annotation_post(request):
+    from aiohttp.web import json_response
     queries = await request.post()
     response = await get_live_annotation(queries)
-    return web.json_response(response)
+    return json_response(response)
 
 
 async def get_live_annotation_get(request):
+    from aiohttp.web import json_response
     queries = request.rel_url.query
     response = await get_live_annotation(queries)
-    return web.json_response(response)
+    return json_response(response)
 
 
 async def get_live_annotation(queries):
@@ -1136,6 +1157,8 @@ async def get_live_annotation(queries):
         global interval_log_single_api_access
         count_single_api_access += 1
         t = time.time()
+        if not time_of_log_single_api_access:
+            time_of_log_single_api_access = t
         dt = t - time_of_log_single_api_access
         if dt > interval_log_single_api_access:
             if mu:
@@ -1174,42 +1197,53 @@ async def get_live_annotation(queries):
 
 
 async def get_available_report_types(request):
+    from os.path import join
+    from os.path import exists
+    from aiohttp.web import json_response
     from .userjob import get_user_job_dir
     from .userjob import get_user_job_report_paths
 
     job_id_or_dbpath = await get_job_id_or_dbpath(request)
     job_dir = await get_user_job_dir(request, job_id_or_dbpath)
     if not job_dir:
-        return web.json_response([])
+        return json_response([])
     existing_reports = []
     for report_type in get_valid_report_types():
         report_paths = await get_user_job_report_paths(request, job_id_or_dbpath, report_type)
         if report_paths:
             report_exist = True
             for p in report_paths:
-                if os.path.exists(os.path.join(job_dir, p)) == False:
+                if exists(join(job_dir, p)) == False:
                     report_exist = False
                     break
             if report_exist:
                 existing_reports.append(report_type)
-    return web.json_response(existing_reports)
+    return json_response(existing_reports)
 
 
 def get_status_json_in_dir(job_dir):
+    from os.path import join
+    from json import load
+    from glob import glob
     if job_dir is None:
         status_json = None
     else:
-        fns = glob.glob(job_dir + "/*.status.json")
+        fns = glob(job_dir + "/*.status.json")
         fns.sort()
         if len(fns) == 0:
             status_json = None
         else:
-            with open(os.path.join(job_dir, fns[0])) as f:
-                status_json = json.load(f)
+            with open(join(job_dir, fns[0])) as f:
+                status_json = load(f)
     return status_json
 
 
 async def update_result_db(request):
+    from os.path import join
+    from aiohttp.web import json_response
+    from json import load
+    from json import dump
+    from asyncio import create_subprocess_shell
     from ...util.util import is_compatible_version
     from .userjob import get_user_job_dir
 
@@ -1217,89 +1251,100 @@ async def update_result_db(request):
     job_id = queries["job_id"]
     job_dir = await get_user_job_dir(request, job_id)
     if not job_dir:
-        return web.json_response("fail")
+        return json_response("fail")
     fns = find_files_by_ending(job_dir, ".sqlite")
-    db_path = os.path.join(job_dir, fns[0])
+    db_path = join(job_dir, fns[0])
     cmd = ["ov", "util", "update-result", db_path]
-    p = await asyncio.create_subprocess_shell(" ".join(cmd))
+    p = await create_subprocess_shell(" ".join(cmd))
     await p.wait()
     compatible_version, db_version, _ = is_compatible_version(db_path)
     if compatible_version:
         msg = "success"
         fn = find_files_by_ending(job_dir, ".status.json")[0]
-        path = os.path.join(job_dir, fn)
+        path = join(job_dir, fn)
         with open(path) as f:
-            status_json = json.load(f)
+            status_json = load(f)
         status_json["open_cravat_version"] = str(db_version)
         wf = open(path, "w")
-        json.dump(status_json, wf, indent=2, sort_keys=True)
+        dump(status_json, wf, indent=2, sort_keys=True)
         wf.close()
     else:
         msg = "fail"
-    return web.json_response(msg)
+    return json_response(msg)
 
 
 async def import_job(request):
+    from os.path import join
+    from os import makedirs
+    from aiohttp.web import Response
+    from aiohttp.web import HTTPForbidden
+    from json import dump
     from ...cli.util import status_from_db
     from .userjob import get_user_jobs_dir
 
     jobs_dir = get_user_jobs_dir(request)
     if not jobs_dir:
-        return web.HTTPForbidden()
+        return HTTPForbidden
     job_id = get_next_job_id()
-    job_dir = os.path.join(jobs_dir, job_id)
-    os.makedirs(job_dir, exist_ok=True)
+    job_dir = join(jobs_dir, job_id)
+    makedirs(job_dir, exist_ok=True)
     fn = request.headers["Content-Disposition"].split("filename=")[1]
-    dbpath = os.path.join(job_dir, fn)
+    dbpath = join(job_dir, fn)
     with open(dbpath, "wb") as wf:
         async for data, _ in request.content.iter_chunks():
             wf.write(data)
     status_d = status_from_db(dbpath)
     status_path = dbpath + ".status.json"
     with open(status_path, "w") as wf:
-        json.dump(status_d, wf)
-    return web.Response()
+        dump(status_d, wf)
+    return Response()
 
 
 async def get_local_module_info_web(request):
+    from aiohttp.web import json_response
     from ...module.local import get_local_module_info
     module_name = request.match_info["module"]
     mi = get_local_module_info(module_name)
     if mi:
-        return web.json_response(mi.serialize())
+        return json_response(mi.serialize())
     else:
-        return web.json_response({})
+        return json_response({})
 
 async def is_system_ready(request):
+    from aiohttp.web import json_response
     from ...util.admin_util import system_ready
 
     _ = request
-    return web.json_response(dict(system_ready()))
+    return json_response(dict(system_ready()))
 
 
 async def serve_favicon(request):
-    from os.path import dirname, realpath, join
+    from aiohttp.web import FileResponse
+    from os.path import dirname
+    from os.path import realpath
+    from os.path import join
 
     _ = request
     source_dir = dirname(realpath(__file__))
-    return web.FileResponse(join(source_dir, "..", "favicon.ico"))
+    return FileResponse(join(source_dir, "..", "favicon.ico"))
 
 
 async def get_webapp_index(request):
+    from aiohttp.web import HTTPFound
     url = request.path + "/index.html"
     if len(request.query) > 0:
         url = url + "?"
         for k, v in request.query.items():
             url += k + "=" + v + "&"
         url = url.rstrip("&")
-    return web.HTTPFound(url)
+    return HTTPFound(url)
 
 
 routes = []
 routes.append(["POST", "/submit/submit", submit])
 routes.append(["GET", "/submit/annotators", get_annotators])
 routes.append(["GET", "/submit/postaggregators", get_postaggregators])
-routes.append(["GET", "/submit/jobs", get_all_jobs])
+routes.append(["GET", "/submit/jobs", get_jobs])
 routes.append(["GET", "/submit/jobs/{job_id}", view_job])
 routes.append(["DELETE", "/submit/jobs/{job_id}", delete_job])
 routes.append(["GET", "/submit/jobs/{job_id}/db", download_db])
@@ -1315,9 +1360,7 @@ routes.append(["GET", "/submit/updatesystemconf", update_system_conf])
 routes.append(["GET", "/submit/resetsystemconf", reset_system_conf])
 routes.append(["GET", "/submit/servermode", get_servermode])
 routes.append(["GET", "/submit/packageversions", get_package_versions])
-routes.append(["GET", "/submit/openterminal", open_terminal])
 routes.append(["GET", "/submit/lastassembly", get_last_assembly])
-routes.append(["GET", "/submit/getjobs", get_jobs])
 routes.append(["GET", "/submit/annotate", get_live_annotation_get])
 routes.append(["POST", "/submit/annotate", get_live_annotation_post])
 routes.append(["GET", "/", redirect_to_index])
@@ -1329,10 +1372,3 @@ routes.append(["GET", "/submit/localmodules/{module}", get_local_module_info_web
 routes.append(["GET", "/issystemready", is_system_ready])
 routes.append(["GET", "/favicon.ico", serve_favicon])
 routes.append(["GET", "/webapps/{module}", get_webapp_index])
-
-if __name__ == "__main__":
-    app = web.Application()
-    for route in routes:
-        method, path, func_name = route
-        app.router.add_route(method, path, func_name)
-    web.run_app(app, port=8060)

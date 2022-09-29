@@ -32,6 +32,7 @@ class WebServer(object):
         global loop
         try:
             url_parts = request.url.parts
+            print(f"@ request={request}. url_parts={url_parts}")
             response = await handler(request)
             nocache = False
             if url_parts[0] == "/":
