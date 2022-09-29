@@ -2,6 +2,7 @@ var currentDetailModule = null;
 var remoteModuleInfo = {};
 var origRemoteModuleInfo = null;
 var localModuleInfo = {};
+var localModuleNames = []
 var updates = {};
 var updateConflicts;
 var filter = {};
@@ -93,7 +94,6 @@ function onClickInstallBaseComponents() {
 }
 
 function complementRemoteWithLocal() {
-  var localModuleNames = Object.keys(localModuleInfo);
   for (var i = 0; i < localModuleNames.length; i++) {
     var localModuleName = localModuleNames[i];
     if (localModuleName == "example_annotator") {
@@ -250,10 +250,11 @@ function getUpdates(populateAllModulesDivFlag = false) {
 async function getLocal() {
   var res = await axios.get("/store/local")
   localModuleInfo = res.data
+  localModuleNames = Object.keys(localModuleInfo)
+  localModuleNames.sort()
 }
 
 function makeInstalledGroup() {
-  var localModules = Object.keys(localModuleInfo);
   var groupNames = Object.keys(moduleGroupMembers);
   installedGroups = {};
   for (var i = 0; i < groupNames.length; i++) {
@@ -685,7 +686,6 @@ function populateStoreTagPanel() {
       }
     }
   }
-
   removeElementFromArrayByValue(tagsCollected, "frontpage");
   removeElementFromArrayByValue(tagsCollected, "viewall");
   removeElementFromArrayByValue(tagsCollected, "newavailable");
@@ -1268,7 +1268,6 @@ function getRemoteModulePanel(moduleName, moduleListName, moduleListPos) {
 function getFilteredRemoteModules() {
   var filteredRemoteModules = {};
   var remoteModuleNames = Object.keys(remoteModuleInfo);
-  var localModuleNames = Object.keys(localModuleInfo);
   var hasFilter = Object.keys(filter).length > 0;
   var newCheckbox = document.getElementById("store-tag-checkbox-newavailable");
   var newCheck = false;
@@ -2720,7 +2719,6 @@ function showCheckingUpdates() {
 }
 
 function webstore_run() {
-  console.log("@ start. webstore_run")
   document.addEventListener("click", function (evt) {
     if (evt.target.closest("moduledetaildiv_store") == null) {
       var div = document.getElementById("moduledetaildiv_store");

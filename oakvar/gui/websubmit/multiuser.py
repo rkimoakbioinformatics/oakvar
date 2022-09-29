@@ -1,5 +1,4 @@
-from aiohttp import web
-from oakvar.system import get_system_conf
+from typing import Optional
 
 admindb = None
 logger = None
@@ -7,7 +6,7 @@ servermode = False
 server_ready = False
 admindb_path = None
 DEFAULT_PRIVATE_KEY = "default_private_key"
-firebase_public_key_url = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"
+FIREBASE_PUBLIC_KEY_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"
 PROJECT_ID = "fabled-pivot-305219"
 COOKIE_KEY = "oakvar_token"
 
@@ -30,23 +29,28 @@ async def is_loggedin (request):
     else:
         return False
 
-async def is_admin_loggedin(request):
+async def is_admin_loggedin(request, email=None):
     from ...system.consts import ADMIN_ROLE
-    email = get_email_from_request(request)
+    if not email:
+        email = get_email_from_request(request)
     if not email:
         return False
     admindb = await get_admindb()
-    role = await admindb.get_user_role_of_email(email)
+    role = await admindb.get_user_role_of_email(email, servermode=get_servermode())
     return role == ADMIN_ROLE
 
-async def get_username(request, return_str=False):
+async def get_username(request):
+    from aiohttp.web import json_response
     email = get_email_from_request(request)
     res = {"email": email}
-    if return_str:
-        return res.get("email")
-    return web.json_response(res)
+    return json_response(res)
 
-async def add_job_info (request, job):
+async def get_username_str(request) -> Optional[str]:
+    email = get_email_from_request(request)
+    res = {"email": email}
+    return res.get("email")
+
+async def add_job_info(request, job):
     admindb = await get_admindb()
     email = get_email_from_request(request)
     await admindb.add_job_info(email, job)
@@ -62,10 +66,14 @@ def create_user_dir_if_not_exist (username):
         mkdir(user_job_dir)
 
 def get_email_from_request(request):
+    from ...system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
+    global servermode
     email = None
     token = request.cookies.get(COOKIE_KEY)
     if token:
         email = get_email_from_oakvar_token(token)
+    elif not servermode:
+        email = DEFAULT_SERVER_DEFAULT_USERNAME
     return email
 
 def get_email_from_oakvar_token(token):
@@ -75,69 +83,37 @@ def get_email_from_oakvar_token(token):
     return email
 
 async def loginsuccess(request):
+    from aiohttp.web import json_response
+    from aiohttp.web import HTTPNotFound
     import jwt
     from requests import get
     from cryptography import x509
     from cryptography.hazmat.backends import default_backend
 
+    global logger
     data = await request.json()
     token = data.get("login_token")
     if not token:
-        return web.json_response({"status": "error"})
+        return HTTPNotFound()
     kid = jwt.get_unverified_header(token)["kid"]
-    r = get(firebase_public_key_url)
+    r = get(FIREBASE_PUBLIC_KEY_URL)
     x509_key = r.json()[kid]
     key = x509.load_pem_x509_certificate(x509_key.encode("utf-8"), backend=default_backend)
     try:
         payload = jwt.decode(token, key.public_key(), ["RS256"], audience=PROJECT_ID) # type: ignore
     except:
-        global logger
         if logger:
             logger.error(f"JWT decode error: {token}")
-        return web.json_response({"status": "error"})
+        return json_response({"status": "error"})
     email = payload.get("email")
     if not email:
-        return web.json_response({"status": "error"})
-    response = web.json_response({"status": "loggedin"})
+        return HTTPNotFound()
+    response = json_response({"status": "loggedin"})
     admindb = await get_admindb()
     await admindb.add_user_if_not_exist(email, "", "", "")
     oakvar_token = jwt.encode({"email": email}, DEFAULT_PRIVATE_KEY, algorithm="HS256")
     response.set_cookie(COOKIE_KEY, oakvar_token, httponly=True)
     return response
-
-async def get_password_question (request):
-    global servermode
-    if servermode and not enable_remote_user_header and admindb:
-        queries = request.rel_url.query
-        email = queries['email']
-        question = await admindb.get_password_question(email)
-        if question is None:
-            response = {'status':'fail', 'msg':'No such email'}
-        else:
-            response = {'status':'success', 'msg': question}
-    else:
-        response = {'status':'fail', 'msg':'no multiuser mode'}
-    return web.json_response(response)
-
-async def check_password_answer (request):
-    from hashlib import sha256
-    global servermode
-    if servermode and not enable_remote_user_header and admindb:
-        queries = request.rel_url.query
-        email = queries['email']
-        answer = queries['answer']
-        m = sha256()
-        m.update(answer.encode('utf-16be'))
-        answerhash = m.hexdigest()
-        correct = await admindb.check_password_answer(email, answerhash)
-        if correct:
-            temppassword = await set_temp_password(request)
-            response = {'success': True, 'msg': temppassword}
-        else:
-            response = {'success': False, 'msg': 'Wrong answer'}
-    else:
-        response = {'success': False, 'msg': 'no multiuser mode'}
-    return web.json_response(response)
 
 async def set_temp_password (request):
     if admindb:
@@ -147,54 +123,61 @@ async def set_temp_password (request):
         return temppassword
 
 async def check_logged (request):
+    from aiohttp.web import json_response
+    from ...system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
+    global servermode
     email = get_email_from_request(request)
-    if not email:
+    if not email or (servermode and email == DEFAULT_SERVER_DEFAULT_USERNAME):
         response = {"logged": False}
-    response = {'logged': True, 'email': email, 'admin': await is_admin_loggedin(request)}
-    return web.json_response(response)
+    response = {'logged': True, 'email': email, 'admin': await is_admin_loggedin(request, email=email)}
+    return json_response(response)
 
 async def logout (_):
+    from aiohttp.web import json_response
     global servermode
     if servermode:
-        response = web.json_response({"status": "success"})
+        response = json_response({"status": "success"})
         response.del_cookie(COOKIE_KEY)
     else:
-        response = web.json_response({"status": "error"})
+        response = json_response({"status": "error"})
     return response
 
 async def get_input_stat (request):
+    from aiohttp.web import json_response
     global servermode
     if not servermode or not admindb:
-        return web.json_response('no multiuser mode')
+        return json_response('no multiuser mode')
     r = await is_admin_loggedin(request)
     if r == False:
-        return web.json_response('no admin')
+        return json_response('no admin')
     queries = request.rel_url.query
     start_date = queries['start_date']
     end_date = queries['end_date']
     rows = await admindb.get_input_stat(start_date, end_date)
-    return web.json_response(rows)
+    return json_response(rows)
 
 async def get_user_stat (request):
+    from aiohttp.web import json_response
     global servermode
     if not servermode or not admindb:
-        return web.json_response('no multiuser mode')
+        return json_response('no multiuser mode')
     r = await is_admin_loggedin(request)
     if r == False:
-        return web.json_response('no admin')
+        return json_response('no admin')
     queries = request.rel_url.query
     start_date = queries['start_date']
     end_date = queries['end_date']
     rows = await admindb.get_user_stat(start_date, end_date)
-    return web.json_response(rows)
+    return json_response(rows)
 
 async def get_job_stat (request):
+    from aiohttp.web import json_response
     global servermode
     if not servermode:
-        return web.json_response('no multiuser mode')
+        return json_response('no multiuser mode')
     r = await is_admin_loggedin(request)
     if r == False:
-        return web.json_response('no admin')
+        return json_response('no admin')
     queries = request.rel_url.query
     start_date = queries['start_date']
     end_date = queries['end_date']
@@ -202,15 +185,16 @@ async def get_job_stat (request):
         response = await admindb.get_job_stat(start_date, end_date)
     else:
         response = {}
-    return web.json_response(response)
+    return json_response(response)
 
 async def get_api_stat (request):
+    from aiohttp.web import json_response
     global servermode
     if not servermode:
-        return web.json_response('no multiuser mode')
+        return json_response('no multiuser mode')
     r = await is_admin_loggedin(request)
     if r == False:
-        return web.json_response('no admin')
+        return json_response('no admin')
     queries = request.rel_url.query
     start_date = queries['start_date']
     end_date = queries['end_date']
@@ -218,15 +202,16 @@ async def get_api_stat (request):
         response = await admindb.get_api_stat(start_date, end_date)
     else:
         response = {}
-    return web.json_response(response)
+    return json_response(response)
 
 async def get_annot_stat (request):
+    from aiohttp.web import json_response
     global servermode
     if not servermode:
-        return web.json_response('no multiuser mode')
+        return json_response('no multiuser mode')
     r = await is_admin_loggedin(request)
     if r == False:
-        return web.json_response('no admin')
+        return json_response('no admin')
     queries = request.rel_url.query
     start_date = queries['start_date']
     end_date = queries['end_date']
@@ -234,15 +219,16 @@ async def get_annot_stat (request):
         response = await admindb.get_annot_stat(start_date, end_date)
     else:
         response = {}
-    return web.json_response(response)
+    return json_response(response)
 
 async def get_assembly_stat (request):
+    from aiohttp.web import json_response
     global servermode
     if not servermode:
-        return web.json_response('no multiuser mode')
+        return json_response('no multiuser mode')
     r = await is_admin_loggedin(request)
     if r == False:
-        return web.json_response('no admin')
+        return json_response('no admin')
     queries = request.rel_url.query
     start_date = queries['start_date']
     end_date = queries['end_date']
@@ -250,44 +236,48 @@ async def get_assembly_stat (request):
         response = await admindb.get_assembly_stat(start_date, end_date)
     else:
         response = {}
-    return web.json_response(response)
+    return json_response(response)
 
 async def restart (request):
     from os import execvp
+    from aiohttp.web import json_response
     global servermode
     if servermode:
         r = await is_admin_loggedin(request)
         if r == False:
-            return web.json_response({'success': False, 'mgs': 'Only logged-in admin can change the settings.'})
+            return json_response({'success': False, 'mgs': 'Only logged-in admin can change the settings.'})
     execvp('wcravat', ['wcravat', '--multiuser', '--headless'])
 
 async def show_login_page (request):
     from os.path import join
     from os.path import dirname
     from os.path import abspath
+    from aiohttp.web import HTTPFound
+    from aiohttp.web import FileResponse
     global servermode
     global server_ready
     global logger
     if not servermode or not server_ready:
         if logger:
             logger.info('Login page requested but no multiuser mode. Redirecting to submit index...')
-        return web.HTTPFound('/submit/index.html')
+        return HTTPFound('/submit/index.html')
     r = await is_loggedin(request)
     if r == False:
         p = join(dirname(abspath(__file__)), 'nocache', 'login.html')
-        return web.FileResponse(p)
+        return FileResponse(p)
     else:
         if logger:
             logger.info('Login page requested but already logged in. Redirecting to submit index...')
-        return web.HTTPFound('/submit/index.html')
+        return HTTPFound('/submit/index.html')
 
 async def get_user_settings (request):
+    from aiohttp.web import json_response
     admindb = await get_admindb()
     if not admindb:
-        return web.json_response({})
+        return json_response({})
     email = get_email_from_request(request)
     response = await admindb.get_user_settings(email)
-    return web.json_response(response)
+    return json_response(response)
 
 async def update_user_settings (request, d):
     admindb = await get_admindb()
@@ -299,11 +289,7 @@ async def get_admindb():
     global admindb
     if not admindb:
         admindb = ServerAdminDb()
-        await admindb.init()
     return admindb
-
-system_conf = get_system_conf()
-enable_remote_user_header = system_conf.get('enable_remote_user_header', False)
 
 def add_routes (router):
     from os.path import dirname

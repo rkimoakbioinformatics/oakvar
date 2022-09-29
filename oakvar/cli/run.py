@@ -1894,6 +1894,8 @@ class Runner(object):
                     await cursor.execute(q)
             q = f'insert into info values ("primary_transcript", "{",".join(self.args.primary_transcript)}")'
             await cursor.execute(q)
+            q = f"insert into info values (?, ?)"
+            await cursor.execute(q, ("job_name", self.args.job_name))
         q = 'select colval from info where colkey="annotators_desc"'
         await cursor.execute(q)
         r = await cursor.fetchone()
@@ -1999,7 +2001,6 @@ class Runner(object):
             from ..exceptions import SetupError
 
             raise SetupError()
-        import os
         import aiosqlite
         from ..gui.websubmit.serveradmindb import get_admindb_path
         from ..util.util import quiet_print
@@ -2015,10 +2016,9 @@ class Runner(object):
             return
         db = await aiosqlite.connect(str(admindb_path))
         cursor = await db.cursor()
-        q = 'update jobs set runtime={}, numinput={} where jobid="{}"'.format(
-            runtime, numinput, self.args.jobid
-        )
-        await cursor.execute(q)
+        q = 'update jobs set runtime=?, numinput=? where dir=? and name="?"'
+        print(f"@ dir={self.output_dir}. name={self.args.job_name}")
+        await cursor.execute(q, (runtime, numinput, self.output_dir, self.args.job_name))
         await db.commit()
         await cursor.close()
         await db.close()
@@ -2049,9 +2049,7 @@ class Runner(object):
                     self.pkg_ver = au.get_current_package_version()
             if self.status_json and self.status_json["status"] == "Submitted":
                 self.status_json["job_dir"] = self.output_dir
-                self.status_json["id"] = os.path.basename(
-                    os.path.normpath(self.output_dir)
-                )
+                self.status_json["job_name"] = self.args.job_name
                 self.status_json["run_name"] = self.run_name
                 self.status_json["db_path"] = os.path.join(
                     self.output_dir, self.run_name + ".sqlite"
@@ -2079,7 +2077,7 @@ class Runner(object):
         else:
             self.status_json = {}
             self.status_json["job_dir"] = self.output_dir
-            self.status_json["id"] = os.path.basename(os.path.normpath(self.output_dir))
+            self.status_json["job_name"] = self.args.job_name
             self.status_json["run_name"] = self.run_name
             self.status_json["db_path"] = os.path.join(
                 self.output_dir, self.run_name + ".sqlite"
@@ -2387,7 +2385,7 @@ def add_parser_ov_run(subparsers):
         help="Write job information to admin db after job completion",
     )
     parser_ov_run.add_argument(
-        "--jobid", dest="jobid", default=None, help="Job ID for server version"
+        "--jobname", dest="job_name", type=str, default=None, help="Job ID for server version"
     )
     parser_ov_run.add_argument(
         "--version",

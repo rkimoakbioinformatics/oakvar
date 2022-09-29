@@ -6,7 +6,6 @@ class WebServer(object):
         from asyncio import get_event_loop
 
         self.args = args
-        print(f"@ args={args}")
         self.logger = args.get("logger")
         self.app = None
         self.runner = None
@@ -45,7 +44,6 @@ class WebServer(object):
             return response
         except Exception as e:
             msg = "Exception with {}".format(request.rel_url)
-            print(f"@ logger={self.logger}")
             if self.logger:
                 self.logger.info(msg)
                 self.logger.exception(e)

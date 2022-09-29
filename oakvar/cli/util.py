@@ -543,10 +543,6 @@ async def filtersqlite_async(args):
 
 
 def status_from_db(dbpath):
-    """
-    Generate a status json from a result database.
-    Currently only works well if the database is in the gui jobs area.
-    """
     import sqlite3
     from pathlib import Path
     from datetime import date
@@ -578,8 +574,9 @@ def status_from_db(dbpath):
         c.execute('select colval from info where colkey="Input genome"')
         d["assembly"] = c.fetchone()[0]
         d["db_path"] = str(dbpath)
-        d["id"] = str(dbpath.parent)
-        d["id"] = str(dbpath.parent.name)
+        c.execute("select colval from info where colkey=?", ("job_name",))
+        ret = c.fetchone()
+        d["name"] = ret[0] if ret else ""
         d["job_dir"] = str(dbpath.parent)
         d["note"] = ""
         d["num_error_input"] = 0

@@ -1,14 +1,16 @@
+from typing import Optional
+
 custom_system_conf = None
 
-
 def setup_system(args=None):
+    from os import environ
     from ..util.util import quiet_print
     from ..cli.module import installbase
-    from os import environ
     from .consts import sys_conf_path_key
     from ..store.ov import setup_ov_store_cache
     from ..util.util import show_logo
     from ..exceptions import ArgumentError
+    from ..gui.websubmit.serveradmindb import setup_serveradmindb
 
     if not args:
         raise ArgumentError("necessary arguments were not provided.")
@@ -26,6 +28,8 @@ def setup_system(args=None):
         return False
     # fetch ov store cache
     setup_ov_store_cache(conf=conf, args=args)
+    # set up a multiuser database.
+    setup_serveradmindb(args=args)
     # install base modules.
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
     args.update({"conf": conf})
@@ -250,7 +254,7 @@ def get_cache_dir(cache_key, conf=None):
 def get_default_logo_path() -> str:
     from pathlib import Path
 
-    path = Path(__file__).parent.parent / "gui" / "webstore" / "images" / "genericmodulelogo.png"
+    path = Path(__file__).parent.parent / "gui" / "webstore" / "images" / "no_logo_module.svg"
     return str(path)
 
 def get_logo_path(module_name: str, store: str, conf=None) -> str:
@@ -889,4 +893,43 @@ def check(args) -> bool:
         return False
     quiet_print(f"success", args=args)
     return True
+
+def get_user_jobs_dir(email=None):
+    from pathlib import Path
+
+    root_jobs_dir = Path(get_jobs_dir()).absolute()
+    if not email:
+        return None
+    jobs_dir = root_jobs_dir / email
+    return str(jobs_dir)
+
+def get_status_path_in_job_dir(job_dir: Optional[str]) -> Optional[str]:
+    from pathlib import Path
+    from ..consts import status_suffix
+
+    if not job_dir:
+        return None
+    job_dir_p = Path(job_dir).absolute()
+    status_paths = list(job_dir_p.glob("*" + status_suffix))
+    if not status_paths:
+        return None
+    return str(status_paths[0])
+
+def get_job_status(job_dir: Optional[str]) -> Optional[dict]:
+    from json import load
+    from logging import getLogger
+    try:
+        status_path = get_status_path_in_job_dir(job_dir)
+        if not status_path:
+            return None
+        with open(status_path) as f:
+            try:
+                status_json = load(f)
+            except:
+                return None
+        return status_json
+    except Exception as e:
+        logger = getLogger()
+        logger.exception(e)
+        return None
 

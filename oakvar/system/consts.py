@@ -39,7 +39,7 @@ default_assembly_key = "default_assembly"
 #
 default_num_input_line_warning_cutoff = 25000
 default_gui_input_size_limit = 500
-default_max_num_concurrent_jobs = 4
+DEFAULT_MAX_NUM_CONCURRENT_JOBS = 4
 default_max_num_concurrent_annotators_per_job = 1
 default_multicore_mapper_mode = True
 default_gui_port = 8080
@@ -61,6 +61,7 @@ DEFAULT_SERVER_ADMIN_PW = "admin"
 server_admin_pw_key = "server_admin_pw"
 server_default_username_key = "server_default_username"
 ADMIN_ROLE = "admin"
+USER_ROLE = "user"
 ADMIN_DB_FN = "server.sqlite"
 
 

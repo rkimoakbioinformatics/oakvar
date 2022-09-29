@@ -23,27 +23,39 @@ def get_admindb_path():
     return admindb_path
 
 class ServerAdminDb ():
-    def __init__ (self):
-        from sqlite3 import connect
-        from collections import defaultdict
+    def __init__ (self, new_setup=False):
+        from ...exceptions import SystemMissingException
         admindb_path = get_admindb_path()
-        initdb_needed = not admindb_path.exists()
-        admindb_path = str(admindb_path)
-        conn = connect(admindb_path)
+        if not admindb_path.exists() and not new_setup:
+            raise SystemMissingException("server admin database is missing.")
+        self.admindb_path = str(admindb_path)
+
+    def setup(self, args={}):
+        from sqlite3 import connect
+        conn = connect(self.admindb_path)
         cursor = conn.cursor()
-        self.sessions = defaultdict(set)
-        print(f"@ initdb_needed={initdb_needed}")
-        if initdb_needed:
-            self.create_tables(conn, cursor)
-            self.add_admin(conn, cursor)
-            self.add_secret_key(conn, cursor)
+        if args.get("clean"):
+            self.drop_tables(conn, cursor)
+        self.create_tables(conn, cursor)
+        self.add_admin(conn, cursor)
+        self.add_default_user(conn, cursor)
+        self.add_secret_key(conn, cursor)
+        self.retrieve_user_jobs_into_db()
         cursor.close()
         conn.close()
 
-    def create_tables(self, cursor, conn):
-        cursor.execute('create table users (email text, role text, passwordhash text, question text, answerhash text, settings text)')
-        cursor.execute('create table jobs (jobid integer primary key autoincrement, username text, submit date, runtime integer, numinput integer, modules text, assembly text, statusjson text)')
-        cursor.execute('create table config (key text, value text)')
+    def drop_tables(self, conn, cursor):
+        cursor.execute("drop table if exists users")
+        cursor.execute("drop table if exists jobs")
+        cursor.execute("drop table if exists config")
+        cursor.execute("drop table if exists apilog")
+        conn.commit()
+
+    def create_tables(self, conn, cursor):
+        cursor.execute('create table if not exists users (email text primary key, role text, passwordhash text, question text, answerhash text, settings text)')
+        cursor.execute('create table if not exists jobs (jobid integer primary key autoincrement, username text, dir text, name text, submit date, runtime integer, numinput integer, modules text, assembly text, note text, statusjson text)')
+        cursor.execute('create table if not exists config (key text primary key, value text)')
+        cursor.execute('create table if not exists apilog (writetime text primary key, count int)')
         conn.commit()
 
     def add_admin(self, conn, cursor):
@@ -51,14 +63,21 @@ class ServerAdminDb ():
         from ...system.consts import ADMIN_ROLE
         email = get_email_from_token_set()
         print(f"@ admin={email}")
-        q = "insert into users (email, role) values (?, ?)"
+        q = "insert or replace into users (email, role) values (?, ?)"
         cursor.execute(q, (email, ADMIN_ROLE))
+        conn.commit()
+
+    def add_default_user(self, conn, cursor):
+        from ...system.consts import USER_ROLE
+        from ...system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
+        q = "insert or replace into users (email, role) values (?, ?)"
+        cursor.execute(q, (DEFAULT_SERVER_DEFAULT_USERNAME, USER_ROLE))
         conn.commit()
 
     def add_secret_key(self, conn, cursor):
         from cryptography import fernet
         fernet_key = fernet.Fernet.generate_key()
-        q = "insert into config (key, value) values (?, ?)"
+        q = "insert or replace into config (key, value) values (?, ?)"
         cursor.execute(q, ("fernet_key", fernet_key))
         conn.commit()
 
@@ -77,18 +96,16 @@ class ServerAdminDb ():
         conn = await connect(str(get_admindb_path()))
         return conn
 
-    async def init (self):
-        await self.create_apilog_table_if_necessary()
-
-    async def add_job_info (self, username, job):
+    async def add_job_info(self, username, job):
         conn = await self.get_db_conn()
         if not conn:
             return
         cursor = await conn.cursor()
-        annotators = ",".join(job.info.get("annotators", []))
-        q = "insert into jobs (jobid, username, submit, runtime, numinput, annotators, assembly) values (?, ?, ?, ?, ?, ?, ?)"
-        values = (job.info['id'], username, job.info['submission_time'], -1, -1, annotators, job.info['assembly'])
-        await cursor.execute(q, (job.info['id'], username, job.info['submission_time'], -1, -1, annotators, job.info['assembly']))
+        annotators = job.info.get("annotators", [])
+        postaggregators = job.info.get("postaggregators", [])
+        modules = ",".join(annotators + postaggregators)
+        q = "insert into jobs (username, dir, name, submit, runtime, numinput, modules, assembly, note) values (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        await cursor.execute(q, (username, job.info["dir"], job.info['id'], job.info['submission_time'], -1, -1, modules, job.info['assembly'], job.info["note"]))
         await conn.commit()
         await cursor.close()
         await conn.close()
@@ -107,7 +124,10 @@ class ServerAdminDb ():
         else:
             return True
 
-    async def get_user_role_of_email(self, email):
+    async def get_user_role_of_email(self, email, servermode=True):
+        from ...system.consts import ADMIN_ROLE
+        if not servermode:
+            return ADMIN_ROLE
         conn = await self.get_db_conn()
         if not conn:
             return
@@ -392,24 +412,7 @@ class ServerAdminDb ():
         cursor = await conn.cursor()
         q = f'delete from users where email="{username}"'
         await cursor.execute(q)
-        q = f'delete from sessions where username="{username}"'
-        await cursor.execute(q)
         await conn.commit()
-        await cursor.close()
-        await conn.close()
-
-    async def create_apilog_table_if_necessary (self):
-        conn = await self.get_db_conn()
-        if not conn:
-            return
-        cursor = await conn.cursor()
-        q = 'select count(name) from sqlite_master where type="table" and name="apilog"'
-        await cursor.execute(q)
-        r = await cursor.fetchone()
-        if r and r[0] == 0:
-            q = 'create table apilog (writetime text, count int)'
-            await cursor.execute(q)
-            await conn.commit()
         await cursor.close()
         await conn.close()
 
@@ -440,7 +443,7 @@ class ServerAdminDb ():
 
     @db_func
     async def get_jobs_of_email(self, email, pageno=0, pagesize=30, conn=Any, cursor=Any):
-        _ = conn
+        _ = conn or pagesize or pageno
         if not email:
             return
         q = f"select jobid, statusjson from jobs where username=? order by submit desc"
@@ -448,3 +451,70 @@ class ServerAdminDb ():
         ret = await cursor.fetchall()
         ret = [dict(v) for v in ret]
         return ret
+
+    def retrieve_user_jobs_into_db(self):
+        from pathlib import Path
+        from .userjob import get_user_jobs_dir_list
+
+        user_jobs_dir_list = get_user_jobs_dir_list()
+        if not user_jobs_dir_list:
+            return
+        usernames = [Path(v).name for v in user_jobs_dir_list]
+        for username in usernames:
+            self.retrieve_jobs_of_user_into_db(username)
+
+    def retrieve_jobs_of_user_into_db(self, email):
+        from pathlib import Path
+        from sqlite3 import connect
+        from ...system import get_user_jobs_dir
+        from ...system import get_job_status
+        from .userjob import get_job_runtime_in_job_dir
+
+        jobs_dir = get_user_jobs_dir(email)
+        if not jobs_dir:
+            return
+        conn = connect(self.admindb_path)
+        cursor = conn.cursor()
+        jobs_dir_p = Path(jobs_dir)
+        jobs_dir_l = list(jobs_dir_p.glob("*"))
+        jobs_dir_l.sort(key=lambda p: p.stat().st_ctime)
+        for job_dir_p in jobs_dir_l:
+            print(f"@ job_dir={str(job_dir_p.absolute())}")
+            if not job_dir_p.is_dir():
+                continue
+            job_dir = str(job_dir_p)
+            job_status = get_job_status(job_dir)
+            if not job_status:
+                continue
+            job_name = job_status.get("id")
+            run_name = job_status.get("run_name")
+            if not run_name:
+                continue
+            submit = job_status.get("submission_time")
+            if not submit:
+                continue
+            numinput = job_status.get("num_input_var")
+            modules = ",".join(job_status.get("annotators", []) + job_status.get("postaggregators", []))
+            runtime = get_job_runtime_in_job_dir(job_dir, run_name=run_name)
+            assembly = job_status.get("assembly")
+            note = job_status.get("note")
+            if not job_name or not submit:
+                print(f"@ skipping. {job_name}. {run_name}. {submit}. {numinput}. {modules}. {assembly}. {note}.")
+                continue
+            q = "insert into jobs (username, dir, name, submit, runtime, numinput, modules, assembly, note) values (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            values = (email, job_dir, job_name, submit, runtime, numinput, modules, assembly, note)
+            print(f"@ values={values}")
+            cursor.execute(q, values)
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+def setup_serveradmindb(args={}):
+    from os import remove
+    clean = args.get("clean")
+    admindb_path = get_admindb_path()
+    if clean:
+        remove(admindb_path)
+    admindb = ServerAdminDb(new_setup=True)
+    admindb.setup()
+

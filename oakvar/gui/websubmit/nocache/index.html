@@ -6,7 +6,6 @@
     <script>
       CLOSURE_NO_DEPS = true;
     </script>
-    <link href="https://fonts.googleapis.com/css?family=Gothic+A1" rel="stylesheet" crossorigin="anonymous">
     <link rel="shortcut icon" href='#'>
     <link rel="icon" href="/submit/images/logo_only.png" />
     <script src="/submit/js/jquery-3.3.1.min.js"></script>
@@ -15,18 +14,24 @@
     <script type='text/javascript' src='/submit/js/pqselect.dev.customforsubmit.js'></script>
     <script src='/submit/js/Chart.bundle.min.js'></script>
     <script src='/store/js/showdown-1.9.1.min.js'></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="/submit/js/axios.min.js"></script>
+    <script src="/submit/js/firebase-app.js"></script>
+    <script src="/submit/js/firebase-auth.js"></script>
     <script src="/submit/nocache/websubmit.js"></script>
+    <script src="/submit/nocache/element_getters.js"></script>
+    <script src="/submit/nocache/select_modules.js"></script>
+    <script src="/submit/nocache/input.js"></script>
+    <script src="/submit/nocache/submit.js"></script>
+    <script src="/submit/nocache/alerts.js"></script>
+    <script src="/submit/nocache/util.js"></script>
     <script src='/store/nocache/webstore.js'></script>
     <script src="/submit/nocache/multiuser.js"></script>
-    <link rel="stylesheet" href="/result/nocache/css/style.css">
     <link rel="stylesheet" href="/submit/nocache/websubmit.css">
     <link rel="stylesheet" href="/store/nocache/webstore.css">
     <link rel='stylesheet' href='/result/css/pqselect.min.css' />
     <!-- tailwind css -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/submit/js/tailwindcss.js"></script>
+    <link href="/submit/css/forms.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/result/fonts/Inter_Web/inter.css" />
     <script>
       tailwind.config = {
@@ -40,32 +45,51 @@
       }
     </script>
     <style type="text/tailwindcss"> @layer components {
-            .tabhead {
-                @apply text-gray-600;
-                @apply hover:bg-gray-50;
-                @apply hover:text-gray-900;
-                @apply flex;
-                @apply items-center;
-                @apply px-2;
-                @apply py-2;
-                @apply text-sm;
-                @apply font-medium;
-                @apply rounded-md;
-            }
-            .tabhead.selected {
-                @apply bg-gray-100;
-                @apply text-gray-900;
-            }
-            .tabheadicon {
-                @apply text-gray-400;
-                @apply group-hover:text-gray-500;
-                @apply mr-3;
-                @apply flex-shrink-0;
-                @apply h-6;
-                @apply w-6;
-            }
-        }
+      .tabhead {
+          @apply text-gray-600;
+          @apply hover:bg-gray-50;
+          @apply hover:text-gray-900;
+          @apply flex;
+          @apply items-center;
+          @apply px-2;
+          @apply py-2;
+          @apply text-sm;
+          @apply font-medium;
+          @apply rounded-md;
+      }
+      .tabhead.selected {
+          @apply bg-gray-200;
+          @apply text-gray-900;
+      }
+      .tabheadicon {
+          @apply text-gray-400;
+          @apply group-hover:text-gray-500;
+          @apply mr-3;
+          @apply flex-shrink-0;
+          @apply h-6;
+          @apply w-6;
+      }
+      .filter-category {
+        @apply text-gray-500;
+        @apply hover:text-gray-900;
+        @apply bg-white;
+        @apply hover:bg-gray-100;
+        @apply rounded-md;
+        @apply border;
+        @apply border-transparent;
+        @apply px-3;
+        @apply py-1.5;
+        @apply text-sm;
+        @apply font-medium;
+      }
+      .filter-category.pinned {
+        @apply text-gray-900;
+        @apply bg-gray-100;
+        @apply hover:bg-gray-200;
+      }
+    }
     </style>
+    <!-- end tailwind css -->
     <script>
       $(document).ready(function() {
         websubmit_run().then(function(_) {})
@@ -130,34 +154,38 @@
     </div>
     <div>
       <!-- Static sidebar for desktop -->
-      <div id="sidebar_static" class="hidden md:flex md:w-36 md:flex-col md:fixed md:inset-y-0">
+      <div id="sidebar_static" class="hidden md:flex md:w-36 md:flex-col md:fixed md:inset-y-0 bg-gray-50">
         <!-- Sidebar component, swap this element with another sidebar if you like -->
-        <div class="flex-1 flex flex-col min-h-0 border-r border-gray-200 bg-white">
+        <div class="flex-1 flex flex-col min-h-0 border-r border-gray-200">
           <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
             <div class="flex items-center flex-shrink-0 px-4">
-              <img class="h-16 w-auto" src="/submit/images/logo_transparent_bw.png" alt="Workflow">
+              <img class="h-16 w-auto" src="/submit/images/logo_transparent.png" alt="Workflow">
             </div>
-            <nav class="mt-5 flex-1 px-2 bg-white space-y-1">
-              <a id="tabhead_job" href="#" class="tabhead group selected" onclick="changeTab('job')">
+            <nav class="mt-5 flex-1 px-2 space-y-1">
+              <a id="tabhead_submit" href="#" class="tabhead group selected" onclick="changeTab('submit')">
                 <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg> Submit </a>
-              <a id="tabhead_filter" href="#" class="tabhead group" onclick="changeTab('filter')">
+              <a id="tabhead_jobs" href="#" class="tabhead group" onclick="changeTab('jobs')">
                 <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                 </svg> Jobs </a>
-              <a id="tabhead_info" href="#" class="tabhead group" onclick="changeTab('info')">
+              <a id="tabhead_store" href="#" class="tabhead group" onclick="changeTab('store')">
                 <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
                   <path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
                 </svg> Store </a>
-              <a id="tabhead_variant" href="#" class="tabhead group" onclick="changeTab('variant')">
+              <a id="tabhead_apps" href="#" class="tabhead group" onclick="changeTab('apps')">
+                <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                </svg> Apps </a>
+              <a id="tabhead_variant" href="#" class="tabhead group" onclick="changeTab('admin')">
                 <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                 </svg> Admin </a>
             </nav>
-            <div id='verdiv' class="text-xs absolute left-4 bottom-2">
-              <span class="text-xs">Version&nbsp;</span>
+            <div id='verdiv' class="text-xs absolute left-4 bottom-2 text-gray-400">
+              <span class="text-xs">v</span>
               <span class="curverspan text-xs"></span>
             </div>
           </div>
@@ -181,14 +209,13 @@
             <div class="mx-auto">
               <!-- Replace with your content -->
               <div>
-                <div id="tab_submit" class="tabcontent show p-4">
-                  <div id='submit-variant-div' class='container'>
-                    <div class='text-2xl mb-4'>Step one. Upload input</div>
-                    <div class="ml-4">
+                <div id="tab_submit" class="tabcontent show p-4 snap-y snap-mandatory h-screen overflow-y-auto">
+                  <div id='submit-variant-div' class='relative container flex gap-8 snap-center max-w-7xl h-[95vh] justify-center items-center'><!-- input variant panel -->
+                    <div id="input-div" class="w-[40rem] justify-center items-center">
                       <div class="flex">
-                        <div class="select-div relative inline-block text-left">
+                        <div id="assembly-select-panel" class="select-div relative inline-block text-left" value="">
                           <div>
-                            <button onclick="onClickSelectBtn(event)" type="button" class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100" id="assembly-select-div" aria-expanded="true" aria-haspopup="true"> Genome assembly <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <button onclick="onClickSelectBtn(event)" type="button" class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100" id="assembly-select-div" aria-expanded="true" aria-haspopup="true" title="Genome assembly"> Genome assembly <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                 <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
                               </svg>
                             </button>
@@ -196,16 +223,16 @@
                           <div id="assembly-select" class="option-list hidden ease-in absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="menu-button" tabindex="-1">
                             <div class="py-1" role="none">
                               <!-- Active: "bg-gray-100 text-gray-900", Not Active: "text-gray-700" -->
-                              <a href="#" class="text-gray-700 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value="" onclick="onClickSelectItem(event)">auto</a>
-                              <a href="#" class="text-gray-700 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value="hg38" onclick="onClickSelectItem(event)">GRCh38/hg38</a>
-                              <a href="#" class="text-gray-700 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value="hg19" onclick="onClickSelectItem(event)">GRCh37/hg19</a>
-                              <a href="#" class="text-gray-700 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value="hg18" onclick="onClickSelectItem(event)">GRCh36/hg18</a>
+                              <a href="#" class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value="" onclick="onClickSelectItem(event)">auto</a>
+                              <a href="#" class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value="hg38" onclick="onClickSelectItem(event)">GRCh38/hg38</a>
+                              <a href="#" class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value="hg19" onclick="onClickSelectItem(event)">GRCh37/hg19</a>
+                              <a href="#" class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value="hg18" onclick="onClickSelectItem(event)">GRCh36/hg18</a>
                             </div>
                           </div>
                         </div>
-                        <div class="select-div relative inline-block text-left ml-6">
+                        <div id="input-format-select-panel" class="select-div relative inline-block text-left ml-6">
                           <div>
-                            <button onclick="onClickSelectBtn(event)" type="button" class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100" id="assembly-select-div" aria-expanded="true" aria-haspopup="true"> Format
+                            <button onclick="onClickSelectBtn(event)" type="button" class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100" id="input-format-select-div" aria-expanded="true" aria-haspopup="true" title="Format"> Format
                               <!-- Heroicon name: mini/chevron-down -->
                               <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                 <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
@@ -215,17 +242,17 @@
                           <div id="input-format-select" class="option-list hidden ease-in absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="menu-button" tabindex="-1">
                             <div class="py-1" role="none">
                               <!-- Active: "bg-gray-100 text-gray-900", Not Active: "text-gray-700" -->
-                              <a href="#" class="text-gray-700 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" onclick="onClickSelectItem(event)">auto</a>
+                              <a href="#" class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" onclick="onClickSelectItem(event)">auto</a>
                             </div>
                           </div>
                         </div>
                       </div>
-                      <div class="flex items-center justify-center w-full mt-4" ondragenter="onDragEnterInputFiles(event)" ondragover="onDragOverInputFiles(event)" ondragleave="onDragLeaveInputFiles(event)" ondrop="onDropInputFiles(event)">
-                        <label id="input-drop-area" for="input-file" class="flex items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
+                      <div class="w-full flex items-center justify-center mt-1" ondragenter="onDragEnterInputFiles(event)" ondragover="onDragOverInputFiles(event)" ondragleave="onDragLeaveInputFiles(event)" ondrop="onDropInputFiles(event)">
+                        <label id="input-drop-area" for="input-file" class="flex items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-md cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
                           <div id="input-upload-list-div" class="w-1/2 flex flex-col justify-center items-center p-2 relative hidden h-full bg-gray-50">
-                            <button id='clear_inputfilelist_button' class='text-gray-500 bg-neutral-200 hover:bg-neutral-300 p-1 w-16 absolute top-1 left-1' onclick='clearInputFileList()' style='display: none;'>Clear</button>
-                            <div id="mult-inputs-message" class="flex w-full overflow-auto h-[13rem] absolute bottom-1 bg-gray-50">
-                              <div id="mult-inputs-list" class="h-full overflow-auto"></div>
+                            <button id='clear_inputfilelist_button' class='text-gray-500 bg-neutral-200 hover:bg-neutral-300 p-1 w-16 rounded-md absolute top-1 left-1' onclick='clearInputUploadList()'>Clear</button>
+                            <div id="input-upload-list-wrapper" class="flex w-full overflow-auto h-[13rem] absolute bottom-1 bg-gray-50">
+                              <div id="input-upload-list" class="h-full overflow-auto"></div>
                             </div>
                           </div>
                           <div id="input-drop-box" class="w-1/2">
@@ -235,13 +262,13 @@
                               </svg>
                               <p class="mb-2 text-sm text-gray-500 dark:text-gray-400">
                                 <span class="font-semibold">Click to upload</span> or drag and drop input files
-                              </p> or <button class="mb-2 text-sm text-gray-500 dark:text-gray-400 bg-neutral-200 hover:bg-neutral-300 p-2" onclick="switchToInputPaste()">paste input text instead</button>
+                              </p><p class="text-gray-500 mb-2"> or </p><button class="mb-2 text-sm text-gray-500 dark:text-gray-400 bg-neutral-200 hover:bg-neutral-300 p-2 rounded-md" onclick="switchToInputPaste()">Enter variants</button>
                             </div>
                             <input type="file" name="input-file" id="input-file" multiple onchange="onInputFileChange(event)" />
                           </div>
                         </label>
-                        <div id="input-paste-area" class="hidden relative w-full h-64 border-2 border-gray-300 border-dashed rounded-lg">
-                          <textarea id="input-text" class="resize-none w-full h-full" placeholder="Copy and paste an input file's content. VCF is supported. A quick and simple format is space-delimited one:
+                        <div id="input-paste-area" class="hidden relative w-full h-64 border-2 border-gray-300 border-dashed rounded-md">
+                          <textarea id="input-text" class="font-mono border-0 bg-gray-50 text-gray-600 p-4 resize-none w-full h-full" onkeyup="onChangeInputText(event)" placeholder="Copy and paste or type input variants. VCF is supported. A quick and simple format is space-delimited one:
 
 chr1 9384934 + A T
 
@@ -251,7 +278,7 @@ Alternatively, paths to input files in the server can be used as well. For examp
 
 /mnt/oakvar/input/sample/sample_1.vcf
 "></textarea>
-                          <div class="absolute top-0 right-0 cursor-pointer" onclick="switchToInputUpload()">
+                          <div class="top-2 right-3 absolute cursor-pointer" onclick="switchToInputUpload()" title="Click to go back">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
                               <path class="stroke-gray-400" stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
                             </svg>
@@ -261,72 +288,93 @@ Alternatively, paths to input files in the server can be used as well. For examp
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                  <div id='annotchoosediv' class='container mt-4 mb-4'>
-                    <span class='text-2xl mb-4'>Step two. Choose analysis modules</span>
-                    <!--<div id="analysis-module-filter-div" class="sticky -top-1 bg-white p-4 border-gray-200 border-2 rounded-lg ml-4 mt-4 overflow-auto flex flex-col gap-8 transition-all ease-in-out">-->
-                    <div id="analysis-module-filter-div" class="bg-white p-4 border-gray-200 border-2 rounded-lg ml-4 mt-4 overflow-auto flex flex-col gap-8 h-5/6">
-                      <!--<div class="text-xl bold">Module filter</div>-->
-                      <div id="annotator-group-filter-div" class="space-x-16 h-[28rem] grid grid-cols-4">
-                        <div id="analysis-module-filter-kinds" class="h-full col-span-1">
-                          <div class="flex items-center">
-                            <input id="filter-category-all" name="filter-category" type="radio" checked class="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                            <label for="filter-category-all" class="ml-3 block text-sm font-medium text-gray-700">All</label>
-                          </div>
-                          <div class="flex items-center">
-                            <input id="filter-category-tags" name="filter-category" type="radio" checked class="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                            <label id="filter-category-tags" for="filter" class="ml-3 block text-sm font-medium text-gray-700">Developer-provided tags</label>
-                          </div>
-                        </div>
-                        <div id="analysis-module-filter-items" class="annotator-group-select h-full overflow-auto col-span-1"></div>
-                        <div id="filtered-modules-div" class="h-full overflow-auto pr-2 col-span-2 grid gap-1"></div>
+                      <div id="job-name-div" class="hidden mt-4">
+                        <textarea id="job-name" class="font-mono text-sm border-0 bg-gray-100 text-gray-600 p-4 resize-none rounded-md w-full " placeholder="(Optional) job name"></textarea>
+                      </div>
+                      <div id="submit-note-div" class="hidden mt-4">
+                        <textarea id="submit-note" class="font-mono text-sm border-0 bg-gray-100 text-gray-600 p-4 resize-none rounded-md w-full" placeholder="(Optional) note for this job"></textarea>
+                      </div>
+                      <div id="submit-job-button-div" class="mt-4 hidden">
+                        <button id="submit-job-button" type="button" class="inline-flex items-center h-12 rounded-md border border-transparent bg-indigo-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2" onclick="submit()">Annotate</button>
                       </div>
                     </div>
-                    <div id="analysis-module-select-div" class="ml-4"></div>
-                  </div>
-                  <div id='addtl-analysis-div' class='container' style='display:none'>
-                    <span class='text-2xl'>Additional Analysis</span>
-                    <div id='addtl-analysis-content'></div>
-                  </div>
-                  <div>
-                    <span style='vertical-align: top;'>Note: </span>
-                    <textarea id='jobnoteinput' rows='3' placeholder='Enter a note for the analysis (optional)'></textarea>
-                  </div>
-                  <div style='text-align: center;'>
-                    <button id="submit-job-button" class='butn submit-annotate-button'>ANNOTATE</button>
-                  </div>
+                    <div id="report-choice-div" class="hidden w-[36rem] flex flex-col justify-center items-center">
+                      <div class="text-md text-gray-600">Select optional report files to generate.</div>
+                      <div id="report-choice-items" class="w-96 h-[28rem] grid gap-2 justify-center overflow-y-auto bg-gray-100 py-4 rounded-md"></div>
+                    </div>
+                    <!-- call to action for analysis modules -->
+                    <div id="cta-analysis-module-choice" class="absolute inset-x-0 bottom-0 pb-2 sm:pb-5 hidden cursor-pointer" onclick="onClickCtaAnalysisModuleChoice()">
+                      <div class="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
+                        <div class="rounded-lg bg-indigo-50 p-2 shadow-lg sm:p-3">
+                          <div class="flex flex-wrap items-center justify-between">
+                            <div class="flex w-0 flex-1 items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                                <path class="text-gray-500" stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
+                              </svg>
+                              <p class="ml-3 truncate font-medium text-gray-500 text-center">
+                                <span>Scroll down or click to select analysis modules</span>
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div><!-- input variant panel -->
+                  <div id='analysis-module-choice-div' class='container mt-6 mb-4 hidden snap-center flex justify-center max-w-7xl h-[95vh] max-w-7xl'><!-- module selection -->
+                    <div id="analysis-module-filter-div" class="bg-white p-4 rounded-md ml-4 mt-4 overflow-auto flex flex-col gap-8 text-gray-600 h-[95vh] w-full">
+                      <div id="analysis-module-div" class="grid grid-cols-12 gap-2" style="height: calc(95vh - 8rem);">
+                        <div class="analysis-module-filter-wrapper col-span-7">
+                          <div id="analysis-module-filter-kinds" class="w-full">
+                            <button class="filter-category pinned" role="filter-category" type="button" value="all" onclick="onChangeFilterCategoryRadio(event)">All</button>
+                            <button id="tabs-1-tab-2" class="filter-category ml-2" role="filter-category" type="button" value="tags" onclick="onChangeFilterCategoryRadio(event)">Tags</button>
+                          </div>
+                          <div id="analysis-module-filter-panel-all" class="analysis-module-filter-panel w-full mt-4 overflow-auto hidden">
+                            <div id="search-filtered-modules-all" class="flex mb-2">
+                              <label for="search" class="sr-only">Search</label>
+                              <input type="text" name="search" class="block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mr-2" placeholder="Search">
+                              <button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Select all</button>
+                              <button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-2">Deselect all</button>
+                            </div>
+                            <div id="filtered-modules-all" class="filtered-modules-div overflow-auto pr-2 grid grid-cols-2 gap-1" style="height: calc(95vh - 8rem);"></div>
+                          </div>
+                          <div id="analysis-module-filter-panel-tags" class="analysis-module-filter-panel w-full mt-4 overflow-auto grid grid-cols-3 hidden">
+                            <div id="analysis-module-filter-items-tags" class="col-span-1 flex flex-col justify-center pl-1 overflow-y-auto" style="height: calc(95vh - 8rem);"></div>
+                            <div class="col-span-2">
+                              <div id="search-filtered-modules-all" class="flex mb-2">
+                                <label for="search" class="sr-only">Search</label>
+                                <input type="text" name="search" class="block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mr-2" placeholder="Search">
+                                <button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Select all</button>
+                                <button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-1">Deselect all</button>
+                              </div>
+                              <div id="filtered-modules-tags" class="filtered-modules-div overflow-auto pr-2 grid grid-cols-1 gap-1" style="height: calc(95vh - 8rem);"></div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="col-span-1 flex flex-col justify-center content-center items-center">
+                          <svg class="text-gray-400 w-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 8.25L21 12m0 0l-3.75 3.75M21 12H3" />
+                          </svg>
+                        </div>
+                        <div class="col-span-4">
+                          <div class="text-gray-600 bg-gray-100 rounded-md border border-transparent font-medium px-3 py-1.5 h-[34px] invisible">Selected analysis modules</div>
+                          <div id="search-filtered-modules-all" class="flex mb-2 mt-4">
+                            <button id="clear-selected-modules-btn" type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 h-[38px] invisible" onclick="onClickClearSelectedModulesBtn()">Clear</button>
+                          </div>
+                          <div id="selected-modules-div" class="overflow-auto p-2 bg-gray-100 rounded-md" style="height: calc(95vh - 8rem);"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div><!-- analysis module choice -->
                 </div>
                 <div id="tab_jobs" class="tabcontent hidden"></div>
                 <div id="tab_store" class="tabcontent hidden"></div>
                 <div id="tab_admin" class="tabcontent hidden"></div>
                 <div id="tab_systemnotready" class="tabcontent hidden">
-                  <!-- This example requires Tailwind CSS v2.0+ -->
                   <div class="relative z-10" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                    <!--
-    Background backdrop, show/hide based on modal state.
-
-    Entering: "ease-out duration-300"
-      From: "opacity-0"
-      To: "opacity-100"
-    Leaving: "ease-in duration-200"
-      From: "opacity-100"
-      To: "opacity-0"
-  -->
                     <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
                     <div class="fixed inset-0 z-10 overflow-y-auto">
                       <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                        <!--
-        Modal panel, show/hide based on modal state.
-
-        Entering: "ease-out duration-300"
-          From: "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-          To: "opacity-100 translate-y-0 sm:scale-100"
-        Leaving: "ease-in duration-200"
-          From: "opacity-100 translate-y-0 sm:scale-100"
-          To: "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-      -->
-                        <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+                        <div class="relative transform overflow-hidden rounded-md bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
                           <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                             <div class="sm:flex sm:items-start">
                               <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
@@ -347,8 +395,62 @@ Alternatively, paths to input files in the server can be used as well. For examp
                       </div>
                     </div>
                   </div>
-                </div>
+                </div><!-- end of system not ready dialog -->
               </div>
+              <div id="error-dialog" class="relative z-10 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true"><!-- Error dialog -->
+                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+                <div class="fixed inset-0 z-10 overflow-y-auto">
+                  <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                    <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+                      <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                          <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                            <!-- Heroicon name: outline/exclamation-triangle -->
+                            <svg class="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M12 10.5v3.75m-9.303 3.376C1.83 19.126 2.914 21 4.645 21h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 4.88c-.866-1.501-3.032-1.501-3.898 0L2.697 17.626zM12 17.25h.007v.008H12v-.008z" />
+                            </svg>
+                          </div>
+                          <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                            <h3 id="error-dialog-title" class="text-lg font-medium leading-6 text-gray-900" id="modal-title"></h3>
+                            <div class="mt-2">
+                              <p id="error-dialog-text" class="text-sm text-gray-500"></p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                        <button id="error-dialog-dismiss-button" type="button" class="inline-flex w-full justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm" onclick="hideErrorDialog()">Dismiss</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div><!-- end of error dialog -->
+              <div id="ok-dialog" class="relative z-10 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true"><!-- Ok dialog -->
+                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+                <div class="fixed inset-0 z-10 overflow-y-auto">
+                  <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                    <div class="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6">
+                      <div>
+                        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+                          <svg class="h-6 w-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                          </svg>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-5">
+                          <h3 id="ok-dialog-title" class="text-lg font-medium leading-6 text-gray-900" id="modal-title"></h3>
+                          <div class="mt-2">
+                            <p id="ok-dialog-text" class="text-sm text-gray-500"></p>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="mt-5 sm:mt-6">
+                        <button type="button" class="inline-flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:text-sm">Dismiss</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div><!-- end of Ok dialog -->
+
               <!-- /End replace -->
             </div>
           </div>
@@ -393,79 +495,6 @@ Alternatively, paths to input files in the server can be used as well. For examp
     <div id='submitdiv hidden' class='appdiv' style="display: none;">
       <table>
         <tr>
-          <td valign='top' style=''>
-            <div id='submitcontentdiv'>
-              <div id="submit-form">
-                <div id='submit-variant-div' class='container'>
-                  <span class='divtitle'>Variants</span>
-                  <table>
-                    <tr>
-                      <td>
-                        <div id='assembly-select-div'> Genome: <select id="assembly-select">
-                            <option value="hg38" selected="true">hg38/GRCh38</option>
-                            <option value="hg19">hg19/GRCh37</option>
-                            <option value="hg18">hg18/GRCh36</option>
-                          </select>
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td valign='top' class='variant-input-border-bottom' title="Upload file(s). Select multiple files using ctrl and shift keys">
-                        <br />
-                        <input type="file" name="input-file" id="input-file" multiple />
-                        <label for="input-file">Add input files</label>
-                        <button id='clear_inputfilelist_button' class='butn' onclick='onClearInputFileList()' style='display: none;'>Clear file(s)</button>
-                        <div id="mult-inputs-message" style="display: none; margin-top: 4px;">
-                          <div id="mult-inputs-list"></div>
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td valign='top' class='variant-input-border-bottom' style='text-align: left;'>
-                        <br />
-                        <div style='text-align: left;'>
-                          <textarea rows="3" id="input-text" style='' placeholder="Enter variants in a supported input format such as VCF or TSV, or type a list of the paths to input files in the server." onclick='onClickInputTextArea();' onblur='onBlurInputTextArea();'></textarea>
-                        </div>
-                        <select id='submit-input-format-select' disabled style='display: none;'>
-                          <option value=''>Detect</option>
-                        </select>
-                        <span style='font-size: 13px;'>Example:</span>
-                        <button value="vcf" class='butn input-example-button'>VCF</button>
-                        <button value="cravat" class='butn input-example-button'>TSV</button>
-                        <div class='or'>OR</div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>
-                        <div style='margin-top: 14px;'>
-                          <span style='vertical-align: top;'>Note: </span>
-                          <textarea id='jobnoteinput' rows='1' placeholder='Enter a note for the analysis (optional)'></textarea>
-                        </div>
-                      </td>
-                    </tr>
-                  </table>
-                  <div class='divbanner'></div>
-                </div>
-                <div id='annotchoosediv' class='container'>
-                  <span class='divtitle'>Annotations</span>
-                  <div id="annotdivspinnerdiv" class="spinnerdiv">
-                    <img src="/submit/nocache/broken_wheel.gif"></img>
-                  </div>
-                  <div id="analysis-module-filter-div"></div>
-                  <div id="analysis-module-select-div"></div>
-                  <div class='divbanner' style='background-color: #3175b0;'></div>
-                </div>
-                <div id='addtl-analysis-div' class='container' style='display:none'>
-                  <span class='divtitle'>Additional Analysis</span>
-                  <div id='addtl-analysis-content'></div>
-                  <div class='divbanner'></div>
-                </div>
-              </div>
-              <div style='text-align: center;'>
-                <button id="submit-job-button" class='butn submit-annotate-button'>ANNOTATE</button>
-              </div>
-            </div>
-          </td>
           <td valign='top' style='padding-left: 5px; width: 100%;'>
             <div id="jobdiv">
               <div id="jobdivspinnerdiv" class="spinnerdiv">

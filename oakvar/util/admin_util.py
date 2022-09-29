@@ -84,12 +84,11 @@ def get_package_versions():
     from requests import get
     from requests.exceptions import ConnectionError
     from packaging.version import Version
+    from ..exceptions import InternetConnectionError
 
     try:
         r = get("https://pypi.org/pypi/oakvar/json", timeout=(3, None))
     except ConnectionError:
-        from ..exceptions import InternetConnectionError
-
         raise InternetConnectionError()
     if r.status_code == 200:
         d = json.loads(r.text)

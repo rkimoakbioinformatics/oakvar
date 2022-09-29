@@ -33,6 +33,7 @@ server_ready = False
 servermode = None
 logger = None
 mu = None
+local_manifest = None
 
 class InstallProgressMpDict(InstallProgressHandler):
     def __init__(self, module_name, module_version, install_state, quiet=True):
@@ -154,11 +155,15 @@ async def get_remote_module_output_columns(request):
 async def get_local_manifest(_):
     from ...module.cache import get_module_cache
 
+    global local_manifest
     handle_modules_changed()
-    content = {}
-    for k, v in get_module_cache().local.items():
-        content[k] = v.serialize()
-    return web.json_response(content)
+    if local_manifest:
+        return web.json_response(local_manifest)
+    local_manifest = {}
+    locals = get_module_cache().local
+    for k, v in locals.items():
+        local_manifest[k] = v.serialize()
+    return web.json_response(local_manifest)
 
 
 async def get_storeurl(request):
@@ -435,9 +440,11 @@ async def update_remote(request):
 def handle_modules_changed():
     from ...module.cache import get_module_cache
 
+    global local_manifest
     if local_modules_changed and local_modules_changed.is_set():
         get_module_cache().update_local()
         local_modules_changed.clear()
+        local_manifest = None
 
 
 async def get_remote_manifest_from_local(request):

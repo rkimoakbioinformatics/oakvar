@@ -119,7 +119,7 @@ class NoInput(ExpectedException):
     halt = True
 
     def __init__(self):
-        super().__init__("no input was given.")
+        super().__init__("no valid input was given.")
 
 
 class InvalidInputFormat(ExpectedException):
@@ -135,9 +135,9 @@ class SystemMissingException(ExpectedException):
 
     def __init__(self, msg=""):
         if msg is not None and msg != "":
-            msg = f"OakVar is not ready ({msg}). 'ov system setup' to set up OakVar."
+            msg = f"OakVar system component is missing ({msg}).\nPlease run 'ov system setup' to set up OakVar."
         else:
-            msg = f"OakVar is not ready. 'ov system setup' to set up OakVar."
+            msg = f"OakVar system component is missing.\nPlease run 'ov system setup' to set up OakVar."
         super().__init__(msg)
 
 

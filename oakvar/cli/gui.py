@@ -50,6 +50,7 @@ def get_protocol(args={}):
 
 def setup(args={}):
     from os.path import abspath
+    from ..gui.websubmit import multiuser as mu
 
     if args.get("result"):
         args["headless"] = False
@@ -57,6 +58,8 @@ def setup(args={}):
     elif args.get("servermode"):
         args["headless"] = True
     inject_module_variables(args=args)
+    loop = get_event_loop()
+    loop.run_until_complete(mu.get_admindb())
     args["ssl_enabled"] = False
 
 
@@ -208,6 +211,7 @@ def get_logger(args={}):
     from logging.handlers import TimedRotatingFileHandler
     from ..system.consts import log_dir_key
 
+    global log_path
     log_dir = args.get("sysconf", {}).get(log_dir_key)
     log_path = join(log_dir, "wcravat.log")
     logger = getLogger()
@@ -297,14 +301,15 @@ def gui(args, __name__="gui"):
         url = get_url(args=args)
         main(url=url, args=args)
     except Exception as e:
-        logger = args.get("logger")
+        #logger = args.get("logger")
+        logger = get_logger(args=args)
         if logger:
             logger.exception(e)
         if args.get("debug"):
             print_exc()
         if logger:
             logger.info("Exiting...")
-        stderr.write(f"Error with OakVar server.\nCheck {log_path} for details.\n")
+        stderr.write(f"{e}\nCheck {log_path} for details.\n")
     finally:
         logger = args.get("logger")
         if logger:

@@ -205,6 +205,7 @@ function processSignup(username, password, retypepassword, question, answer) {
 async function checkLogged(inUsername) {
   var res = await axios.get("/server/checklogged", { params: { username: inUsername } })
   var data = res.data
+  console.log("@ data=", data)
   logged = data["logged"]
   if (logged == true) {
     username = data["email"]
@@ -273,7 +274,7 @@ function populateAdminTab() {
   btn.classList.add("butn");
   btn.textContent = "Update";
   btn.style.marginLeft = "10px";
-  btn.addEventListener("click", function (evt) {
+  btn.addEventListener("click", function (_) {
     updateAdminTabContent();
   });
   addEl(ssdiv, btn);
@@ -281,7 +282,7 @@ function populateAdminTab() {
   btn.classList.add("butn");
   btn.textContent = "Export";
   btn.style.marginLeft = "10px";
-  btn.addEventListener("click", function (evt) {
+  btn.addEventListener("click", function (_) {
     exportContentAdminPanel();
   });
   addEl(ssdiv, btn);
@@ -350,7 +351,7 @@ function populateAdminTab() {
   // Restart button
   var btn = getEl("button");
   btn.textContent = "Restart Server";
-  btn.addEventListener("click", function (evt) {
+  btn.addEventListener("click", function (_) {
     var url = "/server/restart";
     var xhr = new XMLHttpRequest();
     xhr.open("GET", url, true);
@@ -366,8 +367,6 @@ function populateAdminTab() {
 function updateAdminTabContent() {
   populateInputStatDiv();
   populateUserStatDiv();
-  populateJobStatDiv();
-  populateAnnotStatDiv();
   populateAssemblyStatDiv();
 }
 
@@ -474,191 +473,6 @@ function populateUserStatDiv() {
   });
 }
 
-function populateJobStatDiv() {
-  var startDate = document.getElementById("admindiv-startdate-input").value;
-  var endDate = document.getElementById("admindiv-enddate-input").value;
-  var sdiv = document.getElementById("admindiv-jobstat-contentdiv");
-  $(sdiv).empty();
-  var table = getEl("table");
-  addEl(sdiv, table);
-  var canvas = getEl("canvas");
-  addEl(sdiv, canvas);
-  $.ajax({
-    url: "/server/jobstat",
-    data: { start_date: startDate, end_date: endDate },
-    success: function (response) {
-      //
-      var num_jobs = response["num_jobs"];
-      var tr = getEl("tr");
-      var td = getEl("td");
-      td.textContent = "Total number of jobs:\xa0";
-      addEl(tr, td);
-      var td = getEl("td");
-      td.textContent = num_jobs;
-      addEl(tr, td);
-      addEl(table, tr);
-      var chartdata = response["chartdata"];
-      var submits = chartdata[0];
-      var counts = chartdata[1];
-      var chart = new Chart(canvas, {
-        type: "bar",
-        data: {
-          datasets: [
-            {
-              data: counts,
-            },
-          ],
-          labels: submits,
-        },
-        options: {
-          scales: {
-            xAxes: [
-              {
-                type: "time",
-                time: {
-                  unit: "day",
-                },
-                scaleLabel: {
-                  display: true,
-                  labelString: "Date",
-                },
-              },
-            ],
-            yAxes: [
-              {
-                ticks: {
-                  min: 0,
-                },
-                scaleLabel: {
-                  display: true,
-                  labelString: "Number of Jobs",
-                },
-              },
-            ],
-          },
-          elements: {
-            line: {
-              tension: 0,
-            },
-          },
-          legend: {
-            display: false,
-          },
-        },
-      });
-    },
-  });
-}
-
-function populateAnnotStatDiv() {
-  var startDate = document.getElementById("admindiv-startdate-input").value;
-  var endDate = document.getElementById("admindiv-enddate-input").value;
-  var sdiv = document.getElementById("admindiv-annotstat-contentdiv");
-  $(sdiv).empty();
-  sdiv.style.width = "800px";
-  sdiv.style.height = "700px";
-  var table = getEl("table");
-  addEl(sdiv, table);
-  var chartdiv = getEl("canvas");
-  chartdiv.id = "admindiv-annotstat-chart1";
-  addEl(sdiv, chartdiv);
-  $.ajax({
-    url: "/server/annotstat",
-    data: { start_date: startDate, end_date: endDate },
-    success: function (response) {
-      //
-      var annotCount = response["annot_count"];
-      var annots = Object.keys(annotCount);
-      for (var i = 0; i < annots.length - 1; i++) {
-        for (var j = i + 1; j < annots.length; j++) {
-          if (annotCount[annots[i]] < annotCount[annots[j]]) {
-            var tmp = annots[i];
-            annots[i] = annots[j];
-            annots[j] = tmp;
-          }
-        }
-      }
-      var tr = getEl("tr");
-      var td = getEl("td");
-      td.textContent = "Module";
-      td.style.textDecoration = "underline";
-      td.style.textDecorationColor = "#aaaaaa";
-      addEl(tr, td);
-      var td = getEl("td");
-      td.textContent = "Number of jobs";
-      td.style.textDecoration = "underline";
-      td.style.textDecorationColor = "#aaaaaa";
-      addEl(tr, td);
-      addEl(table, tr);
-      var tbody = getEl("tbody");
-      addEl(table, tbody);
-      var counts = [];
-      for (var i = 0; i < annots.length; i++) {
-        var tr = getEl("tr");
-        var td = getEl("td");
-        td.textContent = annots[i];
-        addEl(tr, td);
-        var td = getEl("td");
-        td.textContent = annotCount[annots[i]];
-        counts.push(annotCount[annots[i]]);
-        addEl(tr, td);
-        addEl(table, tr);
-      }
-      var chart = new Chart(chartdiv, {
-        type: "doughnut",
-        data: {
-          datasets: [
-            {
-              data: counts,
-            },
-          ],
-          labels: annots,
-        },
-      });
-    },
-  });
-}
-
-function populateAssemblyStatDiv() {
-  var startDate = document.getElementById("admindiv-startdate-input").value;
-  var endDate = document.getElementById("admindiv-enddate-input").value;
-  var sdiv = document.getElementById("admindiv-assemblystat-contentdiv");
-  $(sdiv).empty();
-  var table = getEl("table");
-  addEl(sdiv, table);
-  $.ajax({
-    url: "/server/assemblystat",
-    data: { start_date: startDate, end_date: endDate },
-    success: function (response) {
-      var thead = getEl("thead");
-      var tr = getEl("tr");
-      var td = getEl("td");
-      td.textContent = "Genome assembly";
-      td.style.textDecoration = "underline";
-      td.style.textDecorationColor = "#aaaaaa";
-      addEl(tr, td);
-      var td = getEl("td");
-      td.textContent = "Number of jobs";
-      td.style.textDecoration = "underline";
-      td.style.textDecorationColor = "#aaaaaa";
-      addEl(tr, td);
-      addEl(table, tr);
-      var tbody = getEl("tbody");
-      addEl(table, tbody);
-      for (var i = 0; i < response.length; i++) {
-        var tr = getEl("tr");
-        var td = getEl("td");
-        td.textContent = response[i][0];
-        addEl(tr, td);
-        var td = getEl("td");
-        td.textContent = response[i][1];
-        addEl(tr, td);
-        addEl(table, tr);
-      }
-    },
-  });
-}
-
 function msgAccountDiv(msg, callback) {
   var div = getEl("div");
   if (typeof msg == "string") {
@@ -677,7 +491,7 @@ function isGuestAccount(username) {
   }
 }
 
-function exportContentAdminPanel(tabName) {
+function exportContentAdminPanel(_) {
   var content = "";
   document.querySelectorAll(".adminsection-div").forEach(function (div) {
     var title = div.querySelector("span").textContent;
@@ -818,4 +632,4 @@ function onClickSigninSecondary() {
   document.getElementById("signup_btn").classList.add("hide");
 }
 
-window.onload = function (evt) {};
+window.onload = function (_) {};

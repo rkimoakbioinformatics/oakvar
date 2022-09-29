@@ -394,13 +394,6 @@ transition-duration: 150ms;
     font-size: 11px;
 }
 
-.submit-annotate-button {
-    font-size: 24px; 
-    width: 391px;
-    padding: 9px;
-    background-color: #de6342;
-}
-
 .launch-button {
     background-color: #c5af8d;
 }
@@ -639,10 +632,6 @@ transition-duration: 150ms;
     width: 200px;
     height: 30px;
     color: white;
-}
-
-#submit-job-button:disabled {
-    background-color: gray;
 }
 
 #update-remote-spinner-div {

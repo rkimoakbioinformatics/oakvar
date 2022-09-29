@@ -26,213 +26,17 @@ var JOB_IDS = [];
 var jobListUpdateIntervalFn = null;
 var reportRunning = {};
 var systemConf;
-var moduleDatas = []
-var moduleNames = []
-var NO_TAG = "no tag"
-
-function submit() {
-  if (logged == false) {
-    alert("Log in before submitting a job.");
-    return;
-  }
-  formData = new FormData();
-  var textInputElem = $("#input-text");
-  var textVal = textInputElem.val();
-  let inputFiles = [];
-  let inputServerFiles = [];
-  if (inputFileList.length > 0 && textVal.length > 0) {
-    var alertDiv = getEl("div");
-    var span = getEl("span");
-    span.textContent = 'Use only one of "Add input files" and the input box';
-    addEl(alertDiv, span);
-    showYesNoDialog(alertDiv, null, false, true);
-    return;
-  }
-  if (textVal.length > 0) {
-    if (textVal.startsWith("#serverfile")) {
-      let toks = textVal.split("\n");
-      for (var i = 1; i < toks.length; i++) {
-        let tok = toks[i];
-        if (tok == "") {
-          continue;
-        }
-        inputServerFiles.push(tok.trim());
-      }
-    } else {
-      var textBlob = new Blob([textVal], { type: "text/plain" });
-      inputFiles.push(new File([textBlob], "input"));
-    }
-  } else {
-    inputFiles = inputFileList;
-  }
-  if (inputFiles.length === 0 && inputServerFiles.length == 0) {
-    alert(
-      "Choose a input variant files, enter variants/server input file paths, or click an input example button."
-    );
-    return;
-  }
-  for (var i = 0; i < inputFiles.length; i++) {
-    formData.append("file_" + i, inputFiles[i]);
-  }
-  var submitOpts = {
-    annotators: [],
-    reports: [],
-  };
-  var annotChecks = $("#analysis-module-select-div").find(
-    "input[type=checkbox][kind=module]"
-  );
-  for (var i = 0; i < annotChecks.length; i++) {
-    var cb = annotChecks[i];
-    if (cb.checked) {
-      submitOpts.annotators.push(cb.value);
-    }
-  }
-  var reportChecks = $("#report-select-div").find(".checkbox-group-check");
-  for (var i = 0; i < reportChecks.length; i++) {
-    var cb = reportChecks[i];
-    if (cb.checked) {
-      submitOpts.reports.push(cb.value);
-    }
-  }
-  var assmSelect = $("#assembly-select");
-  var assembly = assmSelect.val();
-  if (assembly !== null) {
-    submitOpts.assembly = assembly;
-  } else {
-    showYesNoDialog(
-      "Please select a genome version",
-      () => {
-        $("#assembly-select-div").css("border", "2px solid red");
-        setTimeout(() => {
-          $("#assembly-select-div").css("border", "none");
-        }, 2000);
-      },
-      false,
-      true
-    );
-    return;
-  }
-  submitOpts.forcedinputformat = $("#submit-input-format-select").val();
-  var note = document.getElementById("jobnoteinput").value;
-  submitOpts.note = note;
-  submitOpts.inputServerFiles = inputServerFiles;
-  document.querySelector("#submit-job-button").disabled = true;
-  formData.append("options", JSON.stringify(submitOpts));
-  // AddtlAnalysis
-  for (addtlName of addtlAnalysis.names) {
-    let addtlData = addtlAnalysis.fetchers[addtlName]();
-    if (addtlData != undefined) {
-      formData.append(addtlName, addtlAnalysis.fetchers[addtlName]());
-    }
-  }
-  var guiInputSizeLimit = parseInt(
-    document.getElementById("settings_gui_input_size_limit").value
-  );
-  var sumInputSize = 0;
-  for (var i = 0; i < inputFiles.length; i++) {
-    sumInputSize += inputFiles[i].size;
-  }
-  sumInputSize = sumInputSize / 1024 / 1024;
-  if (sumInputSize > guiInputSizeLimit) {
-    var alertDiv = getEl("div");
-    var span = getEl("span");
-    span.textContent =
-      "Input files are limited to " + guiInputSizeLimit.toFixed(1) + " MB.";
-    addEl(alertDiv, span);
-    addEl(alertDiv, getEl("br"));
-    /*if (!servermode) {
-      addEl(alertDiv, getEl("br"));
-      var span = getEl("span");
-      span.textContent = "The limit can be changed at the settings menu.";
-      addEl(alertDiv, span);
-      addEl(alertDiv, getEl("br"));
-    }*/
-    showYesNoDialog(alertDiv, enableSubmitButton, false, true);
-  } else {
-    commitSubmit();
-  }
-
-  function enableSubmitButton() {
-    document.querySelector("#submit-job-button").disabled = false;
-  }
-
-  function commitSubmit(flag) {
-    if (flag == false) {
-      document.querySelector("#submit-job-button").disabled = false;
-      return;
-    }
-    showSpinner();
-    var req = new XMLHttpRequest();
-    req.open("POST", "/submit/submit");
-    //req.setRequestHeader('Content-Type', 'multipart/form-data; boundary=blob');
-    req.upload.onprogress = function (evt) {
-      var uploadPerc = (evt.loaded / evt.total) * 100;
-      document.querySelector("#spinner-div-progress-bar").style.width =
-        uploadPerc + "%";
-      document.querySelector("#spinner-div-progress-num").textContent =
-        uploadPerc.toFixed(0) + "%";
-    };
-    req.onload = function (evt) {
-      document.querySelector("#submit-job-button").disabled = false;
-      hideSpinner();
-      const status = evt.currentTarget.status;
-      if (status === 200) {
-        var response = JSON.parse(evt.currentTarget.response);
-        if (response["status"]["status"] == "Submitted") {
-          submittedJobs.push(response);
-          addJob(response, true);
-          //sortJobs();
-          buildJobsTable();
-        }
-        if (response.expected_runtime > 0) {
-        }
-        jobRunning[response["id"]] = true;
-      } else if (status >= 400 && status < 600) {
-        var response = JSON.parse(evt.currentTarget.response);
-        var alertDiv = getEl("div");
-        var h3 = getEl("h3");
-        h3.textContent = "Upload Failure";
-        addEl(alertDiv, h3);
-        var span = getEl("span");
-        span.textContent =
-          "This is often caused by improper input files. Check that your input is in a form OakVar accepts.";
-        addEl(alertDiv, span);
-        addEl(alertDiv, getEl("br"));
-        addEl(alertDiv, getEl("br"));
-        var span = getEl("span");
-        span.innerHTML =
-          'If you think this was caused by an error, <a href="mailto:support@cravat.us">let us know</a>';
-        addEl(alertDiv, span);
-        addEl(alertDiv, getEl("br"));
-        addEl(alertDiv, getEl("br"));
-        var span = getEl("span");
-        span.innerText = "Details: " + response.msg;
-        addEl(alertDiv, span);
-        showYesNoDialog(alertDiv, null, false, true);
-      }
-    };
-    req.onerror = function (evt) {
-      document.querySelector("#submit-job-button").disabled = false;
-      hideSpinner();
-    };
-    req.onabort = function (evt) {
-      document.querySelector("#submit-job-button").disabled = false;
-      hideSpinner();
-    };
-    req.send(formData);
-  }
-}
-
-function showSpinner() {
-  document.querySelector("#spinner-div").classList.remove("hidden");
-}
-
-function hideSpinner() {
-  document.querySelector("#spinner-div").classList.add("hidden");
-}
+var moduleDatas = {}
+var moduleNames = {}
+var NO_TAG = "no tag";
+var DEFAULT_GENOME_ASSEMBLY = "hg38";
+var AP_KEY = "ap"
+var R_KEY = "r"
 
 function showUpdateRemoteSpinner() {
-  document.querySelector("#update-remote-spinner-div").classList.remove("hidden");
+  document
+    .querySelector("#update-remote-spinner-div")
+    .classList.remove("hidden");
 }
 
 function hideUpdateRemoteSpinner() {
@@ -287,7 +91,7 @@ function addJob(job, prepend) {
   }
 }
 
-function createJobReport(evt) {
+function createJobReport(_) {
   var div = document.querySelector("#report_generation_div");
   var jobId = div.getAttribute("jobid");
   closeReportGenerationDiv();
@@ -463,14 +267,14 @@ function populateJobTr(job) {
       button.classList.add("launch-button");
       button.disabled = !job.viewable;
       button.setAttribute("job_id", job.id);
-      button.addEventListener("click", function (evt) {
+      button.addEventListener("click", function (_) {
         this.textContent = "Updating DB...";
         var jobId = this.getAttribute("job_id");
         $.ajax({
           url: "/submit/updateresultdb",
           type: "GET",
           data: { job_id: jobId },
-          success: function (response) {
+          success: function (_) {
             showJobListPage();
           },
         });
@@ -485,11 +289,11 @@ function populateJobTr(job) {
       var btn = getEl("button");
       btn.classList.add("butn");
       btn.textContent = "Resubmit";
-      btn.addEventListener("click", function (evt) {
+      btn.addEventListener("click", function (_) {
         $.get("/submit/resubmit", {
           job_id: job.id,
           job_dir: job.job_dir,
-        }).done(function (response) {
+        }).done(function (_) {
           setTimeout(function () {
             populateJobs();
           }, 3000);
@@ -607,7 +411,7 @@ function populateJobTr(job) {
   return true;
 }
 
-function closeReportGenerationDiv(evt) {
+function closeReportGenerationDiv(_) {
   var div = document.querySelector("#report_generation_div");
   div.classList.remove("show");
 }
@@ -777,7 +581,7 @@ function buildJobsTable() {
     }
     if (alreadyInList) {
       if (submittedJobInList["status"]["status"] != "Submitted") {
-        var p = submittedJobs.pop();
+        submittedJobs.pop();
       }
     } else {
       submittedJob.status = "Submitted";
@@ -926,7 +730,7 @@ function deleteJob(jobId) {
     url: "/submit/jobs/" + jobId,
     type: "DELETE",
     contentType: "application/json",
-    success: function (data) {
+    success: function (_) {
       populateJobs().then(() => {
         showJobListPage();
       });
@@ -947,36 +751,39 @@ function deleteJob(jobId) {
   }
 }
 
-function inputExampleChangeHandler(event) {
-  var elem = $(event.target);
-  var format = elem.val();
-  var assembly = $("#assembly-select").val();
-  assembly = assembly === null ? "hg38" : assembly;
-  var formatAssembly = format + "." + assembly;
-  var getExampleText = new Promise((resolve, reject) => {
-    var cachedText = GLOBALS.inputExamples[formatAssembly];
-    if (cachedText === undefined) {
-      var fname = formatAssembly + ".txt";
-      $.ajax({
-        url: "/submit/input-examples/" + fname,
-        type: "GET",
-        contentType: "application/json",
-        success: function (data) {
-          clearInputFileList();
-          document.querySelector("#input-file").value = "";
-          GLOBALS.inputExamples[formatAssembly] = data;
-          resolve(data);
-        },
-      });
-    } else {
-      resolve(cachedText);
-    }
-  });
-  getExampleText.then((text) => {
-    var inputArea = $("#input-text");
-    inputArea.val(text);
-    inputArea.change();
-  });
+function getGenomeAssemblyDiv() {
+  return document.querySelector("#assembly-select-panel");
+}
+
+function getGenomeAssemblySelection() {
+  var assembly = getGenomeAssemblyDiv().getAttribute("value");
+  if (assembly == "" || assembly == "auto") {
+    assembly = DEFAULT_GENOME_ASSEMBLY;
+  }
+  return assembly;
+}
+
+function inputExampleChangeHandler(evt) {
+  var format = evt.target.value
+  var assembly = getGenomeAssemblySelection()
+  var formatAssembly = format + "." + assembly
+  if (GLOBALS.inputExamples[formatAssembly] == undefined) {
+    var fname = formatAssembly + ".txt"
+    axios.get("/submit/input-examples/" + fname)
+    .then(function(res) {
+      var data = res.data
+      document.querySelector("#input-file").value = ""
+      GLOBALS.inputExamples[formatAssembly] = data
+      var inputArea = getInputTextarea()
+      inputArea.value = GLOBALS.inputExamples[formatAssembly]
+    })
+  } else {
+    var inputArea = getInputTextarea()
+    inputArea.value = GLOBALS.inputExamples[formatAssembly]
+  }
+  setTimeout(function() {
+    doSmartShowHideAnalysisModuleChoiceDiv()
+  }, 100)
 }
 
 function allNoAnnotatorsHandler(event) {
@@ -1052,7 +859,7 @@ function showJobListPage() {
                 console.error(e);
               }
             })
-            .catch(function (err) {
+            .catch(function (_) {
               console.error(e);
             });
         }, 1000);
@@ -1064,7 +871,7 @@ function showJobListPage() {
 }
 
 function populateJobs() {
-  return new Promise((resolve, reject) => {
+  return new Promise((_a, _) => {
     $.ajax({
       url: "/submit/jobs",
       type: "GET",
@@ -1075,7 +882,7 @@ function populateJobs() {
         jobsListCurEnd = jobsListCurStart + jobsPerPageInList;
         showJobListPage();
       },
-      fail: function (response) {
+      fail: function (_) {
         alert("fail at populate jobs");
       },
     });
@@ -1084,14 +891,6 @@ function populateJobs() {
 
 function refreshJobsTable() {
   populateJobs();
-}
-
-async function populateAnnotators() {
-  var res = await axios.get("/submit/annotators")
-  GLOBALS.annotators = res.data
-  res = await axios.get("/submit/postaggregators")
-  GLOBALS.postaggregators = res.data
-  makeModuleDatas()
 }
 
 function titleCase(str) {
@@ -1115,179 +914,135 @@ function collectDeveloperProvidedTags() {
       }
     }
   }
-  collectedTags.sort()
+  collectedTags.sort();
 }
 
 function escapeTag(s) {
-  return s.replace(" ", "_")
+  return s.replace(" ", "_");
 }
 
-function buildDeveloperTagSelector() {
-  collectDeveloperProvidedTags();
-  var wrapper = document.querySelector("#analysis-module-filter-items");
-  var tagWrapper = getEl("div");
-  tagWrapper.classList.add("checkbox-group-flexbox");
-  addEl(wrapper, tagWrapper);
-  for (let tag of collectedTags) {
-    let tagDiv = getEl("div");
-    tagDiv.classList.add("submit-annot-tag");
-    tagDiv.classList.add("relatve", "flex", "items-start");
-    addEl(tagWrapper, tagDiv);
-    var div2 = getEl("div");
-    div2.classList.add("flex", "items-center");
-    addEl(tagDiv, div2);
-    var cb = getEl("input");
-    console.log("@ tag=", tag)
-    var tagEscaped = escapeTag(tag)
-    var uid = "module-tag-radio-" + tagEscaped
-    cb.id = uid
-    cb.type = "radio";
-    cb.name = "module-tag"
-    cb.setAttribute("value", tag)
-    cb.classList.add(
-      "h-4",
-      "w-4",
-      "border-gray-300",
-      "text-indigo-600",
-      "focus:ring-indigo-500"
-    );
-    cb.addEventListener("change", (evt) => {
-      onChangeModuleTag(evt)
+function getModuleFilterItem(value, kind, handler) {
+  let div = getEl("div");
+  div.classList.add(...stringToArray("relatve flex items-start mb-2"))
+  var div2 = getEl("div");
+  div2.classList.add(...stringToArray("flex items-center"))
+  addEl(div, div2);
+  var cb = getEl("input");
+  var valueEscaped = escapeTag(value);
+  var uid = "module-" + kind + "-radio-" + valueEscaped;
+  cb.id = uid;
+  cb.type = "radio";
+  cb.name = "module-" + kind;
+  cb.setAttribute("value", value);
+  cb.classList.add(...stringToArray("h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500"))
+  if (handler) {
+    cb.addEventListener("change", function (evt) {
+      handler(evt);
     });
-    addEl(div2, cb);
-    var label = getEl("label");
-    label.setAttribute("for", uid)
-    label.classList.add("ml-3", "block", "text-sm", "font-medium", "text-gray-700")
-    label.textContent = titleCase(tag);
-    addEl(div2, label);
+  }
+  addEl(div2, cb);
+  var label = getEl("label");
+  label.setAttribute("for", uid);
+  label.classList.add(...stringToArray("ml-3 block text-sm font-medium text-gray-600"))
+  label.textContent = titleCase(value);
+  addEl(div2, label);
+  return div;
+}
+
+function buildAllSelector() {
+  var wrapper = document.querySelector("#analysis-module-filter-items-all");
+  var div = getModuleFilterItem("All", "all", null);
+  addEl(wrapper, div);
+}
+
+function populateModuleFilterPanelAll() {
+  populateFilteredModules("all", function (_) {
+    return true;
+  });
+}
+
+function populateModuleFilterPanelTags() {
+  collectDeveloperProvidedTags();
+  var wrapper = document.querySelector("#analysis-module-filter-items-tags");
+  for (let tag of collectedTags) {
+    var div = getModuleFilterItem(tag, "tag", onChangeModuleTag);
+    addEl(wrapper, div);
   }
 }
 
-function getFilteredModulesDiv() {
-  return document.querySelector("#filtered-modules-div")
+function getFilteredModulesDiv(kind) {
+  return document.querySelector("#filtered-modules-" + kind);
+}
+
+function populateFilteredModules(kind, func) {
+  var div = getFilteredModulesDiv(kind);
+  div.replaceChildren();
+  for (var moduleName of moduleNames[AP_KEY]) {
+    var data = moduleDatas[AP_KEY][moduleName];
+    if (func(data)) {
+      var card = getModuleCard(data, callbackClickModuleCardAP)
+      addEl(div, card);
+    }
+  }
 }
 
 function onChangeModuleTag(evt) {
-  var div = getFilteredModulesDiv()
-  div.replaceChildren()
-  var tag = evt.target.value
-  for (var moduleName of moduleNames) {
-    var data = moduleDatas[moduleName]
-    if ((tag == NO_TAG && data.tags.length == 0) || data.tags.indexOf(tag) >= 0) {
-      var card = getModuleCard(data)
-      addEl(div, card)
+  var tag = evt.target.value;
+  var func = function (data) {
+    return (
+      (tag == NO_TAG && data.tags.length == 0) || data.tags.indexOf(tag) >= 0
+    );
+  };
+  populateFilteredModules("tags", func);
+}
+
+function getModuleInfoByTypes(...types) {
+  var modules = []
+  for (var i=0; i<types.length; i++) {
+    modules = modules.concat(getModuleInfoByType(types[i]))
+  }
+  modules.sort(titleSortFunc)
+  return modules
+}
+
+function getModuleData(module) {
+  return {
+    name: module.name,
+    value: module.name,
+    title: module.title,
+    type: module.type,
+    checked: false,
+    kind: "module",
+    groups: module["groups"],
+    desc: module.description,
+    tags: module.tags,
+  }
+}
+
+function makeModuleDatas(key, types) {
+  var modules = getModuleInfoByTypes(...types)
+  moduleDatas[key] = {}
+  moduleNames[key] = []
+  for (let i = 0; i < modules.length; i++) {
+    var module = modules[i];
+    moduleDatas[key][module.name] = getModuleData(module)
+    moduleNames[key].push(module.name)
+  }
+}
+
+function removeNonfileReporterModuleDatas() {
+  for (var name in moduleDatas[R_KEY]) {
+    var conf = localModuleInfo[name].conf
+    if (! conf || conf["output_filename_schema"] == undefined) {
+      delete moduleDatas[R_KEY][name]
     }
   }
 }
 
-function makeModuleDatas() {
-  var modules = Object.assign({}, GLOBALS.annotators, GLOBALS.postaggregators)
-  var moduleInfos = Object.values(modules);
-  // Sort by title
-  moduleInfos.sort((a, b) => {
-    var x = a.title.toLowerCase();
-    var y = b.title.toLowerCase();
-    if (x < y) {
-      return -1;
-    }
-    if (x > y) {
-      return 1;
-    }
-    return 0;
-  });
-  moduleDatas = {}
-  moduleNames = []
-  for (let i = 0; i < moduleInfos.length; i++) {
-    var annotInfo = moduleInfos[i];
-    var module = localModuleInfo[annotInfo.name];
-    var kind = null;
-    moduleDatas[annotInfo.name] = {
-      name: annotInfo.name,
-      value: annotInfo.name,
-      title: annotInfo.title,
-      type: annotInfo.type,
-      checked: false,
-      kind: "module",
-      groups: module["groups"],
-      desc: annotInfo.description,
-      tags: module.tags,
-    }
-    moduleNames.push(annotInfo.name)
-  }
-}
-
-function getModuleCard(moduleData) {
-  if (moduleData.kind == "group") {
-    return null;
-  }
-  var moduleCardDiv = getEl("div");
-  moduleCardDiv.classList.add("modulecard");
-  moduleCardDiv.classList.add(
-    "relative",
-    "flex",
-    "items-center",
-    "space-x-3",
-    "rounded-lg",
-    "border",
-    "border-gray-300",
-    "bg-white",
-    "px-6",
-    "py-5",
-    "shadow-sm",
-    "focus-within:ring-2",
-    "focus-within:ring-indigo-500",
-    "focus-within:ring-offset-2",
-    "hover:border-gray-400"
-  );
-  if (moduleData.checked) {
-    moduleCardDiv.classList.add("checked")
-  }
-  moduleCardDiv.setAttribute("name", moduleData.name);
-  moduleCardDiv.setAttribute("kind", moduleData.kind);
-  moduleCardDiv.addEventListener("click", function(evt) {
-    var target = evt.target.closest(".modulecard")
-    var moduleName = target.getAttribute("name")
-    var data = moduleDatas[moduleName]
-    data.checked = ! data.checked
-    var card = getModuleCard(data)
-    target.replaceWith(card)
-  })
-  var div3 = getEl("div");
-  div3.classList.add("flex-shrink-0");
-  addEl(moduleCardDiv, div3);
-  var img = getEl("img");
-  img.classList.add("h-10", "w-10", "rounded-lg");
-  img.src = "/store/locallogo?module=" + moduleData.name;
-  addEl(div3, img);
-  var div4 = getEl("div");
-  div4.classList.add("min-w-0", "flex-1");
-  addEl(moduleCardDiv, div4);
-  var a = getEl("div");
-  a.classList.add("focus:outline-none");
-  addEl(div4, a);
-  var span = getEl("span");
-  span.classList.add("absolute", "inset-0");
-  span.setAttribute("aria-hidden", true);
-  addEl(a, span);
-  var p = getEl("p");
-  p.classList.add("text-sm", "font-medium", "text-gray-900");
-  p.textContent = moduleData.title;
-  addEl(a, p);
-  var p2 = getEl("p");
-  p2.classList.add("text-sm", "text-gray-500");
-  p2.textContent = moduleData.desc;
-  addEl(a, p2);
-  return moduleCardDiv
-}
-
-function checkVisible(elm) {
-  // https://stackoverflow.com/questions/5353934/check-if-element-is-visible-on-screen
-  var rect = elm.getBoundingClientRect();
-  var viewHeight = Math.max(
-    document.documentElement.clientHeight,
-    window.innerHeight
-  );
-  return !(rect.bottom < 0 || rect.top - viewHeight >= 0);
+async function makeAllModuleDatas() {
+  makeModuleDatas(AP_KEY, ["annotator", "postaggregator"])
+  makeModuleDatas(R_KEY, ["reporter"])
+  removeNonfileReporterModuleDatas()
 }
 
 function onTabChange() {
@@ -1304,12 +1059,12 @@ function onTabChange() {
 }
 
 function getJobsDir() {
-  $.get("/submit/getjobsdir").done(function (response) {});
+  $.get("/submit/getjobsdir").done(function (_) {});
 }
 
 function setJobsDir(evt) {
   var d = evt.target.value;
-  $.get("/submit/setjobsdir", { jobsdir: d }).done(function (response) {
+  $.get("/submit/setjobsdir", { jobsdir: d }).done(function (_) {
     populateJobsTable();
   });
 }
@@ -1369,7 +1124,7 @@ function openSubmitDiv() {
 }
 
 async function loadSystemConf() {
-  var response = await axios.get("/submit/getsystemconfinfo")
+  var response = await axios.get("/submit/getsystemconfinfo");
   systemConf = response;
   systemConf["oc_store_url"] = "https://store.opencravat.org";
   var s = document.getElementById("sysconfpathspan");
@@ -1446,8 +1201,8 @@ function updateSystemConf() {
         }
         if (response["sysconf"]["jobs_dir"] != undefined) {
           populateJobs();
-          getLocal((callUpdateFlag = true));
-          populateAnnotators().then(function(res) {})
+          getLocal((callUpdateFlag = true)).then()
+          makeModuleDatas().then(function (_) {});
         }
       },
     });
@@ -1459,28 +1214,25 @@ function resetSystemConf() {
 }
 
 async function loadUserSettings() {
-  var res = await axios.get("/server/usersettings")
-  console.log("usersettings=", res)
-  GLOBALS.usersettings = res
-  setLastAssembly()
+  var res = await axios.get("/server/usersettings");
+  console.log("usersettings=", res);
+  GLOBALS.usersettings = res;
+  setLastAssembly();
 }
 
 async function populatePackageVersions() {
-  var res = await axios.get("/submit/reporttypes")
-  var data = res.data
-  GLOBALS.reports = data;
-  var res = await axios.get("/submit/packageversions")
-  var data = res.data
-  var curverspan = document.querySelector("#verdiv .curverspan")
+  res = await axios.get("/submit/packageversions")
+  var data = res.data;
+  var curverspan = document.querySelector("#verdiv .curverspan");
   if (data.update) {
-    var a = getEl("a")
-    a.href = "https://github.com/rkimoakbioinformatics/oakvar"
+    var a = getEl("a");
+    a.href = "https://github.com/rkimoakbioinformatics/oakvar";
     a.target = "_blank";
-    a.textContent = data.current
+    a.textContent = data.current;
     a.style.color = "red";
     addEl(curverspan, a);
   } else {
-    curverspan.textContent = data.current
+    curverspan.textContent = data.current;
   }
 }
 
@@ -1496,127 +1248,26 @@ function onClickThreeDots(evt) {
   evt.stopPropagation();
 }
 
-function openTerminal() {
-  $.ajax({
-    url: "/submit/openterminal",
-  });
+function hideAnalysisModuleChoiceDiv() {
+  var div = getAnalysisModuleChoiceDiv()
+  div.classList.add("hidden")
 }
 
-function showInputUploadList() {
-  document.querySelector("#input-upload-list-div").classList.remove("hidden");
-}
-
-function hideInputUploadList() {
-  document.querySelector("#input-upload-list-div").classList.add("hidden");
-}
-
-function clearInputFileList() {
-  //document.querySelector("#clear_inputfilelist_button").style.display = "none";
-  //document.querySelector("#mult-inputs-message").style.display = "none";
-  $(document.querySelector("#mult-inputs-list")).empty();
-  //document.querySelector("#input-file").value = "";
-  inputFileList = [];
-  hideInputUploadList();
-}
-
-function onDragEnterInputFiles(evt) {
-  evt.preventDefault();
-}
-
-function onDragOverInputFiles(evt) {
-  evt.preventDefault();
-}
-
-function onDragLeaveInputFiles(evt) {
-  evt.preventDefault();
-}
-
-function onDropInputFiles(evt) {
-  evt.stopPropagation();
-  evt.preventDefault();
-  var files = evt.dataTransfer.files;
-  var inputFile = document.getElementById("input-file");
-  inputFile.files = files;
-  setUploadedInputFilesDiv();
-  return false;
-}
-
-function onInputFileChange(_) {
-  setUploadedInputFilesDiv();
-}
-
-function setUploadedInputFilesDiv() {
-  var fileInputElem = document.getElementById("input-file");
-  var files = fileInputElem.files;
-  if (files.length >= 1) {
-    showInputUploadList();
-    $("#mult-inputs-message").css("display", "block");
-    var $fileListDiv = $("#mult-inputs-list");
-    for (var i = 0; i < files.length; i++) {
-      var file = files[i];
-      if (file.name.indexOf(" ") > -1) {
-        var alertDiv = getEl("div");
-        var span = getEl("span");
-        span.textContent = "Space in file names is not allowed.";
-        addEl(alertDiv, span);
-        showYesNoDialog(alertDiv, null, false, true);
-        return;
-      }
-      if (inputFileList.indexOf(file.name) == -1) {
-        var sdiv = getEl("span");
-        sdiv.classList.add(
-          "pl-2",
-          "text-sm",
-          "text-gray-600",
-          "hover:line-through",
-          "cursor-pointer",
-          "round-md",
-          "inline-block",
-          "w-5/6"
-        );
-        sdiv.textContent = file.name;
-        sdiv.title = "Click to remove";
-        sdiv.addEventListener("click", function (evt) {
-          evt.preventDefault();
-          var fileName = evt.target.textContent;
-          for (var j = 0; j < inputFileList.length; j++) {
-            if (inputFileList[j].name == fileName) {
-              inputFileList.splice(j, 1);
-              break;
-            }
-          }
-          evt.target.remove();
-          if (inputFileList.length == 0) {
-            hideInputUploadList();
-          }
-        });
-        $fileListDiv.append($(sdiv));
-        inputFileList.push(file);
-      }
-    }
-  }
-  if (inputFileList.length > 0) {
-    document.querySelector("#clear_inputfilelist_button").style.display =
-      "inline-block";
-    document.querySelector("#mult-inputs-message").style.display = "block";
-  } else {
-    document.querySelector("#clear_inputfilelist_button").style.display =
-      "none";
-    document.querySelector("#mult-inputs-message").style.display = "none";
-  }
-  document.querySelector("#input-file").value = "";
+function showAnalysisModuleChoiceDiv() {
+  var div = getAnalysisModuleChoiceDiv()
+  div.classList.remove("hidden")
 }
 
 function setupEventListeners() {
-  $("#submit-job-button").click(submit);
-  $("#input-text").change(onInputFileChange);
-  $("#input-file").change(onInputFileChange);
-  $("#all-annotators-button").click(allNoAnnotatorsHandler);
-  $("#no-annotators-button").click(allNoAnnotatorsHandler);
-  $("#refresh-jobs-table-btn").click(refreshJobsTable);
-  $(".threedotsdiv").click(onClickThreeDots);
-  $(".jobsdirinput").change(setJobsDir);
-  $("#chaticondiv").click(toggleChatBox);
+  //$("#submit-job-button").click(submit);
+  //$("#input-text").change(onInputFileChange);
+  //$("#input-file").change(onInputFileChange);
+  //$("#all-annotators-button").click(allNoAnnotatorsHandler);
+  //$("#no-annotators-button").click(allNoAnnotatorsHandler);
+  //$("#refresh-jobs-table-btn").click(refreshJobsTable);
+  //$(".threedotsdiv").click(onClickThreeDots);
+  //$(".jobsdirinput").change(setJobsDir);
+  //$("#chaticondiv").click(toggleChatBox);
   document.addEventListener("click", function (evt) {
     if (
       evt.target.classList.contains("moduledetaildiv-submit-elem") == false &&
@@ -1652,7 +1303,7 @@ function setupEventListeners() {
       closeReportGenerationDiv();
     }
   });
-  window.addEventListener("resize", function (evt) {
+  window.addEventListener("resize", function (_) {
     var moduledetaildiv = document.getElementById("moduledetaildiv_submit");
     if (moduledetaildiv != null) {
       var tdHeight = window.innerHeight * 0.8 - 150 + "px";
@@ -1733,32 +1384,43 @@ function onSubmitClickTagBoxCheck(evt) {
 
 function getChevronDown() {
   var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.classList.add("-mr-1", "ml-2", "h-5", "w-5")
-  svg.setAttribute("viewBox", "0 0 20 20")
-  svg.setAttribute("fill", "currentColor")
-  svg.setAttribute("aria-hidden", "true")
-  var path = document.createElementNS("http://www.w3.org/2000/svg", "path")
-  path.setAttribute("fill-rule", "evenodd")
-  path.setAttribute("clip-rule", "evenodd")
-  path.setAttribute("d", "M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z")
-  addEl(svg, path)
-  return svg
+  svg.classList.add("-mr-1", "ml-2", "h-5", "w-5");
+  svg.setAttribute("viewBox", "0 0 20 20");
+  svg.setAttribute("fill", "currentColor");
+  svg.setAttribute("aria-hidden", "true");
+  var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("fill-rule", "evenodd");
+  path.setAttribute("clip-rule", "evenodd");
+  path.setAttribute(
+    "d",
+    "M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+  );
+  addEl(svg, path);
+  return svg;
 }
 
 function populateInputFormats() {
-  var div = document.querySelector("#input-format-select").querySelector("div")
-  for (moduleName in localModuleInfo) {
-    if (localModuleInfo[moduleName].type == "converter") {
-      let format = moduleName.split("-")[0];
-      let a = getEl("a")
-      a.classList.add("text-gray-700", "block", "px-4", "py-2", "text-sm", "text-right", "hover:bg-gray-100", "hover:text-gray-900")
-      a.setAttribute("role", "menuitem")
-      a.addEventListener("click", function(evt) {
-        onClickSelectItem(evt)
-      })
-      a.textContent = format
-      addEl(div, a)
-    }
+  var div = document.querySelector("#input-format-select").querySelector("div");
+  var modules = getModuleInfoByType("converter")
+  for (var i=0; i<modules.length; i++) {
+    let format = modules[i].name.split("-")[0];
+    let a = getEl("a");
+    a.classList.add(
+      "text-gray-600",
+      "block",
+      "px-4",
+      "py-2",
+      "text-sm",
+      "text-right",
+      "hover:bg-gray-100",
+      "hover:text-gray-900"
+    );
+    a.setAttribute("role", "menuitem");
+    a.addEventListener("click", function (evt) {
+      onClickSelectItem(evt);
+    });
+    a.textContent = format;
+    addEl(div, a);
   }
 }
 
@@ -1778,7 +1440,7 @@ function importJob() {
     document.querySelector("#spinner-div-progress-num").textContent =
       uploadPerc.toFixed(0) + "%";
   };
-  req.onloadend = function (evt) {
+  req.onloadend = function (_) {
     hideSpinner();
     refreshJobsTable();
   };
@@ -1786,186 +1448,229 @@ function importJob() {
   req.send(fileSel.files[0]);
 }
 
-// Additional analysis stuff. Currently just casecontrol. Design expected to change when more added.
-const addtlAnalysis = {
-  names: [],
-  fetchers: {},
-};
-
-function populateAddtlAnalysis() {
-  let display = false;
-  let addtlWrapper = $("#addtl-analysis-content");
-  addtlWrapper.empty();
-  display = display || populateCaseControl(addtlWrapper) === true;
-  if (display) {
-    $("#addtl-analysis-div").css("display", "");
-  }
-}
-
-function populateCaseControl(outer) {
-  if (!localModuleInfo.hasOwnProperty("casecontrol")) {
-    return false;
-  }
-  let wrapper = $(getEl("div"))
-    .attr("id", "case-control-wrapper")
-    .addClass("addtl-analysis-wrapper");
-  outer.append(wrapper);
-  let d1 = $(getEl("div"));
-  wrapper.append(d1);
-  let cohortsInput = $(getEl("input"))
-    .attr("id", "case-control-cohorts")
-    .attr("type", "file")
-    .css("display", "none");
-  d1.append(cohortsInput);
-  let cohortsLabel = $(getEl("label"))
-    .attr("for", "case-control-cohorts")
-    .text("Case-Control cohorts")
-    .attr(
-      "title",
-      "Compare variant distribution across case and control cohorts. See documentation for details."
-    );
-  d1.append(cohortsLabel);
-  let helpIcon = $(getEl("a"))
-    .attr("id", "case-control-help")
-    .attr("target", "_blank")
-    .attr("href", "https://github.com/KarchinLab/open-cravat/wiki/Case-Control")
-    .append(
-      $(getEl("img"))
-        .attr("src", "../images/help.png")
-        .attr("id", "case-control-help-img")
-    );
-  d1.append(helpIcon);
-  let d2 = $(getEl("div"));
-  wrapper.append(d2);
-  let spanDefaultText = "No file selected";
-  let filenameSpan = $(getEl("span"))
-    .attr("id", "case-control-filename")
-    .text(spanDefaultText);
-  d2.append(filenameSpan);
-  let clearBtn = $(getEl("button"))
-    .click((event) => {
-      cohortsInput.val("").trigger("change");
-    })
-    .text("X")
-    .addClass("butn")
-    .css("display", "none");
-  d2.append(clearBtn);
-  cohortsInput.change((event) => {
-    let files = event.target.files;
-    if (files.length > 0) {
-      filenameSpan.text(files[0].name);
-      clearBtn.css("display", "");
-    } else {
-      filenameSpan.text(spanDefaultText);
-      clearBtn.css("display", "none");
-    }
-  });
-  addtlAnalysis.names.push("casecontrol");
-  addtlAnalysis.fetchers.casecontrol = function () {
-    let files = cohortsInput[0].files;
-    if (files.length > 0) {
-      return files[0];
-    }
-  };
-  return true;
-}
-
 function switchToInputPaste() {
-  document.querySelector("#input-drop-area").classList.add("hidden");
-  document.querySelector("#input-paste-area").classList.remove("hidden");
+  hide(getInputDropArea())
+  show(getInputPasteArea())
+  doSmartShowHideAnalysisModuleChoiceDiv()
 }
 
 function switchToInputUpload() {
-  document.querySelector("#input-drop-area").classList.remove("hidden");
-  document.querySelector("#input-paste-area").classList.add("hidden");
+  show(getInputDropArea())
+  hide(getInputPasteArea())
+  doSmartShowHideAnalysisModuleChoiceDiv()
 }
 
-function addIntersectionObserver() {
-  var options = {
-    root: null,
-    rootMargin: "0px",
-    threshold: 1,
-  };
-  var observer = new IntersectionObserver(function (entries, _) {
-    entries[0].target.classList.toggle(
-      "ispinned",
-      entries[0].intersectionRatio < 1
-    );
-  }, options);
-  var annotGroupFilterDiv = document.querySelector(
-    "#analysis-module-filter-div"
-  );
-  observer.observe(annotGroupFilterDiv);
+function showReportChoiceItemsDiv() {
+  show(getReportChoiceDiv())
+}
+
+function hideReportChoiceItemsDiv() {
+  hide(getReportChoiceDiv())
+}
+
+function showSubmitNoteDiv() {
+  show(getSubmitNoteDiv())
+}
+
+function hideSubmitNoteDiv() {
+  hide(getSubmitNoteDiv())
+}
+
+function showSubmitJobButtonDiv() {
+  show(getSubmitJobButtonDiv())
+}
+
+function hideSubmitJobButtonDiv() {
+  hide(getSubmitJobButtonDiv())
+}
+
+function showCtaAnalysisModuleChoice() {
+  show(getCtaAnalysisModuleChoice())
+}
+
+function hideCtaAnalysisModuleChoice() {
+  hide(getCtaAnalysisModuleChoice())
+}
+
+function showJobNameDir() {
+  show(getJobNameDir())
+}
+
+function hideJobNameDir() {
+  hide(getJobNameDir())
+}
+
+function hide(el) {
+  el.classList.add("hidden")
+}
+
+function show(el) {
+  el.classList.remove("hidden")
+}
+
+function showDivsWhenInputPresent() {
+  showAnalysisModuleChoiceDiv()
+  showReportChoiceItemsDiv()
+  showSubmitNoteDiv()
+  showSubmitJobButtonDiv()
+  showCtaAnalysisModuleChoice()
+  showJobNameDir()
+}
+
+function hideDivsWhenInputPresent() {
+  hideAnalysisModuleChoiceDiv()
+  hideReportChoiceItemsDiv()
+  hideSubmitNoteDiv()
+  hideSubmitJobButtonDiv()
+  hideCtaAnalysisModuleChoice()
+  hideJobNameDir()
+}
+
+function doSmartShowHideAnalysisModuleChoiceDiv() {
+  if (! getInputDropArea().classList.contains("hidden")) {
+    if (inputFileList.length > 0) {
+      showDivsWhenInputPresent()
+    } else {
+      hideDivsWhenInputPresent()
+    }
+  } else if (! getInputPasteArea().classList.contains("hidden")) {
+    if (getInputTextarea().value != "") {
+      showDivsWhenInputPresent()
+    } else {
+      hideDivsWhenInputPresent()
+    }
+  }
 }
 
 function getOptionList(evt) {
-  return evt.target.closest(".select-div").querySelector(".option-list")
+  return evt.target.closest(".select-div").querySelector(".option-list");
 }
 
 function getSelectDiv(evt) {
-  return evt.target.closest(".select-div").querySelector("button")
+  return evt.target.closest(".select-div").querySelector("button");
 }
 
 function onClickSelectBtn(evt) {
-  var el = getOptionList(evt)
-  el.classList.toggle("hidden")
+  var el = getOptionList(evt);
+  el.classList.toggle("hidden");
 }
 
 function getAssemblySelectBtn() {
-  return document.querySelector("#assembly-select-div")
+  return document.querySelector("#assembly-select-div");
 }
 
 function onClickSelectItem(evt) {
-  var btn = getSelectDiv(evt)
-  btn.innerHTML = ""
-  addEl(btn, getTn(evt.target.textContent))
-  addEl(btn, getChevronDown())
-  var el = getOptionList(evt)
-  el.classList.toggle("hidden")
+  var btn = getSelectDiv(evt);
+  btn.innerHTML = "";
+  addEl(btn, getTn(btn.title + ": " + evt.target.textContent));
+  addEl(btn, getChevronDown());
+  btn.setAttribute("value", evt.target.getAttribute("value"))
+  var el = getOptionList(evt);
+  el.classList.toggle("hidden");
 }
 
-function onClickInputFormatBtn(evt) {
-  document.querySelector("#input-format-select").classList.toggle("hidden")
+function onClickInputFormatBtn(_) {
+  document.querySelector("#input-format-select").classList.toggle("hidden");
 }
 
 function hideAllTabs() {
-  document.querySelectorAll(".tabcontent").forEach(function(el) {
-    el.classList.add("hidden")
-  })
+  document.querySelectorAll(".tabcontent").forEach(function (el) {
+    el.classList.add("hidden");
+  });
 }
 
 function showTab(tabName) {
-  var el = document.querySelector("#tab_" + tabName)
+  var el = document.querySelector("#tab_" + tabName);
   if (el) {
-    el.classList.remove("hidden")
+    el.classList.remove("hidden");
   }
 }
 
 function showSystemNotReady() {
-  hideAllTabs()
-  showTab("systemnotready")
+  hideAllTabs();
+  showTab("systemnotready");
+}
+
+function getModuleFilterPanel(kind) {
+  return document.querySelector("#analysis-module-filter-panel-" + kind);
+}
+
+function getModuleFilterItemsDiv(kind) {
+  return document.querySelector("#analysis-module-filter-items-" + kind);
+}
+
+function shouldUpdateModuleFilterPanelAll() {
+  var div = getFilteredModulesDiv("all");
+  return div.innerHTML == "";
+}
+
+function shouldUpdateModuleFilterPanelTags() {
+  var div = getModuleFilterItemsDiv("tags");
+  return div.innerHTML == "";
+}
+
+function populateModuleFilterPanel(kind) {
+  if (kind == "all" && shouldUpdateModuleFilterPanelAll()) {
+    populateModuleFilterPanelAll();
+  } else if (kind == "tags" && shouldUpdateModuleFilterPanelTags()) {
+    populateModuleFilterPanelTags();
+  }
+}
+
+function unpinAnalysisModuleFilterKindBtns() {
+  var els = document.querySelector("#analysis-module-filter-kinds").children
+  for (var i = 0; i < els.length; i++) {
+    els[i].classList.remove("pinned")
+  }
+}
+
+function callbackClickModuleCardAP(evt) {
+  var target = evt.target.closest(".modulecard");
+  var moduleName = target.getAttribute("name");
+  var data = moduleDatas[AP_KEY][moduleName];
+  toggleSelectedModule(data)
+}
+
+function callbackClickModuleCardR(evt) {
+  var target = evt.target.closest(".modulecard")
+  var moduleName = target.getAttribute("name")
+  var data = moduleDatas[R_KEY][moduleName]
+  data.checked = ! data.checked
+  setModuleCardCheckedStatus(target, data.checked)
+}
+
+function populateReportTypes() {
+  var div = getReportChoiceItemsDiv()
+  for (var name in moduleDatas[R_KEY]) {
+    var card = getModuleCard(moduleDatas[R_KEY][name], callbackClickModuleCardR)
+    card.classList.add("max-w-xs")
+    addEl(div, card)
+  }
+}
+
+function onClickCtaAnalysisModuleChoice() {
+  getAnalysisModuleChoiceDiv().scrollIntoView({behavior: "smooth"})
 }
 
 async function websubmit_run() {
-  addIntersectionObserver()
-  if (await checkSystemReady() == false) {
-    showSystemNotReady()
-    return
+  if ((await checkSystemReady()) == false) {
+    showSystemNotReady();
+    return;
   }
-  multiuser_setup()
-  if (await checkLogged(username) == false) {
-    openLoginPage()
+  multiuser_setup();
+  if ((await checkLogged(username)) == false) {
+    openLoginPage();
   }
   console.log("@ username=", username);
-  await loadUserSettings()
-  connectWebSocket()
-  await populatePackageVersions()
+  await loadUserSettings();
+  connectWebSocket();
   // Submit
-  await getLocal()
-  populateInputFormats();
-  buildDeveloperTagSelector();
-  await populateAnnotators()
-  populateAddtlAnalysis();
+  var taskLocal = getLocal().then(async function() {
+    await makeAllModuleDatas()
+    populateInputFormats()
+    populateReportTypes()
+    changeFilterCategory("all")
+  })
   // Store
   await getRemote();
   complementRemoteWithLocal();
@@ -1975,7 +1680,8 @@ async function websubmit_run() {
   updateModuleGroupInfo();
   makeInstalledGroup();
   getBaseModuleNames();
-  setupEventListeners();
+  //setupEventListeners();
   await loadSystemConf();
-  setUploadedInputFilesDiv();
+  //setUploadedInputFilesDiv();
+  populatePackageVersions();
 }
