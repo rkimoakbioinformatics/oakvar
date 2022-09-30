@@ -35,3 +35,6 @@ the OakVar result viewer. For example,
 
 will launch the OakVar result viewer on the analysis data in 
 `sample_1.vcf.sqlite`.
+
+Just-DNA-Seq group wrote a very nice tutorial on using OakVar GUI. Please refer to [their doc](https://just-dna-seq.readthedocs.io/en/oakvar/getting_started.html) for more details of using OakVar GUI.
+

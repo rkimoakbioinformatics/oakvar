@@ -539,89 +539,94 @@ class MasterConverter(object):
                         for wdict in all_wdicts:
                             chrom = wdict["chrom"]
                             pos = wdict["pos"]
-                            if chrom is not None:
-                                if not chrom.startswith("chr"):
-                                    chrom = "chr" + chrom
-                                wdict["chrom"] = self.chromdict.get(chrom, chrom)
-                                if multiple_files:
-                                    if wdict["sample_id"]:
-                                        wdict["sample_id"] = "__".join(
-                                            [samp_prefix, wdict["sample_id"]]
-                                        )
-                                    else:
-                                        wdict["sample_id"] = samp_prefix
-                                if "ref_base" not in wdict or wdict["ref_base"] in ["", "."]:
-                                    wdict["ref_base"] = self.wgsreader.get_bases(
-                                        chrom, int(wdict["pos"])
-                                    ).upper()
-                                else:
-                                    ref_base = wdict["ref_base"]
-                                    if ref_base == "" and wdict["alt_base"] not in [
-                                        "A",
-                                        "T",
-                                        "C",
-                                        "G",
-                                    ]:
-                                        e = IgnoredVariant(
-                                            "Reference base required for non SNV"
-                                        )
-                                        e.traceback = False
-                                        raise e
-                                    elif ref_base is None or ref_base == "":
-                                        wdict["ref_base"] = self.wgsreader.get_bases(
-                                            chrom, int(pos)
-                                        )
-                                prelift_wdict = copy(wdict)
-                                self.perform_liftover_if_needed(wdict)
-                                if not base_re.fullmatch(wdict["ref_base"]):
-                                    raise IgnoredVariant("Invalid reference base")
-                                if not base_re.fullmatch(wdict["alt_base"]):
-                                    raise IgnoredVariant("Invalid alternate base")
-                                p, r, a = (
-                                    int(wdict["pos"]),
-                                    wdict["ref_base"],
-                                    wdict["alt_base"],
-                                )
-                                (
-                                    new_pos,
-                                    new_ref,
-                                    new_alt,
-                                ) = standardize_pos_ref_alt("+", p, r, a)
-                                wdict["pos"] = new_pos
-                                wdict["ref_base"] = new_ref
-                                wdict["alt_base"] = new_alt
-                                unique, UID = self.vtracker.addVar(
-                                    wdict["chrom"], new_pos, new_ref, new_alt
-                                )
-                                wdict["uid"] = UID
-                                if wdict["ref_base"] == wdict["alt_base"]:
-                                    raise NoVariantError()
-                                if unique:
-                                    write_lnum += 1
-                                    self.crv_writer.write_data(wdict)
-                                    prelift_wdict["uid"] = UID
-                                    self.crl_writer.write_data(prelift_wdict)
-                                    # addl_operation errors shouldnt prevent variant from writing
-                                    try:
-                                        converter.addl_operation_for_unique_variant(  # type: ignore
-                                            wdict, no_unique_var
-                                        )
-                                    except Exception as e:
-                                        self._log_conversion_error(
-                                            read_lnum, l, e, full_line_error=False
-                                        )
-                                    no_unique_var += 1
-                                if UID not in UIDMap:
-                                    # For this input line, only write to the .crm if the UID has not yet been written to the map file.
-                                    self.crm_writer.write_data(
-                                        {
-                                            "original_line": read_lnum,
-                                            "tags": wdict["tags"],
-                                            "uid": UID,
-                                            "fileno": f"{self.input_path_dict2[fname]}",
-                                        }
+                            if not chrom:
+                                e = IgnoredVariant("No chromosome")
+                                e.traceback = False
+                                raise e
+                            if not chrom.startswith("chr"):
+                                chrom = "chr" + chrom
+                            wdict["chrom"] = self.chromdict.get(chrom, chrom)
+                            if multiple_files:
+                                if wdict["sample_id"]:
+                                    wdict["sample_id"] = "__".join(
+                                        [samp_prefix, wdict["sample_id"]]
                                     )
-                                    UIDMap.append(UID)
+                                else:
+                                    wdict["sample_id"] = samp_prefix
+                            if "ref_base" not in wdict or wdict["ref_base"] in ["", "."]:
+                                wdict["ref_base"] = self.wgsreader.get_bases(
+                                    chrom, int(wdict["pos"])
+                                ).upper()
+                            else:
+                                ref_base = wdict["ref_base"]
+                                if ref_base == "" and wdict["alt_base"] not in [
+                                    "A",
+                                    "T",
+                                    "C",
+                                    "G",
+                                ]:
+                                    e = IgnoredVariant(
+                                        "Reference base required for non SNV"
+                                    )
+                                    e.traceback = False
+                                    raise e
+                                elif ref_base is None or ref_base == "":
+                                    wdict["ref_base"] = self.wgsreader.get_bases(
+                                        chrom, int(pos)
+                                    )
+                            if "genotype" in wdict and "." in wdict["genotype"]:
+                                wdict["genotype"] = wdict["genotype"].replace(".", wdict["ref_base"])
+                            prelift_wdict = copy(wdict)
+                            self.perform_liftover_if_needed(wdict)
+                            if not base_re.fullmatch(wdict["ref_base"]):
+                                raise IgnoredVariant("Invalid reference base")
+                            if not base_re.fullmatch(wdict["alt_base"]):
+                                raise IgnoredVariant("Invalid alternate base")
+                            p, r, a = (
+                                int(wdict["pos"]),
+                                wdict["ref_base"],
+                                wdict["alt_base"],
+                            )
+                            (
+                                new_pos,
+                                new_ref,
+                                new_alt,
+                            ) = standardize_pos_ref_alt("+", p, r, a)
+                            wdict["pos"] = new_pos
+                            wdict["ref_base"] = new_ref
+                            wdict["alt_base"] = new_alt
+                            unique, UID = self.vtracker.addVar(
+                                wdict["chrom"], new_pos, new_ref, new_alt
+                            )
+                            wdict["uid"] = UID
+                            if wdict["ref_base"] == wdict["alt_base"]:
+                                raise NoVariantError()
+                            if unique:
+                                write_lnum += 1
+                                self.crv_writer.write_data(wdict)
+                                prelift_wdict["uid"] = UID
+                                self.crl_writer.write_data(prelift_wdict)
+                                # addl_operation errors shouldnt prevent variant from writing
+                                try:
+                                    converter.addl_operation_for_unique_variant(  # type: ignore
+                                        wdict, no_unique_var
+                                    )
+                                except Exception as e:
+                                    self._log_conversion_error(
+                                        read_lnum, l, e, full_line_error=False
+                                    )
+                                no_unique_var += 1
+                            if UID not in UIDMap:
+                                # For this input line, only write to the .crm if the UID has not yet been written to the map file.
+                                self.crm_writer.write_data(
+                                    {
+                                        "original_line": read_lnum,
+                                        "tags": wdict["tags"],
+                                        "uid": UID,
+                                        "fileno": f"{self.input_path_dict2[fname]}",
+                                    }
+                                )
+                                UIDMap.append(UID)
                             self.crs_writer.write_data(wdict)
                     else:
                         raise IgnoredVariant("No valid alternate allele was found in any samples.")

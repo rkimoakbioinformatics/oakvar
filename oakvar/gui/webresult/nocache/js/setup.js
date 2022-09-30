@@ -2369,6 +2369,7 @@ function makeGrid(columns, data, tabName) {
   span.id = "footertext_" + tabName;
   var button = getEl("button");
   button.id = "exportbutton_" + tabName;
+  button.style = "margin-left: 0.25rem;"
   button.onclick = function (_) {
     var a = getEl("a");
     var tsvContent = getExportContent(tabName);
@@ -2386,6 +2387,7 @@ function makeGrid(columns, data, tabName) {
   if (tabName == "variant") {
     var prevBtn = getEl("button");
     prevBtn.id = "prev-page-btn";
+    prevBtn.style = "margin-left: 0.25rem; background-color: #c1c1c1;"
     addEl(prevBtn, getTn("Prev"));
     prevBtn.onclick = async function (_) {
       pageNo -= 1;
@@ -2396,9 +2398,11 @@ function makeGrid(columns, data, tabName) {
     };
     addEl(footer, prevBtn);
     var label = getEl("span");
+    label.style = "margin-left: 0.25rem;"
     label.textContent = "Page";
     addEl(footer, label);
     var pageNoInput = getEl("input");
+    pageNoInput.style = "margin-left: 0.25rem;"
     pageNoInput.id = "page-no-input";
     pageNoInput.type = "text";
     pageNoInput.size = "4";
@@ -2411,6 +2415,7 @@ function makeGrid(columns, data, tabName) {
     addEl(footer, pageNoInput);
     var nextBtn = getEl("button");
     nextBtn.id = "next-page-btn";
+    nextBtn.style = "margin-left: 0.25rem; background-color: #c1c1c1;"
     addEl(nextBtn, getTn("Next"));
     nextBtn.onclick = async function (_) {
       pageNo += 1;
@@ -2420,6 +2425,7 @@ function makeGrid(columns, data, tabName) {
     addEl(footer, nextBtn);
     var pageInput = getEl("input");
     pageInput.id = "page-input";
+    pageInput.style = "margin-left: 0.25rem;"
     pageInput.type = "text";
     pageInput.size = "6";
     pageInput.value = pageSize;
