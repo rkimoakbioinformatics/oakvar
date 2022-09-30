@@ -61,6 +61,8 @@ def setup_ov_store_cache(conf=None, args=None):
 def url_is_valid(url: str) -> bool:
     from requests import head
 
+    if "github.com" in url and "blob" in url:
+        return True
     res = head(url)
     if res.status_code == 200:
         return True
