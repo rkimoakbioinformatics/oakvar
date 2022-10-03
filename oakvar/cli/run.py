@@ -854,6 +854,7 @@ class Runner(object):
 
     def set_run_name(self):
         import os
+        from os.path import basename
         from ..exceptions import NoInput
         from ..exceptions import SetupError
 
@@ -866,8 +867,10 @@ class Runner(object):
             if self.num_input == 0 or self.pipeinput:
                 self.run_name = "oakvar_run"
             else:
-                self.run_name = os.path.basename(self.inputs[0]) + "_etc"
-                self.run_name = self.get_unique_run_name(self.run_name)
+                self.run_name = basename(self.inputs[0])
+                if self.num_input > 1:
+                    self.run_name = self.run_name + "_etc"
+                    self.run_name = self.get_unique_run_name(self.run_name)
 
     def set_self_inputs(self):
         from ..exceptions import SetupError
@@ -1107,6 +1110,7 @@ class Runner(object):
         path = os.path.join(
             self.output_dir, self.run_name + "." + module.name + postfix
         )
+        print(f"@ path={path}")
         return path
 
     def check_module_output(self, module):
