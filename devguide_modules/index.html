@@ -451,6 +451,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#dependency-control" class="md-nav__link">
+    Dependency control
+  </a>
+  
+    <nav class="md-nav" aria-label="Dependency control">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#module-dependency" class="md-nav__link">
+    Module dependency
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pypi-dependency" class="md-nav__link">
+    PyPI dependency
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -626,6 +653,33 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#dependency-control" class="md-nav__link">
+    Dependency control
+  </a>
+  
+    <nav class="md-nav" aria-label="Dependency control">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#module-dependency" class="md-nav__link">
+    Module dependency
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pypi-dependency" class="md-nav__link">
+    PyPI dependency
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -781,6 +835,49 @@ class Postaggregator(BasePostaggregator):
         ...
 </code></pre>
 <p>More will be explained later.</p>
+<h3 id="dependency-control">Dependency control</h3>
+<h4 id="module-dependency">Module dependency</h4>
+<p>An OakVar module can depend on other OakVar modules for it to properly function. Let's say module <code>annotator1</code> uses the output of <code>annotator2</code> and <code>annotator3</code> as its input. For <code>annotator1</code> to properly function, <code>annotator2</code> and <code>annotator3</code> should be already installed. This installation requirement is specified in the config file of <code>annotator1</code> (<code>annotator1.yml</code>) as the following:</p>
+<pre><code>requires:
+- annotator2
+- annotator3
+</code></pre>
+<p>With this in place, when <code>annotator1</code> is installed with <code>ov module install annotator1</code>, the two dependency modules also will be installed automatically, if not already present in the system.</p>
+<p>As mentioned, <code>annotator1</code> uses the output of <code>annotator2</code> and <code>annotator3</code> as its input. This dependency should be defined in <code>annotator1.yml</code> as the following.</p>
+<pre><code>secondary_inputs:
+  annotator2: {}
+  annotator3: {}
+</code></pre>
+<p>With this simple definition, the output of <code>annotate2</code> and <code>annotate3</code> will be available as <code>secondary_data</code> variable to the <code>annotate</code> function of <code>annotate1</code> module. For example, </p>
+<pre><code>def annotate(self, input_data, secondary_data=None):
+...
+</code></pre>
+<p>of <code>annotate1.py</code> will have <code>secondary_data["annotate2"]</code> and <code>secondary_data["annotate3"]</code> available. If <code>annotate2.yml</code> has the following output column definition,</p>
+<pre><code>output_columns:
+- name: value1
+  title: Value 1
+  type: string
+- name: value2
+  title: Value 2
+  type: string
+</code></pre>
+<p><code>annotate1</code>'s <code>annotate</code> function will be able to access those with <code>secondary_data["annotator2"]["value1"]</code> and <code>secondary_data["annotator2"]["value2"]"</code>.</p>
+<p>Finer control of secondary input is possible as follows. For example, the following in <code>annotate1.yml</code></p>
+<pre><code>secondary_inputs:
+  annotator2:
+    match_columns:
+      primary: uid
+      secondary: uid
+    use_columns:
+      - value1
+</code></pre>
+<p>will mean that <code>annotator2</code> output will be available as <code>secondary_data["annotator2"]</code> to the <code>annotate</code> function of <code>annotator1</code>, that for each variant, the <code>uid</code> field in the output by <code>annotator2</code> and the <code>uid</code> field in <code>input_data</code> to the <code>annotate</code> function of <code>annotator1</code> will be match to find the correct secondary_data for the variant to the function, and that only <code>value1</code> field will be available to the function.</p>
+<h4 id="pypi-dependency">PyPI dependency</h4>
+<p>If an OakVar module needs packages from PyPI, such requirement can be specified in the module's yml file. For example, if <code>annotator1</code>'s <code>annotator1.yml</code> has the following,</p>
+<pre><code>pypi_dependencies:
+- numpy
+</code></pre>
+<p><code>ov module install annotator1</code> will automatically perform <code>pip install numpy</code> while installing <code>annotate1</code> module.</p>
 
               
             </article>
