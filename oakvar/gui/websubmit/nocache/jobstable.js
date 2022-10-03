@@ -1,3 +1,5 @@
+var JOB_STATUS_COLOR_CLASSES = {"Error": "text-rose-500", "Finished": "text-green-600"}
+
 async function populateJobs(pageno, pagesize) {
   axios
     .get("/submit/jobs", { params: { pageno: pageno, pagesize: pagesize } })
@@ -92,25 +94,33 @@ function getJobSubmitTd(job) {
 function getJobStateTd(job) {
   var td = getJobTd();
   var div = td.firstChild
-  //div.classList.add("w-[10rem]");
-  div.textContent = job.statusjson.status;
+  var status = job.statusjson.status;
+  div.textContent = status
+  if (status in JOB_STATUS_COLOR_CLASSES) {
+    div.classList.add(JOB_STATUS_COLOR_CLASSES[status])
+  }
   return td;
 }
 
 function getJobNoteTd(job) {
   var td = getJobTd();
   var div = td.firstChild
-  //div.classList.add("w-[24rem]");
   div.textContent = job.statusjson.note;
   return td;
+}
+
+function getJobsTableViewLink(job) {
 }
 
 function getJobViewTd(job) {
   var td = getJobTd();
   var div = td.firstChild
-  //div.classList.add("w-[4rem]");
   if (job.statusjson.status == "Finished") {
     div.textContent = "View"
+    div.classList.add(...stringToArray("cursor-pointer text-green-600"))
+    div.addEventListener("click", function() {
+      window.open("/result/index.html?dbpath=" + encodeURI(job.statusjson.db_path))
+    })
   }
   return td;
 }
