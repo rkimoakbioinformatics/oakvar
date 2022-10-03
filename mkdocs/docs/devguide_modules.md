@@ -169,4 +169,58 @@ The essential function for *postaggregator* modules is `annotate`. A typical pos
 
 More will be explained later.
 
+### Dependency control
 
+#### Module dependency
+
+An OakVar module can depend on other OakVar modules for it to properly function. Let's say module `annotator1` uses the output of `annotator2` and `annotator3` as its input. For `annotator1` to properly function, `annotator2` and `annotator3` should be already installed. This installation requirement is specified in the config file of `annotator1` (`annotator1.yml`) as the following:
+
+    requires:
+    - annotator2
+    - annotator3
+
+With this in place, when `annotator1` is installed with `ov module install annotator1`, the two dependency modules also will be installed automatically, if not already present in the system.
+
+As mentioned, `annotator1` uses the output of `annotator2` and `annotator3` as its input. This dependency should be defined in `annotator1.yml` as the following.
+
+    secondary_inputs:
+      annotator2: {}
+      annotator3: {}
+
+With this simple definition, the output of `annotate2` and `annotate3` will be available as `secondary_data` variable to the `annotate` function of `annotate1` module. For example, 
+
+    def annotate(self, input_data, secondary_data=None):
+    ...
+
+of `annotate1.py` will have `secondary_data["annotate2"]` and `secondary_data["annotate3"]` available. If `annotate2.yml` has the following output column definition,
+
+    output_columns:
+    - name: value1
+      title: Value 1
+      type: string
+    - name: value2
+      title: Value 2
+      type: string
+
+`annotate1`'s `annotate` function will be able to access those with `secondary_data["annotator2"]["value1"]` and `secondary_data["annotator2"]["value2"]"`.
+
+Finer control of secondary input is possible as follows. For example, the following in `annotate1.yml`
+
+    secondary_inputs:
+      annotator2:
+        match_columns:
+          primary: uid
+          secondary: uid
+        use_columns:
+          - value1
+
+will mean that `annotator2` output will be available as `secondary_data["annotator2"]` to the `annotate` function of `annotator1`, that for each variant, the `uid` field in the output by `annotator2` and the `uid` field in `input_data` to the `annotate` function of `annotator1` will be match to find the correct secondary_data for the variant to the function, and that only `value1` field will be available to the function.
+
+#### PyPI dependency
+
+If an OakVar module needs packages from PyPI, such requirement can be specified in the module's yml file. For example, if `annotator1`'s `annotator1.yml` has the following,
+
+    pypi_dependencies:
+    - numpy
+
+`ov module install annotator1` will automatically perform `pip install numpy` while installing `annotate1` module.
