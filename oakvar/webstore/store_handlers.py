@@ -50,7 +50,7 @@ def install_module(request):
     module = request.json()
     module_name = module["name"]
     version = module["version"]
-    install_module(module_name, version=version)  # , verbose=False)
+    install_module(module_name, version=version)
     return Response()
 
 

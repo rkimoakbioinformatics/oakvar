@@ -45,7 +45,7 @@ class VCF2VCF:
 
     def liftover(self, chrom, pos, ref, alt):
         from oakvar.exceptions import LiftoverFailure
-        from oakvar.util.util import reverse_complement
+        from oakvar.util.seq import reverse_complement
 
         if not self.lifter or not self.wgsreader:
             return None
@@ -313,7 +313,7 @@ class VCF2VCF:
                 self.last_status_update_time = cur_time
 
     def run(self):
-        from oakvar.util.util import normalize_variant
+        from oakvar.util.seq import normalize_variant_dict_left
         from oakvar.module.local import load_modules
         from oakvar.util.util import quiet_print
         from oakvar.util.util import log_variant_exception
@@ -410,7 +410,7 @@ class VCF2VCF:
                                     "ref_base": ref,
                                     "alt_base": alt,
                                 }
-                                variant = normalize_variant(variant)
+                                variant = normalize_variant_dict_left(variant)
                                 res = mapper.map(variant)
                                 res = mapper.live_report_substitute(res)
                                 if res:

@@ -167,7 +167,7 @@ def get_readme(module_name: str) -> Optional[str]:
 
 def get_install_deps(
     module_name=None, version=None, conf_path=None, skip_installed=True
-) -> Tuple[dict, dict]:
+) -> Tuple[dict, list]:
     from pkg_resources import Requirement
     from .local import get_local_module_info
     from ..store import remote_module_latest_version
@@ -175,7 +175,7 @@ def get_install_deps(
 
     config = None
     if not module_name and not conf_path:
-        return {}, {}
+        return {}, []
     if conf_path:
         config = get_conf(conf_path=conf_path)
     elif module_name:
@@ -183,7 +183,7 @@ def get_install_deps(
             version = remote_module_latest_version(module_name)
         config = get_conf(module_name=module_name) or {}
     if not config:
-        return {}, {}
+        return {}, []
     req_list = config.get("requires", [])
     deps = {}
     for req_string in req_list:
@@ -196,15 +196,15 @@ def get_install_deps(
             continue
         if local_info and local_info.version and local_info.version in req:
             continue
-        # TODO: parse module_name>=version etc conditions
-        highest_matching = get_latest_version(rem_info.versions)
+        highest_matching = get_latest_version(rem_info.versions, target_version=version)
         if highest_matching:
             deps[req.unsafe_name] = highest_matching
-    req_pypi_list = config.get("requires_pypi", [])
-    req_pypi_list.extend(config.get("pypi_dependency", []))
-    deps_pypi = {}
+    req_pypi_list = config.get("pypi_dependency", [])
+    req_pypi_list.extend(config.get("requires_pypi", []))
+    deps_pypi = []
     for req_pypi in req_pypi_list:
-        deps_pypi[req_pypi] = True
+        if req_pypi not in deps_pypi:
+            deps_pypi.append(req_pypi)
     return deps, deps_pypi
 
 
@@ -235,18 +235,15 @@ def get_remote_module_info_ls(module_name, version=None) -> Optional[RemoteModul
         return module_info
 
 
-def get_remote_module_info(module_name, version=None) -> Optional[RemoteModule]:
+def get_remote_module_info(module_name) -> Optional[RemoteModule]:
     from .cache import get_module_cache
     from ..store import remote_module_info_latest_version
 
     mc = get_module_cache()
     if module_name not in mc.remote:
-        mc.remote[module_name] = {}
-    if version in mc.remote[module_name]:
-        return mc.remote[module_name][version]
-    else:
         module_info = remote_module_info_latest_version(module_name)
-        return module_info
+        mc.remote[module_name] = module_info
+    return mc.remote[module_name]
 
 
 def get_remote_module_readme(module_name, version=None):

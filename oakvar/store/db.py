@@ -342,6 +342,13 @@ def create_ov_store_cache(conf=None, args={}, conn=None, cursor=None):
             mkdir(join(fp, "oc"))
 
 
+def try_fetch_ov_store_cache(args={}):
+    from ..util.util import quiet_print
+    try:
+        fetch_ov_store_cache(args=args)
+    except Exception as e:
+        quiet_print(f"Fetching store update failed:\n\n>>{e}.\n\nContinuing with the current store cache...\n", args=args)
+
 @db_func
 def fetch_ov_store_cache(
     conn=None,
@@ -399,6 +406,7 @@ def fetch_ov_store_cache(
     content = make_remote_manifest()
     save_remote_manifest_cache(content)
     quiet_print("OakVar store cache has been fetched.", args=args)
+    return True
 
 
 @db_func
@@ -706,3 +714,17 @@ def check_tables(args={}, conn=Any, cursor=Any) -> bool:
             quiet_print(f"store cache table {table} does not exist.", args=args)
             return False
     return True
+
+@db_func
+def module_is_in_store(
+    module_name: str, conn=Any, cursor=Any
+    ) -> bool:
+    _ = conn
+    q = f"select name from summary where name=?"
+    cursor.execute(q, (module_name,))
+    ret = cursor.fetchone()
+    if ret:
+        return True
+    else:
+        return False
+

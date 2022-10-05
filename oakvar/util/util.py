@@ -30,242 +30,6 @@ def get_ucsc_bins(start, stop=None):
     ]
 
 
-complementary_base = {
-    "A": "T",
-    "T": "A",
-    "C": "G",
-    "G": "C",
-    "-": "-",
-    "": "",
-    "N": "N",
-}
-
-
-def reverse_complement(bases):
-    return "".join([complementary_base[base] for base in bases[::-1]])
-
-
-def switch_strand(bases, start_strand=None, dest_strand=None, pos=0):
-    rev_comp = reverse_complement(bases)
-    if start_strand == "-" or dest_strand == "+":
-        new_pos = pos + len(bases.replace("-", "")) - 1
-    elif start_strand == "+" or dest_strand == "-":
-        new_pos = pos - len(bases.replace("-", "")) + 1
-    else:
-        err_msg = "start_strand or dest_strand must be specified as + or -"
-        raise ValueError(err_msg)
-    return rev_comp, new_pos
-
-
-aa_123 = {
-    "A": "Ala",
-    "C": "Cys",
-    "E": "Glu",
-    "D": "Asp",
-    "G": "Gly",
-    "F": "Phe",
-    "I": "Ile",
-    "H": "His",
-    "K": "Lys",
-    "M": "Met",
-    "L": "Leu",
-    "N": "Asn",
-    "Q": "Gln",
-    "P": "Pro",
-    "S": "Ser",
-    "R": "Arg",
-    "T": "Thr",
-    "W": "Trp",
-    "V": "Val",
-    "Y": "Tyr",
-    "*": "Ter",
-    "": "",
-}
-
-
-def aa_let_to_abbv(lets):
-    return "".join([aa_123[x] for x in lets])
-
-
-aa_321 = {
-    "Asp": "D",
-    "Ser": "S",
-    "Gln": "Q",
-    "Lys": "K",
-    "Trp": "W",
-    "Asn": "N",
-    "Pro": "P",
-    "Thr": "T",
-    "Phe": "F",
-    "Ala": "A",
-    "Gly": "G",
-    "Cys": "C",
-    "Ile": "I",
-    "Leu": "L",
-    "His": "H",
-    "Arg": "R",
-    "Met": "M",
-    "Val": "V",
-    "Glu": "E",
-    "Tyr": "Y",
-    "Ter": "*",
-    "": "",
-}
-
-
-def aa_abbv_to_let(abbvs):
-    if type(abbvs) != str:
-        raise TypeError("Expected str not %s" % type(abbvs).__name__)
-    if len(abbvs) % 3 != 0:
-        raise ValueError("Must be evenly divisible by 3")
-    out = ""
-    for i in range(0, len(abbvs), 3):
-        abbv = abbvs[i].upper() + abbvs[i + 1 : i + 3].lower()
-        out += aa_321[abbv]
-    return out
-
-
-codon_table = {
-    "ATG": "M",
-    "GCT": "A",
-    "GCC": "A",
-    "GCA": "A",
-    "GCG": "A",
-    "TGT": "C",
-    "TGC": "C",
-    "GAT": "D",
-    "GAC": "D",
-    "GAA": "E",
-    "GAG": "E",
-    "TTT": "F",
-    "TTC": "F",
-    "GGT": "G",
-    "GGC": "G",
-    "GGA": "G",
-    "GGG": "G",
-    "CAT": "H",
-    "CAC": "H",
-    "ATT": "I",
-    "ATC": "I",
-    "ATA": "I",
-    "AAA": "K",
-    "AAG": "K",
-    "TTA": "L",
-    "TTG": "L",
-    "CTT": "L",
-    "CTC": "L",
-    "CTA": "L",
-    "CTG": "L",
-    "AAT": "N",
-    "AAC": "N",
-    "CCT": "P",
-    "CCC": "P",
-    "CCA": "P",
-    "CCG": "P",
-    "CAA": "Q",
-    "CAG": "Q",
-    "TCT": "S",
-    "TCC": "S",
-    "TCA": "S",
-    "TCG": "S",
-    "AGT": "S",
-    "AGC": "S",
-    "ACT": "T",
-    "ACC": "T",
-    "ACA": "T",
-    "ACG": "T",
-    "CGT": "R",
-    "CGC": "R",
-    "CGA": "R",
-    "CGG": "R",
-    "AGA": "R",
-    "AGG": "R",
-    "GTT": "V",
-    "GTC": "V",
-    "GTA": "V",
-    "GTG": "V",
-    "TGG": "W",
-    "TAT": "Y",
-    "TAC": "Y",
-    "TGA": "*",
-    "TAA": "*",
-    "TAG": "*",
-    "AUG": "M",
-    "GCU": "A",
-    "GCC": "A",
-    "GCA": "A",
-    "GCG": "A",
-    "UGU": "C",
-    "UGC": "C",
-    "GAU": "D",
-    "GAC": "D",
-    "GAA": "E",
-    "GAG": "E",
-    "UUU": "F",
-    "UUC": "F",
-    "GGU": "G",
-    "GGC": "G",
-    "GGA": "G",
-    "GGG": "G",
-    "CAU": "H",
-    "CAC": "H",
-    "AUU": "I",
-    "AUC": "I",
-    "AUA": "I",
-    "AAA": "K",
-    "AAG": "K",
-    "UUA": "L",
-    "UUG": "L",
-    "CUU": "L",
-    "CUC": "L",
-    "CUA": "L",
-    "CUG": "L",
-    "AAU": "N",
-    "AAC": "N",
-    "CCU": "P",
-    "CCC": "P",
-    "CCA": "P",
-    "CCG": "P",
-    "CAA": "Q",
-    "CAG": "Q",
-    "UCU": "S",
-    "UCC": "S",
-    "UCA": "S",
-    "UCG": "S",
-    "AGU": "S",
-    "AGC": "S",
-    "ACU": "T",
-    "ACC": "T",
-    "ACA": "T",
-    "ACG": "T",
-    "CGU": "R",
-    "CGC": "R",
-    "CGA": "R",
-    "CGG": "R",
-    "AGA": "R",
-    "AGG": "R",
-    "GUU": "V",
-    "GUC": "V",
-    "GUA": "V",
-    "GUG": "V",
-    "UGG": "W",
-    "UAU": "Y",
-    "UAC": "Y",
-    "UGA": "*",
-    "UAA": "*",
-    "UAG": "*",
-}
-
-
-def translate_codon(bases, fallback=None):
-    if len(bases) != 3:
-        if fallback is None:
-            return KeyError(bases)
-        else:
-            return fallback
-    else:
-        return codon_table[bases]
-
 
 def get_caller_name(path):
     from os.path import abspath, basename
@@ -437,7 +201,7 @@ def is_compatible_version(dbpath):
         return compatible, job_version_ov, ov_version
 
 
-def is_url(s):
+def is_url(s) -> bool:
     if s.startswith("http://") or s.startswith("https://"):
         return True
     else:
@@ -626,81 +390,11 @@ def quiet_print(msg, args=None, quiet=None):
         else:
             quiet = True
     if quiet == False:
-        print(msg, flush=True)
-
-
-def trim_input(ref, alt, pos, strand):
-    pos = int(pos)
-    reflen = len(ref)
-    altlen = len(alt)
-    minlen = min(reflen, altlen)
-    new_ref = ref
-    new_alt = alt
-    new_pos = pos
-    for nt_pos in range(0, minlen):
-        if ref[reflen - nt_pos - 1] == alt[altlen - nt_pos - 1]:
-            new_ref = ref[: reflen - nt_pos - 1]
-            new_alt = alt[: altlen - nt_pos - 1]
+        if args:
+            outfn = args.get("outfn", print)
         else:
-            break
-    new_ref_len = len(new_ref)
-    new_alt_len = len(new_alt)
-    minlen = min(new_ref_len, new_alt_len)
-    new_ref2 = new_ref
-    new_alt2 = new_alt
-    for nt_pos in range(0, minlen):
-        if new_ref[nt_pos] == new_alt[nt_pos]:
-            if strand == "+":
-                new_pos += 1
-            elif strand == "-":
-                new_pos -= 1
-            new_ref2 = new_ref[nt_pos + 1 :]
-            new_alt2 = new_alt[nt_pos + 1 :]
-        else:
-            new_ref2 = new_ref[nt_pos:]
-            new_alt2 = new_alt[nt_pos:]
-            break
-    return new_ref2, new_alt2, new_pos
-
-
-def standardize_pos_ref_alt(strand, pos, ref, alt):
-    reflen = len(ref)
-    altlen = len(alt)
-    # Returns without change if same single nucleotide for ref and alt.
-    if reflen == 1 and altlen == 1 and ref == alt:
-        return pos, ref, alt
-    # Trimming from the start and then the end of the sequence
-    # where the sequences overlap with the same nucleotides
-    new_ref2, new_alt2, new_pos = trim_input(ref, alt, pos, strand)
-    if new_ref2 == "" or new_ref2 == ".":
-        new_ref2 = "-"
-    if new_alt2 == "" or new_alt2 == ".":
-        new_alt2 = "-"
-    return new_pos, new_ref2, new_alt2
-
-
-def normalize_variant(wdict):
-    chrom = wdict["chrom"]
-    if not chrom.startswith("chr"):
-        wdict["chrom"] = "chr" + chrom
-    p, r, a = (
-        int(wdict["pos"]),
-        wdict["ref_base"],
-        wdict["alt_base"],
-    )
-    (
-        new_pos,
-        new_ref,
-        new_alt,
-    ) = standardize_pos_ref_alt("+", p, r, a)
-    wdict["pos"] = new_pos
-    wdict["ref_base"] = new_ref
-    wdict["alt_base"] = new_alt
-    if wdict["ref_base"] == wdict["alt_base"]:
-        from ..exceptions import NoVariantError
-
-        raise NoVariantError()
-    return wdict
+            outfn = print
+        outfn(msg, flush=True)
 
 
 def email_is_valid(email: str) -> bool:
@@ -724,10 +418,6 @@ def pw_is_valid(pw: str) -> bool:
 
 
 def load_yml_conf(yml_conf_path):
-    """
-    Load a .yml file into a dictionary. Return an empty dictionary if file is
-    empty.
-    """
     from oyaml import safe_load
 
     with open(yml_conf_path, encoding="utf-8") as f:
@@ -817,15 +507,20 @@ def get_email_from_args(args={}) -> Optional[str]:
     return args.get("email")
 
 
-def get_latest_version(versions):
+def version_requirement_met(version, target_version) -> bool:
+    from packaging.version import Version
+    if not target_version:
+        return True
+    return Version(version) >= Version(target_version)
+
+def get_latest_version(versions, target_version=None):
     from packaging.version import Version
 
     latest_version = ""
     for version in versions:
-        if not latest_version:
-            latest_version = version
+        if not version_requirement_met(version, target_version):
             continue
-        if Version(version) > Version(latest_version):
+        if not latest_version or Version(version) > Version(latest_version):
             latest_version = version
     return latest_version
 
@@ -868,3 +563,19 @@ def log_variant_exception(
             logger.error(err_str_log)
     if error_logger:
         error_logger.error("\n[{:d}]{}\n({})\n#".format(lnum, line.rstrip(), str(e)))
+
+def wait_for_y():
+    while True:
+        resp = input("Proceed? ([y]/n) > ")
+        if resp == "y" or resp == "":
+            break
+        if resp == "n":
+            return True
+        else:
+            continue
+
+def get_random_string(k=16):
+    from random import choices
+    from string import ascii_lowercase
+    return "".join(choices(ascii_lowercase, k=k))
+

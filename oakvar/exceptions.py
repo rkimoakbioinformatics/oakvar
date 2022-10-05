@@ -217,6 +217,11 @@ class ModuleVersionError(ExpectedException):
         super().__init__(f"{module_name}=={version} does not exist.")
 
 
+class DuplicateModuleToInstall(ExpectedException):
+    def __init__(self, module_name, version):
+        super().__init__(f"{module_name}=={version} already exists. Use --overwrite to overwrite.")
+
+
 class SetupError(ExpectedException):
     halt = True
     traceback = True

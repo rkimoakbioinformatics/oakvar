@@ -454,7 +454,7 @@ class MasterConverter(object):
         from oakvar.exceptions import SetupError
         from oakvar.exceptions import LoggerError
         from oakvar.exceptions import InvalidModule
-        from oakvar.util.util import standardize_pos_ref_alt
+        from oakvar.util.seq import normalize_variant_left
 
         self.setup()
         if (
@@ -591,7 +591,7 @@ class MasterConverter(object):
                                 new_pos,
                                 new_ref,
                                 new_alt,
-                            ) = standardize_pos_ref_alt("+", p, r, a)
+                            ) = normalize_variant_left("+", p, r, a)
                             wdict["pos"] = new_pos
                             wdict["ref_base"] = new_ref
                             wdict["alt_base"] = new_alt
@@ -708,7 +708,7 @@ class MasterConverter(object):
 
     def liftover(self, chrom, pos, ref, alt):
         from oakvar.exceptions import LiftoverFailure
-        from oakvar.util.util import reverse_complement
+        from oakvar.util.seq import reverse_complement
         from oakvar.exceptions import SetupError
 
         if not self.lifter or not self.wgsreader:

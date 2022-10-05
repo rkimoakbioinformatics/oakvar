@@ -5,6 +5,7 @@ import time
 import traceback
 import asyncio
 from aiohttp import web
+
 from .. import consts
 from ..util import admin_util as au
 import shutil
@@ -105,7 +106,6 @@ def fetch_install_queue(install_queue, install_state, local_modules_changed):
                 module_name,
                 version=module_version,
                 stage_handler=stage_handler,
-                # stages=100,
             )
             local_modules_changed.set()
             time.sleep(1)
