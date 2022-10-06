@@ -172,6 +172,7 @@ def get_install_deps(
     from .local import get_local_module_info
     from ..store import remote_module_latest_version
     from ..util.util import get_latest_version
+    from . import get_pypi_dependency_from_conf
 
     config = None
     if not module_name and not conf_path:
@@ -199,8 +200,7 @@ def get_install_deps(
         highest_matching = get_latest_version(rem_info.versions, target_version=version)
         if highest_matching:
             deps[req.unsafe_name] = highest_matching
-    req_pypi_list = config.get("pypi_dependency", [])
-    req_pypi_list.extend(config.get("requires_pypi", []))
+    req_pypi_list = get_pypi_dependency_from_conf(config)
     deps_pypi = []
     for req_pypi in req_pypi_list:
         if req_pypi not in deps_pypi:

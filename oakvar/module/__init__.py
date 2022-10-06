@@ -101,36 +101,36 @@ def get_readme(module_name):
             return local_readme
 
 
-def install_pypi_dependencies(args={}):
+def install_pypi_dependency(args={}):
     from subprocess import run
     from ..util.util import quiet_print
 
-    pypi_dependencies = args.get("pypi_dependencies")
+    pypi_dependency = args.get("pypi_dependency")
     idx = 0
-    if pypi_dependencies:
+    if pypi_dependency:
         quiet_print(
             f"Following PyPI dependencies should be met before installing {args.get('module_name')}.",
             args=args,
         )
-        for dep in pypi_dependencies:
+        for dep in pypi_dependency:
             quiet_print(f"- {dep}", args=args)
         quiet_print(f"Installing required PyPI packages...", args=args)
         idx = 0
-        while idx < len(pypi_dependencies):
-            dep = pypi_dependencies[idx]
+        while idx < len(pypi_dependency):
+            dep = pypi_dependency[idx]
             r = run(["pip", "install", dep])
             if r.returncode == 0:
-                pypi_dependencies.remove(dep)
+                pypi_dependency.remove(dep)
             else:
                 idx += 1
-        if len(pypi_dependencies) > 0:
+        if len(pypi_dependency) > 0:
             quiet_print(
                 f"Following PyPI dependencies could not be installed.",
                 args=args,
             )
-            for dep in pypi_dependencies:
+            for dep in pypi_dependency:
                 quiet_print(f"- {dep}", args=args)
-    if pypi_dependencies:
+    if pypi_dependency:
         quiet_print(
             f"Skipping installation of {args.get('module_name')} due to unmet requirement for PyPI packages",
             args=args,
@@ -279,13 +279,16 @@ def set_stage_handler(args={}):
         args["install_state"] = None
 
 
-def get_pypi_dependencies(args={}):
-    pypi_dependencies = args.get("conf").get("pypi_dependencies") or []
-    if pypi_dependencies:
-        pypi_dependencies.extend(args.get("conf").get("requires_pypi", []))
-    else:
-        pypi_dependencies = args.get("conf").get("requires_pypi") or []
-    args["pypi_dependencies"] = pypi_dependencies
+def get_pypi_dependency_from_conf(conf={}):
+    if not conf:
+        return []
+    pypi_dependency = []
+    for key in ["pypi_dependency", "pypi_dependencies", "requires_pypi"]:
+        vals = conf.get(key) or []
+        for v in vals:
+            if v not in pypi_dependency:
+                pypi_dependency.append(v)
+    return pypi_dependency
 
 
 def check_install_kill(args={}):
@@ -447,8 +450,8 @@ def install_module_from_url(url, args={}):
     conf = load_yml_conf(yml_conf_path)
     args["conf"] = conf
     deps, deps_pypi = get_install_deps(conf_path=str(yml_conf_path))
-    args["pypi_dependencies"] = deps_pypi
-    if not install_pypi_dependencies(args=args):
+    args["pypi_dependency"] = deps_pypi
+    if not install_pypi_dependency(args=args):
         quiet_print(f"failed in installing pypi package dependence", args=args)
         return False
     for deps_mn, deps_ver in deps.items():
@@ -513,8 +516,8 @@ def install_module_from_zip_path(path: str, args: dict={}):
             raise ExpectedException(msg=f"{module_dir} could not be created.")
         # dependencies
         deps, deps_pypi = get_install_deps(conf_path=str(yml_path))
-        args["pypi_dependencies"] = deps_pypi
-        if not install_pypi_dependencies(args=args):
+        args["pypi_dependency"] = deps_pypi
+        if not install_pypi_dependency(args=args):
             raise ExpectedException("failed in installing pypi package dependence")
         for deps_mn, deps_ver in deps.items():
             install_module(deps_mn, version=deps_ver, force_data=args["force_data"], skip_data=args["skip_data"], quiet=args["quiet"], args=args)
@@ -584,9 +587,9 @@ def install_module(
         set_stage_handler(args=args)
         args.get("stage_handler").stage_start("start")
         args["conf"] = get_conf(module_name=module_name, conf_path=conf_path) or {}
-        get_pypi_dependencies(args=args)
+        args["pypi_dependency"] = get_pypi_dependency_from_conf(conf=args.get("conf"))
         # Checks and installs pip packages.
-        if not install_pypi_dependencies(args=args):
+        if not install_pypi_dependency(args=args):
             quiet_print(f"failed in installing pypi package dependence", args=args)
             return False
         args["remote_data_version"] = remote_module_data_version(
@@ -595,7 +598,7 @@ def install_module(
         args["local_data_version"] = local_module_data_version(args.get("module_name"))
         r = get_module_urls(module_name, code_version=version)
         if not r:
-            quiet_print(f"failed in getting module versions", args=args)
+            quiet_print(f"failed in getting module URLs", args=args)
             return False
         args["code_url"], args["data_url"] = r.get("code_url"), r.get("data_url")
         args["module_type"] = summary_col_value(args.get("module_name"), "type")
