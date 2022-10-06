@@ -139,108 +139,91 @@ def collect_module_name_and_versions(modules, args=None):
             quiet_print(f"Wrong module name==version format: {mv}", args=args)
     return mn_vs
 
+def get_modules_to_install(args={}) -> dict:
+    from ..util.download import is_url
+    from ..util.download import is_zip_path
+    from ..module.remote import get_install_deps
+    mn_vs = collect_module_name_and_versions(args.get("modules", []), args=args)
+    module_versions = {}
+    for module_name, version in mn_vs.items():
+        module_versions[module_name] = version
+    # dependency
+    deps_install = {}
+    if not args.get("skip_dependencies"):
+        for module_name, version in module_versions.items():
+            if not is_url(module_name) and not is_zip_path(module_name):
+                deps, _ = get_install_deps(module_name=module_name, version=version)
+                deps_install.update(deps)
+    to_install = module_versions
+    to_install.update(deps_install)
+    return to_install
+
+def show_modules_to_install(to_install, args={}):
+    from ..util.util import quiet_print
+    quiet_print("The following modules will be installed:", args=args)
+    for name in sorted(list(to_install.keys())):
+        version = to_install.get(name)
+        if version:
+            quiet_print(f"- {name}=={to_install[name]}", args=args)
+        else:
+            quiet_print(f"- {name}", args=args)
 
 @cli_func
 def install(args, __name__="module install"):
-    from packaging.version import Version
-    from ..module.local import get_local_module_info
-    from ..module.remote import get_remote_module_info
-    from ..module.remote import get_install_deps
     from ..module import install_module
     from ..module import install_module_from_url
+    from ..module import install_module_from_zip_path
     from ..util.util import quiet_print
+    from ..util.util import wait_for_y
     from ..util.download import is_url
-    from ..store.db import fetch_ov_store_cache
+    from ..util.download import is_zip_path
+    from ..store.db import try_fetch_ov_store_cache
 
-    modules = args.get("modules", [])
-    mn_vs = collect_module_name_and_versions(modules, args=args)
-    ret = fetch_ov_store_cache(args=args)
-    quiet = args.get("quiet", True)
-    mn_vs_final = {}
-    for module_name, version in mn_vs.items():
-        if not is_url(module_name):
-            local_info = get_local_module_info(module_name)
-            remote_info = get_remote_module_info(module_name, version=version)
-            if not version and remote_info:
-                version = remote_info.latest_code_version
-            if not version:
-                quiet_print(f"{module_name} does not exist.", args=args)
-                continue
-            if not remote_info:
-                quiet_print(f"{module_name}=={version} does not exist.", args=args)
-                continue
-            if (
-                not args.get("force")
-                and local_info
-                and Version(local_info.code_version or "") >= Version(version)
-            ):
-                quiet_print(
-                    f"{module_name}>={version} is already installed. Use -f/--force to overwrite",
-                    args=args,
-                )
-                continue
-        mn_vs_final[module_name] = version
-    # Add dependencies of selected modules
-    deps_install = {}
-    deps_install_pypi = {}
-    if not args.get("skip_dependencies"):
-        for module_name, version in mn_vs_final.items():
-            if not is_url(module_name):
-                deps, deps_pypi = get_install_deps(module_name=module_name, version=version)
-                deps_install.update(deps)
-                deps_install_pypi.update(deps_pypi)
-    # If overlap between selected modules and dependency modules, use the dependency version
-    to_install = mn_vs_final
-    to_install.update(deps_install)
+    try_fetch_ov_store_cache(args=args)
+    to_install = get_modules_to_install(args=args)
     if len(to_install) == 0:
-        quiet_print("No module to install found", args=args)
+        quiet_print("No module to install", args=args)
         return True
-    else:
-        quiet_print("The following modules will be installed:", args=args)
-        for name in sorted(list(to_install.keys())):
-            if is_url(name):
-                quiet_print(f"- {name}", args=args)
-            else:
-                quiet_print(f"- {name}=={to_install[name]}", args=args)
-        if not (args["yes"]):
-            while True:
-                resp = input("Proceed? ([y]/n) > ")
-                if resp == "y" or resp == "":
-                    break
-                if resp == "n":
-                    return True
-                else:
-                    continue
-        problem_modules = []
-        for module_name, module_version in sorted(to_install.items()):
+    show_modules_to_install(to_install, args=args)
+    if not (args["yes"]):
+        wait_for_y()
+    problem_modules = []
+    for module_name, module_version in sorted(to_install.items()):
+        try:
             if is_url(module_name):
                 if not install_module_from_url(module_name, args=args):
                     problem_modules.append(module_name)
-                continue
-            stage_handler = InstallProgressStdout(
-                module_name, module_version, quiet=quiet
-            )
-            ret = install_module(
-                module_name,
-                version=module_version,
-                force_data=args["force_data"],
-                stage_handler=stage_handler,
-                # force=args["force"],
-                skip_data=args["skip_data"],
-                quiet=quiet,
-                args=args,
-            )
-            if not ret:
+            elif is_zip_path(module_name):
+                if not install_module_from_zip_path(module_name, args=args):
+                    problem_modules.append(module_name)
+            else:
+                stage_handler = InstallProgressStdout(
+                    module_name, module_version, quiet=args.get("quiet")
+                )
+                ret = install_module(
+                    module_name,
+                    version=module_version,
+                    force_data=args["force_data"],
+                    stage_handler=stage_handler,
+                    skip_data=args["skip_data"],
+                    quiet=args.get("quiet"),
+                    args=args,
+                )
+                if not ret:
+                    problem_modules.append(module_name)
+        except Exception as e:
+            if module_name not in problem_modules:
                 problem_modules.append(module_name)
-        if problem_modules:
-            quiet_print(
-                f"following modules were not installed due to problems:", args=args
-            )
-            for mn in problem_modules:
-                quiet_print(f"- {mn}", args=args)
-            return False
-        else:
-            return
+            quiet_print(e, args=args)
+    if problem_modules:
+        quiet_print(
+            f"following modules were not installed due to problems:", args=args
+        )
+        for mn in problem_modules:
+            quiet_print(f"- {mn}", args=args)
+        return False
+    else:
+        return
 
 
 @cli_entry
@@ -254,10 +237,10 @@ def update(args, __name__="module update"):
     from ..module import get_updatable
     from ..util.util import humanize_bytes
     from ..util.util import quiet_print
-    from ..store.db import fetch_ov_store_cache
+    from ..store.db import try_fetch_ov_store_cache
     from types import SimpleNamespace
 
-    ret = fetch_ov_store_cache(args=args)
+    try_fetch_ov_store_cache(args=args)
     quiet = args.get("quiet", True)
     modules = args.get("modules", [])
     requested_modules = search_local(*modules)
@@ -354,9 +337,9 @@ def installbase(args, __name__="module installbase"):
     from ..system import get_system_conf
     from ..system.consts import base_modules_key
     from types import SimpleNamespace
-    from ..store.db import fetch_ov_store_cache
+    from ..store.db import try_fetch_ov_store_cache
 
-    ret = fetch_ov_store_cache(args=args)
+    try_fetch_ov_store_cache(args=args)
     sys_conf = get_system_conf(conf=args.get("conf"))
     base_modules = sys_conf.get(base_modules_key, [])
     m_args = SimpleNamespace(
@@ -670,6 +653,12 @@ def add_parser_ov_module_install(subparsers):
     parser_ov_module_install.add_argument(
         "-f",
         "--force",
+        dest="overwrite",
+        action="store_true",
+        help="Install module even if latest version is already installed",
+    )
+    parser_ov_module_install.add_argument(
+        "--overwrite",
         action="store_true",
         help="Install module even if latest version is already installed",
     )

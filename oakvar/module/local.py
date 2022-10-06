@@ -262,6 +262,19 @@ def module_data_version(module_name: str) -> Optional[str]:
     return module_conf.get("data_version", None)
 
 
+def get_new_module_dir(module_name: str, module_type: str, modules_dir: Optional[str]=None):
+    from ..system import get_modules_dir
+    from pathlib import Path
+    if not modules_dir:
+        modules_dir = get_modules_dir()
+    if not modules_dir:
+        return None
+    module_dir = Path(modules_dir) / (module_type + "s") / module_name
+    if not module_dir.exists():
+        module_dir.mkdir(parents=True)
+    return str(module_dir)
+
+
 def get_module_dir(module_name, module_type=None) -> Optional[str]:
     from os import listdir
     from os.path import join

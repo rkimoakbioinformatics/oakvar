@@ -60,3 +60,9 @@ def is_url(url):
     url_pattern = compile("^(http|https)://.*$")
     match = url_pattern.match(url)
     return match is not None
+
+def is_zip_path(url):
+    from pathlib import Path
+    p = Path(url)
+    return p.exists() and p.suffix == ".zip"
+

@@ -101,36 +101,36 @@ def get_readme(module_name):
             return local_readme
 
 
-def install_pypi_dependencies(args={}):
+def install_pypi_dependency(args={}):
     from subprocess import run
     from ..util.util import quiet_print
 
-    pypi_dependencies = args.get("pypi_dependencies")
+    pypi_dependency = args.get("pypi_dependency")
     idx = 0
-    if pypi_dependencies:
+    if pypi_dependency:
         quiet_print(
             f"Following PyPI dependencies should be met before installing {args.get('module_name')}.",
             args=args,
         )
-        for dep in pypi_dependencies:
+        for dep in pypi_dependency:
             quiet_print(f"- {dep}", args=args)
         quiet_print(f"Installing required PyPI packages...", args=args)
         idx = 0
-        while idx < len(pypi_dependencies):
-            dep = pypi_dependencies[idx]
+        while idx < len(pypi_dependency):
+            dep = pypi_dependency[idx]
             r = run(["pip", "install", dep])
             if r.returncode == 0:
-                pypi_dependencies.remove(dep)
+                pypi_dependency.remove(dep)
             else:
                 idx += 1
-        if len(pypi_dependencies) > 0:
+        if len(pypi_dependency) > 0:
             quiet_print(
                 f"Following PyPI dependencies could not be installed.",
                 args=args,
             )
-            for dep in pypi_dependencies:
+            for dep in pypi_dependency:
                 quiet_print(f"- {dep}", args=args)
-    if pypi_dependencies:
+    if pypi_dependency:
         quiet_print(
             f"Skipping installation of {args.get('module_name')} due to unmet requirement for PyPI packages",
             args=args,
@@ -279,13 +279,16 @@ def set_stage_handler(args={}):
         args["install_state"] = None
 
 
-def get_pypi_dependencies(args={}):
-    pypi_dependencies = args.get("conf").get("pypi_dependencies") or []
-    if pypi_dependencies:
-        pypi_dependencies.extend(args.get("conf").get("requires_pypi", []))
-    else:
-        pypi_dependencies = args.get("conf").get("requires_pypi") or []
-    args["pypi_dependencies"] = pypi_dependencies
+def get_pypi_dependency_from_conf(conf={}):
+    if not conf:
+        return []
+    pypi_dependency = []
+    for key in ["pypi_dependency", "pypi_dependencies", "requires_pypi"]:
+        vals = conf.get(key) or []
+        for v in vals:
+            if v not in pypi_dependency:
+                pypi_dependency.append(v)
+    return pypi_dependency
 
 
 def check_install_kill(args={}):
@@ -447,8 +450,8 @@ def install_module_from_url(url, args={}):
     conf = load_yml_conf(yml_conf_path)
     args["conf"] = conf
     deps, deps_pypi = get_install_deps(conf_path=str(yml_conf_path))
-    args["pypi_dependencies"] = deps_pypi
-    if not install_pypi_dependencies(args=args):
+    args["pypi_dependency"] = deps_pypi
+    if not install_pypi_dependency(args=args):
         quiet_print(f"failed in installing pypi package dependence", args=args)
         return False
     for deps_mn, deps_ver in deps.items():
@@ -472,6 +475,82 @@ def install_module_from_url(url, args={}):
     return True
 
 
+def install_module_from_zip_path(path: str, args: dict={}):
+    from pathlib import Path
+    from ..util.util import load_yml_conf
+    from ..util.util import quiet_print
+    from ..util.util import get_random_string
+    from ..util.util import load_yml_conf
+    from ..exceptions import ExpectedException
+    from .local import get_new_module_dir
+    from .remote import get_install_deps
+    from shutil import copytree
+    from shutil import rmtree
+    from zipfile import ZipFile
+
+    f = ZipFile(path)
+    temp_dir = "oakvar_temp_dir__" + get_random_string(k=16)
+    try:
+        while Path(temp_dir).exists():
+            temp_dir = "oakvar_temp_dir__" + get_random_string(k=16)
+        f.extractall(path=temp_dir)
+        children = [v for v in Path(temp_dir).iterdir()]
+        if len(children) > 1:
+            raise ExpectedException(msg=f"Only 1 module folder should exist in {path}.")
+        temp_module_path = children[0]
+        if not temp_module_path.is_dir():
+            raise ExpectedException(msg=f"1 module folder should exist in {path}.")
+        yml_paths = [v for v in temp_module_path.glob("*.yml")]
+        if len(yml_paths) > 1:
+            raise ExpectedException(msg=f"Only 1 module config file should exist in {str(temp_module_path)}.")
+        yml_path = yml_paths[0]
+        module_name = yml_path.stem
+        args["module_name"] = module_name
+        f = open(str(yml_path))
+        conf = load_yml_conf(str(yml_path))
+        module_type = conf.get("type")
+        if not module_type:
+            raise ExpectedException(msg=f"Module type should be defined in {module_name}.yml.")
+        module_dir = get_new_module_dir(module_name, module_type)
+        if not module_dir:
+            raise ExpectedException(msg=f"{module_dir} could not be created.")
+        # dependencies
+        deps, deps_pypi = get_install_deps(conf_path=str(yml_path))
+        args["pypi_dependency"] = deps_pypi
+        if not install_pypi_dependency(args=args):
+            raise ExpectedException("failed in installing pypi package dependence")
+        for deps_mn, deps_ver in deps.items():
+            install_module(deps_mn, version=deps_ver, force_data=args["force_data"], skip_data=args["skip_data"], quiet=args["quiet"], args=args)
+        # move module
+        copytree(str(temp_module_path), module_dir, dirs_exist_ok=True)
+        quiet_print(f"{module_name} installed at {module_dir}", args=args)
+        rmtree(temp_dir)
+        return True
+    except Exception as e:
+        rmtree(temp_dir)
+        raise e
+
+def get_module_install_version(module_name, version=None, args={}) -> str:
+    from packaging.version import Version
+    from ..module.local import get_local_module_info
+    from ..module.remote import get_remote_module_info
+    from ..exceptions import ModuleNotExist
+    from ..exceptions import ModuleVersionError
+    from ..exceptions import DuplicateModuleToInstall
+    local_info = get_local_module_info(module_name)
+    remote_info = get_remote_module_info(module_name)
+    if not remote_info:
+        raise ModuleNotExist(module_name)
+    if not version and remote_info:
+        version = remote_info.latest_code_version
+    if not version:
+        raise ModuleNotExist(module_name)
+    if not remote_info:
+        raise ModuleVersionError(module_name, version)
+    if (not args.get("overwrite") and local_info and Version(local_info.code_version or "") == Version(version)):
+        raise DuplicateModuleToInstall(module_name, version)
+    return version
+
 def install_module(
     module_name,
     version=None,
@@ -490,20 +569,15 @@ def install_module(
     from .cache import get_module_cache
     from .remote import get_conf
     from .local import module_data_version as local_module_data_version
-    from ..store import remote_module_latest_version
     from ..util.util import quiet_print
 
+    version = get_module_install_version(module_name, version=version, args=args)
     args["quiet"] = quiet
     args["module_name"] = module_name
     args["version"] = version
     args["stage_handler"] = stage_handler
     quiet_print(f"installing {module_name}...", args=args)
-    if not args.get("version"):
-        args["version"] = remote_module_latest_version(module_name)
-        if not args.get("version"):
-            quiet_print(f"version could not be found.", args=args)
-            return False
-    args["code_version"] = args.get("version")
+    args["code_version"] = version
     make_install_temp_dir(args=args)
     # Ctrl-c in this func must be caught to delete temp_dir
     # def raise_kbi(__a__, __b__):
@@ -513,18 +587,18 @@ def install_module(
         set_stage_handler(args=args)
         args.get("stage_handler").stage_start("start")
         args["conf"] = get_conf(module_name=module_name, conf_path=conf_path) or {}
-        get_pypi_dependencies(args=args)
+        args["pypi_dependency"] = get_pypi_dependency_from_conf(conf=args.get("conf"))
         # Checks and installs pip packages.
-        if not install_pypi_dependencies(args=args):
+        if not install_pypi_dependency(args=args):
             quiet_print(f"failed in installing pypi package dependence", args=args)
             return False
         args["remote_data_version"] = remote_module_data_version(
-            args.get("module_name"), args.get("code_version")
-        )
+                args.get("module_name"), args.get("code_version")
+                )
         args["local_data_version"] = local_module_data_version(args.get("module_name"))
         r = get_module_urls(module_name, code_version=version)
         if not r:
-            quiet_print(f"failed in getting module versions", args=args)
+            quiet_print(f"failed in getting module URLs", args=args)
             return False
         args["code_url"], args["data_url"] = r.get("code_url"), r.get("data_url")
         args["module_type"] = summary_col_value(args.get("module_name"), "type")
@@ -535,23 +609,23 @@ def install_module(
             quiet_print(f"module type not found", args=args)
             return False
         args["module_dir"] = join(
-            args.get("modules_dir"),
-            args.get("module_type") + "s",
-            args.get("module_name"),
-        )
+                args.get("modules_dir"),
+                args.get("module_type") + "s",
+                args.get("module_name"),
+                )
         if not download_code_or_data(kind="code", args=args):
             quiet_print(f"code download failed", args=args)
             return False
         extract_code_or_data(kind="code", args=args)
         args["data_installed"] = False
         if (
-            not skip_data
-            and args.get("remote_data_version")
-            and (
-                args.get("remote_data_version") != args.get("local_data_version")
-                or force_data
-            )
-        ):
+                not skip_data
+                and args.get("remote_data_version")
+                and (
+                    args.get("remote_data_version") != args.get("local_data_version")
+                    or force_data
+                    )
+                ):
             args["data_installed"] = True
             if not download_code_or_data(kind="data", args=args):
                 quiet_print(f"data download failed", args=args)
