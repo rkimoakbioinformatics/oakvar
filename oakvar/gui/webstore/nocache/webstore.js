@@ -220,7 +220,7 @@ function populateStorePages() {
     }
     storeFirstOpen = false;
   } else {
-    showSystemNotReady();
+    //showSystemNotReady();
   }
 }
 

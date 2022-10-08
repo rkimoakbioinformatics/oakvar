@@ -42,7 +42,6 @@ function commitSubmit(formData) {
       removeSpinnerFromSubmitJobBtn()
       enableSubmitJobBtn()
     } else if (status >= 400 && status < 600) {
-      console.log("@ evt=", evt)
       var response = JSON.parse(evt.currentTarget.response)
       showErrorDialog("Upload failure", "Check your input files. Or contact info@oakbioinformatics.com for support.", function(_) {
         hideErrorDialog()
@@ -177,7 +176,6 @@ function addNoteToSubmitOption(submitOption) {
 
 function addJobNameToSubmitOption(submitOption) {
   var val = getJobNameTextarea().value
-  console.log("@ val=", val)
   if (val) {
     submitOption["job_name"] = val
   }
@@ -218,7 +216,6 @@ function processSubmitOptions(submitOption, formData) {
   addJobNameToSubmitOption(submitOption)
   addNoteToSubmitOption(submitOption)
   formData.append("options", JSON.stringify(submitOption))
-  console.log("@ submitOption=", submitOption)
 }
 
 function submit() {
@@ -234,12 +231,8 @@ function submit() {
     } else {
       commitSubmit()
     }*/
-    console.log("@ inputFiles=", inputFiles)
-    console.log("@ inputServerFiles=", inputServerFiles)
-    console.log("@ submitOption=", submitOption)
     commitSubmit(formData)
   } catch (err) {
-    console.log("@ err=", err)
     showErrorDialog("Problem with job submission", err.message)
   }
 }

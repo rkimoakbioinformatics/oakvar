@@ -63,7 +63,6 @@ class ServerAdminDb ():
         from ...store.ov.account import get_email_from_token_set
         from ...system.consts import ADMIN_ROLE
         email = get_email_from_token_set()
-        print(f"@ admin={email}")
         q = "insert or replace into users (email, role) values (?, ?)"
         cursor.execute(q, (email, ADMIN_ROLE))
         conn.commit()
@@ -511,7 +510,6 @@ class ServerAdminDb ():
         jobs_dir_l = list(jobs_dir_p.glob("*"))
         jobs_dir_l.sort(key=lambda p: p.stat().st_ctime)
         for job_dir_p in jobs_dir_l:
-            print(f"@ job_dir={str(job_dir_p.absolute())}")
             if not job_dir_p.is_dir():
                 continue
             job_dir = str(job_dir_p)
@@ -532,11 +530,9 @@ class ServerAdminDb ():
             note = job_status.get("note")
             statusjson = dumps(job_status)
             if not job_name or not submit:
-                print(f"@ skipping. {job_name}. {run_name}. {submit}. {numinput}. {modules}. {assembly}. {note}.")
                 continue
             q = "insert into jobs (username, dir, name, submit, runtime, numinput, modules, assembly, note, statusjson) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             values = (email, job_dir, job_name, submit, runtime, numinput, modules, assembly, note, statusjson)
-            print(f"@ values={values}")
             cursor.execute(q, values)
         conn.commit()
         cursor.close()

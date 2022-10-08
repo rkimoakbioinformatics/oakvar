@@ -760,7 +760,6 @@ const makeGroupFilter = (groupDiv) => {
   }
   // Negate
   filter.negate = groupDiv.children(".filter-not-toggle").attr("active") === "true"
-  console.log("@ filter=", filter)
   return filter;
 };
 

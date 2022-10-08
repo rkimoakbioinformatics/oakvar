@@ -144,7 +144,6 @@ async def get_user_job_report_paths(request, job_id_or_dbpath: Optional[str], re
     if not run_path:
         return None
     run_name = Path(run_path).stem
-    print(f"@ run_name={run_name}")
     reporter = get_local_module_info_by_name(report_type + "reporter")
     if not reporter:
         return None

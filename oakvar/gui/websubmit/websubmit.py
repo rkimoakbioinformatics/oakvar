@@ -501,7 +501,6 @@ async def get_jobs(request):
     admindb = await get_admindb()
     email = get_email_from_request(request)
     jobs = await admindb.get_jobs_of_email(email, pageno=pageno, pagesize=pagesize)
-    print(f"@ jobs=", jobs)
     return json_response(jobs)
 
 

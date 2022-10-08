@@ -1109,7 +1109,6 @@ class Runner(object):
         path = os.path.join(
             self.output_dir, self.run_name + "." + module.name + postfix
         )
-        print(f"@ path={path}")
         return path
 
     def check_module_output(self, module):

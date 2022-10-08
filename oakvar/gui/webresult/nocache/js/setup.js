@@ -967,19 +967,23 @@ function makeFilterTab(rightDiv) {
     .attr("id", "filter-load-controls")
     .addClass("filter-section");
   rightPanel.append(loadControls);
+  var label = getEl("span")
+  label.id = "filter-count-btn"
+  label.textContent = "Count preview:"
+  label.classList.add(...stringToArray("cursor-pointer mr-2"))
+  addEl(loadControls[0], label)
   let countDisplay = $(getEl("span"))
     .attr("id", "filter-count-display")
     .text("Count not up to date");
   loadControls.append(countDisplay);
-  let filterCount = $(getEl("img"))
-    .attr("src", "images/arrow-spinner-static.gif")
-    .attr("title", "Refresh count")
-    .attr("id", "filter-count-btn")
-    .click(function (e) {
-      $(e.target).attr("src", "images/arrow-spinner.gif");
-      countFilterVariants();
-    });
-  loadControls.append(filterCount);
+  var btn = getEl("button")
+  btn.classList.add(...stringToArray("ml-2 butn"))
+  btn.title = "Count the result of filter"
+  btn.textContent = "Refresh"
+  btn.addEventListener("click", function(_) {
+    countFilterVariants();
+  })
+  loadControls[0].appendChild(btn)
   var filterApply = getEl("button");
   filterApply.id = "load_button";
   filterApply.classList.add("butn");

@@ -890,18 +890,6 @@ div.pq-select-menu>.pq-select-option-label {
 	border: none;
 	align-items: center;
 }
-#filter-count-btn {
-	width: 20px;
-	height: 20px;
-	cursor: pointer;
-	margin-left: 2px;
-	background-color: #d1d3d4;
-}
-#filter-count-btn:hover {
-	background-color: #4a87bd;
-}
-#filter-count-display {
-}
 #load_button {
 	margin-left: auto;
 }

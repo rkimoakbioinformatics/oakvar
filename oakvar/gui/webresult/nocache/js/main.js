@@ -440,6 +440,7 @@ async function callLoadVariantTableDataOnly() {
     callback = removeSpinnerTableDataOnly;
   }*/
   await infomgr.load_job(jobId, "variant", (setResetTab = false))
+  removeSpinnerTableDataOnly()
 }
 
 function loadTableDataOnly() {
@@ -449,11 +450,12 @@ function loadTableDataOnly() {
   if (isNaN(pageNo)) {
     return;
   }
+  enableLoadingDiv()
   callLoadVariantTableDataOnly()
   .then(function(_) {
-    loadGeneResultTableDataOnly()
-    .then(function(_) {
-    })
+    //loadGeneResultTableDataOnly()
+    //.then(function(_) {
+    //})
   })
   filterArmed = filterJson;
 }
@@ -498,7 +500,6 @@ async function loadData() {
     setupTab("variant");
     setupTab("gene");
     setupTab("info")
-    console.log("@ infomgr.filter_uid=", infomgr.ftable_uid)
     try {
       populateSummaryWidgetDiv();
     } catch (e) {
@@ -972,7 +973,6 @@ function parseUrl() {
   if (!username) {
     username = "default"
   }
-  console.log("@ username=", username)
   jobId = urlParams.get("job_id");
   dbPath = urlParams.get("dbpath");
   confPath = urlParams.get("confpath");

@@ -1254,6 +1254,7 @@ function showTab(tabName) {
 }
 
 function showSystemNotReady() {
+  console.trace()
   hideAllTabs();
   showTab("systemnotready");
 }
@@ -1323,7 +1324,7 @@ function onClickCtaAnalysisModuleChoice() {
 }
 
 async function websubmit_run() {
-  if ((await checkSystemReady()) == false) {
+  if (await checkSystemReady() == false) {
     showSystemNotReady();
     return;
   }

@@ -173,7 +173,6 @@ InfoMgr.prototype.store = function (
   self.statuss[tabName] = jsonResponseData["status"];
   self.modulesInfo[tabName] = jsonResponseData["modules_info"];
   self.ftable_uid = jsonResponseData["ftable_uid"]
-  console.log("@ set ftable_uid=", self.ftable_uid)
   if (tabName == "gene") {
     self.geneRows = {};
     for (var i = 0; i < self.datas[tabName].length; i++) {
@@ -370,7 +369,6 @@ InfoMgr.prototype.store = function (
   self.columnss[tabName] = columns;
   self.columnnoss[tabName] = columnnos;
   self.columngroupss[tabName] = columngroups;
-  console.log("@ end of store", infomgr.ftable_uid)
 };
 
 InfoMgr.prototype.getData = function (tabName) {

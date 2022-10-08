@@ -185,7 +185,6 @@ function processSignup(username, password, retypepassword, question, answer) {
       },
     })
     .then(function (response) {
-      console.log("@ login response=", response);
     });
   /*
           if (response == 'Signup successful') {
@@ -205,7 +204,6 @@ function processSignup(username, password, retypepassword, question, answer) {
 async function checkLogged(inUsername) {
   var res = await axios.get("/server/checklogged", { params: { username: inUsername } })
   var data = res.data
-  console.log("@ data=", data)
   logged = data["logged"]
   if (logged == true) {
     username = data["email"]
@@ -583,7 +581,6 @@ function signInWithEmail() {
 }
 
 function signInWithGitHub() {
-  console.log("@ sign in with GitHub");
   var provider = new firebase.auth.GithubAuthProvider();
   firebase
     .auth()
@@ -598,7 +595,6 @@ function signInWithGitHub() {
 }
 
 function signInWithGoogle() {
-  console.log("@ sign in with Google");
   var provider = new firebase.auth.GoogleAuthProvider();
   firebase
     .auth()

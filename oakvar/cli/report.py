@@ -391,6 +391,8 @@ class BaseReporter:
 
         _ = user
         try:
+            # TODO: disabling gene level summary for now. Enable later.
+            add_summary = False
             if add_summary is None:
                 add_summary = self.add_summary
             self.dictrow = dictrow

@@ -467,12 +467,17 @@ async def get_result(request):
 
 async def get_pagesize(request, valueonly=False):
     from ...system import get_user_conf
+    from ...system import get_system_conf
     user_conf = get_user_conf()
+    sys_conf = get_system_conf()
     try:
         queries = await request.json()
     except:
         queries = {}
-    gui_result_pagesize = queries.get("pagesize", user_conf.get(gui_result_pagesize_key, default_gui_result_pagesize))
+    gui_result_pagesize = queries.get("pagesize", 
+        user_conf.get(gui_result_pagesize_key, 
+            sys_conf.get(gui_result_pagesize_key,
+                default_gui_result_pagesize)))
     if gui_result_pagesize:
         gui_result_pagesize = int(gui_result_pagesize)
     if valueonly:

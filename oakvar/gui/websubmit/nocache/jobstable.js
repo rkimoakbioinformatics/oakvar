@@ -447,14 +447,6 @@ function onClickJobsTablePageNav(evt) {
     evt.target.closest(".jobs-table-page-nav-btn").getAttribute("value")
   );
   var newPageNo = curPageNo + pageNoInc;
-  console.log(
-    "@ cur=",
-    curPageNo,
-    "pageNoInc=",
-    pageNoInc,
-    "newPageNo=",
-    newPageNo
-  );
   if (newPageNo <= 0) {
     return;
   }
@@ -479,7 +471,6 @@ function onClickJobsTablePageJumpBtn() {
 }
 
 function onKeyupJobsTablePageJumpBtn(evt) {
-  console.log("@ evt=", evt.keyCode)
   if (evt.keyCode == 13) {
     var pageno = getJobsTableJumpPageNo()
     if (pageno != null && ! isNaN(pageno)) {
