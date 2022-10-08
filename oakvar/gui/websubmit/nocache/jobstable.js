@@ -109,18 +109,16 @@ function getJobNoteTd(job) {
   return td;
 }
 
-function getJobsTableViewLink(job) {
-}
-
 function getJobViewTd(job) {
   var td = getJobTd();
   var div = td.firstChild
   if (job.statusjson.status == "Finished") {
-    div.textContent = "View"
+    var a = getEl("a")
+    a.href = "/result/nocache/index.html?dbpath=" + encodeURI(job.statusjson.db_path)
+    a.setAttribute("target", "_blank")
+    a.textContent = "View"
+    addEl(div, a)
     div.classList.add(...stringToArray("cursor-pointer text-green-600"))
-    div.addEventListener("click", function() {
-      window.open("/result/index.html?dbpath=" + encodeURI(job.statusjson.db_path))
-    })
   }
   return td;
 }

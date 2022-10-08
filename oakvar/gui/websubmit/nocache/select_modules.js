@@ -55,8 +55,8 @@ function showModuleFilterPanel(kind) {
   div.classList.remove("hidden")
 }
 
-function pinFilterCategory(kind) {
-  var el = document.querySelector(".filter-category[value=" + kind + "]")
+function pinFilterCategory(parentId, kind) {
+  var el = document.querySelector("#" + parentId).querySelector(".filter-category[value=" + kind + "]")
   el.classList.add("pinned");
 }
 
@@ -67,7 +67,20 @@ function onChangeFilterCategoryRadio(evt) {
 
 function changeFilterCategory(kind) {
   unpinAnalysisModuleFilterKindBtns()
-  pinFilterCategory(kind)
+  pinFilterCategory("analysis-module-filter-kinds", kind)
+  hideAnalysisModuleFilterPanels()
+  showModuleFilterPanel(kind)
+  populateModuleFilterPanel(kind)
+}
+
+function onChangeFilterCategoryRadioStore(evt) {
+  var kind = evt.target.value
+  changeFilterCategoryStore(kind)
+}
+
+function changeFilterCategoryStore(kind) {
+  unpinStoreModuleFilterKindBtns()
+  pinFilterCategory("store-module-filter-kinds", kind)
   hideAnalysisModuleFilterPanels()
   showModuleFilterPanel(kind)
   populateModuleFilterPanel(kind)

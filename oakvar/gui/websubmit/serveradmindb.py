@@ -448,6 +448,7 @@ class ServerAdminDb ():
         from ...system import get_sys_conf_value
         from ..consts import job_table_pagesize_key
         from ..consts import DEFAULT_JOB_TABLE_PAGESIZE
+        _ = search_text
         if not pagesize:
             try:
                 pagesize = get_sys_conf_value(job_table_pagesize_key)

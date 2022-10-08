@@ -127,21 +127,14 @@
       </a>
     </div>
     <!-- controls -->
-    <div id='topbuttons'>
-      <div class='threedotsdiv cursor-pointer'>
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-        </svg>
-      </div>
-    </div>
     <div>
       <!-- Static sidebar for desktop -->
-      <div id="sidebar_static" class="hidden md:flex md:w-36 md:flex-col md:fixed md:inset-y-0 bg-gray-50">
+      <div id="sidebar_static" class="hidden md:flex md:w-36 md:flex-col md:fixed md:inset-y-0">
         <!-- Sidebar component, swap this element with another sidebar if you like -->
         <div class="flex-1 flex flex-col min-h-0 border-r border-gray-200">
           <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
             <div class="flex items-center flex-shrink-0 px-4">
-              <img class="h-16 w-auto" src="/submit/images/logo_transparent.png" alt="Workflow">
+              <img class="h-16 w-auto" src="/submit/images/logo_transparent_bw.png" alt="Workflow">
             </div>
             <nav class="mt-5 flex-1 px-2 space-y-1">
               <a id="tabhead_submit" href="#" class="tabhead selected" onclick="changeTab(event)" value="submit">
@@ -308,7 +301,7 @@ Alternatively, paths to input files in the server can be used as well. For examp
                         <div class="analysis-module-filter-wrapper col-span-7">
                           <div id="analysis-module-filter-kinds" class="w-full">
                             <button class="filter-category pinned" role="filter-category" type="button" value="all" onclick="onChangeFilterCategoryRadio(event)">All</button>
-                            <button id="tabs-1-tab-2" class="filter-category ml-2" role="filter-category" type="button" value="tags" onclick="onChangeFilterCategoryRadio(event)">Tags</button>
+                            <button class="filter-category ml-2" role="filter-category" type="button" value="tags" onclick="onChangeFilterCategoryRadio(event)">Tags</button>
                           </div>
                           <div id="analysis-module-filter-panel-all" class="analysis-module-filter-panel w-full mt-4 overflow-auto hidden">
                             <div id="search-filtered-modules-all" class="flex mb-2">
@@ -394,9 +387,6 @@ Alternatively, paths to input files in the server can be used as well. For examp
               </tr>
             </thead>
             <tbody id="jobs-tbody" class="table-row-group divide-y divide-gray-200 bg-white block overflow-auto h-[36rem]">
-              <!-- Selected: "bg-gray-50" -->
-              <tr>
-              </tr>
             </tbody>
           </table>
         </div>
@@ -417,7 +407,82 @@ Alternatively, paths to input files in the server can be used as well. For examp
 </div>
 
                 </div>
-                <div id="tab_store" class="tabcontent hidden"></div>
+                <div id="tab_store" class="tabcontent hidden">
+                  <div id='store-module-choice-div' class='container mt-6 mb-4 snap-center flex justify-center max-w-7xl h-[95vh] max-w-7xl'><!-- module selection -->
+                    <div id="store-module-filter-div" class="bg-white p-4 rounded-md ml-4 mt-4 overflow-auto flex flex-col gap-8 text-gray-600 h-[95vh] w-full">
+                      <div id="store-module-div" class="grid grid-cols-12 gap-2" style="height: calc(95vh - 8rem);">
+                        <div class="store-module-filter-wrapper col-span-7">
+                          <div id="store-module-filter-kinds" class="w-full">
+                            <button class="filter-category pinned" role="filter-category" type="button" value="all" onclick="onChangeFilterCategoryRadioStore(event)">All</button>
+                            <button class="filter-category ml-2" role="filter-category" type="button" value="tags" onclick="onChangeFilterCategoryRadio(event)">Tags</button>
+                          </div>
+                          <div id="store-module-filter-panel-all" class="analysis-module-filter-panel w-full mt-4 overflow-auto hidden">
+                            <div id="store-search-filtered-modules-all" class="flex mb-2">
+                              <label for="search" class="sr-only">Search</label>
+                              <input type="text" name="search" class="block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mr-2" placeholder="Search">
+                              <button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Select all</button>
+                              <button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-2">Deselect all</button>
+                            </div>
+                            <div id="store-filtered-modules-all" class="filtered-modules-div overflow-auto pr-2 grid grid-cols-2 gap-1" style="height: calc(95vh - 8rem);"></div>
+                          </div>
+                          <div id="store-module-filter-panel-tags" class="analysis-module-filter-panel w-full mt-4 overflow-auto grid grid-cols-3 hidden">
+                            <div id="store-module-filter-items-tags" class="col-span-1 flex flex-col justify-center pl-1 overflow-y-auto" style="height: calc(95vh - 8rem);"></div>
+                            <div class="col-span-2">
+                              <div id="store-search-filtered-modules-all" class="flex mb-2">
+                                <label for="search" class="sr-only">Search</label>
+                                <input type="text" name="search" class="block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mr-2" placeholder="Search">
+                                <button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Select all</button>
+                                <button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-1">Deselect all</button>
+                              </div>
+                              <div id="store-filtered-modules-tags" class="filtered-modules-div overflow-auto pr-2 grid grid-cols-1 gap-1" style="height: calc(95vh - 8rem);"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div><!-- analysis module choice -->
+
+<ul role="list" class="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+  <li class="col-span-1 flex flex-col divide-y divide-gray-200 rounded-lg bg-white text-center shadow">
+    <div class="flex flex-1 flex-col p-8">
+      <img class="mx-auto h-16 w-16 flex-shrink-0" src="/store/locallogo?module=clinvar" alt="">
+      <h3 class="mt-6 text-sm font-medium text-gray-900">ClinVar</h3>
+      <dl class="mt-1 flex flex-grow flex-col justify-between">
+        <dd class="text-sm text-gray-500">ClinVar is an archive of reports of the relationships among human variations and phenotypes, with supporting evidence.</dd>
+        <dd class="mt-3">
+          <span class="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">Installed</span>
+        </dd>
+      </dl>
+    </div>
+    <div>
+      <div class="-mt-px flex divide-x divide-gray-200">
+        <div class="flex w-0 flex-1">
+          <a href="mailto:janecooper@example.com" class="relative -mr-px inline-flex w-0 flex-1 items-center justify-center rounded-bl-lg border border-transparent py-4 text-sm font-medium text-gray-700 hover:text-gray-500">
+            <!-- Heroicon name: mini/envelope -->
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 15.75l-2.489-2.489m0 0a3.375 3.375 0 10-4.773-4.773 3.375 3.375 0 004.774 4.774zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="ml-3">Details...</span>
+          </a>
+        </div>
+        <div class="-ml-px flex w-0 flex-1">
+          <a href="tel:+1-202-555-0170" class="relative inline-flex w-0 flex-1 items-center justify-center rounded-br-lg border border-transparent py-4 text-sm font-medium text-gray-700 hover:text-gray-500">
+            <!-- Heroicon name: mini/phone -->
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+            </svg>
+            <span class="ml-3">Uninstall</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </li>
+
+  <!-- More people... -->
+</ul>
+
+</div>
+
                 <div id="tab_apps" class="tabcontent hidden"></div>
                 <div id="tab_admin" class="tabcontent hidden"></div>
                 <div id="tab_systemnotready" class="tabcontent hidden">
@@ -511,78 +576,6 @@ Alternatively, paths to input files in the server can be used as well. For examp
     <div id='store-systemmoduleupdate-announce-div'> System update available <button id='store-systemmoduleupdate-button' class='butn' onclick='onClickSystemModuleUpdateButton();'>Update</button>
     </div>
     <!-- Below is old -->
-    <div class='headerdiv hidden' />
-    <div id="controldiv" class="flex fixed right-2 top-1">
-      <span id="userdiv"></span>
-      <div id="logdiv">
-        <button onclick="sendPasswordResetEmail()">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3" />
-          </svg>
-        </button>
-        <button onclick="logout()">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-          </svg>
-        </button>
-      </div>
-      <a href='https://docs.oakvar.com' target='_blank'>
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-        </svg>
-      </a>
-      <a href='mailto:rkim@oakbioinformatics.com?Subject=OakVar%20feedback'>
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-        </svg>
-      </a>
-      <div class='threedotsdiv cursor-pointer'>
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-        </svg>
-      </div>
-    </div>
-    </div>
-    <div id='submitdiv hidden' class='appdiv' style="display: none;">
-      <table>
-        <tr>
-          <td valign='top' style='padding-left: 5px; width: 100%;'>
-            <div id="jobdiv">
-              <div id="jobdivspinnerdiv" class="spinnerdiv">
-                <img src="/submit/nocache/broken_wheel.gif"></img>
-              </div>
-              <div style='width: 100%; text-align: right;'>
-                <button id='refresh-jobs-table-btn' class='butn'>&#x21ba;</button>
-              </div>
-              <table id="jobs-table">
-                <thead>
-                  <tr>
-                    <th class='tableheadercell'>Job ID</th>
-                    <th class='tableheadercell'>Input File</th>
-                    <th class='tableheadercell' style='width: 100px; cursor: default;' title='Number of unique variants'>Variants</th>
-                    <th class='tableheadercell' style='width: 100px;'>Annotators</th>
-                    <th class='tableheadercell'>Genome</th>
-                    <th class='tableheadercell'>Note</th>
-                    <th class='tableheadercell'>Status</th>
-                    <th class='tableheadercell'>Download</th>
-                    <th class='tableheadercell'>Delete</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-              <div id='jobs-table-pagination-div' style='float: right;'>
-                <button id='jobs-table-pagination-prev-button' class='butn inactive-download-button' onclick='onClickJobsListPrevPage();'>
-                  < </button>
-                    <button id='jobs-table-pagination-next-button' class='butn inactive-download-button' onclick='onClickJobsListNextPage();'>></button>
-              </div>
-              <br />
-            </div>
-          </td>
-        </tr>
-      </table>
-      <iframe id="download-area" style="display:none;"></iframe>
-    </div>
-    <!-- submitdiv -->
     <div id='storediv' class='appdiv' style='display: none;'>
       <div id='messagediv'></div>
       <div id='storebodydiv'>

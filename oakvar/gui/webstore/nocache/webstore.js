@@ -208,7 +208,6 @@ function populateStorePages() {
         makeModuleDetailDialog(currentDetailModule, null, null);
       }
     }
-    //populateStoreHome();
     populateAllModulesDiv();
     var mg = document
       .getElementById("store-modulegroup-div")
@@ -217,12 +216,10 @@ function populateStorePages() {
       populateModuleGroupDiv(mg);
     }
     if (storeFirstOpen) {
-      //showStoreHome();
       showAllModulesDiv();
     }
     storeFirstOpen = false;
   } else {
-    hidePageselect();
     showSystemNotReady();
   }
 }
@@ -2716,6 +2713,13 @@ function showCheckingUpdates() {
   var div = document.getElementById("update-available-div");
   div.textContent = "Checking updates...";
   disableUpdateAvailable();
+}
+
+function unpinStoreModuleFilterKindBtns() {
+  var els = document.querySelector("#store-module-filter-kinds").children;
+  for (var i = 0; i < els.length; i++) {
+    els[i].classList.remove("pinned");
+  }
 }
 
 function webstore_run() {

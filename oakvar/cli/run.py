@@ -853,7 +853,6 @@ class Runner(object):
         return f"{run_name}_{count}"
 
     def set_run_name(self):
-        import os
         from os.path import basename
         from ..exceptions import NoInput
         from ..exceptions import SetupError

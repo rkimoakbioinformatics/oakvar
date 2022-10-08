@@ -1346,7 +1346,7 @@ async function websubmit_run() {
   // Store
   var taskRemote = getRemote().then(async function () {
     complementRemoteWithLocal();
-    setBaseInstalled();
+    //setBaseInstalled();
     populateStorePages();
     populateStoreTagPanel();
     updateModuleGroupInfo();
