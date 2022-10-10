@@ -246,6 +246,7 @@ def get_result_url(args={}):
     if exists(dbpath) == False:
         raise NoInput()
     (compatible_version, db_version, oc_version) = is_compatible_version(dbpath)
+    print(f"@ args={args}")
     if not compatible_version:
         msg = f"DB version {db_version} of {dbpath} is not compatible with the current OakVar ({oc_version}). "
         msg += f'Consider running "oc util update-result {dbpath}" and running "oc gui {dbpath}" again.'

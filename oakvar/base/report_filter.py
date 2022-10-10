@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from typing import Any
 from typing import List
 import sys
@@ -132,17 +131,6 @@ class FilterGroup(object):
         # Backwards compatability, may remove later
         self.rules += [FilterGroup(x) for x in d.get("groups", [])]
         self.rules += [FilterColumn(x, self.operator) for x in d.get("columns", [])]
-        self.column_prefixes = {}
-
-    def add_prefixes(self, prefixes):
-        self.column_prefixes.update(prefixes)
-        for rule in self.rules:
-            if isinstance(rule, FilterGroup):
-                rule.add_prefixes(prefixes)
-            elif isinstance(rule, FilterColumn):
-                prefix = self.column_prefixes.get(rule.column)
-                if prefix is not None:
-                    rule.column = prefix + "." + rule.column
 
     def get_sql(self):
         clauses = []
@@ -243,7 +231,6 @@ class ReportFilter:
         self.filtertable = "filter"
         self.generows = {}
         self.table_aliases = None
-        self.column_prefixes = {}
         self.conn_read = None
         self.conn_write = None
         self.uid = uid
@@ -423,29 +410,6 @@ class ReportFilter:
         if dbpath != None:
             self.dbpath = abspath(dbpath)
         await self.make_db_conns()
-        #if conn is not None:
-        #    await conn.create_function("regexp", 2, regexp)
-        #    await self.exec_db(self.set_aliases)
-
-    #async def set_aliases(self, conn=None, cursor=None):
-    #    if conn is None:
-    #        pass
-    #    self.table_aliases = {"variant": "v", "gene": "g"}
-    #    self.column_prefixes = {}
-    #    q = "pragma table_info(variant)"
-    #    if cursor is not None:
-    #        await cursor.execute(q)
-    #        self.column_prefixes.update(
-    #            {
-    #                row[1]: self.table_aliases["variant"]
-    #                for row in await cursor.fetchall()
-    #            }
-    #        )
-    #        q = "pragma table_info(gene)"
-    #        await cursor.execute(q)
-    #        self.column_prefixes.update(
-    #            {row[1]: self.table_aliases["gene"] for row in await cursor.fetchall()}
-    #        )
 
     async def close_db(self):
         if self.conn_read:
@@ -625,7 +589,6 @@ class ReportFilter:
         if self.filter and level in self.filter:
             criteria = self.filter[level]
             main_group = FilterGroup(criteria)
-            main_group.add_prefixes(self.column_prefixes)
             sql = main_group.get_sql()
             if sql:
                 where = "where " + sql
@@ -1111,12 +1074,7 @@ class ReportFilter:
 
     async def get_variant_data_for_cols(self, cols, cursor_read=Any, cursor_write=Any):
         _ = cursor_write
-        bypassfilter = (
-            not self.filter
-            and not self.filtersql
-            and not self.includesample
-            and not self.excludesample
-        )
+        bypassfilter = self.should_bypass_filter()
         if cols[0] == "base__uid":
             cols[0] = "v.base__uid"
         q = "select {},base__hugo from variant as v".format(",".join(cols))
@@ -1170,28 +1128,21 @@ class ReportFilter:
             output_columns.append(d)
         return output_columns
 
-    def get_bypassfilter(self):
-        bypassfilter = (
-            not self.filter
-            and not self.filtersql
-            and not self.includesample
-            and not self.excludesample
-        )
-        return bypassfilter
-
     async def make_ftables_and_ftable_uid(self, make_filtered_table=True):
         self.ftable_uid = None
-        if not self.get_bypassfilter() or make_filtered_table:
+        if not self.should_bypass_filter() or make_filtered_table:
             ret = await self.make_ftables()
             if ret:
                 ftable_uid = ret["uid"]
                 return ftable_uid
 
     async def getcount(self, level="variant", uid=None):
-        if not uid:
+        if self.should_bypass_filter() or uid:
+            norows = await self.exec_db(self.get_ftable_num_rows, level=level, uid=uid, ftype=level)
+        else:
             uid = await self.make_ftables_and_ftable_uid()
-        total_norows = await self.exec_db(self.get_ftable_num_rows, level=level, uid=uid, ftype=level)
-        return total_norows
+            norows = await self.exec_db(self.get_ftable_num_rows, level=level, uid=uid, ftype=level)
+        return norows
 
 def regexp(y, x, search=None):
     import re

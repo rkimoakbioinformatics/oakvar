@@ -360,14 +360,15 @@ async def get_count(request):
         filterstring = None
     cf = await ReportFilter.create(dbpath=dbpath, mode="sub", filterstring=filterstring)
     dbbasename = os.path.basename(dbpath)
-    if logger is not None:
-        logger.info("calling count for {}".format(dbbasename))
+    _ = dbbasename
+    if logger:
+        logger.info(f"calling count for {dbbasename}. filterstring={filterstring}")
     t = time.time()
-    n = await cf.getcount(level=tab)
+    n = await cf.exec_db(cf.getcount, level=tab)
     await cf.close_db()
-    if logger is not None:
+    if logger:
         t = round(time.time() - t, 3)
-        logger.info("count obtained from {} in {}s".format(dbbasename, t))
+        logger.info(f"count obtained from {dbbasename} in {t}s")
     content = {"n": n}
     return web.json_response(content)
 

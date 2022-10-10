@@ -473,6 +473,7 @@ class Runner(object):
                 status_writer=self.status_writer,
                 args=self.args,
                 force=True,
+                status_json=self.status_json
             )
             self.process_input()
             self.set_and_check_input_files()
@@ -488,7 +489,7 @@ class Runner(object):
                 await self.do_step_postaggregator()
                 await self.do_step_reporter()
             update_status(
-                "Finished", status_writer=self.status_writer, args=self.args, force=True
+                "Finished", status_writer=self.status_writer, args=self.args, force=True, status_json=self.status_json
             )
         except Exception as e:
             self.exception = e
@@ -516,6 +517,7 @@ class Runner(object):
                         status_writer=self.status_writer,
                         args=self.args,
                         force=True,
+                        status_json=self.status_json
                     )
             if self.logger:
                 self.close_logger()
@@ -1155,7 +1157,7 @@ class Runner(object):
             arg_dict["format"] = self.args.forcedinputformat
         if self.args.unique_variants:
             arg_dict["unique_variants"] = True
-        announce_module(module, status_writer=self.status_writer, args=self.args)
+        announce_module(module, status_writer=self.status_writer, args=self.args, status_json=self.status_json)
         if self.verbose:
             print(
                 " ".join([str(k) + "=" + str(v) for k, v in arg_dict.items()]),
@@ -1190,7 +1192,7 @@ class Runner(object):
             module_cls = load_class(module.script_path, "Preparer")
             module_ins = module_cls(kwargs)
             announce_module(
-                module, status_writer=self.status_writer, args=self.args
+                module, status_writer=self.status_writer, args=self.args, status_json=self.status_json
             )
             stime = time()
             module_ins.run()
@@ -1408,6 +1410,7 @@ class Runner(object):
             status_writer=self.status_writer,
             args=self.args,
             force=True,
+            status_json=self.status_json
         )
         v_aggregator = Aggregator(cmd, self.status_writer)
         v_aggregator.run()
@@ -1436,6 +1439,7 @@ class Runner(object):
             status_writer=self.status_writer,
             args=self.args,
             force=True,
+            status_json=self.status_json
         )
         g_aggregator = Aggregator(cmd, self.status_writer)
         g_aggregator.run()
@@ -1463,6 +1467,7 @@ class Runner(object):
                 status_writer=self.status_writer,
                 args=self.args,
                 force=True,
+                status_json=self.status_json
             )
             s_aggregator = Aggregator(cmd, self.status_writer)
             s_aggregator.run()
@@ -1489,6 +1494,7 @@ class Runner(object):
                 status_writer=self.status_writer,
                 args=self.args,
                 force=True,
+                status_json=self.status_json
             )
             m_aggregator = Aggregator(cmd, self.status_writer)
             m_aggregator.run()
@@ -1524,7 +1530,7 @@ class Runner(object):
                 post_agg_cls = load_class(module.script_path, "CravatPostAggregator")
             post_agg = post_agg_cls(cmd, self.status_writer)
             announce_module(
-                module, status_writer=self.status_writer, args=self.args
+                module, status_writer=self.status_writer, args=self.args, status_json=self.status_json
             )
             stime = time()
             post_agg.run()
@@ -1609,7 +1615,7 @@ class Runner(object):
         for report_type, module_name in zip(report_types, module_names):
             reporter = None
             module = get_local_module_info(module_name)
-            announce_module(module, status_writer=self.status_writer, args=self.args)
+            announce_module(module, status_writer=self.status_writer, args=self.args, status_json=self.status_json)
             if module is None:
                 raise ModuleNotExist(module_name)
             arg_dict = dict(vars(self.args))
@@ -1967,7 +1973,7 @@ class Runner(object):
         from ..util.util import announce_module
 
         for module in self.ordered_summarizers:
-            announce_module(module, status_writer=self.status_writer, args=self.args)
+            announce_module(module, status_writer=self.status_writer, args=self.args, status_json=self.status_json)
             self.run_summarizer(module)
 
     def run_summarizer(self, module):
@@ -2033,6 +2039,7 @@ class Runner(object):
         db = await aiosqlite.connect(str(admindb_path))
         cursor = await db.cursor()
         q = 'update jobs set runtime=?, numinput=?, statusjson=? where dir=? and name=?'
+        print(f"@ q={q}")
         await cursor.execute(q, (runtime, numinput, statusjson, self.output_dir, self.args.job_name))
         await db.commit()
         await cursor.close()

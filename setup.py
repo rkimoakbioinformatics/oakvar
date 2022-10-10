@@ -8,6 +8,7 @@ def walk_and_add(d, pkg_files):
         "annotator_template",
         "base",
         "cli",
+        "gui",
         "liftover",
         "module",
         "store",

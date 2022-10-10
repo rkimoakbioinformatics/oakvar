@@ -968,7 +968,6 @@ function makeFilterTab(rightDiv) {
     .addClass("filter-section");
   rightPanel.append(loadControls);
   var label = getEl("span")
-  label.id = "filter-count-btn"
   label.textContent = "Count preview:"
   label.classList.add(...stringToArray("cursor-pointer mr-2"))
   addEl(loadControls[0], label)
@@ -1061,29 +1060,13 @@ function importFilter(file) {
 }
 
 function countFilterVariants() {
-  let countBtn = $("#filter-count-btn");
-  gifPath = "images/arrow-spinner.gif";
-  imgPath = "images/arrow-spinner-static.gif";
-  countBtn.attr("src", gifPath);
-  let changeToImg = false;
-  // Spin for at least 1 second
-  setTimeout(() => {
-    if (changeToImg) {
-      countBtn.attr("src", imgPath);
-    } else {
-      changeToImg = true;
-    }
-  }, 1000);
+  enableLoadingDiv()
   return new Promise((resolve, _) => {
     makeFilterJson();
     infomgr.count(dbPath, "variant", (_, data) => {
       let count = data.n;
-      if (changeToImg) {
-        countBtn.attr("src", imgPath);
-      } else {
-        changeToImg = true;
-      }
       displayFilterCount(count);
+      removeLoadingDiv()
       resolve(count);
     });
   });
@@ -1118,25 +1101,29 @@ function getFilterFile() {
 function makeFilterJson() {
   let fjs = {};
   // Samples
-  fjs.sample = {
-    require: [...filterMgr.requireSamples],
-    reject: [...filterMgr.rejectSamples],
-  };
+  if (filterMgr.requireSamples.size > 0 || filterMgr.requireSamples.size > 0) {
+    fjs.sample = {
+      require: [...filterMgr.requireSamples],
+      reject: [...filterMgr.rejectSamples],
+    };
+  }
   // Gene list
-  let geneListString = $("#" + filterMgr.geneTextId).val();
-  let geneList = geneListString
-    .split("\n")
-    .map((s) => s.trim())
-    .map((s) => s.toUpperCase())
-    .filter((s) => s);
-  fjs.genes = geneList;
+  let geneListString = document.querySelector("#" + filterMgr.geneTextId).value
+  if (geneListString != "") {
+    let geneList = geneListString
+      .split("\n")
+      .map((s) => s.trim())
+      .map((s) => s.toUpperCase())
+    fjs.genes = geneList;
+  }
   // Variant Properties
-  let activeVprop = $("#" + filterMgr.vpropSelectId).val();
+  let activeVprop = document.querySelector("#" + filterMgr.vpropSelectId).value
   if (activeVprop === "sf") {
     let sfWrapDiv = $("#" + filterMgr.vpropSfId);
     let sfDivs = sfWrapDiv.children("div");
     let fullSf = { operator: "and", rules: [] };
     let sfState = {};
+    var sfUsed = false
     for (let i = 0; i < sfDivs.length; i++) {
       sfDiv = $(sfDivs[i]);
       if (!sfDiv.hasClass("smartfilter-active")) {
@@ -1154,15 +1141,22 @@ function makeFilterJson() {
         sfState[sfSource] = {};
       }
       sfState[sfSource][sfName] = val;
+      sfUsed = true
     }
-    fjs.variant = fullSf;
-    fjs.smartfilter = sfState;
+    if (sfUsed) {
+      fjs.variant = fullSf;
+      fjs.smartfilter = sfState;
+    }
   } else if (activeVprop === "qb") {
     let qbRoot = $("#" + filterMgr.qbRootId);
     fjs.variant = makeGroupFilter(qbRoot);
-    fjs.smartfilter = {};
+    //fjs.smartfilter = {};
   }
-  filterJson = fjs;
+  if (Object.keys(fjs).length == 0) {
+    filterJson = null
+  } else {
+    filterJson = fjs;
+  }
 }
 
 function addSfValue(topRule, value) {
