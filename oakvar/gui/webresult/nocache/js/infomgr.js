@@ -91,7 +91,7 @@ InfoMgr.prototype.load_job = async function (jobId, tabName, setResetTab = true)
       confpath: confPath,
       filter: JSON.stringify(filterJson),
       separatesample: separateSample,
-      page: pageNo,
+      page: pageNos[tabName],
       pagesize: pageSize,
       makefilteredtable: setResetTab,
       no_summary: false,
@@ -125,7 +125,7 @@ InfoMgr.prototype.load_job = async function (jobId, tabName, setResetTab = true)
   return true
 }
 
-InfoMgr.prototype.load_info = async function (jobId, tabName) {
+InfoMgr.prototype.load_info = async function (jobId, _tabName) {
   var self = this;
   const response = await axios.get("/result/service/status", {
     params: { username: username, job_id: jobId, dbpath: dbPath },
@@ -139,7 +139,7 @@ InfoMgr.prototype.load_info = async function (jobId, tabName) {
   }
 }
 
-InfoMgr.prototype.load = async function (jobId, tabName, fetchtype) {
+InfoMgr.prototype.load = async function (_jobId, tabName, fetchtype) {
   var self = this;
   if (fetchtype == "single") {
     var response = await axios.get("/submit/annotate", {
@@ -404,7 +404,7 @@ InfoMgr.prototype.getStat = function (tabName) {
   return this.stats[tabName];
 };
 
-InfoMgr.prototype.getJobInfo = function (tabName) {
+InfoMgr.prototype.getJobInfo = function (_tabName) {
   return this.jobinfo;
 };
 
@@ -418,7 +418,7 @@ InfoMgr.prototype.getRowValue = function (tabName, row, col) {
   return val;
 };
 
-InfoMgr.prototype.getGeneRowValue = function (hugo) {
+InfoMgr.prototype.getGeneRowValue = function (_hugo) {
   var val = null;
   if (Object.keys(this.columnnoss).length > 0) {
     val = row[this.columnnoss[tabName][col]];

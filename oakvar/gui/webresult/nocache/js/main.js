@@ -275,6 +275,9 @@ function copyColModel(colModelGroup) {
 }
 
 function addGeneLevelToVariantLevel() {
+  if (currentTab != "variant") {
+    return
+  }
   var oriNoColVar = infomgr.columnss.variant.length;
   var geneColModels = infomgr.colModels["gene"];
   var colNo = oriNoColVar;
@@ -401,21 +404,15 @@ var makeVariantByGene = function () {
   }
 };
 
-function removeSpinnerTableDataOnly () {
-  if (spinner != null) {
-    spinner.remove();
-  }
+function updateTableDataOnly () {
   addGeneLevelToVariantLevel();
-  if ($grids["variant"] != undefined) {
-    $grids["variant"].pqGrid("option", "dataModel", {
-      data: infomgr.datas["variant"],
+  if ($grids[currentTab] != undefined) {
+    $grids[currentTab].pqGrid("option", "dataModel", {
+      data: infomgr.datas[currentTab],
     });
-    $grids["variant"].pqGrid("refreshDataAndView");
-    updateTableFooterTotalRows("variant");
+    $grids[currentTab].pqGrid("refreshDataAndView");
+    updateTableFooterTotalRows(currentTab);
   }
-  enableUpdateButton();
-  //unlockTabs();
-  removeLoadingDiv()
 };
 
 async function loadGeneResultTableDataOnly () {
@@ -425,39 +422,19 @@ async function loadGeneResultTableDataOnly () {
   await infomgr.load_job(jobId, "gene", (setResetTab = false))
 }
 
-function shouldVariantLevelLoaded() {
-  return (resultLevels.indexOf("variant") >= 0)
-}
-
-async function callLoadVariantTableDataOnly() {
-  if (!shouldVariantLevelLoaded()) {
-    return
-  }
-  /*var callback = null;
-  if (usedAnnotators["gene"]) {
-    callback = loadGeneResultTableDataOnly;
-  } else {
-    callback = removeSpinnerTableDataOnly;
-  }*/
-  await infomgr.load_job(jobId, "variant", (setResetTab = false))
-  removeSpinnerTableDataOnly()
-}
-
 function loadTableDataOnly() {
-  var pageNoInput = document.getElementById("page-no-input");
+  var pageNoInput = document.getElementById("page-no-input_" + currentTab);
   var pageNoS = pageNoInput.value;
-  pageNo = parseInt(pageNoS);
-  if (isNaN(pageNo)) {
+  pageNos[currentTab] = parseInt(pageNoS);
+  if (isNaN(pageNos[currentTab])) {
     return;
   }
   enableLoadingDiv()
-  callLoadVariantTableDataOnly()
-  .then(function(_) {
-    //loadGeneResultTableDataOnly()
-    //.then(function(_) {
-    //})
+  infomgr.load_job(jobId, currentTab, (setResetTab = false)).then(function() {
+    updateTableDataOnly()
+    removeLoadingDiv()
+    filterArmed = filterJson;
   })
-  filterArmed = filterJson;
 }
 
 function selectTableFirstRow(tabName) {

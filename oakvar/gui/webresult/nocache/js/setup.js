@@ -2410,63 +2410,61 @@ function makeGrid(columns, data, tabName) {
   addEl(button, getTn("Export"));
   addEl(footer, span);
   addEl(footer, button);
-  if (tabName == "variant") {
-    var prevBtn = getEl("button");
-    prevBtn.id = "prev-page-btn";
-    prevBtn.style = "margin-left: 0.25rem; background-color: #c1c1c1;"
-    addEl(prevBtn, getTn("Prev"));
-    prevBtn.onclick = async function (_) {
-      pageNo -= 1;
-      if (pageNo >= 1) {
-        updatePageNoS();
-        loadTableDataOnly();
-      }
-    };
-    addEl(footer, prevBtn);
-    var label = getEl("span");
-    label.style = "margin-left: 0.25rem;"
-    label.textContent = "Page";
-    addEl(footer, label);
-    var pageNoInput = getEl("input");
-    pageNoInput.style = "margin-left: 0.25rem;"
-    pageNoInput.id = "page-no-input";
-    pageNoInput.type = "text";
-    pageNoInput.size = "4";
-    pageNoInput.value = pageNo;
-    pageNoInput.addEventListener("keyup", async function (evt) {
-      if (evt.key == "Enter") {
-        loadTableDataOnly();
-      }
-    });
-    addEl(footer, pageNoInput);
-    var nextBtn = getEl("button");
-    nextBtn.id = "next-page-btn";
-    nextBtn.style = "margin-left: 0.25rem; background-color: #c1c1c1;"
-    addEl(nextBtn, getTn("Next"));
-    nextBtn.onclick = async function (_) {
-      pageNo += 1;
+  var prevBtn = getEl("button");
+  prevBtn.id = "prev-page-btn_" + tabName;
+  prevBtn.style = "margin-left: 0.25rem; background-color: #c1c1c1;"
+  addEl(prevBtn, getTn("Prev"));
+  prevBtn.onclick = async function (_) {
+    pageNos[tabName] -= 1;
+    if (pageNos[tabName] >= 1) {
       updatePageNoS();
       loadTableDataOnly();
-    };
-    addEl(footer, nextBtn);
-    var pageInput = getEl("input");
-    pageInput.id = "page-input";
-    pageInput.style = "margin-left: 0.25rem;"
-    pageInput.type = "text";
-    pageInput.size = "6";
-    pageInput.value = pageSize;
-    pageInput.addEventListener("keyup", async function (evt) {
-      if (evt.key == "Enter") {
-        pageNo = 1;
-        updatePageNoS();
-        loadTableDataOnly();
-      }
-    });
-    addEl(footer, pageInput);
-    var label = getEl("span");
-    label.textContent = "rows per page";
-    addEl(footer, label);
-  }
+    }
+  };
+  addEl(footer, prevBtn);
+  var label = getEl("span");
+  label.style = "margin-left: 0.25rem;"
+  label.textContent = "Page";
+  addEl(footer, label);
+  var pageNoInput = getEl("input");
+  pageNoInput.style = "margin-left: 0.25rem;"
+  pageNoInput.id = "page-no-input_" + tabName;
+  pageNoInput.type = "text";
+  pageNoInput.size = "4";
+  pageNoInput.value = pageNos[tabName];
+  pageNoInput.addEventListener("keyup", async function (evt) {
+    if (evt.key == "Enter") {
+      loadTableDataOnly();
+    }
+  });
+  addEl(footer, pageNoInput);
+  var nextBtn = getEl("button");
+  nextBtn.id = "next-page-btn_" + tabName;
+  nextBtn.style = "margin-left: 0.25rem; background-color: #c1c1c1;"
+  addEl(nextBtn, getTn("Next"));
+  nextBtn.onclick = async function (_) {
+    pageNos[tabName] += 1;
+    updatePageNoS();
+    loadTableDataOnly();
+  };
+  addEl(footer, nextBtn);
+  var pageInput = getEl("input");
+  pageInput.id = "page-input";
+  pageInput.style = "margin-left: 0.25rem;"
+  pageInput.type = "text";
+  pageInput.size = "6";
+  pageInput.value = pageSize;
+  pageInput.addEventListener("keyup", async function (evt) {
+    if (evt.key == "Enter") {
+      pageNos[tabName] = 1;
+      updatePageNoS();
+      loadTableDataOnly();
+    }
+  });
+  addEl(footer, pageInput);
+  var label = getEl("span");
+  label.textContent = "rows per page";
+  addEl(footer, label);
   updateTableFooterTotalRows(tabName);
 }
 
@@ -2476,8 +2474,8 @@ function updateTableFooterTotalRows(tabName) {
 }
 
 function updatePageNoS() {
-  var span = document.getElementById("page-no-input");
-  span.value = pageNo;
+  var span = document.getElementById("page-no-input_" + currentTab);
+  span.value = pageNos[currentTab];
 }
 
 function emptyElement(elem) {
@@ -3266,6 +3264,6 @@ function addTextToInfonoticediv(lines) {
 function updatePageNoInput() {
   var div = document.getElementById("page-no-input");
   if (div != null) {
-    div.textContent = pageNo;
+    div.textContent = pageNos[currentTab];
   }
 }

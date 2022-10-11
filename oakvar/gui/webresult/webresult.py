@@ -432,10 +432,7 @@ async def get_result(request):
     arg_dict["no_summary"] = no_summary
     add_summary = not no_summary
     reporter = m.Reporter(arg_dict)
-    if tab == "variant":
-        data = await reporter.run(tab=tab, pagesize=pagesize, page=page, make_filtered_table=make_filtered_table, dictrow=True)
-    else:
-        data = await reporter.run(tab=tab, add_summary=add_summary, dictrow=True)
+    data = await reporter.run(tab=tab, pagesize=pagesize, page=page, add_summary=add_summary, make_filtered_table=make_filtered_table, dictrow=True)
     data["modules_info"] = await get_modules_info(request)
     content = {}
     content["stat"] = {
@@ -479,7 +476,7 @@ async def get_pagesize(request, valueonly=False):
         content = {"gui_result_pagesize": gui_result_pagesize}
         return web.json_response(content)
 
-async def get_num_var_limit_for_summary_widget(request):
+async def get_num_var_limit_for_summary_widget(_):
     from ...system import get_system_conf
     from ..consts import DEFAULT_RESULT_VIEWER_NUM_VAR_LIMIT_FOR_SUMMARY_WIDGET
     from ..consts import result_viewer_num_var_limit_for_summary_widget_key
