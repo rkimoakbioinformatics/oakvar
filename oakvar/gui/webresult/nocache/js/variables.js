@@ -52,3 +52,4 @@ const defaultDetailDivWidth = 620
 var widgetWidthGridSize = 600;
 var widgetHeightGridSize = 300;
 var tableHightlighBackgroundColor = "rgb(188, 218, 251)"
+var summaryVarLimit = null

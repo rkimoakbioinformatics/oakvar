@@ -364,7 +364,7 @@ async def get_count(request):
     if logger:
         logger.info(f"calling count for {dbbasename}. filterstring={filterstring}")
     t = time.time()
-    n = await cf.exec_db(cf.getcount, level=tab)
+    n = await cf.getcount(level=tab)
     await cf.close_db()
     if logger:
         t = round(time.time() - t, 3)
@@ -374,10 +374,8 @@ async def get_count(request):
 
 
 async def get_result(request):
-    from ...system import get_user_conf
     from ...exceptions import DatabaseConnectionError
 
-    user_conf = get_user_conf()
     global logger
     queries = await request.json()
     _, dbpath = await get_jobid_dbpath(request)
@@ -391,13 +389,7 @@ async def get_result(request):
         page = 1
     else:
         page = int(page)
-    pagesize = queries.get("pagesize")
-    if not pagesize:
-        pagesize = user_conf.get(gui_result_pagesize_key)
-        if not pagesize:
-            pagesize = default_gui_result_pagesize
-    else:
-        pagesize = int(pagesize)
+    pagesize = await get_pagesize(request, valueonly=True)
     if logger is not None:
         logger.info("(Getting result of [{}]:[{}]...)".format(dbname, tab))
     start_time = time.time()
@@ -487,6 +479,15 @@ async def get_pagesize(request, valueonly=False):
         content = {"gui_result_pagesize": gui_result_pagesize}
         return web.json_response(content)
 
+async def get_num_var_limit_for_summary_widget(request):
+    from ...system import get_system_conf
+    from ..consts import DEFAULT_RESULT_VIEWER_NUM_VAR_LIMIT_FOR_SUMMARY_WIDGET
+    from ..consts import result_viewer_num_var_limit_for_summary_widget_key
+    sys_conf = get_system_conf()
+    num_var_limit = sys_conf.get(result_viewer_num_var_limit_for_summary_widget_key, DEFAULT_RESULT_VIEWER_NUM_VAR_LIMIT_FOR_SUMMARY_WIDGET)
+    num_var_limit = int(num_var_limit)
+    return web.json_response({"num_var_limit": num_var_limit})
+    
 async def get_result_levels(request):
     from ...system import get_system_conf
     sys_conf = get_system_conf()
@@ -956,3 +957,4 @@ routes.append(["GET", "/webapps/{module}/widgets/{widget}", serve_webapp_runwidg
 routes.append(["GET", "/result/service/{hugo}/variants", get_variants_for_hugo])
 routes.append(["GET", "/result/service/variantdbcols", get_variantdbcols])
 routes.append(["GET", "/result/service/pagesize", get_pagesize])
+routes.append(["GET", "/result/service/summaryvarlimit", get_num_var_limit_for_summary_widget])

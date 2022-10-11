@@ -1007,8 +1007,9 @@ function makeFilterTab(rightDiv) {
   path.setAttribute("stroke-linejoin", "round");
   path.setAttribute(
     "d",
-    "M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+    "M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
   );
+
   saveIcon.addEventListener("click", function (_) {
     saveFilterSettingAs().then(function (_) {
       populateFilterSaveNames();
@@ -1571,6 +1572,9 @@ function packWidgets(tabName) {
 }
 
 function populateSummaryWidgetDiv() {
+  if (infomgr.totalNoRows > summaryVarLimit) {
+    return
+  }
   var tabName = "info";
   var outerDiv = document.getElementById("detailcontainerdiv_info");
   var widgetDivs = outerDiv.children;
@@ -2229,6 +2233,7 @@ function drawSummaryWidgetGivenData(
 }
 
 function drawSummaryWidget(widgetName) {
+  console.trace()
   var widgetContentDiv = document.getElementById(
     "widgetcontentdiv_" + widgetName + "_info"
   );

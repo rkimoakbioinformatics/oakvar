@@ -370,7 +370,7 @@ class ReportFilter:
 
     async def create_report_filter_registry_table_if_not_exists(self, conn):
         cursor = await conn.cursor()
-        q = f"create table if not exists {REPORT_FILTER_DB_NAME}.{REPORT_FILTER_REGISTRY_NAME} ( uid int, user text, dbpath text, filterjson text, status text )"
+        q = f"create table if not exists {REPORT_FILTER_DB_NAME}.{REPORT_FILTER_REGISTRY_NAME} ( uid int primary key, user text, dbpath text, filterjson text, status text )"
         await cursor.execute(q)
         await conn.commit()
         await cursor.close()
@@ -657,40 +657,76 @@ class ReportFilter:
         await cursor_write.execute(q)
         await self.conn_write.commit()
 
+    def get_registry_table_name(self):
+        return f"{REPORT_FILTER_DB_NAME}.{REPORT_FILTER_REGISTRY_NAME}"
+
     async def get_existing_report_filter_status(self, cursor_read=Any, cursor_write=Any):
         from json import dumps
-        from asyncio import sleep
         _ = cursor_write
         if not self.filter or not self.dbpath or not cursor_read:
             return None
         filterjson = dumps(self.filter)
-        q = f"select uid, status from {REPORT_FILTER_DB_NAME}.{REPORT_FILTER_REGISTRY_NAME} where user=? and dbpath=? and filterjson=?"
-        while True:
-            await cursor_read.execute(q, (self.user, self.dbpath, filterjson))
-            ret = await cursor_read.fetchone()
-            if not ret:
-                return None
-            [uid, status] = ret
-            if status == REPORT_FILTER_IN_PROGRESS:
-                print(f"waiting for report filter {uid} to be made...")
-                await sleep(1)
-                continue
-            return {"uid": uid, "status": status}
+        tablename = self.get_registry_table_name()
+        q = f"select uid, status from {tablename} where user=? and dbpath=? and filterjson=?"
+        await cursor_read.execute(q, (self.user, self.dbpath, filterjson))
+        ret = await cursor_read.fetchone()
+        if not ret:
+            return None
+        [uid, status] = ret
+        return {"uid": uid, "status": status}
+
+    async def get_report_filter_count(self, cursor=Any):
+        tablename = self.get_registry_table_name()
+        q = f"select count(*) from {tablename}"
+        await cursor.execute(q)
+        ret = await cursor.fetchone()
+        count = ret[0]
+        return count
+
+    async def get_max_report_filter_uid(self, cursor=Any, where=None):
+        tablename = self.get_registry_table_name()
+        q = f"select max(uid) from {tablename}"
+        if where:
+            q += f" where {where}"
+        await cursor.execute(q)
+        ret = await cursor.fetchone()
+        n = ret[0]
+        return n
+
+    async def get_min_report_filter_uid(self, cursor=Any, where=None):
+        tablename = self.get_registry_table_name()
+        q = f"select min(uid) from {tablename}"
+        if where:
+            q += f" where {where}"
+        await cursor.execute(q)
+        ret = await cursor.fetchone()
+        n = ret[0]
+        return n
 
     async def get_new_report_filter_uid(self, cursor_read=Any, cursor_write=Any):
+        from ..system import get_sys_conf_value
+        from ..system.consts import report_filter_max_num_cache_per_user_key
+        from ..system.consts import DEFAULT_REPORT_FILTER_MAX_NUM_CACHE_PER_USER
         _ = cursor_write
-        q = f"select uid from {REPORT_FILTER_DB_NAME}.{REPORT_FILTER_REGISTRY_NAME}"
-        await cursor_read.execute(q)
-        rets = await cursor_read.fetchall()
-        if len(rets) == 0:
-            return 1
-        prev_uid = 0
-        for ret in rets:
-            uid = int(ret[0])
-            if uid > prev_uid + 1:
-                return prev_uid + 1
-            prev_uid = uid
-        return prev_uid + 1
+        delete_uids = []
+        report_filter_max_num_cache_per_user = get_sys_conf_value(report_filter_max_num_cache_per_user_key)
+        if not report_filter_max_num_cache_per_user:
+            report_filter_max_num_cache_per_user_key = DEFAULT_REPORT_FILTER_MAX_NUM_CACHE_PER_USER
+        count = await self.get_report_filter_count(cursor=cursor_read)
+        max_uid = await self.get_max_report_filter_uid(cursor=cursor_read)
+        min_uid = await self.get_min_report_filter_uid(cursor=cursor_read)
+        if count < report_filter_max_num_cache_per_user:
+            uid = count
+        else:
+            if max_uid < report_filter_max_num_cache_per_user * 2 - 1:
+                delete_uids = [min_uid]
+                uid = max_uid + 1
+            else:
+                delete_uids = [v for v in range(report_filter_max_num_cache_per_user * 2, max_uid + 1)]
+                min_over_uid = await self.get_min_report_filter_uid(cursor=cursor_read, where=f"uid >= {report_filter_max_num_cache_per_user}")
+                delete_uids.append(min_over_uid)
+                uid = min_over_uid - report_filter_max_num_cache_per_user
+        return [uid, delete_uids]
 
     async def get_filtered_hugo_list(self, cursor_read=Any, cursor_write=Any):
         _ = cursor_write
@@ -709,7 +745,7 @@ class ReportFilter:
             return
         _ = cursor_read
         filterjson = dumps(self.filter)
-        q = f"insert into {REPORT_FILTER_DB_NAME}.{REPORT_FILTER_REGISTRY_NAME} ( uid, user, dbpath, filterjson, status) values (?, ?, ?, ?, ?)"
+        q = f"insert or replace into {REPORT_FILTER_DB_NAME}.{REPORT_FILTER_REGISTRY_NAME} ( uid, user, dbpath, filterjson, status) values (?, ?, ?, ?, ?)"
         await cursor_write.execute(q, (uid, self.user, self.dbpath, filterjson, REPORT_FILTER_IN_PROGRESS))
         await self.conn_write.commit()
 
@@ -745,15 +781,6 @@ class ReportFilter:
         #q += " order by base__uid"
         return q
 
-    async def create_fvariant(self, uid=None, cursor_read=Any, cursor_write=Any):
-        if not self.conn_write:
-            return
-        _ = cursor_read
-        table_name = self.get_ftable_name(uid=uid, ftype="variant")
-        q = f"create table {table_name} ( base__uid int )"
-        await cursor_write.execute(q)
-        await self.conn_write.commit()
-
     async def create_fgene(self, uid=None, cursor_read=Any, cursor_write=Any):
         if not self.conn_write:
             return
@@ -764,14 +791,13 @@ class ReportFilter:
         await self.conn_write.commit()
 
     async def populate_fvariant(self, uid=None, sample_to_filter=None, gene_to_filter=None, cursor_read=Any, cursor_write=Any):
+        _ = cursor_read
         if not uid or not self.conn_write:
             return
-        q = self.get_fvariant_sql(uid=uid, gene_to_filter=gene_to_filter, sample_to_filter=sample_to_filter)
-        await cursor_read.execute(q)
-        rets = await cursor_read.fetchall()
         table_name = self.get_ftable_name(uid=uid, ftype="variant")
-        q = f"insert into {table_name} (base__uid) values (?)"
-        await cursor_write.executemany(q, rets)
+        q = self.get_fvariant_sql(uid=uid, gene_to_filter=gene_to_filter, sample_to_filter=sample_to_filter)
+        q = f"create table {table_name} as {q}"
+        await cursor_write.execute(q)
         await self.conn_write.commit()
 
     async def populate_fgene(self, uid=None, cursor_read=Any, cursor_write=Any):
@@ -788,14 +814,12 @@ class ReportFilter:
         if not uid:
             return
         await self.exec_db(self.drop_ftable, uid=uid, ftype="variant")
-        await self.exec_db(self.create_fvariant, uid=uid)
         await self.exec_db(self.populate_fvariant, uid=uid, gene_to_filter=gene_to_filter, sample_to_filter=sample_to_filter)
 
     async def make_fgene(self, uid=None):
         if not uid:
             return
         await self.exec_db(self.drop_ftable, uid=uid, ftype="gene")
-        #await self.exec_db(self.create_fgene, uid=uid)
         await self.exec_db(self.populate_fgene, uid=uid)
 
     async def set_registry_status(self, uid=None, status=None, cursor_read=Any, cursor_write=Any):
@@ -807,15 +831,20 @@ class ReportFilter:
         await cursor_write.execute(q, (status,))
         await self.conn_write.commit()
 
-    async def remove_ftables(self, uid, cursor_read=Any, cursor_write=Any):
+    async def remove_ftables(self, uids, cursor_read=Any, cursor_write=Any):
         _ = cursor_read
-        for level in ["variant", "gene"]:
-            q = f"drop table if exists f{level}_{uid}"
-            await cursor_write.execute(q)
-        q = f"delete from registry where uid=?"
-        await cursor_write.execute(q, (uid,))
-        if self.conn_write:
-            await self.conn_write.commit()
+        if not self.conn_write:
+            return
+        if type(uids) == int:
+            uids = [uids]
+        tablename = self.get_registry_table_name()
+        for uid in uids:
+            for level in ["variant", "gene"]:
+                q = f"drop table if exists f{level}_{uid}"
+                await cursor_write.execute(q)
+            q = f"delete from {tablename} where uid=?"
+            await cursor_write.execute(q, (uid,))
+        await self.conn_write.commit()
 
     async def drop_ftable(self, uid=None, ftype=None, cursor_read=Any, cursor_write=Any):
         if not self.conn_write or not ftype or not uid:
@@ -835,7 +864,13 @@ class ReportFilter:
         if ret:
             self.uid = ret["uid"]
             return ret
-        uid = await self.exec_db(self.get_new_report_filter_uid)
+        ret = await self.exec_db(self.get_new_report_filter_uid)
+        if not ret:
+            return None
+        [uid, delete_uids] = ret
+        if delete_uids:
+            for delete_uid in delete_uids:
+                await self.exec_db(self.remove_ftables, delete_uid)
         self.uid = uid
         try:
             # register

@@ -2039,7 +2039,6 @@ class Runner(object):
         db = await aiosqlite.connect(str(admindb_path))
         cursor = await db.cursor()
         q = 'update jobs set runtime=?, numinput=?, statusjson=? where dir=? and name=?'
-        print(f"@ q={q}")
         await cursor.execute(q, (runtime, numinput, statusjson, self.output_dir, self.args.job_name))
         await db.commit()
         await cursor.close()

@@ -1332,7 +1332,6 @@ async function websubmit_run() {
   if ((await checkLogged(username)) == false) {
     openLoginPage();
   }
-  console.log("@ username=", username);
   await loadUserSettings();
   connectWebSocket();
   // Submit

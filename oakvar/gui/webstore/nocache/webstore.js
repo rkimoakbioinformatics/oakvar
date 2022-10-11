@@ -616,7 +616,6 @@ async function checkSystemReady() {
     systemReadyObj = res
     return systemReadyObj.ready
   } catch (err) {
-    console.log("@ err=", err)
     return false
   }
 }

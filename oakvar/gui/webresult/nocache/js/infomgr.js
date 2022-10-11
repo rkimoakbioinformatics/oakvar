@@ -173,13 +173,6 @@ InfoMgr.prototype.store = function (
   self.statuss[tabName] = jsonResponseData["status"];
   self.modulesInfo[tabName] = jsonResponseData["modules_info"];
   self.ftable_uid = jsonResponseData["ftable_uid"]
-  if (tabName == "gene") {
-    self.geneRows = {};
-    for (var i = 0; i < self.datas[tabName].length; i++) {
-      var row = self.datas[tabName][i];
-      self.geneRows[row[0]] = row;
-    }
-  }
   var colModel = self.colModels[tabName];
   var columnnos = {};
   var columngroups = {};

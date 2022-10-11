@@ -278,5 +278,3 @@ for g in ["hg18", "hg19"]:
 status_suffix = ".status.json"
 result_db_suffix = ".sqlite"
 log_suffix = ".log"
-DEFAULT_RESULT_VIEWER_NUM_VAR_LIMIT_FOR_GENE_SUMMARY = 100000
-result_viewer_num_var_limit_for_gene_summary_key = "result_viewer_num_var_limit_for_gene_summary"

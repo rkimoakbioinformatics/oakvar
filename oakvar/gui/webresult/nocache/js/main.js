@@ -748,17 +748,17 @@ async function firstLoadData() {
   //disableAllTabheads()
   var infoReset = resetTab["info"];
   resetTab = { info: infoReset };
-  await loadWidgets();
   setupTab("job");
-  //setupTab("info");
   setupTab("report")
   setupTab("filter");
-  await loadFilterSettings(quickSaveName, true);
-  await loadLayoutSetting(quickSaveName, true);
-  await infomgr.load_info(jobId, "info")
-  populateInfoDiv(document.getElementById("info_div"));
-  //await checkWidgets();
-  await loadData()
+  var t1 = loadWidgets();
+  var t2 = loadFilterSettings(quickSaveName, true);
+  var t3 = loadLayoutSetting(quickSaveName, true);
+  Promise.all([t1, t2, t3]).then(async function() {
+    await infomgr.load_info(jobId, "info")
+    populateInfoDiv(document.getElementById("info_div"));
+    await loadData()
+  })
 }
 
 async function checkWidgets() {
@@ -934,13 +934,21 @@ async function getVariantDbCols() {
   variantdbcols = response.data;
 }
 
+async function getSummaryVarLimit() {
+  var response = await axios.get("/result/service/summaryvarlimit")
+  summaryVarLimit = response.data["num_var_limit"]
+}
+
 async function startData() {
   //checkConnection();
-  await getPageSize()
-  await getVariantDbCols();
-  await getResultLevels();
-  await getVariantCols();
-  await firstLoadData();
+  var t1 = getPageSize()
+  var t2 = getVariantDbCols();
+  var t3 = getResultLevels();
+  var t4 = getVariantCols();
+  var t5 = getSummaryVarLimit()
+  Promise.all([t1, t2, t3, t4, t5]).then(async function() {
+    await firstLoadData();
+  })
 }
 
 function changeTab(tabName) {

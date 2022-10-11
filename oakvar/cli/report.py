@@ -5,6 +5,7 @@ import sys
 import nest_asyncio
 from typing import List
 from typing import Any
+from typing import Optional
 
 nest_asyncio.apply()
 if sys.platform == "win32" and sys.version_info >= (3, 8):
@@ -64,6 +65,7 @@ class BaseReporter:
         self.columns = {}
         self.conns = []
         self.gene_summary_datas = {}
+        self.total_norows: Optional[int] = None
         self.priority_colgroupnames = (get_user_conf() or {}).get("report_module_order", [
             "base",
             "tagsampler",
@@ -443,9 +445,8 @@ class BaseReporter:
         self.write_header(level)
         self.hugo_colno = self.colnos[level].get("base__hugo", None)
         datacols = await self.cf.exec_db(self.cf.get_variant_data_cols)
-        #self.ftable_uid = await self.cf.make_ftables_and_ftable_uid(make_filtered_table=make_filtered_table)
-        total_norows = await self.cf.exec_db(self.cf.get_ftable_num_rows, level=level, uid=self.ftable_uid, ftype=level)
-        if datacols is None or total_norows is None:
+        self.total_norows = await self.cf.exec_db(self.cf.get_ftable_num_rows, level=level, uid=self.ftable_uid, ftype=level) # type: ignore
+        if datacols is None or self.total_norows is None:
             return
         self.sample_newcolno = None
         if level == "variant" and self.args.get("separatesample"):

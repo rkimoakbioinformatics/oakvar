@@ -227,13 +227,15 @@ def get_webapp_url(args={}):
     from os.path import exists
     from sys import stderr
     from ..system.consts import modules_dir_key
+    from ..gui.util import get_host_port
 
+    host, port = get_host_port(args=args)
     sysconf = args.get("sysconf", {})
     index_path = join(sysconf.get(modules_dir_key), "webapps", args["webapp"], "index.html")
     if exists(index_path) == False:
         stderr.write(f"Webapp {args['webapp']} does not exist. Exiting.\n")
         return
-    url = f"{args['host']}:{args['port']}/webapps/{args['webapp']}/index.html"
+    url = f"{host}:{port}/webapps/{args['webapp']}/index.html"
     return url
 
 def get_result_url(args={}):
@@ -241,17 +243,18 @@ def get_result_url(args={}):
     from ..exceptions import NoInput
     from ..exceptions import ArgumentError
     from ..util.util import is_compatible_version
+    from ..gui.util import get_host_port
 
     dbpath = args.get("result")
     if exists(dbpath) == False:
         raise NoInput()
     (compatible_version, db_version, oc_version) = is_compatible_version(dbpath)
-    print(f"@ args={args}")
+    host, port = get_host_port(args=args)
     if not compatible_version:
         msg = f"DB version {db_version} of {dbpath} is not compatible with the current OakVar ({oc_version}). "
         msg += f'Consider running "oc util update-result {dbpath}" and running "oc gui {dbpath}" again.'
         raise ArgumentError(msg=msg)
-    url = f"{args['host']}:{args['port']}/result/nocache/index.html?dbpath={args['result']}"
+    url = f"{host}:{port}/result/nocache/index.html?dbpath={args['result']}"
     return url
 
 def get_login_url(args={}):
