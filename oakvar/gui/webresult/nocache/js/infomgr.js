@@ -251,7 +251,7 @@ InfoMgr.prototype.store = function (
           if (linkMatch !== null) {
             var reString = linkMatch[1];
             var valRe = new RegExp(reString);
-            var valMatch = val.match(valRe);
+            var valMatch = String(val).match(valRe);
             if (valMatch !== null && valMatch[0] !== "") {
               if (valMatch.length === 1) {
                 valSegment = valMatch[0];
