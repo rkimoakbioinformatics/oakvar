@@ -1314,7 +1314,7 @@ function showYesNoDialog(content, yescallback, noSpace, justOk) {
         btnDiv.className = 'buttondiv';
         var btn = getEl('button');
         btn.textContent = 'Ok';
-        btn.addEventListener('click', function(evt) {
+        btn.addEventListener('click', function(_) {
             if (yescallback == undefined || yescallback == null) {
                 $('#yesnodialog').remove();
             } else {
@@ -1327,7 +1327,7 @@ function showYesNoDialog(content, yescallback, noSpace, justOk) {
         btnDiv.className = 'buttondiv';
         var btn = getEl('button');
         btn.textContent = 'Yes';
-        btn.addEventListener('click', function(evt) {
+        btn.addEventListener('click', function(_) {
             $('#yesnodialog').remove();
             yescallback(true);
         });
@@ -1338,7 +1338,7 @@ function showYesNoDialog(content, yescallback, noSpace, justOk) {
         addEl(btnDiv, btn);
         var btn = getEl('button');
         btn.textContent = 'No';
-        btn.addEventListener('click', function(evt) {
+        btn.addEventListener('click', function(_) {
             $('#yesnodialog').remove();
             yescallback(false);
         });
@@ -1539,31 +1539,37 @@ function packWidgets(tabName) {
       var generator = widgetGenerators[widgetName][currentTab];
       var v = generator["variables"];
       var parentDiv = v["parentdiv"];
-      var row = $grids[tabName].pqGrid("getData")[selectedRowNos[tabName]];
-      if (generator["donterase"] != true) {
+      if (tabName != "info" && generator["donterase"] != true) {
+        widgetContentDiv = evt.target.querySelector(".detailcontentdiv")
         $(widgetContentDiv).empty();
       }
       generator["variables"]["resized"] = true;
-      $(parentDiv).empty();
-      if (generator["confirmonresize"] == true) {
-        var div = getEl("div");
-        div.className = "widget-redraw-confirm";
-        var span = getEl("span");
-        span.textContent = "Click to redraw";
-        addEl(div, span);
-        addEl(parentDiv, div);
-        div.addEventListener("click", function () {
+      if (tabName != "info") {
+        $(parentDiv).empty();
+      }
+      var $grid = $grids[tabName]
+      if ($grid != undefined) {
+        var row = $grids[tabName].pqGrid("getData")[selectedRowNos[tabName]];
+        if (generator["confirmonresize"] == true) {
+          var div = getEl("div");
+          div.className = "widget-redraw-confirm";
+          var span = getEl("span");
+          span.textContent = "Click to redraw";
+          addEl(div, span);
+          addEl(parentDiv, div);
+          div.addEventListener("click", function () {
+            generator["function"](parentDiv, row, tabName);
+          });
+        } else if (generator["onresize"] != undefined) {
+          if (resizeTimeout) {
+            clearTimeout(resizeTimeout);
+          }
+          resizeTimeout = setTimeout(function () {
+            generator["onresize"](parentDiv, row, tabName);
+          }, 100);
+        } else {
           generator["function"](parentDiv, row, tabName);
-        });
-      } else if (generator["onresize"] != undefined) {
-        if (resizeTimeout) {
-          clearTimeout(resizeTimeout);
         }
-        resizeTimeout = setTimeout(function () {
-          generator["onresize"](parentDiv, row, tabName);
-        }, 100);
-      } else {
-        generator["function"](parentDiv, row, tabName);
       }
       mason.layout();
       loadedViewerWidgetSettings[currentTab] = undefined;
@@ -1571,8 +1577,26 @@ function packWidgets(tabName) {
   });
 }
 
+function getSummaryVarLimitWarningDiv() {
+  return document.querySelector("#summary-var-limit-warning-div")
+}
+
+function hideSummaryVarLimitWarningDiv() {
+    getSummaryVarLimitWarningDiv().classList.add("hidden")
+}
+
+function showSummaryVarLimitWarningDiv() {
+    getSummaryVarLimitWarningDiv().classList.remove("hidden")
+}
+
+function setSummaryVarLimitSpan() {
+  document.querySelector("#summary-var-limit-span").textContent = summaryVarLimit
+}
+
 function populateSummaryWidgetDiv() {
   if (infomgr.totalNoRows > summaryVarLimit) {
+    setSummaryVarLimitSpan()
+    showSummaryVarLimitWarningDiv()
     return
   }
   var tabName = "info";
@@ -2233,7 +2257,6 @@ function drawSummaryWidgetGivenData(
 }
 
 function drawSummaryWidget(widgetName) {
-  console.trace()
   var widgetContentDiv = document.getElementById(
     "widgetcontentdiv_" + widgetName + "_info"
   );

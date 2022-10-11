@@ -381,8 +381,8 @@ class BaseMapper(object):
     async def get_gene_summary_data(self, cf):
         from ..consts import crx_def
         from json import loads
-        from ..consts import result_viewer_num_var_limit_for_gene_summary_key
-        from ..consts import DEFAULT_RESULT_VIEWER_NUM_VAR_LIMIT_FOR_GENE_SUMMARY
+        from ..gui.consts import result_viewer_num_var_limit_for_gene_summary_key
+        from ..gui.consts import DEFAULT_RESULT_VIEWER_NUM_VAR_LIMIT_FOR_GENE_SUMMARY
         from ..system import get_system_conf
 
         cols = [

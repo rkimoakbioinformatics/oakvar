@@ -500,14 +500,7 @@ async function loadData() {
     setupTab("variant");
     setupTab("gene");
     setupTab("info")
-    try {
-      populateSummaryWidgetDiv();
-    } catch (e) {
-      console.log(e);
-      console.trace();
-    }
     enableUpdateButton();
-    //unlockTabs();
     removeLoadingDiv()
   };
   var loadGeneResult = async function () {
@@ -631,7 +624,7 @@ async function loadWidgets() {
     infomgr.colgroupkeytotitle[widgetName] = title;
     infomgr.widgetReq[widgetName] = req;
     $.getScript("/result/widgetfile/" + "wg" + widgetName + "/wg" + widgetName + ".js",
-        function (d, t, j) {
+        function (_, _, _) {
           writeLogDiv(widgetName + " script loaded");
           widgetLoadCount += 1;
           if (widgetLoadCount == widgets.length) {
@@ -951,6 +944,10 @@ async function startData() {
   })
 }
 
+function getDetailcontainerdiv(tabName) {
+  return document.querySelector("#detailcontainerdiv_" + tabName)
+}
+
 function changeTab(tabName) {
   currentTab = tabName;
   for (var i = 0; i < tabNames.length; i++) {
@@ -968,7 +965,10 @@ function changeTab(tabName) {
     $grids[tabName].pqGrid("refresh");
   }
   if (tabName == "info") {
-    $(document.getElementById("detailcontainerdiv_info")).packery();
+    var div = getDetailcontainerdiv(tabName)
+    if (div.children.length == 0) {
+      populateSummaryWidgetDiv()
+    }
   }
   changeMenu();
   setTableDetailLayout(tabName);
