@@ -207,13 +207,13 @@ def get_logger(args={}):
     from logging import getLogger
     from logging import INFO
     from logging import Formatter
-    from os.path import join
     from logging.handlers import TimedRotatingFileHandler
     from ..system.consts import log_dir_key
+    from ..gui.util import get_log_path
 
     global log_path
     log_dir = args.get("sysconf", {}).get(log_dir_key)
-    log_path = join(log_dir, "wcravat.log")
+    log_path = get_log_path(log_dir=log_dir)
     logger = getLogger()
     logger.setLevel(INFO)
     log_handler = TimedRotatingFileHandler(log_path, when="d", backupCount=30)

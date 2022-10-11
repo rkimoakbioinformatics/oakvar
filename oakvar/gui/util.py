@@ -49,3 +49,13 @@ def get_server_settings(args={}) -> Tuple[str, int]:
         host = get_system_conf().get("gui_host", def_host)
         port = get_system_conf().get("gui_port", default_gui_port)
     return host, port
+
+def get_log_path(log_dir=None):
+    from pathlib import Path
+    from ..system import get_log_dir
+    from ..gui.consts import LOG_FN
+    if not log_dir:
+        log_dir = get_log_dir()
+    log_path = Path(log_dir) / LOG_FN
+    return str(log_path)
+

@@ -1328,6 +1328,15 @@ async def serve_favicon(request):
     return FileResponse(join(source_dir, "..", "favicon.ico"))
 
 
+async def get_system_log(_):
+    from aiohttp import web
+    from ...gui.util import get_log_path
+    from ...gui.consts import LOG_FN
+    log_path = get_log_path()
+    headers = {"Content-Disposition": "Attachment; filename=" + LOG_FN, "Content-Type": "text/plain"}
+    print(f"@ log_path={log_path}")
+    return web.FileResponse(log_path, headers=headers)
+
 async def get_webapp_index(request):
     from aiohttp.web import HTTPFound
     url = request.path + "/index.html"
@@ -1369,5 +1378,6 @@ routes.append(["POST", "/submit/import", import_job])
 routes.append(["GET", "/submit/resubmit", resubmit])
 routes.append(["GET", "/submit/localmodules/{module}", get_local_module_info_web])
 routes.append(["GET", "/issystemready", is_system_ready])
+routes.append(["GET", "/submit/systemlog", get_system_log])
 routes.append(["GET", "/favicon.ico", serve_favicon])
 routes.append(["GET", "/webapps/{module}", get_webapp_index])

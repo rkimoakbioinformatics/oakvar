@@ -246,7 +246,7 @@ async def restart (request):
         r = await is_admin_loggedin(request)
         if r == False:
             return json_response({'success': False, 'mgs': 'Only logged-in admin can change the settings.'})
-    execvp('wcravat', ['wcravat', '--multiuser', '--headless'])
+    execvp('ov', ['ov', "gui", '--multiuser', '--headless'])
 
 async def show_login_page (request):
     from os.path import join

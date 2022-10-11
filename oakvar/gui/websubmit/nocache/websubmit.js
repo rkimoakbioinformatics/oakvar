@@ -1323,6 +1323,24 @@ function onClickCtaAnalysisModuleChoice() {
   getAnalysisModuleChoiceDiv().scrollIntoView({ behavior: "smooth" });
 }
 
+function getSystemLog() {
+  console.log("@ here")
+  axios({
+    url: "/submit/systemlog",
+    method: "GET",
+    responseType: "blob",
+  }).then(function(res) {
+    var a = getEl("a");
+    a.href = window.URL.createObjectURL(
+      new Blob([res.data], { type: "text/plain" })
+    );
+    a.download = res.headers["content-disposition"].split("=")[1]
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  })
+}
+
 async function websubmit_run() {
   if (await checkSystemReady() == false) {
     showSystemNotReady();
