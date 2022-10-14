@@ -568,7 +568,7 @@ def install_module(
     from ..store.db import summary_col_value
     from .cache import get_module_cache
     from .remote import get_conf
-    from .local import module_data_version as local_module_data_version
+    from .local import get_module_data_version as local_module_data_version
     from ..util.util import quiet_print
 
     version = get_module_install_version(module_name, version=version, args=args)

@@ -255,11 +255,12 @@ def get_module_code_version(module_name: str, module_dir=None) -> Optional[str]:
     return version
 
 
-def module_data_version(module_name: str) -> Optional[str]:
-    module_conf = get_module_conf(module_name)
+def get_module_data_version(module_name: str, module_dir: Optional[str]=None) -> Optional[str]:
+    module_conf = get_module_conf(module_name, module_dir=module_dir)
     if not module_conf:
         return None
-    return module_conf.get("data_version", None)
+    version = module_conf.get("data_version", None)
+    return version
 
 
 def get_new_module_dir(module_name: str, module_type: str, modules_dir: Optional[str]=None):
@@ -603,9 +604,15 @@ def pack_module_zip(args: dict, kind: str):
     from ..module.local import get_module_code_version
     from split_file_reader.split_file_writer import SplitFileWriter
     from ..store.consts import ov_store_split_file_size
+    from ..exceptions import ArgumentError
 
     module_name, module_dir = get_module_name_and_module_dir(args)
-    version = get_module_code_version(module_name, module_dir=module_dir)
+    if kind == "code":
+        version = get_module_code_version(module_name, module_dir=module_dir)
+    elif kind == "data":
+        version = get_module_data_version(module_name, module_dir=module_dir)
+    else:
+        raise ArgumentError(msg=f"wrong module kind: {kind}")
     pack_dir, outdir = get_pack_dir_out_dir(kind, args, module_dir)
     if exists(pack_dir):
         pack_fn = f"{module_name}__{version}__{kind}.zip"
