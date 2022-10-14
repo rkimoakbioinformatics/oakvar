@@ -285,7 +285,7 @@ def table_exists(table: str, conf=None, conn=None, cursor=None) -> bool:
 
 
 @db_func
-def drop_ov_store_cache(conf=None, conn=None, cursor=None, args={}, force=False):
+def drop_ov_store_cache(conf=None, conn=None, cursor=None, args={}):
     from os.path import exists
     from ..system import get_cache_dir
     from ..system.consts import cache_dirs
@@ -295,14 +295,13 @@ def drop_ov_store_cache(conf=None, conn=None, cursor=None, args={}, force=False)
         return
     if conf:
         pass
-    if not args.get("clean") and not force:
-        return
-    for table in ["summary", "versions", "info"]:
-        if table_exists(table):
-            q = f"drop table if exists {table}"
-            cursor.execute(q)
-            conn.commit()
-    if args.get("clean"):
+    if args.get("clean_cache_db"):
+        for table in ["summary", "versions", "info"]:
+            if table_exists(table):
+                q = f"drop table if exists {table}"
+                cursor.execute(q)
+                conn.commit()
+    if args.get("clean_cache_files"):
         for cache_key in cache_dirs:
             fp = get_cache_dir(cache_key)
             if exists(fp):
@@ -323,14 +322,14 @@ def create_ov_store_cache(conf=None, args={}, conn=None, cursor=None):
         return False
     if conf:
         pass
-    clean = args.get("clean")
-    if clean or not table_exists("summary"):
+    clean_cache_db = args.get("clean_cache_db")
+    if clean_cache_db or not table_exists("summary"):
         q = f"create table summary ( { ', '.join([col + ' text' for col in summary_table_cols]) }, primary key ( name, store ) )"
         cursor.execute(q)
-    if clean or not table_exists("versions"):
+    if clean_cache_db or not table_exists("versions"):
         q = f"create table versions ( { ', '.join([col + ' text' for col in versions_table_cols]) }, primary key ( name, store, code_version ) )"
         cursor.execute(q)
-    if clean or not table_exists("info"):
+    if clean_cache_db or not table_exists("info"):
         q = f"create table info ( key text primary key, value text )"
         cursor.execute(q)
     conn.commit()
@@ -372,8 +371,8 @@ def fetch_ov_store_cache(
         return False
     server_last_updated, status_code = get_server_last_updated()
     local_last_updated = get_local_last_updated()
-    clean = args.get("clean")
-    rebuild_db = args.get("rebuild_db")
+    clean_cache_files = args.get("clean_cache_files")
+    clean_cache_db = args.get("clean_cache_db")
     if not server_last_updated:
         if status_code == 401:
             raise AuthorizationError()
@@ -381,19 +380,19 @@ def fetch_ov_store_cache(
             raise StoreServerError()
         return False
     if (
-        not rebuild_db
-        and not clean
+        not clean_cache_db
+        and not clean_cache_files
         and local_last_updated
         and local_last_updated >= server_last_updated
     ):
         quiet_print("No store update to fetch", args=args)
         return True
     args["publish_time"] = local_last_updated
-    drop_ov_store_cache(args=args, force=True)
+    drop_ov_store_cache(args=args)
     create_ov_store_cache(args=args)
-    fetch_summary_cache(args=args, force=True)
-    fetch_versions_cache(args=args, force=True)
-    if clean:
+    fetch_summary_cache(args=args)
+    fetch_versions_cache(args=args)
+    if args.get("clean_cache_db"):
         args["publish_time"] = ""
     else:
         args["publish_time"] = local_last_updated
@@ -540,7 +539,7 @@ def fetch_readme_cache(args={}, conn=None, cursor=None, conf={}):
 
 
 @db_func
-def fetch_summary_cache(args={}, conn=Any, cursor=Any, force=False):
+def fetch_summary_cache(args={}, conn=Any, cursor=Any):
     from requests import Session
     from .ov.account import get_current_id_token
     from ..exceptions import StoreServerError
@@ -562,7 +561,7 @@ def fetch_summary_cache(args={}, conn=Any, cursor=Any, force=False):
         elif res.status_code == 500:
             raise StoreServerError()
         return False
-    if args.get("clean") or force:
+    if args.get("clean_cache_db"):
         q = f"delete from summary"
         cursor.execute(q)
         conn.commit()
@@ -575,7 +574,7 @@ def fetch_summary_cache(args={}, conn=Any, cursor=Any, force=False):
 
 
 @db_func
-def fetch_versions_cache(args={}, conn=None, cursor=None, force=False):
+def fetch_versions_cache(args={}, conn=None, cursor=None):
     from requests import Session
     from .ov.account import get_current_id_token
     from ..exceptions import StoreServerError
@@ -598,7 +597,7 @@ def fetch_versions_cache(args={}, conn=None, cursor=None, force=False):
         elif res.status_code == 500:
             raise StoreServerError()
         return False
-    if args.get("clean") or force==True:
+    if args.get("clean_cache_db"):
         q = f"delete from versions"
         cursor.execute(q)
         conn.commit()
