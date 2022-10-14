@@ -753,7 +753,9 @@ async def serve_runwidget(request):
         path, [os.path.join(get_modules_dir(), "webviewerwidgets", path)]
     )
     m = imp.load_module(path, f, fn, d)  # type: ignore
-    content = await m.get_data(queries)
+    cf = await ReportFilter.create(dbpath=dbpath, mode="sub")
+    filterstring = await cf.exec_db(cf.get_report_filter_string, uid=queries.get("ftable_uid"))
+    content = await m.get_data(queries, filterstring=filterstring)
     return web.json_response(content)
 
 
