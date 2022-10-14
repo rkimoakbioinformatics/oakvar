@@ -1,5 +1,6 @@
 from typing import Any
 from typing import List
+from typing import Optional
 import sys
 from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
 
@@ -365,7 +366,7 @@ class ReportFilter:
         report_filter_db_fn = self.get_report_filter_db_fn()
         return join(report_filter_db_dir, report_filter_db_fn)
 
-    def get_report_filter_registry_table_name(self):
+    def get_registry_table_name(self):
         return f"{REPORT_FILTER_DB_NAME}.{REPORT_FILTER_REGISTRY_NAME}"
 
     async def create_report_filter_registry_table_if_not_exists(self, conn):
@@ -657,9 +658,6 @@ class ReportFilter:
         await cursor_write.execute(q)
         await self.conn_write.commit()
 
-    def get_registry_table_name(self):
-        return f"{REPORT_FILTER_DB_NAME}.{REPORT_FILTER_REGISTRY_NAME}"
-
     async def get_existing_report_filter_status(self, cursor_read=Any, cursor_write=Any):
         from json import dumps
         _ = cursor_write
@@ -702,6 +700,18 @@ class ReportFilter:
         ret = await cursor.fetchone()
         n = ret[0]
         return n
+
+    async def get_report_filter_string(self, uid=None, cursor=Any) -> Optional[str]:
+        if not uid:
+            return None
+        tablename = self.get_registry_table_name()
+        q = f"select filterjson from {tablename} where uid=?"
+        await cursor.execute(q, (uid,))
+        ret = await cursor.fetchone()
+        if ret:
+            return ret[0]
+        else:
+            return ret
 
     async def get_new_report_filter_uid(self, cursor_read=Any, cursor_write=Any):
         from ..system import get_sys_conf_value
@@ -826,7 +836,7 @@ class ReportFilter:
         _ = cursor_read
         if not uid or not status or not self.conn_write:
             return
-        table_name = self.get_report_filter_registry_table_name()
+        table_name = self.get_registry_table_name()
         q = f"update {table_name} set status=?"
         await cursor_write.execute(q, (status,))
         await self.conn_write.commit()
