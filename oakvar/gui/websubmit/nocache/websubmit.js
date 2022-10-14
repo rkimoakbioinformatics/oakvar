@@ -1341,6 +1341,12 @@ function getSystemLog() {
   })
 }
 
+function setupIntersectionObserver() {
+  var observer = new IntersectionObserver(function(entries) {
+    console.log("@ intersection. entries=", entries)
+  })
+}
+
 async function websubmit_run() {
   if (await checkSystemReady() == false) {
     showSystemNotReady();
@@ -1383,4 +1389,6 @@ async function websubmit_run() {
     taskVersion,
   ]).then(function () {
   });
+  // Intersection
+  setupIntersectionObserver();
 }

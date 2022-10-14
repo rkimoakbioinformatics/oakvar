@@ -184,21 +184,8 @@ function processSignup(username, password, retypepassword, question, answer) {
         answer: answer,
       },
     })
-    .then(function (response) {
+    .then(function (_) {
     });
-  /*
-          if (response == 'Signup successful') {
-              document.getElementById('login_username').value = username;
-              document.getElementById('login_password').value = password;
-              msgAccountDiv(response, login)
-          } else {
-              msgAccountDiv(response, null)
-          }
-      },
-        error: function(response) {
-            msgAccountDiv(response, null)
-        }
-    });*/
 }
 
 async function checkLogged(inUsername) {
