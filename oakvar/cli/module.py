@@ -186,7 +186,8 @@ def install(args, __name__="module install"):
         return True
     show_modules_to_install(to_install, args=args)
     if not (args["yes"]):
-        wait_for_y()
+        if not wait_for_y():
+            return True
     problem_modules = []
     for module_name, module_version in sorted(to_install.items()):
         try:

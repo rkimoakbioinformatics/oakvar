@@ -579,9 +579,9 @@ def wait_for_y():
     while True:
         resp = input("Proceed? ([y]/n) > ")
         if resp == "y" or resp == "":
-            break
-        if resp == "n":
             return True
+        if resp == "n":
+            return False
         else:
             continue
 
