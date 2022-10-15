@@ -1417,6 +1417,10 @@ async function makeReportTab(rightDiv) {
     p.textContent = mi["description"]
     p.title = mi["description"]
     addEl(div2, p)
+    var p = getEl("p")
+    p.className = "mt-1 text-gray-400 text-xs truncate reportdesc"
+    p.textContent = mi["local_code_version"]
+    addEl(div2, p)
     var imgDiv = getEl("img")
     imgDiv.className = "h-10"
     imgDiv.setAttribute("alt", "")
