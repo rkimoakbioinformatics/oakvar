@@ -416,7 +416,7 @@ class BaseAnnotator(object):
         self._setup_primary_input()
         self._setup_secondary_inputs()
         self._setup_outputs()
-        self._open_db_connection()
+        self.connect_db()
         self.setup()
         if not hasattr(self, "supported_chroms"):
             self.supported_chroms = set(
@@ -545,17 +545,21 @@ class BaseAnnotator(object):
                 "no_aggregate", ",".join(skip_aggregation)
             )
 
-    def _open_db_connection(self):
-        import os
+    def connect_db(self):
+        from pathlib import Path
         import sqlite3
+        import duckdb
 
-        db_dirs = [self.data_dir, os.path.join("/ext", "resource", "newarch")]
-        db_path = None
-        for db_dir in db_dirs:
-            db_path = os.path.join(db_dir, self.module_name + ".sqlite")
-            if os.path.exists(db_path):
-                self.dbconn = sqlite3.connect(db_path)
-                self.cursor = self.dbconn.cursor()
+        db_path = Path(self.data_dir) / (self.module_name + ".sqlite")
+        if db_path.exists():
+            self.dbconn = sqlite3.connect(str(db_path))
+            self.cursor = self.dbconn.cursor()
+            return
+        db_path = Path(self.data_dir) / (self.module_name + ".duckdb")
+        if db_path.exists():
+            self.dbconn = duckdb.connect(str(db_path))
+            self.cursor = self.dbconn.cursor()
+            return
 
     def close_db_connection(self):
         if self.cursor is not None:

@@ -76,6 +76,7 @@ setup(
         "split-file-reader",
         "packaging",
         "Pillow",
+        "duckdb",
         # below are module-specific. move them to module's yml.
         "mpmath",
         "twobitreader",
