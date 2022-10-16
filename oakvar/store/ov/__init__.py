@@ -110,6 +110,7 @@ def get_register_args_of_module(module_name: str, args={}) -> Optional[dict]:
         k = f"{kind}_url"
         if len(rmi[k]) > 0:
             for url in rmi[k]:
+                quiet_print(f"Validating {url}...", args=args)
                 try:
                     valid = is_url(url) and url_is_valid(url)
                 except:
