@@ -572,6 +572,7 @@ class InstallProgressStdout(InstallProgressHandler):
 
 
 def add_parser_fn_module_pack(subparsers):
+    from ..store.consts import MODULE_PACK_SPLIT_FILE_SIZE
     # pack
     parser_cli_module_pack = subparsers.add_parser(
         "pack", help="pack a module to register at OakVar store"
@@ -594,10 +595,8 @@ def add_parser_fn_module_pack(subparsers):
     )
     parser_cli_module_pack.add_argument(
         "--split",
-        type=int,
-        default=None,
-        nargs="*",
-        help="split pack files into chunks of the given size",
+        action="store_true",
+        help=f"split pack files into chunks of {MODULE_PACK_SPLIT_FILE_SIZE} bytes",
     )
     parser_cli_module_pack.add_argument(
         "--quiet", action="store_true", default=None, help="run quietly"

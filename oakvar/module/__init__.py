@@ -309,7 +309,7 @@ def download_code_or_data(kind=None, args={}):
     from os.path import exists
     from os.path import getsize
     from os import remove
-    from ..store.consts import ov_store_split_file_size
+    from ..store.consts import MODULE_PACK_SPLIT_FILE_SIZE
     from ..util.util import quiet_print
     from json import loads
 
@@ -332,9 +332,9 @@ def download_code_or_data(kind=None, args={}):
         download_from = 0
         if exists(zipfile_path):
             zs = getsize(zipfile_path)
-            if zs % ov_store_split_file_size == 0:
+            if zs % MODULE_PACK_SPLIT_FILE_SIZE == 0:
                 # partial download completed
-                download_from = int(getsize(zipfile_path) / ov_store_split_file_size)
+                download_from = int(getsize(zipfile_path) / MODULE_PACK_SPLIT_FILE_SIZE)
             else:
                 remove(zipfile_path)
         with open(zipfile_path, "ab") as wf:
@@ -343,11 +343,11 @@ def download_code_or_data(kind=None, args={}):
                 if i < download_from:
                     continue
                 part_path = f"{zipfile_path}{i:03d}"
-                if exists(part_path) and getsize(part_path) == ov_store_split_file_size:
+                if exists(part_path) and getsize(part_path) == MODULE_PACK_SPLIT_FILE_SIZE:
                     continue
                 download(urls[i], part_path)
                 if i < urls_len - 1:
-                    if getsize(part_path) != ov_store_split_file_size:
+                    if getsize(part_path) != MODULE_PACK_SPLIT_FILE_SIZE:
                         quiet_print(f"corrupt download {part_path} at {urls[i]}", args=args)
                         remove(part_path)
                         return False
