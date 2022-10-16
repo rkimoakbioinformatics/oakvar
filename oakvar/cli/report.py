@@ -959,6 +959,14 @@ class BaseReporter:
             await self.exec_db(self.make_col_info, level, add_summary=add_summary)
         self.level = prev_level
 
+    def add_column_number_stat_to_col_groups(self, level: str):
+        last_columngroup_pos = 0
+        for columngroup in self.columngroups.get(level, []):
+            columngroup["start_column_number"] = last_columngroup_pos
+            new_last_columngroup_pos = last_columngroup_pos + columngroup["count"]
+            columngroup["end_colunm_number"] = new_last_columngroup_pos
+            last_columngroup_pos = new_last_columngroup_pos
+
     async def make_col_info(self, level: str, add_summary=True, conn=Any, cursor=Any):
         _ = cursor
         if not level or not await self.exec_db(self.table_exists, level):
@@ -977,6 +985,7 @@ class BaseReporter:
             await self.exec_db(self.add_gene_level_summary_columns, level)
         self.set_display_select_columns(level)
         self.set_cols_to_display(level)
+        self.add_column_number_stat_to_col_groups(level)
         #await self.place_priority_col_groups_first(level)
         #await self.order_columns_to_match_col_groups(level)
         self.colinfo[level] = {"colgroups": self.columngroups[level], "columns": self.columns[level]}
