@@ -77,6 +77,7 @@ setup(
         "packaging",
         "Pillow",
         "duckdb",
+        "rich",
         # below are module-specific. move them to module's yml.
         "mpmath",
         "twobitreader",

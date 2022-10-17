@@ -153,15 +153,20 @@ def get_conf(module_name=None, conf_path=None) -> Optional[dict]:
 
 def get_readme(module_name: str) -> Optional[str]:
     from ..system import get_cache_dir
+    from ..store.db import find_name_store
     from os.path import join
     from os.path import exists
 
-    for store in ["ov", "oc"]:
-        fpath = join(get_cache_dir("readme"), store, module_name)
-        if exists(fpath):
-            with open(fpath, encoding='utf-8') as f:
-                out = "\n".join(f.readlines())
-                return out
+    ret = find_name_store(module_name)
+    if not ret:
+        return None
+    _, store = ret
+    fpath = join(get_cache_dir("readme"), store, module_name)
+    if exists(fpath):
+        with open(fpath, encoding='utf-8') as f:
+            out = f.readlines()
+            out = "".join(out)
+            return out
     return None
 
 
