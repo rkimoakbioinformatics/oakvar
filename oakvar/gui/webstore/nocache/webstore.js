@@ -70,7 +70,7 @@ function onClickStoreTagResetButton() {
   //showAllModulesDiv();
 }
 
-function onClickCheckUpdatesButton(evt) {
+function onClickCheckUpdatesButton(_) {
   getUpdates();
 }
 
@@ -78,7 +78,7 @@ function onClickStoreUpdateRemoteButton() {
   showUpdateRemoteSpinner();
   $.ajax({
     url: "/store/updateremote",
-    success: function (response) {
+    success: function (_) {
       hideUpdateRemoteSpinner();
       moduleChange();
     },
@@ -161,7 +161,6 @@ function updateRemoteModuleTagwithUpdate() {
     if (remoteModule == undefined) {
       continue;
     }
-    var localTags = localModule.tags;
     var remoteTags = remoteModule.tags;
     remoteModule.tags = remoteTags;
   }
@@ -291,7 +290,6 @@ function showOrHideSystemModuleUpdateButton() {
 function showOrHideUpdateAllButton() {
   var d = document.getElementById("store-update-all-div");
   if (newModuleAvailable && logged == true && username == "admin") {
-    var modulesInInstallQueue = Object.keys(installInfo);
     d.style.display = "block";
     announceStoreUpdateAllAvailable();
   } else {
@@ -315,7 +313,7 @@ function hideStoreModuleGroup() {
   document.getElementById("store-modulegroup-div").style.display = "none";
 }
 
-function onClickModuleGroupDivBackArrow(evt) {
+function onClickModuleGroupDivBackArrow(_) {
   //if (currentPage == 'store-home-div') {
   //    showStoreHome();
   //} else
@@ -700,7 +698,7 @@ function populateStoreTagPanel() {
     input.type = "checkbox";
     input.value = tag;
     input.className = "store-tag-checkbox";
-    input.addEventListener("click", function (evt) {
+    input.addEventListener("click", function (_) {
       onStoreTagCheckboxChange();
     });
     var span = getEl("span");
@@ -734,18 +732,15 @@ function updateFilter() {
   var nameinput = document.getElementById("store-namefilter");
   var nameStr = nameinput.value;
   filter = {};
-  var filterHasValue = false;
   // Name filter
   if (nameStr != "") {
     filter["name"] = [nameStr];
-    filterHasValue = true;
   }
   // Tag filter
   var checkboxes = $(".store-tag-checkbox:checked");
   var tags = [];
   for (var i = 0; i < checkboxes.length; i++) {
     tags.push(checkboxes[i].value);
-    filterHasValue = true;
   }
   var el = document.getElementById("store-tag-checkbox-newavailable");
   if (el == undefined) {
@@ -769,7 +764,7 @@ function onClickModuleTileAbortButton(evt) {
       module: moduleName,
     },
     ajax: true,
-    success: function (response) {},
+    success: function (_) {},
   });
 }
 
@@ -810,7 +805,7 @@ function onClickModuleTileInstallButton(evt) {
 }
 
 function setModuleTileUnqueueButton(moduleName) {
-  $("div.moduletile[module=" + moduleName + "]").each(function (i, div) {
+  $("div.moduletile[module=" + moduleName + "]").each(function (_, div) {
     $(div).children("button").remove();
     var button = getModuleTileUnqueueButton(moduleName);
     addEl(div, button);
@@ -825,7 +820,7 @@ function onClickModuleTileUnqueueButton(evt) {
       module: moduleName,
     },
     ajax: true,
-    success: function (response) {},
+    success: function (_) {},
   });
 }
 
@@ -1175,7 +1170,6 @@ function getRemoteModulePanel(moduleName, moduleListName, moduleListPos) {
   addEl(div, sdiv);
   addEl(div, getEl("br"));
   var installStatus = "";
-  var btnAddedFlag = false;
   if (installInfo[moduleName] != undefined) {
     var msg = installInfo[moduleName]["msg"];
     if (msg == "uninstalling") {
@@ -1275,7 +1269,6 @@ function getFilteredRemoteModules() {
   }
   for (var i = 0; i < remoteModuleNames.length; i++) {
     var remoteModuleName = remoteModuleNames[i];
-    var remoteModuleNameLower = remoteModuleName.toLowerCase();
     var remoteModule = remoteModuleInfo[remoteModuleName];
     if (remoteModule["groups"] != null && remoteModule["groups"].length > 0) {
       var pass = false;
@@ -1638,7 +1631,7 @@ function onClickModuleDetailUninstallButton(evt) {
   document.getElementById("moduledetaildiv_store").style.display = "none";
 }
 
-function getModuleDetailInstallButton(moduleName, td, buttonDiv) {
+function getModuleDetailInstallButton(moduleName, td, _) {
   var button = getEl("button");
   button.id = "installbutton";
   var localInfo = localModuleInfo[moduleName];
@@ -2215,7 +2208,7 @@ function queueInstall(moduleName, version) {
   $.get("/store/queueinstall", {
     module: moduleName,
     version: version,
-  }).done(function (response) {
+  }).done(function (_) {
     var keys = Object.keys(installInfo);
     if (keys.length == 0) {
       installInfo[moduleName] = {
@@ -2269,7 +2262,7 @@ function uninstallModule(moduleName) {
   });
 }
 
-function moduleChange(data) {
+function moduleChange(_) {
   getLocal();
 }
 
@@ -2283,7 +2276,7 @@ function setServerStatus(connected) {
 }
 
 function setModuleTileInstallButton(module) {
-  $("div.moduletile[module=" + module + "]").each(function (i, div) {
+  $("div.moduletile[module=" + module + "]").each(function (_, div) {
     $(div).children("button").remove();
     var button = getModuleTileInstallButton(module);
     addEl(div, button);
@@ -2313,6 +2306,7 @@ function connectWebSocket() {
     connectWebSocket();
   };
   ws.onmessage = function (evt) {
+    console.log("@ ws msg=", evt)
     var data = JSON.parse(evt.data);
     var module = data["module"];
     var msg = data["msg"];
@@ -2372,7 +2366,7 @@ function connectWebSocket() {
 }
 
 function setModuleTileAbortButton(module) {
-  $("div.moduletile[module=" + module + "]").each(function (i, div) {
+  $("div.moduletile[module=" + module + "]").each(function (_, div) {
     $(div).children("button").remove();
     var button = getModuleTileAbortButton(module);
     addEl(div, button);
@@ -2409,7 +2403,7 @@ function showYesNoDialog(content, yescallback, noSpace, justOk) {
     btnDiv.className = "buttondiv";
     var btn = getEl("button");
     btn.textContent = "Ok";
-    btn.addEventListener("click", function (evt) {
+    btn.addEventListener("click", function (_) {
       if (yescallback == undefined || yescallback == null) {
         $("#yesnodialog").remove();
       } else {
@@ -2422,7 +2416,7 @@ function showYesNoDialog(content, yescallback, noSpace, justOk) {
     btnDiv.className = "buttondiv";
     var btn = getEl("button");
     btn.textContent = "Yes";
-    btn.addEventListener("click", function (evt) {
+    btn.addEventListener("click", function (_) {
       $("#yesnodialog").remove();
       yescallback(true);
     });
@@ -2433,7 +2427,7 @@ function showYesNoDialog(content, yescallback, noSpace, justOk) {
     addEl(btnDiv, btn);
     var btn = getEl("button");
     btn.textContent = "No";
-    btn.addEventListener("click", function (evt) {
+    btn.addEventListener("click", function (_) {
       $("#yesnodialog").remove();
       yescallback(false);
     });
@@ -2539,7 +2533,6 @@ function getModulesToUpdate() {
 }
 
 function onClickSystemModuleUpdateButton() {
-  var modulesToUpdate = getSystemModulesToUpdate();
   var div = getEl("div");
   var updateModuleNames = Object.keys(updates);
   var totalSizeN = 0;
