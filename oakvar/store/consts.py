@@ -20,8 +20,7 @@ versions_table_cols = [
     "publish_time",
 ]
 logo_size = (275, 170)
-ov_store_split_file_size = 1_000_000_000 # 1 GB parts
-#ov_store_split_file_size = 100_000_000 # 100 MB parts
+ov_store_split_file_size = 100 * 1024 * 1024
 pack_ignore_fnames = [
     ".DS_Store",
     "__pycache__"
