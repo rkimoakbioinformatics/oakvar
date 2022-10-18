@@ -334,7 +334,7 @@ def change(args={}) -> bool:
             if refresh_token_set():
                 token_set = get_token_set()
                 if token_set:
-                    id_token = token_set["id_token"]
+                    id_token = token_set["idToken"]
         if not id_token:
             quiet_print(f"not logged in", args=args)
             return False
