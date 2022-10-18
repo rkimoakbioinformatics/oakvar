@@ -20,7 +20,7 @@ versions_table_cols = [
     "publish_time",
 ]
 logo_size = (275, 170)
-MODULE_PACK_SPLIT_FILE_SIZE = 100 * 1024 * 1024 # 1GB
+MODULE_PACK_SPLIT_FILE_SIZE = 100 * 1024 * 1024
 pack_ignore_fnames = [
     ".DS_Store",
     "__pycache__"

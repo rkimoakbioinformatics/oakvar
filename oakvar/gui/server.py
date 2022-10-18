@@ -19,7 +19,7 @@ class WebServer(object):
         self.server_started = False
         task = loop.create_task(self.start())
         task.add_done_callback(self.server_done)
-        if args.get("headless") == False and url is not None:
+        if args.get("headless") == False and url:
             self.loop.create_task(self.open_url(url))
 
     @web.middleware
@@ -217,10 +217,10 @@ class TCPSitePatched(web_runner.BaseSite):
         return str(URL.build(scheme=scheme, host=self._host, port=self._port))
 
     async def start(self):
+        from ..exceptions import SetupError
+
         await super().start()
         if self._runner.server is None:
-            from ..exceptions import SetupError
-
             raise SetupError()
         self._server = await self.loop.create_server(
             self._runner.server,

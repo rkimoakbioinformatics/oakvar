@@ -63,21 +63,6 @@ def setup(args={}):
     args["ssl_enabled"] = False
 
 
-def check_local_update(interval):
-    from ..exceptions import SetupError
-    from traceback import print_exc
-    from ..gui.webstore import webstore as ws
-
-
-    if loop is None:
-        raise SetupError()
-    try:
-        ws.handle_modules_changed()
-    except:
-        print_exc()
-    finally:
-        loop.call_later(interval, check_local_update, interval)
-
 def is_port_occupied(args={}):
     import socket
     from ..gui.util import get_host_port
@@ -137,7 +122,6 @@ def main(url=None, args={}):
     quiet_print(msg, args=args)
     quiet_print("(To quit: Press Ctrl-C or Ctrl-Break)", args=args)
     loop = get_event_loop()
-    loop.call_later(1, check_local_update, 5)
     if args["ssl_enabled"]:
         args["ssl_context"] = get_ssl_context(args=args)
     _ = WebServer(loop=loop, url=url, args=args)

@@ -243,13 +243,11 @@ def start_worker():
 
 async def send_socket_msg(install_ws=None):
     global install_state
-    if install_state is not None:
+    if install_state:
         data = {}
         data["module"] = install_state["module_name"]
         data["msg"] = install_state["message"]
-        #if "Downloading " in data["msg"]:
-        #    data["msg"] = data["msg"]  # + " " + str(install_state["cur_chunk"]) + "%"
-        if install_ws is not None:
+        if install_ws:
             await install_ws.send_str(json.dumps(data))
         last_update_time = install_state["update_time"]
         return last_update_time
@@ -277,12 +275,11 @@ async def connect_websocket(request):
     await install_ws.prepare(request)
     while True:
         try:
-            await asyncio.sleep(1)
+            await asyncio.sleep(5)
         except concurrent.futures._base.CancelledError:
             return install_ws
         if not last_update_time or last_update_time < install_state["update_time"]:
             last_update_time = await send_socket_msg(install_ws=install_ws)
-    # return install_ws
 
 
 async def queue_install(request):
@@ -302,11 +299,6 @@ async def queue_install(request):
     data = {"module": module_name, "version": module_version}
     if install_queue is not None:
         install_queue.put(data)
-    # deps, deps_pypi = get_install_deps(module_name, module_version)
-    # if deps:
-    #    for dep_name, dep_version in deps.items():
-    #        if install_queue is not None:
-    #            install_queue.put({"module": dep_name, "version": dep_version})
     return web.Response(text="queued " + queries["module"])
 
 
@@ -392,7 +384,7 @@ async def kill_install(request):
     global install_state
     queries = request.rel_url.query
     module = queries.get("module", None)
-    if install_state is not None:
+    if install_state:
         if "module_name" in install_state and install_state["module_name"] == module:
             install_state["kill_signal"] = True
     return web.json_response("done")

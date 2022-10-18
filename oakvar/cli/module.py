@@ -276,7 +276,8 @@ def install(args, __name__="module install"):
     from ..util.download import is_zip_path
     from ..store.db import try_fetch_ov_store_cache
 
-    try_fetch_ov_store_cache(args=args)
+    if not try_fetch_ov_store_cache(args=args):
+        return False
     to_install = get_modules_to_install(args=args)
     if len(to_install) == 0:
         quiet_print("No module to install", args=args)

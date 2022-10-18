@@ -344,7 +344,7 @@ def create_ov_store_cache(conf=None, args={}, conn=None, cursor=None):
 def try_fetch_ov_store_cache(args={}):
     from ..util.util import quiet_print
     try:
-        fetch_ov_store_cache(args=args)
+        return fetch_ov_store_cache(args=args)
     except Exception as e:
         quiet_print(f"Fetching store update failed:\n\n>>{e}.\n\nContinuing with the current store cache...\n", args=args)
 

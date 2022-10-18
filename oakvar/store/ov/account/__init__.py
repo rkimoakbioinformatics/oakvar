@@ -1,7 +1,6 @@
 from typing import Tuple
 from typing import Optional
 
-
 def get_valid_email_pw(args=None, pwconfirm=False) -> Tuple:
     from ....util.util import email_is_valid
     from ....util.util import pw_is_valid
@@ -156,7 +155,7 @@ def reset(args={}) -> bool:
     params = {"email": email}
     res = post(url, data=params)
     if res.status_code == 200:
-        quiet_print("success", args=args)
+        quiet_print("Success. Check your email for instruction to reset your password.", args=args)
         return True
     else:
         quiet_print(f"fail. {res.text}", args=args)
@@ -482,13 +481,15 @@ def wait_for_email_verified(email: str, args={}, quiet=None):
 
 
 def login_with_token_set(args={}) -> bool:
+    from ....util.util import quiet_print
     token_set = get_token_set()
     if token_set:
         email = token_set["email"]
         correct, expired = id_token_is_valid()
         email_verified = email_is_verified(email, args=args)
         if not email_verified:
-            delete_token_set()
+            quiet_print(f"Email not verified. A verification email should have been sent to your inbox.")
+            return True
         else:
             if correct:
                 if expired:
