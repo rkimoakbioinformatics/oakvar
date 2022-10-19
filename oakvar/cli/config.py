@@ -19,7 +19,7 @@ def user(args, __name__="config user"):
 
 @cli_entry
 def cli_config_system(args):
-    args.fmt = "yaml"
+    args.fmt = "table"
     args.to = "stdout"
     return system(args)
 
@@ -27,8 +27,19 @@ def cli_config_system(args):
 @cli_func
 def system(args, __name__="config system"):
     from ..system import show_system_conf
+    from ..system import get_sys_conf_value
+    from ..system import set_sys_conf_value
+    from ..util.util import quiet_print
 
-    ret = show_system_conf(args)
+    if args.get("key"):
+        if args.get("value"):
+            set_sys_conf_value(args.get("key"), args.get("value"))
+            ret = None
+        else:
+            ret = get_sys_conf_value(args.get("key"))
+            quiet_print(f"{ret}", args=args)
+    else:
+        ret = show_system_conf(args)
     return ret
 
 
@@ -74,7 +85,13 @@ def add_parser_ov_config_system(subparsers):
         help="shows oakvar system configuration",
     )
     parser_cli_config_oakvar.add_argument(
-        "--fmt", default="json", help="Format of output. json or yaml."
+        "key", nargs="?", help="Configuration key"
+    )
+    parser_cli_config_oakvar.add_argument(
+        "value", nargs="?", help="Configuration value"
+    )
+    parser_cli_config_oakvar.add_argument(
+        "--fmt", default="json", help="Format of output: table / json"
     )
     parser_cli_config_oakvar.add_argument(
         "--to", default="return", help='"stdout" to print. "return" to return'

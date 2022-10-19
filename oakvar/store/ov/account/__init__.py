@@ -56,6 +56,7 @@ def create(email=None, pw=None, args={}, quiet=None) -> bool:
     from ....system import get_system_conf
     from ....util.util import quiet_print
     from ....util.util import get_email_pw_from_input
+    from ....store.consts import store_url_key
 
     if not email or not pw:
         email = args.get("email")
@@ -65,7 +66,7 @@ def create(email=None, pw=None, args={}, quiet=None) -> bool:
     if not email:
         return False
     sys_conf = get_system_conf()
-    store_url = sys_conf["store_url"]
+    store_url = sys_conf[store_url_key]
     create_account_url = store_url + "/account/create"
     params = {
         "email": email,

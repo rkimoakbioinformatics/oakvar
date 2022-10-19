@@ -36,20 +36,6 @@ def md(args, __name__="system md"):
 
 
 @cli_entry
-def cli_system_config(args):
-    args.fmt = "yaml"
-    return config(args)
-
-
-@cli_func
-def config(args, __name__="system config"):
-    from ..system import show_system_conf
-
-    ret = show_system_conf(args)
-    return ret
-
-
-@cli_entry
 def cli_system_check(args):
     return check(args)
 
@@ -114,8 +100,16 @@ def add_parser_ov_system_md(subparsers):
 
 
 def add_parser_ov_system_config(subparsers):
+    from .config import cli_config_system
+
     parser_cli_system_config = subparsers.add_parser(
         "config", help="show or change system configuration."
+    )
+    parser_cli_system_config.add_argument(
+        "key", nargs="?", help="Configuration key"
+    )
+    parser_cli_system_config.add_argument(
+        "value", nargs="?", help="Configuration value"
     )
     parser_cli_system_config.add_argument(
         "--fmt", default="json", help="Format of output. json or yaml."
@@ -126,7 +120,7 @@ def add_parser_ov_system_config(subparsers):
     parser_cli_system_config.add_argument(
         "--quiet", action="store_true", default=None, help="run quietly"
     )
-    parser_cli_system_config.set_defaults(func=cli_system_config)
+    parser_cli_system_config.set_defaults(func=cli_config_system)
     parser_cli_system_config.r_return = "A named list. System config information"  # type: ignore
     parser_cli_system_config.r_examples = [  # type: ignore
         "# Get named list of the OakVar system configuration",
