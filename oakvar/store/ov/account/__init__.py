@@ -57,6 +57,7 @@ def create(email=None, pw=None, args={}, quiet=None) -> bool:
     from ....system import get_system_conf
     from ....util.util import quiet_print
     from ....util.util import get_email_pw_from_input
+    from ....store.consts import store_url_key
 
     if not email or not pw:
         email = args.get("email")
@@ -66,7 +67,7 @@ def create(email=None, pw=None, args={}, quiet=None) -> bool:
     if not email:
         return False
     sys_conf = get_system_conf()
-    store_url = sys_conf["store_url"]
+    store_url = sys_conf[store_url_key]
     create_account_url = store_url + "/account/create"
     params = {
         "email": email,
@@ -536,79 +537,3 @@ def total_login(email=None, pw=None, args={}, conf=None) -> bool:
     ret = login(email=email, pw=pw, args=args)
     return ret
 
-
-# def save(email: str, pw: str, args={}):
-#    from ....system import get_user_conf
-#    from ....system import get_user_conf_path
-#    from ....store.consts import ov_store_email_key
-#    from ....store.consts import ov_store_pw_key
-#    from ....system import save_user_conf
-#    from ....util.util import quiet_print
-#
-#    user_conf = get_user_conf()
-#    user_conf_path = get_user_conf_path()
-#    user_conf[ov_store_email_key] = email
-#    user_conf[ov_store_pw_key] = pw
-#    save_user_conf(user_conf)
-#    quiet_print(f"Email and password saved: {user_conf_path}", args=args)
-
-
-# def delete(args=None) -> bool:
-#    from requests import get
-#    from ....system import get_system_conf
-#    from ....util.util import quiet_print
-#
-#    if not args:
-#        return False
-#    email, pw = get_valid_email_pw(args=args)
-#    sys_conf = get_system_conf()
-#    store_url = sys_conf["store_url"]
-#    delete_account_url = store_url + "/account/delete"
-#    params = {
-#        "email": email,
-#        "pw": pw,
-#    }
-#    r = get(delete_account_url, params=params)
-#    if r.status_code == 200:
-#        quiet_print(
-#            f"Account has been deleted.",
-#            args=args,
-#        )
-#        return True
-#    else:
-#        quiet_print(
-#            f"Deleting the account failed. The reason was: {r.reason}", args=args
-#        )
-#        return False
-
-# def change(args={}) -> bool:
-#    from requests import get
-#    from ....system import get_system_conf
-#    from ....util.util import quiet_print
-#
-#    email, pw, newpw = get_valid_email_pw(args=args)
-#    if not email:
-#        quiet_print(f"invalid", args=args)
-#        return False
-#    sys_conf = get_system_conf()
-#    store_url = sys_conf["store_url"]
-#    change_account_url = store_url + "/account/change"
-#    params = {"email": email, "pw": pw, "newpw": newpw}
-#    try:
-#        r = get(change_account_url, params=params)
-#        status_code = r.status_code
-#        if status_code == 200:
-#            quiet_print(f"success", args=args)
-#            return True
-#        elif status_code == 202:
-#            quiet_print(f"unverified email", args=args)
-#            return False
-#        elif status_code == 401:
-#            quiet_print(f"authorization failure", args=args)
-#            return False
-#        else:
-#            quiet_print(f"fail", args=args)
-#            return False
-#    except:
-#        quiet_print(f"server error", args=args)
-#        return False

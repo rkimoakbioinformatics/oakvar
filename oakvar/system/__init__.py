@@ -83,9 +83,10 @@ def setup_system_conf(args={}) -> dict:
 
 
 def update_new_system_conf_with_existing(conf):
-    from ..util.util import load_yml_conf
     from os.path import exists
+    from ..util.util import load_yml_conf
     from .consts import sys_conf_path_key
+    from ..store.consts import store_url_key
 
     oc_sys_conf_path = get_oc_system_conf_path()
     if exists(oc_sys_conf_path):
@@ -96,7 +97,7 @@ def update_new_system_conf_with_existing(conf):
                 sys_conf_path_key,
                 "conf_path",
                 "publish_url",
-                "store_url",
+                store_url_key,
                 "base_modules",
             ]:
                 continue

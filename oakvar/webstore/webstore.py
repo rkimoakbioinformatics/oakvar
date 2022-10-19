@@ -168,9 +168,10 @@ async def get_local_manifest(_):
 
 async def get_storeurl(request):
     from ..system import get_system_conf
+    from ..store.consts import store_url_key
 
     conf = get_system_conf()
-    store_url = conf["store_url"]
+    store_url = conf[store_url_key]
     if request.scheme == "https":
         store_url = store_url.replace("http://", "https://")
     return web.Response(text=store_url)

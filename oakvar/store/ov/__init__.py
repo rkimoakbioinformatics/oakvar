@@ -9,9 +9,11 @@ def module_code_url(module_name: str, version=None) -> Optional[str]:
     from ...exceptions import StoreServerError
 
     id_token = get_current_id_token(args={"quiet": True})
+    if not id_token:
+        raise AuthorizationError()
     s = Session()
     s.headers["User-Agent"] = "oakvar"
-    url = get_store_url() + f"/moduleurls/{module_name}/{version}/code"
+    url = get_store_url() + f"/code_url/{module_name}/{version}"
     params = {"idToken": id_token}
     res = s.post(url, data=params)
     if res.status_code == 200:
@@ -32,9 +34,11 @@ def module_data_url(module_name: str, version=None) -> Optional[str]:
     from ...exceptions import StoreServerError
 
     id_token = get_current_id_token(args={"quiet": True})
+    if not id_token:
+        raise AuthorizationError()
     s = Session()
     s.headers["User-Agent"] = "oakvar"
-    url = get_store_url() + f"/moduleurls/{module_name}/{version}/data"
+    url = get_store_url() + f"/data_url/{module_name}/{version}"
     params = {"idToken": id_token}
     res = s.post(url, data=params)
     if res.status_code == 200:
@@ -75,19 +79,22 @@ def get_version_from_url(url: str):
 
 
 def get_register_args_of_module(module_name: str, args={}) -> Optional[dict]:
+    from json import dumps
+    from oyaml import safe_load
+    from os.path import exists
     from ...module.local import get_remote_manifest_from_local
     from ...exceptions import ArgumentError
     from ...util.util import is_url
-    from json import dumps
-    from oyaml import safe_load
     from ...util.util import quiet_print
     from ...module.local import get_local_module_info
-    from os.path import exists
+    from ..ov import module_data_url
 
     rmi = get_remote_manifest_from_local(module_name, args=args)
     if not rmi or not args:
         return None
-    if not rmi.get("data_version") and not rmi.get("no_data"):
+    data_version = rmi.get("data_version")
+    no_data = rmi.get("no_data")
+    if not data_version and not no_data:
         mi = get_local_module_info(module_name)
         if mi:
             quiet_print(
@@ -116,6 +123,10 @@ def get_register_args_of_module(module_name: str, args={}) -> Optional[dict]:
                     valid = False
                 if not valid:
                     raise ArgumentError(msg=f"invalid {kind} URL: {url}")
+    if not rmi.get("data_url") and no_data and data_version:
+        data_url_s = module_data_url(module_name, version=data_version)
+        if not data_url_s:
+            raise ArgumentError(msg=f"--data-url should be given for new data.")
     rmi["code_url"] = dumps(rmi["code_url"])
     rmi["data_url"] = dumps(rmi["data_url"])
     rmi["overwrite"] = args.get("overwrite")
@@ -208,9 +219,10 @@ def make_module_info_from_table_row(row: dict) -> dict:
 
 def get_store_url() -> str:
     from ...system import get_system_conf
+    from ...store.consts import store_url_key
 
     sys_conf = get_system_conf()
-    store_url = sys_conf["store_url"]
+    store_url = sys_conf[store_url_key]
     return store_url
 
 
@@ -255,70 +267,3 @@ def register(args={}) -> bool:
         return False
 
 
-# @db_func
-# def fetch_ov_store_cache(
-#    email: Optional[str] = None,
-#    pw: Optional[str] = None,
-#    conn=None,
-#    cursor=None,
-#    args={},
-# ):
-#    from ..consts import ov_store_email_key
-#    from ..consts import ov_store_pw_key
-#    from ..consts import ov_store_last_updated_col
-#    from ...system import get_sys_conf_value
-#    from ...system import get_user_conf
-#    from requests import Session
-#    from ...util.util import quiet_print
-#    from ...exceptions import StoreServerError
-#    from ...exceptions import AuthorizationError
-#
-#    if not conn or not cursor:
-#        return False
-#    if not email and args:
-#        email = args.get("email")
-#        pw = args.get("pw")
-#    if not email:
-#        user_conf = get_user_conf()
-#        email = user_conf.get(ov_store_email_key)
-#        pw = user_conf.get(ov_store_pw_key)
-#    if not email or not pw:
-#        return False
-#    params = {"email": email, "pw": pw}
-#    s = Session()
-#    s.headers["User-Agent"] = "oakvar"
-#    store_url = get_sys_conf_value("store_url")
-#    if not store_url:
-#        return False
-#    server_last_updated, status_code = get_server_last_updated(email, pw)
-#    local_last_updated = get_local_last_updated()
-#    clean = args.get("clean")
-#    if not server_last_updated:
-#        if status_code == 401:
-#            raise AuthorizationError()
-#        elif status_code == 500:
-#            raise StoreServerError()
-#        return False
-#    if not clean and local_last_updated and local_last_updated >= server_last_updated:
-#        quiet_print("No store update to fetch", args=args)
-#        return True
-#    url = f"{store_url}/fetch"
-#    res = s.get(url, params=params)
-#    if res.status_code != 200:
-#        if res.status_code == 401:
-#            raise AuthorizationError()
-#        elif res.status_code == 500:
-#            raise StoreServerError()
-#        return False
-#    q = f"delete from modules"
-#    cursor.execute(q)
-#    conn.commit()
-#    res = res.json()
-#    cols = res["cols"]
-#    for row in res["data"]:
-#        q = f"insert into modules ( {', '.join(cols)} ) values ( {', '.join(['?'] * len(cols))} )"
-#        cursor.execute(q, row)
-#    q = f"insert or replace into info ( key, value ) values ( ?, ? )"
-#    cursor.execute(q, (ov_store_last_updated_col, str(server_last_updated)))
-#    conn.commit()
-#    quiet_print("OakVar store cache has been fetched.", args=args)

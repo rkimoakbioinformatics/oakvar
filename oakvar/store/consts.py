@@ -25,3 +25,4 @@ pack_ignore_fnames = [
     ".DS_Store",
     "__pycache__"
 ]
+store_url_key = "store_url"
