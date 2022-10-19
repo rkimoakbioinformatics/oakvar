@@ -199,15 +199,15 @@ class ReportFilter:
         user=DEFAULT_SERVER_DEFAULT_USERNAME,
         uid=None,
     ):
-        from os.path import abspath
+        from pathlib import Path
         self.mode = mode
         if self.mode == "main":
             self.stdout = True
         else:
             self.stdout = False
-        if not dbpath:
-            return
-        self.dbpath = abspath(dbpath)
+        self.dbpath = dbpath
+        if self.dbpath:
+            self.dbpath = str(Path(dbpath).absolute())
         self.conn = None
         self.filterpath = filterpath
         self.cmd = None
