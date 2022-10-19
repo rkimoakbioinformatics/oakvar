@@ -6,7 +6,6 @@ from .cli.util import addjob as util_addjob
 from .cli.test import test
 from .cli.system import setup as system_setup
 from .cli.system import md as system_md
-from .cli.system import config as system_config
 from .cli.store import register as store_register
 from .cli.store.account import reset as store_account_reset
 from .cli.store.account import create as store_account_create
@@ -131,7 +130,7 @@ _ = (
     or store_fetch
     or module_pack
 )
-_ = system_setup or system_md or system_config
+_ = system_setup or system_md
 _ = test
 _ = util_addjob or util_filtersqlite or util_mergesqlite or util_sqliteinfo
 _ = (

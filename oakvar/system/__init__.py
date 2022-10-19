@@ -284,6 +284,11 @@ def get_sys_conf_value(conf_key, sys_conf_path=None, conf=None):
     return None
 
 
+def set_sys_conf_value(conf_key, conf_value, sys_conf_path=None, conf=None):
+    sys_conf = get_system_conf(sys_conf_path=sys_conf_path, conf=conf)
+    sys_conf[conf_key] = conf_value
+    save_system_conf(sys_conf)
+
 def get_user_conf() -> dict:
     from ..util.util import load_yml_conf
 
@@ -438,8 +443,10 @@ def get_system_conf(sys_conf_path=None, conf=None):
 
 
 def show_system_conf(args):
-    from oyaml import dump
     from os.path import exists
+    from rich.console import Console
+    from rich.table import Table
+    from rich.box import SQUARE
     from ..util.util import quiet_print
 
     # args.setdefault("fmt", "json")
@@ -448,10 +455,17 @@ def show_system_conf(args):
     if not sys_conf_path or not exists(sys_conf_path):
         return None
     conf = get_system_conf()
-    if args.get("fmt") == "yaml":
-        conf = dump(conf, default_flow_style=False)
     if args.get("to") == "stdout":
-        quiet_print(conf, args=args)
+        if args.get("fmt") == "json":
+            quiet_print(conf, args=args)
+        else:
+            console = Console()
+            table = Table(title=conf.get("sys_conf_path"), box=SQUARE)
+            table.add_column("Key")
+            table.add_column("Value")
+            for k, v in conf.items():
+                table.add_row(k, str(v))
+            console.print(table)
     else:
         return conf
 
