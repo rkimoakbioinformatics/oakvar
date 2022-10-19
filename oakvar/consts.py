@@ -109,6 +109,12 @@ crx_def = crv_def + [
         "filterable": False,
     },
     {
+        "name": "exonno",
+        "title": "Exon number",
+        "type": "int",
+        "width": 55,
+    },
+    {
         "name": "all_mappings",
         "title": "All Mappings",
         "type": "string",
