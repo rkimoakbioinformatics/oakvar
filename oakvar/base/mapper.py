@@ -390,7 +390,7 @@ class BaseMapper(object):
         cols = [
             "base__" + coldef["name"]
             for coldef in crx_def
-            if coldef["name"] != "cchange"
+            if not coldef["name"] in ["cchange", "exonno"]
         ]
         cols.extend(["tagsampler__numsample"])
         data = {}
