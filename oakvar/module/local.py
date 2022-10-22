@@ -503,6 +503,13 @@ def get_conf(module_name, module_type=None) -> Optional[dict]:
     return load_yml_conf(p)
 
 
+def get_cache_conf(module_name, module_type=None) -> Optional[dict]:
+    conf = get_conf(module_name, module_type=module_type)
+    if not conf:
+        return None
+    cache_conf = conf.get("cache")
+    return cache_conf
+
 def get_readme_path(module_name, module_type=None) -> Optional[str]:
     from os.path import join
     from os.path import exists
@@ -683,5 +690,4 @@ def load_modules(annotators: list = [], mapper: Optional[str] = None, input_file
     for module_name in annotators:
         modules[module_name] = get_live_annotator(module_name)
     return modules
-
 
