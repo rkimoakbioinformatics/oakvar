@@ -271,7 +271,7 @@ def install(args, __name__="module install"):
     from ..module import install_module_from_url
     from ..module import install_module_from_zip_path
     from ..util.util import quiet_print
-    from ..util.util import wait_for_y
+    from ..util.util import get_y_or_n
     from ..util.download import is_url
     from ..util.download import is_zip_path
     from ..store.db import try_fetch_ov_store_cache
@@ -284,7 +284,7 @@ def install(args, __name__="module install"):
         return True
     show_modules_to_install(to_install, args=args)
     if not (args["yes"]):
-        if not wait_for_y():
+        if not get_y_or_n():
             return True
     problem_modules = []
     for module_name, module_version in sorted(to_install.items()):

@@ -575,7 +575,7 @@ def escape_glob_pattern(pattern):
     new_pattern = "[[]".join(["[]]".join(v.split("]")) for v in pattern.split("[")])
     return new_pattern.replace("*", "[*]").replace("?", "[?]")
 
-def wait_for_y():
+def get_y_or_n():
     while True:
         resp = input("Proceed? ([y]/n) > ")
         if resp == "y" or resp == "":
