@@ -113,31 +113,30 @@ class FileReader(BaseFile):
 
     def get_chunksize(self, num_core):
         f = open(self.path)
-        max_num_lines = 0
-        while True:
-            line = f.readline()
-            if line == "":
-                break
+        max_data_line_no = 0
+        max_line_no = 0
+        for line in f:
+            max_line_no += 1
             if line.startswith("#"):
                 continue
-            max_num_lines += 1
-        f.close()
-        chunksize = max(int(max_num_lines / num_core), 1)
-        f = open(self.path)
+            max_data_line_no += 1
+        chunksize = max(int(max_data_line_no / num_core), 1)
+        f.seek(0)
         poss = [[0, 0]]
-        num_lines = 0
+        line_no = 0
+        data_line_no = 0
         while True:
             line = f.readline()
-            if line == "":
+            line_no += 1
+            if not line.startswith("#"):
+                data_line_no += 1
+                if data_line_no % chunksize == 0 and len(poss) < num_core:
+                    poss.append([f.tell(), chunksize])
+            if line_no == max_line_no:
                 break
-            if line.startswith("#"):
-                continue
-            num_lines += 1
-            if num_lines % chunksize == 0 and len(poss) < num_core:
-                poss.append([f.tell(), num_lines])
         f.close()
         len_poss = len(poss)
-        return num_lines, chunksize, poss, len_poss, max_num_lines
+        return max_line_no, chunksize, poss, len_poss, max_data_line_no
 
     def loop_data(self):
         from ..exceptions import BadFormatError
@@ -212,10 +211,14 @@ class FileReader(BaseFile):
                     1147483647
                 )  # crude way. 2147483647 is the min of C long max.
                 csvreader = csv.reader(f)
+                num_data_rows = 0
                 for row in csvreader:
                     if row[0].startswith("#"):
                         continue
                     yield csvreader.line_num, row
+                    num_data_rows += 1
+                    if num_data_rows == self.chunksize:
+                        break
         else:
             with open(self.path, "rb") as f:
                 if self.seekpos is not None:
