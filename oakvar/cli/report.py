@@ -439,26 +439,18 @@ class BaseReporter:
                 newvals = []
                 for hugo in all_map:
                     for maprow in all_map[hugo]:
-                        [protid, protchange, so, transcript, rnachange] = maprow
+                        if len(maprow) == 5:
+                            [protid, protchange, so, transcript, rnachange] = maprow
+                            exonno = -1
+                        else:
+                            [protid, protchange, so, transcript, rnachange, exonno] = maprow
                         if protid == None:
                             protid = "(na)"
                         if protchange == None:
                             protchange = "(na)"
                         if rnachange == None:
                             rnachange = "(na)"
-                        newval = (
-                            transcript
-                            + ":"
-                            + hugo
-                            + ":"
-                            + protid
-                            + ":"
-                            + so
-                            + ":"
-                            + protchange
-                            + ":"
-                            + rnachange
-                        )
+                        newval = f"{transcript}:{hugo}:{protid}:{so}:{protchange}:{rnachange}:{exonno}"
                         newvals.append(newval)
                 newvals.sort()
                 newcell = "; ".join(newvals)
