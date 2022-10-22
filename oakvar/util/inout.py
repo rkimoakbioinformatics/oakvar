@@ -363,9 +363,9 @@ class FileWriter(BaseFile):
 
     def write_data(self, data):
         self._prep_for_write()
-        if self.include_definition and not (self._definition_written):
+        if self.include_definition and not self._definition_written:
             self.write_definition()
-        if self.include_titles and not (self._titles_written):
+        if self.include_titles and not self._titles_written:
             self.write_titles()
         wtoks = [""] * len(self.name_to_col_index)
         for col_name in data:

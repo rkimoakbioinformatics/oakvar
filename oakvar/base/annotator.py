@@ -18,6 +18,7 @@ class BaseAnnotator(object):
         from ..util.util import get_args
         from ..consts import cannonical_chroms
         from ..module.local import get_module_conf
+        from ..module.data_cache import ModuleDataCache
         from ..exceptions import ModuleLoadingError
         from ..exceptions import LoggerError
         from pathlib import Path
@@ -65,12 +66,13 @@ class BaseAnnotator(object):
         if live:
             return
         self.module_name = self.main_fpath.stem
+        self.module_type = "annotator"
         self.annotator_name = self.module_name
         self.module_dir = self.main_fpath.parent
         self.annotator_dir = self.main_fpath.parent
         self.data_dir = self.module_dir / "data"
         self._setup_logger()
-        self.conf = get_module_conf(self.module_name, module_type="annotator", module_dir=self.module_dir)
+        self.conf = get_module_conf(self.module_name, module_type=self.module_type, module_dir=self.module_dir)
         if self.conf is None:
             raise ModuleLoadingError(self.module_name)
         self._verify_conf()
@@ -87,13 +89,18 @@ class BaseAnnotator(object):
             self.annotator_version = self.conf["version"]
         else:
             self.annotator_version = ""
+        self.cache = ModuleDataCache(self.module_name, module_type=self.module_type)
 
     def summarize_by_gene(self, __hugo__, __input_data__):
         pass
 
     def _log_exception(self, e, halt=True):
+        import traceback
         if self.logger:
             self.logger.exception(e)
+        else:
+            tb = traceback.format_exc()
+            print(tb)
         if halt:
             return False
         else:
@@ -181,36 +188,31 @@ class BaseAnnotator(object):
 
     # Parse the command line arguments
     def parse_cmd_args(self, inargs, inkwargs):
-        import os
         import re
+        from pathlib import Path
         from ..util.util import get_args
 
         args = get_args(self.cmd_arg_parser, inargs, inkwargs)
-        self.primary_input_path = os.path.abspath(args["input_file"])
+        self.primary_input_path = Path(args["input_file"]).absolute()
         if args["secondary_inputs"]:
             for secondary_def in args["secondary_inputs"]:
                 sec_name, sec_path = re.split(r"(?<!\\)=", secondary_def)
-                self.secondary_paths[sec_name] = os.path.abspath(sec_path)
-        self.output_dir = os.path.dirname(self.primary_input_path)
+                self.secondary_paths[sec_name] = str(Path(sec_path).absolute())
         if args["output_dir"]:
             self.output_dir = args["output_dir"]
+        else:
+            self.output_dir = str(self.primary_input_path.parent)
         self.plain_output = args["plainoutput"]
         if "run_name" in args and args["run_name"] is not None:
             self.output_basename = args["run_name"]
         else:
-            self.output_basename = os.path.basename(self.primary_input_path)
-            if self.output_basename.endswith(".crx"):
+            self.output_basename = self.primary_input_path.name
+            if Path(self.output_basename).suffix in [".crv", ".crg", ".crx"]:
                 self.output_basename = self.output_basename[:-4]
         if self.output_basename != "__dummy__":
             self.update_status_json_flag = True
         else:
             self.update_status_json_flag = False
-        #if hasattr(args, "confpath"):
-        #    self.job_conf_path = args["confpath"]
-        #self.confs = None
-        #if hasattr(args, "confs") and args["confs"] is not None:
-        #    confs = args["confs"].lstrip("'").rstrip("'").replace("'", '"')
-        #    self.confs = json.loads(confs)
         self.args = args
 
     def handle_jsondata(self, output_dict):
@@ -404,11 +406,13 @@ class BaseAnnotator(object):
             self.unique_excs.append(err_str_log)
             if self.logger:
                 self.logger.error(err_str_log)
+            else:
+                print(err_str_log)
+        err_logger_s = f"{fn}:{lnum}\t{str(e)}"
         if self.error_logger:
-            self.error_logger.error(f"{fn}:{lnum}\t{str(e)}")
-            # self.error_logger.error(
-            #    "\n[{:d}]{}\n({})\n#".format(lnum, line.rstrip(), str(e))
-            # )
+            self.error_logger.error(err_logger_s)
+        else:
+            print(err_logger_s)
 
     # Setup function for the base_annotator, different from self.setup()
     # which is intended to be for the derived annotator.
@@ -431,7 +435,7 @@ class BaseAnnotator(object):
         from ..exceptions import ConfigurationError
         from ..util.inout import FileReader
 
-        self.primary_input_reader = FileReader(self.primary_input_path)
+        self.primary_input_reader = FileReader(str(self.primary_input_path))
         requested_input_columns = self.conf["input_columns"]
         defined_columns = self.primary_input_reader.get_column_names()
         missing_columns = set(requested_input_columns) - set(defined_columns)
@@ -492,15 +496,13 @@ class BaseAnnotator(object):
             )
             self.secondary_readers[sec_name] = fetcher
 
-    # Open the output files (.var, .gen, .ncd) that are needed
     def _setup_outputs(self):
-        if self.conf is None or self.output_dir is None or self.output_basename is None:
-            from ..exceptions import SetupError
-
-            raise SetupError(module_name=self.module_name)
         import os
         from ..util.inout import FileWriter
+        from ..exceptions import SetupError
 
+        if self.conf is None or self.output_dir is None or self.output_basename is None:
+            raise SetupError(module_name=self.module_name)
         level = self.conf["level"]
         if level == "variant":
             output_suffix = "var"
@@ -676,12 +678,11 @@ class BaseAnnotator(object):
         }
 
     def live_report_substitute(self, d):
-        if self.conf is None:
-            from ..exceptions import SetupError
-
-            raise SetupError(self.module_name)
         import re
+        from ..exceptions import SetupError
 
+        if self.conf is None:
+            raise SetupError(self.module_name)
         if "report_substitution" not in self.conf:
             return d
         rs_dic = self.conf["report_substitution"]
@@ -699,7 +700,6 @@ class BaseAnnotator(object):
                         value = rs_dic[colname][value]
                 d[colname] = value
         return d
-
 
 class SecondaryInputFetcher:
     def __init__(self, input_path, key_col, fetch_cols=[]):
