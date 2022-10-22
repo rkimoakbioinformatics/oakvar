@@ -71,5 +71,5 @@ def mapper_runner(
         kwargs["status_writer"] = status_writer
         genemapper_class = load_class(module.script_path, "Mapper")
         genemapper = genemapper_class(kwargs)
-        output = genemapper.run_as_slave(pos_no)
+        output = genemapper.run(pos_no)
     return output

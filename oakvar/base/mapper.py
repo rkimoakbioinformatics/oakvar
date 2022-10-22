@@ -211,74 +211,9 @@ class BaseMapper(object):
         for index_columns in crg_idx:
             self.crg_writer.add_index(index_columns)
 
-    def run(self):
-        """
-        Read crv file and use map() function to convert to crx dict. Write the
-        crx dict to the crx file and add information in crx dict to gene_info
-        """
+    def run(self, __pos_no__):
         from time import time, asctime, localtime
-
-        self.base_setup()
-        start_time = time()
-        if (
-            self.logger is None
-            or self.conf is None
-            or self.reader is None
-            or not hasattr(self, "map")
-        ):
-            from ..exceptions import SetupError
-
-            raise SetupError()
-        self.logger.info("started: %s" % asctime(localtime(start_time)))
-        if self.status_writer is not None:
-            self.status_writer.queue_status_update(
-                "status", "Started {} ({})".format(self.conf["title"], self.module_name)
-            )
-        count = 0
-        last_status_update_time = time()
-        crx_data = None
-        output = {}
-        for ln, line, crv_data in self.reader.loop_data():
-            crx_data = None
-            try:
-                count += 1
-                cur_time = time()
-                if self.status_writer is not None:
-                    if count % 10000 == 0 or cur_time - last_status_update_time > 3:
-                        self.status_writer.queue_status_update(
-                            "status", "Running gene mapper: line {}".format(count)
-                        )
-                        last_status_update_time = cur_time
-                if crv_data["alt_base"] == "*":
-                    crx_data = crv_data
-                    crx_data["all_mappings"] = "{}"
-                else:
-                    crx_data = self.map(crv_data)  # type: ignore
-                # Skip cases where there was no change. Can result if ref_base not in original input
-                if crx_data["ref_base"] == crx_data["alt_base"]:
-                    continue
-            except Exception as e:
-                self._log_runtime_error(ln, line, e, fn=self.reader.path)
-                continue
-            if crx_data is not None:
-                self.crx_writer.write_data(crx_data)  # type: ignore
-                self._add_crx_to_gene_info(crx_data)
-        self._write_crg()
-        stop_time = time()
-        self.logger.info("finished: %s" % asctime(localtime(stop_time)))
-        runtime = stop_time - start_time
-        self.logger.info("runtime: %6.3f" % runtime)
-        if self.status_writer is not None:
-            self.status_writer.queue_status_update("status", "Finished gene mapper")
-        self.end()
-        return output
-
-    def run_as_slave(self, __pos_no__):
-        """
-        Read crv file and use map() function to convert to crx dict. Write the
-        crx dict to the crx file and add information in crx dict to gene_info
-        """
-        from time import time, asctime, localtime
+        from ..exceptions import SetupError
 
         self.base_setup()
         if (
@@ -288,8 +223,6 @@ class BaseMapper(object):
             or self.reader is None
             or self.crx_writer is None
         ):
-            from ..exceptions import SetupError
-
             raise SetupError()
         start_time = time()
         tstamp = asctime(localtime(start_time))
