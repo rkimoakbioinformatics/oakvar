@@ -78,6 +78,7 @@ setup(
         "Pillow",
         "duckdb",
         "rich",
+        "aiohttp_cors",
         # below are module-specific. move them to module's yml.
         "mpmath",
         "twobitreader",
