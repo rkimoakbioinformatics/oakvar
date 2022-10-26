@@ -1379,7 +1379,7 @@ async function makeReportTab(rightDiv) {
   rightContentDiv.className = "rightcontentdiv";
   addEl(rightDiv, rightContentDiv);
   var res = await axios.get("/submit/reporttypes")
-  var reportTypes = res.data["valid"]
+  var reportTypes = res.data
   reportTypes.sort()
   var res = await axios.post("/submit/jobs/reports",
     {dbpath: dbPath, job_id: jobId}

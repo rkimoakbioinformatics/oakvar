@@ -8,6 +8,7 @@ class WebServer(object):
         self.args = args
         self.logger = args.get("logger")
         self.app = None
+        self.cors = None
         self.runner = None
         self.site = None
         self.host = args.get("host")
@@ -80,7 +81,11 @@ class WebServer(object):
     async def start(self):
         global server_ready
         from aiohttp import web
+        import aiohttp_cors
         self.app = web.Application(loop=self.loop, middlewares=[self.middleware])
+        self.cors = aiohttp_cors.setup(self.app, defaults={
+            "http://localhost:3000": aiohttp_cors.ResourceOptions()
+        }) # type: ignore
         self.setup_routes()
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()
@@ -161,7 +166,7 @@ class WebServer(object):
         self.setup_webapp_routes()
         self.app.router.add_static("/store", join(source_dir, "..", "gui", "webstore"))
         self.app.router.add_static("/result", join(source_dir, "..", "gui", "webresult"))
-        self.app.router.add_static("/submit", join(source_dir, "..", "gui", "websubmit"))
+        self.app.router.add_static("/submit", join(source_dir, "websubmit"))
         modules_dir = get_modules_dir()
         if modules_dir:
             if exists(join(modules_dir, "annotators")):
@@ -170,6 +175,8 @@ class WebServer(object):
                 )
             if exists(join(modules_dir, "webapps")):
                 self.app.router.add_static("/webapps", join(modules_dir, "webapps"))
+        for resource in list(self.app.router.resources()):
+            self.cors.add(resource) # type: ignore
         ws.start_worker()
         wu.start_worker()
 

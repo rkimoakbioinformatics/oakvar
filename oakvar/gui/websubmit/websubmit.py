@@ -383,6 +383,23 @@ def get_postaggregators(_):
             }
     return json_response(out)
 
+def get_converters(_):
+    from aiohttp.web import json_response
+    from ...module.local import get_local_module_infos
+
+    out = []
+    modules = get_local_module_infos(types=["converter"])
+    modules.sort(key=lambda x: x.name)
+    for module in modules:
+        out.append({
+            "name": module.name,
+            "format": module.name.replace("-converter", ""),
+            "title": module.title.replace(" Converter", ""),
+            "description": module.description,
+            "developer": module.developer,
+        })
+    return json_response(out)
+
 def find_files_by_ending(d, ending):
     from os import listdir
     fns = listdir(d)
@@ -577,7 +594,7 @@ def get_valid_report_types():
     valid_report_types = [
         v
         for v in valid_report_types
-        if not v in ["text", "pandas", "stdout", "example"]
+        if not v in ["pandas", "stdout", "example"]
     ]
     return valid_report_types
 
@@ -585,7 +602,7 @@ def get_valid_report_types():
 async def get_report_types(_):
     from aiohttp.web import json_response
     valid_types = get_valid_report_types()
-    return json_response({"valid": valid_types})
+    return json_response(valid_types)
 
 
 async def get_job_id_or_dbpath(request) -> Optional[str]:
@@ -1381,3 +1398,4 @@ routes.append(["GET", "/issystemready", is_system_ready])
 routes.append(["GET", "/submit/systemlog", get_system_log])
 routes.append(["GET", "/favicon.ico", serve_favicon])
 routes.append(["GET", "/webapps/{module}", get_webapp_index])
+routes.append(["GET", "/submit/converters", get_converters])
