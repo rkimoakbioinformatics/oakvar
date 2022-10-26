@@ -194,7 +194,7 @@ class BasePostAggregator(object):
                 if not output_dict:
                     continue
                 output_dict = self.handle_legacy_data(output_dict)
-                self.write_output(input_data, output_dict)
+                self.write_output(output_dict, input_data=input_data)
                 cur_time = time()
                 lnum += 1
                 if lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
@@ -239,7 +239,7 @@ class BasePostAggregator(object):
             q = "update {}_header set col_def=? where col_name=?".format(self.level)
             self.cursor.execute(q, [col_def.get_json(), col_def.name])
 
-    def write_output(self, input_data, output_dict):
+    def write_output(self, output_dict, input_data=None, base__uid=None, base__hugo=None):
         from ..exceptions import ConfigurationError
         from ..exceptions import SetupError
         from oakvar.consts import VARIANT, GENE
@@ -265,10 +265,20 @@ class BasePostAggregator(object):
         q = f"update {self.level} set {set_str} where "
         if self.levelno == VARIANT:
             q += "base__uid=?"
-            vals.append(input_data["base__uid"])
+            if input_data:
+                vals.append(input_data["base__uid"])
+            elif base__uid:
+                vals.append(base__uid)
+            else:
+                return
         elif self.levelno == GENE:
             q += 'base__hugo=?'
-            vals.append(input_data["base__hugo"])
+            if input_data:
+                vals.append(input_data["base__hugo"])
+            elif base__hugo:
+                vals.append(base__hugo)
+            else:
+                return
         self.cursor_w.execute(q, vals)
 
     def _log_runtime_exception(self, input_data, e):
