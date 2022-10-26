@@ -104,17 +104,54 @@ class BasePostAggregator(object):
             confs = parsed_args.confs.lstrip("'").rstrip("'").replace("'", '"')
             self.confs = json.loads(confs)
 
+    def handle_legacy_data(self, output_dict: dict):
+        from json import dumps
+
+        for colname in self.json_colnames:
+            delflag = False
+            json_data = output_dict.get(colname, None)
+            if json_data and "__" in colname:
+                shortcolname = colname.split("__")[1]
+                json_data = output_dict.get(shortcolname, None)
+                delflag = json_data is not None
+            if json_data:
+                if type(json_data) is list:
+                    for rowidx in range(len(json_data)):
+                        row = json_data[rowidx]
+                        if type(row) is list:
+                            pass
+                        elif type(row) is dict:
+                            list_data = []
+                            table_header = self.table_headers[colname]
+                            for i in range(len(table_header)):
+                                header = table_header[i]
+                                if header in row:
+                                    v = row[header]
+                                else:
+                                    v = None
+                                list_data.append(v)
+                            json_data[rowidx] = list_data
+                json_data = dumps(json_data)
+                out = json_data
+            else:
+                out = None
+            output_dict[colname] = out
+            if delflag:
+                del output_dict[shortcolname]
+        return output_dict
+
     def run(self):
         from time import time, asctime, localtime
-        import json
+        from ..exceptions import ConfigurationError
+        from ..exceptions import LoggerError
+        from ..exceptions import SetupError
+
 
         if self.conf is None:
-            from ..exceptions import ConfigurationError
-
             raise ConfigurationError()
+        if self.dbconn is None:
+            raise SetupError(module_name=self.module_name)
         if self.logger is None:
-            from ..exceptions import LoggerError
-
             raise LoggerError()
         if not self.should_run_annotate:
             self.base_cleanup()
@@ -123,55 +160,44 @@ class BasePostAggregator(object):
         self.status_writer.queue_status_update(
             "status", "Started {} ({})".format(self.conf["title"], self.module_name)
         )
-        last_status_update_time = time()
         self.logger.info("started: {0}".format(asctime(localtime(start_time))))
         self.base_setup()
-        lnum = 0
-        json_colnames = []
-        table_headers = {}
+        self.json_colnames = []
+        self.table_headers = {}
         output_columns = self.conf["output_columns"]
         for col in output_columns:
             if "table" in col and col["table"] == True:
-                json_colnames.append(col["name"])
-                table_headers[col["name"]] = []
+                self.json_colnames.append(col["name"])
+                self.table_headers[col["name"]] = []
                 for h in col["table_header"]:
-                    table_headers[col["name"]].append(h["name"])
+                    self.table_headers[col["name"]].append(h["name"])
+        self.process_file()
+        self.fill_categories()
+        self.dbconn.commit()
+        self.postprocess()
+        self.base_cleanup()
+        end_time = time()
+        run_time = end_time - start_time
+        self.logger.info("finished: {0}".format(asctime(localtime(end_time))))
+        self.logger.info("runtime: {0:0.3f}".format(run_time))
+        self.status_writer.queue_status_update(
+            "status", "Finished {} ({})".format(self.conf["title"], self.module_name)
+        )
+
+    def process_file(self):
+        from time import time 
+        from ..exceptions import ConfigurationError
+
+        if self.conf is None:
+            raise ConfigurationError()
+        lnum = 0
+        last_status_update_time = time()
         for input_data in self._get_input():
             try:
                 output_dict = self.annotate(input_data)
-                if output_dict is None:
+                if not output_dict:
                     continue
-                # Handles table-format column data.
-                delflag = False
-                for colname in json_colnames:
-                    json_data = output_dict.get(colname, None)
-                    if json_data is None and "__" in colname:
-                        shortcolname = colname.split("__")[1]
-                        json_data = output_dict.get(shortcolname, None)
-                        delflag = json_data is not None
-                    if json_data is not None:
-                        if type(json_data) is list:
-                            for rowidx in range(len(json_data)):
-                                row = json_data[rowidx]
-                                if type(row) is list:
-                                    pass
-                                elif type(row) is dict:
-                                    tmp = []
-                                    for i in range(len(table_headers[colname])):
-                                        h = table_headers[colname][i]
-                                        if h in row:
-                                            v = row[h]
-                                        else:
-                                            v = None
-                                        tmp.append(v)
-                                    json_data[rowidx] = tmp
-                        json_data = json.dumps(json_data)
-                        out = json_data
-                    else:
-                        out = None
-                    output_dict[colname] = out
-                    if delflag:
-                        del output_dict[shortcolname]
+                output_dict = self.handle_legacy_data(output_dict)
                 self.write_output(input_data, output_dict)
                 cur_time = time()
                 lnum += 1
@@ -185,36 +211,20 @@ class BasePostAggregator(object):
                     last_status_update_time = cur_time
             except Exception as e:
                 self._log_runtime_exception(input_data, e)
-        self.fill_categories()
-        if self.dbconn is None:
-            from ..exceptions import SetupError
-
-            raise SetupError(module_name=self.module_name)
-        self.dbconn.commit()
-        self.postprocess()
-        self.base_cleanup()
-        end_time = time()
-        run_time = end_time - start_time
-        self.logger.info("finished: {0}".format(asctime(localtime(end_time))))
-        self.logger.info("runtime: {0:0.3f}".format(run_time))
-        self.status_writer.queue_status_update(
-            "status", "Finished {} ({})".format(self.conf["title"], self.module_name)
-        )
 
     def postprocess(self):
         pass
 
     def fill_categories(self):
-        if self.conf is None:
-            from ..exceptions import ConfigurationError
-
-            raise ConfigurationError()
-        if self.cursor is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
+        from ..exceptions import ConfigurationError
+        from ..exceptions import SetupError
         from ..util.inout import ColumnDefinition
 
+
+        if self.conf is None:
+            raise ConfigurationError()
+        if self.cursor is None:
+            raise SetupError()
         for col_d in self.conf["output_columns"]:
             col_def = ColumnDefinition(col_d)
             if col_def.category not in ["single", "multi"]:
