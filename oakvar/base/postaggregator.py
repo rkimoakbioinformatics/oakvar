@@ -75,12 +75,12 @@ class BasePostAggregator(object):
     def parse_cmd_args(self, cmd_args):
         import os
         import json
-        from oakvar.consts import LEVELS
+        from ..consts import LEVELS
+        from ..exceptions import SetupError
+        from ..exceptions import ParserError
 
         self._define_cmd_parser()
         if self.cmd_arg_parser is None:
-            from ..exceptions import ParserError
-
             raise ParserError("postaggregator")
         parsed_args = self.cmd_arg_parser.parse_args(cmd_args[1:])
         if parsed_args.run_name:
@@ -90,13 +90,9 @@ class BasePostAggregator(object):
         if parsed_args.level:
             self.level = parsed_args.level
         if self.level is None or self.output_dir is None:
-            from ..exceptions import SetupError
-
             raise SetupError()
         self.levelno = LEVELS[self.level]
         if self.run_name is None:
-            from ..exceptions import ParserError
-
             raise ParserError("postaggregator run_name")
         self.db_path = os.path.join(self.output_dir, self.run_name + ".sqlite")
         self.confs = None
@@ -244,17 +240,16 @@ class BasePostAggregator(object):
             self.cursor.execute(q, [col_def.get_json(), col_def.name])
 
     def write_output(self, input_data, output_dict):
-        if self.conf is None:
-            from ..exceptions import ConfigurationError
-
-            raise ConfigurationError()
-        if self.level is None or self.cursor is None or self.cursor_w is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
+        from ..exceptions import ConfigurationError
+        from ..exceptions import SetupError
         from oakvar.consts import VARIANT, GENE
 
-        q = ""
+        if self.conf is None:
+            raise ConfigurationError()
+        if self.level is None or self.cursor is None or self.cursor_w is None:
+            raise SetupError()
+        vals = []
+        set_strs = []
         for col_def in self.conf["output_columns"]:
             col_name = col_def["name"]
             shortcol_name = col_name.split("__")[1]
@@ -262,22 +257,19 @@ class BasePostAggregator(object):
                 val = output_dict[shortcol_name]
                 if val is None:
                     continue
-                col_type = col_def["type"]
-                if col_type in ["string"]:
-                    val = "'" + val + "'"
-                else:
-                    val = str(val)
-                q += col_name + "=" + val + ","
-        q = q.rstrip(",")
-        if q == "":
+                vals.append(val)
+                set_strs.append(f"{col_name}=?")
+        if len(vals) == 0:
             return
-        q = "update " + self.level + " set " + q
-        q += " where "
+        set_str = ", ".join(set_strs)
+        q = f"update {self.level} set {set_str} where "
         if self.levelno == VARIANT:
-            q += "base__uid=" + str(input_data["base__uid"])
+            q += "base__uid=?"
+            vals.append(input_data["base__uid"])
         elif self.levelno == GENE:
-            q += 'base__hugo="' + input_data["base__hugo"] + '"'
-        self.cursor_w.execute(q)
+            q += 'base__hugo=?'
+            vals.append(input_data["base__hugo"])
+        self.cursor_w.execute(q, vals)
 
     def _log_runtime_exception(self, input_data, e):
         if self.unique_excs is None:
