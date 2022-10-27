@@ -602,7 +602,7 @@ def get_valid_report_types():
 async def get_report_types(_):
     from aiohttp.web import json_response
     valid_types = get_valid_report_types()
-    return json_response(valid_types)
+    return json_response({"valid": valid_types})
 
 
 async def get_job_id_or_dbpath(request) -> Optional[str]:
@@ -1364,6 +1364,24 @@ async def get_webapp_index(request):
         url = url.rstrip("&")
     return HTTPFound(url)
 
+async def get_tags_of_annotators_and_postaggregators(_):
+    from aiohttp.web import json_response
+    from ...module.local import get_local_module_infos_of_type
+
+    tags = set()
+    modules = get_local_module_infos_of_type("annotator").values()
+    for module in modules:
+        for tag in module.tags:
+            tags.add(tag)
+    modules = get_local_module_infos_of_type("postaggregator").values()
+    for module in modules:
+        for tag in module.tags:
+            tags.add(tag)
+    tags = list(tags)
+    tags.sort()
+    print(f"@ tags={tags}")
+    return json_response(tags)
+
 
 routes = []
 routes.append(["POST", "/submit/submit", submit])
@@ -1398,4 +1416,6 @@ routes.append(["GET", "/issystemready", is_system_ready])
 routes.append(["GET", "/submit/systemlog", get_system_log])
 routes.append(["GET", "/favicon.ico", serve_favicon])
 routes.append(["GET", "/webapps/{module}", get_webapp_index])
+# Below for new gui.
 routes.append(["GET", "/submit/converters", get_converters])
+routes.append(["GET", "/submit/tags_annotators_postaggregators", get_tags_of_annotators_and_postaggregators])
