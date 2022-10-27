@@ -301,44 +301,7 @@ class BaseAnnotator(object):
             self.last_status_update_time = time()
             self.output_columns = self.conf["output_columns"]
             self.make_json_colnames()
-            for lnum, line, input_data, secondary_data in self._get_input():
-                try:
-                    self.log_progress(lnum)
-                    # * allele and undefined non-canonical chroms are skipped.
-                    if self.is_star_allele(input_data) or self.should_skip_chrom(
-                        input_data
-                    ):
-                        continue
-                    output_dict = None
-                    if secondary_data == {}:
-                        output_dict = self.annotate(input_data)
-                    else:
-                        output_dict = self.annotate(
-                            input_data, secondary_data=secondary_data
-                        )
-                    # This enables summarizing without writing for now.
-                    if output_dict is None:
-                        continue
-                    # Handles empty table-format column data.
-                    output_dict = self.handle_jsondata(output_dict)
-                    # Preserves the first column
-                    if output_dict:
-                        output_dict[self._id_col_name] = input_data[self._id_col_name]
-                    # Fill absent columns with empty strings
-                    output_dict = self.fill_empty_output(output_dict)
-                    # Writes output.
-                    if self.output_writer:
-                        self.output_writer.write_data(output_dict)
-                except Exception as e:
-                    self._log_runtime_exception(
-                        lnum,
-                        line,
-                        input_data,
-                        e,
-                        fn=self.primary_input_reader.path
-                        if self.primary_input_reader
-                        else "?",
-                    )
+            self.process_file()
             self.postprocess()
             self.base_cleanup()
             end_time = time()
@@ -364,6 +327,46 @@ class BaseAnnotator(object):
             self._log_exception(e)
         if hasattr(self, "log_handler") and self.log_handler:
             self.log_handler.close()
+
+    def process_file(self):
+        for lnum, line, input_data, secondary_data in self._get_input():
+            try:
+                self.log_progress(lnum)
+                # * allele and undefined non-canonical chroms are skipped.
+                if self.is_star_allele(input_data) or self.should_skip_chrom(
+                    input_data
+                ):
+                    continue
+                output_dict = None
+                if secondary_data == {}:
+                    output_dict = self.annotate(input_data)
+                else:
+                    output_dict = self.annotate(
+                        input_data, secondary_data=secondary_data
+                    )
+                # This enables summarizing without writing for now.
+                if output_dict is None:
+                    continue
+                # Handles empty table-format column data.
+                output_dict = self.handle_jsondata(output_dict)
+                # Preserves the first column
+                if output_dict:
+                    output_dict[self._id_col_name] = input_data[self._id_col_name]
+                # Fill absent columns with empty strings
+                output_dict = self.fill_empty_output(output_dict)
+                # Writes output.
+                if self.output_writer:
+                    self.output_writer.write_data(output_dict)
+            except Exception as e:
+                self._log_runtime_exception(
+                    lnum,
+                    line,
+                    input_data,
+                    e,
+                    fn=self.primary_input_reader.path
+                    if self.primary_input_reader
+                    else "?",
+                )
 
     def postprocess(self):
         pass

@@ -231,6 +231,20 @@ class BaseMapper(object):
             self.status_writer.queue_status_update(
                 "status", "Started {} ({})".format(self.conf["title"], self.module_name)
             )
+        self.process_file()
+        self._write_crg()
+        stop_time = time()
+        tstamp = asctime(localtime(stop_time))
+        self.logger.info(f"finished: {tstamp} | {self.args['seekpos']}")
+        runtime = stop_time - start_time
+        self.logger.info("runtime: %6.3f" % runtime)
+        self.end()
+
+    def process_file(self):
+        from time import time
+
+        if not self.reader or not self.crx_writer:
+            return
         count = 0
         last_status_update_time = time()
         crx_data = None
@@ -253,16 +267,9 @@ class BaseMapper(object):
                     continue
             except Exception as e:
                 self._log_runtime_error(ln, line, e, fn=self.reader.path)
-            if crx_data is not None:
+            if crx_data:
                 self.crx_writer.write_data(crx_data)
                 self._add_crx_to_gene_info(crx_data)
-        self._write_crg()
-        stop_time = time()
-        tstamp = asctime(localtime(stop_time))
-        self.logger.info(f"finished: {tstamp} | {self.args['seekpos']}")
-        runtime = stop_time - start_time
-        self.logger.info("runtime: %6.3f" % runtime)
-        self.end()
 
     def _add_crx_to_gene_info(self, crx_data):
         """
