@@ -463,7 +463,7 @@ class Runner(object):
         self.aggregator_ran = False
         try:
             self.start_time = time()
-            self.make_args_namespace(self.inkwargs)
+            self.process_arguments(self.inkwargs)
             await self.process_clean()
             await self.start_logger()
             self.write_initial_status_json()
@@ -541,7 +541,7 @@ class Runner(object):
                 raise self.exception
             return self.report_response
 
-    def make_args_namespace(self, args):
+    def process_arguments(self, args):
         from ..exceptions import SetupError
         from ..exceptions import SetupError
         from .version import cli_version
@@ -565,6 +565,7 @@ class Runner(object):
         self.set_mapper()
         self.set_annotators()
         self.set_postaggregators()
+        self.add_required_modules_for_postaggregators()
         self.set_reporters()
         self.verbose = self.args.verbose == True
         self.set_start_end_levels()
@@ -625,7 +626,7 @@ class Runner(object):
                 self.conf = conf_bak
 
     def populate_secondary_annotators(self):
-        import os
+        from os import listdir
 
         secondaries = {}
         for module in self.annotators.values():
@@ -633,7 +634,7 @@ class Runner(object):
         self.annotators.update(secondaries)
         annot_names = [v.name for v in self.annotators.values()]
         annot_names = list(set(annot_names))
-        filenames = os.listdir(self.output_dir)
+        filenames = listdir(self.output_dir)
         for filename in filenames:
             toks = filename.split(".")
             if len(toks) == 3:
@@ -966,6 +967,28 @@ class Runner(object):
         self.check_valid_modules(self.preparer_names)
         self.preparers = get_local_module_infos_by_names(self.preparer_names)
 
+    def is_in_annotators_or_postaggregators(self, module_name):
+        return module_name in self.annotator_names or module_name in self.postaggregator_names
+
+    def add_required_modules_for_postaggregators(self):
+        from ..module.local import get_local_module_info_by_name
+        from ..exceptions import ModuleNotExist
+
+        for postaggregator in self.postaggregators.values():
+            required_module_names = postaggregator.conf.get("requires", [])
+            for module_name in required_module_names:
+                if not self.is_in_annotators_or_postaggregators(module_name):
+                    module = get_local_module_info_by_name(module_name)
+                    if not module:
+                        msg = f"{module_name} is required by {postaggregator.name}, but does not exist."
+                        raise ModuleNotExist(module_name, msg=msg)
+                    if module.type == "annotator":
+                        self.annotator_names.append(module_name)
+                        self.annotators[module_name] = module
+                    elif module.type == "postaggregator":
+                        self.postaggregator_names.append(module_name)
+                        self.postaggregators[module_name] = module
+
     def set_annotators(self):
         from ..exceptions import SetupError
         from ..module.local import get_local_module_infos_of_type
@@ -973,7 +996,7 @@ class Runner(object):
 
         if self.args is None:
             raise SetupError()
-        self.excludes = self.args.excludes
+        annotator_names_from_package = self.get_package_argument_run_value("annotators")
         if len(self.args.annotators) > 0:
             if self.args.annotators == ["all"]:
                 self.annotator_names = sorted(
@@ -981,17 +1004,14 @@ class Runner(object):
                 )
             else:
                 self.annotator_names = self.args.annotators
-        elif (
-            self.package_conf is not None
-            and "run" in self.package_conf
-            and "annotators" in self.package_conf.get("run", {})
-        ):
-            self.annotator_names = self.package_conf.get("run", {}).get("annotators")
+        elif annotator_names_from_package:
+            self.annotator_names = annotator_names_from_package
         else:
             self.annotator_names = []
         if "annotator" in self.args.skip:
             self.annotator_names = []
         elif len(self.excludes) > 0:
+            self.excludes = self.args.excludes
             if "all" in self.excludes:
                 self.annotator_names = []
             else:
@@ -1024,6 +1044,13 @@ class Runner(object):
         if self.args.md is not None:
             consts.custom_modules_dir = self.args.md
 
+    def get_package_argument_run_value(self, field: str):
+        if not self.package_conf:
+            return None
+        if not self.package_conf.get("run"):
+            return None
+        return self.package_conf["run"].get(field)
+
     def set_postaggregators(self):
         from ..exceptions import SetupError
         from ..system.consts import default_postaggregator_names
@@ -1032,20 +1059,11 @@ class Runner(object):
 
         if self.args is None:
             raise SetupError()
+        postaggregators_from_package = self.get_package_argument_run_value("postaggregators")
         if len(self.args.postaggregators) > 0:
             self.postaggregator_names = self.args.postaggregators
-        elif (
-            self.package_conf is not None
-            and self.package_conf.get("run")
-            and self.package_conf["run"].get("postaggregators")
-        ):
-            self.postaggregator_names = sorted(
-                list(
-                    get_local_module_infos_by_names(
-                        self.package_conf["run"]["postaggregators"]
-                    )
-                )
-            )
+        elif postaggregators_from_package:
+            self.postaggregator_names = sorted(list(get_local_module_infos_by_names(postaggregators_from_package)))
         else:
             self.postaggregator_names = []
         if "postaggregator" in self.args.skip:

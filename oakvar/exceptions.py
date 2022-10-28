@@ -96,8 +96,11 @@ class ModuleNotExist(ExpectedException):
     halt = True
     returncode = 3
 
-    def __init__(self, module_name):
-        super().__init__("module [{}] does not exist.".format(module_name))
+    def __init__(self, module_name, msg=None):
+        if msg:
+            super().__init__(msg)
+        else:
+            super().__init__(f"module [{module_name}] does not exist.")
 
 
 class InvalidModule(ExpectedException):
