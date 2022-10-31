@@ -1351,7 +1351,6 @@ async def get_system_log(_):
     from ...gui.consts import LOG_FN
     log_path = get_log_path()
     headers = {"Content-Disposition": "Attachment; filename=" + LOG_FN, "Content-Type": "text/plain"}
-    print(f"@ log_path={log_path}")
     return web.FileResponse(log_path, headers=headers)
 
 async def get_webapp_index(request):
@@ -1379,7 +1378,6 @@ async def get_tags_of_annotators_and_postaggregators(_):
             tags.add(tag)
     tags = list(tags)
     tags.sort()
-    print(f"@ tags={tags}")
     return json_response(tags)
 
 
@@ -1411,7 +1409,6 @@ routes.append(["GET", "/submit/jobs/{job_id}/status", get_job_status])
 routes.append(["GET", "/submit/updateresultdb", update_result_db])
 routes.append(["POST", "/submit/import", import_job])
 routes.append(["GET", "/submit/resubmit", resubmit])
-routes.append(["GET", "/submit/localmodules/{module}", get_local_module_info_web])
 routes.append(["GET", "/issystemready", is_system_ready])
 routes.append(["GET", "/submit/systemlog", get_system_log])
 routes.append(["GET", "/favicon.ico", serve_favicon])
@@ -1419,3 +1416,4 @@ routes.append(["GET", "/webapps/{module}", get_webapp_index])
 # Below for new gui.
 routes.append(["GET", "/submit/converters", get_converters])
 routes.append(["GET", "/submit/tags_annotators_postaggregators", get_tags_of_annotators_and_postaggregators])
+routes.append(["GET", "/submit/localmodules/{module}", get_local_module_info_web])
