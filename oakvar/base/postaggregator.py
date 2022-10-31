@@ -4,7 +4,6 @@ class BasePostAggregator(object):
 
     def __init__(self, cmd_args, status_writer):
         from ..util.util import get_caller_name
-        from ..module.local import get_module_conf
 
         self.status_writer = status_writer
         self.cmd_arg_parser = None
@@ -20,14 +19,26 @@ class BasePostAggregator(object):
         self.module_name = get_caller_name(cmd_args[0])
         self.parse_cmd_args(cmd_args)
         self._setup_logger()
-
-        self.conf = get_module_conf(self.module_name, module_type="postaggregator")
+        self.make_conf_and_level()
         self.fix_col_names()
         self.dbconn = None
         self.cursor = None
         self.cursor_w = None
         self._open_db_connection()
         self.should_run_annotate = self.check()
+
+    def make_conf_and_level(self):
+        from ..module.local import get_module_conf
+        from ..exceptions import SetupError
+        from ..consts import LEVELS
+
+        self.conf = get_module_conf(self.module_name, module_type="postaggregator")
+        if self.conf and self.conf.get("level"):
+            self.level = self.conf.get("level")
+        if not self.level:
+            raise SetupError(msg="level is not defined in {self.module_name}")
+        if self.level:
+            self.levelno = LEVELS[self.level]
 
     def check(self):
         """
@@ -61,12 +72,12 @@ class BasePostAggregator(object):
             dest="output_dir",
             help="Output directory. " + "Default is input file directory.",
         )
-        parser.add_argument(
-            "-l",
-            dest="level",
-            default="variant",
-            help="Summarize level. " + "Default is variant.",
-        )
+        #parser.add_argument(
+        #    "-l",
+        #    dest="level",
+        #    default="variant",
+        #    help="Summarize level. " + "Default is variant.",
+        #)
         parser.add_argument(
             "--confs", dest="confs", default="{}", help="Configuration string"
         )
@@ -75,7 +86,6 @@ class BasePostAggregator(object):
     def parse_cmd_args(self, cmd_args):
         import os
         import json
-        from ..consts import LEVELS
         from ..exceptions import SetupError
         from ..exceptions import ParserError
 
@@ -87,11 +97,8 @@ class BasePostAggregator(object):
             self.run_name = parsed_args.run_name
         if parsed_args.output_dir:
             self.output_dir = parsed_args.output_dir
-        if parsed_args.level:
-            self.level = parsed_args.level
-        if self.level is None or self.output_dir is None:
-            raise SetupError()
-        self.levelno = LEVELS[self.level]
+        if self.output_dir is None:
+            raise SetupError("Output directory was not given.")
         if self.run_name is None:
             raise ParserError("postaggregator run_name")
         self.db_path = os.path.join(self.output_dir, self.run_name + ".sqlite")
@@ -136,6 +143,88 @@ class BasePostAggregator(object):
                 del output_dict[shortcolname]
         return output_dict
 
+    def make_result_level_columns(self):
+        from ..consts import LEVELS
+
+        if not self.db_path or not self.dbconn:
+            return None, None
+        self.result_level_columns = {}
+        cursor = self.dbconn.cursor()
+        for level in LEVELS.keys():
+            q = f"select name from pragma_table_info('{level}') as tblinfo"
+            cursor.execute(q)
+            columns = [v[0] for v in cursor.fetchall()]
+            if columns:
+                self.result_level_columns[level] = columns
+
+
+    def get_result_module_columns(self, module_name):
+        from ..consts import LEVELS
+
+        if not self.db_path or not self.dbconn:
+            return None, None
+        self.cursor = self.dbconn.cursor()
+        for level in LEVELS.keys():
+            q = "select name from pragma_table_info('{level}') as tblinfo"
+            self.cursor.execute(q)
+            columns = [v[0] for v in self.cursor.fetchall() if v[0].startswith(f"{module_name}__")]
+            if columns:
+                return level, columns
+        return None, None
+
+    def get_result_module_column(self, query_column_name):
+        for level, column_names in self.result_level_columns.items():
+            for column_name in column_names:
+                if column_name == query_column_name:
+                    return level, column_name
+        return None, None
+
+    def setup_input_columns(self):
+        from ..consts import VARIANT
+        from ..consts import GENE
+
+        if not self.conf:
+            return
+        self.make_result_level_columns()
+        self.input_columns = {}
+        input_columns = self.conf.get("input_columns")
+        requires = self.conf.get("requires")
+        if input_columns:
+            for input_column_name in input_columns:
+                level, column_name = self.get_result_module_column(input_column_name)
+                if level and column_name:
+                    if not self.input_columns.get(level):
+                        self.input_columns[level] = []
+                    self.input_columns[level].append(column_name)
+        elif requires:
+            for module_name in requires:
+                level, column_names = self.get_result_module_columns(module_name)
+                if level and column_names:
+                    if not self.input_columns.get(level):
+                        self.input_columns[level] = []
+                    self.input_columns[level].extend(column_names)
+        else:
+            self.input_columns = None
+        if self.input_columns:
+            if self.levelno == VARIANT:
+                if "base__uid" not in self.input_columns["variant"]:
+                    self.input_columns["variant"].append("base__uid")
+                if "gene" in self.input_columns and "base__hugo" not in self.input_columns["variant"]:
+                    self.input_columns["variant"].append("base__hugo")
+            elif self.levelno == GENE and "base__hugo" not in self.input_columns["gene"]:
+                self.input_columns["gene"].append("base__hugo")
+
+    def setup_output_columns(self):
+        if not self.conf:
+            return
+        output_columns = self.conf["output_columns"]
+        for col in output_columns:
+            if "table" in col and col["table"] == True:
+                self.json_colnames.append(col["name"])
+                self.table_headers[col["name"]] = []
+                for h in col["table_header"]:
+                    self.table_headers[col["name"]].append(h["name"])
+
     def run(self):
         from time import time, asctime, localtime
         from ..exceptions import ConfigurationError
@@ -160,13 +249,8 @@ class BasePostAggregator(object):
         self.base_setup()
         self.json_colnames = []
         self.table_headers = {}
-        output_columns = self.conf["output_columns"]
-        for col in output_columns:
-            if "table" in col and col["table"] == True:
-                self.json_colnames.append(col["name"])
-                self.table_headers[col["name"]] = []
-                for h in col["table_header"]:
-                    self.table_headers[col["name"]].append(h["name"])
+        self.setup_input_columns()
+        self.setup_output_columns()
         self.process_file()
         self.fill_categories()
         self.dbconn.commit()
@@ -186,6 +270,8 @@ class BasePostAggregator(object):
 
         if self.conf is None:
             raise ConfigurationError()
+        if not self.dbconn:
+            return
         lnum = 0
         last_status_update_time = time()
         for input_data in self._get_input():
@@ -311,15 +397,14 @@ class BasePostAggregator(object):
         self.setup()
 
     def _open_db_connection(self):
-        import sqlite3
+        from sqlite3 import connect
         import os
+        from ..exceptions import SetupError
 
         if self.db_path is None:
-            from ..exceptions import SetupError
-
             raise SetupError()
         if os.path.exists(self.db_path):
-            self.dbconn = sqlite3.connect(self.db_path)
+            self.dbconn = connect(self.db_path)
             self.cursor = self.dbconn.cursor()
             self.cursor_w = self.dbconn.cursor()
             self.cursor_w.execute('pragma journal_mode="wal"')
@@ -408,25 +493,109 @@ class BasePostAggregator(object):
         self.error_logger = logging.getLogger("err." + self.module_name)
         self.unique_excs = []
 
+    def columns_to_columns_str(self, columns):
+        return ",".join(columns)
+
     def _get_input(self):
-        if self.db_path is None or self.level is None:
-            from ..exceptions import SetupError
+        from sqlite3 import connect
+        from ..exceptions import SetupError
+        from ..consts import VARIANT
+        from ..consts import GENE
 
+        if self.db_path is None or self.level is None or not self.dbconn:
             raise SetupError()
-        import sqlite3
-
-        dbconnloop = sqlite3.connect(self.db_path)
-        cursorloop = dbconnloop.cursor()
-        q = "select * from " + self.level
-        cursorloop.execute(q)
-        for row in cursorloop:
+        conn = connect(self.db_path)
+        c_var = self.dbconn.cursor()
+        c_gen = self.dbconn.cursor()
+        columns_v = None
+        columns_g = None
+        from_v = None
+        from_g = None
+        where_v = None
+        where_g = None
+        q_v = None
+        q_g = None
+        if not self.input_columns:
+            if self.levelno == VARIANT:
+                from_v = f"variant as v, gene as g"
+                where_v = "v.base__hugo==g.base__hugo"
+                columns_v = ["*"]
+            elif self.levelno == GENE:
+                from_g = f"gene as g"
+                columns_v = ["*"]
+        else:
+            if self.levelno == VARIANT:
+                if "gene" in self.result_level_columns:
+                    from_v = "variant as v, gene as g"
+                    where_v = "v.base__hugo==g.base__hugo"
+                else:
+                    from_v = "variant as v"
+                columns = []
+                for level, column_names in self.result_level_columns.items():
+                    if level == "variant":
+                        prefix = "v"
+                    elif level == "gene":
+                        prefix = "g"
+                    else:
+                        raise Exception(f"Unknown column level: {level} for {column_names}")
+                    columns.extend([f"{prefix}.{column_name}" for column_name in column_names if column_name in self.input_columns[level]])
+                columns_v = [column for column in columns]
+            elif self.levelno == GENE:
+                from_g = "gene as g"
+                if "variant" in self.result_level_columns:
+                    from_v = "variant as v"
+                    where_v = "v.base__hugo=?"
+                for level, column_names in self.result_level_columns.items():
+                    if level == "variant":
+                        prefix = "v"
+                        columns_v = [f"{prefix}.{column_name}" for column_name in column_names if column_name in self.input_columns[level]]
+                    elif level == "gene":
+                        prefix = "g"
+                        columns_g = [f"{prefix}.{column_name}" for column_name in column_names if column_name in self.input_columns[level]]
+                    else:
+                        raise Exception(f"Unknown column level: {level} for {column_names}")
+            else:
+                raise Exception(f"Unknown module level: {self.level} for {self.module_name}")
+        if self.levelno == VARIANT:
+            q_v = f"select {self.columns_to_columns_str(columns_v)} from {from_v}"
+            if where_v:
+                q_v += f" where {where_v}"
+            c_var.execute(q_v)
+            cursor = c_var
+        elif self.levelno == GENE:
+            q_g = f"select {self.columns_to_columns_str(columns_g)} from {from_g}"
+            if where_g:
+                q_g += f" where {where_g}"
+            c_gen.execute(q_g)
+            cursor = c_gen
+            if columns_v:
+                q_v = f"select {self.columns_to_columns_str(columns_v)} from {from_v}"
+                if where_v:
+                    q_v += f" where {where_v}"
+        else:
+            raise Exception(f"Unknown module level: {self.level} for {self.module_name}")
+        for row in cursor:
             try:
                 input_data = {}
                 for i in range(len(row)):
-                    input_data[cursorloop.description[i][0]] = row[i]
+                    input_data[cursor.description[i][0]] = row[i]
+                if self.levelno == GENE and q_v and columns_v:
+                    for column_name in columns_v:
+                        input_data[column_name[2:]] = []
+                    c_var.execute(q_v, (input_data["base__hugo"],))
+                    sub_rows = c_var.fetchall()
+                    for sub_row in sub_rows:
+                        for i in range(len(sub_row)):
+                            input_data[c_var.description[i][0]].append(sub_row[i])
                 yield input_data
             except Exception as e:
                 self._log_runtime_exception(row, e)
+        cursor.close()
+        if c_var:
+            c_var.close()
+        if c_gen:
+            c_gen.close()
+        conn.close()
 
     def annotate(self, __input_data__):
         raise NotImplementedError()

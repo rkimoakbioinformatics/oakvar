@@ -230,11 +230,14 @@ class SetupError(ExpectedException):
     halt = True
     traceback = True
 
-    def __init__(self, module_name=None):
-        if module_name is None:
-            super().__init__(msg=f"setup error")
+    def __init__(self, module_name=None, msg=None):
+        if msg:
+            super().__init__(msg=msg)
         else:
-            super().__init__(msg=f"setup for {module_name}")
+            if module_name:
+                super().__init__(msg=f"setup for {module_name}")
+            else:
+                super().__init__(msg=f"setup error")
 
 
 class LoggerError(ExpectedException):

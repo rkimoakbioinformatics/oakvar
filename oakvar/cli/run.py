@@ -1995,12 +1995,11 @@ class Runner(object):
             self.run_summarizer(module)
 
     def run_summarizer(self, module):
-        if self.args is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
+        from ..exceptions import SetupError
         from ..util.util import load_class
 
+        if self.args is None:
+            raise SetupError()
         cmd = [module.script_path, "-l", "variant"]
         if self.run_name != None:
             cmd.extend(["-n", self.run_name])
