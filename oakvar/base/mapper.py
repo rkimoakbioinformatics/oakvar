@@ -34,7 +34,7 @@ class BaseMapper(object):
         self.live = self.args["live"]
         self.t = time()
         self.status_writer = self.args["status_writer"]
-        main_fpath = self.args["script_path"]
+        main_fpath = self.args.get("script_path", __file__)
         main_basename = os.path.basename(main_fpath)
         if "." in main_basename:
             self.module_name = ".".join(main_basename.split(".")[:-1])
