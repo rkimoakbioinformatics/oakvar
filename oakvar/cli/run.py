@@ -126,6 +126,7 @@ class Runner(object):
         self.exception = None
         self.genome_assembiles = None
         self.inkwargs = kwargs
+        self.serveradmindb = None
 
     def check_valid_modules(self, module_names):
         from ..exceptions import ModuleNotExist
@@ -536,7 +537,7 @@ class Runner(object):
             ):
                 self.clean_up_at_end()
             if self.args and self.args.writeadmindb:
-                await self.write_admin_db(runtime, self.numinput)
+                await self.write_admin_db_final_info(runtime, self.numinput)
             if self.exception:
                 raise self.exception
             return self.report_response
@@ -553,7 +554,8 @@ class Runner(object):
             raise SetupError()
         if self.args.show_version:
             cli_version({"to": "stdout"})
-            raise NormalExit
+            raise NormalExit()
+        self.connect_admindb_if_needed()
         self.set_self_inputs()
         self.set_output_dir()
         self.set_run_name()
@@ -566,6 +568,8 @@ class Runner(object):
         self.set_annotators()
         self.set_postaggregators()
         self.add_required_modules_for_postaggregators()
+        self.sort_annotators()
+        self.sort_postaggregators()
         self.set_reporters()
         self.verbose = self.args.verbose == True
         self.set_start_end_levels()
@@ -603,6 +607,12 @@ class Runner(object):
 
         self.args = SimpleNamespace(**full_args)
         self.process_module_options()
+
+    def connect_admindb_if_needed(self):
+        from ..gui.websubmit.serveradmindb import ServerAdminDb
+
+        if self.args and self.args.writeadmindb:
+            self.serveradmindb = ServerAdminDb()
 
     def make_self_conf(self, args):
         from ..exceptions import SetupError
@@ -982,12 +992,26 @@ class Runner(object):
                     if not module:
                         msg = f"{module_name} is required by {postaggregator.name}, but does not exist."
                         raise ModuleNotExist(module_name, msg=msg)
-                    if module.type == "annotator":
+                    if module.type == "annotator" and self.annotator_names is not None:
                         self.annotator_names.append(module_name)
                         self.annotators[module_name] = module
-                    elif module.type == "postaggregator":
+                    elif module.type == "postaggregator" and self.postaggregator_names is not None:
                         self.postaggregator_names.append(module_name)
                         self.postaggregators[module_name] = module
+
+    def set_mapper(self):
+        from ..module.local import get_local_module_info_by_name
+        from ..exceptions import SetupError
+
+        if self.args is None or self.conf is None:
+            raise SetupError()
+        if self.args.mapper_name:
+            self.mapper_name = self.args.mapper_name[0]
+        self.mapper_name = self.package_conf.get("run", {}).get("mapper")
+        if not self.mapper_name:
+            self.mapper_name = self.main_conf.get("genemapper")
+        self.check_valid_modules([self.mapper_name])
+        self.mapper = get_local_module_info_by_name(self.mapper_name)
 
     def set_annotators(self):
         from ..exceptions import SetupError
@@ -1020,20 +1044,6 @@ class Runner(object):
                         self.annotator_names.remove(m)
         self.check_valid_modules(self.annotator_names)
         self.annotators = get_local_module_infos_by_names(self.annotator_names)
-
-    def set_mapper(self):
-        from ..module.local import get_local_module_info_by_name
-        from ..exceptions import SetupError
-
-        if self.args is None or self.conf is None:
-            raise SetupError()
-        if self.args.mapper_name:
-            self.mapper_name = self.args.mapper_name[0]
-        self.mapper_name = self.package_conf.get("run", {}).get("mapper")
-        if not self.mapper_name:
-            self.mapper_name = self.main_conf.get("genemapper")
-        self.check_valid_modules([self.mapper_name])
-        self.mapper = get_local_module_info_by_name(self.mapper_name)
 
     def set_md(self):
         from ..exceptions import SetupError
@@ -1068,21 +1078,72 @@ class Runner(object):
             self.postaggregator_names = []
         if "postaggregator" in self.args.skip:
             self.postaggregators = {}
-        else:
-            self.postaggregator_names = sorted(
-                list(
-                    set(self.postaggregator_names).union(
-                        set(default_postaggregator_names)
-                    )
+            return
+        self.postaggregator_names = sorted(
+            list(
+                set(self.postaggregator_names).union(
+                    set(default_postaggregator_names)
                 )
             )
-            if "casecontrol" in self.postaggregator_names:
-                if module_exists_local("casecontrol") == False:
-                    self.postaggregator_names.remove("casecontrol")
-            self.check_valid_modules(self.postaggregator_names)
-            self.postaggregators = get_local_module_infos_by_names(
-                self.postaggregator_names
-            )
+        )
+        if "casecontrol" in self.postaggregator_names:
+            if module_exists_local("casecontrol") == False:
+                self.postaggregator_names.remove("casecontrol")
+        self.check_valid_modules(self.postaggregator_names)
+        self.postaggregators = get_local_module_infos_by_names(
+            self.postaggregator_names
+        )
+
+    def sort_modules(self, module_names: list, module_type: str):
+        if not module_names:
+            return
+        new_module_names = []
+        self.sort_module_names_by_requirement(module_names, new_module_names, module_type)
+        return new_module_names
+
+    def sort_annotators(self):
+        from ..module.local import get_local_module_infos_by_names
+
+        self.annotator_names = self.sort_modules(self.annotator_names, "annotator")
+        self.annotators = get_local_module_infos_by_names(self.annotator_names)
+
+    def sort_postaggregators(self):
+        from ..module.local import get_local_module_infos_by_names
+
+        self.postaggregator_names = self.sort_modules(self.postaggregator_names, "postaggregator")
+        self.postaggregators = get_local_module_infos_by_names(self.postaggregator_names)
+
+    def sort_module_names_by_requirement(self, input_module_names, final_module_names: list, module_type: str):
+        from ..module.local import get_local_module_info
+
+        if isinstance(input_module_names, list):
+            for module_name in input_module_names:
+                module = get_local_module_info(module_name)
+                if not module:
+                    continue
+                sub_list = self.sort_module_names_by_requirement(module_name, final_module_names, module_type)
+                if sub_list:
+                    final_module_names.extend(sub_list)
+                if module and module.conf.get("type") == module_type and not module_name in final_module_names:
+                    final_module_names.append(module_name)
+        elif isinstance(input_module_names, str):
+            module_name = input_module_names
+            module = get_local_module_info(module_name)
+            if not module:
+                return None
+            required_module_names = module.conf.get("requires", [])
+            if required_module_names:
+                if isinstance(required_module_names, list):
+                    self.sort_module_names_by_requirement(required_module_names, final_module_names, module_type)
+                else:
+                    raise Exception(f"module requirement configuration error: {module_name} => {required_module_names}")
+            else:
+                if module_name in final_module_names:
+                    return None
+                elif module.conf.get("type") != module_type:
+                    return None
+                else:
+                    return [module_name]
 
     def set_reporters(self):
         from ..module.local import get_local_module_infos_by_names
@@ -1175,7 +1236,7 @@ class Runner(object):
             arg_dict["format"] = self.args.forcedinputformat
         if self.args.unique_variants:
             arg_dict["unique_variants"] = True
-        announce_module(module, status_writer=self.status_writer, args=self.args, status_json=self.status_json)
+        announce_module(module, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args, status_json=self.status_json)
         if self.verbose:
             print(
                 " ".join([str(k) + "=" + str(v) for k, v in arg_dict.items()]),
@@ -2031,7 +2092,7 @@ class Runner(object):
                 if fn.split(".")[-2:] == ["status", "json"]:
                     os.remove(os.path.join(self.output_dir, fn))
 
-    async def write_admin_db(self, runtime, numinput):
+    async def write_admin_db_final_info(self, runtime, numinput):
         import aiosqlite
         from json import dumps
         from ..exceptions import SetupError

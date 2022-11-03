@@ -529,18 +529,21 @@ def get_latest_version(versions, target_version=None):
     return latest_version
 
 
-def update_status(status: str, status_writer=None, args=None, force=False, status_json=None):
+def update_status(status: str, serveradmindb=None, status_writer=None, args=None, force=False, status_json=None):
     if args and not args.do_not_change_status and status_writer:
         status_writer.queue_status_update("status", status, force=force)
     if status_json:
         status_json["status"] = status
+    if serveradmindb:
+        serveradmindb.update_job_info({"status": status})
 
 
-def announce_module(module, status_writer=None, args=None, status_json=None):
+def announce_module(module, serveradmindb=None, status_writer=None, args=None, status_json=None):
     if args and not args.quiet:
         quiet_print("\t{0:30s}\t".format(module.name), args=args)
     update_status(
         "Running {name}".format(name=module.name),
+        serveradmindb=serveradmindb,
         status_writer=status_writer,
         args=args,
         force=True,
