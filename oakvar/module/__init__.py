@@ -536,7 +536,7 @@ def get_module_install_version(module_name, version=None, args={}) -> str:
     from ..module.remote import get_remote_module_info
     from ..exceptions import ModuleNotExist
     from ..exceptions import ModuleVersionError
-    from ..exceptions import DuplicateModuleToInstall
+    from ..exceptions import ModuleToSkipInstallation
     local_info = get_local_module_info(module_name)
     remote_info = get_remote_module_info(module_name)
     if not remote_info:
@@ -548,8 +548,11 @@ def get_module_install_version(module_name, version=None, args={}) -> str:
     if not remote_info:
         raise ModuleVersionError(module_name, version)
     if (not args.get("overwrite") and local_info and Version(local_info.code_version or "") == Version(version)):
-        raise DuplicateModuleToInstall(module_name, version)
-    return version
+        raise ModuleToSkipInstallation(module_name, msg=f"{module_name}=={version} already exists. Use --overwrite to overwrite.")
+    if (not args.get("overwrite")) and local_info and local_info.code_version and Version(local_info.code_version or "") >= Version(version):
+        raise ModuleToSkipInstallation(module_name, msg=f"{module_name}: Local version ({local_info.code_version}) is higher than the latest store version ({version}). Use --overwrite to overwrite.")
+    else:
+        return version
 
 def install_module(
     module_name,

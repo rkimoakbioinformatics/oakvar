@@ -217,13 +217,19 @@ class InternetConnectionError(ExpectedException):
 
 
 class ModuleVersionError(ExpectedException):
-    def __init__(self, module_name, version):
-        super().__init__(f"{module_name}=={version} does not exist.")
+    def __init__(self, module_name, version, msg=None):
+        if msg:
+            super().__init__(msg)
+        else:
+            super().__init__(f"{module_name}=={version} does not exist.")
 
 
-class DuplicateModuleToInstall(ExpectedException):
-    def __init__(self, module_name, version):
-        super().__init__(f"{module_name}=={version} already exists. Use --overwrite to overwrite.")
+class ModuleToSkipInstallation(ExpectedException):
+    def __init__(self, module_name, msg=None):
+        if msg:
+            super().__init__(f"{msg}")
+        else:
+            super().__init__(f"Skipping installation of {module_name}")
 
 
 class SetupError(ExpectedException):

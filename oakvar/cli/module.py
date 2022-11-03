@@ -240,6 +240,7 @@ def get_modules_to_install(args={}) -> dict:
     from ..util.download import is_url
     from ..util.download import is_zip_path
     from ..module.remote import get_install_deps
+
     mn_vs = collect_module_name_and_versions(args.get("modules", []), args=args)
     module_versions = {}
     for module_name, version in mn_vs.items():
@@ -258,8 +259,7 @@ def get_modules_to_install(args={}) -> dict:
 def show_modules_to_install(to_install, args={}):
     from ..util.util import quiet_print
     quiet_print("The following modules will be installed:", args=args)
-    for name in sorted(list(to_install.keys())):
-        version = to_install.get(name)
+    for name, version in to_install.items():
         if version:
             quiet_print(f"- {name}=={to_install[name]}", args=args)
         else:
@@ -275,6 +275,7 @@ def install(args, __name__="module install"):
     from ..util.download import is_url
     from ..util.download import is_zip_path
     from ..store.db import try_fetch_ov_store_cache
+    from ..exceptions import ModuleToSkipInstallation
 
     if not try_fetch_ov_store_cache(args=args):
         return False
@@ -311,8 +312,9 @@ def install(args, __name__="module install"):
                 if not ret:
                     problem_modules.append(module_name)
         except Exception as e:
-            if module_name not in problem_modules:
-                problem_modules.append(module_name)
+            if not isinstance(e, ModuleToSkipInstallation):
+                if module_name not in problem_modules:
+                    problem_modules.append(module_name)
             quiet_print(e, args=args)
     if problem_modules:
         quiet_print(
