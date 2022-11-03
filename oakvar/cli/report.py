@@ -175,6 +175,7 @@ class BaseReporter:
             db.close()
         self.inputfiles = args.get("inputfiles")
         self.status_writer = args.get("status_writer")
+        self.serveradmindb = args.get("serveradmindb")
         self.concise_report = args.get("concise_report")
         if args.get("cols"):
             self.extract_columns_multilevel = {}
@@ -358,10 +359,15 @@ class BaseReporter:
             return
         self.logger.info(msg)
 
-    def write_status(self, msg):
+    def write_status(self, status):
         if not self.status_writer or (self.args and self.args.get("do_not_change_status")):
             return
-        self.status_writer.queue_status_update("status", msg)
+        self.status_writer.queue_status_update("status", status)
+        if self.serveradmindb:
+            try:
+                self.serveradmindb.update_job_info({"status": status}, self.output_dir, self.status_writer.get_status_json().get("job_name"))
+            except Exception as e:
+                print(f"@ err={e}")
 
     def log_run_start(self):
         from time import asctime, localtime

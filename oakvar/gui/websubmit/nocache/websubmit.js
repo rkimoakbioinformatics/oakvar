@@ -58,7 +58,7 @@ function sortJobs() {
         GLOBALS.jobs[j] = tmp;
       }
     }
-  }
+ }
 }
 
 function addJob(job, prepend) {

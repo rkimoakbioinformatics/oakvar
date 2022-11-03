@@ -54,10 +54,8 @@ class BaseAnnotator(object):
         self._define_cmd_parser()
         self.args = get_args(self.cmd_arg_parser, inargs, inkwargs)
         self.parse_cmd_args(inargs, inkwargs)
-        if hasattr(self.args, "status_writer") == False:
-            self.status_writer = None
-        else:
-            self.status_writer = self.args["status_writer"]
+        self.status_writer = self.args.get("status_writer")
+        self.serveradmindb = self.args.get("serveradmindb")
         if hasattr(self.args, "live") == False:
             live = False
         else:
@@ -227,6 +225,15 @@ class BaseAnnotator(object):
             output_dict[colname] = json_data
         return output_dict
 
+    def write_status(self, status: str):
+        if self.status_writer:
+            self.status_writer.queue_status_update("status", status)
+        if self.serveradmindb:
+            try:
+                self.serveradmindb.update_job_info({"status": status}, self.output_dir, self.status_writer.get_status_json().get("job_name"))
+            except Exception as e:
+                print(f"@ err={e}")
+
     def log_progress(self, lnum):
         if self.last_status_update_time is None:
             return
@@ -237,12 +244,7 @@ class BaseAnnotator(object):
         if self.update_status_json_flag and self.status_writer is not None:
             cur_time = time()
             if lnum % 10000 == 0 or cur_time - self.last_status_update_time > 3:
-                self.status_writer.queue_status_update(
-                    "status",
-                    "Running {} ({}): line {}".format(
-                        self.conf["title"], self.module_name, lnum
-                    ),
-                )
+                self.write_status(f"Running {self.conf['title']} ({self.module_name}): line {lnum}")
                 self.last_status_update_time = cur_time
 
     def is_star_allele(self, input_data):
@@ -285,9 +287,7 @@ class BaseAnnotator(object):
         from ..util.util import quiet_print
 
         if self.update_status_json_flag and self.status_writer is not None:
-            self.status_writer.queue_status_update(
-                "status", "Started {} ({})".format(self.conf["title"], self.module_name)
-            )
+            self.write_status(f"Started {self.conf['title']} ({self.module_name})")
         try:
             start_time = time()
             self.logger.info("started: %s" % asctime(localtime(start_time)))
@@ -319,10 +319,7 @@ class BaseAnnotator(object):
                 self.args,
             )
             if self.update_status_json_flag and self.status_writer is not None:
-                self.status_writer.queue_status_update(
-                    "status",
-                    "Finished {} ({})".format(self.conf["title"], self.module_name),
-                )
+                self.write_status(f"Finished {self.conf['title']} ({self.module_name})")
         except Exception as e:
             self._log_exception(e)
         if hasattr(self, "log_handler") and self.log_handler:

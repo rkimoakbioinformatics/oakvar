@@ -2,10 +2,11 @@ class BasePostAggregator(object):
 
     cr_type_to_sql = {"string": "text", "int": "integer", "float": "real"}
 
-    def __init__(self, cmd_args, status_writer):
+    def __init__(self, cmd_args, status_writer, serveradmindb=None):
         from ..util.util import get_caller_name
 
         self.status_writer = status_writer
+        self.serveradmindb = serveradmindb
         self.cmd_arg_parser = None
         self.run_name = None
         self.output_dir = None
@@ -242,9 +243,7 @@ class BasePostAggregator(object):
             self.base_cleanup()
             return
         start_time = time()
-        self.status_writer.queue_status_update(
-            "status", "Started {} ({})".format(self.conf["title"], self.module_name)
-        )
+        self.write_status(f"Started {self.conf['title']} ({self.module_name})")
         self.logger.info("started: {0}".format(asctime(localtime(start_time))))
         self.base_setup()
         self.json_colnames = []
@@ -260,9 +259,16 @@ class BasePostAggregator(object):
         run_time = end_time - start_time
         self.logger.info("finished: {0}".format(asctime(localtime(end_time))))
         self.logger.info("runtime: {0:0.3f}".format(run_time))
-        self.status_writer.queue_status_update(
-            "status", "Finished {} ({})".format(self.conf["title"], self.module_name)
-        )
+        self.write_status(f"Finished {self.conf['title']} ({self.module_name})")
+
+    def write_status(self, status: str):
+        if self.status_writer:
+            self.status_writer.queue_status_update("status", status)
+        if self.serveradmindb:
+            try:
+                self.serveradmindb.update_job_info({"status": status}, self.output_dir, self.status_writer.get_status_json().get("job_name"))
+            except Exception as e:
+                print(f"@ err={e}")
 
     def process_file(self):
         from time import time 
@@ -284,12 +290,7 @@ class BasePostAggregator(object):
                 cur_time = time()
                 lnum += 1
                 if lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
-                    self.status_writer.queue_status_update(
-                        "status",
-                        "Running {} ({}): row {}".format(
-                            self.conf["title"], self.module_name, lnum
-                        ),
-                    )
+                    self.write_status(f"Running {self.conf['title']} ({self.module_name}): row {lnum}")
                     last_status_update_time = cur_time
             except Exception as e:
                 self._log_runtime_exception(input_data, e)

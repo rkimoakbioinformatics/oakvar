@@ -34,6 +34,7 @@ class BaseMapper(object):
         self.live = self.args["live"]
         self.t = time()
         self.status_writer = self.args["status_writer"]
+        self.serveradmindb = self.args["serveradmindb"]
         main_fpath = self.args.get("script_path", __file__)
         main_basename = os.path.basename(main_fpath)
         if "." in main_basename:
@@ -56,7 +57,7 @@ class BaseMapper(object):
         self.cmd_parser = argparse.ArgumentParser()
         self.cmd_parser.add_argument("input_file", help="Input crv file")
         self.cmd_parser.add_argument(
-            "-n", dest="name", help="Name of job. " + "Default is input file name."
+            "-n", dest="run_name", help="Name of job. " + "Default is input file name."
         )
         self.cmd_parser.add_argument(
             "-d",
@@ -228,9 +229,7 @@ class BaseMapper(object):
         tstamp = asctime(localtime(start_time))
         self.logger.info(f"started: {tstamp} | {self.args['seekpos']}")
         if self.status_writer is not None:
-            self.status_writer.queue_status_update(
-                "status", "Started {} ({})".format(self.conf["title"], self.module_name)
-            )
+            self.write_status(f"Started {self.conf['title']} ({self.module_name})")
         self.process_file()
         self._write_crg()
         stop_time = time()
@@ -239,6 +238,14 @@ class BaseMapper(object):
         runtime = stop_time - start_time
         self.logger.info("runtime: %6.3f" % runtime)
         self.end()
+
+    def write_status(self, status: str):
+        self.status_writer.queue_status_update("status", status)
+        if self.serveradmindb:
+            try:
+                self.serveradmindb.update_job_info({"status": status}, self.output_dir, self.status_writer.get_status_json().get("job_name"))
+            except Exception as e:
+                print(f"@ err={e}")
 
     def process_file(self):
         from time import time
@@ -254,9 +261,7 @@ class BaseMapper(object):
                 cur_time = time()
                 if self.status_writer is not None:
                     if count % 10000 == 0 or cur_time - last_status_update_time > 3:
-                        self.status_writer.queue_status_update(
-                            "status", "Running gene mapper: line {}".format(count)
-                        )
+                        self.write_status(f"Running gene mapper: line {count}")
                         last_status_update_time = cur_time
                 if crv_data["alt_base"] == "*":
                     crx_data = crv_data

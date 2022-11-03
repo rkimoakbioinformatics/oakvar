@@ -167,6 +167,8 @@ def get_local_module_infos(types=[], names=[]):
 
 def get_local_module_infos_by_names(module_names):
     modules = {}
+    if not module_names:
+        return modules
     for module_name in module_names:
         module = get_local_module_info(module_name)
         if module is not None:

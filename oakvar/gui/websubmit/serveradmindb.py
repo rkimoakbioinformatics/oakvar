@@ -1,5 +1,6 @@
 from logging import getLogger
 from typing import Any
+from typing import Optional
 
 
 def db_func(func):
@@ -24,8 +25,11 @@ def get_admindb_path():
     return admindb_path
 
 class ServerAdminDb ():
-    def __init__ (self, new_setup=False):
+    def __init__ (self, new_setup=False, job_dir=None, job_name=None):
         from ...exceptions import SystemMissingException
+
+        self.job_dir = job_dir
+        self.job_name = job_name
         admindb_path = get_admindb_path()
         if not admindb_path.exists() and not new_setup:
             raise SystemMissingException("server admin database is missing.")
@@ -38,6 +42,7 @@ class ServerAdminDb ():
         if args.get("clean"):
             self.drop_tables(conn, cursor)
         self.create_tables(conn, cursor)
+        self.do_backward_compatibility(conn, cursor)
         self.add_admin(conn, cursor)
         self.add_default_user(conn, cursor)
         self.add_secret_key(conn, cursor)
@@ -54,9 +59,35 @@ class ServerAdminDb ():
 
     def create_tables(self, conn, cursor):
         cursor.execute('create table if not exists users (email text primary key, role text, passwordhash text, question text, answerhash text, settings text)')
-        cursor.execute('create table if not exists jobs (jobid integer primary key autoincrement, username text, dir text, name text, submit date, runtime integer, numinput integer, modules text, assembly text, note text, statusjson text)')
+        cursor.execute('create table if not exists jobs (jobid integer primary key autoincrement, username text, dir text, name text, submit date, runtime integer, numinput integer, modules text, assembly text, note text, statusjson text, status text)')
         cursor.execute('create table if not exists config (key text primary key, value text)')
         cursor.execute('create table if not exists apilog (writetime text primary key, count int)')
+        conn.commit()
+
+    def do_backward_compatibility(self, conn, cursor):
+        from json import loads
+
+        q = f"select name from pragma_table_info('jobs') as tblinfo"
+        cursor.execute(q)
+        columns = [v[0] for v in cursor.fetchall()]
+        if "status" in columns:
+            return
+        q = f"alter table jobs add column status text"
+        cursor.execute(q)
+        conn.commit()
+        q = f"select jobid, statusjson from jobs"
+        cursor.execute(q)
+        rets = cursor.fetchall()
+        for ret in rets:
+            jobid = ret[0]
+            statusjson = ret[1]
+            if not statusjson:
+                statusjson = {"status": "Error"}
+            else:
+                statusjson = loads(ret[1])
+            status = statusjson.get("status")
+            q = f"update jobs set status=? where jobid=?"
+            cursor.execute(q, (status, jobid))
         conn.commit()
 
     def add_admin(self, conn, cursor):
@@ -96,7 +127,14 @@ class ServerAdminDb ():
         conn = await connect(str(get_admindb_path()))
         return conn
 
+    def get_sync_db_conn (self):
+        from sqlite3 import connect
+        conn = connect(str(get_admindb_path()))
+        return conn
+
     async def add_job_info(self, username, job):
+        from json import dumps
+
         conn = await self.get_db_conn()
         if not conn:
             return
@@ -104,8 +142,9 @@ class ServerAdminDb ():
         annotators = job.info.get("annotators", [])
         postaggregators = job.info.get("postaggregators", [])
         modules = ",".join(annotators + postaggregators)
-        q = "insert into jobs (username, dir, name, submit, runtime, numinput, modules, assembly, note) values (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-        await cursor.execute(q, (username, job.info["dir"], job.info['id'], job.info['submission_time'], -1, -1, modules, job.info['assembly'], job.info["note"]))
+        q = "insert into jobs (username, dir, name, submit, runtime, numinput, modules, assembly, note, statusjson, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        statusjson = dumps(job.info["statusjson"])
+        await cursor.execute(q, (username, job.info["dir"], job.info['id'], job.info['submission_time'], -1, -1, modules, job.info['assembly'], job.info["note"], statusjson, job.info["status"]))
         await conn.commit()
         await cursor.close()
         await conn.close()
@@ -241,136 +280,6 @@ class ServerAdminDb ():
         await cursor.close()
         await conn.close()
 
-    async def get_input_stat (self, start_date, end_date):
-        conn = await self.get_db_conn()
-        if not conn:
-            return None
-        cursor = await conn.cursor()
-        q = 'select sum(numinput), max(numinput), avg(numinput) from jobs where submit>="{}" and submit<="{}T23:59:59" and numinput!=-1'.format(start_date, end_date)
-        await cursor.execute(q)
-        row = await cursor.fetchone()
-        if row:
-            row = row[0]
-            s = row[0] if row[0] is not None else 0
-            m = row[1] if row[1] is not None else 0
-            a = row[2] if row[2] is not None else 0
-            response = [s, m, a]
-        else:
-            response = None
-        await cursor.close()
-        await conn.close()
-        return response
-
-    async def get_user_stat (self, start_date, end_date):
-        conn = await self.get_db_conn()
-        if not conn:
-            return None
-        cursor = await conn.cursor()
-        q = 'select count(distinct username) from jobs where submit>="{}" and submit<="{}T23:59:59"'.format(start_date, end_date)
-        await cursor.execute(q)
-        row = await cursor.fetchone()
-        if row is None:
-            num_unique_users = 0
-        else:
-            num_unique_users = row[0]
-        q = 'select username, count(*) as c from jobs where submit>="{}" and submit<="{}T23:59:59" group by username order by c desc limit 1'.format(start_date, end_date)
-        await cursor.execute(q)
-        row = await cursor.fetchone()
-        if row is None:
-            (frequent_user, frequent_user_num_jobs) = (0, 0)
-        else:
-            (frequent_user, frequent_user_num_jobs) = row
-        q = 'select username, sum(numinput) s from jobs where submit>="{}" and submit<="{}T23:59:59" group by username order by s desc limit 1'.format(start_date, end_date)
-        await cursor.execute(q)
-        row = await cursor.fetchone()
-        if row is None:
-            (heaviest_user, heaviest_user_num_input) = (0, 0)
-        else:
-            (heaviest_user, heaviest_user_num_input) = row
-        response = {'num_uniq_user': num_unique_users, 'frequent':[frequent_user, frequent_user_num_jobs], 'heaviest':[heaviest_user, heaviest_user_num_input]}
-        await cursor.close()
-        await conn.close()
-        return response
-
-    async def get_job_stat (self, start_date, end_date):
-        conn = await self.get_db_conn()
-        if not conn:
-            return None
-        cursor = await conn.cursor()
-        q = 'select count(*) from jobs where submit>="{}" and submit<="{}T23:59:59"'.format(start_date, end_date)
-        await cursor.execute(q)
-        row = await cursor.fetchone()
-        if row is None:
-            num_jobs = 0
-        else:
-            num_jobs = row[0]
-        q = 'select date(submit) as d, count(*) as c from jobs where submit>="{}" and submit<="{}T23:59:59" group by d order by d asc'.format(start_date, end_date)
-        await cursor.execute(q)
-        rows = await cursor.fetchall()
-        submits = []
-        counts = []
-        for row in rows:
-            submits.append(row[0])
-            counts.append(row[1])
-        response = {'num_jobs': num_jobs, 'chartdata': [submits, counts]}
-        await cursor.close()
-        await conn.close()
-        return response
-
-    async def get_api_stat (self, start_date, end_date):
-        conn = await self.get_db_conn()
-        if not conn:
-            return None
-        cursor = await conn.cursor()
-        q = f'select sum(count) from apilog where writetime>="{start_date}" and writetime<="{end_date}T23:59:59"'
-        await cursor.execute(q)
-        row = await cursor.fetchone()
-        if row is None:
-            num_api_access = 0
-        else:
-            num_api_access = row[0]
-        response = {'num_api_access': num_api_access}
-        await cursor.close()
-        await conn.close()
-        return response
-
-    async def get_annot_stat (self, start_date, end_date):
-        conn = await self.get_db_conn()
-        if not conn:
-            return
-        cursor = await conn.cursor()
-        q = 'select annotators from jobs where submit>="{}" and submit<="{}T23:59:59"'.format(start_date, end_date)
-        await cursor.execute(q)
-        rows = await cursor.fetchall()
-        annot_count = {}
-        for row in rows:
-            annots = row[0].split(',')
-            for annot in annots:
-                if not annot in annot_count:
-                    annot_count[annot] = 0
-                annot_count[annot] += 1
-        response = {'annot_count': annot_count}
-        await cursor.close()
-        await conn.close()
-        return response
-
-    async def get_assembly_stat (self, start_date, end_date):
-        conn = await self.get_db_conn()
-        if not conn:
-            return None
-        cursor = await conn.cursor()
-        q = 'select assembly, count(*) as c from jobs where submit>="{}" and submit<="{}T23:59:59" group by assembly order by c desc'.format(start_date, end_date)
-        await cursor.execute(q)
-        rows = await cursor.fetchall()
-        assembly_count = []
-        for row in rows:
-            (assembly, count) = row
-            assembly_count.append([assembly, count])
-        response = assembly_count
-        await cursor.close()
-        await conn.close()
-        return response
-
     async def get_user_settings (self, username):
         from json import loads
         conn = await self.get_db_conn()
@@ -441,45 +350,81 @@ class ServerAdminDb ():
         await cursor.close()
         await conn.close()
 
-    @db_func
-    async def get_jobs_of_email(self, email, pageno=None, pagesize=None, search_text=None, conn=Any, cursor=Any):
-        from json import loads
-        from ...system import get_sys_conf_value
-        from ..consts import job_table_pagesize_key
-        from ..consts import DEFAULT_JOB_TABLE_PAGESIZE
-        _ = search_text
-        if not pagesize:
+    def update_job_info(self, info_dict, job_dir=None, job_name=None):
+        from sys import stderr
+
+        conn = self.get_sync_db_conn()
+        if not conn:
+            return
+        cursor = conn.cursor()
+        columns = list(info_dict.keys())
+        values = [info_dict.get(column) for column in columns]
+        set_cmds = []
+        for k in info_dict.keys():
+            set_cmds.append(f"set {k}=?")
+        q = f"update jobs {','.join(set_cmds)} where dir=? and name=?"
+        if job_dir and job_name:
+            values.extend([job_dir, job_name])
+        elif self.job_dir and self.job_name:
+            values.extend([self.job_dir, self.job_name])
+        else:
+            stderr.write(f"no job_dir nor job_name for server admin DB")
+            return
+        cursor.execute(q, values)
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+    def get_pageno(self, in_pageno: Optional[str]) -> int:
+        if not in_pageno:
+            pageno = 1
+        else:
             try:
-                pagesize = get_sys_conf_value(job_table_pagesize_key)
-                if pagesize:
-                    pagesize = int(pagesize)
+                pageno = int(in_pageno)
             except Exception as e:
                 logger = getLogger()
                 logger.exception(e)
-        if not pagesize:
+                pageno = 1
+        return pageno
+
+    def get_pagesize(self, in_pagesize: Optional[str]) -> int:
+        from ...system import get_sys_conf_value
+        from ..consts import job_table_pagesize_key
+        from ..consts import DEFAULT_JOB_TABLE_PAGESIZE
+
+        if not in_pagesize:
+            in_pagesize = get_sys_conf_value(job_table_pagesize_key)
+        if not in_pagesize:
             pagesize = DEFAULT_JOB_TABLE_PAGESIZE
-        try:
-            if pageno:
-                pageno = int(pageno)
-        except Exception as e:
-            logger = getLogger()
-            logger.exception(e)
-        if not pageno:
-            pageno = 1
+        else:
+            try:
+                pagesize = int(in_pagesize)
+            except Exception as e:
+                logger = getLogger()
+                logger.exception(e)
+                pagesize = DEFAULT_JOB_TABLE_PAGESIZE
+        return pagesize
+
+    @db_func
+    async def get_jobs_of_email(self, email, pageno=None, pagesize=None, search_text=None, conn=Any, cursor=Any):
+        from json import loads
+        _ = search_text
+        pageno = self.get_pageno(pageno)
+        pagesize = self.get_pagesize(pagesize)
         offset = (pageno - 1) * pagesize
         limit = pagesize
         _ = conn
         if not email:
             return
-        q = f"select name, statusjson from jobs where username=? order by jobid desc limit {limit} offset {offset}"
+        q = f"select name, statusjson, status from jobs where username=? order by jobid desc limit {limit} offset {offset}"
         await cursor.execute(q, (email,))
         ret = await cursor.fetchall()
         ret = [dict(v) for v in ret]
         for d in ret:
-            try:
+            if not d.get("statusjson"):
+                d["statusjson"] = ""
+            else:
                 d["statusjson"] = loads(d["statusjson"])
-            except:
-                d["statusjson"] = {"status": "Error"}
         return ret
 
     def retrieve_user_jobs_into_db(self):
@@ -524,15 +469,27 @@ class ServerAdminDb ():
             if not submit:
                 continue
             numinput = job_status.get("num_input_var")
-            modules = ",".join(job_status.get("annotators", []) + job_status.get("postaggregators", []))
+            annotators = job_status.get("annotators", [])
+            if annotators == "":
+                annotators = []
+            postaggregators = job_status.get("postaggregators", [])
+            if postaggregators == "":
+                postaggregators = []
+            modules = ",".join(annotators + postaggregators)
             runtime = get_job_runtime_in_job_dir(job_dir, run_name=run_name)
             assembly = job_status.get("assembly")
             note = job_status.get("note")
+            status = job_status.get("status")
             statusjson = dumps(job_status)
             if not job_name or not submit:
                 continue
-            q = "insert into jobs (username, dir, name, submit, runtime, numinput, modules, assembly, note, statusjson) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            values = (email, job_dir, job_name, submit, runtime, numinput, modules, assembly, note, statusjson)
+            q = f"select jobid from jobs where dir=?"
+            cursor.execute(q, (job_dir,))
+            ret = cursor.fetchone()
+            if ret:
+                continue
+            q = "insert into jobs (username, dir, name, submit, runtime, numinput, modules, assembly, note, statusjson, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            values = (email, job_dir, job_name, submit, runtime, numinput, modules, assembly, note, statusjson, status)
             cursor.execute(q, values)
         conn.commit()
         cursor.close()

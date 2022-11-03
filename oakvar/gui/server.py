@@ -42,6 +42,7 @@ class WebServer(object):
                 nocache = True
             if nocache:
                 response.headers["Cache-Control"] = "no-cache"
+                response.headers["Access-Control-Allow-Origin"] = "*"
             return response
         except Exception as e:
             msg = "Exception with {}".format(request.rel_url)
@@ -83,9 +84,7 @@ class WebServer(object):
         from aiohttp import web
         import aiohttp_cors
         self.app = web.Application(loop=self.loop, middlewares=[self.middleware])
-        self.cors = aiohttp_cors.setup(self.app, defaults={
-            "http://localhost:3000": aiohttp_cors.ResourceOptions()
-        }) # type: ignore
+        self.cors = aiohttp_cors.setup(self.app) # type: ignore
         self.setup_routes()
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()
@@ -150,6 +149,7 @@ class WebServer(object):
         from os.path import realpath
         from os.path import join
         from os.path import exists
+        from aiohttp_cors import ResourceOptions
 
 
         if self.app is None:
@@ -175,8 +175,16 @@ class WebServer(object):
                 )
             if exists(join(modules_dir, "webapps")):
                 self.app.router.add_static("/webapps", join(modules_dir, "webapps"))
-        for resource in list(self.app.router.resources()):
-            self.cors.add(resource) # type: ignore
+        if self.cors:
+            for resource in list(self.app.router.resources()):
+                self.cors.add(resource,
+                    {
+                        "*": ResourceOptions(
+                            allow_credentials=True,
+                            expose_headers="*",
+                            allow_headers="*",
+                            allow_methods=["GET", "POST"]),
+                    })
         ws.start_worker()
         wu.start_worker()
 

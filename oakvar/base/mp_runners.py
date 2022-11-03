@@ -4,7 +4,7 @@ def init_worker():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
-def annot_from_queue(start_queue, end_queue, queue_populated, status_writer):
+def annot_from_queue(start_queue, end_queue, queue_populated, status_writer, serveradmindb):
     from ..util.util import load_class
     from logging import getLogger, FileHandler, Formatter
     from queue import Empty
@@ -28,6 +28,7 @@ def annot_from_queue(start_queue, end_queue, queue_populated, status_writer):
         logger.addHandler(log_handler)
         try:
             kwargs["status_writer"] = status_writer
+            kwargs["serveradmindb"] = serveradmindb
             annotator_class = load_class(module.script_path, "Annotator")
             if not annotator_class:
                 annotator_class = load_class(module.script_path, "CravatAnnotator")
@@ -49,6 +50,7 @@ def mapper_runner(
     module_name,
     pos_no,
     primary_transcript,
+    serveradmindb
 ):
     from ..util.util import load_class
     from ..module.local import get_local_module_info
@@ -69,6 +71,7 @@ def mapper_runner(
         if primary_transcript is not None:
             kwargs["primary_transcript"] = primary_transcript.split(";")
         kwargs["status_writer"] = status_writer
+        kwargs["serveradmindb"] = serveradmindb
         genemapper_class = load_class(module.script_path, "Mapper")
         genemapper = genemapper_class(kwargs)
         output = genemapper.run(pos_no)

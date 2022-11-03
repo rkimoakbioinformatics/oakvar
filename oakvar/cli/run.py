@@ -340,7 +340,7 @@ class Runner(object):
         ):
             quiet_print(f'Running gene mapper...{" "*18}', self.args)
             stime = time()
-            self.run_genemapper_mp()
+            self.run_mapper()
             rtime = time() - stime
             quiet_print("finished in {0:.3f}s".format(rtime), self.args)
             self.mapper_ran = True
@@ -471,6 +471,7 @@ class Runner(object):
             await self.setup_manager()
             update_status(
                 "Started OakVar",
+                serveradmindb=self.serveradmindb,
                 status_writer=self.status_writer,
                 args=self.args,
                 force=True,
@@ -490,7 +491,9 @@ class Runner(object):
                 await self.do_step_postaggregator()
                 await self.do_step_reporter()
             update_status(
-                "Finished", status_writer=self.status_writer, args=self.args, force=True, status_json=self.status_json
+                "Finished", 
+                serveradmindb=self.serveradmindb,
+                status_writer=self.status_writer, args=self.args, force=True, status_json=self.status_json
             )
         except Exception as e:
             self.exception = e
@@ -515,6 +518,7 @@ class Runner(object):
                 if self.status_writer:
                     update_status(
                         "Error",
+                        serveradmindb=self.serveradmindb,
                         status_writer=self.status_writer,
                         args=self.args,
                         force=True,
@@ -555,7 +559,6 @@ class Runner(object):
         if self.args.show_version:
             cli_version({"to": "stdout"})
             raise NormalExit()
-        self.connect_admindb_if_needed()
         self.set_self_inputs()
         self.set_output_dir()
         self.set_run_name()
@@ -574,6 +577,7 @@ class Runner(object):
         self.verbose = self.args.verbose == True
         self.set_start_end_levels()
         self.cleandb = self.args.cleandb
+        self.connect_admindb_if_needed()
         if self.args.note == None:
             self.args.note = ""
         if self.args is None:
@@ -612,7 +616,7 @@ class Runner(object):
         from ..gui.websubmit.serveradmindb import ServerAdminDb
 
         if self.args and self.args.writeadmindb:
-            self.serveradmindb = ServerAdminDb()
+            self.serveradmindb = ServerAdminDb(job_dir=self.output_dir, job_name=self.args.job_name)
 
     def make_self_conf(self, args):
         from ..exceptions import SetupError
@@ -1270,45 +1274,11 @@ class Runner(object):
             }
             module_cls = load_class(module.script_path, "Preparer")
             module_ins = module_cls(kwargs)
-            announce_module(
-                module, status_writer=self.status_writer, args=self.args, status_json=self.status_json
-            )
+            announce_module(module, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args, status_json=self.status_json)
             stime = time()
             module_ins.run()
             rtime = time() - stime
             quiet_print("finished in {0:.3f}s".format(rtime), self.args)
-
-    def run_genemapper(self):
-        from ..module.local import get_local_module_info
-        from ..exceptions import ModuleLoadingError
-        from ..util.util import load_class
-        from ..util.util import quiet_print
-        from ..exceptions import SetupError
-
-        if self.args is None:
-            raise SetupError()
-        module = get_local_module_info(self.main_conf.get("genemapper"))
-        if module is None:
-            raise ModuleLoadingError(self.main_conf.get("genemapper"))
-        self.genemapper = module
-        cmd = [
-            module.script_path,
-            self.crvinput,
-            "-n",
-            self.run_name,
-            "-d",
-            self.output_dir,
-        ]
-        if self.args.primary_transcript is not None:
-            if "mane" not in self.args.primary_transcript:
-                self.args.primary_transcript.append("mane")
-            cmd.extend(["--primary-transcript"])
-            cmd.extend(self.args.primary_transcript)
-        if self.verbose:
-            quiet_print(" ".join(cmd), self.args)
-        genemapper_class = load_class(module.script_path, "Mapper")
-        genemapper = genemapper_class(cmd, self.status_writer)
-        genemapper.run()
 
     def get_num_workers(self) -> int:
         from ..system import get_max_num_concurrent_annotators_per_job
@@ -1395,7 +1365,7 @@ class Runner(object):
             del unique_hugos
             del hugos
 
-    def run_genemapper_mp(self):
+    def run_mapper(self):
         import multiprocessing as mp
         from ..base.mp_runners import init_worker, mapper_runner
         from ..util.inout import FileReader
@@ -1433,6 +1403,7 @@ class Runner(object):
                             self.mapper_name,
                             pos_no,
                             ";".join(self.args.primary_transcript),
+                            self.serveradmindb
                         ),
                     )
                 else:
@@ -1448,6 +1419,7 @@ class Runner(object):
                             self.mapper_name,
                             pos_no,
                             ";".join(self.args.primary_transcript),
+                            self.serveradmindb
                         ),
                     )
                 jobs.append(job)
@@ -1486,6 +1458,7 @@ class Runner(object):
             quiet_print(" ".join(cmd), self.args)
         update_status(
             "Running {title} ({level})".format(title="Aggregator", level="variant"),
+            serveradmindb=self.serveradmindb,
             status_writer=self.status_writer,
             args=self.args,
             force=True,
@@ -1515,6 +1488,7 @@ class Runner(object):
             quiet_print(" ".join(cmd), self.args)
         update_status(
             "Running {title} ({level})".format(title="Aggregator", level="gene"),
+            serveradmindb=self.serveradmindb,
             status_writer=self.status_writer,
             args=self.args,
             force=True,
@@ -1543,6 +1517,7 @@ class Runner(object):
                 quiet_print(" ".join(cmd), self.args)
             update_status(
                 "Running {title} ({level})".format(title="Aggregator", level="sample"),
+                serveradmindb=self.serveradmindb,
                 status_writer=self.status_writer,
                 args=self.args,
                 force=True,
@@ -1570,6 +1545,7 @@ class Runner(object):
                 quiet_print(" ".join(cmd), self.args)
             update_status(
                 "Running {title} ({level})".format(title="Aggregator", level="mapping"),
+                serveradmindb=self.serveradmindb,
                 status_writer=self.status_writer,
                 args=self.args,
                 force=True,
@@ -1608,9 +1584,7 @@ class Runner(object):
             if not post_agg_cls:
                 post_agg_cls = load_class(module.script_path, "CravatPostAggregator")
             post_agg = post_agg_cls(cmd, self.status_writer)
-            announce_module(
-                module, status_writer=self.status_writer, args=self.args, status_json=self.status_json
-            )
+            announce_module(module, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args, status_json=self.status_json)
             stime = time()
             post_agg.run()
             rtime = time() - stime
@@ -1694,7 +1668,7 @@ class Runner(object):
         for report_type, module_name in zip(report_types, module_names):
             reporter = None
             module = get_local_module_info(module_name)
-            announce_module(module, status_writer=self.status_writer, args=self.args, status_json=self.status_json)
+            announce_module(module, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args, status_json=self.status_json)
             if module is None:
                 raise ModuleNotExist(module_name)
             arg_dict = dict(vars(self.args))
@@ -1811,7 +1785,7 @@ class Runner(object):
         done_mnames = set(self.done_annotators)
         queue_populated = self.manager.Value("c_bool", False)
         pool_args = [
-            [start_queue, end_queue, queue_populated, self.status_writer]
+            [start_queue, end_queue, queue_populated, self.status_writer, self.serveradmindb]
         ] * num_workers
         with Pool(num_workers, init_worker) as pool:
             _ = pool.starmap_async(
@@ -2052,7 +2026,7 @@ class Runner(object):
         from ..util.util import announce_module
 
         for module in self.ordered_summarizers:
-            announce_module(module, status_writer=self.status_writer, args=self.args, status_json=self.status_json)
+            announce_module(module, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args, status_json=self.status_json)
             self.run_summarizer(module)
 
     def run_summarizer(self, module):
@@ -2123,14 +2097,14 @@ class Runner(object):
         await db.close()
 
     def write_initial_status_json(self):
+        from ..exceptions import SetupError
+
         if (
             self.run_name is None
             or self.inputs is None
             or self.args is None
             or self.output_dir is None
         ):
-            from ..exceptions import SetupError
-
             raise SetupError()
         import os
         from datetime import datetime

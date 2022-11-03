@@ -42,6 +42,7 @@ class WebJob(object):
             job_id = basename(job_dir)
         self.job_id = job_id
         self.info["id"] = job_id
+        self.info["statusjson"] = None
 
     def save_job_options(self, job_options):
         self.set_values(**job_options)
@@ -230,15 +231,6 @@ async def submit(request):
     job_name = job_options.get("job_name", "")
     if job_name:
         job_id = job_name
-    # Initial save of job
-    job = WebJob(job_dir, job_info_fpath, job_id=job_id)
-    job.save_job_options(job_options)
-    job.set_info_values(
-        orig_input_fname=input_fnames,
-        run_name=run_name,
-        submission_time=datetime.now().isoformat(),
-        viewable=False,
-    )
     # Subprocess arguments
     input_fpaths = [join(job_dir, fn) for fn in input_fnames]
     run_args = ["ov", "run"]
@@ -300,12 +292,19 @@ async def submit(request):
     job_ids.append(job_id)
     run_jobs_info["job_ids"] = job_ids
     qitem = {"cmd": "submit", "job_id": job_id, "run_args": run_args}
+    # Initial save of job
+    job = WebJob(job_dir, job_info_fpath, job_id=job_id)
+    job.save_job_options(job_options)
+    job.set_info_values(
+        orig_input_fname=input_fnames,
+        run_name=run_name,
+        submission_time=datetime.now().isoformat(),
+        viewable=False,
+    )
     if job_queue is not None:
         job_queue.put(qitem)
-        status = {"status": "Submitted"}
+        status = "Submitted"
         job.set_info_values(status=status)
-        if mu:
-            await mu.add_job_info(request, job)
         # makes temporary status.json
         status_json = {}
         status_json["job_dir"] = job_dir
@@ -329,6 +328,10 @@ async def submit(request):
             status_json["cc_cohorts_path"] = ""
         with open(join(job_dir, run_name + ".status.json"), "w") as wf:
             dump(status_json, wf, indent=2, sort_keys=True)
+        if job:
+            job.set_info_values(statusjson=status_json)
+            if mu:
+                await mu.add_job_info(request, job)
     return json_response(job.get_info_dict())
 
 
@@ -1382,10 +1385,8 @@ async def get_tags_of_annotators_and_postaggregators(_):
 
 
 routes = []
-routes.append(["POST", "/submit/submit", submit])
 routes.append(["GET", "/submit/annotators", get_annotators])
 routes.append(["GET", "/submit/postaggregators", get_postaggregators])
-routes.append(["GET", "/submit/jobs", get_jobs])
 routes.append(["GET", "/submit/jobs/{job_id}", view_job])
 routes.append(["DELETE", "/submit/jobs/{job_id}", delete_job])
 routes.append(["GET", "/submit/jobs/{job_id}/db", download_db])
@@ -1417,3 +1418,5 @@ routes.append(["GET", "/webapps/{module}", get_webapp_index])
 routes.append(["GET", "/submit/converters", get_converters])
 routes.append(["GET", "/submit/tags_annotators_postaggregators", get_tags_of_annotators_and_postaggregators])
 routes.append(["GET", "/submit/localmodules/{module}", get_local_module_info_web])
+routes.append(["GET", "/submit/jobs", get_jobs])
+routes.append(["POST", "/submit/submit", submit])
