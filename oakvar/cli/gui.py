@@ -59,7 +59,7 @@ def setup(args={}):
         args["headless"] = True
     inject_module_variables(args=args)
     loop = get_event_loop()
-    loop.run_until_complete(mu.get_admindb())
+    loop.run_until_complete(mu.get_serveradmindb())
     args["ssl_enabled"] = False
 
 

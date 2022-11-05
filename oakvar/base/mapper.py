@@ -34,7 +34,7 @@ class BaseMapper(object):
         self.live = self.args["live"]
         self.t = time()
         self.status_writer = self.args["status_writer"]
-        self.serveradmindb = self.args["serveradmindb"]
+        self.serveradmindb = self.args.get("serveradmindb")
         main_fpath = self.args.get("script_path", __file__)
         main_basename = os.path.basename(main_fpath)
         if "." in main_basename:

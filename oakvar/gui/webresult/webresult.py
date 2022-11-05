@@ -692,9 +692,14 @@ async def get_colinfo(dbpath, confpath=None, filterstring=None, add_summary=True
         arg_dict["filterstring"] = filterstring
     arg_dict["reports"] = ["text"]
     reporter = m.Reporter(arg_dict)
-    reporter.levels = await reporter.get_levels_to_run("all")
+    await reporter.prep()
+    print(f"@ reporter={reporter}")
+    #reporter_levels = await reporter.get_levels_to_run("all")
+    #print(f"@@@ levels={reporter_levels}")
+    #reporter.levels = reporter_levels
     try:
         colinfo = await reporter.get_variant_colinfo(add_summary=add_summary)
+        print(f"@ colinfo={colinfo}")
         await reporter.close_db()
         if reporter.cf is not None:
             await reporter.cf.close_db()
@@ -741,6 +746,7 @@ async def serve_runwidget(request):
 
     path = "wg" + request.match_info["module"]
     queries = request.rel_url.query
+    print(f"@ queries={queries}")
     _, dbpath = await get_jobid_dbpath(request)
     if ("dbpath" not in queries or queries["dbpath"] == "") and dbpath is not None:
         new_queries = {}
@@ -755,8 +761,9 @@ async def serve_runwidget(request):
     m = imp.load_module(path, f, fn, d)  # type: ignore
     cf = await ReportFilter.create(dbpath=dbpath, mode="sub")
     filterstring = await cf.exec_db(cf.get_report_filter_string, uid=queries.get("ftable_uid"))
-    queries["filterstring"] = filterstring
-    content = await m.get_data(queries)
+    queries_dict = queries.copy()
+    queries_dict["filterstring"] = filterstring
+    content = await m.get_data(queries_dict)
     return web.json_response(content)
 
 

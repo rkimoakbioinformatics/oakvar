@@ -1,6 +1,6 @@
 from typing import Optional
 
-admindb = None
+serveradmindb = None
 logger = None
 servermode = False
 server_ready = False
@@ -35,7 +35,7 @@ async def is_admin_loggedin(request, email=None):
         email = get_email_from_request(request)
     if not email:
         return False
-    admindb = await get_admindb()
+    admindb = await get_serveradmindb()
     role = await admindb.get_user_role_of_email(email, servermode=get_servermode())
     return role == ADMIN_ROLE
 
@@ -50,10 +50,11 @@ async def get_username_str(request) -> Optional[str]:
     res = {"email": email}
     return res.get("email")
 
-async def add_job_info(request, job):
-    admindb = await get_admindb()
+async def add_job_info(request, job) -> Optional[str]:
+    admindb = await get_serveradmindb()
     email = get_email_from_request(request)
-    await admindb.add_job_info(email, job)
+    uid = await admindb.add_job_info(email, job)
+    return uid
 
 def create_user_dir_if_not_exist (username):
     from os.path import join
@@ -109,17 +110,17 @@ async def loginsuccess(request):
     if not email:
         return HTTPNotFound()
     response = json_response({"status": "loggedin"})
-    admindb = await get_admindb()
+    admindb = await get_serveradmindb()
     await admindb.add_user_if_not_exist(email, "", "", "")
     oakvar_token = jwt.encode({"email": email}, DEFAULT_PRIVATE_KEY, algorithm="HS256")
     response.set_cookie(COOKIE_KEY, oakvar_token, httponly=True)
     return response
 
 async def set_temp_password (request):
-    if admindb:
+    if serveradmindb:
         queries = request.rel_url.query
         email = queries['email']
-        temppassword = await admindb.set_temp_password(email)
+        temppassword = await serveradmindb.set_temp_password(email)
         return temppassword
 
 async def check_logged (request):
@@ -176,7 +177,7 @@ async def show_login_page (request):
 
 async def get_user_settings (request):
     from aiohttp.web import json_response
-    admindb = await get_admindb()
+    admindb = await get_serveradmindb()
     if not admindb:
         return json_response({})
     email = get_email_from_request(request)
@@ -184,16 +185,16 @@ async def get_user_settings (request):
     return json_response(response)
 
 async def update_user_settings (request, d):
-    admindb = await get_admindb()
+    admindb = await get_serveradmindb()
     email = get_email_from_request(request)
     return await admindb.update_user_settings(email, d)
 
-async def get_admindb():
+async def get_serveradmindb():
     from .serveradmindb import ServerAdminDb
-    global admindb
-    if not admindb:
-        admindb = ServerAdminDb()
-    return admindb
+    global serveradmindb
+    if not serveradmindb:
+        serveradmindb = ServerAdminDb()
+    return serveradmindb
 
 def add_routes (router):
     from os.path import dirname
@@ -219,4 +220,9 @@ def add_routes (router):
     router.add_route('GET', '/server/nocache/login.html', show_login_page)
     """
     router.add_static('/server', join(dirname(realpath(__file__))))
+
+def delete_job(uid: int):
+    if not serveradmindb:
+        return
+    serveradmindb.delete_job(uid)
 

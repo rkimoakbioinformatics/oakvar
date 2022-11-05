@@ -6,8 +6,8 @@ from typing import Optional
 def db_func(func):
     async def outer_func(*args, **kwargs):
         from aiosqlite import Row
-        from .multiuser import get_admindb
-        admindb = await get_admindb()
+        from .multiuser import get_serveradmindb
+        admindb = await get_serveradmindb()
         conn = await admindb.get_db_conn()
         if not conn:
             return
@@ -39,10 +39,13 @@ class ServerAdminDb ():
         from sqlite3 import connect
         conn = connect(self.admindb_path)
         cursor = conn.cursor()
-        if args.get("clean"):
+        if not args.get("clean"):
+            need_clean_start = self.do_backward_compatibility(conn, cursor)
+        else:
+            need_clean_start = False
+        if args.get("clean") or need_clean_start:
             self.drop_tables(conn, cursor)
         self.create_tables(conn, cursor)
-        self.do_backward_compatibility(conn, cursor)
         self.add_admin(conn, cursor)
         self.add_default_user(conn, cursor)
         self.add_secret_key(conn, cursor)
@@ -59,19 +62,14 @@ class ServerAdminDb ():
 
     def create_tables(self, conn, cursor):
         cursor.execute('create table if not exists users (email text primary key, role text, passwordhash text, question text, answerhash text, settings text)')
-        cursor.execute('create table if not exists jobs (jobid integer primary key autoincrement, username text, dir text, name text, submit date, runtime integer, numinput integer, modules text, assembly text, note text, statusjson text, status text)')
+        cursor.execute('create table if not exists jobs (uid integer primary key autoincrement, username text, dir text, name text, submit date, runtime integer, numinput integer, modules text, assembly text, note text, statusjson text, status text)')
         cursor.execute('create table if not exists config (key text primary key, value text)')
         cursor.execute('create table if not exists apilog (writetime text primary key, count int)')
         conn.commit()
 
-    def do_backward_compatibility(self, conn, cursor):
+    def add_status_column(self, conn, cursor):
         from json import loads
 
-        q = f"select name from pragma_table_info('jobs') as tblinfo"
-        cursor.execute(q)
-        columns = [v[0] for v in cursor.fetchall()]
-        if "status" in columns:
-            return
         q = f"alter table jobs add column status text"
         cursor.execute(q)
         conn.commit()
@@ -82,13 +80,61 @@ class ServerAdminDb ():
             jobid = ret[0]
             statusjson = ret[1]
             if not statusjson:
-                statusjson = {"status": "Error"}
+                statusjson = {"status": "Aborted"}
             else:
                 statusjson = loads(ret[1])
             status = statusjson.get("status")
             q = f"update jobs set status=? where jobid=?"
             cursor.execute(q, (status, jobid))
         conn.commit()
+
+    def add_uid_column(self, columns, column_types, conn, cursor) -> bool:
+        if "jobid" in columns:
+            idx = columns.index("jobid")
+            ctype = column_types[idx]
+            if ctype == "TEXT":
+                if "name" in columns:
+                    q = f"update jobs set name=jobid"
+                    cursor.execute(q)
+                    conn.commit()
+                else:
+                    return True
+            elif ctype == "INTEGER":
+                ex_cols = columns[:idx] + columns[idx + 1:]
+                ex_ctypes = column_types[:idx] + column_types[idx + 1:]
+                q = f"select {','.join(ex_cols)} from jobs"
+                cursor.execute(q)
+                rows = cursor.fetchall()
+                new_cols = ["uid"] + ex_cols
+                new_ctypes = ["integer primary key autoincrement"] + ex_ctypes
+                cols_def = ",".join([f"{v[0]} {v[1]}" for v in list(zip(new_cols, new_ctypes))])
+                schema = f"create table jobs ({cols_def})"
+                q = f"drop table jobs"
+                cursor.execute(q)
+                conn.commit()
+                cursor.execute(schema)
+                conn.commit()
+                for row in rows:
+                    q = f"insert into jobs ({','.join(ex_cols)}) values ({','.join(['?'] * len(ex_cols))})"
+                    cursor.execute(q, row)
+                conn.commit()
+                return False
+        return False
+
+    def do_backward_compatibility(self, conn, cursor) -> bool:
+        need_clean_start = False
+        q = f"select name, type, pk from pragma_table_info('jobs') as tblinfo"
+        cursor.execute(q)
+        columns = []
+        column_types = []
+        for row in cursor.fetchall():
+            columns.append(row[0])
+            column_types.append(row[1])
+        if not "status" in columns:
+            self.add_status_column(conn, cursor)
+        if not "uid" in columns:
+            need_clean_start = self.add_uid_column(columns, column_types, conn, cursor)
+        return need_clean_start
 
     def add_admin(self, conn, cursor):
         from ...store.ov.account import get_email_from_token_set
@@ -146,8 +192,16 @@ class ServerAdminDb ():
         statusjson = dumps(job.info["statusjson"])
         await cursor.execute(q, (username, job.info["dir"], job.info['id'], job.info['submission_time'], -1, -1, modules, job.info['assembly'], job.info["note"], statusjson, job.info["status"]))
         await conn.commit()
+        q = f"select uid from jobs where username=? and dir=? and name=?"
+        await cursor.execute(q, (username, job.info["dir"], job.info["id"]))
+        ret = await cursor.fetchone()
+        if not ret:
+            uid = None
+        else:
+            uid = ret[0]
         await cursor.close()
         await conn.close()
+        return uid
 
     async def check_username_presence (self, username):
         conn = await self.get_db_conn()
@@ -325,6 +379,12 @@ class ServerAdminDb ():
         await cursor.close()
         await conn.close()
 
+    @db_func
+    def delete_job(self, uid: int, conn=Any, cursor=Any):
+        q = f"delete from jobs where uid=?"
+        cursor.execute(q, (uid,))
+        conn.commit()
+
     async def open_conn_cursor(self):
         conn = await self.get_db_conn()
         if not conn:
@@ -350,6 +410,31 @@ class ServerAdminDb ():
         await cursor.close()
         await conn.close()
 
+    @db_func
+    async def get_job_status(self, uid=None, conn=Any, cursor=Any):
+        if not uid:
+            return None
+        _ = conn
+        q = "select status from jobs where uid=?"
+        await cursor.execute(q, (uid,))
+        ret = await cursor.fetchone()
+        if not ret:
+            return None
+        return ret[0]
+
+    @db_func
+    async def get_job_dir_by_username_uid(self, eud={}, conn=Any, cursor=Any) -> Optional[str]:
+        if not eud.get("uid") or not eud.get("username"):
+            return None
+        _ = conn
+        q = f"select dir from jobs where username=? and uid=?"
+        cursor.execute(q, (eud.get("username"), eud.get("uid")))
+        ret = cursor.fetchone()
+        if not ret:
+            return None
+        else:
+            return ret[0]
+        
     def update_job_info(self, info_dict, job_dir=None, job_name=None):
         from sys import stderr
 
@@ -408,6 +493,7 @@ class ServerAdminDb ():
     @db_func
     async def get_jobs_of_email(self, email, pageno=None, pagesize=None, search_text=None, conn=Any, cursor=Any):
         from json import loads
+        
         _ = search_text
         pageno = self.get_pageno(pageno)
         pagesize = self.get_pagesize(pagesize)
@@ -416,13 +502,13 @@ class ServerAdminDb ():
         _ = conn
         if not email:
             return
-        q = f"select name, statusjson, status from jobs where username=? order by jobid desc limit {limit} offset {offset}"
+        q = f"select uid, name, statusjson, status from jobs where username=? order by uid desc limit {limit} offset {offset}"
         await cursor.execute(q, (email,))
         ret = await cursor.fetchall()
         ret = [dict(v) for v in ret]
         for d in ret:
             if not d.get("statusjson"):
-                d["statusjson"] = ""
+                d["statusjson"] = {}
             else:
                 d["statusjson"] = loads(d["statusjson"])
         return ret
@@ -483,7 +569,7 @@ class ServerAdminDb ():
             statusjson = dumps(job_status)
             if not job_name or not submit:
                 continue
-            q = f"select jobid from jobs where dir=?"
+            q = f"select uid from jobs where dir=?"
             cursor.execute(q, (job_dir,))
             ret = cursor.fetchone()
             if ret:

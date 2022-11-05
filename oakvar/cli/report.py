@@ -379,16 +379,20 @@ class BaseReporter:
             self.write_status(f"Started {self.module_conf['title']} ({self.module_name})")
 
     async def get_levels_to_run(self, tab: str) -> List[str]:
+        print(f"@ start. get_result_levels. cf={self.cf}. tab={tab}")
         if not self.cf:
             return []
         if tab == "all":
+            print(f"@ calling get_result_levels")
             levels = await self.cf.exec_db(self.cf.get_result_levels)
+            print(f"@ done get_result_levels. {levels}")
         else:
             levels = [tab]
         if type(levels) is not list:
             return []
         if not levels:
             return []
+        print(f"@ returning {levels}")
         return levels
 
     async def run(self, tab="all", add_summary=None, pagesize=None, page=None, make_filtered_table=True, user=DEFAULT_SERVER_DEFAULT_USERNAME, dictrow=False):
@@ -568,13 +572,17 @@ class BaseReporter:
     async def get_variant_colinfo(self, add_summary=True):
         try:
             await self.prep()
+            print(f"@ after prep")
             if self.setup() == False:
                 await self.close_db()
                 return None
             self.levels = await self.get_levels_to_run("all")
+            print(f"@ self.levels={self.levels}")
             await self.make_col_infos(add_summary=add_summary)
             return self.colinfo
-        except:
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
             await self.close_db()
             return None
 
@@ -803,6 +811,7 @@ class BaseReporter:
                 "script_path": mi.script_path,
                 "input_file": "__dummy__",
                 "output_dir": self.output_dir,
+                "serveradmindb": self.serveradmindb
             }
             annot = annot_cls(cmd)
             cols = mi.conf["gene_summary_output_columns"]

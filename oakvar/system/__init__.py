@@ -918,13 +918,16 @@ def get_user_jobs_dir(email=None):
     jobs_dir = root_jobs_dir / email
     return str(jobs_dir)
 
-def get_status_path_in_job_dir(job_dir: Optional[str]) -> Optional[str]:
+def get_status_path_in_job_dir(job_dir: Optional[str], run_name=None) -> Optional[str]:
     from pathlib import Path
     from ..consts import status_suffix
 
     if not job_dir:
         return None
     job_dir_p = Path(job_dir).absolute()
+    if run_name:
+        status_path = job_dir_p / (run_name + status_suffix)
+        return str(status_path)
     status_paths = list(job_dir_p.glob("*" + status_suffix))
     if not status_paths:
         return None

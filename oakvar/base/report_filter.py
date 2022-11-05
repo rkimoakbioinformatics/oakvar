@@ -701,13 +701,14 @@ class ReportFilter:
         n = ret[0]
         return n
 
-    async def get_report_filter_string(self, uid=None, cursor=Any) -> Optional[str]:
+    async def get_report_filter_string(self, uid=None, cursor_read=Any, cursor_write=Any) -> Optional[str]:
         if not uid:
             return None
+        _ = cursor_write
         tablename = self.get_registry_table_name()
         q = f"select filterjson from {tablename} where uid=?"
-        await cursor.execute(q, (uid,))
-        ret = await cursor.fetchone()
+        await cursor_read.execute(q, (uid,))
+        ret = await cursor_read.fetchone()
         if ret:
             return ret[0]
         else:
