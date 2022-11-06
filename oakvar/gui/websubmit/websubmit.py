@@ -1034,14 +1034,7 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
 async def redirect_to_index(request):
     from aiohttp.web import HTTPFound
     global servermode
-    if servermode and mu:
-        r = await mu.is_loggedin(request)
-        if r == False:
-            url = "/server/nocache/login.html"
-        else:
-            url = "/submit/nocache/index.html"
-    else:
-        url = "/submit/nocache/index.html"
+    url = "/index.html"
     return HTTPFound(url)
 
 

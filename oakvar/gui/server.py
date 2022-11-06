@@ -167,6 +167,7 @@ class WebServer(object):
         self.app.router.add_static("/store", join(source_dir, "..", "gui", "webstore"))
         self.app.router.add_static("/result", join(source_dir, "..", "gui", "webresult"))
         self.app.router.add_static("/submit", join(source_dir, "websubmit"))
+        self.app.router.add_static("/", join(source_dir, "www"))
         modules_dir = get_modules_dir()
         if modules_dir:
             if exists(join(modules_dir, "annotators")):

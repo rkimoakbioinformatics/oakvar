@@ -247,10 +247,16 @@ def get_login_url(args={}):
     url = f"{host}:{port}/submit/nocache/login.html"
     return url
 
+#def get_index_url(args={}):
+#    from ..gui.util import get_host_port
+#    host, port = get_host_port(args=args)
+#    url = f"{host}:{port}/submit/nocache/index.html"
+#    return url
+
 def get_index_url(args={}):
     from ..gui.util import get_host_port
     host, port = get_host_port(args=args)
-    url = f"{host}:{port}/submit/nocache/index.html"
+    url = f"{host}:{port}/index.html"
     return url
 
 def get_url(args={}):
