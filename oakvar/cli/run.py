@@ -2048,23 +2048,24 @@ class Runner(object):
         summarizer.run()
 
     def clean_up_at_end(self):
+        from os import listdir
+        from os import remove
+        from pathlib import Path
+        from ..exceptions import SetupError
+
         if self.output_dir is None or self.run_name is None:
-            from ..exceptions import SetupError
-
             raise SetupError()
-        import os
-
-        fns = os.listdir(self.output_dir)
+        fns = listdir(self.output_dir)
         for fn in fns:
-            fn_path = os.path.join(self.output_dir, fn)
-            if os.path.isfile(fn_path) == False:
+            fn_path = Path(self.output_dir) /  fn
+            if fn_path.is_file() == False:
                 continue
             if fn.startswith(self.run_name):
-                fn_end = fn.split(".")[-1]
-                if fn_end in ["var", "gen", "crv", "crx", "crg", "crs", "crm", "crt"]:
-                    os.remove(os.path.join(self.output_dir, fn))
-                if fn.split(".")[-2:] == ["status", "json"]:
-                    os.remove(os.path.join(self.output_dir, fn))
+                fn_p = Path(fn)
+                if fn_p.suffix in [".var", ".gen", ".crv", ".crx", ".crg", ".crs", ".crm", ".crt"]:
+                    remove(str(fn_path))
+                if fn.endswith(".status.json"):
+                    remove(str(fn_path))
 
     async def write_admin_db_final_info(self, runtime, numinput):
         import aiosqlite
@@ -2570,5 +2571,10 @@ def add_parser_ov_run(subparsers):
         action="store_true",
         default=False,
         help="analyze with the vcf to vcf workflow. It is faster than a normal run, but only if both input and output formats are VCF.",
+    )
+    parser_ov_run.add_argument(
+        "--uid",
+        default=None,
+        help="Optional UID of the job"
     )
     parser_ov_run.set_defaults(func=cli_run)

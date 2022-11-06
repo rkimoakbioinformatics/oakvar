@@ -837,7 +837,7 @@ filterMgr = new FilterManager();
 function populateFilterSaveNames() {
   $.get("/result/service/getfiltersavenames", {
     username: username,
-    job_id: jobId,
+    uid: uid,
     dbpath: dbPath,
   }).done(function (response) {
     let quicksaveIndex = response.indexOf("quicksave-name-internal-use");
@@ -1287,8 +1287,13 @@ function downloadReport(j, d, reportType) {
   form.setAttribute("method", "post")
   var input1 = getEl("input")
   input1.setAttribute("type", "hidden")
-  input1.setAttribute("name", "data")
-  input1.setAttribute("value", data)
+  if (uid) {
+    input1.setAttribute("name", "uid")
+    input1.setAttribute("value", uid)
+  } else if (dbPath) {
+    input1.setAttribute("name", "dbpath")
+    input1.setAttribute("value", dbPath)
+  }
   addEl(form, input1)
   var body = document.getElementsByTagName("body")[0]
   addEl(body, form)
@@ -1357,7 +1362,7 @@ async function generateReport(j, d, reportType) {
     var mdiv = getEl("div");
     var span = getEl("span");
     span.textContent =
-      reportType + " report generation failed for " + jobId;
+      reportType + " report generation failed for " + uid;
     addEl(mdiv, span);
     addEl(mdiv, getEl("br"));
     addEl(mdiv, getEl("br"));
@@ -1379,11 +1384,10 @@ async function makeReportTab(rightDiv) {
   rightContentDiv.className = "rightcontentdiv";
   addEl(rightDiv, rightContentDiv);
   var res = await axios.get("/submit/reporttypes")
-  console.log("@ res=", res);
   var reportTypes = res.data.valid;
   reportTypes.sort()
   var res = await axios.post("/submit/jobs/reports",
-    {dbpath: dbPath, job_id: jobId}
+    {dbpath: dbPath, uid: uid}
   )
   var madeReportTypes = res.data
   var ul = getEl("ul")
@@ -1447,7 +1451,7 @@ async function makeReportTab(rightDiv) {
       a.textContent = "Generate"
       a.addEventListener("click", async function(_) {
         this.textContent = "Generating..."
-        await generateReport(jobId, dbPath, reportType)
+        await generateReport(uid, dbPath, reportType)
       })
       addEl(generateDiv, a)
     } else {
@@ -1459,7 +1463,7 @@ async function makeReportTab(rightDiv) {
       a.className = "relative -mr-px w-0 flex-1 inline-flex items-center justify-center py-4 text-sm text-gray-700 font-medium border border-transparent rounded-bl-lg hover:text-gray-500"
       a.textContent = "Download"
       a.addEventListener("click", async function(_) {
-        downloadReport(jobId, dbPath, reportType)
+        downloadReport(uid, dbPath, reportType)
       })
       addEl(downloadDiv, a)
     }
@@ -2129,7 +2133,7 @@ function onClickWidgetDownloadButton(tabName, evt) {
     var u = window.URL.createObjectURL(b);
     var a = document.createElement("a");
     a.setAttribute("href", u);
-    a.setAttribute("download", jobId + "." + widgetName + ".csv");
+    a.setAttribute("download", uid + "." + widgetName + ".csv");
     a.style.display = "none";
     document.body.appendChild(a);
     a.click();
@@ -2289,7 +2293,7 @@ function drawSummaryWidget(widgetName) {
       var params = JSON.stringify(callServerParams);
       $.post(
         "/result/runwidget/" + widgetName,
-        { username: username, job_id: jobId, dbpath: dbPath, params: params, ftable_uid: infomgr.ftable_uid },
+        { username: username, uid: uid, dbpath: dbPath, params: params, ftable_uid: infomgr.ftable_uid },
         function (response) {
           var widgetContentDiv = document.getElementById(
             "widgetcontentdiv_" + widgetName + "_info"
@@ -2311,7 +2315,7 @@ function drawSummaryWidget(widgetName) {
         url: "/result/runwidget/" + widgetName,
         data: {
           username: username,
-          job_id: jobId,
+          uid: uid,
           dbpath: dbPath,
           params: JSON.stringify(callServerParams),
           ftable_uid: infomgr.ftable_uid,
@@ -2372,7 +2376,7 @@ function addLeftPanelFieldSet(tabName, parent, fieldSetName) {
 function makeGrid(columns, data, tabName) {
   var tableDiv = getTableDiv(tabName);
   var $tableDiv = $(tableDiv);
-  var gridObj = loadGridObject(columns, data, tabName, jobId, "main");
+  var gridObj = loadGridObject(columns, data, tabName, uid, "main");
   if (gridObj == undefined) {
     return;
   }
@@ -2407,7 +2411,7 @@ function makeGrid(columns, data, tabName) {
     a.href = window.URL.createObjectURL(
       new Blob([tsvContent], { type: "text/tsv" })
     );
-    a.download = jobId + "_export_" + tabName + ".tsv";
+    a.download = uid + "_export_" + tabName + ".tsv";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -3233,7 +3237,7 @@ function saveWidgetContent(widgetName, tabName) {
         var dataUrl = canvas.toDataURL("image/png");
         download(
           dataUrl,
-          jobId + "_" + tabName + "_" + widgetName + ".png",
+          uid + "_" + tabName + "_" + widgetName + ".png",
           "image/png"
         );
         loadingDiv.parentNode.removeChild(loadingDiv);

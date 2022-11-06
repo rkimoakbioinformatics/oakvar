@@ -56,6 +56,7 @@ import signal
 # for compatibility with oc
 Cravat = Runner
 CravatReport = BaseReporter
+BaseReport = BaseReporter
 CravatFilter = ReportFilter
 constants = consts
 

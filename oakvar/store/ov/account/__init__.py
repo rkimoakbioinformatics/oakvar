@@ -51,7 +51,7 @@ def get_valid_email_pw(args=None, pwconfirm=False) -> Tuple:
         return email, pw
 
 
-def create(email=None, pw=None, args={}, quiet=None) -> bool:
+def create(email=None, pw=None, args={}, quiet=None) -> dict:
     from requests import post
     from ....system import get_system_conf
     from ....util.util import quiet_print
@@ -64,7 +64,7 @@ def create(email=None, pw=None, args={}, quiet=None) -> bool:
         if not email or not pw:
             email, pw = get_email_pw_from_input(email=email, pw=pw, pwconfirm=True)
     if not email:
-        return False
+        return {"msg": "No email", "success": False}
     sys_conf = get_system_conf()
     store_url = sys_conf[store_url_key]
     create_account_url = store_url + "/account/create"
@@ -76,26 +76,25 @@ def create(email=None, pw=None, args={}, quiet=None) -> bool:
         r = post(create_account_url, data=params)
         status_code = r.status_code
         if status_code == 403:
-            quiet_print(f"User already exists.", args=args, quiet=quiet)
-            return True
+            msg = "User already exists."
+            quiet_print(msg, args=args, quiet=quiet)
+            return {"msg": msg, "success": False}
         elif status_code == 202:
-            quiet_print(
-                f"Check your inbox for a verification email.", args=args, quiet=quiet
-            )
-            return True
+            msg = f"Check your inbox for a verification email."
+            quiet_print(msg, args=args, quiet=quiet)
+            return {"msg": msg, "success": True}
         elif status_code == 201:
-            quiet_print(
-                f"Account has been created. Check your inbox for a verification email.",
-                args=args,
-                quiet=quiet,
-            )
-            return True
+            msg = f"Account has been created. Check your inbox for a verification email."
+            quiet_print(msg, args=args, quiet=quiet)
+            return {"msg": msg, "success": True}
         else:
-            quiet_print(f"fail. {r.text}", args=args, quiet=quiet)
-            return False
+            msg = f"fail. {r.text}"
+            quiet_print(msg, args=args, quiet=quiet)
+            return {"msg": msg, "success": False}
     except Exception as e:
-        quiet_print(f"fail. {e}", args=args, quiet=quiet)
-        return False
+        msg = f"fail. {e}"
+        quiet_print(msg, args=args, quiet=quiet)
+        return {"msg": msg, "success": False}
 
 
 def delete(args={}) -> bool:
@@ -512,7 +511,8 @@ def login_with_email_pw(email=None, pw=None, args={}, conf={}) -> bool:
             email = emailpw[0]
             pw = emailpw[1]
             while True:
-                if create(email=email, pw=pw, quiet=False):
+                ret = create(email=email, pw=pw, quiet=False)
+                if ret.get("success"):
                     break
             wait_for_email_verified(email, args=args)
             login(email=email, pw=pw, args=args)
@@ -532,7 +532,8 @@ def total_login(email=None, pw=None, args={}, conf=None) -> bool:
     show_no_user_account_prelude()
     while True:
         email, pw = get_email_pw_from_input(pwconfirm=True)
-        if create(email=email, pw=pw, quiet=False):
+        ret = create(email=email, pw=pw, quiet=False)
+        if ret.get("success"):
             break
     wait_for_email_verified(email, args=args)
     ret = login(email=email, pw=pw, args=args)

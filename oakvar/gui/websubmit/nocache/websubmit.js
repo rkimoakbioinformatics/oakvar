@@ -1324,7 +1324,6 @@ function onClickCtaAnalysisModuleChoice() {
 }
 
 function getSystemLog() {
-  console.log("@ here")
   axios({
     url: "/submit/systemlog",
     method: "GET",

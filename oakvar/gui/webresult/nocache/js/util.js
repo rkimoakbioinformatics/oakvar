@@ -109,7 +109,7 @@ function saveFilterSetting(name, useFilterJson) {
       url: "/result/service/savefiltersetting",
       data: {
         username: username,
-        job_id: jobId,
+        uid: uid,
         dbpath: dbPath,
         name: name,
         savedata: saveDataStr,
@@ -127,7 +127,7 @@ function deleteFilterSetting(name) {
   return new Promise((resolve, _) => {
     $.get("/result/service/deletefiltersetting", {
       username: username,
-      job_id: jobId,
+      uid: uid,
       dbpath: dbPath,
       name: name,
     }).done(function (response) {
@@ -146,7 +146,7 @@ async function saveLayoutSettingAs(evt) {
   evt.stopPropagation()
   hideAllMenu3()
   var res = await axios.get("/result/service/getlayoutsavenames", {
-    params: { job_id: jobId, dbpath: dbPath },
+    params: { uid: uid, dbpath: dbPath },
   });
   var response = res.data
   var quickSaveNameIdx = response.indexOf(quickSaveName);
@@ -171,7 +171,7 @@ function saveFilterSettingAs() {
   return new Promise((resolve, _) => {
     $.get("/result/service/getfiltersavenames", {
       username: username,
-      job_id: jobId,
+      uid: uid,
       dbpath: dbPath,
     }).done(function (response) {
       var quickSaveNameIdx = response.indexOf(quickSaveName);
@@ -257,7 +257,7 @@ function saveWidgetSetting(name) {
     async: true,
     data: {
       username: username,
-      job_id: jobId,
+      uid: uid,
       dbpath: dbPath,
       name: name,
       savedata: saveDataStr,
@@ -434,7 +434,7 @@ async function saveLayoutSetting(name, nextAction) {
   var saveDataStr = JSON.stringify(saveData);
   var res = await axios.post("/result/service/savelayoutsetting", {
     username: username,
-    job_id: jobId,
+    uid: uid,
     dbpath: dbPath,
     name: name,
     savedata: saveDataStr,
@@ -572,7 +572,7 @@ function applyTableSetting(level) {
 function loadFilterSettingAs() {
   $.get("/result/service/getfiltersavenames", {
     username: username,
-    job_id: jobId,
+    uid: uid,
     dbpath: dbPath,
   }).done(function (response) {
     var quickSaveNameIdx = response.indexOf(quickSaveName);
@@ -610,7 +610,7 @@ function loadFilterSettingAs() {
 
 async function loadSamples() {
   response = await axios.get("/result/service/samples", {
-    params: { username: username, job_id: jobId, dbpath: dbPath },
+    params: { username: username, uid: uid, dbpath: dbPath },
   }); //.done(response=>{
   response = response.data;
   allSamples = response;
@@ -618,7 +618,7 @@ async function loadSamples() {
 
 async function loadSmartFilters() {
   var response = await axios.get("/result/service/smartfilters", {
-    params: { username: username, job_id: jobId, dbpath: dbPath },
+    params: { username: username, uid: uid, dbpath: dbPath },
   }); //.done(function (response) {
   response = response.data;
   smartFilters = {};
@@ -643,7 +643,7 @@ async function loadSmartFilters() {
 
 async function loadFilterSetting() {
   response = await axios.get("/result/service/loadfiltersetting", {
-    params: { username: username, job_id: jobId, dbpath: dbPath, name: name },
+    params: { username: username, uid: uid, dbpath: dbPath, name: name },
   })
   response = response.data;
   writeLogDiv("Filter setting loaded");
@@ -721,7 +721,7 @@ function getSavedFilter(name) {
   return new Promise((resolve, _) => {
     $.get("/result/service/loadfiltersetting", {
       username: username,
-      job_id: jobId,
+      uid: uid,
       dbpath: dbPath,
       name: name,
     }).done(function (response) {
@@ -760,7 +760,7 @@ async function loadLayoutSettingAs(evt) {
   var res = await axios.get("/result/service/getlayoutsavenames", {
     params: {
       username: username,
-      job_id: jobId,
+      uid: uid,
       dbpath: dbPath,
     },
   });
@@ -792,7 +792,7 @@ async function loadLayoutSettingAs(evt) {
 
 async function loadLayoutSetting(name) {
   var response = await axios.get("/result/service/loadlayoutsetting", {
-    params: { username: username, job_id: jobId, dbpath: dbPath, name: name },
+    params: { username: username, uid: uid, dbpath: dbPath, name: name },
   });
   var data = response.data;
   loadedTableSettings = data["tableSettings"];
@@ -847,7 +847,7 @@ async function deleteLayoutSettingAs(evt) {
   var div = document.getElementById(divId)
   var res = await axios.get("/result/service/getlayoutsavenames", {
     params: {username: username,
-      job_id: jobId,
+      uid: uid,
       dbpath: dbPath,
   }})
   var response = res.data
@@ -878,7 +878,7 @@ async function deleteLayoutSettingAs(evt) {
 async function deleteLayoutSetting(name, _) {
   await axios.get("/result/service/deletelayoutsetting", {
     params: {username: username,
-      job_id: jobId,
+      uid: uid,
       dbpath: dbPath,
       name: name,
   }})
@@ -892,7 +892,7 @@ async function renameLayoutSettingAs(evt) {
   var div = document.getElementById(divId)
   var res = await axios.get("/result/service/getlayoutsavenames", {
     params: {username: username,
-      job_id: jobId,
+      uid: uid,
       dbpath: dbPath,
   }})
   var response = res.data
@@ -925,7 +925,7 @@ function renameLayoutSetting(name, _) {
   if (newName != null) {
     $.get("/result/service/renamelayoutsetting", {
       username: username,
-      job_id: jobId,
+      uid: uid,
       dbpath: dbPath,
       name: name,
       newname: newName,

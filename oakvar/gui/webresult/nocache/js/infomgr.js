@@ -17,15 +17,15 @@ function InfoMgr() {
   this.ftable_uid = null
 }
 
-InfoMgr.prototype.getStatus = function (jobId) {
+InfoMgr.prototype.getStatus = function (uid) {
   var self = this;
-  self.jobId = jobId;
+  self.uid = uid;
 };
 
 InfoMgr.prototype.count = async function (dbPath, tabName, callback) {
   const data = {
     username: username,
-    job_id: jobId,
+    uid: uid,
     tab: tabName,
     dbpath: dbPath,
     filter: JSON.stringify(filterJson),
@@ -64,7 +64,7 @@ function setPageSize(inputPageSize) {
   pageSize = inputPageSize
 }
 
-InfoMgr.prototype.load_job = async function (jobId, tabName, setResetTab = true) {
+InfoMgr.prototype.load_job = async function (uid, tabName, setResetTab = true) {
   var self = this;
   if (filterJson === []) {
     filterJson = {};
@@ -85,7 +85,7 @@ InfoMgr.prototype.load_job = async function (jobId, tabName, setResetTab = true)
     },
     data: {
       username: username,
-      job_id: jobId,
+      uid: uid,
       tab: tabName,
       dbpath: dbPath,
       confpath: confPath,
@@ -125,21 +125,21 @@ InfoMgr.prototype.load_job = async function (jobId, tabName, setResetTab = true)
   return true
 }
 
-InfoMgr.prototype.load_info = async function (jobId, _tabName) {
+InfoMgr.prototype.load_info = async function (_tabName) {
   var self = this;
   const response = await axios.get("/result/service/status", {
-    params: { username: username, job_id: jobId, dbpath: dbPath },
+    params: { uid: uid, dbpath: dbPath },
   });
   self.jobinfo = response.data;
   if (self.jobinfo["dbpath"] && !dbPath) {
     dbPath = self.jobinfo["dbpath"];
   }
-  if (self.jobinfo["job_id"] && jobId) {
-    jobId = self.jobinfo["job_id"];
+  if (self.jobinfo["uid"] && uid) {
+    uid = self.jobinfo["job_id"];
   }
 }
 
-InfoMgr.prototype.load = async function (_jobId, tabName, fetchtype) {
+InfoMgr.prototype.load = async function (_uid, tabName, fetchtype) {
   var self = this;
   if (fetchtype == "single") {
     var response = await axios.get("/submit/annotate", {

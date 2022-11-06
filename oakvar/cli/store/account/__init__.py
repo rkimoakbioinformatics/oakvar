@@ -12,6 +12,7 @@ def create(args, __name__="store account create"):
     from ....store.ov.account import create
 
     ret = create(args=args)
+    ret = ret.get("success")
     return ret
 
 

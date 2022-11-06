@@ -177,14 +177,14 @@ class WebServer(object):
                 self.app.router.add_static("/webapps", join(modules_dir, "webapps"))
         if self.cors:
             for resource in list(self.app.router.resources()):
-                self.cors.add(resource,
-                    {
-                        "*": ResourceOptions(
-                            allow_credentials=True,
-                            expose_headers="*",
-                            allow_headers="*",
-                            allow_methods=["GET", "POST"]),
-                    })
+                self.cors.add(resource, {
+                    "http://0.0.0.0:3000": ResourceOptions(
+                        allow_credentials=True,
+                        expose_headers="*",
+                        allow_headers="*",
+                        allow_methods="*"
+                    ),
+                })
         ws.start_worker()
         wu.start_worker()
 

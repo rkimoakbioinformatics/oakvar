@@ -3,6 +3,7 @@ import aiosqlite
 import json
 import sys
 import imp
+from typing import Optional
 from ... import ReportFilter
 from ...consts import base_smartfilters
 from aiohttp import web
@@ -22,7 +23,7 @@ async def get_nowg_annot_modules(_):
 
 async def get_filter_save_names(request):
     _ = request.rel_url.query
-    _, dbpath = await get_jobid_dbpath(request)
+    dbpath = await get_dbpath(request)
     conn = None
     cursor = None
     content = []
@@ -53,7 +54,7 @@ async def get_filter_save_names(request):
 
 async def get_layout_save_names(request):
     _ = request.rel_url.query
-    _, dbpath = await get_jobid_dbpath(request)
+    dbpath = await get_dbpath(request)
     content = []
     conn = await get_db_conn(dbpath)
     if conn is not None:
@@ -73,7 +74,7 @@ async def get_layout_save_names(request):
 
 async def rename_layout_setting(request):
     queries = request.rel_url.query
-    _, dbpath = await get_jobid_dbpath(request)
+    dbpath = await get_dbpath(request)
     content = {}
     name = queries["name"]
     new_name = queries["newname"]
@@ -108,7 +109,7 @@ async def get_db_conn(dbpath):
 
 async def delete_layout_setting(request):
     queries = request.rel_url.query
-    _, dbpath = await get_jobid_dbpath(request)
+    dbpath = await get_dbpath(request)
     name = queries["name"]
     content = {}
     conn = await get_db_conn(dbpath)
@@ -133,7 +134,7 @@ async def delete_layout_setting(request):
 
 async def load_layout_setting(request):
     queries = request.rel_url.query
-    _, dbpath = await get_jobid_dbpath(request)
+    dbpath = await get_dbpath(request)
     name = queries["name"]
     conn = await get_db_conn(dbpath)
     content = {"widgetSettings": {}}
@@ -163,7 +164,7 @@ async def load_layout_setting(request):
 
 async def load_filter_setting(request):
     queries = request.rel_url.query
-    _, dbpath = await get_jobid_dbpath(request)
+    dbpath = await get_dbpath(request)
     name = queries["name"]
     conn = await get_db_conn(dbpath)
     content = {"filterSet": []}
@@ -197,7 +198,7 @@ async def save_layout_setting(request):
     text_data = await request.text()
     text_data = unquote(text_data)
     queries = loads(text_data)
-    _, dbpath = await get_jobid_dbpath(request)
+    dbpath = await get_dbpath(request)
     name = queries["name"]
     savedata = queries["savedata"]
     conn = await get_db_conn(dbpath)
@@ -232,7 +233,7 @@ async def save_layout_setting(request):
 
 async def save_filter_setting(request):
     queries = request.rel_url.query
-    _, dbpath = await get_jobid_dbpath(request)
+    dbpath = await get_dbpath(request)
     name = queries["name"]
     savedata = queries["savedata"]
     conn = await get_db_conn(dbpath)
@@ -276,7 +277,7 @@ async def save_filter_setting(request):
 
 async def delete_filter_setting(request):
     queries = request.rel_url.query
-    _, dbpath = await get_jobid_dbpath(request)
+    dbpath = await get_dbpath(request)
     name = queries["name"]
     conn = await get_db_conn(dbpath)
     content = "fail"
@@ -303,21 +304,25 @@ async def delete_filter_setting(request):
 
 
 async def get_status(request):
-    job_id, dbpath = await get_jobid_dbpath(request)
+    from aiohttp.web import Response
+
+    global logger
+    dbpath = await get_dbpath(request)
     conn = await get_db_conn(dbpath)
+    if not conn:
+        if logger:
+            logger.error(f"db connection could not be made for {dbpath}.")
+        return Response(status=500)
     content = {}
-    if conn:
-        cursor = await conn.cursor()
-        q = 'select * from info where colkey not like "\_%" escape "\\"'  # type: ignore
-        await cursor.execute(q)
-        for row in await cursor.fetchall():
-            content[row[0]] = row[1]
-        if "dbpath" not in content:
-            content["dbpath"] = dbpath
-        if "job_id" not in content:
-            content["job_id"] = job_id
-        await cursor.close()
-        await conn.close()
+    cursor = await conn.cursor()
+    q = r"select * from info where colkey not like '\_%' escape '\'"
+    await cursor.execute(q)
+    for row in await cursor.fetchall():
+        content[row[0]] = row[1]
+    if "dbpath" not in content:
+        content["dbpath"] = dbpath
+    await cursor.close()
+    await conn.close()
     return web.json_response(content)
 
 
@@ -349,7 +354,7 @@ async def get_count(request):
     from ...exceptions import DatabaseConnectionError
 
     global logger
-    _, dbpath = await get_jobid_dbpath(request)
+    dbpath = await get_dbpath(request)
     if dbpath is None:
         raise DatabaseConnectionError("result database")
     queries = await request.json()
@@ -378,7 +383,7 @@ async def get_result(request):
 
     global logger
     queries = await request.json()
-    _, dbpath = await get_jobid_dbpath(request)
+    dbpath = await get_dbpath(request)
     if dbpath is None:
         raise DatabaseConnectionError("result database")
     dbname = os.path.basename(dbpath)
@@ -411,7 +416,7 @@ async def get_result(request):
         ],
     )
     m = imp.load_module(reporter_name, f, fn, d)  # type: ignore
-    arg_dict = {"dbpath": dbpath, "module_name": reporter_name}
+    arg_dict = {"dbpath": dbpath, "module_name": reporter_name, "nogenelevelonvariantlevel": True}
     if confpath != None:
         arg_dict["confpath"] = confpath
     if filterstring != None:
@@ -490,8 +495,7 @@ async def get_result_levels(request):
     sys_conf = get_system_conf()
     gui_result_pagesize = sys_conf.get("gui_result_pagesize", default_gui_result_pagesize)
     content = {"gui_result_pagesize": gui_result_pagesize}
-    _ = request.rel_url.query
-    _, dbpath = await get_jobid_dbpath(request)
+    dbpath = await get_dbpath(request)
     content = {}
     if not dbpath:
         content["levels"] = ["NODB"]
@@ -519,52 +523,34 @@ async def get_result_levels(request):
     return web.json_response(content)
 
 
-async def get_jobid_dbpath(request):
+async def get_dbpath(request) -> Optional[str]:
+    from ..websubmit.multiuser import get_email_from_request
+    from ..websubmit.multiuser import get_serveradmindb
+
     global servermode
+    global wu
     method = request.method
     queries = None
-    job_id = None
-    dbpath = None
     if method == "GET":
         queries = request.rel_url.query
     elif method == "POST":
         queries = await request.json()
-    if queries is not None:
-        if "username" in queries:
-            given_username = queries["username"]
-        else:
-            given_username = ""
-        if "job_id" in queries:
-            job_id = queries["job_id"]
-        else:
-            job_id = ""
-        if "dbpath" in queries:
-            dbpath = queries["dbpath"]
-        else:
-            dbpath = ""
-        if not dbpath:
-            if job_id:
-                global wu
-                if wu is not None:
-                    if given_username != "":
-                        job_dir = await wu.filerouter.job_dir(
-                            request, job_id, given_username=given_username
-                        )
-                    else:
-                        job_dir = await wu.filerouter.job_dir(request, job_id)
-                    status_json = wu.get_status_json_in_dir(job_dir)
-                    if status_json is not None and "db_path" in status_json:
-                        dbpath = status_json["db_path"]
-                    else:
-                        dbpath = None
-                else:
-                    dbpath = None
-    return job_id, dbpath
+    if not queries:
+        return None
+    dbpath = queries.get("dbpath")
+    if dbpath:
+        return dbpath
+    username = get_email_from_request(request)
+    uid = queries.get("uid")
+    if uid and username:
+        serveradmindb = await get_serveradmindb()
+        dbpath = await serveradmindb.get_dbpath_by_eud(eud={"uid": uid, "username": username})
+    return dbpath
 
 
 async def get_variant_cols(request):
     queries = request.rel_url.query
-    _, dbpath = await get_jobid_dbpath(request)
+    dbpath = await get_dbpath(request)
     confpath = queries.get("confpath")
     filterstring = queries.get("filter")
     add_summary = queries.get("add_summary", True)
@@ -693,13 +679,10 @@ async def get_colinfo(dbpath, confpath=None, filterstring=None, add_summary=True
     arg_dict["reports"] = ["text"]
     reporter = m.Reporter(arg_dict)
     await reporter.prep()
-    print(f"@ reporter={reporter}")
     #reporter_levels = await reporter.get_levels_to_run("all")
-    #print(f"@@@ levels={reporter_levels}")
     #reporter.levels = reporter_levels
     try:
         colinfo = await reporter.get_variant_colinfo(add_summary=add_summary)
-        print(f"@ colinfo={colinfo}")
         await reporter.close_db()
         if reporter.cf is not None:
             await reporter.cf.close_db()
@@ -746,8 +729,7 @@ async def serve_runwidget(request):
 
     path = "wg" + request.match_info["module"]
     queries = request.rel_url.query
-    print(f"@ queries={queries}")
-    _, dbpath = await get_jobid_dbpath(request)
+    dbpath = await get_dbpath(request)
     if ("dbpath" not in queries or queries["dbpath"] == "") and dbpath is not None:
         new_queries = {}
         new_queries["dbpath"] = dbpath
@@ -794,7 +776,7 @@ async def serve_runwidget_post(request):
     from ...system import get_modules_dir
 
     path = "wg" + request.match_info["module"]
-    _, dbpath = await get_jobid_dbpath(request)
+    dbpath = await get_dbpath(request)
     queries = await request.json()
     new_queries = {}
     for k in queries:
@@ -829,7 +811,7 @@ async def serve_runwidget_post(request):
 
 async def get_modules_info(request):
     _ = request.rel_url.query
-    _, dbpath = await get_jobid_dbpath(request)
+    dbpath = await get_dbpath(request)
     conn = await get_db_conn(dbpath)
     content = {}
     if conn is not None:
@@ -855,8 +837,7 @@ async def get_modules_info(request):
 
 
 async def load_smartfilters(request):
-    _ = request.rel_url.query
-    _, dbpath = await get_jobid_dbpath(request)
+    dbpath = await get_dbpath(request)
     sfs = {"base": base_smartfilters}
     conn = await get_db_conn(dbpath)
     if not conn:
@@ -883,7 +864,7 @@ async def load_smartfilters(request):
 
 
 async def get_samples(request):
-    _, dbpath = await get_jobid_dbpath(request)
+    dbpath = await get_dbpath(request)
     conn = await get_db_conn(dbpath)
     samples = []
     if conn is not None:
@@ -902,7 +883,7 @@ async def get_samples(request):
 async def get_variants_for_hugo(request):
     from ...exceptions import DatabaseConnectionError
     hugo = request.match_info["hugo"]
-    _, dbpath = await get_jobid_dbpath(request)
+    dbpath = await get_dbpath(request)
     if dbpath is None:
         raise DatabaseConnectionError("result database")
     conn = await get_db_conn(dbpath)
@@ -919,7 +900,7 @@ async def get_variants_for_hugo(request):
 
 async def get_variantdbcols(request):
     from ...exceptions import DatabaseConnectionError
-    _, dbpath = await get_jobid_dbpath(request)
+    dbpath = await get_dbpath(request)
     if dbpath is None:
         raise DatabaseConnectionError("result database")
     conn = await get_db_conn(dbpath)

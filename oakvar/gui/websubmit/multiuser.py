@@ -66,15 +66,20 @@ def create_user_dir_if_not_exist (username):
     if exists(user_job_dir) == False:
         mkdir(user_job_dir)
 
+def get_token(request):
+    return request.cookies.get(COOKIE_KEY)
+
 def get_email_from_request(request):
     from ...system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
     global servermode
-    email = None
-    token = request.cookies.get(COOKIE_KEY)
+    global servermode
+    if not servermode:
+        return DEFAULT_SERVER_DEFAULT_USERNAME
+    token = get_token(request)
     if token:
         email = get_email_from_oakvar_token(token)
-    elif not servermode:
-        email = DEFAULT_SERVER_DEFAULT_USERNAME
+    else:
+        email = None
     return email
 
 def get_email_from_oakvar_token(token):
@@ -109,7 +114,7 @@ async def loginsuccess(request):
     email = payload.get("email")
     if not email:
         return HTTPNotFound()
-    response = json_response({"status": "loggedin"})
+    response = json_response({"status": "logged", "email": email})
     admindb = await get_serveradmindb()
     await admindb.add_user_if_not_exist(email, "", "", "")
     oakvar_token = jwt.encode({"email": email}, DEFAULT_PRIVATE_KEY, algorithm="HS256")
@@ -134,13 +139,13 @@ async def check_logged (request):
     return json_response(response)
 
 async def logout (_):
-    from aiohttp.web import json_response
+    from aiohttp.web import Response
     global servermode
     if servermode:
-        response = json_response({"status": "success"})
+        response = Response(status=200)
         response.del_cookie(COOKIE_KEY)
     else:
-        response = json_response({"status": "error"})
+        response = Response(status=403)
     return response
 
 async def restart (request):
@@ -196,6 +201,43 @@ async def get_serveradmindb():
         serveradmindb = ServerAdminDb()
     return serveradmindb
 
+async def delete_token(_):
+    from aiohttp.web import Response
+
+    global servermode
+    response = Response(status=200)
+    response.del_cookie(COOKIE_KEY)
+    return response
+
+async def signup(request):
+    from aiohttp.web import Response
+    import jwt
+    from ...store.ov.account import create
+
+    global servermode
+    if not servermode:
+        return Response(status=403)
+    data = await request.json()
+    email = data.get("email")
+    password = data.get("password")
+    if not email:
+        return Response(body="No email", status=403)
+    if not password:
+        return Response(body="No password", status=403)
+    serveradmindb = await get_serveradmindb()
+    if await serveradmindb.check_username_presence(email):
+        return Response(body="Account exists.", status=403)
+    ret = create(email=email, pw=password)
+    msg = ret.get("msg")
+    if not ret.get("success"):
+        return Response(body=msg, status=403)
+    await serveradmindb.add_user_if_not_exist(email, "", "", "")
+    oakvar_token = jwt.encode({"email": email}, DEFAULT_PRIVATE_KEY, algorithm="HS256")
+    response = Response(body=msg, status=200)
+    response.set_cookie(COOKIE_KEY, oakvar_token, httponly=True)
+    return response
+
+
 def add_routes (router):
     from os.path import dirname
     from os.path import realpath
@@ -205,6 +247,8 @@ def add_routes (router):
     router.add_route('GET', '/server/usersettings', get_user_settings)
     router.add_route('GET', '/server/checklogged', check_logged)
     router.add_route('GET', '/server/username', get_username)
+    router.add_route('GET', '/server/deletetoken', delete_token)
+    router.add_route('POST', '/server/signup', signup)
     """
     router.add_route('GET', '/server/login', login)
     router.add_route('GET', '/server/passwordquestion', get_password_question)

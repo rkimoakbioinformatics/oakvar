@@ -93,6 +93,7 @@ async def resubmit(request):
     from os import listdir
     from os.path import join
     from aiohttp.web import json_response
+    from aiohttp.web import Response
     from json import load
     from json import dump
 
@@ -101,7 +102,7 @@ async def resubmit(request):
     global info_of_running_jobs
     if servermode:
         if await mu.is_loggedin(request) == False:
-            return json_response({"status": "notloggedin"})
+            return Response(status=403)
     queries = request.rel_url.query
     job_id = queries["job_id"]
     job_dir = queries["job_dir"]
@@ -151,7 +152,7 @@ async def resubmit(request):
     if job_id not in job_ids:
         job_ids.append(job_id)
     info_of_running_jobs = job_ids
-    qitem = {"cmd": "submit", "uid": uid, "run_args": run_args}
+    qitem = {"cmd": "submit", "uid": job_id, "run_args": run_args}
     if job_queue is not None:
         job_queue.put(qitem)
         status_json["status"] = "Submitted"
@@ -192,6 +193,7 @@ async def submit(request):
     from datetime import datetime
     from aiohttp.web import json_response
     from aiohttp.web import HTTPForbidden
+    from aiohttp.web import Response
     from json import dump
     from ...util.admin_util import set_user_conf_prop
     from ...util.admin_util import get_current_package_version
@@ -208,7 +210,7 @@ async def submit(request):
     if ret:
         return ret
     if not await mu.is_loggedin(request):
-        return json_response({"status": "notloggedin"})
+        return Response(status=403)
     if not job_queue:
         return json_response({"status": "server error. Job queue is not running."})
     if not mu:
@@ -345,6 +347,7 @@ async def submit(request):
         dump(status_json, wf, indent=2, sort_keys=True)
     job.set_info_values(statusjson=status_json)
     uid = await mu.add_job_info(request, job)
+    run_args.extend(["--uid", str(uid)])
     qitem = {"cmd": "submit", "uid": uid, "run_args": run_args}
     job_queue.put(qitem)
     job_ids = info_of_running_jobs
@@ -444,16 +447,17 @@ def mark_job_as_aborted(job):
 
 async def get_jobs(request):
     from aiohttp.web import json_response
+    from aiohttp.web import Response
     from .multiuser import get_serveradmindb
     from .multiuser import get_email_from_request
 
     global servermode
     global info_of_running_jobs
     if not await mu.is_loggedin(request):
-        return json_response({"status": "notloggedin"})
-    queries = request.rel_url.query # get
-    pageno = queries.get("pageno")
-    pagesize = queries.get("pagesize")
+        return Response(status=403)
+    data = await request.json()
+    pageno = data.get("pageno")
+    pagesize = data.get("pagesize")
     admindb = await get_serveradmindb()
     email = get_email_from_request(request)
     jobs = await admindb.get_jobs_of_email(email, pageno=pageno, pagesize=pagesize)
@@ -472,8 +476,8 @@ async def view_job(request):
     from .userjob import get_user_job_dbpath
 
     global VIEW_PROCESS
-    uid, dbpath = await get_uid_dbpath_from_request(request)
-    db_path = await get_user_job_dbpath(request, job_id_or_dbpath)
+    eud = await get_eud_from_request(request)
+    db_path = await get_user_job_dbpath(request, eud=eud)
     if not db_path:
         return Response(status=404)
     if not Path(db_path).exists():
@@ -485,12 +489,11 @@ async def view_job(request):
 
 
 async def get_job_status(request):
-    from aiohttp.web import json_response
     from aiohttp.web import Response
     from .serveradmindb import ServerAdminDb
     global servermode
     if not await mu.is_loggedin(request):
-        return json_response({"status": "notloggedin"})
+        return Response(status=403)
     queries = request.rel_url.query
     uid = queries.get("uid")
     if not uid:
@@ -505,25 +508,26 @@ async def get_job_status(request):
 async def download_db(request):
     from aiohttp.web import Response
     from aiohttp.web import FileResponse
+    from pathlib import Path
     from .userjob import get_user_job_dbpath
 
-    job_id_or_dbpath = await get_uid_dbpath_from_request(request)
-    if not job_id_or_dbpath:
+    eud = await get_eud_from_request(request)
+    dbpath = eud.get("dbpath")
+    if not dbpath:
+        dbpath = await get_user_job_dbpath(request, eud=eud)
+    if not dbpath:
         return Response(status=404)
-    db_path = await get_user_job_dbpath(request, job_id_or_dbpath)
-    db_fname = job_id_or_dbpath + ".sqlite"
+    db_fname = Path(dbpath).name
     headers = {"Content-Disposition": "attachment; filename=" + db_fname}
-    if not db_path:
-        return Response(status=404)
-    return FileResponse(db_path, headers=headers)
+    return FileResponse(dbpath, headers=headers)
 
 
 async def get_job_log(request):
     from aiohttp.web import Response
     from .userjob import get_user_job_log
 
-    job_id_or_dbpath = await get_uid_dbpath_from_request(request)
-    log_path = await get_user_job_log(request, job_id_or_dbpath)
+    eud = await get_eud_from_request(request)
+    log_path = await get_user_job_log(request, eud=eud)
     if not log_path:
         return Response(text="log file does not exist.")
     with open(log_path) as f:
@@ -578,8 +582,7 @@ async def get_uid_dbpath_from_request(request) -> Tuple[Optional[str], Optional[
     return uid, dbpath
 
 async def generate_report(request):
-    from os.path import join
-    from os.path import dirname
+    from pathlib import Path
     from os import remove
     from aiohttp.web import json_response
     from aiohttp.web import Response
@@ -589,37 +592,37 @@ async def generate_report(request):
     from .userjob import get_user_job_dbpath
     from .multiuser import get_email_from_request
 
-
+    global report_generation_ps
     username = get_email_from_request(request)
-    uid_or_dbpath = await get_uid_dbpath_from_request(request)
-    print(f"@ generate_report. uid_or_dbpath={uid_or_dbpath}")
-    if not uid_or_dbpath:
+    uid, dbpath = await get_uid_dbpath_from_request(request)
+    if (not username or not uid) and not dbpath:
         return Response(status=404)
     report_type = request.match_info["report_type"]
     eud = {"username": username, "uid": uid, "dbpath": dbpath}
-    job_db_path = await get_user_job_dbpath(request, eud)
-    if not job_db_path:
+    if not dbpath:
+        dbpath = await get_user_job_dbpath(request, eud)
+    if not dbpath:
         return Response(status=404)
-    run_args = ["ov", "report", job_db_path]
+    run_args = ["ov", "report", dbpath]
     run_args.extend(["-t", report_type])
-    if uid_or_dbpath not in report_generation_ps:
-        report_generation_ps[uid_or_dbpath] = {}
-    report_generation_ps[uid_or_dbpath][report_type] = True
-    tmp_flag_path = join(
-        dirname(job_db_path), uid_or_dbpath + ".report_being_generated." + report_type
-    )
-    wf = open(tmp_flag_path, "w")
-    wf.write(report_type)
-    wf.close()
+    key = uid or dbpath
+    if key not in report_generation_ps:
+        report_generation_ps[key] = {}
+    report_generation_ps[key][report_type] = True
+    suffix = ".report_being_generated." + report_type
+    tmp_flag_path = Path(dbpath).with_suffix(suffix)
+    with open(tmp_flag_path, "w") as wf:
+        wf.write(report_type)
+        wf.close()
     p = await create_subprocess_shell(
         " ".join(run_args), stderr=PIPE
     )
     _, err = await p.communicate()
     remove(tmp_flag_path)
-    if report_type in report_generation_ps[uid_or_dbpath]:
-        del report_generation_ps[uid_or_dbpath][report_type]
-    if uid_or_dbpath in report_generation_ps and len(report_generation_ps[uid_or_dbpath]) == 0:
-        del report_generation_ps[uid_or_dbpath]
+    if report_type in report_generation_ps[key]:
+        del report_generation_ps[key][report_type]
+    if key in report_generation_ps and len(report_generation_ps[key]) == 0:
+        del report_generation_ps[key]
     response = "done"
     if len(err) > 0:
         logger = getLogger()
@@ -628,15 +631,15 @@ async def generate_report(request):
     return json_response(response)
 
 
-async def get_report_paths(request, job_id_or_dbpath, report_type):
+async def get_report_paths(request, report_type, eud={}):
     from .userjob import get_job_dir_from_eud
     from .userjob import get_user_job_report_paths
     from pathlib import Path
 
-    report_filenames = await get_user_job_report_paths(request, job_id_or_dbpath, report_type)
+    report_filenames = await get_user_job_report_paths(request, report_type, eud=eud)
     if report_filenames is None:
         return None
-    job_dir = await get_job_dir_from_eud(request, job_id_or_dbpath)
+    job_dir = await get_job_dir_from_eud(request, eud=eud)
     if not job_dir:
         return None
     report_paths = [str(Path(job_dir) / v) for v in report_filenames]
@@ -647,11 +650,15 @@ async def download_report(request):
     from aiohttp.web import FileResponse
     from os.path import exists
     from os.path import basename
-    job_id_or_dbpath = await get_uid_dbpath_from_request(request)
-    if not job_id_or_dbpath:
+    from .multiuser import get_email_from_request
+
+    uid, dbpath = await get_uid_dbpath_from_request(request)
+    username = get_email_from_request(request)
+    if not uid and not dbpath:
         return HTTPNotFound
+    eud = {"uid": uid, "dbpath": dbpath, "username": username}
     report_type = request.match_info["report_type"]
-    report_paths = await get_report_paths(request, job_id_or_dbpath, report_type)
+    report_paths = await get_report_paths(request, report_type, eud=eud)
     if not report_paths:
         raise HTTPNotFound
     report_path = report_paths[0]
@@ -705,17 +712,9 @@ async def update_system_conf(request):
     if servermode and mu:
         username = await mu.get_username(request)
         if username != "admin":
-            return json_response(
-                {"success": False, "msg": "Only admin can change the settings."}
-            )
-        r = await mu.is_loggedin(request)
-        if r == False:
-            return json_response(
-                {
-                    "success": False,
-                    "mgs": "Only logged-in admin can change the settings.",
-                }
-            )
+            return Response(status=403)
+        if not await mu.is_loggedin(request):
+            return Response(status=403)
     queries = request.rel_url.query
     sysconf = loads(queries["sysconf"])
     try:
@@ -786,31 +785,39 @@ def get_last_assembly(_):
     return json_response(assembly)
 
 
-async def delete_job(request):
+async def delete_jobs(request):
     from aiohttp.web import Response
     from pathlib import Path
     from asyncio import sleep
     from .userjob import get_job_dir_from_eud
+    from .multiuser import get_email_from_request
 
     global job_queue
-    uid_or_dbpath = await get_uid_dbpath_from_request(request)
-    if not isinstance(uid_or_dbpath, list):
-        uid_or_dbpath = [uid_or_dbpath]
-    for v in uid_or_dbpath:
-        print(f"@ v={v}")
-        job_dir = await get_job_dir_from_eud(request, uid=v)
-        if not job_dir:
-            return Response(status=404)
-        qitem = {"cmd": "delete", "uid": v, "job_dir": job_dir}
-        if job_queue is None:
-            return Response(status=500)
-        job_queue.put(qitem)
-        job_dir_p = Path(job_dir)
-        while True:
-            if not job_dir_p.exists():
+    if job_queue is None:
+        return Response(status=500)
+    data = await request.json()
+    uids = data.get("uids")
+    abort_only = data.get("abort_only", False)
+    if not uids:
+        return Response(status=404)
+    username = get_email_from_request(request)
+    qitem = {"cmd": "delete", "uids": uids, "username": username, "abort_only": abort_only}
+    job_queue.put(qitem)
+    job_dir_ps = []
+    for uid in uids:
+        p = await get_job_dir_from_eud(request, {"username": username, "uid": uid})
+        if p:
+            job_dir_ps.append(Path(p))
+    while True:
+        p_exist = False
+        for p in job_dir_ps:
+            if p.exists():
+                p_exist = True
                 break
-            else:
-                await sleep(1)
+        if not p_exist:
+            break
+        else:
+            await sleep(1)
     return Response()
 
 
@@ -860,51 +867,86 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
             from platform import platform
             from signal import SIGTERM
             from asyncio import sleep
-            p = self.get_process(uid)
-            if p is not None:
-                p.poll()
-                pl = platform().lower()
-                if p:
-                    if pl.startswith("windows"):
-                        # proc.kill() doesn't work well on windows
-                        Popen(
-                            "TASKKILL /F /PID {pid} /T".format(pid=p.pid),
-                            stdout=PIPE,
-                            stderr=PIPE,
-                        )
-                        while True:
-                            await sleep(0.25)
-                            if p.poll() is not None:
-                                break
-                    elif pl.startswith("darwin") or pl.startswith("macos"):
-                        lines = check_output(
-                            'ps -ef | grep {} | grep "ov"'.format(uid), shell=True
-                        )
-                        lines = lines.decode("utf-8")
-                        lines = lines.split("\n")
-                        pids = [int(l.strip().split(" ")[0]) for l in lines if l != ""]
-                        for pid in pids:
-                            if pid == p.pid:
-                                p.kill()
-                            else:
-                                try:
-                                    kill(pid, SIGTERM)
-                                except ProcessLookupError:
-                                    continue
-                    else:
-                        p.kill()
-                self.clean_jobs(id)
 
-        def clean_jobs(self, uid):
+            if not uid:
+                return
+            p = self.get_process(uid)
+            if p is None:
+                return
+            pl = platform().lower()
+            if pl.startswith("windows"):
+                # proc.kill() doesn't work well on windows
+                Popen(
+                    "TASKKILL /F /PID {pid} /T".format(pid=p.pid),
+                    stdout=PIPE,
+                    stderr=PIPE,
+                )
+                while True:
+                    await sleep(0.25)
+                    if p.poll() is not None:
+                        break
+            else:
+                cmd = f"ps -ef | grep 'ov run' | grep '\\-\\-uid {uid}'"
+                lines = check_output(cmd, shell=True)
+                lines = lines.decode("utf-8")
+                lines = lines.split("\n")
+                words = lines[0].split()
+                try:
+                    int(words[0])
+                    idx = 0
+                except:
+                    try:
+                        int(words[1])
+                        idx = 1
+                    except:
+                        idx = None
+                if idx is not None:
+                    pids = [int(l.strip().split()[idx]) for l in lines if l != ""]
+                    for pid in pids:
+                        if pid == p.pid:
+                            p.terminate()
+                            p.kill()
+                        else:
+                            try:
+                                kill(pid, SIGTERM)
+                            except ProcessLookupError:
+                                continue
+                            except:
+                                raise
+            while True:
+                p.wait(timeout=60)
+                if p.poll() is None:
+                    await sleep(0.5)
+                    continue
+                break
+
+        def remove_process(self, uid):
+            if not uid:
+                return
+            if uid in self.processes_of_running_jobs:
+                del self.processes_of_running_jobs[uid]
+            if uid in self.info_of_running_jobs:
+                job_ids = self.info_of_running_jobs
+                job_ids.remove(uid)
+                self.info_of_running_jobs = job_ids
+
+        async def clean_jobs(self, uid):
+            from asyncio import sleep
+
+            if uid:
+                p = self.get_process(uid)
+                if not p:
+                    return
+                while p.poll() is None:
+                    await sleep(0.5)
+                self.remove_process(uid)
+                return
             to_del = []
             for uid, p in self.processes_of_running_jobs.items():
                 if p.poll() is not None:
                     to_del.append(uid)
-            job_ids = self.info_of_running_jobs
             for uid in to_del:
-                del self.processes_of_running_jobs[uid]
-                job_ids.remove(uid)
-            self.info_of_running_jobs = job_ids
+                self.remove_process(uid)
 
         def list_running_jobs(self):
             # List currently tracked jobs
@@ -916,26 +958,36 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
             if num_available_slot > 0 and len(self.queue) > 0:
                 for _ in range(num_available_slot):
                     if len(self.queue) > 0:
-                        job_id = self.queue.pop(0)
-                        run_args = self.run_args[job_id]
-                        del self.run_args[job_id]
+                        uid = self.queue.pop(0)
+                        run_args = self.run_args[uid]
+                        del self.run_args[uid]
                         p = Popen(run_args)
-                        self.processes_of_running_jobs[job_id] = p
+                        self.processes_of_running_jobs[uid] = p
 
-        async def delete_job(self, qitem):
+        async def delete_jobs(self, qitem):
             from os.path import exists
             from shutil import rmtree
             from logging import getLogger
+            from .userjob import get_job_dir_from_eud
+            from .multiuser import get_serveradmindb
+
             logger = getLogger()
-            uid = qitem["uid"]
-            if self.get_process(uid) is not None:
-                msg = "\nKilling job {}".format(uid)
-                logger.info(msg)
-                await self.cancel_job(uid)
-            job_dir = qitem["job_dir"]
-            if exists(job_dir):
-                rmtree(job_dir)
-            mu.delete_job(uid)
+            uids = qitem["uids"]
+            username = qitem["username"]
+            abort_only = qitem["abort_only"]
+            for uid in uids:
+                if uid in self.processes_of_running_jobs:
+                    msg = "\nKilling job {}".format(uid)
+                    logger.info(msg)
+                    await self.cancel_job(uid)
+                if abort_only:
+                    serveradmindb = await get_serveradmindb()
+                    await serveradmindb.mark_job_as_aborted(username=username, uid=uid)
+                    continue
+                job_dir = await get_job_dir_from_eud(None, eud={"uid": uid, "username": username})
+                mu.delete_job(uid)
+                if job_dir and exists(job_dir):
+                    rmtree(job_dir)
 
         def set_max_num_concurrent_jobs(self, qitem):
             from logging import getLogger
@@ -953,7 +1005,7 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
         from queue import Empty
         from logging import getLogger
         while True:
-            job_tracker.clean_jobs(None)
+            await job_tracker.clean_jobs(None)
             job_tracker.run_available_jobs()
             try:
                 qitem = job_queue.get_nowait()
@@ -961,7 +1013,7 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
                 if cmd == "submit":
                     job_tracker.add_job(qitem)
                 elif cmd == "delete":
-                    await job_tracker.delete_job(qitem)
+                    await job_tracker.delete_jobs(qitem)
                 elif cmd == "set_max_num_concurrent_jobs":
                     job_tracker.set_max_num_concurrent_jobs(qitem)
             except Empty:
@@ -1163,24 +1215,31 @@ async def get_live_annotation(queries):
     return response
 
 
+async def get_eud_from_request(request):
+    from .multiuser import get_email_from_request
+
+    email = get_email_from_request(request)
+    uid, dbpath = await get_uid_dbpath_from_request(request)
+    return { "username": email, "uid": uid, "dbpath": dbpath}
+
 async def get_available_report_types(request):
-    from os.path import join
-    from os.path import exists
+    from pathlib import Path
     from aiohttp.web import json_response
     from .userjob import get_job_dir_from_eud
     from .userjob import get_user_job_report_paths
 
-    job_id_or_dbpath = await get_uid_dbpath_from_request(request)
-    job_dir = await get_job_dir_from_eud(request, job_id_or_dbpath)
+    eud = await get_eud_from_request(request)
+    job_dir = await get_job_dir_from_eud(request, eud=eud)
     if not job_dir:
         return json_response([])
+    job_dir = Path(job_dir)
     existing_reports = []
     for report_type in get_valid_report_types():
-        report_paths = await get_user_job_report_paths(request, job_id_or_dbpath, report_type)
+        report_paths = await get_user_job_report_paths(request, report_type, eud=eud)
         if report_paths:
             report_exist = True
             for p in report_paths:
-                if exists(join(job_dir, p)) == False:
+                if not (job_dir / p).exists():
                     report_exist = False
                     break
             if report_exist:
@@ -1330,23 +1389,29 @@ async def get_tags_of_annotators_and_postaggregators(_):
     tags.sort()
     return json_response(tags)
 
+async def get_login_state(request):
+    from aiohttp.web import json_response
+
+    global servermode
+    global mu
+    if not servermode:
+        state = True
+    else:
+        state = await mu.is_loggedin(request)
+    return json_response({"loggedin": state})
 
 routes = []
 routes.append(["GET", "/submit/annotators", get_annotators])
 routes.append(["GET", "/submit/postaggregators", get_postaggregators])
 routes.append(["GET", "/submit/jobs/{job_id}", view_job])
-routes.append(["DELETE", "/submit/jobs/{job_id}", delete_job])
 routes.append(["GET", "/submit/jobs/{job_id}/db", download_db])
-routes.append(["POST", "/submit/jobs/reports", get_available_report_types])
 routes.append(["POST", "/submit/makereport/{report_type}", generate_report])
-routes.append(["POST", "/submit/downloadreport/{report_type}", download_report])
 routes.append(["GET", "/submit/jobs/{job_id}/log", get_job_log])
 routes.append(["GET", "/submit/getjobsdir", get_jobs_dir])
 routes.append(["GET", "/submit/setjobsdir", set_jobs_dir])
 routes.append(["GET", "/submit/getsystemconfinfo", get_system_conf_info])
 routes.append(["GET", "/submit/updatesystemconf", update_system_conf])
 routes.append(["GET", "/submit/resetsystemconf", reset_system_conf])
-routes.append(["GET", "/submit/servermode", get_servermode])
 routes.append(["GET", "/submit/packageversions", get_package_versions])
 routes.append(["GET", "/submit/lastassembly", get_last_assembly])
 routes.append(["GET", "/submit/annotate", get_live_annotation_get])
@@ -1356,16 +1421,21 @@ routes.append(["GET", "/submit/updateresultdb", update_result_db])
 routes.append(["POST", "/submit/import", import_job])
 routes.append(["GET", "/submit/resubmit", resubmit])
 routes.append(["GET", "/issystemready", is_system_ready])
-routes.append(["GET", "/submit/systemlog", get_system_log])
 routes.append(["GET", "/favicon.ico", serve_favicon])
 routes.append(["GET", "/webapps/{module}", get_webapp_index])
+
 # Below for new gui.
 routes.append(["GET", "/submit/converters", get_converters])
 routes.append(["GET", "/submit/tags_annotators_postaggregators", get_tags_of_annotators_and_postaggregators])
 routes.append(["GET", "/submit/localmodules/{module}", get_local_module_info_web])
-routes.append(["GET", "/submit/jobs", get_jobs])
+routes.append(["POST", "/submit/jobs", get_jobs])
 routes.append(["POST", "/submit/submit", submit])
 routes.append(["GET", "/submit/jobstatus", get_job_status])
 routes.append(["GET", "/submit/jobs/{job_id}/status", get_job_status])
-routes.append(["POST", "/submit/delete_jobs", delete_job])
+routes.append(["POST", "/submit/delete_jobs", delete_jobs])
 routes.append(["GET", "/submit/reporttypes", get_report_types])
+routes.append(["POST", "/submit/jobs/reports", get_available_report_types])
+routes.append(["GET", "/submit/servermode", get_servermode])
+routes.append(["GET", "/submit/loginstate", get_login_state])
+routes.append(["GET", "/submit/systemlog", get_system_log])
+routes.append(["POST", "/submit/downloadreport/{report_type}", download_report])

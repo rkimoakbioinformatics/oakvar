@@ -2306,7 +2306,6 @@ function connectWebSocket() {
     connectWebSocket();
   };
   ws.onmessage = function (evt) {
-    console.log("@ ws msg=", evt)
     var data = JSON.parse(evt.data);
     var module = data["module"];
     var msg = data["msg"];

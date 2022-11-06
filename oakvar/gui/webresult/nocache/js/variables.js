@@ -4,6 +4,7 @@ var columnGroupPrefix = 'columngroup_';
 var selectedRowIds = {};
 var selectedRowNos = {};
 var username = null;
+var uid = null;
 var jobId = null;
 var currentTab = null;
 var ascendingSort = {};

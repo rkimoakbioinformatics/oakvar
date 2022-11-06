@@ -34,69 +34,18 @@ async def get_job_dir_from_eud(_, eud={}) -> Optional[str]:
         return job_dir
     return None
 
-async def get_user_job_status_path_from_dbpath(dbpath):
-    from ...consts import result_db_suffix
-    from ...consts import status_suffix
-
-    if not dbpath:
-        return None
-    if not dbpath.endswith(result_db_suffix):
-        return None
-    return dbpath[:-len(result_db_suffix)] + status_suffix
-
-async def get_job_status_path(request, eud: dict={}, job_dir: Optional[str]=None, run_name: Optional[str]=None) -> Optional[str]:
+async def get_user_job_run_name(_, eud={}) -> Optional[str]:
     from pathlib import Path
-    from ...consts import status_suffix
-    from ...system import get_status_path_in_job_dir
+    from .multiuser import get_serveradmindb
 
-    if eud.get("dbpath"):
-        return str(Path(eud.get("dbpath", "")).absolute().with_suffix(status_suffix))
-    if job_dir:
-        return get_status_path_in_job_dir(job_dir, run_name=run_name)
-    job_dir = await get_job_dir_from_eud(request, eud=eud)
-    return get_status_path_in_job_dir(job_dir, run_name=run_name)
-
-async def get_user_job_status(request, eud={}, job_dir=None, new=False):
-    from json import load
-    from logging import getLogger
-    status_json = None
     username, uid, dbpath = unpack_eud(eud=eud)
-    try:
-        if not new:
-            if uid and username and uid in job_statuses:
-                return job_statuses[uid]
-            elif dbpath and dbpath in job_statuses:
-                return job_statuses[dbpath]
-        status_path = await get_job_status_path(request, eud=eud, job_dir=job_dir)
-        if not status_path:
-            return None
-        with open(status_path) as f:
-            try:
-                status_json = load(f)
-            except:
-                return None
-        job_statuses[job_id_or_dbpath] = status_json
-    except Exception as e:
-        logger = getLogger()
-        logger.exception(e)
-        status_json = None
-    finally:
-        return status_json
-
-async def get_user_job_run_name(request, eud={}):
-    from os import listdir
-    job_dir = await get_job_dir_from_eud(request, eud=eud)
-    statusjson = await get_user_job_status(request, eud=eud, job_dir=job_dir)
-    if not statusjson:
-        return None
-    run_name = statusjson.get("run_name")
-    if not run_name:
-        fns = listdir(job_dir)
-        for fn in fns:
-            if fn.endswith(".log"):
-                run_name = fn[:-4]
-                break
-    return run_name
+    if dbpath:
+        return Path(dbpath).stem
+    if username and uid:
+        serveradmindb = await get_serveradmindb()
+        run_name = await serveradmindb.get_run_name(username=username, uid=uid)
+        return run_name
+    return None
 
 async def get_user_job_run_path(request, eud={}) -> Optional[str]:
     from pathlib import Path
@@ -110,14 +59,14 @@ async def get_user_job_run_path(request, eud={}) -> Optional[str]:
     run_path = Path(job_dir) / run_name
     return str(run_path)
 
-async def get_user_job_report_paths(request, job_id_or_dbpath: Optional[str], report_type: str) -> Optional[list]:
+async def get_user_job_report_paths(request, report_type: str, eud={}) -> Optional[list]:
     from pathlib import Path
     from ...module.local import get_local_module_info_by_name
 
-    run_path = await get_user_job_run_path(request, job_id_or_dbpath)
+    run_path = await get_user_job_run_path(request, eud=eud)
     if not run_path:
         return None
-    run_name = Path(run_path).stem
+    run_name = Path(run_path).name
     reporter = get_local_module_info_by_name(report_type + "reporter")
     if not reporter:
         return None
@@ -132,16 +81,18 @@ async def get_user_job_report_paths(request, job_id_or_dbpath: Optional[str], re
 async def get_user_job_dbpath(request, eud={}) -> Optional[str]:
     from ...consts import result_db_suffix
 
+    if eud.get("dbpath"):
+        return eud.get("dbpath")
     run_path = await get_user_job_run_path(request, eud=eud)
     if not run_path:
         return None
     dbpath = f"{run_path}{result_db_suffix}"
     return dbpath
 
-async def get_user_job_log(request, job_id_or_dbpath: Optional[str]) -> Optional[str]:
+async def get_user_job_log(request, eud={}) -> Optional[str]:
     from pathlib import Path
 
-    run_path = await get_user_job_run_path(request, job_id_or_dbpath)
+    run_path = await get_user_job_run_path(request, eud=eud)
     if not run_path:
         return None
     log_path = run_path + ".log"

@@ -157,7 +157,7 @@ function showNoDB() {
 
 async function getResultLevels() {
   const response = await axios.get("/result/service/getresulttablelevels", {
-    params: { job_id: jobId, username: username, dbpath: dbPath },
+    params: { uid: uid, username: username, dbpath: dbPath },
   });
   var data = response.data
   var levels = data.levels;
@@ -419,7 +419,7 @@ async function loadGeneResultTableDataOnly () {
   if (! usedAnnotators["gene"]) {
     return
   }
-  await infomgr.load_job(jobId, "gene", (setResetTab = false))
+  await infomgr.load_job(uid, "gene", (setResetTab = false))
 }
 
 function loadTableDataOnly() {
@@ -430,7 +430,7 @@ function loadTableDataOnly() {
     return;
   }
   enableLoadingDiv()
-  infomgr.load_job(jobId, currentTab, (setResetTab = false)).then(function() {
+  infomgr.load_job(uid, currentTab, (setResetTab = false)).then(function() {
     updateTableDataOnly()
     removeLoadingDiv()
     filterArmed = filterJson;
@@ -485,7 +485,7 @@ async function loadData() {
       notifyOfReadyToLoad();
     }
     if (resultLevels.indexOf("gene") != -1) {
-      var ret = await infomgr.load_job(jobId, "gene")
+      var ret = await infomgr.load_job(uid, "gene")
       if (ret == false) {
         removeLoadingDiv()
         return
@@ -504,7 +504,7 @@ async function loadData() {
         callback = removeSpinner;
       }
       if (resultLevels.indexOf("variant") != -1) {
-        ret = await infomgr.load_job(jobId, "variant")
+        ret = await infomgr.load_job(uid, "variant")
         if (ret == false) {
           removeLoadingDiv()
           return
@@ -705,7 +705,7 @@ async function loadWidgets() {
 
 async function loadJobInfo() {
   await infomgr.load(
-    jobId,
+    uid,
     "info",
     null,
     null,
@@ -725,7 +725,7 @@ async function firstLoadData() {
   var t2 = loadFilterSettings(quickSaveName, true);
   var t3 = loadLayoutSetting(quickSaveName, true);
   Promise.all([t1, t2, t3]).then(async function() {
-    await infomgr.load_info(jobId, "info")
+    await infomgr.load_info(uid, "info")
     populateInfoDiv(document.getElementById("info_div"));
     await loadData()
   })
@@ -733,7 +733,7 @@ async function firstLoadData() {
 
 async function checkWidgets() {
   /*const response = await axios.get("/result/service/getnowgannotmodules", {
-    params: { username: username, job_id: jobId, dbpath: dbPath },
+    params: { username: username, uid: uid, dbpath: dbPath },
   });*/
 }
 
@@ -861,7 +861,7 @@ function quicksave() {
 async function getVariantCols() {
   const response = await axios.get("/result/service/variantcols", {
     params: {
-      job_id: jobId,
+      uid: uid,
       username: username,
       dbpath: dbPath,
       confpath: confPath,
@@ -899,7 +899,7 @@ function selectTab(tabName) {
 
 async function getVariantDbCols() {
   const response = await axios.get("/result/service/variantdbcols", {
-    params: { job_id: jobId, username: username, dbpath: dbPath },
+    params: { uid: uid, username: username, dbpath: dbPath },
   });
   variantdbcols = response.data;
 }
@@ -958,7 +958,8 @@ function parseUrl() {
   if (!username) {
     username = "default"
   }
-  jobId = urlParams.get("job_id");
+  uid = urlParams.get("uid");
+  jobId = uid;
   dbPath = urlParams.get("dbpath");
   confPath = urlParams.get("confpath");
   if (urlParams.get("separatesample") == "true") {
@@ -969,8 +970,8 @@ function parseUrl() {
 }
 
 function setTitle() {
-  if (jobId != null) {
-    document.title = "OakVar: " + jobId;
+  if (uid != null) {
+    document.title = "OakVar: " + uid;
   } else if (dbPath != null) {
     var toks = dbPath.split("/");
     document.title = "OakVar: " + toks[toks.length - 1];

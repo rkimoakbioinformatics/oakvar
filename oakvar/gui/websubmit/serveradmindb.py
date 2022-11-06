@@ -379,11 +379,14 @@ class ServerAdminDb ():
         await cursor.close()
         await conn.close()
 
-    @db_func
-    def delete_job(self, uid: int, conn=Any, cursor=Any):
+    def delete_job(self, uid: int):
+        conn = self.get_sync_db_conn()
+        cursor = conn.cursor()
         q = f"delete from jobs where uid=?"
         cursor.execute(q, (uid,))
         conn.commit()
+        cursor.close()
+        conn.close()
 
     async def open_conn_cursor(self):
         conn = await self.get_db_conn()
@@ -428,13 +431,28 @@ class ServerAdminDb ():
             return None
         _ = conn
         q = f"select dir from jobs where username=? and uid=?"
-        cursor.execute(q, (eud.get("username"), eud.get("uid")))
-        ret = cursor.fetchone()
+        await cursor.execute(q, (eud.get("username"), eud.get("uid")))
+        ret = await cursor.fetchone()
         if not ret:
             return None
         else:
             return ret[0]
-        
+
+    @db_func
+    async def get_dbpath_by_eud(self, eud={}, conn=Any, cursor=Any) -> Optional[str]:
+        from json import loads
+
+        if not eud.get("uid") or not eud.get("username"):
+            return None
+        _ = conn
+        q = f"select statusjson from jobs where username=? and uid=?"
+        await cursor.execute(q, (eud.get("username"), eud.get("uid")))
+        ret = await cursor.fetchone()
+        if not ret:
+            return None
+        statusjson = loads(ret[0])
+        return statusjson.get("db_path")
+
     def update_job_info(self, info_dict, job_dir=None, job_name=None):
         from sys import stderr
 
@@ -512,6 +530,29 @@ class ServerAdminDb ():
             else:
                 d["statusjson"] = loads(d["statusjson"])
         return ret
+
+    @db_func
+    async def get_run_name(self, username=None, uid=None, conn=Any, cursor=Any) -> Optional[str]:
+        from json import loads
+
+        _ = conn
+        if not username or not uid:
+            return None
+        q = f"select statusjson from jobs where username=? and uid=?"
+        await cursor.execute(q, (username, uid))
+        ret = await cursor.fetchone()
+        if not ret:
+            return None
+        statusjson = loads(ret[0])
+        return statusjson.get("run_name")
+
+    @db_func
+    async def mark_job_as_aborted(self, username=None, uid=None, conn=Any, cursor=Any):
+        if not username or not uid:
+            return
+        q = f"update jobs set status=? where username=? and uid=?"
+        await cursor.execute(q, ("Aborted", username, uid))
+        await conn.commit()
 
     def retrieve_user_jobs_into_db(self):
         from pathlib import Path
