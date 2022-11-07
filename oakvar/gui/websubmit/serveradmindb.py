@@ -524,6 +524,13 @@ class ServerAdminDb ():
         await cursor.execute(q, (email,))
         ret = await cursor.fetchall()
         ret = [dict(v) for v in ret]
+        if len(ret) == 0:
+            q = f"select count(*) from jobs where username=?"
+            await cursor.execute(q, (email,))
+            total_ret = await cursor.fetchone()
+            total = total_ret[0]
+            if offset > total:
+                return None
         for d in ret:
             if not d.get("statusjson"):
                 d["statusjson"] = {}

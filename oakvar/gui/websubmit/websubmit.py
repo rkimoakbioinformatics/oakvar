@@ -461,11 +461,12 @@ async def get_jobs(request):
     admindb = await get_serveradmindb()
     email = get_email_from_request(request)
     jobs = await admindb.get_jobs_of_email(email, pageno=pageno, pagesize=pagesize)
-    if jobs:
-        for job in jobs:
-            if job_not_finished(job) and job_not_running(job):
-                mark_job_as_aborted(job)
-            job["checked"] = False
+    if jobs is None:
+        return Response(status=404)
+    for job in jobs:
+        if job_not_finished(job) and job_not_running(job):
+            mark_job_as_aborted(job)
+        job["checked"] = False
     return json_response(jobs)
 
 
