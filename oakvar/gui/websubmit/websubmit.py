@@ -530,7 +530,7 @@ async def get_job_log(request):
     eud = await get_eud_from_request(request)
     log_path = await get_user_job_log(request, eud=eud)
     if not log_path:
-        return Response(text="log file does not exist.")
+        return Response(status=404)
     with open(log_path) as f:
         return Response(text=f.read())
 
@@ -1032,7 +1032,7 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
     main_loop.close()
 
 
-async def redirect_to_index(request):
+async def redirect_to_index(_):
     from aiohttp.web import HTTPFound
     global servermode
     url = "/index.html"
@@ -1400,7 +1400,6 @@ routes.append(["GET", "/submit/postaggregators", get_postaggregators])
 routes.append(["GET", "/submit/jobs/{job_id}", view_job])
 routes.append(["GET", "/submit/jobs/{job_id}/db", download_db])
 routes.append(["POST", "/submit/makereport/{report_type}", generate_report])
-routes.append(["GET", "/submit/jobs/{job_id}/log", get_job_log])
 routes.append(["GET", "/submit/getjobsdir", get_jobs_dir])
 routes.append(["GET", "/submit/setjobsdir", set_jobs_dir])
 routes.append(["GET", "/submit/getsystemconfinfo", get_system_conf_info])
@@ -1433,3 +1432,4 @@ routes.append(["GET", "/submit/servermode", get_servermode])
 routes.append(["GET", "/submit/loginstate", get_login_state])
 routes.append(["GET", "/submit/systemlog", get_system_log])
 routes.append(["POST", "/submit/downloadreport/{report_type}", download_report])
+routes.append(["GET", "/submit/joblog", get_job_log])

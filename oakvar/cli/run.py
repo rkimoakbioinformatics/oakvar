@@ -443,12 +443,11 @@ class Runner(object):
         if self.logger:
             self.logger.info("input files: {}".format(input_files_str))
 
-    async def start_logger(self):
+    def start_logger(self):
         from time import asctime, localtime
         from sys import argv
 
         self.unique_logs = {}
-        self.get_logger()
         if self.logger:
             self.logger.info(f'{" ".join(argv)}')
             self.logger.info("started: {0}".format(asctime(localtime(self.start_time))))
@@ -466,7 +465,6 @@ class Runner(object):
             self.start_time = time()
             self.process_arguments(self.inkwargs)
             await self.process_clean()
-            await self.start_logger()
             self.write_initial_status_json()
             await self.setup_manager()
             update_status(
@@ -496,6 +494,8 @@ class Runner(object):
                 status_writer=self.status_writer, args=self.args, force=True, status_json=self.status_json
             )
         except Exception as e:
+            if self.logger:
+                self.logger.exception(e)
             self.exception = e
         finally:
             end_time = time()
@@ -505,25 +505,22 @@ class Runner(object):
             runtime = None
             if self.start_time:
                 runtime = end_time - self.start_time
-            if not self.exception:
-                if self.logger:
-                    self.logger.info("finished: {0}".format(display_time))
-                    if runtime:
-                        self.logger.info("runtime: {0:0.3f}s".format(runtime))
-                    quiet_print(
-                        "Finished normally. Runtime: {0:0.3f}s".format(runtime),
-                        self.args,
-                    )
-            else:
-                if self.status_writer:
-                    update_status(
-                        "Error",
-                        serveradmindb=self.serveradmindb,
-                        status_writer=self.status_writer,
-                        args=self.args,
-                        force=True,
-                        status_json=self.status_json
-                    )
+            if self.logger:
+                self.logger.info("finished: {0}".format(display_time))
+                if runtime:
+                    self.logger.info("runtime: {0:0.3f}s".format(runtime))
+                quiet_print(
+                    "Finished normally. Runtime: {0:0.3f}s".format(runtime),
+                    self.args,
+                )
+            update_status(
+                "Error",
+                serveradmindb=self.serveradmindb,
+                status_writer=self.status_writer,
+                args=self.args,
+                force=True,
+                status_json=self.status_json
+            )
             if self.logger:
                 self.close_logger()
             if (
@@ -562,6 +559,9 @@ class Runner(object):
         self.set_self_inputs()
         self.set_output_dir()
         self.set_run_name()
+        self.get_logger()
+        self.start_logger()
+        self.connect_admindb_if_needed()
         self.set_append_mode()
         if self.args.skip is None:
             self.args.skip = []
@@ -577,7 +577,6 @@ class Runner(object):
         self.verbose = self.args.verbose == True
         self.set_start_end_levels()
         self.cleandb = self.args.cleandb
-        self.connect_admindb_if_needed()
         if self.args.note == None:
             self.args.note = ""
         if self.args is None:
