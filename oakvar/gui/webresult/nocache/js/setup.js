@@ -1965,7 +1965,7 @@ function populateInfoDiv(infoDiv) {
   addEl(div, dl);
   var [valDiv, _, _] = getInfoCardRow(
     "Job ID",
-    infomgr.jobinfo["job_id"] || "NA"
+    uid || infomgr.jobinfo["job_id"] || "NA"
   );
   addEl(dl, valDiv);
   var keys = Object.keys(infomgr.jobinfo);
