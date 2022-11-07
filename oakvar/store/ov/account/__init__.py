@@ -76,7 +76,7 @@ def create(email=None, pw=None, args={}, quiet=None) -> dict:
         r = post(create_account_url, data=params)
         status_code = r.status_code
         if status_code == 403:
-            msg = "User already exists."
+            msg = "account-exists"
             quiet_print(msg, args=args, quiet=quiet)
             return {"msg": msg, "success": False}
         elif status_code == 202:

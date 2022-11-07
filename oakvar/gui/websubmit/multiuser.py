@@ -211,6 +211,7 @@ async def delete_token(_):
 
 async def signup(request):
     from aiohttp.web import Response
+    from aiohttp.web import json_response
     import jwt
     from ...store.ov.account import create
 
@@ -221,19 +222,19 @@ async def signup(request):
     email = data.get("email")
     password = data.get("password")
     if not email:
-        return Response(body="No email", status=403)
+        return json_response({"code": "auth/missing-email"}, status=403)
     if not password:
-        return Response(body="No password", status=403)
+        return json_response({"code": "missing-password"}, status=403)
     serveradmindb = await get_serveradmindb()
-    if await serveradmindb.check_username_presence(email):
-        return Response(body="Account exists.", status=403)
+    #if await serveradmindb.check_username_presence(email):
+    #    return json_response({"code": "account-exists"}, status=403)
     ret = create(email=email, pw=password)
     msg = ret.get("msg")
     if not ret.get("success"):
-        return Response(body=msg, status=403)
+        return json_response({"code": msg}, status=403)
     await serveradmindb.add_user_if_not_exist(email, "", "", "")
     oakvar_token = jwt.encode({"email": email}, DEFAULT_PRIVATE_KEY, algorithm="HS256")
-    response = Response(body=msg, status=200)
+    response = json_response({"code": msg}, status=200)
     response.set_cookie(COOKIE_KEY, oakvar_token, httponly=True)
     return response
 
