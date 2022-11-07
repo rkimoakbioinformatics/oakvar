@@ -1,4 +1,4 @@
-.. image:: https://github.com/rkimoakbioinformatics/oakvar/raw/master/oakvar/websubmit/logo.png
+.. image:: https://github.com/rkimoakbioinformatics/oakvar/raw/master/oakvar/gui/websubmit/images/logo.png
   :width: 300
   :alt: OakVar logo
 
