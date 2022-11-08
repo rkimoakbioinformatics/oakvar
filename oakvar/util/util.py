@@ -533,7 +533,9 @@ def get_latest_version(versions, target_version=None):
     return latest_version
 
 
-def update_status(status: str, serveradmindb=None, status_writer=None, args=None, force=False, status_json=None):
+def update_status(status: str, logger=None, serveradmindb=None, status_writer=None, args=None, force=False, status_json=None):
+    if logger:
+        logger.info(status)
     if args and not args.do_not_change_status and status_writer:
         status_writer.queue_status_update("status", status, force=force)
     if status_json:
