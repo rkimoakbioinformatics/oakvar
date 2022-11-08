@@ -12,7 +12,6 @@ class VCF2VCF:
         self.logger = None
         self.error_logger = None
         self.cmd_arg_parser = None
-        self.update_status_json_flag = None
         self.confs = None
         self.output_path = None
         self.last_status_update_time = None
@@ -27,6 +26,7 @@ class VCF2VCF:
         self.parse_cmd_args(inargs, inkwargs)
         self.setup_logger()
         self.setup_liftover()
+        self.serveradmindb = self.args.get("serveradmindb")
         if self.logger and "logging_level" in self.conf:
             self.logger.setLevel(self.conf["logging_level"].upper())
 
@@ -283,7 +283,6 @@ class VCF2VCF:
         self.output_dir = os.path.dirname(self.primary_input_path)
         if args["output_dir"]:
             self.output_dir = args["output_dir"]
-        self.update_status_json_flag = True
         self.job_conf_path = args.get("conf")
         self.confs = loads(
             args.get("confs", "{}").lstrip("'").rstrip("'").replace("'", '"')
@@ -295,22 +294,18 @@ class VCF2VCF:
         self.args = SimpleNamespace(**args)
 
     def log_progress(self, lnum):
+        from time import time
+        from ..util.util import update_status
+
         if self.last_status_update_time is None:
             return
         if self.conf is None:
             return
-        from time import time
-
-        if self.update_status_json_flag and self.status_writer is not None:
-            cur_time = time()
-            if lnum % 10000 == 0 or cur_time - self.last_status_update_time > 3:
-                self.status_writer.queue_status_update(
-                    "status",
-                    "Running {} ({}): line {}".format(
-                        self.conf["title"], self.module_name, lnum
-                    ),
-                )
-                self.last_status_update_time = cur_time
+        cur_time = time()
+        if lnum % 10000 == 0 or cur_time - self.last_status_update_time > 3:
+            status = "Running {self.conf['title']} ({self.module_name}): line {lnum}"
+            update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
+            self.last_status_update_time = cur_time
 
     def run(self):
         from oakvar.util.seq import normalize_variant_dict_left
@@ -325,7 +320,9 @@ class VCF2VCF:
             return False
         field_suffix = "OC_"
         base_re = compile("^[*]|[ATGC]+|[-]+$")
+        print(f"@ loading modules")
         modules = load_modules(annotators=self.annotator_names, mapper=self.mapper_name)
+        print(f"@ done")
         col_infos = self.load_col_infos(self.annotator_names, self.mapper_name)
         all_col_names = self.get_all_col_names(col_infos, self.mapper_name)
         mapper = modules[self.mapper_name]
@@ -364,20 +361,20 @@ class VCF2VCF:
             read_lnum = 0
             uid = 0
             for l in f:
-                read_lnum += 1
-                vcf_toks = l[:-1].split("\t")
-                chrom = vcf_toks[0]
-                if not chrom.startswith("chr"):
-                    chrom = "chr" + chrom
-                pos = int(vcf_toks[1])
-                ref = vcf_toks[3]
-                alts = vcf_toks[4].split(",")
-                if read_lnum % 10000 == 0:
-                    quiet_print(
-                        f"{read_lnum}: {chrom} {pos} {ref} {vcf_toks[4]}",
-                        args=self.args,
-                    )
                 try:
+                    read_lnum += 1
+                    vcf_toks = l[:-1].split("\t")
+                    chrom = vcf_toks[0]
+                    if not chrom.startswith("chr"):
+                        chrom = "chr" + chrom
+                    pos = int(vcf_toks[1])
+                    ref = vcf_toks[3]
+                    alts = vcf_toks[4].split(",")
+                    if read_lnum % 10000 == 0:
+                        quiet_print(
+                            f"{read_lnum}: {chrom} {pos} {ref} {vcf_toks[4]}",
+                            args=self.args,
+                        )
                     variants = []
                     for alt in alts:
                         if "<" in alt:
@@ -463,6 +460,7 @@ class VCF2VCF:
                             wf.write(";")
                     wf.write("\t" + "\t".join(vcf_toks[8:]) + "\n")
                 except Exception as e:
+                    print(e)
                     log_variant_exception(
                         lnum=read_lnum,
                         line=l,

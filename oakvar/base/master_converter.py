@@ -1,46 +1,6 @@
 STDIN = "stdin"
 
 
-class VTracker:
-    """This helper class is used to identify the unique variants from the input
-    so the crv file will not contain multiple copies of the same variant.
-    """
-
-    def __init__(self, deduplicate=True):
-        from collections import defaultdict
-
-        self.var_by_chrom = defaultdict(dict)
-        self.current_UID = 1
-        self.deduplicate = deduplicate
-
-    # Add a variant - Returns true if the variant is a new unique variant, false
-    # if it is a duplicate.  Also returns the UID.
-    def addVar(self, chrom, pos, ref, alt):
-        if not self.deduplicate:
-            self.current_UID += 1
-            return True, self.current_UID - 1
-
-        change = ref + ":" + alt
-
-        chr_dict = self.var_by_chrom[chrom]
-        if pos not in chr_dict:
-            # we have not seen this position before, add the position and change
-            chr_dict[pos] = {}
-            chr_dict[pos][change] = self.current_UID
-            self.current_UID += 1
-            return True, chr_dict[pos][change]
-        else:
-            variants = chr_dict[pos]
-            if change not in variants:
-                # we have the position but not this base change, add it.
-                chr_dict[pos][change] = self.current_UID
-                self.current_UID = self.current_UID + 1
-                return True, chr_dict[pos][change]
-            else:
-                # this variant has been seen before.
-                return False, chr_dict[pos][change]
-
-
 class MasterConverter(object):
 
     ALREADYCRV = 2
@@ -93,7 +53,6 @@ class MasterConverter(object):
         }
         self._parse_cmd_args(inargs, inkwargs)
         self._setup_logger()
-        self.vtracker = VTracker(deduplicate=not (self.unique_variants))
         self.wgsreader = get_wgs_reader(assembly="hg38")
         self.crs_def = crs_def.copy()
 
@@ -475,7 +434,7 @@ class MasterConverter(object):
             else:
                 raise InvalidModule("unknown module")
         start_time = time()
-        if self.status_writer is not None:
+        if self.status_writer:
             self.status_writer.queue_status_update(
                 "status",
                 "Started {} ({})".format(
@@ -491,6 +450,7 @@ class MasterConverter(object):
         base_re = compile("^[ATGC]+|[-]+$")
         write_lnum = 0
         genome_assemblies = set()
+        uid = 1
         for fn in self.input_paths:
             self.cur_file = fn
             if self.pipeinput:
@@ -534,7 +494,6 @@ class MasterConverter(object):
                         continue
                     total_lnum += 1
                     if all_wdicts:
-                        UIDMap = []
                         no_unique_var = 0
                         for wdict in all_wdicts:
                             chrom = wdict["chrom"]
@@ -595,39 +554,33 @@ class MasterConverter(object):
                             wdict["pos"] = new_pos
                             wdict["ref_base"] = new_ref
                             wdict["alt_base"] = new_alt
-                            unique, UID = self.vtracker.addVar(
-                                wdict["chrom"], new_pos, new_ref, new_alt
-                            )
-                            wdict["uid"] = UID
+                            wdict["uid"] = uid
                             if wdict["ref_base"] == wdict["alt_base"]:
                                 raise NoVariantError()
-                            if unique:
-                                write_lnum += 1
-                                self.crv_writer.write_data(wdict)
-                                prelift_wdict["uid"] = UID
-                                self.crl_writer.write_data(prelift_wdict)
-                                # addl_operation errors shouldnt prevent variant from writing
-                                try:
-                                    converter.addl_operation_for_unique_variant(  # type: ignore
-                                        wdict, no_unique_var
-                                    )
-                                except Exception as e:
-                                    self._log_conversion_error(
-                                        read_lnum, l, e, full_line_error=False
-                                    )
-                                no_unique_var += 1
-                            if UID not in UIDMap:
-                                # For this input line, only write to the .crm if the UID has not yet been written to the map file.
-                                self.crm_writer.write_data(
-                                    {
-                                        "original_line": read_lnum,
-                                        "tags": wdict["tags"],
-                                        "uid": UID,
-                                        "fileno": f"{self.input_path_dict2[fname]}",
-                                    }
+                            write_lnum += 1
+                            self.crv_writer.write_data(wdict)
+                            prelift_wdict["uid"] = uid
+                            self.crl_writer.write_data(prelift_wdict)
+                            # addl_operation errors shouldnt prevent variant from writing
+                            try:
+                                converter.addl_operation_for_unique_variant(  # type: ignore
+                                    wdict, no_unique_var
                                 )
-                                UIDMap.append(UID)
+                            except Exception as e:
+                                self._log_conversion_error(
+                                    read_lnum, l, e, full_line_error=False
+                                )
+                            no_unique_var += 1
+                            self.crm_writer.write_data(
+                                {
+                                    "original_line": read_lnum,
+                                    "tags": wdict["tags"],
+                                    "uid": uid,
+                                    "fileno": f"{self.input_path_dict2[fname]}",
+                                }
+                            )
                             self.crs_writer.write_data(wdict)
+                            uid += 1
                     else:
                         raise IgnoredVariant("No valid alternate allele was found in any samples.")
                 except Exception as e:

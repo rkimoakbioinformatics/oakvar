@@ -359,24 +359,17 @@ class BaseReporter:
             return
         self.logger.info(msg)
 
-    def write_status(self, status):
-        if not self.status_writer or (self.args and self.args.get("do_not_change_status")):
-            return
-        self.status_writer.queue_status_update("status", status)
-        if self.serveradmindb:
-            try:
-                self.serveradmindb.update_job_info({"status": status}, self.output_dir, self.status_writer.get_status_json().get("job_name"))
-            except Exception as e:
-                print(f"@ err={e}")
-
     def log_run_start(self):
         from time import asctime, localtime
         import oyaml as yaml
+        from ..util.util import update_status
+
         self.write_log("started: %s" % asctime(localtime(self.start_time)))
         if self.cf and self.cf.filter:
             self.write_log(f"filter:\n{yaml.dump(self.filter)}")
         if self.module_conf:
-            self.write_status(f"Started {self.module_conf['title']} ({self.module_name})")
+            status = f"Started {self.module_conf['title']} ({self.module_name})"
+            update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
 
     async def get_levels_to_run(self, tab: str) -> List[str]:
         if not self.cf:
@@ -396,6 +389,7 @@ class BaseReporter:
         from time import time
         from time import asctime
         from time import localtime
+        from ..util.util import update_status
 
         _ = user
         try:
@@ -422,7 +416,8 @@ class BaseReporter:
                 await self.write_data(level, pagesize=pagesize, page=page, make_filtered_table=make_filtered_table, add_summary=add_summary)
             await self.close_db()
             if self.module_conf:
-                self.write_status(f"Finished {self.module_conf['title']} ({self.module_name})")
+                status = "Finished {self.module_conf['title']} ({self.module_name})"
+                update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
             end_time = time()
             if not (hasattr(self, "no_log") and self.no_log):
                 self.logger.info("finished: {0}".format(asctime(localtime(end_time))))

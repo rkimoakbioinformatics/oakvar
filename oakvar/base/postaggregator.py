@@ -25,6 +25,7 @@ class BasePostAggregator(object):
         self.dbconn = None
         self.cursor = None
         self.cursor_w = None
+        self.args = None
         self._open_db_connection()
         self.should_run_annotate = self.check()
 
@@ -107,6 +108,7 @@ class BasePostAggregator(object):
         if parsed_args.confs is not None:
             confs = parsed_args.confs.lstrip("'").rstrip("'").replace("'", '"')
             self.confs = json.loads(confs)
+        self.args = parsed_args
 
     def handle_legacy_data(self, output_dict: dict):
         from json import dumps
@@ -231,6 +233,7 @@ class BasePostAggregator(object):
         from ..exceptions import ConfigurationError
         from ..exceptions import LoggerError
         from ..exceptions import SetupError
+        from ..util.util import update_status
 
 
         if self.conf is None:
@@ -243,7 +246,8 @@ class BasePostAggregator(object):
             self.base_cleanup()
             return
         start_time = time()
-        self.write_status(f"Started {self.conf['title']} ({self.module_name})")
+        status = f"Started {self.conf['title']} ({self.module_name})"
+        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
         self.logger.info("started: {0}".format(asctime(localtime(start_time))))
         self.base_setup()
         self.json_colnames = []
@@ -259,20 +263,13 @@ class BasePostAggregator(object):
         run_time = end_time - start_time
         self.logger.info("finished: {0}".format(asctime(localtime(end_time))))
         self.logger.info("runtime: {0:0.3f}".format(run_time))
-        self.write_status(f"Finished {self.conf['title']} ({self.module_name})")
-
-    def write_status(self, status: str):
-        if self.status_writer:
-            self.status_writer.queue_status_update("status", status)
-        if self.serveradmindb:
-            try:
-                self.serveradmindb.update_job_info({"status": status}, self.output_dir, self.status_writer.get_status_json().get("job_name"))
-            except Exception as e:
-                print(f"@ err={e}")
+        status = f"Finished {self.conf['title']} ({self.module_name})"
+        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
 
     def process_file(self):
         from time import time 
         from ..exceptions import ConfigurationError
+        from ..util.util import update_status
 
         if self.conf is None:
             raise ConfigurationError()
@@ -290,7 +287,8 @@ class BasePostAggregator(object):
                 cur_time = time()
                 lnum += 1
                 if lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
-                    self.write_status(f"Running {self.conf['title']} ({self.module_name}): row {lnum}")
+                    status = f"Running {self.conf['title']} ({self.module_name}): row {lnum}"
+                    update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
                     last_status_update_time = cur_time
             except Exception as e:
                 self._log_runtime_exception(input_data, e)

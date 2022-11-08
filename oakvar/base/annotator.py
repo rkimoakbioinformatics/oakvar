@@ -38,8 +38,6 @@ class BaseAnnotator(object):
         self.dbconn = None
         self.cursor = None
         self.cmd_arg_parser = None
-        self.update_status_json_flag = None
-        #self.confs = None
         self.json_colnames = None
         self.primary_input_reader = None
         self.output_path = None
@@ -207,10 +205,6 @@ class BaseAnnotator(object):
             self.output_basename = self.primary_input_path.name
             if Path(self.output_basename).suffix in [".crv", ".crg", ".crx"]:
                 self.output_basename = self.output_basename[:-4]
-        if self.output_basename != "__dummy__":
-            self.update_status_json_flag = True
-        else:
-            self.update_status_json_flag = False
         self.args = args
 
     def handle_jsondata(self, output_dict):
@@ -225,27 +219,18 @@ class BaseAnnotator(object):
             output_dict[colname] = json_data
         return output_dict
 
-    def write_status(self, status: str):
-        if self.status_writer:
-            self.status_writer.queue_status_update("status", status)
-        if self.serveradmindb:
-            try:
-                self.serveradmindb.update_job_info({"status": status}, self.output_dir, self.status_writer.get_status_json().get("job_name"))
-            except Exception as e:
-                print(f"@ err={e}")
-
     def log_progress(self, lnum):
-        if self.last_status_update_time is None:
-            return
-        if self.conf is None:
-            return
         from time import time
+        from ..util.util import update_status
+        from ..consts import JOB_STATUS_UPDATE_INTERVAL
 
-        if self.update_status_json_flag and self.status_writer is not None:
-            cur_time = time()
-            if lnum % 10000 == 0 or cur_time - self.last_status_update_time > 3:
-                self.write_status(f"Running {self.conf['title']} ({self.module_name}): line {lnum}")
-                self.last_status_update_time = cur_time
+        if not self.last_status_update_time or not self.conf:
+            return
+        cur_time = time()
+        if lnum % 10000 == 0 or cur_time - self.last_status_update_time > JOB_STATUS_UPDATE_INTERVAL:
+            status = f"Running {self.conf['title']} ({self.module_name}): line {lnum}"
+            update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
+            self.last_status_update_time = cur_time
 
     def is_star_allele(self, input_data):
         if self.conf is None:
@@ -285,9 +270,10 @@ class BaseAnnotator(object):
             return
         from time import time, asctime, localtime
         from ..util.util import quiet_print
+        from ..util.util import update_status
 
-        if self.update_status_json_flag and self.status_writer is not None:
-            self.write_status(f"Started {self.conf['title']} ({self.module_name})")
+        status = f"Started {self.conf['title']} ({self.module_name})"
+        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
         try:
             start_time = time()
             self.logger.info("started: %s" % asctime(localtime(start_time)))
@@ -304,6 +290,8 @@ class BaseAnnotator(object):
             self.process_file()
             self.postprocess()
             self.base_cleanup()
+            status = f"Started {self.conf['title']} ({self.module_name})"
+            update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
             end_time = time()
             self.logger.info("finished: {0}".format(asctime(localtime(end_time))))
             quiet_print(
@@ -318,8 +306,8 @@ class BaseAnnotator(object):
                 "        {}: runtime {:0.3f}s".format(self.module_name, run_time),
                 self.args,
             )
-            if self.update_status_json_flag and self.status_writer is not None:
-                self.write_status(f"Finished {self.conf['title']} ({self.module_name})")
+            status = f"Finished {self.conf['title']} ({self.module_name})"
+            update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
         except Exception as e:
             self._log_exception(e)
         if hasattr(self, "log_handler") and self.log_handler:

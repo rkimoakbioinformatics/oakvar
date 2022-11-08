@@ -2097,6 +2097,10 @@ class Runner(object):
         await db.close()
 
     def write_initial_status_json(self):
+        import os
+        from datetime import datetime
+        import json
+        from ..util import admin_util as au
         from ..exceptions import SetupError
 
         if (
@@ -2106,11 +2110,6 @@ class Runner(object):
             or self.output_dir is None
         ):
             raise SetupError()
-        import os
-        from datetime import datetime
-        import json
-        from ..util import admin_util as au
-
         status_fname = "{}.status.json".format(self.run_name)
         self.status_json_path = os.path.join(self.output_dir, status_fname)
         if os.path.exists(self.status_json_path) == True:

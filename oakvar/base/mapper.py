@@ -215,6 +215,7 @@ class BaseMapper(object):
     def run(self, __pos_no__):
         from time import time, asctime, localtime
         from ..exceptions import SetupError
+        from ..util.util import update_status
 
         self.base_setup()
         if (
@@ -228,8 +229,8 @@ class BaseMapper(object):
         start_time = time()
         tstamp = asctime(localtime(start_time))
         self.logger.info(f"started: {tstamp} | {self.args['seekpos']}")
-        if self.status_writer is not None:
-            self.write_status(f"Started {self.conf['title']} ({self.module_name})")
+        status = f"Started {self.conf['title']} ({self.module_name})"
+        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
         self.process_file()
         self._write_crg()
         stop_time = time()
@@ -239,16 +240,9 @@ class BaseMapper(object):
         self.logger.info("runtime: %6.3f" % runtime)
         self.end()
 
-    def write_status(self, status: str):
-        self.status_writer.queue_status_update("status", status)
-        if self.serveradmindb:
-            try:
-                self.serveradmindb.update_job_info({"status": status}, self.output_dir, self.status_writer.get_status_json().get("job_name"))
-            except Exception as e:
-                print(f"@ err={e}")
-
     def process_file(self):
         from time import time
+        from ..util.util import update_status
 
         if not self.reader or not self.crx_writer:
             return
@@ -261,7 +255,8 @@ class BaseMapper(object):
                 cur_time = time()
                 if self.status_writer is not None:
                     if count % 10000 == 0 or cur_time - last_status_update_time > 3:
-                        self.write_status(f"Running gene mapper: line {count}")
+                        status = f"Running gene mapper: line {count}"
+                        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
                         last_status_update_time = cur_time
                 if crv_data["alt_base"] == "*":
                     crx_data = crv_data
