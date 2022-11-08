@@ -124,6 +124,7 @@ def get_register_args_of_module(module_name: str, args={}) -> Optional[dict]:
                     valid = False
                 if not valid:
                     raise ArgumentError(msg=f"invalid {kind} URL: {url}")
+                quiet_print(f"Validated", args=args)
     if not rmi.get("data_url") and no_data and data_version:
         data_url_s = module_data_url(module_name, version=data_version)
         if not data_url_s:
