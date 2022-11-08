@@ -284,7 +284,7 @@ def id_token_is_valid() -> Tuple[bool, bool]:  # valid, expired
     st = res.status_code
     if st == 460:  # valid but expired
         return True, True
-    elif res.status_code == 200:
+    elif st == 200:
         return True, False
     else:
         return False, True
