@@ -157,7 +157,7 @@ def get_live_annotator(module_name, input_file=None):
         module.name = module_name
         module.annotator_dir = os.path.dirname(module.script_path)
         module.data_dir = os.path.join(module.module_dir, "data")
-        module._open_db_connection()
+        module.connect_db()
         module.setup()
     return module
 
