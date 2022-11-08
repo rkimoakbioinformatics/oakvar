@@ -284,3 +284,5 @@ for g in ["hg18", "hg19"]:
 status_suffix = ".status.json"
 result_db_suffix = ".sqlite"
 log_suffix = ".log"
+
+JOB_STATUS_UPDATE_INTERVAL = 10 # seconds
