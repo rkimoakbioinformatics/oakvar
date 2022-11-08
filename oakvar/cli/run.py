@@ -513,14 +513,15 @@ class Runner(object):
                     "Finished normally. Runtime: {0:0.3f}s".format(runtime),
                     self.args,
                 )
-            update_status(
-                "Error",
-                serveradmindb=self.serveradmindb,
-                status_writer=self.status_writer,
-                args=self.args,
-                force=True,
-                status_json=self.status_json
-            )
+            if self.exception:
+                update_status(
+                    "Error",
+                    serveradmindb=self.serveradmindb,
+                    status_writer=self.status_writer,
+                    args=self.args,
+                    force=True,
+                    status_json=self.status_json
+                )
             if self.logger:
                 self.close_logger()
             if (
