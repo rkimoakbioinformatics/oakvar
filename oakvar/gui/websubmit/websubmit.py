@@ -102,7 +102,7 @@ async def resubmit(request):
     global info_of_running_jobs
     if servermode:
         if await mu.is_loggedin(request) == False:
-            return Response(status=403)
+            return Response(status=401)
     queries = request.rel_url.query
     job_id = queries["job_id"]
     job_dir = queries["job_dir"]
@@ -210,7 +210,7 @@ async def submit(request):
     if ret:
         return ret
     if not await mu.is_loggedin(request):
-        return Response(status=403)
+        return Response(status=401)
     if not job_queue:
         return json_response({"status": "server error. Job queue is not running."})
     if not mu:
@@ -454,7 +454,7 @@ async def get_jobs(request):
     global servermode
     global info_of_running_jobs
     if not await mu.is_loggedin(request):
-        return Response(status=403)
+        return Response(status=401)
     data = await request.json()
     pageno = data.get("pageno")
     pagesize = data.get("pagesize")
@@ -494,7 +494,7 @@ async def get_job_status(request):
     from .serveradmindb import ServerAdminDb
     global servermode
     if not await mu.is_loggedin(request):
-        return Response(status=403)
+        return Response(status=401)
     queries = request.rel_url.query
     uid = queries.get("uid")
     if not uid:
@@ -713,9 +713,9 @@ async def update_system_conf(request):
     if servermode and mu:
         username = await mu.get_username(request)
         if username != "admin":
-            return Response(status=403)
+            return Response(status=401)
         if not await mu.is_loggedin(request):
-            return Response(status=403)
+            return Response(status=401)
     queries = request.rel_url.query
     sysconf = loads(queries["sysconf"])
     try:

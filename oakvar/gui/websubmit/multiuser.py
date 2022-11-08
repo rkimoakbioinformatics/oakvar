@@ -231,7 +231,7 @@ async def signup(request):
     ret = create(email=email, pw=password)
     msg = ret.get("msg")
     if not ret.get("success"):
-        return json_response({"code": msg}, status=403)
+        return json_response({"code": msg}, status=401)
     await serveradmindb.add_user_if_not_exist(email, "", "", "")
     oakvar_token = jwt.encode({"email": email}, DEFAULT_PRIVATE_KEY, algorithm="HS256")
     response = json_response({"code": msg}, status=200)
