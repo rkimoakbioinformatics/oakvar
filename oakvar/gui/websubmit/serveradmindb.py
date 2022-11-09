@@ -2,6 +2,7 @@ from logging import getLogger
 from typing import Any
 from typing import Optional
 
+admindb_path = None
 
 def db_func(func):
     async def outer_func(*args, **kwargs):
@@ -18,10 +19,12 @@ def db_func(func):
     return outer_func
 
 def get_admindb_path():
-    from oakvar.system import get_conf_dir
+    from ...system import get_conf_dir
     from pathlib import Path
     from ...system.consts import ADMIN_DB_FN
-    admindb_path = Path(get_conf_dir()) / ADMIN_DB_FN
+    global admindb_path
+    if not admindb_path:
+        admindb_path = Path(get_conf_dir()) / ADMIN_DB_FN
     return admindb_path
 
 class ServerAdminDb ():
