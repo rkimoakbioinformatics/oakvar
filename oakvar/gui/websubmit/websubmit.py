@@ -1,6 +1,7 @@
 from typing import Any
 from typing import Optional
 from typing import Tuple
+from typing import Dict
 from multiprocessing import Queue
 from multiprocessing import Manager
 
@@ -22,8 +23,8 @@ logger = None
 mu = Any
 job_statuses = {}
 
-class WebJob(object):
-    def __init__(self, job_dir, job_status_fpath, job_id=None):
+class Job(object):
+    def __init__(self, job_dir, job_status_fpath, job_name=None):
         from os.path import basename
         self.info = {}
         self.info["dir"] = job_dir
@@ -41,13 +42,13 @@ class WebJob(object):
         self.info["reports_being_generated"] = []
         self.job_dir = job_dir
         self.job_status_fpath = job_status_fpath
-        if not job_id:
-            job_id = basename(job_dir)
-        self.job_id = job_id
-        self.info["id"] = job_id
+        if not job_name:
+            job_name = basename(job_dir)
+        self.job_name = job_name
+        self.info["job_name"] = job_name
         self.info["statusjson"] = None
 
-    def save_job_options(self, job_options):
+    def save_job_options(self, job_options: dict):
         self.set_values(**job_options)
 
     def read_info_file(self):
@@ -71,21 +72,21 @@ class WebJob(object):
         self.info.update(kwargs)
 
 
-def get_next_job_id(jobs_dir: str):
+def get_new_job_dir(jobs_dir: str) -> str:
     from datetime import datetime
     from pathlib import Path
 
-    job_id = datetime.now().strftime(r"%y%m%d-%H%M%S")
-    job_dir = Path(jobs_dir) / job_id
+    job_name = datetime.now().strftime(r"%y%m%d-%H%M%S")
+    job_dir = Path(jobs_dir) / job_name
     if job_dir.exists():
         count = 1
         while True:
-            job_id = datetime.now().strftime(r"%y%m%d-%H%M%S") + "_" + str(count)
-            job_dir = Path(jobs_dir) / job_id
+            job_name = datetime.now().strftime(r"%y%m%d-%H%M%S") + "_" + str(count)
+            job_dir = Path(jobs_dir) / job_name
             if not job_dir.exists():
                 break
             count += 1
-    return job_id, str(job_dir)
+    return str(job_dir)
 
 
 
@@ -96,7 +97,12 @@ async def resubmit(request):
     from aiohttp.web import Response
     from json import load
     from json import dump
+    from .userjob import get_user_jobs_dir
 
+    jobs_dir = get_user_jobs_dir(request)
+    ret = pre_submit_check(request, jobs_dir)
+    if ret:
+        return ret
     global servermode
     global job_queue
     global info_of_running_jobs
@@ -152,9 +158,9 @@ async def resubmit(request):
     if job_id not in job_ids:
         job_ids.append(job_id)
     info_of_running_jobs = job_ids
-    qitem = {"cmd": "submit", "uid": job_id, "run_args": run_args}
+    queue_item = {"cmd": "submit", "uid": job_id, "run_args": run_args}
     if job_queue is not None:
-        job_queue.put(qitem)
+        job_queue.put(queue_item)
         status_json["status"] = "Submitted"
     if status_json_path is not None:
         with open(status_json_path, "w") as wf:
@@ -186,26 +192,10 @@ def check_submit_input_size(request):
             ),
         )
 
-async def submit(request):
-    from os.path import join
-    from os.path import basename
-    from os import makedirs
-    from datetime import datetime
-    from aiohttp.web import json_response
-    from aiohttp.web import HTTPForbidden
+async def pre_submit_check(request, jobs_dir: Optional[str]):
     from aiohttp.web import Response
-    from json import dump
-    from ...util.admin_util import set_user_conf_prop
-    from ...util.admin_util import get_current_package_version
-    from ...system.consts import default_assembly
-    from .userjob import get_user_jobs_dir
-    from ...consts import status_suffix
+    from aiohttp.web import json_response
 
-
-    global servermode
-    global job_queue
-    global info_of_running_jobs
-    global mu
     ret = check_submit_input_size(request)
     if ret:
         return ret
@@ -215,14 +205,23 @@ async def submit(request):
         return json_response({"status": "server error. Job queue is not running."})
     if not mu:
         return json_response({"status": "server error. User control is not running."})
-    jobs_dir = get_user_jobs_dir(request)
     if not jobs_dir:
-        return HTTPForbidden()
-    job_id, job_dir = get_next_job_id(jobs_dir)
+        return Response(status=404)
+
+def create_new_job_dir(jobs_dir: str) -> str:
+    from os import makedirs
+
+    job_dir = get_new_job_dir(jobs_dir)
     makedirs(job_dir, exist_ok=True)
-    reader = await request.multipart()
+    return job_dir
+
+async def save_job_input_files(request, job_dir: str) -> dict:
+    from os.path import join
+
+    submit_options = {}
     job_options = {}
     input_files = []
+    reader = await request.multipart()
     cc_cohorts_path = None
     while True:
         part = await reader.next()
@@ -238,121 +237,198 @@ async def submit(request):
             job_options = await part.json()
         elif part.name == "casecontrol":
             cc_cohorts_path = join(job_dir, part.filename)
+            submit_options["cc_cohorts_path"] = cc_cohorts_path
             with open(cc_cohorts_path, "wb") as wf:
                 wf.write(await part.read())
-    use_server_input_files = False
+    submit_options["job_options"] = job_options
+    submit_options["input_files"] = input_files
+    return submit_options
+
+def process_job_options(submit_options: dict, job_dir: str):
+    from pathlib import Path
+    from ...consts import status_suffix
+
+    job_options = submit_options.get("job_options", {})
+    input_files = submit_options.get("input_files", [])
     if "inputServerFiles" in job_options and len(job_options["inputServerFiles"]) > 0:
         input_files = job_options["inputServerFiles"]
-        input_fnames = [basename(fn) for fn in input_files]
-        use_server_input_files = True
+        input_fnames = [str(Path(fn).name) for fn in input_files]
+        submit_options["use_server_input_files"] = True
     else:
         input_fnames = [fp.filename for fp in input_files]
+        submit_options["use_server_input_files"] = False
     run_name = input_fnames[0]
     if len(input_fnames) > 1:
         run_name += "_and_" + str(len(input_fnames) - 1) + "_files"
-    info_fname = f"{run_name}{status_suffix}"
-    job_info_fpath = join(job_dir, info_fname)
-    # Job name
-    job_name = job_options.get("job_name", "")
+    submit_options["input_fnames"] = input_fnames
+    submit_options["run_name"] = run_name
+    info_fname = str(Path(run_name).with_suffix(status_suffix))
+    submit_options["job_info_fpath"] = Path(job_dir) / info_fname
+    job_name = job_options.get("job_name")
     if job_name:
-        job_id = job_name
-    # Subprocess arguments
-    input_fpaths = [join(job_dir, fn) for fn in input_fnames]
+        submit_options["job_name"] = job_name
+
+async def get_run_args(request, submit_options: dict, job_dir: str):
+    from pathlib import Path
+    from ...system.consts import default_assembly
+    from ...util.admin_util import set_user_conf_prop
+
+    global servermode
+    job_options = submit_options.get("job_options", {})
+    input_fnames = submit_options.get("input_fnames", [])
+    submit_options["input_fpaths"] = [str(Path(job_dir) / fn) for fn in input_fnames]
     run_args = ["ov", "run"]
-    if use_server_input_files:
-        for fp in input_files:
+    if submit_options.get("use_server_input_files"):
+        for fp in submit_options.get("input_files", []):
             run_args.append(fp)
         run_args.extend(["-d", job_dir])
     else:
         for fn in input_fnames:
-            run_args.append(join(job_dir, fn))
-    # Annotators
-    if (
-        "annotators" in job_options
-        and len(job_options["annotators"]) > 0
-        and job_options["annotators"][0] != ""
-    ):
-        annotators = job_options["annotators"]
-        annotators.sort()
-        run_args.append("-a")
-        run_args.extend(annotators)
-    else:
-        annotators = ""
-        run_args.append("-e")
-        run_args.append("all")
+            run_args.append(str(Path(job_dir) / fn))
     # Liftover assembly
     run_args.append("-l")
-    if "assembly" in job_options:
-        assembly = job_options["assembly"]
-    else:
+    assembly = job_options.get("assembly")
+    if not assembly:
         assembly = default_assembly
+    submit_options["assembly"] = assembly
     run_args.append(assembly)
     if servermode:
         await mu.update_user_settings(request, {"lastAssembly": assembly})
     else:
         set_user_conf_prop("last_assembly", assembly)
+    # Annotators
+    annotators = job_options.get("annotators", [])
+    if annotators and annotators[0] != "":
+        annotators.sort()
+        run_args.append("-a")
+        run_args.extend(annotators)
+    else:
+        annotators = []
+        run_args.append("-e")
+        run_args.append("all")
+    submit_options["annotators"] = annotators
+    # Postaggregators
+    postaggregators = job_options.get("postaggregators", [])
+    if postaggregators and postaggregators[0] != "":
+        postaggregators.sort()
+        run_args.append("-p")
+        run_args.extend(postaggregators)
+    else:
+        postaggregators = []
+    submit_options["postaggregators"] = postaggregators
     # Reports
-    if "reports" in job_options and len(job_options["reports"]) > 0:
+    reports = job_options.get("reports", [])
+    if reports:
         run_args.append("-t")
         run_args.extend(job_options["reports"])
-    else:
-        run_args.extend(["--skip", "reporter"])
     # Note
-    note = job_options.get("note", "")
+    note = job_options.get("note")
     if note:
         run_args.append("--note")
         run_args.append(note)
     # Forced input format
-    if "forcedinputformat" in job_options and job_options["forcedinputformat"]:
+    forcedinputformat = job_options.get("forcedinputformat")
+    if forcedinputformat:
         run_args.append("--input-format")
-        run_args.append(job_options["forcedinputformat"])
+        run_args.append(forcedinputformat)
     run_args.append("--writeadmindb")
-    run_args.extend(["--jobname", f"{job_id}"])
+    job_name = submit_options.get("job_name")
+    if job_name:
+        run_args.extend(["--jobname", f"{job_name}"])
     run_args.append("--temp-files")
-    if cc_cohorts_path is not None:
+    cc_cohorts_path = submit_options.get("cc_cohorts_path")
+    if cc_cohorts_path:
         run_args.extend(["--module-option", f"casecontrol.cohorts={cc_cohorts_path}"])
-    # Initial save of job
-    job = WebJob(job_dir, job_info_fpath, job_id=job_id)
-    job.save_job_options(job_options)
+    return run_args
+
+def get_job(submit_options: dict, job_dir: str):
+    from datetime import datetime
+
+    job = Job(job_dir, submit_options.get("job_info_fpath"), job_name=submit_options.get("job_name"))
+    job.save_job_options(submit_options.get("job_options", {}))
     job.set_info_values(
-        orig_input_fname=input_fnames,
-        run_name=run_name,
+        orig_input_fname=submit_options.get("input_fnames"),
+        run_name=submit_options.get("run_name"),
         submission_time=datetime.now().isoformat(),
         viewable=False,
     )
     status = "Submitted"
     job.set_info_values(status=status)
-    # makes temporary status.json
-    status_json = {}
-    status_json["job_dir"] = job_dir
-    status_json["id"] = job_id
-    status_json["run_name"] = run_name
-    status_json["assembly"] = assembly
-    status_json["db_path"] = ""
-    status_json["orig_input_fname"] = input_fnames
-    status_json["orig_input_path"] = input_fpaths
-    status_json["submission_time"] = datetime.now().isoformat()
-    status_json["viewable"] = False
-    status_json["note"] = note
-    status_json["status"] = "Submitted"
-    status_json["reports"] = []
+    return job
+
+def make_job_info_json(submit_options: dict, job_dir: str):
+    from datetime import datetime
+    from pathlib import Path
+    from json import dump
+
+    from ...util.admin_util import get_current_package_version
+    from ...exceptions import ArgumentError
+    job_name = submit_options.get("job_name")
+    if not job_name:
+        raise ArgumentError(msg="job_name not found")
+    run_name = submit_options.get("run_name")
+    if not run_name:
+        raise ArgumentError(msg="run_name not found for {job_name}")
+    info_json = {}
+    info_json["job_dir"] = job_dir
+    info_json["job_name"] = job_name
+    info_json["run_name"] = run_name
+    info_json["assembly"] = submit_options.get("assembly")
+    info_json["db_path"] = ""
+    info_json["orig_input_fname"] = submit_options.get("input_fnames")
+    info_json["orig_input_path"] = submit_options.get("input_fpaths")
+    info_json["submission_time"] = datetime.now().isoformat()
+    info_json["viewable"] = False
+    info_json["note"] = submit_options.get("note")
     pkg_ver = get_current_package_version()
-    status_json["open_cravat_version"] = pkg_ver
-    status_json["annotators"] = annotators
-    if cc_cohorts_path is not None:
-        status_json["cc_cohorts_path"] = cc_cohorts_path
-    else:
-        status_json["cc_cohorts_path"] = ""
-    with open(join(job_dir, run_name + ".status.json"), "w") as wf:
-        dump(status_json, wf, indent=2, sort_keys=True)
-    job.set_info_values(statusjson=status_json)
+    info_json["package_version"] = pkg_ver
+    info_json["annotators"] = submit_options.get("annotators", [])
+    info_json["postaggregators"] = submit_options.get("postaggregators", [])
+    info_json["reports"] = submit_options.get("reporters", [])
+    info_json["cc_cohorts_path"] = submit_options.get("cc_cohorts_path")
+    with open(Path(job_dir) / (run_name + ".info.json"), "w") as wf:
+        dump(info_json, wf, indent=2, sort_keys=True)
+    return info_json
+
+async def get_queue_item_and_job(request, job_dir) -> dict:
+    submit_options = await save_job_input_files(request, job_dir)
+    process_job_options(submit_options, job_dir)
+    run_args = await get_run_args(request, submit_options, job_dir)
+    job = get_job(submit_options, job_dir)
+    info_json = make_job_info_json(submit_options, job_dir)
+    job.set_info_values(info_json=info_json)
     uid = await mu.add_job_info(request, job)
+    submit_options["uid"] = uid
     run_args.extend(["--uid", str(uid)])
-    qitem = {"cmd": "submit", "uid": uid, "run_args": run_args}
-    job_queue.put(qitem)
-    job_ids = info_of_running_jobs
-    job_ids.append(uid)
-    info_of_running_jobs = job_ids
+    submit_options["run_args"] = run_args
+    queue_item = {"cmd": "submit", "submit_options": submit_options}
+    return queue_item
+
+def add_job_uid_to_info_of_running_jobs(job_uid: int):
+    global info_of_running_jobs
+    job_uids = info_of_running_jobs
+    job_uids.append(job_uid)
+    info_of_running_jobs = job_uids
+
+async def submit(request):
+    from aiohttp.web import Response
+    from aiohttp.web import json_response
+    from .userjob import get_user_jobs_dir
+
+    global servermode
+    global job_queue
+    global info_of_running_jobs
+    global mu
+    jobs_dir = get_user_jobs_dir(request)
+    if not jobs_dir:
+        return Response(body="No jobs directory found", status=500)
+    ret = pre_submit_check(request, jobs_dir)
+    if ret:
+        return ret
+    job_dir = create_new_job_dir(jobs_dir)
+    queue_item, job = await get_queue_item_and_job(request, job_dir)
+    job_queue.put(queue_item)
+    add_job_uid_to_info_of_running_jobs(queue_item.get("uid"))
     return json_response(job.get_info_dict())
 
 
@@ -726,14 +802,14 @@ async def update_system_conf(request):
             if exists(cravat_yml_path) == False:
                 set_modules_dir(modules_dir)
         global job_queue
-        qitem = {
+        queue_item = {
             "cmd": "set_max_num_concurrent_jobs",
             "max_num_concurrent_jobs": sysconf["max_num_concurrent_jobs"],
         }
         if job_queue is None:
             return Response(status=500)
         else:
-            job_queue.put(qitem)
+            job_queue.put(queue_item)
     except:
         raise
     return json_response({"success": success, "sysconf": sysconf})
@@ -802,8 +878,8 @@ async def delete_jobs(request):
     if not uids:
         return Response(status=404)
     username = get_email_from_request(request)
-    qitem = {"cmd": "delete", "uids": uids, "username": username, "abort_only": abort_only}
-    job_queue.put(qitem)
+    queue_item = {"cmd": "delete", "uids": uids, "username": username, "abort_only": abort_only}
+    job_queue.put(queue_item)
     job_dir_ps = []
     for uid in uids:
         p = await get_job_dir_from_eud(request, {"username": username, "uid": uid})
@@ -851,10 +927,14 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
             self.info_of_running_jobs = []
             self.loop = main_loop
 
-        def add_job(self, qitem):
-            uid = qitem["uid"]
+        def add_job(self, queue_item):
+            submit_options = queue_item.get("submit_options")
+            uid = submit_options.get("uid")
+            if not uid:
+                print("No job UID from {submit_options}")
+                return
             self.queue.append(uid)
-            self.run_args[uid] = qitem["run_args"]
+            self.run_args[uid] = submit_options.get("run_args")
             self.info_of_running_jobs.append(uid)
 
         def get_process(self, uid):
@@ -965,7 +1045,7 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
                         p = Popen(run_args)
                         self.processes_of_running_jobs[uid] = p
 
-        async def delete_jobs(self, qitem):
+        async def delete_jobs(self, queue_item):
             from os.path import exists
             from shutil import rmtree
             from logging import getLogger
@@ -973,9 +1053,9 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
             from .multiuser import get_serveradmindb
 
             logger = getLogger()
-            uids = qitem["uids"]
-            username = qitem["username"]
-            abort_only = qitem["abort_only"]
+            uids = queue_item["uids"]
+            username = queue_item["username"]
+            abort_only = queue_item["abort_only"]
             for uid in uids:
                 if uid in self.processes_of_running_jobs:
                     msg = "\nKilling job {}".format(uid)
@@ -990,9 +1070,9 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
                 if job_dir and exists(job_dir):
                     rmtree(job_dir)
 
-        def set_max_num_concurrent_jobs(self, qitem):
+        def set_max_num_concurrent_jobs(self, queue_item):
             from logging import getLogger
-            value = qitem["max_num_concurrent_jobs"]
+            value = queue_item["max_num_concurrent_jobs"]
             try:
                 self.max_num_concurrent_jobs = int(value)
             except:
@@ -1009,14 +1089,14 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
             await job_tracker.clean_jobs(None)
             job_tracker.run_available_jobs()
             try:
-                qitem = job_queue.get_nowait()
-                cmd = qitem["cmd"]
+                queue_item = job_queue.get_nowait()
+                cmd = queue_item["cmd"]
                 if cmd == "submit":
-                    job_tracker.add_job(qitem)
+                    job_tracker.add_job(queue_item)
                 elif cmd == "delete":
-                    await job_tracker.delete_jobs(qitem)
+                    await job_tracker.delete_jobs(queue_item)
                 elif cmd == "set_max_num_concurrent_jobs":
-                    job_tracker.set_max_num_concurrent_jobs(qitem)
+                    job_tracker.set_max_num_concurrent_jobs(queue_item)
             except Empty:
                 pass
             except Exception as e:
@@ -1305,7 +1385,7 @@ async def import_job(request):
     jobs_dir = get_user_jobs_dir(request)
     if not jobs_dir:
         return HTTPForbidden
-    _, job_dir = get_next_job_id(jobs_dir)
+    _, job_dir = get_new_job_dir(jobs_dir)
     makedirs(job_dir, exist_ok=True)
     fn = request.headers["Content-Disposition"].split("filename=")[1]
     dbpath = join(job_dir, fn)

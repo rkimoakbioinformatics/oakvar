@@ -918,7 +918,7 @@ def get_user_jobs_dir(email=None):
     jobs_dir = root_jobs_dir / email
     return str(jobs_dir)
 
-def get_status_path_in_job_dir(job_dir: Optional[str], run_name=None) -> Optional[str]:
+def get_legacy_status_json_path_in_job_dir(job_dir: Optional[str], run_name=None) -> Optional[str]:
     from pathlib import Path
     from ..consts import status_suffix
 
@@ -926,18 +926,18 @@ def get_status_path_in_job_dir(job_dir: Optional[str], run_name=None) -> Optiona
         return None
     job_dir_p = Path(job_dir).absolute()
     if run_name:
-        status_path = job_dir_p / (run_name + status_suffix)
-        return str(status_path)
-    status_paths = list(job_dir_p.glob("*" + status_suffix))
-    if not status_paths:
+        legacy_status_json_path = job_dir_p / (run_name + status_suffix)
+        return str(legacy_status_json_path)
+    legacy_status_json_paths = list(job_dir_p.glob("*" + status_suffix))
+    if not legacy_status_json_paths:
         return None
-    return str(status_paths[0])
+    return str(legacy_status_json_paths[0])
 
-def get_job_status(job_dir: Optional[str]) -> Optional[dict]:
+def get_legacy_status_json(job_dir: Optional[str]) -> Optional[dict]:
     from json import load
     from logging import getLogger
     try:
-        status_path = get_status_path_in_job_dir(job_dir)
+        status_path = get_legacy_status_json_path_in_job_dir(job_dir)
         if not status_path:
             return None
         with open(status_path) as f:

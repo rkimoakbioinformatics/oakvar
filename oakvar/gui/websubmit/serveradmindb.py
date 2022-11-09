@@ -193,6 +193,8 @@ class ServerAdminDb ():
         await cursor.execute(q, (username, job.info["dir"], job.info['id'], job.info['submission_time'], -1, -1, modules, job.info['assembly'], job.info["note"], statusjson, job.info["status"]))
         await conn.commit()
         q = f"select uid from jobs where username=? and dir=? and name=?"
+    
+    async def get_uid_by_username_and_job_name(username: str, job_name: str):
         await cursor.execute(q, (username, job.info["dir"], job.info["id"]))
         ret = await cursor.fetchone()
         if not ret:
@@ -577,7 +579,7 @@ class ServerAdminDb ():
         from sqlite3 import connect
         from json import dumps
         from ...system import get_user_jobs_dir
-        from ...system import get_job_status
+        from ...system import get_legacy_status_json
         from .userjob import get_job_runtime_in_job_dir
 
         jobs_dir = get_user_jobs_dir(email)
@@ -592,7 +594,7 @@ class ServerAdminDb ():
             if not job_dir_p.is_dir():
                 continue
             job_dir = str(job_dir_p)
-            job_status = get_job_status(job_dir)
+            job_status = get_legacy_status_json(job_dir)
             if not job_status:
                 continue
             job_name = job_status.get("id")

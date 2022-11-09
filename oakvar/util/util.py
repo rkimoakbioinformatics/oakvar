@@ -544,11 +544,12 @@ def update_status(status: str, logger=None, serveradmindb=None, status_writer=No
         serveradmindb.update_job_info({"status": status})
 
 
-def announce_module(module, serveradmindb=None, status_writer=None, args=None, status_json=None):
+def announce_module(module, logger=None, serveradmindb=None, status_writer=None, args=None, status_json=None):
     if args and not args.quiet:
         quiet_print("\t{0:30s}\t".format(module.name), args=args)
     update_status(
         "Running {name}".format(name=module.name),
+        logger=logger,
         serveradmindb=serveradmindb,
         status_writer=status_writer,
         args=args,
