@@ -227,10 +227,13 @@ class Runner(object):
             self.logmode = "a"
         self.logger = logging.getLogger("oakvar")
         self.logger.setLevel("INFO")
-        self.log_path = os.path.join(self.output_dir, self.run_name + ".log")
-        if os.path.exists(self.log_path):
-            os.remove(self.log_path)
-        self.log_handler = logging.FileHandler(self.log_path, mode=self.logmode)
+        if self.args.logtofile:
+            self.log_path = os.path.join(self.output_dir, self.run_name + ".log")
+            if os.path.exists(self.log_path):
+                os.remove(self.log_path)
+            self.log_handler = logging.FileHandler(self.log_path, mode=self.logmode)
+        else:
+            self.log_handler = logging.StreamHandler()
         formatter = logging.Formatter(
             "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
         )
@@ -608,7 +611,6 @@ class Runner(object):
                 full_args[k] = v
         if full_args.get("annotators_replace"):
             full_args["annotators"] = full_args.get("annotators_replace")
-
         self.args = SimpleNamespace(**full_args)
         self.process_module_options()
 
@@ -2579,5 +2581,10 @@ def add_parser_ov_run(subparsers):
         "--uid",
         default=None,
         help="Optional UID of the job"
+    )
+    parser_ov_run.add_argument(
+        "--logtofile",
+        action="store_true",
+        help="Path to a log file. If given without a path, the job's run_name.log will be the log path."
     )
     parser_ov_run.set_defaults(func=cli_run)
