@@ -281,8 +281,10 @@ for g in ["hg18", "hg19"]:
     liftover_chain_paths[g] = join(
         dirname(__file__), "liftover", g + "ToHg38.over.chain"
     )
-status_suffix = ".status.json"
 result_db_suffix = ".sqlite"
 log_suffix = ".log"
 
 JOB_STATUS_UPDATE_INTERVAL = 10 # seconds
+JOB_STATUS_FINISHED = "Finished"
+JOB_STATUS_ABORTED = "Abort"
+JOB_STATUS_ERROR = "Error"

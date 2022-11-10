@@ -1,7 +1,6 @@
 from typing import Any
 from typing import Optional
 from typing import Tuple
-from typing import Dict
 from multiprocessing import Queue
 from multiprocessing import Manager
 
@@ -22,10 +21,12 @@ job_worker = None
 logger = None
 mu = Any
 job_statuses = {}
+FINISHED = "Finished"
+ABORTED = "Aborted"
+ERROR = "Error"
 
 class Job(object):
-    def __init__(self, job_dir, job_status_fpath, job_name=None):
-        from os.path import basename
+    def __init__(self, job_dir):
         self.info = {}
         self.info["dir"] = job_dir
         self.info["orig_input_fname"] = ""
@@ -36,31 +37,15 @@ class Job(object):
         self.info["reports"] = []
         self.info["annotators"] = ""
         self.info["annotator_version"] = ""
-        self.info["open_cravat_version"] = None
+        self.info["package_version"] = None
         self.info["num_input_var"] = ""
         self.info["submission_time"] = ""
         self.info["reports_being_generated"] = []
         self.job_dir = job_dir
-        self.job_status_fpath = job_status_fpath
-        if not job_name:
-            job_name = basename(job_dir)
-        self.job_name = job_name
-        self.info["job_name"] = job_name
-        self.info["statusjson"] = None
+        self.info["info_json"] = None
 
     def save_job_options(self, job_options: dict):
         self.set_values(**job_options)
-
-    def read_info_file(self):
-        from yaml import safe_load
-        from os.path import exists
-        if not exists(self.job_status_fpath):
-            info_dict = {"status": "Error"}
-        else:
-            with open(self.job_status_fpath) as f:
-                info_dict = safe_load(f)
-        if info_dict != None:
-            self.set_values(**info_dict)
 
     def set_info_values(self, **kwargs):
         self.set_values(**kwargs)
@@ -91,81 +76,12 @@ def get_new_job_dir(jobs_dir: str) -> str:
 
 
 async def resubmit(request):
-    from os import listdir
-    from os.path import join
-    from aiohttp.web import json_response
-    from aiohttp.web import Response
-    from json import load
-    from json import dump
     from .userjob import get_user_jobs_dir
 
     jobs_dir = get_user_jobs_dir(request)
-    ret = pre_submit_check(request, jobs_dir)
+    ret = await pre_submit_check(request, jobs_dir)
     if ret:
         return ret
-    global servermode
-    global job_queue
-    global info_of_running_jobs
-    if servermode:
-        if await mu.is_loggedin(request) == False:
-            return Response(status=401)
-    queries = request.rel_url.query
-    job_id = queries["job_id"]
-    job_dir = queries["job_dir"]
-    status_json = None
-    status_json_path = None
-    for fn in listdir(job_dir):
-        if fn.endswith(".status.json"):
-            status_json_path = join(job_dir, fn)
-            with open(status_json_path) as f:
-                status_json = load(f)
-            break
-    if status_json is None:
-        return json_response(
-            {"status": "error", "msg": "no status file exists in job folder."}
-        )
-    assembly = status_json["assembly"]
-    input_fpaths = status_json["orig_input_path"]
-    note = status_json["note"]
-    annotators = status_json["annotators"]
-    if "original_input" in annotators:
-        annotators.remove("original_input")
-    cc_cohorts_path = status_json.get("cc_cohorts_path", "")
-    # Subprocess arguments
-    run_args = ["ov", "run"]
-    for fn in input_fpaths:
-        run_args.append(fn)
-    # Annotators
-    if len(annotators) > 0 and annotators[0] != "":
-        run_args.append("-a")
-        run_args.extend(annotators)
-    else:
-        run_args.append("-e")
-        run_args.append("all")
-    # Liftover assembly
-    run_args.append("-l")
-    run_args.append(assembly)
-    # Reports
-    run_args.extend(["--skip", "reporter"])
-    # Note
-    if note != "":
-        run_args.append("--note")
-        run_args.append(note)
-    run_args.append("--temp-files")
-    if cc_cohorts_path != "":
-        run_args.extend(["--module-option", f"casecontrol.cohorts={cc_cohorts_path}"])
-    job_ids = info_of_running_jobs
-    if job_id not in job_ids:
-        job_ids.append(job_id)
-    info_of_running_jobs = job_ids
-    queue_item = {"cmd": "submit", "uid": job_id, "run_args": run_args}
-    if job_queue is not None:
-        job_queue.put(queue_item)
-        status_json["status"] = "Submitted"
-    if status_json_path is not None:
-        with open(status_json_path, "w") as wf:
-            dump(status_json, wf, indent=2, sort_keys=True)
-    return json_response({"status": "resubmitted"})
 
 
 def check_submit_input_size(request):
@@ -244,9 +160,8 @@ async def save_job_input_files(request, job_dir: str) -> dict:
     submit_options["input_files"] = input_files
     return submit_options
 
-def process_job_options(submit_options: dict, job_dir: str):
+def process_job_options(submit_options: dict):
     from pathlib import Path
-    from ...consts import status_suffix
 
     job_options = submit_options.get("job_options", {})
     input_files = submit_options.get("input_files", [])
@@ -262,8 +177,6 @@ def process_job_options(submit_options: dict, job_dir: str):
         run_name += "_and_" + str(len(input_fnames) - 1) + "_files"
     submit_options["input_fnames"] = input_fnames
     submit_options["run_name"] = run_name
-    info_fname = str(Path(run_name).with_suffix(status_suffix))
-    submit_options["job_info_fpath"] = Path(job_dir) / info_fname
     job_name = job_options.get("job_name")
     if job_name:
         submit_options["job_name"] = job_name
@@ -332,6 +245,7 @@ async def get_run_args(request, submit_options: dict, job_dir: str):
         run_args.append("--input-format")
         run_args.append(forcedinputformat)
     run_args.append("--writeadmindb")
+    run_args.append("--logtofile")
     job_name = submit_options.get("job_name")
     if job_name:
         run_args.extend(["--jobname", f"{job_name}"])
@@ -343,8 +257,9 @@ async def get_run_args(request, submit_options: dict, job_dir: str):
 
 def get_job(submit_options: dict, job_dir: str):
     from datetime import datetime
+    from pathlib import Path
 
-    job = Job(job_dir, submit_options.get("job_info_fpath"), job_name=submit_options.get("job_name"))
+    job = Job(job_dir)
     job.save_job_options(submit_options.get("job_options", {}))
     job.set_info_values(
         orig_input_fname=submit_options.get("input_fnames"),
@@ -352,8 +267,10 @@ def get_job(submit_options: dict, job_dir: str):
         submission_time=datetime.now().isoformat(),
         viewable=False,
     )
-    status = "Submitted"
-    job.set_info_values(status=status)
+    if not job.info["job_name"]:
+        job_name = Path(job.info["dir"]).name
+        job.set_info_values(job_name=job_name)
+    submit_options["job_name"] = job.info["job_name"]
     return job
 
 def make_job_info_json(submit_options: dict, job_dir: str):
@@ -364,9 +281,9 @@ def make_job_info_json(submit_options: dict, job_dir: str):
     from ...util.admin_util import get_current_package_version
     from ...exceptions import ArgumentError
     job_name = submit_options.get("job_name")
-    if not job_name:
-        raise ArgumentError(msg="job_name not found")
     run_name = submit_options.get("run_name")
+    if not job_name:
+        raise ArgumentError(msg=f"job_name not found. submit_options={submit_options}")
     if not run_name:
         raise ArgumentError(msg="run_name not found for {job_name}")
     info_json = {}
@@ -390,19 +307,20 @@ def make_job_info_json(submit_options: dict, job_dir: str):
         dump(info_json, wf, indent=2, sort_keys=True)
     return info_json
 
-async def get_queue_item_and_job(request, job_dir) -> dict:
+async def get_queue_item_and_job(request, job_dir) -> Tuple[dict, Job]:
     submit_options = await save_job_input_files(request, job_dir)
-    process_job_options(submit_options, job_dir)
-    run_args = await get_run_args(request, submit_options, job_dir)
+    process_job_options(submit_options)
     job = get_job(submit_options, job_dir)
     info_json = make_job_info_json(submit_options, job_dir)
     job.set_info_values(info_json=info_json)
     uid = await mu.add_job_info(request, job)
     submit_options["uid"] = uid
+    run_args = await get_run_args(request, submit_options, job_dir)
     run_args.extend(["--uid", str(uid)])
     submit_options["run_args"] = run_args
+    del submit_options["input_files"]
     queue_item = {"cmd": "submit", "submit_options": submit_options}
-    return queue_item
+    return queue_item, job
 
 def add_job_uid_to_info_of_running_jobs(job_uid: int):
     global info_of_running_jobs
@@ -413,6 +331,7 @@ def add_job_uid_to_info_of_running_jobs(job_uid: int):
 async def submit(request):
     from aiohttp.web import Response
     from aiohttp.web import json_response
+    from logging import getLogger
     from .userjob import get_user_jobs_dir
 
     global servermode
@@ -422,13 +341,18 @@ async def submit(request):
     jobs_dir = get_user_jobs_dir(request)
     if not jobs_dir:
         return Response(body="No jobs directory found", status=500)
-    ret = pre_submit_check(request, jobs_dir)
+    ret = await pre_submit_check(request, jobs_dir)
     if ret:
         return ret
     job_dir = create_new_job_dir(jobs_dir)
     queue_item, job = await get_queue_item_and_job(request, job_dir)
     job_queue.put(queue_item)
-    add_job_uid_to_info_of_running_jobs(queue_item.get("uid"))
+    uid = queue_item.get("submit_options", {}).get("uid")
+    if not uid:
+        logger = getLogger()
+        logger.error("Job UID was not obtained. submit_options={submit_options}")
+        return Response(status=500)
+    add_job_uid_to_info_of_running_jobs(uid)
     return json_response(job.get_info_dict())
 
 
@@ -510,16 +434,14 @@ def find_files_by_ending(d, ending):
     return files
 
 def job_not_finished(job):
-    return job.get("status") not in ["Finished", "Error", "Aborted"]
+    return job.get("status") not in [FINISHED, ERROR, ABORTED]
 
 def job_not_running(job):
     global info_of_running_jobs
     return not job.get("uid") in info_of_running_jobs
 
 def mark_job_as_aborted(job):
-    status = "Aborted"
-    job["status"] = status
-    job["statusjson"]["status"] = status
+    job["status"] = ABORTED
 
 async def get_jobs(request):
     from aiohttp.web import json_response
@@ -1321,28 +1243,9 @@ async def get_available_report_types(request):
     return json_response(existing_reports)
 
 
-def get_status_json_in_dir(job_dir):
-    from os.path import join
-    from json import load
-    from glob import glob
-    if job_dir is None:
-        status_json = None
-    else:
-        fns = glob(job_dir + "/*.status.json")
-        fns.sort()
-        if len(fns) == 0:
-            status_json = None
-        else:
-            with open(join(job_dir, fns[0])) as f:
-                status_json = load(f)
-    return status_json
-
-
 async def update_result_db(request):
     from os.path import join
     from aiohttp.web import json_response
-    from json import load
-    from json import dump
     from asyncio import create_subprocess_shell
     from ...util.util import is_compatible_version
     from .userjob import get_job_dir_from_eud
@@ -1357,17 +1260,9 @@ async def update_result_db(request):
     cmd = ["ov", "util", "update-result", db_path]
     p = await create_subprocess_shell(" ".join(cmd))
     await p.wait()
-    compatible_version, db_version, _ = is_compatible_version(db_path)
+    compatible_version, _, _ = is_compatible_version(db_path)
     if compatible_version:
         msg = "success"
-        fn = find_files_by_ending(job_dir, ".status.json")[0]
-        path = join(job_dir, fn)
-        with open(path) as f:
-            status_json = load(f)
-        status_json["open_cravat_version"] = str(db_version)
-        wf = open(path, "w")
-        dump(status_json, wf, indent=2, sort_keys=True)
-        wf.close()
     else:
         msg = "fail"
     return json_response(msg)
@@ -1378,8 +1273,6 @@ async def import_job(request):
     from os import makedirs
     from aiohttp.web import Response
     from aiohttp.web import HTTPForbidden
-    from json import dump
-    from ...cli.util import status_from_db
     from .userjob import get_user_jobs_dir
 
     jobs_dir = get_user_jobs_dir(request)
@@ -1392,10 +1285,6 @@ async def import_job(request):
     with open(dbpath, "wb") as wf:
         async for data, _ in request.content.iter_chunks():
             wf.write(data)
-    status_d = status_from_db(dbpath)
-    status_path = dbpath + ".status.json"
-    with open(status_path, "w") as wf:
-        dump(status_d, wf)
     return Response()
 
 

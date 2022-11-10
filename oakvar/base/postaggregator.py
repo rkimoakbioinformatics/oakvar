@@ -2,11 +2,8 @@ class BasePostAggregator(object):
 
     cr_type_to_sql = {"string": "text", "int": "integer", "float": "real"}
 
-    def __init__(self, cmd_args, status_writer, serveradmindb=None):
-        from ..util.util import get_caller_name
-
-        self.status_writer = status_writer
-        self.serveradmindb = serveradmindb
+    def __init__(self, *inargs, **inkwargs):
+        self.serveradmindb = None
         self.cmd_arg_parser = None
         self.run_name = None
         self.output_dir = None
@@ -16,9 +13,9 @@ class BasePostAggregator(object):
         self.db_path = None
         self.logger = None
         self.error_logger = None
-        self.unique_excs = None
-        self.module_name = get_caller_name(cmd_args[0])
-        self.parse_cmd_args(cmd_args)
+        self.unique_excs = []
+        self.module_name = None
+        self.parse_cmd_args(inargs, inkwargs)
         self._setup_logger()
         self.make_conf_and_level()
         self.fix_col_names()
@@ -50,9 +47,9 @@ class BasePostAggregator(object):
         return True
 
     def fix_col_names(self):
-        if self.conf is None:
-            from ..exceptions import ConfigurationError
+        from ..exceptions import ConfigurationError
 
+        if not self.conf or not self.module_name:
             raise ConfigurationError()
         for col in self.conf["output_columns"]:
             col["name"] = self.module_name + "__" + col["name"]
@@ -64,7 +61,7 @@ class BasePostAggregator(object):
             if self.logger:
                 self.logger.exception(e)
 
-    def _define_cmd_parser(self):
+    def get_cmd_parser(self):
         import argparse
 
         parser = argparse.ArgumentParser()
@@ -74,41 +71,37 @@ class BasePostAggregator(object):
             dest="output_dir",
             help="Output directory. " + "Default is input file directory.",
         )
-        #parser.add_argument(
-        #    "-l",
-        #    dest="level",
-        #    default="variant",
-        #    help="Summarize level. " + "Default is variant.",
-        #)
         parser.add_argument(
             "--confs", dest="confs", default="{}", help="Configuration string"
         )
-        self.cmd_arg_parser = parser
+        return parser
 
-    def parse_cmd_args(self, cmd_args):
-        import os
-        import json
+    def parse_cmd_args(self, inargs, inkwargs):
+        from json import loads
         from ..exceptions import SetupError
         from ..exceptions import ParserError
+        from ..util.util import get_args
+        from ..util.util import get_result_dbpath
 
-        self._define_cmd_parser()
-        if self.cmd_arg_parser is None:
-            raise ParserError("postaggregator")
-        parsed_args = self.cmd_arg_parser.parse_args(cmd_args[1:])
-        if parsed_args.run_name:
-            self.run_name = parsed_args.run_name
-        if parsed_args.output_dir:
-            self.output_dir = parsed_args.output_dir
-        if self.output_dir is None:
+        parser = self.get_cmd_parser()
+        args = get_args(parser, inargs, inkwargs)
+        self.args = args
+        if args.get("module_name"):
+            self.module_name = args.get("module_name")
+        if args.get("run_name"):
+            self.run_name = args.get("run_name")
+        if args.get("output_dir"):
+            self.output_dir = args.get("output_dir")
+        if not self.output_dir:
             raise SetupError("Output directory was not given.")
-        if self.run_name is None:
+        if not self.run_name:
             raise ParserError("postaggregator run_name")
-        self.db_path = os.path.join(self.output_dir, self.run_name + ".sqlite")
+        self.db_path = get_result_dbpath(self.output_dir, self.run_name)
         self.confs = None
-        if parsed_args.confs is not None:
-            confs = parsed_args.confs.lstrip("'").rstrip("'").replace("'", '"')
-            self.confs = json.loads(confs)
-        self.args = parsed_args
+        if args.get("confs"):
+            confs = args.get("confs").lstrip("'").rstrip("'").replace("'", '"')
+            self.confs = loads(confs)
+        self.args = args
 
     def handle_legacy_data(self, output_dict: dict):
         from json import dumps
@@ -247,7 +240,7 @@ class BasePostAggregator(object):
             return
         start_time = time()
         status = f"Started {self.conf['title']} ({self.module_name})"
-        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
+        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
         self.logger.info("started: {0}".format(asctime(localtime(start_time))))
         self.base_setup()
         self.json_colnames = []
@@ -264,7 +257,7 @@ class BasePostAggregator(object):
         self.logger.info("finished: {0}".format(asctime(localtime(end_time))))
         self.logger.info("runtime: {0:0.3f}".format(run_time))
         status = f"Finished {self.conf['title']} ({self.module_name})"
-        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
+        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
 
     def process_file(self):
         from time import time 
@@ -288,7 +281,7 @@ class BasePostAggregator(object):
                 lnum += 1
                 if lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
                     status = f"Running {self.conf['title']} ({self.module_name}): row {lnum}"
-                    update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
+                    update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
                     last_status_update_time = cur_time
             except Exception as e:
                 self._log_runtime_exception(input_data, e)
@@ -367,25 +360,17 @@ class BasePostAggregator(object):
         self.cursor_w.execute(q, vals)
 
     def _log_runtime_exception(self, input_data, e):
-        if self.unique_excs is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
-        if self.logger is None or self.error_logger is None:
-            from ..exceptions import LoggerError
-
-            raise LoggerError(module_name=self.module_name)
         import traceback
+        from ..exceptions import LoggerError
 
+        if self.logger is None or self.error_logger is None:
+            raise LoggerError(module_name=self.module_name)
         try:
             err_str = traceback.format_exc().rstrip()
             if err_str not in self.unique_excs:
                 self.unique_excs.append(err_str)
                 self.logger.error(err_str)
             self.error_logger.error(f"{input_data[0]}\t{str(e)}")
-            # self.error_logger.error(
-            #    "\nINPUT:{}\nERROR:{}\n#".format(str(input_data), str(e))
-            # )
         except Exception as e:
             self._log_exception(e, halt=False)
 
@@ -485,12 +470,13 @@ class BasePostAggregator(object):
     def _setup_logger(self):
         import logging
 
+        if not self.module_name:
+            return
         try:
             self.logger = logging.getLogger("oakvar." + self.module_name)
         except Exception as e:
             self._log_exception(e)
         self.error_logger = logging.getLogger("err." + self.module_name)
-        self.unique_excs = []
 
     def columns_to_columns_str(self, columns):
         return ",".join(columns)

@@ -24,7 +24,7 @@ class BaseMapper(object):
         self.args = None
         self.logger = None
         self.error_logger = None
-        self.unique_excs = None
+        self.unique_excs = []
         self.written_primary_transc = None
         self._define_main_cmd_args()
         self._define_additional_cmd_args()
@@ -33,7 +33,6 @@ class BaseMapper(object):
             return
         self.live = self.args["live"]
         self.t = time()
-        self.status_writer = self.args["status_writer"]
         self.serveradmindb = self.args.get("serveradmindb")
         main_fpath = self.args.get("script_path", __file__)
         main_basename = os.path.basename(main_fpath)
@@ -93,9 +92,6 @@ class BaseMapper(object):
         self.cmd_parser.add_argument(
             "--live", action="store_true", default=False, help=argparse.SUPPRESS
         )
-        self.cmd_parser.add_argument(
-            "--status_writer", default=None, help=argparse.SUPPRESS
-        )
 
     def _define_additional_cmd_args(self):
         """This method allows sub-classes to override and provide addittional command line args"""
@@ -142,13 +138,12 @@ class BaseMapper(object):
         pass
 
     def _setup_logger(self):
-        import logging
+        from logging import getLogger
 
-        self.logger = logging.getLogger("oakvar.mapper")
+        self.logger = getLogger("oakvar.mapper")
         if self.input_path:
             self.logger.info("input file: %s" % self.input_path)
-        self.error_logger = logging.getLogger("err." + self.module_name)
-        self.unique_excs = []
+        self.error_logger = getLogger("err." + self.module_name)
 
     def _setup_io(self):
         import os
@@ -230,7 +225,7 @@ class BaseMapper(object):
         tstamp = asctime(localtime(start_time))
         self.logger.info(f"started: {tstamp} | {self.args['seekpos']}")
         status = f"Started {self.conf['title']} ({self.module_name})"
-        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
+        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
         self.process_file()
         self._write_crg()
         stop_time = time()
@@ -253,11 +248,10 @@ class BaseMapper(object):
             try:
                 count += 1
                 cur_time = time()
-                if self.status_writer is not None:
-                    if count % 10000 == 0 or cur_time - last_status_update_time > 3:
-                        status = f"Running gene mapper: line {count}"
-                        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
-                        last_status_update_time = cur_time
+                if count % 10000 == 0 or cur_time - last_status_update_time > 3:
+                    status = f"Running gene mapper: line {count}"
+                    update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
+                    last_status_update_time = cur_time
                 if crv_data["alt_base"] == "*":
                     crx_data = crv_data
                     crx_data["all_mappings"] = "{}"

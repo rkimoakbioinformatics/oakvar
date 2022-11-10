@@ -10,6 +10,7 @@ class MasterConverter(object):
         from oakvar import get_wgs_reader
 
         self.logger = None
+        self.serveradmindb = None
         self.crv_writer = None
         self.crs_writer = None
         self.crm_writer = None
@@ -26,10 +27,8 @@ class MasterConverter(object):
         self.input_path_dict2 = None
         self.output_dir = None
         self.output_base_fname = None
-        self.status_fpath = None
         self.conf = None
         self.unique_variants = None
-        self.status_writer = None
         self.error_logger = None
         self.unique_excs = []
         self.wpath = None
@@ -93,7 +92,7 @@ class MasterConverter(object):
         import sys
         from json import loads
         from argparse import ArgumentParser, SUPPRESS
-        from os.path import abspath, dirname, exists, basename, join
+        from os.path import abspath, dirname, exists, basename
         from os import makedirs
         from oakvar.exceptions import ExpectedException
         from oakvar.util.util import get_args
@@ -136,6 +135,8 @@ class MasterConverter(object):
         if len(sys.argv) > 1 and len(inargs) == 0:
             inargs = [sys.argv]
         parsed_args = get_args(parser, inargs, inkwargs)
+        if "serveradmindb" in parsed_args:
+            self.serveradmindb = parsed_args.get("serveradmindb")
         self.input_format = None
         if parsed_args["format"]:
             self.input_format = parsed_args["format"]
@@ -178,9 +179,6 @@ class MasterConverter(object):
         else:
             self.output_base_fname = basename(self.input_paths[0])
         self.given_input_assembly = parsed_args["genome"]
-        self.status_fpath = join(
-            self.output_dir, self.output_base_fname + ".status.json"
-        )
         self.conf = {}
         if parsed_args["confs"] is not None:
             confs = parsed_args["confs"].lstrip("'").rstrip("'").replace("'", '"')
@@ -188,8 +186,6 @@ class MasterConverter(object):
         if "conf" in parsed_args:
             self.conf.update(parsed_args["conf"])
         self.unique_variants = parsed_args["unique_variants"]
-        if "status_writer" in parsed_args:
-            self.status_writer = parsed_args["status_writer"]
         self.args = parsed_args
 
     def open_input_file(self, input_path):
@@ -242,7 +238,6 @@ class MasterConverter(object):
         self.logger = getLogger("oakvar.converter")
         self.logger.info("started: %s" % asctime())
         self.error_logger = getLogger("err.converter")
-        self.unique_excs = []
 
     def _initialize_converters(self):
         from oakvar.exceptions import ExpectedException
@@ -414,6 +409,7 @@ class MasterConverter(object):
         from oakvar.exceptions import LoggerError
         from oakvar.exceptions import InvalidModule
         from oakvar.util.seq import normalize_variant_left
+        from oakvar.util.util import update_status
 
         self.setup()
         if (
@@ -434,13 +430,8 @@ class MasterConverter(object):
             else:
                 raise InvalidModule("unknown module")
         start_time = time()
-        if self.status_writer:
-            self.status_writer.queue_status_update(
-                "status",
-                "Started {} ({})".format(
-                    "Converter", self.primary_converter.format_name
-                ),  # type: ignore
-            )
+        status = f"Started Converter ({self.primary_converter.format_name})"
+        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
         last_status_update_time = time()
         if self.input_paths is None:
             raise SetupError()
@@ -589,35 +580,22 @@ class MasterConverter(object):
             f.close()
             cur_time = time()
             if total_lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
-                if self.status_writer is not None:
-                    self.status_writer.queue_status_update(
-                        "status",
-                        "Running {} ({}): line {}".format(
-                            "Converter", cur_fname, last_read_lnum
-                        ),
-                    )
+                status = f"Running Converter ({cur_fname}): line {last_read_lnum}"
+                update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
                 last_status_update_time = cur_time
             self.logger.info("error lines: %d" % self.file_error_lines)
         self._close_files()
         self.end()
         self.logger.info("total error lines: %d" % self.total_error_lines)
-        if self.status_writer is not None:
-            self.status_writer.queue_status_update("num_input_var", total_lnum)
-            self.status_writer.queue_status_update("num_unique_var", write_lnum)
-            self.status_writer.queue_status_update("num_error_input", self.total_error_lines)
         end_time = time()
         self.logger.info("finished: %s" % asctime(localtime(end_time)))
         runtime = round(end_time - start_time, 3)
         self.logger.info("num input lines: {}".format(total_lnum))
         self.logger.info("runtime: %s" % runtime)
-        if self.status_writer is not None:
-            self.status_writer.queue_status_update(
-                "status",
-                "Finished {} ({})".format(
-                    "Converter", self.primary_converter.format_name
-                ),
-            )
-        return total_lnum, self.primary_converter.format_name, genome_assemblies
+        status = f"Finished Converter ({self.primary_converter.format_name})"
+        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
+        ret = {"total_lnum": total_lnum, "write_lnum": write_lnum, "error_lnum": self.total_error_lines, "format": self.primary_converter.format_name, "assemblies": genome_assemblies}
+        return ret
 
     def perform_liftover_if_needed(self, wdict):
         if self.is_chrM(wdict):

@@ -101,7 +101,6 @@ def cli_util_addjob(args):
 
 @cli_func
 def addjob(args, __name__="util addjob"):
-    from json import dump
     from shutil import copyfile
     from time import sleep
     from pathlib import Path
@@ -138,14 +137,6 @@ def addjob(args, __name__="util addjob"):
     err_path = dbpath.with_suffix(".err")
     if err_path.exists():
         copyfile(err_path, job_dir / err_path.name)
-    status_path = dbpath.with_suffix(".status.json")
-    if status_path.exists():
-        copyfile(status_path, job_dir / status_path.name)
-    else:
-        statusd = status_from_db(new_dbpath)
-        new_status_path = job_dir / status_path.name
-        with new_status_path.open("w") as wf:
-            dump(statusd, wf, indent=2, sort_keys=True)
     return True
 
 
@@ -597,7 +588,7 @@ def status_from_db(dbpath):
                 ov_ver = r[0]
             else:
                 ov_ver = r[0]
-        d["open_cravat_version"] = ov_ver
+        d["package_version"] = ov_ver
         if "Input file name" in infod:
             d["orig_input_path"] = infod["Input file name"].split(";")
             d["orig_input_fname"] = [

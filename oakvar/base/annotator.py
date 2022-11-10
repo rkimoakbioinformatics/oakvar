@@ -52,7 +52,6 @@ class BaseAnnotator(object):
         self._define_cmd_parser()
         self.args = get_args(self.cmd_arg_parser, inargs, inkwargs)
         self.parse_cmd_args(inargs, inkwargs)
-        self.status_writer = self.args.get("status_writer")
         self.serveradmindb = self.args.get("serveradmindb")
         if hasattr(self.args, "live") == False:
             live = False
@@ -180,6 +179,11 @@ class BaseAnnotator(object):
             default=None,
             help="Silent operation",
         )
+        parser.add_argument(
+            "--logtofile",
+            action="store_true",
+            help="Path to a log file. If given without a path, the job's run_name.log will be the log path."
+        )
         self.cmd_arg_parser = parser
 
     # Parse the command line arguments
@@ -229,7 +233,7 @@ class BaseAnnotator(object):
         cur_time = time()
         if lnum % 10000 == 0 or cur_time - self.last_status_update_time > JOB_STATUS_UPDATE_INTERVAL:
             status = f"Running {self.conf['title']} ({self.module_name}): line {lnum}"
-            update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
+            update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
             self.last_status_update_time = cur_time
 
     def is_star_allele(self, input_data):
@@ -269,20 +273,13 @@ class BaseAnnotator(object):
         if self.logger is None:
             return
         from time import time, asctime, localtime
-        from ..util.util import quiet_print
         from ..util.util import update_status
 
         status = f"Started {self.conf['title']} ({self.module_name})"
-        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
+        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
         try:
             start_time = time()
-            self.logger.info("started: %s" % asctime(localtime(start_time)))
-            quiet_print(
-                "        {}: started at {}".format(
-                    self.module_name, asctime(localtime(start_time))
-                ),
-                self.args,
-            )
+            update_status("started: %s" % asctime(localtime(start_time)), logger=self.logger, serveradmindb=self.serveradmindb)
             self.base_setup()
             self.last_status_update_time = time()
             self.output_columns = self.conf["output_columns"]
@@ -291,23 +288,11 @@ class BaseAnnotator(object):
             self.postprocess()
             self.base_cleanup()
             status = f"Started {self.conf['title']} ({self.module_name})"
-            update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
+            update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
             end_time = time()
-            self.logger.info("finished: {0}".format(asctime(localtime(end_time))))
-            quiet_print(
-                "        {}: finished at {}".format(
-                    self.module_name, asctime(localtime(end_time))
-                ),
-                self.args,
-            )
+            update_status(f"{self.module_name}: finished at {asctime(localtime(end_time))}", logger=self.logger, serveradmindb=self.serveradmindb)
             run_time = end_time - start_time
-            self.logger.info("runtime: {0:0.3f}s".format(run_time))
-            quiet_print(
-                "        {}: runtime {:0.3f}s".format(self.module_name, run_time),
-                self.args,
-            )
-            status = f"Finished {self.conf['title']} ({self.module_name})"
-            update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
+            update_status(f"{self.module_name}: runtime {run_time:0.3f}s", logger=self.logger, serveradmindb=self.serveradmindb)
         except Exception as e:
             self._log_exception(e)
         if hasattr(self, "log_handler") and self.log_handler:
@@ -595,15 +580,14 @@ class BaseAnnotator(object):
 
     # Setup the logging utility
     def _setup_logger(self):
-        if self.output_basename is None or self.output_dir is None:
-            from ..exceptions import SetupError
-
-            raise SetupError(self.module_name)
         import logging
         import os
+        from ..exceptions import SetupError
 
+        if self.output_basename is None or self.output_dir is None:
+            raise SetupError(self.module_name)
         self.logger = logging.getLogger("oakvar." + self.module_name)
-        if self.output_basename != "__dummy__":
+        if self.args.get("logtofile"):
             self.log_path = os.path.join(self.output_dir, self.output_basename + ".log")
             log_handler = logging.FileHandler(self.log_path, "a")
         else:
@@ -614,18 +598,6 @@ class BaseAnnotator(object):
         log_handler.setFormatter(formatter)
         self.logger.addHandler(log_handler)
         self.error_logger = logging.getLogger("err." + self.module_name)
-        # do not add handler again. This will duplicate .err entries.
-        #if self.output_basename != "__dummy__":
-        #    error_log_path = os.path.join(
-        #        self.output_dir, self.output_basename + ".err"
-        #    )
-        #    error_log_handler = logging.FileHandler(error_log_path, "a")
-        #else:
-        #    error_log_handler = logging.StreamHandler()
-        #formatter = logging.Formatter("%(name)s\t%(message)s")
-        #error_log_handler.setFormatter(formatter)
-        #self.error_logger.addHandler(error_log_handler)
-        self.unique_excs = []
 
     # Gets the input dict from both the input file, and
     # any depended annotators depended annotator feature not complete.

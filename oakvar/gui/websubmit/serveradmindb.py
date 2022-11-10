@@ -65,9 +65,14 @@ class ServerAdminDb ():
 
     def create_tables(self, conn, cursor):
         cursor.execute('create table if not exists users (email text primary key, role text, passwordhash text, question text, answerhash text, settings text)')
-        cursor.execute('create table if not exists jobs (uid integer primary key autoincrement, username text, dir text, name text, submit date, runtime integer, numinput integer, modules text, assembly text, note text, statusjson text, status text)')
+        cursor.execute('create table if not exists jobs (uid integer primary key autoincrement, username text, dir text, name text, submit date, runtime integer, numinput integer, modules text, assembly text, note text, info_json text, status text)')
         cursor.execute('create table if not exists config (key text primary key, value text)')
         cursor.execute('create table if not exists apilog (writetime text primary key, count int)')
+        conn.commit()
+
+    def change_statusjson_to_info_json_column(self, conn, cursor):
+        q = f"alter table jobs rename column statusjson to info_json" # statusjson Ok here.
+        cursor.execute(q)
         conn.commit()
 
     def add_status_column(self, conn, cursor):
@@ -76,17 +81,17 @@ class ServerAdminDb ():
         q = f"alter table jobs add column status text"
         cursor.execute(q)
         conn.commit()
-        q = f"select jobid, statusjson from jobs"
+        q = f"select jobid, statusjson from jobs" # statusjson Ok here.
         cursor.execute(q)
         rets = cursor.fetchall()
         for ret in rets:
             jobid = ret[0]
-            statusjson = ret[1]
-            if not statusjson:
-                statusjson = {"status": "Aborted"}
+            legacy_status_json = ret[1]
+            if not legacy_status_json:
+                legacy_status_json = {"status": "Aborted"}
             else:
-                statusjson = loads(ret[1])
-            status = statusjson.get("status")
+                legacy_status_json = loads(ret[1])
+            status = legacy_status_json.get("status")
             q = f"update jobs set status=? where jobid=?"
             cursor.execute(q, (status, jobid))
         conn.commit()
@@ -137,6 +142,8 @@ class ServerAdminDb ():
             self.add_status_column(conn, cursor)
         if not "uid" in columns:
             need_clean_start = self.add_uid_column(columns, column_types, conn, cursor)
+        if "statusjson" in columns: # statusjson Ok here.
+            self.change_statusjson_to_info_json_column(conn, cursor)
         return need_clean_start
 
     def add_admin(self, conn, cursor):
@@ -173,12 +180,12 @@ class ServerAdminDb ():
 
     async def get_db_conn (self):
         from aiosqlite import connect
-        conn = await connect(str(get_admindb_path()))
+        conn = await connect(self.admindb_path)
         return conn
 
     def get_sync_db_conn (self):
         from sqlite3 import connect
-        conn = connect(str(get_admindb_path()))
+        conn = connect(self.admindb_path)
         return conn
 
     async def add_job_info(self, username, job):
@@ -191,21 +198,30 @@ class ServerAdminDb ():
         annotators = job.info.get("annotators", [])
         postaggregators = job.info.get("postaggregators", [])
         modules = ",".join(annotators + postaggregators)
-        q = "insert into jobs (username, dir, name, submit, runtime, numinput, modules, assembly, note, statusjson, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-        statusjson = dumps(job.info["statusjson"])
-        await cursor.execute(q, (username, job.info["dir"], job.info['id'], job.info['submission_time'], -1, -1, modules, job.info['assembly'], job.info["note"], statusjson, job.info["status"]))
+        q = "insert into jobs (username, dir, name, submit, runtime, numinput, modules, assembly, note, info_json, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        info_json = dumps(job.info["info_json"])
+        await cursor.execute(q, (username, job.info["dir"], job.info['job_name'], job.info['submission_time'], -1, -1, modules, job.info['assembly'], job.info["note"], info_json, "Submitted"))
         await conn.commit()
         q = f"select uid from jobs where username=? and dir=? and name=?"
-    
-    async def get_uid_by_username_and_job_name(username: str, job_name: str):
-        await cursor.execute(q, (username, job.info["dir"], job.info["id"]))
+        await cursor.execute(q, (username, job.info["dir"], job.info["job_name"]))
         ret = await cursor.fetchone()
+        if ret:
+            return ret[0]
+        else:
+            return None
+
+    async def get_uid_by_username_and_job_name(self, username: str, job_name: str):
+        conn = self.get_sync_db_conn()
+        cursor = conn.cursor()
+        q = "select uid from jobs where username=? and name=?"
+        cursor.execute(q, (username, job_name))
+        ret = cursor.fetchone()
         if not ret:
             uid = None
         else:
             uid = ret[0]
-        await cursor.close()
-        await conn.close()
+        cursor.close()
+        conn.close()
         return uid
 
     async def check_username_presence (self, username):
@@ -450,13 +466,13 @@ class ServerAdminDb ():
         if not eud.get("uid") or not eud.get("username"):
             return None
         _ = conn
-        q = f"select statusjson from jobs where username=? and uid=?"
+        q = f"select info_json from jobs where username=? and uid=?"
         await cursor.execute(q, (eud.get("username"), eud.get("uid")))
         ret = await cursor.fetchone()
         if not ret:
             return None
-        statusjson = loads(ret[0])
-        return statusjson.get("db_path")
+        info_json = loads(ret[0])
+        return info_json.get("db_path")
 
     def update_job_info(self, info_dict, job_dir=None, job_name=None):
         from sys import stderr
@@ -525,7 +541,7 @@ class ServerAdminDb ():
         _ = conn
         if not email:
             return
-        q = f"select uid, name, statusjson, status from jobs where username=? order by uid desc limit {limit} offset {offset}"
+        q = f"select uid, name, info_json, status from jobs where username=? order by uid desc limit {limit} offset {offset}"
         await cursor.execute(q, (email,))
         ret = await cursor.fetchall()
         ret = [dict(v) for v in ret]
@@ -537,10 +553,10 @@ class ServerAdminDb ():
             if offset > total:
                 return None
         for d in ret:
-            if not d.get("statusjson"):
-                d["statusjson"] = {}
+            if not d.get("info_json"):
+                d["info_json"] = {}
             else:
-                d["statusjson"] = loads(d["statusjson"])
+                d["info_json"] = loads(d["info_json"])
         return ret
 
     @db_func
@@ -550,13 +566,13 @@ class ServerAdminDb ():
         _ = conn
         if not username or not uid:
             return None
-        q = f"select statusjson from jobs where username=? and uid=?"
+        q = f"select info_json from jobs where username=? and uid=?"
         await cursor.execute(q, (username, uid))
         ret = await cursor.fetchone()
         if not ret:
             return None
-        statusjson = loads(ret[0])
-        return statusjson.get("run_name")
+        info_json = loads(ret[0])
+        return info_json.get("run_name")
 
     @db_func
     async def mark_job_as_aborted(self, username=None, uid=None, conn=Any, cursor=Any):
@@ -619,7 +635,7 @@ class ServerAdminDb ():
             assembly = job_status.get("assembly")
             note = job_status.get("note")
             status = job_status.get("status")
-            statusjson = dumps(job_status)
+            info_json = dumps(job_status)
             if not job_name or not submit:
                 continue
             q = f"select uid from jobs where dir=?"
@@ -627,8 +643,8 @@ class ServerAdminDb ():
             ret = cursor.fetchone()
             if ret:
                 continue
-            q = "insert into jobs (username, dir, name, submit, runtime, numinput, modules, assembly, note, statusjson, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            values = (email, job_dir, job_name, submit, runtime, numinput, modules, assembly, note, statusjson, status)
+            q = "insert into jobs (username, dir, name, submit, runtime, numinput, modules, assembly, note, info_json, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            values = (email, job_dir, job_name, submit, runtime, numinput, modules, assembly, note, info_json, status)
             cursor.execute(q, values)
         conn.commit()
         cursor.close()

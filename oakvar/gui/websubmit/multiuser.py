@@ -89,31 +89,31 @@ def get_email_from_oakvar_token(token):
     return email
 
 async def loginsuccess(request):
-    from aiohttp.web import json_response
-    from aiohttp.web import HTTPNotFound
     import jwt
-    from requests import get
-    from cryptography import x509
-    from cryptography.hazmat.backends import default_backend
+    from aiohttp.web import json_response
+    #from requests import get
+    #from cryptography import x509
+    #from cryptography.hazmat.backends import default_backend
 
     global logger
     data = await request.json()
-    token = data.get("login_token")
-    if not token:
-        return HTTPNotFound()
-    kid = jwt.get_unverified_header(token)["kid"]
-    r = get(FIREBASE_PUBLIC_KEY_URL)
-    x509_key = r.json()[kid]
-    key = x509.load_pem_x509_certificate(x509_key.encode("utf-8"), backend=default_backend)
-    try:
-        payload = jwt.decode(token, key.public_key(), ["RS256"], audience=PROJECT_ID) # type: ignore
-    except:
-        if logger:
-            logger.error(f"JWT decode error: {token}")
-        return json_response({"status": "error"})
-    email = payload.get("email")
-    if not email:
-        return HTTPNotFound()
+    email = data.get("email")
+    #token = data.get("login_token")
+    #if not token:
+    #    return Response(status=404)
+    #kid = jwt.get_unverified_header(token)["kid"]
+    #r = get(FIREBASE_PUBLIC_KEY_URL)
+    #x509_key = r.json()[kid]
+    #key = x509.load_pem_x509_certificate(x509_key.encode("utf-8"), backend=default_backend)
+    #try:
+    #    payload = jwt.decode(token, key.public_key(), ["RS256"], audience=PROJECT_ID) # type: ignore
+    #except:
+    #    if logger:
+    #        logger.error(f"JWT decode error: {token}")
+    #    return json_response({"status": "error"})
+    #email = payload.get("email")
+    #if not email:
+    #    return HTTPNotFound()
     response = json_response({"status": "logged", "email": email})
     admindb = await get_serveradmindb()
     await admindb.add_user_if_not_exist(email, "", "", "")

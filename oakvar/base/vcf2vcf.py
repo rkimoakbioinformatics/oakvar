@@ -289,7 +289,6 @@ class VCF2VCF:
         )
         self.annotator_names = args.get("annotator_names", [])
         self.mapper_name = args.get("mapper_name")
-        self.status_writer = args.get("status_writer")
         self.run_name = args.get("run_name")
         self.args = SimpleNamespace(**args)
 
@@ -304,7 +303,7 @@ class VCF2VCF:
         cur_time = time()
         if lnum % 10000 == 0 or cur_time - self.last_status_update_time > 3:
             status = "Running {self.conf['title']} ({self.module_name}): line {lnum}"
-            update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
+            update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
             self.last_status_update_time = cur_time
 
     def run(self):
@@ -320,9 +319,7 @@ class VCF2VCF:
             return False
         field_suffix = "OC_"
         base_re = compile("^[*]|[ATGC]+|[-]+$")
-        print(f"@ loading modules")
         modules = load_modules(annotators=self.annotator_names, mapper=self.mapper_name)
-        print(f"@ done")
         col_infos = self.load_col_infos(self.annotator_names, self.mapper_name)
         all_col_names = self.get_all_col_names(col_infos, self.mapper_name)
         mapper = modules[self.mapper_name]
@@ -479,22 +476,7 @@ class VCF2VCF:
         from oakvar.exceptions import LoggerError
 
         self.logger = logging.getLogger(f"oakvar.{self.module_name}")
-        # self.log_path = join(self.output_dir, self.run_name + ".log")
-        # log_handler = logging.FileHandler(self.log_path, "a")
-        # formatter = logging.Formatter(
-        #    "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
-        # )
-        # log_handler.setFormatter(formatter)
-        # self.logger.addHandler(log_handler)
         self.error_logger = logging.getLogger("err." + self.module_name)
-        # if self.run_name != "__dummy__":
-        #    error_log_path = join(self.output_dir, self.run_name + ".err")
-        #    error_log_handler = logging.FileHandler(error_log_path, "a")
-        # else:
-        #    error_log_handler = logging.StreamHandler()
-        # formatter = logging.Formatter("SOURCE:%(name)-20s %(message)s")
-        # error_log_handler.setFormatter(formatter)
-        # self.error_logger.addHandler(error_log_handler)
         self.unique_excs = []
         if not self.logger:
             raise LoggerError(module_name=self.module_name)

@@ -52,7 +52,6 @@ class BaseReporter:
         self.output_basename = None
         self.status_fpath = None
         self.nogenelevelonvariantlevel = None
-        self.status_writer = None
         self.concise_report = None
         self.extract_columns_multilevel = {}
         self.logger = None
@@ -150,8 +149,6 @@ class BaseReporter:
             else:
                 self.confs.update(json.loads(confs))
         self.output_basename = basename(self.dbpath)[:-7]
-        status_fname = "{}.status.json".format(self.output_basename)
-        self.status_fpath = join(self.output_dir, status_fname)
         self.nogenelevelonvariantlevel = args.get("nogenelevelonvariantlevel", False)
         inputfiles = args.get("inputfiles")
         dbpath = args.get("dbpath")
@@ -174,7 +171,6 @@ class BaseReporter:
             c.close()
             db.close()
         self.inputfiles = args.get("inputfiles")
-        self.status_writer = args.get("status_writer")
         self.serveradmindb = args.get("serveradmindb")
         self.concise_report = args.get("concise_report")
         if args.get("cols"):
@@ -369,7 +365,7 @@ class BaseReporter:
             self.write_log(f"filter:\n{yaml.dump(self.filter)}")
         if self.module_conf:
             status = f"Started {self.module_conf['title']} ({self.module_name})"
-            update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
+            update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
 
     async def get_levels_to_run(self, tab: str) -> List[str]:
         if not self.cf:
@@ -417,7 +413,7 @@ class BaseReporter:
             await self.close_db()
             if self.module_conf:
                 status = "Finished {self.module_conf['title']} ({self.module_name})"
-                update_status(status, logger=self.logger, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args)
+                update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
             end_time = time()
             if not (hasattr(self, "no_log") and self.no_log):
                 self.logger.info("finished: {0}".format(asctime(localtime(end_time))))
@@ -1164,7 +1160,6 @@ def report(args, __name__="report"):
                 continue
             spec.loader.exec_module(module)
             args["module_name"] = module_name
-            args["do_not_change_status"] = True
             if module_name in module_options:
                 args["conf"] = module_options[module_name]
             reporter = module.Reporter(args)
@@ -1251,13 +1246,6 @@ def get_parser_fn_report():
     )
     parser_ov_report.add_argument(
         "-d", dest="output_dir", default=None, help="directory for output files"
-    )
-    parser_ov_report.add_argument(
-        "--do-not-change-status",
-        dest="do_not_change_status",
-        action="store_true",
-        default=False,
-        help="Job status in status.json will not be changed",
     )
     parser_ov_report.add_argument(
         "--quiet",

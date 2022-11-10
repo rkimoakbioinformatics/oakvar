@@ -7,6 +7,7 @@ class BasePreparer(object):
         from ..module.local import get_module_conf
         from ..exceptions import ModuleLoadingError
 
+        self.serveradmindb = None
         self.cmd_parser = None
         self.input_path = None
         self.input_dir = None
@@ -18,7 +19,7 @@ class BasePreparer(object):
         self.args = None
         self.logger = None
         self.error_logger = None
-        self.unique_excs = None
+        self.unique_excs = []
         self.uid = 0
         fp = sys.modules[self.__module__].__file__
         if not fp:
@@ -29,7 +30,6 @@ class BasePreparer(object):
         self._parse_cmd_args(inargs, inkwargs)
         if self.args is None:
             return
-        self.status_writer = self.args["status_writer"]
         main_fpath = self.args["script_path"]
         main_basename = os.path.basename(main_fpath)
         if "." in main_basename:
@@ -56,9 +56,6 @@ class BasePreparer(object):
         self.cmd_parser.add_argument(
             "--confs", dest="confs", default="{}", help="Configuration string"
         )
-        self.cmd_parser.add_argument(
-            "--status_writer", default=None, help=argparse.SUPPRESS
-        )
 
     def _parse_cmd_args(self, inargs, inkwargs):
         from os.path import abspath, split, exists
@@ -68,6 +65,7 @@ class BasePreparer(object):
         from ..exceptions import NoInput
 
         args = get_args(self.cmd_parser, inargs, inkwargs)
+        self.serveradmindb = args.get("serveradmindb")
         self.input_path = abspath(args["input_file"]) if args["input_file"] else None
         if not self.input_path:
             raise NoInput()
@@ -107,7 +105,6 @@ class BasePreparer(object):
 
         self.logger = logging.getLogger(f"oakvar.{self.module_name}")
         self.error_logger = logging.getLogger("err." + self.module_name)
-        self.unique_excs = []
 
     def setup_io(self):
         from ..util.inout import FileReader
@@ -142,6 +139,7 @@ class BasePreparer(object):
     def run(self):
         from time import time, asctime, localtime
         from ..exceptions import SetupError
+        from ..util.util import update_status
 
         self.run_setups()
         start_time = time()
@@ -153,10 +151,8 @@ class BasePreparer(object):
         ):
             raise SetupError()
         self.logger.info("started: %s" % asctime(localtime(start_time)))
-        if self.status_writer is not None:
-            self.status_writer.queue_status_update(
-                "status", "Started {} ({})".format(self.conf["title"], self.module_name)
-            )
+        status = f"Started {self.conf['title']} ({self.module_name})"
+        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
         count = 0
         last_status_update_time = time()
         output = {}
@@ -165,12 +161,10 @@ class BasePreparer(object):
             try:
                 count += 1
                 cur_time = time()
-                if self.status_writer is not None:
-                    if count % 10000 == 0 or cur_time - last_status_update_time > 3:
-                        self.status_writer.queue_status_update(
-                            "status", "Running gene mapper: line {}".format(count)
-                        )
-                        last_status_update_time = cur_time
+                if count % 10000 == 0 or cur_time - last_status_update_time > 3:
+                    status = f"Running {self.module_name}: line {count}"
+                    update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
+                    last_status_update_time = cur_time
                 uid = crv_data.get("uid")
                 if not uid:
                     continue
@@ -187,8 +181,8 @@ class BasePreparer(object):
         self.logger.info("finished: %s" % asctime(localtime(stop_time)))
         runtime = stop_time - start_time
         self.logger.info("runtime: %6.3f" % runtime)
-        if self.status_writer is not None:
-            self.status_writer.queue_status_update("status", "Finished gene mapper")
+        status = f"Finished {self.module_name}"
+        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
         self.replace_crv()
         self.end()
         return output

@@ -30,19 +30,6 @@ def get_ucsc_bins(start, stop=None):
     ]
 
 
-
-def get_caller_name(path):
-    from os.path import abspath, basename
-
-    path = abspath(path)
-    basename = basename(path)
-    if "." in basename:
-        module_name = ".".join(basename.split(".")[:-1])
-    else:
-        module_name = basename
-    return module_name
-
-
 def load_class(path, class_name=None):
     """Load a class from the class's name and path. (dynamic importing)"""
     from os.path import dirname, basename
@@ -533,28 +520,18 @@ def get_latest_version(versions, target_version=None):
     return latest_version
 
 
-def update_status(status: str, logger=None, serveradmindb=None, status_writer=None, args=None, force=False, status_json=None):
+def update_status(status: str, logger=None, serveradmindb=None):
     if logger:
         logger.info(status)
-    if args and not args.do_not_change_status and status_writer:
-        status_writer.queue_status_update("status", status, force=force)
-    if status_json:
-        status_json["status"] = status
     if serveradmindb:
         serveradmindb.update_job_info({"status": status})
 
 
-def announce_module(module, logger=None, serveradmindb=None, status_writer=None, args=None, status_json=None):
-    if args and not args.quiet:
-        quiet_print("\t{0:30s}\t".format(module.name), args=args)
+def announce_module(module, logger=None, serveradmindb=None):
     update_status(
         "Running {name}".format(name=module.name),
         logger=logger,
         serveradmindb=serveradmindb,
-        status_writer=status_writer,
-        args=args,
-        force=True,
-        status_json=status_json
     )
 
 
@@ -599,4 +576,26 @@ def get_random_string(k=16):
     from random import choices
     from string import ascii_lowercase
     return "".join(choices(ascii_lowercase, k=k))
+
+def close_log_handlers(logger):
+    for handler in logger.handlers:
+        handler.close()
+
+def print_log_handlers():
+    import logging
+
+    for k,v in logging.Logger.manager.loggerDict.items()  :
+        if "oakvar" in k:
+            print('+ [%s] {%s} ' % (str.ljust( k, 20)  , str(v.__class__)[8:-2]) ) 
+            if not isinstance(v, logging.PlaceHolder):
+                for h in v.handlers:
+                    print('     +++',str(h.__class__)[8:-2] )
+                    for fld,val in h.__dict__.items():
+                        print('%s%s=%s' %("   -", fld,val))
+
+def get_result_dbpath(output_dir: str, run_name: str):
+    from pathlib import Path
+    from ..consts import result_db_suffix
+
+    return str(Path(output_dir) / (run_name + result_db_suffix))
 

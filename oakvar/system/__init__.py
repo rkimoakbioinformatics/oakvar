@@ -920,15 +920,15 @@ def get_user_jobs_dir(email=None):
 
 def get_legacy_status_json_path_in_job_dir(job_dir: Optional[str], run_name=None) -> Optional[str]:
     from pathlib import Path
-    from ..consts import status_suffix
 
+    legacy_status_suffix = ".status.json"
     if not job_dir:
         return None
     job_dir_p = Path(job_dir).absolute()
     if run_name:
-        legacy_status_json_path = job_dir_p / (run_name + status_suffix)
+        legacy_status_json_path = job_dir_p / (run_name + legacy_status_suffix)
         return str(legacy_status_json_path)
-    legacy_status_json_paths = list(job_dir_p.glob("*" + status_suffix))
+    legacy_status_json_paths = list(job_dir_p.glob("*" + legacy_status_suffix))
     if not legacy_status_json_paths:
         return None
     return str(legacy_status_json_paths[0])
@@ -937,15 +937,15 @@ def get_legacy_status_json(job_dir: Optional[str]) -> Optional[dict]:
     from json import load
     from logging import getLogger
     try:
-        status_path = get_legacy_status_json_path_in_job_dir(job_dir)
-        if not status_path:
+        legacy_status_path = get_legacy_status_json_path_in_job_dir(job_dir)
+        if not legacy_status_path:
             return None
-        with open(status_path) as f:
+        with open(legacy_status_path) as f:
             try:
-                status_json = load(f)
+                legacy_status_json = load(f)
             except:
                 return None
-        return status_json
+        return legacy_status_json
     except Exception as e:
         logger = getLogger()
         logger.exception(e)

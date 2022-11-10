@@ -3,8 +3,8 @@ class Aggregator(object):
     cr_type_to_sql = {"string": "text", "int": "integer", "float": "real"}
     commit_threshold = 10000
 
-    def __init__(self, cmd_args, status_writer):
-        self.status_writer = status_writer
+    def __init__(self, *inargs, **inkwargs):
+        self.serveradmindb = None
         self.annotators = []
         self.ipaths = {}
         self.readers = {}
@@ -16,7 +16,7 @@ class Aggregator(object):
         self.output_base_fname = None
         self.key_name = None
         self.table_name = None
-        self.name = None
+        self.run_name = None
         self.delete = None
         self.append = None
         self.logger = None
@@ -31,16 +31,16 @@ class Aggregator(object):
         self.header_table_name = None
         self.reportsub_table_name = None
         self.base_prefix = "base"
-        self.parse_cmd_args(cmd_args)
+        self.parse_cmd_args(inargs, inkwargs)
         self._setup_logger()
 
-    def parse_cmd_args(self, cmd_args):
+    def parse_cmd_args(self, inargs, inkwargs):
         from os.path import abspath, exists
         from os import makedirs
         from argparse import ArgumentParser
+        from ..util.util import get_args
 
         parser = ArgumentParser()
-        parser.add_argument("path", help="Path to this aggregator module")
         parser.add_argument(
             "-i",
             dest="input_dir",
@@ -50,7 +50,7 @@ class Aggregator(object):
         parser.add_argument(
             "-l", dest="level", required=True, help="Level to aggregate"
         )
-        parser.add_argument("-n", dest="name", required=True, help="Name of run")
+        parser.add_argument("-n", dest="run_name", required=True, help="Name of run")
         parser.add_argument(
             "-d",
             dest="output_dir",
@@ -69,12 +69,14 @@ class Aggregator(object):
             action="store_true",
             help="Append annotators to existing database",
         )
-        parsed = parser.parse_args(cmd_args)
-        self.level = parsed.level
-        self.name = parsed.name
-        self.input_dir = abspath(parsed.input_dir)
-        if parsed.output_dir:
-            self.output_dir = parsed.output_dir
+        args = get_args(parser, inargs, inkwargs)
+        self.agrs = args
+        self.serveradmindb = args.get("serveradmindb")
+        self.level = args.get("level")
+        self.run_name = args.get("run_name")
+        self.input_dir = abspath(args.get("input_dir"))
+        if args.get("output_dir"):
+            self.output_dir = args.get("output_dir")
         else:
             self.output_dir = self.input_dir
         self.set_input_base_fname()
@@ -83,8 +85,8 @@ class Aggregator(object):
         self.set_output_base_fname()
         if not (exists(self.output_dir)):
             makedirs(self.output_dir)
-        self.delete = parsed.delete
-        self.append = parsed.append
+        self.delete = args.get("delete")
+        self.append = args.get("append")
 
     def _setup_logger(self):
         from logging import getLogger
@@ -93,10 +95,10 @@ class Aggregator(object):
         self.logger.info("level: {0}".format(self.level))
         self.logger.info("input directory: %s" % self.input_dir)
         self.error_logger = getLogger("err.aggregator")
-        self.unique_excs = []
 
     def run(self):
         from time import time, asctime, localtime
+        from ..util.util import update_status
 
         self._setup()
         if self.input_base_fname == None:
@@ -108,9 +110,8 @@ class Aggregator(object):
         if self.key_name is None:
             return
         start_time = time()
-        self.status_writer.queue_status_update(
-            "status", "Started {} ({})".format("Aggregator", self.level)
-        )
+        status = f"Started Aggregator ({self.level})"
+        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
         last_status_update_time = time()
         if self.logger is not None:
             self.logger.info("started: %s" % asctime(localtime(start_time)))
@@ -137,10 +138,8 @@ class Aggregator(object):
                         self.dbconn.commit()
                     cur_time = time()
                     if lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
-                        self.status_writer.queue_status_update(
-                            "status",
-                            f"Running Aggregator ({self.level}:base): line {lnum}",
-                        )
+                        status = f"Running Aggregator ({self.level}:base): line {lnum}"
+                        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
                         last_status_update_time = cur_time
                 except Exception as e:
                     self._log_runtime_error(lnum, line, e, fn=self.base_reader.path)
@@ -169,10 +168,8 @@ class Aggregator(object):
                         self.dbconn.commit()
                     cur_time = time()
                     if lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
-                        self.status_writer.queue_status_update(
-                            "status",
-                            f"Running Aggregator ({self.level}:base): line {lnum}",
-                        )
+                        status = f"Running Aggregator ({self.level}:base): line {lnum}"
+                        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
                         last_status_update_time = cur_time
                 except Exception as e:
                     self._log_runtime_error(lnum, line, e, fn=reader.path)
@@ -186,9 +183,8 @@ class Aggregator(object):
             runtime = end_time - start_time
             self.logger.info("runtime: %s" % round(runtime, 3))
         self._cleanup()
-        self.status_writer.queue_status_update(
-            "status", "Finished {} ({})".format("Aggregator", self.level)
-        )
+        status = "Finished Aggregator ({self.level})"
+        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
 
     def make_reportsub(self):
         if self.cursor is None:
@@ -283,15 +279,15 @@ class Aggregator(object):
         self.dbconn.close()
 
     def set_input_base_fname(self):
-        if self.name is None:
-            return
         from os import listdir
 
-        crv_fname = self.name + ".crv"
-        crx_fname = self.name + ".crx"
-        crg_fname = self.name + ".crg"
-        crs_fname = self.name + ".crs"
-        crm_fname = self.name + ".crm"
+        if not self.run_name:
+            return
+        crv_fname = self.run_name + ".crv"
+        crx_fname = self.run_name + ".crx"
+        crg_fname = self.run_name + ".crg"
+        crs_fname = self.run_name + ".crs"
+        crm_fname = self.run_name + ".crm"
         for fname in listdir(self.input_dir):
             if self.level == "variant":
                 if fname == crx_fname:
@@ -306,12 +302,12 @@ class Aggregator(object):
                 self.input_base_fname = fname
 
     def set_output_base_fname(self):
-        self.output_base_fname = self.name
+        self.output_base_fname = self.run_name
 
     def _setup(self):
         if self.level is None:
             return
-        if self.name is None:
+        if self.run_name is None:
             return
         if self.input_base_fname is None:
             return
@@ -333,7 +329,7 @@ class Aggregator(object):
         self.table_name = self.level
         self.header_table_name = self.table_name + "_header"
         self.reportsub_table_name = self.table_name + "_reportsub"
-        prefix = self.name + "."
+        prefix = self.run_name + "."
         len_prefix = len(prefix)
         for fname in listdir(self.input_dir):
             if fname.startswith(prefix):

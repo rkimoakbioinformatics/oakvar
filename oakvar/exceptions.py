@@ -92,7 +92,7 @@ class ModuleInstallationError(ExpectedException):
         super().__init__(msg)
 
 class ModuleNotExist(ExpectedException):
-    traceback = False
+    traceback = True
     halt = True
     returncode = 3
 
@@ -168,7 +168,7 @@ class IncompatibleResult(ExpectedException):
 
 
 class ModuleLoadingError(ExpectedException):
-    traceback = False
+    traceback = True
     halt = True
 
     def __init__(self, module_name):
@@ -186,6 +186,7 @@ class UnknownInputFormat(ExpectedException):
 
 
 class AbsentJobConf(ExpectedException):
+    traceback = False
     halt = True
 
     def __init__(self, job_conf_path):
@@ -193,16 +194,16 @@ class AbsentJobConf(ExpectedException):
 
 
 class StoreIncorrectLogin(ExpectedException):
-    halt = True
     traceback = False
+    halt = True
 
     def __init__(self):
         super().__init__(f"store login is incorrect.")
 
 
 class StoreServerError(ExpectedException):
-    halt = True
     traceback = False
+    halt = True
 
     def __init__(self, status_code=500, text=None):
         if text is None:
@@ -233,8 +234,8 @@ class ModuleToSkipInstallation(ExpectedException):
 
 
 class SetupError(ExpectedException):
-    halt = True
     traceback = True
+    halt = True
 
     def __init__(self, module_name=None, msg=None):
         if msg:
@@ -247,6 +248,7 @@ class SetupError(ExpectedException):
 
 
 class LoggerError(ExpectedException):
+    traceback = True
     halt = True
 
     def __init__(self, module_name=None):
@@ -273,6 +275,7 @@ class FilterLoadingError(ExpectedException):
 
 
 class ParserError(ExpectedException):
+    traceback = True
     halt = True
 
     def __init__(self, module_name=None):
@@ -283,6 +286,7 @@ class ParserError(ExpectedException):
 
 
 class DatabaseConnectionError(ExpectedException):
+    traceback = True
     halt = True
 
     def __init__(self, module_name=None):
@@ -293,6 +297,7 @@ class DatabaseConnectionError(ExpectedException):
 
 
 class DatabaseError(ExpectedException):
+    traceback = True
     halt = True
 
     def __init__(self, msg=None):

@@ -69,8 +69,7 @@ class Runner(object):
         self.aggregator_ran = False
         self.run_annotators = {}
         self.done_annotators = {}
-        self.status_json_path = None
-        self.status_json = None
+        self.info_json = None
         self.pkg_ver = None
         self.logger = None
         self.logmode = "w"
@@ -81,7 +80,6 @@ class Runner(object):
         self.start_time = None
         self.unique_logs = None
         self.manager = None
-        self.status_writer = None
         self.result_path = None
         self.package_conf = {}
         self.args = None
@@ -116,7 +114,9 @@ class Runner(object):
         self.crv_present = False
         self.crx_present = False
         self.crg_present = False
-        self.numinput = None
+        self.total_lnum = None
+        self.write_lnum = None
+        self.error_lnum = None
         self.converter_format = None
         self.genemapper = None
         self.ordered_summarizers = []
@@ -136,6 +136,12 @@ class Runner(object):
             if not module_exists_local(module_name):
                 raise ModuleNotExist(module_name)
 
+    async def setup_manager(self):
+        from multiprocessing.managers import SyncManager
+
+        self.manager = SyncManager()
+        self.manager.start()
+
     def close_logger(self):
         import logging
 
@@ -151,22 +157,20 @@ class Runner(object):
 
     def delete_output_files(self):
         from ..exceptions import SetupError
-        from ..util.util import quiet_print
         from ..util.util import escape_glob_pattern
         import os
         from pathlib import Path
 
-        if self.run_name is None or self.output_dir is None:
+        if not self.run_name or not self.output_dir:
             raise SetupError()
         fns = [v for v in Path(self.output_dir).glob(escape_glob_pattern(self.run_name) + ".*")]
         for fn in fns:
-            quiet_print(f"  Removing {fn}", self.args)
             os.remove(fn)
 
     def download_url_input(self, input_no):
         from ..exceptions import NoInput
         from ..util.util import is_url, humanize_bytes
-        from ..util.util import quiet_print
+        from ..util.util import update_status
         import os
         import requests
 
@@ -177,7 +181,7 @@ class Runner(object):
             print(f"Space is not allowed in input file paths ({ip})")
             exit()
         if is_url(ip):
-            quiet_print(f"Fetching {ip}... ", self.args)
+            update_status(f"Fetching {ip}... ", logger=self.logger, serveradmindb=self.serveradmindb)
             try:
                 r = requests.head(ip)
                 r = requests.get(ip, stream=True)
@@ -211,9 +215,10 @@ class Runner(object):
             return ip
 
     def get_logger(self):
-        from ..exceptions import SetupError
-        import os
         import logging
+        from pathlib import Path
+        from os import remove
+        from ..exceptions import SetupError
 
         if (
             self.args is None
@@ -228,9 +233,9 @@ class Runner(object):
         self.logger = logging.getLogger("oakvar")
         self.logger.setLevel("INFO")
         if self.args.logtofile:
-            self.log_path = os.path.join(self.output_dir, self.run_name + ".log")
-            if os.path.exists(self.log_path):
-                os.remove(self.log_path)
+            self.log_path = Path(self.output_dir) / (self.run_name + ".log")
+            if self.log_path.exists():
+                remove(self.log_path)
             self.log_handler = logging.FileHandler(self.log_path, mode=self.logmode)
         else:
             self.log_handler = logging.StreamHandler()
@@ -242,9 +247,9 @@ class Runner(object):
         # individual input line error log
         self.error_logger = logging.getLogger("err")
         self.error_logger.setLevel("INFO")
-        error_log_path = os.path.join(self.output_dir, self.run_name + ".err")
-        if os.path.exists(error_log_path):
-            os.remove(error_log_path)
+        error_log_path = Path(self.output_dir) / (self.run_name + ".err")
+        if error_log_path.exists():
+            remove(error_log_path)
         self.error_log_handler = logging.FileHandler(error_log_path, mode=self.logmode)
         formatter = logging.Formatter("%(name)s\t%(message)s")
         self.error_log_handler.setFormatter(formatter)
@@ -295,7 +300,7 @@ class Runner(object):
                     )
 
     async def do_step_converter(self):
-        from ..util.util import quiet_print
+        from ..util.util import update_status
         from time import time
 
         if (
@@ -303,20 +308,19 @@ class Runner(object):
             and self.startlevel <= self.runlevels["converter"]
             and (self.args and not "converter" in self.args.skip)
         ):
-            quiet_print("Running converter...", self.args)
+            update_status("Running converter...", logger=self.logger, serveradmindb=self.serveradmindb)
             stime = time()
             self.run_converter()
             rtime = time() - stime
-            quiet_print("finished in {0:.3f}s".format(rtime), self.args)
-            if self.numinput == 0:
+            update_status(f"Converter finished in {0:.3f}s".format(rtime), logger=self.logger, serveradmindb=self.serveradmindb)
+            if self.total_lnum == 0:
                 msg = "No variant found in input"
-                quiet_print(msg, self.args)
+                update_status(msg, logger=self.logger, serveradmindb=self.serveradmindb)
                 if self.logger:
                     self.logger.info(msg)
-                exit()
 
     async def do_step_preparer(self):
-        from ..util.util import quiet_print
+        from ..util.util import update_status
         from time import time
 
         if (
@@ -324,16 +328,16 @@ class Runner(object):
             and self.startlevel <= self.runlevels["preparer"]
             and (self.args and not "preparer" in self.args.skip)
         ):
-            quiet_print("Running preparers...", self.args)
+            update_status("Running preparers...", logger=self.logger, serveradmindb=self.serveradmindb)
             stime = time()
             self.run_preparers()
             rtime = time() - stime
-            quiet_print("finished in {0:.3f}s".format(rtime), self.args)
+            update_status("Preparer finished in {0:.3f}s".format(rtime), logger=self.logger, serveradmindb=self.serveradmindb)
             self.mapper_ran = True
 
     async def do_step_mapper(self):
-        from ..util.util import quiet_print
         from time import time
+        from ..util.util import update_status
 
         self.mapper_ran = False
         if (
@@ -341,16 +345,16 @@ class Runner(object):
             and self.startlevel <= self.runlevels.get("mapper", 0)
             and (self.args and not "mapper" in self.args.skip)
         ):
-            quiet_print(f'Running gene mapper...{" "*18}', self.args)
+            update_status(f"Running mapper...", logger=self.logger, serveradmindb=self.serveradmindb)
             stime = time()
             self.run_mapper()
             rtime = time() - stime
-            quiet_print("finished in {0:.3f}s".format(rtime), self.args)
+            update_status("Mapper finished in {0:.3f}s".format(rtime), logger=self.logger, serveradmindb=self.serveradmindb)
             self.mapper_ran = True
 
     async def do_step_annotator(self):
-        from ..util.util import quiet_print
         from time import time
+        from ..util.util import update_status
 
         self.annotator_ran = False
         self.done_annotators = {}
@@ -368,14 +372,14 @@ class Runner(object):
             and (self.args and not "annotator" in self.args.skip)
             and (self.mapper_ran or len(self.run_annotators) > 0)
         ):
-            quiet_print("Running annotators...", self.args)
+            update_status("Running annotators...", logger=self.logger, serveradmindb=self.serveradmindb)
             stime = time()
             self.run_annotators_mp()
             rtime = time() - stime
-            quiet_print("\tannotator(s) finished in {0:.3f}s".format(rtime), self.args)
+            update_status("annotator(s) finished in {0:.3f}s".format(rtime), logger=self.logger, serveradmindb=self.serveradmindb)
 
     async def do_step_aggregator(self):
-        from ..util.util import quiet_print
+        from ..util.util import update_status
 
         if (
             self.endlevel >= self.runlevels["aggregator"]
@@ -387,25 +391,24 @@ class Runner(object):
                 or self.startlevel == self.runlevels["aggregator"]
             )
         ):
-            quiet_print("Running aggregator...", self.args)
+            update_status("Running aggregator...", logger=self.logger, serveradmindb=self.serveradmindb)
             self.result_path = self.run_aggregator()
             await self.write_job_info()
-            self.write_smartfilters()
             self.aggregator_ran = True
 
     async def do_step_postaggregator(self):
-        from ..util.util import quiet_print
+        from ..util.util import update_status
 
         if (
             self.endlevel >= self.runlevels["postaggregator"]
             and self.startlevel <= self.runlevels["postaggregator"]
             and (self.args and not "postaggregator" in self.args.skip)
         ):
-            quiet_print("Running postaggregators...", self.args)
+            update_status("Running postaggregators...", logger=self.logger, serveradmindb=self.serveradmindb)
             self.run_postaggregators()
 
     async def do_step_reporter(self):
-        from ..util.util import quiet_print
+        from ..util.util import update_status
 
         if (
             self.endlevel >= self.runlevels["reporter"]
@@ -414,24 +417,13 @@ class Runner(object):
             and self.aggregator_ran
             and self.reports
         ):
-            quiet_print("Running reporter...", self.args)
+            update_status("Running reporter...", logger=self.logger, serveradmindb=self.serveradmindb)
             self.report_response = await self.run_reporter()
 
-    async def setup_manager(self):
-        from multiprocessing.managers import SyncManager
-
-        self.manager = SyncManager()
-        self.manager.register("StatusWriter", StatusWriter)
-        self.manager.start()
-        self.status_writer = self.manager.StatusWriter(  # type: ignore
-            self.status_json_path
-        )
-
     async def process_clean(self):
-        from ..util.util import quiet_print
-
         if self.args and self.args.clean:
-            quiet_print("Deleting previous output files...", self.args)
+            if self.logger:
+                self.logger.info("Deleting previous output files...")
             self.delete_output_files()
 
     def process_input(self):
@@ -458,25 +450,21 @@ class Runner(object):
                 self.logger.info("conf file: {}".format(self.conf_path))
 
     async def main(self):
-        from ..util.util import quiet_print
-        from ..util.util import update_status
         from time import time, asctime, localtime
+        from ..util.util import update_status
+        from ..consts import JOB_STATUS_FINISHED
+        from ..consts import JOB_STATUS_ERROR
 
         self.report_response = None
         self.aggregator_ran = False
         try:
             self.start_time = time()
-            self.process_arguments(self.inkwargs)
-            await self.process_clean()
-            self.write_initial_status_json()
+            await self.process_arguments(self.inkwargs)
             await self.setup_manager()
+            self.write_initial_info_json()
             update_status(
                 "Started OakVar",
                 serveradmindb=self.serveradmindb,
-                status_writer=self.status_writer,
-                args=self.args,
-                force=True,
-                status_json=self.status_json
             )
             self.process_input()
             self.set_and_check_input_files()
@@ -491,63 +479,40 @@ class Runner(object):
                 await self.do_step_aggregator()
                 await self.do_step_postaggregator()
                 await self.do_step_reporter()
-            update_status(
-                "Finished", 
-                serveradmindb=self.serveradmindb,
-                status_writer=self.status_writer, args=self.args, force=True, status_json=self.status_json
-            )
-        except Exception as e:
+            end_time = time()
+            runtime = end_time - self.start_time
+            display_time = asctime(localtime(end_time))
             if self.logger:
-                self.logger.exception(e)
+                self.logger.info(f"finished: {display_time}")
+            update_status(
+                "Finished normally. Runtime: {0:0.3f}s".format(runtime),
+                logger=self.logger, serveradmindb=self.serveradmindb
+            )
+            if self.args and self.args.writeadmindb:
+                await self.write_admin_db_final_info(runtime)
+        except Exception as e:
             self.exception = e
         finally:
-            end_time = time()
-            display_time = asctime(localtime(end_time))
-            self.logger = getattr(self, "logger", None)
-            self.status_writer = getattr(self, "status_writer", None)
-            runtime = None
-            if self.start_time:
-                runtime = end_time - self.start_time
-            if self.logger:
-                self.logger.info("finished: {0}".format(display_time))
-                if runtime:
-                    self.logger.info("runtime: {0:0.3f}s".format(runtime))
-                quiet_print(
-                    "Finished normally. Runtime: {0:0.3f}s".format(runtime),
-                    self.args,
-                )
-            if self.exception:
-                update_status(
-                    "Error",
-                    serveradmindb=self.serveradmindb,
-                    status_writer=self.status_writer,
-                    args=self.args,
-                    force=True,
-                    status_json=self.status_json
-                )
+            if not self.exception:
+                update_status(JOB_STATUS_FINISHED, serveradmindb=self.serveradmindb)
+            else:
+                update_status(JOB_STATUS_ERROR, serveradmindb=self.serveradmindb,)
+                if self.logger:
+                    self.logger.exception(self.exception)
             if self.logger:
                 self.close_logger()
             if (
-                self.status_writer
-                and self.status_writer
-                and self.args
-                and self.args.do_not_change_status != True
-            ):
-                self.status_writer.flush()
-            if (
                 not self.exception
                 and self.args
-                and not self.args.temp_files
+                and not self.args.keep_temp
                 and self.aggregator_ran
             ):
                 self.clean_up_at_end()
-            if self.args and self.args.writeadmindb:
-                await self.write_admin_db_final_info(runtime, self.numinput)
             if self.exception:
                 raise self.exception
             return self.report_response
 
-    def process_arguments(self, args):
+    async def process_arguments(self, args):
         from ..exceptions import SetupError
         from ..exceptions import SetupError
         from .version import cli_version
@@ -563,6 +528,7 @@ class Runner(object):
         self.set_self_inputs()
         self.set_output_dir()
         self.set_run_name()
+        await self.process_clean()
         self.get_logger()
         self.start_logger()
         self.connect_admindb_if_needed()
@@ -662,13 +628,6 @@ class Runner(object):
                     if annot_name not in annot_names:
                         annot_names.append(annot_name)
         annot_names.sort()
-        if (
-            self.status_writer is not None
-            and self.startlevel <= self.runlevels["annotator"]
-        ):
-            self.status_writer.queue_status_update(
-                "annotators", annot_names, force=True
-            )
 
     def process_module_options(self):
         from ..exceptions import SetupError
@@ -1236,31 +1195,36 @@ class Runner(object):
             "name": self.run_name,
             "output_dir": self.output_dir,
             "genome": self.args.genome,
+            "serveradmindb": self.serveradmindb
         }
         arg_dict["conf"] = self.conf_run
         if self.args.forcedinputformat is not None:
             arg_dict["format"] = self.args.forcedinputformat
         if self.args.unique_variants:
             arg_dict["unique_variants"] = True
-        announce_module(module, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args, status_json=self.status_json)
+        announce_module(module, serveradmindb=self.serveradmindb)
         if self.verbose:
             print(
                 " ".join([str(k) + "=" + str(v) for k, v in arg_dict.items()]),
                 self.args,
             )
-        arg_dict["status_writer"] = self.status_writer
         converter_class = load_class(module.script_path, "MasterConverter")
         if not converter_class:
             converter_class = load_class(module.script_path, "MasterCravatConverter")
         converter = converter_class(arg_dict)
-        self.numinput, self.converter_format, self.genome_assembiles = converter.run()
+        ret = converter.run()
+        self.total_lnum = ret.get("total_lnum")
+        self.write_lnum = ret.get("write_lnum")
+        self.error_lnum = ret.get("error_lnum")
+        self.converter_format = ret.get("format")
+        self.genome_assembiles = ret.get("assemblies")
 
     def run_preparers(self):
         from ..util.util import announce_module
         from ..exceptions import SetupError
         from time import time
         from ..util.util import load_class
-        from ..util.util import quiet_print
+        from ..util.util import update_status
 
         if self.conf is None:
             raise SetupError()
@@ -1272,15 +1236,15 @@ class Runner(object):
                 "run_name": self.run_name,
                 "output_dir": self.output_dir,
                 "confs": module_conf,
-                "status_writer": self.status_writer
+                "serveradmindb": self.serveradmindb
             }
             module_cls = load_class(module.script_path, "Preparer")
             module_ins = module_cls(kwargs)
-            announce_module(module, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args, status_json=self.status_json)
+            announce_module(module, serveradmindb=self.serveradmindb)
             stime = time()
             module_ins.run()
             rtime = time() - stime
-            quiet_print("finished in {0:.3f}s".format(rtime), self.args)
+            update_status("Preparers finished in {0:.3f}s".format(rtime), logger=self.logger, serveradmindb=self.serveradmindb)
 
     def get_num_workers(self) -> int:
         from ..system import get_max_num_concurrent_annotators_per_job
@@ -1401,7 +1365,6 @@ class Runner(object):
                             max_num_lines - num_lines,
                             self.run_name,
                             self.output_dir,
-                            self.status_writer,
                             self.mapper_name,
                             pos_no,
                             ";".join(self.args.primary_transcript),
@@ -1417,7 +1380,6 @@ class Runner(object):
                             chunksize,
                             self.run_name,
                             self.output_dir,
-                            self.status_writer,
                             self.mapper_name,
                             pos_no,
                             ";".join(self.args.primary_transcript),
@@ -1432,140 +1394,50 @@ class Runner(object):
         self.collect_crxs()
         self.collect_crgs()
 
-    def run_aggregator(self):
+    def run_aggregator_level(self, level):
         from time import time
         from ..base.aggregator import Aggregator
-        from ..util.util import quiet_print
         from ..util.util import update_status
 
-        # Variant level
-        quiet_print("\t{0:30s}\t".format("Variants"), self.args)
-        stime = time()
-        cmd = [
-            "donotremove",
-            "-i",
-            self.output_dir,
-            "-d",
-            self.output_dir,
-            "-l",
-            "variant",
-            "-n",
-            self.run_name,
-        ]
-        if self.cleandb:
-            cmd.append("-x")
-        if self.append_mode:
-            cmd.append("--append")
-        if self.verbose:
-            quiet_print(" ".join(cmd), self.args)
+        if self.append_mode and level not in ["variant", "gene"]:
+            return
         update_status(
-            "Running {title} ({level})".format(title="Aggregator", level="variant"),
+            f"Running Aggregator ({level})",
+            logger=self.logger,
             serveradmindb=self.serveradmindb,
-            status_writer=self.status_writer,
-            args=self.args,
-            force=True,
-            status_json=self.status_json
         )
-        v_aggregator = Aggregator(cmd, self.status_writer)
+        stime = time()
+        arg_dict = {
+            "input_dir": self.output_dir,
+            "output_dir": self.output_dir,
+            "level": level,
+            "run_name": self.run_name,
+            "serveradmindb": self.serveradmindb
+        }
+        if self.cleandb and level == "variant":
+            arg_dict["delete"] = True
+        if self.append_mode:
+            arg_dict["append"] = True
+        v_aggregator = Aggregator(**arg_dict)
         v_aggregator.run()
         rtime = time() - stime
-        quiet_print("finished in {0:.3f}s".format(rtime), self.args)
-        # Gene level
-        quiet_print("\t{0:30s}\t".format("Genes"), self.args)
-        stime = time()
-        cmd = [
-            "donotremove",
-            "-i",
-            self.output_dir,
-            "-d",
-            self.output_dir,
-            "-l",
-            "gene",
-            "-n",
-            self.run_name,
-        ]
-        if self.append_mode:
-            cmd.append("--append")
-        if self.verbose:
-            quiet_print(" ".join(cmd), self.args)
-        update_status(
-            "Running {title} ({level})".format(title="Aggregator", level="gene"),
-            serveradmindb=self.serveradmindb,
-            status_writer=self.status_writer,
-            args=self.args,
-            force=True,
-            status_json=self.status_json
-        )
-        g_aggregator = Aggregator(cmd, self.status_writer)
-        g_aggregator.run()
-        rtime = time() - stime
-        quiet_print("finished in {0:.3f}s".format(rtime), self.args)
-        # Sample level
-        if not self.append_mode:
-            quiet_print("\t{0:30s}\t".format("Samples"), self.args)
-            stime = time()
-            cmd = [
-                "donotremove",
-                "-i",
-                self.output_dir,
-                "-d",
-                self.output_dir,
-                "-l",
-                "sample",
-                "-n",
-                self.run_name,
-            ]
-            if self.verbose:
-                quiet_print(" ".join(cmd), self.args)
-            update_status(
-                "Running {title} ({level})".format(title="Aggregator", level="sample"),
-                serveradmindb=self.serveradmindb,
-                status_writer=self.status_writer,
-                args=self.args,
-                force=True,
-                status_json=self.status_json
-            )
-            s_aggregator = Aggregator(cmd, self.status_writer)
-            s_aggregator.run()
-            rtime = time() - stime
-            quiet_print("finished in {0:.3f}s".format(rtime), self.args)
-        # Mapping level
-        if not self.append_mode:
-            quiet_print("\t{0:30s}\t".format("Tags"), self.args)
-            cmd = [
-                "donotremove",
-                "-i",
-                self.output_dir,
-                "-d",
-                self.output_dir,
-                "-l",
-                "mapping",
-                "-n",
-                self.run_name,
-            ]
-            if self.verbose:
-                quiet_print(" ".join(cmd), self.args)
-            update_status(
-                "Running {title} ({level})".format(title="Aggregator", level="mapping"),
-                serveradmindb=self.serveradmindb,
-                status_writer=self.status_writer,
-                args=self.args,
-                force=True,
-                status_json=self.status_json
-            )
-            m_aggregator = Aggregator(cmd, self.status_writer)
-            m_aggregator.run()
-            rtime = time() - stime
-            quiet_print("finished in {0:.3f}s".format(rtime), self.args)
+        update_status(f"Aggregator {level} finished in {0:.3f}s".format(rtime), logger=self.logger, serveradmindb=self.serveradmindb)
         return v_aggregator.db_path
 
+    def run_aggregator(self):
+        db_path = self.run_aggregator_level("variant")
+        self.run_aggregator_level("gene")
+        self.run_aggregator_level("sample")
+        self.run_aggregator_level("mapping")
+        return db_path
+
     def run_postaggregators(self):
+        import json
+        from time import time
         from ..util.util import announce_module
         from ..exceptions import SetupError
-        from time import time
         from ..util.util import load_class
-        import json
-        from ..util.util import quiet_print
+        from ..util.util import update_status
         from ..system.consts import default_postaggregator_names
 
         if self.conf is None:
@@ -1573,31 +1445,34 @@ class Runner(object):
         for module_name, module in self.postaggregators.items():
             if self.append_mode and module_name in default_postaggregator_names:
                 continue
-            cmd = [module.script_path, "-d", self.output_dir, "-n", self.run_name]
+            arg_dict = {
+                "module_name": module_name,
+                "run_name": self.run_name,
+                "output_dir": self.output_dir,
+                "serveradmindb": self.serveradmindb
+            }
             postagg_conf = {}
             postagg_conf.update(self.conf_run.get(module_name, {}))
             if postagg_conf:
                 confs = json.dumps(postagg_conf)
                 confs = "'" + confs.replace("'", '"') + "'"
-                cmd.extend(["--confs", confs])
-            if self.verbose:
-                quiet_print(" ".join(cmd), self.args)
+                arg_dict["confs"] = confs
             post_agg_cls = load_class(module.script_path, "PostAggregator")
             if not post_agg_cls:
                 post_agg_cls = load_class(module.script_path, "CravatPostAggregator")
-            post_agg = post_agg_cls(cmd, self.status_writer)
-            announce_module(module, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args, status_json=self.status_json)
+            post_agg = post_agg_cls(**arg_dict)
+            announce_module(module, serveradmindb=self.serveradmindb)
             stime = time()
             post_agg.run()
             rtime = time() - stime
-            quiet_print("finished in {0:.3f}s".format(rtime), self.args)
+            update_status(f"{module_name} finished in {0:.3f}s".format(rtime), logger=self.logger, serveradmindb=self.serveradmindb)
 
     async def run_vcf2vcf(self):
         from ..exceptions import SetupError
         from ..exceptions import NoInput
         from time import time
         from ..util.util import load_class
-        from ..util.util import quiet_print
+        from ..util.util import update_status
         from types import SimpleNamespace
         from ..base import vcf2vcf
         from os.path import abspath
@@ -1613,7 +1488,6 @@ class Runner(object):
             "script_path": abspath(vcf2vcf.__file__),
         }
         module = SimpleNamespace(**module)
-        # announce_module(module, status_writer=self.status_writer, args=self.args)
         arg_dict = dict(vars(self.args))
         arg_dict["output_dir"] = self.output_dir
         arg_dict["module_name"] = module.name
@@ -1633,21 +1507,21 @@ class Runner(object):
         elif response_type == str:
             output_fns = response_t
         if output_fns is not None:
-            quiet_print(f"report created: {output_fns} ", self.args)
+            update_status(f"report created: {output_fns} ", logger=self.logger, serveradmindb=self.serveradmindb)
         report_type = "vcf2vcf"
         response[report_type] = response_t
         rtime = time() - stime
-        quiet_print("finished in {0:.3f}s".format(rtime), self.args)
+        update_status("vcf2vcf finished in {0:.3f}s".format(rtime), logger=self.logger, serveradmindb=self.serveradmindb)
         self.report_response = response
 
     async def run_reporter(self):
+        import os
+        from time import time
         from ..module.local import get_local_module_info
         from ..exceptions import SetupError
         from ..exceptions import NoInput
-        from time import time
-        import os
         from ..util.util import load_class
-        from ..util.util import quiet_print
+        from ..util.util import update_status
         from ..exceptions import ModuleNotExist
         from ..util.util import announce_module
 
@@ -1670,7 +1544,7 @@ class Runner(object):
         for report_type, module_name in zip(report_types, module_names):
             reporter = None
             module = get_local_module_info(module_name)
-            announce_module(module, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args, status_json=self.status_json)
+            announce_module(module, serveradmindb=self.serveradmindb)
             if module is None:
                 raise ModuleNotExist(module_name)
             arg_dict = dict(vars(self.args))
@@ -1693,16 +1567,15 @@ class Runner(object):
             elif response_type == str:
                 output_fns = response_t
             if output_fns is not None:
-                quiet_print(f"report created: {output_fns} ", self.args)
+                update_status(f"report created: {output_fns} ", logger=self.logger, serveradmindb=self.serveradmindb)
             response[report_type] = response_t
             rtime = time() - stime
-            quiet_print("finished in {0:.3f}s".format(rtime), self.args)
+            update_status(f"{module_name} finished in {0:.3f}s".format(rtime), logger=self.logger, serveradmindb=self.serveradmindb)
         return response
 
     def run_annotators_mp(self):
         from ..exceptions import SetupError
         import os
-        import logging
         from ..base.mp_runners import init_worker, annot_from_queue
         from multiprocessing import Pool
         from ..system import get_max_num_concurrent_annotators_per_job
@@ -1778,8 +1651,8 @@ class Runner(object):
             if self.output_dir != None:
                 kwargs["output_dir"] = self.output_dir
             run_args[module.name] = (module, kwargs)
-        if self.logger and self.log_handler:
-            self.logger.removeHandler(self.log_handler)
+        #if self.logger and self.log_handler:
+        #    self.logger.removeHandler(self.log_handler)
         start_queue = self.manager.Queue()
         end_queue = self.manager.Queue()
         all_mnames = set(self.run_annotators)
@@ -1787,7 +1660,7 @@ class Runner(object):
         done_mnames = set(self.done_annotators)
         queue_populated = self.manager.Value("c_bool", False)
         pool_args = [
-            [start_queue, end_queue, queue_populated, self.status_writer, self.serveradmindb]
+            [start_queue, end_queue, queue_populated, self.serveradmindb, self.args.logtofile]
         ] * num_workers
         with Pool(num_workers, init_worker) as pool:
             _ = pool.starmap_async(
@@ -1817,14 +1690,14 @@ class Runner(object):
                         assigned_mnames.add(mname)
             queue_populated = True
             pool.join()
-        self.log_path = os.path.join(self.output_dir, self.run_name + ".log")
-        self.log_handler = logging.FileHandler(self.log_path, "a")
-        formatter = logging.Formatter(
-            "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
-        )
-        self.log_handler.setFormatter(formatter)
-        if self.logger:
-            self.logger.addHandler(self.log_handler)
+        #self.log_path = os.path.join(self.output_dir, self.run_name + ".log")
+        #self.log_handler = logging.FileHandler(self.log_path, "a")
+        #formatter = logging.Formatter(
+        #    "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
+        #)
+        #self.log_handler.setFormatter(formatter)
+        #if self.logger:
+        #    self.logger.addHandler(self.log_handler)
         if len(self.run_annotators) > 0:
             self.annotator_ran = True
 
@@ -2005,11 +1878,6 @@ class Runner(object):
             json.dumps(annotator_desc_dict).replace('"', "'")
         )
         await cursor.execute(q)
-        if self.args.do_not_change_status != True:
-            if self.status_writer:
-                self.status_writer.queue_status_update(
-                    "annotator_version", annotator_version, force=True
-                )
         q = (
             'insert or replace into info values ("Annotators", "'
             + annotators_str
@@ -2028,7 +1896,7 @@ class Runner(object):
         from ..util.util import announce_module
 
         for module in self.ordered_summarizers:
-            announce_module(module, serveradmindb=self.serveradmindb, status_writer=self.status_writer, args=self.args, status_json=self.status_json)
+            announce_module(module, serveradmindb=self.serveradmindb)
             self.run_summarizer(module)
 
     def run_summarizer(self, module):
@@ -2066,10 +1934,8 @@ class Runner(object):
                 fn_p = Path(fn)
                 if fn_p.suffix in [".var", ".gen", ".crv", ".crx", ".crg", ".crs", ".crm", ".crt"]:
                     remove(str(fn_path))
-                if fn.endswith(".status.json"):
-                    remove(str(fn_path))
 
-    async def write_admin_db_final_info(self, runtime, numinput):
+    async def write_admin_db_final_info(self, runtime):
         import aiosqlite
         from json import dumps
         from ..exceptions import SetupError
@@ -2078,7 +1944,7 @@ class Runner(object):
 
         if self.args is None:
             raise SetupError()
-        if runtime is None or numinput is None:
+        if runtime is None or self.total_lnum is None:
             return
         admindb_path = get_admindb_path()
         if admindb_path.exists() == False:
@@ -2088,21 +1954,20 @@ class Runner(object):
             quiet_print(s, self.args)
             return
         try:
-            statusjson = dumps(self.status_json)
+            info_json_s = dumps(self.info_json)
         except:
-            statusjson = ""
+            info_json_s = ""
         db = await aiosqlite.connect(str(admindb_path))
         cursor = await db.cursor()
-        q = 'update jobs set runtime=?, numinput=?, statusjson=? where dir=? and name=?'
-        await cursor.execute(q, (runtime, numinput, statusjson, self.output_dir, self.args.job_name))
+        q = 'update jobs set runtime=?, numinput=?, info_json=? where dir=? and name=?'
+        await cursor.execute(q, (runtime, self.total_lnum, info_json_s, self.output_dir, self.args.job_name))
         await db.commit()
         await cursor.close()
         await db.close()
 
-    def write_initial_status_json(self):
+    def write_initial_info_json(self):
         import os
         from datetime import datetime
-        import json
         from ..util import admin_util as au
         from ..exceptions import SetupError
 
@@ -2113,87 +1978,46 @@ class Runner(object):
             or self.output_dir is None
         ):
             raise SetupError()
-        status_fname = "{}.status.json".format(self.run_name)
-        self.status_json_path = os.path.join(self.output_dir, status_fname)
-        if os.path.exists(self.status_json_path) == True:
-            with open(self.status_json_path) as f:
-                try:
-                    self.status_json = json.load(f)
-                    self.pkg_ver = self.status_json.get("open_cravat_version")
-                except:
-                    self.pkg_ver = au.get_current_package_version()
-            if self.status_json and self.status_json["status"] == "Submitted":
-                self.status_json["job_dir"] = self.output_dir
-                self.status_json["job_name"] = self.args.job_name
-                self.status_json["run_name"] = self.run_name
-                self.status_json["db_path"] = os.path.join(
-                    self.output_dir, self.run_name + ".sqlite"
-                )
-                self.status_json["orig_input_fname"] = [
-                    os.path.basename(x) for x in self.inputs
-                ]
-                self.status_json["orig_input_path"] = self.inputs
-                self.status_json["submission_time"] = datetime.now().isoformat()
-                self.status_json["viewable"] = False
-                self.status_json["note"] = self.args.note
-                self.status_json["status"] = "Starting"
-                self.status_json["reports"] = (
-                    self.args.reports if self.args.reports != None else []
-                )
-                self.pkg_ver = au.get_current_package_version()
-                self.status_json["open_cravat_version"] = self.pkg_ver
-                annot_names = [v for v in list(self.annotators.keys()) if v not in ["original_input"]]
-                annot_names.sort()
-                self.status_json["annotators"] = annot_names
-                postagg_names = [v for v in list(self.postaggregators.keys()) if v not in ["tagsampler", "varmeta", "vcfinfo"]]
-                postagg_names.sort()
-                self.status_json["postaggregators"] = postagg_names
-                with open(self.status_json_path, "w") as wf:
-                    wf.write(json.dumps(self.status_json, indent=2, sort_keys=True))
-        else:
-            self.status_json = {}
-            self.status_json["job_dir"] = self.output_dir
-            self.status_json["job_name"] = self.args.job_name
-            self.status_json["run_name"] = self.run_name
-            self.status_json["db_path"] = os.path.join(
-                self.output_dir, self.run_name + ".sqlite"
-            )
-            self.status_json["orig_input_fname"] = [
-                os.path.basename(x) for x in self.inputs
-            ]
-            self.status_json["orig_input_path"] = self.inputs
-            self.status_json["submission_time"] = datetime.now().isoformat()
-            self.status_json["viewable"] = False
-            self.status_json["note"] = self.args.note
-            self.status_json["status"] = "Starting"
-            self.status_json["reports"] = (
-                self.args.reports if self.args.reports != None else []
-            )
-            self.pkg_ver = au.get_current_package_version()
-            self.status_json["open_cravat_version"] = self.pkg_ver
-            annot_names = [v for v in list(self.annotators.keys()) if v not in ["original_input"]]
-            annot_names.sort()
-            self.status_json["annotators"] = annot_names
-            postagg_names = [v for v in list(self.postaggregators.keys()) if v not in ["tagsampler", "varmeta", "vcfinfo"]]
-            postagg_names.sort()
-            self.status_json["postaggregators"] = postagg_names
-            with open(self.status_json_path, "w") as wf:
-                wf.write(json.dumps(self.status_json, indent=2, sort_keys=True))
+        self.info_json = {}
+        self.info_json["job_dir"] = self.output_dir
+        self.info_json["job_name"] = self.args.job_name
+        self.info_json["run_name"] = self.run_name
+        self.info_json["db_path"] = os.path.join(
+            self.output_dir, self.run_name + ".sqlite"
+        )
+        self.info_json["orig_input_fname"] = [
+            os.path.basename(x) for x in self.inputs
+        ]
+        self.info_json["orig_input_path"] = self.inputs
+        self.info_json["submission_time"] = datetime.now().isoformat()
+        self.info_json["viewable"] = False
+        self.info_json["note"] = self.args.note
+        self.info_json["status"] = "Starting"
+        self.info_json["reports"] = (
+            self.args.reports if self.args.reports != None else []
+        )
+        self.pkg_ver = au.get_current_package_version()
+        self.info_json["package_version"] = self.pkg_ver
+        annot_names = [v for v in list(self.annotators.keys()) if v not in ["original_input"]]
+        annot_names.sort()
+        self.info_json["annotators"] = annot_names
+        postagg_names = [v for v in list(self.postaggregators.keys()) if v not in ["tagsampler", "varmeta", "vcfinfo"]]
+        postagg_names.sort()
+        self.info_json["postaggregators"] = postagg_names
 
     def write_smartfilters(self):
-        if self.run_name is None or self.args is None or self.output_dir is None:
-            from ..exceptions import SetupError
-
-            raise SetupError()
         from time import time
         import os
         import json
         import sqlite3
         from ..util.util import filter_affected_cols
         from ..consts import base_smartfilters
-        from ..util.util import quiet_print
+        from ..exceptions import SetupError
+        from ..util.util import update_status
 
-        quiet_print("Indexing", self.args)
+        if self.run_name is None or self.args is None or self.output_dir is None:
+            raise SetupError()
+        update_status("Indexing", logger=self.logger, serveradmindb=self.serveradmindb)
         dbpath = os.path.join(self.output_dir, self.run_name + ".sqlite")
         conn = sqlite3.connect(dbpath)
         cursor = conn.cursor()
@@ -2224,18 +2048,18 @@ class Runner(object):
                 index_name = f"sf_variant_{col}"
                 if index_name not in existing_indices:
                     q = f"create index if not exists {index_name} on variant ({col})"
-                    quiet_print(f"\tvariant {col}", self.args)
+                    update_status(f"\tvariant {col}", logger=self.logger, serveradmindb=self.serveradmindb)
                     st = time()
                     cursor.execute(q)
-                    quiet_print(f"\tfinished in {time()-st:.3f}s", self.args)
+                    update_status(f"\tfinished in {time()-st:.3f}s", logger=self.logger, serveradmindb=self.serveradmindb)
             if col in gene_cols:
                 index_name = f"sf_gene_{col}"
                 if index_name not in existing_indices:
                     q = f"create index if not exists {index_name} on gene ({col})"
-                    quiet_print(f"\tgene {col}", self.args)
+                    update_status(f"\tgene {col}", logger=self.logger, serveradmindb=self.serveradmindb)
                     st = time()
                     cursor.execute(q)
-                    quiet_print(f"\tfinished in {time()-st:.3f}s", self.args)
+                    update_status(f"\tfinished in {time()-st:.3f}s", logger=self.logger, serveradmindb=self.serveradmindb)
         # Package filter
         if hasattr(self.args, "filter") and self.args.filter is not None:
             q = "create table if not exists viewersetup (datatype text, name text, viewersetup text, unique (datatype, name))"
@@ -2246,55 +2070,6 @@ class Runner(object):
         conn.commit()
         cursor.close()
         conn.close()
-
-
-class StatusWriter:
-    def __init__(self, status_json_path):
-        from time import time
-
-        self.status_json_path = status_json_path
-        self.status_queue = []
-        self.status_json = None
-        self.load_status_json()
-        self.t = time()
-        self.lock = False
-
-    def load_status_json(self):
-        import json
-
-        f = open(self.status_json_path)
-        lines = "\n".join(f.readlines())
-        self.status_json = json.loads(lines)
-        f.close()
-
-    def queue_status_update(self, k, v, force=False):
-        from time import time
-
-        if self.status_json:
-            self.status_json[k] = v
-            tdif = time() - self.t
-            if force == True or (tdif > 3 and self.lock == False):
-                self.lock = True
-                self.update_status_json()
-                self.t = time()
-                self.lock = False
-
-    def update_status_json(self):
-        import json
-
-        with open(self.status_json_path, "w") as wf:
-            json.dump(self.status_json, wf, indent=2, sort_keys=True)
-
-    def get_status_json(self):
-        return self.status_json
-
-    def flush(self):
-        from time import time
-
-        self.lock = True
-        self.update_status_json()
-        self.t = time()
-        self.lock = False
 
 
 def add_parser_ov_run(subparsers):
@@ -2427,7 +2202,7 @@ def add_parser_ov_run(subparsers):
         "--note",
         dest="note",
         default=None,
-        help="note will be written to the run status file (.status.json)",
+        help="note for the job"
     )
     parser_ov_run.add_argument(
         "--mp",
@@ -2444,14 +2219,14 @@ def add_parser_ov_run(subparsers):
     )
     parser_ov_run.add_argument(
         "--temp-files",
-        dest="temp_files",
+        dest="keep_temp",
         action="store_true",
         default=None,
         help="Leave temporary files after run is complete.",
     )
     parser_ov_run.add_argument(
         "--keep-temp",
-        dest="temp_files",
+        dest="keep_temp",
         action="store_true",
         default=None,
         help="Leave temporary files after run is complete.",
@@ -2500,13 +2275,6 @@ def add_parser_ov_run(subparsers):
         action="store_true",
         default=None,
         help="Deletes all previous output files for the job and generate new ones.",
-    )
-    parser_ov_run.add_argument(
-        "--do-not-change-status",
-        dest="do_not_change_status",
-        action="store_true",
-        default=None,
-        help="Job status in status.json will not be changed",
     )
     parser_ov_run.add_argument(
         "--module-option",

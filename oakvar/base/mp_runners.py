@@ -4,9 +4,9 @@ def init_worker():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
-def annot_from_queue(start_queue, end_queue, queue_populated, status_writer, serveradmindb):
+def annot_from_queue(start_queue, end_queue, queue_populated, serveradmindb, logtofile):
     from ..util.util import load_class
-    from logging import getLogger, FileHandler, Formatter
+    from logging import getLogger, StreamHandler, FileHandler, Formatter
     from queue import Empty
     from ..exceptions import ModuleLoadingError
 
@@ -20,14 +20,16 @@ def annot_from_queue(start_queue, end_queue, queue_populated, status_writer, ser
                 continue
         module, kwargs = task
         logger = getLogger(module.name)
-        log_handler = FileHandler(kwargs["log_path"], "a")
+        if logtofile:
+            log_handler = FileHandler(kwargs["log_path"], "a")
+        else:
+            log_handler = StreamHandler()
         formatter = Formatter(
             "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
         )
         log_handler.setFormatter(formatter)
         logger.addHandler(log_handler)
         try:
-            kwargs["status_writer"] = status_writer
             kwargs["serveradmindb"] = serveradmindb
             annotator_class = load_class(module.script_path, "Annotator")
             if not annotator_class:
@@ -46,7 +48,6 @@ def mapper_runner(
     chunksize,
     run_name,
     output_dir,
-    status_writer,
     module_name,
     pos_no,
     primary_transcript,
@@ -70,7 +71,6 @@ def mapper_runner(
         }
         if primary_transcript is not None:
             kwargs["primary_transcript"] = primary_transcript.split(";")
-        kwargs["status_writer"] = status_writer
         kwargs["serveradmindb"] = serveradmindb
         genemapper_class = load_class(module.script_path, "Mapper")
         genemapper = genemapper_class(kwargs)
