@@ -125,7 +125,7 @@ class LocalModule(object):
         return self.__dict__
 
 
-def get_local_module_info(module_name, module_type=None, force=False):
+def get_local_module_info(module_name, force=False):
     from os.path import exists
     from .cache import get_module_cache
 
@@ -168,8 +168,8 @@ def get_local_module_infos_by_names(module_names):
     return modules
 
 
-def get_local_module_info_by_name(module_name, module_type=None):
-    return get_local_module_info(module_name, module_type=module_type)
+def get_local_module_info_by_name(module_name):
+    return get_local_module_info(module_name)
 
 
 def get_local_reporter_module_infos_by_names(module_names):

@@ -421,7 +421,7 @@ class Runner(object):
         if full_args.get("annotators_replace"):
             full_args["annotators"] = full_args.get("annotators_replace")
         self.args = SimpleNamespace(**full_args)
-        self.process_module_options()
+        self.process_module_option()
 
     def connect_admindb_if_needed(self):
         from ..gui.websubmit.serveradmindb import ServerAdminDb
@@ -474,7 +474,7 @@ class Runner(object):
                         annot_names.append(annot_name)
         annot_names.sort()
 
-    def process_module_options(self):
+    def process_module_option(self):
         from ..exceptions import SetupError
         from ..util.util import quiet_print
 
