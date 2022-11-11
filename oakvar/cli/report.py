@@ -17,6 +17,7 @@ if sys.platform == "win32" and sys.version_info >= (3, 8):
 class BaseReporter:
     def __init__(self, args):
         from ..util.admin_util import get_user_conf
+
         self.cf = None
         self.filtertable = "filter"
         self.colinfo = {}
@@ -65,14 +66,17 @@ class BaseReporter:
         self.conns = []
         self.gene_summary_datas = {}
         self.total_norows: Optional[int] = None
-        self.priority_colgroupnames = (get_user_conf() or {}).get("report_module_order", [
-            "base",
-            "tagsampler",
-            "gencode",
-            "hg38",
-            "hg19",
-            "hg18",
-        ])
+        self.priority_colgroupnames = (get_user_conf() or {}).get(
+            "report_module_order",
+            [
+                "base",
+                "tagsampler",
+                "gencode",
+                "hg38",
+                "hg19",
+                "hg18",
+            ],
+        )
         self.modules_to_add_to_base = []
         self.user = DEFAULT_SERVER_DEFAULT_USERNAME
         self.parse_cmd_args(args)
@@ -184,7 +188,6 @@ class BaseReporter:
         self.add_summary = not args.get("no_summary", False)
         self.args = args
 
-
     def should_write_level(self, level):
         if self.levels_to_write is None:
             return True
@@ -193,7 +196,7 @@ class BaseReporter:
         else:
             return False
 
-    async def connect_db (self, dbpath=None):
+    async def connect_db(self, dbpath=None):
         _ = dbpath
 
     async def prep(self, user=DEFAULT_SERVER_DEFAULT_USERNAME):
@@ -240,7 +243,11 @@ class BaseReporter:
             value = row[col_name]
             if value is None or value == "" or value == "{}":
                 continue
-            if (level == "variant" and sub.module == "base" and sub.col == "all_mappings"):
+            if (
+                level == "variant"
+                and sub.module == "base"
+                and sub.col == "all_mappings"
+            ):
                 mappings = loads(value)
                 for gene in mappings:
                     for i in range(len(mappings[gene])):
@@ -351,7 +358,16 @@ class BaseReporter:
             return []
         return levels
 
-    async def run(self, tab="all", add_summary=None, pagesize=None, page=None, make_filtered_table=True, user=DEFAULT_SERVER_DEFAULT_USERNAME, dictrow=False):
+    async def run(
+        self,
+        tab="all",
+        add_summary=None,
+        pagesize=None,
+        page=None,
+        make_filtered_table=True,
+        user=DEFAULT_SERVER_DEFAULT_USERNAME,
+        dictrow=False,
+    ):
         from ..exceptions import SetupError
         from time import time
         from time import asctime
@@ -375,16 +391,26 @@ class BaseReporter:
             if self.setup() == False:
                 await self.close_db()
                 raise SetupError(self.module_name)
-            self.ftable_uid = await self.cf.make_ftables_and_ftable_uid(make_filtered_table=make_filtered_table)
+            self.ftable_uid = await self.cf.make_ftables_and_ftable_uid(
+                make_filtered_table=make_filtered_table
+            )
             self.levels = await self.get_levels_to_run(tab)
             for level in self.levels:
                 self.level = level
                 await self.make_col_infos(add_summary=add_summary)
-                await self.write_data(level, pagesize=pagesize, page=page, make_filtered_table=make_filtered_table, add_summary=add_summary)
+                await self.write_data(
+                    level,
+                    pagesize=pagesize,
+                    page=page,
+                    make_filtered_table=make_filtered_table,
+                    add_summary=add_summary,
+                )
             await self.close_db()
             if self.module_conf:
                 status = "Finished {self.module_conf['title']} ({self.module_name})"
-                update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
+                update_status(
+                    status, logger=self.logger, serveradmindb=self.serveradmindb
+                )
             end_time = time()
             if not (hasattr(self, "no_log") and self.no_log):
                 self.logger.info("finished: {0}".format(asctime(localtime(end_time))))
@@ -396,7 +422,14 @@ class BaseReporter:
             raise e
         return ret
 
-    async def write_data(self, level, add_summary=True, pagesize=None, page=None, make_filtered_table=True):
+    async def write_data(
+        self,
+        level,
+        add_summary=True,
+        pagesize=None,
+        page=None,
+        make_filtered_table=True,
+    ):
         from ..exceptions import SetupError
 
         _ = make_filtered_table
@@ -413,7 +446,7 @@ class BaseReporter:
         self.write_header(level)
         self.hugo_colno = self.colnos[level].get("base__hugo", None)
         datacols = await self.cf.exec_db(self.cf.get_variant_data_cols)
-        self.total_norows = await self.cf.exec_db(self.cf.get_ftable_num_rows, level=level, uid=self.ftable_uid, ftype=level) # type: ignore
+        self.total_norows = await self.cf.exec_db(self.cf.get_ftable_num_rows, level=level, uid=self.ftable_uid, ftype=level)  # type: ignore
         if datacols is None or self.total_norows is None:
             return
         self.sample_newcolno = None
@@ -422,7 +455,9 @@ class BaseReporter:
             self.sample_newcolno = self.colnos["variant"]["base__samples"]
         else:
             self.write_variant_sample_separately = False
-        datarows_iter = await self.cf.get_level_data_iterator(level, page=page, pagesize=pagesize)
+        datarows_iter = await self.cf.get_level_data_iterator(
+            level, page=page, pagesize=pagesize
+        )
         if not datarows_iter:
             return
         row_count = 0
@@ -464,6 +499,7 @@ class BaseReporter:
 
     def stringify_all_mapping(self, level, datarow):
         from json import loads
+
         if hasattr(self, "keep_json_all_mapping") == True or level != "variant":
             return
         col_name = "base__all_mappings"
@@ -501,7 +537,12 @@ class BaseReporter:
                 and len(gene_summary_data[hugo]) == len(cols)
             ):
                 datarow.update(
-                    {f"{grp_name}__{col['name']}": gene_summary_data[hugo][col["name"]] for col in cols}
+                    {
+                        f"{grp_name}__{col['name']}": gene_summary_data[hugo][
+                            col["name"]
+                        ]
+                        for col in cols
+                    }
                 )
             else:
                 datarow.update({f"{grp_name}__{col['name']}": None for col in cols})
@@ -526,6 +567,7 @@ class BaseReporter:
             return self.colinfo
         except Exception as _:
             import traceback
+
             traceback.print_exc()
             await self.close_db()
             return None
@@ -584,19 +626,26 @@ class BaseReporter:
         for row in rows:
             (name, displayname) = row
             if name == "base":
-                self.columngroups[level].append({"name": name, "displayname": displayname, "count": 0})
+                self.columngroups[level].append(
+                    {"name": name, "displayname": displayname, "count": 0}
+                )
                 break
         for row in rows:
             (name, displayname) = row
             if name in self.modules_to_add_to_base:
-                self.columngroups[level].append({"name": name, "displayname": displayname, "count": 0})
+                self.columngroups[level].append(
+                    {"name": name, "displayname": displayname, "count": 0}
+                )
         for row in rows:
             (name, displayname) = row
             if name != "base" and name not in self.modules_to_add_to_base:
-                self.columngroups[level].append({"name": name, "displayname": displayname, "count": 0})
+                self.columngroups[level].append(
+                    {"name": name, "displayname": displayname, "count": 0}
+                )
 
     async def make_coldefs(self, level, conn=Any, where=None):
         from ..util.inout import ColumnDefinition
+
         if not conn:
             return
         cursor = await conn.cursor()
@@ -662,9 +711,11 @@ class BaseReporter:
         modules_to_add = [m for m in gene_annotators if m != "base"]
         return modules_to_add
 
-    async def add_gene_level_displayname_to_variant_level_columngroups(self, module_name, coldefs, conn):
+    async def add_gene_level_displayname_to_variant_level_columngroups(
+        self, module_name, coldefs, conn
+    ):
         cursor = await conn.cursor()
-        q = 'select displayname from gene_annotator where name=?'
+        q = "select displayname from gene_annotator where name=?"
         await cursor.execute(q, (module_name,))
         r = await cursor.fetchone()
         displayname = r[0]
@@ -678,10 +729,14 @@ class BaseReporter:
         modules_to_add = await self.get_gene_level_modules_to_add_to_variant_level(conn)
         for module_name in modules_to_add:
             module_prefix = f"{module_name}__"
-            gene_coldefs = await self.make_coldefs("gene", conn=conn, where=f"col_name like '{module_prefix}%'")
+            gene_coldefs = await self.make_coldefs(
+                "gene", conn=conn, where=f"col_name like '{module_prefix}%'"
+            )
             if not gene_coldefs:
                 continue
-            await self.add_gene_level_displayname_to_variant_level_columngroups(module_name, gene_coldefs, conn)
+            await self.add_gene_level_displayname_to_variant_level_columngroups(
+                module_name, gene_coldefs, conn
+            )
             for gene_coldef in gene_coldefs:
                 self.colnos["variant"][gene_coldef.name] = self.colcount["variant"]
                 self.colcount["variant"] += 1
@@ -690,7 +745,9 @@ class BaseReporter:
                 self.add_to_colnames_to_display("variant", gene_column)
                 self.var_added_cols.append(gene_coldef.name)
 
-    async def add_gene_level_summary_columns(self, add_summary=True, conn=Any, cursor=Any):
+    async def add_gene_level_summary_columns(
+        self, add_summary=True, conn=Any, cursor=Any
+    ):
         from ..exceptions import ModuleLoadingError
         from ..module.local import get_local_module_infos_of_type
         from ..module.local import get_local_module_info
@@ -698,6 +755,7 @@ class BaseReporter:
         from ..util.util import quiet_print
         from ..util.inout import ColumnDefinition
         from os.path import dirname
+
         _ = conn
         if not add_summary:
             return
@@ -716,7 +774,7 @@ class BaseReporter:
                 "hg18",
                 "extra_vcf_info",
                 "extra_variant_info",
-                "original_input"
+                "original_input",
             ]:
                 continue
             if module_name not in local_modules:
@@ -749,7 +807,7 @@ class BaseReporter:
                 "script_path": mi.script_path,
                 "input_file": "__dummy__",
                 "output_dir": self.output_dir,
-                "serveradmindb": self.serveradmindb
+                "serveradmindb": self.serveradmindb,
             }
             annot = annot_cls(cmd)
             cols = mi.conf["gene_summary_output_columns"]
@@ -787,6 +845,7 @@ class BaseReporter:
     async def make_report_sub(self, level, conn):
         from json import loads
         from types import SimpleNamespace
+
         if not level in ["variant", "gene"]:
             return
         reportsubtable = f"{level}_reportsub"
@@ -863,7 +922,10 @@ class BaseReporter:
         self.set_display_select_columns(level)
         self.set_cols_to_display(level)
         self.add_column_number_stat_to_col_groups(level)
-        self.colinfo[level] = {"colgroups": self.columngroups[level], "columns": self.columns[level]}
+        self.colinfo[level] = {
+            "colgroups": self.columngroups[level],
+            "columns": self.columns[level],
+        }
         await self.make_report_sub(level, conn)
 
     def get_standardized_module_option(self, v):
@@ -901,6 +963,7 @@ class BaseReporter:
 
     async def close_db(self):
         import sqlite3
+
         for conn in self.conns:
             if type(conn) == sqlite3.Connection:
                 conn.close()
@@ -1186,15 +1249,16 @@ def get_parser_fn_report():
     parser_ov_report.add_argument(
         "--user",
         default=DEFAULT_SERVER_DEFAULT_USERNAME,
-        help=f"User who is creating this report. Default is {DEFAULT_SERVER_DEFAULT_USERNAME}."
+        help=f"User who is creating this report. Default is {DEFAULT_SERVER_DEFAULT_USERNAME}.",
     )
     parser_ov_report.add_argument(
         "--no-summary",
         action="store_true",
         default=False,
-        help="Skip gene level summarization. This saves time."
+        help="Skip gene level summarization. This saves time.",
     )
     parser_ov_report.set_defaults(func=cli_report)
     return parser_ov_report
+
 
 CravatReport = BaseReporter

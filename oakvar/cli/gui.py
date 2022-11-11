@@ -10,6 +10,7 @@ def get_event_loop():
     from sys import platform as sysplatform
     from asyncio import get_event_loop
     from asyncio import set_event_loop
+
     global loop
     if not loop:
         if sysplatform == "win32":  # Required to use asyncio subprocesses
@@ -21,11 +22,13 @@ def get_event_loop():
             loop = get_event_loop()
     return loop
 
+
 def inject_module_variables(args={}):
     from ..gui.webresult import webresult as wr
     from ..gui.webstore import webstore as ws
     from ..gui.websubmit import websubmit as wu
     from ..gui.websubmit import multiuser as mu
+
     logger = args.get("logger")
     wu.logger = logger
     ws.logger = logger
@@ -39,6 +42,7 @@ def inject_module_variables(args={}):
     wu.mu = mu
     ws.mu = mu
 
+
 def get_protocol(args={}):
     global protocol
     if not protocol:
@@ -47,6 +51,7 @@ def get_protocol(args={}):
         else:
             protocol = "http://"
     return protocol
+
 
 def setup(args={}):
     from os.path import abspath
@@ -78,8 +83,10 @@ def is_port_occupied(args={}):
         pass
     return sr == 0
 
+
 def get_pem_path(args={}):
     from os.path import join
+
     sysconf = args.get("sysconf", {})
     if "conf_dir" in sysconf:
         pem_path = join(sysconf.get("conf_dir"), "cert.pem")
@@ -87,9 +94,11 @@ def get_pem_path(args={}):
         pem_path = None
     return pem_path
 
+
 def get_ssl_context(args={}):
     from os.path import exists
     from ssl import create_default_context, Purpose
+
     pem_path = get_pem_path(args=args)
     if pem_path and exists(pem_path) and args.get("http_only") == False:
         sc = create_default_context(Purpose.CLIENT_AUTH)
@@ -97,6 +106,7 @@ def get_ssl_context(args={}):
     else:
         sc = None
     return sc
+
 
 def main(url=None, args={}):
     from webbrowser import open as open_browser
@@ -107,7 +117,9 @@ def main(url=None, args={}):
 
     logger = args.get("logger")
     if is_port_occupied(args=args):
-        msg = f"OakVar or another program is already running at port {args.get('port')}."
+        msg = (
+            f"OakVar or another program is already running at port {args.get('port')}."
+        )
         if logger:
             logger.info(msg)
         quiet_print(msg, args)
@@ -187,6 +199,7 @@ def get_parser_fn_gui():
     parser_fn_gui.set_defaults(func=cli_gui)
     return parser_fn_gui
 
+
 def get_logger(args={}):
     from logging import getLogger
     from logging import INFO
@@ -206,6 +219,7 @@ def get_logger(args={}):
     logger.addHandler(log_handler)
     return logger
 
+
 def get_webapp_url(args={}):
     from os.path import join
     from os.path import exists
@@ -215,12 +229,15 @@ def get_webapp_url(args={}):
 
     host, port = get_host_port(args=args)
     sysconf = args.get("sysconf", {})
-    index_path = join(sysconf.get(modules_dir_key), "webapps", args["webapp"], "index.html")
+    index_path = join(
+        sysconf.get(modules_dir_key), "webapps", args["webapp"], "index.html"
+    )
     if exists(index_path) == False:
         stderr.write(f"Webapp {args['webapp']} does not exist. Exiting.\n")
         return
     url = f"{host}:{port}/webapps/{args['webapp']}/index.html"
     return url
+
 
 def get_result_url(args={}):
     from os.path import exists
@@ -241,23 +258,29 @@ def get_result_url(args={}):
     url = f"{host}:{port}/result/nocache/index.html?dbpath={args['result']}"
     return url
 
+
 def get_login_url(args={}):
     from ..gui.util import get_host_port
+
     host, port = get_host_port(args=args)
     url = f"{host}:{port}/submit/nocache/login.html"
     return url
 
-#def get_index_url(args={}):
+
+# def get_index_url(args={}):
 #    from ..gui.util import get_host_port
 #    host, port = get_host_port(args=args)
 #    url = f"{host}:{port}/submit/nocache/index.html"
 #    return url
 
+
 def get_index_url(args={}):
     from ..gui.util import get_host_port
+
     host, port = get_host_port(args=args)
     url = f"{host}:{port}/index.html"
     return url
+
 
 def get_url(args={}):
     if args.get("webapp"):
@@ -275,6 +298,7 @@ def get_url(args={}):
         protocol = get_protocol(args=args)
         url = protocol + url
     return url
+
 
 @cli_entry
 def cli_gui(args):
@@ -295,7 +319,7 @@ def gui(args, __name__="gui"):
         url = get_url(args=args)
         main(url=url, args=args)
     except Exception as e:
-        #logger = args.get("logger")
+        # logger = args.get("logger")
         logger = get_logger(args=args)
         if logger:
             logger.exception(e)
@@ -310,4 +334,3 @@ def gui(args, __name__="gui"):
             for handler in logger.handlers:
                 handler.close()
                 logger.removeHandler(handler)
-

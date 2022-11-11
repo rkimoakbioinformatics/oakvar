@@ -163,7 +163,7 @@ def get_readme(module_name: str) -> Optional[str]:
     _, store = ret
     fpath = join(get_cache_dir("readme"), store, module_name)
     if exists(fpath):
-        with open(fpath, encoding='utf-8') as f:
+        with open(fpath, encoding="utf-8") as f:
             out = f.readlines()
             out = "".join(out)
             return out
@@ -269,6 +269,7 @@ def get_remote_module_infos_of_type(t):
         return modules
     return None
 
+
 def make_remote_manifest(install_queue=None):
     from ..store.db import get_manifest
     from ..consts import module_tag_desc
@@ -292,4 +293,3 @@ def make_remote_manifest(install_queue=None):
             install_queue.put({"module": module, "version": version})
         content["tagdesc"] = module_tag_desc
     return content
-

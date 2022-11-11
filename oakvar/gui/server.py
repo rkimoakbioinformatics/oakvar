@@ -1,6 +1,7 @@
 from aiohttp import web
 from aiohttp import web_runner
 
+
 class WebServer(object):
     def __init__(self, loop=None, url=None, args={}):
         from asyncio import get_event_loop
@@ -83,8 +84,9 @@ class WebServer(object):
         global server_ready
         from aiohttp import web
         import aiohttp_cors
+
         self.app = web.Application(loop=self.loop, middlewares=[self.middleware])
-        self.cors = aiohttp_cors.setup(self.app) # type: ignore
+        self.cors = aiohttp_cors.setup(self.app)  # type: ignore
         self.setup_routes()
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()
@@ -151,7 +153,6 @@ class WebServer(object):
         from os.path import exists
         from aiohttp_cors import ResourceOptions
 
-
         if self.app is None:
             raise SetupError()
         source_dir = dirname(realpath(__file__))
@@ -165,7 +166,9 @@ class WebServer(object):
             self.app.router.add_route(method, path, func_name)
         self.setup_webapp_routes()
         self.app.router.add_static("/store", join(source_dir, "..", "gui", "webstore"))
-        self.app.router.add_static("/result", join(source_dir, "..", "gui", "webresult"))
+        self.app.router.add_static(
+            "/result", join(source_dir, "..", "gui", "webresult")
+        )
         self.app.router.add_static("/submit", join(source_dir, "websubmit"))
         self.app.router.add_static("/", join(source_dir, "www"))
         modules_dir = get_modules_dir()
@@ -178,14 +181,17 @@ class WebServer(object):
                 self.app.router.add_static("/webapps", join(modules_dir, "webapps"))
         if self.cors:
             for resource in list(self.app.router.resources()):
-                self.cors.add(resource, {
-                    "http://0.0.0.0:3000": ResourceOptions(
-                        allow_credentials=True,
-                        expose_headers="*",
-                        allow_headers="*",
-                        allow_methods="*"
-                    ),
-                })
+                self.cors.add(
+                    resource,
+                    {
+                        "http://0.0.0.0:3000": ResourceOptions(
+                            allow_credentials=True,
+                            expose_headers="*",
+                            allow_headers="*",
+                            allow_methods="*",
+                        ),
+                    },
+                )
         ws.start_worker()
         wu.start_worker()
 
@@ -247,4 +253,3 @@ class TCPSitePatched(web_runner.BaseSite):
             reuse_address=self._reuse_address,
             reuse_port=self._reuse_port,
         )
-

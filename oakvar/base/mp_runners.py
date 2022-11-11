@@ -51,7 +51,7 @@ def mapper_runner(
     module_name,
     pos_no,
     primary_transcript,
-    serveradmindb
+    serveradmindb,
 ):
     from ..util.util import load_class
     from ..module.local import get_local_module_info

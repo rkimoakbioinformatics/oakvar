@@ -17,15 +17,15 @@ system_conf = get_system_conf()
 install_manager = None
 install_queue = None
 install_state = {
-        "stage": "",
-        "message": "",
-        "module_name": "",
-        "module_version": "",
-        "cur_chunk": 0,
-        "total_chunks": 0,
-        "cur_size": 0,
-        "total_size": 0,
-        "update_time": time.time()
+    "stage": "",
+    "message": "",
+    "module_name": "",
+    "module_version": "",
+    "cur_chunk": 0,
+    "total_chunks": 0,
+    "cur_size": 0,
+    "total_size": 0,
+    "update_time": time.time(),
 }
 install_worker = None
 local_modules_changed = None
@@ -34,6 +34,7 @@ servermode = None
 logger = None
 mu = None
 local_manifest = None
+
 
 class InstallProgressMpDict(InstallProgressHandler):
     def __init__(self, module_name, module_version, install_state, quiet=True):
@@ -66,7 +67,7 @@ class InstallProgressMpDict(InstallProgressHandler):
             self.install_state["cur_size"] = 0
             self.install_state["total_size"] = 0
             self.install_state["update_time"] = time.time()
-            #last_update_time = self.install_state["update_time"]
+            # last_update_time = self.install_state["update_time"]
         self.cur_stage = stage
         self.install_state["module_name"] = self.module_name
         self.install_state["module_version"] = self.module_version
@@ -74,8 +75,9 @@ class InstallProgressMpDict(InstallProgressHandler):
         self.install_state["message"] = self._stage_msg(self.cur_stage)
         self.install_state["kill_signal"] = False
         self._reset_progress(update_time=True)
-        #self.install_state["update_time"] = time.time()
+        # self.install_state["update_time"] = time.time()
         quiet_print(self.install_state["message"], {"quiet": self.quiet})
+
 
 def fetch_install_queue(install_queue, install_state, local_modules_changed):
     from ...module import install_module
@@ -105,17 +107,22 @@ def fetch_install_queue(install_queue, install_state, local_modules_changed):
 def get_remote_manifest_cache_path():
     from ...system import get_conf_dir
     from os.path import join
+
     return join(get_conf_dir(), "remote_manifest.json")
+
 
 def save_remote_manifest_cache(content: dict):
     from json import dump
+
     cache_path = get_remote_manifest_cache_path()
     with open(cache_path, "w") as wf:
         dump(content, wf)
 
+
 def get_remote_manifest_cache() -> Optional[dict]:
     from os.path import exists
     from json import load
+
     cache_path = get_remote_manifest_cache_path()
     if exists(cache_path):
         with open(cache_path) as f:
@@ -123,8 +130,10 @@ def get_remote_manifest_cache() -> Optional[dict]:
             return content
     return None
 
+
 async def get_remote_manifest(_):
     from ...module.remote import make_remote_manifest
+
     global install_queue
     content = get_remote_manifest_cache()
     if content:
@@ -207,6 +216,7 @@ async def uninstall_module(request):
 
 def start_worker():
     from time import time
+
     global install_worker
     global install_queue
     global install_state
@@ -445,6 +455,7 @@ async def get_remote_manifest_from_local(request):
 async def local_module_logo_exists(request):
     from ...module.cache import get_module_cache
     from os.path import exists
+
     module_name = request.match_info["module_name"]
     module_info = get_module_cache().local[module_name]
     module_dir = module_info.directory
@@ -454,10 +465,12 @@ async def local_module_logo_exists(request):
     else:
         return web.json_response("fail")
 
+
 async def get_local_module_logo(request):
     from ...module.cache import get_module_cache
     from ...system import get_default_logo_path
     from os.path import exists
+
     queries = request.rel_url.query
     module = queries.get("module", None)
     module_info = get_module_cache().local[module]

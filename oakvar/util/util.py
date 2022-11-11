@@ -78,7 +78,7 @@ def load_class(path, class_name=None):
                     "CravatPostAggregator",
                     "CravatReporter",
                     "CravatCommonModule",
-                    ]:
+                ]:
                     if hasattr(module, n):
                         module_class = getattr(module, n)
                         if not inspect.isclass(module_class):
@@ -391,6 +391,7 @@ def load_yml_conf(yml_conf_path):
 
 def compare_version(v1, v2):
     from packaging.version import Version
+
     sv1 = Version(v1)
     sv2 = Version(v2)
     if sv1 == sv2:
@@ -454,9 +455,11 @@ def get_email_from_args(args={}) -> Optional[str]:
 
 def version_requirement_met(version, target_version) -> bool:
     from packaging.version import Version
+
     if not target_version:
         return True
     return Version(version) >= Version(target_version)
+
 
 def get_latest_version(versions, target_version=None):
     from packaging.version import Version
@@ -474,14 +477,16 @@ def escape_glob_pattern(pattern):
     new_pattern = "[[]".join(["[]]".join(v.split("]")) for v in pattern.split("[")])
     return new_pattern.replace("*", "[*]").replace("?", "[?]")
 
+
 def get_random_string(k=16):
     from random import choices
     from string import ascii_lowercase
+
     return "".join(choices(ascii_lowercase, k=k))
+
 
 def get_result_dbpath(output_dir: str, run_name: str):
     from pathlib import Path
     from ..consts import result_db_suffix
 
     return str(Path(output_dir) / (run_name + result_db_suffix))
-

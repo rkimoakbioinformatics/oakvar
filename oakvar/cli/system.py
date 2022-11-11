@@ -105,9 +105,7 @@ def add_parser_ov_system_config(subparsers):
     parser_cli_system_config = subparsers.add_parser(
         "config", help="show or change system configuration."
     )
-    parser_cli_system_config.add_argument(
-        "key", nargs="?", help="Configuration key"
-    )
+    parser_cli_system_config.add_argument("key", nargs="?", help="Configuration key")
     parser_cli_system_config.add_argument(
         "value", nargs="?", help="Configuration value"
     )

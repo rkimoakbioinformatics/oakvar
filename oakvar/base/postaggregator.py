@@ -153,7 +153,6 @@ class BasePostAggregator(object):
             if columns:
                 self.result_level_columns[level] = columns
 
-
     def get_result_module_columns(self, module_name):
         from ..consts import LEVELS
 
@@ -163,7 +162,11 @@ class BasePostAggregator(object):
         for level in LEVELS.keys():
             q = "select name from pragma_table_info('{level}') as tblinfo"
             self.cursor.execute(q)
-            columns = [v[0] for v in self.cursor.fetchall() if v[0].startswith(f"{module_name}__")]
+            columns = [
+                v[0]
+                for v in self.cursor.fetchall()
+                if v[0].startswith(f"{module_name}__")
+            ]
             if columns:
                 return level, columns
         return None, None
@@ -205,9 +208,14 @@ class BasePostAggregator(object):
             if self.levelno == VARIANT:
                 if "base__uid" not in self.input_columns["variant"]:
                     self.input_columns["variant"].append("base__uid")
-                if "gene" in self.input_columns and "base__hugo" not in self.input_columns["variant"]:
+                if (
+                    "gene" in self.input_columns
+                    and "base__hugo" not in self.input_columns["variant"]
+                ):
                     self.input_columns["variant"].append("base__hugo")
-            elif self.levelno == GENE and "base__hugo" not in self.input_columns["gene"]:
+            elif (
+                self.levelno == GENE and "base__hugo" not in self.input_columns["gene"]
+            ):
                 self.input_columns["gene"].append("base__hugo")
 
     def setup_output_columns(self):
@@ -227,7 +235,6 @@ class BasePostAggregator(object):
         from ..exceptions import LoggerError
         from ..exceptions import SetupError
         from ..util.run import update_status
-
 
         if self.conf is None:
             raise ConfigurationError()
@@ -260,7 +267,7 @@ class BasePostAggregator(object):
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
 
     def process_file(self):
-        from time import time 
+        from time import time
         from ..exceptions import ConfigurationError
         from ..util.run import update_status
 
@@ -280,8 +287,12 @@ class BasePostAggregator(object):
                 cur_time = time()
                 lnum += 1
                 if lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
-                    status = f"Running {self.conf['title']} ({self.module_name}): row {lnum}"
-                    update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
+                    status = (
+                        f"Running {self.conf['title']} ({self.module_name}): row {lnum}"
+                    )
+                    update_status(
+                        status, logger=self.logger, serveradmindb=self.serveradmindb
+                    )
                     last_status_update_time = cur_time
             except Exception as e:
                 self._log_runtime_exception(input_data, e)
@@ -293,7 +304,6 @@ class BasePostAggregator(object):
         from ..exceptions import ConfigurationError
         from ..exceptions import SetupError
         from ..util.inout import ColumnDefinition
-
 
         if self.conf is None:
             raise ConfigurationError()
@@ -317,7 +327,9 @@ class BasePostAggregator(object):
             q = "update {}_header set col_def=? where col_name=?".format(self.level)
             self.cursor.execute(q, [col_def.get_json(), col_def.name])
 
-    def write_output(self, output_dict, input_data=None, base__uid=None, base__hugo=None):
+    def write_output(
+        self, output_dict, input_data=None, base__uid=None, base__hugo=None
+    ):
         from ..exceptions import ConfigurationError
         from ..exceptions import SetupError
         from oakvar.consts import VARIANT, GENE
@@ -350,7 +362,7 @@ class BasePostAggregator(object):
             else:
                 return
         elif self.levelno == GENE:
-            q += 'base__hugo=?'
+            q += "base__hugo=?"
             if input_data:
                 vals.append(input_data["base__hugo"])
             elif base__hugo:
@@ -522,8 +534,16 @@ class BasePostAggregator(object):
                     elif level == "gene":
                         prefix = "g"
                     else:
-                        raise Exception(f"Unknown column level: {level} for {column_names}")
-                    columns.extend([f"{prefix}.{column_name}" for column_name in column_names if column_name in self.input_columns[level]])
+                        raise Exception(
+                            f"Unknown column level: {level} for {column_names}"
+                        )
+                    columns.extend(
+                        [
+                            f"{prefix}.{column_name}"
+                            for column_name in column_names
+                            if column_name in self.input_columns[level]
+                        ]
+                    )
                 columns_v = [column for column in columns]
             elif self.levelno == GENE:
                 from_g = "gene as g"
@@ -533,14 +553,26 @@ class BasePostAggregator(object):
                 for level, column_names in self.result_level_columns.items():
                     if level == "variant":
                         prefix = "v"
-                        columns_v = [f"{prefix}.{column_name}" for column_name in column_names if column_name in self.input_columns[level]]
+                        columns_v = [
+                            f"{prefix}.{column_name}"
+                            for column_name in column_names
+                            if column_name in self.input_columns[level]
+                        ]
                     elif level == "gene":
                         prefix = "g"
-                        columns_g = [f"{prefix}.{column_name}" for column_name in column_names if column_name in self.input_columns[level]]
+                        columns_g = [
+                            f"{prefix}.{column_name}"
+                            for column_name in column_names
+                            if column_name in self.input_columns[level]
+                        ]
                     else:
-                        raise Exception(f"Unknown column level: {level} for {column_names}")
+                        raise Exception(
+                            f"Unknown column level: {level} for {column_names}"
+                        )
             else:
-                raise Exception(f"Unknown module level: {self.level} for {self.module_name}")
+                raise Exception(
+                    f"Unknown module level: {self.level} for {self.module_name}"
+                )
         if self.levelno == VARIANT:
             q_v = f"select {self.columns_to_columns_str(columns_v)} from {from_v}"
             if where_v:
@@ -558,7 +590,9 @@ class BasePostAggregator(object):
                 if where_v:
                     q_v += f" where {where_v}"
         else:
-            raise Exception(f"Unknown module level: {self.level} for {self.module_name}")
+            raise Exception(
+                f"Unknown module level: {self.level} for {self.module_name}"
+            )
         for row in cursor:
             try:
                 input_data = {}

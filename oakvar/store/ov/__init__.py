@@ -111,7 +111,9 @@ def get_register_args_of_module(module_name: str, args={}) -> Optional[dict]:
         rmi["code_url"] = args.get("code_url")
         rmi["data_url"] = args.get("data_url") or []
     if not rmi["code_url"]:
-        quiet_print(f"--code-url or -f with a file having code_url should be given.", args=args)
+        quiet_print(
+            f"--code-url or -f with a file having code_url should be given.", args=args
+        )
         return None
     for kind in ["code", "data"]:
         k = f"{kind}_url"
@@ -267,5 +269,3 @@ def register(args={}) -> bool:
     except Exception as e:
         quiet_print(f"{e}", args=args)
         return False
-
-

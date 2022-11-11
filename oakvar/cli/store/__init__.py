@@ -86,7 +86,10 @@ def add_parser_fn_store_register(subparsers):
         "--overwrite", action="store_true", help="overwrite if the same version exists"
     )
     parser_cli_store_register.add_argument(
-        "-f", dest="url_file", default=None, help="use a yaml file for code-url and data-url",
+        "-f",
+        dest="url_file",
+        default=None,
+        help="use a yaml file for code-url and data-url",
     )
     parser_cli_store_register.set_defaults(func=cli_store_register)
     parser_cli_store_register.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore

@@ -1,17 +1,21 @@
 from typing import Optional
 
+
 class ModuleDataCache:
     def __init__(self, module_name: str, module_type=None):
         from pathlib import Path
         from .local import get_cache_conf
         from .local import get_module_dir
+
         self.conn = None
         self.module_name = module_name
         self.module_type = module_type
         self.module_dir = get_module_dir(module_name, module_type=module_type)
         self.conf = get_cache_conf(module_name, module_type=module_type)
         self.expiration_in_day = self.conf.get("expiration") if self.conf else None
-        self.expiration = self.expiration_in_day * 60 * 60 * 24 if self.expiration_in_day else None
+        self.expiration = (
+            self.expiration_in_day * 60 * 60 * 24 if self.expiration_in_day else None
+        )
         self.dir = Path(self.module_dir) / "cache" if self.module_dir else None
         self.path = self.dir / "cache.db" if self.dir else None
         if self.path:
@@ -21,11 +25,13 @@ class ModuleDataCache:
 
     def create_cache_dir_if_needed(self):
         from pathlib import Path
+
         if self.dir and not Path(self.dir).exists():
             self.dir.mkdir()
 
     def get_conn(self):
         from duckdb import connect
+
         if not self.path:
             return None
         if not self.conn:
@@ -70,17 +76,18 @@ class ModuleDataCache:
         import time
         from json import loads
         from traceback import print_exc
+
         if not self.conn:
             return
         q = f"select v, timestamp from cache where k=?"
         ret = self.conn.execute(q, (key,)).fetchone()
         if ret:
-            v = ret[0] # type: ignore
+            v = ret[0]  # type: ignore
             try:
                 v = loads(v)
             except:
                 print_exc()
-            timestamp = float(ret[1]) # type: ignore
+            timestamp = float(ret[1])  # type: ignore
             if self.expiration:
                 if time.time() - timestamp > self.expiration:
                     self.delete_cache(key)
@@ -91,4 +98,3 @@ class ModuleDataCache:
                 return v
         else:
             return
-

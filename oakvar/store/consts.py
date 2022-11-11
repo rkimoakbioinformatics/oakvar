@@ -21,8 +21,5 @@ versions_table_cols = [
 ]
 logo_size = (275, 170)
 MODULE_PACK_SPLIT_FILE_SIZE = 100 * 1024 * 1024
-pack_ignore_fnames = [
-    ".DS_Store",
-    "__pycache__"
-]
+pack_ignore_fnames = [".DS_Store", "__pycache__"]
 store_url_key = "store_url"

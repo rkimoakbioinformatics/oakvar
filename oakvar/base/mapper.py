@@ -1,5 +1,4 @@
 class BaseMapper(object):
-
     def __init__(self, *inargs, **inkwargs):
         import os
         from time import time
@@ -250,7 +249,9 @@ class BaseMapper(object):
                 cur_time = time()
                 if count % 10000 == 0 or cur_time - last_status_update_time > 3:
                     status = f"Running gene mapper: line {count}"
-                    update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
+                    update_status(
+                        status, logger=self.logger, serveradmindb=self.serveradmindb
+                    )
                     last_status_update_time = cur_time
                 if crv_data["alt_base"] == "*":
                     crx_data = crv_data
@@ -328,7 +329,10 @@ class BaseMapper(object):
         data = {}
         rows = await cf.exec_db(cf.get_variant_data_for_cols, cols)
         sys_conf = get_system_conf()
-        result_viewer_num_var_limit_for_gene_summary = sys_conf.get(result_viewer_num_var_limit_for_gene_summary_key, DEFAULT_RESULT_VIEWER_NUM_VAR_LIMIT_FOR_GENE_SUMMARY)
+        result_viewer_num_var_limit_for_gene_summary = sys_conf.get(
+            result_viewer_num_var_limit_for_gene_summary_key,
+            DEFAULT_RESULT_VIEWER_NUM_VAR_LIMIT_FOR_GENE_SUMMARY,
+        )
         if len(rows) > result_viewer_num_var_limit_for_gene_summary:
             return {}
         rows_by_hugo = {}

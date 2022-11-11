@@ -67,5 +67,3 @@ server_default_username_key = "server_default_username"
 ADMIN_ROLE = "admin"
 USER_ROLE = "user"
 ADMIN_DB_FN = "server.sqlite"
-
-

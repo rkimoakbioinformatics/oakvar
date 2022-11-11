@@ -1,5 +1,4 @@
 class BasePreparer(object):
-
     def __init__(self, *inargs, **inkwargs):
         import os
         import sys
@@ -123,10 +122,7 @@ class BasePreparer(object):
     def open_output_files(self):
         from oakvar.exceptions import SetupError
 
-        if (
-            self.output_base_fname is None
-            or self.output_dir is None
-        ):
+        if self.output_base_fname is None or self.output_dir is None:
             raise SetupError()
         from oakvar.consts import crv_def
         from oakvar.consts import crv_idx
@@ -163,7 +159,9 @@ class BasePreparer(object):
                 cur_time = time()
                 if count % 10000 == 0 or cur_time - last_status_update_time > 3:
                     status = f"Running {self.module_name}: line {count}"
-                    update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
+                    update_status(
+                        status, logger=self.logger, serveradmindb=self.serveradmindb
+                    )
                     last_status_update_time = cur_time
                 uid = crv_data.get("uid")
                 if not uid:

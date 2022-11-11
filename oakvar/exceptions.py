@@ -91,6 +91,7 @@ class ModuleInstallationError(ExpectedException):
     def __init__(self, msg):
         super().__init__(msg)
 
+
 class ModuleNotExist(ExpectedException):
     traceback = True
     halt = True
@@ -266,8 +267,10 @@ class IncompleteModuleError(ExpectedException):
 class ResultMissingMandatoryColumnError(ExpectedException):
     traceback = False
     halt = False
+
     def __init__(self, dbpath, cols):
         super().__init__(f"Error: {dbpath} lacks {cols}")
+
 
 class FilterLoadingError(ExpectedException):
     def __init__(self):

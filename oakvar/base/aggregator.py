@@ -139,7 +139,9 @@ class Aggregator(object):
                     cur_time = time()
                     if lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
                         status = f"Running Aggregator ({self.level}:base): line {lnum}"
-                        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
+                        update_status(
+                            status, logger=self.logger, serveradmindb=self.serveradmindb
+                        )
                         last_status_update_time = cur_time
                 except Exception as e:
                     self._log_runtime_error(lnum, line, e, fn=self.base_reader.path)
@@ -169,7 +171,9 @@ class Aggregator(object):
                     cur_time = time()
                     if lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
                         status = f"Running Aggregator ({self.level}:base): line {lnum}"
-                        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
+                        update_status(
+                            status, logger=self.logger, serveradmindb=self.serveradmindb
+                        )
                         last_status_update_time = cur_time
                 except Exception as e:
                     self._log_runtime_error(lnum, line, e, fn=reader.path)
@@ -411,7 +415,7 @@ class Aggregator(object):
         for col_def in columns:
             name = col_def.name
             sql_type = self.cr_type_to_sql[col_def.type]
-            s = name + ' ' + sql_type
+            s = name + " " + sql_type
             col_def_strings.append(s)
         if not self.append:
             q = f"drop table if exists {self.table_name}"

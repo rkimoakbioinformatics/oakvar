@@ -2,6 +2,7 @@ from typing import Optional
 
 custom_system_conf = None
 
+
 def setup_system(args=None):
     from os import environ
     from ..util.util import quiet_print
@@ -38,7 +39,10 @@ def setup_system(args=None):
         quiet_print(f"Done setting up the system", args=args)
         return True
     else:  # return False is converted to 1 with @cli_func.
-        quiet_print(f"Problem occurred while setting up the system. Return value is {ret}", args=args)
+        quiet_print(
+            f"Problem occurred while setting up the system. Return value is {ret}",
+            args=args,
+        )
         return False
 
 
@@ -255,8 +259,15 @@ def get_cache_dir(cache_key, conf=None):
 def get_default_logo_path() -> str:
     from pathlib import Path
 
-    path = Path(__file__).parent.parent / "gui" / "webstore" / "images" / "no_logo_module.svg"
+    path = (
+        Path(__file__).parent.parent
+        / "gui"
+        / "webstore"
+        / "images"
+        / "no_logo_module.svg"
+    )
     return str(path)
+
 
 def get_logo_path(module_name: str, store: str, conf=None) -> str:
     from os.path import join
@@ -298,6 +309,7 @@ def set_sys_conf_value(conf_key, conf_value, sys_conf_path=None, conf=None):
     sys_conf = get_system_conf(sys_conf_path=sys_conf_path, conf=conf)
     sys_conf[conf_key] = conf_value
     save_system_conf(sys_conf)
+
 
 def get_user_conf() -> dict:
     from ..util.util import load_yml_conf
@@ -909,6 +921,7 @@ def check(args) -> bool:
     quiet_print(f"success", args=args)
     return True
 
+
 def get_user_jobs_dir(email=None):
     from pathlib import Path
 
@@ -918,7 +931,10 @@ def get_user_jobs_dir(email=None):
     jobs_dir = root_jobs_dir / email
     return str(jobs_dir)
 
-def get_legacy_status_json_path_in_job_dir(job_dir: Optional[str], run_name=None) -> Optional[str]:
+
+def get_legacy_status_json_path_in_job_dir(
+    job_dir: Optional[str], run_name=None
+) -> Optional[str]:
     from pathlib import Path
 
     legacy_status_suffix = ".status.json"
@@ -933,9 +949,11 @@ def get_legacy_status_json_path_in_job_dir(job_dir: Optional[str], run_name=None
         return None
     return str(legacy_status_json_paths[0])
 
+
 def get_legacy_status_json(job_dir: Optional[str]) -> Optional[dict]:
     from json import load
     from logging import getLogger
+
     try:
         legacy_status_path = get_legacy_status_json_path_in_job_dir(job_dir)
         if not legacy_status_path:
@@ -950,4 +968,3 @@ def get_legacy_status_json(job_dir: Optional[str]) -> Optional[dict]:
         logger = getLogger()
         logger.exception(e)
         return None
-

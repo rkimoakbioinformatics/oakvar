@@ -59,7 +59,7 @@ class MasterConverter(object):
         from oakvar.system.consts import default_assembly_key
         from oakvar.exceptions import NoGenomeException
         from oakvar.system import get_user_conf
-    
+
         if self.given_input_assembly:
             return self.given_input_assembly
         input_assembly = getattr(converter, "input_assembly", None)
@@ -74,7 +74,9 @@ class MasterConverter(object):
     def set_do_liftover(self, genome_assembly, converter, f):
         self.do_liftover = genome_assembly != "hg38"
         if hasattr(converter, "get_do_liftover_chrM"):
-            self.do_liftover_chrM = converter.get_do_liftover_chrM(genome_assembly, f, self.do_liftover)
+            self.do_liftover_chrM = converter.get_do_liftover_chrM(
+                genome_assembly, f, self.do_liftover
+            )
         else:
             self.do_liftover_chrM = self.do_liftover
 
@@ -82,6 +84,7 @@ class MasterConverter(object):
         from oakvar.util.admin_util import get_liftover_chain_paths
         from oakvar.exceptions import InvalidGenomeAssembly
         from pyliftover import LiftOver
+
         liftover_chain_paths = get_liftover_chain_paths()
         if genome_assembly not in liftover_chain_paths:
             raise InvalidGenomeAssembly(genome_assembly)
@@ -503,7 +506,10 @@ class MasterConverter(object):
                                     )
                                 else:
                                     wdict["sample_id"] = samp_prefix
-                            if "ref_base" not in wdict or wdict["ref_base"] in ["", "."]:
+                            if "ref_base" not in wdict or wdict["ref_base"] in [
+                                "",
+                                ".",
+                            ]:
                                 wdict["ref_base"] = self.wgsreader.get_bases(
                                     chrom, int(wdict["pos"])
                                 ).upper()
@@ -525,7 +531,9 @@ class MasterConverter(object):
                                         chrom, int(pos)
                                     )
                             if "genotype" in wdict and "." in wdict["genotype"]:
-                                wdict["genotype"] = wdict["genotype"].replace(".", wdict["ref_base"])
+                                wdict["genotype"] = wdict["genotype"].replace(
+                                    ".", wdict["ref_base"]
+                                )
                             prelift_wdict = copy(wdict)
                             self.perform_liftover_if_needed(wdict)
                             if not base_re.fullmatch(wdict["ref_base"]):
@@ -573,7 +581,9 @@ class MasterConverter(object):
                             self.crs_writer.write_data(wdict)
                             uid += 1
                     else:
-                        raise IgnoredVariant("No valid alternate allele was found in any samples.")
+                        raise IgnoredVariant(
+                            "No valid alternate allele was found in any samples."
+                        )
                 except Exception as e:
                     self._log_conversion_error(read_lnum, l, e)
                     continue
@@ -581,7 +591,9 @@ class MasterConverter(object):
             cur_time = time()
             if total_lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
                 status = f"Running Converter ({cur_fname}): line {last_read_lnum}"
-                update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
+                update_status(
+                    status, logger=self.logger, serveradmindb=self.serveradmindb
+                )
                 last_status_update_time = cur_time
             self.logger.info("error lines: %d" % self.file_error_lines)
         self._close_files()
@@ -594,7 +606,13 @@ class MasterConverter(object):
         self.logger.info("runtime: %s" % runtime)
         status = f"Finished Converter ({self.primary_converter.format_name})"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
-        ret = {"total_lnum": total_lnum, "write_lnum": write_lnum, "error_lnum": self.total_error_lines, "format": self.primary_converter.format_name, "assemblies": genome_assemblies}
+        ret = {
+            "total_lnum": total_lnum,
+            "write_lnum": write_lnum,
+            "error_lnum": self.total_error_lines,
+            "format": self.primary_converter.format_name,
+            "assemblies": genome_assemblies,
+        }
         return ret
 
     def perform_liftover_if_needed(self, wdict):
@@ -716,6 +734,7 @@ class MasterConverter(object):
         traceback.
         """
         from oakvar.exceptions import IgnoredVariant
+
         _ = line
         if not self.logger or not self.error_logger:
             from oakvar.exceptions import LoggerError
@@ -729,7 +748,9 @@ class MasterConverter(object):
         err_str = format_exc().rstrip()
         if err_str not in self.unique_excs:
             self.unique_excs.append(err_str)
-            if isinstance(e, IgnoredVariant) or (hasattr(e, "traceback") and e.traceback == False):
+            if isinstance(e, IgnoredVariant) or (
+                hasattr(e, "traceback") and e.traceback == False
+            ):
                 pass
             else:
                 self.logger.error(err_str)

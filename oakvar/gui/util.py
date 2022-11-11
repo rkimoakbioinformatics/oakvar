@@ -1,5 +1,6 @@
 from typing import Tuple
 
+
 def get_host_port(args={}):
     if args.get("host") and args.get("port"):
         return args.get("host"), args.get("port")
@@ -15,7 +16,6 @@ def get_server_settings(args={}) -> Tuple[str, int]:
     from ..exceptions import SetupError
     from .consts import default_gui_port
     from .consts import default_gui_port_ssl
-
 
     sysconf = get_system_conf()
     if not sysconf:
@@ -50,12 +50,13 @@ def get_server_settings(args={}) -> Tuple[str, int]:
         port = get_system_conf().get("gui_port", default_gui_port)
     return host, port
 
+
 def get_log_path(log_dir=None):
     from pathlib import Path
     from ..system import get_log_dir
     from ..gui.consts import LOG_FN
+
     if not log_dir:
         log_dir = get_log_dir()
     log_path = Path(log_dir) / LOG_FN
     return str(log_path)
-

@@ -111,7 +111,9 @@ def info(args, __name__="module info"):
         ret["latest_installed"] = up_to_date
         ret["latest_store_version"] = ret["latest_version"]
         del ret["latest_version"]
-        ret["latest_version"] = max(local_info.code_version, remote_info.latest_code_version)
+        ret["latest_version"] = max(
+            local_info.code_version, remote_info.latest_code_version
+        )
     if to == "stdout":
         print_module_info(module_info=ret)
     elif fmt == "yaml":
@@ -123,15 +125,20 @@ def info(args, __name__="module info"):
 def get_module_info_readme_table(module_info={}):
     from rich.table import Table
     from rich import box
+
     readme = module_info.get("readme")
-    readme_table = Table(title="README", title_style="bold", show_header=False, box=box.SQUARE)
+    readme_table = Table(
+        title="README", title_style="bold", show_header=False, box=box.SQUARE
+    )
     readme_table.add_column("Readme")
     readme_table.add_row(readme)
     return readme_table
 
+
 def get_module_info_basic_table(module_info={}):
     from rich.table import Table
     from rich import box
+
     table = Table(show_header=False, title_style="bold", box=box.SQUARE)
     table.add_column("Category")
     table.add_column("Value")
@@ -143,6 +150,7 @@ def get_module_info_basic_table(module_info={}):
         table.add_row(k, str(v))
     return table
 
+
 def add_module_info_developer_table_rows(developer_table, developers):
     developer_table.add_row("Name", developers.get("name"))
     developer_table.add_row("Organization", developers.get("organization"))
@@ -150,11 +158,15 @@ def add_module_info_developer_table_rows(developer_table, developers):
     developer_table.add_row("Website", developers.get("website"))
     developer_table.add_row("Citation", developers.get("citation"))
 
+
 def get_module_info_developer_table(module_info={}):
     from rich.table import Table
     from rich import box
+
     developers = module_info.get("developer")
-    developer_table = Table(title="Developers", title_style="bold", show_header=False, box=box.SQUARE)
+    developer_table = Table(
+        title="Developers", title_style="bold", show_header=False, box=box.SQUARE
+    )
     developer_table.add_column("Category")
     developer_table.add_column("Value")
     if "name" in developers:
@@ -162,16 +174,22 @@ def get_module_info_developer_table(module_info={}):
     else:
         if "module" in developers:
             developer_table.add_row("[bold]Module[/bold]", "")
-            add_module_info_developer_table_rows(developer_table, developers.get("module"))
+            add_module_info_developer_table_rows(
+                developer_table, developers.get("module")
+            )
         if "data" in developers:
             developer_table.add_row("[bold]Data[/bold]", "")
-            add_module_info_developer_table_rows(developer_table, developers.get("data"))
+            add_module_info_developer_table_rows(
+                developer_table, developers.get("data")
+            )
     return developer_table
+
 
 def get_module_info_version_table(module_info={}):
     from rich.table import Table
     from rich import box
     from packaging.version import Version
+
     versions = module_info.get("versions")
     version_table = Table(title="Versions", title_style="bold", box=box.SQUARE)
     version_table.add_column("Version")
@@ -184,9 +202,11 @@ def get_module_info_version_table(module_info={}):
         version_table.add_row(code_ver, dd.get("data_version"), dd.get("data_source"))
     return version_table
 
+
 def get_module_info_output_table(module_info={}):
     from rich.table import Table
     from rich import box
+
     output_columns = module_info.get("output_columns")
     output_table = Table(title="Output", title_style="bold", box=box.SQUARE)
     output_table.add_column("Name")
@@ -198,8 +218,10 @@ def get_module_info_output_table(module_info={}):
         output_table.add_row(col.get("name"), col.get("title"), col.get("desc"), ty)
     return output_table
 
+
 def print_module_info(module_info={}):
     from rich.console import Console
+
     console = Console()
     readme_table = get_module_info_readme_table(module_info=module_info)
     basic_table = get_module_info_basic_table(module_info=module_info)
@@ -236,6 +258,7 @@ def collect_module_name_and_versions(modules, args=None):
             quiet_print(f"Wrong module name==version format: {mv}", args=args)
     return mn_vs
 
+
 def get_modules_to_install(args={}) -> dict:
     from ..util.download import is_url
     from ..util.download import is_zip_path
@@ -256,14 +279,17 @@ def get_modules_to_install(args={}) -> dict:
     to_install.update(deps_install)
     return to_install
 
+
 def show_modules_to_install(to_install, args={}):
     from ..util.util import quiet_print
+
     quiet_print("The following modules will be installed:", args=args)
     for name, version in to_install.items():
         if version:
             quiet_print(f"- {name}=={to_install[name]}", args=args)
         else:
             quiet_print(f"- {name}", args=args)
+
 
 @cli_func
 def install(args, __name__="module install"):
@@ -317,9 +343,7 @@ def install(args, __name__="module install"):
                     problem_modules.append(module_name)
             quiet_print(e, args=args)
     if problem_modules:
-        quiet_print(
-            f"following modules were not installed due to problems:", args=args
-        )
+        quiet_print(f"following modules were not installed due to problems:", args=args)
         for mn in problem_modules:
             quiet_print(f"- {mn}", args=args)
         return False
@@ -380,7 +404,7 @@ def update(args, __name__="module update"):
             force=False,
             skip_data=False,
             md=args.get("md", None),
-            quiet=args.get("quiet")
+            quiet=args.get("quiet"),
         )
         ret = install(m_args)
         if ret is not None:
@@ -543,7 +567,7 @@ def list_modules(args):
                     continue
                 if not set(tags).intersection(module_info.tags):
                     continue
-            #if module_info.hidden and not args.get("include_hidden"):
+            # if module_info.hidden and not args.get("include_hidden"):
             #    continue
             if isinstance(module_info, RemoteModuleLs):
                 size = module_info.size
@@ -663,6 +687,7 @@ class InstallProgressStdout(InstallProgressHandler):
 
 def add_parser_fn_module_pack(subparsers):
     from ..store.consts import MODULE_PACK_SPLIT_FILE_SIZE
+
     # pack
     parser_cli_module_pack = subparsers.add_parser(
         "pack", help="pack a module to register at OakVar store"
@@ -780,7 +805,10 @@ def add_parser_ov_module_install(subparsers):
         "--quiet", action="store_true", default=None, help="suppress stdout output"
     )
     parser_ov_module_install.add_argument(
-        "--clean", action="store_true", default=False, help="removes temporary installation directory",
+        "--clean",
+        action="store_true",
+        default=False,
+        help="removes temporary installation directory",
     )
     parser_ov_module_install.set_defaults(func=cli_module_install)
     parser_ov_module_install.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore

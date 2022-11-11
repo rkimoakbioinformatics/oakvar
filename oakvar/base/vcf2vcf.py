@@ -34,6 +34,7 @@ class VCF2VCF:
         from pyliftover import LiftOver
         from oakvar.util.admin_util import get_liftover_chain_paths
         from oakvar import get_wgs_reader
+
         if self.args.genome:
             liftover_chain_paths = get_liftover_chain_paths()
             self.lifter = LiftOver(liftover_chain_paths[self.args.genome])

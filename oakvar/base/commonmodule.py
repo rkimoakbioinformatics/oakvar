@@ -25,7 +25,7 @@ class BaseCommonModule(object):
             parser.add_argument(
                 "--logtofile",
                 action="store_true",
-                help="Path to a log file. If given without a path, the job's run_name.log will be the log path."
+                help="Path to a log file. If given without a path, the job's run_name.log will be the log path.",
             )
             self.cmd_arg_parser = parser
         except Exception as e:
@@ -47,7 +47,12 @@ class BaseCommonModule(object):
         from pathlib import Path
         from ..exceptions import SetupError
 
-        if not self.args or not self.output_dir or not self.output_basename or not self.module_name:
+        if (
+            not self.args
+            or not self.output_dir
+            or not self.output_basename
+            or not self.module_name
+        ):
             raise SetupError(module_name=self.module_name)
         self.logger = getLogger("oakvar." + self.module_name)
         if self.args and self.args.logtofile:

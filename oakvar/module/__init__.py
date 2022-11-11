@@ -72,7 +72,7 @@ def get_readme(module_name):
     if exists_local:
         local_info = get_local_module_info(module_name)
         if local_info and exists(local_info.readme_path):
-            local_readme = open(local_info.readme_path, encoding='utf-8').read()
+            local_readme = open(local_info.readme_path, encoding="utf-8").read()
         else:
             local_readme = ""
         if local_info and remote_ver:
@@ -248,7 +248,9 @@ def make_install_temp_dir(args={}):
 
     if not args.get("module_dir"):
         args["modules_dir"] = get_modules_dir()
-    temp_dir = Path(args.get("modules_dir")) / install_tempdir_name / args.get("module_name")
+    temp_dir = (
+        Path(args.get("modules_dir")) / install_tempdir_name / args.get("module_name")
+    )
     if args.get("clean"):
         rmtree(str(temp_dir), ignore_errors=True)
     temp_dir.mkdir(parents=True, exist_ok=True)
@@ -314,7 +316,7 @@ def download_code_or_data(kind=None, args={}):
     )
     zipfile_path = join(args.get("temp_dir"), zipfile_fname)
     urls = args.get(f"{kind}_url")
-    if urls[0] == "[": # a list of URLs
+    if urls[0] == "[":  # a list of URLs
         urls = loads(urls)
     urls_ty = type(urls)
     if urls_ty == str:
@@ -334,12 +336,17 @@ def download_code_or_data(kind=None, args={}):
                 if i < download_from:
                     continue
                 part_path = f"{zipfile_path}{i:03d}"
-                if exists(part_path) and getsize(part_path) == MODULE_PACK_SPLIT_FILE_SIZE:
+                if (
+                    exists(part_path)
+                    and getsize(part_path) == MODULE_PACK_SPLIT_FILE_SIZE
+                ):
                     continue
                 download(urls[i], part_path)
                 if i < urls_len - 1:
                     if getsize(part_path) != MODULE_PACK_SPLIT_FILE_SIZE:
-                        quiet_print(f"corrupt download {part_path} at {urls[i]}", args=args)
+                        quiet_print(
+                            f"corrupt download {part_path} at {urls[i]}", args=args
+                        )
                         remove(part_path)
                         return False
                 with open(part_path, "rb") as f:
@@ -427,7 +434,10 @@ def install_module_from_url(url, args={}):
     download(url, temp_dir.parent)
     yml_conf_path = temp_dir / (args["module_name"] + ".yml")
     if not yml_conf_path.exists():
-        quiet_print(f"{url} is not a valid OakVar module. {module_name}.yml should exist.", args=args)
+        quiet_print(
+            f"{url} is not a valid OakVar module. {module_name}.yml should exist.",
+            args=args,
+        )
         return False
     conf = load_yml_conf(yml_conf_path)
     args["conf"] = conf
@@ -437,10 +447,20 @@ def install_module_from_url(url, args={}):
         quiet_print(f"failed in installing pypi package dependence", args=args)
         return False
     for deps_mn, deps_ver in deps.items():
-        install_module(deps_mn, version=deps_ver, force_data=args["force_data"], skip_data=args["skip_data"], quiet=args["quiet"], args=args)
+        install_module(
+            deps_mn,
+            version=deps_ver,
+            force_data=args["force_data"],
+            skip_data=args["skip_data"],
+            quiet=args["quiet"],
+            args=args,
+        )
     ty = conf.get("type") or ""
     if not ty:
-        quiet_print(f"{url} is not a valid OakVar module. {module_name}.yml does not have 'type' field.", args=args)
+        quiet_print(
+            f"{url} is not a valid OakVar module. {module_name}.yml does not have 'type' field.",
+            args=args,
+        )
         return False
     modules_dir = Path(get_modules_dir())
     module_type_dir = modules_dir / (ty + "s")
@@ -457,7 +477,7 @@ def install_module_from_url(url, args={}):
     return True
 
 
-def install_module_from_zip_path(path: str, args: dict={}):
+def install_module_from_zip_path(path: str, args: dict = {}):
     from pathlib import Path
     from ..util.util import load_yml_conf
     from ..util.util import quiet_print
@@ -484,7 +504,9 @@ def install_module_from_zip_path(path: str, args: dict={}):
             raise ExpectedException(msg=f"1 module folder should exist in {path}.")
         yml_paths = [v for v in temp_module_path.glob("*.yml")]
         if len(yml_paths) > 1:
-            raise ExpectedException(msg=f"Only 1 module config file should exist in {str(temp_module_path)}.")
+            raise ExpectedException(
+                msg=f"Only 1 module config file should exist in {str(temp_module_path)}."
+            )
         yml_path = yml_paths[0]
         module_name = yml_path.stem
         args["module_name"] = module_name
@@ -492,7 +514,9 @@ def install_module_from_zip_path(path: str, args: dict={}):
         conf = load_yml_conf(str(yml_path))
         module_type = conf.get("type")
         if not module_type:
-            raise ExpectedException(msg=f"Module type should be defined in {module_name}.yml.")
+            raise ExpectedException(
+                msg=f"Module type should be defined in {module_name}.yml."
+            )
         module_dir = get_new_module_dir(module_name, module_type)
         if not module_dir:
             raise ExpectedException(msg=f"{module_dir} could not be created.")
@@ -502,7 +526,14 @@ def install_module_from_zip_path(path: str, args: dict={}):
         if not install_pypi_dependency(args=args):
             raise ExpectedException("failed in installing pypi package dependence")
         for deps_mn, deps_ver in deps.items():
-            install_module(deps_mn, version=deps_ver, force_data=args["force_data"], skip_data=args["skip_data"], quiet=args["quiet"], args=args)
+            install_module(
+                deps_mn,
+                version=deps_ver,
+                force_data=args["force_data"],
+                skip_data=args["skip_data"],
+                quiet=args["quiet"],
+                args=args,
+            )
         # move module
         copytree(str(temp_module_path), module_dir, dirs_exist_ok=True)
         quiet_print(f"{module_name} installed at {module_dir}", args=args)
@@ -512,6 +543,7 @@ def install_module_from_zip_path(path: str, args: dict={}):
         rmtree(temp_dir)
         raise e
 
+
 def get_module_install_version(module_name, version=None, args={}) -> str:
     from packaging.version import Version
     from ..module.local import get_local_module_info
@@ -519,6 +551,7 @@ def get_module_install_version(module_name, version=None, args={}) -> str:
     from ..exceptions import ModuleNotExist
     from ..exceptions import ModuleVersionError
     from ..exceptions import ModuleToSkipInstallation
+
     local_info = get_local_module_info(module_name)
     remote_info = get_remote_module_info(module_name)
     if not remote_info:
@@ -529,12 +562,28 @@ def get_module_install_version(module_name, version=None, args={}) -> str:
         raise ModuleNotExist(module_name)
     if not remote_info:
         raise ModuleVersionError(module_name, version)
-    if (not args.get("overwrite") and local_info and Version(local_info.code_version or "") == Version(version)):
-        raise ModuleToSkipInstallation(module_name, msg=f"{module_name}=={version} already exists. Use --overwrite to overwrite.")
-    if (not args.get("overwrite")) and local_info and local_info.code_version and Version(local_info.code_version or "") >= Version(version):
-        raise ModuleToSkipInstallation(module_name, msg=f"{module_name}: Local version ({local_info.code_version}) is higher than the latest store version ({version}). Use --overwrite to overwrite.")
+    if (
+        not args.get("overwrite")
+        and local_info
+        and Version(local_info.code_version or "") == Version(version)
+    ):
+        raise ModuleToSkipInstallation(
+            module_name,
+            msg=f"{module_name}=={version} already exists. Use --overwrite to overwrite.",
+        )
+    if (
+        (not args.get("overwrite"))
+        and local_info
+        and local_info.code_version
+        and Version(local_info.code_version or "") >= Version(version)
+    ):
+        raise ModuleToSkipInstallation(
+            module_name,
+            msg=f"{module_name}: Local version ({local_info.code_version}) is higher than the latest store version ({version}). Use --overwrite to overwrite.",
+        )
     else:
         return version
+
 
 def install_module(
     module_name,
@@ -578,8 +627,8 @@ def install_module(
             quiet_print(f"failed in installing pypi package dependence", args=args)
             return False
         args["remote_data_version"] = remote_module_data_version(
-                args.get("module_name"), args.get("code_version")
-                )
+            args.get("module_name"), args.get("code_version")
+        )
         args["local_data_version"] = local_module_data_version(args.get("module_name"))
         r = get_module_urls(module_name, code_version=version)
         if not r:
@@ -594,23 +643,23 @@ def install_module(
             quiet_print(f"module type not found", args=args)
             return False
         args["module_dir"] = join(
-                args.get("modules_dir"),
-                args.get("module_type") + "s",
-                args.get("module_name"),
-                )
+            args.get("modules_dir"),
+            args.get("module_type") + "s",
+            args.get("module_name"),
+        )
         if not download_code_or_data(kind="code", args=args):
             quiet_print(f"code download failed", args=args)
             return False
         extract_code_or_data(kind="code", args=args)
         args["data_installed"] = False
         if (
-                not skip_data
-                and args.get("remote_data_version")
-                and (
-                    args.get("remote_data_version") != args.get("local_data_version")
-                    or force_data
-                    )
-                ):
+            not skip_data
+            and args.get("remote_data_version")
+            and (
+                args.get("remote_data_version") != args.get("local_data_version")
+                or force_data
+            )
+        ):
             args["data_installed"] = True
             if not download_code_or_data(kind="data", args=args):
                 quiet_print(f"data download failed", args=args)

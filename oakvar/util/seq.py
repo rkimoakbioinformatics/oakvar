@@ -304,4 +304,3 @@ def translate_codon(bases, fallback=None):
             return fallback
     else:
         return codon_table[bases]
-

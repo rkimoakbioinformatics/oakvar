@@ -81,4 +81,3 @@ def get_commands(p):
             cmds = a.choices
             break
     return cmds
-

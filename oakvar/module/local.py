@@ -249,7 +249,9 @@ def get_module_code_version(module_name: str, module_dir=None) -> Optional[str]:
     return version
 
 
-def get_module_data_version(module_name: str, module_dir: Optional[str]=None) -> Optional[str]:
+def get_module_data_version(
+    module_name: str, module_dir: Optional[str] = None
+) -> Optional[str]:
     module_conf = get_module_conf(module_name, module_dir=module_dir)
     if not module_conf:
         return None
@@ -257,9 +259,12 @@ def get_module_data_version(module_name: str, module_dir: Optional[str]=None) ->
     return version
 
 
-def get_new_module_dir(module_name: str, module_type: str, modules_dir: Optional[str]=None):
+def get_new_module_dir(
+    module_name: str, module_type: str, modules_dir: Optional[str] = None
+):
     from ..system import get_modules_dir
     from pathlib import Path
+
     if not modules_dir:
         modules_dir = get_modules_dir()
     if not modules_dir:
@@ -298,6 +303,7 @@ def get_module_dir(module_name, module_type=None) -> Optional[str]:
                     return join(modules_dir, type_fn, module_fn)
     return None
 
+
 def get_module_data_dir(module_name, module_type=None) -> Optional[str]:
     from os.path import join
 
@@ -305,6 +311,7 @@ def get_module_data_dir(module_name, module_type=None) -> Optional[str]:
     if not module_dir:
         return None
     return join(module_dir, "data")
+
 
 def get_module_conf(module_name, module_type=None, module_dir=None):
     from ..util.util import load_yml_conf
@@ -380,7 +387,9 @@ def module_exists_local(module_name):
     return False
 
 
-def get_logo_b64_path(module_name: str, module_type=None, module_dir=None) -> Optional[str]:
+def get_logo_b64_path(
+    module_name: str, module_type=None, module_dir=None
+) -> Optional[str]:
     from os.path import join
     from os.path import exists
 
@@ -391,6 +400,7 @@ def get_logo_b64_path(module_name: str, module_type=None, module_dir=None) -> Op
         if exists(p):
             return p
     return ""
+
 
 def get_logo_path(module_name: str, module_type=None, module_dir=None) -> Optional[str]:
     from os.path import join
@@ -503,6 +513,7 @@ def get_cache_conf(module_name, module_type=None) -> Optional[dict]:
         return None
     cache_conf = conf.get("cache")
     return cache_conf
+
 
 def get_readme_path(module_name, module_type=None) -> Optional[str]:
     from os.path import join
@@ -684,4 +695,3 @@ def load_modules(annotators: list = [], mapper: Optional[str] = None, input_file
     for module_name in annotators:
         modules[module_name] = get_live_annotator(module_name)
     return modules
-

@@ -17,7 +17,9 @@ class Reporter(BaseReporter):
         self.level = level
 
     def write_table_row(self, row):
-        self.data[self.level].append([row[col] for col in self.colnames_to_display[self.level]])
+        self.data[self.level].append(
+            [row[col] for col in self.colnames_to_display[self.level]]
+        )
 
     def end(self):
         info = {}

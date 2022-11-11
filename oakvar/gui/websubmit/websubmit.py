@@ -25,6 +25,7 @@ FINISHED = "Finished"
 ABORTED = "Aborted"
 ERROR = "Error"
 
+
 class Job(object):
     def __init__(self, job_dir):
         self.info = {}
@@ -74,7 +75,6 @@ def get_new_job_dir(jobs_dir: str) -> str:
     return str(job_dir)
 
 
-
 async def resubmit(request):
     from .userjob import get_user_jobs_dir
 
@@ -89,6 +89,7 @@ def check_submit_input_size(request):
     from aiohttp.web import HTTPRequestEntityTooLarge
     from json import dumps
     from ...system import get_system_conf
+
     sysconf = get_system_conf()
     size_cutoff = sysconf["gui_input_size_limit"]
     if request.content_length is None:
@@ -108,6 +109,7 @@ def check_submit_input_size(request):
             ),
         )
 
+
 async def pre_submit_check(request, jobs_dir: Optional[str]):
     from aiohttp.web import Response
     from aiohttp.web import json_response
@@ -124,12 +126,14 @@ async def pre_submit_check(request, jobs_dir: Optional[str]):
     if not jobs_dir:
         return Response(status=404)
 
+
 def create_new_job_dir(jobs_dir: str) -> str:
     from os import makedirs
 
     job_dir = get_new_job_dir(jobs_dir)
     makedirs(job_dir, exist_ok=True)
     return job_dir
+
 
 async def save_job_input_files(request, job_dir: str) -> dict:
     from os.path import join
@@ -160,6 +164,7 @@ async def save_job_input_files(request, job_dir: str) -> dict:
     submit_options["input_files"] = input_files
     return submit_options
 
+
 def process_job_options(submit_options: dict):
     from pathlib import Path
 
@@ -180,6 +185,7 @@ def process_job_options(submit_options: dict):
     job_name = job_options.get("job_name")
     if job_name:
         submit_options["job_name"] = job_name
+
 
 async def get_run_args(request, submit_options: dict, job_dir: str):
     from pathlib import Path
@@ -255,6 +261,7 @@ async def get_run_args(request, submit_options: dict, job_dir: str):
         run_args.extend(["--module-option", f"casecontrol.cohorts={cc_cohorts_path}"])
     return run_args
 
+
 def get_job(submit_options: dict, job_dir: str):
     from datetime import datetime
     from pathlib import Path
@@ -273,6 +280,7 @@ def get_job(submit_options: dict, job_dir: str):
     submit_options["job_name"] = job.info["job_name"]
     return job
 
+
 def make_job_info_json(submit_options: dict, job_dir: str):
     from datetime import datetime
     from pathlib import Path
@@ -280,6 +288,7 @@ def make_job_info_json(submit_options: dict, job_dir: str):
 
     from ...util.admin_util import get_current_package_version
     from ...exceptions import ArgumentError
+
     job_name = submit_options.get("job_name")
     run_name = submit_options.get("run_name")
     if not job_name:
@@ -307,6 +316,7 @@ def make_job_info_json(submit_options: dict, job_dir: str):
         dump(info_json, wf, indent=2, sort_keys=True)
     return info_json
 
+
 async def get_queue_item_and_job(request, job_dir) -> Tuple[dict, Job]:
     submit_options = await save_job_input_files(request, job_dir)
     process_job_options(submit_options)
@@ -322,11 +332,13 @@ async def get_queue_item_and_job(request, job_dir) -> Tuple[dict, Job]:
     queue_item = {"cmd": "submit", "submit_options": submit_options}
     return queue_item, job
 
+
 def add_job_uid_to_info_of_running_jobs(job_uid: int):
     global info_of_running_jobs
     job_uids = info_of_running_jobs
     job_uids.append(job_uid)
     info_of_running_jobs = job_uids
+
 
 async def submit(request):
     from aiohttp.web import Response
@@ -393,6 +405,7 @@ def get_postaggregators(_):
             }
     return json_response(out)
 
+
 def get_converters(_):
     from aiohttp.web import json_response
     from ...module.local import get_local_module_infos
@@ -401,17 +414,21 @@ def get_converters(_):
     modules = get_local_module_infos(types=["converter"])
     modules.sort(key=lambda x: x.name)
     for module in modules:
-        out.append({
-            "name": module.name,
-            "format": module.name.replace("-converter", ""),
-            "title": module.title.replace(" Converter", ""),
-            "description": module.description,
-            "developer": module.developer,
-        })
+        out.append(
+            {
+                "name": module.name,
+                "format": module.name.replace("-converter", ""),
+                "title": module.title.replace(" Converter", ""),
+                "description": module.description,
+                "developer": module.developer,
+            }
+        )
     return json_response(out)
+
 
 def find_files_by_ending(d, ending):
     from os import listdir
+
     fns = listdir(d)
     files = []
     for fn in fns:
@@ -419,15 +436,19 @@ def find_files_by_ending(d, ending):
             files.append(fn)
     return files
 
+
 def job_not_finished(job):
     return job.get("status") not in [FINISHED, ERROR, ABORTED]
+
 
 def job_not_running(job):
     global info_of_running_jobs
     return not job.get("uid") in info_of_running_jobs
 
+
 def mark_job_as_aborted(job):
     job["status"] = ABORTED
+
 
 async def get_jobs(request):
     from aiohttp.web import json_response
@@ -476,6 +497,7 @@ async def view_job(request):
 async def get_job_status(request):
     from aiohttp.web import Response
     from .serveradmindb import ServerAdminDb
+
     global servermode
     if not await mu.is_loggedin(request):
         return Response(status=401)
@@ -528,31 +550,30 @@ def get_valid_report_types():
     reporter_infos = get_local_module_infos(types=["reporter"])
     valid_report_types = [x.name.split("reporter")[0] for x in reporter_infos]
     valid_report_types = [
-        v
-        for v in valid_report_types
-        if not v in ["pandas", "stdout", "example"]
+        v for v in valid_report_types if not v in ["pandas", "stdout", "example"]
     ]
     return valid_report_types
 
 
 async def get_report_types(_):
     from aiohttp.web import json_response
+
     valid_types = get_valid_report_types()
     return json_response({"valid": valid_types})
 
 
 async def get_uid_dbpath_from_request(request) -> Tuple[Optional[str], Optional[str]]:
-    #from urllib.parse import unquote
+    # from urllib.parse import unquote
     try:
         json_data = await request.json()
     except:
         json_data = None
-    #text_data = await request.text()
-    #text_data = unquote(text_data, encoding='utf-8', errors='replace')
-    #if text_data and "=" in text_data:
+    # text_data = await request.text()
+    # text_data = unquote(text_data, encoding='utf-8', errors='replace')
+    # if text_data and "=" in text_data:
     #    return text_data.split("=")[1]
-    post_data = await request.post() # post with form
-    queries = request.rel_url.query # get
+    post_data = await request.post()  # post with form
+    queries = request.rel_url.query  # get
     if json_data:
         uid = json_data.get("uid", None)
         dbpath = json_data.get("dbpath", None)
@@ -565,6 +586,7 @@ async def get_uid_dbpath_from_request(request) -> Tuple[Optional[str], Optional[
     else:
         return None, None
     return uid, dbpath
+
 
 async def generate_report(request):
     from pathlib import Path
@@ -599,9 +621,7 @@ async def generate_report(request):
     with open(tmp_flag_path, "w") as wf:
         wf.write(report_type)
         wf.close()
-    p = await create_subprocess_shell(
-        " ".join(run_args), stderr=PIPE
-    )
+    p = await create_subprocess_shell(" ".join(run_args), stderr=PIPE)
     _, err = await p.communicate()
     remove(tmp_flag_path)
     if report_type in report_generation_ps[key]:
@@ -629,6 +649,7 @@ async def get_report_paths(request, report_type, eud={}):
         return None
     report_paths = [str(Path(job_dir) / v) for v in report_filenames]
     return report_paths
+
 
 async def download_report(request):
     from aiohttp.web import HTTPNotFound
@@ -742,6 +763,7 @@ def reset_system_conf(_):
 
 def get_servermode(_):
     from aiohttp.web import json_response
+
     global servermode
     return json_response({"servermode": servermode})
 
@@ -786,7 +808,12 @@ async def delete_jobs(request):
     if not uids:
         return Response(status=404)
     username = get_email_from_request(request)
-    queue_item = {"cmd": "delete", "uids": uids, "username": username, "abort_only": abort_only}
+    queue_item = {
+        "cmd": "delete",
+        "uids": uids,
+        "username": username,
+        "abort_only": abort_only,
+    }
     job_queue.put(queue_item)
     job_dir_ps = []
     for uid in uids:
@@ -813,16 +840,20 @@ def start_worker():
     global job_queue
     global info_of_running_jobs
     if job_worker == None:
-        job_worker = Process(target=fetch_job_queue, args=(job_queue, info_of_running_jobs))
+        job_worker = Process(
+            target=fetch_job_queue, args=(job_queue, info_of_running_jobs)
+        )
         job_worker.start()
 
 
 def fetch_job_queue(job_queue, info_of_running_jobs):
     from asyncio import new_event_loop
+
     class JobTracker(object):
         def __init__(self, main_loop):
             from ...system import get_system_conf
             from ...system.consts import DEFAULT_MAX_NUM_CONCURRENT_JOBS
+
             sys_conf = get_system_conf()
             if not sys_conf:
                 self.max_num_concurrent_jobs = DEFAULT_MAX_NUM_CONCURRENT_JOBS
@@ -939,7 +970,10 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
 
         def run_available_jobs(self):
             from subprocess import Popen
-            num_available_slot = self.max_num_concurrent_jobs - len(self.processes_of_running_jobs)
+
+            num_available_slot = self.max_num_concurrent_jobs - len(
+                self.processes_of_running_jobs
+            )
             if num_available_slot > 0 and len(self.queue) > 0:
                 for _ in range(num_available_slot):
                     if len(self.queue) > 0:
@@ -969,13 +1003,16 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
                     serveradmindb = await get_serveradmindb()
                     await serveradmindb.mark_job_as_aborted(username=username, uid=uid)
                     continue
-                job_dir = await get_job_dir_from_eud(None, eud={"uid": uid, "username": username})
+                job_dir = await get_job_dir_from_eud(
+                    None, eud={"uid": uid, "username": username}
+                )
                 mu.delete_job(uid)
                 if job_dir and exists(job_dir):
                     rmtree(job_dir)
 
         def set_max_num_concurrent_jobs(self, queue_item):
             from logging import getLogger
+
             value = queue_item["max_num_concurrent_jobs"]
             try:
                 self.max_num_concurrent_jobs = int(value)
@@ -989,6 +1026,7 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
         from asyncio import sleep
         from queue import Empty
         from logging import getLogger
+
         while True:
             await job_tracker.clean_jobs(None)
             job_tracker.run_available_jobs()
@@ -1018,6 +1056,7 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
 
 async def redirect_to_index(_):
     from aiohttp.web import HTTPFound
+
     global servermode
     url = "/index.html"
     return HTTPFound(url)
@@ -1133,6 +1172,7 @@ async def live_annotate(input_data, annotators):
 
 async def get_live_annotation_post(request):
     from aiohttp.web import json_response
+
     queries = await request.post()
     response = await get_live_annotation(queries)
     return json_response(response)
@@ -1140,6 +1180,7 @@ async def get_live_annotation_post(request):
 
 async def get_live_annotation_get(request):
     from aiohttp.web import json_response
+
     queries = request.rel_url.query
     response = await get_live_annotation(queries)
     return json_response(response)
@@ -1198,7 +1239,8 @@ async def get_eud_from_request(request):
 
     email = get_email_from_request(request)
     uid, dbpath = await get_uid_dbpath_from_request(request)
-    return { "username": email, "uid": uid, "dbpath": dbpath}
+    return {"username": email, "uid": uid, "dbpath": dbpath}
+
 
 async def get_available_report_types(request):
     from pathlib import Path
@@ -1273,12 +1315,14 @@ async def import_job(request):
 async def get_local_module_info_web(request):
     from aiohttp.web import json_response
     from ...module.local import get_local_module_info
+
     module_name = request.match_info["module"]
     mi = get_local_module_info(module_name)
     if mi:
         return json_response(mi.serialize())
     else:
         return json_response({})
+
 
 async def is_system_ready(request):
     from aiohttp.web import json_response
@@ -1303,12 +1347,18 @@ async def get_system_log(_):
     from aiohttp import web
     from ...gui.util import get_log_path
     from ...gui.consts import LOG_FN
+
     log_path = get_log_path()
-    headers = {"Content-Disposition": "Attachment; filename=" + LOG_FN, "Content-Type": "text/plain"}
+    headers = {
+        "Content-Disposition": "Attachment; filename=" + LOG_FN,
+        "Content-Type": "text/plain",
+    }
     return web.FileResponse(log_path, headers=headers)
+
 
 async def get_webapp_index(request):
     from aiohttp.web import HTTPFound
+
     url = request.path + "/index.html"
     if len(request.query) > 0:
         url = url + "?"
@@ -1316,6 +1366,7 @@ async def get_webapp_index(request):
             url += k + "=" + v + "&"
         url = url.rstrip("&")
     return HTTPFound(url)
+
 
 async def get_tags_of_annotators_and_postaggregators(_):
     from aiohttp.web import json_response
@@ -1334,6 +1385,7 @@ async def get_tags_of_annotators_and_postaggregators(_):
     tags.sort()
     return json_response(tags)
 
+
 async def get_login_state(request):
     from aiohttp.web import json_response
 
@@ -1344,6 +1396,7 @@ async def get_login_state(request):
     else:
         state = await mu.is_loggedin(request)
     return json_response({"loggedin": state})
+
 
 routes = []
 routes.append(["GET", "/submit/annotators", get_annotators])
@@ -1370,7 +1423,13 @@ routes.append(["GET", "/webapps/{module}", get_webapp_index])
 
 # Below for new gui.
 routes.append(["GET", "/submit/converters", get_converters])
-routes.append(["GET", "/submit/tags_annotators_postaggregators", get_tags_of_annotators_and_postaggregators])
+routes.append(
+    [
+        "GET",
+        "/submit/tags_annotators_postaggregators",
+        get_tags_of_annotators_and_postaggregators,
+    ]
+)
 routes.append(["GET", "/submit/localmodules/{module}", get_local_module_info_web])
 routes.append(["POST", "/submit/jobs", get_jobs])
 routes.append(["POST", "/submit/submit", submit])

@@ -50,8 +50,11 @@ def find_name_store(
 
 
 @db_func
-def latest_module_version_size(module_name: str, conn=Any, cursor=Any) -> Optional[dict]:
+def latest_module_version_size(
+    module_name: str, conn=Any, cursor=Any
+) -> Optional[dict]:
     from packaging.version import Version
+
     _ = conn
     q = f"select store, code_version, data_version, data_source, code_size, data_size from versions where name=?"
     cursor.execute(q, (module_name,))
@@ -66,7 +69,13 @@ def latest_module_version_size(module_name: str, conn=Any, cursor=Any) -> Option
             latest_r = r
             latest_code_version = r[1]
     if latest_r:
-        return {"code_version": latest_r[1], "data_version": latest_r[2], "data_source": latest_r[3], "code_size": int(latest_r[4]), "data_size": int(latest_r[5])}
+        return {
+            "code_version": latest_r[1],
+            "data_version": latest_r[2],
+            "data_source": latest_r[3],
+            "code_size": int(latest_r[4]),
+            "data_size": int(latest_r[5]),
+        }
     else:
         return None
 
@@ -343,10 +352,15 @@ def create_ov_store_cache(conf=None, args={}, conn=None, cursor=None):
 
 def try_fetch_ov_store_cache(args={}):
     from ..util.util import quiet_print
+
     try:
         return fetch_ov_store_cache(args=args)
     except Exception as e:
-        quiet_print(f"Fetching store update failed:\n\n>>{e}.\n\nContinuing with the current store cache...\n", args=args)
+        quiet_print(
+            f"Fetching store update failed:\n\n>>{e}.\n\nContinuing with the current store cache...\n",
+            args=args,
+        )
+
 
 @db_func
 def fetch_ov_store_cache(
@@ -362,7 +376,6 @@ def fetch_ov_store_cache(
     from .ov import get_server_last_updated
     from ..module.remote import make_remote_manifest
     from ..gui.webstore.webstore import save_remote_manifest_cache
-
 
     if not conn or not cursor:
         return False
@@ -714,10 +727,9 @@ def check_tables(args={}, conn=Any, cursor=Any) -> bool:
             return False
     return True
 
+
 @db_func
-def module_is_in_store(
-    module_name: str, conn=Any, cursor=Any
-    ) -> bool:
+def module_is_in_store(module_name: str, conn=Any, cursor=Any) -> bool:
     _ = conn
     q = f"select name from summary where name=?"
     cursor.execute(q, (module_name,))
@@ -726,4 +738,3 @@ def module_is_in_store(
         return True
     else:
         return False
-

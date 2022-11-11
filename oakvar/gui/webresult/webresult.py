@@ -195,6 +195,7 @@ async def load_filter_setting(request):
 async def save_layout_setting(request):
     from urllib.parse import unquote
     from json import loads
+
     text_data = await request.text()
     text_data = unquote(text_data)
     queries = loads(text_data)
@@ -344,7 +345,11 @@ async def get_result(request):
         ],
     )
     m = imp.load_module(reporter_name, f, fn, d)  # type: ignore
-    arg_dict = {"dbpath": dbpath, "module_name": reporter_name, "nogenelevelonvariantlevel": True}
+    arg_dict = {
+        "dbpath": dbpath,
+        "module_name": reporter_name,
+        "nogenelevelonvariantlevel": True,
+    }
     if confpath != None:
         arg_dict["confpath"] = confpath
     if filterstring != None:
@@ -365,7 +370,14 @@ async def get_result(request):
     arg_dict["no_summary"] = no_summary
     add_summary = not no_summary
     reporter = m.Reporter(arg_dict)
-    data = await reporter.run(tab=tab, pagesize=pagesize, page=page, add_summary=add_summary, make_filtered_table=make_filtered_table, dictrow=True)
+    data = await reporter.run(
+        tab=tab,
+        pagesize=pagesize,
+        page=page,
+        add_summary=add_summary,
+        make_filtered_table=make_filtered_table,
+        dictrow=True,
+    )
     data["modules_info"] = await get_modules_info(request)
     content = {}
     content["stat"] = {
@@ -391,16 +403,20 @@ async def get_result(request):
 async def get_pagesize(request, valueonly=False):
     from ...system import get_user_conf
     from ...system import get_system_conf
+
     user_conf = get_user_conf()
     sys_conf = get_system_conf()
     try:
         queries = await request.json()
     except:
         queries = {}
-    gui_result_pagesize = queries.get("pagesize", 
-        user_conf.get(gui_result_pagesize_key, 
-            sys_conf.get(gui_result_pagesize_key,
-                default_gui_result_pagesize)))
+    gui_result_pagesize = queries.get(
+        "pagesize",
+        user_conf.get(
+            gui_result_pagesize_key,
+            sys_conf.get(gui_result_pagesize_key, default_gui_result_pagesize),
+        ),
+    )
     if gui_result_pagesize:
         gui_result_pagesize = int(gui_result_pagesize)
     if valueonly:
@@ -409,19 +425,28 @@ async def get_pagesize(request, valueonly=False):
         content = {"gui_result_pagesize": gui_result_pagesize}
         return web.json_response(content)
 
+
 async def get_num_var_limit_for_summary_widget(_):
     from ...system import get_system_conf
     from ..consts import DEFAULT_RESULT_VIEWER_NUM_VAR_LIMIT_FOR_SUMMARY_WIDGET
     from ..consts import result_viewer_num_var_limit_for_summary_widget_key
+
     sys_conf = get_system_conf()
-    num_var_limit = sys_conf.get(result_viewer_num_var_limit_for_summary_widget_key, DEFAULT_RESULT_VIEWER_NUM_VAR_LIMIT_FOR_SUMMARY_WIDGET)
+    num_var_limit = sys_conf.get(
+        result_viewer_num_var_limit_for_summary_widget_key,
+        DEFAULT_RESULT_VIEWER_NUM_VAR_LIMIT_FOR_SUMMARY_WIDGET,
+    )
     num_var_limit = int(num_var_limit)
     return web.json_response({"num_var_limit": num_var_limit})
-    
+
+
 async def get_result_levels(request):
     from ...system import get_system_conf
+
     sys_conf = get_system_conf()
-    gui_result_pagesize = sys_conf.get("gui_result_pagesize", default_gui_result_pagesize)
+    gui_result_pagesize = sys_conf.get(
+        "gui_result_pagesize", default_gui_result_pagesize
+    )
     content = {"gui_result_pagesize": gui_result_pagesize}
     dbpath = await get_dbpath(request)
     content = {}
@@ -472,7 +497,9 @@ async def get_dbpath(request) -> Optional[str]:
     uid = queries.get("uid")
     if uid and username:
         serveradmindb = await get_serveradmindb()
-        dbpath = await serveradmindb.get_dbpath_by_eud(eud={"uid": uid, "username": username})
+        dbpath = await serveradmindb.get_dbpath_by_eud(
+            eud={"uid": uid, "username": username}
+        )
     return dbpath
 
 
@@ -486,7 +513,9 @@ async def get_variant_cols(request):
     data["data"] = {}
     data["stat"] = {}
     data["status"] = {}
-    colinfo = await get_colinfo(dbpath, confpath=confpath, filterstring=filterstring, add_summary=add_summary)
+    colinfo = await get_colinfo(
+        dbpath, confpath=confpath, filterstring=filterstring, add_summary=add_summary
+    )
     data["columns"] = {}
     if "variant" in colinfo:
         data["columns"]["variant"] = get_colmodel("variant", colinfo)
@@ -597,7 +626,14 @@ def get_colmodel(tab, colinfo):
 
 async def get_colinfo(dbpath, confpath=None, filterstring=None, add_summary=True):
     reporter_name = "jsonreporter"
-    f, fn, d = imp.find_module(reporter_name, [os.path.join(os.path.dirname(__file__),)],)
+    f, fn, d = imp.find_module(
+        reporter_name,
+        [
+            os.path.join(
+                os.path.dirname(__file__),
+            )
+        ],
+    )
     m = imp.load_module(reporter_name, f, fn, d)  # type: ignore
     arg_dict = {"dbpath": dbpath, "module_name": reporter_name}
     if confpath != None:
@@ -607,8 +643,8 @@ async def get_colinfo(dbpath, confpath=None, filterstring=None, add_summary=True
     arg_dict["reports"] = ["text"]
     reporter = m.Reporter(arg_dict)
     await reporter.prep()
-    #reporter_levels = await reporter.get_levels_to_run("all")
-    #reporter.levels = reporter_levels
+    # reporter_levels = await reporter.get_levels_to_run("all")
+    # reporter.levels = reporter_levels
     try:
         colinfo = await reporter.get_variant_colinfo(add_summary=add_summary)
         await reporter.close_db()
@@ -670,7 +706,9 @@ async def serve_runwidget(request):
     )
     m = imp.load_module(path, f, fn, d)  # type: ignore
     cf = await ReportFilter.create(dbpath=dbpath, mode="sub")
-    filterstring = await cf.exec_db(cf.get_report_filter_string, uid=queries.get("ftable_uid"))
+    filterstring = await cf.exec_db(
+        cf.get_report_filter_string, uid=queries.get("ftable_uid")
+    )
     queries_dict = queries.copy()
     queries_dict["filterstring"] = filterstring
     content = await m.get_data(queries_dict)
@@ -810,6 +848,7 @@ async def get_samples(request):
 
 async def get_variants_for_hugo(request):
     from ...exceptions import DatabaseConnectionError
+
     hugo = request.match_info["hugo"]
     dbpath = await get_dbpath(request)
     if dbpath is None:
@@ -828,6 +867,7 @@ async def get_variants_for_hugo(request):
 
 async def get_variantdbcols(request):
     from ...exceptions import DatabaseConnectionError
+
     dbpath = await get_dbpath(request)
     if dbpath is None:
         raise DatabaseConnectionError("result database")
@@ -871,4 +911,6 @@ routes.append(["GET", "/webapps/{module}/widgets/{widget}", serve_webapp_runwidg
 routes.append(["GET", "/result/service/{hugo}/variants", get_variants_for_hugo])
 routes.append(["GET", "/result/service/variantdbcols", get_variantdbcols])
 routes.append(["GET", "/result/service/pagesize", get_pagesize])
-routes.append(["GET", "/result/service/summaryvarlimit", get_num_var_limit_for_summary_widget])
+routes.append(
+    ["GET", "/result/service/summaryvarlimit", get_num_var_limit_for_summary_widget]
+)

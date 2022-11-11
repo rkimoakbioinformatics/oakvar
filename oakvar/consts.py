@@ -284,7 +284,7 @@ for g in ["hg18", "hg19"]:
 result_db_suffix = ".sqlite"
 log_suffix = ".log"
 
-JOB_STATUS_UPDATE_INTERVAL = 10 # seconds
+JOB_STATUS_UPDATE_INTERVAL = 10  # seconds
 JOB_STATUS_FINISHED = "Finished"
 JOB_STATUS_ABORTED = "Abort"
 JOB_STATUS_ERROR = "Error"

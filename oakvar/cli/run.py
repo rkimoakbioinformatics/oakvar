@@ -163,7 +163,12 @@ class Runner(object):
 
         if not self.run_name or not self.output_dir:
             raise SetupError()
-        fns = [v for v in Path(self.output_dir).glob(escape_glob_pattern(self.run_name) + ".*")]
+        fns = [
+            v
+            for v in Path(self.output_dir).glob(
+                escape_glob_pattern(self.run_name) + ".*"
+            )
+        ]
         for fn in fns:
             os.remove(fn)
 
@@ -181,7 +186,11 @@ class Runner(object):
             print(f"Space is not allowed in input file paths ({ip})")
             exit()
         if is_url(ip):
-            update_status(f"Fetching {ip}... ", logger=self.logger, serveradmindb=self.serveradmindb)
+            update_status(
+                f"Fetching {ip}... ",
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
             try:
                 r = requests.head(ip)
                 r = requests.get(ip, stream=True)
@@ -220,11 +229,7 @@ class Runner(object):
         from os import remove
         from ..exceptions import SetupError
 
-        if (
-            self.args is None
-            or self.run_name is None
-            or self.output_dir is None
-        ):
+        if self.args is None or self.run_name is None or self.output_dir is None:
             raise SetupError()
         if self.args.newlog == True:
             self.logmode = "w"
@@ -308,11 +313,19 @@ class Runner(object):
             and self.startlevel <= self.runlevels["converter"]
             and (self.args and not "converter" in self.args.skip)
         ):
-            update_status("Running converter...", logger=self.logger, serveradmindb=self.serveradmindb)
+            update_status(
+                "Running converter...",
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
             stime = time()
             self.run_converter()
             rtime = time() - stime
-            update_status(f"Converter finished in {0:.3f}s".format(rtime), logger=self.logger, serveradmindb=self.serveradmindb)
+            update_status(
+                f"Converter finished in {0:.3f}s".format(rtime),
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
             if self.total_lnum == 0:
                 msg = "No variant found in input"
                 update_status(msg, logger=self.logger, serveradmindb=self.serveradmindb)
@@ -328,11 +341,19 @@ class Runner(object):
             and self.startlevel <= self.runlevels["preparer"]
             and (self.args and not "preparer" in self.args.skip)
         ):
-            update_status("Running preparers...", logger=self.logger, serveradmindb=self.serveradmindb)
+            update_status(
+                "Running preparers...",
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
             stime = time()
             self.run_preparers()
             rtime = time() - stime
-            update_status("Preparer finished in {0:.3f}s".format(rtime), logger=self.logger, serveradmindb=self.serveradmindb)
+            update_status(
+                "Preparer finished in {0:.3f}s".format(rtime),
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
             self.mapper_ran = True
 
     async def do_step_mapper(self):
@@ -345,11 +366,19 @@ class Runner(object):
             and self.startlevel <= self.runlevels.get("mapper", 0)
             and (self.args and not "mapper" in self.args.skip)
         ):
-            update_status(f"Running mapper...", logger=self.logger, serveradmindb=self.serveradmindb)
+            update_status(
+                f"Running mapper...",
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
             stime = time()
             self.run_mapper()
             rtime = time() - stime
-            update_status("Mapper finished in {0:.3f}s".format(rtime), logger=self.logger, serveradmindb=self.serveradmindb)
+            update_status(
+                "Mapper finished in {0:.3f}s".format(rtime),
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
             self.mapper_ran = True
 
     async def do_step_annotator(self):
@@ -372,11 +401,19 @@ class Runner(object):
             and (self.args and not "annotator" in self.args.skip)
             and (self.mapper_ran or len(self.run_annotators) > 0)
         ):
-            update_status("Running annotators...", logger=self.logger, serveradmindb=self.serveradmindb)
+            update_status(
+                "Running annotators...",
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
             stime = time()
             self.run_annotators_mp()
             rtime = time() - stime
-            update_status("annotator(s) finished in {0:.3f}s".format(rtime), logger=self.logger, serveradmindb=self.serveradmindb)
+            update_status(
+                "annotator(s) finished in {0:.3f}s".format(rtime),
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
 
     async def do_step_aggregator(self):
         from ..util.run import update_status
@@ -391,7 +428,11 @@ class Runner(object):
                 or self.startlevel == self.runlevels["aggregator"]
             )
         ):
-            update_status("Running aggregator...", logger=self.logger, serveradmindb=self.serveradmindb)
+            update_status(
+                "Running aggregator...",
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
             self.result_path = self.run_aggregator()
             await self.write_job_info()
             self.aggregator_ran = True
@@ -404,7 +445,11 @@ class Runner(object):
             and self.startlevel <= self.runlevels["postaggregator"]
             and (self.args and not "postaggregator" in self.args.skip)
         ):
-            update_status("Running postaggregators...", logger=self.logger, serveradmindb=self.serveradmindb)
+            update_status(
+                "Running postaggregators...",
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
             self.run_postaggregators()
 
     async def do_step_reporter(self):
@@ -417,7 +462,11 @@ class Runner(object):
             and self.aggregator_ran
             and self.reports
         ):
-            update_status("Running reporter...", logger=self.logger, serveradmindb=self.serveradmindb)
+            update_status(
+                "Running reporter...",
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
             self.report_response = await self.run_reporter()
 
     async def process_clean(self):
@@ -486,7 +535,8 @@ class Runner(object):
                 self.logger.info(f"finished: {display_time}")
             update_status(
                 "Finished normally. Runtime: {0:0.3f}s".format(runtime),
-                logger=self.logger, serveradmindb=self.serveradmindb
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
             )
             if self.args and self.args.writeadmindb:
                 await self.write_admin_db_final_info(runtime)
@@ -496,7 +546,10 @@ class Runner(object):
             if not self.exception:
                 update_status(JOB_STATUS_FINISHED, serveradmindb=self.serveradmindb)
             else:
-                update_status(JOB_STATUS_ERROR, serveradmindb=self.serveradmindb,)
+                update_status(
+                    JOB_STATUS_ERROR,
+                    serveradmindb=self.serveradmindb,
+                )
                 if self.logger:
                     self.logger.exception(self.exception)
             if self.logger:
@@ -584,7 +637,9 @@ class Runner(object):
         from ..gui.websubmit.serveradmindb import ServerAdminDb
 
         if self.args and self.args.writeadmindb:
-            self.serveradmindb = ServerAdminDb(job_dir=self.output_dir, job_name=self.args.job_name)
+            self.serveradmindb = ServerAdminDb(
+                job_dir=self.output_dir, job_name=self.args.job_name
+            )
 
     def make_self_conf(self, args):
         from ..exceptions import SetupError
@@ -819,6 +874,7 @@ class Runner(object):
     def get_unique_run_name(self, run_name: str):
         from pathlib import Path
         from ..consts import result_db_suffix
+
         if not self.output_dir:
             return run_name
         dbpath_p = Path(self.output_dir) / f"{run_name}{result_db_suffix}"
@@ -943,7 +999,10 @@ class Runner(object):
         self.preparers = get_local_module_infos_by_names(self.preparer_names)
 
     def is_in_annotators_or_postaggregators(self, module_name):
-        return module_name in self.annotator_names or module_name in self.postaggregator_names
+        return (
+            module_name in self.annotator_names
+            or module_name in self.postaggregator_names
+        )
 
     def add_required_modules_for_postaggregators(self):
         from ..module.local import get_local_module_info_by_name
@@ -960,7 +1019,10 @@ class Runner(object):
                     if module.type == "annotator" and self.annotator_names is not None:
                         self.annotator_names.append(module_name)
                         self.annotators[module_name] = module
-                    elif module.type == "postaggregator" and self.postaggregator_names is not None:
+                    elif (
+                        module.type == "postaggregator"
+                        and self.postaggregator_names is not None
+                    ):
                         self.postaggregator_names.append(module_name)
                         self.postaggregators[module_name] = module
 
@@ -1034,11 +1096,15 @@ class Runner(object):
 
         if self.args is None:
             raise SetupError()
-        postaggregators_from_package = self.get_package_argument_run_value("postaggregators")
+        postaggregators_from_package = self.get_package_argument_run_value(
+            "postaggregators"
+        )
         if len(self.args.postaggregators) > 0:
             self.postaggregator_names = self.args.postaggregators
         elif postaggregators_from_package:
-            self.postaggregator_names = sorted(list(get_local_module_infos_by_names(postaggregators_from_package)))
+            self.postaggregator_names = sorted(
+                list(get_local_module_infos_by_names(postaggregators_from_package))
+            )
         else:
             self.postaggregator_names = []
         if "postaggregator" in self.args.skip:
@@ -1046,9 +1112,7 @@ class Runner(object):
             return
         self.postaggregator_names = sorted(
             list(
-                set(self.postaggregator_names).union(
-                    set(default_postaggregator_names)
-                )
+                set(self.postaggregator_names).union(set(default_postaggregator_names))
             )
         )
         if "casecontrol" in self.postaggregator_names:
@@ -1063,7 +1127,9 @@ class Runner(object):
         if not module_names:
             return
         new_module_names = []
-        self.sort_module_names_by_requirement(module_names, new_module_names, module_type)
+        self.sort_module_names_by_requirement(
+            module_names, new_module_names, module_type
+        )
         return new_module_names
 
     def sort_annotators(self):
@@ -1075,10 +1141,16 @@ class Runner(object):
     def sort_postaggregators(self):
         from ..module.local import get_local_module_infos_by_names
 
-        self.postaggregator_names = self.sort_modules(self.postaggregator_names, "postaggregator")
-        self.postaggregators = get_local_module_infos_by_names(self.postaggregator_names)
+        self.postaggregator_names = self.sort_modules(
+            self.postaggregator_names, "postaggregator"
+        )
+        self.postaggregators = get_local_module_infos_by_names(
+            self.postaggregator_names
+        )
 
-    def sort_module_names_by_requirement(self, input_module_names, final_module_names: list, module_type: str):
+    def sort_module_names_by_requirement(
+        self, input_module_names, final_module_names: list, module_type: str
+    ):
         from ..module.local import get_local_module_info
 
         if isinstance(input_module_names, list):
@@ -1086,10 +1158,16 @@ class Runner(object):
                 module = get_local_module_info(module_name)
                 if not module:
                     continue
-                sub_list = self.sort_module_names_by_requirement(module_name, final_module_names, module_type)
+                sub_list = self.sort_module_names_by_requirement(
+                    module_name, final_module_names, module_type
+                )
                 if sub_list:
                     final_module_names.extend(sub_list)
-                if module and module.conf.get("type") == module_type and not module_name in final_module_names:
+                if (
+                    module
+                    and module.conf.get("type") == module_type
+                    and not module_name in final_module_names
+                ):
                     final_module_names.append(module_name)
         elif isinstance(input_module_names, str):
             module_name = input_module_names
@@ -1099,9 +1177,13 @@ class Runner(object):
             required_module_names = module.conf.get("requires", [])
             if required_module_names:
                 if isinstance(required_module_names, list):
-                    self.sort_module_names_by_requirement(required_module_names, final_module_names, module_type)
+                    self.sort_module_names_by_requirement(
+                        required_module_names, final_module_names, module_type
+                    )
                 else:
-                    raise Exception(f"module requirement configuration error: {module_name} => {required_module_names}")
+                    raise Exception(
+                        f"module requirement configuration error: {module_name} => {required_module_names}"
+                    )
             else:
                 if module_name in final_module_names:
                     return None
@@ -1195,7 +1277,7 @@ class Runner(object):
             "name": self.run_name,
             "output_dir": self.output_dir,
             "genome": self.args.genome,
-            "serveradmindb": self.serveradmindb
+            "serveradmindb": self.serveradmindb,
         }
         arg_dict["conf"] = self.conf_run
         if self.args.forcedinputformat is not None:
@@ -1236,7 +1318,7 @@ class Runner(object):
                 "run_name": self.run_name,
                 "output_dir": self.output_dir,
                 "confs": module_conf,
-                "serveradmindb": self.serveradmindb
+                "serveradmindb": self.serveradmindb,
             }
             module_cls = load_class(module.script_path, "Preparer")
             module_ins = module_cls(kwargs)
@@ -1244,7 +1326,11 @@ class Runner(object):
             stime = time()
             module_ins.run()
             rtime = time() - stime
-            update_status("Preparers finished in {0:.3f}s".format(rtime), logger=self.logger, serveradmindb=self.serveradmindb)
+            update_status(
+                "Preparers finished in {0:.3f}s".format(rtime),
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
 
     def get_num_workers(self) -> int:
         from ..system import get_max_num_concurrent_annotators_per_job
@@ -1275,7 +1361,14 @@ class Runner(object):
         if self.output_dir:
             crx_path = Path(self.output_dir) / f"{self.run_name}.crx"
             wf = open(str(crx_path), "w")
-            fns = sorted([str(v) for v in crx_path.parent.glob(escape_glob_pattern(crx_path.name) + ".*")])
+            fns = sorted(
+                [
+                    str(v)
+                    for v in crx_path.parent.glob(
+                        escape_glob_pattern(crx_path.name) + ".*"
+                    )
+                ]
+            )
             fn = fns[0]
             f = open(fn)
             for line in f:
@@ -1300,7 +1393,14 @@ class Runner(object):
             crg_path = Path(self.output_dir) / f"{self.run_name}.crg"
             wf = open(str(crg_path), "w")
             unique_hugos = {}
-            fns = sorted([str(v) for v in crg_path.parent.glob(escape_glob_pattern(crg_path.name) + ".*")])
+            fns = sorted(
+                [
+                    str(v)
+                    for v in crg_path.parent.glob(
+                        escape_glob_pattern(crg_path.name) + ".*"
+                    )
+                ]
+            )
             fn = fns[0]
             f = open(fn)
             for line in f:
@@ -1368,7 +1468,7 @@ class Runner(object):
                             self.mapper_name,
                             pos_no,
                             ";".join(self.args.primary_transcript),
-                            self.serveradmindb
+                            self.serveradmindb,
                         ),
                     )
                 else:
@@ -1383,7 +1483,7 @@ class Runner(object):
                             self.mapper_name,
                             pos_no,
                             ";".join(self.args.primary_transcript),
-                            self.serveradmindb
+                            self.serveradmindb,
                         ),
                     )
                 jobs.append(job)
@@ -1412,7 +1512,7 @@ class Runner(object):
             "output_dir": self.output_dir,
             "level": level,
             "run_name": self.run_name,
-            "serveradmindb": self.serveradmindb
+            "serveradmindb": self.serveradmindb,
         }
         if self.cleandb and level == "variant":
             arg_dict["delete"] = True
@@ -1421,7 +1521,11 @@ class Runner(object):
         v_aggregator = Aggregator(**arg_dict)
         v_aggregator.run()
         rtime = time() - stime
-        update_status(f"Aggregator {level} finished in {0:.3f}s".format(rtime), logger=self.logger, serveradmindb=self.serveradmindb)
+        update_status(
+            f"Aggregator {level} finished in {0:.3f}s".format(rtime),
+            logger=self.logger,
+            serveradmindb=self.serveradmindb,
+        )
         return v_aggregator.db_path
 
     def run_aggregator(self):
@@ -1449,7 +1553,7 @@ class Runner(object):
                 "module_name": module_name,
                 "run_name": self.run_name,
                 "output_dir": self.output_dir,
-                "serveradmindb": self.serveradmindb
+                "serveradmindb": self.serveradmindb,
             }
             postagg_conf = {}
             postagg_conf.update(self.conf_run.get(module_name, {}))
@@ -1465,7 +1569,11 @@ class Runner(object):
             stime = time()
             post_agg.run()
             rtime = time() - stime
-            update_status(f"{module_name} finished in {0:.3f}s".format(rtime), logger=self.logger, serveradmindb=self.serveradmindb)
+            update_status(
+                f"{module_name} finished in {0:.3f}s".format(rtime),
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
 
     async def run_vcf2vcf(self):
         from ..exceptions import SetupError
@@ -1507,11 +1615,19 @@ class Runner(object):
         elif response_type == str:
             output_fns = response_t
         if output_fns is not None:
-            update_status(f"report created: {output_fns} ", logger=self.logger, serveradmindb=self.serveradmindb)
+            update_status(
+                f"report created: {output_fns} ",
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
         report_type = "vcf2vcf"
         response[report_type] = response_t
         rtime = time() - stime
-        update_status("vcf2vcf finished in {0:.3f}s".format(rtime), logger=self.logger, serveradmindb=self.serveradmindb)
+        update_status(
+            "vcf2vcf finished in {0:.3f}s".format(rtime),
+            logger=self.logger,
+            serveradmindb=self.serveradmindb,
+        )
         self.report_response = response
 
     async def run_reporter(self):
@@ -1567,10 +1683,18 @@ class Runner(object):
             elif response_type == str:
                 output_fns = response_t
             if output_fns is not None:
-                update_status(f"report created: {output_fns} ", logger=self.logger, serveradmindb=self.serveradmindb)
+                update_status(
+                    f"report created: {output_fns} ",
+                    logger=self.logger,
+                    serveradmindb=self.serveradmindb,
+                )
             response[report_type] = response_t
             rtime = time() - stime
-            update_status(f"{module_name} finished in {0:.3f}s".format(rtime), logger=self.logger, serveradmindb=self.serveradmindb)
+            update_status(
+                f"{module_name} finished in {0:.3f}s".format(rtime),
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
         return response
 
     def run_annotators_mp(self):
@@ -1644,14 +1768,14 @@ class Runner(object):
                 "secondary_inputs": secondary_inputs,
                 "quiet": self.args.quiet,
                 "log_path": self.log_path,
-                "run_conf": self.conf_run.get(module.name, {})
+                "run_conf": self.conf_run.get(module.name, {}),
             }
             if self.run_name != None:
                 kwargs["run_name"] = self.run_name
             if self.output_dir != None:
                 kwargs["output_dir"] = self.output_dir
             run_args[module.name] = (module, kwargs)
-        #if self.logger and self.log_handler:
+        # if self.logger and self.log_handler:
         #    self.logger.removeHandler(self.log_handler)
         start_queue = self.manager.Queue()
         end_queue = self.manager.Queue()
@@ -1660,7 +1784,13 @@ class Runner(object):
         done_mnames = set(self.done_annotators)
         queue_populated = self.manager.Value("c_bool", False)
         pool_args = [
-            [start_queue, end_queue, queue_populated, self.serveradmindb, self.args.logtofile]
+            [
+                start_queue,
+                end_queue,
+                queue_populated,
+                self.serveradmindb,
+                self.args.logtofile,
+            ]
         ] * num_workers
         with Pool(num_workers, init_worker) as pool:
             _ = pool.starmap_async(
@@ -1690,13 +1820,13 @@ class Runner(object):
                         assigned_mnames.add(mname)
             queue_populated = True
             pool.join()
-        #self.log_path = os.path.join(self.output_dir, self.run_name + ".log")
-        #self.log_handler = logging.FileHandler(self.log_path, "a")
-        #formatter = logging.Formatter(
+        # self.log_path = os.path.join(self.output_dir, self.run_name + ".log")
+        # self.log_handler = logging.FileHandler(self.log_path, "a")
+        # formatter = logging.Formatter(
         #    "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
-        #)
-        #self.log_handler.setFormatter(formatter)
-        #if self.logger:
+        # )
+        # self.log_handler.setFormatter(formatter)
+        # if self.logger:
         #    self.logger.addHandler(self.log_handler)
         if len(self.run_annotators) > 0:
             self.annotator_ran = True
@@ -1766,11 +1896,7 @@ class Runner(object):
         from ..module.local import get_local_module_info
         from ..exceptions import DatabaseError
 
-        if (
-            self.run_name is None
-            or self.args is None
-            or self.output_dir is None
-        ):
+        if self.run_name is None or self.args is None or self.output_dir is None:
             raise SetupError()
         if self.inputs is None:
             raise NoInput()
@@ -1902,12 +2028,21 @@ class Runner(object):
             raise SetupError()
         fns = listdir(self.output_dir)
         for fn in fns:
-            fn_path = Path(self.output_dir) /  fn
+            fn_path = Path(self.output_dir) / fn
             if fn_path.is_file() == False:
                 continue
             if fn.startswith(self.run_name):
                 fn_p = Path(fn)
-                if fn_p.suffix in [".var", ".gen", ".crv", ".crx", ".crg", ".crs", ".crm", ".crt"]:
+                if fn_p.suffix in [
+                    ".var",
+                    ".gen",
+                    ".crv",
+                    ".crx",
+                    ".crg",
+                    ".crs",
+                    ".crm",
+                    ".crt",
+                ]:
                     remove(str(fn_path))
 
     async def write_admin_db_final_info(self, runtime):
@@ -1934,8 +2069,17 @@ class Runner(object):
             info_json_s = ""
         db = await aiosqlite.connect(str(admindb_path))
         cursor = await db.cursor()
-        q = 'update jobs set runtime=?, numinput=?, info_json=? where dir=? and name=?'
-        await cursor.execute(q, (runtime, self.total_lnum, info_json_s, self.output_dir, self.args.job_name))
+        q = "update jobs set runtime=?, numinput=?, info_json=? where dir=? and name=?"
+        await cursor.execute(
+            q,
+            (
+                runtime,
+                self.total_lnum,
+                info_json_s,
+                self.output_dir,
+                self.args.job_name,
+            ),
+        )
         await db.commit()
         await cursor.close()
         await db.close()
@@ -1960,9 +2104,7 @@ class Runner(object):
         self.info_json["db_path"] = os.path.join(
             self.output_dir, self.run_name + ".sqlite"
         )
-        self.info_json["orig_input_fname"] = [
-            os.path.basename(x) for x in self.inputs
-        ]
+        self.info_json["orig_input_fname"] = [os.path.basename(x) for x in self.inputs]
         self.info_json["orig_input_path"] = self.inputs
         self.info_json["submission_time"] = datetime.now().isoformat()
         self.info_json["viewable"] = False
@@ -1973,10 +2115,16 @@ class Runner(object):
         )
         self.pkg_ver = au.get_current_package_version()
         self.info_json["package_version"] = self.pkg_ver
-        annot_names = [v for v in list(self.annotators.keys()) if v not in ["original_input"]]
+        annot_names = [
+            v for v in list(self.annotators.keys()) if v not in ["original_input"]
+        ]
         annot_names.sort()
         self.info_json["annotators"] = annot_names
-        postagg_names = [v for v in list(self.postaggregators.keys()) if v not in ["tagsampler", "varmeta", "vcfinfo"]]
+        postagg_names = [
+            v
+            for v in list(self.postaggregators.keys())
+            if v not in ["tagsampler", "varmeta", "vcfinfo"]
+        ]
         postagg_names.sort()
         self.info_json["postaggregators"] = postagg_names
 
@@ -2108,10 +2256,7 @@ def add_parser_ov_run(subparsers):
         help="deletes the existing log file and creates a new one.",
     )
     parser_ov_run.add_argument(
-        "--note",
-        dest="note",
-        default=None,
-        help="note for the job"
+        "--note", dest="note", default=None, help="note for the job"
     )
     parser_ov_run.add_argument(
         "--mp",
@@ -2148,7 +2293,11 @@ def add_parser_ov_run(subparsers):
         help="Write job information to admin db after job completion",
     )
     parser_ov_run.add_argument(
-        "--jobname", dest="job_name", type=str, default=None, help="Job ID for server version"
+        "--jobname",
+        dest="job_name",
+        type=str,
+        default=None,
+        help="Job ID for server version",
     )
     parser_ov_run.add_argument(
         "--version",
@@ -2254,14 +2403,10 @@ def add_parser_ov_run(subparsers):
         default=False,
         help="analyze with the vcf to vcf workflow. It is faster than a normal run, but only if both input and output formats are VCF.",
     )
-    parser_ov_run.add_argument(
-        "--uid",
-        default=None,
-        help="Optional UID of the job"
-    )
+    parser_ov_run.add_argument("--uid", default=None, help="Optional UID of the job")
     parser_ov_run.add_argument(
         "--logtofile",
         action="store_true",
-        help="Path to a log file. If given without a path, the job's run_name.log will be the log path."
+        help="Path to a log file. If given without a path, the job's run_name.log will be the log path.",
     )
     parser_ov_run.set_defaults(func=cli_run)

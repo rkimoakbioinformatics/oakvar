@@ -575,7 +575,6 @@ class Tester:
         from ..exceptions import ModuleLoadingError
         from ..exceptions import SetupError
 
-
         input_msg = (
             "" if self.input_file == "input" else self.input_file
         )  # if there is more than one test for the module, include the test file in the log.
@@ -634,7 +633,6 @@ class Tester:
     def verify(self):
         from ..module.local import get_local_module_info
         from ..exceptions import ModuleLoadingError
-
 
         if self.module is None:
             raise ModuleLoadingError(self.module_name)
@@ -767,7 +765,7 @@ class Tester:
                         if "|" in header:
                             headLabel = header[header.index("|") + 1 :]
                         self._report(
-                                f"#\n{self.module.name}: {variant}\ncolumn: {headLabel}\nref: {key_row[idx]}\nnew: {result[result_idx]}"
+                            f"#\n{self.module.name}: {variant}\ncolumn: {headLabel}\nref: {key_row[idx]}\nnew: {result[result_idx]}"
                         )
                         self.test_passed = False
 
@@ -827,7 +825,6 @@ def test(args, __name__="util test"):
     from ..module.local import get_local_module_info
     from ..util.util import quiet_print
     from ..exceptions import NoInput
-
 
     rundir = args.get("rundir")
     if rundir is None:

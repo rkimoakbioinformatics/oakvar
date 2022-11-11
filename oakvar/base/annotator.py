@@ -67,7 +67,9 @@ class BaseAnnotator(object):
         self.annotator_dir = self.main_fpath.parent
         self.data_dir = self.module_dir / "data"
         self._setup_logger()
-        self.conf = get_module_conf(self.module_name, module_type=self.module_type, module_dir=self.module_dir)
+        self.conf = get_module_conf(
+            self.module_name, module_type=self.module_type, module_dir=self.module_dir
+        )
         if self.conf is None:
             raise ModuleLoadingError(self.module_name)
         self._verify_conf()
@@ -91,6 +93,7 @@ class BaseAnnotator(object):
 
     def _log_exception(self, e, halt=True):
         import traceback
+
         if self.logger:
             self.logger.exception(e)
         else:
@@ -161,7 +164,9 @@ class BaseAnnotator(object):
             dest="output_dir",
             help="Output directory. " + "Default is input file directory.",
         )
-        parser.add_argument("-c", dest="confpath", help="Path to optional run conf file.")
+        parser.add_argument(
+            "-c", dest="confpath", help="Path to optional run conf file."
+        )
         parser.add_argument(
             "-p",
             "--plainoutput",
@@ -182,7 +187,7 @@ class BaseAnnotator(object):
         parser.add_argument(
             "--logtofile",
             action="store_true",
-            help="Path to a log file. If given without a path, the job's run_name.log will be the log path."
+            help="Path to a log file. If given without a path, the job's run_name.log will be the log path.",
         )
         self.cmd_arg_parser = parser
 
@@ -231,7 +236,10 @@ class BaseAnnotator(object):
         if not self.last_status_update_time or not self.conf:
             return
         cur_time = time()
-        if lnum % 10000 == 0 or cur_time - self.last_status_update_time > JOB_STATUS_UPDATE_INTERVAL:
+        if (
+            lnum % 10000 == 0
+            or cur_time - self.last_status_update_time > JOB_STATUS_UPDATE_INTERVAL
+        ):
             status = f"Running {self.conf['title']} ({self.module_name}): line {lnum}"
             update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
             self.last_status_update_time = cur_time
@@ -279,7 +287,11 @@ class BaseAnnotator(object):
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
         try:
             start_time = time()
-            update_status("started: %s" % asctime(localtime(start_time)), logger=self.logger, serveradmindb=self.serveradmindb)
+            update_status(
+                "started: %s" % asctime(localtime(start_time)),
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
             self.base_setup()
             self.last_status_update_time = time()
             self.output_columns = self.conf["output_columns"]
@@ -290,9 +302,17 @@ class BaseAnnotator(object):
             status = f"Started {self.conf['title']} ({self.module_name})"
             update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
             end_time = time()
-            update_status(f"{self.module_name}: finished at {asctime(localtime(end_time))}", logger=self.logger, serveradmindb=self.serveradmindb)
+            update_status(
+                f"{self.module_name}: finished at {asctime(localtime(end_time))}",
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
             run_time = end_time - start_time
-            update_status(f"{self.module_name}: runtime {run_time:0.3f}s", logger=self.logger, serveradmindb=self.serveradmindb)
+            update_status(
+                f"{self.module_name}: runtime {run_time:0.3f}s",
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
         except Exception as e:
             self._log_exception(e)
         if hasattr(self, "log_handler") and self.log_handler:
@@ -631,6 +651,7 @@ class BaseAnnotator(object):
                 d[colname] = value
         return d
 
+
 class SecondaryInputFetcher:
     def __init__(self, input_path, key_col, fetch_cols=[]):
         from ..util.inout import FileReader
@@ -680,4 +701,3 @@ class SecondaryInputFetcher:
             return self.data[key_data]
         else:
             return None
-

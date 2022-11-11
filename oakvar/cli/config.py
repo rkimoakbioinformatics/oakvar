@@ -84,9 +84,7 @@ def add_parser_ov_config_system(subparsers):
         epilog="A dictionary. content of OakVar system configuration file",
         help="shows oakvar system configuration",
     )
-    parser_cli_config_oakvar.add_argument(
-        "key", nargs="?", help="Configuration key"
-    )
+    parser_cli_config_oakvar.add_argument("key", nargs="?", help="Configuration key")
     parser_cli_config_oakvar.add_argument(
         "value", nargs="?", help="Configuration value"
     )
