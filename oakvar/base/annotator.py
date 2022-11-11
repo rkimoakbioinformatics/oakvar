@@ -578,29 +578,14 @@ class BaseAnnotator(object):
         if self.log_path:
             os.remove(self.log_path)
 
-    # Setup the logging utility
     def _setup_logger(self):
-        import logging
-        import os
+        from logging import getLogger
         from ..exceptions import SetupError
 
         if self.output_basename is None or self.output_dir is None:
             raise SetupError(self.module_name)
-        self.logger = logging.getLogger("oakvar." + self.module_name)
-        if self.args.get("logtofile"):
-            self.log_path = os.path.join(self.output_dir, self.output_basename + ".log")
-            log_handler = logging.FileHandler(self.log_path, "a")
-        else:
-            log_handler = logging.StreamHandler()
-        formatter = logging.Formatter(
-            "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
-        )
-        log_handler.setFormatter(formatter)
-        self.logger.addHandler(log_handler)
-        self.error_logger = logging.getLogger("err." + self.module_name)
+        self.error_logger = getLogger("err." + self.module_name)
 
-    # Gets the input dict from both the input file, and
-    # any depended annotators depended annotator feature not complete.
     def _get_input(self):
         from ..util.inout import AllMappingsParser
         from ..consts import all_mappings_col_name
