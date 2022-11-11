@@ -805,7 +805,7 @@ class Runner(object):
                     if not module:
                         msg = f"{module_name} is required by {postaggregator.name}, but does not exist."
                         raise ModuleNotExist(module_name, msg=msg)
-                    if module.type == "annotator" and self.annotator_names is not None:
+                    if module.type == "annotator" and self.annotator_names:
                         self.annotator_names.append(module_name)
                         self.annotators[module_name] = module
                     elif (
@@ -836,7 +836,7 @@ class Runner(object):
 
         if self.args is None:
             raise SetupError()
-        annotator_names_from_package = self.get_package_argument_run_value("annotators")
+        annotator_names_from_package = self.get_package_argument_run_value("annotators") or []
         if len(self.args.annotators) > 0:
             if self.args.annotators == ["all"]:
                 self.annotator_names = sorted(
@@ -912,9 +912,9 @@ class Runner(object):
             self.postaggregator_names
         )
 
-    def sort_modules(self, module_names: list, module_type: str):
+    def sort_module_names(self, module_names: list, module_type: str):
         if not module_names:
-            return
+            return []
         new_module_names = []
         self.sort_module_names_by_requirement(
             module_names, new_module_names, module_type
@@ -924,13 +924,13 @@ class Runner(object):
     def sort_annotators(self):
         from ..module.local import get_local_module_infos_by_names
 
-        self.annotator_names = self.sort_modules(self.annotator_names, "annotator")
+        self.annotator_names = self.sort_module_names(self.annotator_names, "annotator")
         self.annotators = get_local_module_infos_by_names(self.annotator_names)
 
     def sort_postaggregators(self):
         from ..module.local import get_local_module_infos_by_names
 
-        self.postaggregator_names = self.sort_modules(
+        self.postaggregator_names = self.sort_module_names(
             self.postaggregator_names, "postaggregator"
         )
         self.postaggregators = get_local_module_infos_by_names(
