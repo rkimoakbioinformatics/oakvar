@@ -37,7 +37,7 @@ from . import __main__ as cli
 from . import consts
 from .exceptions import *
 from .consts import crx_def
-from .cli.run import Runner
+from .base.runner import Runner
 from .base.converter import BaseConverter
 from .base.preparer import BasePreparer
 from .base.mapper import BaseMapper
