@@ -51,17 +51,6 @@ class ModuleCache(object):
     def get_local(self):
         return self.local
 
-    def update_download_counts(self, force=False):
-        import oyaml as yaml
-        from ..store import fetch_file_content_to_string
-        from ..store.oc import oc_module_download_counts_url
-
-        if force or not self.download_counts:
-            counts_url = oc_module_download_counts_url()
-            counts_str = fetch_file_content_to_string(counts_url)
-            if counts_str != "" and type(counts_str) != str:
-                self.download_counts = yaml.safe_load(counts_str).get("modules", {})
-
     def update_local(self):
         import os
         from ..consts import install_tempdir_name

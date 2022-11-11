@@ -13,17 +13,8 @@ class InstallProgressHandler(object):
     def stage_start(self, __stage__):
         pass
 
-    def stage_progress(
-        self, __cur_chunk__, __total_chunks__, __cur_size__, __total_size__
-    ):
-        pass
-
     def set_module_version(self, module_version):
         self.module_version = module_version
-        self._make_display_name()
-
-    def set_module_name(self, module_name):
-        self.module_name = module_name
         self._make_display_name()
 
     def _stage_msg(self, stage):

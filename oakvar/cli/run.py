@@ -1892,31 +1892,6 @@ class Runner(object):
         await cursor.close()
         await conn.close()
 
-    def run_summarizers(self):
-        from ..util.run import announce_module
-
-        for module in self.ordered_summarizers:
-            announce_module(module, serveradmindb=self.serveradmindb)
-            self.run_summarizer(module)
-
-    def run_summarizer(self, module):
-        from ..exceptions import SetupError
-        from ..util.util import load_class
-
-        if self.args is None:
-            raise SetupError()
-        cmd = [module.script_path, "-l", "variant"]
-        if self.run_name != None:
-            cmd.extend(["-n", self.run_name])
-        if self.output_dir != None:
-            cmd.extend(["-d", self.output_dir])
-        if self.verbose:
-            if not self.args.quiet:
-                print(" ".join(cmd))
-        summarizer_cls = load_class(module.script_path, "")
-        summarizer = summarizer_cls(cmd)
-        summarizer.run()
-
     def clean_up_at_end(self):
         from os import listdir
         from os import remove
@@ -2004,72 +1979,6 @@ class Runner(object):
         postagg_names = [v for v in list(self.postaggregators.keys()) if v not in ["tagsampler", "varmeta", "vcfinfo"]]
         postagg_names.sort()
         self.info_json["postaggregators"] = postagg_names
-
-    def write_smartfilters(self):
-        from time import time
-        import os
-        import json
-        import sqlite3
-        from ..util.util import filter_affected_cols
-        from ..consts import base_smartfilters
-        from ..exceptions import SetupError
-        from ..util.run import update_status
-
-        if self.run_name is None or self.args is None or self.output_dir is None:
-            raise SetupError()
-        update_status("Indexing", logger=self.logger, serveradmindb=self.serveradmindb)
-        dbpath = os.path.join(self.output_dir, self.run_name + ".sqlite")
-        conn = sqlite3.connect(dbpath)
-        cursor = conn.cursor()
-        q = "create table if not exists smartfilters (name text primary key, definition text)"
-        cursor.execute(q)
-        ins_template = (
-            "insert or replace into smartfilters (name, definition) values (?, ?);"
-        )
-        cols_to_index = set()
-        for sf in base_smartfilters:
-            cols_to_index |= filter_affected_cols(sf["filter"])
-        if self.annotator_ran:
-            for linfo in self.annotators.values():
-                if linfo.smartfilters is not None:
-                    for sf in linfo.smartfilters:
-                        cols_to_index |= filter_affected_cols(sf["filter"])
-                    mname = linfo.name
-                    json_info = json.dumps(linfo.smartfilters)
-                    cursor.execute(ins_template, (mname, json_info))
-        cursor.execute("pragma table_info(variant)")
-        variant_cols = {row[1] for row in cursor}
-        cursor.execute("pragma table_info(gene)")
-        gene_cols = {row[1] for row in cursor}
-        cursor.execute('select name from sqlite_master where type="index"')
-        existing_indices = {row[0] for row in cursor}
-        for col in cols_to_index:
-            if col in variant_cols:
-                index_name = f"sf_variant_{col}"
-                if index_name not in existing_indices:
-                    q = f"create index if not exists {index_name} on variant ({col})"
-                    update_status(f"\tvariant {col}", logger=self.logger, serveradmindb=self.serveradmindb)
-                    st = time()
-                    cursor.execute(q)
-                    update_status(f"\tfinished in {time()-st:.3f}s", logger=self.logger, serveradmindb=self.serveradmindb)
-            if col in gene_cols:
-                index_name = f"sf_gene_{col}"
-                if index_name not in existing_indices:
-                    q = f"create index if not exists {index_name} on gene ({col})"
-                    update_status(f"\tgene {col}", logger=self.logger, serveradmindb=self.serveradmindb)
-                    st = time()
-                    cursor.execute(q)
-                    update_status(f"\tfinished in {time()-st:.3f}s", logger=self.logger, serveradmindb=self.serveradmindb)
-        # Package filter
-        if hasattr(self.args, "filter") and self.args.filter is not None:
-            q = "create table if not exists viewersetup (datatype text, name text, viewersetup text, unique (datatype, name))"
-            cursor.execute(q)
-            filter_set = json.dumps({"filterSet": self.args.filter})
-            q = f'insert or replace into viewersetup values ("filter", "quicksave-name-internal-use", \'{filter_set}\')'
-            cursor.execute(q)
-        conn.commit()
-        cursor.close()
-        conn.close()
 
 
 def add_parser_ov_run(subparsers):

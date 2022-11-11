@@ -213,7 +213,6 @@ class ReportFilter:
         self.cmd = None
         self.level = None
         self.filter = filter
-        self.savefiltername = None
         self.filtername = None
         self.filterstring = filterstring
         self.filtersql = filtersql
@@ -236,21 +235,6 @@ class ReportFilter:
         self.conn_write = None
         self.uid = uid
         self.user = self.escape_user(user)
-
-    async def get_module_version_in_job(self, module_name, cursor_read=Any, cursor_write=Any):
-        _ = cursor_write
-        q = 'select colval from info where colkey="_annotators"'
-        await cursor_read.execute(q)
-        anno_vers = await cursor_read.fetchone()
-        if anno_vers is None:
-            return None
-        version = None
-        for anno_ver in anno_vers[0].split(","):
-            [mname, ver] = anno_ver.split(":")
-            if mname == module_name:
-                version = ver
-                break
-        return version
 
     async def exec_db(self, func, *args, **kwargs):
         if not self.conn_read or not self.conn_write:
@@ -308,11 +292,6 @@ class ReportFilter:
             help="Analysis level to filter",
         )
         parser.add_argument(
-            "-s",
-            dest="savefiltername",
-            help="Name to save the filter as (in the database)",
-        )
-        parser.add_argument(
             "--filtersql", dest="filtersql", default=None, help="Filter SQL"
         )
         parser.add_argument(
@@ -342,7 +321,6 @@ class ReportFilter:
         self.level = parsed_args.level
         if self.mode == "main":
             self.cmd = parsed_args.command
-        self.savefiltername = parsed_args.savefiltername
         self.filtername = parsed_args.filtername
         self.filterstring = parsed_args.filterstring
         self.filtersql = parsed_args.filtersql
@@ -419,14 +397,6 @@ class ReportFilter:
         if self.conn_write:
             await self.conn_write.close()
             self.conn_write = None
-
-    async def create_filtertable(self, cursor_read=Any, cursor_write=Any):
-        if not self.conn_write:
-            return
-        _ = cursor_read
-        sql = "create table " + self.filtertable + " (name text, criteria text)"
-        await cursor_write.execute(sql)
-        await self.conn_write.commit()
 
     async def filtertable_exists(self, cursor_read=Any, cursor_write=Any):
         _ = cursor_write
@@ -792,15 +762,6 @@ class ReportFilter:
         #q += " order by base__uid"
         return q
 
-    async def create_fgene(self, uid=None, cursor_read=Any, cursor_write=Any):
-        if not self.conn_write:
-            return
-        _ = cursor_read
-        table_name = self.get_ftable_name(uid=uid, ftype="gene")
-        q = f"create table {table_name} ( base__hugo int )"
-        await cursor_write.execute(q)
-        await self.conn_write.commit()
-
     async def populate_fvariant(self, uid=None, sample_to_filter=None, gene_to_filter=None, cursor_read=Any, cursor_write=Any):
         _ = cursor_read
         if not uid or not self.conn_write:
@@ -1001,108 +962,6 @@ class ReportFilter:
             q = f"create table {gftable} as select distinct v.base__hugo from variant as v inner join variant_filtered as vf on vf.base__uid=v.base__uid where v.base__hugo is not null"
             await cursor_write.execute(q)
 
-    async def savefilter(self, name=None, cursor_read=Any, cursor_write=Any):
-        from json import dumps
-
-        if not self.conn_write:
-            return
-        if name == None:
-            if self.savefiltername != None:
-                name = self.savefiltername
-            else:
-                name = DEFAULT_FILTER_NAME
-        # Creates filter save table if not exists.
-        await cursor_read.execute(
-            "select name from sqlite_master where "
-            + 'type="table" and name="'
-            + self.filtertable
-            + '"'
-        )
-        for ret in await cursor_read.fetchone():
-            if ret == None:
-                await cursor_write.execute(
-                    "create table "
-                    + self.filtertable
-                    + " (name text unique, criteria text)"
-                )
-        # Saves the filter.
-        filterstr = dumps(self.filter)
-        sql = (
-            "insert or replace into "
-            + self.filtertable
-            + ' values ("'
-            + name
-            + "\", '"
-            + filterstr
-            + "')"
-        )
-        await cursor_write.execute(sql)
-        await self.conn_write.commit()
-
-    async def listfilter(self, name=None, cursor_read=Any, cursor_write=Any):
-        from json import loads
-        if not self.conn_write:
-            return
-        ret = {}
-        if name == None:
-            if self.savefiltername != None:
-                name = self.savefiltername
-            else:
-                name = DEFAULT_FILTER_NAME
-        # Creates filter save table if not exists.
-        await cursor_read.execute(
-            "select name from sqlite_master where "
-            + 'type="table" and name="'
-            + self.filtertable
-            + '"'
-        )
-        for ret in await cursor_read.fetchone():
-            if ret == None:
-                await cursor_write.execute(
-                    "create table "
-                    + self.filtertable
-                    + " (name text, criteria text)"
-                )
-                await self.conn_write.commit()
-        sql = "select name, criteria from " + self.filtertable
-        await cursor_read.execute(sql)
-        for row in await cursor_read.fetchall():
-            name = row[0]
-            criteria = loads(row[1])
-            ret[name] = criteria
-            if self.stdout:
-                print("#" + name)
-                for level in criteria:
-                    print("    " + level + ":")
-                    for column in criteria[level]:
-                        print("        " + column + ": " + criteria[level][column])
-        return ret
-
-    def addvariantfilter(self, column, condition):
-        self.addfilter(column, condition, "variant")
-
-    def addgenefilter(self, column, condition):
-        self.addfilter(column, condition, "gene")
-
-    def addfilter(self, column, condition, level="variant"):
-        if self.filter == None:
-            self.filter = {}
-        if level not in self.filter:
-            self.filter[level] = {}
-        self.filter[level][column] = condition
-
-    def removevariantfilter(self, column):
-        self.removefilter(column, "variant")
-
-    def removegenefilter(self, column):
-        self.removefilter(column, "gene")
-
-    def removefilter(self, column, level="variant"):
-        if self.filter == None:
-            return
-        if level in self.filter and column in self.filter[level]:
-            del self.filter[level][column]
-
     async def table_exists(self, table, cursor_read=Any, cursor_write=Any):
         _ = cursor_write
         sql = (
@@ -1126,27 +985,6 @@ class ReportFilter:
         q = "select {},base__hugo from variant as v".format(",".join(cols))
         if bypassfilter == False:
             q += " inner join variant_filtered as f on v.base__uid=f.base__uid"
-        if cols[0] == "v.base__uid":
-            cols[0] = "base__uid"
-        await cursor_read.execute(q)
-        rows = await cursor_read.fetchall()
-        return rows
-
-    async def get_variant_data_for_hugo(self, hugo, cols, cursor_read=Any, cursor_write=Any):
-        _ = cursor_write
-        bypassfilter = (
-            not self.filter
-            and not self.filtersql
-            and not self.includesample
-            and not self.excludesample
-        )
-        if cols[0] == "base__uid":
-            cols[0] = "v.base__uid"
-        q = "select {} from variant as v".format(",".join(cols))
-        if bypassfilter == False:
-            q += ' inner join variant_filtered as f on v.base__uid=f.base__uid and v.base__hugo="{}"'.format(
-                hugo
-            )
         if cols[0] == "v.base__uid":
             cols[0] = "base__uid"
         await cursor_read.execute(q)

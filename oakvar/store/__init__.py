@@ -26,10 +26,6 @@ class ProgressStager(object):
     def get_cur_state(self):
         return (self.cur_stage, self.total_stages, self.cur_size, self.total_size)
 
-    def increase_cur_size(self, dsize):
-        self.cur_size += dsize
-        self._update_stage()
-
     def set_cur_size(self, cur_size):
         self.cur_size = cur_size
         self._update_stage()

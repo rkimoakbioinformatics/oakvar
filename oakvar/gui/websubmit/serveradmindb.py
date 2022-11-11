@@ -168,16 +168,6 @@ class ServerAdminDb ():
         cursor.execute(q, ("fernet_key", fernet_key))
         conn.commit()
 
-    def get_pwhash(self, pw):
-        from hashlib import sha256
-        m = sha256()
-        m.update(pw.encode('utf-16be'))
-        pwhash = m.hexdigest()
-        return pwhash
-
-    async def upgrade_db_if_needed(self):
-        pass
-
     async def get_db_conn (self):
         from aiosqlite import connect
         conn = await connect(self.admindb_path)
@@ -209,34 +199,6 @@ class ServerAdminDb ():
             return ret[0]
         else:
             return None
-
-    async def get_uid_by_username_and_job_name(self, username: str, job_name: str):
-        conn = self.get_sync_db_conn()
-        cursor = conn.cursor()
-        q = "select uid from jobs where username=? and name=?"
-        cursor.execute(q, (username, job_name))
-        ret = cursor.fetchone()
-        if not ret:
-            uid = None
-        else:
-            uid = ret[0]
-        cursor.close()
-        conn.close()
-        return uid
-
-    async def check_username_presence (self, username):
-        conn = await self.get_db_conn()
-        if not conn:
-            return False
-        cursor = await conn.cursor()
-        await cursor.execute('select * from users where email="{}"'.format(username))
-        r = await cursor.fetchone()
-        await cursor.close()
-        await conn.close()
-        if r is None:
-            return False
-        else:
-            return True
 
     async def get_user_role_of_email(self, email, servermode=True):
         from ...system.consts import ADMIN_ROLE
@@ -272,34 +234,6 @@ class ServerAdminDb ():
         await cursor.close()
         await conn.close()
 
-    async def get_password_question (self, email):
-        conn = await self.get_db_conn()
-        if not conn:
-            return None
-        cursor = await conn.cursor()
-        await cursor.execute('select question from users where email="{}"'.format(email))
-        r = await cursor.fetchone()
-        await cursor.close()
-        await conn.close()
-        if r is None:
-            return None
-        else:
-            return r[0]
-
-    async def check_password_answer (self, email, answerhash):
-        conn = await self.get_db_conn()
-        if not conn:
-            return False
-        cursor = await conn.cursor()
-        await cursor.execute('select * from users where email="{}" and answerhash="{}"'.format(email, answerhash))
-        r = await cursor.fetchone()
-        await cursor.close()
-        await conn.close()
-        if r is None:
-            return False
-        else:
-            return True
-
     async def set_temp_password (self, email):
         from hashlib import sha256
         from random import randint
@@ -316,44 +250,6 @@ class ServerAdminDb ():
         await cursor.close()
         await conn.close()
         return temppassword
-
-    async def set_username (self, email, newemail):
-        from os.path import join
-        from os import rename
-        from ...system import get_jobs_dir
-        conn = await self.get_db_conn()
-        if not conn:
-            return
-        cursor = await conn.cursor()
-        await cursor.execute(f'select * from users where email="{newemail}"')
-        r = await cursor.fetchone()
-        if r is not None:
-            await cursor.close()
-            await conn.close()
-            return 'Duplicate username'
-        cursor = await conn.cursor()
-        q = f'update users set email="{newemail}" where email="{email}"'
-        await cursor.execute(q)
-        q = f'update jobs set username="{newemail}" where username="{email}"'
-        await cursor.execute(q)
-        await conn.commit()
-        await cursor.close()
-        await conn.close()
-        root_jobs_dir = get_jobs_dir()
-        old_job_dir = join(root_jobs_dir, email)
-        new_job_dir = join(root_jobs_dir, newemail)
-        rename(old_job_dir, new_job_dir)
-        return ''
-
-    async def set_password (self, email, passwordhash):
-        conn = await self.get_db_conn()
-        if not conn:
-            return
-        cursor = await conn.cursor()
-        await cursor.execute('update users set passwordhash="{}" where email="{}"'.format(passwordhash, email))
-        await conn.commit()
-        await cursor.close()
-        await conn.close()
 
     async def get_user_settings (self, username):
         from json import loads
@@ -389,17 +285,6 @@ class ServerAdminDb ():
         await cursor.close()
         await conn.close()
 
-    async def delete_user (self, username):
-        conn = await self.get_db_conn()
-        if not conn:
-            return
-        cursor = await conn.cursor()
-        q = f'delete from users where email="{username}"'
-        await cursor.execute(q)
-        await conn.commit()
-        await cursor.close()
-        await conn.close()
-
     def delete_job(self, uid: int):
         conn = self.get_sync_db_conn()
         cursor = conn.cursor()
@@ -408,17 +293,6 @@ class ServerAdminDb ():
         conn.commit()
         cursor.close()
         conn.close()
-
-    async def open_conn_cursor(self):
-        conn = await self.get_db_conn()
-        if not conn:
-            return None, None
-        cursor = await conn.cursor()
-        return conn, cursor
-
-    async def close_conn_cursor(self, conn, cursor):
-        await cursor.close()
-        await conn.close()
 
     async def write_single_api_access_count_to_db (self, t, count):
         from time import strftime

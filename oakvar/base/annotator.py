@@ -542,16 +542,6 @@ class BaseAnnotator(object):
         if self.dbconn is not None:
             self.dbconn.close()
 
-    def remove_log(self):
-        pass
-
-    def get_uid_col(self):
-        from ..exceptions import SetupError
-
-        if self.conf is None:
-            raise SetupError(module_name=self.module_name)
-        return self.conf["output_columns"][0]["name"]
-
     # Placeholder, intended to be overridded in derived class
     def setup(self):
         pass
@@ -567,16 +557,6 @@ class BaseAnnotator(object):
     # Placeholder, intended to be overridden in derived class
     def cleanup(self):
         pass
-
-    def remove_log_file(self):
-        import os
-
-        if self.logger and self.log_handler:
-            self.logger.removeHandler(self.log_handler)
-            self.log_handler.flush()
-            self.log_handler.close()
-        if self.log_path:
-            os.remove(self.log_path)
 
     def _setup_logger(self):
         from logging import getLogger
@@ -701,6 +681,3 @@ class SecondaryInputFetcher:
         else:
             return None
 
-    def get_values(self, key_data, key_column):
-        ret = [v[key_column] for v in self.data[key_data]]
-        return ret

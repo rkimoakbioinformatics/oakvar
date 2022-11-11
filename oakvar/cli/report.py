@@ -201,35 +201,6 @@ class BaseReporter:
         await self.connect_db(dbpath=self.dbpath)
         await self.load_filter(user=user)
 
-    async def check_result_db_for_mandatory_cols(self):
-        from ..exceptions import ResultMissingMandatoryColumnError
-
-        conn = await self.get_db_conn()
-        if not conn:
-            return
-        if not self.module_conf:
-            await conn.close()
-            return
-        mandatory_columns = self.module_conf.get("mandatory_columns")
-        if not mandatory_columns:
-            await conn.close()
-            return
-        cursor = await conn.cursor()
-        db_col_names = []
-        for level in ["variant", "gene"]:
-            q = f"select col_name from {level}_header"
-            await cursor.execute(q)
-            col_names = await cursor.fetchall()
-            db_col_names.extend([v[0] for v in col_names])
-        missing_col_names = []
-        for col_name in mandatory_columns:
-            if col_name not in db_col_names:
-                missing_col_names.append(col_name)
-        await conn.close()
-        if missing_col_names:
-            cols = ", ".join(missing_col_names)
-            raise ResultMissingMandatoryColumnError(self.dbpath, cols)
-
     def _setup_logger(self):
         if self.module_name is None:
             return
@@ -463,7 +434,6 @@ class BaseReporter:
                 await self.add_gene_summary_data_to_gene_level(datarow)
             if level == "variant":
                 await self.add_gene_level_data_to_variant_level(datarow)
-            #datarow = self.reorder_datarow(level, datarow)
             datarow = self.substitute_val(level, datarow)
             self.stringify_all_mapping(level, datarow)
             self.escape_characters(datarow)
@@ -518,17 +488,6 @@ class BaseReporter:
         newvals.sort()
         newcell = "; ".join(newvals)
         datarow[col_name] = newcell
-
-    def reorder_datarow(self, level, datarow):
-        new_datarow = []
-        colnos = self.colnos[level]
-        for column in self.colinfo[level]["columns"]:
-            col_name = column["col_name"]
-            #col_name = self.colname_conversion[level].get(col_name, col_name)
-            colno = colnos[col_name]
-            value = datarow[colno]
-            new_datarow.append(value)
-        return new_datarow
 
     async def add_gene_summary_data_to_gene_level(self, datarow):
         hugo = datarow["base__hugo"]
@@ -614,13 +573,7 @@ class BaseReporter:
         else:
             incl = True
         if incl and col_name not in self.colnames_to_display[level]:
-            #if self.should_be_in_base(col_name):
-            #    col_name = self.change_colname_to_base(col_name)
             self.colnames_to_display[level].append(col_name)
-
-    def change_colname_to_base(self, col_name):
-        fieldname = self.get_field_name(col_name)
-        return f"base__{fieldname}"
 
     async def make_sorted_column_groups(self, level, conn=Any):
         cursor = await conn.cursor()
@@ -820,44 +773,6 @@ class BaseReporter:
                 self.colnos[level][coldef.name] = len(self.colnos[level])
             self.summarizing_modules.append([mi, annot, cols])
 
-    def find_col_or_colgroup_by_name(self, l, name):
-        for el in l:
-            if el["name"] == name:
-                return el
-        return None
-
-    def get_colgroup_by_name(self, colgroups, name):
-        for colgroup in colgroups:
-            if colgroup["name"] == name:
-                return colgroup
-        return None
-
-    async def place_priority_col_groups_first(self, level):
-        colgrps = self.columngroups[level]
-        newcolgrps = []
-        # Places priority col groups first, as defined in priority_colgroupnames. Merges
-        # mapper and tagsampler with base group.
-        base_colgroup_no = self.priority_colgroupnames.index("base")
-        for priority_colgrpname in self.priority_colgroupnames:
-            colgrp = self.find_col_or_colgroup_by_name(colgrps, priority_colgrpname)
-            if not colgrp:
-                continue
-            if self.should_be_in_base(colgrp["name"]):
-                newcolgrps[base_colgroup_no]["count"] += colgrp["count"]
-            else:
-                newcolgrps.append(colgrp)
-            colgrps.remove(colgrp)
-        # place the rest of col groups.
-        for colgroup in colgrps:
-            newcolgrps.append(colgroup)
-        # assigns last column number.
-        last_colpos = 0
-        for colgrp in newcolgrps:
-            new_last_colpos = last_colpos + colgrp["count"]
-            colgrp["lastcol"] = new_last_colpos
-            last_colpos = new_last_colpos
-        self.columngroups[level] = newcolgrps
-
     def should_be_in_base(self, name):
         if "__" in name:
             name = self.get_group_name(name)
@@ -868,37 +783,6 @@ class BaseReporter:
 
     def get_group_name(self, col_name):
         return self.get_group_field_names(col_name)[0]
-
-    def get_field_name(self, col_name):
-        return self.get_group_field_names(col_name)[1]
-
-    async def order_columns_to_match_col_groups(self, level):
-        self.colname_conversion[level] = {}
-        new_columns = []
-        new_colnos = {}
-        new_colno = 0
-        new_colnames_to_display = []
-        for colgrp_to_find in self.columngroups[level]:
-            group_name_to_find = colgrp_to_find["name"]
-            for col in self.columns[level]:
-                col_name = col["col_name"]
-                old_col_name = col_name
-                group_name = self.get_group_name(col_name)
-                if group_name_to_find == "base" and self.should_be_in_base(group_name):
-                    new_col_name = self.change_colname_to_base(col_name)
-                    col["col_name"] = new_col_name
-                    group_name = "base"
-                    self.colname_conversion[level][new_col_name] = old_col_name
-                col_name = col["col_name"]
-                if group_name == group_name_to_find:
-                    new_columns.append(col)
-                    new_colnos[col_name] = new_colno
-                    if col_name in self.colnames_to_display[level]:
-                        new_colnames_to_display.append(col_name)
-                    new_colno += 1
-        self.columns[level] = new_columns
-        self.colnos[level] = new_colnos
-        self.colnames_to_display[level] = new_colnames_to_display
 
     async def make_report_sub(self, level, conn):
         from json import loads
@@ -979,8 +863,6 @@ class BaseReporter:
         self.set_display_select_columns(level)
         self.set_cols_to_display(level)
         self.add_column_number_stat_to_col_groups(level)
-        #await self.place_priority_col_groups_first(level)
-        #await self.order_columns_to_match_col_groups(level)
         self.colinfo[level] = {"colgroups": self.columngroups[level], "columns": self.columns[level]}
         await self.make_report_sub(level, conn)
 

@@ -103,14 +103,6 @@ class FileReader(BaseFile):
     def get_annotator_version(self):
         return self.annotator_version
 
-    def get_no_aggregate_columns(self):
-        return self.no_aggregate_cols
-
-    def get_lines(self, seekpos, chunksize):
-        if self.f is not None:
-            self.f.seek(seekpos)
-            return self.f.readlines(chunksize)
-
     def get_chunksize(self, num_core):
         f = open(self.path)
         max_data_line_no = 0
@@ -455,27 +447,13 @@ class AllMappingsParser(object):
         self.mappings = self.get_all_mappings()
 
     def get_genes(self):
-        """
-        Get list of all genes present
-        """
         return list(self._d.keys())
 
     def get_uniq_sos(self):
         sos = {}
         for mapping in self.mappings:
-            # sos[mapping.so] = True
             for so in mapping.so.split(","):
                 sos[so] = True
-        sos = list(sos.keys())
-        return sos
-
-    def get_uniq_sos_for_gene(self, genes=[]):
-        sos = {}
-        for mapping in self.mappings:
-            if mapping.gene in genes:
-                # sos[mapping.so] = True
-                for so in mapping.so.split(","):
-                    sos[so] = True
         sos = list(sos.keys())
         return sos
 
@@ -494,10 +472,6 @@ class AllMappingsParser(object):
         mapping.protein = self.none_to_empty(t[self._protein_index])
         return mapping
 
-    def delete_gene(self, gene):
-        if gene in self._d:
-            del self._d[gene]
-
     def get_all_mappings(self):
         mappings = []
         for gene, ts in self._d.items():
@@ -512,16 +486,6 @@ class AllMappingsParser(object):
             if mapping.transcript == transcript:
                 return mapping
         return None
-
-    def get_mapping_str(self, mapping):
-        tr = mapping.transcript
-        protein = mapping.protein
-        achange = mapping.achange
-        so = mapping.so
-        tchange = mapping.tchange
-        gene = mapping.gene
-        s = protein + ":" + achange + ":" + tr + ":" + tchange + ":" + so + ":" + gene
-        return s
 
 
 class ColumnDefinition(object):

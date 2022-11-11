@@ -660,16 +660,6 @@ class InstallProgressStdout(InstallProgressHandler):
         self.cur_stage = stage
         quiet_print(self._stage_msg(stage), args={"quiet": self.quiet})
 
-    def stage_progress(self, __cur_chunk__, __total_chunks__, cur_size, total_size):
-        from ..util.util import humanize_bytes
-        from ..util.util import quiet_print
-        from ..util.util import get_current_time_str
-
-        # perc = cur_size / total_size * 100
-        # trailing spaces needed to avoid leftover characters on resize
-        out = f"\033[F\033[K[{get_current_time_str()}] Downloading {humanize_bytes(cur_size)} / {humanize_bytes(total_size)}"
-        quiet_print(out, args={"quiet": self.quiet})
-
 
 def add_parser_fn_module_pack(subparsers):
     from ..store.consts import MODULE_PACK_SPLIT_FILE_SIZE

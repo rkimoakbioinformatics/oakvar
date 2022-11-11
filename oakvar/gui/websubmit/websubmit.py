@@ -951,10 +951,6 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
             for uid in to_del:
                 self.remove_process(uid)
 
-        def list_running_jobs(self):
-            # List currently tracked jobs
-            return list(self.processes_of_running_jobs.keys())
-
         def run_available_jobs(self):
             from subprocess import Popen
             num_available_slot = self.max_num_concurrent_jobs - len(self.processes_of_running_jobs)

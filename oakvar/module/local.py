@@ -80,14 +80,6 @@ class LocalModule(object):
         self.local_code_version = self.code_version
         self.local_data_source = self.data_source
 
-    def is_valid_module(self):
-        r = self.exists
-        r = r and self.name is not None
-        r = r and self.conf_path is not None
-        r = r and self.version is not None
-        r = r and self.type is not None
-        return r
-
     def get_size(self):
         """
         Gets the total installed size of a module

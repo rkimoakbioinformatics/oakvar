@@ -77,14 +77,6 @@ class InstallProgressMpDict(InstallProgressHandler):
         #self.install_state["update_time"] = time.time()
         quiet_print(self.install_state["message"], {"quiet": self.quiet})
 
-    def stage_progress(self, cur_chunk, total_chunks, cur_size, total_size):
-        self.install_state["cur_chunk"] = cur_chunk
-        self.install_state["total_chunks"] = total_chunks
-        self.install_state["cur_size"] = cur_size
-        self.install_state["total_size"] = total_size
-        self.install_state["update_time"] = time.time()
-
-
 def fetch_install_queue(install_queue, install_state, local_modules_changed):
     from ...module import install_module
 

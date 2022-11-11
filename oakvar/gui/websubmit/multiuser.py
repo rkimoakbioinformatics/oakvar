@@ -226,8 +226,6 @@ async def signup(request):
     if not password:
         return json_response({"code": "missing-password"}, status=403)
     serveradmindb = await get_serveradmindb()
-    #if await serveradmindb.check_username_presence(email):
-    #    return json_response({"code": "account-exists"}, status=403)
     ret = create(email=email, pw=password)
     msg = ret.get("msg")
     if not ret.get("success"):
@@ -250,20 +248,6 @@ def add_routes (router):
     router.add_route('GET', '/server/username', get_username)
     router.add_route('GET', '/server/deletetoken', delete_token)
     router.add_route('POST', '/server/signup', signup)
-    """
-    router.add_route('GET', '/server/login', login)
-    router.add_route('GET', '/server/passwordquestion', get_password_question)
-    router.add_route('GET', '/server/passwordanswer', check_password_answer)
-    router.add_route('GET', '/server/changepassword', change_password)
-    router.add_route('GET', '/server/inputstat', get_input_stat)
-    router.add_route('GET', '/server/userstat', get_user_stat)
-    router.add_route('GET', '/server/jobstat', get_job_stat)
-    router.add_route('GET', '/server/apistat', get_api_stat)
-    router.add_route('GET', '/server/annotstat', get_annot_stat)
-    router.add_route('GET', '/server/assemblystat', get_assembly_stat)
-    router.add_route('GET', '/server/restart', restart)
-    router.add_route('GET', '/server/nocache/login.html', show_login_page)
-    """
     router.add_static('/server', join(dirname(realpath(__file__))))
 
 def delete_job(uid: int):
