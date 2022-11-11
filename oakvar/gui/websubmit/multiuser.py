@@ -10,12 +10,6 @@ FIREBASE_PUBLIC_KEY_URL = "https://www.googleapis.com/robot/v1/metadata/x509/sec
 PROJECT_ID = "fabled-pivot-305219"
 COOKIE_KEY = "oakvar_token"
 
-def get_session_key():
-    from cryptography import fernet
-    fernet_key = fernet.Fernet.generate_key()
-    session_key = str(fernet_key)
-    return session_key
-
 def get_servermode():
     global servermode
     return servermode
@@ -45,26 +39,11 @@ async def get_username(request):
     res = {"email": email}
     return json_response(res)
 
-async def get_username_str(request) -> Optional[str]:
-    email = get_email_from_request(request)
-    res = {"email": email}
-    return res.get("email")
-
 async def add_job_info(request, job) -> Optional[str]:
     admindb = await get_serveradmindb()
     email = get_email_from_request(request)
     uid = await admindb.add_job_info(email, job)
     return uid
-
-def create_user_dir_if_not_exist (username):
-    from os.path import join
-    from os.path import exists
-    from os import mkdir
-    from ...system import get_jobs_dir
-    root_jobs_dir = get_jobs_dir()
-    user_job_dir = join(root_jobs_dir, username)
-    if exists(user_job_dir) == False:
-        mkdir(user_job_dir)
 
 def get_token(request):
     return request.cookies.get(COOKIE_KEY)
@@ -157,28 +136,6 @@ async def restart (request):
         if r == False:
             return json_response({'success': False, 'mgs': 'Only logged-in admin can change the settings.'})
     execvp('ov', ['ov', "gui", '--multiuser', '--headless'])
-
-async def show_login_page (request):
-    from os.path import join
-    from os.path import dirname
-    from os.path import abspath
-    from aiohttp.web import HTTPFound
-    from aiohttp.web import FileResponse
-    global servermode
-    global server_ready
-    global logger
-    if not servermode or not server_ready:
-        if logger:
-            logger.info('Login page requested but no multiuser mode. Redirecting to submit index...')
-        return HTTPFound('/submit/index.html')
-    r = await is_loggedin(request)
-    if r == False:
-        p = join(dirname(abspath(__file__)), 'nocache', 'login.html')
-        return FileResponse(p)
-    else:
-        if logger:
-            logger.info('Login page requested but already logged in. Redirecting to submit index...')
-        return HTTPFound('/submit/index.html')
 
 async def get_user_settings (request):
     from aiohttp.web import json_response

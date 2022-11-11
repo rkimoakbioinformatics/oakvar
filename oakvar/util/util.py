@@ -202,10 +202,6 @@ def get_current_time_str():
     return t.strftime("%Y:%m:%d %H:%M:%S")
 
 
-def get_epoch_time_from_date_str(s) -> int:
-    from datetime import datetime
-    return int((datetime.strptime(s, "%Y-%m-%dT%H:%M:%S.%f") - datetime(1970, 1, 1)).total_seconds())
-
 def get_args_conf(args: dict) -> Dict:
     from ..exceptions import ConfigurationError
     import json
@@ -482,10 +478,6 @@ def get_random_string(k=16):
     from random import choices
     from string import ascii_lowercase
     return "".join(choices(ascii_lowercase, k=k))
-
-def close_log_handlers(logger):
-    for handler in logger.handlers:
-        handler.close()
 
 def get_result_dbpath(output_dir: str, run_name: str):
     from pathlib import Path

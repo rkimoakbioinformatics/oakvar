@@ -1060,11 +1060,6 @@ def report(args, __name__="report"):
     return response
 
 
-def cravat_report_entrypoint():
-    args = get_parser_fn_report().parse_args(sys.argv[1:])
-    cli_report(args)
-
-
 def get_parser_fn_report():
     from argparse import ArgumentParser, SUPPRESS
 

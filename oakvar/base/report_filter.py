@@ -1028,12 +1028,3 @@ class ReportFilter:
             norows = await self.exec_db(self.get_ftable_num_rows, level=level, uid=uid, ftype=level)
         return norows
 
-def regexp(y, x, search=None):
-    import re
-
-    if search is None:
-        search = re.search
-    if x is None:
-        return 0
-    return 1 if search(y, x) else 0
-

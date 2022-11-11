@@ -231,78 +231,6 @@ async def save_layout_setting(request):
     return web.json_response(content)
 
 
-async def save_filter_setting(request):
-    queries = request.rel_url.query
-    dbpath = await get_dbpath(request)
-    name = queries["name"]
-    savedata = queries["savedata"]
-    conn = await get_db_conn(dbpath)
-    content = "fail"
-    if conn is not None:
-        cursor = await conn.cursor()
-        table = "viewersetup"
-        r = await table_exists(cursor, table)
-        if r == False:
-            q = (
-                "create table "
-                + table
-                + " (datatype text, name text, viewersetup text, unique (datatype, name))"
-            )
-            await cursor.execute(q)
-        q = 'select * from {} where datatype="filter" and name="{}"'.format(table, name)
-        await cursor.execute(q)
-        r = await cursor.fetchone()
-        if r is not None:
-            q = 'delete from {} where datatype="filter" and name="{}"'.format(
-                table, name
-            )
-            await cursor.execute(q)
-            await conn.commit()
-        q = (
-            "replace into "
-            + table
-            + ' values ("filter", "'
-            + name
-            + "\", '"
-            + savedata
-            + "')"
-        )
-        await cursor.execute(q)
-        await conn.commit()
-        await cursor.close()
-        await conn.close()
-        content = "saved"
-    return web.json_response(content)
-
-
-async def delete_filter_setting(request):
-    queries = request.rel_url.query
-    dbpath = await get_dbpath(request)
-    name = queries["name"]
-    conn = await get_db_conn(dbpath)
-    content = "fail"
-    if conn is not None:
-        cursor = await conn.cursor()
-        table = "viewersetup"
-        r = await table_exists(cursor, table)
-        if r:
-            q = (
-                "delete from "
-                + table
-                + ' where name="'
-                + name
-                + '" and datatype="filter"'
-            )
-            await cursor.execute(q)
-            await conn.commit()
-            content = "deleted"
-        else:
-            content = "no such table"
-        await cursor.close()
-        await conn.close()
-    return web.json_response(content)
-
-
 async def get_status(request):
     from aiohttp.web import Response
 
@@ -937,7 +865,6 @@ routes.append(["GET", "/result/service/getnowgannotmodules", get_nowg_annot_modu
 routes.append(["GET", "/result/widgetfile/{module_dir}/{filename}", serve_widgetfile])
 routes.append(["GET", "/result/runwidget/{module}", serve_runwidget])
 routes.append(["POST", "/result/runwidget/{module}", serve_runwidget_post])
-routes.append(["GET", "/result/service/deletefiltersetting", delete_filter_setting])
 routes.append(["GET", "/result/service/smartfilters", load_smartfilters])
 routes.append(["GET", "/result/service/samples", get_samples])
 routes.append(["GET", "/webapps/{module}/widgets/{widget}", serve_webapp_runwidget])

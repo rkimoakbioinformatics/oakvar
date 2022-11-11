@@ -356,20 +356,6 @@ async def submit(request):
     return json_response(job.get_info_dict())
 
 
-def count_lines(f):
-    n = 0
-    for _ in f:
-        n += 1
-    return n
-
-
-def get_expected_runtime(num_lines, annotators):
-    mapper_vps = 1000
-    annot_vps = 5000
-    agg_vps = 8000
-    return num_lines * (1 / mapper_vps + len(annotators) / annot_vps + 1 / agg_vps)
-
-
 def get_annotators(_):
     from aiohttp.web import json_response
     from ...module.local import get_local_module_infos

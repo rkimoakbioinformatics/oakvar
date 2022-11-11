@@ -411,15 +411,6 @@ def write_install_marks(args={}):
     wf.close()
 
 
-def install_module_dependency(conf={}, args={}):
-    from ..cli.module import collect_module_name_and_versions
-    requires = conf.get("requires", [])
-    if not requires:
-        return
-    mn_vs = collect_module_name_and_versions(requires, args=args)
-    for module_name, version in mn_vs.items():
-        install_module(module_name, version=version, args=args)
-
 def install_module_from_url(url, args={}):
     from pathlib import Path
     from ..system import get_modules_dir
