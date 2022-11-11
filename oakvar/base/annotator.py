@@ -225,7 +225,7 @@ class BaseAnnotator(object):
 
     def log_progress(self, lnum):
         from time import time
-        from ..util.util import update_status
+        from ..util.run import update_status
         from ..consts import JOB_STATUS_UPDATE_INTERVAL
 
         if not self.last_status_update_time or not self.conf:
@@ -273,7 +273,7 @@ class BaseAnnotator(object):
         if self.logger is None:
             return
         from time import time, asctime, localtime
-        from ..util.util import update_status
+        from ..util.run import update_status
 
         status = f"Started {self.conf['title']} ({self.module_name})"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
@@ -584,6 +584,7 @@ class BaseAnnotator(object):
 
         if self.output_basename is None or self.output_dir is None:
             raise SetupError(self.module_name)
+        self.logger = getLogger("oakvar." + self.module_name)
         self.error_logger = getLogger("err." + self.module_name)
 
     def _get_input(self):

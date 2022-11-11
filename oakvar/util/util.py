@@ -337,31 +337,6 @@ def humanize_bytes(num, binary=False):
     return "{quotient} {unit}".format(quotient=quot_str, unit=unit)
 
 
-def write_log_msg(logger, e, quiet=True):
-    if hasattr(e, "msg"):
-        if type(e.msg) == list:
-            for l in e.msg:
-                logger.info(l)
-                if not quiet:
-                    print(l)
-        else:
-            logger.info(e)
-            if not quiet:
-                print(e)
-    else:
-        logger.info(e)
-        if not quiet:
-            print(e)
-
-
-def get_simplenamespace(d):
-    from types import SimpleNamespace
-
-    if type(d) == dict:
-        d = SimpleNamespace(**d)
-    return d
-
-
 def get_dict_from_namespace(n):
     from types import SimpleNamespace
     from argparse import Namespace
@@ -428,27 +403,6 @@ def compare_version(v1, v2):
         return 1
     else:
         return -1
-
-
-def show_logo():
-    print(
-        r"""
-==========================================================
- #######     ###    ##    ## ##     ##    ###    ########  
-##     ##   ## ##   ##   ##  ##     ##   ## ##   ##     ## 
-##     ##  ##   ##  ##  ##   ##     ##  ##   ##  ##     ## 
-##     ## ##     ## #####    ##     ## ##     ## ########  
-##     ## ######### ##  ##    ##   ##  ######### ##   ##   
-##     ## ##     ## ##   ##    ## ##   ##     ## ##    ##  
- #######  ##     ## ##    ##    ###    ##     ## ##     ##
-==========================================================
-                                   Oak Bioinformatics, LLC
-              Licensed under AGPL-3 and commercial license
-        Licensing and feedback: info@oakbioinformatics.com
-                                        https://oakvar.com
-""",
-        flush=True,
-    )
 
 
 def get_email_pw_from_input(email=None, pw=None, pwconfirm=False) -> Tuple[str, str]:
@@ -520,57 +474,9 @@ def get_latest_version(versions, target_version=None):
     return latest_version
 
 
-def update_status(status: str, logger=None, serveradmindb=None):
-    if logger:
-        logger.info(status)
-    if serveradmindb:
-        serveradmindb.update_job_info({"status": status})
-
-
-def announce_module(module, logger=None, serveradmindb=None):
-    update_status(
-        "Running {name}".format(name=module.name),
-        logger=logger,
-        serveradmindb=serveradmindb,
-    )
-
-
-def log_variant_exception(
-    lnum=0,
-    line="",
-    __input_data__=None,
-    unique_excs=[],
-    logger=None,
-    error_logger=None,
-    e=None,
-):
-    import traceback
-
-    if logger:
-        err_str = traceback.format_exc().rstrip()
-        if err_str.endswith("None"):
-            err_str_log = str(e)
-        else:
-            err_str_log = err_str
-        if not err_str_log in unique_excs:
-            unique_excs.append(err_str_log)
-            logger.error(err_str_log)
-    if error_logger:
-        error_logger.error("\n[{:d}]{}\n({})\n#".format(lnum, line.rstrip(), str(e)))
-
 def escape_glob_pattern(pattern):
     new_pattern = "[[]".join(["[]]".join(v.split("]")) for v in pattern.split("[")])
     return new_pattern.replace("*", "[*]").replace("?", "[?]")
-
-def get_y_or_n():
-    while True:
-        resp = input("Proceed? ([y]/n) > ")
-        if resp == "y" or resp == "":
-            return True
-        if resp == "n":
-            return False
-        else:
-            continue
 
 def get_random_string(k=16):
     from random import choices
@@ -580,18 +486,6 @@ def get_random_string(k=16):
 def close_log_handlers(logger):
     for handler in logger.handlers:
         handler.close()
-
-def print_log_handlers():
-    import logging
-
-    for k,v in logging.Logger.manager.loggerDict.items()  :
-        if "oakvar" in k:
-            print('+ [%s] {%s} ' % (str.ljust( k, 20)  , str(v.__class__)[8:-2]) ) 
-            if not isinstance(v, logging.PlaceHolder):
-                for h in v.handlers:
-                    print('     +++',str(h.__class__)[8:-2] )
-                    for fld,val in h.__dict__.items():
-                        print('%s%s=%s' %("   -", fld,val))
 
 def get_result_dbpath(output_dir: str, run_name: str):
     from pathlib import Path

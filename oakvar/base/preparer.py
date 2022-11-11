@@ -139,7 +139,7 @@ class BasePreparer(object):
     def run(self):
         from time import time, asctime, localtime
         from ..exceptions import SetupError
-        from ..util.util import update_status
+        from ..util.run import update_status
 
         self.run_setups()
         start_time = time()

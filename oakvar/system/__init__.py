@@ -8,7 +8,7 @@ def setup_system(args=None):
     from ..cli.module import installbase
     from .consts import sys_conf_path_key
     from ..store.ov import setup_ov_store_cache
-    from ..util.util import show_logo
+    from ..util.run import show_logo
     from ..exceptions import ArgumentError
     from ..gui.websubmit.serveradmindb import setup_serveradmindb
 

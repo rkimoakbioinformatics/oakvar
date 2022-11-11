@@ -98,7 +98,7 @@ class Aggregator(object):
 
     def run(self):
         from time import time, asctime, localtime
-        from ..util.util import update_status
+        from ..util.run import update_status
 
         self._setup()
         if self.input_base_fname == None:

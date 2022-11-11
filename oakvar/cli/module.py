@@ -271,7 +271,7 @@ def install(args, __name__="module install"):
     from ..module import install_module_from_url
     from ..module import install_module_from_zip_path
     from ..util.util import quiet_print
-    from ..util.util import get_y_or_n
+    from ..util.run import get_y_or_n
     from ..util.download import is_url
     from ..util.download import is_zip_path
     from ..store.db import try_fetch_ov_store_cache

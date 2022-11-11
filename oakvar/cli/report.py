@@ -358,7 +358,7 @@ class BaseReporter:
     def log_run_start(self):
         from time import asctime, localtime
         import oyaml as yaml
-        from ..util.util import update_status
+        from ..util.run import update_status
 
         self.write_log("started: %s" % asctime(localtime(self.start_time)))
         if self.cf and self.cf.filter:
@@ -385,7 +385,7 @@ class BaseReporter:
         from time import time
         from time import asctime
         from time import localtime
-        from ..util.util import update_status
+        from ..util.run import update_status
 
         _ = user
         try:

@@ -210,7 +210,7 @@ class BaseMapper(object):
     def run(self, __pos_no__):
         from time import time, asctime, localtime
         from ..exceptions import SetupError
-        from ..util.util import update_status
+        from ..util.run import update_status
 
         self.base_setup()
         if (
@@ -237,7 +237,7 @@ class BaseMapper(object):
 
     def process_file(self):
         from time import time
-        from ..util.util import update_status
+        from ..util.run import update_status
 
         if not self.reader or not self.crx_writer:
             return

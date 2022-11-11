@@ -226,7 +226,7 @@ class BasePostAggregator(object):
         from ..exceptions import ConfigurationError
         from ..exceptions import LoggerError
         from ..exceptions import SetupError
-        from ..util.util import update_status
+        from ..util.run import update_status
 
 
         if self.conf is None:
@@ -262,7 +262,7 @@ class BasePostAggregator(object):
     def process_file(self):
         from time import time 
         from ..exceptions import ConfigurationError
-        from ..util.util import update_status
+        from ..util.run import update_status
 
         if self.conf is None:
             raise ConfigurationError()

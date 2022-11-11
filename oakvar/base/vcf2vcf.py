@@ -294,7 +294,7 @@ class VCF2VCF:
 
     def log_progress(self, lnum):
         from time import time
-        from ..util.util import update_status
+        from ..util.run import update_status
 
         if self.last_status_update_time is None:
             return
@@ -310,7 +310,7 @@ class VCF2VCF:
         from oakvar.util.seq import normalize_variant_dict_left
         from oakvar.module.local import load_modules
         from oakvar.util.util import quiet_print
-        from oakvar.util.util import log_variant_exception
+        from oakvar.util.run import log_variant_exception
         from oakvar.exceptions import IgnoredVariant
         from os.path import join
         from re import compile

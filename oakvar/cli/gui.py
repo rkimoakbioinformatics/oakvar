@@ -101,7 +101,7 @@ def get_ssl_context(args={}):
 def main(url=None, args={}):
     from webbrowser import open as open_browser
     from ..util.util import quiet_print
-    from ..util.util import show_logo
+    from ..util.run import show_logo
     from ..gui.server import WebServer
     from ..gui.util import get_host_port
 

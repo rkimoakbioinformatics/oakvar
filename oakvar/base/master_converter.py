@@ -409,7 +409,7 @@ class MasterConverter(object):
         from oakvar.exceptions import LoggerError
         from oakvar.exceptions import InvalidModule
         from oakvar.util.seq import normalize_variant_left
-        from oakvar.util.util import update_status
+        from oakvar.util.run import update_status
 
         self.setup()
         if (

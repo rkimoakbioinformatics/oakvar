@@ -170,7 +170,7 @@ class Runner(object):
     def download_url_input(self, input_no):
         from ..exceptions import NoInput
         from ..util.util import is_url, humanize_bytes
-        from ..util.util import update_status
+        from ..util.run import update_status
         import os
         import requests
 
@@ -300,7 +300,7 @@ class Runner(object):
                     )
 
     async def do_step_converter(self):
-        from ..util.util import update_status
+        from ..util.run import update_status
         from time import time
 
         if (
@@ -320,7 +320,7 @@ class Runner(object):
                     self.logger.info(msg)
 
     async def do_step_preparer(self):
-        from ..util.util import update_status
+        from ..util.run import update_status
         from time import time
 
         if (
@@ -337,7 +337,7 @@ class Runner(object):
 
     async def do_step_mapper(self):
         from time import time
-        from ..util.util import update_status
+        from ..util.run import update_status
 
         self.mapper_ran = False
         if (
@@ -354,7 +354,7 @@ class Runner(object):
 
     async def do_step_annotator(self):
         from time import time
-        from ..util.util import update_status
+        from ..util.run import update_status
 
         self.annotator_ran = False
         self.done_annotators = {}
@@ -379,7 +379,7 @@ class Runner(object):
             update_status("annotator(s) finished in {0:.3f}s".format(rtime), logger=self.logger, serveradmindb=self.serveradmindb)
 
     async def do_step_aggregator(self):
-        from ..util.util import update_status
+        from ..util.run import update_status
 
         if (
             self.endlevel >= self.runlevels["aggregator"]
@@ -397,7 +397,7 @@ class Runner(object):
             self.aggregator_ran = True
 
     async def do_step_postaggregator(self):
-        from ..util.util import update_status
+        from ..util.run import update_status
 
         if (
             self.endlevel >= self.runlevels["postaggregator"]
@@ -408,7 +408,7 @@ class Runner(object):
             self.run_postaggregators()
 
     async def do_step_reporter(self):
-        from ..util.util import update_status
+        from ..util.run import update_status
 
         if (
             self.endlevel >= self.runlevels["reporter"]
@@ -451,7 +451,7 @@ class Runner(object):
 
     async def main(self):
         from time import time, asctime, localtime
-        from ..util.util import update_status
+        from ..util.run import update_status
         from ..consts import JOB_STATUS_FINISHED
         from ..consts import JOB_STATUS_ERROR
 
@@ -1181,7 +1181,7 @@ class Runner(object):
         from types import SimpleNamespace
         from ..exceptions import SetupError
         from ..util.admin_util import get_packagedir
-        from ..util.util import announce_module
+        from ..util.run import announce_module
 
         if self.conf is None or self.args is None:
             raise SetupError()
@@ -1220,11 +1220,11 @@ class Runner(object):
         self.genome_assembiles = ret.get("assemblies")
 
     def run_preparers(self):
-        from ..util.util import announce_module
+        from ..util.run import announce_module
         from ..exceptions import SetupError
         from time import time
         from ..util.util import load_class
-        from ..util.util import update_status
+        from ..util.run import update_status
 
         if self.conf is None:
             raise SetupError()
@@ -1397,7 +1397,7 @@ class Runner(object):
     def run_aggregator_level(self, level):
         from time import time
         from ..base.aggregator import Aggregator
-        from ..util.util import update_status
+        from ..util.run import update_status
 
         if self.append_mode and level not in ["variant", "gene"]:
             return
@@ -1434,10 +1434,10 @@ class Runner(object):
     def run_postaggregators(self):
         import json
         from time import time
-        from ..util.util import announce_module
+        from ..util.run import announce_module
         from ..exceptions import SetupError
         from ..util.util import load_class
-        from ..util.util import update_status
+        from ..util.run import update_status
         from ..system.consts import default_postaggregator_names
 
         if self.conf is None:
@@ -1472,7 +1472,7 @@ class Runner(object):
         from ..exceptions import NoInput
         from time import time
         from ..util.util import load_class
-        from ..util.util import update_status
+        from ..util.run import update_status
         from types import SimpleNamespace
         from ..base import vcf2vcf
         from os.path import abspath
@@ -1521,9 +1521,9 @@ class Runner(object):
         from ..exceptions import SetupError
         from ..exceptions import NoInput
         from ..util.util import load_class
-        from ..util.util import update_status
+        from ..util.run import update_status
         from ..exceptions import ModuleNotExist
-        from ..util.util import announce_module
+        from ..util.run import announce_module
 
         if (
             self.run_name is None
@@ -1893,7 +1893,7 @@ class Runner(object):
         await conn.close()
 
     def run_summarizers(self):
-        from ..util.util import announce_module
+        from ..util.run import announce_module
 
         for module in self.ordered_summarizers:
             announce_module(module, serveradmindb=self.serveradmindb)
@@ -2013,7 +2013,7 @@ class Runner(object):
         from ..util.util import filter_affected_cols
         from ..consts import base_smartfilters
         from ..exceptions import SetupError
-        from ..util.util import update_status
+        from ..util.run import update_status
 
         if self.run_name is None or self.args is None or self.output_dir is None:
             raise SetupError()
