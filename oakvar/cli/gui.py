@@ -1,5 +1,5 @@
-from ..decorators import cli_func
-from ..decorators import cli_entry
+from . import cli_entry
+from . import cli_func
 
 protocol = None
 log_path = None

@@ -1,6 +1,6 @@
 from ..module import InstallProgressHandler
-from ..decorators import cli_func
-from ..decorators import cli_entry
+from . import cli_entry
+from . import cli_func
 
 
 @cli_entry

@@ -1,8 +1,8 @@
 import sys
 from abc import ABC, abstractmethod
 from ..exceptions import ExpectedException
-from ..decorators import cli_func
-from ..decorators import cli_entry
+from . import cli_entry
+from . import cli_func
 
 
 class NoReportReader(ExpectedException):
