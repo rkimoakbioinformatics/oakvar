@@ -99,16 +99,12 @@ async def get_user_job_dbpath(request, eud={}) -> Optional[str]:
     return dbpath
 
 
-async def get_user_job_log(request, eud={}) -> Optional[str]:
-    from pathlib import Path
-
+async def get_user_job_log_path(request, eud={}) -> Optional[str]:
     run_path = await get_user_job_run_path(request, eud=eud)
     if not run_path:
         return None
     log_path = run_path + ".log"
-    if not Path(log_path).exists():
-        return None
-    return str(log_path)
+    return log_path
 
 
 def get_user_jobs_dir_list() -> Optional[list]:

@@ -179,7 +179,7 @@ def process_job_options(submit_options: dict):
         submit_options["use_server_input_files"] = False
     run_name = input_fnames[0]
     if len(input_fnames) > 1:
-        run_name += "_and_" + str(len(input_fnames) - 1) + "_files"
+        run_name += "_etc"
     submit_options["input_fnames"] = input_fnames
     submit_options["run_name"] = run_name
     job_name = job_options.get("job_name")
@@ -531,11 +531,12 @@ async def download_db(request):
 
 async def get_job_log(request):
     from aiohttp.web import Response
-    from .userjob import get_user_job_log
+    from .userjob import get_user_job_log_path
+    from pathlib import Path
 
     eud = await get_eud_from_request(request)
-    log_path = await get_user_job_log(request, eud=eud)
-    if not log_path:
+    log_path = await get_user_job_log_path(request, eud=eud)
+    if not log_path or not Path(log_path).exists():
         return Response(status=404)
     with open(log_path) as f:
         return Response(text=f.read())

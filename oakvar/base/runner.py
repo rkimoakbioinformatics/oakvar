@@ -715,7 +715,6 @@ class Runner(object):
         self.remove_absent_inputs()
         if not self.inputs:
             raise NoInput()
-        self.inputs.sort()
         self.num_input = len(self.inputs)
 
     def set_start_end_levels(self):
