@@ -44,7 +44,7 @@ from .base.mapper import BaseMapper
 from .base.annotator import BaseAnnotator
 from .base.postaggregator import BasePostAggregator
 from .base.report_filter import ReportFilter
-from .cli.report import BaseReporter
+from .base.reporter import BaseReporter
 from .base.commonmodule import BaseCommonModule
 from .base.vcf2vcf import VCF2VCF
 from .util.inout import FileReader

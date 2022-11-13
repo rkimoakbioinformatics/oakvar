@@ -49,6 +49,7 @@ class BaseAnnotator(object):
         self.log_path = None
         self.unique_excs = []
         self.log_handler = None
+        self.module_options = None
         self._define_cmd_parser()
         self.args = get_args(self.cmd_arg_parser, inargs, inkwargs)
         self.parse_cmd_args(inargs, inkwargs)
@@ -196,6 +197,7 @@ class BaseAnnotator(object):
         import re
         from pathlib import Path
         from ..util.util import get_args
+        from ..util.run import get_module_options
 
         args = get_args(self.cmd_arg_parser, inargs, inkwargs)
         self.primary_input_path = Path(args["input_file"]).absolute()
@@ -214,6 +216,7 @@ class BaseAnnotator(object):
             self.output_basename = self.primary_input_path.name
             if Path(self.output_basename).suffix in [".crv", ".crg", ".crx"]:
                 self.output_basename = self.output_basename[:-4]
+        self.module_options = get_module_options(args)
         self.args = args
 
     def handle_jsondata(self, output_dict):

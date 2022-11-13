@@ -9,7 +9,7 @@ class BasePostAggregator(object):
         self.output_dir = None
         self.level = None
         self.levelno = None
-        self.confs = None
+        self.module_options = None
         self.db_path = None
         self.logger = None
         self.error_logger = None
@@ -77,10 +77,10 @@ class BasePostAggregator(object):
         return parser
 
     def parse_cmd_args(self, inargs, inkwargs):
-        from json import loads
         from ..exceptions import SetupError
         from ..exceptions import ParserError
         from ..util.util import get_args
+        from ..util.run import get_module_options
         from ..util.util import get_result_dbpath
 
         parser = self.get_cmd_parser()
@@ -97,10 +97,7 @@ class BasePostAggregator(object):
         if not self.run_name:
             raise ParserError("postaggregator run_name")
         self.db_path = get_result_dbpath(self.output_dir, self.run_name)
-        self.confs = None
-        if args.get("confs"):
-            confs = args.get("confs").lstrip("'").rstrip("'").replace("'", '"')
-            self.confs = loads(confs)
+        self.module_options = get_module_options(args)
         self.args = args
 
     def handle_legacy_data(self, output_dict: dict):

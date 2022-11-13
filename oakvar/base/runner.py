@@ -39,7 +39,7 @@ class Runner(object):
         self.package_conf = {}
         self.args = None
         self.main_conf = {}
-        self.conf_run = {}
+        self.run_conf = {}
         self.conf_path = None
         self.conf = {}
         self.num_input = None
@@ -399,29 +399,28 @@ class Runner(object):
         from types import SimpleNamespace
         from ..util.admin_util import get_user_conf
 
-        full_args = args
         # package including -a (add) and -A (replace)
         if "run" in self.package_conf:
             for k, v in self.package_conf.get("run", {}).items():
                 if k == "annotators" and v and isinstance(v, list):
-                    if not full_args.get("annotators_replace"):
+                    if not args.get("annotators_replace"):
                         for v2 in v:
-                            if v2 not in full_args.get("annotators", []):
-                                full_args["annotators"].append(v2)
+                            if v2 not in args.get("annotators", []):
+                                args["annotators"].append(v2)
                 else:
-                    if k not in full_args or not full_args[k]:
-                        full_args[k] = v
-        self.conf_path = full_args.get("confpath", None)
-        self.make_self_conf(full_args)
+                    if k not in args or not args[k]:
+                        args[k] = v
+        self.conf_path = args.get("confpath", None)
+        self.make_self_conf(args)
         self.main_conf = get_user_conf() or {}
-        self.conf_run = self.conf.get("run", {})
-        for k, v in self.conf_run.items():
-            if k not in full_args or (not full_args[k] and v):
-                full_args[k] = v
-        if full_args.get("annotators_replace"):
-            full_args["annotators"] = full_args.get("annotators_replace")
-        self.args = SimpleNamespace(**full_args)
-        self.process_module_option()
+        self.run_conf = self.conf.get("run", {})
+        for k, v in self.run_conf.items():
+            if k not in args or (not args[k] and v):
+                args[k] = v
+        if args.get("annotators_replace"):
+            args["annotators"] = args.get("annotators_replace")
+        self.args = SimpleNamespace(**args)
+        self.process_module_options()
 
     def connect_admindb_if_needed(self):
         from ..gui.websubmit.serveradmindb import ServerAdminDb
@@ -438,7 +437,7 @@ class Runner(object):
 
         if args is None:
             raise SetupError()
-        self.conf_run = args.get("conf", {}).get("run", {})
+        self.run_conf = args.get("conf", {}).get("run", {})
         confs = args.get("confs")
         if confs:
             conf_bak = self.conf
@@ -474,14 +473,14 @@ class Runner(object):
                         annot_names.append(annot_name)
         annot_names.sort()
 
-    def process_module_option(self):
+    def process_module_options(self):
         from ..exceptions import SetupError
         from ..util.util import quiet_print
 
         if self.args is None or self.conf is None:
             raise SetupError()
-        if self.args.module_option is not None:
-            for opt_str in self.args.module_option:
+        if self.args.module_options is not None:
+            for opt_str in self.args.module_options:
                 toks = opt_str.split("=")
                 if len(toks) != 2:
                     quiet_print(
@@ -497,10 +496,10 @@ class Runner(object):
                     )
                     continue
                 [module_name, key] = k.split(".")
-                if module_name not in self.conf_run:
-                    self.conf_run[module_name] = {}
+                if module_name not in self.run_conf:
+                    self.run_conf[module_name] = {}
                 v = toks[1]
-                self.conf_run[module_name][key] = v
+                self.run_conf[module_name][key] = v
 
     def remove_absent_inputs(self):
         from pathlib import Path
@@ -703,7 +702,7 @@ class Runner(object):
         if self.args is None:
             raise SetupError()
         if self.args.inputs and len(self.args.inputs) == 0:
-            inputs = self.conf_run.get("inputs")
+            inputs = self.run_conf.get("inputs")
             if inputs:
                 if type(inputs) == list:
                     self.args.inputs = inputs
@@ -1464,7 +1463,7 @@ class Runner(object):
             "genome": self.args.genome,
             "serveradmindb": self.serveradmindb,
         }
-        arg_dict["conf"] = self.conf_run
+        arg_dict["conf"] = self.run_conf
         if self.args.forcedinputformat is not None:
             arg_dict["format"] = self.args.forcedinputformat
         if self.args.unique_variants:
@@ -1492,17 +1491,18 @@ class Runner(object):
         from time import time
         from ..util.util import load_class
         from ..util.run import update_status
+        from ..consts import MODULE_OPTIONS_KEY
 
         if self.conf is None:
             raise SetupError()
         for module_name, module in self.preparers.items():
-            module_conf = self.conf_run.get(module_name, {})
+            module_conf = self.run_conf.get(module_name, {})
             kwargs = {
                 "script_path": module.script_path,
                 "input_file": self.crvinput,
                 "run_name": self.run_name,
                 "output_dir": self.output_dir,
-                "confs": module_conf,
+                MODULE_OPTIONS_KEY: module_conf,
                 "serveradmindb": self.serveradmindb,
             }
             module_cls = load_class(module.script_path, "Preparer")
@@ -1608,7 +1608,6 @@ class Runner(object):
         run_args = {}
         for module in self.annotators_to_run.values():
             inputpath = None
-            # Make command
             if module.level == "variant":
                 if module.conf.get("input_format"):
                     input_format = module.conf["input_format"]
@@ -1618,12 +1617,10 @@ class Runner(object):
                         inputpath = self.crxinput
                     else:
                         raise Exception("Incorrect input_format value")
-                        # inputpath = self.input
                 else:
                     inputpath = self.crvinput
             elif module.level == "gene":
                 inputpath = self.crginput
-            # secondary_opts = []
             secondary_inputs = []
             if "secondary_inputs" in module.conf:
                 secondary_module_names = module.conf["secondary_inputs"]
@@ -1651,7 +1648,7 @@ class Runner(object):
                 "secondary_inputs": secondary_inputs,
                 "quiet": self.args.quiet,
                 "log_path": self.log_path,
-                "run_conf": self.conf_run.get(module.name, {}),
+                "module_options": self.run_conf.get(module.name, {}),
             }
             if self.run_name != None:
                 kwargs["run_name"] = self.run_name
@@ -1756,13 +1753,13 @@ class Runner(object):
         return v_aggregator.db_path
 
     def run_postaggregators(self):
-        import json
         from time import time
         from ..util.run import announce_module
         from ..exceptions import SetupError
         from ..util.util import load_class
         from ..util.run import update_status
         from ..system.consts import default_postaggregator_names
+        from ..consts import MODULE_OPTIONS_KEY
 
         if self.conf is None:
             raise SetupError()
@@ -1775,12 +1772,9 @@ class Runner(object):
                 "output_dir": self.output_dir,
                 "serveradmindb": self.serveradmindb,
             }
-            postagg_conf = {}
-            postagg_conf.update(self.conf_run.get(module_name, {}))
+            postagg_conf = self.run_conf.get(module_name, {})
             if postagg_conf:
-                confs = json.dumps(postagg_conf)
-                confs = "'" + confs.replace("'", '"') + "'"
-                arg_dict["confs"] = confs
+                arg_dict[MODULE_OPTIONS_KEY] = postagg_conf
             post_agg_cls = load_class(module.script_path, "PostAggregator")
             if not post_agg_cls:
                 post_agg_cls = load_class(module.script_path, "CravatPostAggregator")
@@ -1860,6 +1854,7 @@ class Runner(object):
         from ..util.run import update_status
         from ..exceptions import ModuleNotExist
         from ..util.run import announce_module
+        from ..consts import MODULE_OPTIONS_KEY
 
         if (
             self.run_name is None
@@ -1883,7 +1878,7 @@ class Runner(object):
             announce_module(module, serveradmindb=self.serveradmindb)
             if module is None:
                 raise ModuleNotExist(module_name)
-            arg_dict = dict(vars(self.args))
+            arg_dict = {} #dict(vars(self.args))
             arg_dict["script_path"] = module.script_path
             arg_dict["dbpath"] = os.path.join(
                 self.output_dir, self.run_name + ".sqlite"
@@ -1892,6 +1887,7 @@ class Runner(object):
             arg_dict["output_dir"] = self.output_dir
             arg_dict["module_name"] = module_name
             arg_dict["conf"] = self.conf
+            arg_dict[MODULE_OPTIONS_KEY] = self.run_conf.get(module_name, {})
             Reporter = load_class(module.script_path, "Reporter")
             reporter = Reporter(arg_dict)
             stime = time()
@@ -2081,6 +2077,4 @@ class Runner(object):
                 serveradmindb=self.serveradmindb,
             )
             self.report_response = await self.run_reporter()
-
-
 

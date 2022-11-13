@@ -25,7 +25,6 @@ FINISHED = "Finished"
 ABORTED = "Aborted"
 ERROR = "Error"
 
-
 class Job(object):
     def __init__(self, job_dir):
         self.info = {}
@@ -135,31 +134,58 @@ def create_new_job_dir(jobs_dir: str) -> str:
     return job_dir
 
 
+def add_module_option(job_options: dict, module_name, option_name, option_value):
+    from ...consts import MODULE_OPTIONS_KEY
+
+    if not MODULE_OPTIONS_KEY in job_options:
+        job_options[MODULE_OPTIONS_KEY] = {}
+    if not module_name in job_options[MODULE_OPTIONS_KEY]:
+        job_options[MODULE_OPTIONS_KEY][module_name] = {}
+    job_options[MODULE_OPTIONS_KEY][module_name][option_name] = option_value
+
+def update_job_options(job_options: dict, data: dict):
+    from ...consts import MODULE_OPTIONS_KEY
+
+    for k, v in data.items():
+        if k == MODULE_OPTIONS_KEY:
+            if not MODULE_OPTIONS_KEY in job_options:
+                job_options[MODULE_OPTIONS_KEY] = {}
+            for module_name, option_dict in v.items():
+                if not module_name in job_options[MODULE_OPTIONS_KEY]:
+                    job_options[MODULE_OPTIONS_KEY][module_name] = {}
+                for option_name, option_value in option_dict.items():
+                    job_options[MODULE_OPTIONS_KEY][module_name][option_name] = option_value
+        else:
+            job_options[k] = v
+    return job_options
+
 async def save_job_input_files(request, job_dir: str) -> dict:
-    from os.path import join
+    from pathlib import Path
+    from ...util.util import get_unique_path
 
     submit_options = {}
     job_options = {}
     input_files = []
+    job_options = {}
     reader = await request.multipart()
-    cc_cohorts_path = None
     while True:
         part = await reader.next()
         if not part:
             break
         if part.name.startswith("file_"):
             input_files.append(part)
-            wfname = part.filename
-            wpath = join(job_dir, wfname)
-            with open(wpath, "wb") as wf:
+            path = Path(job_dir) / part.filename
+            with open(path, "wb") as wf:
                 wf.write(await part.read())
         elif part.name == "options":
-            job_options = await part.json()
-        elif part.name == "casecontrol":
-            cc_cohorts_path = join(job_dir, part.filename)
-            submit_options["cc_cohorts_path"] = cc_cohorts_path
-            with open(cc_cohorts_path, "wb") as wf:
+            job_options = update_job_options(job_options, await part.json())
+        elif part.name.startswith("module_option_file__"):
+            [_, module_name, option_name] = part.name.split("__")
+            fname = f"{module_name}__{option_name}"
+            path = get_unique_path(str((Path(job_dir) / fname).absolute()))
+            with open(path, "wb") as wf:
                 wf.write(await part.read())
+            add_module_option(job_options, module_name, option_name, path)
     submit_options["job_options"] = job_options
     submit_options["input_files"] = input_files
     return submit_options
@@ -186,6 +212,18 @@ def process_job_options(submit_options: dict):
     if job_name:
         submit_options["job_name"] = job_name
 
+
+def get_module_option_args(submit_options: dict) -> Optional[list]:
+    from ...consts import MODULE_OPTIONS_KEY
+
+    if MODULE_OPTIONS_KEY not in submit_options:
+        return None
+    args = []
+    for module_name, option_dict in submit_options[MODULE_OPTIONS_KEY].items():
+        for option_name, option_value in option_dict.items():
+            arg = f"{module_name}.{option_name}={option_value}"
+            args.append(arg)
+    return args
 
 async def get_run_args(request, submit_options: dict, job_dir: str):
     from pathlib import Path
@@ -256,9 +294,11 @@ async def get_run_args(request, submit_options: dict, job_dir: str):
     if job_name:
         run_args.extend(["--jobname", f"{job_name}"])
     run_args.append("--temp-files")
-    cc_cohorts_path = submit_options.get("cc_cohorts_path")
-    if cc_cohorts_path:
-        run_args.extend(["--module-option", f"casecontrol.cohorts={cc_cohorts_path}"])
+    # module options
+    module_option_args = get_module_option_args(job_options)
+    if module_option_args:
+        run_args.append("--module-option")
+        run_args.extend(module_option_args)
     return run_args
 
 

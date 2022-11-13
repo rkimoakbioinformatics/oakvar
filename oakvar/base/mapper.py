@@ -17,7 +17,7 @@ class BaseMapper(object):
         self.crg_writer = None
         self.input_fname = None
         self.slavemode = False
-        self.confs = None
+        self.module_options = None
         self.postfix = None
         self.primary_transcript_paths = None
         self.args = None
@@ -99,8 +99,8 @@ class BaseMapper(object):
     def _parse_cmd_args(self, inargs, inkwargs):
         from os.path import abspath, split, exists
         from os import makedirs
-        from json import loads
         from ..util.util import get_args
+        from ..util.run import get_module_options
 
         args = get_args(self.cmd_parser, inargs, inkwargs)
         self.input_path = abspath(args["input_file"]) if args["input_file"] else None
@@ -116,10 +116,7 @@ class BaseMapper(object):
             self.output_base_fname = args["run_name"]
         else:
             self.output_base_fname = self.input_fname
-        self.confs = None
-        if args["confs"] is not None:
-            confs = args["confs"].lstrip("'").rstrip("'").replace("'", '"')
-            self.confs = loads(confs)
+        self.module_options = get_module_options(args)
         self.slavemode = args["slavemode"]
         self.postfix = args["postfix"]
         self.primary_transcript_paths = [v for v in args["primary_transcript"] if v]

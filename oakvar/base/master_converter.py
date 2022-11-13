@@ -40,6 +40,7 @@ class MasterConverter(object):
         self.do_liftover = None
         self.do_liftover_chrM = None
         self.lifter = None
+        self.module_options = None
         self.file_error_lines = 0
         self.total_error_lines = 0
         self.chromdict = {
@@ -93,12 +94,12 @@ class MasterConverter(object):
     def _parse_cmd_args(self, inargs, inkwargs):
         """Parse the arguments in sys.argv"""
         import sys
-        from json import loads
         from argparse import ArgumentParser, SUPPRESS
         from os.path import abspath, dirname, exists, basename
         from os import makedirs
         from oakvar.exceptions import ExpectedException
         from oakvar.util.util import get_args
+        from oakvar.util.run import get_module_options
         from oakvar.exceptions import SetupError
 
         parser = ArgumentParser()
@@ -137,24 +138,24 @@ class MasterConverter(object):
         )
         if len(sys.argv) > 1 and len(inargs) == 0:
             inargs = [sys.argv]
-        parsed_args = get_args(parser, inargs, inkwargs)
-        if "serveradmindb" in parsed_args:
-            self.serveradmindb = parsed_args.get("serveradmindb")
+        args = get_args(parser, inargs, inkwargs)
+        if "serveradmindb" in args:
+            self.serveradmindb = args.get("serveradmindb")
         self.input_format = None
-        if parsed_args["format"]:
-            self.input_format = parsed_args["format"]
-        if parsed_args["inputs"] is None:
+        if args["format"]:
+            self.input_format = args["format"]
+        if args["inputs"] is None:
             raise ExpectedException("Input files are not given.")
         self.pipeinput = False
         if (
-            parsed_args["inputs"] is not None
-            and len(parsed_args["inputs"]) == 1
-            and parsed_args["inputs"][0] == "-"
+            args["inputs"] is not None
+            and len(args["inputs"]) == 1
+            and args["inputs"][0] == "-"
         ):
             self.pipeinput = True
         self.input_paths = []
         if self.pipeinput == False:
-            self.input_paths = [abspath(x) for x in parsed_args["inputs"] if x != "-"]
+            self.input_paths = [abspath(x) for x in args["inputs"] if x != "-"]
         else:
             self.input_paths = [f"./{STDIN}"]
         self.input_dir = dirname(self.input_paths[0])
@@ -168,8 +169,8 @@ class MasterConverter(object):
             self.input_path_dict[0] = self.input_paths[0]
             self.input_path_dict2[STDIN] = 0
         self.output_dir = None
-        if parsed_args["output_dir"]:
-            self.output_dir = parsed_args["output_dir"]
+        if args["output_dir"]:
+            self.output_dir = args["output_dir"]
         else:
             self.output_dir = self.input_dir
         if self.output_dir is None:
@@ -177,19 +178,17 @@ class MasterConverter(object):
         if not (exists(self.output_dir)):
             makedirs(self.output_dir)
         self.output_base_fname = None
-        if parsed_args["name"]:
-            self.output_base_fname = parsed_args["name"]
+        if args["name"]:
+            self.output_base_fname = args["name"]
         else:
             self.output_base_fname = basename(self.input_paths[0])
-        self.given_input_assembly = parsed_args["genome"]
+        self.given_input_assembly = args["genome"]
         self.conf = {}
-        if parsed_args["confs"] is not None:
-            confs = parsed_args["confs"].lstrip("'").rstrip("'").replace("'", '"')
-            self.conf = loads(confs)
-        if "conf" in parsed_args:
-            self.conf.update(parsed_args["conf"])
-        self.unique_variants = parsed_args["unique_variants"]
-        self.args = parsed_args
+        self.module_options = get_module_options(args)
+        if "conf" in args:
+            self.conf.update(args["conf"])
+        self.unique_variants = args["unique_variants"]
+        self.args = args
 
     def open_input_file(self, input_path):
         import gzip

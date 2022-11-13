@@ -14,7 +14,7 @@ class BasePreparer(object):
         self.output_dir = None
         self.output_base_fname = None
         self.input_fname = None
-        self.confs = None
+        self.module_options = None
         self.args = None
         self.logger = None
         self.error_logger = None
@@ -59,8 +59,8 @@ class BasePreparer(object):
     def _parse_cmd_args(self, inargs, inkwargs):
         from os.path import abspath, split, exists
         from os import makedirs
-        from json import loads
         from ..util.util import get_args
+        from ..util.run import get_module_options
         from ..exceptions import NoInput
 
         args = get_args(self.cmd_parser, inargs, inkwargs)
@@ -79,13 +79,9 @@ class BasePreparer(object):
         self.output_base_fname = args.get("run_name")
         if not self.output_base_fname:
             self.output_base_fname = self.input_fname
-        self.confs = {}
-        conf = args.get("conf")
-        if conf:
-            self.confs.update(conf)
-        if args.get("confs"):
-            confs = args.get("confs").lstrip("'").rstrip("'").replace("'", '"')
-            self.confs.update(loads(confs))
+        self.module_options = {}
+        self.module_options.update(get_module_options(args) or {})
+        self.module_options.update(args.get("conf") or {})
         self.args = args
 
     def run_setups(self):

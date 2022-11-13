@@ -80,3 +80,17 @@ def show_logo():
 """,
         flush=True,
     )
+
+def get_module_options(args):
+    from json import loads
+    from ..consts import MODULE_OPTIONS_KEY
+
+    module_options = args.get(MODULE_OPTIONS_KEY)
+    if module_options:
+        if isinstance(module_options, str):
+            module_options = args.get(MODULE_OPTIONS_KEY).lstrip("'").rstrip("'").replace("'", '"')
+            module_options = loads(module_options)
+        elif not isinstance(module_options, dict):
+            module_options = None
+    return module_options
+

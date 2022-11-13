@@ -12,7 +12,7 @@ class VCF2VCF:
         self.logger = None
         self.error_logger = None
         self.cmd_arg_parser = None
-        self.confs = None
+        self.module_options = None
         self.output_path = None
         self.last_status_update_time = None
         self.output_columns = None
@@ -241,7 +241,7 @@ class VCF2VCF:
         )
         parser.add_argument("-c", dest="conf", help="Path to optional run conf file.")
         parser.add_argument(
-            "--confs", dest="confs", default="{}", help="Configuration string"
+            "--module-options", dest="module-options", default="{}", help="Configuration string"
         )
         parser.add_argument(
             "-a",
@@ -274,8 +274,8 @@ class VCF2VCF:
     # Parse the command line arguments
     def parse_cmd_args(self, inargs, inkwargs):
         import os
-        from json import loads
         from oakvar.util.util import get_args
+        from oakvar.util.run import get_module_options
         from types import SimpleNamespace
 
         args = get_args(self.cmd_arg_parser, inargs, inkwargs)
@@ -285,9 +285,7 @@ class VCF2VCF:
         if args["output_dir"]:
             self.output_dir = args["output_dir"]
         self.job_conf_path = args.get("conf")
-        self.confs = loads(
-            args.get("confs", "{}").lstrip("'").rstrip("'").replace("'", '"')
-        )
+        self.module_options = get_module_options(args)
         self.annotator_names = args.get("annotator_names", [])
         self.mapper_name = args.get("mapper_name")
         self.run_name = args.get("run_name")

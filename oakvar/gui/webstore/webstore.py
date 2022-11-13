@@ -163,7 +163,8 @@ async def get_local_manifest(_):
     local_manifest = {}
     locals = get_module_cache().local
     for k, v in locals.items():
-        local_manifest[k] = v.serialize()
+        m = v.serialize()
+        local_manifest[k] = m
     return web.json_response(local_manifest)
 
 

@@ -203,21 +203,8 @@ def get_current_time_str():
 
 
 def get_args_conf(args: dict) -> Dict:
-    from ..exceptions import ConfigurationError
-    import json
-
     if args is None:
         return {}
-    # fill with conf string
-    confs = args.get("confs")
-    if confs:
-        try:
-            confs_json = json.loads(confs.replace("'", '"'))
-        except Exception:
-            raise ConfigurationError()
-        for k, v in confs_json.items():
-            if k not in args or not args[k]:
-                args[k] = v
     # fill with run_conf dict
     run_conf = args.get("run_conf")
     if run_conf and type(run_conf) is dict:
@@ -292,7 +279,6 @@ def get_args(parser, inargs, inkwargs):
             if value and type(value) is not list:
                 inarg_dict[key] = [value]
     return inarg_dict
-
 
 def filter_affected_cols(filter):
     cols = set()
@@ -490,3 +476,14 @@ def get_result_dbpath(output_dir: str, run_name: str):
     from ..consts import result_db_suffix
 
     return str(Path(output_dir) / (run_name + result_db_suffix))
+
+def get_unique_path(path: str):
+    from pathlib import Path
+
+    count = 1
+    p = Path(path)
+    stem = p.stem
+    suffix = p.suffix
+    while p.exists():
+        p = Path(f"{stem}_{count}{suffix}")
+    return str(p)

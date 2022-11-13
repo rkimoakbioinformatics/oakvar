@@ -250,10 +250,10 @@ def add_parser_ov_run(subparsers):
         help="Deletes all previous output files for the job and generate new ones.",
     )
     parser_ov_run.add_argument(
-        "--module-option",
-        dest="module_option",
+        "--module-options",
+        dest="module_options",
         nargs="*",
-        help="Module-specific option in module_name.key=value syntax. For example, --module-option vcfreporter.type=separate",
+        help="Module-specific option in module_name.key=value syntax. For example, --module-options vcfreporter.type=separate",
     )
     parser_ov_run.add_argument(
         "--system-option",
