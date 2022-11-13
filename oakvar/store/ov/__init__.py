@@ -52,13 +52,9 @@ def module_data_url(module_name: str, version=None) -> Optional[str]:
         return None
 
 
-def setup_ov_store_cache(conf=None, args=None):
-    from ..db import drop_ov_store_cache
-    from ..db import create_ov_store_cache
+def setup_ov_store_cache(args=None):
     from ..db import fetch_ov_store_cache
 
-    drop_ov_store_cache(conf=conf, args=args)
-    create_ov_store_cache(conf=conf, args=args)
     fetch_ov_store_cache(args=args)
 
 

@@ -292,7 +292,7 @@ def show_modules_to_install(to_install, args={}):
 
 
 @cli_func
-def install(args, __name__="module install"):
+def install(args, no_fetch=False, __name__="module install"):
     from ..module import install_module
     from ..module import install_module_from_url
     from ..module import install_module_from_zip_path
@@ -303,8 +303,8 @@ def install(args, __name__="module install"):
     from ..store.db import try_fetch_ov_store_cache
     from ..exceptions import ModuleToSkipInstallation
 
-    if not try_fetch_ov_store_cache(args=args):
-        return False
+    if not no_fetch:
+        try_fetch_ov_store_cache(args=args)
     to_install = get_modules_to_install(args=args)
     if len(to_install) == 0:
         quiet_print("No module to install", args=args)
@@ -357,7 +357,7 @@ def cli_module_update(args):
 
 
 @cli_func
-def update(args, __name__="module update"):
+def update(args, no_fetch=False, __name__="module update"):
     from ..module.local import search_local
     from ..module import get_updatable
     from ..util.util import humanize_bytes
@@ -365,7 +365,8 @@ def update(args, __name__="module update"):
     from ..store.db import try_fetch_ov_store_cache
     from types import SimpleNamespace
 
-    try_fetch_ov_store_cache(args=args)
+    if not no_fetch:
+        try_fetch_ov_store_cache(args=args)
     quiet = args.get("quiet", True)
     modules = args.get("modules", [])
     requested_modules = search_local(*modules)
@@ -458,13 +459,14 @@ def cli_module_installbase(args):
 
 
 @cli_func
-def installbase(args, __name__="module installbase"):
+def installbase(args, no_fetch=False, __name__="module installbase"):
     from ..system import get_system_conf
     from ..system.consts import base_modules_key
     from types import SimpleNamespace
     from ..store.db import try_fetch_ov_store_cache
 
-    try_fetch_ov_store_cache(args=args)
+    if not no_fetch:
+        try_fetch_ov_store_cache(args=args)
     sys_conf = get_system_conf(conf=args.get("conf"))
     base_modules = sys_conf.get(base_modules_key, [])
     m_args = SimpleNamespace(
@@ -479,7 +481,7 @@ def installbase(args, __name__="module installbase"):
         md=args.get("md", None),
         quiet=args.get("quiet", True),
     )
-    ret = install(m_args)
+    ret = install(m_args, no_fetch=no_fetch)
     return ret
 
 

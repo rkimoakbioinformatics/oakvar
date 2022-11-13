@@ -21,7 +21,7 @@ def cli_func(func):
             kwargs["quiet"] = True
         args = get_args(*args, **kwargs)
         try:
-            ret = func(args)
+            ret = func(args, **kwargs)
             if args.get("to") == "stdout":
                 if ret == False:
                     ret = 1

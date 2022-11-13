@@ -58,7 +58,6 @@ class ServerAdminDb:
         self.create_tables(conn, cursor)
         self.add_admin(conn, cursor)
         self.add_default_user(conn, cursor)
-        self.add_secret_key(conn, cursor)
         self.retrieve_user_jobs_into_db()
         cursor.close()
         conn.close()
@@ -178,14 +177,6 @@ class ServerAdminDb:
 
         q = "insert or replace into users (email, role) values (?, ?)"
         cursor.execute(q, (DEFAULT_SERVER_DEFAULT_USERNAME, USER_ROLE))
-        conn.commit()
-
-    def add_secret_key(self, conn, cursor):
-        from cryptography import fernet
-
-        fernet_key = fernet.Fernet.generate_key()
-        q = "insert or replace into config (key, value) values (?, ?)"
-        cursor.execute(q, ("fernet_key", fernet_key))
         conn.commit()
 
     async def get_db_conn(self):

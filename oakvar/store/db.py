@@ -294,6 +294,24 @@ def table_exists(table: str, conf=None, conn=None, cursor=None) -> bool:
 
 
 @db_func
+def is_store_db_schema_changed(conn=Any, cursor=Any) -> bool:
+    from .consts import summary_table_cols
+    from .consts import versions_table_cols
+
+    _ = conn
+    q = f'pragma table_info("summary")'
+    cursor.execute(q)
+    cols = [row[1] for row in cursor.fetchall()]
+    if cols != summary_table_cols:
+        return True
+    q = f'pragma table_info("versions")'
+    cursor.execute(q)
+    cols = [row[1] for row in cursor.fetchall()]
+    if cols != versions_table_cols:
+        return True
+    return False
+
+@db_func
 def drop_ov_store_cache(conf=None, conn=None, cursor=None, args={}):
     from os.path import exists
     from ..system import get_cache_dir
@@ -382,6 +400,9 @@ def fetch_ov_store_cache(
     if not login_with_token_set():
         quiet_print(f"not logged in", args=args)
         return False
+    if is_store_db_schema_changed():
+        args["clean_cache_db"] = True
+        quiet_print(f"Need to fetch store cache due to schema change", args=args)
     server_last_updated, status_code = get_server_last_updated()
     local_last_updated = get_local_last_updated()
     clean_cache_files = args.get("clean_cache_files")
@@ -453,7 +474,7 @@ def fetch_conf_cache(args={}, conn=None, cursor=None, conf={}):
     params = {"idToken": id_token, "publish_time": args.get("publish_time")}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
-    quiet_print(f"fetching store cache .....", args=args)
+    quiet_print(f"fetching store cache 5/5...", args=args)
     for module_store in module_stores:
         name = module_store["name"]
         store = module_store["store"]
@@ -492,7 +513,7 @@ def fetch_logo_cache(args={}, conn=None, cursor=None, conf={}):
     params = {"idToken": id_token, "publish_time": args.get("publish_time")}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
-    quiet_print(f"fetching store cache ....", args=args)
+    quiet_print(f"fetching store cache 4/5...", args=args)
     for module_store in module_stores:
         name = module_store["name"]
         store = module_store["store"]
@@ -531,7 +552,7 @@ def fetch_readme_cache(args={}, conn=None, cursor=None, conf={}):
     params = {"idToken": id_token, "publish_time": args.get("publish_time")}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
-    quiet_print(f"fetching store cache ...", args=args)
+    quiet_print(f"fetching store cache 3/5...", args=args)
     for module_store in module_stores:
         name = module_store["name"]
         store = module_store["store"]
@@ -566,7 +587,7 @@ def fetch_summary_cache(args={}, conn=Any, cursor=Any):
     params = {"idToken": id_token, "publish_time": args.get("publish_time")}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
-    quiet_print(f"fetching store cache .", args=args)
+    quiet_print(f"fetching store cache 1/5...", args=args)
     res = s.post(url, data=params)
     if res.status_code != 200:
         if res.status_code == 401:
@@ -589,26 +610,29 @@ def fetch_summary_cache(args={}, conn=Any, cursor=Any):
 @db_func
 def fetch_versions_cache(args={}, conn=None, cursor=None):
     from requests import Session
+    from json import dumps
     from .ov.account import get_current_id_token
     from ..exceptions import StoreServerError
     from ..exceptions import AuthorizationError
     from .ov import get_store_url
     from ..util.util import quiet_print
+    from .consts import versions_table_cols
 
     if not conn or not cursor:
         return
     url = f"{get_store_url()}/fetch_versions"
     id_token = get_current_id_token(args=args)
-    params = {"idToken": id_token, "publish_time": args.get("publish_time")}
+    cols = dumps(versions_table_cols)
+    params = {"idToken": id_token, "publish_time": args.get("publish_time"), "cols": cols}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
-    quiet_print(f"fetching store cache ..", args=args)
+    quiet_print(f"fetching store cache 2/5...", args=args)
     res = s.post(url, data=params)
     if res.status_code != 200:
         if res.status_code == 401:
             raise AuthorizationError()
         elif res.status_code == 500:
-            raise StoreServerError()
+            raise StoreServerError(text=res.text)
         return False
     if args.get("clean_cache_db"):
         q = f"delete from versions"

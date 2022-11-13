@@ -18,6 +18,7 @@ versions_table_cols = [
     "code_size",
     "data_size",
     "publish_time",
+    "min_pkg_ver", # Minimum OakVar packgae version for a module
 ]
 logo_size = (275, 170)
 MODULE_PACK_SPLIT_FILE_SIZE = 100 * 1024 * 1024

@@ -28,13 +28,13 @@ def setup_system(args=None):
     if not setup_store_account(args=args, conf=conf):
         return False
     # fetch ov store cache
-    setup_ov_store_cache(conf=conf, args=args)
+    setup_ov_store_cache(args=args)
     # set up a multiuser database.
     setup_serveradmindb(args=args)
     # install base modules.
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
     args.update({"conf": conf})
-    ret = installbase(args)
+    ret = installbase(args, no_fetch=True)
     if ret is None or ret == 0 or ret is True:  # 0 or None?
         quiet_print(f"Done setting up the system", args=args)
         return True
