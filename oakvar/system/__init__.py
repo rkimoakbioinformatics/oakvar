@@ -305,9 +305,15 @@ def get_sys_conf_value(conf_key, sys_conf_path=None, conf=None):
     return None
 
 
-def set_sys_conf_value(conf_key, conf_value, sys_conf_path=None, conf=None):
+def set_sys_conf_value(key: str, in_value: str, ty: str, sys_conf_path=None, conf=None):
     sys_conf = get_system_conf(sys_conf_path=sys_conf_path, conf=conf)
-    sys_conf[conf_key] = conf_value
+    if ty == "int":
+        value = int(in_value)
+    elif ty == "float":
+        value = float(in_value)
+    else:
+        value = in_value
+    sys_conf[key] = value
     save_system_conf(sys_conf)
 
 

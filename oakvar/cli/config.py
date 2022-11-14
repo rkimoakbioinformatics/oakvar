@@ -31,12 +31,17 @@ def system(args, __name__="config system"):
     from ..system import set_sys_conf_value
     from ..util.util import quiet_print
 
-    if args.get("key"):
-        if args.get("value"):
-            set_sys_conf_value(args.get("key"), args.get("value"))
+    key = args.get("key")
+    value = args.get("value")
+    ty = args.get("type")
+    if key:
+        if value:
+            if not ty:
+                ty = "str"
+            set_sys_conf_value(key, value, ty)
             ret = None
         else:
-            ret = get_sys_conf_value(args.get("key"))
+            ret = get_sys_conf_value(key)
             quiet_print(f"{ret}", args=args)
     else:
         ret = show_system_conf(args)
@@ -87,6 +92,9 @@ def add_parser_ov_config_system(subparsers):
     parser_cli_config_oakvar.add_argument("key", nargs="?", help="Configuration key")
     parser_cli_config_oakvar.add_argument(
         "value", nargs="?", help="Configuration value"
+    )
+    parser_cli_config_oakvar.add_argument(
+        "type", nargs="?", help="Type of configuration value"
     )
     parser_cli_config_oakvar.add_argument(
         "--fmt", default="json", help="Format of output: table / json"
