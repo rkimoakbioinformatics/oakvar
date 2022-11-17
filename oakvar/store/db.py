@@ -122,6 +122,19 @@ def module_data_sources(module_name, conn=Any, cursor=Any) -> Optional[List[str]
 
 
 @db_func
+def module_min_pkg_vers(module_name, conn=Any, cursor=Any) -> Optional[List[str]]:
+    _ = conn or cursor
+    r = find_name_store(module_name)
+    if not r:
+        return None
+    name, store = r
+    q = f"select min_pkg_ver from versions where name=? and store=?"
+    cursor.execute(q, (name, store))
+    values = [r[0] for r in cursor.fetchall()]
+    return values
+
+
+@db_func
 def module_sizes(
     module_name: str, code_version: str, conn=None, cursor=None
 ) -> Optional[Tuple[int, int]]:
@@ -177,21 +190,49 @@ def remote_module_data_version(
 
 
 @db_func
-def module_latest_code_version(module_name, conn=None, cursor=None):
+def get_latest_module_code_version(module_name, conn=None, cursor=None):
     from ..util.util import get_latest_version
+    from ..util.admin_util import oakvar_version
+    from packaging.version import Version
 
     if not conn or not cursor:
         return None
     r = find_name_store(module_name)
     if not r:
         return None
+    pkg_ver = Version(oakvar_version())
     name, store = r
-    q = f"select code_version from versions where name=? and store=?"
+    q = f"select code_version, min_pkg_ver from versions where name=? and store=?"
     cursor.execute(q, (name, store))
-    code_versions = [r[0] for r in cursor.fetchall()]
+    code_versions = []
+    for row in cursor.fetchall():
+        [code_version, min_pkg_ver] = row
+        if pkg_ver >= Version(min_pkg_ver):
+            code_versions.append(code_version)
     latest_code_version = get_latest_version(code_versions)
     return latest_code_version
 
+
+@db_func
+def module_code_version_is_not_compatible_with_pkg_version(module_name: str, code_version: str, conn=Any, cursor=Any) -> Optional[str]:
+    from packaging.version import Version
+    from ..util.admin_util import oakvar_version
+
+    _ = conn
+    pkg_ver = Version(oakvar_version())
+    q = f"select min_pkg_ver from versions where name=? and code_version=?"
+    cursor.execute(q, (module_name, code_version))
+    min_pkg_ver = None
+    for row in cursor.fetchall():
+        version = row[0]
+        if Version(version) <= pkg_ver:
+            return None
+        else:
+            if min_pkg_ver is None or Version(version) < Version(min_pkg_ver):
+                min_pkg_ver = version
+    if min_pkg_ver is None:
+        min_pkg_ver = "?"
+    return min_pkg_ver
 
 @db_func
 def module_info_ls(module_name, conn=None, cursor=None):

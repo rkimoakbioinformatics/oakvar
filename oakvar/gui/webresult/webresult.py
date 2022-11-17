@@ -5,7 +5,6 @@ import sys
 import imp
 from typing import Optional
 from ... import ReportFilter
-from ...consts import base_smartfilters
 from aiohttp import web
 import time
 
@@ -802,33 +801,6 @@ async def get_modules_info(request):
     return content
 
 
-async def load_smartfilters(request):
-    dbpath = await get_dbpath(request)
-    sfs = {"base": base_smartfilters}
-    conn = await get_db_conn(dbpath)
-    if not conn:
-        return web.json_response(sfs)
-    cursor = await conn.cursor()
-    module_levels = {}
-    for level in ["variant", "gene"]:
-        q = f"select name from {level}_annotator"
-        await cursor.execute(q)
-        ret = await cursor.fetchall()
-        module_levels.update({v[0]: level for v in ret})
-    sf_table = "smartfilters"
-    if await table_exists(cursor, sf_table):
-        q = "select name, definition from {};".format(sf_table)
-        await cursor.execute(q)
-        r = await cursor.fetchall()
-        for mname, definitions in r:
-            sfs[mname] = json.loads(definitions)
-            for el in sfs[mname]:
-                el["level"] = module_levels[mname]
-    await cursor.close()
-    await conn.close()
-    return web.json_response(sfs)
-
-
 async def get_samples(request):
     dbpath = await get_dbpath(request)
     conn = await get_db_conn(dbpath)
@@ -905,7 +877,6 @@ routes.append(["GET", "/result/service/getnowgannotmodules", get_nowg_annot_modu
 routes.append(["GET", "/result/widgetfile/{module_dir}/{filename}", serve_widgetfile])
 routes.append(["GET", "/result/runwidget/{module}", serve_runwidget])
 routes.append(["POST", "/result/runwidget/{module}", serve_runwidget_post])
-routes.append(["GET", "/result/service/smartfilters", load_smartfilters])
 routes.append(["GET", "/result/service/samples", get_samples])
 routes.append(["GET", "/webapps/{module}/widgets/{widget}", serve_webapp_runwidget])
 routes.append(["GET", "/result/service/{hugo}/variants", get_variants_for_hugo])

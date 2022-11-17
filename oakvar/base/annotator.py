@@ -1,14 +1,19 @@
 class BaseAnnotator(object):
 
-    from ..consts import crv_def, crx_def, crg_def
+    from ..util.util import get_crv_def
+    from ..util.util import get_crx_def
+    from ..util.util import get_crg_def
+    from ..consts import INPUT_LEVEL_KEY
+    from ..consts import VARIANT_LEVEL_KEY
+    from ..consts import GENE_LEVEL_KEY
 
     valid_levels = ["variant", "gene"]
-    valid_input_formats = ["crv", "crx", "crg"]
-    id_col_defs = {"variant": crv_def[0], "gene": crg_def[0]}
+    valid_input_formats = [INPUT_LEVEL_KEY, VARIANT_LEVEL_KEY, GENE_LEVEL_KEY]
+    id_col_defs = {"variant": get_crv_def()[0], "gene": get_crg_def()[0]}
     default_input_columns = {
-        "crv": [x["name"] for x in crv_def],
-        "crx": [x["name"] for x in crx_def],
-        "crg": [x["name"] for x in crg_def],
+        INPUT_LEVEL_KEY: [x["name"] for x in get_crv_def()],
+        VARIANT_LEVEL_KEY: [x["name"] for x in get_crx_def()],
+        GENE_LEVEL_KEY: [x["name"] for x in get_crg_def()],
     }
     required_conf_keys = ["level", "output_columns"]
 
@@ -45,7 +50,6 @@ class BaseAnnotator(object):
         self.output_columns = None
         self.secondary_readers = {}
         self.output_writer = None
-        self.invalid_path = None
         self.log_path = None
         self.unique_excs = []
         self.log_handler = None
@@ -106,6 +110,9 @@ class BaseAnnotator(object):
             return True
 
     def _verify_conf(self):
+        from ..consts import VARIANT_LEVEL_KEY
+        from ..consts import GENE_LEVEL_KEY
+
         if self.conf is None:
             from ..exceptions import SetupError
 
@@ -134,9 +141,9 @@ class BaseAnnotator(object):
                 )
         else:
             if self.conf["level"] == "variant":
-                self.conf["input_format"] = "crv"
+                self.conf["input_format"] = VARIANT_LEVEL_KEY
             elif self.conf["level"] == "gene":
-                self.conf["input_format"] = "crg"
+                self.conf["input_format"] = GENE_LEVEL_KEY
         if "input_columns" in self.conf:
             id_col_name = self.id_col_defs[self.conf["level"]]["name"]
             if id_col_name not in self.conf["input_columns"]:
@@ -286,7 +293,7 @@ class BaseAnnotator(object):
         from time import time, asctime, localtime
         from ..util.run import update_status
 
-        status = f"Started {self.conf['title']} ({self.module_name})"
+        status = f"started {self.conf['title']} ({self.module_name})"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
         try:
             start_time = time()
@@ -302,7 +309,7 @@ class BaseAnnotator(object):
             self.process_file()
             self.postprocess()
             self.base_cleanup()
-            status = f"Started {self.conf['title']} ({self.module_name})"
+            status = f"started {self.conf['title']} ({self.module_name})"
             update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
             end_time = time()
             update_status(
@@ -493,31 +500,27 @@ class BaseAnnotator(object):
             self.secondary_readers[sec_name] = fetcher
 
     def _setup_outputs(self):
-        import os
+        from os import makedirs
+        from pathlib import Path
         from ..util.inout import FileWriter
         from ..exceptions import SetupError
+        from ..consts import VARIANT_LEVEL_OUTPUT_SUFFIX
+        from ..consts import GENE_LEVEL_OUTPUT_SUFFIX
 
         if self.conf is None or self.output_dir is None or self.output_basename is None:
             raise SetupError(module_name=self.module_name)
         level = self.conf["level"]
         if level == "variant":
-            output_suffix = "var"
+            output_suffix = VARIANT_LEVEL_OUTPUT_SUFFIX
         elif level == "gene":
-            output_suffix = "gen"
+            output_suffix = GENE_LEVEL_OUTPUT_SUFFIX
         elif level == "summary":
-            output_suffix = "sum"
+            output_suffix = ".sum"
         else:
-            output_suffix = "out"
-        if not (os.path.exists(self.output_dir)):
-            os.makedirs(self.output_dir)
-        self.output_path = os.path.join(
-            self.output_dir,
-            ".".join([self.output_basename, self.module_name, output_suffix]),
-        )
-        self.invalid_path = os.path.join(
-            self.output_dir,
-            ".".join([self.output_basename, self.module_name, "err"]),
-        )
+            output_suffix = ".out"
+        if not (Path(self.output_dir).exists):
+            makedirs(self.output_dir)
+        self.output_path = Path(self.output_dir) / f"{self.output_basename}.{self.module_name}{output_suffix}"
         if self.plain_output:
             self.output_writer = FileWriter(
                 self.output_path,
@@ -533,8 +536,8 @@ class BaseAnnotator(object):
             )
             self.output_writer.write_meta_line("version", self.annotator_version)
         skip_aggregation = []
-        for col_index, col_def in enumerate(self.conf["output_columns"]):
-            self.output_writer.add_column(col_index, col_def)
+        for col_def in self.conf["output_columns"]:
+            self.output_writer.add_column(col_def)
             if not (col_def.get("aggregate", True)):
                 skip_aggregation.append(col_def["name"])
         if not (self.plain_output):

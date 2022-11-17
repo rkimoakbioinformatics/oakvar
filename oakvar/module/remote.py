@@ -37,6 +37,7 @@ class RemoteModule(object):
             "output_columns": self.output_columns,
             "requires": self.requires,
             "latest_version": self.latest_code_version,
+            "min_pkg_ver":  self.min_pkg_ver,
         }
         return d
 
@@ -54,6 +55,7 @@ class RemoteModule(object):
             "store": self.store,
             "requires": self.requires,
             "latest_version": self.latest_code_version,
+            "min_pkg_ver":  self.min_pkg_ver,
         }
         return d
 
@@ -75,6 +77,13 @@ class RemoteModule(object):
         else:
             for code_version in self.code_versions:
                 self.versions[code_version]["data_source"] = ""
+        if self.min_pkg_vers:
+            for code_version, min_pkg_ver in zip(self.code_versions, self.min_pkg_vers):
+                self.versions[code_version]["min_pkg_ver"] = min_pkg_ver
+        else:
+            for code_version in self.min_pkg_vers:
+                self.versions[code_version]["min_pkg_ver"] = ""
+
 
     def __init__(self, __name__, **kwargs):
         from ..store import get_developer_dict
@@ -82,6 +91,7 @@ class RemoteModule(object):
         from ..store.db import module_code_versions
         from ..store.db import module_data_versions
         from ..store.db import module_data_sources
+        from ..store.db import module_min_pkg_vers
         from ..store.db import module_sizes
         from ..system import get_logo_path
         from os.path import exists
@@ -97,12 +107,14 @@ class RemoteModule(object):
         self.code_versions = module_code_versions(self.name) or []
         self.data_versions = module_data_versions(self.name) or []
         self.data_sources = module_data_sources(self.name) or []
+        self.min_pkg_vers = module_min_pkg_vers(self.name) or []
         self.make_versions()
         self.latest_code_version = get_latest_version(self.code_versions)
         self.latest_data_version = self.versions[self.latest_code_version][
             "data_version"
         ]
         self.latest_data_source = self.versions[self.latest_code_version]["data_source"]
+        self.min_pkg_ver = self.versions[self.latest_code_version]["min_pkg_ver"]
         self.code_size, self.data_size = module_sizes(
             self.name, self.latest_code_version
         ) or (0, 0)

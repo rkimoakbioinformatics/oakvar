@@ -1,152 +1,26 @@
 from os.path import join
 from os.path import dirname
 
-# built-in file column definitions
-crm_def = [
-    {"name": "original_line", "title": "Original Line", "type": "int", "width": 90},
-    {"name": "tags", "title": "User Tags", "type": "string", "width": 90},
-    {"name": "uid", "title": "UID", "type": "int", "width": 70},
-    {
-        "name": "fileno",
-        "title": "Input File Number",
-        "type": "int",
-        "width": 90,
-        "filterable": False,
-        "hidden": True,
-    },
-]
+STDIN = "stdin"
+INPUT_LEVEL_KEY = "crv"
+VARIANT_LEVEL_KEY = "crx"
+GENE_LEVEL_KEY = "crg"
+SAMPLE_LEVEL_KEY = "crs"
+MAPPING_LEVEL_KEY = "crm"
+LIFTOVER_LEVEL_KEY = "crl"
+STANDARD_INPUT_FILE_SUFFIX = "." + INPUT_LEVEL_KEY
+VARIANT_LEVEL_MAPPED_FILE_SUFFIX = "." + VARIANT_LEVEL_KEY
+GENE_LEVEL_MAPPED_FILE_SUFFIX = "." + GENE_LEVEL_KEY
+SAMPLE_FILE_SUFFIX = "." + SAMPLE_LEVEL_KEY
+MAPPING_FILE_SUFFIX = "." + MAPPING_LEVEL_KEY
+LIFTOVER_FILE_SUFFIX = "." + LIFTOVER_LEVEL_KEY
+VARIANT_LEVEL_OUTPUT_SUFFIX = ".var"
+GENE_LEVEL_OUTPUT_SUFFIX = ".gen"
 crm_idx = [["uid"], ["tags"]]
-crs_def = [
-    {"name": "uid", "title": "UID", "type": "int", "width": 70},
-    {"name": "sample_id", "title": "Sample", "type": "string", "width": 90},
-]
 crs_idx = [["uid"], ["sample_id"], ["sample_id", "uid"]]
-crv_def = [
-    {
-        "name": "uid",
-        "title": "UID",
-        "type": "int",
-        "width": 60,
-        "hidden": True,
-        "filterable": False,
-    },
-    {
-        "name": "chrom",
-        "title": "Chrom",
-        "type": "string",
-        "width": 50,
-        "category": "single",
-        "filterable": True,
-    },
-    {
-        "name": "pos",
-        "title": "Position",
-        "type": "int",
-        "width": 80,
-        "filterable": True,
-    },
-    {
-        "name": "ref_base",
-        "title": "Ref Base",
-        "type": "string",
-        "width": 50,
-        "filterable": False,
-    },
-    {
-        "name": "alt_base",
-        "title": "Alt Base",
-        "type": "string",
-        "width": 50,
-        "filterable": False,
-    },
-    {"name": "note", "title": "Note", "type": "string", "width": 50},
-]
 crv_idx = [["uid"]]
-crx_def = crv_def + [
-    {
-        "name": "coding",
-        "title": "Coding",
-        "type": "string",
-        "width": 50,
-        "category": "single",
-        "categories": ["Y"],
-    },
-    {
-        "name": "hugo",
-        "title": "Gene",
-        "type": "string",
-        "width": 70,
-        "filterable": True,
-    },
-    {
-        "name": "transcript",
-        "title": "Transcript",
-        "type": "string",
-        "width": 135,
-        "hidden": False,
-        "filterable": False,
-    },
-    {
-        "name": "so",
-        "title": "Sequence Ontology",
-        "type": "string",
-        "width": 120,
-        "category": "single",
-        "filterable": True,
-    },
-    {
-        "name": "cchange",
-        "title": "cDNA change",
-        "type": "string",
-        "width": 70,
-        "filterable": False,
-    },
-    {
-        "name": "achange",
-        "title": "Protein Change",
-        "type": "string",
-        "width": 55,
-        "filterable": False,
-    },
-    {
-        "name": "exonno",
-        "title": "Exon number",
-        "type": "int",
-        "width": 55,
-    },
-    {
-        "name": "all_mappings",
-        "title": "All Mappings",
-        "type": "string",
-        "width": 100,
-        "hidden": True,
-        "filterable": False,
-    },
-]
 crx_idx = [["uid"]]
-crg_def = [
-    {
-        "name": "hugo",
-        "title": "Gene",
-        "type": "string",
-        "width": 70,
-        "filterable": True,
-    },
-    {"name": "note", "title": "Note", "type": "string", "width": 50},
-]
 crg_idx = [["hugo"]]
-crt_def = [
-    {"name": "primary_transcript", "title": "Primary transcript", "type": "string"},
-    {"name": "alt_transcript", "title": "Alternate transcript", "type": "string"},
-]
-crt_idx = [["primary_transcript"]]
-crl_def = [
-    {"name": "uid", "title": "UID", "type": "int", "width": 70},
-    {"name": "chrom", "title": "Chrom", "type": "string", "width": 80},
-    {"name": "pos", "title": "Pos", "type": "int", "width": 80},
-    {"name": "ref_base", "title": "Reference allele", "type": "string", "width": 80},
-    {"name": "alt_base", "title": "Alternate allele", "type": "string", "width": 80},
-]
 
 exit_codes = {"alreadycrv": 2, 2: "alreadycrv"}
 
@@ -158,98 +32,6 @@ GENE = 1
 LEVELS = {"variant": VARIANT, "gene": GENE}
 
 gene_level_so_exclude = ["2KU", "2KD"]
-
-base_smartfilters = [
-    {
-        "name": "popstats",
-        "title": "Population AF <=",
-        "level": "variant",
-        "description": "Set a maximum allele frequency.",
-        "allowPartial": True,
-        "selector": {
-            "type": "inputFloat",
-            "defaultValue": "0.1",
-        },
-        "filter": {
-            "operator": "and",
-            "rules": [
-                {
-                    "operator": "or",
-                    "rules": [
-                        {
-                            "column": "gnomad3__af",
-                            "test": "lessThanEq",
-                            "value": "${value}",
-                        },
-                        {"column": "gnomad3__af", "test": "noData"},
-                    ],
-                },
-                {
-                    "operator": "or",
-                    "rules": [
-                        {
-                            "column": "gnomad__af",
-                            "test": "lessThanEq",
-                            "value": "${value}",
-                        },
-                        {"column": "gnomad__af", "test": "noData"},
-                    ],
-                },
-                {
-                    "operator": "or",
-                    "rules": [
-                        {
-                            "column": "thousandgenomes__af",
-                            "test": "lessThanEq",
-                            "value": "${value}",
-                        },
-                        {
-                            "column": "thousandgenomes__af",
-                            "test": "noData",
-                        },
-                    ],
-                },
-            ],
-        },
-    },
-    {
-        "name": "so",
-        "title": "Sequence Ontology",
-        "level": "variant",
-        "description": "Select sequence ontologies.",
-        "selector": {
-            "type": "select",
-            "optionsColumn": "base__so",
-            "multiple": True,
-            "defaultValue": ["MIS"],
-        },
-        "filter": {"column": "base__so", "test": "select", "value": "${value}"},
-    },
-    {
-        "name": "chrom",
-        "title": "Chromosome",
-        "level": "variant",
-        "description": "Select chromosome(s).",
-        "selector": {
-            "type": "select",
-            "multiple": True,
-            "optionsColumn": "base__chrom",
-        },
-        "filter": {"column": "base__chrom", "test": "select", "value": "${value}"},
-    },
-    {
-        "name": "coding",
-        "title": "Coding",
-        "level": "variant",
-        "description": "Include only coding/noncoding variants",
-        "selector": {
-            "type": "select",
-            "options": {"No": True, "Yes": False},
-            "defaultValue": False,
-        },
-        "filter": {"column": "base__coding", "test": "hasData", "negate": "${value}"},
-    },
-]
 
 module_tag_desc = {
     "allele frequency": "modules for studying allele frequency across populations",
@@ -290,3 +72,4 @@ JOB_STATUS_ABORTED = "Abort"
 JOB_STATUS_ERROR = "Error"
 
 MODULE_OPTIONS_KEY = "module_options"
+

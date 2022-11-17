@@ -120,10 +120,10 @@ class BasePreparer(object):
 
         if self.output_base_fname is None or self.output_dir is None:
             raise SetupError()
-        from oakvar.consts import crv_def
+        from oakvar.util.util import get_crv_def
         from oakvar.consts import crv_idx
 
-        self.writer.add_columns(crv_def)
+        self.writer.add_columns(get_crv_def())
         self.writer.write_definition()
         for index_columns in crv_idx:
             self.writer.add_index(index_columns)
@@ -143,7 +143,7 @@ class BasePreparer(object):
         ):
             raise SetupError()
         self.logger.info("started: %s" % asctime(localtime(start_time)))
-        status = f"Started {self.conf['title']} ({self.module_name})"
+        status = f"started {self.conf['title']} ({self.module_name})"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
         count = 0
         last_status_update_time = time()
@@ -175,7 +175,7 @@ class BasePreparer(object):
         self.logger.info("finished: %s" % asctime(localtime(stop_time)))
         runtime = stop_time - start_time
         self.logger.info("runtime: %6.3f" % runtime)
-        status = f"Finished {self.module_name}"
+        status = f"finished {self.module_name}"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
         self.replace_crv()
         self.end()

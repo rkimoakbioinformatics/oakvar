@@ -111,6 +111,14 @@ class InvalidModule(ExpectedException):
         super().__init__(f"module {module_name} is invalid.")
 
 
+class NoConverterFound(ExpectedException):
+    traceback = False
+    halt = True
+
+    def __init__(self, input_file):
+        super().__init__(f"No converter was found for {input_file}.")
+
+
 class NoVariantError(ExpectedException):
     traceback = False
 
@@ -123,7 +131,9 @@ class NoInput(ExpectedException):
     halt = True
 
     def __init__(self):
-        super().__init__("no valid input was given.")
+        import traceback
+        traceback.print_stack()
+        super().__init__("No valid input was given. 2. " + str(traceback.format_stack()))
 
 
 class InvalidInputFormat(ExpectedException):

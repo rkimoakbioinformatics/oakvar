@@ -84,9 +84,9 @@ def add_parser_ov_run(subparsers):
     parser_ov_run.add_argument(
         "-e", nargs="+", dest="excludes", default=[], help="modules to exclude"
     )
-    parser_ov_run.add_argument("-n", dest="run_name", help="name of oakvar run")
+    parser_ov_run.add_argument("-n", dest="run_name", nargs="+", help="name of oakvar run")
     parser_ov_run.add_argument(
-        "-d", dest="output_dir", default=None, help="directory for output files"
+        "-d", dest="output_dir", nargs="+", default=None, help="directory for output files"
     )
     parser_ov_run.add_argument(
         "--startat",
@@ -131,7 +131,7 @@ def add_parser_ov_run(subparsers):
             "postaggregator",
             "reporter",
         ],
-        default=None,
+        default=[],
         help="skips given stage(s).",
     )
     parser_ov_run.add_argument(
@@ -139,9 +139,6 @@ def add_parser_ov_run(subparsers):
     )
     parser_ov_run.add_argument(
         "--cs", dest="confs", default=None, help="configuration string"
-    )
-    parser_ov_run.add_argument(
-        "-v", dest="verbose", action="store_true", default=None, help="verbose"
     )
     parser_ov_run.add_argument(
         "-t",
@@ -171,7 +168,7 @@ def add_parser_ov_run(subparsers):
         help="deletes the existing log file and creates a new one.",
     )
     parser_ov_run.add_argument(
-        "--note", dest="note", default=None, help="note for the job"
+        "--note", dest="note", default="", help="note for the job"
     )
     parser_ov_run.add_argument(
         "--mp",
@@ -208,9 +205,11 @@ def add_parser_ov_run(subparsers):
         help="Write job information to admin db after job completion",
     )
     parser_ov_run.add_argument(
+        "-j",
         "--jobname",
         dest="job_name",
         type=str,
+        nargs="+",
         default=None,
         help="Job ID for server version",
     )
@@ -323,5 +322,15 @@ def add_parser_ov_run(subparsers):
         "--logtofile",
         action="store_true",
         help="Path to a log file. If given without a path, the job's run_name.log will be the log path.",
+    )
+    parser_ov_run.add_argument(
+        "--loglevel",
+        default="INFO",
+        help="Logging level (DEBUG, INFO, WARN, ERROR)",
+    )
+    parser_ov_run.add_argument(
+        "--combine-input",
+        action="store_true",
+        help="Combine input files into one result",
     )
     parser_ov_run.set_defaults(func=cli_run)

@@ -260,8 +260,9 @@ def register(args={}) -> bool:
             quiet_print(f"success", args=args)
             return True
         else:
-            quiet_print(f"{res.text}", args=args)
+            quiet_print(f"Error from the store server: {res.status_code} {res.text}", args=args)
             return False
-    except Exception as e:
-        quiet_print(f"{e}", args=args)
+    except Exception:
+        import traceback
+        traceback.print_exc()
         return False

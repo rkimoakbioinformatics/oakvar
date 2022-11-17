@@ -1,3 +1,12 @@
+from typing import Any
+from typing import Optional
+from typing import List
+from typing import Dict
+from typing import Set
+from typing import Tuple
+from typing import TextIO
+from oakvar import BaseConverter
+
 STDIN = "stdin"
 
 
@@ -6,7 +15,7 @@ class MasterConverter(object):
     ALREADYCRV = 2
 
     def __init__(self, *inargs, **inkwargs):
-        from oakvar.consts import crs_def
+        from re import compile
         from oakvar import get_wgs_reader
 
         self.logger = None
@@ -15,18 +24,15 @@ class MasterConverter(object):
         self.crs_writer = None
         self.crm_writer = None
         self.crl_writer = None
-        self.primary_converter = None
         self.converters = {}
-        self.possible_formats = []
-        self.ready_to_convert = False
-        self.input_format = None
+        self.available_input_formats = []
         self.pipeinput = False
         self.input_paths = None
         self.input_dir = None
-        self.input_path_dict = None
-        self.input_path_dict2 = None
-        self.output_dir = None
-        self.output_base_fname = None
+        self.input_path_dict = {}
+        self.input_path_dict2 = {}
+        self.output_dir: Optional[str] = None
+        self.output_base_fname: Optional[str] = None
         self.conf = None
         self.unique_variants = None
         self.error_logger = None
@@ -36,13 +42,22 @@ class MasterConverter(object):
         self.crm_path = None
         self.crs_path = None
         self.crl_path = None
-        self.cur_file = None
         self.do_liftover = None
         self.do_liftover_chrM = None
         self.lifter = None
         self.module_options = None
+        self.given_input_assembly: Optional[str] = None
+        self.converter_by_input_path: Dict[str, Optional[BaseConverter]] = {}
+        self.extra_output_columns = []
+        self.file_num_valid_variants = 0
         self.file_error_lines = 0
+        self.total_num_valid_variants = 0
         self.total_error_lines = 0
+        self.fileno = 0
+        self.total_num_converted_variants = 0
+        self.input_formats: List[str] = []
+        self.genome_assemblies: List[str] = []
+        self.base_re = compile("^[ATGC]+|[-]+$")
         self.chromdict = {
             "chrx": "chrX",
             "chry": "chrY",
@@ -51,12 +66,11 @@ class MasterConverter(object):
             "chr23": "chrX",
             "chr24": "chrY",
         }
-        self._parse_cmd_args(inargs, inkwargs)
-        self._setup_logger()
+        self.parse_cmd_args(inargs, inkwargs)
+        self.setup_logger()
         self.wgsreader = get_wgs_reader(assembly="hg38")
-        self.crs_def = crs_def.copy()
 
-    def get_genome_assembly(self, converter):
+    def get_genome_assembly(self, converter) -> str:
         from oakvar.system.consts import default_assembly_key
         from oakvar.exceptions import NoGenomeException
         from oakvar.system import get_user_conf
@@ -80,6 +94,9 @@ class MasterConverter(object):
             )
         else:
             self.do_liftover_chrM = self.do_liftover
+        if self.logger:
+            self.logger.info(f"liftover needed: {self.do_liftover}")
+            self.logger.info(f"liftover for chrM needed: {self.do_liftover_chrM}")
 
     def setup_lifter(self, genome_assembly):
         from oakvar.util.admin_util import get_liftover_chain_paths
@@ -91,61 +108,11 @@ class MasterConverter(object):
             raise InvalidGenomeAssembly(genome_assembly)
         self.lifter = LiftOver(liftover_chain_paths[genome_assembly])
 
-    def _parse_cmd_args(self, inargs, inkwargs):
-        """Parse the arguments in sys.argv"""
-        import sys
-        from argparse import ArgumentParser, SUPPRESS
-        from os.path import abspath, dirname, exists, basename
-        from os import makedirs
-        from oakvar.exceptions import ExpectedException
-        from oakvar.util.util import get_args
-        from oakvar.util.run import get_module_options
-        from oakvar.exceptions import SetupError
+    def parse_inputs(self, args):
+        from pathlib import Path
 
-        parser = ArgumentParser()
-        parser.add_argument("path", help="Path to this converter's python module")
-        parser.add_argument(
-            "inputs", nargs="*", default=None, help="Files to be converted to .crv"
-        )
-        parser.add_argument(
-            "-f", dest="format", default=None, help="Specify an input format"
-        )
-        parser.add_argument(
-            "-n", "--name", dest="name", help="Name of job. Default is input file name."
-        )
-        parser.add_argument(
-            "-d",
-            "--output-dir",
-            dest="output_dir",
-            help="Output directory. Default is input file directory.",
-        )
-        parser.add_argument(
-            "-l",
-            "--genome",
-            dest="genome",
-            default=None,
-            help="Input gene assembly. Will be lifted over to hg38",
-        )
-        parser.add_argument(
-            "--confs", dest="confs", default="{}", help="Configuration string"
-        )
-        parser.add_argument(
-            "--unique-variants",
-            dest="unique_variants",
-            default=False,
-            action="store_true",
-            help=SUPPRESS,
-        )
-        if len(sys.argv) > 1 and len(inargs) == 0:
-            inargs = [sys.argv]
-        args = get_args(parser, inargs, inkwargs)
-        if "serveradmindb" in args:
-            self.serveradmindb = args.get("serveradmindb")
-        self.input_format = None
-        if args["format"]:
-            self.input_format = args["format"]
-        if args["inputs"] is None:
-            raise ExpectedException("Input files are not given.")
+        if not args["inputs"]:
+            raise
         self.pipeinput = False
         if (
             args["inputs"] is not None
@@ -155,12 +122,10 @@ class MasterConverter(object):
             self.pipeinput = True
         self.input_paths = []
         if self.pipeinput == False:
-            self.input_paths = [abspath(x) for x in args["inputs"] if x != "-"]
+            self.input_paths = [str(Path(x).absolute()) for x in args["inputs"] if x != "-"]
         else:
             self.input_paths = [f"./{STDIN}"]
-        self.input_dir = dirname(self.input_paths[0])
-        self.input_path_dict = {}
-        self.input_path_dict2 = {}
+        self.input_dir = str(Path(self.input_paths[0]).parent)
         if self.pipeinput == False:
             for i in range(len(self.input_paths)):
                 self.input_path_dict[i] = self.input_paths[i]
@@ -168,21 +133,39 @@ class MasterConverter(object):
         else:
             self.input_path_dict[0] = self.input_paths[0]
             self.input_path_dict2[STDIN] = 0
+
+    def parse_output_dir(self, args):
+        from pathlib import Path
+        from os import makedirs
+
         self.output_dir = None
-        if args["output_dir"]:
-            self.output_dir = args["output_dir"]
-        else:
+        self.output_dir = args.get("output_dir") or None
+        if not self.output_dir:
             self.output_dir = self.input_dir
-        if self.output_dir is None:
-            raise SetupError("output directory")
-        if not (exists(self.output_dir)):
+        if not self.output_dir:
+            raise
+        if not (Path(self.output_dir).exists()):
             makedirs(self.output_dir)
-        self.output_base_fname = None
-        if args["name"]:
-            self.output_base_fname = args["name"]
-        else:
-            self.output_base_fname = basename(self.input_paths[0])
-        self.given_input_assembly = args["genome"]
+        self.output_base_fname: Optional[str] = args.get("name")
+        if not self.output_base_fname:
+            if not self.input_paths:
+                raise
+            self.output_base_fname = Path(self.input_paths[0]).name
+
+    def parse_cmd_args(self, inargs, inkwargs):
+        from oakvar.exceptions import ExpectedException
+        from oakvar.util.util import get_args
+        from oakvar.util.run import get_module_options
+
+        parser = self.get_cmd_args_parser()
+        args = get_args(parser, inargs, inkwargs)
+        if "serveradmindb" in args:
+            self.serveradmindb = args.get("serveradmindb")
+        if args["inputs"] is None:
+            raise ExpectedException("Input files are not given.")
+        self.parse_inputs(args)
+        self.parse_output_dir(args)
+        self.given_input_assembly = args.get("genome")
         self.conf = {}
         self.module_options = get_module_options(args)
         if "conf" in args:
@@ -190,7 +173,7 @@ class MasterConverter(object):
         self.unique_variants = args["unique_variants"]
         self.args = args
 
-    def open_input_file(self, input_path):
+    def get_file_object_for_input_path(self, input_path: str):
         import gzip
         from oakvar.util.util import detect_encoding
 
@@ -201,39 +184,14 @@ class MasterConverter(object):
             f = open(input_path, encoding=encoding)
         return f
 
-    def first_input_file(self):
-        import gzip
-        from sys import stdin
-        from oakvar.util.util import detect_encoding
-        from oakvar.exceptions import NoInput
-
-        if self.input_paths is None:
-            raise NoInput()
-        if self.pipeinput == False:
-            input_path = self.input_paths[0]
-            encoding = detect_encoding(input_path)
-            if input_path.endswith(".gz"):
-                f = gzip.open(input_path, mode="rt", encoding=encoding)
-            else:
-                f = open(input_path, encoding=encoding)
-        else:
-            f = stdin
-        return f
-
     def setup(self):
-        """Do necesarry pre-run tasks"""
-        if self.ready_to_convert:
-            return
-        # Read in the available converters
-        self._initialize_converters()
-        # Select the converter that matches the input format
-        self._select_primary_converter()
-        # Open the output files
-        self._open_output_files()
-        self.ready_to_convert = True
+        self.collect_converters()
+        self.check_input_format()
+        self.collect_converter_by_input()
+        self.collect_extra_output_columns()
+        self.open_output_files()
 
-    def _setup_logger(self):
-        """Open a log file and set up log handler"""
+    def setup_logger(self):
         from logging import getLogger
         from time import asctime
 
@@ -241,87 +199,98 @@ class MasterConverter(object):
         self.logger.info("started: %s" % asctime())
         self.error_logger = getLogger("err.converter")
 
-    def _initialize_converters(self):
-        from oakvar.exceptions import ExpectedException
+    def collect_converters(self):
         from oakvar.module.local import get_local_module_infos_of_type
-        from oakvar.exceptions import InvalidModule
         from oakvar.util.util import load_class
+        from oakvar.util.util import quiet_print
 
         for module_info in get_local_module_infos_of_type("converter").values():
             cls = load_class(module_info.script_path)
             converter = cls()
+            # TODO: backward compatibility
+            converter.output_dir = None
+            converter.run_name = None
+            converter.module_name = module_info.name
+            converter.name = module_info.name
+            converter.version = module_info.version
+            converter.conf = module_info.conf
             converter.script_path = module_info.script_path
+            # end of backward compatibility
             if not hasattr(converter, "format_name"):
-                raise InvalidModule(module_info.name)
+                quiet_print("{module_info.name} does not have format_name defined and thus was skipped.", args=self.args)
+                continue
             converter.module_name = module_info.name
             if converter.format_name not in self.converters:
                 self.converters[converter.format_name] = converter
             else:
-                err_msg = (
-                    "Cannot load two converters for format %s" % converter.format_name
-                )
-                raise ExpectedException(err_msg)
-        self.possible_formats = list(self.converters.keys())
+                quiet_print("{moule_info.name} is skipped because {converter.format_name} is already handled by {self.converters[converter.format_name].name}.", args=self.args)
+                continue
+        self.available_input_formats = list(self.converters.keys())
 
-    def _select_primary_converter(self):
+    def collect_converter_by_input(self):
+        if not self.input_paths:
+            return
+        for input_path in self.input_paths:
+            f = self.get_file_object_for_input_path(input_path)
+            converter = self.get_converter_for_input_file(f)
+            self.converter_by_input_path[input_path] = converter
+
+    def collect_extra_output_columns(self):
+        for converter in self.converter_by_input_path.values():
+            if not converter:
+                continue
+            if converter.conf:
+                extra_output_columns = converter.conf.get("extra_output_columns")
+                if not extra_output_columns:
+                    continue
+                for col in extra_output_columns:
+                    self.extra_output_columns.append(col)
+
+    def check_input_format(self):
         from oakvar.exceptions import InvalidInputFormat
-        from oakvar.exceptions import LoggerError
-        from oakvar.exceptions import NoInput
-        from logging import getLogger
 
-        if self.logger is None:
-            raise LoggerError()
-        if self.input_format is not None:
-            if self.input_format not in self.possible_formats:
-                raise InvalidInputFormat(self.input_format)
+        if self.args.get("input_format") and self.args.get("input_format") not in self.available_input_formats:
+            raise InvalidInputFormat(self.args.get("input_format"))
+        if self.pipeinput and not self.args.get("input_format"):
+            raise InvalidInputFormat(
+                f"--input-format should be given with pipe input"
+            )
+
+    def get_converter_for_input_file(self, f) -> Optional[BaseConverter]:
+        import sys
+        from oakvar.exceptions import ArgumentError
+
+        if f == sys.stdin:
+            if not self.args.get("input_format"):
+                raise ArgumentError(msg="--input-format option should be given if stdin is used for input.")
+            if not self.args.get("input_format") in self.converters:
+                raise ArgumentError(msg=f"{self.args.get('input_format')} is not found in installed converter modules.")
+            return self.converters[self.args.get("input_format")]
         else:
-            if self.pipeinput == False:
-                valid_formats = []
-                first_file = self.first_input_file()
-                first_file.seek(0)
-                for converter_name, converter in self.converters.items():
-                    try:
-                        check_success = converter.check_format(first_file)
-                    except:
-                        check_success = False
-                    first_file.seek(0)
-                    if check_success:
-                        valid_formats.append(converter_name)
-                if len(valid_formats) == 0:
-                    raise InvalidInputFormat(f"no converter for input found")
-                elif len(valid_formats) > 1:
-                    raise InvalidInputFormat(f"ambiguous {','.join(valid_formats)}")
-                else:
-                    self.input_format = valid_formats[0]
-            else:
-                if self.input_format is None:
-                    raise InvalidInputFormat(
-                        f"--input-format should be given with pipe input"
-                    )
-        self.primary_converter = self.converters[self.input_format]
-        self.set_converter_properties(self.primary_converter)
-        if self.input_paths is None:
-            raise NoInput()
-        if self.pipeinput == False:
-            if len(self.input_paths) > 1:
-                for fn in self.input_paths[1:]:
-                    f = self.open_input_file(fn)
-                    if not self.primary_converter.check_format(f):
-                        raise InvalidInputFormat("inconsistent input formats")
-        self.logger.info(
-            f"version: {self.primary_converter.module_name}=={self.primary_converter.version} {self.primary_converter.script_path}"
-        )
-        self.error_logger = getLogger("err." + self.primary_converter.module_name)
+            for converter_name, converter in self.converters.items():
+                f.seek(0)
+                try:
+                    check_success = converter.check_format(f)
+                except:
+                    import traceback
+                    traceback.print_exc()
+                    check_success = False
+                f.seek(0)
+                if check_success:
+                    if self.logger:
+                        self.logger.info(f"using {converter_name} for {f.name}")
+                    return converter
+        return None
 
     def set_converter_properties(self, converter):
         from oakvar.exceptions import SetupError
         from oakvar.module.local import get_module_code_version
 
-        if self.primary_converter is None or self.conf is None:
+        if self.conf is None:
             raise SetupError()
         converter.output_dir = self.output_dir
         converter.run_name = self.output_base_fname
-        module_name = self.primary_converter.format_name + "-converter"
+        module_name = converter.format_name + "-converter"
         converter.module_name = module_name
         converter.version = get_module_code_version(converter.module_name)
         if module_name in self.conf:
@@ -329,307 +298,324 @@ class MasterConverter(object):
                 converter.conf = {}
             converter.conf.update(self.conf[module_name])
 
-    def _open_output_files(self):
-        from oakvar.exceptions import SetupError
-
-        if (
-            self.output_base_fname is None
-            or self.primary_converter is None
-            or self.output_dir is None
-        ):
-            raise SetupError()
-        from oakvar.consts import (
-            crv_def,
-            crv_idx,
-            crm_def,
-            crm_idx,
-            crs_idx,
-            crl_def,
-        )
+    def setup_crv_writer(self):
+        from pathlib import Path
+        from oakvar.util.util import get_crv_def
         from oakvar.util.inout import FileWriter
-        from os.path import join
+        from oakvar.consts import crv_idx
+        from oakvar.consts import STANDARD_INPUT_FILE_SUFFIX
 
-        # Setup writer
-        self.wpath = join(self.output_dir, self.output_base_fname + ".crv")
+        if not self.output_dir or not self.output_base_fname:
+            raise
+        crv_def = get_crv_def()
+        self.wpath = Path(self.output_dir) / (self.output_base_fname + STANDARD_INPUT_FILE_SUFFIX)
         self.crv_writer = FileWriter(self.wpath)
         self.crv_writer.add_columns(crv_def)
         self.crv_writer.write_definition()
         for index_columns in crv_idx:
             self.crv_writer.add_index(index_columns)
-        self.crv_writer.wf.write(
-            "#input_format={}\n".format(self.primary_converter.format_name)
-        )
-        # Setup err file
-        self.err_path = join(self.output_dir, self.output_base_fname + ".converter.err")
-        # Setup crm line mappings file
-        self.crm_path = join(self.output_dir, self.output_base_fname + ".crm")
+
+    def setup_crs_writer(self):
+        from pathlib import Path
+        from oakvar.util.util import get_crs_def
+        from oakvar.util.inout import FileWriter
+        from oakvar.consts import crs_idx
+        from oakvar.consts import SAMPLE_FILE_SUFFIX
+
+        if not self.output_dir or not self.output_base_fname:
+            raise
+        crs_def = get_crs_def()
+        self.crs_path = Path(self.output_dir) / (self.output_base_fname + SAMPLE_FILE_SUFFIX)
+        self.crs_writer = FileWriter(self.crs_path)
+        self.crs_writer.add_columns(crs_def)
+        self.crs_writer.add_columns(self.extra_output_columns)
+        self.crs_writer.write_definition()
+        for index_columns in crs_idx:
+            self.crs_writer.add_index(index_columns)
+
+    def setup_crm_writer(self):
+        from pathlib import Path
+        from oakvar.util.util import get_crm_def
+        from oakvar.util.inout import FileWriter
+        from oakvar.consts import crm_idx
+        from oakvar.consts import MAPPING_FILE_SUFFIX
+
+        if not self.output_dir or not self.output_base_fname:
+            raise
+        crm_def = get_crm_def()
+        self.crm_path = Path(self.output_dir) / (self.output_base_fname + MAPPING_FILE_SUFFIX)
         self.crm_writer = FileWriter(self.crm_path)
         self.crm_writer.add_columns(crm_def)
         self.crm_writer.write_definition()
         for index_columns in crm_idx:
             self.crm_writer.add_index(index_columns)
         self.crm_writer.write_input_paths(self.input_path_dict)
-        # Setup crs sample file
-        self.crs_path = join(self.output_dir, self.output_base_fname + ".crs")
-        self.crs_writer = FileWriter(self.crs_path)
-        self.crs_writer.add_columns(self.crs_def)
-        if hasattr(self.primary_converter, "addl_cols"):
-            self.crs_writer.add_columns(self.primary_converter.addl_cols, append=True)
-            self.crs_def.extend(self.primary_converter.addl_cols)
-        self.crs_writer.write_definition()
-        for index_columns in crs_idx:
-            self.crs_writer.add_index(index_columns)
-        self.crl_path = join(
-            self.output_dir,
-            ".".join([self.output_base_fname, "original_input", "var"]),
-        )
+
+    def setup_crl_writer(self):
+        from pathlib import Path
+        from oakvar.util.util import get_crl_def
+        from oakvar.util.inout import FileWriter
+        from oakvar.consts import VARIANT_LEVEL_OUTPUT_SUFFIX
+
+        if not self.output_dir or not self.output_base_fname:
+            raise
+        crl_def = get_crl_def()
+        self.crl_path = Path(self.output_dir) / f"{self.output_base_fname}.original_input{VARIANT_LEVEL_OUTPUT_SUFFIX}"
         self.crl_writer = FileWriter(self.crl_path)
         self.crl_writer.add_columns(crl_def)
         self.crl_writer.write_definition()
         self.crl_writer.write_names("original_input", "Original Input", "")
 
-    def log_input_and_genome_assembly(self, input_path, genome_assembly):
+    def open_output_files(self):
+        from pathlib import Path
+        from oakvar.exceptions import SetupError
+
+        if not self.output_base_fname or not self.output_dir:
+            raise SetupError()
+        self.err_path = Path(self.output_dir) / (self.output_base_fname + ".master_converter.err")
+        self.setup_crv_writer()
+        self.setup_crs_writer()
+        self.setup_crm_writer()
+        self.setup_crl_writer()
+
+    def log_input_and_genome_assembly(self, input_path, genome_assembly, converter):
         if not self.logger:
             return
         if self.pipeinput:
             self.logger.info(f"input file: {STDIN}")
         else:
             self.logger.info(f"input file: {input_path}")
-        self.logger.info("input format: %s" % self.input_format)
+        self.logger.info("input format: %s" % converter.format_name)
         self.logger.info(f"genome_assembly: {genome_assembly}")
 
-    def run(self):
-        """Convert input file to a .crv file using the primary converter."""
+    def setup_file(self, input_path: str) -> Tuple[TextIO, BaseConverter]:
         from sys import stdin
-        from os.path import basename
-        from time import time, asctime, localtime
-        from copy import copy
-        from re import compile
-        from oakvar.exceptions import IgnoredVariant, NoVariantError
-        from oakvar.base.converter import BaseConverter
-        from oakvar.exceptions import SetupError
-        from oakvar.exceptions import LoggerError
-        from oakvar.exceptions import InvalidModule
+        from logging import getLogger
+        from oakvar.util.util import log_module
+        from oakvar.exceptions import NoConverterFound
+
+        if self.pipeinput:
+            f = stdin
+        else:
+            f = self.get_file_object_for_input_path(input_path)
+        converter = self.converter_by_input_path[input_path]
+        if not converter:
+            raise NoConverterFound(input_path)
+        if not converter.module_name or not converter.format_name:
+            raise NoConverterFound(input_path)
+        self.input_formats.append(converter.format_name)
+        self.fileno += 1
+        self.set_converter_properties(converter)
+        log_module(converter, self.logger)
+        self.error_logger = getLogger("err." + converter.module_name)
+        converter.setup(f)
+        genome_assembly = self.get_genome_assembly(converter)
+        self.genome_assemblies.append(genome_assembly)
+        self.log_input_and_genome_assembly(input_path, genome_assembly, converter)
+        self.set_do_liftover(genome_assembly, converter, f)
+        if self.do_liftover or self.do_liftover_chrM:
+            self.setup_lifter(genome_assembly)
+        if self.pipeinput == False:
+            f.seek(0)
+        return (f, converter)
+
+    def handle_chrom(self, variant):
+        from oakvar.exceptions import IgnoredVariant
+
+        if not variant.get("chrom"):
+            raise IgnoredVariant("No chromosome")
+        if not variant.get("chrom").startswith("chr"):
+            variant["chrom"] = "chr" + variant.get("chrom")
+        variant["chrom"] = self.chromdict.get(variant.get("chrom"), variant.get("chrom"))
+
+    def handle_ref_base(self, variant):
+        from oakvar.exceptions import IgnoredVariant
+
+        if "ref_base" not in variant or variant["ref_base"] in [
+            "",
+            ".",
+        ]:
+            if not self.wgsreader:
+                raise
+            variant["ref_base"] = self.wgsreader.get_bases(
+                variant.get("chrom"), int(variant["pos"])
+            ).upper()
+        else:
+            ref_base = variant["ref_base"]
+            if ref_base == "" and variant["alt_base"] not in [
+                "A",
+                "T",
+                "C",
+                "G",
+            ]:
+                raise IgnoredVariant(
+                    "Reference base required for non SNV"
+                )
+            elif ref_base is None or ref_base == "":
+                if not self.wgsreader:
+                    raise
+                variant["ref_base"] = self.wgsreader.get_bases(
+                    variant.get("chrom"), int(variant.get("pos"))
+                )
+
+    def handle_genotype(self, variant):
+        if "genotype" in variant and "." in variant["genotype"]:
+            variant["genotype"] = variant["genotype"].replace(
+                ".", variant["ref_base"]
+            )
+
+    def check_invalid_base(self, variant: dict):
+        from oakvar.exceptions import IgnoredVariant
+
+        if not self.base_re.fullmatch(variant["ref_base"]):
+            raise IgnoredVariant("Invalid reference base")
+        if not self.base_re.fullmatch(variant["alt_base"]):
+            raise IgnoredVariant("Invalid alternate base")
+
+    def normalize_variant(self, variant):
         from oakvar.util.seq import normalize_variant_left
+
+        p, r, a = (
+            int(variant["pos"]),
+            variant["ref_base"],
+            variant["alt_base"],
+        )
+        (
+            new_pos,
+            new_ref,
+            new_alt,
+        ) = normalize_variant_left("+", p, r, a)
+        variant["pos"] = new_pos
+        variant["ref_base"] = new_ref
+        variant["alt_base"] = new_alt
+        variant["uid"] = self.uid
+
+    def handle_variant(self, variant: dict, var_no: int, converter):
+        from oakvar.exceptions import NoVariantError
+
+        if not self.crv_writer or not self.crm_writer or not self.crs_writer:
+            raise
+        self.handle_chrom(variant)
+        self.handle_ref_base(variant)
+        self.handle_genotype(variant)
+        self.perform_liftover_if_needed(variant)
+        self.check_invalid_base(variant)
+        self.normalize_variant(variant)
+        if variant["ref_base"] == variant["alt_base"]:
+            raise NoVariantError()
+        self.file_num_valid_variants += 1
+        self.total_num_valid_variants += 1
+        self.crv_writer.write_data(variant)
+        try:
+            converter.addl_operation_for_unique_variant(
+                variant, var_no
+            )
+        except Exception as e:
+            self._log_conversion_error(
+                self.input_path, self.read_lnum, self.l, e, full_line_error=False
+            )
+        self.crm_writer.write_data(
+            {
+                "original_line": self.read_lnum,
+                "tags": variant["tags"],
+                "uid": self.uid,
+                "fileno": f"{self.input_path_dict2[self.input_path]}",
+            }
+        )
+        self.crs_writer.write_data(variant)
+
+    def handle_converted_variants(self, variants: List[Dict[str, Any]], converter: BaseConverter):
+        from oakvar.exceptions import IgnoredVariant
+
+        if not self.wgsreader or not self.crv_writer or not self.crm_writer or not self.crs_writer:
+            raise
+        if variants is BaseConverter.IGNORE:
+            return
+        self.total_num_converted_variants += 1
+        if not variants:
+            raise IgnoredVariant(
+                "No valid alternate allele was found in any samples."
+            )
+        for var_no, variant in enumerate(variants):
+            self.handle_variant(variant, var_no, converter)
+            self.uid += 1
+
+    def run(self):
+        from time import time, asctime, localtime
+        from pathlib import Path
         from oakvar.util.run import update_status
 
-        self.setup()
-        if (
-            self.wgsreader is None
-            or self.crv_writer is None
-            or self.crl_writer is None
-            or self.crm_writer is None
-            or self.crs_writer is None
-            or self.input_path_dict2 is None
-            or self.primary_converter is None
-        ):
-            raise SetupError()
-        if self.logger is None:
-            raise LoggerError()
-        if not hasattr(self.primary_converter, "format_name"):
-            if hasattr(self.primary_converter, "module_name"):
-                raise InvalidModule(self.primary_converter.module_name)
-            else:
-                raise InvalidModule("unknown module")
-        start_time = time()
-        status = f"Started Converter ({self.primary_converter.format_name})"
+        status = f"started converter"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
-        last_status_update_time = time()
-        if self.input_paths is None:
-            raise SetupError()
-        multiple_files = len(self.input_paths) > 1
-        fileno = 0
-        total_lnum = 0
-        base_re = compile("^[ATGC]+|[-]+$")
-        write_lnum = 0
-        genome_assemblies = set()
-        uid = 1
-        for fn in self.input_paths:
-            self.cur_file = fn
-            if self.pipeinput:
-                f = stdin
-            else:
-                f = self.open_input_file(fn)
-            if self.pipeinput == True:
-                fname = STDIN
-            else:
-                fname = f.name
-            fileno += 1
-            converter = self.primary_converter.__class__()
-            if converter is None:
-                raise SetupError()
-            self.set_converter_properties(converter)
-            converter.setup(f)  # type: ignore
-            genome_assembly = self.get_genome_assembly(converter)
-            genome_assemblies.add(genome_assembly)
-            self.log_input_and_genome_assembly(fn, genome_assembly)
-            self.set_do_liftover(genome_assembly, converter, f)
-            if self.do_liftover or self.do_liftover_chrM:
-                self.setup_lifter(genome_assembly)
-            if self.pipeinput == False:
-                f.seek(0)
-            if self.pipeinput:
-                cur_fname = STDIN
-            else:
-                cur_fname = basename(f.name)
-            last_read_lnum = None
+        self.setup()
+        if not self.input_paths or not self.logger:
+            raise
+        start_time = time()
+        self.total_num_converted_variants = 0
+        self.uid = 1
+        for self.input_path in self.input_paths:
+            f, converter = self.setup_file(self.input_path)
+            input_fname = Path(self.input_path).name if not self.pipeinput else STDIN
+            self.file_num_valid_variants = 0
             self.file_error_lines = 0
-            for read_lnum, l, all_wdicts in converter.convert_file(  # type: ignore
+            for self.read_lnum, self.l, variants in converter.convert_file(
                 f, exc_handler=self._log_conversion_error
             ):
-                samp_prefix = cur_fname
-                last_read_lnum = read_lnum
                 try:
-                    # all_wdicts is a list, since one input line can become
-                    # multiple output lines. False is returned if converter
-                    # decides line is not an input line.
-                    if all_wdicts is BaseConverter.IGNORE:
-                        continue
-                    total_lnum += 1
-                    if all_wdicts:
-                        no_unique_var = 0
-                        for wdict in all_wdicts:
-                            chrom = wdict["chrom"]
-                            pos = wdict["pos"]
-                            if not chrom:
-                                e = IgnoredVariant("No chromosome")
-                                e.traceback = False
-                                raise e
-                            if not chrom.startswith("chr"):
-                                chrom = "chr" + chrom
-                            wdict["chrom"] = self.chromdict.get(chrom, chrom)
-                            if multiple_files:
-                                if wdict["sample_id"]:
-                                    wdict["sample_id"] = "__".join(
-                                        [samp_prefix, wdict["sample_id"]]
-                                    )
-                                else:
-                                    wdict["sample_id"] = samp_prefix
-                            if "ref_base" not in wdict or wdict["ref_base"] in [
-                                "",
-                                ".",
-                            ]:
-                                wdict["ref_base"] = self.wgsreader.get_bases(
-                                    chrom, int(wdict["pos"])
-                                ).upper()
-                            else:
-                                ref_base = wdict["ref_base"]
-                                if ref_base == "" and wdict["alt_base"] not in [
-                                    "A",
-                                    "T",
-                                    "C",
-                                    "G",
-                                ]:
-                                    e = IgnoredVariant(
-                                        "Reference base required for non SNV"
-                                    )
-                                    e.traceback = False
-                                    raise e
-                                elif ref_base is None or ref_base == "":
-                                    wdict["ref_base"] = self.wgsreader.get_bases(
-                                        chrom, int(pos)
-                                    )
-                            if "genotype" in wdict and "." in wdict["genotype"]:
-                                wdict["genotype"] = wdict["genotype"].replace(
-                                    ".", wdict["ref_base"]
-                                )
-                            prelift_wdict = copy(wdict)
-                            self.perform_liftover_if_needed(wdict)
-                            if not base_re.fullmatch(wdict["ref_base"]):
-                                raise IgnoredVariant("Invalid reference base")
-                            if not base_re.fullmatch(wdict["alt_base"]):
-                                raise IgnoredVariant("Invalid alternate base")
-                            p, r, a = (
-                                int(wdict["pos"]),
-                                wdict["ref_base"],
-                                wdict["alt_base"],
-                            )
-                            (
-                                new_pos,
-                                new_ref,
-                                new_alt,
-                            ) = normalize_variant_left("+", p, r, a)
-                            wdict["pos"] = new_pos
-                            wdict["ref_base"] = new_ref
-                            wdict["alt_base"] = new_alt
-                            wdict["uid"] = uid
-                            if wdict["ref_base"] == wdict["alt_base"]:
-                                raise NoVariantError()
-                            write_lnum += 1
-                            self.crv_writer.write_data(wdict)
-                            prelift_wdict["uid"] = uid
-                            self.crl_writer.write_data(prelift_wdict)
-                            # addl_operation errors shouldnt prevent variant from writing
-                            try:
-                                converter.addl_operation_for_unique_variant(  # type: ignore
-                                    wdict, no_unique_var
-                                )
-                            except Exception as e:
-                                self._log_conversion_error(
-                                    read_lnum, l, e, full_line_error=False
-                                )
-                            no_unique_var += 1
-                            self.crm_writer.write_data(
-                                {
-                                    "original_line": read_lnum,
-                                    "tags": wdict["tags"],
-                                    "uid": uid,
-                                    "fileno": f"{self.input_path_dict2[fname]}",
-                                }
-                            )
-                            self.crs_writer.write_data(wdict)
-                            uid += 1
-                    else:
-                        raise IgnoredVariant(
-                            "No valid alternate allele was found in any samples."
-                        )
+                    self.handle_converted_variants(variants, converter)
                 except Exception as e:
-                    self._log_conversion_error(read_lnum, l, e)
+                    self._log_conversion_error(self.input_path, self.read_lnum, self.l, e)
                     continue
             f.close()
-            cur_time = time()
-            if total_lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
-                status = f"Running Converter ({cur_fname}): line {last_read_lnum}"
+            if self.total_num_converted_variants % 10000 == 0:
+                status = f"Running Converter ({input_fname}): line {self.read_lnum}"
                 update_status(
                     status, logger=self.logger, serveradmindb=self.serveradmindb
                 )
-                last_status_update_time = cur_time
-            self.logger.info("error lines: %d" % self.file_error_lines)
-        self._close_files()
+            self.logger.info(f"number of valid variants: {self.file_num_valid_variants}")
+            self.logger.info(f"number of error lines: {self.file_error_lines}")
+        self.close_output_files()
         self.end()
-        self.logger.info("total error lines: %d" % self.total_error_lines)
+        self.logger.info("total number of converted variants: {}".format(self.total_num_converted_variants))
+        self.logger.info("number of total error lines: %d" % self.total_error_lines)
         end_time = time()
         self.logger.info("finished: %s" % asctime(localtime(end_time)))
         runtime = round(end_time - start_time, 3)
-        self.logger.info("num input lines: {}".format(total_lnum))
         self.logger.info("runtime: %s" % runtime)
-        status = f"Finished Converter ({self.primary_converter.format_name})"
+        status = f"finished Converter"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
         ret = {
-            "total_lnum": total_lnum,
-            "write_lnum": write_lnum,
+            "total_lnum": self.total_num_converted_variants,
+            "write_lnum": self.total_num_valid_variants,
             "error_lnum": self.total_error_lines,
-            "format": self.primary_converter.format_name,
-            "assemblies": genome_assemblies,
+            "format": self.input_formats,
+            "assemblies": self.genome_assemblies,
         }
         return ret
 
-    def perform_liftover_if_needed(self, wdict):
-        if self.is_chrM(wdict):
+    def perform_liftover_if_needed(self, variant):
+        from copy import copy
+
+        if not self.crl_writer:
+            raise
+        prelift_wdict = copy(variant)
+        prelift_wdict["uid"] = self.uid
+        self.crl_writer.write_data(prelift_wdict)
+        if self.is_chrM(variant):
             needed = self.do_liftover_chrM
         else:
             needed = self.do_liftover
         if needed:
             (
-                wdict["chrom"],
-                wdict["pos"],
-                wdict["ref_base"],
-                wdict["alt_base"],
+                variant["chrom"],
+                variant["pos"],
+                variant["ref_base"],
+                variant["alt_base"],
             ) = self.liftover(
-                wdict["chrom"],
-                int(wdict["pos"]),
-                wdict["ref_base"],
-                wdict["alt_base"],
+                variant["chrom"],
+                int(variant["pos"]),
+                variant["ref_base"],
+                variant["alt_base"],
             )
 
     def is_chrM(self, wdict):
@@ -726,12 +712,7 @@ class MasterConverter(object):
             newalt = alt
         return [newchrom, newpos, newref, newalt]
 
-    def _log_conversion_error(self, ln, line, e, full_line_error=True):
-        """Log exceptions thrown by primary converter.
-        All exceptions are written to the .err file with the exception type
-        and message. Exceptions are also written to the log file once, with the
-        traceback.
-        """
+    def _log_conversion_error(self, input_path, ln, line, e, full_line_error=True):
         from oakvar.exceptions import IgnoredVariant
 
         _ = line
@@ -753,13 +734,9 @@ class MasterConverter(object):
                 pass
             else:
                 self.logger.error(err_str)
-        self.error_logger.error(f"{self.cur_file}:{ln}\t{str(e)}")
-        # self.error_logger.error(
-        #    "\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(ln, line[:-1], str(e))
-        # )
+        self.error_logger.error(f"{input_path}:{ln}\t{str(e)}")
 
-    def _close_files(self):
-        """Close the input and output files."""
+    def close_output_files(self):
         if self.crv_writer is not None:
             self.crv_writer.close()
         if self.crm_writer is not None:
@@ -769,6 +746,46 @@ class MasterConverter(object):
 
     def end(self):
         pass
+
+
+    def get_cmd_args_parser(self):
+        from argparse import ArgumentParser, SUPPRESS
+
+        parser = ArgumentParser()
+        parser.add_argument("path", help="Path to this converter's python module")
+        parser.add_argument(
+            "inputs", nargs="*", default=None, help="Files to be converted to .crv"
+        )
+        parser.add_argument(
+            "-f", dest="format", default=None, help="Specify an input format"
+        )
+        parser.add_argument(
+            "-n", "--name", dest="name", help="Name of job. Default is input file name."
+        )
+        parser.add_argument(
+            "-d",
+            "--output-dir",
+            dest="output_dir",
+            help="Output directory. Default is input file directory.",
+        )
+        parser.add_argument(
+            "-l",
+            "--genome",
+            dest="genome",
+            default=None,
+            help="Input gene assembly. Will be lifted over to hg38",
+        )
+        parser.add_argument(
+            "--confs", dest="confs", default="{}", help="Configuration string"
+        )
+        parser.add_argument(
+            "--unique-variants",
+            dest="unique_variants",
+            default=False,
+            action="store_true",
+            help=SUPPRESS,
+        )
+        return parser
 
 
 def main():

@@ -251,51 +251,32 @@ class FileWriter(BaseFile):
             self.wf.write("#fmt=csv\n")
         else:
             self.wf = open(self.path, "w", encoding="utf-8")
-        self._ready_to_write = False
+        self.ready_to_write = False
         self.ordered_columns = []
         self.name_to_col_index = {}
         self.title_toks = []
         self.include_definition = include_definition
-        self._definition_written = False
+        self.definition_written = False
         self.include_titles = include_titles
-        self._titles_written = False
+        self.titles_written = False
         self.titles_prefix = titles_prefix
         self.add_columns(columns)
 
-    def add_column(self, col_index, col_d, override=False):
-        if col_index == "append":
-            col_index = len(self.columns)
-        else:
-            col_index = int(col_index)
+    def add_column(self, col_d):
+        col_index = len(self.columns)
         col_d["index"] = col_index
         col_def = ColumnDefinition(col_d)
-        if not (override):
-            try:
-                self.columns[col_index]
-                raise Exception(
-                    "A column is already defined for index %d." % col_index
-                    + " Choose another index,"
-                    + " or set override to True"
-                )
-            except KeyError:
-                pass
         for i in self.columns:
             if self.columns[i].name == col_def.name:
                 raise Exception("A column with name %s already exists." % col_def.name)
         self.columns[col_index] = col_def
 
-    def add_columns(self, col_list, append=False):
-        """
-        Takes a list of tuples with title, name, and type and adds all the columns
-        in the list to the writer.
-        """
-        for col_index, col_def in enumerate(col_list):
-            if append == True:
-                col_index = "append"
-            self.add_column(col_index, col_def)
+    def add_columns(self, col_defs):
+        for col_def in col_defs:
+            self.add_column(col_def)
 
-    def _prep_for_write(self):
-        if self._ready_to_write:
+    def prep_for_write(self):
+        if self.ready_to_write:
             return
         col_indices = sorted(self.columns.keys())
         correct_index = -1
@@ -307,7 +288,7 @@ class FileWriter(BaseFile):
             self.ordered_columns.append(col_def)
             self.title_toks.append(col_def.title)
             self.name_to_col_index[col_def.name] = col_index
-        self._ready_to_write = True
+        self.ready_to_write = True
 
     def write_names(self, annotator_name, annotator_display_name, annotator_version):
         line = "#name={:}\n".format(annotator_name)
@@ -319,9 +300,6 @@ class FileWriter(BaseFile):
         self.wf.flush()
 
     def add_index(self, index_columns):
-        """
-        On aggregation, an index will be created across the supplied columns.
-        """
         self.write_meta_line("index", ",".join(index_columns))
 
     def write_meta_line(self, key, value):
@@ -332,14 +310,14 @@ class FileWriter(BaseFile):
     def write_definition(self, conf=None):
         from json import dumps
 
-        self._prep_for_write()
+        self.prep_for_write()
         for col_def in self.ordered_columns:
             self.write_meta_line("column", col_def.get_json())
         if conf and "report_substitution" in conf:
             self.write_meta_line(
                 "report_substitution", dumps(conf["report_substitution"])
             )
-        self._definition_written = True
+        self.definition_written = True
         self.wf.flush()
 
     def write_input_paths(self, input_path_dict):
@@ -350,31 +328,36 @@ class FileWriter(BaseFile):
         self.wf.flush()
 
     def write_titles(self):
-        self._prep_for_write()
+        self.prep_for_write()
         title_line = self.titles_prefix + "\t".join(self.title_toks) + "\n"
         self.wf.write(title_line)
-        self._titles_written = True
+        self.titles_written = True
         self.wf.flush()
 
     def write_data(self, data):
-        self._prep_for_write()
-        if self.include_definition and not self._definition_written:
-            self.write_definition()
-        if self.include_titles and not self._titles_written:
-            self.write_titles()
-        wtoks = [""] * len(self.name_to_col_index)
-        for col_name in data:
-            try:
-                col_index = self.name_to_col_index[col_name]
-            except KeyError:
-                continue
-            if data[col_name]:
-                wtoks[col_index] = str(data[col_name])
-            else:
-                wtoks[col_index] = ""
+        self.prep_for_write()
+        #if self.include_definition and not self._definition_written:
+        #    self.write_definition()
+        #if self.include_titles and not self._titles_written:
+        #    self.write_titles()
+        #wtoks = [""] * len(self.name_to_col_index)
+        wtoks = [data.get(col.name, "") for col in self.columns.values()]
+        #for col_name in data:
+        #    try:
+        #        col_index = self.name_to_col_index[col_name]
+        #    except KeyError:
+        #        continue
+        #    if data[col_name]:
+        #        wtoks[col_index] = str(data[col_name])
+        #    else:
+        #        wtoks[col_index] = ""
         if self.csvfmt:
             if self.csvwriter is not None:
-                self.csvwriter.writerow(wtoks)  # type: ignore
+                try:
+                    self.csvwriter.writerow(wtoks)
+                except:
+                    import traceback
+                    traceback.print_exc()
         else:
             self.wf.write("\t".join(wtoks) + "\n")
 

@@ -57,23 +57,6 @@ class Job(object):
         self.info.update(kwargs)
 
 
-def get_new_job_dir(jobs_dir: str) -> str:
-    from datetime import datetime
-    from pathlib import Path
-
-    job_name = datetime.now().strftime(r"%y%m%d-%H%M%S")
-    job_dir = Path(jobs_dir) / job_name
-    if job_dir.exists():
-        count = 1
-        while True:
-            job_name = datetime.now().strftime(r"%y%m%d-%H%M%S") + "_" + str(count)
-            job_dir = Path(jobs_dir) / job_name
-            if not job_dir.exists():
-                break
-            count += 1
-    return str(job_dir)
-
-
 async def resubmit(request):
     from .userjob import get_user_jobs_dir
 
@@ -128,6 +111,7 @@ async def pre_submit_check(request, jobs_dir: Optional[str]):
 
 def create_new_job_dir(jobs_dir: str) -> str:
     from os import makedirs
+    from ...util.run import get_new_job_dir
 
     job_dir = get_new_job_dir(jobs_dir)
     makedirs(job_dir, exist_ok=True)
@@ -176,7 +160,10 @@ async def save_job_input_files(request, job_dir: str) -> dict:
             input_files.append(part)
             path = Path(job_dir) / part.filename
             with open(path, "wb") as wf:
-                wf.write(await part.read())
+                chunk = await part.read_chunk()
+                while chunk:
+                    wf.write(chunk)
+                    chunk = await part.read_chunk()
         elif part.name == "options":
             job_options = update_job_options(job_options, await part.json())
         elif part.name.startswith("module_option_file__"):
@@ -1179,6 +1166,7 @@ def clean_annot_dict(d):
 async def live_annotate(input_data, annotators):
     from ...consts import mapping_parser_name
     from ...consts import all_mappings_col_name
+    from ...consts import VARIANT_LEVEL_MAPPED_FILE_SUFFIX
     from ...util.inout import AllMappingsParser
 
     global live_modules
@@ -1207,7 +1195,7 @@ async def live_annotate(input_data, annotators):
                 traceback.print_exc()
                 response[k] = None
         del crx_data[mapping_parser_name]
-        response["crx"] = crx_data
+        response[VARIANT_LEVEL_MAPPED_FILE_SUFFIX] = crx_data
     return response
 
 
@@ -1339,6 +1327,7 @@ async def import_job(request):
     from aiohttp.web import Response
     from aiohttp.web import HTTPForbidden
     from .userjob import get_user_jobs_dir
+    from ...util.run import get_new_job_dir
 
     jobs_dir = get_user_jobs_dir(request)
     if not jobs_dir:

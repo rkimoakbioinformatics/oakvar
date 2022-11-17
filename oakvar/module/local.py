@@ -125,7 +125,7 @@ class LocalModule(object):
         return self.__dict__
 
 
-def get_local_module_info(module_name, force=False):
+def get_local_module_info(module_name, force=False) -> Optional[LocalModule]:
     from os.path import exists
     from .cache import get_module_cache
 
@@ -168,7 +168,7 @@ def get_local_module_infos_by_names(module_names):
     return modules
 
 
-def get_local_module_info_by_name(module_name):
+def get_local_module_info_by_name(module_name) -> Optional[LocalModule]:
     return get_local_module_info(module_name)
 
 
@@ -439,6 +439,7 @@ def get_remote_manifest_from_local(module_name: str, args={}):
     from os.path import exists
     from datetime import datetime
     from ..util.util import quiet_print
+    from ..util.admin_util import oakvar_version
     from ..consts import publish_time_fmt
 
     module_info = get_local_module_info(module_name)
@@ -477,6 +478,7 @@ def get_remote_manifest_from_local(module_name: str, args={}):
     rmi["readme"] = module_info.readme
     rmi["conf"] = module_conf
     rmi["logo"] = get_logo_b64(module_name)
+    rmi["min_pkg_ver"] = module_conf.get("requires_oakvar", oakvar_version())
     return rmi
 
 

@@ -110,7 +110,7 @@ class Aggregator(object):
         if self.key_name is None:
             return
         start_time = time()
-        status = f"Started Aggregator ({self.level})"
+        status = f"started aggregator ({self.level})"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
         last_status_update_time = time()
         if self.logger is not None:
@@ -187,7 +187,7 @@ class Aggregator(object):
             runtime = end_time - start_time
             self.logger.info("runtime: %s" % round(runtime, 3))
         self._cleanup()
-        status = "Finished Aggregator ({self.level})"
+        status = f"finished aggregator ({self.level})"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
 
     def make_reportsub(self):
@@ -284,14 +284,19 @@ class Aggregator(object):
 
     def set_input_base_fname(self):
         from os import listdir
+        from ..consts import STANDARD_INPUT_FILE_SUFFIX
+        from ..consts import VARIANT_LEVEL_MAPPED_FILE_SUFFIX
+        from ..consts import GENE_LEVEL_MAPPED_FILE_SUFFIX
+        from ..consts import SAMPLE_FILE_SUFFIX
+        from ..consts import MAPPING_FILE_SUFFIX
 
         if not self.run_name:
             return
-        crv_fname = self.run_name + ".crv"
-        crx_fname = self.run_name + ".crx"
-        crg_fname = self.run_name + ".crg"
-        crs_fname = self.run_name + ".crs"
-        crm_fname = self.run_name + ".crm"
+        crv_fname = self.run_name + STANDARD_INPUT_FILE_SUFFIX
+        crx_fname = self.run_name + VARIANT_LEVEL_MAPPED_FILE_SUFFIX
+        crg_fname = self.run_name + GENE_LEVEL_MAPPED_FILE_SUFFIX
+        crs_fname = self.run_name + SAMPLE_FILE_SUFFIX
+        crm_fname = self.run_name + MAPPING_FILE_SUFFIX
         for fname in listdir(self.input_dir):
             if self.level == "variant":
                 if fname == crx_fname:

@@ -2,6 +2,7 @@ from typing import Dict
 from typing import Tuple
 from typing import Optional
 
+ov_system_output_columns: Optional[dict] = None
 
 def get_ucsc_bins(start, stop=None):
     if stop is None:
@@ -487,3 +488,93 @@ def get_unique_path(path: str):
     while p.exists():
         p = Path(f"{stem}_{count}{suffix}")
     return str(p)
+
+
+def yield_tabular_lines(l, col_spacing=2, indent=0):
+    if not l:
+        return
+    sl = []
+    n_toks = len(l[0])
+    max_lens = [0] * n_toks
+    for toks in l:
+        if len(toks) != n_toks:
+            raise RuntimeError("Inconsistent sub-list length")
+        stoks = [str(x) for x in toks]
+        sl.append(stoks)
+        stoks_len = [len(x) for x in stoks]
+        max_lens = [max(x) for x in zip(stoks_len, max_lens)]
+    for stoks in sl:
+        jline = " " * indent
+        for i, stok in enumerate(stoks):
+            jline += stok + " " * (max_lens[i] + col_spacing - len(stok))
+        yield jline
+
+
+def print_tabular_lines(l, args=None):
+    for line in yield_tabular_lines(l):
+        if args:
+            quiet_print(line, args=args)
+        else:
+            print(line)
+
+def log_module(module, logger):
+    if logger:
+        code_version = None
+        if hasattr(module, "conf"):
+            code_version = module.conf.get("code_version") or module.conf.get("version")
+        if not code_version and hasattr(module, "version"):
+            code_version = module.version
+        if not code_version:
+            code_version = "?"
+        logger.info(f"module: {module.name}=={code_version} {module.script_path}")
+
+def get_ov_system_output_columns() -> dict:
+    from pathlib import Path
+    from oyaml import safe_load
+
+    global ov_system_output_columns
+    if ov_system_output_columns:
+        return ov_system_output_columns
+    fp = Path(__file__).parent.parent / "assets" / "output_columns.yml"
+    with open(fp) as f:
+        ov_system_output_columns = safe_load(f)
+    if not ov_system_output_columns:
+        return {}
+    return ov_system_output_columns
+
+def get_crv_def() -> list:
+    from ..consts import INPUT_LEVEL_KEY
+
+    output_columns: dict = get_ov_system_output_columns()
+    return output_columns[INPUT_LEVEL_KEY]
+
+def get_crx_def() -> list:
+    from ..consts import VARIANT_LEVEL_KEY
+
+    output_columns: dict = get_ov_system_output_columns()
+    return output_columns[VARIANT_LEVEL_KEY]
+
+def get_crg_def() -> list:
+    from ..consts import GENE_LEVEL_KEY
+
+    output_columns: dict = get_ov_system_output_columns()
+    return output_columns[GENE_LEVEL_KEY]
+
+def get_crs_def() -> list:
+    from ..consts import SAMPLE_LEVEL_KEY
+
+    output_columns: dict = get_ov_system_output_columns()
+    return output_columns[SAMPLE_LEVEL_KEY]
+
+def get_crm_def() -> list:
+    from ..consts import MAPPING_LEVEL_KEY
+
+    output_columns: dict = get_ov_system_output_columns()
+    return output_columns[MAPPING_LEVEL_KEY]
+
+def get_crl_def() -> list:
+    from ..consts import LIFTOVER_LEVEL_KEY
+
+    output_columns: dict = get_ov_system_output_columns()
+    return output_columns[LIFTOVER_LEVEL_KEY]
+

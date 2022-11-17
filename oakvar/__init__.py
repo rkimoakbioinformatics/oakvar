@@ -36,7 +36,6 @@ from .cli.config import system as config_system
 from . import __main__ as cli
 from . import consts
 from .exceptions import *
-from .consts import crx_def
 from .base.runner import Runner
 from .base.converter import BaseConverter
 from .base.preparer import BasePreparer
@@ -111,7 +110,6 @@ _ = (
 _ = CravatReport or ReportFilter or Runner
 _ = CravatFilter or Cravat
 _ = FileReader or FileWriter
-_ = crx_def or consts
 _ = cli or wgs
 _ = (
     module_info

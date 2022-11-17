@@ -43,7 +43,7 @@ class InstallProgressHandler(object):
         elif stage == "verify_data":
             return f"[{get_current_time_str()}] Verifying data integrity of {self.display_name}..."
         elif stage == "finish":
-            return f"[{get_current_time_str()}] Finished installation of {self.display_name}"
+            return f"[{get_current_time_str()}] finished installation of {self.display_name}"
         elif stage == "killed":
             return f"[{get_current_time_str()}] Aborted installation of {self.display_name}"
         elif stage == "Unqueued":
@@ -55,14 +55,14 @@ class InstallProgressHandler(object):
 def get_readme(module_name):
     from os.path import exists
     from ..store import remote_module_latest_version
-    from ..store.db import module_latest_code_version
+    from ..store.db import get_latest_module_code_version
     from .local import module_exists_local
     from .cache import get_module_cache
     from .local import get_local_module_info
     from ..util.util import compare_version
 
     exists_local = module_exists_local(module_name)
-    remote_ver = module_latest_code_version(module_name)
+    remote_ver = get_latest_module_code_version(module_name)
     if remote_ver:
         remote_readme = get_module_cache().get_remote_readme(
             module_name, version=remote_ver

@@ -1,55 +1,48 @@
+from typing import Optional
+
 class BaseMapper(object):
     def __init__(self, *inargs, **inkwargs):
-        import os
         from time import time
+        from pathlib import Path
         import pkg_resources
+        from pathlib import Path
         from ..module.local import get_module_conf
 
         self.cmd_parser = None
-        self.input_path = None
+        self.input_path: Optional[Path] = None
         self.input_dir = None
+        self.output_dir: Optional[Path] = None
         self.reader = None
-        self.output_dir = None
         self.output_base_fname = None
         self.crx_path = None
         self.crg_path = None
         self.crx_writer = None
         self.crg_writer = None
         self.input_fname = None
-        self.slavemode = False
         self.module_options = None
-        self.postfix = None
         self.primary_transcript_paths = None
         self.args = None
         self.logger = None
         self.error_logger = None
         self.unique_excs = []
         self.written_primary_transc = None
-        self._define_main_cmd_args()
-        self._define_additional_cmd_args()
-        self._parse_cmd_args(inargs, inkwargs)
+        self.define_main_cmd_args()
+        self.parse_args(inargs, inkwargs)
         if self.args is None:
             return
-        self.live = self.args["live"]
         self.t = time()
         self.serveradmindb = self.args.get("serveradmindb")
         main_fpath = self.args.get("script_path", __file__)
-        main_basename = os.path.basename(main_fpath)
-        if "." in main_basename:
-            self.module_name = ".".join(main_basename.split(".")[:-1])
-        else:
-            self.module_name = main_basename
-        self.module_dir = os.path.dirname(main_fpath)
-        self.mapper_dir = os.path.dirname(main_fpath)
+        self.module_name = Path(main_fpath).stem
+        self.module_dir = Path(main_fpath).parent
+        self.mapper_dir = self.module_dir
         self.gene_sources = []
-        # self.primary_gene_source = None
         self.gene_info = {}
-        # self.written_primary_transc = set([])
-        self._setup_logger()
+        self.setup_logger()
         self.conf = get_module_conf(self.module_name, module_type="mapper")
         self.cravat_version = pkg_resources.get_distribution("oakvar").version
 
-    def _define_main_cmd_args(self):
+    def define_main_cmd_args(self):
         import argparse
 
         self.cmd_parser = argparse.ArgumentParser()
@@ -72,68 +65,53 @@ class BaseMapper(object):
             "--chunksize", dest="chunksize", default=None, help=argparse.SUPPRESS
         )
         self.cmd_parser.add_argument(
-            "--slavemode",
-            dest="slavemode",
-            action="store_true",
-            default=False,
-            help=argparse.SUPPRESS,
-        )
-        self.cmd_parser.add_argument(
-            "--postfix", dest="postfix", default="", help=argparse.SUPPRESS
-        )
-        self.cmd_parser.add_argument(
             "--primary-transcript",
             dest="primary_transcript",
             # nargs="*",
             default=["mane"],
             help='"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
         )
-        self.cmd_parser.add_argument(
-            "--live", action="store_true", default=False, help=argparse.SUPPRESS
-        )
 
-    def _define_additional_cmd_args(self):
-        """This method allows sub-classes to override and provide addittional command line args"""
-        pass
-
-    def _parse_cmd_args(self, inargs, inkwargs):
-        from os.path import abspath, split, exists
+    def parse_args(self, inargs, inkwargs):
         from os import makedirs
+        from pathlib import Path
         from ..util.util import get_args
         from ..util.run import get_module_options
+        from ..consts import STANDARD_INPUT_FILE_SUFFIX
 
         args = get_args(self.cmd_parser, inargs, inkwargs)
-        self.input_path = abspath(args["input_file"]) if args["input_file"] else None
+        self.input_path = args.get("input_file") or None
         if self.input_path:
-            self.input_dir, self.input_fname = split(self.input_path)
-            if args["output_dir"]:
-                self.output_dir = args["output_dir"]
+            p = Path(self.input_path).absolute()
+            self.input_dir = p.parent
+            self.input_fname = p.name
+            if args.get("output_dir"):
+                self.output_dir = Path(args.get("output_dir"))
             else:
                 self.output_dir = self.input_dir
-            if not (exists(self.output_dir)):
+            if not self.output_dir.exists():
                 makedirs(self.output_dir)
-        if hasattr(args, "run_name"):
-            self.output_base_fname = args["run_name"]
-        else:
+        self.output_base_fname = args.get("run_name")
+        if not self.output_base_fname and self.input_fname:
             self.output_base_fname = self.input_fname
+            p = Path(self.output_base_fname)
+            if p.suffix == STANDARD_INPUT_FILE_SUFFIX:
+                self.output_base_fname = p.stem
         self.module_options = get_module_options(args)
-        self.slavemode = args["slavemode"]
-        self.postfix = args["postfix"]
         self.primary_transcript_paths = [v for v in args["primary_transcript"] if v]
+        self.postfix = args.get("postfix") or ""
         self.args = args
-
-    def base_setup(self):
-        self.setup()
-        if self.live == False:
-            self._setup_io()
 
     def setup(self):
         raise NotImplementedError("Mapper must have a setup() method.")
 
+    def extra_setup(self):
+        pass
+
     def end(self):
         pass
 
-    def _setup_logger(self):
+    def setup_logger(self):
         from logging import getLogger
 
         self.logger = getLogger("oakvar.mapper")
@@ -141,22 +119,9 @@ class BaseMapper(object):
             self.logger.info("input file: %s" % self.input_path)
         self.error_logger = getLogger("err." + self.module_name)
 
-    def _setup_io(self):
-        import os
+    def make_input_reader(self):
         from ..util.inout import FileReader
-        from ..util.inout import FileWriter
-        from ..consts import crx_def, crx_idx, crg_def, crg_idx
 
-        if (
-            self.output_base_fname is None
-            or self.postfix is None
-            or self.conf is None
-            or self.output_dir is None
-        ):
-            from ..exceptions import SetupError
-
-            raise SetupError()
-        # Reader
         if (
             self.args is not None
             and self.args["seekpos"] is not None
@@ -169,15 +134,19 @@ class BaseMapper(object):
             )
         else:
             self.reader = FileReader(self.input_path)
-        # Various output files
-        output_toks = self.output_base_fname.split(".")
-        if output_toks[-1] == "crv":
-            output_toks = output_toks[:-1]
-        # .crx
-        crx_fname = ".".join(output_toks) + ".crx"
-        self.crx_path = os.path.join(self.output_dir, crx_fname)
-        if self.slavemode:
-            self.crx_path += self.postfix
+        return self.reader
+
+    def make_crx_writer(self):
+        from ..util.inout import FileWriter
+        from ..util.util import get_crx_def
+        from ..consts import crx_idx
+        from ..consts import VARIANT_LEVEL_MAPPED_FILE_SUFFIX
+
+        if not self.output_dir or self.conf is None or not self.args:
+            raise
+        crx_def = get_crx_def()
+        crx_fname = f"{self.output_base_fname}{VARIANT_LEVEL_MAPPED_FILE_SUFFIX}"
+        self.crx_path = self.output_dir / (crx_fname + self.postfix)
         self.crx_writer = FileWriter(self.crx_path)
         self.crx_writer.add_columns(crx_def)
         self.crx_writer.write_definition(self.conf)
@@ -189,54 +158,42 @@ class BaseMapper(object):
         if not self.primary_transcript_paths:
             self.crx_writer.write_meta_line("primary_transcript_paths", "")
         else:
-            self.crx_writer.write_meta_line(
-                "primary_transcript_paths", ",".join(self.primary_transcript_paths)
-            )
-        # .crg
-        crg_fname = ".".join(output_toks) + ".crg"
-        self.crg_path = os.path.join(self.output_dir, crg_fname)
-        if self.slavemode:
-            self.crg_path += self.postfix
+            for path in self.primary_transcript_paths:
+                self.crx_writer.write_meta_line(
+                    "primary_transcript_path", path
+                )
+
+    def make_crg_writer(self):
+        from ..util.util import get_crg_def
+        from ..util.inout import FileWriter
+        from ..consts import GENE_LEVEL_MAPPED_FILE_SUFFIX
+        from ..consts import crg_idx
+
+        if not self.output_dir or not self.args:
+            raise
+        crg_def = get_crg_def()
+        crg_fname = f"{self.output_base_fname}{GENE_LEVEL_MAPPED_FILE_SUFFIX}"
+        self.crg_path = self.output_dir / (crg_fname + self.postfix)
         self.crg_writer = FileWriter(self.crg_path)
         self.crg_writer.add_columns(crg_def)
         self.crg_writer.write_definition(self.conf)
         for index_columns in crg_idx:
             self.crg_writer.add_index(index_columns)
 
-    def run(self, __pos_no__):
-        from time import time, asctime, localtime
-        from ..exceptions import SetupError
-        from ..util.run import update_status
+    def setup_input_output(self):
+        self.make_input_reader()
+        self.make_crx_writer()
+        self.make_crg_writer()
 
-        self.base_setup()
-        if (
-            self.args is None
-            or self.logger is None
-            or self.conf is None
-            or self.reader is None
-            or self.crx_writer is None
-        ):
-            raise SetupError()
-        start_time = time()
-        tstamp = asctime(localtime(start_time))
-        self.logger.info(f"started: {tstamp} | {self.args['seekpos']}")
-        status = f"Started {self.conf['title']} ({self.module_name})"
-        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
-        self.process_file()
-        self._write_crg()
-        stop_time = time()
-        tstamp = asctime(localtime(stop_time))
-        self.logger.info(f"finished: {tstamp} | {self.args['seekpos']}")
-        runtime = stop_time - start_time
-        self.logger.info("runtime: %6.3f" % runtime)
-        self.end()
+    def map(self, crv_data: dict):
+        _ = crv_data
 
     def process_file(self):
         from time import time
         from ..util.run import update_status
 
-        if not self.reader or not self.crx_writer:
-            return
+        if not self.reader or not self.crx_writer or not self.args:
+            raise
         count = 0
         last_status_update_time = time()
         crx_data = None
@@ -254,19 +211,14 @@ class BaseMapper(object):
                     crx_data = crv_data
                     crx_data["all_mappings"] = "{}"
                 else:
-                    crx_data = self.map(crv_data)  # type: ignore
-                if crx_data is None:
-                    continue
+                    crx_data = self.map(crv_data)
             except Exception as e:
-                self._log_runtime_error(ln, line, e, fn=self.reader.path)
+                self.log_runtime_error(ln, line, e, fn=self.reader.path)
             if crx_data:
                 self.crx_writer.write_data(crx_data)
-                self._add_crx_to_gene_info(crx_data)
+                self.add_crx_to_gene_info(crx_data)
 
-    def _add_crx_to_gene_info(self, crx_data):
-        """
-        Add information in a crx dict to persistent gene_info dict
-        """
+    def add_crx_to_gene_info(self, crx_data):
         from ..util.inout import AllMappingsParser
 
         tmap_json = crx_data["all_mappings"]
@@ -277,22 +229,19 @@ class BaseMapper(object):
         for hugo in tmap_parser.get_genes():
             self.gene_info[hugo] = True
 
-    def _write_crg(self):
-        """
-        Convert gene_info to crg dict and write to crg file
-        """
+    def write_crg(self):
+        from ..util.util import get_crg_def
+
         if self.crg_writer is None:
             return
-        from ..consts import crg_def
-
         sorted_hugos = list(self.gene_info.keys())
         sorted_hugos.sort()
         for hugo in sorted_hugos:
-            crg_data = {x["name"]: "" for x in crg_def}
+            crg_data = {x["name"]: "" for x in get_crg_def()}
             crg_data["hugo"] = hugo
             self.crg_writer.write_data(crg_data)
 
-    def _log_runtime_error(self, ln, line, e, fn=None):
+    def log_runtime_error(self, ln, line, e, fn=None):
         import traceback
 
         _ = line
@@ -306,12 +255,9 @@ class BaseMapper(object):
             self.logger.error(err_str)
         if self.error_logger is not None:
             self.error_logger.error(f"{fn}:{ln}\t{str(e)}")
-            # self.error_logger.error(
-            #    "\nLINE:{:d}\nINPUT:{}\nERROR:{}\n#".format(ln, line[:-1], str(e))
-            # )
 
     async def get_gene_summary_data(self, cf):
-        from ..consts import crx_def
+        from ..util.util import get_crx_def
         from json import loads
         from ..gui.consts import result_viewer_num_var_limit_for_gene_summary_key
         from ..gui.consts import DEFAULT_RESULT_VIEWER_NUM_VAR_LIMIT_FOR_GENE_SUMMARY
@@ -319,7 +265,7 @@ class BaseMapper(object):
 
         cols = [
             "base__" + coldef["name"]
-            for coldef in crx_def
+            for coldef in get_crx_def()
             if not coldef["name"] in ["cchange", "exonno"]
         ]
         cols.extend(["tagsampler__numsample"])
@@ -370,3 +316,33 @@ class BaseMapper(object):
                         value = rs_dic[colname][value]
                 d[colname] = value
         return d
+
+    def run(self, __pos_no__):
+        from time import time, asctime, localtime
+        from ..util.run import update_status
+
+        self.setup()
+        self.setup_input_output()
+        self.extra_setup()
+        if (
+            self.args is None
+            or self.logger is None
+            or self.conf is None
+            or self.reader is None
+            or self.crx_writer is None
+        ):
+            raise
+        start_time = time()
+        tstamp = asctime(localtime(start_time))
+        self.logger.info(f"started: {tstamp} | {self.args['seekpos']}")
+        status = f"started {self.conf['title']} ({self.module_name})"
+        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
+        self.process_file()
+        self.write_crg()
+        stop_time = time()
+        tstamp = asctime(localtime(stop_time))
+        self.logger.info(f"finished: {tstamp} | {self.args['seekpos']}")
+        runtime = stop_time - start_time
+        self.logger.info("runtime: %6.3f" % runtime)
+        self.end()
+

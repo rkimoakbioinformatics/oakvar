@@ -1,6 +1,6 @@
-from ..module import InstallProgressHandler
-from . import cli_entry
-from . import cli_func
+from ...module import InstallProgressHandler
+from .. import cli_entry
+from .. import cli_func
 
 
 @cli_entry
@@ -10,7 +10,7 @@ def cli_module_pack(args):
 
 @cli_func
 def pack(args, __name__="module pack"):
-    from ..module.local import pack_module
+    from ...module.local import pack_module
 
     ret = pack_module(args)
     return ret
@@ -25,6 +25,9 @@ def cli_module_ls(args):
 
 @cli_func
 def ls(args, __name__="module ls"):
+    from .ls import list_modules
+    from ...util.util import print_tabular_lines
+
     if args.get("fmt") == None:
         args["fmt"] = "json"
     to = args.get("to", "return")
@@ -49,10 +52,11 @@ def cli_module_info(args):
 @cli_func
 def info(args, __name__="module info"):
     from oyaml import dump
-    from ..module.local import get_local_module_info
-    from ..module.remote import get_remote_module_info
-    from ..module.local import LocalModule
-    from ..module.remote import get_readme
+    from ...module.local import get_local_module_info
+    from ...module.remote import get_remote_module_info
+    from ...module.local import LocalModule
+    from ...module.remote import get_readme
+    from .info import print_module_info
 
     ret = {}
     module_name = args.get("module", None)
@@ -122,186 +126,24 @@ def info(args, __name__="module info"):
         return ret
 
 
-def get_module_info_readme_table(module_info={}):
-    from rich.table import Table
-    from rich import box
-
-    readme = module_info.get("readme")
-    readme_table = Table(
-        title="README", title_style="bold", show_header=False, box=box.SQUARE
-    )
-    readme_table.add_column("Readme")
-    readme_table.add_row(readme)
-    return readme_table
-
-
-def get_module_info_basic_table(module_info={}):
-    from rich.table import Table
-    from rich import box
-
-    table = Table(show_header=False, title_style="bold", box=box.SQUARE)
-    table.add_column("Category")
-    table.add_column("Value")
-    for k, v in module_info.items():
-        if k in ["readme", "output_columns", "versions", "developer"]:
-            continue
-        if type(v) == list:
-            v = ", ".join(v)
-        table.add_row(k, str(v))
-    return table
-
-
-def add_module_info_developer_table_rows(developer_table, developers):
-    developer_table.add_row("Name", developers.get("name"))
-    developer_table.add_row("Organization", developers.get("organization"))
-    developer_table.add_row("Email", developers.get("email"))
-    developer_table.add_row("Website", developers.get("website"))
-    developer_table.add_row("Citation", developers.get("citation"))
-
-
-def get_module_info_developer_table(module_info={}):
-    from rich.table import Table
-    from rich import box
-
-    developers = module_info.get("developer")
-    developer_table = Table(
-        title="Developers", title_style="bold", show_header=False, box=box.SQUARE
-    )
-    developer_table.add_column("Category")
-    developer_table.add_column("Value")
-    if "name" in developers:
-        add_module_info_developer_table_rows(developer_table, developers)
-    else:
-        if "module" in developers:
-            developer_table.add_row("[bold]Module[/bold]", "")
-            add_module_info_developer_table_rows(
-                developer_table, developers.get("module")
-            )
-        if "data" in developers:
-            developer_table.add_row("[bold]Data[/bold]", "")
-            add_module_info_developer_table_rows(
-                developer_table, developers.get("data")
-            )
-    return developer_table
-
-
-def get_module_info_version_table(module_info={}):
-    from rich.table import Table
-    from rich import box
-    from packaging.version import Version
-
-    versions = module_info.get("versions")
-    version_table = Table(title="Versions", title_style="bold", box=box.SQUARE)
-    version_table.add_column("Version")
-    version_table.add_column("Data version")
-    version_table.add_column("Data source")
-    code_vers = [v for v in versions.keys()]
-    code_vers.sort(key=lambda x: Version(x))
-    for code_ver in code_vers:
-        dd = versions.get(code_ver)
-        version_table.add_row(code_ver, dd.get("data_version"), dd.get("data_source"))
-    return version_table
-
-
-def get_module_info_output_table(module_info={}):
-    from rich.table import Table
-    from rich import box
-
-    output_columns = module_info.get("output_columns")
-    output_table = Table(title="Output", title_style="bold", box=box.SQUARE)
-    output_table.add_column("Name")
-    output_table.add_column("Title")
-    output_table.add_column("Description")
-    output_table.add_column("Type")
-    for col in output_columns:
-        ty = col.get("type", "string")
-        output_table.add_row(col.get("name"), col.get("title"), col.get("desc"), ty)
-    return output_table
-
-
-def print_module_info(module_info={}):
-    from rich.console import Console
-
-    console = Console()
-    readme_table = get_module_info_readme_table(module_info=module_info)
-    basic_table = get_module_info_basic_table(module_info=module_info)
-    developer_table = get_module_info_developer_table(module_info=module_info)
-    version_table = get_module_info_version_table(module_info=module_info)
-    output_table = get_module_info_output_table(module_info=module_info)
-    console.print(readme_table)
-    console.print(basic_table)
-    console.print(developer_table)
-    console.print(version_table)
-    console.print(output_table)
-
-
 @cli_entry
 def cli_module_install(args):
     return install(args)
 
 
-def collect_module_name_and_versions(modules, args=None):
-    from ..util.util import quiet_print
-
-    mn_vs = {}
-    if type(modules) == str:
-        modules = [modules]
-    for mv in modules:
-        try:
-            if "==" in mv:
-                [module_name, version] = mv.split("==")
-            else:
-                module_name = mv
-                version = None
-            mn_vs[module_name] = version
-        except:
-            quiet_print(f"Wrong module name==version format: {mv}", args=args)
-    return mn_vs
-
-
-def get_modules_to_install(args={}) -> dict:
-    from ..util.download import is_url
-    from ..util.download import is_zip_path
-    from ..module.remote import get_install_deps
-
-    mn_vs = collect_module_name_and_versions(args.get("modules", []), args=args)
-    module_versions = {}
-    for module_name, version in mn_vs.items():
-        module_versions[module_name] = version
-    # dependency
-    deps_install = {}
-    if not args.get("skip_dependencies"):
-        for module_name, version in module_versions.items():
-            if not is_url(module_name) and not is_zip_path(module_name):
-                deps, _ = get_install_deps(module_name=module_name, version=version)
-                deps_install.update(deps)
-    to_install = module_versions
-    to_install.update(deps_install)
-    return to_install
-
-
-def show_modules_to_install(to_install, args={}):
-    from ..util.util import quiet_print
-
-    quiet_print("The following modules will be installed:", args=args)
-    for name, version in to_install.items():
-        if version:
-            quiet_print(f"- {name}=={to_install[name]}", args=args)
-        else:
-            quiet_print(f"- {name}", args=args)
-
-
 @cli_func
 def install(args, no_fetch=False, __name__="module install"):
-    from ..module import install_module
-    from ..module import install_module_from_url
-    from ..module import install_module_from_zip_path
-    from ..util.util import quiet_print
-    from ..util.run import get_y_or_n
-    from ..util.download import is_url
-    from ..util.download import is_zip_path
-    from ..store.db import try_fetch_ov_store_cache
-    from ..exceptions import ModuleToSkipInstallation
+    from .install import get_modules_to_install
+    from .install import show_modules_to_install
+    from ...module import install_module
+    from ...module import install_module_from_url
+    from ...module import install_module_from_zip_path
+    from ...util.util import quiet_print
+    from ...util.run import get_y_or_n
+    from ...util.download import is_url
+    from ...util.download import is_zip_path
+    from ...store.db import try_fetch_ov_store_cache
+    from ...exceptions import ModuleToSkipInstallation
 
     if not no_fetch:
         try_fetch_ov_store_cache(args=args)
@@ -358,12 +200,13 @@ def cli_module_update(args):
 
 @cli_func
 def update(args, no_fetch=False, __name__="module update"):
-    from ..module.local import search_local
-    from ..module import get_updatable
-    from ..util.util import humanize_bytes
-    from ..util.util import quiet_print
-    from ..store.db import try_fetch_ov_store_cache
     from types import SimpleNamespace
+    from ...module.local import search_local
+    from ...module import get_updatable
+    from ...util.util import humanize_bytes
+    from ...util.util import quiet_print
+    from ...util.util import print_tabular_lines
+    from ...store.db import try_fetch_ov_store_cache
 
     if not no_fetch:
         try_fetch_ov_store_cache(args=args)
@@ -420,13 +263,13 @@ def cli_module_uninstall(args):
 
 @cli_func
 def uninstall(args, __name__="module uninstall"):
-    from ..module.local import search_local
-    from ..module import uninstall_module
-    from ..util.util import quiet_print
+    from ...module.local import search_local
+    from ...module import uninstall_module
+    from ...util.util import quiet_print
 
     modules = args.get("modules")
     if not modules:
-        from ..exceptions import ArgumentError
+        from ...exceptions import ArgumentError
 
         e = ArgumentError("no modules was given.")
         e.traceback = False
@@ -460,10 +303,10 @@ def cli_module_installbase(args):
 
 @cli_func
 def installbase(args, no_fetch=False, __name__="module installbase"):
-    from ..system import get_system_conf
-    from ..system.consts import base_modules_key
     from types import SimpleNamespace
-    from ..store.db import try_fetch_ov_store_cache
+    from ...system import get_system_conf
+    from ...system.consts import base_modules_key
+    from ...store.db import try_fetch_ov_store_cache
 
     if not no_fetch:
         try_fetch_ov_store_cache(args=args)
@@ -485,210 +328,20 @@ def installbase(args, no_fetch=False, __name__="module installbase"):
     return ret
 
 
-def add_local_module_info_to_remote_module_info(remote_info):
-    from ..module.local import get_local_module_info
-
-    local_info = get_local_module_info(remote_info.name)
-    if local_info:
-        remote_info.installed = "yes"
-        remote_info.local_code_version = local_info.latest_code_version
-        remote_info.local_data_source = local_info.latest_data_source
-    else:
-        remote_info.installed = ""
-        remote_info.local_code_version = ""
-        remote_info.local_data_source = ""
-
-
-def list_modules(args):
-    from oyaml import dump
-    from ..module.remote import search_remote
-    from ..module.local import search_local
-    from ..module.local import get_local_module_info
-    from ..module.remote import get_remote_module_info_ls
-    from ..util.util import humanize_bytes
-    from ..module.remote import RemoteModuleLs
-
-    fmt = args.get("fmt", "return")
-    nameonly = args.get("nameonly", False)
-    available = args.get("available", False)
-    types = args.get("types")
-    tags = args.get("tags")
-    all_toks = []
-    all_toks_json = []
-    if fmt == "tabular":
-        if nameonly:
-            all_toks = []
-        else:
-            if available:
-                header = [
-                    "Name",
-                    "Title",
-                    "Type",
-                    "Size",
-                    "Store version",
-                    "Store data source",
-                    "Installed",
-                    "Local version",
-                    "Local data source",
-                ]
-            else:
-                header = [
-                    "Name",
-                    "Title",
-                    "Type",
-                    "Size",
-                    "Version",
-                    "Data source",
-                ]
-            all_toks = [header]
-    elif fmt in ["json", "yaml"]:
-        all_toks_json = []
-    if available:
-        if types:
-            l = []
-            for mt in types:
-                l.extend(search_remote(args.get("pattern"), module_type=mt))
-        else:
-            l = search_remote(args.get("pattern"))
-    else:
-        l = search_local(args.get("pattern"))
-    if l:
-        for module_name in l:
-            if available:
-                module_info = get_remote_module_info_ls(module_name)
-                if module_info:
-                    add_local_module_info_to_remote_module_info(module_info)
-            else:
-                module_info = get_local_module_info(module_name)
-            if not module_info:
-                continue
-            if types and module_info.type not in types:
-                continue
-            if tags:
-                if not module_info.tags:
-                    continue
-                if not set(tags).intersection(module_info.tags):
-                    continue
-            # if module_info.hidden and not args.get("include_hidden"):
-            #    continue
-            if isinstance(module_info, RemoteModuleLs):
-                size = module_info.size
-            else:
-                size = module_info.get_size()
-            if not args.get("raw_bytes"):
-                size = humanize_bytes(size)
-            toks = []
-            if fmt == "tabular":
-                toks = [module_name]
-                if not nameonly:
-                    if available:
-                        toks.extend(
-                            [
-                                module_info.title,
-                                module_info.type,
-                                size,
-                                module_info.latest_code_version,
-                                module_info.latest_data_source,
-                                module_info.installed,
-                                module_info.local_code_version,
-                                module_info.local_data_source,
-                            ]
-                        )
-                    else:
-                        toks.extend(
-                            [
-                                module_info.title,
-                                module_info.type,
-                                size,
-                                module_info.latest_code_version,
-                                module_info.latest_data_source,
-                            ]
-                        )
-                all_toks.append(toks)
-            elif fmt in ["json", "yaml"]:
-                toks = {"name": module_name}
-                if not nameonly:
-                    if available:
-                        toks.update(
-                            {
-                                "title": module_info.title,
-                                "type": module_info.type,
-                                "size": size,
-                                "version": module_info.latest_code_version,
-                                "data_source": module_info.latest_data_source,
-                                "installed": module_info.installed,
-                                "local_code_version": module_info.local_code_version,
-                                "local_data_source": module_info.local_data_source,
-                            }
-                        )
-                    else:
-                        toks.update(
-                            {
-                                "title": module_info.title,
-                                "type": module_info.type,
-                                "size": size,
-                                "version": module_info.latest_code_version,
-                                "data_source": module_info.latest_data_source,
-                            }
-                        )
-                all_toks_json.append(toks)
-    if fmt == "tabular":
-        return all_toks
-    elif fmt == "json":
-        return all_toks_json
-    elif fmt == "yaml":
-        if all_toks_json:
-            return dump(all_toks_json, default_flow_style=False)
-        else:
-            return ""
-    else:
-        return None
-
-
-def print_tabular_lines(l, args=None):
-    from ..util.util import quiet_print
-
-    for line in yield_tabular_lines(l):
-        if args:
-            quiet_print(line, args=args)
-        else:
-            print(line)
-
-
-def yield_tabular_lines(l, col_spacing=2, indent=0):
-    if not l:
-        return
-    sl = []
-    n_toks = len(l[0])
-    max_lens = [0] * n_toks
-    for toks in l:
-        if len(toks) != n_toks:
-            raise RuntimeError("Inconsistent sub-list length")
-        stoks = [str(x) for x in toks]
-        sl.append(stoks)
-        stoks_len = [len(x) for x in stoks]
-        max_lens = [max(x) for x in zip(stoks_len, max_lens)]
-    for stoks in sl:
-        jline = " " * indent
-        for i, stok in enumerate(stoks):
-            jline += stok + " " * (max_lens[i] + col_spacing - len(stok))
-        yield jline
-
-
 class InstallProgressStdout(InstallProgressHandler):
     def __init__(self, module_name, module_version, quiet=True):
         super().__init__(module_name, module_version)
         self.quiet = quiet
 
     def stage_start(self, stage):
-        from ..util.util import quiet_print
+        from ...util.util import quiet_print
 
         self.cur_stage = stage
         quiet_print(self._stage_msg(stage), args={"quiet": self.quiet})
 
 
 def add_parser_fn_module_pack(subparsers):
-    from ..store.consts import MODULE_PACK_SPLIT_FILE_SIZE
+    from ...store.consts import MODULE_PACK_SPLIT_FILE_SIZE
 
     # pack
     parser_cli_module_pack = subparsers.add_parser(

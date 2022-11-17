@@ -1,0 +1,167 @@
+crm:
+  - name: original_line
+    title: Original Line
+    type: int
+    width: 90
+  - name: tags
+    title: Tags
+    type: string
+    width: 90
+  - name: uid
+    title: UID
+    type: int
+    width: 70
+  - name: fileno
+    title: Input file number
+    type: int
+    width: 90
+    filterable: False
+    hidden: True
+crv:
+  - name: uid
+    title: UID
+    type: int
+    width: 60
+    hidden: True
+    filterable: False
+  - name: chrom
+    title: Chrom
+    type: string
+    width: 50
+    category: single
+    filterable: True
+  - name: pos
+    title: Position
+    type: int
+    width: 80
+    filterable: True
+  - name: ref_base
+    title: Ref Base
+    type: string
+    width: 50
+    filterable: False
+  - name: alt_base
+    title: Alt Base
+    type: string
+    width: 50
+    filterable: False
+  - name: note
+    title: Note
+    type: string
+    width: 50
+crx:
+  - name: uid
+    title: UID
+    type: int
+    width: 60
+    hidden: True
+    filterable: False
+  - name: chrom
+    title: Chrom
+    type: string
+    width: 50
+    category: single
+    filterable: True
+  - name: pos
+    title: Position
+    type: int
+    width: 80
+    filterable: True
+  - name: ref_base
+    title: Ref Base
+    type: string
+    width: 50
+    filterable: False
+  - name: alt_base
+    title: Alt Base
+    type: string
+    width: 50
+    filterable: False
+  - name: note
+    title: Note
+    type: string
+    width: 50
+  - name: coding
+    title: Coding
+    type: string
+    width: 50
+    category: single
+    categories: [Y]
+  - name: hugo
+    title: Gene
+    type: string
+    width: 70
+    filterable: True
+  - name: transcript
+    title: Transcript
+    type: string
+    width: 135
+    hidden: False
+    filterable: False
+  - name: so
+    title: Sequence Ontology
+    type: string
+    width: 120
+    category: single
+    filterable: True
+  - name: cchange
+    title: cDNA change
+    type: string
+    width: 70
+    filterable: False
+  - name: achange
+    title: Protein Change
+    type: string
+    width: 55
+    filterable: False
+  - name: exonno
+    title: Exon number
+    type: int
+    width: 55
+  - name: all_mappings
+    title: All Mappings
+    type: string
+    width: 100
+    hidden: True
+    filterable: False
+crs:
+  - name: uid
+    title: UID
+    type: int
+    width: 70
+  - name: sample_id
+    title: Sample
+    type: string
+    width: 90
+crg:
+  - name: hugo
+    title: Gene
+    type: string
+    width: 70
+    filterable: True
+  - name: note
+    title: Note
+    type: string
+    width: 50
+crl:
+  - name: uid
+    title: UID
+    type: int
+    width: 70
+  - name: chrom
+    title: Chrom
+    type: string
+    width: 80
+  - name: pos
+    title: Pos
+    type: int
+    width: 80
+  - name: ref_base
+    title: Reference allele
+    type: string
+    width: 80
+  - name: alt_base
+    title: Alternate allele
+    type: string
+    width: 80
+

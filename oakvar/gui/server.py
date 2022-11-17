@@ -85,7 +85,7 @@ class WebServer(object):
         from aiohttp import web
         import aiohttp_cors
 
-        self.app = web.Application(loop=self.loop, middlewares=[self.middleware])
+        self.app = web.Application(loop=self.loop, middlewares=[self.middleware], client_max_size=1024*1024*1024*1024)
         self.cors = aiohttp_cors.setup(self.app)  # type: ignore
         self.setup_routes()
         self.runner = web.AppRunner(self.app)

@@ -34,6 +34,7 @@ modules_dir_key = "modules_dir"
 package_dir_key = "package_dir"
 base_modules_key = "base_modules"
 max_num_concurrent_annotators_per_job_key = "max_num_concurrent_annotators_per_job"
+max_num_concurrent_modules_per_job_key = "max_num_concurrent_modules_per_job"
 default_assembly_key = "default_assembly"
 report_filter_max_num_cache_per_user_key = "report_filter_max_num_cache_per_user"
 
@@ -43,7 +44,7 @@ report_filter_max_num_cache_per_user_key = "report_filter_max_num_cache_per_user
 default_num_input_line_warning_cutoff = 25000
 default_gui_input_size_limit = 500
 DEFAULT_MAX_NUM_CONCURRENT_JOBS = 4
-default_max_num_concurrent_annotators_per_job = 1
+default_max_num_concurrent_modules_per_job = 1
 default_multicore_mapper_mode = True
 default_gui_port = 8080
 default_gui_port_ssl = 8443

@@ -320,7 +320,7 @@ class BaseReporter:
         if self.cf and self.cf.filter:
             self.write_log(f"filter:\n{yaml.dump(self.filter)}")
         if self.module_conf:
-            status = f"Started {self.module_conf['title']} ({self.module_name})"
+            status = f"started {self.module_conf['title']} ({self.module_name})"
             update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
 
     async def get_levels_to_run(self, tab: str) -> List[str]:
@@ -385,7 +385,7 @@ class BaseReporter:
                 )
             await self.close_db()
             if self.module_conf:
-                status = "Finished {self.module_conf['title']} ({self.module_name})"
+                status = "finished {self.module_conf['title']} ({self.module_name})"
                 update_status(
                     status, logger=self.logger, serveradmindb=self.serveradmindb
                 )

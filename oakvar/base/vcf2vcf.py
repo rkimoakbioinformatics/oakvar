@@ -163,11 +163,11 @@ class VCF2VCF:
         return all_col_names
 
     def get_col_info(self, module_name, mapper: str, module_type=None):
-        from oakvar.consts import crx_def
+        from oakvar.util.util import get_crx_def
         from oakvar.module.local import get_module_conf
 
         if module_name == mapper:
-            mc = crx_def
+            mc = get_crx_def()
         else:
             mc = get_module_conf(module_name, module_type=module_type)
             if mc:

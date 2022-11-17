@@ -719,10 +719,14 @@ def get_default_root_dir(conf=None):
     return root_dir
 
 
-def get_max_num_concurrent_annotators_per_job():
-    from .consts import max_num_concurrent_annotators_per_job_key
+def get_max_num_concurrent_modules_per_job():
+    from .consts import max_num_concurrent_modules_per_job_key
+    from .consts import max_num_concurrent_annotators_per_job_key # TODO: backward-compatibility. remove after some time.
 
-    return get_system_conf().get(max_num_concurrent_annotators_per_job_key)
+    value = get_system_conf().get(max_num_concurrent_modules_per_job_key)
+    if not value:
+        value = get_system_conf().get(max_num_concurrent_annotators_per_job_key)
+    return value
 
 
 def get_system_conf_dir():

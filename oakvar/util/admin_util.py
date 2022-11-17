@@ -1,3 +1,7 @@
+from typing import Optional
+
+pkg_version: Optional[str] = None
+
 class ReadyState(object):
 
     READY = 0
@@ -255,8 +259,10 @@ def show_main_conf(args):
 
 
 def oakvar_version():
-    version = get_current_package_version()
-    return version
+    global pkg_version
+    if not pkg_version:
+        pkg_version = get_current_package_version()
+    return pkg_version
 
 
 def system_ready():

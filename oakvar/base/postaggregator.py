@@ -243,7 +243,7 @@ class BasePostAggregator(object):
             self.base_cleanup()
             return
         start_time = time()
-        status = f"Started {self.conf['title']} ({self.module_name})"
+        status = f"started {self.conf['title']} ({self.module_name})"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
         self.logger.info("started: {0}".format(asctime(localtime(start_time))))
         self.base_setup()

@@ -183,9 +183,9 @@ def client_error_json(error_class):
 
 
 def remote_module_latest_version(module_name) -> Optional[str]:
-    from .db import module_latest_code_version
+    from .db import get_latest_module_code_version
 
-    version = module_latest_code_version(module_name)
+    version = get_latest_module_code_version(module_name)
     return version
 
 

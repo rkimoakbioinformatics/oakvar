@@ -7,7 +7,7 @@ def update_status(status: str, logger=None, serveradmindb=None):
 
 def announce_module(module, logger=None, serveradmindb=None):
     update_status(
-        "Running {name}".format(name=module.name),
+        f"running {module.name}",
         logger=logger,
         serveradmindb=serveradmindb,
     )
@@ -94,3 +94,27 @@ def get_module_options(args):
             module_options = None
     return module_options
 
+
+def get_new_job_dir(jobs_dir: str) -> str:
+    from datetime import datetime
+    from pathlib import Path
+
+    job_name = datetime.now().strftime(r"%y%m%d-%H%M%S")
+    job_dir = Path(jobs_dir) / job_name
+    if job_dir.exists():
+        count = 1
+        while True:
+            job_name = datetime.now().strftime(r"%y%m%d-%H%M%S") + "_" + str(count)
+            job_dir = Path(jobs_dir) / job_name
+            if not job_dir.exists():
+                break
+            count += 1
+    return str(job_dir)
+
+
+def get_new_job_name(jobs_dir: str) -> str:
+    from pathlib import Path
+
+    job_dir = get_new_job_dir(jobs_dir)
+    job_name = Path(job_dir).name
+    return job_name
