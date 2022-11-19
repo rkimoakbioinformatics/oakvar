@@ -24,17 +24,17 @@ Ready to start? `OakVar Documentation`_
 
 .. _OakVar Documentation: https://docs.oakvar.com
 
-`OakVar News`_
-
-.. _OakVar News: https://medium.com/oakvar
-
-Email: rkim@oakbioinformatics.com
-
 `Subscribe to the mailing list`_: Be in the loop and notified of the new releases and news of OakVar. 
 
 .. _Subscribe to the mailing list: https://dashboard.mailerlite.com/forms/21170/56038572068701589/share
 
-Discord: https://discord.gg/wZfkTMKTjG
+Medium: https://medium.com/oakvar
+
+Discord: https://discord.gg/wZfkTMKTjG 
+
+Reddit: https://www.reddit.com/r/oakvar
+
+Email: rkim@oakbioinformatics.com
 
 Many Thanks to Our Sponsors
 =================================
