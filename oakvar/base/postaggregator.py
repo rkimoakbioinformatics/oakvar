@@ -1,3 +1,5 @@
+from typing import Optional
+
 class BasePostAggregator(object):
 
     cr_type_to_sql = {"string": "text", "int": "integer", "float": "real"}
@@ -22,6 +24,14 @@ class BasePostAggregator(object):
         self.dbconn = None
         self.cursor = None
         self.cursor_w = None
+        self.columns_v: Optional[str] = None
+        self.columns_g: Optional[str] = None
+        self.from_v: Optional[str] = None
+        self.from_g: Optional[str] = None
+        self.where_v: Optional[str] = None
+        self.where_g: Optional[str] = None
+        self.q_v: Optional[str] = None
+        self.q_g: Optional[str] = None
         self.args = None
         self._open_db_connection()
         self.should_run_annotate = self.check()
@@ -36,8 +46,7 @@ class BasePostAggregator(object):
             self.level = self.conf.get("level")
         if not self.level:
             raise SetupError(msg="level is not defined in {self.module_name}")
-        if self.level:
-            self.levelno = LEVELS[self.level]
+        self.levelno = LEVELS[self.level]
 
     def check(self):
         """
@@ -490,6 +499,100 @@ class BasePostAggregator(object):
     def columns_to_columns_str(self, columns):
         return ",".join(columns)
 
+    def make_variant_level_query(self):
+        pass
+
+    def make_gene_level_query(self):
+        pass
+
+    def make_default_query_components(self):
+        from ..consts import VARIANT
+        from ..consts import GENE
+
+        if self.levelno == VARIANT:
+            self.from_v = f"variant"
+            self.where_v = ""
+            self.columns_v = "*"
+            self.from_g = f"gene"
+            self.where_g = "base__hugo=?"
+            self.columns_g = "*"
+        elif self.levelno == GENE:
+            self.from_v = None
+            self.where_v = None
+            self.columns_v = None
+            self.from_g = f"gene"
+            self.where_g = ""
+            self.columns_g = "*"
+
+    def make_custom_query_components(self):
+        from ..consts import VARIANT
+        from ..consts import GENE
+
+        if self.levelno == VARIANT:
+            if "gene" in self.result_level_columns:
+                self.from_v = "variant"
+                self.where_v = None
+                self.from_g = "gene"
+                self.where_g = "base__hugo=?"
+            else:
+                self.from_v = "variant"
+                self.where_v = None
+                self.from_g = None
+                self.where_g = None
+        elif self.levelno == GENE:
+            self.from_g = "gene"
+            self.where_g = None
+            if "variant" in self.result_level_columns:
+                self.from_v = "variant"
+                self.where_v = "base__hugo=?"
+            else:
+                self.from_v = None
+                self.where_v = None
+        else:
+            raise Exception(
+                f"Unknown module level: {self.level} for {self.module_name}"
+            )
+        self.columns_v = self.get_result_level_input_columns(VARIANT)
+        self.columns_g = self.get_result_level_input_columns(GENE)
+
+    def get_result_level_input_columns(self, level) -> Optional[str]:
+        if not self.input_columns:
+            raise
+        if level not in self.get_result_level_input_columns:
+            return None
+        return ",".join([
+            column_name
+            for column_name in self.result_level_columns[level]
+            if column_name in self.input_columns[level]
+        ])
+
+    def make_query_components(self):
+        if not self.input_columns:
+            self.make_default_query_components()
+        else:
+            self.make_custom_query_components()
+
+    def make_queries(self):
+        self.make_query_components()
+        if self.columns_v and self.from_v:
+            self.q_v = f"select {self.columns_v} from {self.from_v}"
+            if self.where_v:
+                self.q_v += f" {self.where_v}"
+        if self.columns_g and self.from_g:
+            self.q_g = f"select {self.columns_g} from {self.from_g}"
+            if self.where_g:
+                self.q_g += f" {self.where_g}"
+
+    def add_variant_level_input_data(self, input_data: dict):
+        if not self.columns_v or not self.c_var or not self.q_v:
+            raise
+        for column_name in self.columns_v:
+            input_data[column_name] = []
+        self.c_var.execute(self.q_v, (input_data["base__hugo"],))
+        for var_row in self.c_var:
+            for i in range(len(var_row)):
+                input_data[self.c_var.description[i][0]].append(var_row[i])
+
     def _get_input(self):
         from sqlite3 import connect
         from ..exceptions import SetupError
@@ -499,118 +602,37 @@ class BasePostAggregator(object):
         if self.db_path is None or self.level is None or not self.dbconn:
             raise SetupError()
         conn = connect(self.db_path)
-        c_var = self.dbconn.cursor()
-        c_gen = self.dbconn.cursor()
-        columns_v = None
-        columns_g = None
-        from_v = None
-        from_g = None
-        where_v = None
-        where_g = None
-        q_v = None
-        q_g = None
-        if not self.input_columns:
-            if self.levelno == VARIANT:
-                from_v = f"variant as v, gene as g"
-                where_v = "v.base__hugo==g.base__hugo"
-                columns_v = ["*"]
-            elif self.levelno == GENE:
-                from_g = f"gene as g"
-                columns_v = ["*"]
+        self.c_var = self.dbconn.cursor()
+        self.c_gen = self.dbconn.cursor()
+        self.make_queries()
+        if self.levelno == VARIANT and self.q_v:
+            self.c_var.execute(self.q_v)
+            cursor = self.c_var
+        elif self.levelno == GENE and self.q_g:
+            self.c_gen.execute(self.q_g)
+            cursor = self.c_gen
         else:
-            if self.levelno == VARIANT:
-                if "gene" in self.result_level_columns:
-                    from_v = "variant as v, gene as g"
-                    where_v = "v.base__hugo==g.base__hugo"
-                else:
-                    from_v = "variant as v"
-                columns = []
-                for level, column_names in self.result_level_columns.items():
-                    if level == "variant":
-                        prefix = "v"
-                    elif level == "gene":
-                        prefix = "g"
-                    else:
-                        raise Exception(
-                            f"Unknown column level: {level} for {column_names}"
-                        )
-                    columns.extend(
-                        [
-                            f"{prefix}.{column_name}"
-                            for column_name in column_names
-                            if column_name in self.input_columns[level]
-                        ]
-                    )
-                columns_v = [column for column in columns]
-            elif self.levelno == GENE:
-                from_g = "gene as g"
-                if "variant" in self.result_level_columns:
-                    from_v = "variant as v"
-                    where_v = "v.base__hugo=?"
-                for level, column_names in self.result_level_columns.items():
-                    if level == "variant":
-                        prefix = "v"
-                        columns_v = [
-                            f"{prefix}.{column_name}"
-                            for column_name in column_names
-                            if column_name in self.input_columns[level]
-                        ]
-                    elif level == "gene":
-                        prefix = "g"
-                        columns_g = [
-                            f"{prefix}.{column_name}"
-                            for column_name in column_names
-                            if column_name in self.input_columns[level]
-                        ]
-                    else:
-                        raise Exception(
-                            f"Unknown column level: {level} for {column_names}"
-                        )
-            else:
-                raise Exception(
-                    f"Unknown module level: {self.level} for {self.module_name}"
-                )
-        if self.levelno == VARIANT:
-            q_v = f"select {self.columns_to_columns_str(columns_v)} from {from_v}"
-            if where_v:
-                q_v += f" where {where_v}"
-            c_var.execute(q_v)
-            cursor = c_var
-        elif self.levelno == GENE:
-            q_g = f"select {self.columns_to_columns_str(columns_g)} from {from_g}"
-            if where_g:
-                q_g += f" where {where_g}"
-            c_gen.execute(q_g)
-            cursor = c_gen
-            if columns_v:
-                q_v = f"select {self.columns_to_columns_str(columns_v)} from {from_v}"
-                if where_v:
-                    q_v += f" where {where_v}"
-        else:
-            raise Exception(
-                f"Unknown module level: {self.level} for {self.module_name}"
-            )
+            raise
         for row in cursor:
             try:
                 input_data = {}
                 for i in range(len(row)):
                     input_data[cursor.description[i][0]] = row[i]
-                if self.levelno == GENE and q_v and columns_v:
-                    for column_name in columns_v:
-                        input_data[column_name[2:]] = []
-                    c_var.execute(q_v, (input_data["base__hugo"],))
-                    sub_rows = c_var.fetchall()
-                    for sub_row in sub_rows:
-                        for i in range(len(sub_row)):
-                            input_data[c_var.description[i][0]].append(sub_row[i])
+                if self.levelno == GENE and self.q_v and self.columns_v:
+                    for column_name in self.columns_v:
+                        input_data[column_name] = []
+                    self.c_var.execute(self.q_v, (input_data["base__hugo"],))
+                    for var_row in self.c_var:
+                        for i in range(len(var_row)):
+                            input_data[self.c_var.description[i][0]].append(var_row[i])
                 yield input_data
             except Exception as e:
                 self._log_runtime_exception(row, e)
         cursor.close()
-        if c_var:
-            c_var.close()
-        if c_gen:
-            c_gen.close()
+        if self.c_var:
+            self.c_var.close()
+        if self.c_gen:
+            self.c_gen.close()
         conn.close()
 
     def annotate(self, __input_data__):

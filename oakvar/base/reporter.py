@@ -55,6 +55,7 @@ class BaseReporter:
         self.gene_summary_datas = {}
         self.total_norows: Optional[int] = None
         self.module_options: dict = {}
+        self.legacy_samples_col = False
         self.priority_colgroupnames = (get_user_conf() or {}).get(
             "report_module_order",
             [
@@ -177,9 +178,29 @@ class BaseReporter:
     async def connect_db(self, dbpath=None):
         _ = dbpath
 
+    async def set_legacy_samples_column_flag(self):
+        from sqlite3 import connect
+
+        if not self.dbpath:
+            raise
+        conn = connect(self.dbpath)
+        cursor = conn.cursor()
+        q = f"pragma table_info(variant)"
+        cursor.execute(q)
+        header_cols = [row[1] for row in cursor.fetchall()]
+        if "tagsampler__samples" in header_cols:
+            self.legacy_samples_col = False
+        elif "base__samples" in header_cols:
+            self.legacy_samples_col = True
+        else:
+            raise
+        cursor.close()
+        conn.close()
+
     async def prep(self, user=DEFAULT_SERVER_DEFAULT_USERNAME):
         await self.set_dbpath()
         await self.connect_db(dbpath=self.dbpath)
+        await self.set_legacy_samples_column_flag()
         await self.load_filter(user=user)
 
     def _setup_logger(self):
@@ -430,7 +451,10 @@ class BaseReporter:
         self.sample_newcolno = None
         if level == "variant" and self.args.get("separatesample"):
             self.write_variant_sample_separately = True
-            self.sample_newcolno = self.colnos["variant"]["base__samples"]
+            if self.legacy_samples_col:
+                self.sample_newcolno = self.colnos["variant"]["base__samples"]
+            else:
+                self.sample_newcolno = self.colnos["variant"]["tagsampler__samples"]
         else:
             self.write_variant_sample_separately = False
         datarows_iter = await self.cf.get_level_data_iterator(
@@ -456,7 +480,10 @@ class BaseReporter:
                 break
 
     def write_row_with_samples_separate_or_not(self, datarow):
-        col_name = "base__samples"
+        if self.legacy_samples_col:
+            col_name = "base__samples"
+        else:
+            col_name = "tagsampler__samples"
         if self.write_variant_sample_separately:
             samples = datarow[col_name]
             if samples:
