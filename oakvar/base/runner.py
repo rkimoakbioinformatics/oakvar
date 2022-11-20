@@ -124,14 +124,17 @@ class Runner(object):
         from pathlib import Path
         from ..util.util import escape_glob_pattern
         from ..util.util import quiet_print
+        from ..consts import LOG_SUFFIX
+        from ..consts import ERROR_LOG_SUFFIX
 
         if not self.run_name or not self.output_dir:
             return
         run_name = self.run_name[run_no]
         output_dir = self.output_dir[run_no]
         pattern = escape_glob_pattern(run_name) + ".*"
-        log_fn = Path(output_dir) / (run_name + ".log")
-        fns = [v for v in Path(output_dir).glob(pattern) if v != log_fn]
+        log_fn = Path(output_dir) / (run_name + LOG_SUFFIX)
+        error_log_fn = Path(output_dir) / (run_name + ERROR_LOG_SUFFIX)
+        fns = [v for v in Path(output_dir).glob(pattern) if v != log_fn and v != error_log_fn]
         for fn in fns:
             msg = f"deleting {fn}"
             if self.logger:
@@ -191,6 +194,7 @@ class Runner(object):
         import logging
         from pathlib import Path
         from os import remove
+        from ..consts import LOG_SUFFIX
 
         if self.args is None or self.run_name is None or self.output_dir is None:
             raise
@@ -203,7 +207,7 @@ class Runner(object):
         self.logger = logging.getLogger("oakvar")
         self.logger.setLevel("INFO")
         if self.args.logtofile:
-            self.log_path = Path(output_dir) / (run_name + ".log")
+            self.log_path = Path(output_dir) / (run_name + LOG_SUFFIX)
             if (self.args.newlog or self.args.clean) and self.log_path.exists():
                 remove(self.log_path)
             self.log_handler = logging.FileHandler(self.log_path, mode=self.logmode)
@@ -354,8 +358,6 @@ class Runner(object):
                     )
                     if self.logger:
                         self.logger.exception(self.exception)
-                if self.logger:
-                    self.close_logger()
                 if (
                     not self.exception
                     and self.args
@@ -363,6 +365,8 @@ class Runner(object):
                     and self.aggregator_ran
                 ):
                     self.clean_up_at_end(run_no)
+                if self.logger:
+                    self.close_logger()
                 if self.exception:
                     raise self.exception
         return self.report_response
@@ -1425,7 +1429,9 @@ class Runner(object):
     def clean_up_at_end(self, run_no: int):
         from os import listdir
         from os import remove
+        from os.path import getsize
         from pathlib import Path
+        from re import compile
         from ..consts import VARIANT_LEVEL_OUTPUT_SUFFIX
         from ..consts import GENE_LEVEL_OUTPUT_SUFFIX
         from ..consts import STANDARD_INPUT_FILE_SUFFIX
@@ -1433,28 +1439,28 @@ class Runner(object):
         from ..consts import GENE_LEVEL_MAPPED_FILE_SUFFIX
         from ..consts import SAMPLE_FILE_SUFFIX
         from ..consts import MAPPING_FILE_SUFFIX
+        from ..consts import ERROR_LOG_SUFFIX
 
         if not self.output_dir or not self.run_name:
             raise
         run_name = self.run_name[run_no]
         output_dir = self.output_dir[run_no]
         fns = listdir(output_dir)
+        pattern = compile(f"{run_name}(\\..*({VARIANT_LEVEL_OUTPUT_SUFFIX}|{GENE_LEVEL_OUTPUT_SUFFIX})|({STANDARD_INPUT_FILE_SUFFIX}|{VARIANT_LEVEL_MAPPED_FILE_SUFFIX}|{GENE_LEVEL_MAPPED_FILE_SUFFIX}|{SAMPLE_FILE_SUFFIX}|{MAPPING_FILE_SUFFIX}))")
+        error_logger_pattern = compile(f"{run_name}{ERROR_LOG_SUFFIX}")
         for fn in fns:
             fn_path = Path(output_dir) / fn
             if fn_path.is_file() == False:
                 continue
-            if fn.startswith(run_name):
-                fn_p = Path(fn)
-                if fn_p.suffix in [
-                    VARIANT_LEVEL_OUTPUT_SUFFIX,
-                    GENE_LEVEL_OUTPUT_SUFFIX,
-                    STANDARD_INPUT_FILE_SUFFIX,
-                    VARIANT_LEVEL_MAPPED_FILE_SUFFIX,
-                    GENE_LEVEL_MAPPED_FILE_SUFFIX,
-                    SAMPLE_FILE_SUFFIX,
-                    MAPPING_FILE_SUFFIX,
-                ]:
-                    remove(str(fn_path))
+            if pattern.match(fn):
+                if self.logger:
+                    self.logger.info(f"removing {fn_path}")
+                remove(str(fn_path))
+            if error_logger_pattern.match(fn) and getsize(fn_path) == 0:
+                if self.logger:
+                    self.logger.info(f"removing {fn_path}")
+                remove(str(fn_path))
+                    
 
     async def write_admin_db_final_info(self, runtime):
         import aiosqlite

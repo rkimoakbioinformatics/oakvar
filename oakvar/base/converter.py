@@ -24,16 +24,15 @@ class BaseConverter(object):
     def convert_line(self, *__args__, **__kwargs__) -> List[dict]:
         return []
 
-    def convert_file(self, file, *__args__, exc_handler=None, **__kwargs__) -> Iterator[Tuple[int, str, List[dict]]]:
-        ln = 0
+    def convert_file(self, file, *__args__, exc_handler=None, **__kwargs__) -> Iterator[Tuple[int, List[dict]]]:
+        line_no = 0
         for line in file:
-            ln += 1
+            line_no += 1
             try:
-                yield ln, line, self.convert_line(line)
+                yield line_no, self.convert_line(line)
             except Exception as e:
                 if exc_handler:
-                    exc_handler(file, ln, line, e)
-                    continue
+                    exc_handler(line_no, e)
                 else:
                     raise e
         return None

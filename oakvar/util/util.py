@@ -126,15 +126,18 @@ def detect_encoding(path):
     else:
         f = open(path, "rb")
     detector = UniversalDetector()
-    for _, line in enumerate(f):
+    count = 0
+    encoding = None
+    for line in f:
         detector.feed(line)
-        if detector.done:
+        count += 1
+        if detector.done or count == 100000:
+            encoding = detector.result["encoding"]
             break
     detector.close()
     f.close()
-    encoding = detector.result["encoding"]
-    # utf-8 is superset of ascii that may include chars
-    # not in the first 100 lines
+    if not encoding:
+        encoding = "utf-8"
     if encoding == "ascii":
         return "utf-8"
     else:

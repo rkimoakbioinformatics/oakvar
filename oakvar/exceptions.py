@@ -46,6 +46,8 @@ class BadFormatError(InvalidData):
 class IgnoredVariant(InvalidData):
     traceback = False
 
+class NoAlternateAllele(ExpectedException):
+    traceback = False
 
 class LiftoverFailure(InvalidData):
     traceback = False

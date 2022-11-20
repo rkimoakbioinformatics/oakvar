@@ -64,7 +64,8 @@ for g in ["hg18", "hg19"]:
         dirname(__file__), "liftover", g + "ToHg38.over.chain"
     )
 result_db_suffix = ".sqlite"
-log_suffix = ".log"
+LOG_SUFFIX = ".log"
+ERROR_LOG_SUFFIX = ".err"
 
 JOB_STATUS_UPDATE_INTERVAL = 10  # seconds
 JOB_STATUS_FINISHED = "Finished"

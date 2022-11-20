@@ -106,6 +106,7 @@ def addjob(args, __name__="util addjob"):
     from pathlib import Path
     from datetime import datetime
     from ..system import get_jobs_dir
+    from ..consts import LOG_SUFFIX
 
     dbpath = args.path
     user = args.user
@@ -131,7 +132,7 @@ def addjob(args, __name__="util addjob"):
     job_dir.mkdir()
     new_dbpath = job_dir / dbpath.name
     copyfile(dbpath, new_dbpath)
-    log_path = dbpath.with_suffix(".log")
+    log_path = dbpath.with_suffix(LOG_SUFFIX)
     if log_path.exists():
         copyfile(log_path, job_dir / log_path.name)
     err_path = dbpath.with_suffix(".err")

@@ -46,6 +46,7 @@ class BaseCommonModule(object):
         from logging import getLogger, FileHandler, Formatter, StreamHandler
         from pathlib import Path
         from ..exceptions import SetupError
+        from ..consts import LOG_SUFFIX
 
         if (
             not self.args
@@ -56,7 +57,7 @@ class BaseCommonModule(object):
             raise SetupError(module_name=self.module_name)
         self.logger = getLogger("oakvar." + self.module_name)
         if self.args and self.args.logtofile:
-            self.log_path = Path(self.output_dir) / (self.output_basename + ".log")
+            self.log_path = Path(self.output_dir) / (self.output_basename + LOG_SUFFIX)
             log_handler = FileHandler(self.log_path, "a")
         else:
             log_handler = StreamHandler()

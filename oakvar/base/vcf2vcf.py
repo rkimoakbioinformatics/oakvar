@@ -1,4 +1,7 @@
 class VCF2VCF:
+
+    OV_PREFIX: str = "OV_"
+
     def __init__(self, *inargs, **inkwargs):
         import sys
         from oakvar.exceptions import ModuleLoadingError
@@ -35,9 +38,9 @@ class VCF2VCF:
         from oakvar.util.admin_util import get_liftover_chain_paths
         from oakvar import get_wgs_reader
 
-        if self.args.genome:
+        if self.args.get("genome"):
             liftover_chain_paths = get_liftover_chain_paths()
-            self.lifter = LiftOver(liftover_chain_paths[self.args.genome])
+            self.lifter = LiftOver(liftover_chain_paths[self.args.get("genome")])
             self.do_liftover = True
         else:
             self.lifter = None
@@ -276,7 +279,6 @@ class VCF2VCF:
         import os
         from oakvar.util.util import get_args
         from oakvar.util.run import get_module_options
-        from types import SimpleNamespace
 
         args = get_args(self.cmd_arg_parser, inargs, inkwargs)
         self.inputs = [os.path.abspath(v) for v in args.get("inputs")]
@@ -289,7 +291,7 @@ class VCF2VCF:
         self.annotator_names = args.get("annotator_names", [])
         self.mapper_name = args.get("mapper_name")
         self.run_name = args.get("run_name")
-        self.args = SimpleNamespace(**args)
+        self.args = args
 
     def log_progress(self, lnum):
         from time import time
@@ -316,7 +318,6 @@ class VCF2VCF:
 
         if not self.mapper_name or not self.inputs:
             return False
-        field_suffix = "OC_"
         base_re = compile("^[*]|[ATGC]+|[-]+$")
         modules = load_modules(annotators=self.annotator_names, mapper=self.mapper_name)
         col_infos = self.load_col_infos(self.annotator_names, self.mapper_name)
@@ -347,7 +348,7 @@ class VCF2VCF:
                 col_info = col_infos[module_name]
                 for col in col_info:
                     wf.write(
-                        f"##INFO=<ID={prefix + '__' + col['name']},Number=A,Type={col['type'].capitalize()},Description=\"{col['title']}\">\n"
+                        f"##INFO=<ID={self.OV_PREFIX}{prefix}__{col['name']},Number=A,Type={col['type'].capitalize()},Description=\"{col['title']}\">\n"
                     )
             f.seek(0)
             for line in f:
@@ -436,6 +437,7 @@ class VCF2VCF:
                         ]:
                             continue
                         values = []
+                        has_value: bool = False
                         for variant in variants:
                             value = variant.get(col_name)
                             if value is None:
@@ -449,9 +451,13 @@ class VCF2VCF:
                                         value = str(value)
                                     value = self.escape_vcf_value(value)
                             values.append(value)
+                            if value and value != "{}":
+                                has_value = True
+                        if not has_value:
+                            continue
                         if "__" not in col_name:
                             col_name = "base__" + col_name
-                        wf.write(field_suffix + col_name + "=" + ",".join(values))
+                        wf.write(self.OV_PREFIX + col_name + "=" + ",".join(values))
                         if col_name != all_col_names[-1]:
                             wf.write(";")
                     wf.write("\t" + "\t".join(vcf_toks[8:]) + "\n")

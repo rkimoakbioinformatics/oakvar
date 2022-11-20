@@ -100,10 +100,12 @@ async def get_user_job_dbpath(request, eud={}) -> Optional[str]:
 
 
 async def get_user_job_log_path(request, eud={}) -> Optional[str]:
+    from ...consts import LOG_SUFFIX
+
     run_path = await get_user_job_run_path(request, eud=eud)
     if not run_path:
         return None
-    log_path = run_path + ".log"
+    log_path = run_path + LOG_SUFFIX
     return log_path
 
 
@@ -124,7 +126,7 @@ def get_log_path_in_job_dir(
     job_dir: Optional[str], run_name: Optional[str] = None
 ) -> Optional[str]:
     from pathlib import Path
-    from ...consts import log_suffix
+    from ...consts import LOG_SUFFIX
 
     if not job_dir:
         return None
@@ -132,7 +134,7 @@ def get_log_path_in_job_dir(
     if not job_dir_p.is_dir():
         return None
     if run_name:
-        return str(job_dir_p / f"{run_name}{log_suffix}")
+        return str(job_dir_p / f"{run_name}{LOG_SUFFIX}")
     log_paths = [v for v in job_dir_p.glob("*.log")]
     return str(log_paths[0])
 

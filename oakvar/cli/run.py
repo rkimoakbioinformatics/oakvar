@@ -333,4 +333,9 @@ def add_parser_ov_run(subparsers):
         action="store_true",
         help="Combine input files into one result",
     )
+    parser_ov_run.add_argument(
+        "--blitz-mode",
+        action="store_true",
+        help="Run converter to aggregator at once, variant by variant"
+    )
     parser_ov_run.set_defaults(func=cli_run)

@@ -2,7 +2,6 @@ from typing import Any
 from typing import Optional
 from typing import List
 from typing import Dict
-from typing import Set
 from typing import Tuple
 from typing import TextIO
 from oakvar import BaseConverter
@@ -31,12 +30,14 @@ class MasterConverter(object):
         self.input_dir = None
         self.input_path_dict = {}
         self.input_path_dict2 = {}
+        self.input_file_handles: Dict[str, TextIO] = {}
         self.output_dir: Optional[str] = None
         self.output_base_fname: Optional[str] = None
         self.conf = None
         self.unique_variants = None
         self.error_logger = None
-        self.unique_excs = []
+        self.unique_excs: Dict[str, int] = {}
+        self.err_holder = []
         self.wpath = None
         self.err_path = None
         self.crm_path = None
@@ -177,14 +178,26 @@ class MasterConverter(object):
         import gzip
         from oakvar.util.util import detect_encoding
 
+        if self.logger:
+            self.logger.info(f"detecting encoding of {input_path}")
         encoding = detect_encoding(input_path)
+        if self.logger:
+            self.logger.info(f"encoding: {input_path} {encoding}")
         if input_path.endswith(".gz"):
             f = gzip.open(input_path, mode="rt", encoding=encoding)
         else:
             f = open(input_path, encoding=encoding)
         return f
 
+    def collect_input_file_handles(self):
+        if not self.input_paths:
+            raise
+        for input_path in self.input_paths:
+            f = self.get_file_object_for_input_path(input_path)
+            self.input_file_handles[input_path] = f
+
     def setup(self):
+        self.collect_input_file_handles()
         self.collect_converters()
         self.check_input_format()
         self.collect_converter_by_input()
@@ -193,10 +206,8 @@ class MasterConverter(object):
 
     def setup_logger(self):
         from logging import getLogger
-        from time import asctime
 
         self.logger = getLogger("oakvar.converter")
-        self.logger.info("started: %s" % asctime())
         self.error_logger = getLogger("err.converter")
 
     def collect_converters(self):
@@ -231,7 +242,7 @@ class MasterConverter(object):
         if not self.input_paths:
             return
         for input_path in self.input_paths:
-            f = self.get_file_object_for_input_path(input_path)
+            f = self.input_file_handles[input_path]
             converter = self.get_converter_for_input_file(f)
             self.converter_by_input_path[input_path] = converter
 
@@ -397,7 +408,7 @@ class MasterConverter(object):
         if self.pipeinput:
             f = stdin
         else:
-            f = self.get_file_object_for_input_path(input_path)
+            f = self.input_file_handles[input_path]
         converter = self.converter_by_input_path[input_path]
         if not converter:
             raise NoConverterFound(input_path)
@@ -512,7 +523,7 @@ class MasterConverter(object):
             )
         except Exception as e:
             self._log_conversion_error(
-                self.input_path, self.read_lnum, self.l, e, full_line_error=False
+                self.read_lnum, e, full_line_error=False
             )
         self.crm_writer.write_data(
             {
@@ -541,49 +552,37 @@ class MasterConverter(object):
             self.uid += 1
 
     def run(self):
-        from time import time, asctime, localtime
         from pathlib import Path
         from oakvar.util.run import update_status
 
-        status = f"started converter"
-        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
-        self.setup()
         if not self.input_paths or not self.logger:
             raise
-        start_time = time()
-        self.total_num_converted_variants = 0
-        self.uid = 1
+        update_status(f"started converter", logger=self.logger, serveradmindb=self.serveradmindb)
+        self.setup()
+        self.set_variables_pre_run()
         for self.input_path in self.input_paths:
+            self.input_fname = Path(self.input_path).name if not self.pipeinput else STDIN
             f, converter = self.setup_file(self.input_path)
-            input_fname = Path(self.input_path).name if not self.pipeinput else STDIN
             self.file_num_valid_variants = 0
             self.file_error_lines = 0
-            for self.read_lnum, self.l, variants in converter.convert_file(
+            for self.read_lnum, variants in converter.convert_file(
                 f, exc_handler=self._log_conversion_error
             ):
                 try:
                     self.handle_converted_variants(variants, converter)
+                    if self.read_lnum % 10000 == 0:
+                        status = f"Running Converter ({self.input_fname}): line {self.read_lnum}"
+                        update_status(
+                            status, logger=self.logger, serveradmindb=self.serveradmindb
+                        )
                 except Exception as e:
-                    self._log_conversion_error(self.input_path, self.read_lnum, self.l, e)
-                    continue
+                    self._log_conversion_error(self.read_lnum, e)
             f.close()
-            if self.total_num_converted_variants % 10000 == 0:
-                status = f"Running Converter ({input_fname}): line {self.read_lnum}"
-                update_status(
-                    status, logger=self.logger, serveradmindb=self.serveradmindb
-                )
             self.logger.info(f"number of valid variants: {self.file_num_valid_variants}")
             self.logger.info(f"number of error lines: {self.file_error_lines}")
         self.close_output_files()
         self.end()
-        self.logger.info("total number of converted variants: {}".format(self.total_num_converted_variants))
-        self.logger.info("number of total error lines: %d" % self.total_error_lines)
-        end_time = time()
-        self.logger.info("finished: %s" % asctime(localtime(end_time)))
-        runtime = round(end_time - start_time, 3)
-        self.logger.info("runtime: %s" % runtime)
-        status = f"finished Converter"
-        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
+        self.log_ending()
         ret = {
             "total_lnum": self.total_num_converted_variants,
             "write_lnum": self.total_num_valid_variants,
@@ -592,6 +591,28 @@ class MasterConverter(object):
             "assemblies": self.genome_assemblies,
         }
         return ret
+
+    def set_variables_pre_run(self):
+        from time import time
+
+        self.start_time = time()
+        self.total_num_converted_variants = 0
+        self.uid = 1
+
+    def log_ending(self):
+        from time import time, asctime, localtime
+        from oakvar.util.run import update_status
+
+        if not self.logger:
+            raise
+        self.logger.info("total number of converted variants: {}".format(self.total_num_converted_variants))
+        self.logger.info("number of total error lines: %d" % self.total_error_lines)
+        end_time = time()
+        self.logger.info("finished: %s" % asctime(localtime(end_time)))
+        runtime = round(end_time - self.start_time, 3)
+        self.logger.info("runtime: %s" % runtime)
+        status = f"finished Converter"
+        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
 
     def perform_liftover_if_needed(self, variant):
         from copy import copy
@@ -712,29 +733,48 @@ class MasterConverter(object):
             newalt = alt
         return [newchrom, newpos, newref, newalt]
 
-    def _log_conversion_error(self, input_path, ln, line, e, full_line_error=True):
-        from oakvar.exceptions import IgnoredVariant
-
-        _ = line
-        if not self.logger or not self.error_logger:
-            from oakvar.exceptions import LoggerError
-
-            raise LoggerError()
+    def _log_conversion_error(self, line_no: int, e, full_line_error=True):
         from traceback import format_exc
+        from oakvar.exceptions import ExpectedException
+        from oakvar.exceptions import NoAlternateAllele
+        from oakvar.util.run import update_status
 
+        if isinstance(e, NoAlternateAllele):
+            if line_no % 10000 == 0:
+                status = f"Running Converter ({self.input_fname}): line {line_no}"
+                update_status(
+                    status, logger=self.logger, serveradmindb=self.serveradmindb
+                )
+            return
+        if not self.logger or not self.error_logger:
+            raise
         if full_line_error:
             self.file_error_lines += 1
             self.total_error_lines += 1
-        err_str = format_exc().rstrip()
+        if isinstance(e, ExpectedException):
+            err_str = str(e)
+        else:
+            err_str = format_exc().rstrip()
         if err_str not in self.unique_excs:
-            self.unique_excs.append(err_str)
-            if isinstance(e, IgnoredVariant) or (
-                hasattr(e, "traceback") and e.traceback == False
-            ):
+            err_no = len(self.unique_excs)
+            self.unique_excs[err_str] = err_no
+            if hasattr(e, "traceback") and e.traceback == False:
                 pass
             else:
-                self.logger.error(err_str)
-        self.error_logger.error(f"{input_path}:{ln}\t{str(e)}")
+                self.logger.error(f"Error [{err_no}]: {self.input_path}: {err_str}")
+            self.err_holder.append(f"{err_no}:{line_no}\t{str(e)}")
+        else:
+            err_no = self.unique_excs[err_str]
+            self.err_holder.append(f"{err_no}:{line_no}\t{str(e)}")
+        if len(self.err_holder) % 1000 == 0:
+            for s in self.err_holder:
+                self.error_logger.error(s)
+            self.err_holder = []
+        if line_no % 10000 == 0:
+            status = f"Running Converter ({self.input_fname}): line {line_no}"
+            update_status(
+                status, logger=self.logger, serveradmindb=self.serveradmindb
+            )
 
     def close_output_files(self):
         if self.crv_writer is not None:
