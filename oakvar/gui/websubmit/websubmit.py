@@ -1083,7 +1083,6 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
             finally:
                 await sleep(1)
 
-    #main_loop = new_event_loop()
     main_loop = get_event_loop()
     job_tracker = JobTracker(main_loop)
     try:
