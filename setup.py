@@ -17,6 +17,7 @@ def walk_and_add(d, pkg_files):
         "webresult",
         "webstore",
         "websubmit",
+        "assets"
     ]
     for root, _, files in os.walk(d):
         root_spl = root.split(os.sep)

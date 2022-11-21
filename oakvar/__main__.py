@@ -152,7 +152,10 @@ def handle_exception(e: Exception):
 
 def main():
     from sys import argv
+    import signal
+    from . import raise_break
 
+    signal.signal(signal.SIGINT, raise_break)
     global get_entry_parser
     try:
         p_entry = get_entry_parser()

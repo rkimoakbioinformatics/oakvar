@@ -99,6 +99,8 @@ def fetch_install_queue(install_queue, install_state, local_modules_changed):
             )
             local_modules_changed.set()
             time.sleep(1)
+        except KeyboardInterrupt:
+            break
         except Exception as _:
             traceback.print_exc()
             local_modules_changed.set()

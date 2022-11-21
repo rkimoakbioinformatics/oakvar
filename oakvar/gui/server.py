@@ -1,10 +1,9 @@
 from aiohttp import web
 from aiohttp import web_runner
 
-
 class WebServer(object):
     def __init__(self, loop=None, url=None, args={}):
-        from asyncio import get_event_loop
+        from ..util.asyn import get_event_loop
 
         self.args = args
         self.logger = args.get("logger")
@@ -211,7 +210,7 @@ class TCPSitePatched(web_runner.BaseSite):
         reuse_port=None,
         loop=None,
     ):
-        from asyncio import get_event_loop
+        from ..util.asyn import get_event_loop
 
         super().__init__(
             runner,

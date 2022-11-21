@@ -1,15 +1,5 @@
-import sys
-import nest_asyncio
-from ..base.report_filter import DEFAULT_SERVER_DEFAULT_USERNAME
 from . import cli_entry
 from . import cli_func
-
-nest_asyncio.apply()
-if sys.platform == "win32" and sys.version_info >= (3, 8):
-    from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy
-
-    set_event_loop_policy(WindowsSelectorEventLoopPolicy())
-
 
 @cli_entry
 def cli_report(args):
@@ -21,7 +11,7 @@ def report(args, __name__="report"):
     from os.path import dirname
     from os.path import basename
     from os.path import join
-    from asyncio import get_event_loop
+    from ..util.asyn import get_event_loop
     from ..util.util import is_compatible_version
     from importlib.util import spec_from_file_location
     from importlib.util import module_from_spec
@@ -123,6 +113,7 @@ def report(args, __name__="report"):
 
 def get_parser_fn_report():
     from argparse import ArgumentParser, SUPPRESS
+    from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
 
     parser_ov_report = ArgumentParser(
         prog="ov report dbpath ...",

@@ -154,6 +154,8 @@ class ServerAdminDb:
         for row in cursor.fetchall():
             columns.append(row[0])
             column_types.append(row[1])
+        if not columns:
+            return True
         if not "status" in columns:
             self.add_status_column(conn, cursor)
         if not "uid" in columns:

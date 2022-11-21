@@ -100,10 +100,8 @@ class Runner(object):
         self.manager = SyncManager()
         self.manager.start()
 
-    def close_logger(self):
-        import logging
-
-        if self.log_handler:
+    def close_logger(self, error_log_only=False):
+        if self.log_handler and not error_log_only:
             self.log_handler.close()
             if self.logger is not None:
                 self.logger.removeHandler(self.log_handler)
@@ -111,6 +109,15 @@ class Runner(object):
             self.error_log_handler.close()
             if self.error_logger:
                 self.error_logger.removeHandler(self.error_log_handler)
+
+    def close_error_logger(self):
+        if self.error_log_handler:
+            self.error_log_handler.close()
+            if self.error_logger:
+                self.error_logger.removeHandler(self.error_log_handler)
+
+    def shutdown_logging(self):
+        import logging
         logging.shutdown()
 
     def sanity_check_run_name_output_dir(self):
@@ -345,10 +352,13 @@ class Runner(object):
                     serveradmindb=self.serveradmindb,
                 )
                 if self.args and self.args.writeadmindb:
-                    await self.write_admin_db_final_info(runtime)
+                    await self.write_admin_db_final_info(runtime, run_no)
             except Exception as e:
                 self.exception = e
             finally:
+                import traceback
+                if self.exception:
+                    traceback.print_exc()
                 if not self.exception:
                     update_status(JOB_STATUS_FINISHED, serveradmindb=self.serveradmindb)
                 else:
@@ -358,15 +368,10 @@ class Runner(object):
                     )
                     if self.logger:
                         self.logger.exception(self.exception)
-                if (
-                    not self.exception
-                    and self.args
-                    and not self.args.keep_temp
-                    and self.aggregator_ran
-                ):
-                    self.clean_up_at_end(run_no)
-                if self.logger:
-                    self.close_logger()
+                self.close_error_logger()
+                self.clean_up_at_end(run_no)
+                self.close_logger()
+                self.shutdown_logging()
                 if self.exception:
                     raise self.exception
         return self.report_response
@@ -1440,7 +1445,13 @@ class Runner(object):
         from ..consts import SAMPLE_FILE_SUFFIX
         from ..consts import MAPPING_FILE_SUFFIX
         from ..consts import ERROR_LOG_SUFFIX
-
+        if (
+            self.exception
+            or not self.args
+            or self.args.keep_temp
+            or not self.aggregator_ran
+        ):
+            return
         if not self.output_dir or not self.run_name:
             raise
         run_name = self.run_name[run_no]
@@ -1459,10 +1470,13 @@ class Runner(object):
             if error_logger_pattern.match(fn) and getsize(fn_path) == 0:
                 if self.logger:
                     self.logger.info(f"removing {fn_path}")
-                remove(str(fn_path))
+                try: # Windows does not allow deleting a file when it is open.
+                    remove(str(fn_path))
+                except:
+                    pass
                     
 
-    async def write_admin_db_final_info(self, runtime):
+    async def write_admin_db_final_info(self, runtime: float, run_no: int):
         import aiosqlite
         from json import dumps
         from ..exceptions import SetupError
@@ -1493,8 +1507,8 @@ class Runner(object):
                 runtime,
                 self.total_num_converted_variants,
                 info_json_s,
-                self.output_dir,
-                self.args.job_name,
+                self.output_dir[run_no],
+                self.args.job_name[run_no],
             ),
         )
         await db.commit()

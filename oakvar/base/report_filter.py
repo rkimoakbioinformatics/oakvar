@@ -1,16 +1,6 @@
 from typing import Any
 from typing import List
 from typing import Optional
-import sys
-from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
-
-if sys.platform == "win32" and sys.version_info >= (3, 8):
-    from asyncio import (
-        set_event_loop_policy,
-        WindowsSelectorEventLoopPolicy,
-    )  # ignore: type
-
-    set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 
 REPORT_FILTER_DB_NAME = "report_filter"
 REPORT_FILTER_DB_DIRNAME = "report_filters"
@@ -155,6 +145,8 @@ class FilterGroup(object):
 
 
 class ReportFilter:
+    from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
+
     @classmethod
     async def create(
         cls,
@@ -249,6 +241,8 @@ class ReportFilter:
         ret = await func(
             *args, cursor_read=cursor_read, cursor_write=cursor_write, **kwargs
         )
+        await cursor_read.close()
+        await cursor_write.close()
         return ret
 
     async def second_init(self):

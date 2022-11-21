@@ -1,7 +1,7 @@
 from typing import List
 from typing import Any
 from typing import Optional
-from ..base.report_filter import DEFAULT_SERVER_DEFAULT_USERNAME
+from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
 
 class BaseReporter:
     def __init__(self, args):

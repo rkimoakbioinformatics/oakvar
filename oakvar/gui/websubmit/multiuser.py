@@ -244,9 +244,3 @@ def add_routes(router):
     router.add_route("GET", "/server/deletetoken", delete_token)
     router.add_route("POST", "/server/signup", signup)
     router.add_static("/server", join(dirname(realpath(__file__))))
-
-
-def delete_job(uid: int):
-    if not serveradmindb:
-        return
-    serveradmindb.delete_job(uid)

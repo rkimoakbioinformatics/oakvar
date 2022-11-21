@@ -5,24 +5,6 @@ protocol = None
 log_path = None
 loop = None
 
-
-def get_event_loop():
-    from sys import platform as sysplatform
-    from asyncio import get_event_loop
-    from asyncio import set_event_loop
-
-    global loop
-    if not loop:
-        if sysplatform == "win32":  # Required to use asyncio subprocesses
-            from asyncio import ProactorEventLoop  # type: ignore
-
-            loop = ProactorEventLoop()
-            set_event_loop(loop)
-        else:
-            loop = get_event_loop()
-    return loop
-
-
 def inject_module_variables(args={}):
     from ..gui.webresult import webresult as wr
     from ..gui.webstore import webstore as ws
@@ -56,6 +38,7 @@ def get_protocol(args={}):
 def setup(args={}):
     from os.path import abspath
     from ..gui.websubmit import multiuser as mu
+    from ..util.asyn import get_event_loop
 
     if args.get("result"):
         args["headless"] = False
@@ -114,6 +97,7 @@ def main(url=None, args={}):
     from ..util.run import show_logo
     from ..gui.server import WebServer
     from ..gui.util import get_host_port
+    from ..util.asyn import get_event_loop
 
     logger = args.get("logger")
     if is_port_occupied(args=args):

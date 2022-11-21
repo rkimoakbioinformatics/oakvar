@@ -1,7 +1,6 @@
 from . import cli_entry
 from . import cli_func
 
-
 @cli_entry
 def cli_run(args):
     ret = run(args)
@@ -10,20 +9,14 @@ def cli_run(args):
 
 @cli_func
 def run(args, __name__="run"):
-    from asyncio import run
     from sys import platform
     from sys import version_info
-    import nest_asyncio
     from ..system import custom_system_conf
     from ..base.runner import Runner
+    from ..util.asyn import get_event_loop
 
     # nested asyncio
-    nest_asyncio.apply()
-    # Windows event loop patch
-    if platform == "win32" and version_info >= (3, 8):
-        from asyncio import set_event_loop_policy, WindowsSelectorEventLoopPolicy  # type: ignore
-
-        set_event_loop_policy(WindowsSelectorEventLoopPolicy())
+    #nest_asyncio.apply()
     # Custom system conf
     custom_system_conf = {}
     system_option = args.get("system_option")
@@ -41,7 +34,8 @@ def run(args, __name__="run"):
                 pass
             custom_system_conf[k] = v
     module = Runner(**args)
-    return run(module.main())
+    loop = get_event_loop()
+    return loop.run_until_complete(module.main())
 
 
 def add_parser_ov_run(subparsers):

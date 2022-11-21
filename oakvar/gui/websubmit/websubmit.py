@@ -5,7 +5,7 @@ from multiprocessing import Queue
 from multiprocessing import Manager
 
 job_queue = Queue()
-info_of_running_jobs = Manager().list()
+info_of_running_jobs = None
 report_generation_ps = {}
 valid_report_types = None
 servermode = False
@@ -19,11 +19,17 @@ time_of_log_single_api_access = None
 interval_log_single_api_access = 60
 job_worker = None
 logger = None
-mu = Any
+mu = None
 job_statuses = {}
 FINISHED = "Finished"
 ABORTED = "Aborted"
 ERROR = "Error"
+
+def get_info_of_running_jobs():
+    global info_of_running_jobs
+    if not info_of_running_jobs:
+        info_of_running_jobs = Manager().list()
+    return info_of_running_jobs
 
 class Job(object):
     def __init__(self, job_dir):
@@ -361,7 +367,7 @@ async def get_queue_item_and_job(request, job_dir) -> Tuple[dict, Job]:
 
 
 def add_job_uid_to_info_of_running_jobs(job_uid: int):
-    global info_of_running_jobs
+    info_of_running_jobs = get_info_of_running_jobs()
     job_uids = info_of_running_jobs
     job_uids.append(job_uid)
     info_of_running_jobs = job_uids
@@ -375,7 +381,6 @@ async def submit(request):
 
     global servermode
     global job_queue
-    global info_of_running_jobs
     global mu
     jobs_dir = get_user_jobs_dir(request)
     if not jobs_dir:
@@ -469,7 +474,7 @@ def job_not_finished(job):
 
 
 def job_not_running(job):
-    global info_of_running_jobs
+    info_of_running_jobs = get_info_of_running_jobs()
     return not job.get("uid") in info_of_running_jobs
 
 
@@ -484,7 +489,6 @@ async def get_jobs(request):
     from .multiuser import get_email_from_request
 
     global servermode
-    global info_of_running_jobs
     if not await mu.is_loggedin(request):
         return Response(status=401)
     data = await request.json()
@@ -866,7 +870,7 @@ def start_worker():
 
     global job_worker
     global job_queue
-    global info_of_running_jobs
+    info_of_running_jobs = get_info_of_running_jobs()
     if job_worker == None:
         job_worker = Process(
             target=fetch_job_queue, args=(job_queue, info_of_running_jobs)
@@ -876,6 +880,7 @@ def start_worker():
 
 def fetch_job_queue(job_queue, info_of_running_jobs):
     from asyncio import new_event_loop
+    from ...util.asyn import get_event_loop
 
     class JobTracker(object):
         def __init__(self, main_loop):
@@ -1034,7 +1039,8 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
                 job_dir = await get_job_dir_from_eud(
                     None, eud={"uid": uid, "username": username}
                 )
-                mu.delete_job(uid)
+                serveradmindb = await get_serveradmindb()
+                serveradmindb.delete_job(uid)
                 if job_dir and exists(job_dir):
                     rmtree(job_dir)
 
@@ -1070,16 +1076,23 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
             except Empty:
                 pass
             except Exception as e:
+                import traceback
+                traceback.print_exc()
                 logger = getLogger()
                 logger.exception(e)
             finally:
                 await sleep(1)
 
-    main_loop = new_event_loop()
+    #main_loop = new_event_loop()
+    main_loop = get_event_loop()
     job_tracker = JobTracker(main_loop)
-    main_loop.run_until_complete(job_worker_main())
-    job_tracker.loop.close()
-    main_loop.close()
+    try:
+        main_loop.run_until_complete(job_worker_main())
+    except KeyboardInterrupt:
+        pass
+    except:
+        import traceback
+        traceback.print_exc()
 
 
 async def redirect_to_index(_):

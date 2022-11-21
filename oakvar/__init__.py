@@ -91,10 +91,7 @@ def raise_break(__signal_number__, __stack_frame__):
                 pass
         os.kill(pid, signal.SIGTERM)
 
-
-signal.signal(signal.SIGINT, raise_break)
 # from .cli.util import ov_util_updateresult
-
 
 wgs = None
 _ = admin_util or inout

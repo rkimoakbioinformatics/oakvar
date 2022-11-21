@@ -1,7 +1,6 @@
 from . import cli_entry
 from . import cli_func
 
-
 """
 @cli_func
 def ov_util_updateresult(args):
@@ -402,7 +401,7 @@ def cli_util_filtersqlite(args):
 
 @cli_func
 def filtersqlite(args, __name__="util filtersqlite"):
-    from asyncio import get_event_loop
+    from ..util.asyn import get_event_loop
 
     loop = get_event_loop()
     return loop.run_until_complete(filtersqlite_async(args))
