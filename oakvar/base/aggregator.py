@@ -100,7 +100,7 @@ class Aggregator(object):
         from time import time, asctime, localtime
         from ..util.run import update_status
 
-        self._setup()
+        self.setup()
         if self.input_base_fname == None:
             return
         if self.dbconn is None or self.cursor is None:
@@ -313,7 +313,7 @@ class Aggregator(object):
     def set_output_base_fname(self):
         self.output_base_fname = self.run_name
 
-    def _setup(self):
+    def setup(self):
         if self.level is None:
             return
         if self.run_name is None:
@@ -514,7 +514,7 @@ class Aggregator(object):
         from sqlite3 import connect
         from ..util.inout import FileReader
 
-        self.base_reader = FileReader(self.base_fpath)
+        self.base_reader = FileReader(self.base_fpath, logger=self.logger)
         for annot_name in self.annotators:
             self.readers[annot_name] = FileReader(self.ipaths[annot_name])
         self.db_fname = self.output_base_fname + ".sqlite"

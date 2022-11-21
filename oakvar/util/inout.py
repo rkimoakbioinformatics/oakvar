@@ -23,7 +23,7 @@ class BaseFile(object):
 
 
 class FileReader(BaseFile):
-    def __init__(self, path, seekpos=None, chunksize=None):
+    def __init__(self, path, seekpos=None, chunksize=None, logger=None):
         from .util import detect_encoding
 
         super().__init__(path)
@@ -38,6 +38,7 @@ class FileReader(BaseFile):
         self.report_substitution = None
         self.f = None
         self.csvfmt: bool = False
+        self.logger = logger
         self._setup_definition()
 
     def _setup_definition(self):
@@ -66,6 +67,9 @@ class FileReader(BaseFile):
                 try:
                     coldef.from_json(col_s)
                 except JSONDecodeError:
+                    if self.logger:
+                        self.logger.error(f"column definition error: {col_s}")
+                    raise
                     coldef.from_var_csv(col_s)
                 self._validate_col_type(coldef.type)
                 self.columns[coldef.index] = coldef

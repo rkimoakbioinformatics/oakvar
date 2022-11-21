@@ -1713,7 +1713,7 @@ class Runner(object):
                     else:
                         raise Exception("Incorrect input_format value")
                 else:
-                    inputpath = self.crvinput
+                    inputpath = self.crxinput
             elif module.level == "gene":
                 inputpath = self.crginput
             secondary_inputs = []

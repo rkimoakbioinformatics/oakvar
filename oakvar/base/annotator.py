@@ -139,6 +139,7 @@ class BaseAnnotator(object):
                     self.conf["input_format"],
                     ", ".join(self.valid_input_formats),
                 )
+                raise ConfigurationError(err_msg)
         else:
             if self.conf["level"] == "variant":
                 self.conf["input_format"] = VARIANT_LEVEL_KEY
