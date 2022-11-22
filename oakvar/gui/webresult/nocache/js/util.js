@@ -654,7 +654,7 @@ async function loadFilterSetting() {
 async function loadFilterSettings(name, doNotCount) {
   lastUsedFilterName = name;
   showFilterTabContent = true;
-  await loadSmartFilters();
+  //await loadSmartFilters();
   await loadSamples();
   await loadFilterSetting();
   if (!doNotCount) {

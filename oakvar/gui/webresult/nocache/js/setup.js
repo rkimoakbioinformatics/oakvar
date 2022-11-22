@@ -553,36 +553,13 @@ class FilterManager {
       .css("display", "none")
       .change(this.vPropSelectChange.bind(this));
     fTypeDiv.append(vPropSel);
-    let sfHeader = $(getEl("span"))
-      .addClass("vprop-option")
-      .text("Smart Filters")
-      .click(this.vPropOptionClick)
-      .attr("value", "sf");
-    fTypeDiv.append(sfHeader);
-    let qbHeader = $(getEl("span"))
-      .addClass("vprop-option")
-      .text("Query Builder")
-      .click(this.vPropOptionClick)
-      .attr("value", "qb");
-    fTypeDiv.append(qbHeader);
     let sfContent = $(getEl("div")).attr("id", this.vpropSfId);
     vPropCont.append(sfContent);
     this.addSfUI(sfContent, filter);
     let qbContent = $(getEl("div")).attr("id", this.vpropQbId);
     vPropCont.append(qbContent);
     this.addQbUI(qbContent, filter);
-
-    // Activate the correct vProp type
-    let sfValued = Object.keys(filter.smartfilter).length !== 0;
-    let qbValued =
-      filter.variant.rules !== undefined && filter.variant.rules.length > 0;
-    if (sfValued || !qbValued) {
-      vPropSel.val("sf");
-      sfHeader.addClass("active");
-    } else {
-      vPropSel.val("qb");
-      qbHeader.addClass("active");
-    }
+    vPropSel.val("qb");
     vPropSel.change();
   }
 
@@ -1074,7 +1051,7 @@ function countFilterVariants() {
 }
 
 function displayFilterCount(n) {
-  let t = parseInt(infomgr.jobinfo["Number of unique input variants"]);
+  let t = parseInt(infomgr.get_total_num_variants());
   n = n === undefined ? t : n;
   let countDisplay = $("#filter-count-display");
   countDisplay.text(`${n.toLocaleString()}/${t.toLocaleString()} variants`);

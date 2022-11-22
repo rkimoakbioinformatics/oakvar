@@ -532,7 +532,7 @@ async function loadData() {
 }
 
 function setFilterButtonText() {
-  var tot = infomgr.jobinfo["Number of unique input variants"];
+  var tot = infomgr.get_total_num_variants();
   var cur = infomgr.datas.variant.length;
   var button = document.getElementById("filterbutton");
   if (cur < tot) {

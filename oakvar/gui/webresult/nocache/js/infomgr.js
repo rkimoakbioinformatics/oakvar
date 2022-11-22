@@ -113,7 +113,7 @@ InfoMgr.prototype.load_job = async function (uid, tabName, setResetTab = true) {
   );
   if (tabName == "variant") {
     var loaded = jsonResponseData["total_norows"];
-    var total = parseInt(infomgr.jobinfo["Number of unique input variants"]);
+    var total = infomgr.get_total_num_variants();
     var vCountLoad = document.getElementById("filter-count-display");
     if (vCountLoad) {
       vCountLoad.innerText = loaded.toLocaleString() + "/" + total.toLocaleString() + " variants"
@@ -125,6 +125,14 @@ InfoMgr.prototype.load_job = async function (uid, tabName, setResetTab = true) {
   return true
 }
 
+InfoMgr.prototype.get_total_num_variants = function() {
+  var total = parseInt(infomgr.jobinfo["num_variants"]);
+  if (!total) {
+    total = parseInt(infomgr.jobinfo["Number of unique input variants"]);
+  }
+  return total;
+}
+  
 InfoMgr.prototype.load_info = async function (_tabName) {
   var self = this;
   const response = await axios.get("/result/service/status", {

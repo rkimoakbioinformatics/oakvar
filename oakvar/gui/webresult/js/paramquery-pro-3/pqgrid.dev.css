@@ -252,7 +252,6 @@ div.pq-grid select{
 .pq-grid-col-resize-handle{	
     cursor:col-resize;
     display:block;
-    background:url(about:blank);
     width:10px;
     height: 100%; 
     position:absolute;top:0px;
