@@ -775,27 +775,38 @@ async def serve_runwidget_post(request):
 
 
 async def get_modules_info(request):
+    from json import loads
+
     _ = request.rel_url.query
     dbpath = await get_dbpath(request)
     conn = await get_db_conn(dbpath)
     content = {}
     if conn is not None:
         cursor = await conn.cursor()
-        q = 'select colval from info where colkey="_annotator_desc"'
+        q = 'select colval from info where colkey="annotator_descs"'
         await cursor.execute(q)
         r = await cursor.fetchone()
         if r is None or r[0] == "{}":
+            # TODO: backward-compatibility. Remove after a while. 11/22/2022.
+            q = 'select colval from info where colkey="_annotator_desc"'
+            await cursor.execute(q)
+            r = await cursor.fetchone()
+        if not r or r[0] == "{}":
             content = {}
         else:
-            s = r[0].strip("{").strip("}")
-            toks = s.split("', '")
-            d = {}
-            for tok in toks:
-                t2 = tok.split(":")
-                k = t2[0].strip().strip("'").replace("'", "'")
-                v = t2[1].strip().strip("'").replace("'", "'")
-                d[k] = v
-            content = d
+            try:
+                content = loads(r[0])
+            except:
+                # TODO: backward-compatibility. Remove after a while.
+                s = r[0].strip("{").strip("}")
+                toks = s.split("', '")
+                d = {}
+                for tok in toks:
+                    t2 = tok.split(":")
+                    k = t2[0].strip().strip("'").replace("'", "'")
+                    v = t2[1].strip().strip("'").replace("'", "'")
+                    d[k] = v
+                content = d
         await cursor.close()
         await conn.close()
     return content

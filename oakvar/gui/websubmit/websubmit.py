@@ -1,4 +1,3 @@
-from typing import Any
 from typing import Optional
 from typing import Tuple
 from multiprocessing import Queue
@@ -41,7 +40,7 @@ class Job(object):
         self.info["db_path"] = ""
         self.info["viewable"] = False
         self.info["reports"] = []
-        self.info["annotators"] = ""
+        self.info["annotators"] = []
         self.info["annotator_version"] = ""
         self.info["package_version"] = None
         self.info["num_input_var"] = ""
@@ -105,7 +104,7 @@ async def pre_submit_check(request, jobs_dir: Optional[str]):
     ret = check_submit_input_size(request)
     if ret:
         return ret
-    if not await mu.is_loggedin(request):
+    if mu and not await mu.is_loggedin(request):
         return Response(status=401)
     if not job_queue:
         return json_response({"status": "server error. Job queue is not running."})
@@ -242,7 +241,7 @@ async def get_run_args(request, submit_options: dict, job_dir: str):
         assembly = default_assembly
     submit_options["assembly"] = assembly
     run_args.append(assembly)
-    if servermode:
+    if servermode and mu:
         await mu.update_user_settings(request, {"lastAssembly": assembly})
     else:
         set_user_conf_prop("last_assembly", assembly)
@@ -328,29 +327,31 @@ def make_job_info_json(submit_options: dict, job_dir: str):
         raise ArgumentError(msg=f"job_name not found. submit_options={submit_options}")
     if not run_name:
         raise ArgumentError(msg="run_name not found for {job_name}")
+    job_options = submit_options.get("job_options", {})
     info_json = {}
     info_json["job_dir"] = job_dir
     info_json["job_name"] = job_name
     info_json["run_name"] = run_name
-    info_json["assembly"] = submit_options.get("assembly")
+    info_json["assembly"] = job_options.get("genome")
     info_json["db_path"] = ""
     info_json["orig_input_fname"] = submit_options.get("input_fnames")
     info_json["orig_input_path"] = submit_options.get("input_fpaths")
     info_json["submission_time"] = datetime.now().isoformat()
     info_json["viewable"] = False
-    info_json["note"] = submit_options.get("note")
+    info_json["note"] = job_options.get("note")
     pkg_ver = get_current_package_version()
     info_json["package_version"] = pkg_ver
-    info_json["annotators"] = submit_options.get("annotators", [])
-    info_json["postaggregators"] = submit_options.get("postaggregators", [])
-    info_json["reports"] = submit_options.get("reporters", [])
-    info_json["cc_cohorts_path"] = submit_options.get("cc_cohorts_path")
+    info_json["annotators"] = job_options.get("annotators", [])
+    info_json["postaggregators"] = job_options.get("postaggregators", [])
+    info_json["reports"] = job_options.get("reporters", [])
     with open(Path(job_dir) / (run_name + ".info.json"), "w") as wf:
         dump(info_json, wf, indent=2, sort_keys=True)
     return info_json
 
 
 async def get_queue_item_and_job(request, job_dir) -> Tuple[dict, Job]:
+    if not mu:
+        raise
     submit_options = await save_job_input_files(request, job_dir)
     process_job_options(submit_options)
     job = get_job(submit_options, job_dir)
@@ -489,7 +490,7 @@ async def get_jobs(request):
     from .multiuser import get_email_from_request
 
     global servermode
-    if not await mu.is_loggedin(request):
+    if mu and not await mu.is_loggedin(request):
         return Response(status=401)
     data = await request.json()
     pageno = data.get("pageno")
@@ -530,8 +531,8 @@ async def get_job_status(request):
     from .serveradmindb import ServerAdminDb
 
     global servermode
-    if not await mu.is_loggedin(request):
-        return Response(status=401)
+    #if mu and not await mu.is_loggedin(request):
+    #    return Response(status=401)
     queries = request.rel_url.query
     uid = queries.get("uid")
     if not uid:
@@ -1437,7 +1438,7 @@ async def get_login_state(request):
 
     global servermode
     global mu
-    if not servermode:
+    if not servermode or not mu:
         state = True
     else:
         state = await mu.is_loggedin(request)

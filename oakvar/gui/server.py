@@ -1,3 +1,5 @@
+from typing import Optional
+from typing import Any
 from aiohttp import web
 from aiohttp import web_runner
 
@@ -8,7 +10,7 @@ class WebServer(object):
         self.args = args
         self.logger = args.get("logger")
         self.app = None
-        self.cors = None
+        self.cors = Optional[Any]
         self.runner = None
         self.site = None
         self.host = args.get("host")
@@ -79,14 +81,22 @@ class WebServer(object):
         if self.server_started:
             webbrowseropen(url)
 
+    def start_workers(self):
+        from .webstore import webstore as ws
+        from .websubmit import websubmit as wu
+
+        ws.start_worker()
+        wu.start_worker()
+
     async def start(self):
         global server_ready
         from aiohttp import web
         import aiohttp_cors
 
         self.app = web.Application(loop=self.loop, middlewares=[self.middleware], client_max_size=1024*1024*1024*1024)
-        self.cors = aiohttp_cors.setup(self.app)  # type: ignore
+        self.cors = aiohttp_cors.setup(self.app) # type: ignore
         self.setup_routes()
+        self.start_workers()
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()
         self.site = TCPSitePatched(
@@ -183,7 +193,7 @@ class WebServer(object):
                 self.cors.add(
                     resource,
                     {
-                        "http://0.0.0.0:3000": ResourceOptions(
+                        "*": ResourceOptions(
                             allow_credentials=True,
                             expose_headers="*",
                             allow_headers="*",
@@ -191,8 +201,6 @@ class WebServer(object):
                         ),
                     },
                 )
-        ws.start_worker()
-        wu.start_worker()
 
 
 class TCPSitePatched(web_runner.BaseSite):
