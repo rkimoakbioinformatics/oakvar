@@ -20,13 +20,13 @@ class BaseAnnotator(object):
     def __init__(self, *inargs, **inkwargs):
         import os
         import sys
+        from pathlib import Path
         from ..util.util import get_args
         from ..consts import cannonical_chroms
         from ..module.local import get_module_conf
         from ..module.data_cache import ModuleDataCache
         from ..exceptions import ModuleLoadingError
         from ..exceptions import LoggerError
-        from pathlib import Path
 
         fp = sys.modules[self.__module__].__file__
         if not fp:
@@ -92,6 +92,7 @@ class BaseAnnotator(object):
         else:
             self.annotator_version = ""
         self.cache = ModuleDataCache(self.module_name, module_type=self.module_type)
+
 
     def summarize_by_gene(self, __hugo__, __input_data__):
         pass

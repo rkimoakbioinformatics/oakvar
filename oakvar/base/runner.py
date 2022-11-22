@@ -981,7 +981,6 @@ class Runner(object):
         from ..exceptions import SetupError
         from ..system.consts import default_postaggregator_names
         from ..module.local import get_local_module_infos_by_names
-        from ..module.local import module_exists_local
 
         if self.args is None:
             raise SetupError()
@@ -1004,9 +1003,6 @@ class Runner(object):
                 set(self.postaggregator_names).union(set(default_postaggregator_names))
             )
         )
-        if "casecontrol" in self.postaggregator_names:
-            if module_exists_local("casecontrol") == False:
-                self.postaggregator_names.remove("casecontrol")
         self.check_valid_modules(self.postaggregator_names)
         self.postaggregators = get_local_module_infos_by_names(
             self.postaggregator_names
@@ -1413,8 +1409,6 @@ class Runner(object):
     async def write_info_table(self, run_no):
         import aiosqlite
 
-        if not self.run_name or not self.args or not self.output_dir or not self.inputs:
-            raise
         dbpath = self.get_dbpath(run_no)
         conn = await aiosqlite.connect(dbpath)
         cursor = await conn.cursor()
@@ -1479,12 +1473,11 @@ class Runner(object):
     async def write_admin_db_final_info(self, runtime: float, run_no: int):
         import aiosqlite
         from json import dumps
-        from ..exceptions import SetupError
         from ..gui.websubmit.serveradmindb import get_admindb_path
         from ..util.util import quiet_print
 
-        if self.args is None:
-            raise SetupError()
+        if self.args is None or not self.output_dir:
+            raise
         if runtime is None or self.total_num_converted_variants is None:
             return
         admindb_path = get_admindb_path()
@@ -1532,7 +1525,7 @@ class Runner(object):
         self.info_json = {}
         self.info_json["job_dir"] = self.output_dir
         self.info_json["job_name"] = self.args.job_name
-        self.info_json["run_name"] = self.run_name
+        self.info_json["run_name"] = run_name
         self.info_json["db_path"] = str(Path(output_dir) / (run_name + ".sqlite"))
         self.info_json["orig_input_fname"] = [Path(x).name for x in self.inputs]
         self.info_json["orig_input_path"] = self.inputs
