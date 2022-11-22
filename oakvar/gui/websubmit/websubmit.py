@@ -880,6 +880,7 @@ def start_worker():
 
 def fetch_job_queue(job_queue, info_of_running_jobs):
     from asyncio import new_event_loop
+    from sys import platform
     from ...util.asyn import get_event_loop
 
     class JobTracker(object):
@@ -1083,7 +1084,10 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
             finally:
                 await sleep(1)
 
-    main_loop = get_event_loop()
+    if platform == "win32":
+        main_loop = get_event_loop()
+    else:
+        main_loop = new_event_loop()
     job_tracker = JobTracker(main_loop)
     try:
         main_loop.run_until_complete(job_worker_main())
