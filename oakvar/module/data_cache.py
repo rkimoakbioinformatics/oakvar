@@ -31,11 +31,18 @@ class ModuleDataCache:
 
     def get_conn(self):
         from duckdb import connect
+        from duckdb import IOException
+        from os import remove
 
         if not self.path:
             return None
         if not self.conn:
-            self.conn = connect(str(self.path))
+            try:
+                self.conn = connect(str(self.path))
+            except IOException:
+                print("IO probpem while opening cache db. Restarting the cache db.")
+                remove(self.path)
+                self.conn = connect(str(self.path))
         return self.conn
 
     def create_cache_table_if_needed(self):
