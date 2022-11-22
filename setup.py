@@ -80,6 +80,7 @@ setup(
         "duckdb",
         "rich",
         "aiohttp_cors",
+        "pyjwt",
         # below are module-specific. move them to module's yml.
         "mpmath",
         "twobitreader",
