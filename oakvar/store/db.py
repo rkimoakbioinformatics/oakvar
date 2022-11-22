@@ -207,6 +207,8 @@ def get_latest_module_code_version(module_name, conn=None, cursor=None):
     code_versions = []
     for row in cursor.fetchall():
         [code_version, min_pkg_ver] = row
+        if min_pkg_ver.startswith(">="):
+            min_pkg_ver = min_pkg_ver[2:]
         if pkg_ver >= Version(min_pkg_ver):
             code_versions.append(code_version)
     latest_code_version = get_latest_version(code_versions)
