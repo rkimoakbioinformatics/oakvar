@@ -3,7 +3,6 @@ loop = None
 def get_event_loop():
     from sys import platform as sysplatform
     from asyncio import get_event_loop
-    from asyncio import set_event_loop
 
     global loop
     if not loop:

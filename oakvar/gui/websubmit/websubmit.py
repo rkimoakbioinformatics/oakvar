@@ -1,11 +1,14 @@
 from typing import Optional
 from typing import Tuple
 from multiprocessing import Queue
-from multiprocessing import Manager
 
+REPORT_RUNNING = 1
+REPORT_FINISHED = 2
+REPORT_ERROR = 3
+manager = None
 job_queue = Queue()
 info_of_running_jobs = None
-report_generation_ps = {}
+report_generation_ps = None
 valid_report_types = None
 servermode = False
 VIEW_PROCESS = None
@@ -25,10 +28,55 @@ ABORTED = "Aborted"
 ERROR = "Error"
 
 def get_info_of_running_jobs():
+    from multiprocessing import Manager
+    global manager
     global info_of_running_jobs
-    if not info_of_running_jobs:
-        info_of_running_jobs = Manager().list()
+    if not manager:
+        manager = Manager()
+    if info_of_running_jobs is None:
+        info_of_running_jobs = manager.list()
     return info_of_running_jobs
+
+def get_report_generation_ps():
+    from multiprocessing import Manager
+    global manager
+    global report_generation_ps
+    if not manager:
+        manager = Manager()
+    if report_generation_ps is None:
+        report_generation_ps = manager.list()
+        report_generation_ps.append("initial")
+    return report_generation_ps
+
+def get_report_generation_key_str(key, report_type):
+    return f"{key}__{report_type}"
+
+def get_report_generation_str(key, report_type, value):
+    return f"{get_report_generation_key_str()}==={value}"
+
+def add_to_report_generation_ps(key, report_type):
+    report_generation_ps = get_report_generation_ps()
+    d = report_generation_ps
+    d.append(f"{key}__{report_type}==={REPORT_RUNNING}")
+    report_generation_ps = d
+
+def remove_from_report_generation_ps(key, report_type):
+    report_generation_ps = get_report_generation_ps()
+    del_num = None
+    key_str = get_report_generation_key_str(key, report_type) + "==="
+    for i, v in enumerate(report_generation_ps):
+        if v.startswith(key_str):
+            del_num = i
+            break
+    if del_num is not None:
+        del report_generation_ps[del_num]
+
+def get_report_generation_ps_value(key, report_type):
+    report_generation_ps = get_report_generation_ps()
+    key_str = get_report_generation_key_str(key, report_type) + "==="
+    for v in report_generation_ps:
+        if v.startswith(key_str):
+            return int(v.split("===")[1])
 
 class Job(object):
     def __init__(self, job_dir):
@@ -628,11 +676,15 @@ async def generate_report(request):
     from aiohttp.web import Response
     from asyncio import create_subprocess_shell
     from asyncio.subprocess import PIPE
+    import asyncio
     from logging import getLogger
+    import subprocess
+    from sys import platform
     from .userjob import get_user_job_dbpath
     from .multiuser import get_email_from_request
 
-    global report_generation_ps
+    report_generation_ps = get_report_generation_ps()
+    global job_queue
     username = get_email_from_request(request)
     uid, dbpath = await get_uid_dbpath_from_request(request)
     if (not username or not uid) and not dbpath:
@@ -643,29 +695,31 @@ async def generate_report(request):
         dbpath = await get_user_job_dbpath(request, eud)
     if not dbpath:
         return Response(status=404)
+    key = uid or dbpath
     run_args = ["ov", "report", dbpath]
     run_args.extend(["-t", report_type])
-    key = uid or dbpath
-    if key not in report_generation_ps:
-        report_generation_ps[key] = {}
-    report_generation_ps[key][report_type] = True
-    suffix = ".report_being_generated." + report_type
-    tmp_flag_path = Path(dbpath).with_suffix(suffix)
-    with open(tmp_flag_path, "w") as wf:
-        wf.write(report_type)
-        wf.close()
-    p = await create_subprocess_shell(" ".join(run_args), stderr=PIPE)
-    _, err = await p.communicate()
-    remove(tmp_flag_path)
-    if report_type in report_generation_ps[key]:
-        del report_generation_ps[key][report_type]
-    if key in report_generation_ps and len(report_generation_ps[key]) == 0:
-        del report_generation_ps[key]
-    response = "done"
-    if len(err) > 0:
-        logger = getLogger()
-        logger.error(err.decode("utf-8"))
-        response = "fail"
+    queue_item = {
+        "cmd": "report",
+        "run_args": run_args,
+        "dbpath": dbpath,
+        "uid": uid,
+        "report_type": report_type,
+    }
+    if job_queue is None:
+        return Response(status=500)
+    else:
+        job_queue.put(queue_item)
+    while True:
+        await asyncio.sleep(1)
+        value = get_report_generation_ps_value(key, report_type)
+        if value == REPORT_FINISHED:
+            remove_from_report_generation_ps(key, report_type)
+            response = "done"
+            break
+        elif value == REPORT_ERROR:
+            remove_from_report_generation_ps(key, report_type)
+            response = "fail"
+            break
     return json_response(response)
 
 
@@ -872,14 +926,15 @@ def start_worker():
     global job_worker
     global job_queue
     info_of_running_jobs = get_info_of_running_jobs()
+    report_generation_ps = get_report_generation_ps()
     if job_worker == None:
         job_worker = Process(
-            target=fetch_job_queue, args=(job_queue, info_of_running_jobs)
+            target=fetch_job_queue, args=(job_queue, info_of_running_jobs, report_generation_ps)
         )
         job_worker.start()
 
 
-def fetch_job_queue(job_queue, info_of_running_jobs):
+def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
     from asyncio import new_event_loop
     from sys import platform
     from ...util.asyn import get_event_loop
@@ -899,6 +954,7 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
             self.run_args = {}
             self.info_of_running_jobs = info_of_running_jobs
             self.info_of_running_jobs = []
+            self.report_generation_ps = report_generation_ps
             self.loop = main_loop
 
         def add_job(self, queue_item):
@@ -1026,9 +1082,10 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
             from .multiuser import get_serveradmindb
 
             logger = getLogger()
-            uids = queue_item["uids"]
-            username = queue_item["username"]
-            abort_only = queue_item["abort_only"]
+            uids = queue_item.get("uids")
+            dbpaths = queue_item.get("dbpaths")
+            username = queue_item.get("username")
+            abort_only = queue_item.get("abort_only")
             for uid in uids:
                 if uid in self.processes_of_running_jobs:
                     msg = "\nKilling job {}".format(uid)
@@ -1045,6 +1102,48 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
                 serveradmindb.delete_job(uid)
                 if job_dir and exists(job_dir):
                     rmtree(job_dir)
+
+        async def make_report(self, queue_item):
+            from pathlib import Path
+            import subprocess
+            from os import remove
+            from logging import getLogger
+            import asyncio
+
+            dbpath = queue_item.get("dbpath")
+            uid = queue_item.get("uid")
+            run_args = queue_item.get("run_args")
+            report_type = queue_item.get("report_type")
+            key = uid or dbpath
+            suffix = ".report_being_generated." + report_type
+            tmp_flag_path = Path(dbpath).with_suffix(suffix)
+            with open(tmp_flag_path, "w") as wf:
+                wf.write(report_type)
+                wf.close()
+            self.add_to_report_generation_ps(key, report_type)        
+            p = subprocess.Popen(run_args, stderr=subprocess.PIPE)
+            err = p.stderr.read()
+            if len(err) > 0:
+                logger = getLogger()
+                logger.error(err.decode("utf-8"))
+                self.change_report_generation_ps(key, report_type, REPORT_ERROR)
+            else:
+                self.change_report_generation_ps(key, report_type, REPORT_FINISHED)
+            remove(tmp_flag_path)
+
+        def add_to_report_generation_ps(self, key, report_type):
+            d = self.report_generation_ps
+            d.append(f"{key}__{report_type}==={REPORT_RUNNING}")
+            report_generation_ps = d
+
+        def change_report_generation_ps(self, key, report_type, value):
+            d = self.report_generation_ps
+            key_str = get_report_generation_key_str(key, report_type) + "==="
+            for i, v in enumerate(d):
+                if v.startswith(key_str):
+                    d[i] = f"{key_str}{value}"
+                    break
+            self.report_generation_ps = d
 
         def set_max_num_concurrent_jobs(self, queue_item):
             from logging import getLogger
@@ -1068,11 +1167,13 @@ def fetch_job_queue(job_queue, info_of_running_jobs):
             job_tracker.run_available_jobs()
             try:
                 queue_item = job_queue.get_nowait()
-                cmd = queue_item["cmd"]
+                cmd = queue_item.get("cmd")
                 if cmd == "submit":
                     job_tracker.add_job(queue_item)
                 elif cmd == "delete":
                     await job_tracker.delete_jobs(queue_item)
+                elif cmd == "report":
+                    await job_tracker.make_report(queue_item)
                 elif cmd == "set_max_num_concurrent_jobs":
                     job_tracker.set_max_num_concurrent_jobs(queue_item)
             except Empty:
@@ -1450,7 +1551,6 @@ routes.append(["GET", "/submit/annotators", get_annotators])
 routes.append(["GET", "/submit/postaggregators", get_postaggregators])
 routes.append(["GET", "/submit/jobs/{job_id}", view_job])
 routes.append(["GET", "/submit/jobs/{job_id}/db", download_db])
-routes.append(["POST", "/submit/makereport/{report_type}", generate_report])
 routes.append(["GET", "/submit/getjobsdir", get_jobs_dir])
 routes.append(["GET", "/submit/setjobsdir", set_jobs_dir])
 routes.append(["GET", "/submit/getsystemconfinfo", get_system_conf_info])
@@ -1490,3 +1590,4 @@ routes.append(["GET", "/submit/loginstate", get_login_state])
 routes.append(["GET", "/submit/systemlog", get_system_log])
 routes.append(["POST", "/submit/downloadreport/{report_type}", download_report])
 routes.append(["GET", "/submit/joblog", get_job_log])
+routes.append(["POST", "/submit/makereport/{report_type}", generate_report])
