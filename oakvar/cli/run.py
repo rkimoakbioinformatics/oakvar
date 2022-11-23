@@ -9,8 +9,6 @@ def cli_run(args):
 
 @cli_func
 def run(args, __name__="run"):
-    from sys import platform
-    from sys import version_info
     from ..system import custom_system_conf
     from ..base.runner import Runner
     from ..util.asyn import get_event_loop

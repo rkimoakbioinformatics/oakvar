@@ -69,7 +69,6 @@ class FileReader(BaseFile):
                 except JSONDecodeError:
                     if self.logger:
                         self.logger.error(f"column definition error: {col_s}")
-                    raise
                     coldef.from_var_csv(col_s)
                 self._validate_col_type(coldef.type)
                 self.columns[coldef.index] = coldef

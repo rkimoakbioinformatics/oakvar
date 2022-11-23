@@ -51,9 +51,6 @@ def get_report_generation_ps():
 def get_report_generation_key_str(key, report_type):
     return f"{key}__{report_type}"
 
-def get_report_generation_str(key, report_type, value):
-    return f"{get_report_generation_key_str()}==={value}"
-
 def add_to_report_generation_ps(key, report_type):
     report_generation_ps = get_report_generation_ps()
     d = report_generation_ps
@@ -670,20 +667,12 @@ async def get_uid_dbpath_from_request(request) -> Tuple[Optional[str], Optional[
 
 
 async def generate_report(request):
-    from pathlib import Path
-    from os import remove
     from aiohttp.web import json_response
     from aiohttp.web import Response
-    from asyncio import create_subprocess_shell
-    from asyncio.subprocess import PIPE
     import asyncio
-    from logging import getLogger
-    import subprocess
-    from sys import platform
     from .userjob import get_user_job_dbpath
     from .multiuser import get_email_from_request
 
-    report_generation_ps = get_report_generation_ps()
     global job_queue
     username = get_email_from_request(request)
     uid, dbpath = await get_uid_dbpath_from_request(request)
@@ -1083,7 +1072,6 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
 
             logger = getLogger()
             uids = queue_item.get("uids")
-            dbpaths = queue_item.get("dbpaths")
             username = queue_item.get("username")
             abort_only = queue_item.get("abort_only")
             for uid in uids:
@@ -1108,7 +1096,6 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
             import subprocess
             from os import remove
             from logging import getLogger
-            import asyncio
 
             dbpath = queue_item.get("dbpath")
             uid = queue_item.get("uid")
@@ -1122,7 +1109,7 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
                 wf.close()
             self.add_to_report_generation_ps(key, report_type)        
             p = subprocess.Popen(run_args, stderr=subprocess.PIPE)
-            err = p.stderr.read()
+            err = p.stderr.read() # type: ignore
             if len(err) > 0:
                 logger = getLogger()
                 logger.error(err.decode("utf-8"))
@@ -1134,7 +1121,7 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
         def add_to_report_generation_ps(self, key, report_type):
             d = self.report_generation_ps
             d.append(f"{key}__{report_type}==={REPORT_RUNNING}")
-            report_generation_ps = d
+            self.report_generation_ps = d
 
         def change_report_generation_ps(self, key, report_type, value):
             d = self.report_generation_ps
