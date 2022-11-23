@@ -418,6 +418,8 @@ class BaseReporter:
             ret = self.end()
         except Exception as e:
             await self.close_db()
+            import traceback
+            traceback.print_exc()
             raise e
         return ret
 
