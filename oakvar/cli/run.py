@@ -301,7 +301,7 @@ def add_parser_ov_run(subparsers):
         nargs="+",
         dest="postaggregators",
         default=[],
-        help="Postaggregators to run. Additionally, tagsampler, varmeta, and vcfinfo will automatically run depending on conditions.",
+        help="Postaggregators to run. Additionally, tagsampler and vcfinfo will automatically run depending on conditions.",
     )
     parser_ov_run.add_argument(
         "--vcf2vcf",

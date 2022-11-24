@@ -1545,7 +1545,7 @@ class Runner(object):
         postagg_names = [
             v
             for v in list(self.postaggregators.keys())
-            if v not in ["tagsampler", "varmeta", "vcfinfo"]
+            if v not in ["tagsampler", "vcfinfo"]
         ]
         postagg_names.sort()
         self.info_json["postaggregators"] = postagg_names
