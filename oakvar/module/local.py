@@ -641,6 +641,8 @@ def pack_module_zip(args: dict, kind: str):
             root_p = Path(root)
             if root_p.name.startswith(".") or root_p.name.startswith("_"):
                 continue
+            if root_p.name in ["config", "cache"]:
+                continue
             if kind == "code" and root_p.name == "data":
                 continue
             for file in files:
@@ -671,8 +673,9 @@ def pack_module_zip(args: dict, kind: str):
 def pack_module(args):
     from ..util.util import quiet_print
 
+    conf = get_module_conf(args.get("module"))
     pack_module_zip(args, "code")
-    if not args.get("code_only"):
+    if not args.get("code_only") or not (conf and conf.get("no_data")):
         pack_module_zip(args, "data")
     quiet_print(f"To register the packed module, use `ov store register`.", args=args)
     return True
