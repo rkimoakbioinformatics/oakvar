@@ -25,7 +25,6 @@ base_modules:
 - wgnote
 - wgvcfinfo
 - hg38wgs
-- varmeta
 - wgrankscore
 num_input_line_warning_cutoff: 25000
 gui_input_size_limit: 500
