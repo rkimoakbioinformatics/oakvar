@@ -675,7 +675,7 @@ def pack_module(args):
 
     conf = get_module_conf(args.get("module"))
     pack_module_zip(args, "code")
-    if not args.get("code_only") or not (conf and conf.get("no_data")):
+    if not args.get("code_only") and not (conf and conf.get("no_data")):
         pack_module_zip(args, "data")
     quiet_print(f"To register the packed module, use `ov store register`.", args=args)
     return True
