@@ -505,7 +505,6 @@ def fetch_conf_cache(args={}, conn=None, cursor=None, conf={}):
     from ..system import get_cache_dir
     from .ov import get_store_url
     from os.path import join
-    from os.path import exists
     from ..util.util import quiet_print
 
     if not conn or not cursor:
@@ -522,8 +521,6 @@ def fetch_conf_cache(args={}, conn=None, cursor=None, conf={}):
         name = module_store["name"]
         store = module_store["store"]
         fpath = join(get_cache_dir("conf", conf=conf), store, name + ".json")
-        if exists(fpath):
-            continue
         url = f"{get_store_url()}/fetch_conf/{store}/{name}"
         res = s.post(url, data=params)
         content = b"{}"
@@ -544,7 +541,6 @@ def fetch_logo_cache(args={}, conn=None, cursor=None, conf={}):
     from ..system import get_cache_dir
     from .ov import get_store_url
     from os.path import join
-    from os.path import exists
     from ..util.util import quiet_print
 
     if not conn or not cursor:
@@ -561,8 +557,6 @@ def fetch_logo_cache(args={}, conn=None, cursor=None, conf={}):
         name = module_store["name"]
         store = module_store["store"]
         fpath = join(get_cache_dir("logo", conf=conf), store, name + ".png")
-        if exists(fpath):
-            continue
         url = f"{get_store_url()}/fetch_logo/{store}/{name}"
         res = s.post(url, data=params)
         content = b""
@@ -583,7 +577,6 @@ def fetch_readme_cache(args={}, conn=None, cursor=None, conf={}):
     from ..system import get_cache_dir
     from .ov import get_store_url
     from os.path import join
-    from os.path import exists
     from ..util.util import quiet_print
 
     if not conn or not cursor:
@@ -600,8 +593,6 @@ def fetch_readme_cache(args={}, conn=None, cursor=None, conf={}):
         name = module_store["name"]
         store = module_store["store"]
         fpath = join(get_cache_dir("readme", conf=conf), store, name)
-        if exists(fpath):
-            continue
         url = f"{get_store_url()}/fetch_readme/{store}/{name}"
         res = s.post(url, data=params)
         content = b""
