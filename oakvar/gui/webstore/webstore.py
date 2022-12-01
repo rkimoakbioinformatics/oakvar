@@ -1,32 +1,15 @@
-import os
-import json
-from multiprocessing import Process, Manager
+from multiprocessing.managers import ListProxy
+from multiprocessing.managers import DictProxy
+from typing import Optional
 import time
-import traceback
-import asyncio
-from aiohttp import web
-from ... import consts
-from ...util import admin_util as au
-import shutil
-import concurrent.futures
 from ...system import get_system_conf
 from ...module import InstallProgressHandler
-from typing import Optional
 
 system_conf = get_system_conf()
 install_manager = None
-install_queue = None
-install_state = {
-    "stage": "",
-    "message": "",
-    "module_name": "",
-    "module_version": "",
-    "cur_chunk": 0,
-    "total_chunks": 0,
-    "cur_size": 0,
-    "total_size": 0,
-    "update_time": time.time(),
-}
+install_queue: Optional[ListProxy] = None
+install_state = None
+wss = {}
 install_worker = None
 local_modules_changed = None
 server_ready = False
@@ -46,7 +29,6 @@ class InstallProgressMpDict(InstallProgressHandler):
 
     def _reset_progress(self, update_time=False):
         self.install_state["cur_chunk"] = 0
-        self.install_state["total_chunks"] = 0
         self.install_state["cur_size"] = 0
         self.install_state["total_size"] = 0
         if update_time:
@@ -57,51 +39,56 @@ class InstallProgressMpDict(InstallProgressHandler):
 
         global install_worker
         global last_update_time
-        if self.install_state is None or len(self.install_state.keys()) == 0:
-            self.install_state["stage"] = ""
-            self.install_state["message"] = ""
-            self.install_state["module_name"] = ""
-            self.install_state["module_version"] = ""
-            self.install_state["cur_chunk"] = 0
-            self.install_state["total_chunks"] = 0
-            self.install_state["cur_size"] = 0
-            self.install_state["total_size"] = 0
-            self.install_state["update_time"] = time.time()
-            # last_update_time = self.install_state["update_time"]
         self.cur_stage = stage
+        initialize_install_state(self.install_state)
         self.install_state["module_name"] = self.module_name
         self.install_state["module_version"] = self.module_version
         self.install_state["stage"] = self.cur_stage
         self.install_state["message"] = self._stage_msg(self.cur_stage)
         self.install_state["kill_signal"] = False
         self._reset_progress(update_time=True)
-        # self.install_state["update_time"] = time.time()
         quiet_print(self.install_state["message"], {"quiet": self.quiet})
 
 
-def fetch_install_queue(install_queue, install_state, local_modules_changed):
+def fetch_install_queue(install_queue: ListProxy, install_state: Optional[DictProxy], local_modules_changed):
+    from time import sleep
     from ...module import install_module
+    from ...exceptions import ModuleToSkipInstallation
 
     while True:
         try:
-            data = install_queue.get()
-            module_name = data["module"]
-            module_version = data["version"]
-            install_state["kill_signal"] = False
-            stage_handler = InstallProgressMpDict(
-                module_name, module_version, install_state, quiet=False
-            )
-            install_module(
-                module_name,
-                version=module_version,
-                stage_handler=stage_handler,
-                # stages=100,
-            )
-            local_modules_changed.set()
-            time.sleep(1)
+            if install_queue:
+                data = install_queue[0]
+                module_name = data["module"]
+                module_version = data["version"]
+                initialize_install_state(install_state, module_name=module_name, module_version=module_version)
+                stage_handler = InstallProgressMpDict(
+                    module_name, module_version, install_state, quiet=False
+                )
+                try:
+                    install_module(
+                        module_name,
+                        version=module_version,
+                        stage_handler=stage_handler,
+                        args={"overwrite": True},
+                        fresh=True,
+                    )
+                    unqueue(module_name)
+                    local_modules_changed.set()
+                except ModuleToSkipInstallation:
+                    unqueue(module_name)
+                    stage_handler.stage_start("skip")
+                    local_modules_changed.set()
+                except:
+                    unqueue(module_name)
+                    stage_handler.stage_start("error")
+                    local_modules_changed.set()
+                    raise
+            sleep(1)
         except KeyboardInterrupt:
             break
         except Exception as _:
+            import traceback
             traceback.print_exc()
             local_modules_changed.set()
 
@@ -130,95 +117,85 @@ def get_remote_manifest_cache() -> Optional[dict]:
         with open(cache_path) as f:
             content = load(f)
             return content
-    return None
+    else:
+        return None
 
+
+def make_remote_manifest():
+    from ...module.remote import make_remote_manifest
+    content = make_remote_manifest()
+    install_queue: Optional[ListProxy[dict]] = get_install_queue()
+    if install_queue:
+        for queue_data in install_queue:
+            module_name: Optional[str] = queue_data.get("module")
+            if not module_name:
+                continue
+            data = content.get("data", {}).get(module_name)
+            if not data:
+                continue
+            content["data"][module_name]["queued"] = True
+    return content
 
 async def get_remote_manifest(_):
-    from ...module.remote import make_remote_manifest
+    from aiohttp.web import json_response
 
-    global install_queue
     content = get_remote_manifest_cache()
     if content:
-        return web.json_response(content)
-    content = make_remote_manifest(install_queue)
+        return json_response(content)
+    content = make_remote_manifest()
     save_remote_manifest_cache(content)
-    return web.json_response(content)
+    return json_response(content)
 
 
 async def get_remote_module_output_columns(request):
+    from aiohttp.web import json_response
     from ...module.remote import get_conf
 
     queries = request.rel_url.query
     module = queries["module"]
     conf = get_conf(module_name=module) or {}
     output_columns = conf.get("output_columns") or []
-    return web.json_response(output_columns)
+    return json_response(output_columns)
 
 
 async def get_local_manifest(_):
+    from aiohttp.web import json_response
     from ...module.cache import get_module_cache
 
     global local_manifest
     handle_modules_changed()
     if local_manifest:
-        return web.json_response(local_manifest)
+        return json_response(local_manifest)
     local_manifest = {}
     locals = get_module_cache().local
     for k, v in locals.items():
         m = v.serialize()
         local_manifest[k] = m
-    return web.json_response(local_manifest)
-
-
-async def get_storeurl(request):
-    from ...system import get_system_conf
-
-    conf = get_system_conf()
-    store_url = conf["store_url"]
-    if request.scheme == "https":
-        store_url = store_url.replace("http://", "https://")
-    return web.Response(text=store_url)
-
-
-async def get_module_readme(request):
-    from oakvar.module import get_readme
-
-    module_name = request.match_info["module"]
-    version = request.match_info["version"]
-    if version == "latest":
-        version = None
-    readme_md = get_readme(module_name)
-    return web.Response(body=readme_md)
-
-
-async def install_widgets_for_module(request):
-    queries = request.rel_url.query
-    module_name = queries["name"]
-    au.install_widgets_for_module(module_name)
-    content = "success"
-    return web.json_response(content)
+    return json_response(local_manifest)
 
 
 async def uninstall_module(request):
+    from aiohttp.web import json_response
+    from aiohttp.web import Response
     from oakvar.module import uninstall_module
-    from ...module.cache import get_module_cache
+    from ...exceptions import ServerError
 
     global servermode
     if servermode and mu:
-        r = await mu.is_admin_loggedin(request)
-        if r == False:
-            response = "failure"
-            return web.json_response(response)
+        if not await mu.is_admin_loggedin(request):
+            return Response(status=403)
     queries = request.rel_url.query
-    module_name = queries["name"]
-    uninstall_module(module_name)
-    get_module_cache().update_local()
-    response = "uninstalled " + module_name
-    return web.json_response(response)
+    module_name = queries["moduleName"]
+    try:
+        uninstall_module(module_name)
+    except:
+        raise ServerError()
+    return json_response({"status": "success", "msg": "uninstalled" + module_name})
 
 
 def start_worker():
-    from time import time
+    from multiprocessing import Process
+    from multiprocessing import Manager
 
     global install_worker
     global install_queue
@@ -226,17 +203,8 @@ def start_worker():
     global install_manager
     global local_modules_changed
     install_manager = Manager()
-    install_queue = install_manager.Queue()
-    install_state = install_manager.dict()
-    install_state["stage"] = ""
-    install_state["message"] = ""
-    install_state["module_name"] = ""
-    install_state["module_version"] = ""
-    install_state["cur_chunk"] = ""
-    install_state["total_chunk"] = ""
-    install_state["cur_size"] = ""
-    install_state["total_size"] = ""
-    install_state["update_time"] = time()
+    install_queue = get_install_queue()
+    install_state = get_install_state()
     local_modules_changed = install_manager.Event()
     if install_worker == None:
         install_worker = Process(
@@ -246,55 +214,108 @@ def start_worker():
         install_worker.start()
 
 
-async def send_socket_msg(install_ws=None):
-    global install_state
-    if install_state:
-        data = {}
-        data["module"] = install_state["module_name"]
-        data["msg"] = install_state["message"]
-        if install_ws:
-            await install_ws.send_str(json.dumps(data))
-        last_update_time = install_state["update_time"]
-        return last_update_time
-    else:
-        return None
+async def send_socket_msg(ws=None):
+    install_state = get_install_state()
+    if not install_state or ws is None:
+        return
+    data = install_state.copy()
+    await ws.send_json(data)
+    last_update_time = install_state["update_time"]
+    return last_update_time
 
 
 async def connect_websocket(request):
-    global install_state
-    last_update_time = None
-    if not install_state:
-        install_state = {}
-        install_state["stage"] = ""
-        install_state["message"] = ""
-        install_state["module_name"] = ""
-        install_state["module_version"] = ""
-        install_state["cur_chunk"] = 0
-        install_state["total_chunks"] = 0
-        install_state["cur_size"] = 0
-        install_state["total_size"] = 0
-        install_state["update_time"] = time.time()
-        install_state["kill_signal"] = False
-        last_update_time = install_state["update_time"]
-    install_ws = web.WebSocketResponse(timeout=60 * 60 * 24 * 365)
-    await install_ws.prepare(request)
+    import asyncio
+    from aiohttp.web import WebSocketResponse
+    import concurrent.futures
+    from uuid import uuid4
+    global wss
+    install_state = get_install_state()
+    assert install_state is not None
+    WS_COOKIE_KEY = "ws_id"
+    ws_id = request.cookies.get(WS_COOKIE_KEY)
+    if ws_id and ws_id in wss:
+        del wss[ws_id]
+    ws_id = str(uuid4())
+    ws = WebSocketResponse(timeout=60 * 60 * 24 * 365)
+    wss[ws_id] = ws
+    await ws.prepare(request)
+    last_update_time = install_state["update_time"]
+    try:
+        await ws.send_json({WS_COOKIE_KEY: ws_id})
+    except ConnectionResetError:
+        raise
+    except:
+        raise
+    to_dels = []
+    for ws_id in wss:
+        ws_t = wss[ws_id]
+        if ws_t.closed:
+            to_dels.append(ws_id)
+    for ws_id in to_dels:
+        del wss[ws_id]
     while True:
-        try:
-            await asyncio.sleep(5)
-        except concurrent.futures._base.CancelledError:
-            return install_ws
+        await asyncio.sleep(1)
+        if ws.closed:
+            break
         if not last_update_time or last_update_time < install_state["update_time"]:
-            last_update_time = await send_socket_msg(install_ws=install_ws)
+            try:
+                last_update_time = await send_socket_msg(ws=ws)
+            except concurrent.futures._base.CancelledError:
+                pass
+            except ConnectionResetError:
+                break
+            except:
+                import traceback
+                traceback.print_exc()
+    return ws
 
+
+def get_install_queue():
+    global install_queue
+    global install_manager
+    if install_queue is not None:
+        return install_queue
+    if not install_manager:
+        return None
+    install_queue = install_manager.list()
+    return install_queue
+
+def get_install_state():
+    global install_state
+    global install_manager
+    if install_state is not None:
+        return install_state
+    if not install_manager:
+        return None
+    install_state = install_manager.dict()
+    initialize_install_state(install_state)
+    return install_state
+
+def initialize_install_state(install_state: Optional[DictProxy], module_name="", module_version=""):
+    from time import time
+    if install_state is None:
+        return
+    d = {}
+    d["stage"] = ""
+    d["message"] = ""
+    d["module_name"] = module_name
+    d["module_version"] = module_version
+    d["cur_chunk"] = 0
+    d["total_chunk"] = 0
+    d["cur_size"] = 0
+    d["total_size"] = 0
+    d["update_time"] = time()
+    d["kill"] = False
+    for k, v in d.items():
+        install_state[k] = v
 
 async def queue_install(request):
-    global install_queue
+    from aiohttp.web import Response
     global servermode
     if servermode and mu:
-        r = await mu.is_admin_loggedin(request)
-        if r == False:
-            response = "notadmin"
-            return web.json_response(response)
+        if not await mu.is_admin_loggedin(request):
+            return Response(status=403)
     queries = request.rel_url.query
     if "version" in queries:
         module_version = queries["version"]
@@ -302,42 +323,44 @@ async def queue_install(request):
         module_version = None
     module_name = queries["module"]
     data = {"module": module_name, "version": module_version}
+    install_queue = get_install_queue()
     if install_queue is not None:
-        install_queue.put(data)
-    return web.Response(text="queued " + queries["module"])
-
-
-async def get_base_modules(_):
-    global system_conf
-    base_modules = system_conf["base_modules"]
-    return web.json_response(base_modules)
+        install_queue.append(data)
+    return Response(status=200)
 
 
 async def install_base_modules(request):
+    from aiohttp.web import Response
+    from ...system.consts import base_modules_key
     global servermode
     if servermode and mu:
-        r = await mu.is_admin_loggedin(request)
-        if r == False:
-            response = "failed"
-            return web.json_response(response)
-    from ...system.consts import base_modules_key
-
+        if not await mu.is_admin_loggedin(request):
+            return Response(status=403)
     base_modules = system_conf.get(base_modules_key, [])
+    install_queue = get_install_queue()
     for module in base_modules:
         if install_queue is not None:
-            install_queue.put({"module": module, "version": None})
-    response = "queued"
-    return web.json_response(response)
+            install_queue.append({"module": module, "version": None})
+    return Response(status=200)
 
 
-async def get_md(_):
-    from ...system import get_modules_dir
+async def get_readme(request):
+    from aiohttp.web import Response
+    from ...module.remote import get_readme
 
-    modules_dir = get_modules_dir()
-    return web.Response(text=modules_dir)
+    queries = request.rel_url.query
+    module_name = queries.get("module_name")
+    if not module_name:
+        return Response(status=404)
+    readme = get_readme(module_name)
+    if readme is None:
+        return Response(status=404)
+    return Response(text=readme)
 
 
 async def get_module_updates(request):
+    from aiohttp.web import json_response
+    from ...util.admin_util import get_updatable_async
     handle_modules_changed()
     queries = request.rel_url.query
     smodules = queries.get("modules", "")
@@ -345,7 +368,7 @@ async def get_module_updates(request):
         modules = smodules.split(",")
     else:
         modules = []
-    ret = await au.get_updatable_async(modules=modules)
+    ret = await get_updatable_async(modules=modules)
     [updates, _, conflicts] = ret
     sconflicts = {}
     for mname, reqd in conflicts.items():
@@ -357,81 +380,78 @@ async def get_module_updates(request):
         for mname, info in updates.items()
     }
     out = {"updates": updatesd, "conflicts": sconflicts}
-    return web.json_response(out)
+    return json_response(out)
 
 
 async def get_free_modules_space(_):
+    from aiohttp.web import json_response
     from ...system import get_modules_dir
+    import shutil
 
     modules_dir = get_modules_dir()
     free_space = shutil.disk_usage(modules_dir).free
-    return web.json_response(free_space)
+    return json_response(free_space)
 
 
-def unqueue(module):
-    global install_queue
-    tmp_queue_data = []
-    if module is not None:
-        while True:
-            if install_queue is not None:
-                if install_queue.empty():
-                    break
-                data = install_queue.get()
-                if data["module"] != module:
-                    tmp_queue_data.append([data["module"], data.get("version", "")])
-    for data in tmp_queue_data:
-        if install_queue is not None:
-            install_queue.put({"module": data[0], "version": data[1]})
+def send_kill_install_signal(module_name: Optional[str]):
+    install_state = get_install_state()
+    if not install_state or not module_name:
+        return
+    if install_state.get("module_name") == module_name:
+        install_state["kill_signal"] = True
 
 
-async def kill_install(request):
-    global install_queue
-    global install_state
-    queries = request.rel_url.query
-    module = queries.get("module", None)
-    if install_state:
-        if "module_name" in install_state and install_state["module_name"] == module:
-            install_state["kill_signal"] = True
-    return web.json_response("done")
+def unqueue(module_name: Optional[str]):
+    install_queue = get_install_queue()
+    if not install_queue or not module_name:
+        return
+    data_to_del = None
+    for data in install_queue:
+        if data.get("module") == module_name:
+            data_to_del = data
+            break
+    if data_to_del:
+        install_queue.remove(data_to_del)
 
 
 async def unqueue_install(request):
-    global install_state
+    from aiohttp.web import Response
+    if servermode and mu:
+        if not await mu.is_admin_loggedin(request):
+            return Response(status=403)
     queries = request.rel_url.query
-    module = queries.get("module", None)
-    unqueue(module)
-    if install_state is not None:
-        module_name_bak = install_state["module_name"]
-        msg_bak = install_state["message"]
-        install_state["module_name"] = module
-        install_state["message"] = "Unqueued"
-        await send_socket_msg()
-        install_state["module_name"] = module_name_bak
-        install_state["message"] = msg_bak
-    return web.json_response("done")
+    module_name = queries.get("module_name")
+    if not module_name:
+        return Response(status=404)
+    install_state = get_install_state()
+    if not install_state:
+        return Response(status=404)
+    if module_name == install_state.get("module_name"):
+        send_kill_install_signal(module_name)
+    unqueue(module_name)
+    return Response(status=200)
 
 
 async def get_tag_desc(_):
-    return consts.module_tag_desc
+    from ...consts import module_tag_desc
+    return module_tag_desc
 
 
 async def update_remote(request):
+    from aiohttp.web import json_response
+    from aiohttp.web import Response
     from ...module.cache import get_module_cache
     from ...store.db import fetch_ov_store_cache
-    from ...module.remote import make_remote_manifest
 
-    global install_queue
     if servermode and mu:
-        r = await mu.is_admin_loggedin(request)
-        if r == False:
-            response = "notadmin"
-            return web.json_response(response)
+        if not await mu.is_admin_loggedin(request):
+            return Response(status=403)
     module_cache = get_module_cache()
     fetch_ov_store_cache()
     module_cache.update_local()
-    content = make_remote_manifest(install_queue)
+    content = make_remote_manifest()
     save_remote_manifest_cache(content)
-    return web.json_response("done")
+    return json_response("done")
 
 
 def handle_modules_changed():
@@ -445,81 +465,142 @@ def handle_modules_changed():
 
 
 async def get_remote_manifest_from_local(request):
+    from aiohttp.web import json_response
     from ...module.local import get_remote_manifest_from_local
 
     queries = request.rel_url.query
     module = queries.get("module", None)
     if module is None:
-        return web.json_response({})
+        return json_response({})
     rmi = get_remote_manifest_from_local(module)
-    return web.json_response(rmi)
+    return json_response(rmi)
 
 
 async def local_module_logo_exists(request):
+    from aiohttp.web import json_response
     from ...module.cache import get_module_cache
-    from os.path import exists
+    from pathlib import Path
 
     module_name = request.match_info["module_name"]
     module_info = get_module_cache().local[module_name]
     module_dir = module_info.directory
-    logo_path = os.path.join(module_dir, "logo.png")
-    if exists(logo_path):
-        return web.json_response("success")
+    logo_path = Path(module_dir) / "logo.png"
+    if logo_path.exists():
+        return json_response("success")
     else:
-        return web.json_response("fail")
+        return json_response("fail")
 
 
 async def get_local_module_logo(request):
+    from aiohttp.web import FileResponse
     from ...module.cache import get_module_cache
     from ...system import get_default_logo_path
-    from os.path import exists
+    from pathlib import Path
 
     queries = request.rel_url.query
     module = queries.get("module", None)
     module_info = get_module_cache().local[module]
     module_dir = module_info.directory
-    logo_path = os.path.join(module_dir, "logo.png")
-    if exists(logo_path):
-        return web.FileResponse(logo_path)
+    logo_path = Path(module_dir) / "logo.png"
+    if logo_path.exists():
+        return FileResponse(logo_path)
     else:
-        return web.FileResponse(get_default_logo_path())
+        return FileResponse(get_default_logo_path())
 
 
-async def get_logo(request):
+async def get_remote_module_logo(request):
+    from aiohttp.web import FileResponse
+    from os.path import exists
+    from os.path import getsize
     from ...system import get_logo_path
     from ...system import get_default_logo_path
-    from os.path import exists
 
-    module_name = request.match_info["module_name"]
-    store = request.match_info["store"]
+    queries = request.rel_url.query
+    module_name = queries.get("module", None)
+    store = queries.get("store", None)
     logo_path = get_logo_path(module_name, store)
-    if exists(logo_path):
-        return web.FileResponse(logo_path)
+    if not exists(logo_path) or getsize(logo_path) == 0:
+        if store == "ov":
+            logo_path = get_logo_path(module_name, "oc")
+    if exists(logo_path) and getsize(logo_path) > 0:
+        return FileResponse(logo_path)
     else:
-        return web.FileResponse(get_default_logo_path())
+        return FileResponse(get_default_logo_path())
 
+
+async def add_local_module_info(request):
+    from aiohttp.web import Response
+    from aiohttp.web import json_response
+    #from ...module.local import get_local_module_info
+    from ...module.cache import get_module_cache
+
+    queries = request.rel_url.query
+    module_name = queries.get("moduleName")
+    if not module_name:
+        return Response(status=404)
+    mc = get_module_cache()
+    mdir = mc.add_local(module_name)
+    if not mdir:
+        return Response(status=404)
+    module_info = mc.get_local()[module_name]
+    return json_response(module_info.serialize())
+
+async def get_queue(_):
+    from aiohttp.web import json_response
+    install_queue = get_install_queue()
+    content = []
+    if install_queue:
+        for data in install_queue:
+            content.append(data.get("module"))
+    return json_response(content)
+
+async def get_install_state_web(_):
+    from aiohttp.web import json_response
+    install_state = get_install_state()
+    content = {}
+    if install_state:
+        for k, v in install_state.items():
+            content[k] = v
+    return json_response(content)
+
+async def get_module_img(request):
+    from pathlib import Path
+    from aiohttp.web import Response
+    from aiohttp.web import FileResponse
+    from ...module.local import get_module_dir
+    queries = request.rel_url.query
+    module_name = queries.get("module_name")
+    fname = queries.get("file")
+    if not module_name:
+        return Response(status=404)
+    module_dir = get_module_dir(module_name)
+    if not module_dir:
+        return Response(status=404)
+    p = Path(module_dir) / fname
+    if not p.exists():
+        return Response(status=404)
+    return FileResponse(p)
 
 routes = []
-routes.append(["GET", "/store/remote", get_remote_manifest])
-routes.append(["GET", "/store/installwidgetsformodule", install_widgets_for_module])
-routes.append(["GET", "/store/getstoreurl", get_storeurl])
-routes.append(["GET", "/store/uninstall", uninstall_module])
-routes.append(["GET", "/store/connectwebsocket", connect_websocket])
-routes.append(["GET", "/store/queueinstall", queue_install])
-routes.append(["GET", "/store/modules/{module}/{version}/readme", get_module_readme])
-routes.append(["GET", "/store/getbasemodules", get_base_modules])
 routes.append(["GET", "/store/installbasemodules", install_base_modules])
 routes.append(["GET", "/store/remotemoduleconfig", get_remote_module_output_columns])
-routes.append(["GET", "/store/getmd", get_md])
 routes.append(["GET", "/store/updates", get_module_updates])
 routes.append(["GET", "/store/freemodulesspace", get_free_modules_space])
-routes.append(["GET", "/store/killinstall", kill_install])
-routes.append(["GET", "/store/unqueue", unqueue_install])
 routes.append(["GET", "/store/tagdesc", get_tag_desc])
 routes.append(["GET", "/store/updateremote", update_remote])
 routes.append(["GET", "/store/localasremote", get_remote_manifest_from_local])
 routes.append(["GET", "/store/locallogoexists/{module_name}", local_module_logo_exists])
-routes.append(["GET", "/store/logo/{store}/{module_name}", get_logo])
 # for new gui.
 routes.append(["GET", "/store/local", get_local_manifest])
 routes.append(["GET", "/store/locallogo", get_local_module_logo])
+routes.append(["GET", "/store/remote", get_remote_manifest])
+routes.append(["GET", "/store/remotelogo", get_remote_module_logo])
+routes.append(["GET", "/store/queueinstall", queue_install])
+routes.append(["GET", "/store/connectwebsocket", connect_websocket])
+routes.append(["GET", "/store/addlocal", add_local_module_info])
+routes.append(["GET", "/store/uninstall", uninstall_module])
+routes.append(["GET", "/store/getqueue", get_queue])
+routes.append(["GET", "/store/getinstallstate", get_install_state_web])
+routes.append(["GET", "/store/unqueue", unqueue_install])
+routes.append(["GET", "/store/getreadme", get_readme])
+routes.append(["GET", "/store/getmoduleimg", get_module_img])
