@@ -408,7 +408,7 @@ def cleanup_install(args={}):
             new_path = Path(module_dir) / item
             if item != "data":
                 move(str(old_path), new_path)
-    rmtree(temp_dir)
+        rmtree(temp_dir)
 
 
 def write_install_marks(args={}):
@@ -678,7 +678,11 @@ def install_module(
         return True
     # except (Exception, KeyboardInterrupt, SystemExit) as e:
     except Exception as e:
-        if isinstance(e, KillInstallException) or isinstance(e, ModuleInstallationError):
+        if isinstance(e, ModuleInstallationError):
+            import traceback
+            traceback.print_exc()
+            cleanup_install(args=args)
+        elif isinstance(e, KillInstallException) or isinstance(e, ModuleInstallationError):
             if stage_handler:
                 stage_handler.stage_start("killed")
             cleanup_install(args=args)

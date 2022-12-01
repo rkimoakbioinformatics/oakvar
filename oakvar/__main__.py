@@ -133,6 +133,9 @@ def handle_exception(e: Exception):
     isatty = hasattr(sys, "ps1")  # interactive shell?
     halt = getattr(e, "halt", False)
     returncode = getattr(e, "returncode", 1)
+    if hasattr(e, "traceback") and getattr(e, "traceback"):
+        import traceback
+        traceback.print_exc()
     if isinstance(e, ExpectedException):
         if halt:
             if isatty:

@@ -183,6 +183,9 @@ def install(args, no_fetch=False, __name__="module install"):
             if not isinstance(e, ModuleToSkipInstallation):
                 if module_name not in problem_modules:
                     problem_modules.append(module_name)
+            if hasattr(e, "traceback") and getattr(e, "traceback"):
+                import traceback
+                traceback.print_exc()
             quiet_print(e, args=args)
     if problem_modules:
         quiet_print(f"following modules were not installed due to problems:", args=args)
