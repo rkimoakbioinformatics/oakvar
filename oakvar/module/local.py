@@ -125,18 +125,23 @@ class LocalModule(object):
         return self.__dict__
 
 
-def get_local_module_info(module_name, force=False) -> Optional[LocalModule]:
+def get_local_module_info(module_name, fresh=False) -> Optional[LocalModule]:
     from os.path import exists
     from .cache import get_module_cache
 
     if exists(module_name):
         module_info = LocalModule(module_name)
     else:
-        mc = get_module_cache(force=force)
-        if module_name in mc.get_local():
-            module_info = mc.get_local()[module_name]
+        module_info = None
+        mc = get_module_cache(fresh=fresh)
+        if fresh:
+            module_path = get_module_dir(module_name)
+            if module_path:
+                module_info = LocalModule(module_path)
+                if module_info:
+                    mc.get_local()[module_name] = module_info
         else:
-            module_info = None
+            module_info = mc.get_local().get(module_name)
     return module_info
 
 
@@ -700,3 +705,21 @@ def load_modules(annotators: list = [], mapper: Optional[str] = None, input_file
     for module_name in annotators:
         modules[module_name] = get_live_annotator(module_name)
     return modules
+
+def remove_code_part_of_module(module_name: str, module_dir=None):
+    from pathlib import Path
+    from os import listdir
+    from os import remove
+    from shutil import rmtree
+    if not module_dir:
+        module_dir = get_module_dir(module_name)
+    if not module_dir:
+        return
+    for item in listdir(module_dir):
+        item_path = Path(module_dir) / item
+        if item != "data":
+            if item_path.is_dir():
+                rmtree(item_path)
+            else:
+                remove(item_path)
+

@@ -51,6 +51,20 @@ class ModuleCache(object):
     def get_local(self):
         return self.local
 
+    def add_local(self, module_name):
+        from .local import get_module_dir
+        #from .local import get_local_module_info
+        mdir = get_module_dir(module_name)
+        if not mdir:
+            return
+        #module = get_local_module_info(module_name)
+        self.local[module_name] = mdir
+        return mdir
+
+    def remove_local(self, module_name):
+        if module_name in self.local:
+            del self.local[module_name]
+
     def update_local(self):
         import os
         from ..consts import install_tempdir_name
@@ -126,9 +140,9 @@ def update_mic():
     module_cache = ModuleCache()
 
 
-def get_module_cache(force=False):
+def get_module_cache(fresh=False):
     global module_cache
-    if not module_cache or force:
+    if not module_cache or fresh:
         module_cache = ModuleCache()
     return module_cache
 
