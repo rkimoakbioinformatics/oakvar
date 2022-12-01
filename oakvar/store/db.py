@@ -469,7 +469,7 @@ def fetch_ov_store_cache(
     create_ov_store_cache(args=args)
     fetch_summary_cache(args=args)
     fetch_versions_cache(args=args)
-    if args.get("clean_cache_db"):
+    if args.get("clean_cache_files"):
         args["publish_time"] = ""
     else:
         args["publish_time"] = local_last_updated
