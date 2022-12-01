@@ -44,11 +44,11 @@ def get_module_info_basic_table(module_info={}):
 
 
 def add_module_info_developer_table_rows(developer_table, developers):
-    developer_table.add_row("Name", developers.get("name"))
-    developer_table.add_row("Organization", developers.get("organization"))
-    developer_table.add_row("Email", developers.get("email"))
-    developer_table.add_row("Website", developers.get("website"))
-    developer_table.add_row("Citation", developers.get("citation"))
+    developer_table.add_row("Name", str(developers.get("name")))
+    developer_table.add_row("Organization", str(developers.get("organization")))
+    developer_table.add_row("Email", str(developers.get("email")))
+    developer_table.add_row("Website", str(developers.get("website")))
+    developer_table.add_row("Citation", str(developers.get("citation")))
 
 
 def get_module_info_developer_table(module_info={}):
