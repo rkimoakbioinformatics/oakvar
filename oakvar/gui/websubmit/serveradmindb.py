@@ -514,6 +514,33 @@ class ServerAdminDb:
         await cursor.execute(q, ("Aborted", username, uid))
         await conn.commit()
 
+    @db_func
+    async def get_users(self, conn=Any, cursor=Any):
+        _ = conn
+        q = f"select email, role from users"
+        await cursor.execute(q)
+        res = []
+        for row in await cursor.fetchall():
+            res.append({"email": row[0], "role": row[1]})
+        return res
+
+
+    @db_func
+    async def make_admin(self, email: str, conn=Any, cursor=Any):
+        _ = conn
+        q = f"update users set role=? where email=?"
+        await cursor.execute(q, ("admin", email,))
+        await conn.commit()
+
+
+    @db_func
+    async def remove_admin(self, email: str, conn=Any, cursor=Any):
+        _ = conn
+        q = f"update users set role='user' where email=?"
+        await cursor.execute(q, (email,))
+        await conn.commit()
+
+
     def retrieve_user_jobs_into_db(self):
         from pathlib import Path
         from .userjob import get_user_jobs_dir_list

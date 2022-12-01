@@ -107,7 +107,8 @@ async def loginsuccess(request):
     # email = payload.get("email")
     # if not email:
     #    return HTTPNotFound()
-    response = json_response({"status": "logged", "email": email})
+    admin = await is_admin_loggedin(request, email=email)
+    response = json_response({"status": "logged", "email": email, "admin": admin})
     admindb = await get_serveradmindb()
     await admindb.add_user_if_not_exist(email, "", "", "")
     oakvar_token = jwt.encode({"email": email}, DEFAULT_PRIVATE_KEY, algorithm="HS256")
@@ -162,7 +163,7 @@ async def restart(request):
             return json_response(
                 {
                     "success": False,
-                    "mgs": "Only logged-in admin can change the settings.",
+                    "mgs": "Only logged-in admin can restart.",
                 }
             )
     execvp("ov", ["ov", "gui", "--multiuser", "--headless"])
@@ -231,6 +232,49 @@ async def signup(request):
     return response
 
 
+async def get_users(request):
+    from aiohttp.web import Response
+    from aiohttp.web import json_response
+
+    if not get_servermode():
+        return Response(status=403)
+    if not await is_admin_loggedin(request):
+        return Response(status=403)
+    admindb = await get_serveradmindb()
+    users = await admindb.get_users()
+    return json_response(users)
+
+async def make_admin(request):
+    from aiohttp.web import Response
+
+    if not get_servermode():
+        return Response(status=403)
+    if not await is_admin_loggedin(request):
+        return Response(status=403)
+    queries = request.rel_url.query
+    email = queries.get("email")
+    if not email:
+        return Response(status=400)
+    admindb = await get_serveradmindb()
+    await admindb.make_admin(email)
+    return Response(status=200)
+
+
+async def remove_admin(request):
+    from aiohttp.web import Response
+
+    if not get_servermode():
+        return Response(status=403)
+    if not await is_admin_loggedin(request):
+        return Response(status=403)
+    queries = request.rel_url.query
+    email = queries.get("email")
+    if not email:
+        return Response(status=400)
+    admindb = await get_serveradmindb()
+    await admindb.remove_admin(email)
+    return Response(status=200)
+
 def add_routes(router):
     from os.path import dirname
     from os.path import realpath
@@ -243,4 +287,8 @@ def add_routes(router):
     router.add_route("GET", "/server/username", get_username)
     router.add_route("GET", "/server/deletetoken", delete_token)
     router.add_route("POST", "/server/signup", signup)
+    router.add_route("GET", "/server/users", get_users)
+    router.add_route("GET", "/server/makeadmin", make_admin)
+    router.add_route("GET", "/server/removeadmin", remove_admin)
     router.add_static("/server", join(dirname(realpath(__file__))))
+
