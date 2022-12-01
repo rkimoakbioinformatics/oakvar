@@ -849,7 +849,7 @@ async def get_package_versions(_):
     from ...util.admin_util import get_current_package_version
 
     cur_ver = get_current_package_version()
-    d = {"current": cur_ver}
+    d = {"pkg_ver": cur_ver}
     return json_response(d)
 
 
@@ -1537,13 +1537,11 @@ routes = []
 routes.append(["GET", "/submit/annotators", get_annotators])
 routes.append(["GET", "/submit/postaggregators", get_postaggregators])
 routes.append(["GET", "/submit/jobs/{job_id}", view_job])
-routes.append(["GET", "/submit/jobs/{job_id}/db", download_db])
 routes.append(["GET", "/submit/getjobsdir", get_jobs_dir])
 routes.append(["GET", "/submit/setjobsdir", set_jobs_dir])
 routes.append(["GET", "/submit/getsystemconfinfo", get_system_conf_info])
 routes.append(["GET", "/submit/updatesystemconf", update_system_conf])
 routes.append(["GET", "/submit/resetsystemconf", reset_system_conf])
-routes.append(["GET", "/submit/packageversions", get_package_versions])
 routes.append(["GET", "/submit/lastassembly", get_last_assembly])
 routes.append(["GET", "/submit/annotate", get_live_annotation_get])
 routes.append(["POST", "/submit/annotate", get_live_annotation_post])
@@ -1578,3 +1576,5 @@ routes.append(["GET", "/submit/systemlog", get_system_log])
 routes.append(["POST", "/submit/downloadreport/{report_type}", download_report])
 routes.append(["GET", "/submit/joblog", get_job_log])
 routes.append(["POST", "/submit/makereport/{report_type}", generate_report])
+routes.append(["GET", "/submit/jobdb", download_db])
+routes.append(["GET", "/submit/pkgver", get_package_versions])
