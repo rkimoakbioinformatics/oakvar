@@ -43,6 +43,7 @@ class RemoteModule(object):
 
     def to_dict(self):
         d = {
+            "name": self.name,
             "groups": self.groups,
             "output_columns": self.output_columns,
             "developer": self.developer,
@@ -56,6 +57,7 @@ class RemoteModule(object):
             "requires": self.requires,
             "latest_version": self.latest_code_version,
             "min_pkg_ver":  self.min_pkg_ver,
+            "conf": self.conf,
         }
         return d
 
@@ -99,9 +101,7 @@ class RemoteModule(object):
 
         self.name = kwargs.get("name") or ""
         self.store = kwargs.get("store") or "ov"
-        self.conf = get_conf(module_name=self.name)
-        if not self.conf:
-            return
+        self.conf = get_conf(module_name=self.name) or {}
         self.groups = self.conf.get("groups", [])
         self.output_columns = self.conf.get("output_columns", [])
         self.code_versions = module_code_versions(self.name) or []
@@ -131,7 +131,7 @@ class RemoteModule(object):
         self.local_code_version: Optional[str] = None
         self.local_data_source: Optional[str] = None
         logo_path = get_logo_path(self.name, self.store)
-        self.has_logo = exists(logo_path) and getsize(logo_path)
+        self.has_logo = exists(logo_path) and getsize(logo_path) > 0
 
 
 def get_conf(module_name=None, conf_path=None) -> Optional[dict]:
@@ -282,26 +282,18 @@ def get_remote_module_infos_of_type(t):
     return None
 
 
-def make_remote_manifest(install_queue=None):
+def make_remote_manifest():
     from ..store.db import get_manifest
     from ..consts import module_tag_desc
     from traceback import print_exc
 
-    content = {"data": {}, "tagdesc": {}}
+    content = {}
+    content["tagdesc"] = module_tag_desc
     try:
-        oc_manifest = get_manifest()
-        if oc_manifest:
-            content["data"] = oc_manifest
+        manifest = get_manifest()
+        if manifest:
+            content["data"] = manifest
     except:
         print_exc()
-        content = {"data": {}, "tagdesc": {}}
-    temp_q = []
-    if install_queue is not None:
-        while install_queue.empty() == False:
-            q = install_queue.get()
-            temp_q.append([q["module"], q["version"]])
-        for module, version in temp_q:
-            content["data"][module]["queued"] = True
-            install_queue.put({"module": module, "version": version})
-        content["tagdesc"] = module_tag_desc
+        content = {"data": {}}
     return content
