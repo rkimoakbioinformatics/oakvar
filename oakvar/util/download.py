@@ -1,5 +1,5 @@
-def download(url, fpath):
-    import download as download_util
+def download(url, fpath, install_state=None, check_install_kill=None):
+    from .download_library import download as download_util
     import gdown
 
     if "drive.google.com" in url:
@@ -7,7 +7,7 @@ def download(url, fpath):
     elif "github.com" in url:
         download_git_folder(url=url, install_dir=fpath)
     else:
-        download_util.download(url, fpath, kind="file", verbose=False, replace=True)
+        download_util(url, fpath, kind="file", verbose=False, replace=True, install_state=install_state, check_install_kill=check_install_kill)
 
 
 def download_git_file(el, folder):
