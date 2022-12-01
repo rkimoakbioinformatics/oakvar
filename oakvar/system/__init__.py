@@ -270,9 +270,14 @@ def get_default_logo_path() -> str:
 
 
 def get_logo_path(module_name: str, store: str, conf=None) -> str:
-    from os.path import join
+    from pathlib import Path
+    from os.path import getsize
 
-    return join(get_cache_dir("logo", conf=conf), store, module_name + ".png")
+    fname = module_name + ".png"
+    path = Path(get_cache_dir("logo", conf=conf)) / store / fname
+    if (not path.exists() or getsize(path) == 0) and store == "ov":
+        path = Path(get_cache_dir("logo", conf=conf)) / "oc" / fname
+    return str(path)
 
 
 def get_sys_conf_value(conf_key, sys_conf_path=None, conf=None):
