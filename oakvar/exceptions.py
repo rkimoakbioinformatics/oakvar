@@ -344,6 +344,13 @@ class WrongInput(ExpectedException):
             super().__init__(f"wrong input")
 
 
+class NotAdmin(ExpectedException):
+    halt = False
+    traceback = False
+
+    def __init__(self):
+        super().__init__(f"No admin privilege")
+
 # store-related exceptions
 class ClientError(object):
     code = 0
@@ -393,4 +400,8 @@ class AuthorizationError(ExpectedException):
         super().__init__(f"authorization failed")
 
 
+class ServerError(Exception):
+    def __init__(self):
+        import traceback
+        super().__init__(traceback.format_exc())
 # end of store-related exceptions
