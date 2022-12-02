@@ -445,6 +445,8 @@ def fetch_ov_store_cache(
         return False
     if is_new_store_db_setup():
         args["clean_cache_db"] = True
+        args["clean_cache_files"] = True
+        args["clean"] = True
         local_last_updated = None
     else:
         local_last_updated = get_local_last_updated()
@@ -473,7 +475,7 @@ def fetch_ov_store_cache(
     create_ov_store_cache(args=args)
     fetch_summary_cache(args=args)
     fetch_versions_cache(args=args)
-    if args.get("clean_cache_files"):
+    if args.get("clean_cache_files") or args.get("clean"):
         args["publish_time"] = ""
     else:
         args["publish_time"] = local_last_updated
