@@ -905,7 +905,7 @@ class Runner(object):
                     if not module:
                         msg = f"{module_name} is required by {postaggregator.name}, but does not exist."
                         raise ModuleNotExist(module_name, msg=msg)
-                    if module.type == "annotator" and self.annotator_names:
+                    if module.type == "annotator" and self.annotator_names is not None:
                         self.annotator_names.append(module_name)
                         self.annotators[module_name] = module
                     elif (

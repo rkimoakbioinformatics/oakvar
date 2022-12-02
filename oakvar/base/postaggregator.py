@@ -166,7 +166,7 @@ class BasePostAggregator(object):
             return None, None
         self.cursor = self.dbconn.cursor()
         for level in LEVELS.keys():
-            q = "select name from pragma_table_info('{level}') as tblinfo"
+            q = f"select name from pragma_table_info('{level}') as tblinfo"
             self.cursor.execute(q)
             columns = [
                 v[0]
@@ -198,14 +198,16 @@ class BasePostAggregator(object):
             for input_column_name in input_columns:
                 level, column_name = self.get_result_module_column(input_column_name)
                 if level and column_name:
-                    if not self.input_columns.get(level):
+                    if self.input_columns.get(level) is None:
                         self.input_columns[level] = []
                     self.input_columns[level].append(column_name)
         elif requires:
+            if "base" not in requires:
+                requires.append("base")
             for module_name in requires:
                 level, column_names = self.get_result_module_columns(module_name)
                 if level and column_names:
-                    if not self.input_columns.get(level):
+                    if self.input_columns.get(level) is None:
                         self.input_columns[level] = []
                     self.input_columns[level].extend(column_names)
         else:
@@ -552,13 +554,13 @@ class BasePostAggregator(object):
             raise Exception(
                 f"Unknown module level: {self.level} for {self.module_name}"
             )
-        self.columns_v = self.get_result_level_input_columns(VARIANT)
-        self.columns_g = self.get_result_level_input_columns(GENE)
+        self.columns_v = self.get_result_level_input_columns("variant")
+        self.columns_g = self.get_result_level_input_columns("gene")
 
     def get_result_level_input_columns(self, level) -> Optional[str]:
         if not self.input_columns:
             raise
-        if level not in self.get_result_level_input_columns:
+        if level not in self.result_level_columns:
             return None
         return ",".join([
             column_name
@@ -577,11 +579,11 @@ class BasePostAggregator(object):
         if self.columns_v and self.from_v:
             self.q_v = f"select {self.columns_v} from {self.from_v}"
             if self.where_v:
-                self.q_v += f" {self.where_v}"
+                self.q_v += f" where {self.where_v}"
         if self.columns_g and self.from_g:
             self.q_g = f"select {self.columns_g} from {self.from_g}"
             if self.where_g:
-                self.q_g += f" {self.where_g}"
+                self.q_g += f" where {self.where_g}"
 
     def add_variant_level_input_data(self, input_data: dict):
         if not self.columns_v or not self.c_var or not self.q_v:
@@ -618,7 +620,13 @@ class BasePostAggregator(object):
                 input_data = {}
                 for i in range(len(row)):
                     input_data[cursor.description[i][0]] = row[i]
-                if self.levelno == GENE and self.q_v and self.columns_v:
+                if self.levelno == VARIANT and self.q_g and self.columns_g:
+                    self.c_gen.execute(self.q_g, (input_data["base__hugo"],))
+                    for gen_row in self.c_gen:
+                        for i in range(len(gen_row)):
+                            input_data[self.c_gen.description[i][0]] = gen_row[i]
+                            break # only 1 row should be returned.
+                elif self.levelno == GENE and self.q_v and self.columns_v:
                     for column_name in self.columns_v:
                         input_data[column_name] = []
                     self.c_var.execute(self.q_v, (input_data["base__hugo"],))
