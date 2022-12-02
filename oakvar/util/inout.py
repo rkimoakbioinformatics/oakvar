@@ -239,6 +239,7 @@ class FileWriter(BaseFile):
         include_titles=True,
         titles_prefix="#",
         columns=[],
+        mode="w",
         fmt="csv",
     ):
         super().__init__(path)
@@ -247,13 +248,15 @@ class FileWriter(BaseFile):
             self.csvfmt = True
         self.csvwriter = None
         if fmt == "csv":
-            self.wf = open(self.path, "w", newline="", encoding="utf-8")
+            self.wf = open(self.path, mode, newline="", encoding="utf-8")
             from csv import writer
 
             self.csvwriter = writer(self.wf)
-            self.wf.write("#fmt=csv\n")
+            if mode == "w":
+                self.wf.write("#fmt=csv\n")
         else:
-            self.wf = open(self.path, "w", encoding="utf-8")
+            self.wf = open(self.path, mode, encoding="utf-8")
+        self.mode: str = mode
         self.ready_to_write = False
         self.ordered_columns = []
         self.name_to_col_index = {}
@@ -271,7 +274,7 @@ class FileWriter(BaseFile):
         col_def = ColumnDefinition(col_d)
         for i in self.columns:
             if self.columns[i].name == col_def.name:
-                raise Exception("A column with name %s already exists." % col_def.name)
+                continue
         self.columns[col_index] = col_def
 
     def add_columns(self, col_defs):

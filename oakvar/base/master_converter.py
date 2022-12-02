@@ -419,6 +419,8 @@ class MasterConverter(object):
         self.set_converter_properties(converter)
         log_module(converter, self.logger)
         self.error_logger = getLogger("err." + converter.module_name)
+        converter.input_path = input_path
+        converter.input_paths = self.input_paths
         converter.setup(f)
         genome_assembly = self.get_genome_assembly(converter)
         self.genome_assemblies.append(genome_assembly)

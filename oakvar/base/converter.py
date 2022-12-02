@@ -14,6 +14,8 @@ class BaseConverter(object):
         self.module_name: Optional[str] = None
         self.version = None
         self.conf: dict = {}
+        self.input_path = ""
+        self.input_paths: Optional[List[str]] = None
 
     def check_format(self, *__args__, **__kwargs__):
         pass
