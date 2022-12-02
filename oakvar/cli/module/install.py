@@ -12,7 +12,6 @@ def get_modules_to_install(args={}) -> dict:
     for module_name, version in mn_vs.items():
         if not version:
             version = get_latest_module_code_version(module_name)
-            quiet_print(f"{module_name}: latest version {version} found.", args=args)
         else:
             pkg_ver = oakvar_version()
             min_pkg_ver = module_code_version_is_not_compatible_with_pkg_version(module_name, version)
