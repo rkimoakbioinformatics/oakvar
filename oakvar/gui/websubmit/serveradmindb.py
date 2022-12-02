@@ -624,10 +624,11 @@ class ServerAdminDb:
 
 def setup_serveradmindb(args={}):
     from os import remove
+    from pathlib import Path
 
     clean = args.get("clean")
     admindb_path = get_admindb_path()
-    if clean:
+    if clean and Path(admindb_path).exists():
         remove(admindb_path)
     admindb = ServerAdminDb(new_setup=True)
     admindb.setup()
