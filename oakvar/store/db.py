@@ -293,7 +293,7 @@ def summary_col_value(module_name: str, colname: str, conn=None, cursor=None):
     if ret:
         for r in ret:
             v, store = r
-            if not v or store == "ov":
+            if not out or store == "ov":
                 out = v
     if out:
         if out[0] in ["[", "{"]:
@@ -345,12 +345,12 @@ def is_store_db_schema_changed(conn=Any, cursor=Any) -> bool:
     q = f'pragma table_info("summary")'
     cursor.execute(q)
     cols = [row[1] for row in cursor.fetchall()]
-    if cols != summary_table_cols:
+    if len(cols) > 0 and cols != summary_table_cols:
         return True
     q = f'pragma table_info("versions")'
     cursor.execute(q)
     cols = [row[1] for row in cursor.fetchall()]
-    if cols != versions_table_cols:
+    if len(cols) > 0 and cols != versions_table_cols:
         return True
     return False
 
@@ -443,13 +443,17 @@ def fetch_ov_store_cache(
     if not login_with_token_set():
         quiet_print(f"not logged in", args=args)
         return False
-    if is_store_db_schema_changed():
+    if is_new_store_db_setup():
         args["clean_cache_db"] = True
+        local_last_updated = None
+    else:
+        local_last_updated = get_local_last_updated()
+    if is_store_db_schema_changed():
         quiet_print(f"Need to fetch store cache due to schema change", args=args)
-    server_last_updated, status_code = get_server_last_updated()
-    local_last_updated = get_local_last_updated()
+        args["clean_cache_db"] = True
     clean_cache_files = args.get("clean_cache_files")
     clean_cache_db = args.get("clean_cache_db")
+    server_last_updated, status_code = get_server_last_updated()
     if not server_last_updated:
         if status_code == 401:
             raise AuthorizationError()
@@ -484,6 +488,17 @@ def fetch_ov_store_cache(
     quiet_print("OakVar store cache has been fetched.", args=args)
     return True
 
+
+@db_func
+def is_new_store_db_setup(conn=Any, cursor=Any):
+    _ = conn
+    q = "pragma table_info('info')"
+    cursor.execute(q)
+    ret = cursor.fetchall()
+    if len(ret) > 0:
+        return False
+    else:
+        return True
 
 @db_func
 def get_summary_module_store_list(args={}, conn=None, cursor=None):

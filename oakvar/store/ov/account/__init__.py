@@ -472,18 +472,15 @@ def email_is_verified(email: str, args={}, quiet=None) -> bool:
         quiet_print(f"user not found", args=args, quiet=quiet)
         return False
     else:
-        quiet_print(f"email not verified. {res.text}", args=args, quiet=quiet)
+        quiet_print(f"{email} has not been verified. {res.text}", args=args, quiet=quiet)
         return False
 
 
-def wait_for_email_verified(email: str, args={}, quiet=None):
+def announce_on_email_verification_if_needed(email: str, args={}, quiet=None):
     from ....system import show_email_verify_action_banner
 
-    while True:
-        if email_is_verified(email, args=args, quiet=quiet):
-            break
+    if not email_is_verified(email, args=args, quiet=quiet):
         show_email_verify_action_banner()
-        input()
 
 
 def login_with_token_set(args={}) -> bool:
@@ -523,7 +520,7 @@ def login_with_email_pw(email=None, pw=None, args={}, conf={}) -> bool:
                 ret = create(email=email, pw=pw, quiet=False)
                 if ret.get("success"):
                     break
-            wait_for_email_verified(email, args=args)
+            announce_on_email_verification_if_needed(email, args=args)
             login(email=email, pw=pw, args=args)
             return True
     return False
@@ -544,6 +541,6 @@ def total_login(email=None, pw=None, args={}, conf=None) -> bool:
         ret = create(email=email, pw=pw, quiet=False)
         if ret.get("success"):
             break
-    wait_for_email_verified(email, args=args)
+    announce_on_email_verification_if_needed(email, args=args)
     ret = login(email=email, pw=pw, args=args)
     return ret
