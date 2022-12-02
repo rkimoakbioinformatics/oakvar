@@ -40,7 +40,7 @@ def setup_system(args=None):
         return True
     else:  # return False is converted to 1 with @cli_func.
         quiet_print(
-            f"Problem occurred while setting up the system. Return value is {ret}",
+            f"Problem occurred while installing system modules. Return value is {ret}.\nPlease run `ov system setup` again to install the missing modules.",
             args=args,
         )
         return False
@@ -160,8 +160,8 @@ def show_email_verify_action_banner():
 >
 > Please check your inbox for a verification email
 > and click the verification link in the email.
->
-> Afterwards, press Enter to continue."""
+
+"""
     )
 
 
