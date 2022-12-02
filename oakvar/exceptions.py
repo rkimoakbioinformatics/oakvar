@@ -239,6 +239,7 @@ class ModuleVersionError(ExpectedException):
 
 
 class ModuleToSkipInstallation(ExpectedException):
+    traceback = False
     def __init__(self, module_name, msg=None):
         if msg:
             super().__init__(f"{msg}")
