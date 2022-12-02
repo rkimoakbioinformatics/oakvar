@@ -78,11 +78,9 @@ def fetch_install_queue(install_queue: ListProxy, install_state: Optional[DictPr
                 except ModuleToSkipInstallation:
                     unqueue(module_name)
                     stage_handler.stage_start("skip")
-                    local_modules_changed.set()
                 except:
                     unqueue(module_name)
                     stage_handler.stage_start("error")
-                    local_modules_changed.set()
                     raise
             sleep(1)
         except KeyboardInterrupt:
@@ -158,19 +156,20 @@ async def get_remote_module_output_columns(request):
     return json_response(output_columns)
 
 
+def update_local_manifest():
+    from ...module.cache import get_module_cache
+    global local_manifest
+    local_manifest = {}
+    local_cache = get_module_cache().get_local()
+    for k, v in local_cache.items():
+        m = v.serialize()
+        local_manifest[k] = m
+
 async def get_local_manifest(_):
     from aiohttp.web import json_response
-    from ...module.cache import get_module_cache
 
     global local_manifest
     handle_modules_changed()
-    if local_manifest:
-        return json_response(local_manifest)
-    local_manifest = {}
-    locals = get_module_cache().local
-    for k, v in locals.items():
-        m = v.serialize()
-        local_manifest[k] = m
     return json_response(local_manifest)
 
 
@@ -179,8 +178,10 @@ async def uninstall_module(request):
     from aiohttp.web import Response
     from oakvar.module import uninstall_module
     from ...exceptions import ServerError
+    from ...module.cache import get_module_cache
 
     global servermode
+    global local_modules_changed
     if servermode and mu:
         if not await mu.is_admin_loggedin(request):
             return Response(status=403)
@@ -190,6 +191,10 @@ async def uninstall_module(request):
         uninstall_module(module_name)
     except:
         raise ServerError()
+    mc = get_module_cache()
+    mc.update_local()
+    if local_modules_changed:
+        local_modules_changed.set()
     return json_response({"status": "success", "msg": "uninstalled" + module_name})
 
 
@@ -219,8 +224,11 @@ async def send_socket_msg(ws=None):
     if not install_state or ws is None:
         return
     data = install_state.copy()
-    await ws.send_json(data)
     last_update_time = install_state["update_time"]
+    await ws.send_json(data)
+    if install_state["stage"] in ["finish", "error", "skip", "killed"]:
+        install_state.clear()
+        install_state["update_time"] = last_update_time
     return last_update_time
 
 
@@ -458,10 +466,11 @@ def handle_modules_changed():
     from ...module.cache import get_module_cache
 
     global local_manifest
-    if local_modules_changed and local_modules_changed.is_set():
+    if not local_manifest or (local_modules_changed and local_modules_changed.is_set()):
         get_module_cache().update_local()
-        local_modules_changed.clear()
-        local_manifest = None
+        if local_modules_changed:
+            local_modules_changed.clear()
+        update_local_manifest()
 
 
 async def get_remote_manifest_from_local(request):

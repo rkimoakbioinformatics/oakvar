@@ -134,8 +134,7 @@ class NoInput(ExpectedException):
 
     def __init__(self):
         import traceback
-        traceback.print_stack()
-        super().__init__("No valid input was given. 2. " + str(traceback.format_stack()))
+        super().__init__("No valid input was given.\n" + str(traceback.format_stack()))
 
 
 class InvalidInputFormat(ExpectedException):
