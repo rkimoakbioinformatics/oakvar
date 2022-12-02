@@ -340,25 +340,24 @@ def _get_http(
     url, temp_file_name, initial_size, file_size, _, progressbar, ncols=80, install_state=None, check_install_kill=None
 ):
     """Safely (resume a) download to a file from http(s)."""
-    # Actually do the reading
-    req = request_agent(url)
+    import requests
+    session = requests.Session()
+    headers = {"User-Agent": "OakVar"}
     if initial_size > 0:
-        req.headers["Range"] = "bytes=%s-" % (initial_size,)
+        headers["Range"] = "bytes=%s-" % (initial_size,)
     try:
-        response = urllib.request.urlopen(req) # type: ignore
-    except Exception:
-        # There is a problem that may be due to resuming, some
-        # servers may not support the "Range" header. Switch
-        # back to complete download method
+        r = session.get(url, headers = headers, stream=True)
+    except:
         tqdm.write(
             "Resuming download failed (server "
             "rejected the request). Attempting to "
             "restart downloading the entire file.",
             file=sys.stdout,
         )
-        del req.headers["Range"]
-        response = urllib.request.urlopen(req) # type: ignore
-    total_size = int(response.headers.get("Content-Length", "0").strip())
+        del headers["Range"]
+        r = session.get(url, headers = headers, stream=True)
+    r.raise_for_status()
+    total_size = int(r.headers.get("Content-Length", "0").strip())
     if initial_size > 0 and file_size == total_size:
         tqdm.write(
             "Resuming download failed (resume file size "
@@ -371,6 +370,7 @@ def _get_http(
     if total_size != file_size:
         raise RuntimeError("URL could not be parsed properly")
     mode = "ab" if initial_size > 0 else "wb"
+    cur_size = initial_size
     with tqdm(
             total=total_size,
             initial=initial_size,
@@ -382,26 +382,25 @@ def _get_http(
             disable=not progressbar
         ) as progress:
 
-        chunk_size = 8192  # 2 ** 13
+        chunk_size = 262144 * 4
         with open(temp_file_name, mode) as local_file:
-            while True:
+            for chunk in r.iter_content(chunk_size=chunk_size):
                 t0 = time.time()
                 if check_install_kill and install_state:
                     check_install_kill(install_state=install_state)
-                chunk = response.read(chunk_size)
-                if not chunk:
-                    break
-                if install_state:
-                    install_state["cur_chunk"] += chunk_size
-                    install_state["total_chunk"] += chunk_size
-                    install_state["update_time"] = time.time()
                 dt = time.time() - t0
                 if dt < 0.005:
-                    chunk_size *= 2
+                    chunk_size = chunk_size * 2
                 elif dt > 0.1 and chunk_size > 8192:
-                    chunk_size = chunk_size // 2
+                    chunk_size = max(chunk_size // 2, 512)
                 local_file.write(chunk)
-                progress.update(len(chunk))
+                read_size = len(chunk)
+                progress.update(read_size)
+                cur_size += read_size
+                if install_state:
+                    install_state["cur_chunk"] += read_size
+                    install_state["total_chunk"] += read_size
+                    install_state["update_time"] = time.time()
 
 
 def md5sum(fname, block_size=1048576):  # 2 ** 20
