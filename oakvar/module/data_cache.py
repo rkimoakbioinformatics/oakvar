@@ -17,7 +17,7 @@ class ModuleDataCache:
             self.expiration_in_day * 60 * 60 * 24 if self.expiration_in_day else None
         )
         self.dir = Path(self.module_dir) / "cache" if self.module_dir else None
-        self.path = self.dir / "cache.db" if self.dir else None
+        self.path = self.dir / "cache.sqlite" if self.dir else None
         if self.path:
             self.create_cache_dir_if_needed()
         self.conn = self.get_conn()
@@ -39,8 +39,6 @@ class ModuleDataCache:
             try:
                 self.conn = connect(str(self.path))
             except Exception:
-                import traceback
-                traceback.print_exc()
                 print(f"Could not open module cache for {self.module_name}. Restarting the cache db.")
                 remove(self.path)
                 self.conn = connect(str(self.path))
