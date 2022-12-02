@@ -97,6 +97,10 @@ def install_pypi_dependency(args={}):
     from ..util.util import quiet_print
 
     pypi_dependency = args.get("pypi_dependency")
+    if not pypi_dependency:
+        pypi_dependency = args.get("pypi_dependencies")
+    if not pypi_dependency:
+        pypi_dependency = args.get("requires_pypi")
     idx = 0
     if pypi_dependency:
         quiet_print(
@@ -572,7 +576,7 @@ def get_module_install_version(module_name, version=None, fresh=False, args={}) 
     ):
         raise ModuleToSkipInstallation(
             module_name,
-            msg=f"{module_name}=={version} already exists. Use --overwrite to overwrite.",
+            msg=f"{module_name}=={version} already exists.",
         )
     if (
         (not args.get("overwrite"))

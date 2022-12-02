@@ -436,6 +436,7 @@ def get_email_pw_from_input(email=None, pw=None, pwconfirm=False) -> Tuple[str, 
                     break
         else:
             done = True
+    print("")
     return email, pw
 
 
