@@ -342,7 +342,7 @@ def _get_http(
     """Safely (resume a) download to a file from http(s)."""
     import requests
     session = requests.Session()
-    headers = {"User-Agent": "OakVar"}
+    headers = {"User-Agent": "oakvar"}
     if initial_size > 0:
         headers["Range"] = "bytes=%s-" % (initial_size,)
     try:
