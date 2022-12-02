@@ -775,7 +775,7 @@ class Runner(object):
             if len(self.args.job_name) == 1:
                 if self.inputs:
                     if len(self.output_dir) != len(set(self.output_dir)):
-                        raise ArgumentError(msg="-j should have a unique value for each input when -d has duplicate directories.")
+                        raise ArgumentError(msg="-j should have a unique value for each input when -d has duplicate directories. Or, give --combine-input to combine input files into one job.")
                     self.job_name = self.args.job_name * len(self.inputs)
                 elif self.pipeinput:
                     self.job_name = self.args.job_name

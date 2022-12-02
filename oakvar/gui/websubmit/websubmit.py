@@ -275,10 +275,10 @@ async def get_run_args(request, submit_options: dict, job_dir: str):
     if submit_options.get("use_server_input_files"):
         for fp in submit_options.get("input_files", []):
             run_args.append(fp)
-        run_args.extend(["-d", job_dir])
     else:
         for fn in input_fnames:
             run_args.append(str(Path(job_dir) / fn))
+    run_args.extend(["-d", job_dir])
     # Liftover assembly
     run_args.append("-l")
     assembly = job_options.get("assembly")
@@ -336,6 +336,8 @@ async def get_run_args(request, submit_options: dict, job_dir: str):
     if module_option_args:
         run_args.append("--module-option")
         run_args.extend(module_option_args)
+    if job_options.get("combine_input"):
+        run_args.append("--combine-input")
     return run_args
 
 
