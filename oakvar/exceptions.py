@@ -95,7 +95,7 @@ class ModuleInstallationError(ExpectedException):
 
 
 class ModuleNotExist(ExpectedException):
-    traceback = True
+    traceback = False
     halt = True
     returncode = 3
 
