@@ -30,8 +30,7 @@ class ModuleDataCache:
             self.dir.mkdir()
 
     def get_conn(self):
-        from duckdb import connect
-        from duckdb import IOException
+        from sqlite3 import connect
         from os import remove
 
         if not self.path:
@@ -39,8 +38,10 @@ class ModuleDataCache:
         if not self.conn:
             try:
                 self.conn = connect(str(self.path))
-            except IOException:
-                print("IO probpem while opening cache db. Restarting the cache db.")
+            except Exception:
+                import traceback
+                traceback.print_exc()
+                print(f"Could not open module cache for {self.module_name}. Restarting the cache db.")
                 remove(self.path)
                 self.conn = connect(str(self.path))
         return self.conn
