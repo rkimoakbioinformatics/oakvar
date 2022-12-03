@@ -562,6 +562,8 @@ class BasePostAggregator(object):
             raise
         if level not in self.result_level_columns:
             return None
+        if level not in self.input_columns:
+            return None
         return ",".join([
             column_name
             for column_name in self.result_level_columns[level]
