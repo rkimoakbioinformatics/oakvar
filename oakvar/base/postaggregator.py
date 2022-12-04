@@ -597,6 +597,14 @@ class BasePostAggregator(object):
             for i in range(len(var_row)):
                 input_data[self.c_var.description[i][0]].append(var_row[i])
 
+    def get_column_names_of_table(self, table_name):
+        assert self.dbconn is not None
+        c = self.dbconn.cursor()
+        q = f"pragma table_info('{table_name}')"
+        c.execute(q)
+        column_names = [row[1] for row in c.fetchall()]
+        return column_names
+
     def _get_input(self):
         from sqlite3 import connect
         from ..exceptions import SetupError
@@ -617,16 +625,21 @@ class BasePostAggregator(object):
             cursor = self.c_gen
         else:
             raise
+        col_names_gen = self.get_column_names_of_table("gene")
         for row in cursor:
             try:
                 input_data = {}
                 for i in range(len(row)):
                     input_data[cursor.description[i][0]] = row[i]
                 if self.levelno == VARIANT and self.q_g and self.columns_g:
-                    self.c_gen.execute(self.q_g, (input_data["base__hugo"],))
-                    for gen_row in self.c_gen:
-                        for i in range(len(gen_row)):
-                            input_data[self.c_gen.description[i][0]] = gen_row[i]
+                    if input_data["base__hugo"] is None:
+                        for col_name in col_names_gen:
+                            input_data[col_name] = None
+                    else:
+                        self.c_gen.execute(self.q_g, (input_data["base__hugo"],))
+                        for gen_row in self.c_gen:
+                            for i in range(len(gen_row)):
+                                input_data[self.c_gen.description[i][0]] = gen_row[i]
                             break # only 1 row should be returned.
                 elif self.levelno == GENE and self.q_v and self.columns_v:
                     for column_name in self.columns_v:
