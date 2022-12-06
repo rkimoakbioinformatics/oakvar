@@ -7,22 +7,13 @@ loop = None
 
 def inject_module_variables(args={}):
     from ..gui.webresult import webresult as wr
-    from ..gui.webstore import webstore as ws
-    from ..gui.websubmit import websubmit as wu
-    from ..gui.websubmit import multiuser as mu
+    from ..gui import multiuser as mu
 
     logger = args.get("logger")
-    wu.logger = logger
-    ws.logger = logger
     wr.logger = logger
     mu.logger = logger
-    wu.servermode = args.get("servermode")
-    ws.servermode = args.get("servermode")
     wr.servermode = args.get("servermode")
     mu.servermode = args.get("servermode")
-    wr.wu = wu
-    wu.mu = mu
-    ws.mu = mu
 
 
 def get_protocol(args={}):
@@ -37,8 +28,8 @@ def get_protocol(args={}):
 
 def setup(args={}):
     from os.path import abspath
-    from ..gui.websubmit import multiuser as mu
-    from ..util.asyn import get_event_loop
+    #from ..gui.websubmit import multiuser as mu
+    #from ..util.asyn import get_event_loop
 
     if args.get("result"):
         args["headless"] = False
@@ -46,8 +37,8 @@ def setup(args={}):
     elif args.get("servermode"):
         args["headless"] = True
     inject_module_variables(args=args)
-    loop = get_event_loop()
-    loop.run_until_complete(mu.get_serveradmindb())
+    #loop = get_event_loop()
+    #loop.run_until_complete(mu.get_serveradmindb())
     args["ssl_enabled"] = False
 
 
@@ -197,10 +188,11 @@ def get_logger(args={}):
     log_path = get_log_path(log_dir=log_dir)
     logger = getLogger()
     logger.setLevel(INFO)
-    log_handler = TimedRotatingFileHandler(log_path, when="d", backupCount=30)
     log_formatter = Formatter("%(asctime)s: %(message)s", "%Y/%m/%d %H:%M:%S")
-    log_handler.setFormatter(log_formatter)
-    logger.addHandler(log_handler)
+    if log_path:
+        log_handler = TimedRotatingFileHandler(log_path, when="d", backupCount=30)
+        log_handler.setFormatter(log_formatter)
+        logger.addHandler(log_handler)
     return logger
 
 
@@ -311,7 +303,8 @@ def gui(args, __name__="gui"):
             print_exc()
         if logger:
             logger.info("Exiting...")
-        stderr.write(f"{e}\nCheck {log_path} for details.\n")
+        if log_path:
+            stderr.write(f"{e}\nCheck {log_path} for details.\n")
     finally:
         logger = args.get("logger")
         if logger:

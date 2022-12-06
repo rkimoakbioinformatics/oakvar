@@ -439,7 +439,7 @@ class Runner(object):
         self.process_module_options()
 
     def connect_admindb_if_needed(self, run_no: int):
-        from ..gui.websubmit.serveradmindb import ServerAdminDb
+        from ..gui.serveradmindb import ServerAdminDb
 
         if not self.output_dir or not self.job_name:
             raise
@@ -1473,7 +1473,7 @@ class Runner(object):
     async def write_admin_db_final_info(self, runtime: float, run_no: int):
         import aiosqlite
         from json import dumps
-        from ..gui.websubmit.serveradmindb import get_admindb_path
+        from ..gui.serveradmindb import get_admindb_path
         from ..util.util import quiet_print
 
         if self.args is None or not self.output_dir:
@@ -1481,7 +1481,7 @@ class Runner(object):
         if runtime is None or self.total_num_converted_variants is None:
             return
         admindb_path = get_admindb_path()
-        if admindb_path.exists() == False:
+        if not admindb_path or admindb_path.exists() == False:
             s = "{} does not exist.".format(str(admindb_path))
             if self.logger:
                 self.logger.info(s)

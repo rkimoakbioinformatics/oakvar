@@ -3,12 +3,19 @@ from typing import Any
 from typing import Optional
 
 admindb_path = None
+serveradmindb = None
 
+async def get_serveradmindb():
+    from .serveradmindb import ServerAdminDb
+
+    global serveradmindb
+    if not serveradmindb:
+        serveradmindb = ServerAdminDb()
+    return serveradmindb
 
 def db_func(func):
     async def outer_func(*args, **kwargs):
         from aiosqlite import Row
-        from .multiuser import get_serveradmindb
 
         admindb = await get_serveradmindb()
         conn = await admindb.get_db_conn()
@@ -23,24 +30,27 @@ def db_func(func):
 
 
 def get_admindb_path():
-    from ...system import get_conf_dir
+    from ..system import get_conf_dir
     from pathlib import Path
-    from ...system.consts import ADMIN_DB_FN
+    from ..system.consts import ADMIN_DB_FN
 
     global admindb_path
     if not admindb_path:
+        conf_dir = get_conf_dir()
+        if not conf_dir:
+            return None
         admindb_path = Path(get_conf_dir()) / ADMIN_DB_FN
     return admindb_path
 
 
 class ServerAdminDb:
     def __init__(self, new_setup=False, job_dir=None, job_name=None):
-        from ...exceptions import SystemMissingException
+        from ..exceptions import SystemMissingException
 
         self.job_dir = job_dir
         self.job_name = job_name
         admindb_path = get_admindb_path()
-        if not admindb_path.exists() and not new_setup:
+        if not admindb_path or not admindb_path.exists() and not new_setup:
             raise SystemMissingException("server admin database is missing.")
         self.admindb_path = str(admindb_path)
 
@@ -165,8 +175,8 @@ class ServerAdminDb:
         return need_clean_start
 
     def add_admin(self, conn, cursor):
-        from ...store.ov.account import get_email_from_token_set
-        from ...system.consts import ADMIN_ROLE
+        from ..store.ov.account import get_email_from_token_set
+        from ..system.consts import ADMIN_ROLE
 
         email = get_email_from_token_set()
         q = "insert or replace into users (email, role) values (?, ?)"
@@ -174,8 +184,8 @@ class ServerAdminDb:
         conn.commit()
 
     def add_default_user(self, conn, cursor):
-        from ...system.consts import USER_ROLE
-        from ...system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
+        from ..system.consts import USER_ROLE
+        from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
 
         q = "insert or replace into users (email, role) values (?, ?)"
         cursor.execute(q, (DEFAULT_SERVER_DEFAULT_USERNAME, USER_ROLE))
@@ -231,7 +241,7 @@ class ServerAdminDb:
             return None
 
     async def get_user_role_of_email(self, email, servermode=True):
-        from ...system.consts import ADMIN_ROLE
+        from ..system.consts import ADMIN_ROLE
 
         if not servermode:
             return ADMIN_ROLE
@@ -440,9 +450,9 @@ class ServerAdminDb:
         return pageno
 
     def get_pagesize(self, in_pagesize: Optional[str]) -> int:
-        from ...system import get_sys_conf_value
-        from ..consts import job_table_pagesize_key
-        from ..consts import DEFAULT_JOB_TABLE_PAGESIZE
+        from ..system import get_sys_conf_value
+        from .consts import job_table_pagesize_key
+        from .consts import DEFAULT_JOB_TABLE_PAGESIZE
 
         if not in_pagesize:
             in_pagesize = get_sys_conf_value(job_table_pagesize_key)
@@ -556,8 +566,8 @@ class ServerAdminDb:
         from pathlib import Path
         from sqlite3 import connect
         from json import dumps
-        from ...system import get_user_jobs_dir
-        from ...system import get_legacy_status_json
+        from ..system import get_user_jobs_dir
+        from ..system import get_legacy_status_json
         from .userjob import get_job_runtime_in_job_dir
 
         jobs_dir = get_user_jobs_dir(email)
@@ -628,7 +638,7 @@ def setup_serveradmindb(args={}):
 
     clean = args.get("clean")
     admindb_path = get_admindb_path()
-    if clean and Path(admindb_path).exists():
+    if clean and admindb_path and Path(admindb_path).exists():
         remove(admindb_path)
     admindb = ServerAdminDb(new_setup=True)
     admindb.setup()

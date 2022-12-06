@@ -11,7 +11,7 @@ def setup_system(args=None):
     from ..store.ov import setup_ov_store_cache
     from ..util.run import show_logo
     from ..exceptions import ArgumentError
-    from ..gui.websubmit.serveradmindb import setup_serveradmindb
+    from ..gui.serveradmindb import setup_serveradmindb
 
     if not args:
         raise ArgumentError("necessary arguments were not provided.")
@@ -25,12 +25,16 @@ def setup_system(args=None):
     # set up a user conf file.
     setup_user_conf_file(args=args)
     # set up a store account.
+    print(f"@")
     if not setup_store_account(args=args, conf=conf):
         return False
+    print(f"@ {args}")
     # fetch ov store cache
     setup_ov_store_cache(args=args)
+    print(f"@")
     # set up a multiuser database.
     setup_serveradmindb(args=args)
+    print(f"@")
     # install base modules.
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
     args.update({"conf": conf})
@@ -69,11 +73,12 @@ def setup_system_conf(args={}) -> dict:
     conf = None
     clean = args.get("clean")
     setup_file = args.get("setup_file")
+    custom_system_conf = args.get("custom_system_conf")
     if setup_file:
-        conf = get_system_conf(sys_conf_path=setup_file)
+        conf = get_system_conf(sys_conf_path=setup_file, conf=custom_system_conf)
         quiet_print(f"Loaded system configuration from {setup_file}", args=args)
     else:
-        conf = get_system_conf()
+        conf = get_system_conf(conf=custom_system_conf)
     # set system conf path if absent in sys conf.
     sys_conf_path = conf.get(sys_conf_path_key)
     if not sys_conf_path:

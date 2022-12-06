@@ -423,6 +423,24 @@ def try_fetch_ov_store_cache(args={}):
         )
 
 
+def get_remote_manifest_cache_path():
+    from ..system import get_conf_dir
+    from pathlib import Path
+
+    conf_dir = get_conf_dir()
+    if not conf_dir:
+        return None
+    return str(Path(conf_dir) / "remote_manifest.json")
+
+
+def save_remote_manifest_cache(content: dict):
+    from json import dump
+
+    cache_path = get_remote_manifest_cache_path()
+    if cache_path:
+        with open(cache_path, "w") as wf:
+            dump(content, wf)
+
 @db_func
 def fetch_ov_store_cache(
     conn=None,
@@ -436,7 +454,6 @@ def fetch_ov_store_cache(
     from .ov.account import login_with_token_set
     from .ov import get_server_last_updated
     from ..module.remote import make_remote_manifest
-    from ..gui.webstore.webstore import save_remote_manifest_cache
 
     if not conn or not cursor:
         return False

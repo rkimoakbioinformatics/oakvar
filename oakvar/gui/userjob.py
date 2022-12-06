@@ -1,6 +1,7 @@
 from typing import Optional
 
 job_statuses = {}
+servermode = None
 
 
 def unpack_eud(eud={}):
@@ -8,17 +9,6 @@ def unpack_eud(eud={}):
     uid = eud.get("uid")
     dbpath = eud.get("dbpath")
     return email, uid, dbpath
-
-
-def get_user_jobs_dir(request, email=None):
-    from ...system import get_user_jobs_dir
-    from .multiuser import get_email_from_request
-
-    if not email:
-        email = get_email_from_request(request)
-    if not email:
-        return None
-    return get_user_jobs_dir(email)
 
 
 async def get_job_dir_from_eud(_, eud={}) -> Optional[str]:
@@ -40,7 +30,7 @@ async def get_job_dir_from_eud(_, eud={}) -> Optional[str]:
 
 async def get_user_job_run_name(_, eud={}) -> Optional[str]:
     from pathlib import Path
-    from .multiuser import get_serveradmindb
+    from .serveradmindb import get_serveradmindb
 
     username, uid, dbpath = unpack_eud(eud=eud)
     if dbpath:
@@ -69,7 +59,7 @@ async def get_user_job_report_paths(
     request, report_type: str, eud={}
 ) -> Optional[list]:
     from pathlib import Path
-    from ...module.local import get_local_module_info_by_name
+    from ..module.local import get_local_module_info_by_name
 
     run_path = await get_user_job_run_path(request, eud=eud)
     if not run_path:
@@ -88,7 +78,7 @@ async def get_user_job_report_paths(
 
 
 async def get_user_job_dbpath(request, eud={}) -> Optional[str]:
-    from ...consts import result_db_suffix
+    from ..consts import result_db_suffix
 
     if eud.get("dbpath"):
         return eud.get("dbpath")
@@ -100,7 +90,7 @@ async def get_user_job_dbpath(request, eud={}) -> Optional[str]:
 
 
 async def get_user_job_log_path(request, eud={}) -> Optional[str]:
-    from ...consts import LOG_SUFFIX
+    from ..consts import LOG_SUFFIX
 
     run_path = await get_user_job_run_path(request, eud=eud)
     if not run_path:
@@ -111,7 +101,7 @@ async def get_user_job_log_path(request, eud={}) -> Optional[str]:
 
 def get_user_jobs_dir_list() -> Optional[list]:
     from pathlib import Path
-    from ...system import get_jobs_dir
+    from ..system import get_jobs_dir
 
     user_jobs_dir_list = []
     root_jobs_dir = get_jobs_dir()
@@ -126,7 +116,7 @@ def get_log_path_in_job_dir(
     job_dir: Optional[str], run_name: Optional[str] = None
 ) -> Optional[str]:
     from pathlib import Path
-    from ...consts import LOG_SUFFIX
+    from ..consts import LOG_SUFFIX
 
     if not job_dir:
         return None

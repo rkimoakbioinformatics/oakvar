@@ -13,6 +13,7 @@ logger = None
 server_ready = None
 default_gui_result_pagesize = 100000
 gui_result_pagesize_key = "gui_result_pagesize"
+servermode = None
 
 
 async def get_nowg_annot_modules(_):
@@ -476,8 +477,8 @@ async def get_result_levels(request):
 
 
 async def get_dbpath(request) -> Optional[str]:
-    from ..websubmit.multiuser import get_email_from_request
-    from ..websubmit.multiuser import get_serveradmindb
+    from ..util import get_email_from_request
+    from ..serveradmindb import get_serveradmindb
 
     global servermode
     global wu
@@ -492,7 +493,7 @@ async def get_dbpath(request) -> Optional[str]:
     dbpath = queries.get("dbpath")
     if dbpath:
         return dbpath
-    username = get_email_from_request(request)
+    username = get_email_from_request(request, servermode)
     uid = queries.get("uid")
     if uid and username:
         serveradmindb = await get_serveradmindb()

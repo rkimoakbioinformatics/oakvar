@@ -58,5 +58,43 @@ def get_log_path(log_dir=None):
 
     if not log_dir:
         log_dir = get_log_dir()
+    if not log_dir:
+        return None
     log_path = Path(log_dir) / LOG_FN
     return str(log_path)
+
+def get_email_from_oakvar_token(token):
+    import jwt
+    from .consts import DEFAULT_PRIVATE_KEY
+
+    data = jwt.decode(token, DEFAULT_PRIVATE_KEY, ["HS256"])
+    email = data.get("email")
+    return email
+
+def get_token(request):
+    from .consts import COOKIE_KEY
+    return request.cookies.get(COOKIE_KEY)
+
+def get_email_from_request(request, servermode):
+    from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
+    from .util import get_email_from_oakvar_token
+    from .util import get_token
+
+    if not servermode:
+        return DEFAULT_SERVER_DEFAULT_USERNAME
+    token = get_token(request)
+    if token:
+        email = get_email_from_oakvar_token(token)
+    else:
+        email = None
+    return email
+
+async def is_loggedin(request, servermode):
+    if not servermode:
+        return True
+    email = get_email_from_request(request, servermode)
+    if email:
+        return True
+    else:
+        return False
+

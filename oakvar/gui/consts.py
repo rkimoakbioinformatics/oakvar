@@ -11,3 +11,7 @@ result_viewer_num_var_limit_for_summary_widget_key = (
     "result_viewer_num_var_limit_for_summary_widget"
 )
 LOG_FN = "gui.log"
+DEFAULT_PRIVATE_KEY = "default_private_key"
+COOKIE_KEY = "oakvar_token"
+FIREBASE_PUBLIC_KEY_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"
+PROJECT_ID = "fabled-pivot-305219"
