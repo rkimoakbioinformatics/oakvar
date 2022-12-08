@@ -201,6 +201,7 @@ async def save_job_input_files(request, job_dir: str) -> dict:
     job_options = {}
     input_files = []
     job_options = {}
+    chunk_size = 131072
     reader = await request.multipart()
     while True:
         part = await reader.next()
@@ -210,7 +211,7 @@ async def save_job_input_files(request, job_dir: str) -> dict:
             input_files.append(part)
             path = Path(job_dir) / part.filename
             with open(path, "wb") as wf:
-                chunk = await part.read_chunk()
+                chunk = await part.read_chunk(size=chunk_size)
                 while chunk:
                     wf.write(chunk)
                     chunk = await part.read_chunk()
@@ -1486,6 +1487,8 @@ async def get_system_log(_):
     from ...gui.consts import LOG_FN
 
     log_path = get_log_path()
+    if not log_path:
+        return web.Response(status=404)
     headers = {
         "Content-Disposition": "Attachment; filename=" + LOG_FN,
         "Content-Type": "text/plain",

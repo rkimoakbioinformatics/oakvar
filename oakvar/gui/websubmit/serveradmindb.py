@@ -29,6 +29,9 @@ def get_admindb_path():
 
     global admindb_path
     if not admindb_path:
+        conf_dir = get_conf_dir()
+        if not conf_dir:
+            return None
         admindb_path = Path(get_conf_dir()) / ADMIN_DB_FN
     return admindb_path
 
@@ -40,7 +43,7 @@ class ServerAdminDb:
         self.job_dir = job_dir
         self.job_name = job_name
         admindb_path = get_admindb_path()
-        if not admindb_path.exists() and not new_setup:
+        if (not admindb_path or not admindb_path.exists()) and not new_setup:
             raise SystemMissingException("server admin database is missing.")
         self.admindb_path = str(admindb_path)
 
@@ -628,7 +631,7 @@ def setup_serveradmindb(args={}):
 
     clean = args.get("clean")
     admindb_path = get_admindb_path()
-    if clean and Path(admindb_path).exists():
+    if clean and admindb_path and Path(admindb_path).exists():
         remove(admindb_path)
     admindb = ServerAdminDb(new_setup=True)
     admindb.setup()

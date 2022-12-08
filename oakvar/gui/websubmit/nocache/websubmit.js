@@ -128,7 +128,7 @@ async function generateReport(jobId, reportType, callback) {
     addEl(mdiv, getEl("br"));
     addEl(mdiv, getEl("br"));
     var span = getEl("span");
-    span.textContent = "Check your system's wcravat.log for details.";
+    span.textContent = "Check your system's gui.log for details.";
     addEl(mdiv, span);
     showYesNoDialog(mdiv, null, false, true);
   }

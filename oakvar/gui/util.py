@@ -58,5 +58,7 @@ def get_log_path(log_dir=None):
 
     if not log_dir:
         log_dir = get_log_dir()
+    if not log_dir:
+        return None
     log_path = Path(log_dir) / LOG_FN
     return str(log_path)

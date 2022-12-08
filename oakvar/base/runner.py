@@ -1481,7 +1481,7 @@ class Runner(object):
         if runtime is None or self.total_num_converted_variants is None:
             return
         admindb_path = get_admindb_path()
-        if admindb_path.exists() == False:
+        if not admindb_path or admindb_path.exists() == False:
             s = "{} does not exist.".format(str(admindb_path))
             if self.logger:
                 self.logger.info(s)
