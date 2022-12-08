@@ -81,6 +81,7 @@ setup(
         "rich",
         "aiohttp_cors",
         "pyjwt",
+        "uvloop",
         # below are module-specific. move them to module's yml.
         "mpmath",
         "twobitreader",
