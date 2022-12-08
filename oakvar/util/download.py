@@ -1,13 +1,14 @@
-def download(url, fpath, install_state=None, check_install_kill=None):
+def download(url, fpath, system_worker_state=None, check_install_kill=None, module_name=None):
     from .download_library import download as download_util
     import gdown
 
+    assert module_name is not None
     if "drive.google.com" in url:
         gdown.download(url=url, output=fpath, quiet=True, fuzzy=True)
     elif "github.com" in url:
         download_git_folder(url=url, install_dir=fpath)
     else:
-        download_util(url, fpath, kind="file", verbose=False, replace=True, install_state=install_state, check_install_kill=check_install_kill)
+        download_util(url, fpath, kind="file", verbose=False, replace=True, system_worker_state=system_worker_state, check_install_kill=check_install_kill, module_name=module_name)
 
 
 def download_git_file(el, folder):

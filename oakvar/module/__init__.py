@@ -270,10 +270,10 @@ def set_stage_handler(args={}):
             args.get("module_name"), args.get("version")
         )
         args["stage_handler"].set_module_version(args.get("version"))
-    if hasattr(args.get("stage_handler"), "install_state") == True:
-        args["install_state"] = args.get("stage_handler").install_state  # type: ignore
+    if hasattr(args.get("stage_handler"), "system_worker_state") == True:
+        args["system_worker_state"] = args.get("stage_handler").system_worker_state  # type: ignore
     else:
-        args["install_state"] = None
+        args["system_worker_state"] = None
 
 
 def get_pypi_dependency_from_conf(conf={}):
@@ -288,16 +288,19 @@ def get_pypi_dependency_from_conf(conf={}):
     return pypi_dependency
 
 
-def check_install_kill(args={}, install_state=None, module_name=None):
+def check_install_kill(args={}, system_worker_state=None, module_name=None):
     from ..exceptions import KillInstallException
+    from ..gui.consts import SYSTEM_STATE_INSTALL_KEY
 
-    if not install_state:
-        install_state = args.get("install_state")
+    if not system_worker_state:
+        system_worker_state = args.get("system_worker_state")
+    if not system_worker_state:
+        return
     if not module_name:
         module_name = args.get("module_name")
-        if not module_name:
-            module_name = install_state.get("module_name")
-    if install_state and module_name and install_state["module_name"] == module_name and install_state["kill_signal"] == True:
+    if not module_name:
+        return
+    if system_worker_state[SYSTEM_STATE_INSTALL_KEY].get(module_name, {}).get("kill_signal") == True:
         raise KillInstallException
 
 
@@ -311,7 +314,7 @@ def get_download_zipfile_path(args={}, kind=None):
     zipfile_path = str(Path(args.get("temp_dir")) / zipfile_fname)
     return zipfile_path
 
-def download_code_or_data(kind=None, args={}, install_state=None):
+def download_code_or_data(kind=None, args={}, system_worker_state=None):
     from pathlib import Path
     from os.path import getsize
     from os import remove
@@ -321,6 +324,7 @@ def download_code_or_data(kind=None, args={}, install_state=None):
     from ..util.util import quiet_print
 
     check_install_kill(args=args)
+    module_name = args.get("module_name")
     if not kind or kind not in ["code", "data"]:
         return
     if args.get("stage_handler"):
@@ -333,7 +337,7 @@ def download_code_or_data(kind=None, args={}, install_state=None):
         urls = loads(urls)
     urls_ty = type(urls)
     if urls_ty == str:
-        download(args.get(f"{kind}_url"), zipfile_path, install_state=install_state, check_install_kill=check_install_kill)
+        download(args.get(f"{kind}_url"), zipfile_path, system_worker_state=system_worker_state, check_install_kill=check_install_kill, module_name=module_name)
     elif urls_ty == list:
         download_from = 0
         if Path(zipfile_path).exists():
@@ -354,7 +358,7 @@ def download_code_or_data(kind=None, args={}, install_state=None):
                     and getsize(part_path) == MODULE_PACK_SPLIT_FILE_SIZE
                 ):
                     continue
-                download(urls[i], part_path, install_state=install_state, check_install_kill=check_install_kill)
+                download(urls[i], part_path, system_worker_state=system_worker_state, check_install_kill=check_install_kill, module_name=module_name)
                 if i < urls_len - 1:
                     if getsize(part_path) != MODULE_PACK_SPLIT_FILE_SIZE:
                         quiet_print(
@@ -656,7 +660,7 @@ def install_module(
             args.get("module_type") + "s",
             args.get("module_name"),
         )
-        if not download_code_or_data(kind="code", args=args, install_state=stage_handler.install_state):
+        if not download_code_or_data(kind="code", args=args, system_worker_state=stage_handler.system_worker_state):
             quiet_print(f"code download failed", args=args)
             raise ModuleInstallationError(module_name)
         extract_code_or_data(kind="code", args=args)
@@ -669,7 +673,7 @@ def install_module(
                 or force_data
             )
         ):
-            if not download_code_or_data(kind="data", args=args, install_state=stage_handler.install_state):
+            if not download_code_or_data(kind="data", args=args, system_worker_state=stage_handler.system_worker_state):
                 quiet_print(f"data download failed", args=args)
                 raise ModuleInstallationError(module_name)
             extract_code_or_data(kind="data", args=args)

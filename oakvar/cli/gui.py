@@ -180,6 +180,7 @@ def get_logger(args={}):
     from logging import INFO
     from logging import Formatter
     from logging.handlers import TimedRotatingFileHandler
+    from pathlib import Path
     from ..system.consts import log_dir_key
     from ..gui.util import get_log_path
 
@@ -189,7 +190,7 @@ def get_logger(args={}):
     logger = getLogger()
     logger.setLevel(INFO)
     log_formatter = Formatter("%(asctime)s: %(message)s", "%Y/%m/%d %H:%M:%S")
-    if log_path:
+    if log_path and Path(log_path).exists():
         log_handler = TimedRotatingFileHandler(log_path, when="d", backupCount=30)
         log_handler.setFormatter(log_formatter)
         logger.addHandler(log_handler)

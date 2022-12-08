@@ -335,7 +335,7 @@ class InstallProgressStdout(InstallProgressHandler):
     def __init__(self, module_name, module_version, quiet=True):
         super().__init__(module_name, module_version)
         self.quiet = quiet
-        self.install_state = None
+        self.system_worker_state = None
 
     def stage_start(self, stage):
         from ...util.util import quiet_print

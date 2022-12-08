@@ -4,7 +4,7 @@ def get_event_loop():
     #from sys import platform as sysplatform
     import asyncio
     import uvloop
-    uvloop.install()
+    #uvloop.install()
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
     global loop

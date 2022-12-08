@@ -20,24 +20,29 @@ def setup_system(args=None):
     conf = setup_system_conf(args=args)
     add_system_dirs_to_system_conf(conf)
     save_system_conf(conf)
+    print(f"@ setup. args={args}. system_worker_state={args.get('system_worker_state')}")
     quiet_print(f"System configuration file: {conf[sys_conf_path_key]}", args=args)
     setup_system_dirs(conf=conf, args=args)
     # set up a user conf file.
     setup_user_conf_file(args=args)
     # set up a store account.
-    print(f"@")
-    if not setup_store_account(args=args, conf=conf):
+    quiet_print("Logging in...", args=args)
+    ret = setup_store_account(args=args, conf=conf)
+    print(f"@ ret={ret}")
+    if ret.get("success") != True:
+        quiet_print("Login failed", args=args)
         return False
-    print(f"@ {args}")
+    quiet_print("Login successful", args=args)
     # fetch ov store cache
+    quiet_print("Setting up store cache...", args=args)
     setup_ov_store_cache(args=args)
-    print(f"@")
     # set up a multiuser database.
+    quiet_print("Setting up administrative database...", args=args)
     setup_serveradmindb(args=args)
-    print(f"@")
     # install base modules.
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
     args.update({"conf": conf})
+    quiet_print("Installing system modules...", args=args)
     ret = installbase(args, no_fetch=True)
     if ret is None or ret == 0 or ret is True:  # 0 or None?
         quiet_print(f"Done setting up the system", args=args)
@@ -170,7 +175,7 @@ def show_email_verify_action_banner():
     )
 
 
-def setup_store_account(args={}, conf=None, email=None, pw=None) -> bool:
+def setup_store_account(args={}, conf=None, email=None, pw=None) -> dict:
     from ..store.ov.account import total_login
 
     return total_login(email=email, pw=pw, args=args, conf=conf)

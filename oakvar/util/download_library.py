@@ -19,7 +19,7 @@ ALLOWED_KINDS = ["file", "tar", "zip", "tar.gz"]
 ZIP_KINDS = ["tar", "zip", "tar.gz"]
 
 def download(
-    url, path, kind="file", progressbar=True, replace=False, timeout=10.0, verbose=True, install_state=None, check_install_kill=None
+    url, path, kind="file", progressbar=True, replace=False, timeout=10.0, verbose=True, system_worker_state=None, check_install_kill=None, module_name=None
 ):
     """Download a URL.
 
@@ -58,6 +58,7 @@ def download(
         A path to the downloaded file (or folder, in the case of
         a zip file).
     """
+    assert module_name is not None
     if kind not in ALLOWED_KINDS:
         raise ValueError("`kind` must be one of {}, got {}".format(ALLOWED_KINDS, kind))
 
@@ -90,8 +91,9 @@ def download(
             timeout=timeout,
             verbose=verbose,
             progressbar=progressbar,
-            install_state=install_state,
+            system_worker_state=system_worker_state,
             check_install_kill=check_install_kill,
+            module_name=module_name
         )
 
         # Unzip the file to the out path
@@ -118,7 +120,7 @@ def download(
             timeout=timeout,
             verbose=verbose,
             progressbar=progressbar,
-            install_state=install_state,
+            system_worker_state=system_worker_state,
             check_install_kill=check_install_kill,
         )
         msg = "Successfully downloaded file to {}".format(path)
@@ -153,8 +155,9 @@ def _fetch_file(
     timeout=10.0,
     progressbar=True,
     verbose=True,
-    install_state=None,
+    system_worker_state=None,
     check_install_kill=None,
+    module_name=None
 ):
     """Load requested file, downloading it if needed or requested.
 
@@ -177,6 +180,8 @@ def _fetch_file(
     # Adapted from NISL and MNE-python:
     # https://github.com/nisl/tutorial/blob/master/nisl/datasets.py
     # https://martinos.org/mne
+    from ..gui.consts import SYSTEM_STATE_INSTALL_KEY
+    assert module_name is not None
     if hash_ is not None and (not isinstance(hash_, str) or len(hash_) != 32):
         raise ValueError(
             "Bad hash value given, should be a 32-character " "string:\n%s" % (hash_,)
@@ -198,14 +203,14 @@ def _fetch_file(
         chunk_size = 8192  # 2 ** 13
         with open(temp_file_name, "wb") as ff:
             for chunk in resp.iter_content(chunk_size=chunk_size):
-                if check_install_kill and install_state:
-                    check_install_kill(install_state=install_state)
-                if chunk:  # filter out keep-alive new chunks
-                    if install_state:
-                        install_state["cur_chunk"] += chunk_size
-                        install_state["total_chunk"] += chunk_size
-                        install_state["update_time"] = time.time()
+                if check_install_kill and system_worker_state:
+                    check_install_kill(system_worker_state=system_worker_state, module_name=module_name)
+                if chunk:
                     ff.write(chunk)
+                    if system_worker_state:
+                        system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name]["cur_chunk"] += chunk_size
+                        system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name]["total_chunk"] += chunk_size
+                        system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name]["update_time"] = time.time()
     else:
         # Check file size and displaying it alongside the download url
         req = request_agent(url)
@@ -217,10 +222,10 @@ def _fetch_file(
         u = urllib.request.urlopen(req, timeout=timeout) # type: ignore
         try:
             remote_file_size = int(u.headers.get("Content-Length", "0").strip())
-            if install_state:
-                install_state["cur_size"] = remote_file_size
-                install_state["total_size"] += remote_file_size
-                install_state["cur_chunk"] = 0
+            if system_worker_state:
+                system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name]["cur_size"] = remote_file_size
+                system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name]["total_size"] += remote_file_size
+                system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name]["cur_chunk"] = 0
         finally:
             u.close()
             del u
@@ -238,10 +243,10 @@ def _fetch_file(
             initial_size = op.getsize(temp_file_name)
         else:
             initial_size = 0
-        if install_state:
-            install_state["cur_chunk"] = initial_size
-            install_state["total_chunk"] += initial_size
-            install_state["update_time"] = time.time()
+        if system_worker_state:
+            system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name]["cur_chunk"] = initial_size
+            system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name]["total_chunk"] += initial_size
+            system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name]["update_time"] = time.time()
         # This should never happen if our functions work properly
         if initial_size > remote_file_size:
             raise RuntimeError(
@@ -259,8 +264,9 @@ def _fetch_file(
             verbose,
             progressbar,
             ncols=80,
-            install_state=install_state,
-            check_install_kill=check_install_kill
+            system_worker_state=system_worker_state,
+            check_install_kill=check_install_kill,
+            module_name=module_name
         )
 
         # check md5sum
@@ -284,12 +290,13 @@ def _fetch_file(
 
 
 def _get_ftp(
-    url, temp_file_name, initial_size, file_size, _, progressbar, ncols=80, install_state=None, check_install_kill=None
+    url, temp_file_name, initial_size, file_size, _, progressbar, ncols=80, system_worker_state=None, check_install_kill=None, module_name=None
 ):
     """Safely (resume a) download to a file from FTP."""
     # Adapted from: https://pypi.python.org/pypi/fileDownloader.py
     # but with changes
-
+    from ..gui.consts import SYSTEM_STATE_INSTALL_KEY
+    assert module_name is not None
     parsed_url = urllib.parse.urlparse(url) # type: ignore
     file_name = os.path.basename(parsed_url.path)
     server_path = parsed_url.path.replace(file_name, "")
@@ -326,21 +333,23 @@ def _get_ftp(
             def chunk_write(chunk):
                 return _chunk_write(chunk, local_file, progress)
 
-            if check_install_kill and install_state:
-                check_install_kill(install_state=install_state)
+            if check_install_kill and system_worker_state:
+                check_install_kill(system_worker_state=system_worker_state, module_name=module_name)
             data.retrbinary(down_cmd, chunk_write, blocksize=chunk_size)
-            if install_state:
-                install_state["cur_chunk"] += chunk_size
-                install_state["total_chunk"] += chunk_size
-                install_state["update_time"] = time.time()
+            if system_worker_state:
+                system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name]["cur_chunk"] += chunk_size
+                system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name]["total_chunk"] += chunk_size
+                system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name]["update_time"] = time.time()
             data.close()
 
 
 def _get_http(
-    url, temp_file_name, initial_size, file_size, _, progressbar, ncols=80, install_state=None, check_install_kill=None
+    url, temp_file_name, initial_size, file_size, _, progressbar, ncols=80, system_worker_state=None, check_install_kill=None, module_name=None
 ):
     """Safely (resume a) download to a file from http(s)."""
     import requests
+    from ..gui.consts import SYSTEM_STATE_INSTALL_KEY
+    assert module_name is not None
     session = requests.Session()
     headers = {"User-Agent": "oakvar"}
     if initial_size > 0:
@@ -386,8 +395,8 @@ def _get_http(
         with open(temp_file_name, mode) as local_file:
             for chunk in r.iter_content(chunk_size=chunk_size):
                 t0 = time.time()
-                if check_install_kill and install_state:
-                    check_install_kill(install_state=install_state)
+                if check_install_kill and system_worker_state:
+                    check_install_kill(system_worker_state=system_worker_state, module_name=module_name)
                 dt = time.time() - t0
                 if dt < 0.005:
                     chunk_size = chunk_size * 2
@@ -397,10 +406,10 @@ def _get_http(
                 read_size = len(chunk)
                 progress.update(read_size)
                 cur_size += read_size
-                if install_state:
-                    install_state["cur_chunk"] += read_size
-                    install_state["total_chunk"] += read_size
-                    install_state["update_time"] = time.time()
+                if system_worker_state:
+                    system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name]["cur_chunk"] += read_size
+                    system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name]["total_chunk"] += read_size
+                    system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name]["update_time"] = time.time()
 
 
 def md5sum(fname, block_size=1048576):  # 2 ** 20

@@ -1,8 +1,10 @@
 class SystemHandlers:
-    def __init__(self, servermode=False, mu=None, logger=None):
+    def __init__(self, servermode=False, mu=None, logger=None, system_queue=None, system_worker_state=None):
         self.servermode = servermode
         self.mu = mu
         self.logger = logger
+        self.system_queue = system_queue
+        self.system_worker_state = system_worker_state
         self.add_routes()
 
     def add_routes(self):
@@ -32,11 +34,12 @@ class SystemHandlers:
 
     async def start_setup(self, request):
         from aiohttp.web import Response
-        from ..system import setup_system
         from ..system.consts import root_dir_key
         from ..system.consts import modules_dir_key
         from ..system.consts import jobs_dir_key
         from ..system.consts import log_dir_key
+        from .consts import WS_COOKIE_KEY
+        from .consts import SYSTEM_STATE_SETUP_KEY
         data = await request.json()
         args = {
             "email": data.get("email"),
@@ -49,8 +52,15 @@ class SystemHandlers:
                 log_dir_key: data.get(log_dir_key),
             },
         }
-        #setup_system(args=args)
-        ws_id = request.cookies.get("ws_id")
+        ws_id = request.cookies.get(WS_COOKIE_KEY)
+        args["install_mode"] = "web"
+        args["ws_id"] = ws_id
+        args["system_worker_state"] = self.system_worker_state
+        args["msg_kind"] = SYSTEM_STATE_SETUP_KEY
+        data = {}
+        data["work_type"] = SYSTEM_STATE_SETUP_KEY
+        data["args"] = args
+        self.system_queue.append(data)
         return Response(status=200)
 
     async def get_modules_dir(self, _):

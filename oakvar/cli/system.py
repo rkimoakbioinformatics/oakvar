@@ -11,7 +11,7 @@ def cli_system_setup(args):
 def setup(args, __name__="system setup"):
     from ..system import setup_system
 
-    setup_system(args)
+    return setup_system(args)
 
 
 @cli_entry

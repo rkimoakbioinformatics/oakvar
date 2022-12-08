@@ -98,3 +98,20 @@ async def is_loggedin(request, servermode):
     else:
         return False
 
+def copy_state(value):
+    from multiprocessing.managers import ListProxy
+    from multiprocessing.managers import DictProxy
+    if isinstance(value, ListProxy):
+        content = []
+        for v in value:
+            v2 = copy_state(v)
+            content.append(v2)
+    elif isinstance(value, DictProxy):
+        content = {}
+        for k, v in value.items():
+            v2 = copy_state(v)
+            content[k] = v2
+    else:
+        content = value
+    return content
+

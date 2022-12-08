@@ -73,31 +73,39 @@ def create(email=None, pw=None, args={}, quiet=None) -> dict:
         "email": email,
         "pw": pw,
     }
+    msg = ""
+    success = False
+    status_code = 0
     try:
+        print(f"@ post {create_account_url}, {params}")
         r = post(create_account_url, data=params)
+        print(f"@ r={r}")
         status_code = r.status_code
-        if status_code == 403:
+        print(f"@ status_code={status_code}")
+        if status_code == 500:
+            msg = "Server error"
+            success = False
+        elif status_code == 403:
             msg = "account-exists"
-            quiet_print(msg, args=args, quiet=quiet)
-            return {"msg": msg, "success": False}
+            success = False
         elif status_code == 202:
             msg = f"Check your inbox for a verification email."
-            quiet_print(msg, args=args, quiet=quiet)
-            return {"msg": msg, "success": True}
+            success = True
         elif status_code == 201:
             msg = (
                 f"Account has been created. Check your inbox for a verification email."
             )
-            quiet_print(msg, args=args, quiet=quiet)
-            return {"msg": msg, "success": True}
+            success = True
         else:
-            msg = f"fail. {r.text}"
-            quiet_print(msg, args=args, quiet=quiet)
-            return {"msg": msg, "success": False}
+            msg = f"{r.text}"
+            success = False
     except Exception as e:
+        status_code = 500
         msg = f"fail. {e}"
+        success = False
+    finally:
         quiet_print(msg, args=args, quiet=quiet)
-        return {"msg": msg, "success": False}
+        return {"status_code": status_code, "msg": msg, "success": success}
 
 
 def delete(args={}) -> bool:
@@ -174,13 +182,14 @@ def get_email_from_token_set() -> Optional[str]:
     return email
 
 
-def login(email=None, pw=None, args={}, quiet=None) -> bool:
+def login(email=None, pw=None, args={}, quiet=None) -> dict:
     from requests import post
     from ....util.util import quiet_print
     from ....util.util import get_email_from_args
     from ...ov import get_store_url
 
     id_token = get_id_token()
+    print(f"@ id_token={id_token}")
     if id_token:
         if check(args={"quiet": True}):
             token_set_email = get_email_from_token_set()
@@ -188,28 +197,31 @@ def login(email=None, pw=None, args={}, quiet=None) -> bool:
             if email:
                 if token_set_email == email:
                     quiet_print(f"logged in as {email}", args=args, quiet=quiet)
-                    return True
+                    return {"success": True}
             elif args_email:
                 if token_set_email == args_email:
                     quiet_print(f"logged in as {args_email}", args=args, quiet=quiet)
-                    return True
+                    return {"success": True}
     if not email or not pw:
         email, pw = get_valid_email_pw(args=args)
-    change_account_url = get_store_url() + "/account/login"
+    login_url = get_store_url() + "/account/login"
     params = {"email": email, "pw": pw}
     try:
-        r = post(change_account_url, data=params)
+        r = post(login_url, data=params)
+        print(f"@ login r={r}")
         status_code = r.status_code
         if status_code == 200:
             save_token_set(r.json())
             quiet_print(f"logged in as {email}", args=args, quiet=quiet)
-            return True
+            return {"success": True}
         else:
             quiet_print(f"fail. {r.text}", args=args, quiet=quiet)
-            return False
+            return {"success": False, "status_code": status_code}
     except:
+        import traceback
+        msg = traceback.format_exc()
         quiet_print(f"server error", args=args, quiet=quiet)
-        return False
+        return {"success": False, "status_code": 500, "msg": msg}
 
 
 def get_token_set_path():
@@ -443,6 +455,7 @@ def get_email_pw_from_settings(
     if ov_store_email_key in user_conf and ov_store_pw_key in user_conf:
         email = user_conf[ov_store_email_key]
         pw = user_conf[ov_store_pw_key]
+    print(f"@ email, pw={email}, {pw}")
     if email and pw:
         return email, pw
     else:
@@ -510,37 +523,48 @@ def login_with_token_set(args={}) -> bool:
     return False
 
 
-def login_with_email_pw(email=None, pw=None, args={}, conf={}) -> bool:
+def login_with_email_pw(email=None, pw=None, args={}, conf={}) -> dict:
     emailpw = get_email_pw_from_settings(email=email, pw=pw, args=args, conf=conf)
     if emailpw:
         if emailpw_are_valid(emailpw):
+            print(f"@ valid")
             email = emailpw[0]
             pw = emailpw[1]
-            while True:
-                ret = create(email=email, pw=pw, quiet=False)
-                if ret.get("success"):
-                    break
-            announce_on_email_verification_if_needed(email, args=args)
-            login(email=email, pw=pw, args=args)
-            return True
-    return False
+            ret = create(email=email, pw=pw, quiet=False)
+            if ret.get("success"):
+                announce_on_email_verification_if_needed(email, args=args)
+                login(email=email, pw=pw, args=args)
+            return ret
+        else:
+            return {"status_code": 400, "success": False, "msg": "invalid email or password)"}
+    return {"status_code": 400, "success": False, "msg": "no email or password was provided"}
 
 
-def total_login(email=None, pw=None, args={}, conf=None) -> bool:
+def total_login(email=None, pw=None, args={}, conf=None) -> dict:
     from ....util.util import get_email_pw_from_input
     from ....system import show_no_user_account_prelude
+    from ....util.util import quiet_print
 
-    if login_with_token_set(args=args):
-        return True
-    if login_with_email_pw(email=email, pw=pw, args=args, conf=conf):
-        return True
+    print(f"@ login with token set")
+    #if login_with_token_set(args=args):
+    #    return {"success": True}
+    print(f"@ login with email pw. {args}")
+    ret = login_with_email_pw(email=email, pw=pw, args=args, conf=conf)
+    print(f"@ ret from login_with_email_pw={ret}")
+    if ret.get("success"):
+        return {"success": True}
+    elif args.get("install_mode") == "web":
+        print(f"@ sending ret to web")
+        quiet_print(ret, args=args)
+        return ret
     # if not already logged in nor email and pw in settings did not work, get manual input.
     show_no_user_account_prelude()
-    while True:
-        email, pw = get_email_pw_from_input(pwconfirm=True)
-        ret = create(email=email, pw=pw, quiet=False)
-        if ret.get("success"):
-            break
+    email, pw = get_email_pw_from_input(pwconfirm=True)
+    ret = create(email=email, pw=pw, quiet=False)
+    print(f"@@@ create. ret={ret}")
+    if not ret.get("success"):
+        quiet_print(ret, args=args)
+        return ret
     announce_on_email_verification_if_needed(email, args=args)
     ret = login(email=email, pw=pw, args=args)
     return ret

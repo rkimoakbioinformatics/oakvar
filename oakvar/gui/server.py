@@ -12,8 +12,8 @@ class WebServer(object):
 
         global system_setup_needed
         self.manager = None
-        self.install_queue = None
-        self.install_state = None
+        self.system_queue = None
+        self.system_worker_state = None
         self.info_of_running_jobs = None
         self.report_generation_ps = None
         self.args = args
@@ -24,6 +24,7 @@ class WebServer(object):
         self.site = None
         self.servermode = args.get("servermode", False)
         self.mu = mu
+        self.wss = {}
         self.host = args.get("host")
         self.port = args.get("port")
         if loop is None:
@@ -103,7 +104,7 @@ class WebServer(object):
 
     def start_workers(self):
         self.start_job_worker()
-        self.start_install_worker()
+        self.start_system_worker()
 
     def start_job_worker(self):
         from multiprocessing import Process
@@ -114,48 +115,41 @@ class WebServer(object):
         )
         self.job_worker.start()
 
-    def start_install_worker(self):
+    def start_system_worker(self):
         from multiprocessing import Process
-        from .store_handlers import fetch_install_queue
+        from .system_worker import system_queue_worker
         assert self.manager is not None
-        self.install_worker = Process(
-            target=fetch_install_queue,
-            args=(self.install_queue, self.install_state, self.local_modules_changed),
+        self.system_worker = Process(
+            target=system_queue_worker,
+            args=(self.system_queue, self.system_worker_state, self.local_modules_changed),
         )
-        self.install_worker.start()
+        self.system_worker.start()
 
-    def make_install_queue(self):
-        if self.install_queue is not None:
-            return self.install_queue
+    def make_system_queue(self):
+        if self.system_queue is not None:
+            return self.system_queue
         if not self.manager:
             return None
-        self.install_queue = self.manager.list()
+        self.system_queue = self.manager.list()
 
-    def make_install_state(self):
-        if self.install_state is not None:
-            return self.install_state
+    def make_system_worker_state(self):
+        if self.system_worker_state is not None:
+            return self.system_worker_state
         if not self.manager:
             return None
-        self.install_state = self.manager.dict()
-        self.initialize_install_state()
+        self.system_worker_state = self.manager.dict()
+        self.initialize_system_worker_state()
 
-    def initialize_install_state(self, module_name="", module_version=""):
-        from time import time
-        if self.install_state is None:
-            return
-        d = {}
-        d["stage"] = ""
-        d["message"] = ""
-        d["module_name"] = module_name
-        d["module_version"] = module_version
-        d["cur_chunk"] = 0
-        d["total_chunk"] = 0
-        d["cur_size"] = 0
-        d["total_size"] = 0
-        d["update_time"] = time()
-        d["kill"] = False
-        for k, v in d.items():
-            self.install_state[k] = v
+    def initialize_system_worker_state(self):
+        from .consts import SYSTEM_STATE_SETUP_KEY
+        from .consts import SYSTEM_STATE_INSTALL_KEY
+        assert self.system_worker_state is not None
+        assert self.manager is not None
+        setup = self.manager.dict()
+        message = self.manager.list()
+        setup["message"] = message
+        self.system_worker_state[SYSTEM_STATE_SETUP_KEY] = setup
+        self.system_worker_state[SYSTEM_STATE_INSTALL_KEY] = {}
 
     def make_job_queue_states(self):
         from multiprocessing import Queue
@@ -168,14 +162,15 @@ class WebServer(object):
     def make_shared_states(self):
         from multiprocessing import Manager
         self.manager = Manager()
-        self.make_install_queue()
-        self.make_install_state()
+        self.make_system_queue()
+        self.make_system_worker_state()
         self.local_modules_changed = self.manager.Event()
         self.make_job_queue_states()
+        self.wss = {}
 
     def make_store_handlers(self):
         from .store_handlers import StoreHandlers
-        self.store_handlers = StoreHandlers(servermode=self.servermode, mu=self.mu, local_modules_changed=self.local_modules_changed, install_state=self.install_state, install_queue=self.install_queue, logger=self.logger)
+        self.store_handlers = StoreHandlers(servermode=self.servermode, mu=self.mu, local_modules_changed=self.local_modules_changed, system_worker_state=self.system_worker_state, system_queue=self.system_queue, logger=self.logger)
 
     def make_job_handlers(self):
         from .job_handlers import JobHandlers
@@ -187,13 +182,18 @@ class WebServer(object):
 
     def make_system_handlers(self):
         from .system_handlers import SystemHandlers
-        self.system_handlers = SystemHandlers(servermode=self.servermode, mu=self.mu, logger=self.logger)
+        self.system_handlers = SystemHandlers(servermode=self.servermode, mu=self.mu, logger=self.logger, system_queue=self.system_queue, system_worker_state=self.system_worker_state)
+
+    def make_websocket_handlers(self):
+        from .websocket_handlers import WebSocketHandlers
+        self.websocket_handlers = WebSocketHandlers(system_worker_state=self.system_worker_state, wss=self.wss, logger=self.logger)
 
     def make_handlers(self):
         self.make_job_handlers()
         self.make_store_handlers()
         self.make_multiuser_handlers()
         self.make_system_handlers()
+        self.make_websocket_handlers()
 
     async def start(self):
         global server_ready
@@ -299,6 +299,7 @@ class WebServer(object):
         self.routes.extend(self.job_handlers.routes)
         self.routes.extend(self.multiuser_handlers.routes)
         self.routes.extend(self.system_handlers.routes)
+        self.routes.extend(self.websocket_handlers.routes)
         self.routes.extend(webresult.routes)
         for route in self.routes:
             method, path, func_name = route
