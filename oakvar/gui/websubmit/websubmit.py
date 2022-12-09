@@ -284,6 +284,8 @@ async def get_run_args(request, submit_options: dict, job_dir: str):
     run_args.append("-l")
     assembly = job_options.get("assembly")
     if not assembly:
+        assembly = job_options.get("genome")
+    if not assembly:
         assembly = default_assembly
     submit_options["assembly"] = assembly
     run_args.append(assembly)
