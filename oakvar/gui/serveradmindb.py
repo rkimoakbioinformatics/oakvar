@@ -50,7 +50,7 @@ class ServerAdminDb:
         self.job_dir = job_dir
         self.job_name = job_name
         admindb_path = get_admindb_path()
-        if not admindb_path or not admindb_path.exists() and not new_setup:
+        if (not admindb_path or not admindb_path.exists()) and not new_setup:
             raise SystemMissingException("server admin database is missing.")
         self.admindb_path = str(admindb_path)
 

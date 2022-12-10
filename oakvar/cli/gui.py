@@ -2,7 +2,6 @@ from . import cli_entry
 from . import cli_func
 
 protocol = None
-log_path = None
 loop = None
 
 def inject_module_variables(args={}):
@@ -184,17 +183,16 @@ def get_logger(args={}):
     from ..system.consts import log_dir_key
     from ..gui.util import get_log_path
 
-    global log_path
     log_dir = args.get("sysconf", {}).get(log_dir_key)
     log_path = get_log_path(log_dir=log_dir)
     logger = getLogger()
     logger.setLevel(INFO)
     log_formatter = Formatter("%(asctime)s: %(message)s", "%Y/%m/%d %H:%M:%S")
-    if log_path and Path(log_path).exists():
+    if log_path:
         log_handler = TimedRotatingFileHandler(log_path, when="d", backupCount=30)
         log_handler.setFormatter(log_formatter)
         logger.addHandler(log_handler)
-    return logger
+    return logger, log_path
 
 
 def get_webapp_url(args={}):
@@ -290,25 +288,25 @@ def gui(args, __name__="gui"):
 
     sysconf = get_system_conf()
     args["sysconf"] = sysconf
-    args["logger"] = get_logger(args=args)
+    logger, log_path = get_logger(args=args)
+    args["logger"] = logger
+    exception = None
     try:
         setup(args=args)
         url = get_url(args=args)
         main(url=url, args=args)
     except Exception as e:
-        # logger = args.get("logger")
-        logger = get_logger(args=args)
-        if logger:
+        if log_path:
             logger.exception(e)
-        if args.get("debug"):
-            print_exc()
-        if logger:
-            logger.info("Exiting...")
+            if args.get("debug"):
+                print_exc()
         if log_path:
             stderr.write(f"{e}\nCheck {log_path} for details.\n")
+        exception = e
     finally:
-        logger = args.get("logger")
         if logger:
             for handler in logger.handlers:
                 handler.close()
                 logger.removeHandler(handler)
+    if exception:
+        raise exception

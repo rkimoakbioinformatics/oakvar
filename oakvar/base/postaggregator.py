@@ -606,14 +606,12 @@ class BasePostAggregator(object):
         return column_names
 
     def _get_input(self):
-        from sqlite3 import connect
         from ..exceptions import SetupError
         from ..consts import VARIANT
         from ..consts import GENE
 
         if self.db_path is None or self.level is None or not self.dbconn:
             raise SetupError()
-        conn = connect(self.db_path)
         self.c_var = self.dbconn.cursor()
         self.c_gen = self.dbconn.cursor()
         self.make_queries()
@@ -656,7 +654,6 @@ class BasePostAggregator(object):
             self.c_var.close()
         if self.c_gen:
             self.c_gen.close()
-        conn.close()
 
     def annotate(self, __input_data__):
         raise NotImplementedError()
