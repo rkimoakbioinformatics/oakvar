@@ -62,7 +62,8 @@ def url_is_valid(url: str) -> bool:
     from requests import head
 
     res = head(url)
-    if res.status_code in [200, 301]:
+    status_code = res.status_code
+    if status_code >= 200 and status_code < 400:
         return True
     else:
         return False
