@@ -340,7 +340,7 @@ class BasePostAggregator(object):
     ):
         from ..exceptions import ConfigurationError
         from ..exceptions import SetupError
-        from oakvar.consts import VARIANT, GENE
+        from ..consts import VARIANT, GENE
 
         if self.conf is None:
             raise ConfigurationError()

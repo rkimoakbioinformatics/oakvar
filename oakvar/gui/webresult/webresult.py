@@ -256,7 +256,7 @@ async def get_status(request):
 
 
 def get_widgetlist(_):
-    from ...module.local import get_local_module_infos_of_type
+    from ...lib.module.local import get_local_module_infos_of_type
 
     content = []
     modules = get_local_module_infos_of_type("webviewerwidget")
@@ -280,7 +280,7 @@ def get_widgetlist(_):
 
 
 async def get_count(request):
-    from ...exceptions import DatabaseConnectionError
+    from ...lib.exceptions import DatabaseConnectionError
 
     global logger
     dbpath = await get_dbpath(request)
@@ -308,7 +308,7 @@ async def get_count(request):
 
 
 async def get_result(request):
-    from ...exceptions import DatabaseConnectionError
+    from ...lib.exceptions import DatabaseConnectionError
 
     global logger
     queries = await request.json()
@@ -401,8 +401,8 @@ async def get_result(request):
 
 
 async def get_pagesize(request, valueonly=False):
-    from ...system import get_user_conf
-    from ...system import get_system_conf
+    from ...lib.system import get_user_conf
+    from ...lib.system import get_system_conf
 
     user_conf = get_user_conf()
     sys_conf = get_system_conf()
@@ -427,7 +427,7 @@ async def get_pagesize(request, valueonly=False):
 
 
 async def get_num_var_limit_for_summary_widget(_):
-    from ...system import get_system_conf
+    from ...lib.system import get_system_conf
     from ..consts import DEFAULT_RESULT_VIEWER_NUM_VAR_LIMIT_FOR_SUMMARY_WIDGET
     from ..consts import result_viewer_num_var_limit_for_summary_widget_key
 
@@ -441,7 +441,7 @@ async def get_num_var_limit_for_summary_widget(_):
 
 
 async def get_result_levels(request):
-    from ...system import get_system_conf
+    from ...lib.system import get_system_conf
 
     sys_conf = get_system_conf()
     gui_result_pagesize = sys_conf.get(
@@ -674,7 +674,7 @@ async def table_exists(cursor, table):
 
 
 def serve_widgetfile(request):
-    from ...system import get_modules_dir
+    from ...lib.system import get_modules_dir
 
     filepath = os.path.join(
         get_modules_dir(),
@@ -689,7 +689,7 @@ def serve_widgetfile(request):
 
 
 async def serve_runwidget(request):
-    from ...system import get_modules_dir
+    from ...lib.system import get_modules_dir
 
     path = "wg" + request.match_info["module"]
     queries = request.rel_url.query
@@ -716,7 +716,7 @@ async def serve_runwidget(request):
 
 
 async def serve_webapp_runwidget(request):
-    from ...system import get_modules_dir
+    from ...lib.system import get_modules_dir
 
     module_name = request.match_info["module"]
     widget_name = request.match_info["widget"]
@@ -739,7 +739,7 @@ async def serve_webapp_runwidget(request):
 
 
 async def serve_runwidget_post(request):
-    from ...system import get_modules_dir
+    from ...lib.system import get_modules_dir
 
     path = "wg" + request.match_info["module"]
     dbpath = await get_dbpath(request)
@@ -831,7 +831,7 @@ async def get_samples(request):
 
 
 async def get_variants_for_hugo(request):
-    from ...exceptions import DatabaseConnectionError
+    from ...lib.exceptions import DatabaseConnectionError
 
     hugo = request.match_info["hugo"]
     dbpath = await get_dbpath(request)
@@ -850,7 +850,7 @@ async def get_variants_for_hugo(request):
 
 
 async def get_variantdbcols(request):
-    from ...exceptions import DatabaseConnectionError
+    from ...lib.exceptions import DatabaseConnectionError
 
     dbpath = await get_dbpath(request)
     if dbpath is None:

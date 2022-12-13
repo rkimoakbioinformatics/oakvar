@@ -30,9 +30,9 @@ def db_func(func):
 
 
 def get_admindb_path():
-    from ..system import get_conf_dir
     from pathlib import Path
-    from ..system.consts import ADMIN_DB_FN
+    from ..lib.system import get_conf_dir
+    from ..lib.system.consts import ADMIN_DB_FN
 
     global admindb_path
     if not admindb_path:
@@ -45,7 +45,7 @@ def get_admindb_path():
 
 class ServerAdminDb:
     def __init__(self, new_setup=False, job_dir=None, job_name=None):
-        from ..exceptions import SystemMissingException
+        from ..lib.exceptions import SystemMissingException
 
         self.job_dir = job_dir
         self.job_name = job_name
@@ -175,8 +175,8 @@ class ServerAdminDb:
         return need_clean_start
 
     def add_admin(self, conn, cursor):
-        from ..store.ov.account import get_email_from_token_set
-        from ..system.consts import ADMIN_ROLE
+        from ..lib.store.ov.account import get_email_from_token_set
+        from ..lib.system.consts import ADMIN_ROLE
 
         email = get_email_from_token_set()
         q = "insert or replace into users (email, role) values (?, ?)"
@@ -184,8 +184,8 @@ class ServerAdminDb:
         conn.commit()
 
     def add_default_user(self, conn, cursor):
-        from ..system.consts import USER_ROLE
-        from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
+        from ..lib.system.consts import USER_ROLE
+        from ..lib.system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
 
         q = "insert or replace into users (email, role) values (?, ?)"
         cursor.execute(q, (DEFAULT_SERVER_DEFAULT_USERNAME, USER_ROLE))
@@ -241,7 +241,7 @@ class ServerAdminDb:
             return None
 
     async def get_user_role_of_email(self, email, servermode=True):
-        from ..system.consts import ADMIN_ROLE
+        from ..lib.system.consts import ADMIN_ROLE
 
         if not servermode:
             return ADMIN_ROLE
@@ -450,7 +450,7 @@ class ServerAdminDb:
         return pageno
 
     def get_pagesize(self, in_pagesize: Optional[str]) -> int:
-        from ..system import get_sys_conf_value
+        from ..lib.system import get_sys_conf_value
         from .consts import job_table_pagesize_key
         from .consts import DEFAULT_JOB_TABLE_PAGESIZE
 
@@ -566,8 +566,8 @@ class ServerAdminDb:
         from pathlib import Path
         from sqlite3 import connect
         from json import dumps
-        from ..system import get_user_jobs_dir
-        from ..system import get_legacy_status_json
+        from ..lib.system import get_user_jobs_dir
+        from ..lib.system import get_legacy_status_json
         from .userjob import get_job_runtime_in_job_dir
 
         jobs_dir = get_user_jobs_dir(email)

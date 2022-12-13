@@ -180,7 +180,7 @@ def _fetch_file(
     # Adapted from NISL and MNE-python:
     # https://github.com/nisl/tutorial/blob/master/nisl/datasets.py
     # https://martinos.org/mne
-    from ..gui.consts import SYSTEM_STATE_INSTALL_KEY
+    from ...gui.consts import SYSTEM_STATE_INSTALL_KEY
     assert module_name is not None
     if hash_ is not None and (not isinstance(hash_, str) or len(hash_) != 32):
         raise ValueError(
@@ -295,7 +295,7 @@ def _get_ftp(
     """Safely (resume a) download to a file from FTP."""
     # Adapted from: https://pypi.python.org/pypi/fileDownloader.py
     # but with changes
-    from ..gui.consts import SYSTEM_STATE_INSTALL_KEY
+    from ...gui.consts import SYSTEM_STATE_INSTALL_KEY
     assert module_name is not None
     parsed_url = urllib.parse.urlparse(url) # type: ignore
     file_name = os.path.basename(parsed_url.path)
@@ -348,7 +348,7 @@ def _get_http(
 ):
     """Safely (resume a) download to a file from http(s)."""
     import requests
-    from ..gui.consts import SYSTEM_STATE_INSTALL_KEY
+    from ...gui.consts import SYSTEM_STATE_INSTALL_KEY
     assert module_name is not None
     session = requests.Session()
     headers = {"User-Agent": "oakvar"}

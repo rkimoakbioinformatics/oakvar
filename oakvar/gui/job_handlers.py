@@ -45,7 +45,7 @@ class JobHandlers:
 
     async def get_tags_of_annotators_and_postaggregators(self, _):
         from aiohttp.web import json_response
-        from ..module.local import get_local_module_infos_of_type
+        from ..lib.module.local import get_local_module_infos_of_type
 
         tags = set()
         modules = get_local_module_infos_of_type("annotator").values()
@@ -62,7 +62,7 @@ class JobHandlers:
 
     def get_converters(self, _):
         from aiohttp.web import json_response
-        from ..module.local import get_local_module_infos
+        from ..lib.module.local import get_local_module_infos
 
         out = []
         modules = get_local_module_infos(types=["converter"])
@@ -228,7 +228,7 @@ class JobHandlers:
         return json_response({"valid": valid_types})
 
     def get_valid_report_types(self):
-        from ..module.local import get_local_module_infos
+        from ..lib.module.local import get_local_module_infos
 
         if self.valid_report_types is not None:
             return self.valid_report_types
@@ -387,12 +387,12 @@ class JobHandlers:
 def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
     from asyncio import new_event_loop
     from sys import platform
-    from ..util.asyn import get_event_loop
+    from ..lib.util.asyn import get_event_loop
 
     class JobTracker(object):
         def __init__(self, main_loop):
-            from ..system import get_system_conf
-            from ..system.consts import DEFAULT_MAX_NUM_CONCURRENT_JOBS
+            from ..lib.system import get_system_conf
+            from ..lib.system.consts import DEFAULT_MAX_NUM_CONCURRENT_JOBS
 
             sys_conf = get_system_conf()
             if not sys_conf:

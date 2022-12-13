@@ -176,12 +176,6 @@ def hash_password(password):
     return sha256(password.encode()).hexdigest()
 
 
-def client_error_json(error_class):
-    from json import dumps
-
-    return dumps({"code": error_class.code, "message": error_class.message})
-
-
 def remote_module_latest_version(module_name) -> Optional[str]:
     from .db import get_latest_module_code_version
 

@@ -1,6 +1,6 @@
 import sys
 from abc import ABC, abstractmethod
-from ..exceptions import ExpectedException
+from ..lib.exceptions import ExpectedException
 from . import cli_entry
 from . import cli_func
 
@@ -509,8 +509,8 @@ class Tester:
     def __init__(self, module, args, input_file):
         from os.path import exists, join
         from os import makedirs
-        from ..exceptions import ModuleLoadingError
-        from ..module.local import get_local_module_info
+        from ..lib.exceptions import ModuleLoadingError
+        from ..lib.module.local import get_local_module_info
 
         self.parms = None
         self.name = None
@@ -568,12 +568,12 @@ class Tester:
 
     # function that tests one module
     def run(self):
-        from ..module.local import get_local_module_info
+        from ..lib.module.local import get_local_module_info
         from time import time
         from subprocess import call, STDOUT
-        from ..util.util import quiet_print
-        from ..exceptions import ModuleLoadingError
-        from ..exceptions import SetupError
+        from ..lib.util.util import quiet_print
+        from ..lib.exceptions import ModuleLoadingError
+        from ..lib.exceptions import SetupError
 
         input_msg = (
             "" if self.input_file == "input" else self.input_file
@@ -631,8 +631,8 @@ class Tester:
         return exit_code
 
     def verify(self):
-        from ..module.local import get_local_module_info
-        from ..exceptions import ModuleLoadingError
+        from ..lib.module.local import get_local_module_info
+        from ..lib.exceptions import ModuleLoadingError
 
         if self.module is None:
             raise ModuleLoadingError(self.module_name)
@@ -718,7 +718,7 @@ class Tester:
     # if expected results are not found and fail the test.    Test just the specified
     # level (variant, gene, etc) and specified module's columns
     def verify_level(self, level, module_name):
-        from ..exceptions import ModuleLoadingError
+        from ..lib.exceptions import ModuleLoadingError
 
         # self._report("  Verifying " + level + " level values.")
         if self.module is None:
@@ -775,7 +775,7 @@ class Tester:
 
     # Write a message to the screen and to the log file.
     def _report(self, s, stdout=False):
-        from ..util.util import quiet_print
+        from ..lib.util.util import quiet_print
 
         self.log.write(s + "\n")
         if stdout:
@@ -786,11 +786,11 @@ class Tester:
     # Log success /failure of test.
     def write_results(self, stdout=True):
         if self.module is None:
-            from ..exceptions import ModuleLoadingError
+            from ..lib.exceptions import ModuleLoadingError
 
             raise ModuleLoadingError(self.module_name)
         if self.start_time is None:
-            from ..exceptions import ExpectedException
+            from ..lib.exceptions import ExpectedException
 
             raise ExpectedException("start_time does not exist.")
         from time import time
@@ -821,10 +821,10 @@ def cli_util_test(args):
 def test(args, __name__="util test"):
     from os.path import exists
     from os import makedirs
-    from ..module.local import get_local_module_types
-    from ..module.local import get_local_module_info
-    from ..util.util import quiet_print
-    from ..exceptions import NoInput
+    from ..lib.module.local import get_local_module_types
+    from ..lib.module.local import get_local_module_info
+    from ..lib.util.util import quiet_print
+    from ..lib.exceptions import NoInput
 
     rundir = args.get("rundir")
     if rundir is None:

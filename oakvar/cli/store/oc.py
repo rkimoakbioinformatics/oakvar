@@ -9,10 +9,10 @@ def cli_store_oc_publish(args):
 
 @cli_func
 def oc_publish(args, __name__="store oc publish"):
-    from ...system import get_system_conf
-    from ...store.oc import publish_module
     from getpass import getpass
-    from ...system import consts
+    from ...lib.system import get_system_conf
+    from ...lib.store.oc import publish_module
+    from ...lib.system import consts
 
     if args.get("md"):
         consts.custom_modules_dir = args.get("md")
@@ -44,7 +44,7 @@ def cli_store_oc_newaccount(args):
 
 @cli_func
 def oc_newaccount(args, __name__="store oc newaccount"):
-    from ...store.oc import create_account
+    from ...lib.store.oc import create_account
 
     ret = create_account(args=args)
     return ret
@@ -57,7 +57,7 @@ def cli_store_oc_changepw(args):
 
 @cli_func
 def oc_changepw(args, __name__="store oc changepw"):
-    from ...store.oc import change_password
+    from ...lib.store.oc import change_password
 
     ret = change_password(args=args)
     return ret
@@ -70,7 +70,7 @@ def cli_store_oc_resetpw(args):
 
 @cli_func
 def oc_resetpw(args, __name__="store oc resetpw"):
-    from ...store.oc import send_reset_email
+    from ...lib.store.oc import send_reset_email
 
     ret = send_reset_email(args=args)
     return ret
@@ -83,7 +83,7 @@ def cli_store_oc_verifyemail(args):
 
 @cli_func
 def oc_verifyemail(args, __name__="store oc verifyemail"):
-    from ...store.oc import send_reset_email
+    from ...lib.store.oc import send_reset_email
 
     ret = send_reset_email(args=args)
     return ret
@@ -96,7 +96,7 @@ def cli_store_oc_checklogin(args):
 
 @cli_func
 def oc_checklogin(args, __name__="store oc checklogin"):
-    from ...store.oc import check_login
+    from ...lib.store.oc import check_login
 
     ret = check_login(args=args)
     return ret

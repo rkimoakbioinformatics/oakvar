@@ -482,7 +482,7 @@ class ReportFilter:
         await self.exec_db(self.verify_filter)
 
     async def verify_filter(self, cursor_read=Any, cursor_write=Any):
-        from oakvar.exceptions import InvalidFilter
+        from ..exceptions import InvalidFilter
 
         _ = cursor_write
         wrong_samples = await self.verify_filter_sample(cursor_read)

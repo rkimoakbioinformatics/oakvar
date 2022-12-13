@@ -1,4 +1,4 @@
-from ...module import InstallProgressHandler
+from ...lib.module import InstallProgressHandler
 from .. import cli_entry
 from .. import cli_func
 
@@ -10,7 +10,7 @@ def cli_module_pack(args):
 
 @cli_func
 def pack(args, __name__="module pack"):
-    from ...module.local import pack_module
+    from ...lib.module.local import pack_module
 
     ret = pack_module(args)
     return ret
@@ -26,7 +26,7 @@ def cli_module_ls(args):
 @cli_func
 def ls(args, __name__="module ls"):
     from .ls import list_modules
-    from ...util.util import print_tabular_lines
+    from ...lib.util.util import print_tabular_lines
 
     if args.get("fmt") == None:
         args["fmt"] = "json"
@@ -52,10 +52,10 @@ def cli_module_info(args):
 @cli_func
 def info(args, __name__="module info"):
     from oyaml import dump
-    from ...module.local import get_local_module_info
-    from ...module.remote import get_remote_module_info
-    from ...module.local import LocalModule
-    from ...module.remote import get_readme
+    from ...lib.module.local import get_local_module_info
+    from ...lib.module.remote import get_remote_module_info
+    from ...lib.module.local import LocalModule
+    from ...lib.module.remote import get_readme
     from .info import print_module_info
 
     ret = {}
@@ -81,6 +81,10 @@ def info(args, __name__="module info"):
         installed = True
     else:
         installed = False
+    if not remote_available and not installed:
+        if to == "stdout":
+            print(f"Module not found")
+        return None
     if remote_available and remote_info:
         ret.update(remote_info.to_info())
         ret["output_columns"] = []
@@ -135,15 +139,15 @@ def cli_module_install(args):
 def install(args, no_fetch=False, __name__="module install"):
     from .install import get_modules_to_install
     from .install import show_modules_to_install
-    from ...module import install_module
-    from ...module import install_module_from_url
-    from ...module import install_module_from_zip_path
-    from ...util.util import quiet_print
-    from ...util.run import get_y_or_n
-    from ...util.download import is_url
-    from ...util.download import is_zip_path
-    from ...store.db import try_fetch_ov_store_cache
-    from ...exceptions import ModuleToSkipInstallation
+    from ...lib.module import install_module
+    from ...lib.module import install_module_from_url
+    from ...lib.module import install_module_from_zip_path
+    from ...lib.util.util import quiet_print
+    from ...lib.util.run import get_y_or_n
+    from ...lib.util.download import is_url
+    from ...lib.util.download import is_zip_path
+    from ...lib.store.db import try_fetch_ov_store_cache
+    from ...lib.exceptions import ModuleToSkipInstallation
 
     if not no_fetch:
         try_fetch_ov_store_cache(args=args)
@@ -204,12 +208,12 @@ def cli_module_update(args):
 @cli_func
 def update(args, no_fetch=False, __name__="module update"):
     from types import SimpleNamespace
-    from ...module.local import search_local
-    from ...module import get_updatable
-    from ...util.util import humanize_bytes
-    from ...util.util import quiet_print
-    from ...util.util import print_tabular_lines
-    from ...store.db import try_fetch_ov_store_cache
+    from ...lib.module.local import search_local
+    from ...lib.module import get_updatable
+    from ...lib.util.util import humanize_bytes
+    from ...lib.util.util import quiet_print
+    from ...lib.util.util import print_tabular_lines
+    from ...lib.store.db import try_fetch_ov_store_cache
 
     if not no_fetch:
         try_fetch_ov_store_cache(args=args)
@@ -266,13 +270,13 @@ def cli_module_uninstall(args):
 
 @cli_func
 def uninstall(args, __name__="module uninstall"):
-    from ...module.local import search_local
-    from ...module import uninstall_module
-    from ...util.util import quiet_print
+    from ...lib.module.local import search_local
+    from ...lib.module import uninstall_module
+    from ...lib.util.util import quiet_print
 
     modules = args.get("modules")
     if not modules:
-        from ...exceptions import ArgumentError
+        from ...lib.exceptions import ArgumentError
 
         e = ArgumentError("no modules was given.")
         e.traceback = False
@@ -307,9 +311,9 @@ def cli_module_installbase(args):
 @cli_func
 def installbase(args, no_fetch=False, __name__="module installbase"):
     from types import SimpleNamespace
-    from ...system import get_system_conf
-    from ...system.consts import base_modules_key
-    from ...store.db import try_fetch_ov_store_cache
+    from ...lib.system import get_system_conf
+    from ...lib.system.consts import base_modules_key
+    from ...lib.store.db import try_fetch_ov_store_cache
 
     if not no_fetch:
         try_fetch_ov_store_cache(args=args)
@@ -338,14 +342,14 @@ class InstallProgressStdout(InstallProgressHandler):
         self.system_worker_state = None
 
     def stage_start(self, stage):
-        from ...util.util import quiet_print
+        from ...lib.util.util import quiet_print
 
         self.cur_stage = stage
         quiet_print(self._stage_msg(stage), args={"quiet": self.quiet})
 
 
 def add_parser_fn_module_pack(subparsers):
-    from ...store.consts import MODULE_PACK_SPLIT_FILE_SIZE
+    from ...lib.store.consts import MODULE_PACK_SPLIT_FILE_SIZE
 
     # pack
     parser_cli_module_pack = subparsers.add_parser(

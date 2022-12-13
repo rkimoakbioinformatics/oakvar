@@ -72,7 +72,7 @@ class MultiuserHandlers:
         from aiohttp.web import Response
         from aiohttp.web import json_response
         import jwt
-        from ..store.ov.account import create
+        from ..lib.store.ov.account import create
         from .serveradmindb import get_serveradmindb
         from .consts import DEFAULT_PRIVATE_KEY
         from .consts import COOKIE_KEY
@@ -117,7 +117,7 @@ class MultiuserHandlers:
 
     async def check_logged(self, request):
         from aiohttp.web import json_response
-        from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
+        from ..lib.system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
         from .util import get_email_from_request
 
         global servermode
@@ -193,7 +193,7 @@ class MultiuserHandlers:
         return response
 
     async def is_admin_loggedin(self, request, email=None):
-        from ..system.consts import ADMIN_ROLE
+        from ..lib.system.consts import ADMIN_ROLE
         from .serveradmindb import get_serveradmindb
         from .util import get_email_from_request
 

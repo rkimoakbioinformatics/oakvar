@@ -5,7 +5,7 @@ from . import cli_func
 @cli_entry
 @cli_func
 def issue(__args__, __name__="issue"):
-    from ..util.admin_util import report_issue
+    from ..lib.util.admin_util import report_issue
 
     return report_issue()
 

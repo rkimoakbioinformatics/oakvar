@@ -1,14 +1,14 @@
-from .cli.module import add_parser_ov_module
-from .cli.util import get_parser_fn_util
-from .cli.run import add_parser_ov_run
-from .cli.gui import get_parser_fn_gui
-from .cli.report import get_parser_fn_report
-from .cli.new import get_parser_fn_new
-from .cli.issue import get_parser_fn_issue
-from .cli.version import get_parser_fn_version
-from .cli.store import get_parser_fn_store
-from .cli.system import add_parser_ov_system
-from .cli.config import get_parser_fn_config
+from .module import add_parser_ov_module
+from .util import get_parser_fn_util
+from .run import add_parser_ov_run
+from .gui import get_parser_fn_gui
+from .report import get_parser_fn_report
+from .new import get_parser_fn_new
+from .issue import get_parser_fn_issue
+from .version import get_parser_fn_version
+from .store import get_parser_fn_store
+from .system import add_parser_ov_system
+from .config import get_parser_fn_config
 
 
 def get_entry_parser():
@@ -119,7 +119,7 @@ def get_entry_parser():
 def handle_exception(e: Exception):
     from sys import stderr
     from traceback import print_exc
-    from .exceptions import ExpectedException
+    from ..lib.exceptions import ExpectedException
     import sys
 
     msg = getattr(e, "msg", None)
@@ -156,7 +156,7 @@ def handle_exception(e: Exception):
 def main():
     from sys import argv
     import signal
-    from . import raise_break
+    from .. import raise_break
 
     signal.signal(signal.SIGINT, raise_break)
     global get_entry_parser

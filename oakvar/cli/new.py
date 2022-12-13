@@ -9,7 +9,7 @@ def cli_new_exampleinput(args):
 
 @cli_func
 def exampleinput(args, __name__="new exampleinput"):
-    from ..util.admin_util import fn_new_exampleinput
+    from ..lib.util.admin_util import fn_new_exampleinput
 
     return fn_new_exampleinput(args.get("directory"))
 
@@ -22,9 +22,9 @@ def cli_new_annotator(args):
 
 @cli_func
 def annotator(args, __name__="new annotator"):
-    from ..util.admin_util import new_annotator
-    from ..module.local import get_local_module_info
-    from ..util.util import quiet_print
+    from ..lib.util.admin_util import new_annotator
+    from ..lib.module.local import get_local_module_info
+    from ..lib.util.util import quiet_print
 
     new_annotator(args.get("annotator_name"))
     module_info = get_local_module_info(args.get("annotator_name"))

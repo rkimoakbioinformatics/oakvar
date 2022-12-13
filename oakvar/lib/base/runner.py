@@ -379,7 +379,7 @@ class Runner(object):
     async def process_arguments(self, args):
         from ..exceptions import SetupError
         from ..exceptions import SetupError
-        from ..cli.version import cli_version
+        from ...cli.version import cli_version
         from ..exceptions import NormalExit
 
         self.set_package_conf(args)
@@ -439,7 +439,7 @@ class Runner(object):
         self.process_module_options()
 
     def connect_admindb_if_needed(self, run_no: int):
-        from ..gui.serveradmindb import ServerAdminDb
+        from ...gui.serveradmindb import ServerAdminDb
 
         if not self.output_dir or not self.job_name:
             raise
@@ -1473,7 +1473,7 @@ class Runner(object):
     async def write_admin_db_final_info(self, runtime: float, run_no: int):
         import aiosqlite
         from json import dumps
-        from ..gui.serveradmindb import get_admindb_path
+        from ...gui.serveradmindb import get_admindb_path
         from ..util.util import quiet_print
 
         if self.args is None or not self.output_dir:

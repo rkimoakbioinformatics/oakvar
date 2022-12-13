@@ -23,7 +23,7 @@ class SystemHandlers:
 
     async def get_local_module_info_web(self, request):
         from aiohttp.web import json_response
-        from ..module.local import get_local_module_info
+        from ..lib.module.local import get_local_module_info
 
         module_name = request.match_info["module"]
         mi = get_local_module_info(module_name)
@@ -34,12 +34,13 @@ class SystemHandlers:
 
     async def start_setup(self, request):
         from aiohttp.web import Response
-        from ..system.consts import root_dir_key
-        from ..system.consts import modules_dir_key
-        from ..system.consts import jobs_dir_key
-        from ..system.consts import log_dir_key
+        from ..lib.system.consts import root_dir_key
+        from ..lib.system.consts import modules_dir_key
+        from ..lib.system.consts import jobs_dir_key
+        from ..lib.system.consts import log_dir_key
         from .consts import WS_COOKIE_KEY
         from .consts import SYSTEM_STATE_SETUP_KEY
+        from .consts import SYSTEM_MSG_KEY
         data = await request.json()
         args = {
             "email": data.get("email"),
@@ -56,7 +57,7 @@ class SystemHandlers:
         args["install_mode"] = "web"
         args["ws_id"] = ws_id
         args["system_worker_state"] = self.system_worker_state
-        args["msg_kind"] = SYSTEM_STATE_SETUP_KEY
+        args[SYSTEM_MSG_KEY] = SYSTEM_STATE_SETUP_KEY
         data = {}
         data["work_type"] = SYSTEM_STATE_SETUP_KEY
         data["args"] = args
@@ -65,9 +66,9 @@ class SystemHandlers:
 
     async def get_modules_dir(self, _):
         from aiohttp.web import json_response
-        from ..system import get_modules_dir
-        from ..system import get_default_modules_dir
-        from ..system.consts import modules_dir_key
+        from ..lib.system import get_modules_dir
+        from ..lib.system import get_default_modules_dir
+        from ..lib.system.consts import modules_dir_key
 
         modules_dir = get_modules_dir()
         if not modules_dir:
@@ -76,9 +77,9 @@ class SystemHandlers:
 
     async def get_jobs_dir(self, _):
         from aiohttp.web import json_response
-        from ..system import get_jobs_dir
-        from ..system import get_default_jobs_dir
-        from ..system.consts import jobs_dir_key
+        from ..lib.system import get_jobs_dir
+        from ..lib.system import get_default_jobs_dir
+        from ..lib.system.consts import jobs_dir_key
 
         jobs_dir = get_jobs_dir()
         if not jobs_dir:
@@ -87,9 +88,9 @@ class SystemHandlers:
 
     async def get_log_dir(self, _):
         from aiohttp.web import json_response
-        from ..system import get_log_dir
-        from ..system import get_default_log_dir
-        from ..system.consts import log_dir_key
+        from ..lib.system import get_log_dir
+        from ..lib.system import get_default_log_dir
+        from ..lib.system.consts import log_dir_key
 
         log_dir = get_log_dir()
         if not log_dir:
@@ -109,9 +110,9 @@ class SystemHandlers:
 
     async def get_root_dir(self, _):
         from aiohttp.web import json_response
-        from ..system import get_root_dir
-        from ..system import get_default_root_dir
-        from ..system.consts import root_dir_key
+        from ..lib.system import get_root_dir
+        from ..lib.system import get_default_root_dir
+        from ..lib.system.consts import root_dir_key
 
         root_dir = get_root_dir()
         if not root_dir:
@@ -120,7 +121,7 @@ class SystemHandlers:
 
     async def get_package_versions(self, _):
         from aiohttp.web import json_response
-        from ..util.admin_util import get_current_package_version
+        from ..lib.util.admin_util import get_current_package_version
 
         cur_ver = get_current_package_version()
         d = {"pkg_ver": cur_ver}

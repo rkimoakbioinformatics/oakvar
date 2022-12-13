@@ -72,9 +72,9 @@ class MasterConverter(object):
         self.wgsreader = get_wgs_reader(assembly="hg38")
 
     def get_genome_assembly(self, converter) -> str:
-        from oakvar.system.consts import default_assembly_key
-        from oakvar.exceptions import NoGenomeException
-        from oakvar.system import get_user_conf
+        from oakvar.lib.system.consts import default_assembly_key
+        from oakvar.lib.exceptions import NoGenomeException
+        from oakvar.lib.system import get_user_conf
 
         if self.given_input_assembly:
             return self.given_input_assembly
@@ -100,8 +100,8 @@ class MasterConverter(object):
             self.logger.info(f"liftover for chrM needed: {self.do_liftover_chrM}")
 
     def setup_lifter(self, genome_assembly):
-        from oakvar.util.admin_util import get_liftover_chain_paths
-        from oakvar.exceptions import InvalidGenomeAssembly
+        from oakvar.lib.util.admin_util import get_liftover_chain_paths
+        from oakvar.lib.exceptions import InvalidGenomeAssembly
         from pyliftover import LiftOver
 
         liftover_chain_paths = get_liftover_chain_paths()
@@ -154,9 +154,9 @@ class MasterConverter(object):
             self.output_base_fname = Path(self.input_paths[0]).name
 
     def parse_cmd_args(self, inargs, inkwargs):
-        from oakvar.exceptions import ExpectedException
-        from oakvar.util.util import get_args
-        from oakvar.util.run import get_module_options
+        from oakvar.lib.exceptions import ExpectedException
+        from oakvar.lib.util.util import get_args
+        from oakvar.lib.util.run import get_module_options
 
         parser = self.get_cmd_args_parser()
         args = get_args(parser, inargs, inkwargs)
@@ -176,7 +176,7 @@ class MasterConverter(object):
 
     def get_file_object_for_input_path(self, input_path: str):
         import gzip
-        from oakvar.util.util import detect_encoding
+        from oakvar.lib.util.util import detect_encoding
 
         if self.logger:
             self.logger.info(f"detecting encoding of {input_path}")
@@ -211,9 +211,9 @@ class MasterConverter(object):
         self.error_logger = getLogger("err.converter")
 
     def collect_converters(self):
-        from oakvar.module.local import get_local_module_infos_of_type
-        from oakvar.util.util import load_class
-        from oakvar.util.util import quiet_print
+        from oakvar.lib.module.local import get_local_module_infos_of_type
+        from oakvar.lib.util.util import load_class
+        from oakvar.lib.util.util import quiet_print
 
         for module_info in get_local_module_infos_of_type("converter").values():
             cls = load_class(module_info.script_path)
@@ -258,7 +258,7 @@ class MasterConverter(object):
                     self.extra_output_columns.append(col)
 
     def check_input_format(self):
-        from oakvar.exceptions import InvalidInputFormat
+        from oakvar.lib.exceptions import InvalidInputFormat
 
         if self.args.get("input_format") and self.args.get("input_format") not in self.available_input_formats:
             raise InvalidInputFormat(self.args.get("input_format"))
@@ -269,7 +269,7 @@ class MasterConverter(object):
 
     def get_converter_for_input_file(self, f) -> Optional[BaseConverter]:
         import sys
-        from oakvar.exceptions import ArgumentError
+        from oakvar.lib.exceptions import ArgumentError
 
         if f == sys.stdin:
             if not self.args.get("input_format"):
@@ -294,8 +294,8 @@ class MasterConverter(object):
         return None
 
     def set_converter_properties(self, converter):
-        from oakvar.exceptions import SetupError
-        from oakvar.module.local import get_module_code_version
+        from oakvar.lib.exceptions import SetupError
+        from oakvar.lib.module.local import get_module_code_version
 
         if self.conf is None:
             raise SetupError()
@@ -311,10 +311,10 @@ class MasterConverter(object):
 
     def setup_crv_writer(self):
         from pathlib import Path
-        from oakvar.util.util import get_crv_def
-        from oakvar.util.inout import FileWriter
-        from oakvar.consts import crv_idx
-        from oakvar.consts import STANDARD_INPUT_FILE_SUFFIX
+        from oakvar.lib.util.util import get_crv_def
+        from oakvar.lib.util.inout import FileWriter
+        from oakvar.lib.consts import crv_idx
+        from oakvar.lib.consts import STANDARD_INPUT_FILE_SUFFIX
 
         if not self.output_dir or not self.output_base_fname:
             raise
@@ -328,10 +328,10 @@ class MasterConverter(object):
 
     def setup_crs_writer(self):
         from pathlib import Path
-        from oakvar.util.util import get_crs_def
-        from oakvar.util.inout import FileWriter
-        from oakvar.consts import crs_idx
-        from oakvar.consts import SAMPLE_FILE_SUFFIX
+        from oakvar.lib.util.util import get_crs_def
+        from oakvar.lib.util.inout import FileWriter
+        from oakvar.lib.consts import crs_idx
+        from oakvar.lib.consts import SAMPLE_FILE_SUFFIX
 
         if not self.output_dir or not self.output_base_fname:
             raise
@@ -346,10 +346,10 @@ class MasterConverter(object):
 
     def setup_crm_writer(self):
         from pathlib import Path
-        from oakvar.util.util import get_crm_def
-        from oakvar.util.inout import FileWriter
-        from oakvar.consts import crm_idx
-        from oakvar.consts import MAPPING_FILE_SUFFIX
+        from oakvar.lib.util.util import get_crm_def
+        from oakvar.lib.util.inout import FileWriter
+        from oakvar.lib.consts import crm_idx
+        from oakvar.lib.consts import MAPPING_FILE_SUFFIX
 
         if not self.output_dir or not self.output_base_fname:
             raise
@@ -364,9 +364,9 @@ class MasterConverter(object):
 
     def setup_crl_writer(self):
         from pathlib import Path
-        from oakvar.util.util import get_crl_def
-        from oakvar.util.inout import FileWriter
-        from oakvar.consts import VARIANT_LEVEL_OUTPUT_SUFFIX
+        from oakvar.lib.util.util import get_crl_def
+        from oakvar.lib.util.inout import FileWriter
+        from oakvar.lib.consts import VARIANT_LEVEL_OUTPUT_SUFFIX
 
         if not self.output_dir or not self.output_base_fname:
             raise
@@ -379,7 +379,7 @@ class MasterConverter(object):
 
     def open_output_files(self):
         from pathlib import Path
-        from oakvar.exceptions import SetupError
+        from oakvar.lib.exceptions import SetupError
 
         if not self.output_base_fname or not self.output_dir:
             raise SetupError()
@@ -402,8 +402,8 @@ class MasterConverter(object):
     def setup_file(self, input_path: str) -> Tuple[TextIO, BaseConverter]:
         from sys import stdin
         from logging import getLogger
-        from oakvar.util.util import log_module
-        from oakvar.exceptions import NoConverterFound
+        from oakvar.lib.util.util import log_module
+        from oakvar.lib.exceptions import NoConverterFound
 
         if self.pipeinput:
             f = stdin
@@ -433,7 +433,7 @@ class MasterConverter(object):
         return (f, converter)
 
     def handle_chrom(self, variant):
-        from oakvar.exceptions import IgnoredVariant
+        from oakvar.lib.exceptions import IgnoredVariant
 
         if not variant.get("chrom"):
             raise IgnoredVariant("No chromosome")
@@ -442,7 +442,7 @@ class MasterConverter(object):
         variant["chrom"] = self.chromdict.get(variant.get("chrom"), variant.get("chrom"))
 
     def handle_ref_base(self, variant):
-        from oakvar.exceptions import IgnoredVariant
+        from oakvar.lib.exceptions import IgnoredVariant
 
         if "ref_base" not in variant or variant["ref_base"] in [
             "",
@@ -478,7 +478,7 @@ class MasterConverter(object):
             )
 
     def check_invalid_base(self, variant: dict):
-        from oakvar.exceptions import IgnoredVariant
+        from oakvar.lib.exceptions import IgnoredVariant
 
         if not self.base_re.fullmatch(variant["ref_base"]):
             raise IgnoredVariant("Invalid reference base")
@@ -486,7 +486,7 @@ class MasterConverter(object):
             raise IgnoredVariant("Invalid alternate base")
 
     def normalize_variant(self, variant):
-        from oakvar.util.seq import normalize_variant_left
+        from oakvar.lib.util.seq import normalize_variant_left
 
         p, r, a = (
             int(variant["pos"]),
@@ -504,7 +504,7 @@ class MasterConverter(object):
         variant["uid"] = self.uid
 
     def handle_variant(self, variant: dict, var_no: int, converter):
-        from oakvar.exceptions import NoVariantError
+        from oakvar.lib.exceptions import NoVariantError
 
         if not self.crv_writer or not self.crm_writer or not self.crs_writer:
             raise
@@ -538,7 +538,7 @@ class MasterConverter(object):
         self.crs_writer.write_data(variant)
 
     def handle_converted_variants(self, variants: List[Dict[str, Any]], converter: BaseConverter):
-        from oakvar.exceptions import IgnoredVariant
+        from oakvar.lib.exceptions import IgnoredVariant
 
         if not self.wgsreader or not self.crv_writer or not self.crm_writer or not self.crs_writer:
             raise
@@ -555,7 +555,7 @@ class MasterConverter(object):
 
     def run(self):
         from pathlib import Path
-        from oakvar.util.run import update_status
+        from oakvar.lib.util.run import update_status
 
         if not self.input_paths or not self.logger:
             raise
@@ -603,7 +603,7 @@ class MasterConverter(object):
 
     def log_ending(self):
         from time import time, asctime, localtime
-        from oakvar.util.run import update_status
+        from oakvar.lib.util.run import update_status
 
         if not self.logger:
             raise
@@ -645,7 +645,7 @@ class MasterConverter(object):
         return wdict["chrom"] == "chrM"
 
     def liftover_one_pos(self, chrom, pos):
-        from oakvar.exceptions import SetupError
+        from oakvar.lib.exceptions import SetupError
 
         if not self.lifter:
             raise SetupError("no lifter")
@@ -664,9 +664,9 @@ class MasterConverter(object):
         return res
 
     def liftover(self, chrom, pos, ref, alt):
-        from oakvar.exceptions import LiftoverFailure
-        from oakvar.util.seq import reverse_complement
-        from oakvar.exceptions import SetupError
+        from oakvar.lib.exceptions import LiftoverFailure
+        from oakvar.lib.util.seq import reverse_complement
+        from oakvar.lib.exceptions import SetupError
 
         if not self.lifter or not self.wgsreader:
             raise SetupError("no lifter")
@@ -737,9 +737,9 @@ class MasterConverter(object):
 
     def _log_conversion_error(self, line_no: int, e, full_line_error=True):
         from traceback import format_exc
-        from oakvar.exceptions import ExpectedException
-        from oakvar.exceptions import NoAlternateAllele
-        from oakvar.util.run import update_status
+        from oakvar.lib.exceptions import ExpectedException
+        from oakvar.lib.exceptions import NoAlternateAllele
+        from oakvar.lib.util.run import update_status
 
         if isinstance(e, NoAlternateAllele):
             if line_no % 10000 == 0:

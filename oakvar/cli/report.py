@@ -11,17 +11,17 @@ def report(args, __name__="report"):
     from os.path import dirname
     from os.path import basename
     from os.path import join
-    from ..util.asyn import get_event_loop
-    from ..util.util import is_compatible_version
+    from ..lib.util.asyn import get_event_loop
+    from ..lib.util.util import is_compatible_version
     from importlib.util import spec_from_file_location
     from importlib.util import module_from_spec
-    from ..exceptions import ModuleNotExist
-    from ..exceptions import IncompatibleResult
-    from ..util.util import quiet_print
-    from ..module.local import get_local_module_info
-    from ..system import consts
-    from ..__main__ import handle_exception
-    from ..consts import MODULE_OPTIONS_KEY
+    from ..lib.exceptions import ModuleNotExist
+    from ..lib.exceptions import IncompatibleResult
+    from ..lib.util.util import quiet_print
+    from ..lib.module.local import get_local_module_info
+    from ..lib.system import consts
+    from .__main__ import handle_exception
+    from ..lib.consts import MODULE_OPTIONS_KEY
 
     dbpath = args.get("dbpath")
     compatible_version, _, _ = is_compatible_version(dbpath)
@@ -113,7 +113,7 @@ def report(args, __name__="report"):
 
 def get_parser_fn_report():
     from argparse import ArgumentParser, SUPPRESS
-    from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
+    from ..lib.system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
 
     parser_ov_report = ArgumentParser(
         prog="ov report dbpath ...",

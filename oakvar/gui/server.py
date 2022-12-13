@@ -7,7 +7,7 @@ system_setup_needed = False
 
 class WebServer(object):
     def __init__(self, loop=None, url=None, args={}):
-        from ..util.asyn import get_event_loop
+        from ..lib.util.asyn import get_event_loop
         from . import multiuser as mu
 
         global system_setup_needed
@@ -45,12 +45,11 @@ class WebServer(object):
         from sys import stderr
         from aiohttp.web_exceptions import HTTPNotFound
         from aiohttp.web import Response
-        from ..exceptions import SystemMissingException
+        from ..lib.exceptions import SystemMissingException
 
         global loop
         try:
             url_parts = request.url.parts
-            print(f"@ request={request}")
             response = await handler(request)
             nocache = False
             if url_parts[0] == "/":
@@ -143,13 +142,14 @@ class WebServer(object):
     def initialize_system_worker_state(self):
         from .consts import SYSTEM_STATE_SETUP_KEY
         from .consts import SYSTEM_STATE_INSTALL_KEY
+        from .consts import SYSTEM_STATE_MESSAGE_KEY
         assert self.system_worker_state is not None
         assert self.manager is not None
         setup = self.manager.dict()
         message = self.manager.list()
-        setup["message"] = message
+        setup[SYSTEM_STATE_MESSAGE_KEY] = message
         self.system_worker_state[SYSTEM_STATE_SETUP_KEY] = setup
-        self.system_worker_state[SYSTEM_STATE_INSTALL_KEY] = {}
+        self.system_worker_state[SYSTEM_STATE_INSTALL_KEY] = self.manager.dict()
 
     def make_job_queue_states(self):
         from multiprocessing import Queue
@@ -219,13 +219,13 @@ class WebServer(object):
         self.server_started = True
 
     def setup_webapp_routes(self):
-        from ..exceptions import ModuleLoadingError
+        from ..lib.exceptions import ModuleLoadingError
         from importlib.util import spec_from_file_location, module_from_spec
         from os.path import join, exists
         from os import listdir
-        from ..exceptions import ModuleLoadingError
-        from ..exceptions import SetupError
-        from ..system import get_modules_dir
+        from ..lib.exceptions import ModuleLoadingError
+        from ..lib.exceptions import SetupError
+        from ..lib.system import get_modules_dir
 
         modules_dir = get_modules_dir()
         if modules_dir is None:
@@ -287,8 +287,8 @@ class WebServer(object):
 
     def setup_routes(self):
         from .webresult import webresult
-        from ..exceptions import SetupError
-        from ..system import get_modules_dir
+        from ..lib.exceptions import SetupError
+        from ..lib.system import get_modules_dir
         from os.path import join
         from os.path import exists
 
@@ -331,7 +331,7 @@ class TCPSitePatched(web_runner.BaseSite):
         reuse_port=None,
         loop=None,
     ):
-        from ..util.asyn import get_event_loop
+        from ..lib.util.asyn import get_event_loop
 
         super().__init__(
             runner,
@@ -359,7 +359,7 @@ class TCPSitePatched(web_runner.BaseSite):
         return str(URL.build(scheme=scheme, host=self._host, port=self._port))
 
     async def start(self):
-        from ..exceptions import SetupError
+        from ..lib.exceptions import SetupError
 
         await super().start()
         if self._runner.server is None:

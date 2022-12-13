@@ -90,6 +90,8 @@ def get_module_info_version_table(module_info={}):
     from packaging.version import Version
 
     versions = module_info.get("versions")
+    if not versions:
+        return None
     version_table = Table(title="Versions", title_style="bold", box=box.SQUARE)
     version_table.add_column("Version")
     version_table.add_column("Data version")

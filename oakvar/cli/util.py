@@ -104,8 +104,8 @@ def addjob(args, __name__="util addjob"):
     from time import sleep
     from pathlib import Path
     from datetime import datetime
-    from ..system import get_jobs_dir
-    from ..consts import LOG_SUFFIX
+    from ..lib.system import get_jobs_dir
+    from ..lib.consts import LOG_SUFFIX
 
     dbpath = args.path
     user = args.user
@@ -401,7 +401,7 @@ def cli_util_filtersqlite(args):
 
 @cli_func
 def filtersqlite(args, __name__="util filtersqlite"):
-    from ..util.asyn import get_event_loop
+    from ..lib.util.asyn import get_event_loop
 
     loop = get_event_loop()
     return loop.run_until_complete(filtersqlite_async(args))
@@ -445,7 +445,7 @@ async def filtersqlite_async(args):
                 or cf.filter is None
                 or type(cf.filter) is not dict
             ):
-                from ..exceptions import FilterLoadingError
+                from ..lib.exceptions import FilterLoadingError
 
                 raise FilterLoadingError()
             for table_name in [

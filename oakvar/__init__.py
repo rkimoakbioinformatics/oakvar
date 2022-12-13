@@ -33,23 +33,23 @@ from .cli.module import install as module_install
 from .cli.module import info as module_info
 from .cli.config import user as config_user
 from .cli.config import system as config_system
-from . import __main__ as cli
-from . import consts
-from .exceptions import *
-from .base.runner import Runner
-from .base.converter import BaseConverter
-from .base.preparer import BasePreparer
-from .base.mapper import BaseMapper
-from .base.annotator import BaseAnnotator
-from .base.postaggregator import BasePostAggregator
-from .base.report_filter import ReportFilter
-from .base.reporter import BaseReporter
-from .base.commonmodule import BaseCommonModule
-from .base.vcf2vcf import VCF2VCF
-from .util.inout import FileReader
-from .util.inout import FileWriter
-from .util import inout
-from .util import admin_util
+from .cli import __main__ as cli
+from .lib import consts
+from .lib.exceptions import *
+from .lib.base.runner import Runner
+from .lib.base.converter import BaseConverter
+from .lib.base.preparer import BasePreparer
+from .lib.base.mapper import BaseMapper
+from .lib.base.annotator import BaseAnnotator
+from .lib.base.postaggregator import BasePostAggregator
+from .lib.base.report_filter import ReportFilter
+from .lib.base.reporter import BaseReporter
+from .lib.base.commonmodule import BaseCommonModule
+from .lib.base.vcf2vcf import VCF2VCF
+from .lib.util.inout import FileReader
+from .lib.util.inout import FileWriter
+from .lib.util import inout
+from .lib.util import admin_util
 import signal
 
 # for compatibility with oc
@@ -177,9 +177,9 @@ def get_live_mapper(module_name, input_file=None):
 
 def get_module(module_name, module_type=None):
     from os.path import dirname
-    from .module.local import get_local_module_info
-    from .module.local import get_module_conf
-    from .util.util import load_class
+    from .lib.module.local import get_local_module_info
+    from .lib.module.local import get_module_conf
+    from .lib.util.util import load_class
 
     ModuleClass = None
     module_conf = get_module_conf(module_name, module_type=module_type)
@@ -212,7 +212,7 @@ class LiveAnnotator:
         self.live_mapper = None
 
     def load_live_modules(self, mapper, annotator_names):
-        from .module.cache import get_module_cache
+        from .lib.module.cache import get_module_cache
 
         self.live_mapper = get_live_mapper(mapper)
         for module_name in get_module_cache().local.keys():
@@ -244,8 +244,8 @@ class LiveAnnotator:
         return d
 
     def annotate(self, crv):
-        from .util.inout import AllMappingsParser
-        from .consts import all_mappings_col_name
+        from .lib.util.inout import AllMappingsParser
+        from .lib.consts import all_mappings_col_name
 
         if "uid" not in crv:
             crv["uid"] = self.variant_uid

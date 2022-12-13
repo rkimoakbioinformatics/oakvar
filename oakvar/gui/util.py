@@ -11,9 +11,9 @@ def get_host_port(args={}):
 
 
 def get_server_settings(args={}) -> Tuple[str, int]:
-    from ..system import get_system_conf
+    from ..lib.system import get_system_conf
     import platform
-    from ..exceptions import SetupError
+    from ..lib.exceptions import SetupError
     from .consts import default_gui_port
     from .consts import default_gui_port_ssl
 
@@ -53,7 +53,7 @@ def get_server_settings(args={}) -> Tuple[str, int]:
 
 def get_log_path(log_dir=None):
     from pathlib import Path
-    from ..system import get_log_dir
+    from ..lib.system import get_log_dir
     from ..gui.consts import LOG_FN
 
     if not log_dir:
@@ -76,7 +76,7 @@ def get_token(request):
     return request.cookies.get(COOKIE_KEY)
 
 def get_email_from_request(request, servermode):
-    from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
+    from ..lib.system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
     from .util import get_email_from_oakvar_token
     from .util import get_token
 

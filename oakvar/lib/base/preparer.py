@@ -116,12 +116,12 @@ class BasePreparer(object):
         self.writer = FileWriter(self.output_path)
 
     def open_output_files(self):
-        from oakvar.exceptions import SetupError
+        from ..exceptions import SetupError
 
         if self.output_base_fname is None or self.output_dir is None:
             raise SetupError()
-        from oakvar.util.util import get_crv_def
-        from oakvar.consts import crv_idx
+        from ..util.util import get_crv_def
+        from ..consts import crv_idx
 
         self.writer.add_columns(get_crv_def())
         self.writer.write_definition()

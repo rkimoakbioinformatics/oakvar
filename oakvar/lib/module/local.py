@@ -696,8 +696,8 @@ def get_default_mapper_name() -> Optional[str]:
 
 
 def load_modules(annotators: list = [], mapper: Optional[str] = None, input_file=None):
-    from .. import get_live_mapper
-    from .. import get_live_annotator
+    from ... import get_live_mapper
+    from ... import get_live_annotator
 
     modules = {}
     if mapper:

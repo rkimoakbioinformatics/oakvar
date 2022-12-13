@@ -1,3 +1,5 @@
+from multiprocessing.managers import DictProxy
+
 class WebSocketHandlers:
     def __init__(self, system_worker_state=None, wss=None, logger=None):
         self.routes = []
@@ -8,18 +10,18 @@ class WebSocketHandlers:
 
     def add_routes(self):
         self.routes = []
-        self.routes.append(["GET", "/ws", self.connect_websocket])
+        self.routes.append(["GET", "/ws", self.connect])
 
-    async def connect_websocket(self, request):
+    async def connect(self, request):
         import asyncio
         from aiohttp.web import WebSocketResponse
         import concurrent.futures
         from uuid import uuid4
         from .consts import WS_COOKIE_KEY
+        from .consts import SYSTEM_STATE_CONNECTION_KEY
+        from .consts import SYSTEM_MSG_KEY
         assert self.system_worker_state is not None
         ws_id = request.cookies.get(WS_COOKIE_KEY)
-        print(f"@ connect_websocket. cookies={request.cookies}")
-        print(f"@ old ws_id={ws_id}")
         if ws_id and ws_id in self.wss:
             del self.wss[ws_id]
         ws_id = str(uuid4())
@@ -28,7 +30,7 @@ class WebSocketHandlers:
         self.wss[ws_id] = ws
         await ws.prepare(request)
         try:
-            await ws.send_json({"msg_kind": "connection", WS_COOKIE_KEY: ws_id})
+            await ws.send_json({SYSTEM_MSG_KEY: SYSTEM_STATE_CONNECTION_KEY, WS_COOKIE_KEY: ws_id})
         except ConnectionResetError:
             raise
         except:
@@ -40,7 +42,6 @@ class WebSocketHandlers:
                 to_dels.append(ws_id)
         for ws_id in to_dels:
             del self.wss[ws_id]
-        print(f"@ wss={self.wss}")
         while True:
             try:
                 await asyncio.sleep(1)
@@ -56,21 +57,23 @@ class WebSocketHandlers:
                     self.logger.exception(e)
         return ws
 
-    def empty_list_proxy(self, l):
-        for _ in l:
-            l.pop()
-
     async def process_setup_state(self, ws=None):
         from .consts import SYSTEM_STATE_SETUP_KEY
+        from .consts import SYSTEM_STATE_MESSAGE_KEY
         from .consts import SYSTEM_MSG_KEY
         if ws is None or not self.system_worker_state:
             return
         if SYSTEM_STATE_SETUP_KEY not in self.system_worker_state:
             return
         data = self.system_worker_state[SYSTEM_STATE_SETUP_KEY]
-        for msg in data.get("message"):
-            await ws.send_json({SYSTEM_MSG_KEY: SYSTEM_STATE_SETUP_KEY, "msg": msg})
-        self.empty_list_proxy(data.get("message"))
+        if data.get(SYSTEM_STATE_MESSAGE_KEY):
+            msgs = data.get(SYSTEM_STATE_MESSAGE_KEY)
+            while msgs:
+                msg = msgs[0]
+                print(f"@@@ sending ws msg: {msg}")
+                await ws.send_json({SYSTEM_MSG_KEY: SYSTEM_STATE_SETUP_KEY, "msg": msg})
+                msgs.pop(0)
+            print(f"@@@ => after delete. {list(data.get('message'))}")
 
     async def process_install_state(self, ws=None):
         from .consts import SYSTEM_STATE_INSTALL_KEY
@@ -82,13 +85,14 @@ class WebSocketHandlers:
         for _, data in install_datas.items():
             await ws.send_json(data)
         await self.delete_done_install_states()
+
     async def delete_done_install_states(self):
         from .consts import SYSTEM_STATE_INSTALL_KEY
         if SYSTEM_STATE_INSTALL_KEY not in self.system_worker_state:
             return
-        install_datas = self.system_worker_state[SYSTEM_STATE_INSTALL_KEY]
+        install_datas: DictProxy = self.system_worker_state[SYSTEM_STATE_INSTALL_KEY]
         to_del = []
-        for module_name, data in install_datas:
+        for module_name, data in install_datas.items():
             if data["stage"] in ["finish", "error", "skip", "killed"]:
                 to_del.append(module_name)
         for module_name in to_del:

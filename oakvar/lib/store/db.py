@@ -458,7 +458,7 @@ def fetch_ov_store_cache(
     if not conn or not cursor:
         return False
     if not login_with_token_set():
-        quiet_print(f"not logged in", args=args)
+        quiet_print(f"Not logged in", args=args)
         return False
     if is_new_store_db_setup():
         args["clean_cache_db"] = True

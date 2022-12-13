@@ -83,11 +83,11 @@ def get_ssl_context(args={}):
 
 def main(url=None, args={}):
     from webbrowser import open as open_browser
-    from ..util.util import quiet_print
-    from ..util.run import show_logo
+    from ..lib.util.util import quiet_print
+    from ..lib.util.run import show_logo
     from ..gui.server import WebServer
     from ..gui.util import get_host_port
-    from ..util.asyn import get_event_loop
+    from ..lib.util.asyn import get_event_loop
 
     logger = args.get("logger")
     if is_port_occupied(args=args):
@@ -179,8 +179,7 @@ def get_logger(args={}):
     from logging import INFO
     from logging import Formatter
     from logging.handlers import TimedRotatingFileHandler
-    from pathlib import Path
-    from ..system.consts import log_dir_key
+    from ..lib.system.consts import log_dir_key
     from ..gui.util import get_log_path
 
     log_dir = args.get("sysconf", {}).get(log_dir_key)
@@ -199,7 +198,7 @@ def get_webapp_url(args={}):
     from os.path import join
     from os.path import exists
     from sys import stderr
-    from ..system.consts import modules_dir_key
+    from ..lib.system.consts import modules_dir_key
     from ..gui.util import get_host_port
 
     host, port = get_host_port(args=args)
@@ -216,9 +215,9 @@ def get_webapp_url(args={}):
 
 def get_result_url(args={}):
     from os.path import exists
-    from ..exceptions import NoInput
-    from ..exceptions import ArgumentError
-    from ..util.util import is_compatible_version
+    from ..lib.exceptions import NoInput
+    from ..lib.exceptions import ArgumentError
+    from ..lib.util.util import is_compatible_version
     from ..gui.util import get_host_port
 
     dbpath = args.get("result")
@@ -284,7 +283,7 @@ def cli_gui(args):
 def gui(args, __name__="gui"):
     from sys import stderr
     from traceback import print_exc
-    from ..system import get_system_conf
+    from ..lib.system import get_system_conf
 
     sysconf = get_system_conf()
     args["sysconf"] = sysconf

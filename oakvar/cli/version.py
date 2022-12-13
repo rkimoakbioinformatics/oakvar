@@ -9,8 +9,8 @@ def cli_version(args):
 
 @cli_func
 def version(args, __name__="version"):
-    from ..util.admin_util import oakvar_version
-    from ..util.util import quiet_print
+    from ..lib.util.admin_util import oakvar_version
+    from ..lib.util.util import quiet_print
 
     ret = oakvar_version()
     if args["to"] == "stdout":

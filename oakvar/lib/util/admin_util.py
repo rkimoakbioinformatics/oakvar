@@ -2,38 +2,6 @@ from typing import Optional
 
 pkg_version: Optional[str] = None
 
-class ReadyState(object):
-
-    READY = 0
-    MISSING_MD = 1
-    UPDATE_NEEDED = 2
-    NO_BASE_MODULES = 3
-
-    messages = {
-        0: "",
-        1: "Modules directory not found",
-        2: 'Update on system modules needed. Run "oc module install-base"',
-        3: "Base modules do not exist.",
-    }
-
-    def __init__(self, code=READY):
-        if code not in self.messages:
-            raise ValueError(code)
-        self.code = code
-
-    @property
-    def message(self):
-        return self.messages[self.code]
-
-    def __bool__(self):
-        return self.code == self.READY
-
-    def __iter__(self):
-        yield "ready", bool(self)
-        yield "code", self.code
-        yield "message", self.message
-
-
 def get_user_conf():
     from ..system import get_user_conf_path
     from ..util.util import load_yml_conf
@@ -190,10 +158,6 @@ def new_annotator(annot_name):
     get_module_cache().update_local()
 
 
-def ready_resolution_console():
-    return system_ready()
-
-
 def recursive_update(d1, d2):
     """
     Recursively merge two dictionaries and return a copy.
@@ -263,21 +227,6 @@ def oakvar_version():
     if not pkg_version:
         pkg_version = get_current_package_version()
     return pkg_version
-
-
-def system_ready():
-    import os
-    from ..system import get_modules_dir
-    from ..exceptions import NoModulesDir
-    from ..exceptions import NoSystemModule
-
-    modules_dir = get_modules_dir()
-    if not (os.path.exists(modules_dir)):
-        raise NoModulesDir()
-    elif not (os.path.exists(os.path.join(modules_dir, "converters", "vcf-converter"))):
-        raise NoSystemModule()
-    else:
-        return ReadyState()
 
 
 def write_user_conf(user_conf):

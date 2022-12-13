@@ -1,13 +1,13 @@
 from typing import Optional
 from multiprocessing.managers import ListProxy
 from multiprocessing.managers import DictProxy
-from ..module import InstallProgressHandler
+from ..lib.module import InstallProgressHandler
 
 def system_queue_worker(system_queue: ListProxy, system_worker_state: Optional[DictProxy], local_modules_changed):
     from time import sleep
-    from ..module import install_module
-    from ..system import setup_system
-    from ..exceptions import ModuleToSkipInstallation
+    from ..lib.module import install_module
+    from ..lib.system import setup_system
+    from ..lib.exceptions import ModuleToSkipInstallation
     from .consts import SYSTEM_STATE_SETUP_KEY
     from .consts import SYSTEM_MSG_KEY
 
@@ -85,15 +85,16 @@ class InstallProgressMpDict(InstallProgressHandler):
         self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][self.module_name] = module_data
 
     def stage_start(self, stage):
-        from ..util.util import quiet_print
+        from ..lib.util.util import quiet_print
         from .consts import SYSTEM_STATE_INSTALL_KEY
+        from .consts import SYSTEM_STATE_MESSAGE_KEY
 
         self.cur_stage = stage
         msg = self._stage_msg(self.cur_stage)
         initialize_system_worker_state_for_install(self.system_worker_state, module_name=self.module_name)
         module_data = self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][self.module_name]
         module_data["stage"] = [self.cur_stage]
-        module_data["message"].append(self._stage_msg(self.cur_stage))
+        module_data[SYSTEM_STATE_MESSAGE_KEY].append(self._stage_msg(self.cur_stage))
         module_data["kill_signal"] = False
         self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][self.module_name] = module_data
         self._reset_progress(update_time=True)
@@ -104,12 +105,13 @@ def initialize_system_worker_state_for_install(system_worker_state: Optional[Dic
     from time import time
     from .consts import SYSTEM_STATE_INSTALL_KEY
     from .consts import SYSTEM_MSG_KEY
+    from .consts import SYSTEM_STATE_MESSAGE_KEY
     if system_worker_state is None:
         return
     d = {}
     d[SYSTEM_MSG_KEY] = SYSTEM_STATE_INSTALL_KEY
     d["stage"] = ""
-    d["message"] = []
+    d[SYSTEM_STATE_MESSAGE_KEY] = []
     d["module_name"] = module_name
     d["module_version"] = module_version
     d["cur_chunk"] = 0

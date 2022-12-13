@@ -1,11 +1,11 @@
 def get_modules_to_install(args={}) -> dict:
-    from ...util.download import is_url
-    from ...util.download import is_zip_path
-    from ...util.util import quiet_print
-    from ...module.remote import get_install_deps
-    from ...store.db import get_latest_module_code_version
-    from ...store.db import module_code_version_is_not_compatible_with_pkg_version
-    from ...util.admin_util import oakvar_version
+    from ...lib.util.download import is_url
+    from ...lib.util.download import is_zip_path
+    from ...lib.util.util import quiet_print
+    from ...lib.module.remote import get_install_deps
+    from ...lib.store.db import get_latest_module_code_version
+    from ...lib.store.db import module_code_version_is_not_compatible_with_pkg_version
+    from ...lib.util.admin_util import oakvar_version
 
     mn_vs = collect_module_name_and_versions(args.get("modules", []), args=args)
     module_versions = {}
@@ -32,7 +32,7 @@ def get_modules_to_install(args={}) -> dict:
 
 
 def collect_module_name_and_versions(modules, args=None):
-    from ...util.util import quiet_print
+    from ...lib.util.util import quiet_print
 
     mn_vs = {}
     if type(modules) == str:
@@ -51,7 +51,7 @@ def collect_module_name_and_versions(modules, args=None):
 
 
 def show_modules_to_install(to_install, args={}):
-    from ...util.util import quiet_print
+    from ...lib.util.util import quiet_print
 
     quiet_print("The following modules will be installed:", args=args)
     for name, version in to_install.items():

@@ -1,11 +1,11 @@
 def list_modules(args):
     from oyaml import dump
-    from ...module.remote import search_remote
-    from ...module.local import search_local
-    from ...module.local import get_local_module_info
-    from ...module.remote import get_remote_module_info_ls
-    from ...util.util import humanize_bytes
-    from ...module.remote import RemoteModuleLs
+    from ...lib.module.remote import search_remote
+    from ...lib.module.local import search_local
+    from ...lib.module.local import get_local_module_info
+    from ...lib.module.remote import get_remote_module_info_ls
+    from ...lib.util.util import humanize_bytes
+    from ...lib.module.remote import RemoteModuleLs
 
     fmt = args.get("fmt", "return")
     nameonly = args.get("nameonly", False)
@@ -143,7 +143,7 @@ def list_modules(args):
 
 
 def add_local_module_info_to_remote_module_info(remote_info):
-    from ...module.local import get_local_module_info
+    from ...lib.module.local import get_local_module_info
 
     local_info = get_local_module_info(remote_info.name)
     if local_info:

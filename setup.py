@@ -93,6 +93,6 @@ setup(
     data_files=[],
     scripts=[],
     entry_points={
-        "console_scripts": ["ov=oakvar.__main__:main", "oc=oakvar.__main__:main"]
+        "console_scripts": ["ov=oakvar.cli.__main__:main", "oc=oakvar.cli.__main__:main"]
     },
 )

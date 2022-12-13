@@ -9,7 +9,7 @@ def cli_store_createaccount(args):
 
 @cli_func
 def create(args, __name__="store account create"):
-    from ....store.ov.account import create
+    from ....lib.store.ov.account import create
 
     ret = create(args=args)
     ret = ret.get("success")
@@ -23,7 +23,7 @@ def cli_store_deleteaccount(args):
 
 @cli_func
 def store_deleteaccount(args, __name__="store account delete"):
-    from ....store.ov.account import delete
+    from ....lib.store.ov.account import delete
 
     ret = delete(args)
     return ret
@@ -36,7 +36,7 @@ def cli_store_changepassword(args):
 
 @cli_func
 def change(args, __name__="store account change"):
-    from ....store.ov.account import change
+    from ....lib.store.ov.account import change
 
     ret = change(args=args)
     return ret
@@ -49,7 +49,7 @@ def cli_store_account_reset(args):
 
 @cli_func
 def reset(args, __name__="store account reset"):
-    from ....store.ov.account import reset
+    from ....lib.store.ov.account import reset
 
     ret = reset(args=args)
     return ret
@@ -62,7 +62,7 @@ def cli_store_check(args):
 
 @cli_func
 def check(args, __name__="store account check"):
-    from ....store.ov.account import check
+    from ....lib.store.ov.account import check
 
     ret = check(args=args)
     return ret
@@ -75,7 +75,7 @@ def cli_store_account_login(args):
 
 @cli_func
 def login(args, __name__="store account login"):
-    from ....store.ov.account import login
+    from ....lib.store.ov.account import login
 
     ret = login(args=args)
     return ret
@@ -88,7 +88,7 @@ def cli_store_account_logout(args):
 
 @cli_func
 def logout(args, __name__="store account logout"):
-    from ....store.ov.account import logout
+    from ....lib.store.ov.account import logout
 
     ret = logout(args=args)
     return ret

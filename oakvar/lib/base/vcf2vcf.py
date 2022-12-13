@@ -4,7 +4,7 @@ class VCF2VCF:
 
     def __init__(self, *inargs, **inkwargs):
         import sys
-        from oakvar.exceptions import ModuleLoadingError
+        from ..exceptions import ModuleLoadingError
 
         fp = sys.modules[self.__module__].__file__
         if fp is None:
@@ -35,7 +35,7 @@ class VCF2VCF:
 
     def setup_liftover(self):
         from pyliftover import LiftOver
-        from oakvar.util.admin_util import get_liftover_chain_paths
+        from ..util.admin_util import get_liftover_chain_paths
         from oakvar import get_wgs_reader
 
         if self.args.get("genome"):
@@ -48,8 +48,8 @@ class VCF2VCF:
         self.wgsreader = get_wgs_reader(assembly="hg38")
 
     def liftover(self, chrom, pos, ref, alt):
-        from oakvar.exceptions import LiftoverFailure
-        from oakvar.util.seq import reverse_complement
+        from ..exceptions import LiftoverFailure
+        from ..util.seq import reverse_complement
 
         if not self.lifter or not self.wgsreader:
             return None
@@ -166,8 +166,8 @@ class VCF2VCF:
         return all_col_names
 
     def get_col_info(self, module_name, mapper: str, module_type=None):
-        from oakvar.util.util import get_crx_def
-        from oakvar.module.local import get_module_conf
+        from ..util.util import get_crx_def
+        from ..module.local import get_module_conf
 
         if module_name == mapper:
             mc = get_crx_def()
@@ -277,8 +277,8 @@ class VCF2VCF:
     # Parse the command line arguments
     def parse_cmd_args(self, inargs, inkwargs):
         import os
-        from oakvar.util.util import get_args
-        from oakvar.util.run import get_module_options
+        from ..util.util import get_args
+        from ..util.run import get_module_options
 
         args = get_args(self.cmd_arg_parser, inargs, inkwargs)
         self.inputs = [os.path.abspath(v) for v in args.get("inputs")]
@@ -308,11 +308,11 @@ class VCF2VCF:
             self.last_status_update_time = cur_time
 
     def run(self):
-        from oakvar.util.seq import normalize_variant_dict_left
-        from oakvar.module.local import load_modules
-        from oakvar.util.util import quiet_print
-        from oakvar.util.run import log_variant_exception
-        from oakvar.exceptions import IgnoredVariant
+        from ..util.seq import normalize_variant_dict_left
+        from ..module.local import load_modules
+        from ..util.util import quiet_print
+        from ..util.run import log_variant_exception
+        from ..exceptions import IgnoredVariant
         from os.path import join
         from re import compile
 
@@ -478,7 +478,7 @@ class VCF2VCF:
 
     def setup_logger(self):
         import logging
-        from oakvar.exceptions import LoggerError
+        from ..exceptions import LoggerError
 
         self.logger = logging.getLogger(f"oakvar.{self.module_name}")
         self.error_logger = logging.getLogger("err." + self.module_name)

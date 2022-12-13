@@ -332,12 +332,21 @@ def get_dict_from_namespace(n):
     return n
 
 
+def print_system_state_messages(args={}):
+    from ...gui.consts import SYSTEM_STATE_SETUP_KEY
+    from ...gui.consts import SYSTEM_STATE_MESSAGE_KEY
+    system_worker_state = args.get("system_worker_state")
+    print(f"@ system_worker_state messages:")
+    for msg in system_worker_state[SYSTEM_STATE_SETUP_KEY][SYSTEM_STATE_MESSAGE_KEY]:
+        print(f"@ msg={msg}")
+
 def quiet_print(msg, args=None, quiet=None):
     from time import time
     from .util import get_dict_from_namespace
-    from ..gui.consts import SYSTEM_STATE_SETUP_KEY
-    from ..gui.consts import SYSTEM_STATE_INSTALL_KEY
-    from ..gui.consts import SYSTEM_MSG_KEY
+    from ...gui.consts import SYSTEM_STATE_SETUP_KEY
+    from ...gui.consts import SYSTEM_STATE_INSTALL_KEY
+    from ...gui.consts import SYSTEM_STATE_MESSAGE_KEY
+    from ...gui.consts import SYSTEM_MSG_KEY
 
     args = get_dict_from_namespace(args)
     if not args:
@@ -354,24 +363,21 @@ def quiet_print(msg, args=None, quiet=None):
             outfn = print
         outfn(msg, flush=True)
     system_worker_state = args.get("system_worker_state")
+    print(f"@ quiet_print. system_worker_state is None {system_worker_state is None}")
     if system_worker_state is None:
         return
-    print(f"@ in quiet_print. msg={msg}")
+    print(f"@ quiet_print. msg={msg}")
     msg_kind = args.get(SYSTEM_MSG_KEY)
     if msg_kind == SYSTEM_STATE_SETUP_KEY:
-        print(f"@ system_worker_state messages:")
-        for msg in system_worker_state[SYSTEM_STATE_SETUP_KEY]["message"]:
-            print(f"@ msg={msg}")
-        system_worker_state[SYSTEM_STATE_SETUP_KEY]["msg_kind"] = msg_kind
-        system_worker_state[SYSTEM_STATE_SETUP_KEY]["message"].append(msg)
-        print(f"@ => {dict(system_worker_state)}")
+        system_worker_state[SYSTEM_STATE_SETUP_KEY][SYSTEM_MSG_KEY] = msg_kind
+        system_worker_state[SYSTEM_STATE_SETUP_KEY][SYSTEM_STATE_MESSAGE_KEY].append(msg)
         system_worker_state[SYSTEM_STATE_SETUP_KEY]["update_time"] = time()
+        print_system_state_messages(args=args)
     elif msg_kind == SYSTEM_STATE_INSTALL_KEY:
         module_name = args.get("module_name")
         system_worker_state[SYSTEM_STATE_SETUP_KEY][module_name][SYSTEM_MSG_KEY] = msg_kind
-        system_worker_state[SYSTEM_STATE_SETUP_KEY][module_name]["message"].append(msg)
+        system_worker_state[SYSTEM_STATE_SETUP_KEY][module_name][SYSTEM_STATE_MESSAGE_KEY].append(msg)
         system_worker_state[SYSTEM_STATE_SETUP_KEY][module_name]["update_time"] = time()
-    print(f"@ system_worker_state={system_worker_state}")
 
 
 def email_is_valid(email: str) -> bool:

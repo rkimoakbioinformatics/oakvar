@@ -9,7 +9,7 @@ def cli_system_setup(args):
 
 @cli_func
 def setup(args, __name__="system setup"):
-    from ..system import setup_system
+    from ..lib.system import setup_system
 
     return setup_system(args)
 
@@ -21,8 +21,8 @@ def cli_system_md(args):
 
 @cli_func
 def md(args, __name__="system md"):
-    from ..system import set_modules_dir, get_modules_dir
-    from ..util.util import quiet_print
+    from ..lib.system import set_modules_dir, get_modules_dir
+    from ..lib.util.util import quiet_print
 
     d = args.get("directory")
     if d:
@@ -42,7 +42,7 @@ def cli_system_check(args):
 
 @cli_func
 def check(args, __name__="system check"):
-    from ..system import check
+    from ..lib.system import check
 
     ret = check(args)
     return ret

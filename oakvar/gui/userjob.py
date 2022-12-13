@@ -59,7 +59,7 @@ async def get_user_job_report_paths(
     request, report_type: str, eud={}
 ) -> Optional[list]:
     from pathlib import Path
-    from ..module.local import get_local_module_info_by_name
+    from ..lib.module.local import get_local_module_info_by_name
 
     run_path = await get_user_job_run_path(request, eud=eud)
     if not run_path:
@@ -78,7 +78,7 @@ async def get_user_job_report_paths(
 
 
 async def get_user_job_dbpath(request, eud={}) -> Optional[str]:
-    from ..consts import result_db_suffix
+    from ..lib.consts import result_db_suffix
 
     if eud.get("dbpath"):
         return eud.get("dbpath")
@@ -90,7 +90,7 @@ async def get_user_job_dbpath(request, eud={}) -> Optional[str]:
 
 
 async def get_user_job_log_path(request, eud={}) -> Optional[str]:
-    from ..consts import LOG_SUFFIX
+    from ..lib.consts import LOG_SUFFIX
 
     run_path = await get_user_job_run_path(request, eud=eud)
     if not run_path:
@@ -101,7 +101,7 @@ async def get_user_job_log_path(request, eud={}) -> Optional[str]:
 
 def get_user_jobs_dir_list() -> Optional[list]:
     from pathlib import Path
-    from ..system import get_jobs_dir
+    from ..lib.system import get_jobs_dir
 
     user_jobs_dir_list = []
     root_jobs_dir = get_jobs_dir()
@@ -116,7 +116,7 @@ def get_log_path_in_job_dir(
     job_dir: Optional[str], run_name: Optional[str] = None
 ) -> Optional[str]:
     from pathlib import Path
-    from ..consts import LOG_SUFFIX
+    from ..lib.consts import LOG_SUFFIX
 
     if not job_dir:
         return None

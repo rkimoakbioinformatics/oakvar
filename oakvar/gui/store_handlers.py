@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 class StoreHandlers:
     def __init__(self, servermode=False, mu=None, local_modules_changed=None, system_worker_state=None, system_queue=None, logger=None):
@@ -30,7 +30,7 @@ class StoreHandlers:
 
     async def local_module_logo_exists(self, request):
         from aiohttp.web import json_response
-        from ..module.cache import get_module_cache
+        from ..lib.module.cache import get_module_cache
         from pathlib import Path
 
         module_name = request.match_info["module_name"]
@@ -43,7 +43,7 @@ class StoreHandlers:
             return json_response("fail")
 
     def handle_modules_changed(self):
-        from ..module.cache import get_module_cache
+        from ..lib.module.cache import get_module_cache
 
         if not self.local_manifest or (self.local_modules_changed and self.local_modules_changed.is_set()):
             get_module_cache().update_local()
@@ -52,7 +52,7 @@ class StoreHandlers:
             self.update_local_manifest()
 
     def update_local_manifest(self):
-        from ..module.cache import get_module_cache
+        from ..lib.module.cache import get_module_cache
         self.local_manifest = {}
         local_cache = get_module_cache().get_local()
         for k, v in local_cache.items():
@@ -67,8 +67,8 @@ class StoreHandlers:
 
     async def get_local_module_logo(self, request):
         from aiohttp.web import FileResponse
-        from ..module.cache import get_module_cache
-        from ..system import get_default_logo_path
+        from ..lib.module.cache import get_module_cache
+        from ..lib.system import get_default_logo_path
         from pathlib import Path
 
         queries = request.rel_url.query
@@ -85,7 +85,7 @@ class StoreHandlers:
     def get_remote_manifest_cache(self) -> Optional[dict]:
         from os.path import exists
         from json import load
-        from ..store.db import get_remote_manifest_cache_path
+        from ..lib.store.db import get_remote_manifest_cache_path
 
         cache_path = get_remote_manifest_cache_path()
         if cache_path and exists(cache_path):
@@ -96,7 +96,7 @@ class StoreHandlers:
             return None
 
     def make_remote_manifest(self):
-        from ..module.remote import make_remote_manifest
+        from ..lib.module.remote import make_remote_manifest
         content = make_remote_manifest()
         assert self.system_queue is not None
         for queue_data in self.system_queue:
@@ -111,7 +111,7 @@ class StoreHandlers:
 
     async def get_remote_manifest(self, _):
         from aiohttp.web import json_response
-        from ..store.db import save_remote_manifest_cache
+        from ..lib.store.db import save_remote_manifest_cache
 
         content = self.get_remote_manifest_cache()
         if content:
@@ -125,8 +125,8 @@ class StoreHandlers:
         from aiohttp.web import FileResponse
         from os.path import exists
         from os.path import getsize
-        from ..system import get_logo_path
-        from ..system import get_default_logo_path
+        from ..lib.system import get_logo_path
+        from ..lib.system import get_default_logo_path
 
         queries = request.rel_url.query
         module_name = queries.get("module", None)
@@ -160,7 +160,7 @@ class StoreHandlers:
         from aiohttp.web import Response
         from aiohttp.web import json_response
         #from ...module.local import get_local_module_info
-        from ..module.cache import get_module_cache
+        from ..lib.module.cache import get_module_cache
 
         queries = request.rel_url.query
         module_name = queries.get("moduleName")
@@ -176,9 +176,9 @@ class StoreHandlers:
     async def uninstall_module(self, request):
         from aiohttp.web import json_response
         from aiohttp.web import Response
-        from oakvar.module import uninstall_module
-        from ..exceptions import ServerError
-        from ..module.cache import get_module_cache
+        from oakvar.lib.module import uninstall_module
+        from ..lib.exceptions import ServerError
+        from ..lib.module.cache import get_module_cache
 
         if self.servermode and self.mu:
             if not await self.mu.is_admin_loggedin(request):
@@ -205,13 +205,8 @@ class StoreHandlers:
 
     async def get_system_worker_state_web(self, _):
         from aiohttp.web import json_response
-        from multiprocessing.managers import ListProxy
-        from .consts import SYSTEM_STATE_SETUP_KEY
-        from .consts import SYSTEM_STATE_INSTALL_KEY
         from .util import copy_state
-        print(f"@ system_worker_state={self.system_worker_state}")
         content = copy_state(self.system_worker_state)
-        print(f"@ content={content}")
         return json_response(content)
 
     def send_kill_install_signal(self, module_name: Optional[str]):
@@ -249,7 +244,7 @@ class StoreHandlers:
 
     async def get_readme(self, request):
         from aiohttp.web import Response
-        from ..module.remote import get_readme
+        from ..lib.module.remote import get_readme
 
         queries = request.rel_url.query
         module_name = queries.get("module_name")
@@ -264,7 +259,7 @@ class StoreHandlers:
         from pathlib import Path
         from aiohttp.web import Response
         from aiohttp.web import FileResponse
-        from ..module.local import get_module_dir
+        from ..lib.module.local import get_module_dir
         queries = request.rel_url.query
         module_name = queries.get("module_name")
         fname = queries.get("file")

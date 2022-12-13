@@ -6,12 +6,12 @@ custom_system_conf = None
 def setup_system(args=None):
     from os import environ
     from ..util.util import quiet_print
-    from ..cli.module import installbase
+    from ...cli.module import installbase
     from .consts import sys_conf_path_key
     from ..store.ov import setup_ov_store_cache
     from ..util.run import show_logo
     from ..exceptions import ArgumentError
-    from ..gui.serveradmindb import setup_serveradmindb
+    from ...gui.serveradmindb import setup_serveradmindb
 
     if not args:
         raise ArgumentError("necessary arguments were not provided.")
@@ -19,8 +19,7 @@ def setup_system(args=None):
     # set up a sys conf file.
     conf = setup_system_conf(args=args)
     add_system_dirs_to_system_conf(conf)
-    save_system_conf(conf)
-    print(f"@ setup. args={args}. system_worker_state={args.get('system_worker_state')}")
+    save_system_conf(conf, args=args)
     quiet_print(f"System configuration file: {conf[sys_conf_path_key]}", args=args)
     setup_system_dirs(conf=conf, args=args)
     # set up a user conf file.
@@ -28,7 +27,7 @@ def setup_system(args=None):
     # set up a store account.
     quiet_print("Logging in...", args=args)
     ret = setup_store_account(args=args, conf=conf)
-    print(f"@ ret={ret}")
+    print(f"@ setup_store_account ret={ret}")
     if ret.get("success") != True:
         quiet_print("Login failed", args=args)
         return False
@@ -95,7 +94,7 @@ def setup_system_conf(args={}) -> dict:
         # use the content of an old OC sys conf if present.
         conf = update_new_system_conf_with_existing(conf)
         # create the sys conf file.
-        save_system_conf(conf)
+        save_system_conf(conf, args=args)
         quiet_print(f"Created {sys_conf_path}", args=args)
     return conf
 
@@ -329,7 +328,7 @@ def set_sys_conf_value(key: str, in_value: str, ty: str, sys_conf_path=None, con
     else:
         value = in_value
     sys_conf[key] = value
-    save_system_conf(sys_conf)
+    save_system_conf(sys_conf, args={})
 
 
 def get_user_conf() -> dict:
@@ -775,20 +774,21 @@ def copy_system_conf_template_if_absent(
         quiet_print(f"Created {sys_conf_path}", args={"quiet": quiet})
 
 
-def save_system_conf(conf):
+def save_system_conf(conf, args=None):
     from .consts import sys_conf_path_key
     from oyaml import dump
     from os import makedirs
     from os.path import dirname, exists
     from ..exceptions import SystemMissingException
 
+    _ = args
     sys_conf_path = conf.get(sys_conf_path_key)
     if sys_conf_path is None or sys_conf_path == "":
         raise SystemMissingException(msg="System conf file path is null")
     sys_conf_dir = dirname(sys_conf_path)
     if not exists(sys_conf_dir):
         makedirs(sys_conf_dir)
-    wf = open(conf[sys_conf_path_key], "w")
+    wf = open(sys_conf_path, "w")
     dump(conf, wf, default_flow_style=False)
     wf.close()
 

@@ -290,7 +290,7 @@ def get_pypi_dependency_from_conf(conf={}):
 
 def check_install_kill(args={}, system_worker_state=None, module_name=None):
     from ..exceptions import KillInstallException
-    from ..gui.consts import SYSTEM_STATE_INSTALL_KEY
+    from ...gui.consts import SYSTEM_STATE_INSTALL_KEY
 
     if not system_worker_state:
         system_worker_state = args.get("system_worker_state")

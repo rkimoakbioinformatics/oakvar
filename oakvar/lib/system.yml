@@ -1,5 +1,6 @@
 publish_url: https://store.oakvar.com
 store_url: https://store.oakvar.com
+  #store_url: http://127.0.0.1:8934
 base_modules:
 - cravat-converter
 - vcf-converter
@@ -33,5 +34,5 @@ gui_port: 8080
 gui_port_ssl: 8444
 server_default_username: default
 result_viewer_num_var_limit_for_gene_summary: 100000
-result_viewer_num_var_limit_for_summary_widget: 1000
+result_viewer_num_var_limit_for_summary_widget: 100000
 report_filter_max_num_cache_per_user: 20

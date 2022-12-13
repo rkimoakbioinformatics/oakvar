@@ -77,11 +77,8 @@ def create(email=None, pw=None, args={}, quiet=None) -> dict:
     success = False
     status_code = 0
     try:
-        print(f"@ post {create_account_url}, {params}")
         r = post(create_account_url, data=params)
-        print(f"@ r={r}")
         status_code = r.status_code
-        print(f"@ status_code={status_code}")
         if status_code == 500:
             msg = "Server error"
             success = False
@@ -189,7 +186,6 @@ def login(email=None, pw=None, args={}, quiet=None) -> dict:
     from ...ov import get_store_url
 
     id_token = get_id_token()
-    print(f"@ id_token={id_token}")
     if id_token:
         if check(args={"quiet": True}):
             token_set_email = get_email_from_token_set()
@@ -208,7 +204,7 @@ def login(email=None, pw=None, args={}, quiet=None) -> dict:
     params = {"email": email, "pw": pw}
     try:
         r = post(login_url, data=params)
-        print(f"@ login r={r}")
+        print(f"@ r={r}. text={r.text}")
         status_code = r.status_code
         if status_code == 200:
             save_token_set(r.json())
@@ -455,7 +451,6 @@ def get_email_pw_from_settings(
     if ov_store_email_key in user_conf and ov_store_pw_key in user_conf:
         email = user_conf[ov_store_email_key]
         pw = user_conf[ov_store_pw_key]
-    print(f"@ email, pw={email}, {pw}")
     if email and pw:
         return email, pw
     else:
@@ -500,6 +495,7 @@ def login_with_token_set(args={}) -> bool:
     from ....util.util import quiet_print
 
     token_set = get_token_set()
+    print(f"@ token_set={token_set}")
     if token_set:
         email = token_set["email"]
         correct, expired = id_token_is_valid()
@@ -527,10 +523,10 @@ def login_with_email_pw(email=None, pw=None, args={}, conf={}) -> dict:
     emailpw = get_email_pw_from_settings(email=email, pw=pw, args=args, conf=conf)
     if emailpw:
         if emailpw_are_valid(emailpw):
-            print(f"@ valid")
             email = emailpw[0]
             pw = emailpw[1]
             ret = create(email=email, pw=pw, quiet=False)
+            print(f"@@@ create ret={ret}. email={email}. pw={pw}")
             if ret.get("success"):
                 announce_on_email_verification_if_needed(email, args=args)
                 login(email=email, pw=pw, args=args)
@@ -545,23 +541,18 @@ def total_login(email=None, pw=None, args={}, conf=None) -> dict:
     from ....system import show_no_user_account_prelude
     from ....util.util import quiet_print
 
-    print(f"@ login with token set")
-    #if login_with_token_set(args=args):
-    #    return {"success": True}
-    print(f"@ login with email pw. {args}")
+    if login_with_token_set(args=args):
+        return {"success": True}
     ret = login_with_email_pw(email=email, pw=pw, args=args, conf=conf)
-    print(f"@ ret from login_with_email_pw={ret}")
     if ret.get("success"):
         return {"success": True}
     elif args.get("install_mode") == "web":
-        print(f"@ sending ret to web")
         quiet_print(ret, args=args)
         return ret
     # if not already logged in nor email and pw in settings did not work, get manual input.
     show_no_user_account_prelude()
     email, pw = get_email_pw_from_input(pwconfirm=True)
     ret = create(email=email, pw=pw, quiet=False)
-    print(f"@@@ create. ret={ret}")
     if not ret.get("success"):
         quiet_print(ret, args=args)
         return ret

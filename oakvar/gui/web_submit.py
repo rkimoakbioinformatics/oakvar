@@ -44,7 +44,7 @@ class SubmitProcessor:
         self.email = email
 
     async def run(self):
-        from ..system import get_user_jobs_dir
+        from ..lib.system import get_user_jobs_dir
         from aiohttp.web import Response
         from aiohttp.web import json_response
         assert self.job_queue is not None
@@ -92,7 +92,7 @@ class SubmitProcessor:
         from aiohttp.web import HTTPLengthRequired
         from aiohttp.web import HTTPRequestEntityTooLarge
         from json import dumps
-        from ..system import get_system_conf
+        from ..lib.system import get_system_conf
 
         sysconf = get_system_conf()
         size_cutoff = sysconf["gui_input_size_limit"]
@@ -115,7 +115,7 @@ class SubmitProcessor:
 
     def create_new_job_dir(self, jobs_dir: str) -> str:
         from os import makedirs
-        from ..util.run import get_new_job_dir
+        from ..lib.util.run import get_new_job_dir
 
         job_dir = get_new_job_dir(jobs_dir)
         makedirs(job_dir, exist_ok=True)
@@ -143,7 +143,7 @@ class SubmitProcessor:
 
     async def save_job_input_files(self, request, job_dir: str) -> dict:
         from pathlib import Path
-        from ..util.util import get_unique_path
+        from ..lib.util.util import get_unique_path
 
         submit_options = {}
         job_options = {}
@@ -176,7 +176,7 @@ class SubmitProcessor:
         return submit_options
 
     def add_module_option(self, job_options: dict, module_name, option_name, option_value):
-        from ..consts import MODULE_OPTIONS_KEY
+        from ..lib.consts import MODULE_OPTIONS_KEY
 
         if not MODULE_OPTIONS_KEY in job_options:
             job_options[MODULE_OPTIONS_KEY] = {}
@@ -185,7 +185,7 @@ class SubmitProcessor:
         job_options[MODULE_OPTIONS_KEY][module_name][option_name] = option_value
 
     def update_job_options(self, job_options: dict, data: dict):
-        from ..consts import MODULE_OPTIONS_KEY
+        from ..lib.consts import MODULE_OPTIONS_KEY
 
         for k, v in data.items():
             if k == MODULE_OPTIONS_KEY:
@@ -243,8 +243,8 @@ class SubmitProcessor:
         from datetime import datetime
         from pathlib import Path
         from json import dump
-        from ..util.admin_util import get_current_package_version
-        from ..exceptions import ArgumentError
+        from ..lib.util.admin_util import get_current_package_version
+        from ..lib.exceptions import ArgumentError
 
         job_name = submit_options.get("job_name")
         run_name = submit_options.get("run_name")
@@ -275,8 +275,8 @@ class SubmitProcessor:
 
     async def get_run_args(self, request, submit_options: dict, job_dir: str):
         from pathlib import Path
-        from ..system.consts import default_assembly
-        from ..util.admin_util import set_user_conf_prop
+        from ..lib.system.consts import default_assembly
+        from ..lib.util.admin_util import set_user_conf_prop
 
         global servermode
         job_options = submit_options.get("job_options", {})
@@ -354,7 +354,7 @@ class SubmitProcessor:
         return run_args
 
     def get_module_option_args(self, submit_options: dict) -> Optional[list]:
-        from ..consts import MODULE_OPTIONS_KEY
+        from ..lib.consts import MODULE_OPTIONS_KEY
 
         if MODULE_OPTIONS_KEY not in submit_options:
             return None

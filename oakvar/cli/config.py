@@ -11,7 +11,7 @@ def cli_config_user(args):
 
 @cli_func
 def user(args, __name__="config user"):
-    from ..util.admin_util import show_main_conf
+    from ..lib.util.admin_util import show_main_conf
 
     ret = show_main_conf(args)
     return ret
@@ -26,10 +26,10 @@ def cli_config_system(args):
 
 @cli_func
 def system(args, __name__="config system"):
-    from ..system import show_system_conf
-    from ..system import get_sys_conf_value
-    from ..system import set_sys_conf_value
-    from ..util.util import quiet_print
+    from ..lib.system import show_system_conf
+    from ..lib.system import get_sys_conf_value
+    from ..lib.system import set_sys_conf_value
+    from ..lib.util.util import quiet_print
 
     key = args.get("key")
     value = args.get("value")
