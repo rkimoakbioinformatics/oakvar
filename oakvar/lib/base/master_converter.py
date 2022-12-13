@@ -215,7 +215,8 @@ class MasterConverter(object):
         from oakvar.lib.util.util import load_class
         from oakvar.lib.util.util import quiet_print
 
-        for module_info in get_local_module_infos_of_type("converter").values():
+        for module_name, module_info in get_local_module_infos_of_type("converter").items():
+            print(f"@ module_name={module_name}")
             cls = load_class(module_info.script_path)
             converter = cls()
             # TODO: backward compatibility

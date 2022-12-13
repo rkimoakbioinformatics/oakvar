@@ -122,6 +122,7 @@ def download(
             progressbar=progressbar,
             system_worker_state=system_worker_state,
             check_install_kill=check_install_kill,
+            module_name=module_name,
         )
         msg = "Successfully downloaded file to {}".format(path)
     if verbose:

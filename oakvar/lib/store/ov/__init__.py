@@ -1,6 +1,6 @@
 from typing import Optional
 from typing import Tuple
-
+from . import account as account
 
 def module_code_url(module_name: str, version=None) -> Optional[str]:
     from requests import Session
@@ -62,7 +62,8 @@ def url_is_valid(url: str) -> bool:
     from requests import head
 
     res = head(url)
-    if res.status_code in [200, 301]:
+    status_code = res.status_code
+    if status_code >= 200 and status_code < 400:
         return True
     else:
         return False

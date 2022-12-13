@@ -372,11 +372,6 @@ class WrongDeveloper(ClientError):
     message = "Developer does not have permission to edit this module"
 
 
-class VersionExists(ClientError):
-    code = 4
-    message = "Version already exists"
-
-
 class VersionDecrease(ClientError):
     code = 5
     message = "Version must increase"
@@ -392,6 +387,11 @@ class NoSuchModule(ClientError):
     message = "Module does not exist"
 
 
+class ServerError(Exception):
+    def __init__(self):
+        import traceback
+        super().__init__(traceback.format_exc())
+
 class AuthorizationError(ExpectedException):
     traceback = False
     halt = True
@@ -399,9 +399,7 @@ class AuthorizationError(ExpectedException):
     def __init__(self):
         super().__init__(f"authorization failed")
 
-
-class ServerError(Exception):
-    def __init__(self):
-        import traceback
-        super().__init__(traceback.format_exc())
+class VersionExists(ClientError):
+    code = 4
+    message = "Version already exists"
 # end of store-related exceptions

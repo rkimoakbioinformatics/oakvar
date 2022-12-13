@@ -163,6 +163,7 @@ def main():
     try:
         p_entry = get_entry_parser()
         args = p_entry.parse_args()
+        print(f"@ args={args}")
         if hasattr(args, "func"):
             ret = args.func(args)
             if getattr(args, "to", "return") != "stdout":

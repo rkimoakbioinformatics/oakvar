@@ -32,22 +32,24 @@ def get_ucsc_bins(start, stop=None):
 
 
 def load_class(path, class_name=None):
-    """Load a class from the class's name and path. (dynamic importing)"""
-    from os.path import dirname, basename
     from importlib.util import spec_from_file_location, module_from_spec
     from importlib import import_module
     import sys
     import inspect
+    from pathlib import Path
     from ..exceptions import ModuleLoadingError
 
-    path_dir = dirname(path)
+    p = Path(path)
+    path_dir = str(p.parent)
     sys.path = [path_dir] + sys.path
     module = None
     module_class = None
-    module_name = basename(path).split(".")[0]
+    module_name = p.stem
     try:
         module = import_module(module_name)
-    except Exception as _:
+    except Exception:
+        import traceback
+        traceback.print_exc()
         try:
             if class_name:
                 spec = spec_from_file_location(class_name, path)
@@ -56,7 +58,9 @@ def load_class(path, class_name=None):
                     loader = spec.loader
                     if loader is not None:
                         loader.exec_module(module)
-        except Exception as _:
+        except Exception:
+            import traceback
+            traceback.print_exc()
             raise ModuleLoadingError(module_name)
     if module:
         if class_name:
@@ -332,14 +336,6 @@ def get_dict_from_namespace(n):
     return n
 
 
-def print_system_state_messages(args={}):
-    from ...gui.consts import SYSTEM_STATE_SETUP_KEY
-    from ...gui.consts import SYSTEM_STATE_MESSAGE_KEY
-    system_worker_state = args.get("system_worker_state")
-    print(f"@ system_worker_state messages:")
-    for msg in system_worker_state[SYSTEM_STATE_SETUP_KEY][SYSTEM_STATE_MESSAGE_KEY]:
-        print(f"@ msg={msg}")
-
 def quiet_print(msg, args=None, quiet=None):
     from time import time
     from .util import get_dict_from_namespace
@@ -363,16 +359,13 @@ def quiet_print(msg, args=None, quiet=None):
             outfn = print
         outfn(msg, flush=True)
     system_worker_state = args.get("system_worker_state")
-    print(f"@ quiet_print. system_worker_state is None {system_worker_state is None}")
     if system_worker_state is None:
         return
-    print(f"@ quiet_print. msg={msg}")
     msg_kind = args.get(SYSTEM_MSG_KEY)
     if msg_kind == SYSTEM_STATE_SETUP_KEY:
         system_worker_state[SYSTEM_STATE_SETUP_KEY][SYSTEM_MSG_KEY] = msg_kind
         system_worker_state[SYSTEM_STATE_SETUP_KEY][SYSTEM_STATE_MESSAGE_KEY].append(msg)
         system_worker_state[SYSTEM_STATE_SETUP_KEY]["update_time"] = time()
-        print_system_state_messages(args=args)
     elif msg_kind == SYSTEM_STATE_INSTALL_KEY:
         module_name = args.get("module_name")
         system_worker_state[SYSTEM_STATE_SETUP_KEY][module_name][SYSTEM_MSG_KEY] = msg_kind
