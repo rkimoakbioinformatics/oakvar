@@ -18,4 +18,4 @@ tmp/*
 makecravat.sh
 .ipynb_checkpoints
 mkdocs/site
-pyright*
+**/pyrightconfig.json
