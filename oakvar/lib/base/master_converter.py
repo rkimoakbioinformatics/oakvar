@@ -125,7 +125,7 @@ class MasterConverter(object):
         if self.pipeinput == False:
             self.input_paths = [str(Path(x).absolute()) for x in args["inputs"] if x != "-"]
         else:
-            self.input_paths = [f"./{STDIN}"]
+            self.input_paths = [STDIN]
         self.input_dir = str(Path(self.input_paths[0]).parent)
         if self.pipeinput == False:
             for i in range(len(self.input_paths)):
@@ -176,14 +176,20 @@ class MasterConverter(object):
 
     def get_file_object_for_input_path(self, input_path: str):
         import gzip
+        import sys
         from oakvar.lib.util.util import detect_encoding
 
-        if self.logger:
-            self.logger.info(f"detecting encoding of {input_path}")
-        encoding = detect_encoding(input_path)
+        if input_path == STDIN:
+            encoding = "utf-8"
+        else:
+            if self.logger:
+                self.logger.info(f"detecting encoding of {input_path}")
+            encoding = detect_encoding(input_path)
         if self.logger:
             self.logger.info(f"encoding: {input_path} {encoding}")
-        if input_path.endswith(".gz"):
+        if input_path == STDIN:
+            f = sys.stdin
+        elif input_path.endswith(".gz"):
             f = gzip.open(input_path, mode="rt", encoding=encoding)
         else:
             f = open(input_path, encoding=encoding)
@@ -216,7 +222,6 @@ class MasterConverter(object):
         from oakvar.lib.util.util import quiet_print
 
         for module_name, module_info in get_local_module_infos_of_type("converter").items():
-            print(f"@ module_name={module_name}")
             cls = load_class(module_info.script_path)
             converter = cls()
             # TODO: backward compatibility
@@ -261,9 +266,9 @@ class MasterConverter(object):
     def check_input_format(self):
         from oakvar.lib.exceptions import InvalidInputFormat
 
-        if self.args.get("input_format") and self.args.get("input_format") not in self.available_input_formats:
-            raise InvalidInputFormat(self.args.get("input_format"))
-        if self.pipeinput and not self.args.get("input_format"):
+        if self.args.get("format") and self.args.get("format") not in self.available_input_formats:
+            raise InvalidInputFormat(self.args.get("format"))
+        if self.pipeinput and not self.args.get("format"):
             raise InvalidInputFormat(
                 f"--input-format should be given with pipe input"
             )
@@ -273,11 +278,11 @@ class MasterConverter(object):
         from oakvar.lib.exceptions import ArgumentError
 
         if f == sys.stdin:
-            if not self.args.get("input_format"):
+            if not self.args.get("format"):
                 raise ArgumentError(msg="--input-format option should be given if stdin is used for input.")
-            if not self.args.get("input_format") in self.converters:
-                raise ArgumentError(msg=f"{self.args.get('input_format')} is not found in installed converter modules.")
-            return self.converters[self.args.get("input_format")]
+            if not self.args.get("format") in self.converters:
+                raise ArgumentError(msg=f"{self.args.get('format')} is not found in installed converter modules.")
+            return self.converters[self.args.get("format")]
         else:
             for converter_name, converter in self.converters.items():
                 f.seek(0)
