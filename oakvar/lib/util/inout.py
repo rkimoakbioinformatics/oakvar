@@ -342,21 +342,7 @@ class FileWriter(BaseFile):
 
     def write_data(self, data):
         self.prep_for_write()
-        #if self.include_definition and not self._definition_written:
-        #    self.write_definition()
-        #if self.include_titles and not self._titles_written:
-        #    self.write_titles()
-        #wtoks = [""] * len(self.name_to_col_index)
         wtoks = [data.get(col.name, "") for col in self.columns.values()]
-        #for col_name in data:
-        #    try:
-        #        col_index = self.name_to_col_index[col_name]
-        #    except KeyError:
-        #        continue
-        #    if data[col_name]:
-        #        wtoks[col_index] = str(data[col_name])
-        #    else:
-        #        wtoks[col_index] = ""
         if self.csvfmt:
             if self.csvwriter is not None:
                 try:

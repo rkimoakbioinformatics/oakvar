@@ -129,32 +129,30 @@ def install_widgets_for_module(module_name):
     install_module(widget_name)
 
 
-def fn_new_exampleinput(d):
+def fn_new_exampleinput(d: str):
+    from pathlib import Path
     import shutil
-    import os
 
     fn = "exampleinput"
-    ifn = os.path.join(get_packagedir(), fn)
-    ofn = os.path.join(d, fn)
+    ifn = Path(get_packagedir()) / "lib" / "assets" / fn
+    ofn = Path(d) / fn
     shutil.copyfile(ifn, ofn)
     return ofn
 
 
-def new_annotator(annot_name):
-    import shutil
-    import os
+def create_new_module(name: Optional[str]=None, type: Optional[str]=None):
+    from shutil import copytree
+    from pathlib import Path
     from ..system import get_modules_dir
     from ..module.cache import get_module_cache
 
-    annot_root = os.path.join(get_modules_dir(), "annotators", annot_name)
-    template_root = os.path.join(get_packagedir(), "annotator_template")
-    shutil.copytree(template_root, annot_root)
-    for dir_path, _, fnames in os.walk(annot_root):
-        for old_fname in fnames:
-            old_fpath = os.path.join(dir_path, old_fname)
-            new_fname = old_fname.replace("annotator_template", annot_name, 1)
-            new_fpath = os.path.join(dir_path, new_fname)
-            os.rename(old_fpath, new_fpath)
+    assert name is not None and type is not None
+    module_dir = Path(get_modules_dir()) /  type / name
+    template_dir = Path(get_packagedir()) / "lib" / "assets" / "module_templates" / type
+    copytree(template_dir, module_dir)
+    for fn in module_dir.iterdir():
+        new_fn = str(fn).replace("template", name)
+        fn.rename(new_fn)
     get_module_cache().update_local()
 
 
@@ -206,20 +204,6 @@ def set_jobs_dir(d):
     from ..system import update_system_conf_file
 
     update_system_conf_file({"jobs_dir": d})
-
-
-# return a list of module types (e.g. annotators) in the local install
-def show_main_conf(args):
-    import oyaml as yaml
-    from ..util.util import quiet_print
-
-    conf = get_user_conf()
-    if args["fmt"] == "yaml":
-        conf = yaml.dump(conf, default_flow_style=False)
-    if args["to"] == "stdout":
-        quiet_print(conf, args=args)
-    else:
-        return conf
 
 
 def oakvar_version():

@@ -2,70 +2,47 @@ from typing import Tuple
 from typing import Optional
 
 
-def get_valid_email_pw(args=None, pwconfirm=False) -> Tuple:
+def get_email_pw_from_user_conf():
+    from ....system import get_user_conf
+    from ....store.consts import OV_STORE_EMAIL_KEY
+    from ....store.consts import OV_STORE_PW_KEY
+    user_conf = get_user_conf()
+    email = user_conf.get(OV_STORE_EMAIL_KEY)
+    pw = user_conf.get(OV_STORE_PW_KEY)
+    return email, pw
+
+def get_email_pw_interactively(email: Optional[str]=None, pw: Optional[str]=None, pwconfirm=True) -> Tuple:
     from ....util.util import email_is_valid
     from ....util.util import pw_is_valid
-    from ....exceptions import WrongInput
-    from ....system import get_user_conf
-    from ....store.consts import ov_store_email_key
-    from ....store.consts import ov_store_pw_key
     from getpass import getpass
 
-    if not args:
-        raise WrongInput()
-    email = args.get("email")
-    pw = args.get("pw")
-    newpw = args.get("newpw")
-    if not email or not pw:
-        user_conf = get_user_conf()
-        if not email:
-            email = user_conf.get(ov_store_email_key)
-        if not pw:
-            pw = user_conf.get(ov_store_pw_key)
     if not email:
-        email = input("Email: ")
+        while not email_is_valid(email):
+            email = input("Email: ")
     if not pw:
-        if pwconfirm:
-            pwagain = None
-            while not pw or pw != pwagain:
-                while not pw:
-                    pw = getpass("Password (alphabets, numbers, and !?&@-+): ")
+        while not pw_is_valid(pw):
+            pw = getpass("Password (alphabets, numbers, and !?&@-+): ")
+            if not pw_is_valid(pw):
+                print(f"Password is invalid")
+                pw = None
+            if pw and pwconfirm:
                 pwagain = getpass("Confirm password: ")
                 if pw != pwagain:
                     print("Password mismatch")
                     pw = None
-                    pwagain = None
-        else:
-            pw = getpass()
-    if not email or not pw:
-        raise WrongInput("no email or password")
-    if not email_is_valid(email):
-        raise WrongInput("invalid email")
-    if not pw_is_valid(pw):
-        raise WrongInput("invalid password")
-    if newpw:
-        if not pw_is_valid(newpw):
-            raise WrongInput("invalid new password")
-    if args.get("newpw"):
-        return email, pw, newpw
-    else:
-        return email, pw
+    return email, pw
 
 
-def create(email=None, pw=None, args={}, quiet=None) -> dict:
+def create(email: Optional[str]=None, pw: Optional[str]=None, pwconfirm=False, interactive: bool=False, outer=None) -> dict:
     from requests import post
     from ....system import get_system_conf
-    from ....util.util import quiet_print
-    from ....util.util import get_email_pw_from_input
     from ....store.consts import store_url_key
+    from ....store.ov.account import get_email_pw_interactively
 
-    if not email or not pw:
-        email = args.get("email")
-        pw = args.get("pw")
-        if not email or not pw:
-            email, pw = get_email_pw_from_input(email=email, pw=pw, pwconfirm=True)
+    if (not email or not pw) and interactive:
+        email, pw = get_email_pw_interactively(email=email, pw=pw, pwconfirm=pwconfirm)
     if not email:
-        return {"msg": "No email", "success": False}
+        return {"msg": "no email", "success": False}
     sys_conf = get_system_conf()
     store_url = sys_conf[store_url_key]
     create_account_url = store_url + "/account/create"
@@ -98,21 +75,22 @@ def create(email=None, pw=None, args={}, quiet=None) -> dict:
             success = False
     except Exception as e:
         status_code = 500
-        msg = f"fail. {e}"
+        msg = f"Fail ({e})"
         success = False
     finally:
-        quiet_print(msg, args=args, quiet=quiet)
+        if outer:
+            outer.write(msg)
         return {"status_code": status_code, "msg": msg, "success": success}
 
 
-def delete(args={}) -> bool:
+def delete(outer=None) -> bool:
     from requests import post
     from ...ov import get_store_url
-    from ....util.util import quiet_print
 
     token_set = get_token_set()
     if not token_set:
-        quiet_print(f"log in first", args=args)
+        if outer:
+            outer.write(f"Log in first")
         return False
     store_url = get_store_url()
     url = store_url + "/account/delete"
@@ -120,19 +98,20 @@ def delete(args={}) -> bool:
     r = post(url, data=params)
     status_code = r.status_code
     if status_code == 200:
-        quiet_print(f"success", args=args)
+        if outer:
+            outer.write(f"Success")
         return True
     else:
-        quiet_print(f"fail. {r.text}", args=args)
+        if outer:
+            outer.write(f"Fail ({r.text})")
         return False
 
 
-def check(args={}) -> bool:
-    from ....util.util import quiet_print
-
+def check_logged_in_with_token(outer=None) -> bool:
     id_token = get_id_token()
     if not id_token:
-        quiet_print(f"not logged in", args=args)
+        if outer:
+            outer.write(f"not logged in")
         return False
     valid, expired = id_token_is_valid()
     if valid:
@@ -140,36 +119,36 @@ def check(args={}) -> bool:
             refresh_token_set()
         token_set = get_token_set() or {}
         email = token_set["email"]
-        quiet_print(f"logged in as {email}", args=args)
+        if outer:
+            outer.write(f"logged in as {email}")
         return True
     else:
-        quiet_print(f"not logged in", args=args)
+        if outer:
+            outer.write(f"not logged in")
         return False
 
 
-def reset(args={}) -> bool:
-    from ....util.util import quiet_print
+def reset(email: Optional[str]=None, outer=None) -> bool:
     from ...ov import get_store_url
     from ....util.util import email_is_valid
     from requests import post
 
-    email = args.get("email")
     if not email:
         return False
     if not email_is_valid(email):
-        quiet_print(f"invalid email", args=args)
+        if outer:
+            outer.write(f"Invalid email")
         return False
     url = get_store_url() + "/account/reset"
     params = {"email": email}
     res = post(url, data=params)
     if res.status_code == 200:
-        quiet_print(
-            "Success. Check your email for instruction to reset your password.",
-            args=args,
-        )
+        if outer:
+            outer.write("Success. Check your email for instruction to reset your password.")
         return True
     else:
-        quiet_print(f"fail. {res.text}", args=args)
+        if outer:
+            outer.write(f"Fail ({res.text})")
         return False
 
 
@@ -179,27 +158,27 @@ def get_email_from_token_set() -> Optional[str]:
     return email
 
 
-def login(email=None, pw=None, args={}, quiet=None) -> dict:
+def try_login_with_token(email: Optional[str]=None, outer=None) -> bool:
+    if not check_logged_in_with_token(outer=outer):
+        return False
+    token_set_email = get_email_from_token_set()
+    if not email or token_set_email == email:
+        if outer:
+            outer.write(f"Logged in as {token_set_email}")
+    return True
+
+def login(email=None, pw=None, interactive=False, outer=None) -> dict:
     from requests import post
-    from ....util.util import quiet_print
-    from ....util.util import get_email_from_args
     from ...ov import get_store_url
 
-    id_token = get_id_token()
-    if id_token:
-        if check(args={"quiet": True}):
-            token_set_email = get_email_from_token_set()
-            args_email = get_email_from_args(args=args)
-            if email:
-                if token_set_email == email:
-                    quiet_print(f"logged in as {email}", args=args, quiet=quiet)
-                    return {"success": True}
-            elif args_email:
-                if token_set_email == args_email:
-                    quiet_print(f"logged in as {args_email}", args=args, quiet=quiet)
-                    return {"success": True}
+    if try_login_with_token(email=email):
+        return {"success": True}
     if not email or not pw:
-        email, pw = get_valid_email_pw(args=args)
+        email, pw = get_email_pw_from_user_conf()
+    if (not email or not pw) and interactive:
+        email, pw = get_email_pw_interactively(email=email, pw=pw)
+    if not email or not pw:
+        return {"success": False}
     login_url = get_store_url() + "/account/login"
     params = {"email": email, "pw": pw}
     try:
@@ -208,15 +187,18 @@ def login(email=None, pw=None, args={}, quiet=None) -> dict:
         status_code = r.status_code
         if status_code == 200:
             save_token_set(r.json())
-            quiet_print(f"logged in as {email}", args=args, quiet=quiet)
+            if outer:
+                outer.write(f"logged in as {email}")
             return {"success": True}
         else:
-            quiet_print(f"fail. {r.text}", args=args, quiet=quiet)
+            if outer:
+                outer.write(f"fail. {r.text}")
             return {"success": False, "status_code": status_code}
     except:
         import traceback
         msg = traceback.format_exc()
-        quiet_print(f"server error", args=args, quiet=quiet)
+        if outer:
+            outer.write(f"server error")
         return {"success": False, "status_code": 500, "msg": msg}
 
 
@@ -271,17 +253,17 @@ def save_token_set(token_set: dict):
         dump(token_set, wf)
 
 
-def delete_id_token(args={}):
+def delete_id_token(outer=None):
     from os import remove
     from os.path import exists
-    from ....util.util import quiet_print
 
     token_path = get_token_set_path()
     if exists(token_path):
         remove(token_path)
         return True
     else:
-        quiet_print(f"not logged in", args=args)
+        if outer:
+            outer.write(f"Not logged in")
         return False
 
 
@@ -328,8 +310,7 @@ def refresh_token_set() -> bool:
         return False
 
 
-def change(args={}) -> bool:
-    from ....util.util import quiet_print
+def change(newpw: Optional[str]=None, outer=None) -> bool:
     from requests import post
     from ...ov import get_store_url
     from getpass import getpass
@@ -337,7 +318,8 @@ def change(args={}) -> bool:
 
     id_token = get_id_token()
     if not id_token:
-        quiet_print(f"not logged in", args=args)
+        if outer:
+            outer.write(f"Not logged in")
         return False
     valid, expired = id_token_is_valid()
     if valid and not expired:
@@ -349,11 +331,10 @@ def change(args={}) -> bool:
                 if token_set:
                     id_token = token_set["idToken"]
         if not id_token:
-            quiet_print(f"not logged in", args=args)
+            if outer:
+                outer.write(f"Not logged in")
             return False
-    newpw = args.get("newpw")
     if not newpw:
-        newpw = ""
         while not pw_is_valid(newpw):
             newpw = getpass("New password: ")
     refresh_token = get_refresh_token()
@@ -362,45 +343,41 @@ def change(args={}) -> bool:
     res = post(url, data=params)
     status_code = res.status_code
     if status_code != 200:
-        quiet_print(f"{res.text}", args=args)
+        if outer:
+            outer.write(f"{res.text}")
         return False
     else:
         token_set = get_token_set()
         if not token_set:
-            quiet_print(f"password changed but re-login failed")
+            if outer:
+                outer.write(f"Password changed but re-login failed")
             return False
         email = token_set["email"]
-        args["email"] = email
-        args["pw"] = newpw
-        if login(args=args):
+        if login(email=email, pw=newpw):
             return True
         else:
-            quiet_print(f"password changed but re-login failed", args=args)
+            if outer:
+                outer.write(f"Password changed but re-login failed")
             return True
 
 
-def logout(args={}) -> bool:
-    from ....util.util import quiet_print
-
-    ret = delete_id_token(args=args)
-    if ret:
-        quiet_print(f"success", args=args)
+def logout(outer=None) -> bool:
+    ret = delete_id_token(outer=outer)
+    if ret and outer:
+        outer.write(f"Success")
     return ret
 
 
-def get_current_id_token(args={}) -> Optional[str]:
-    token_set = get_current_token_set(args=args)
+def get_current_id_token() -> Optional[str]:
+    token_set = get_current_token_set()
     if token_set:
         return token_set["idToken"]
     else:
         return None
 
 
-def get_current_token_set(args={}) -> Optional[dict]:
-    token_set = None
+def get_current_token_set() -> Optional[dict]:
     token_set = get_token_set()
-    newargs = args.copy()
-    newargs["quiet"] = True
     if token_set:
         valid, expired = id_token_is_valid()
         if not valid:
@@ -408,9 +385,6 @@ def get_current_token_set(args={}) -> Optional[dict]:
         elif expired:
             refresh_token_set()
             token_set = get_token_set()
-    if not token_set:
-        login(args=newargs)
-        token_set = get_token_set()
     return token_set
 
 
@@ -434,8 +408,8 @@ def delete_token_set():
 def get_email_pw_from_settings(
     email=None, pw=None, conf=None, args={}
 ) -> Optional[Tuple[str, str]]:
-    from ...consts import ov_store_email_key
-    from ...consts import ov_store_pw_key
+    from ...consts import OV_STORE_EMAIL_KEY
+    from ...consts import OV_STORE_PW_KEY
     from ....system import get_user_conf
 
     # if not given directly, check direct arguments.
@@ -444,13 +418,13 @@ def get_email_pw_from_settings(
         pw = args.get("pw")
     # if not, use conf.
     if (not email or not pw) and conf:
-        email = conf.get(ov_store_email_key)
-        pw = conf.get(ov_store_pw_key)
+        email = conf.get(OV_STORE_EMAIL_KEY)
+        pw = conf.get(OV_STORE_PW_KEY)
     # if not, oakvar.yml
     user_conf = get_user_conf()
-    if ov_store_email_key in user_conf and ov_store_pw_key in user_conf:
-        email = user_conf[ov_store_email_key]
-        pw = user_conf[ov_store_pw_key]
+    if OV_STORE_EMAIL_KEY in user_conf and OV_STORE_PW_KEY in user_conf:
+        email = user_conf[OV_STORE_EMAIL_KEY]
+        pw = user_conf[OV_STORE_PW_KEY]
     if email and pw:
         return email, pw
     else:

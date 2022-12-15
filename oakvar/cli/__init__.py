@@ -10,6 +10,7 @@ def cli_entry(func):
 
 def cli_func(func):
     def run_cli_func(*args, **kwargs):
+        from sys import stdout
         from argparse import Namespace
         from .__main__ import handle_exception
 
@@ -20,6 +21,7 @@ def cli_func(func):
         elif kwargs.get("quiet") == None:
             kwargs["quiet"] = True
         args = get_args(*args, **kwargs)
+        args["outer"] = stdout
         try:
             ret = func(args, **kwargs)
             if args.get("to") == "stdout":

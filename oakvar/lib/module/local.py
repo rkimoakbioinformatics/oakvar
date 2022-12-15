@@ -570,14 +570,13 @@ def get_code_size(module_name, module_type=None) -> Optional[int]:
     return None
 
 
-def get_module_name_and_module_dir(args) -> Tuple[str, str]:
+def get_module_name_and_module_dir(module_name: str) -> Tuple[str, str]:
     from os.path import exists
     from ..exceptions import ArgumentError
     from ..module.local import get_module_dir
     from ..exceptions import ModuleLoadingError
     from pathlib import Path
 
-    module_name = args.get("module")
     if not module_name:
         raise ArgumentError(msg="argument module is missing")
     if exists(module_name):
@@ -591,11 +590,10 @@ def get_module_name_and_module_dir(args) -> Tuple[str, str]:
     return module_name, module_dir
 
 
-def get_pack_dir_out_dir(kind: str, args: dict, module_dir: str) -> Tuple[str, str]:
+def get_pack_dir_out_dir(kind: str, outdir: str, module_dir: str) -> Tuple[str, str]:
     from os.path import exists
     from os.path import join
 
-    outdir = args.get("outdir", ".")
     if not exists(outdir):
         from os import mkdir
 
@@ -611,33 +609,31 @@ def get_pack_dir_out_dir(kind: str, args: dict, module_dir: str) -> Tuple[str, s
     return pack_dir, outdir
 
 
-def pack_module_zip(args: dict, kind: str):
+def pack_module_zip(module_name: str, kind: str, outdir: str=".", split: bool=False, outer=None):
     from zipfile import ZipFile
     from os import walk
     from os import sep
     from pathlib import Path
     from split_file_reader.split_file_writer import SplitFileWriter
-    from ..util.util import quiet_print
     from ..module.local import get_module_code_version
     from ..store.consts import MODULE_PACK_SPLIT_FILE_SIZE
     from ..exceptions import ArgumentError
 
-    module_name, module_dir = get_module_name_and_module_dir(args)
+    module_name, module_dir = get_module_name_and_module_dir(module_name)
     if kind == "code":
         version = get_module_code_version(module_name, module_dir=module_dir)
     elif kind == "data":
         version = get_module_data_version(module_name, module_dir=module_dir)
     else:
         raise ArgumentError(msg=f"wrong module kind: {kind}")
-    pack_dir, outdir = get_pack_dir_out_dir(kind, args, module_dir)
-    outdir = Path(outdir)
+    pack_dir, outdir = get_pack_dir_out_dir(kind, outdir, module_dir)
+    outdir_p = Path(outdir)
     if Path(pack_dir).exists():
         pack_fn = f"{module_name}__{version}__{kind}.zip"
-        pack_path = outdir / pack_fn
-        split_flag = args.get("split")
+        pack_path = outdir_p / pack_fn
         sfw = None
         z = None
-        if split_flag:
+        if split:
             sfw = SplitFileWriter(pack_path, MODULE_PACK_SPLIT_FILE_SIZE)
             z = ZipFile(file=sfw, mode="w")
         else:
@@ -670,20 +666,22 @@ def pack_module_zip(args: dict, kind: str):
             z.close()
         if sfw:
             sfw.close()
-            quiet_print(f"{pack_path}* files written", args=args)
+            if outer:
+                outer.write(f"{pack_path}* files written")
+            else:
+                return pack_path
         else:
-            quiet_print(f"{pack_path} written", args=args)
+            if outer:
+                outer.write(f"{pack_path} written")
+            else:
+                return pack_path
 
 
-def pack_module(args):
-    from ..util.util import quiet_print
-
-    conf = get_module_conf(args.get("module"))
-    pack_module_zip(args, "code")
-    if not args.get("code_only") and not (conf and conf.get("no_data")):
-        pack_module_zip(args, "data")
-    quiet_print(f"To register the packed module, use `ov store register`.", args=args)
-    return True
+def pack_module(module_name: str, outdir: str, code_only: bool, split: bool, outer=None):
+    conf = get_module_conf(module_name)
+    pack_module_zip(module_name, "code", outdir=outdir, split=split, outer=outer)
+    if not code_only and not (conf and conf.get("no_data")):
+        pack_module_zip(module_name, "data", outdir=outdir, split=split, outer=outer)
 
 
 def get_default_mapper_name() -> Optional[str]:

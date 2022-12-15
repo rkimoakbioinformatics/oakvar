@@ -355,23 +355,24 @@ def is_store_db_schema_changed(conn=Any, cursor=Any) -> bool:
     return False
 
 @db_func
-def drop_ov_store_cache(conf=None, conn=None, cursor=None, args={}):
+def drop_ov_store_cache(clean_cache_db=False, clean_cache_files=False, conf=None, conn=None, cursor=None, **kwargs):
     from os.path import exists
     from ..system import get_cache_dir
     from ..system.consts import cache_dirs
     from shutil import rmtree
 
+    _ = kwargs
     if not conn or not cursor:
         return
     if conf:
         pass
-    if args.get("clean_cache_db"):
+    if clean_cache_db:
         for table in ["summary", "versions", "info"]:
             if table_exists(table):
                 q = f"drop table if exists {table}"
                 cursor.execute(q)
                 conn.commit()
-    if args.get("clean_cache_files"):
+    if clean_cache_files:
         for cache_key in cache_dirs:
             fp = get_cache_dir(cache_key)
             if exists(fp):
@@ -379,7 +380,7 @@ def drop_ov_store_cache(conf=None, conn=None, cursor=None, args={}):
 
 
 @db_func
-def create_ov_store_cache(conf=None, args={}, conn=None, cursor=None):
+def create_ov_store_cache(clean_cache_db=False, conf=None, conn=None, cursor=None, **kwargs):
     from .consts import summary_table_cols
     from .consts import versions_table_cols
     from ..system.consts import cache_dirs
@@ -388,11 +389,11 @@ def create_ov_store_cache(conf=None, args={}, conn=None, cursor=None):
     from os.path import join
     from os import mkdir
 
+    _ = kwargs
     if not conn or not cursor:
         return False
     if conf:
         pass
-    clean_cache_db = args.get("clean_cache_db")
     if clean_cache_db or not table_exists("summary"):
         q = f"create table summary ( { ', '.join([col + ' text' for col in summary_table_cols]) }, primary key ( name, store ) )"
         cursor.execute(q)
@@ -411,16 +412,12 @@ def create_ov_store_cache(conf=None, args={}, conn=None, cursor=None):
             mkdir(join(fp, "oc"))
 
 
-def try_fetch_ov_store_cache(args={}):
-    from ..util.util import quiet_print
-
+def try_fetch_ov_store_cache(clean_cache_db: bool=False, clean_cache_files: bool=False, clean: bool=False, publish_time: str="", outer=None):
     try:
-        return fetch_ov_store_cache(args=args)
+        return fetch_ov_store_cache(clean_cache_db=clean_cache_db, clean_cache_files=clean_cache_files, clean=clean, publish_time=publish_time, outer=outer)
     except Exception as e:
-        quiet_print(
-            f"Fetching store update failed:\n\n>>{e}.\n\nContinuing with the current store cache...\n",
-            args=args,
-        )
+        if outer:
+            outer.write(f"Fetching store update failed:\n\n>>{e}.\n\nContinuing with the current store cache...\n")
 
 
 def get_remote_manifest_cache_path():
@@ -445,10 +442,13 @@ def save_remote_manifest_cache(content: dict):
 def fetch_ov_store_cache(
     conn=None,
     cursor=None,
-    args={},
+    clean_cache_db: bool=False,
+    clean_cache_files: bool=False,
+    clean: bool=False,
+    publish_time: str="",
+    outer=None,
 ):
     from .consts import ov_store_last_updated_col
-    from ..util.util import quiet_print
     from ..exceptions import StoreServerError
     from ..exceptions import AuthorizationError
     from .ov.account import login_with_token_set
@@ -458,20 +458,19 @@ def fetch_ov_store_cache(
     if not conn or not cursor:
         return False
     if not login_with_token_set():
-        quiet_print(f"Not logged in", args=args)
+        if outer:
+            outer.write(f"Not logged in")
         return False
     if is_new_store_db_setup():
-        args["clean_cache_db"] = True
-        args["clean_cache_files"] = True
-        args["clean"] = True
-        local_last_updated = None
+        clean_cache_db = True
+        clean_cache_files = True
+        local_last_updated = ""
     else:
         local_last_updated = get_local_last_updated()
     if is_store_db_schema_changed():
-        quiet_print(f"Need to fetch store cache due to schema change", args=args)
-        args["clean_cache_db"] = True
-    clean_cache_files = args.get("clean_cache_files")
-    clean_cache_db = args.get("clean_cache_db")
+        if outer:
+            outer.write(f"Need to fetch store cache due to schema change")
+        clean_cache_db = True
     server_last_updated, status_code = get_server_last_updated()
     if not server_last_updated:
         if status_code == 401:
@@ -485,26 +484,28 @@ def fetch_ov_store_cache(
         and local_last_updated
         and local_last_updated >= server_last_updated
     ):
-        quiet_print("No store update to fetch", args=args)
+        if outer:
+            outer.write("No store update to fetch")
         return True
-    args["publish_time"] = local_last_updated
-    drop_ov_store_cache(args=args)
-    create_ov_store_cache(args=args)
-    fetch_summary_cache(args=args)
-    fetch_versions_cache(args=args)
-    if args.get("clean_cache_files") or args.get("clean"):
-        args["publish_time"] = ""
+    publish_time = local_last_updated
+    drop_ov_store_cache(clean_cache_db=clean_cache_db, clean_cache_files=clean_cache_files)
+    create_ov_store_cache(clean_cache_db=clean_cache_db)
+    fetch_summary_cache(publish_time=publish_time, clean_cache_db=clean_cache_db, outer=outer)
+    fetch_versions_cache(publish_time=publish_time, clean_cache_db=clean_cache_db, outer=outer)
+    if clean_cache_files or clean:
+        publish_time = ""
     else:
-        args["publish_time"] = local_last_updated
-    fetch_readme_cache(args=args)
-    fetch_logo_cache(args=args)
-    fetch_conf_cache(args=args)
+        publish_time = local_last_updated
+    fetch_readme_cache(publish_time=publish_time, outer=outer)
+    fetch_logo_cache(publish_time=publish_time, outer=outer)
+    fetch_conf_cache(publish_time=publish_time, outer=outer)
     q = f"insert or replace into info ( key, value ) values ( ?, ? )"
     cursor.execute(q, (ov_store_last_updated_col, str(server_last_updated)))
     conn.commit()
     content = make_remote_manifest()
     save_remote_manifest_cache(content)
-    quiet_print("OakVar store cache has been fetched.", args=args)
+    if outer:
+        outer.write("OakVar store cache has been fetched.")
     return True
 
 
@@ -520,11 +521,11 @@ def is_new_store_db_setup(conn=Any, cursor=Any):
         return True
 
 @db_func
-def get_summary_module_store_list(args={}, conn=None, cursor=None):
+def get_summary_module_store_list(publish_time: str="", conn=None, cursor=None):
     if not conn or not cursor:
         return
     q = "select name, store from summary where publish_time >= ?"
-    cursor.execute(q, (args.get("publish_time"),))
+    cursor.execute(q, (publish_time,))
     ret = cursor.fetchall()
     out = []
     for r in ret:
@@ -533,24 +534,24 @@ def get_summary_module_store_list(args={}, conn=None, cursor=None):
 
 
 @db_func
-def fetch_conf_cache(args={}, conn=None, cursor=None, conf={}):
+def fetch_conf_cache(publish_time: str="", outer=None, conn=None, cursor=None, conf={}):
     from requests import Session
     from .ov.account import get_current_id_token
     from ..system import get_cache_dir
     from .ov import get_store_url
     from os.path import join
-    from ..util.util import quiet_print
 
     if not conn or not cursor:
         return
-    module_stores = get_summary_module_store_list(args=args)
+    module_stores = get_summary_module_store_list(publish_time=publish_time)
     if not module_stores:
         return
-    id_token = get_current_id_token(args=args)
-    params = {"idToken": id_token, "publish_time": args.get("publish_time")}
+    id_token = get_current_id_token()
+    params = {"idToken": id_token, "publish_time": publish_time}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
-    quiet_print(f"fetching store cache 5/5...", args=args)
+    if outer:
+        outer.write(f"Fetching store cache 5/5...")
     for module_store in module_stores:
         name = module_store["name"]
         store = module_store["store"]
@@ -569,24 +570,24 @@ def fetch_conf_cache(args={}, conn=None, cursor=None, conf={}):
 
 
 @db_func
-def fetch_logo_cache(args={}, conn=None, cursor=None, conf={}):
+def fetch_logo_cache(publish_time: str="", outer=None, conn=None, cursor=None, conf={}):
     from requests import Session
     from .ov.account import get_current_id_token
     from ..system import get_cache_dir
     from .ov import get_store_url
     from os.path import join
-    from ..util.util import quiet_print
 
     if not conn or not cursor:
         return
-    module_stores = get_summary_module_store_list(args=args)
+    module_stores = get_summary_module_store_list(publish_time=publish_time)
     if not module_stores:
         return
-    id_token = get_current_id_token(args=args)
-    params = {"idToken": id_token, "publish_time": args.get("publish_time")}
+    id_token = get_current_id_token()
+    params = {"idToken": id_token, "publish_time": publish_time}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
-    quiet_print(f"fetching store cache 4/5...", args=args)
+    if outer:
+        outer.write(f"Fetching store cache 4/5...")
     for module_store in module_stores:
         name = module_store["name"]
         store = module_store["store"]
@@ -605,24 +606,24 @@ def fetch_logo_cache(args={}, conn=None, cursor=None, conf={}):
 
 
 @db_func
-def fetch_readme_cache(args={}, conn=None, cursor=None, conf={}):
+def fetch_readme_cache(publish_time: str="", outer=None, conn=None, cursor=None, conf={}):
     from requests import Session
     from .ov.account import get_current_id_token
     from ..system import get_cache_dir
     from .ov import get_store_url
     from os.path import join
-    from ..util.util import quiet_print
 
     if not conn or not cursor:
         return
-    module_stores = get_summary_module_store_list(args=args)
+    module_stores = get_summary_module_store_list(publish_time=publish_time)
     if not module_stores:
         return
-    id_token = get_current_id_token(args=args)
-    params = {"idToken": id_token, "publish_time": args.get("publish_time")}
+    id_token = get_current_id_token()
+    params = {"idToken": id_token, "publish_time": publish_time}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
-    quiet_print(f"fetching store cache 3/5...", args=args)
+    if outer:
+        outer.write(f"Fetching store cache 3/5...")
     for module_store in module_stores:
         name = module_store["name"]
         store = module_store["store"]
@@ -641,21 +642,21 @@ def fetch_readme_cache(args={}, conn=None, cursor=None, conf={}):
 
 
 @db_func
-def fetch_summary_cache(args={}, conn=Any, cursor=Any):
+def fetch_summary_cache(publish_time: str="", clean_cache_db=False, outer=None, conn=Any, cursor=Any):
     from requests import Session
     from .ov.account import get_current_id_token
     from ..exceptions import StoreServerError
     from ..exceptions import AuthorizationError
     from .ov import get_store_url
-    from ..util.util import quiet_print
 
     _ = conn
     url = f"{get_store_url()}/fetch_summary"
-    id_token = get_current_id_token(args=args)
-    params = {"idToken": id_token, "publish_time": args.get("publish_time")}
+    id_token = get_current_id_token()
+    params = {"idToken": id_token, "publish_time": publish_time}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
-    quiet_print(f"fetching store cache 1/5...", args=args)
+    if outer:
+        outer.write(f"Fetching store cache 1/5...")
     res = s.post(url, data=params)
     if res.status_code != 200:
         if res.status_code == 401:
@@ -663,7 +664,7 @@ def fetch_summary_cache(args={}, conn=Any, cursor=Any):
         elif res.status_code == 500:
             raise StoreServerError()
         return False
-    if args.get("clean_cache_db"):
+    if clean_cache_db:
         q = f"delete from summary"
         cursor.execute(q)
         conn.commit()
@@ -676,25 +677,25 @@ def fetch_summary_cache(args={}, conn=Any, cursor=Any):
 
 
 @db_func
-def fetch_versions_cache(args={}, conn=None, cursor=None):
+def fetch_versions_cache(publish_time: str="", clean_cache_db: bool=False, outer=None, conn=None, cursor=None):
     from requests import Session
     from json import dumps
     from .ov.account import get_current_id_token
     from ..exceptions import StoreServerError
     from ..exceptions import AuthorizationError
     from .ov import get_store_url
-    from ..util.util import quiet_print
     from .consts import versions_table_cols
 
     if not conn or not cursor:
         return
     url = f"{get_store_url()}/fetch_versions"
-    id_token = get_current_id_token(args=args)
+    id_token = get_current_id_token()
     cols = dumps(versions_table_cols)
-    params = {"idToken": id_token, "publish_time": args.get("publish_time"), "cols": cols}
+    params = {"idToken": id_token, "publish_time": publish_time, "cols": cols}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
-    quiet_print(f"fetching store cache 2/5...", args=args)
+    if outer:
+        outer.write(f"Fetching store cache 2/5...")
     res = s.post(url, data=params)
     if res.status_code != 200:
         if res.status_code == 401:
@@ -702,7 +703,7 @@ def fetch_versions_cache(args={}, conn=None, cursor=None):
         elif res.status_code == 500:
             raise StoreServerError(text=res.text)
         return False
-    if args.get("clean_cache_db"):
+    if clean_cache_db:
         q = f"delete from versions"
         cursor.execute(q)
         conn.commit()

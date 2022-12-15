@@ -9,30 +9,23 @@ def cli_new_exampleinput(args):
 
 @cli_func
 def exampleinput(args, __name__="new exampleinput"):
-    from ..lib.util.admin_util import fn_new_exampleinput
+    from ..api.new import exampleinput
 
-    return fn_new_exampleinput(args.get("directory"))
+    return exampleinput(args.get("directory"))
 
 
 @cli_entry
 def cli_new_annotator(args):
-    args.quiet = False
-    return annotator(args)
+    return module(args)
 
 
 @cli_func
-def annotator(args, __name__="new annotator"):
-    from ..lib.util.admin_util import new_annotator
-    from ..lib.module.local import get_local_module_info
-    from ..lib.util.util import quiet_print
+def module(args, __name__="new annotator"):
+    from ..api.new import module
 
-    new_annotator(args.get("annotator_name"))
-    module_info = get_local_module_info(args.get("annotator_name"))
-    if module_info is not None:
-        quiet_print(f"created {module_info.directory}", args)
-        return module_info.directory
-    else:
-        return None
+    ret = module(args.get("name"), args.get("type"))
+    if ret:
+        print(f"Created {ret}")
 
 
 def get_parser_fn_new():
@@ -68,10 +61,10 @@ def get_parser_fn_new():
         "annotator", help="creates a new annotator"
     )
     parser_cli_new_annotator.add_argument(
-        "-n", dest="annotator_name", default="exampleannotator", help="Annotator name"
+        "-n", dest="name", default="newmodule", help="Module name"
     )
     parser_cli_new_annotator.add_argument(
-        "--md", default=None, help="Specify the root directory of OakVar modules"
+        "-t", dest="type", default="annotator", help="Module type"
     )
     parser_cli_new_annotator.add_argument(
         "--quiet", action="store_true", default=None, help="No print to stdout"

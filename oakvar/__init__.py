@@ -1,39 +1,40 @@
-from .cli.version import version
-from .cli.util import sqliteinfo as util_sqliteinfo
-from .cli.util import mergesqlite as util_mergesqlite
-from .cli.util import filtersqlite as util_filtersqlite
-from .cli.util import addjob as util_addjob
-from .cli.test import test
-from .cli.system import setup as system_setup
-from .cli.system import md as system_md
-from .cli.store import register as store_register
-from .cli.store.account import reset as store_account_reset
-from .cli.store.account import create as store_account_create
-from .cli.store.account import check as store_account_check
-from .cli.store.account import change as store_account_change
-from .cli.store import fetch as store_fetch
-from .cli.module import pack as module_pack
-from .cli.store.oc import oc_publish as store_oc_publish
-from .cli.store.oc import oc_newaccount as store_oc_newaccount
-from .cli.store.oc import oc_changepw as store_oc_changepw
-from .cli.store.oc import oc_resetpw as store_oc_resetpw
-from .cli.store.oc import oc_verifyemail as store_oc_verifyemail
-from .cli.store.oc import oc_checklogin as store_oc_checklogin
-from .cli.new import annotator as new_annotator
-from .cli.new import exampleinput as new_exampleinput
-from .cli.issue import issue
-from .cli.gui import gui
-from .cli.report import report
-from .cli.run import run
-from .cli.module import update as module_update
-from .cli.module import uninstall as module_uninstall
-from .cli.module import ls as module_ls
-from .cli.module import installbase as module_installbase
-from .cli.module import install as module_install
-from .cli.module import info as module_info
-from .cli.config import user as config_user
-from .cli.config import system as config_system
+from .api import version
+from .api.util import sqliteinfo as util_sqliteinfo
+from .api.util import mergesqlite as util_mergesqlite
+from .api.util import filtersqlite as util_filtersqlite
+from .api.util import addjob as util_addjob
+from .api.test import test
+from .api.system import setup as system_setup
+from .api.system import md as system_md
+from .api.store import register as store_register
+from .api.store.account import reset as store_account_reset
+from .api.store.account import create as store_account_create
+from .api.store.account import check as store_account_check
+from .api.store.account import change as store_account_change
+from .api.store import fetch as store_fetch
+from .api.module import pack as module_pack
+from .api.store.oc import oc_publish as store_oc_publish
+from .api.store.oc import oc_newaccount as store_oc_newaccount
+from .api.store.oc import oc_changepw as store_oc_changepw
+from .api.store.oc import oc_resetpw as store_oc_resetpw
+from .api.store.oc import oc_verifyemail as store_oc_verifyemail
+from .api.store.oc import oc_checklogin as store_oc_checklogin
+from .api.new import module as new_annotator
+from .api.new import exampleinput as new_exampleinput
+from .api.issue import issue
+from .api.report import report
+from .api.run import run
+from .api.module import update as module_update
+from .api.module import uninstall as module_uninstall
+from .api.module import ls as module_ls
+from .api.module import installbase as module_installbase
+from .api.module import install as module_install
+from .api.module import info as module_info
+from .api.config import user as config_user
+from .api.config import system as config_system
+from . import api as api
 from .cli import __main__ as cli
+from .cli.report import report
 from .lib import consts
 from .lib.exceptions import *
 from .lib.base.runner import Runner
@@ -91,7 +92,7 @@ def raise_break(__signal_number__, __stack_frame__):
                 pass
         os.kill(pid, signal.SIGTERM)
 
-# from .cli.util import ov_util_updateresult
+# from .api.util import ov_util_updateresult
 
 wgs = None
 _ = admin_util or inout
@@ -116,7 +117,7 @@ _ = (
     or module_uninstall
     or module_update
 )
-_ = report or run or gui or issue or version or config_user or config_system
+_ = report or run or issue or version or config_user or config_system
 _ = new_exampleinput or new_annotator
 _ = (
     store_account_reset

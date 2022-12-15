@@ -1,0 +1,35 @@
+#
+# Mandatory fields
+#
+title: Template Module
+description: This is an OakVar module template.
+type: reporter
+level: variant
+version: 0.0.1
+data_version: 0.0.1
+no_data: false
+developer:
+  module:
+    name: ''
+    organization: ''
+    email: ''
+    website: ''
+    citation: ''
+  data:
+    name: ''
+    organization: ''
+    email: ''
+    website: ''
+    citation: ''
+#
+# Optional fields
+#
+tags:
+- clinical relevance
+requires:
+- module
+requires_oakvar: "2.7.0"
+pypi_dependency:
+- sqlite3
+release_note:
+  0.0.1: initial version

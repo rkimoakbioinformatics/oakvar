@@ -1,3 +1,6 @@
+from typing import Optional
+from typing import List
+
 class InstallProgressHandler(object):
     def __init__(self, module_name, module_version):
         self.module_name = module_name
@@ -92,44 +95,26 @@ def get_readme(module_name):
             return local_readme
 
 
-def install_pypi_dependency(args={}):
+def install_pypi_dependency(pypi_dependency: Optional[List[str]]=None, outer=None):
     from subprocess import run
-    from ..util.util import quiet_print
 
-    pypi_dependency = args.get("pypi_dependency")
     if not pypi_dependency:
-        pypi_dependency = args.get("pypi_dependencies")
-    if not pypi_dependency:
-        pypi_dependency = args.get("requires_pypi")
+        return
+    if outer:
+        outer.write(f"Installing required PyPI packages...")
     idx = 0
-    if pypi_dependency:
-        quiet_print(
-            f"Following PyPI dependencies should be met before installing {args.get('module_name')}.",
-            args=args,
-        )
+    while idx < len(pypi_dependency):
+        dep = pypi_dependency[idx]
+        r = run(["pip", "install", dep])
+        if r.returncode == 0:
+            pypi_dependency.remove(dep)
+        else:
+            idx += 1
+    if len(pypi_dependency) > 0 and outer:
+        outer.write(f"Following PyPI dependencies could not be installed.")
         for dep in pypi_dependency:
-            quiet_print(f"- {dep}", args=args)
-        quiet_print(f"Installing required PyPI packages...", args=args)
-        idx = 0
-        while idx < len(pypi_dependency):
-            dep = pypi_dependency[idx]
-            r = run(["pip", "install", dep])
-            if r.returncode == 0:
-                pypi_dependency.remove(dep)
-            else:
-                idx += 1
-        if len(pypi_dependency) > 0:
-            quiet_print(
-                f"Following PyPI dependencies could not be installed.",
-                args=args,
-            )
-            for dep in pypi_dependency:
-                quiet_print(f"- {dep}", args=args)
+            outer.write(f"- {dep}")
     if pypi_dependency:
-        quiet_print(
-            f"Skipping installation of {args.get('module_name')} due to unmet requirement for PyPI packages",
-            args=args,
-        )
         return False
     else:
         return True
@@ -244,21 +229,22 @@ def get_updatable(modules=[], requested_modules=[], strategy="consensus"):
     return update_vers, resolution_applied, resolution_failed
 
 
-def make_install_temp_dir(args={}):
+def make_install_temp_dir(module_name: Optional[str]=None, modules_dir: Optional[str]=None, clean: bool=False):
     from ..system import get_modules_dir
     from ..consts import install_tempdir_name
     from shutil import rmtree
     from pathlib import Path
 
-    if not args.get("module_dir"):
-        args["modules_dir"] = get_modules_dir()
+    if not modules_dir:
+        modules_dir = get_modules_dir()
+    if not modules_dir or not module_name:
+        return
     temp_dir = (
-        Path(args.get("modules_dir")) / install_tempdir_name / args.get("module_name")
+        Path(modules_dir) / install_tempdir_name / module_name
     )
-    if args.get("clean"):
+    if clean:
         rmtree(str(temp_dir), ignore_errors=True)
     temp_dir.mkdir(parents=True, exist_ok=True)
-    args["temp_dir"] = str(temp_dir)
     return temp_dir
 
 
@@ -429,33 +415,32 @@ def write_install_marks(args={}):
     wf.close()
 
 
-def install_module_from_url(url, args={}):
+def install_module_from_url(url: Optional[str]=None, module_name: Optional[str]=None, modules_dir: Optional[str]=None, clean: bool=False, outer=None, args={}):
     from pathlib import Path
     from ..system import get_modules_dir
     from ..util.download import download
     from ..util.util import load_yml_conf
-    from ..util.util import quiet_print
     from .remote import get_install_deps
     from shutil import move
     from shutil import rmtree
 
+    if not url:
+        return
     module_name = Path(url).name
-    args["module_name"] = module_name
-    temp_dir = make_install_temp_dir(args=args)
+    temp_dir = make_install_temp_dir(module_name=module_name, modules_dir=modules_dir, clean=clean)
+    if not temp_dir:
+        return
     download(url, temp_dir.parent)
-    yml_conf_path = temp_dir / (args["module_name"] + ".yml")
+    yml_conf_path = temp_dir / (module_name + ".yml")
     if not yml_conf_path.exists():
-        quiet_print(
-            f"{url} is not a valid OakVar module. {module_name}.yml should exist.",
-            args=args,
-        )
+        if outer:
+            outer.write(f"{url} is not a valid OakVar module. {module_name}.yml should exist.")
         return False
     conf = load_yml_conf(yml_conf_path)
-    args["conf"] = conf
-    deps, deps_pypi = get_install_deps(conf_path=str(yml_conf_path))
-    args["pypi_dependency"] = deps_pypi
-    if not install_pypi_dependency(args=args):
-        quiet_print(f"failed in installing pypi package dependence", args=args)
+    deps, pypi_dependency = get_install_deps(conf_path=str(yml_conf_path))
+    if not install_pypi_dependency(pypi_dependency=pypi_dependency, outer=outer)
+        if outer:
+            outer.write(f"Skipping installation of {module_name} due to some PyPI dependency was not installed.")
         return False
     for deps_mn, deps_ver in deps.items():
         install_module(

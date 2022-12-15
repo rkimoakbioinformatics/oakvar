@@ -900,7 +900,7 @@ def check_system_directories(args={}) -> bool:
 def check_account(args={}) -> bool:
     from ..util.util import quiet_print
     from ..store.ov.account import token_set_exists
-    from ..store.ov.account import check
+    from ..store.ov.account import check_logged_in_with_token
 
     if not token_set_exists():
         quiet_print(
@@ -908,7 +908,7 @@ def check_account(args={}) -> bool:
             args=args,
         )
         return False
-    if not check(args={"quiet": True}):
+    if not check_logged_in_with_token(args={"quiet": True}):
         quiet_print(f"not logged in. Use `ov account login` to log in.", args=args)
         return False
     return True

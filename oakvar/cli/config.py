@@ -4,48 +4,46 @@ from . import cli_func
 
 @cli_entry
 def cli_config_user(args):
-    args.fmt = "yaml"
-    args.to = "stdout"
     return user(args)
 
 
 @cli_func
 def user(args, __name__="config user"):
-    from ..lib.util.admin_util import show_main_conf
+    import oyaml as yaml
+    from ..api.config import user
+    from ..lib.util.util import quiet_print
 
-    ret = show_main_conf(args)
-    return ret
+    conf = user()
+    conf = yaml.dump(conf, default_flow_style=False)
+    quiet_print(conf, args=args)
 
 
 @cli_entry
 def cli_config_system(args):
-    args.fmt = "table"
-    args.to = "stdout"
     return system(args)
 
 
 @cli_func
 def system(args, __name__="config system"):
-    from ..lib.system import show_system_conf
-    from ..lib.system import get_sys_conf_value
-    from ..lib.system import set_sys_conf_value
-    from ..lib.util.util import quiet_print
+    from rich.console import Console
+    from rich.table import Table
+    from rich.box import SQUARE
+    from ..api.config import system
 
     key = args.get("key")
     value = args.get("value")
     ty = args.get("type")
-    if key:
-        if value:
-            if not ty:
-                ty = "str"
-            set_sys_conf_value(key, value, ty)
-            ret = None
-        else:
-            ret = get_sys_conf_value(key)
-            quiet_print(f"{ret}", args=args)
-    else:
-        ret = show_system_conf(args)
-    return ret
+    ret = system(key=key, value=value, type=ty)
+    if isinstance(ret, str):
+        print(ret)
+    elif isinstance(ret, dict):
+        console = Console()
+        table = Table(title=ret.get("sys_conf_path"), box=SQUARE)
+        table.add_column("Key")
+        table.add_column("Value")
+        for k, v in ret.items():
+            table.add_row(k, str(v))
+        console.print(table)
 
 
 def get_parser_fn_config():
@@ -64,15 +62,6 @@ def add_parser_ov_config_user(subparsers):
         "user",
         epilog="A dictionary. content of OakVar user configuration file",
         help="shows oakvar user configuration",
-    )
-    parser_cli_config_oakvar.add_argument(
-        "--fmt", default="json", help="Format of output. json or yaml."
-    )
-    parser_cli_config_oakvar.add_argument(
-        "--to", default="return", help='"stdout" to print. "return" to return'
-    )
-    parser_cli_config_oakvar.add_argument(
-        "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_config_oakvar.set_defaults(func=cli_config_user)
     parser_cli_config_oakvar.r_return = "A named list. OakVar user config information"  # type: ignore

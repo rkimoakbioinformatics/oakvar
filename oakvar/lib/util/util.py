@@ -249,7 +249,7 @@ def get_args_package(args: dict) -> Dict:
     return args
 
 
-def get_args(parser, inargs, inkwargs):
+def get_args(parser, inargs, inkwargs) -> dict:
     from types import SimpleNamespace
     from argparse import Namespace
 
@@ -373,9 +373,11 @@ def quiet_print(msg, args=None, quiet=None):
         system_worker_state[SYSTEM_STATE_SETUP_KEY][module_name]["update_time"] = time()
 
 
-def email_is_valid(email: str) -> bool:
+def email_is_valid(email: Optional[str]) -> bool:
     from re import fullmatch
 
+    if not email:
+        return False
     if fullmatch(
         r"([A-Za-z0-9]+[.-_])*[A-Za-z0-9]+@[A-Za-z0-9-]+(\.[A-Z|a-z]{2,})+", email
     ):
@@ -384,9 +386,11 @@ def email_is_valid(email: str) -> bool:
         return False
 
 
-def pw_is_valid(pw: str) -> bool:
+def pw_is_valid(pw: Optional[str]) -> bool:
     from re import fullmatch
 
+    if not pw:
+        return False
     if fullmatch(r"[a-zA-Z0-9!?@*&\-\+]+", pw):
         return True
     else:
@@ -414,58 +418,6 @@ def compare_version(v1, v2):
         return 1
     else:
         return -1
-
-
-def get_email_pw_from_input(email=None, pw=None, pwconfirm=False) -> Tuple[str, str]:
-    from getpass import getpass
-
-    email = email or ""
-    pw = pw or ""
-    done = False
-    startover = False
-    while not done:
-        while not email or startover:
-            startover = False
-            if email:
-                email = input(f"e-mail [{email}]: ") or email
-            else:
-                email = input(f"e-mail: ")
-            if not email_is_valid(email):
-                print(f"invalid e-mail")
-                email = None
-        while not pw and not startover:
-            pw = getpass("Password (or just enter to start over): ")
-            if pw == "":
-                startover = True
-                break
-            if not pw_is_valid(pw):
-                print(f"invalid password")
-                pw = None
-        if pwconfirm:
-            pwagain = None
-            while not pwagain and not startover:
-                pwagain = getpass("Password again (or just enter to start over): ")
-                if pwagain == "":
-                    pw = ""
-                    startover = True
-                    break
-                if not pw_is_valid(pwagain):
-                    print(f"invalid password")
-                    pwagain = None
-                elif pw != pwagain:
-                    print(f"password mismatch")
-                    pwagain = None
-                elif pw == pwagain:
-                    done = True
-                    break
-        else:
-            done = True
-    print("")
-    return email, pw
-
-
-def get_email_from_args(args={}) -> Optional[str]:
-    return args.get("email")
 
 
 def version_requirement_met(version, target_version) -> bool:
@@ -537,6 +489,30 @@ def yield_tabular_lines(l, col_spacing=2, indent=0):
             jline += stok + " " * (max_lens[i] + col_spacing - len(stok))
         yield jline
 
+
+def print_list_of_dict(l):
+    from rich.console import Console
+    from rich.table import Table
+    from rich import box
+
+    if not l:
+        return
+    table = Table(show_header=True, title_style="bold", box=box.SQUARE)
+    headers = list(l[0].keys())
+    for header in headers:
+        table.add_column(header)
+    for d in l:
+        row = []
+        for header in headers:
+            v = d[header]
+            if type(v) == list:
+                v = ", ".join(v)
+            else:
+                v = str(v)
+            row.append(v)
+        table.add_row(*row)
+    console = Console()
+    console.print(table)
 
 def print_tabular_lines(l, args=None):
     for line in yield_tabular_lines(l):

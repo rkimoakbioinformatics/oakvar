@@ -9,11 +9,11 @@ def cli_module_pack(args):
 
 
 @cli_func
-def pack(args, __name__="module pack"):
-    from ...lib.module.local import pack_module
+def pack(args: dict, __name__="module pack"):
+    from ...api.module import pack
 
-    ret = pack_module(args)
-    return ret
+    pack(**args, outer=args.get("outer"))
+    print(f"To register the packed module, use `ov store register`.")
 
 
 @cli_entry
@@ -25,22 +25,11 @@ def cli_module_ls(args):
 
 @cli_func
 def ls(args, __name__="module ls"):
-    from .ls import list_modules
-    from ...lib.util.util import print_tabular_lines
+    from ...api.module import ls
+    from ...lib.util.util import print_list_of_dict
 
-    if args.get("fmt") == None:
-        args["fmt"] = "json"
-    to = args.get("to", "return")
-    fmt = args.get("fmt")
-    ret = list_modules(args)
-    if to == "stdout":
-        if ret:
-            if fmt == "tabular":
-                print_tabular_lines(ret)
-            else:
-                print(ret)
-    else:
-        return ret
+    ret = ls(**args)
+    print_list_of_dict(ret)
 
 
 @cli_entry
@@ -51,83 +40,13 @@ def cli_module_info(args):
 
 @cli_func
 def info(args, __name__="module info"):
-    from oyaml import dump
-    from ...lib.module.local import get_local_module_info
-    from ...lib.module.remote import get_remote_module_info
-    from ...lib.module.local import LocalModule
-    from ...lib.module.remote import get_readme
+    from ...api.module import info
     from .info import print_module_info
 
-    ret = {}
-    module_name = args.get("module", None)
-    if not module_name:
-        return ret
-    installed = False
-    remote_available = False
-    up_to_date = False
-    local_info = None
-    remote_info = None
-    fmt = args.get("fmt", "json")
-    to = args.get("to", "return")
-    # Readm
-    readme = get_readme(module_name)
-    ret["readme"] = readme
-    # Remote
-    remote_info = get_remote_module_info(module_name)
-    remote_available = remote_info != None
-    # Local
-    local_info = get_local_module_info(module_name)
-    if local_info:
-        installed = True
-    else:
-        installed = False
-    if not remote_available and not installed:
-        if to == "stdout":
-            print(f"Module not found")
-        return None
-    if remote_available and remote_info:
-        ret.update(remote_info.to_info())
-        ret["output_columns"] = []
-        if remote_info.output_columns:
-            for col in remote_info.output_columns:
-                desc = ""
-                if "desc" in col:
-                    desc = col["desc"]
-                ret["output_columns"].append(
-                    {"name": col["name"], "title": col["title"], "desc": desc}
-                )
-    else:
-        ret["store_availability"] = False
-    ret["installed"] = installed
-    if installed:
-        if not args.get("local") and isinstance(local_info, LocalModule):
-            ret["installed_version"] = local_info.code_version
-            ret["location"] = local_info.directory
-    else:
-        pass
-    if (
-        installed
-        and remote_available
-        and local_info
-        and local_info.code_version
-        and remote_info
-    ):
-        if installed and local_info.code_version >= remote_info.latest_code_version:
-            up_to_date = True
-        else:
-            up_to_date = False
-        ret["latest_installed"] = up_to_date
-        ret["latest_store_version"] = ret["latest_version"]
-        del ret["latest_version"]
-        ret["latest_version"] = max(
-            local_info.code_version, remote_info.latest_code_version
-        )
-    if to == "stdout":
-        print_module_info(module_info=ret)
-    elif fmt == "yaml":
-        ret = dump(ret)
-    else:
-        return ret
+    ret = info(**args)
+    if not ret:
+        print(f"Module not found")
+    print_module_info(module_info=ret)
 
 
 @cli_entry
@@ -356,7 +275,7 @@ def add_parser_fn_module_pack(subparsers):
         "pack", help="pack a module to register at OakVar store"
     )
     parser_cli_module_pack.add_argument(
-        dest="module",
+        dest="module_name",
         default=None,
         help="Name of or path to the module to pack",
     )
@@ -426,7 +345,7 @@ def add_parser_ov_module_install(subparsers):
         description="Installs OakVar modules.",
     )
     parser_ov_module_install.add_argument(
-        "modules", nargs="+", help="Modules to install. May be regular expressions."
+        "module_names", nargs="*", default=[], help="Modules to install. May be regular expressions."
     )
     parser_ov_module_install.add_argument(
         "-f",
@@ -556,9 +475,9 @@ def add_parser_ov_module(subparsers):
         epilog="returns information of the queried module",
         help="shows module information.",
     )
-    parser_ov_module_info.add_argument("module", help="Module to get info about")
+    parser_ov_module_info.add_argument("module_name", help="Module to get info about")
     parser_ov_module_info.add_argument(
-        "-l", "--local", dest="local", help="Include local info", action="store_true"
+        "-l", "--local", dest="local", default=False, help="Include local info", action="store_true"
     )
     parser_ov_module_info.add_argument(
         "--md", default=None, help="Specify the root directory of OakVar modules"
@@ -586,7 +505,7 @@ def add_parser_ov_module(subparsers):
         description="lists modules.",
     )
     parser_ov_module_ls.add_argument(
-        "pattern", nargs="?", default=r".*", help="Regular expression for module names"
+        "patterns", nargs="*", default=[".*"], help="Regular expression for module names"
     )
     parser_ov_module_ls.add_argument(
         "-a",
@@ -616,7 +535,7 @@ def add_parser_ov_module(subparsers):
         "--nameonly", action="store_true", default=False, help="Only list module names"
     )
     parser_ov_module_ls.add_argument(
-        "--bytes",
+        "--raw-bytes",
         action="store_true",
         default=False,
         dest="raw_bytes",
