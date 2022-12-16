@@ -658,6 +658,9 @@ def install_module(
                 or force_data
             )
         ):
+            if not args.get("data_url"):
+                quiet_print(f"data_url is empty.", args=args)
+                raise ModuleInstallationError(module_name)
             if not download_code_or_data(kind="data", args=args, system_worker_state=stage_handler.system_worker_state):
                 quiet_print(f"data download failed", args=args)
                 raise ModuleInstallationError(module_name)
