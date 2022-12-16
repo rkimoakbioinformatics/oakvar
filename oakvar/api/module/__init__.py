@@ -3,24 +3,51 @@ from typing import List
 from ...lib.module import InstallProgressHandler
 
 
-def pack(module_name: Optional[str]=None, outdir: str=".", code_only: bool=False, split: bool=False, outer=None):
+def pack(
+    module_name: Optional[str] = None,
+    outdir: str = ".",
+    code_only: bool = False,
+    split: bool = False,
+    outer=None,
+):
     from ...lib.module.local import pack_module
 
     if not module_name:
         return
-    ret = pack_module(module_name=module_name, outdir=outdir, code_only=code_only, split=split, outer=outer)
+    ret = pack_module(
+        module_name=module_name,
+        outdir=outdir,
+        code_only=code_only,
+        split=split,
+        outer=outer,
+    )
     return ret
 
 
-def ls(patterns: List[str]=[".*"], available: bool=False, types: List[str]=[], tags: List[str]=[], nameonly: bool=False, raw_bytes: bool=False, **kwargs):
+def ls(
+    patterns: List[str] = [".*"],
+    available: bool = False,
+    types: List[str] = [],
+    tags: List[str] = [],
+    nameonly: bool = False,
+    raw_bytes: bool = False,
+    **kwargs,
+):
     from .ls_logic import list_modules
 
     _ = kwargs
-    ret = list_modules(patterns=patterns, types=types, tags=tags, available=available, nameonly=nameonly, raw_bytes=raw_bytes)
+    ret = list_modules(
+        patterns=patterns,
+        types=types,
+        tags=tags,
+        available=available,
+        nameonly=nameonly,
+        raw_bytes=raw_bytes,
+    )
     return ret
 
 
-def info(module_name: Optional[str]=None, local: bool=False, **kwargs):
+def info(module_name: Optional[str] = None, local: bool = False, **kwargs):
     from ...lib.module.local import get_local_module_info
     from ...lib.module.remote import get_remote_module_info
     from ...lib.module.local import LocalModule
@@ -89,7 +116,20 @@ def info(module_name: Optional[str]=None, local: bool=False, **kwargs):
     return ret
 
 
-def install(module_names: List[str]=[], overwrite: bool=False, force_data: bool=False, yes: bool=False, skip_dependencies: bool=False, skip_data: bool=False, no_fetch: bool=False, outer=None, **kwargs):
+def install(
+    module_names: List[str] = [],
+    modules_dir: Optional[str] = None,
+    overwrite: bool = False,
+    clean: bool = False,
+    force_data: bool = False,
+    yes: bool = False,
+    skip_dependencies: bool = False,
+    skip_data: bool = False,
+    no_fetch: bool = False,
+    outer=None,
+    error=None,
+    system_worker_state=None**kwargs,
+):
     from .install import get_modules_to_install
     from .install import show_modules_to_install
     from ...lib.module import install_module
@@ -104,7 +144,9 @@ def install(module_names: List[str]=[], overwrite: bool=False, force_data: bool=
     _ = kwargs
     if not no_fetch:
         try_fetch_ov_store_cache()
-    to_install = get_modules_to_install(module_names, skip_dependencies=skip_dependencies, outer=outer)
+    to_install = get_modules_to_install(
+        module_names, skip_dependencies=skip_dependencies, outer=outer
+    )
     if len(to_install) == 0:
         if outer:
             outer.write("No module to install")
@@ -117,23 +159,35 @@ def install(module_names: List[str]=[], overwrite: bool=False, force_data: bool=
     for module_name, module_version in sorted(to_install.items()):
         try:
             if is_url(module_name):
-                if not install_module_from_url(module_name, args=args):
+                if not install_module_from_url(
+                    module_name,
+                    modules_dir,
+                    clean=clean,
+                    overwrite=overwrite,
+                    force_data=force_data,
+                    skip_data=skip_data,
+                    outer=outer,
+                ):
                     problem_modules.append(module_name)
             elif is_zip_path(module_name):
-                if not install_module_from_zip_path(module_name, args=args):
+                if not install_module_from_zip_path(
+                    module_name, force_data=force_data, skip_data=skip_data, outer=outer
+                ):
                     problem_modules.append(module_name)
             else:
                 stage_handler = InstallProgressStdout(
-                    module_name, module_version, quiet=args.get("quiet")
+                    module_name, module_version, outer=outer
                 )
                 ret = install_module(
                     module_name,
                     version=module_version,
-                    force_data=args["force_data"],
+                    force_data=force_data,
+                    overwrite=overwrite,
                     stage_handler=stage_handler,
-                    skip_data=args["skip_data"],
-                    quiet=args.get("quiet"),
-                    args=args,
+                    skip_data=skip_data,
+                    outer=outer,
+                    error=error,
+                    system_worker_state=system_worker_state,
                 )
                 if not ret:
                     problem_modules.append(module_name)
@@ -143,12 +197,16 @@ def install(module_names: List[str]=[], overwrite: bool=False, force_data: bool=
                     problem_modules.append(module_name)
             if hasattr(e, "traceback") and getattr(e, "traceback"):
                 import traceback
+
                 traceback.print_exc()
-            quiet_print(e, args=args)
+            if error:
+                error.write(e)
     if problem_modules:
-        quiet_print(f"following modules were not installed due to problems:", args=args)
+        if outer:
+            outer.write(f"Following modules were not installed due to problems:")
         for mn in problem_modules:
-            quiet_print(f"- {mn}", args=args)
+            if outer:
+                outer.write(f"- {mn}")
         return False
     else:
         return
@@ -272,15 +330,12 @@ def installbase(args, no_fetch=False, __name__="module installbase"):
 
 
 class InstallProgressStdout(InstallProgressHandler):
-    def __init__(self, module_name, module_version, quiet=True):
+    def __init__(self, module_name: str, module_version: str, outer=None):
         super().__init__(module_name, module_version)
-        self.quiet = quiet
+        self.outer = outer
         self.system_worker_state = None
 
     def stage_start(self, stage):
-        from ...lib.util.util import quiet_print
-
         self.cur_stage = stage
-        quiet_print(self._stage_msg(stage), args={"quiet": self.quiet})
-
-
+        if self.outer:
+            self.outer.write(self._stage_msg(stage))
