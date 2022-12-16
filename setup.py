@@ -17,7 +17,7 @@ def walk_and_add(d, pkg_files):
         "webresult",
         "webstore",
         "websubmit",
-        "assets"
+        "assets",
     ]
     for root, _, files in os.walk(d):
         root_spl = root.split(os.sep)
@@ -43,7 +43,7 @@ walk_and_add("oakvar", oakvar_files)
 walk_and_add("cravat", cravat_files)
 setup(
     name="oakvar",
-    version="2.7.14",
+    version="2.7.15",
     description="A genomic variant analysis platform",
     long_description=long_description,
     long_description_content_type="text/x-rst",
