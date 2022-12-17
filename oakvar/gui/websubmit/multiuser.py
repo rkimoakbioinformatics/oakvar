@@ -7,7 +7,6 @@ server_ready = False
 admindb_path = None
 DEFAULT_PRIVATE_KEY = "default_private_key"
 FIREBASE_PUBLIC_KEY_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"
-PROJECT_ID = "fabled-pivot-305219"
 COOKIE_KEY = "oakvar_token"
 
 
@@ -244,6 +243,7 @@ async def get_users(request):
     users = await admindb.get_users()
     return json_response(users)
 
+
 async def make_admin(request):
     from aiohttp.web import Response
 
@@ -275,6 +275,7 @@ async def remove_admin(request):
     await admindb.remove_admin(email)
     return Response(status=200)
 
+
 def add_routes(router):
     from os.path import dirname
     from os.path import realpath
@@ -291,4 +292,3 @@ def add_routes(router):
     router.add_route("GET", "/server/makeadmin", make_admin)
     router.add_route("GET", "/server/removeadmin", remove_admin)
     router.add_static("/server", join(dirname(realpath(__file__))))
-

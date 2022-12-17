@@ -74,7 +74,7 @@ def create(email=None, pw=None, args={}, quiet=None) -> dict:
         "pw": pw,
     }
     try:
-        r = post(create_account_url, data=params)
+        r = post(create_account_url, json=params)
         status_code = r.status_code
         if status_code == 403:
             msg = "account-exists"
@@ -112,7 +112,7 @@ def delete(args={}) -> bool:
     store_url = get_store_url()
     url = store_url + "/account/delete"
     params = {"idToken": token_set["idToken"]}
-    r = post(url, data=params)
+    r = post(url, json=params)
     status_code = r.status_code
     if status_code == 200:
         quiet_print(f"success", args=args)
@@ -156,7 +156,7 @@ def reset(args={}) -> bool:
         return False
     url = get_store_url() + "/account/reset"
     params = {"email": email}
-    res = post(url, data=params)
+    res = post(url, json=params)
     if res.status_code == 200:
         quiet_print(
             "Success. Check your email for instruction to reset your password.",
@@ -198,7 +198,7 @@ def login(email=None, pw=None, args={}, quiet=None) -> bool:
     change_account_url = get_store_url() + "/account/login"
     params = {"email": email, "pw": pw}
     try:
-        r = post(change_account_url, data=params)
+        r = post(change_account_url, json=params)
         status_code = r.status_code
         if status_code == 200:
             save_token_set(r.json())
@@ -286,7 +286,7 @@ def id_token_is_valid() -> Tuple[bool, bool]:  # valid, expired
         return False, True
     params = {"idToken": id_token}
     url = get_store_url() + "/account/id_token_verified"
-    res = post(url, data=params)
+    res = post(url, json=params)
     st = res.status_code
     if st == 460:  # valid but expired
         return True, True
@@ -303,7 +303,7 @@ def refresh_token_set() -> bool:
     refresh_token = get_refresh_token()
     url = get_store_url() + "/account/refresh"
     params = {"refreshToken": refresh_token}
-    res = post(url, data=params)
+    res = post(url, json=params)
     if res.status_code == 200:
         token_set = get_token_set()
         if token_set:
@@ -351,7 +351,7 @@ def change(args={}) -> bool:
     refresh_token = get_refresh_token()
     url = get_store_url() + "/account/change"
     params = {"idToken": id_token, "refreshToken": refresh_token, "newpw": newpw}
-    res = post(url, data=params)
+    res = post(url, json=params)
     status_code = res.status_code
     if status_code != 200:
         quiet_print(f"{res.text}", args=args)
@@ -465,14 +465,16 @@ def email_is_verified(email: str, args={}, quiet=None) -> bool:
 
     url = get_store_url() + "/account/email_verified"
     params = {"email": email}
-    res = post(url, data=params)
+    res = post(url, json=params)
     if res.status_code == 200:
         return True
     elif res.status_code == 404:
         quiet_print(f"user not found", args=args, quiet=quiet)
         return False
     else:
-        quiet_print(f"{email} has not been verified. {res.text}", args=args, quiet=quiet)
+        quiet_print(
+            f"{email} has not been verified. {res.text}", args=args, quiet=quiet
+        )
         return False
 
 

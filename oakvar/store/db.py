@@ -539,7 +539,7 @@ def fetch_conf_cache(args={}, conn=None, cursor=None, conf={}):
         store = module_store["store"]
         fpath = join(get_cache_dir("conf", conf=conf), store, name + ".json")
         url = f"{get_store_url()}/fetch_conf/{store}/{name}"
-        res = s.post(url, data=params)
+        res = s.post(url, json=params)
         content = b"{}"
         if res.status_code == 200:
             content = res.content
@@ -575,7 +575,7 @@ def fetch_logo_cache(args={}, conn=None, cursor=None, conf={}):
         store = module_store["store"]
         fpath = join(get_cache_dir("logo", conf=conf), store, name + ".png")
         url = f"{get_store_url()}/fetch_logo/{store}/{name}"
-        res = s.post(url, data=params)
+        res = s.post(url, json=params)
         content = b""
         if res.status_code == 200:
             content = res.content
@@ -611,7 +611,7 @@ def fetch_readme_cache(args={}, conn=None, cursor=None, conf={}):
         store = module_store["store"]
         fpath = join(get_cache_dir("readme", conf=conf), store, name)
         url = f"{get_store_url()}/fetch_readme/{store}/{name}"
-        res = s.post(url, data=params)
+        res = s.post(url, json=params)
         content = b""
         if res.status_code == 200:
             content = res.content
@@ -639,7 +639,7 @@ def fetch_summary_cache(args={}, conn=Any, cursor=Any):
     s = Session()
     s.headers["User-Agent"] = "oakvar"
     quiet_print(f"fetching store cache 1/5...", args=args)
-    res = s.post(url, data=params)
+    res = s.post(url, json=params)
     if res.status_code != 200:
         if res.status_code == 401:
             raise AuthorizationError()
@@ -678,7 +678,7 @@ def fetch_versions_cache(args={}, conn=None, cursor=None):
     s = Session()
     s.headers["User-Agent"] = "oakvar"
     quiet_print(f"fetching store cache 2/5...", args=args)
-    res = s.post(url, data=params)
+    res = s.post(url, json=params)
     if res.status_code != 200:
         if res.status_code == 401:
             raise AuthorizationError()
@@ -755,7 +755,7 @@ def get_urls(module_name: str, code_version: str, args={}, conn=None, cursor=Non
     params = {"idToken": id_token}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
-    res = s.post(url, data=params)
+    res = s.post(url, json=params)
     if res.status_code == 200:
         return res.json()
     else:

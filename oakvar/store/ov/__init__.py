@@ -15,7 +15,7 @@ def module_code_url(module_name: str, version=None) -> Optional[str]:
     s.headers["User-Agent"] = "oakvar"
     url = get_store_url() + f"/code_url/{module_name}/{version}"
     params = {"idToken": id_token}
-    res = s.post(url, data=params)
+    res = s.post(url, json=params)
     if res.status_code == 200:
         code_url = res.text
         return code_url
@@ -40,7 +40,7 @@ def module_data_url(module_name: str, version=None) -> Optional[str]:
     s.headers["User-Agent"] = "oakvar"
     url = get_store_url() + f"/data_url/{module_name}/{version}"
     params = {"idToken": id_token}
-    res = s.post(url, data=params)
+    res = s.post(url, json=params)
     if res.status_code == 200:
         data_url = res.text
         return data_url
@@ -192,7 +192,7 @@ def get_server_last_updated(args={}) -> Tuple[str, int]:
     s.headers["User-Agent"] = "oakvar"
     url = get_store_url() + "/last_updated"
     params = {"idToken": id_token}
-    res = s.post(url, data=params)
+    res = s.post(url, json=params)
     if res.status_code != 200:
         return "", res.status_code
     server_last_updated = res.text
@@ -256,14 +256,17 @@ def register(args={}) -> bool:
         if not params["conf"]:
             quiet_print(f"no configuration file exists for {module_name}", args=args)
             return False
-        res = post(url, data=params)
+        res = post(url, json=params)
         if res.status_code == 200:
             quiet_print(f"success", args=args)
             return True
         else:
-            quiet_print(f"Error from the store server: {res.status_code} {res.text}", args=args)
+            quiet_print(
+                f"Error from the store server: {res.status_code} {res.text}", args=args
+            )
             return False
     except Exception:
         import traceback
+
         traceback.print_exc()
         return False
