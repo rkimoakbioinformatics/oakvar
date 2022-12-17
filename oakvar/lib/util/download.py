@@ -1,4 +1,6 @@
-def download(url, fpath, system_worker_state=None, check_install_kill=None, module_name=None):
+def download(
+    url, fpath, system_worker_state=None, check_install_kill=None, module_name=None
+):
     from .download_library import download as download_util
     import gdown
 
@@ -8,7 +10,16 @@ def download(url, fpath, system_worker_state=None, check_install_kill=None, modu
     elif "github.com" in url:
         download_from_github(url=url, fpath=fpath)
     else:
-        download_util(url, fpath, kind="file", verbose=False, replace=True, system_worker_state=system_worker_state, check_install_kill=check_install_kill, module_name=module_name)
+        download_util(
+            url,
+            fpath,
+            kind="file",
+            verbose=False,
+            replace=True,
+            system_worker_state=system_worker_state,
+            check_install_kill=check_install_kill,
+            module_name=module_name,
+        )
 
 
 def get_git_api_url(url):
@@ -26,7 +37,7 @@ def get_git_api_url(url):
     return api_url
 
 
-def download_git_file(url=None, fpath=None):
+def download_from_github(url=None, fpath=None):
     from pathlib import Path
     import download as download_util
 
@@ -40,6 +51,7 @@ def download_git_file(url=None, fpath=None):
     if not isinstance(install_dir, Path):
         install_dir = Path(install_dir)
     download_git_folder(url=url, install_dir=install_dir)
+
 
 def download_git_folder(url=None, install_dir=None):
     from requests import get

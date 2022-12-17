@@ -6,12 +6,16 @@ def get_email_pw_from_user_conf():
     from ....system import get_user_conf
     from ....store.consts import OV_STORE_EMAIL_KEY
     from ....store.consts import OV_STORE_PW_KEY
+
     user_conf = get_user_conf()
     email = user_conf.get(OV_STORE_EMAIL_KEY)
     pw = user_conf.get(OV_STORE_PW_KEY)
     return email, pw
 
-def get_email_pw_interactively(email: Optional[str]=None, pw: Optional[str]=None, pwconfirm=True) -> Tuple:
+
+def get_email_pw_interactively(
+    email: Optional[str] = None, pw: Optional[str] = None, pwconfirm=True
+) -> Tuple:
     from ....util.util import email_is_valid
     from ....util.util import pw_is_valid
     from getpass import getpass
@@ -33,7 +37,13 @@ def get_email_pw_interactively(email: Optional[str]=None, pw: Optional[str]=None
     return email, pw
 
 
-def create(email: Optional[str]=None, pw: Optional[str]=None, pwconfirm=False, interactive: bool=False, outer=None) -> dict:
+def create(
+    email: Optional[str] = None,
+    pw: Optional[str] = None,
+    pwconfirm=False,
+    interactive: bool = False,
+    outer=None,
+) -> dict:
     from requests import post
     from ....system import get_system_conf
     from ....store.consts import store_url_key
@@ -54,7 +64,7 @@ def create(email: Optional[str]=None, pw: Optional[str]=None, pwconfirm=False, i
     success = False
     status_code = 0
     try:
-        r = post(create_account_url, data=params)
+        r = post(create_account_url, json=params)
         status_code = r.status_code
         if status_code == 500:
             msg = "Server error"
@@ -95,7 +105,7 @@ def delete(outer=None) -> bool:
     store_url = get_store_url()
     url = store_url + "/account/delete"
     params = {"idToken": token_set["idToken"]}
-    r = post(url, data=params)
+    r = post(url, json=params)
     status_code = r.status_code
     if status_code == 200:
         if outer:
@@ -128,7 +138,7 @@ def check_logged_in_with_token(outer=None) -> bool:
         return False
 
 
-def reset(email: Optional[str]=None, outer=None) -> bool:
+def reset(email: Optional[str] = None, outer=None) -> bool:
     from ...ov import get_store_url
     from ....util.util import email_is_valid
     from requests import post
@@ -141,10 +151,12 @@ def reset(email: Optional[str]=None, outer=None) -> bool:
         return False
     url = get_store_url() + "/account/reset"
     params = {"email": email}
-    res = post(url, data=params)
+    res = post(url, json=params)
     if res.status_code == 200:
         if outer:
-            outer.write("Success. Check your email for instruction to reset your password.")
+            outer.write(
+                "Success. Check your email for instruction to reset your password."
+            )
         return True
     else:
         if outer:
@@ -158,7 +170,7 @@ def get_email_from_token_set() -> Optional[str]:
     return email
 
 
-def try_login_with_token(email: Optional[str]=None, outer=None) -> bool:
+def try_login_with_token(email: Optional[str] = None, outer=None) -> bool:
     if not check_logged_in_with_token(outer=outer):
         return False
     token_set_email = get_email_from_token_set()
@@ -166,6 +178,7 @@ def try_login_with_token(email: Optional[str]=None, outer=None) -> bool:
         if outer:
             outer.write(f"Logged in as {token_set_email}")
     return True
+
 
 def login(email=None, pw=None, interactive=False, outer=None) -> dict:
     from requests import post
@@ -182,7 +195,7 @@ def login(email=None, pw=None, interactive=False, outer=None) -> dict:
     login_url = get_store_url() + "/account/login"
     params = {"email": email, "pw": pw}
     try:
-        r = post(login_url, data=params)
+        r = post(login_url, json=params)
         print(f"@ r={r}. text={r.text}")
         status_code = r.status_code
         if status_code == 200:
@@ -196,6 +209,7 @@ def login(email=None, pw=None, interactive=False, outer=None) -> dict:
             return {"success": False, "status_code": status_code}
     except:
         import traceback
+
         msg = traceback.format_exc()
         if outer:
             outer.write(f"server error")
@@ -276,7 +290,7 @@ def id_token_is_valid() -> Tuple[bool, bool]:  # valid, expired
         return False, True
     params = {"idToken": id_token}
     url = get_store_url() + "/account/id_token_verified"
-    res = post(url, data=params)
+    res = post(url, json=params)
     st = res.status_code
     if st == 460:  # valid but expired
         return True, True
@@ -293,7 +307,7 @@ def refresh_token_set() -> bool:
     refresh_token = get_refresh_token()
     url = get_store_url() + "/account/refresh"
     params = {"refreshToken": refresh_token}
-    res = post(url, data=params)
+    res = post(url, json=params)
     if res.status_code == 200:
         token_set = get_token_set()
         if token_set:
@@ -310,7 +324,7 @@ def refresh_token_set() -> bool:
         return False
 
 
-def change(newpw: Optional[str]=None, outer=None) -> bool:
+def change(newpw: Optional[str] = None, outer=None) -> bool:
     from requests import post
     from ...ov import get_store_url
     from getpass import getpass
@@ -340,7 +354,7 @@ def change(newpw: Optional[str]=None, outer=None) -> bool:
     refresh_token = get_refresh_token()
     url = get_store_url() + "/account/change"
     params = {"idToken": id_token, "refreshToken": refresh_token, "newpw": newpw}
-    res = post(url, data=params)
+    res = post(url, json=params)
     status_code = res.status_code
     if status_code != 200:
         if outer:
@@ -447,14 +461,16 @@ def email_is_verified(email: str, args={}, quiet=None) -> bool:
 
     url = get_store_url() + "/account/email_verified"
     params = {"email": email}
-    res = post(url, data=params)
+    res = post(url, json=params)
     if res.status_code == 200:
         return True
     elif res.status_code == 404:
         quiet_print(f"user not found", args=args, quiet=quiet)
         return False
     else:
-        quiet_print(f"{email} has not been verified. {res.text}", args=args, quiet=quiet)
+        quiet_print(
+            f"{email} has not been verified. {res.text}", args=args, quiet=quiet
+        )
         return False
 
 
@@ -506,8 +522,16 @@ def login_with_email_pw(email=None, pw=None, args={}, conf={}) -> dict:
                 login(email=email, pw=pw, args=args)
             return ret
         else:
-            return {"status_code": 400, "success": False, "msg": "invalid email or password)"}
-    return {"status_code": 400, "success": False, "msg": "no email or password was provided"}
+            return {
+                "status_code": 400,
+                "success": False,
+                "msg": "invalid email or password)",
+            }
+    return {
+        "status_code": 400,
+        "success": False,
+        "msg": "no email or password was provided",
+    }
 
 
 def total_login(email=None, pw=None, args={}, conf=None) -> dict:

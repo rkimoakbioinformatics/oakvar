@@ -557,7 +557,7 @@ def fetch_conf_cache(publish_time: str="", outer=None, conn=None, cursor=None, c
         store = module_store["store"]
         fpath = join(get_cache_dir("conf", conf=conf), store, name + ".json")
         url = f"{get_store_url()}/fetch_conf/{store}/{name}"
-        res = s.post(url, data=params)
+        res = s.post(url, json=params)
         content = b"{}"
         if res.status_code == 200:
             content = res.content
@@ -593,7 +593,7 @@ def fetch_logo_cache(publish_time: str="", outer=None, conn=None, cursor=None, c
         store = module_store["store"]
         fpath = join(get_cache_dir("logo", conf=conf), store, name + ".png")
         url = f"{get_store_url()}/fetch_logo/{store}/{name}"
-        res = s.post(url, data=params)
+        res = s.post(url, json=params)
         content = b""
         if res.status_code == 200:
             content = res.content
@@ -629,7 +629,7 @@ def fetch_readme_cache(publish_time: str="", outer=None, conn=None, cursor=None,
         store = module_store["store"]
         fpath = join(get_cache_dir("readme", conf=conf), store, name)
         url = f"{get_store_url()}/fetch_readme/{store}/{name}"
-        res = s.post(url, data=params)
+        res = s.post(url, json=params)
         content = b""
         if res.status_code == 200:
             content = res.content
@@ -657,7 +657,7 @@ def fetch_summary_cache(publish_time: str="", clean_cache_db=False, outer=None, 
     s.headers["User-Agent"] = "oakvar"
     if outer:
         outer.write(f"Fetching store cache 1/5...")
-    res = s.post(url, data=params)
+    res = s.post(url, json=params)
     if res.status_code != 200:
         if res.status_code == 401:
             raise AuthorizationError()
@@ -696,7 +696,7 @@ def fetch_versions_cache(publish_time: str="", clean_cache_db: bool=False, outer
     s.headers["User-Agent"] = "oakvar"
     if outer:
         outer.write(f"Fetching store cache 2/5...")
-    res = s.post(url, data=params)
+    res = s.post(url, json=params)
     if res.status_code != 200:
         if res.status_code == 401:
             raise AuthorizationError()
@@ -773,7 +773,7 @@ def get_urls(module_name: str, code_version: str, args={}, conn=None, cursor=Non
     params = {"idToken": id_token}
     s = Session()
     s.headers["User-Agent"] = "oakvar"
-    res = s.post(url, data=params)
+    res = s.post(url, json=params)
     if res.status_code == 200:
         return res.json()
     else:

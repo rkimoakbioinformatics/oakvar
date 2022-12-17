@@ -17,7 +17,7 @@ def walk_and_add(d, pkg_files):
         "webresult",
         "webstore",
         "websubmit",
-        "assets"
+        "assets",
     ]
     for root, _, files in os.walk(d):
         root_spl = root.split(os.sep)
@@ -93,6 +93,9 @@ setup(
     data_files=[],
     scripts=[],
     entry_points={
-        "console_scripts": ["ov=oakvar.cli.__main__:main", "oc=oakvar.cli.__main__:main"]
+        "console_scripts": [
+            "ov=oakvar.cli.__main__:main",
+            "oc=oakvar.cli.__main__:main",
+        ]
     },
 )

@@ -68,7 +68,7 @@ def install(args, no_fetch=False, __name__="module install"):
     from ...lib.store.db import try_fetch_ov_store_cache
     from ...lib.exceptions import ModuleToSkipInstallation
 
-    if not no_fetch:
+    if not no_fetch and not args.get("no_fetch"):
         try_fetch_ov_store_cache(args=args)
     to_install = get_modules_to_install(args=args)
     if len(to_install) == 0:
@@ -108,6 +108,7 @@ def install(args, no_fetch=False, __name__="module install"):
                     problem_modules.append(module_name)
             if hasattr(e, "traceback") and getattr(e, "traceback"):
                 import traceback
+
                 traceback.print_exc()
             quiet_print(e, args=args)
     if problem_modules:
@@ -345,7 +346,10 @@ def add_parser_ov_module_install(subparsers):
         description="Installs OakVar modules.",
     )
     parser_ov_module_install.add_argument(
-        "module_names", nargs="*", default=[], help="Modules to install. May be regular expressions."
+        "module_names",
+        nargs="*",
+        default=[],
+        help="Modules to install. May be regular expressions.",
     )
     parser_ov_module_install.add_argument(
         "-f",
@@ -376,6 +380,9 @@ def add_parser_ov_module_install(subparsers):
     )
     parser_ov_module_install.add_argument(
         "--skip-data", action="store_true", help="Skip installing data"
+    )
+    parser_ov_module_install.add_argument(
+        "--no-fetch", action="store_true", help="Skip fetching the latest store"
     )
     parser_ov_module_install.add_argument(
         "--md", default=None, help="Specify the root directory of OakVar modules"
@@ -477,7 +484,12 @@ def add_parser_ov_module(subparsers):
     )
     parser_ov_module_info.add_argument("module_name", help="Module to get info about")
     parser_ov_module_info.add_argument(
-        "-l", "--local", dest="local", default=False, help="Include local info", action="store_true"
+        "-l",
+        "--local",
+        dest="local",
+        default=False,
+        help="Include local info",
+        action="store_true",
     )
     parser_ov_module_info.add_argument(
         "--md", default=None, help="Specify the root directory of OakVar modules"
@@ -505,7 +517,10 @@ def add_parser_ov_module(subparsers):
         description="lists modules.",
     )
     parser_ov_module_ls.add_argument(
-        "patterns", nargs="*", default=[".*"], help="Regular expression for module names"
+        "patterns",
+        nargs="*",
+        default=[".*"],
+        help="Regular expression for module names",
     )
     parser_ov_module_ls.add_argument(
         "-a",
