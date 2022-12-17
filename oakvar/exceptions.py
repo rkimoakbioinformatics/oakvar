@@ -46,8 +46,10 @@ class BadFormatError(InvalidData):
 class IgnoredVariant(InvalidData):
     traceback = False
 
+
 class NoAlternateAllele(ExpectedException):
     traceback = False
+
 
 class LiftoverFailure(InvalidData):
     traceback = False
@@ -134,6 +136,7 @@ class NoInput(ExpectedException):
 
     def __init__(self):
         import traceback
+
         super().__init__("No valid input was given.\n" + str(traceback.format_stack()))
 
 
@@ -239,6 +242,7 @@ class ModuleVersionError(ExpectedException):
 
 class ModuleToSkipInstallation(ExpectedException):
     traceback = False
+
     def __init__(self, module_name, msg=None):
         if msg:
             super().__init__(f"{msg}")
@@ -351,6 +355,15 @@ class NotAdmin(ExpectedException):
     def __init__(self):
         super().__init__(f"No admin privilege")
 
+
+
+class ServerError(Exception):
+    def __init__(self, msg: str = ""):
+        import traceback
+
+        super().__init__(traceback.format_exc() + msg)
+
+
 # store-related exceptions
 class ClientError(object):
     code = 0
@@ -400,8 +413,4 @@ class AuthorizationError(ExpectedException):
         super().__init__(f"authorization failed")
 
 
-class ServerError(Exception):
-    def __init__(self):
-        import traceback
-        super().__init__(traceback.format_exc())
 # end of store-related exceptions

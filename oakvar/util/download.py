@@ -1,13 +1,22 @@
 def download(url, fpath, install_state=None, check_install_kill=None):
     from .download_library import download as download_util
-    import gdown
 
     if "drive.google.com" in url:
+        import gdown
+
         gdown.download(url=url, output=fpath, quiet=True, fuzzy=True)
     elif "github.com" in url:
         download_from_github(url=url, fpath=fpath)
     else:
-        download_util(url, fpath, kind="file", verbose=False, replace=True, install_state=install_state, check_install_kill=check_install_kill)
+        download_util(
+            url,
+            fpath,
+            kind="file",
+            verbose=False,
+            replace=True,
+            install_state=install_state,
+            check_install_kill=check_install_kill,
+        )
 
 
 def get_git_api_url(url):
@@ -39,6 +48,7 @@ def download_from_github(url=None, fpath=None):
     if not isinstance(install_dir, Path):
         install_dir = Path(install_dir)
     download_git_folder(url=url, install_dir=install_dir)
+
 
 def download_git_folder(url=None, install_dir=None):
     from requests import get

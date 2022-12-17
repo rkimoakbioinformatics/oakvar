@@ -6,7 +6,12 @@ def get_modules_to_install(args={}) -> dict:
     from ...store.db import get_latest_module_code_version
     from ...store.db import module_code_version_is_not_compatible_with_pkg_version
     from ...util.admin_util import oakvar_version
+    from ...exceptions import ArgumentError
 
+    if args.get("url"):
+        if len(args.get("modules")) > 1:
+            raise ArgumentError(msg=f"--url should be used with only one module name.")
+        return {args.get("modules")[0]: None}
     mn_vs = collect_module_name_and_versions(args.get("modules", []), args=args)
     module_versions = {}
     for module_name, version in mn_vs.items():
@@ -14,9 +19,14 @@ def get_modules_to_install(args={}) -> dict:
             version = get_latest_module_code_version(module_name)
         else:
             pkg_ver = oakvar_version()
-            min_pkg_ver = module_code_version_is_not_compatible_with_pkg_version(module_name, version)
+            min_pkg_ver = module_code_version_is_not_compatible_with_pkg_version(
+                module_name, version
+            )
             if min_pkg_ver:
-                quiet_print(f"{module_name}=={version} is not compatible with current OakVar version ({pkg_ver}). Please upgrade OakVar to at least {min_pkg_ver}.", args=args)
+                quiet_print(
+                    f"{module_name}=={version} is not compatible with current OakVar version ({pkg_ver}). Please upgrade OakVar to at least {min_pkg_ver}.",
+                    args=args,
+                )
                 continue
         module_versions[module_name] = version
     # dependency
@@ -59,6 +69,3 @@ def show_modules_to_install(to_install, args={}):
             quiet_print(f"- {name}=={to_install[name]}", args=args)
         else:
             quiet_print(f"- {name}", args=args)
-
-
-

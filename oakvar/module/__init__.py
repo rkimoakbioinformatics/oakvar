@@ -1,10 +1,20 @@
+from typing import Optional
+
 class InstallProgressHandler(object):
-    def __init__(self, module_name, module_version):
+    def __init__(self, module_name: str="", module_version: Optional[str]=None):
         self.module_name = module_name
         self.module_version = module_version
         self.display_name = None
-        self._make_display_name()
         self.cur_stage = None
+        self.install_state = None
+        if module_name:
+            self._make_display_name()
+
+    def set_module(self, module_name: str="", module_version: Optional[str]=None):
+        self.module_name = module_name
+        self.module_version = module_version
+        if module_name:
+            self._make_display_name()
 
     def _make_display_name(self):
         ver_str = self.module_version if self.module_version is not None else ""
@@ -250,10 +260,16 @@ def make_install_temp_dir(args={}):
     from shutil import rmtree
     from pathlib import Path
 
-    if not args.get("module_dir"):
-        args["modules_dir"] = get_modules_dir()
+    modules_dir: Optional[str] = args.get("modules_dir")
+    if not modules_dir:
+        modules_dir = get_modules_dir()
+    if not modules_dir:
+        raise
+    module_name: Optional[str] = args.get("module_name")
+    if not module_name:
+        raise
     temp_dir = (
-        Path(args.get("modules_dir")) / install_tempdir_name / args.get("module_name")
+        Path(modules_dir) / install_tempdir_name / module_name
     )
     if args.get("clean"):
         rmtree(str(temp_dir), ignore_errors=True)
@@ -425,21 +441,34 @@ def write_install_marks(args={}):
     wf.close()
 
 
-def install_module_from_url(url, args={}):
+def install_module_from_url(module_name: str, url: str, stage_handler: Optional[InstallProgressHandler]=None, args={}):
     from pathlib import Path
+    from shutil import move
+    from shutil import rmtree
+    from zipfile import ZipFile
+    from urllib.parse import urlparse
+    from os import remove
     from ..system import get_modules_dir
     from ..util.download import download
     from ..util.util import load_yml_conf
     from ..util.util import quiet_print
     from .remote import get_install_deps
-    from shutil import move
-    from shutil import rmtree
+    from ..exceptions import ArgumentError
 
-    module_name = Path(url).name
     args["module_name"] = module_name
     temp_dir = make_install_temp_dir(args=args)
-    download(url, temp_dir.parent)
-    yml_conf_path = temp_dir / (args["module_name"] + ".yml")
+    if temp_dir.parent.name == module_name:
+        download(url, temp_dir.parent)
+    else:
+        fname = Path(urlparse(url).path).name
+        if Path(fname).suffix != ".zip":
+            raise ArgumentError(msg=f"--url should point to a zip file of a module.")
+        fpath = temp_dir / fname
+        download(url, fpath)
+        with ZipFile(fpath) as f:
+            f.extractall(path=temp_dir)
+        remove(fpath)
+    yml_conf_path = temp_dir / (module_name + ".yml")
     if not yml_conf_path.exists():
         quiet_print(
             f"{url} is not a valid OakVar module. {module_name}.yml should exist.",
@@ -448,20 +477,22 @@ def install_module_from_url(url, args={}):
         return False
     conf = load_yml_conf(yml_conf_path)
     args["conf"] = conf
-    deps, deps_pypi = get_install_deps(conf_path=str(yml_conf_path))
-    args["pypi_dependency"] = deps_pypi
-    if not install_pypi_dependency(args=args):
-        quiet_print(f"failed in installing pypi package dependence", args=args)
-        return False
-    for deps_mn, deps_ver in deps.items():
-        install_module(
-            deps_mn,
-            version=deps_ver,
-            force_data=args["force_data"],
-            skip_data=args["skip_data"],
-            quiet=args["quiet"],
-            args=args,
-        )
+    if not args.get("skip_dependencies"):
+        deps, deps_pypi = get_install_deps(conf_path=str(yml_conf_path))
+        args["pypi_dependency"] = deps_pypi
+        if not install_pypi_dependency(args=args):
+            quiet_print(f"failed in installing pypi package dependence", args=args)
+            return False
+        for deps_mn, deps_ver in deps.items():
+            install_module(
+                deps_mn,
+                version=deps_ver,
+                stage_handler=stage_handler,
+                force_data=args["force_data"],
+                skip_data=args["skip_data"],
+                quiet=args["quiet"],
+                args=args,
+            )
     ty = conf.get("type") or ""
     if not ty:
         quiet_print(
@@ -475,7 +506,7 @@ def install_module_from_url(url, args={}):
         module_type_dir.mkdir()
     module_dir = module_type_dir / module_name
     if module_dir.exists():
-        if args.get("force"):
+        if args.get("force") or args.get("overwrite"):
             rmtree(str(module_dir))
         else:
             quiet_print(f"{module_dir} already exists.", args=args)
@@ -597,7 +628,7 @@ def install_module(
     version=None,
     force_data=False,
     skip_data=False,
-    stage_handler=None,
+    stage_handler: Optional[InstallProgressHandler]=None,
     quiet=True,
     conf_path=None,
     fresh=False,
@@ -614,7 +645,8 @@ def install_module(
     from .local import get_module_data_version as local_module_data_version
     from ..util.util import quiet_print
 
-    assert stage_handler is not None
+    if stage_handler:
+        stage_handler.set_module(module_name=module_name, module_version=version)
     version = get_module_install_version(module_name, version=version, fresh=fresh, args=args)
     args["quiet"] = quiet
     args["module_name"] = module_name
@@ -656,7 +688,8 @@ def install_module(
             args.get("module_type") + "s",
             args.get("module_name"),
         )
-        if not download_code_or_data(kind="code", args=args, install_state=stage_handler.install_state):
+        install_state = stage_handler.install_state if stage_handler else None
+        if not download_code_or_data(kind="code", args=args, install_state=install_state):
             quiet_print(f"code download failed", args=args)
             raise ModuleInstallationError(module_name)
         extract_code_or_data(kind="code", args=args)
@@ -672,7 +705,7 @@ def install_module(
             if not args.get("data_url"):
                 quiet_print(f"data_url is empty.", args=args)
                 raise ModuleInstallationError(module_name)
-            if not download_code_or_data(kind="data", args=args, install_state=stage_handler.install_state):
+            if not download_code_or_data(kind="data", args=args, install_state=install_state):
                 quiet_print(f"data download failed", args=args)
                 raise ModuleInstallationError(module_name)
             extract_code_or_data(kind="data", args=args)
