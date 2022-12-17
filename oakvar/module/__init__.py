@@ -644,6 +644,7 @@ def install_module(
     from .remote import get_conf
     from .local import get_module_data_version as local_module_data_version
     from ..util.util import quiet_print
+    from ..system import get_modules_dir
 
     if stage_handler:
         stage_handler.set_module(module_name=module_name, module_version=version)
@@ -683,6 +684,8 @@ def install_module(
         if not args.get("module_type"):
             quiet_print(f"module type not found", args=args)
             raise ModuleInstallationError(module_name)
+        if not args.get("modules_dir"):
+            args["modules_dir"] = get_modules_dir()
         args["module_dir"] = join(
             args.get("modules_dir"),
             args.get("module_type") + "s",
