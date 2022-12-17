@@ -1,6 +1,8 @@
 from typing import Tuple
 from typing import Optional
 
+from oakvar.lib.exceptions import StoreServerError
+
 
 def get_email_pw_from_user_conf():
     from ....system import get_user_conf
@@ -118,6 +120,8 @@ def delete(outer=None) -> bool:
 
 
 def check_logged_in_with_token(outer=None) -> bool:
+    from ....exceptions import StoreServerError
+
     id_token = get_id_token()
     if not id_token:
         if outer:
@@ -126,7 +130,9 @@ def check_logged_in_with_token(outer=None) -> bool:
     valid, expired = id_token_is_valid()
     if valid:
         if expired:
-            refresh_token_set()
+            status_code, text = refresh_token_set()
+            if status_code != 200:
+                raise StoreServerError(status_code=status_code, text=text)
         token_set = get_token_set() or {}
         email = token_set["email"]
         if outer:
@@ -300,7 +306,7 @@ def id_token_is_valid() -> Tuple[bool, bool]:  # valid, expired
         return False, True
 
 
-def refresh_token_set() -> bool:
+def refresh_token_set() -> Tuple[int, str]:
     from ...ov import get_store_url
     from requests import post
 
@@ -317,11 +323,11 @@ def refresh_token_set() -> bool:
             token_set["idToken"] = id_token
             token_set["refreshToken"] = refresh_token
             save_token_set(token_set)
-            return True
+            return (0, "")
         else:
-            return False
+            return (res.status_code, res.text)
     else:
-        return False
+        return (res.status_code, res.text)
 
 
 def change(newpw: Optional[str] = None, outer=None) -> bool:
@@ -329,6 +335,7 @@ def change(newpw: Optional[str] = None, outer=None) -> bool:
     from ...ov import get_store_url
     from getpass import getpass
     from ....util.util import pw_is_valid
+    from ....exceptions import StoreServerError
 
     id_token = get_id_token()
     if not id_token:
@@ -340,10 +347,12 @@ def change(newpw: Optional[str] = None, outer=None) -> bool:
         id_token = None
         refresh_token = get_refresh_token()
         if refresh_token:
-            if refresh_token_set():
-                token_set = get_token_set()
-                if token_set:
-                    id_token = token_set["idToken"]
+            status_code, text = refresh_token_set()
+            if status_code != 200:
+                raise StoreServerError(status_code=status_code, text=text)
+            token_set = get_token_set()
+            if token_set:
+                id_token = token_set["idToken"]
         if not id_token:
             if outer:
                 outer.write(f"Not logged in")
@@ -391,13 +400,17 @@ def get_current_id_token() -> Optional[str]:
 
 
 def get_current_token_set() -> Optional[dict]:
+    from ....exceptions import StoreServerError
+
     token_set = get_token_set()
     if token_set:
         valid, expired = id_token_is_valid()
         if not valid:
             token_set = None
         elif expired:
-            refresh_token_set()
+            status_code, text = refresh_token_set()
+            if status_code != 200:
+                raise StoreServerError(status_code=status_code, text=text)
             token_set = get_token_set()
     return token_set
 
@@ -498,10 +511,11 @@ def login_with_token_set(args={}) -> bool:
         else:
             if correct:
                 if expired:
-                    if refresh_token_set():
-                        return True
-                    else:
+                    status_code, text = refresh_token_set()
+                    if status_code != 200:
                         delete_token_set()
+                        raise StoreServerError(status_code=status_code, text=text)
+                    return False
                 else:
                     return True
             else:

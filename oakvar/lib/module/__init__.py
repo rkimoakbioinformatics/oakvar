@@ -3,12 +3,20 @@ from typing import List
 
 
 class InstallProgressHandler(object):
-    def __init__(self, module_name, module_version):
+    def __init__(self, module_name: str="", module_version: Optional[str]=None):
         self.module_name = module_name
         self.module_version = module_version
         self.display_name = None
-        self._make_display_name()
         self.cur_stage = None
+        self.install_state = None
+        if module_name:
+            self._make_display_name()
+
+    def set_module(self, module_name: str="", module_version: Optional[str]=None):
+        self.module_name = module_name
+        self.module_version = module_version
+        if module_name:
+            self._make_display_name()
 
     def _make_display_name(self):
         ver_str = self.module_version if self.module_version is not None else ""
@@ -243,7 +251,7 @@ def make_install_temp_dir(
     if not modules_dir:
         modules_dir = get_modules_dir()
     if not modules_dir or not module_name:
-        return
+        raise
     temp_dir = Path(modules_dir) / install_tempdir_name / module_name
     if clean:
         rmtree(str(temp_dir), ignore_errors=True)
@@ -293,7 +301,7 @@ def get_download_zipfile_path(module_name: str, version: str, temp_dir: str, kin
     return zipfile_path
 
 
-def download_code_or_data(module_name: Optional[str]=None, version: Optional[str]=None, kind: Optional[str]=None, temp_dir: Optional[str]=None, outer=None, stage_handler=None, system_worker_state=None) -> Optional[str]:
+def download_code_or_data(urls: Optional[str]=None, module_name: Optional[str]=None, version: Optional[str]=None, kind: Optional[str]=None, temp_dir: Optional[str]=None, outer=None, stage_handler=None, system_worker_state=None) -> Optional[str]:
     from pathlib import Path
     from os.path import getsize
     from os import remove
@@ -302,6 +310,7 @@ def download_code_or_data(module_name: Optional[str]=None, version: Optional[str
     from ..store.consts import MODULE_PACK_SPLIT_FILE_SIZE
 
     check_install_kill(system_worker_state=system_worker_state, module_name=module_name)
+    assert urls is not None
     assert module_name is not None
     assert version is not None
     assert temp_dir is not None
@@ -312,7 +321,6 @@ def download_code_or_data(module_name: Optional[str]=None, version: Optional[str
     zipfile_path = get_download_zipfile_path(module_name, version, temp_dir, kind)
     if not zipfile_path:
         return
-    urls = f"{kind}_url"
     if urls[0] == "[":  # a list of URLs
         urls = loads(urls)
     urls_ty = type(urls)
@@ -387,6 +395,8 @@ def cleanup_install(module_name: str, module_dir: str, temp_dir: str, installati
     from pathlib import Path
     from .local import remove_code_part_of_module
 
+    if not module_dir:
+        return
     # Unsuccessful installation
     if not installation_finished:
         return
@@ -418,30 +428,43 @@ def write_install_marks(module_dir: str):
 
 
 def install_module_from_url(
-    url: Optional[str] = None,
+    module_name: str,
+    url: str,
     modules_dir: Optional[str] = None,
     clean: bool = False,
     overwrite=False,
     force_data=False,
     skip_data=False,
+    skip_dependencies=False,
     outer=None,
+    stage_handler: Optional[InstallProgressHandler]=None,
 ):
+    from shutil import move
+    from shutil import rmtree
+    from zipfile import ZipFile
+    from urllib.parse import urlparse
+    from os import remove
     from pathlib import Path
     from ..util.download import download
     from ..util.util import load_yml_conf
     from .remote import get_install_deps
-    from shutil import move
-    from shutil import rmtree
 
-    if not url:
-        return
-    module_name = Path(url).name
     temp_dir = make_install_temp_dir(
         module_name=module_name, modules_dir=modules_dir, clean=clean
     )
     if not temp_dir:
-        return
-    download(url, temp_dir.parent)
+        raise
+    if temp_dir.parent.name == module_name:
+        download(url, temp_dir.parent)
+    else:
+        fname = Path(urlparse(url).path).name
+        if Path(fname).suffix != ".zip":
+            raise ArgumentError(msg=f"--url should point to a zip file of a module.")
+        fpath = temp_dir / fname
+        download(url, fpath)
+        with ZipFile(fpath) as f:
+            f.extractall(path=temp_dir)
+        remove(fpath)
     yml_conf_path = temp_dir / (module_name + ".yml")
     if not yml_conf_path.exists():
         if outer:
@@ -450,21 +473,24 @@ def install_module_from_url(
             )
         return False
     conf = load_yml_conf(yml_conf_path)
-    deps, pypi_dependency = get_install_deps(conf_path=str(yml_conf_path))
-    if not install_pypi_dependency(pypi_dependency=pypi_dependency, outer=outer):
-        if outer:
-            outer.write(
-                f"Skipping installation of {module_name} due to some PyPI dependency was not installed."
+    if not skip_dependencies:
+        deps, pypi_dependency = get_install_deps(conf_path=str(yml_conf_path))
+        if not install_pypi_dependency(pypi_dependency=pypi_dependency, outer=outer):
+            if outer:
+                outer.write(
+                    f"Skipping installation of {module_name} due to some PyPI dependency was not installed."
+                )
+            return False
+        for deps_mn, deps_ver in deps.items():
+            install_module(
+                deps_mn,
+                version=deps_ver,
+                stage_handler=stage_handler,
+                force_data=force_data,
+                skip_data=skip_data,
+                skip_dependencies=skip_dependencies,
+                outer=outer,
             )
-        return False
-    for deps_mn, deps_ver in deps.items():
-        install_module(
-            deps_mn,
-            version=deps_ver,
-            force_data=force_data,
-            skip_data=skip_data,
-            outer=outer,
-        )
     ty = conf.get("type") or ""
     if not ty:
         if outer:
@@ -602,8 +628,9 @@ def install_module(
     overwrite=False,
     force_data=False,
     skip_data=False,
+    skip_dependencies=False,
     modules_dir: Optional[str]=None,
-    stage_handler=None,
+    stage_handler: Optional[InstallProgressHandler]=None,
     conf_path=None,
     fresh=False,
     clean=False,
@@ -630,12 +657,14 @@ def install_module(
     code_version = version
     temp_dir = make_install_temp_dir(module_name=module_name, clean=clean)
     assert temp_dir is not None
+    module_dir: str = ""
+    installation_finished: bool = False
+    code_installed: bool = False
+    data_installed: bool = False
     try:
-        installation_finished = False
-        code_installed = False
-        data_installed = False
         stage_handler = set_stage_handler(module_name, stage_handler=stage_handler, version=version)
-        stage_handler.stage_start("start")
+        if stage_handler:
+            stage_handler.stage_start("start")
         conf = get_conf(module_name=module_name, conf_path=conf_path) or {}
         pypi_dependency = get_pypi_dependency_from_conf(conf=conf)
         # Checks and installs pip packages.
@@ -652,7 +681,8 @@ def install_module(
             if outer:
                 outer.write(f"failed in getting module URLs")
             raise ModuleInstallationError(module_name)
-        code_url, data_url = r.get("code_url"), r.get("data_url")
+        code_url: Optional[str] = r.get("code_url")
+        data_url: Optional[str] = r.get("data_url")
         module_type = summary_col_value(module_name, "type")
         if not module_type:
             # Private module. Fallback to remote config.
@@ -669,7 +699,7 @@ def install_module(
             module_type + "s",
             module_name,
         )
-        zipfile_path = download_code_or_data(module_name=module_name, version=code_version, kind="code", temp_dir=temp_dir, outer=outer, stage_handler=stage_handler, system_worker_state=system_worker_state)
+        zipfile_path = download_code_or_data(urls=code_url, module_name=module_name, version=code_version, kind="code", temp_dir=temp_dir, outer=outer, stage_handler=stage_handler, system_worker_state=system_worker_state)
         if not zipfile_path:
             if outer:
                 outer.write(f"code download failed")
@@ -688,7 +718,7 @@ def install_module(
                 if outer:
                     outer.write(f"data_url is empty.")
                 raise ModuleInstallationError(module_name)
-            data_zip_filepath: Optional[str] = download_code_or_data(module_name=module_name, version=remote_data_version, kind="data", temp_dir=temp_dir, outer=outer, stage_handler=stage_handler, system_worker_state=system_worker_state)
+            data_zip_filepath: Optional[str] = download_code_or_data(urls=data_url, module_name=module_name, version=remote_data_version, kind="data", temp_dir=temp_dir, outer=outer, stage_handler=stage_handler, system_worker_state=system_worker_state)
             if not data_zip_filepath:
                 if error:
                     error.write(f"Data download failed")
@@ -699,7 +729,8 @@ def install_module(
         cleanup_install(module_name, module_dir, temp_dir, installation_finished, code_installed, data_installed)
         write_install_marks(module_dir)
         get_module_cache().update_local()
-        stage_handler.stage_start("finish")
+        if stage_handler:
+            stage_handler.stage_start("finish")
         return True
     # except (Exception, KeyboardInterrupt, SystemExit) as e:
     except Exception as e:

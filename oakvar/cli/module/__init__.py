@@ -55,7 +55,7 @@ def cli_module_install(args):
 
 
 @cli_func
-def install(args, no_fetch=False, __name__="module install"):
+def install(args, no_fetch: bool = False, __name__="module install"):
     from .install import get_modules_to_install
     from .install import show_modules_to_install
     from ...lib.module import install_module
@@ -79,26 +79,29 @@ def install(args, no_fetch=False, __name__="module install"):
         if not get_y_or_n():
             return True
     problem_modules = []
+    url = args.get("url")
+    stage_handler = InstallProgressStdout(quiet=args.get("quiet"))
     for module_name, module_version in sorted(to_install.items()):
         try:
-            if is_url(module_name):
-                if not install_module_from_url(module_name, args=args):
+            if url:
+                if not is_url(url):
+                    raise ModuleToSkipInstallation(
+                        module_name, msg=f"{url} is not a valid URL."
+                    )
+                if not install_module_from_url(
+                    module_name, url, stage_handler=stage_handler, args=args
+                ):
                     problem_modules.append(module_name)
             elif is_zip_path(module_name):
                 if not install_module_from_zip_path(module_name, args=args):
                     problem_modules.append(module_name)
             else:
-                stage_handler = InstallProgressStdout(
-                    module_name, module_version, quiet=args.get("quiet")
-                )
                 ret = install_module(
                     module_name,
                     version=module_version,
-                    force_data=args["force_data"],
                     stage_handler=stage_handler,
+                    force_data=args["force_data"],
                     skip_data=args["skip_data"],
-                    quiet=args.get("quiet"),
-                    args=args,
                 )
                 if not ret:
                     problem_modules.append(module_name)
@@ -256,8 +259,8 @@ def installbase(args, no_fetch=False, __name__="module installbase"):
 
 
 class InstallProgressStdout(InstallProgressHandler):
-    def __init__(self, module_name, module_version, quiet=True):
-        super().__init__(module_name, module_version)
+    def __init__(self, module_name=None, module_version=None, quiet=True):
+        super().__init__(module_name=module_name, module_version=module_version)
         self.quiet = quiet
         self.system_worker_state = None
 
@@ -384,6 +387,7 @@ def add_parser_ov_module_install(subparsers):
     parser_ov_module_install.add_argument(
         "--no-fetch", action="store_true", help="Skip fetching the latest store"
     )
+    parser_ov_module_install.add_argument("--url", help="Install from a URL")
     parser_ov_module_install.add_argument(
         "--md", default=None, help="Specify the root directory of OakVar modules"
     )

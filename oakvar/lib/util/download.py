@@ -2,10 +2,11 @@ def download(
     url, fpath, system_worker_state=None, check_install_kill=None, module_name=None
 ):
     from .download_library import download as download_util
-    import gdown
 
     assert module_name is not None
     if "drive.google.com" in url:
+        import gdown
+
         gdown.download(url=url, output=fpath, quiet=True, fuzzy=True)
     elif "github.com" in url:
         download_from_github(url=url, fpath=fpath)
