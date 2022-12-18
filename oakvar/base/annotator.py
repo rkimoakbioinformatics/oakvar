@@ -553,8 +553,9 @@ class BaseAnnotator(object):
         import sqlite3
 
         db_path = Path(self.data_dir) / (self.module_name + ".sqlite")
-        self.dbconn = sqlite3.connect(str(db_path))
-        self.cursor = self.dbconn.cursor()
+        if db_path.exists():
+            self.dbconn = sqlite3.connect(str(db_path))
+            self.cursor = self.dbconn.cursor()
 
     def close_db_connection(self):
         if self.cursor is not None:
