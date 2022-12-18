@@ -212,7 +212,7 @@ def install(
         return
 
 
-def update(args, no_fetch=False, __name__="module update"):
+def update(module_name_patterns: List[str]=[], clean_cache_db: bool=False, clean_cache_files: bool=False, clean: bool=False, publish_time: str="", no_fetch: bool=False, conf: Optional[dict]=None, overwrite: bool=False, modules_dir: Optional[str]=None, outer=None, error=None, system_worker_state=None):
     from types import SimpleNamespace
     from ...lib.module.local import search_local
     from ...lib.module import get_updatable
@@ -222,17 +222,12 @@ def update(args, no_fetch=False, __name__="module update"):
     from ...lib.store.db import try_fetch_ov_store_cache
 
     if not no_fetch:
-        try_fetch_ov_store_cache(args=args)
-    quiet = args.get("quiet", True)
-    modules = args.get("modules", [])
-    requested_modules = search_local(*modules)
-    update_strategy = args.get("strategy")
+        try_fetch_ov_store_cache(clean_cache_db=clean_cache_db, clean_cache_files=clean_cache_files, clean=clean, publish_time=publish_time, outer=outer)
+    requested_modules = search_local(*module_name_patterns)
     status_table = [["Name", "New Version", "Size"]]
-    updates, _, reqs_failed = get_updatable(
-        modules=modules, requested_modules=requested_modules, strategy=update_strategy
-    )
+    updates, _, reqs_failed = get_updatable(requested_modules=requested_modules)
     if reqs_failed:
-        msg = "Newer versions of ({}) are available, but would break dependencies. You may use --strategy=force to force installation.".format(
+        msg = f"Newer versions of ({}) are available, but would break dependencies. You may use --strategy=force to force installation.".format(
             ", ".join(reqs_failed.keys())
         )
         quiet_print(msg, args=args)
@@ -263,7 +258,7 @@ def update(args, no_fetch=False, __name__="module update"):
             md=args.get("md", None),
             quiet=args.get("quiet"),
         )
-        ret = install(m_args)
+        ret = install(module_names=base_modules, modules_dir=modules_dir, overwrite=False, clean=clean, force_data=False, yes=True, skip_dependencies=False, skip_data=False, no_fetch=no_fetch, outer=outer, error=error, system_worker_state=system_worker_state)
         if ret is not None:
             return False
     return True
@@ -303,29 +298,16 @@ def uninstall(args, __name__="module uninstall"):
     return True
 
 
-def installbase(args, no_fetch=False, __name__="module installbase"):
-    from types import SimpleNamespace
+def installbase(clean_cache_db: bool=False, clean_cache_files: bool=False, clean: bool=False, publish_time: str="", no_fetch: bool=False, conf: Optional[dict]=None, overwrite: bool=False, modules_dir: Optional[str]=None, outer=None, error=None, system_worker_state=None):
     from ...lib.system import get_system_conf
     from ...lib.system.consts import base_modules_key
     from ...lib.store.db import try_fetch_ov_store_cache
 
     if not no_fetch:
-        try_fetch_ov_store_cache(args=args)
-    sys_conf = get_system_conf(conf=args.get("conf"))
+        try_fetch_ov_store_cache(clean_cache_db=clean_cache_db, clean_cache_files=clean_cache_files, clean=clean, publish_time=publish_time, outer=outer)
+    sys_conf = get_system_conf(conf=conf)
     base_modules = sys_conf.get(base_modules_key, [])
-    m_args = SimpleNamespace(
-        modules=base_modules,
-        force_data=args.get("force_data", True),
-        version=None,
-        yes=True,
-        private=False,
-        skip_dependencies=False,
-        force=args.get("force", False),
-        skip_data=False,
-        md=args.get("md", None),
-        quiet=args.get("quiet", True),
-    )
-    ret = install(m_args, no_fetch=no_fetch)
+    ret = install(module_names=base_modules, modules_dir=modules_dir, overwrite=overwrite, clean=clean, force_data=False, yes=True, skip_dependencies=False, skip_data=False, no_fetch=no_fetch, outer=outer, error=error, system_worker_state=system_worker_state)
     return ret
 
 

@@ -350,9 +350,6 @@ def get_module_conf_path(module_name, module_type=None):
 
 
 def search_local(*patterns):
-    """
-    Return local module names which match any of supplied patterns
-    """
     from re import fullmatch
     from ..system import get_modules_dir
     from . import list_local

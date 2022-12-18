@@ -143,10 +143,9 @@ def update(args, no_fetch=False, __name__="module update"):
     quiet = args.get("quiet", True)
     modules = args.get("modules", [])
     requested_modules = search_local(*modules)
-    update_strategy = args.get("strategy")
     status_table = [["Name", "New Version", "Size"]]
     updates, _, reqs_failed = get_updatable(
-        modules=modules, requested_modules=requested_modules, strategy=update_strategy
+        modules=modules, requested_modules=requested_modules
     )
     if reqs_failed:
         msg = "Newer versions of ({}) are available, but would break dependencies. You may use --strategy=force to force installation.".format(

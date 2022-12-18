@@ -147,7 +147,7 @@ def list_remote(module_type=None):
     return module_list(module_type=module_type)
 
 
-def get_updatable(modules=[], requested_modules=[], strategy="consensus"):
+def get_updatable(module_names: List[str]=[], outer=None):
     from packaging.version import Version
     from pkg_resources import Requirement
     from collections import defaultdict
@@ -155,20 +155,18 @@ def get_updatable(modules=[], requested_modules=[], strategy="consensus"):
     from .local import get_local_module_info
     from .remote import get_remote_module_info
     from ..store.db import remote_module_data_version
+    from .cache import get_module_cache
 
-    if strategy not in ("consensus", "force", "skip"):
-        raise ValueError('Unknown strategy "{}"'.format(strategy))
-    if not modules:
-        modules = list_local()
-    else:
-        modules = requested_modules
+    if not module_names:
+        module_names = list_local()
     reqs_by_dep = defaultdict(dict)
     all_versions = {}
+    get_module_cache(fresh=True)
     for mname in list_local():
-        local_info = get_local_module_info(mname, fresh=True)
+        local_info = get_local_module_info(mname)
         remote_info = get_remote_module_info(mname)
         if remote_info:
-            all_versions[mname] = sorted(remote_info.versions, key=Version)
+            all_versions[mname] = sorted(remote_info.code_versions, key=Version)
         if local_info:
             req_strings = local_info.conf.get("requires", [])
             reqs = [Requirement.parse(s) for s in req_strings]
@@ -178,8 +176,10 @@ def get_updatable(modules=[], requested_modules=[], strategy="consensus"):
     update_vers = {}
     resolution_applied = {}
     resolution_failed = {}
-    for mname in modules:
+    for mname in module_names:
         if mname not in list_local():
+            if outer:
+                outer.write(f"{mname} absent from the system. Skipping it.")
             continue
         local_info = get_local_module_info(mname)
         remote_info = get_remote_module_info(mname)
@@ -197,21 +197,16 @@ def get_updatable(modules=[], requested_modules=[], strategy="consensus"):
             continue
         if reqs:
             resolution_applied[mname] = reqs
-            if strategy == "force":
-                pass
-            elif strategy == "skip":
-                selected_version = None
-            elif strategy == "consensus":
-                passing_versions = []
-                for version in versions:
-                    version_passes = True
-                    for _, requirement in reqs.items():
-                        version_passes = version in requirement
-                        if not version_passes:
-                            break
-                    if version_passes:
-                        passing_versions.append(version)
-                selected_version = passing_versions[-1] if passing_versions else None
+            passing_versions = []
+            for version in versions:
+                version_passes = True
+                for _, requirement in reqs.items():
+                    version_passes = version in requirement
+                    if not version_passes:
+                        break
+                if version_passes:
+                    passing_versions.append(version)
+            selected_version = passing_versions[-1] if passing_versions else None
         if (
             selected_version
             and remote_info
