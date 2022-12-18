@@ -551,18 +551,11 @@ class BaseAnnotator(object):
     def connect_db(self):
         from pathlib import Path
         import sqlite3
-        import duckdb
 
         db_path = Path(self.data_dir) / (self.module_name + ".sqlite")
         if db_path.exists():
             self.dbconn = sqlite3.connect(str(db_path))
             self.cursor = self.dbconn.cursor()
-            return
-        db_path = Path(self.data_dir) / (self.module_name + ".duckdb")
-        if db_path.exists():
-            self.dbconn = duckdb.connect(str(db_path))
-            self.cursor = self.dbconn.cursor()
-            return
 
     def close_db_connection(self):
         if self.cursor is not None:
