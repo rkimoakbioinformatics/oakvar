@@ -316,7 +316,7 @@ def refresh_token_set() -> Tuple[int, str]:
             token_set["idToken"] = id_token
             token_set["refreshToken"] = refresh_token
             save_token_set(token_set)
-            return (0, "")
+            return (200, "")
         else:
             return (res.status_code, res.text)
     else:
