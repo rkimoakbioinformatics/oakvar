@@ -9,9 +9,9 @@ def cli_system_setup(args):
 
 @cli_func
 def setup(args, __name__="system setup"):
-    from ..lib.system import setup_system
+    from ..api.system import setup
 
-    return setup_system(args)
+    return setup(**args)
 
 
 @cli_entry
@@ -21,18 +21,15 @@ def cli_system_md(args):
 
 @cli_func
 def md(args, __name__="system md"):
-    from ..lib.system import set_modules_dir, get_modules_dir
     from ..lib.util.util import quiet_print
+    from ..api.system import md
 
-    d = args.get("directory")
-    if d:
-        set_modules_dir(d)
-    d = get_modules_dir()
+    ret = md(**args)
     if args.get("to") == "stdout":
-        if d is not None:
-            quiet_print(d, args=args)
+        if ret is not None:
+            quiet_print(ret, args=args)
     else:
-        return d
+        return ret
 
 
 @cli_entry
@@ -42,9 +39,11 @@ def cli_system_check(args):
 
 @cli_func
 def check(args, __name__="system check"):
-    from ..lib.system import check
+    from sys import stdout as outer
+    from ..api.system import check
 
-    ret = check(args)
+    args["outer"] = outer
+    ret = check(**args)
     return ret
 
 

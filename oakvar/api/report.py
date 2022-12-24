@@ -1,4 +1,38 @@
-def report(args, __name__="report"):
+from typing import Optional
+from typing import List
+from typing import Dict
+
+
+def report(
+    dbpath: str,
+    report_types: List[str],
+    filterpath: Optional[str] = None,
+    filter=None,
+    filtersql: Optional[str] = None,
+    filtername: Optional[str] = None,
+    filterstring: Optional[str] = None,
+    savepath: Optional[str] = None,
+    confpath: Optional[str] = None,
+    module_name: Optional[str] = None,
+    nogenelevelonvariantlevel: bool = False,
+    confs: str = "{}",
+    inputfiles: Optional[List[str]] = None,
+    separatesample: bool = False,
+    output_dir: Optional[str] = None,
+    system_option: List[str] = [],
+    includesample: Optional[List[str]] = [],
+    excludesample: Optional[List[str]] = None,
+    package: Optional[str] = None,
+    modules_dir: Optional[str] = None,
+    cols: Optional[List[str]] = None,
+    level: Optional[str] = None,
+    user: Optional[str] = None,
+    no_summary: bool = False,
+    serveradmindb=None,
+    module_options: Dict[str, Dict] = {},
+    outer=None,
+    loop=None,
+):
     from os.path import dirname
     from os.path import basename
     from os.path import join
@@ -8,21 +42,12 @@ def report(args, __name__="report"):
     from importlib.util import module_from_spec
     from ..lib.exceptions import ModuleNotExist
     from ..lib.exceptions import IncompatibleResult
-    from ..lib.util.util import quiet_print
     from ..lib.module.local import get_local_module_info
-    from ..lib.system import consts
     from . import handle_exception
-    from ..lib.consts import MODULE_OPTIONS_KEY
 
-    dbpath = args.get("dbpath")
     compatible_version, _, _ = is_compatible_version(dbpath)
     if not compatible_version:
         raise IncompatibleResult()
-    report_types = args.get("reports")
-    md = args.get("md")
-    if md:
-        consts.custom_modules_dir = md
-    package = args.get("package")
     if not report_types:
         if package:
             m_info = get_local_module_info(package)
@@ -30,41 +55,17 @@ def report(args, __name__="report"):
                 package_conf = m_info.conf
                 if "run" in package_conf and "reports" in package_conf["run"]:
                     report_types = package_conf["run"]["reports"]
-    output_dir = args.get("output_dir")
     if not output_dir:
         output_dir = dirname(dbpath)
-    savepath = args.get("savepath")
     if not savepath:
         run_name = basename(dbpath).rstrip("sqlite").rstrip(".")
-        args["savepath"] = join(output_dir, run_name)
+        savepath = join(output_dir, run_name)
     else:
         savedir = dirname(savepath)
         if savedir != "":
             output_dir = savedir
-    module_options = {}
-    module_option = args.get("module_option")
-    if module_option:
-        for opt_str in module_option:
-            toks = opt_str.split("=")
-            if len(toks) != 2:
-                quiet_print(
-                    "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value.",
-                    args,
-                )
-                continue
-            k = toks[0]
-            if k.count(".") != 1:
-                quiet_print(
-                    "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value.",
-                    args,
-                )
-                continue
-            [module_name, key] = k.split(".")
-            if module_name not in module_options:
-                module_options[module_name] = {}
-            v = toks[1]
-            module_options[module_name][key] = v
-    loop = get_event_loop()
+    if not loop:
+        loop = get_event_loop()
     response = {}
     module_names = [v + "reporter" for v in report_types]
     for report_type, module_name in zip(report_types, module_names):
@@ -72,8 +73,8 @@ def report(args, __name__="report"):
             module_info = get_local_module_info(module_name)
             if module_info is None:
                 raise ModuleNotExist(report_type + "reporter")
-            quiet_print(f"Generating {report_type} report... ", args)
-            module_name = module_info.name
+            if outer:
+                outer.write(f"Generating {report_type} report...\n")
             spec = spec_from_file_location(  # type: ignore
                 module_name, module_info.script_path  # type: ignore
             )
@@ -83,10 +84,36 @@ def report(args, __name__="report"):
             if not module or not spec.loader:
                 continue
             spec.loader.exec_module(module)
-            args["module_name"] = module_name
-            if module_name in module_options:
-                args[MODULE_OPTIONS_KEY] = module_options[module_name]
-            reporter = module.Reporter(args)
+            reporter_module_options = module_options.get(module_name)
+            reporter = module.Reporter(
+                dbpath,
+                report_types=report_types,
+                filterpath=filterpath,
+                filter=filter,
+                filtersql=filtersql,
+                filtername=filtername,
+                filterstring=filterstring,
+                savepath=savepath,
+                confpath=confpath,
+                module_name=module_name,
+                nogenelevelonvariantlevel=nogenelevelonvariantlevel,
+                confs=confs,
+                inputfiles=inputfiles,
+                separatesample=separatesample,
+                output_dir=output_dir,
+                system_option=system_option,
+                includesample=includesample,
+                excludesample=excludesample,
+                package=package,
+                modules_dir=modules_dir,
+                cols=cols,
+                level=level,
+                user=user,
+                no_summary=no_summary,
+                serveradmindb=serveradmindb,
+                module_options=reporter_module_options,
+                outer=outer,
+            )
             response_t = None
             response_t = loop.run_until_complete(reporter.run())
             output_fns = None
@@ -95,9 +122,9 @@ def report(args, __name__="report"):
             else:
                 output_fns = response_t
             if output_fns is not None and type(output_fns) == str:
-                quiet_print(f"report created: {output_fns}", args)
+                if outer:
+                    outer.write(f"report created: {output_fns}\n")
             response[report_type] = response_t
         except Exception as e:
             handle_exception(e)
     return response
-

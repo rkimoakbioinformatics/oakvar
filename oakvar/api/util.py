@@ -408,4 +408,3 @@ async def filtersqlite_async(args):
             c.close()
             conn.close()
             raise e
-

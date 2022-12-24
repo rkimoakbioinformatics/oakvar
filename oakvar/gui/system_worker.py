@@ -3,7 +3,12 @@ from multiprocessing.managers import ListProxy
 from multiprocessing.managers import DictProxy
 from ..lib.module import InstallProgressHandler
 
-def system_queue_worker(system_queue: ListProxy, system_worker_state: Optional[DictProxy], local_modules_changed):
+
+def system_queue_worker(
+    system_queue: ListProxy,
+    system_worker_state: Optional[DictProxy],
+    local_modules_changed,
+):
     from time import sleep
     from ..lib.module import install_module
     from ..lib.system import setup_system
@@ -22,37 +27,46 @@ def system_queue_worker(system_queue: ListProxy, system_worker_state: Optional[D
             if work_type == "setup":
                 args = data.get("args")
                 args[SYSTEM_MSG_KEY] = SYSTEM_STATE_SETUP_KEY
-                setup_system(args=args)
+                setup_system()
             elif work_type == "install_module":
                 module_name = data["module"]
                 module_version = data["version"]
-                initialize_system_worker_state_for_install(system_worker_state, module_name=module_name, module_version=module_version)
+                initialize_system_worker_state_for_install(
+                    system_worker_state,
+                    module_name=module_name,
+                    module_version=module_version,
+                )
                 stage_handler = InstallProgressMpDict(
-                    module_name=module_name, module_version=module_version, system_worker_state=system_worker_state, quiet=False
+                    module_name=module_name,
+                    module_version=module_version,
+                    system_worker_state=system_worker_state,
+                    quiet=False,
                 )
                 try:
                     install_module(
                         module_name,
                         version=module_version,
                         stage_handler=stage_handler,
-                        args={"overwrite": True},
+                        overwrite=True,
                         fresh=True,
                     )
-                    #unqueue(module_name, system_queue)
+                    # unqueue(module_name, system_queue)
                     local_modules_changed.set()
                 except ModuleToSkipInstallation:
-                    #unqueue(module_name, system_queue)
+                    # unqueue(module_name, system_queue)
                     stage_handler.stage_start("skip")
                 except:
-                    #unqueue(module_name, system_queue)
+                    # unqueue(module_name, system_queue)
                     stage_handler.stage_start("error")
                     raise
         except KeyboardInterrupt:
             break
         except Exception as _:
             import traceback
+
             traceback.print_exc()
             local_modules_changed.set()
+
 
 def unqueue(module_name: Optional[str], system_queue):
     if not system_queue or not module_name:
@@ -65,8 +79,15 @@ def unqueue(module_name: Optional[str], system_queue):
     if data_to_del:
         system_queue.remove(data_to_del)
 
+
 class InstallProgressMpDict(InstallProgressHandler):
-    def __init__(self, module_name=None, module_version=None, system_worker_state=None, quiet=True):
+    def __init__(
+        self,
+        module_name=None,
+        module_version=None,
+        system_worker_state=None,
+        quiet=True,
+    ):
         super().__init__(module_name, module_version)
         self.module_name = module_name
         self.module_version = module_version
@@ -76,13 +97,18 @@ class InstallProgressMpDict(InstallProgressHandler):
     def _reset_progress(self, update_time=False):
         from time import time
         from .consts import SYSTEM_STATE_INSTALL_KEY
-        module_data = self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][self.module_name]
+
+        module_data = self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][
+            self.module_name
+        ]
         module_data["cur_chunk"] = 0
         module_data["cur_size"] = 0
         module_data["total_size"] = 0
         if update_time:
             module_data["update_time"] = time()
-        self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][self.module_name] = module_data
+        self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][
+            self.module_name
+        ] = module_data
 
     def stage_start(self, stage):
         from ..lib.util.util import quiet_print
@@ -91,21 +117,30 @@ class InstallProgressMpDict(InstallProgressHandler):
 
         self.cur_stage = stage
         msg = self._stage_msg(self.cur_stage)
-        initialize_system_worker_state_for_install(self.system_worker_state, module_name=self.module_name)
-        module_data = self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][self.module_name]
+        initialize_system_worker_state_for_install(
+            self.system_worker_state, module_name=self.module_name
+        )
+        module_data = self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][
+            self.module_name
+        ]
         module_data["stage"] = [self.cur_stage]
         module_data[SYSTEM_STATE_MESSAGE_KEY].append(self._stage_msg(self.cur_stage))
         module_data["kill_signal"] = False
-        self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][self.module_name] = module_data
+        self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][
+            self.module_name
+        ] = module_data
         self._reset_progress(update_time=True)
         quiet_print(msg, {"quiet": self.quiet})
 
 
-def initialize_system_worker_state_for_install(system_worker_state: Optional[DictProxy], module_name="", module_version=""):
+def initialize_system_worker_state_for_install(
+    system_worker_state: Optional[DictProxy], module_name="", module_version=""
+):
     from time import time
     from .consts import SYSTEM_STATE_INSTALL_KEY
     from .consts import SYSTEM_MSG_KEY
     from .consts import SYSTEM_STATE_MESSAGE_KEY
+
     if system_worker_state is None:
         return
     d = {}
@@ -121,4 +156,3 @@ def initialize_system_worker_state_for_install(system_worker_state: Optional[Dic
     d["update_time"] = time()
     d["kill"] = False
     system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name] = d
-

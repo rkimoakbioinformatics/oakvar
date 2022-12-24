@@ -674,10 +674,14 @@ async def table_exists(cursor, table):
 
 
 def serve_widgetfile(request):
+    from aiohttp.web import Response
     from ...lib.system import get_modules_dir
 
+    modules_dir = get_modules_dir()
+    if not modules_dir:
+        return Response(status=404)
     filepath = os.path.join(
-        get_modules_dir(),
+        modules_dir,
         "webviewerwidgets",
         request.match_info["module_dir"],
         request.match_info["filename"],
@@ -689,8 +693,12 @@ def serve_widgetfile(request):
 
 
 async def serve_runwidget(request):
+    from aiohttp.web import Response
     from ...lib.system import get_modules_dir
 
+    modules_dir = get_modules_dir()
+    if not modules_dir:
+        return Response(status=404)
     path = "wg" + request.match_info["module"]
     queries = request.rel_url.query
     dbpath = await get_dbpath(request)
@@ -702,7 +710,7 @@ async def serve_runwidget(request):
                 new_queries[key] = queries[key]
         queries = new_queries
     f, fn, d = imp.find_module(
-        path, [os.path.join(get_modules_dir(), "webviewerwidgets", path)]
+        path, [os.path.join(modules_dir, "webviewerwidgets", path)]
     )
     m = imp.load_module(path, f, fn, d)  # type: ignore
     cf = await ReportFilter.create(dbpath=dbpath, mode="sub")
@@ -716,8 +724,12 @@ async def serve_runwidget(request):
 
 
 async def serve_webapp_runwidget(request):
+    from aiohttp.web import Response
     from ...lib.system import get_modules_dir
 
+    modules_dir = get_modules_dir()
+    if not modules_dir:
+        return Response(status=404)
     module_name = request.match_info["module"]
     widget_name = request.match_info["widget"]
     queries = request.rel_url.query
@@ -729,7 +741,7 @@ async def serve_webapp_runwidget(request):
         "wg" + widget_name,
         [
             os.path.join(
-                get_modules_dir(), "webapps", module_name, "widgets", "wg" + widget_name
+                modules_dir, "webapps", module_name, "widgets", "wg" + widget_name
             )
         ],
     )
@@ -739,8 +751,12 @@ async def serve_webapp_runwidget(request):
 
 
 async def serve_runwidget_post(request):
+    from aiohttp.web import Response
     from ...lib.system import get_modules_dir
 
+    modules_dir = get_modules_dir()
+    if not modules_dir:
+        return Response(status=404)
     path = "wg" + request.match_info["module"]
     dbpath = await get_dbpath(request)
     queries = await request.json()
@@ -768,7 +784,7 @@ async def serve_runwidget_post(request):
                 new_queries[key] = queries[key]
         queries = new_queries
     f, fn, d = imp.find_module(
-        path, [os.path.join(get_modules_dir(), "webviewerwidgets", path)]
+        path, [os.path.join(modules_dir, "webviewerwidgets", path)]
     )
     m = imp.load_module(path, f, fn, d)  # type: ignore
     content = await m.get_data(queries)

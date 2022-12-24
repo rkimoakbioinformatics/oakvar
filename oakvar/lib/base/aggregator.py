@@ -1,24 +1,36 @@
+from typing import Optional
+
+
 class Aggregator(object):
 
     cr_type_to_sql = {"string": "text", "int": "integer", "float": "real"}
     commit_threshold = 10000
 
-    def __init__(self, *inargs, **inkwargs):
-        self.serveradmindb = None
+    def __init__(
+        self,
+        input_dir: str,
+        level: str,
+        run_name: str,
+        output_dir: Optional[str] = None,
+        delete: bool = False,
+        append: bool = False,
+        serveradmindb=None,
+    ):
+        self.input_dir = input_dir
+        self.level = level
+        self.run_name = run_name
+        self.output_dir = output_dir
+        self.delete = delete
+        self.append = append
+        self.serveradmindb = serveradmindb
         self.annotators = []
         self.ipaths = {}
         self.readers = {}
         self.base_fpath = None
-        self.level = None
-        self.input_dir = None
         self.input_base_fname = None
-        self.output_dir = None
         self.output_base_fname = None
         self.key_name = None
         self.table_name = None
-        self.run_name = None
-        self.delete = None
-        self.append = None
         self.logger = None
         self.error_logger = None
         self.unique_excs = []
@@ -31,62 +43,21 @@ class Aggregator(object):
         self.header_table_name = None
         self.reportsub_table_name = None
         self.base_prefix = "base"
-        self.parse_cmd_args(inargs, inkwargs)
+        self.setup_directories()
         self._setup_logger()
 
-    def parse_cmd_args(self, inargs, inkwargs):
-        from os.path import abspath, exists
+    def setup_directories(self):
+        from pathlib import Path
         from os import makedirs
-        from argparse import ArgumentParser
-        from ..util.util import get_args
 
-        parser = ArgumentParser()
-        parser.add_argument(
-            "-i",
-            dest="input_dir",
-            required=True,
-            help="Directory containing annotator outputs",
-        )
-        parser.add_argument(
-            "-l", dest="level", required=True, help="Level to aggregate"
-        )
-        parser.add_argument("-n", dest="run_name", required=True, help="Name of run")
-        parser.add_argument(
-            "-d",
-            dest="output_dir",
-            help="Directory for aggregator output. Default is input directory.",
-        )
-        parser.add_argument(
-            "-x",
-            dest="delete",
-            action="store_true",
-            help="Force deletion of existing database",
-        )
-        parser.add_argument(
-            "-a",
-            "--append",
-            dest="append",
-            action="store_true",
-            help="Append annotators to existing database",
-        )
-        args = get_args(parser, inargs, inkwargs)
-        self.agrs = args
-        self.serveradmindb = args.get("serveradmindb")
-        self.level = args.get("level")
-        self.run_name = args.get("run_name")
-        self.input_dir = abspath(args.get("input_dir"))
-        if args.get("output_dir"):
-            self.output_dir = args.get("output_dir")
-        else:
+        if not self.output_dir:
             self.output_dir = self.input_dir
         self.set_input_base_fname()
         if self.input_base_fname == None:
-            exit()
+            raise
         self.set_output_base_fname()
-        if not (exists(self.output_dir)):
+        if not Path(self.output_dir).exists():
             makedirs(self.output_dir)
-        self.delete = args.get("delete")
-        self.append = args.get("append")
 
     def _setup_logger(self):
         from logging import getLogger
@@ -290,8 +261,6 @@ class Aggregator(object):
         from ..consts import SAMPLE_FILE_SUFFIX
         from ..consts import MAPPING_FILE_SUFFIX
 
-        if not self.run_name:
-            return
         crv_fname = self.run_name + STANDARD_INPUT_FILE_SUFFIX
         crx_fname = self.run_name + VARIANT_LEVEL_MAPPED_FILE_SUFFIX
         crg_fname = self.run_name + GENE_LEVEL_MAPPED_FILE_SUFFIX
@@ -542,3 +511,40 @@ class Aggregator(object):
             # )
         else:
             self.logger.error(err_str)
+
+
+if __name__ == "__main__":
+    import sys
+    from argparse import ArgumentParser
+    from ..util.util import get_args
+
+    parser = ArgumentParser()
+    parser.add_argument(
+        "-i",
+        dest="input_dir",
+        required=True,
+        help="Directory containing annotator outputs",
+    )
+    parser.add_argument("-l", dest="level", required=True, help="Level to aggregate")
+    parser.add_argument("-n", dest="run_name", required=True, help="Name of run")
+    parser.add_argument(
+        "-d",
+        dest="output_dir",
+        help="Directory for aggregator output. Default is input directory.",
+    )
+    parser.add_argument(
+        "-x",
+        dest="delete",
+        action="store_true",
+        help="Force deletion of existing database",
+    )
+    parser.add_argument(
+        "-a",
+        "--append",
+        dest="append",
+        action="store_true",
+        help="Append annotators to existing database",
+    )
+    args = get_args(parser, sys.argv, {})
+    agg = Aggregator(**args)
+    agg.run()

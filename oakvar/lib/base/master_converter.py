@@ -13,7 +13,7 @@ class MasterConverter(object):
 
     ALREADYCRV = 2
 
-    def __init__(self, *inargs, **inkwargs):
+    def __init__(self):
         from re import compile
         from oakvar import get_wgs_reader
 

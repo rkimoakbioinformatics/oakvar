@@ -13,12 +13,6 @@ from .api.store.account import check as store_account_check
 from .api.store.account import change as store_account_change
 from .api.store import fetch as store_fetch
 from .api.module import pack as module_pack
-from .api.store.oc import oc_publish as store_oc_publish
-from .api.store.oc import oc_newaccount as store_oc_newaccount
-from .api.store.oc import oc_changepw as store_oc_changepw
-from .api.store.oc import oc_resetpw as store_oc_resetpw
-from .api.store.oc import oc_verifyemail as store_oc_verifyemail
-from .api.store.oc import oc_checklogin as store_oc_checklogin
 from .api.new import module as new_annotator
 from .api.new import exampleinput as new_exampleinput
 from .api.issue import issue
@@ -92,6 +86,7 @@ def raise_break(__signal_number__, __stack_frame__):
                 pass
         os.kill(pid, signal.SIGTERM)
 
+
 # from .api.util import ov_util_updateresult
 
 wgs = None
@@ -131,14 +126,6 @@ _ = (
 _ = system_setup or system_md
 _ = test
 _ = util_addjob or util_filtersqlite or util_mergesqlite or util_sqliteinfo
-_ = (
-    store_oc_publish
-    or store_oc_newaccount
-    or store_oc_changepw
-    or store_oc_resetpw
-    or store_oc_verifyemail
-    or store_oc_checklogin
-)
 
 
 def get_live_annotator(module_name, input_file=None):

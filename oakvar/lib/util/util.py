@@ -1,8 +1,8 @@
 from typing import Dict
-from typing import Tuple
 from typing import Optional
 
 ov_system_output_columns: Optional[dict] = None
+
 
 def get_ucsc_bins(start, stop=None):
     if stop is None:
@@ -49,6 +49,7 @@ def load_class(path, class_name=None):
         module = import_module(module_name)
     except Exception:
         import traceback
+
         traceback.print_exc()
         try:
             if class_name:
@@ -60,6 +61,7 @@ def load_class(path, class_name=None):
                         loader.exec_module(module)
         except Exception:
             import traceback
+
             traceback.print_exc()
             raise ModuleLoadingError(module_name)
     if module:
@@ -288,6 +290,7 @@ def get_args(parser, inargs, inkwargs) -> dict:
                 inarg_dict[key] = [value]
     return inarg_dict
 
+
 def filter_affected_cols(filter):
     cols = set()
     if "column" in filter:
@@ -364,12 +367,18 @@ def quiet_print(msg, args=None, quiet=None):
     msg_kind = args.get(SYSTEM_MSG_KEY)
     if msg_kind == SYSTEM_STATE_SETUP_KEY:
         system_worker_state[SYSTEM_STATE_SETUP_KEY][SYSTEM_MSG_KEY] = msg_kind
-        system_worker_state[SYSTEM_STATE_SETUP_KEY][SYSTEM_STATE_MESSAGE_KEY].append(msg)
+        system_worker_state[SYSTEM_STATE_SETUP_KEY][SYSTEM_STATE_MESSAGE_KEY].append(
+            msg
+        )
         system_worker_state[SYSTEM_STATE_SETUP_KEY]["update_time"] = time()
     elif msg_kind == SYSTEM_STATE_INSTALL_KEY:
         module_name = args.get("module_name")
-        system_worker_state[SYSTEM_STATE_SETUP_KEY][module_name][SYSTEM_MSG_KEY] = msg_kind
-        system_worker_state[SYSTEM_STATE_SETUP_KEY][module_name][SYSTEM_STATE_MESSAGE_KEY].append(msg)
+        system_worker_state[SYSTEM_STATE_SETUP_KEY][module_name][
+            SYSTEM_MSG_KEY
+        ] = msg_kind
+        system_worker_state[SYSTEM_STATE_SETUP_KEY][module_name][
+            SYSTEM_STATE_MESSAGE_KEY
+        ].append(msg)
         system_worker_state[SYSTEM_STATE_SETUP_KEY][module_name]["update_time"] = time()
 
 
@@ -458,6 +467,7 @@ def get_result_dbpath(output_dir: str, run_name: str):
 
     return str(Path(output_dir) / (run_name + result_db_suffix))
 
+
 def get_unique_path(path: str):
     from pathlib import Path
 
@@ -514,12 +524,6 @@ def print_list_of_dict(l):
     console = Console()
     console.print(table)
 
-def print_tabular_lines(l, args=None):
-    for line in yield_tabular_lines(l):
-        if args:
-            quiet_print(line, args=args)
-        else:
-            print(line)
 
 def log_module(module, logger):
     if logger:
@@ -531,6 +535,7 @@ def log_module(module, logger):
         if not code_version:
             code_version = "?"
         logger.info(f"module: {module.name}=={code_version} {module.script_path}")
+
 
 def get_ov_system_output_columns() -> dict:
     from pathlib import Path
@@ -546,11 +551,13 @@ def get_ov_system_output_columns() -> dict:
         return {}
     return ov_system_output_columns
 
+
 def get_crv_def() -> list:
     from ..consts import INPUT_LEVEL_KEY
 
     output_columns: dict = get_ov_system_output_columns()
     return output_columns[INPUT_LEVEL_KEY]
+
 
 def get_crx_def() -> list:
     from ..consts import VARIANT_LEVEL_KEY
@@ -558,11 +565,13 @@ def get_crx_def() -> list:
     output_columns: dict = get_ov_system_output_columns()
     return output_columns[VARIANT_LEVEL_KEY]
 
+
 def get_crg_def() -> list:
     from ..consts import GENE_LEVEL_KEY
 
     output_columns: dict = get_ov_system_output_columns()
     return output_columns[GENE_LEVEL_KEY]
+
 
 def get_crs_def() -> list:
     from ..consts import SAMPLE_LEVEL_KEY
@@ -570,15 +579,16 @@ def get_crs_def() -> list:
     output_columns: dict = get_ov_system_output_columns()
     return output_columns[SAMPLE_LEVEL_KEY]
 
+
 def get_crm_def() -> list:
     from ..consts import MAPPING_LEVEL_KEY
 
     output_columns: dict = get_ov_system_output_columns()
     return output_columns[MAPPING_LEVEL_KEY]
 
+
 def get_crl_def() -> list:
     from ..consts import LIFTOVER_LEVEL_KEY
 
     output_columns: dict = get_ov_system_output_columns()
     return output_columns[LIFTOVER_LEVEL_KEY]
-

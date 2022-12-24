@@ -248,10 +248,10 @@ def get_developer_dict(kwargs):
         }
 
 
-def url(args={}):
+def url(outer=None):
     from .ov import get_store_url
-    from ..util.util import quiet_print
 
     u = get_store_url()
-    quiet_print(f"{u}", args=args)
+    if outer:
+        outer.write(f"{u}\n")
     return u

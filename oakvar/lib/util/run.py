@@ -1,3 +1,7 @@
+from typing import Optional
+from typing import List
+
+
 def update_status(status: str, logger=None, serveradmindb=None):
     if logger:
         logger.info(status)
@@ -61,8 +65,10 @@ def get_y_or_n():
             continue
 
 
-def show_logo():
-    print(
+def show_logo(outer=None):
+    if not outer:
+        return
+    outer.write(
         r"""
 ==========================================================
  #######     ###    ##    ## ##     ##    ###    ########  
@@ -78,17 +84,17 @@ def show_logo():
         Licensing and feedback: info@oakbioinformatics.com
                                         https://oakvar.com
 """,
-        flush=True,
     )
 
-def get_module_options(args):
-    from json import loads
-    from ..consts import MODULE_OPTIONS_KEY
 
-    module_options = args.get(MODULE_OPTIONS_KEY)
+def get_module_options(l: Optional[List[str]]):
+    from json import loads
+
     if module_options:
         if isinstance(module_options, str):
-            module_options = args.get(MODULE_OPTIONS_KEY).lstrip("'").rstrip("'").replace("'", '"')
+            module_options = (
+                args.get(MODULE_OPTIONS_KEY).lstrip("'").rstrip("'").replace("'", '"')
+            )
             module_options = loads(module_options)
         elif not isinstance(module_options, dict):
             module_options = None

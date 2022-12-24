@@ -1,27 +1,23 @@
-def setup(args, __name__="system setup"):
+from typing import Optional
+
+
+def setup():
     from ..lib.system import setup_system
 
-    return setup_system(args)
+    return setup_system()
 
 
-def md(args, __name__="system md"):
+def md(directory: Optional[str] = None):
     from ..lib.system import set_modules_dir, get_modules_dir
-    from ..lib.util.util import quiet_print
 
-    d = args.get("directory")
-    if d:
-        set_modules_dir(d)
+    if directory:
+        set_modules_dir(directory)
     d = get_modules_dir()
-    if args.get("to") == "stdout":
-        if d is not None:
-            quiet_print(d, args=args)
-    else:
-        return d
+    return d
 
 
-def check(args, __name__="system check"):
+def check(outer=None):
     from ..lib.system import check
 
-    ret = check(args)
+    ret = check(outer=outer)
     return ret
-

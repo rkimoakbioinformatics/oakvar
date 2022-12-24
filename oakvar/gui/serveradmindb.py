@@ -632,11 +632,10 @@ class ServerAdminDb:
         conn.close()
 
 
-def setup_serveradmindb(args={}):
+def setup_serveradmindb(clean: bool=False):
     from os import remove
     from pathlib import Path
 
-    clean = args.get("clean")
     admindb_path = get_admindb_path()
     if clean and admindb_path and Path(admindb_path).exists():
         remove(admindb_path)

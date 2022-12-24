@@ -9,9 +9,9 @@ def cli_store_register(args):
 
 @cli_func
 def register(args, __name__="store register"):
-    from ...lib.store.ov import register
+    from ...api.store import register
 
-    ret = register(args=args)
+    ret = register(**args)
     return ret
 
 
@@ -22,9 +22,9 @@ def cli_store_fetch(args):
 
 @cli_func
 def fetch(args, __name__="store fetch"):
-    from ...lib.store.db import fetch_ov_store_cache
+    from ...api.store import fetch
 
-    ret = fetch_ov_store_cache(args=args)
+    ret = fetch(**args)
     return ret
 
 
@@ -35,9 +35,9 @@ def cli_store_url(args):
 
 @cli_func
 def url(args, __name__="store url"):
-    from ...lib.store import url
+    from ...api.store import url
 
-    ret = url(args=args)
+    ret = url(**args)
     return ret
 
 

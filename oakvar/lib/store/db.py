@@ -810,13 +810,12 @@ def table_has_entry(table: str, conn=Any, cursor=Any) -> bool:
 
 
 @db_func
-def check_tables(args={}, conn=Any, cursor=Any) -> bool:
-    from ..util.util import quiet_print
-
+def check_tables(outer=None, conn=Any, cursor=Any) -> bool:
     _ = conn or cursor
     for table in ["summary", "versions", "info"]:
         if not table_exists(table) or not table_has_entry(table):
-            quiet_print(f"store cache table {table} does not exist.", args=args)
+            if outer:
+                outer.write(f"Store cache table {table} does not exist.\n")
             return False
     return True
 

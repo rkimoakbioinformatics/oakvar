@@ -1,9 +1,10 @@
 from typing import Optional
 from typing import List
+from pathlib import Path
 
 
-class InstallProgressHandler(object):
-    def __init__(self, module_name: str="", module_version: Optional[str]=None):
+class InstallProgressHandler:
+    def __init__(self, module_name: Optional[str]=None, module_version: Optional[str]=None):
         self.module_name = module_name
         self.module_version = module_version
         self.display_name = None
@@ -19,6 +20,7 @@ class InstallProgressHandler(object):
             self._make_display_name()
 
     def _make_display_name(self):
+        assert self.module_name
         ver_str = self.module_version if self.module_version is not None else ""
         self.display_name = ":".join([self.module_name, ver_str])
 
@@ -147,97 +149,47 @@ def list_remote(module_type=None):
     return module_list(module_type=module_type)
 
 
-def get_updatable(module_names: List[str]=[], outer=None):
+def update_available(module_name: str):
     from packaging.version import Version
-    from pkg_resources import Requirement
-    from collections import defaultdict
-    from types import SimpleNamespace
     from .local import get_local_module_info
     from .remote import get_remote_module_info
-    from ..store.db import remote_module_data_version
-    from .cache import get_module_cache
+    local_info = get_local_module_info(module_name)
+    remote_info = get_remote_module_info(module_name)
+    if not local_info or not remote_info or not local_info.code_version or not remote_info.latest_code_version:
+        return False
+    if Version(remote_info.latest_code_version) > Version(local_info.code_version):
+        return True
+    else:
+        return False
+
+def get_updatable(module_names: List[str]=[]):
+    from .local import get_local_module_info
 
     if not module_names:
         module_names = list_local()
-    reqs_by_dep = defaultdict(dict)
-    all_versions = {}
-    get_module_cache(fresh=True)
-    for mname in list_local():
-        local_info = get_local_module_info(mname)
-        remote_info = get_remote_module_info(mname)
-        if remote_info:
-            all_versions[mname] = sorted(remote_info.code_versions, key=Version)
-        if local_info:
-            req_strings = local_info.conf.get("requires", [])
-            reqs = [Requirement.parse(s) for s in req_strings]
-            for req in reqs:
-                dep = req.unsafe_name
-                reqs_by_dep[dep][mname] = req
-    update_vers = {}
-    resolution_applied = {}
-    resolution_failed = {}
-    for mname in module_names:
-        if mname not in list_local():
-            if outer:
-                outer.write(f"{mname} absent from the system. Skipping it.")
+    to_update = []
+    for mn in module_names:
+        local_info = get_local_module_info(mn)
+        if not local_info:
             continue
-        local_info = get_local_module_info(mname)
-        remote_info = get_remote_module_info(mname)
-        reqs = reqs_by_dep[mname]
-        versions = all_versions.get(mname, [])
-        if not versions:
+        if update_available(mn):
+            to_update.append(mn)
+        requires = local_info.conf.get("requires")
+        if not requires:
             continue
-        selected_version = versions[-1]
-        if (
-            selected_version
-            and local_info
-            and local_info.version
-            and Version(selected_version) <= Version(local_info.version)
-        ):
-            continue
-        if reqs:
-            resolution_applied[mname] = reqs
-            passing_versions = []
-            for version in versions:
-                version_passes = True
-                for _, requirement in reqs.items():
-                    version_passes = version in requirement
-                    if not version_passes:
-                        break
-                if version_passes:
-                    passing_versions.append(version)
-            selected_version = passing_versions[-1] if passing_versions else None
-        if (
-            selected_version
-            and remote_info
-            and local_info
-            and local_info.version
-            and Version(selected_version) > Version(local_info.version)
-        ):
-            update_data_version = remote_module_data_version(mname, selected_version)
-            installed_data_version = remote_module_data_version(
-                mname, local_info.version
-            )
-            if (
-                update_data_version is not None
-                and update_data_version != installed_data_version
-            ):
-                update_size = remote_info.size
-            else:
-                update_size = remote_info.code_size
-            update_vers[mname] = SimpleNamespace(
-                version=selected_version, size=update_size
-            )
-        else:
-            resolution_failed[mname] = reqs
-    return update_vers, resolution_applied, resolution_failed
+        for req_mn in requires:
+            if req_mn in to_update:
+                continue
+            if update_available(req_mn):
+                to_update.append(req_mn)
+    return to_update
 
 
 def make_install_temp_dir(
     module_name: Optional[str] = None,
     modules_dir: Optional[str] = None,
     clean: bool = False,
-) -> Optional[str]:
+) -> Optional[Path]:
     from ..system import get_modules_dir
     from ..consts import install_tempdir_name
     from shutil import rmtree
@@ -251,7 +203,7 @@ def make_install_temp_dir(
     if clean:
         rmtree(str(temp_dir), ignore_errors=True)
     temp_dir.mkdir(parents=True, exist_ok=True)
-    return str(temp_dir)
+    return temp_dir
 
 
 def set_stage_handler(module_name: str, stage_handler=None, version: str=""):
@@ -443,6 +395,7 @@ def install_module_from_url(
     from ..util.download import download
     from ..util.util import load_yml_conf
     from .remote import get_install_deps
+    from ..exceptions import ArgumentError
 
     temp_dir = make_install_temp_dir(
         module_name=module_name, modules_dir=modules_dir, clean=clean

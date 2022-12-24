@@ -1,5 +1,6 @@
-from typing import Tuple
 from typing import Optional
+from typing import Tuple
+from typing import Dict
 
 from oakvar.lib.exceptions import StoreServerError
 
@@ -433,29 +434,44 @@ def delete_token_set():
 
 
 def get_email_pw_from_settings(
-    email=None, pw=None, conf=None, args={}
-) -> Optional[Tuple[str, str]]:
+    email=None,
+    pw=None,
+    conf=None,
+) -> Tuple[Optional[str], Optional[str]]:
+    from os import environ
     from ...consts import OV_STORE_EMAIL_KEY
     from ...consts import OV_STORE_PW_KEY
     from ....system import get_user_conf
+    from ....system import get_env_key
 
-    # if not given directly, check direct arguments.
-    if not email or not pw:
-        email = args.get("email")
-        pw = args.get("pw")
-    # if not, use conf.
-    if (not email or not pw) and conf:
-        email = conf.get(OV_STORE_EMAIL_KEY)
-        pw = conf.get(OV_STORE_PW_KEY)
-    # if not, oakvar.yml
-    user_conf = get_user_conf()
-    if OV_STORE_EMAIL_KEY in user_conf and OV_STORE_PW_KEY in user_conf:
-        email = user_conf[OV_STORE_EMAIL_KEY]
-        pw = user_conf[OV_STORE_PW_KEY]
     if email and pw:
         return email, pw
-    else:
-        return None
+    # if email or pw not given, use conf.
+    if conf:
+        if not email:
+            email = conf.get(OV_STORE_EMAIL_KEY)
+        if not pw:
+            pw = conf.get(OV_STORE_PW_KEY)
+    if email and pw:
+        return email, pw
+    # if not, check environmental variables.
+    if not email:
+        k = get_env_key(OV_STORE_EMAIL_KEY)
+        if k in environ:
+            email = environ.get(k)
+    if not pw:
+        k = get_env_key(OV_STORE_PW_KEY)
+        if k in environ:
+            pw = environ.get(k)
+    if email and pw:
+        return email, pw
+    # if not, oakvar.yml
+    user_conf = get_user_conf()
+    if not email and OV_STORE_EMAIL_KEY in user_conf:
+        email = user_conf[OV_STORE_EMAIL_KEY]
+    if not pw and OV_STORE_PW_KEY in user_conf:
+        pw = user_conf[OV_STORE_PW_KEY]
+    return email, pw
 
 
 def emailpw_are_valid(emailpw: Tuple[str, str]) -> bool:
@@ -467,8 +483,7 @@ def emailpw_are_valid(emailpw: Tuple[str, str]) -> bool:
     return email_is_valid(email) and pw_is_valid(pw)
 
 
-def email_is_verified(email: str, args={}, quiet=None) -> bool:
-    from ....util.util import quiet_print
+def email_is_verified(email: str, outer=None) -> bool:
     from ...ov import get_store_url
     from requests import post
 
@@ -478,35 +493,34 @@ def email_is_verified(email: str, args={}, quiet=None) -> bool:
     if res.status_code == 200:
         return True
     elif res.status_code == 404:
-        quiet_print(f"user not found", args=args, quiet=quiet)
+        if outer:
+            outer.write(f"User not found\n")
         return False
     else:
-        quiet_print(
-            f"{email} has not been verified. {res.text}", args=args, quiet=quiet
-        )
+        if outer:
+            outer.write(f"{email} has not been verified. {res.text}\n")
         return False
 
 
-def announce_on_email_verification_if_needed(email: str, args={}, quiet=None):
+def announce_on_email_verification_if_needed(email: str, outer=None):
     from ....system import show_email_verify_action_banner
 
-    if not email_is_verified(email, args=args, quiet=quiet):
+    if not email_is_verified(email, outer=outer):
         show_email_verify_action_banner()
 
 
-def login_with_token_set(args={}) -> bool:
-    from ....util.util import quiet_print
-
+def login_with_token_set(outer=None) -> bool:
     token_set = get_token_set()
     print(f"@ token_set={token_set}")
     if token_set:
         email = token_set["email"]
         correct, expired = id_token_is_valid()
-        email_verified = email_is_verified(email, args=args)
+        email_verified = email_is_verified(email, outer=outer)
         if not email_verified:
-            quiet_print(
-                f"Email not verified. A verification email should have been sent to your inbox."
-            )
+            if outer:
+                outer.write(
+                    f"Email not verified. A verification email should have been sent to your inbox.\n"
+                )
             return True
         else:
             if correct:
@@ -523,51 +537,56 @@ def login_with_token_set(args={}) -> bool:
     return False
 
 
-def login_with_email_pw(email=None, pw=None, args={}, conf={}) -> dict:
-    emailpw = get_email_pw_from_settings(email=email, pw=pw, args=args, conf=conf)
-    if emailpw:
-        if emailpw_are_valid(emailpw):
-            email = emailpw[0]
-            pw = emailpw[1]
-            ret = create(email=email, pw=pw, quiet=False)
-            print(f"@@@ create ret={ret}. email={email}. pw={pw}")
-            if ret.get("success"):
-                announce_on_email_verification_if_needed(email, args=args)
-                login(email=email, pw=pw, args=args)
-            return ret
-        else:
-            return {
-                "status_code": 400,
-                "success": False,
-                "msg": "invalid email or password)",
-            }
-    return {
-        "status_code": 400,
-        "success": False,
-        "msg": "no email or password was provided",
-    }
+def login_with_email_pw(
+    email: Optional[str] = None,
+    pw: Optional[str] = None,
+    conf: Optional[Dict] = None,
+    outer=None,
+) -> dict:
+    email, pw = get_email_pw_from_settings(email=email, pw=pw, conf=conf)
+    if not email or not pw:
+        return {
+            "status_code": 400,
+            "success": False,
+            "msg": "No email or password was provided",
+        }
+    if emailpw_are_valid((email, pw)):
+        ret = create(email=email, pw=pw, outer=outer)
+        print(f"@@@ create ret={ret}. email={email}. pw={pw}")
+        if ret.get("success"):
+            announce_on_email_verification_if_needed(email, outer=outer)
+            login(email=email, pw=pw, outer=outer)
+        return ret
+    else:
+        return {
+            "status_code": 400,
+            "success": False,
+            "msg": "invalid email or password)",
+        }
 
 
-def total_login(email=None, pw=None, args={}, conf=None) -> dict:
-    from ....util.util import get_email_pw_from_input
+def total_login(
+    email=None, pw=None, install_mode: str = "", conf: Optional[Dict] = None, outer=None
+) -> dict:
     from ....system import show_no_user_account_prelude
-    from ....util.util import quiet_print
 
-    if login_with_token_set(args=args):
+    if login_with_token_set(outer=outer):
         return {"success": True}
-    ret = login_with_email_pw(email=email, pw=pw, args=args, conf=conf)
+    ret = login_with_email_pw(email=email, pw=pw, conf=conf)
     if ret.get("success"):
         return {"success": True}
-    elif args.get("install_mode") == "web":
-        quiet_print(ret, args=args)
+    elif install_mode == "web":
+        if outer:
+            outer.write(ret)
         return ret
     # if not already logged in nor email and pw in settings did not work, get manual input.
     show_no_user_account_prelude()
-    email, pw = get_email_pw_from_input(pwconfirm=True)
-    ret = create(email=email, pw=pw, quiet=False)
+    email, pw = get_email_pw_interactively(email=email, pw=pw, pwconfirm=True)
+    ret = create(email=email, pw=pw, outer=outer)
     if not ret.get("success"):
-        quiet_print(ret, args=args)
+        if outer:
+            outer.write(ret)
         return ret
-    announce_on_email_verification_if_needed(email, args=args)
-    ret = login(email=email, pw=pw, args=args)
+    announce_on_email_verification_if_needed(email, outer=outer)
+    ret = login(email=email, pw=pw, outer=outer)
     return ret

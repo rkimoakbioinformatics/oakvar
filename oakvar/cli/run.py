@@ -1,6 +1,7 @@
 from . import cli_entry
 from . import cli_func
 
+
 @cli_entry
 def cli_run(args):
     ret = run(args)
@@ -9,31 +10,10 @@ def cli_run(args):
 
 @cli_func
 def run(args, __name__="run"):
-    from ..lib.system import custom_system_conf
-    from ..lib.base.runner import Runner
-    from ..lib.util.asyn import get_event_loop
+    from ..api.run import run
 
-    # nested asyncio
-    #nest_asyncio.apply()
-    # Custom system conf
-    custom_system_conf = {}
-    system_option = args.get("system_option")
-    if system_option:
-        for kv in system_option:
-            if "=" not in kv:
-                continue
-            toks = kv.split("=")
-            if len(toks) != 2:
-                continue
-            [k, v] = toks
-            try:
-                v = int(v)
-            except ValueError:
-                pass
-            custom_system_conf[k] = v
-    module = Runner(**args)
-    loop = get_event_loop()
-    return loop.run_until_complete(module.main())
+    ret = run(**args)
+    return ret
 
 
 def add_parser_ov_run(subparsers):
@@ -76,9 +56,15 @@ def add_parser_ov_run(subparsers):
     parser_ov_run.add_argument(
         "-e", nargs="+", dest="excludes", default=[], help="modules to exclude"
     )
-    parser_ov_run.add_argument("-n", dest="run_name", nargs="+", help="name of oakvar run")
     parser_ov_run.add_argument(
-        "-d", dest="output_dir", nargs="+", default=None, help="directory for output files"
+        "-n", dest="run_name", nargs="+", help="name of oakvar run"
+    )
+    parser_ov_run.add_argument(
+        "-d",
+        dest="output_dir",
+        nargs="+",
+        default=None,
+        help="directory for output files",
     )
     parser_ov_run.add_argument(
         "--startat",
@@ -135,7 +121,7 @@ def add_parser_ov_run(subparsers):
     parser_ov_run.add_argument(
         "-t",
         nargs="+",
-        dest="reports",
+        dest="report_types",
         default=[],
         help="Reporter types or reporter module directories",
     )
@@ -179,21 +165,21 @@ def add_parser_ov_run(subparsers):
         "--temp-files",
         dest="keep_temp",
         action="store_true",
-        default=None,
+        default=False,
         help="Leave temporary files after run is complete.",
     )
     parser_ov_run.add_argument(
         "--keep-temp",
         dest="keep_temp",
         action="store_true",
-        default=None,
+        default=False,
         help="Leave temporary files after run is complete.",
     )
     parser_ov_run.add_argument(
         "--writeadmindb",
         dest="writeadmindb",
         action="store_true",
-        default=None,
+        default=False,
         help="Write job information to admin db after job completion",
     )
     parser_ov_run.add_argument(
@@ -209,21 +195,21 @@ def add_parser_ov_run(subparsers):
         "--version",
         dest="show_version",
         action="store_true",
-        default=None,
+        default=False,
         help="Shows OakVar version.",
     )
     parser_ov_run.add_argument(
         "--separatesample",
         dest="separatesample",
         action="store_true",
-        default=None,
+        default=False,
         help="Separate variant results by sample",
     )
     parser_ov_run.add_argument(
         "--unique-variants",
         dest="unique_variants",
         action="store_true",
-        default=None,
+        default=False,
         help="Set to get only unique variants in output",
     )
     parser_ov_run.add_argument(
@@ -237,7 +223,7 @@ def add_parser_ov_run(subparsers):
         "--cleanrun",
         dest="clean",
         action="store_true",
-        default=None,
+        default=False,
         help="Deletes all previous output files for the job and generate new ones.",
     )
     parser_ov_run.add_argument(

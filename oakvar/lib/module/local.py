@@ -42,11 +42,11 @@ class LocalModule(object):
             self.readme = ""
         self.helphtml_path = os.path.join(self.directory, "help.html")
         self.helphtml_exists = os.path.exists(self.helphtml_path)
-        self.conf = {}
+        self.conf: dict = {}
         if self.conf_exists:
             self.conf = load_yml_conf(self.conf_path)
         self.type = self.conf.get("type")
-        self.code_version = self.conf.get("code_version")
+        self.code_version: Optional[str] = self.conf.get("code_version")
         if not self.code_version:
             self.code_version = self.conf.get("version")
         self.version = self.code_version
@@ -437,10 +437,9 @@ def get_logo_b64(module_name: str, module_type=None) -> Optional[str]:
     return None
 
 
-def get_remote_manifest_from_local(module_name: str, args={}):
+def get_remote_manifest_from_local(module_name: str, error=None):
     from os.path import exists
     from datetime import datetime
-    from ..util.util import quiet_print
     from ..util.admin_util import oakvar_version
     from ..consts import publish_time_fmt
 
@@ -472,7 +471,8 @@ def get_remote_manifest_from_local(module_name: str, args={}):
     if not rmi["code_version"]:
         rmi["code_version"] = module_conf.get("version", "")
     if not rmi["code_version"]:
-        quiet_print(f"code_version should be defined in {module_name}.yml", args=args)
+        if error:
+            error.write(f"code_version should be defined in {module_name}.yml\n")
         return None
     rmi["data_version"] = module_conf.get("data_version", "")
     rmi["data_source"] = module_info.latest_data_source

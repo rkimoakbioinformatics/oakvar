@@ -1,4 +1,5 @@
 from typing import Optional
+from typing import List
 from typing import Tuple
 from . import account as account
 
@@ -34,7 +35,7 @@ def module_data_url(module_name: str, version=None) -> Optional[str]:
     from ...exceptions import AuthorizationError
     from ...exceptions import StoreServerError
 
-    id_token = get_current_id_token(args={"quiet": True})
+    id_token = get_current_id_token()
     if not id_token:
         raise AuthorizationError()
     s = Session()
@@ -53,10 +54,22 @@ def module_data_url(module_name: str, version=None) -> Optional[str]:
         return None
 
 
-def setup_ov_store_cache(args=None):
+def setup_ov_store_cache(
+    clean_cache_db: bool = False,
+    clean_cache_files: bool = False,
+    clean: bool = False,
+    publish_time: str = "",
+    outer=None,
+):
     from ..db import fetch_ov_store_cache
 
-    fetch_ov_store_cache(args=args)
+    fetch_ov_store_cache(
+        clean_cache_db=clean_cache_db,
+        clean_cache_files=clean_cache_files,
+        clean=clean,
+        publish_time=publish_time,
+        outer=outer,
+    )
 
 
 def url_is_valid(url: str) -> bool:
@@ -76,62 +89,71 @@ def get_version_from_url(url: str):
     return words[1]
 
 
-def get_register_args_of_module(module_name: str, args={}) -> Optional[dict]:
+def get_register_args_of_module(
+    module_name: str,
+    url_file: Optional[str] = None,
+    code_url: List[str] = [],
+    data_url: List[str] = [],
+    overwrite: bool = False,
+    outer=None,
+    error=None,
+) -> Optional[dict]:
     from json import dumps
     from oyaml import safe_load
-    from os.path import exists
+    from pathlib import Path
     from ...module.local import get_remote_manifest_from_local
     from ...exceptions import ArgumentError
     from ...util.util import is_url
-    from ...util.util import quiet_print
     from ...module.local import get_local_module_info
     from ..ov import module_data_url
 
-    rmi = get_remote_manifest_from_local(module_name, args=args)
-    if not rmi or not args:
+    rmi = get_remote_manifest_from_local(module_name, error=error)
+    if not rmi:
         return None
     data_version = rmi.get("data_version")
     no_data = rmi.get("no_data")
     if not data_version and not no_data:
         mi = get_local_module_info(module_name)
-        if mi:
-            quiet_print(
-                f"data_version should be given or no_data should be set to true in {mi.conf_path}",
-                args=args,
+        if mi and error:
+            error.write(
+                f"data_version should be given or no_data should be set to true in {mi.conf_path}.\n",
             )
         return None
-    if args.get("url_file") and exists(args.get("url_file")):
-        with open(args.get("url_file")) as f:
+    if url_file and Path(url_file).exists():
+        with open(url_file) as f:
             j = safe_load(f)
             rmi["code_url"] = j.get("code_url", [])
             rmi["data_url"] = j.get("data_url", [])
     else:
-        rmi["code_url"] = args.get("code_url")
-        rmi["data_url"] = args.get("data_url") or []
+        rmi["code_url"] = code_url
+        rmi["data_url"] = data_url
     if not rmi["code_url"]:
-        quiet_print(
-            f"--code-url or -f with a file having code_url should be given.", args=args
-        )
+        if error:
+            error.write(
+                f"--code-url or -f with a file having code_url should be given.\n"
+            )
         return None
     for kind in ["code", "data"]:
         k = f"{kind}_url"
         if len(rmi[k]) > 0:
             for url in rmi[k]:
-                quiet_print(f"Validating {url}...", args=args)
+                if outer:
+                    outer.write(f"Validating {url}...\n")
                 try:
                     valid = is_url(url) and url_is_valid(url)
                 except:
                     valid = False
                 if not valid:
                     raise ArgumentError(msg=f"invalid {kind} URL: {url}")
-                quiet_print(f"Validated", args=args)
+                if outer:
+                    outer.write(f"Validated\n")
     if not rmi.get("data_url") and no_data and data_version:
         data_url_s = module_data_url(module_name, version=data_version)
         if not data_url_s:
             raise ArgumentError(msg=f"--data-url should be given for new data.")
     rmi["code_url"] = dumps(rmi["code_url"])
     rmi["data_url"] = dumps(rmi["data_url"])
-    rmi["overwrite"] = args.get("overwrite")
+    rmi["overwrite"] = overwrite
     rmi["conf"] = dumps(rmi["conf"])
     rmi["developer"] = dumps(rmi["developer"])
     del rmi["output_columns"]
@@ -184,11 +206,11 @@ def make_remote_module_info_from_local(module_name: str) -> Optional[dict]:
     return rmi
 
 
-def get_server_last_updated(args={}) -> Tuple[str, int]:
+def get_server_last_updated() -> Tuple[str, int]:
     from requests import Session
     from .account import get_current_id_token
 
-    id_token = get_current_id_token(args=args)
+    id_token = get_current_id_token()
     s = Session()
     s.headers["User-Agent"] = "oakvar"
     url = get_store_url() + "/last_updated"
@@ -228,10 +250,17 @@ def get_store_url() -> str:
     return store_url
 
 
-def register(args={}) -> bool:
+def register(
+    module_name: str,
+    url_file: Optional[str] = None,
+    code_url: List[str] = [],
+    data_url: List[str] = [],
+    overwrite: bool = False,
+    outer=None,
+    error=None,
+) -> bool:
     from requests import post
     from .account import get_current_id_token
-    from ...util.util import quiet_print
     from ...module.local import get_logo_b64
     from ...module.local import get_readme
     from ...module.local import get_code_size
@@ -240,10 +269,17 @@ def register(args={}) -> bool:
     from datetime import datetime
 
     id_token = get_current_id_token()
-    module_name = args.get("module_name")
     url = get_store_url() + "/register_module"
     try:
-        params = get_register_args_of_module(module_name, args=args)
+        params = get_register_args_of_module(
+            module_name,
+            url_file=url_file,
+            code_url=code_url,
+            data_url=data_url,
+            overwrite=overwrite,
+            outer=outer,
+            error=error,
+        )
         if not params:
             return False
         params["idToken"] = id_token
@@ -252,19 +288,22 @@ def register(args={}) -> bool:
         params["logo"] = get_logo_b64(module_name) or ""
         params["code_size"] = get_code_size(module_name)
         params["data_size"] = get_data_size(module_name) or 0
-        params["overwrite"] = args.get("overwrite")
+        params["overwrite"] = overwrite
         params["publish_time"] = datetime.now().strftime(publish_time_fmt)
         if not params["conf"]:
-            quiet_print(f"no configuration file exists for {module_name}", args=args)
+            if error:
+                error.write(f"No configuration file exists for {module_name}.\n")
             return False
         res = post(url, json=params)
         if res.status_code == 200:
-            quiet_print(f"success", args=args)
+            if outer:
+                outer.write(f"Success\n")
             return True
         else:
-            quiet_print(
-                f"Error from the store server: {res.status_code} {res.text}", args=args
-            )
+            if outer:
+                outer.write(
+                    f"Error from the store server: {res.status_code} {res.text}\n"
+                )
             return False
     except Exception:
         import traceback

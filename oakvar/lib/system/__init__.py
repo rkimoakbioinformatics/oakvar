@@ -1,60 +1,64 @@
 from typing import Optional
+from typing import Dict
 
 custom_system_conf = None
 
 
-def setup_system(args=None):
+def setup_system(clean: bool=False, clean_cache_db: bool=False, clean_cache_files: bool=False, setup_file: Optional[str]=None, email: Optional[str]=None, pw: Optional[str]=None, publish_time: str="", custom_system_conf: Optional[Dict]=None, outer=None, error=None, system_worker_state=None):
     from os import environ
-    from ..util.util import quiet_print
-    from ...cli.module import installbase
+    from ...api.module import installbase
     from .consts import sys_conf_path_key
     from ..store.ov import setup_ov_store_cache
     from ..util.run import show_logo
-    from ..exceptions import ArgumentError
     from ...gui.serveradmindb import setup_serveradmindb
 
-    if not args:
-        raise ArgumentError("necessary arguments were not provided.")
-    show_logo()
+    show_logo(outer=outer)
     # set up a sys conf file.
-    conf = setup_system_conf(args=args)
+    conf = setup_system_conf(clean=clean, setup_file=setup_file, custom_system_conf=custom_system_conf, outer=outer)
     add_system_dirs_to_system_conf(conf)
-    save_system_conf(conf, args=args)
-    quiet_print(f"System configuration file: {conf[sys_conf_path_key]}", args=args)
-    setup_system_dirs(conf=conf, args=args)
+    save_system_conf(conf)
+    if outer:
+        outer.write(f"System configuration file: {conf[sys_conf_path_key]}\n")
+    setup_system_dirs(conf=conf, outer=outer)
     # set up a user conf file.
-    setup_user_conf_file(args=args)
+    setup_user_conf_file(clean=clean, conf=conf, outer=outer)
     # set up a store account.
-    quiet_print("Logging in...", args=args)
-    ret = setup_store_account(args=args, conf=conf)
+    if outer:
+        outer.write("Logging in...\n")
+    ret = setup_store_account(conf=conf, email=email, pw=pw)
     print(f"@ setup_store_account ret={ret}")
     if ret.get("success") != True:
-        quiet_print("Login failed", args=args)
+        if outer:
+            outer.write("Login failed\n")
         return False
-    quiet_print("Login successful", args=args)
+    if outer:
+        outer.write("Login successful\n")
     # fetch ov store cache
-    quiet_print("Setting up store cache...", args=args)
-    setup_ov_store_cache(args=args)
+    if outer:
+        outer.write("Setting up store cache...\n")
+    setup_ov_store_cache(clean_cache_db=clean_cache_db, clean_cache_files=clean_cache_files, clean=clean, publish_time=publish_time, outer=outer)
     # set up a multiuser database.
-    quiet_print("Setting up administrative database...", args=args)
-    setup_serveradmindb(args=args)
+    if outer:
+        outer.write("Setting up administrative database...\n")
+    setup_serveradmindb(clean=clean)
     # install base modules.
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
-    args.update({"conf": conf})
-    quiet_print("Installing system modules...", args=args)
-    ret = installbase(args, no_fetch=True)
+    if outer:
+        outer.write("Installing system modules...\n")
+    ret = installbase(clean_cache_files=clean_cache_files, clean_cache_db=clean_cache_db, clean=clean, publish_time=publish_time, no_fetch=True, conf=conf, outer=outer, error=error, system_worker_state=system_worker_state)
     if ret is None or ret == 0 or ret is True:  # 0 or None?
-        quiet_print(f"Done setting up the system", args=args)
+        if outer:
+            outer.write(f"Done setting up the system.\n")
         return True
     else:  # return False is converted to 1 with @cli_func.
-        quiet_print(
-            f"Problem occurred while installing system modules. Return value is {ret}.\nPlease run `ov system setup` again to install the missing modules.",
-            args=args,
-        )
+        if outer:
+            outer.write(
+                f"Problem occurred while installing system modules. Return value is {ret}.\nPlease run `ov system setup` again to install the missing modules.\n"
+            )
         return False
 
 
-def setup_system_dirs(conf=None, args=None):
+def setup_system_dirs(conf=None, outer=None):
     from .consts import root_dir_key
     from .consts import conf_dir_key
     from .consts import modules_dir_key
@@ -62,25 +66,22 @@ def setup_system_dirs(conf=None, args=None):
     from .consts import log_dir_key
 
     if conf:
-        create_dir_if_absent(conf[root_dir_key], args)
-        create_dir_if_absent(conf[conf_dir_key], args)
-        create_dir_if_absent(conf[modules_dir_key], args)
-        create_dir_if_absent(conf[jobs_dir_key], args)
-        create_dir_if_absent(conf[log_dir_key], args)
+        create_dir_if_absent(conf[root_dir_key], outer=outer)
+        create_dir_if_absent(conf[conf_dir_key], outer=outer)
+        create_dir_if_absent(conf[modules_dir_key], outer=outer)
+        create_dir_if_absent(conf[jobs_dir_key], outer=outer)
+        create_dir_if_absent(conf[log_dir_key], outer=outer)
 
 
-def setup_system_conf(args={}) -> dict:
-    from ..util.util import quiet_print
+def setup_system_conf(clean: bool=False, setup_file: Optional[str]=None, custom_system_conf: Optional[Dict]=None, outer=None) -> dict:
     from .consts import sys_conf_path_key
     from os.path import exists
 
     conf = None
-    clean = args.get("clean")
-    setup_file = args.get("setup_file")
-    custom_system_conf = args.get("custom_system_conf")
     if setup_file:
         conf = get_system_conf(sys_conf_path=setup_file, conf=custom_system_conf)
-        quiet_print(f"Loaded system configuration from {setup_file}", args=args)
+        if outer:
+            outer.write(f"Loaded system configuration from {setup_file}.\n")
     else:
         conf = get_system_conf(conf=custom_system_conf)
     # set system conf path if absent in sys conf.
@@ -94,8 +95,9 @@ def setup_system_conf(args={}) -> dict:
         # use the content of an old OC sys conf if present.
         conf = update_new_system_conf_with_existing(conf)
         # create the sys conf file.
-        save_system_conf(conf, args=args)
-        quiet_print(f"Created {sys_conf_path}", args=args)
+        save_system_conf(conf)
+        if outer:
+            outer.write(f"Created {sys_conf_path}.\n")
     return conf
 
 
@@ -174,19 +176,17 @@ def show_email_verify_action_banner():
     )
 
 
-def setup_store_account(args={}, conf=None, email=None, pw=None) -> dict:
+def setup_store_account(conf=None, email=None, pw=None) -> dict:
     from ..store.ov.account import total_login
 
-    return total_login(email=email, pw=pw, args=args, conf=conf)
+    return total_login(email=email, pw=pw, conf=conf)
 
 
-def setup_user_conf_file(args={}, conf=None):
+def setup_user_conf_file(clean: bool=False, conf: Optional[Dict]=None, outer=None):
     from os.path import exists
     from shutil import copyfile
-    from ..util.util import quiet_print
     from os import mkdir
 
-    clean = args.get("clean")
     user_conf_dir = get_user_conf_dir()
     if not exists(user_conf_dir):
         mkdir(user_conf_dir)
@@ -199,10 +199,12 @@ def setup_user_conf_file(args={}, conf=None):
         else:
             # create oakvar.yml
             copyfile(get_default_user_conf_path(), user_conf_path)
-        quiet_print(f"Created: {user_conf_path}", args=args)
+        if outer:
+            outer.write(f"Created: {user_conf_path}\n")
     # fill in missing fields, due to a newer version, with defaults.
     fill_user_conf_with_defaults_and_save()
-    quiet_print(f"User configuration file: {user_conf_path}.", args=args)
+    if outer:
+        outer.write(f"User configuration file: {user_conf_path}.\n")
 
 
 def fill_user_conf_with_defaults_and_save():
@@ -230,7 +232,7 @@ def get_conf_dir(conf=None):
     return get_conf_dirvalue(conf_dir_key, conf=conf)
 
 
-def get_modules_dir(conf=None):
+def get_modules_dir(conf=None) -> Optional[str]:
     from .consts import modules_dir_key
 
     d = get_conf_dirvalue(modules_dir_key, conf=conf)
@@ -328,7 +330,7 @@ def set_sys_conf_value(key: str, in_value: str, ty: str, sys_conf_path=None, con
     else:
         value = in_value
     sys_conf[key] = value
-    save_system_conf(sys_conf, args={})
+    save_system_conf(sys_conf)
 
 
 def get_user_conf() -> dict:
@@ -570,15 +572,15 @@ def set_modules_dir(path, __overwrite__=False):
         shutil.copy(overwrite_conf_path, get_user_conf_path())
 
 
-def create_dir_if_absent(d, args=None):
+def create_dir_if_absent(d, outer=None):
     from os.path import exists
     from os import makedirs
-    from ..util.util import quiet_print
 
     if d is not None:
         if not exists(d):
             makedirs(d)
-            quiet_print(f"Created {d}", args=args)
+            if outer:
+                outer.write(f"Created {d}.\n")
 
 
 def is_root_user():
@@ -774,14 +776,13 @@ def copy_system_conf_template_if_absent(
         quiet_print(f"Created {sys_conf_path}", args={"quiet": quiet})
 
 
-def save_system_conf(conf, args=None):
+def save_system_conf(conf: Dict):
     from .consts import sys_conf_path_key
     from oyaml import dump
     from os import makedirs
     from os.path import dirname, exists
     from ..exceptions import SystemMissingException
 
-    _ = args
     sys_conf_path = conf.get(sys_conf_path_key)
     if sys_conf_path is None or sys_conf_path == "":
         raise SystemMissingException(msg="System conf file path is null")
@@ -842,46 +843,47 @@ def get_system_conf_info(conf=None, json=False):
     return content
 
 
-def check_system_yml(args={}) -> bool:
+def check_system_yml(outer=None) -> bool:
     from .consts import conf_dir_key
     from .consts import modules_dir_key
     from .consts import jobs_dir_key
     from .consts import log_dir_key
-    from ..util.util import quiet_print
 
     system_conf = get_system_conf()
     if not system_conf:
-        quiet_print("system configuration file is missing", args=args)
+        if outer:
+            outer.write("System configuration file is missing.\n")
         return False
     system_conf_temp = get_system_conf_template()
     for k in system_conf_temp.keys():
         if k not in system_conf:
-            quiet_print(f"system configuration file misses {k} field.", args=args)
+            if outer:
+                outer.write(f"System configuration file misses {k} field.\n")
             return False
     for k in [conf_dir_key, modules_dir_key, jobs_dir_key, log_dir_key]:
         if k not in system_conf:
-            quiet_print(f"system configuration file misses {k} field.", args=args)
+            if outer:
+                outer.write(f"System configuration file misses {k} field.\n")
             return False
     return True
 
 
-def check_oakvar_yml(args={}) -> bool:
-    from ..util.util import quiet_print
-
+def check_oakvar_yml(outer=None) -> bool:
     user_conf = get_user_conf()
     if not user_conf:
-        quiet_print("user configuration file is missing", args=args)
+        if outer:
+            outer.write("User configuration file is missing.\n")
         return False
     user_conf_temp = get_default_user_conf()
     for k in user_conf_temp.keys():
         if k not in user_conf:
-            quiet_print(f"user configuration file misses {k} field.", args=args)
+            if outer:
+                outer.write(f"User configuration file misses {k} field.\n")
             return False
     return True
 
 
-def check_system_directories(args={}) -> bool:
-    from ..util.util import quiet_print
+def check_system_directories(outer=None) -> bool:
     from .consts import conf_dir_key
     from .consts import modules_dir_key
     from .consts import jobs_dir_key
@@ -892,58 +894,59 @@ def check_system_directories(args={}) -> bool:
     for k in [conf_dir_key, modules_dir_key, jobs_dir_key, log_dir_key]:
         d = system_conf[k]
         if not exists(d):
-            quiet_print(f"system directory {k} is missing.", args=args)
+            if outer:
+                outer.write(f"System directory {k} is missing.\n")
             return False
     return True
 
 
-def check_account(args={}) -> bool:
-    from ..util.util import quiet_print
+def check_account(outer=None) -> bool:
     from ..store.ov.account import token_set_exists
     from ..store.ov.account import check_logged_in_with_token
 
     if not token_set_exists():
-        quiet_print(
-            f"store account information does not exist. Use `ov store account login` to log in or `ov store account create` to create one.",
-            args=args,
-        )
+        if outer:
+            outer.write(
+                f"Store account information does not exist. Use `ov store account login` to log in or `ov store account create` to create one.\n"
+            )
         return False
-    if not check_logged_in_with_token(args={"quiet": True}):
-        quiet_print(f"not logged in. Use `ov account login` to log in.", args=args)
+    if not check_logged_in_with_token(outer=outer):
+        if outer:
+            outer.write(f"Not logged in. Use `ov account login` to log in.\n")
         return False
     return True
 
 
-def check_cache_files(args={}) -> bool:
+def check_cache_files(outer=None) -> bool:
     from os.path import join
     from os import listdir
-    from ..util.util import quiet_print
 
     for k in ["readme", "logo", "conf"]:
         d = join(get_cache_dir(k), "oc")
         if len(listdir(d)) == 0:
-            quiet_print(f"system directory {d} does not exist.", args=args)
+            if outer:
+                outer.write(f"System directory {d} does not exist.\n")
             return False
     return True
 
 
-def check(args) -> bool:
-    from ..util.util import quiet_print
+def check(outer=None) -> bool:
     from ..store.db import check_tables
 
-    if not check_system_yml(args=args):
+    if not check_system_yml(outer=outer):
         return False
-    if not check_oakvar_yml(args=args):
+    if not check_oakvar_yml(outer=outer):
         return False
-    if not check_system_directories(args=args):
+    if not check_system_directories(outer=outer):
         return False
-    if not check_account(args=args):
+    if not check_account(outer=outer):
         return False
-    if not check_tables(args=args):
+    if not check_tables(outer=outer):
         return False
-    if not check_cache_files(args=args):
+    if not check_cache_files(outer=outer):
         return False
-    quiet_print(f"success", args=args)
+    if outer:
+        outer.write(f"Success")
     return True
 
 

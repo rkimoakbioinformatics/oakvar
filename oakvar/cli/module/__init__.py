@@ -40,10 +40,10 @@ def cli_module_info(args):
 
 @cli_func
 def info(args, __name__="module info"):
-    from ...api.module import info
+    from ...api.module import info as info_fn
     from .info import print_module_info
 
-    ret = info(**args)
+    ret = info_fn(**args)
     if not ret:
         print(f"Module not found")
     print_module_info(module_info=ret)
@@ -55,72 +55,11 @@ def cli_module_install(args):
 
 
 @cli_func
-def install(args, no_fetch: bool = False, __name__="module install"):
-    from .install import get_modules_to_install
-    from .install import show_modules_to_install
-    from ...lib.module import install_module
-    from ...lib.module import install_module_from_url
-    from ...lib.module import install_module_from_zip_path
-    from ...lib.util.util import quiet_print
-    from ...lib.util.run import get_y_or_n
-    from ...lib.util.download import is_url
-    from ...lib.util.download import is_zip_path
-    from ...lib.store.db import try_fetch_ov_store_cache
-    from ...lib.exceptions import ModuleToSkipInstallation
+def install(args, __name__="module install"):
+    from ...api.module import install
 
-    if not no_fetch and not args.get("no_fetch"):
-        try_fetch_ov_store_cache(args=args)
-    to_install = get_modules_to_install(args=args)
-    if len(to_install) == 0:
-        quiet_print("No module to install", args=args)
-        return True
-    show_modules_to_install(to_install, args=args)
-    if not (args["yes"]):
-        if not get_y_or_n():
-            return True
-    problem_modules = []
-    url = args.get("url")
-    stage_handler = InstallProgressStdout(quiet=args.get("quiet"))
-    for module_name, module_version in sorted(to_install.items()):
-        try:
-            if url:
-                if not is_url(url):
-                    raise ModuleToSkipInstallation(
-                        module_name, msg=f"{url} is not a valid URL."
-                    )
-                if not install_module_from_url(
-                    module_name, url, stage_handler=stage_handler, args=args
-                ):
-                    problem_modules.append(module_name)
-            elif is_zip_path(module_name):
-                if not install_module_from_zip_path(module_name, args=args):
-                    problem_modules.append(module_name)
-            else:
-                ret = install_module(
-                    module_name,
-                    version=module_version,
-                    stage_handler=stage_handler,
-                    force_data=args["force_data"],
-                    skip_data=args["skip_data"],
-                )
-                if not ret:
-                    problem_modules.append(module_name)
-        except Exception as e:
-            if not isinstance(e, ModuleToSkipInstallation):
-                if module_name not in problem_modules:
-                    problem_modules.append(module_name)
-            if hasattr(e, "traceback") and getattr(e, "traceback"):
-                import traceback
-
-                traceback.print_exc()
-            quiet_print(e, args=args)
-    if problem_modules:
-        quiet_print(f"following modules were not installed due to problems:", args=args)
-        for mn in problem_modules:
-            quiet_print(f"- {mn}", args=args)
-        return False
-    else:
-        return
+    ret = install(**args)
+    return ret
 
 
 @cli_entry
@@ -129,60 +68,11 @@ def cli_module_update(args):
 
 
 @cli_func
-def update(args, no_fetch=False, __name__="module update"):
-    from types import SimpleNamespace
-    from ...lib.module.local import search_local
-    from ...lib.module import get_updatable
-    from ...lib.util.util import humanize_bytes
-    from ...lib.util.util import quiet_print
-    from ...lib.util.util import print_tabular_lines
-    from ...lib.store.db import try_fetch_ov_store_cache
+def update(args, __name__="module update"):
+    from ...api.module import update
 
-    if not no_fetch:
-        try_fetch_ov_store_cache(args=args)
-    quiet = args.get("quiet", True)
-    modules = args.get("modules", [])
-    requested_modules = search_local(*modules)
-    status_table = [["Name", "New Version", "Size"]]
-    updates, _, reqs_failed = get_updatable(
-        modules=modules, requested_modules=requested_modules
-    )
-    if reqs_failed:
-        msg = "Newer versions of ({}) are available, but would break dependencies. You may use --strategy=force to force installation.".format(
-            ", ".join(reqs_failed.keys())
-        )
-        quiet_print(msg, args=args)
-    if not updates:
-        msg = "No module to update was found"
-        quiet_print(msg, args=args)
-        return True
-    for mname, update_info in updates.items():
-        version = update_info.version
-        size = update_info.size
-        status_table.append([mname, version, humanize_bytes(size)])
-    print_tabular_lines(status_table, args=args)
-    if not args["y"]:
-        if not quiet:
-            user_cont = input("Proceed to update? (y/n) > ")
-            if user_cont.lower() not in ["y", "yes"]:
-                return True
-    for mname, update_info in updates.items():
-        m_args = SimpleNamespace(
-            modules=[mname],
-            force_data=False,
-            version=update_info.version,
-            yes=True,
-            private=False,
-            skip_dependencies=False,
-            force=False,
-            skip_data=False,
-            md=args.get("md", None),
-            quiet=args.get("quiet"),
-        )
-        ret = install(m_args)
-        if ret is not None:
-            return False
-    return True
+    ret = update(**args)
+    return ret
 
 
 @cli_entry
@@ -232,28 +122,9 @@ def cli_module_installbase(args):
 
 @cli_func
 def installbase(args, no_fetch=False, __name__="module installbase"):
-    from types import SimpleNamespace
-    from ...lib.system import get_system_conf
-    from ...lib.system.consts import base_modules_key
-    from ...lib.store.db import try_fetch_ov_store_cache
+    from ...api.module import installbase
 
-    if not no_fetch:
-        try_fetch_ov_store_cache(args=args)
-    sys_conf = get_system_conf(conf=args.get("conf"))
-    base_modules = sys_conf.get(base_modules_key, [])
-    m_args = SimpleNamespace(
-        modules=base_modules,
-        force_data=args.get("force_data", True),
-        version=None,
-        yes=True,
-        private=False,
-        skip_dependencies=False,
-        force=args.get("force", False),
-        skip_data=False,
-        md=args.get("md", None),
-        quiet=args.get("quiet", True),
-    )
-    ret = install(m_args, no_fetch=no_fetch)
+    ret = installbase(**args, no_fetch=no_fetch)
     return ret
 
 
@@ -461,7 +332,7 @@ def add_parser_ov_module(subparsers):
         "uninstall", help="uninstalls modules."
     )
     parser_ov_module_uninstall.add_argument(
-        "modules", nargs="+", help="Modules to uninstall"
+        "module_names", nargs="+", help="Modules to uninstall"
     )
     parser_ov_module_uninstall.add_argument(
         "-y", "--yes", action="store_true", help="Proceed without prompt"

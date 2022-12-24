@@ -118,6 +118,7 @@ def info(module_name: Optional[str] = None, local: bool = False, **kwargs):
 
 def install(
     module_names: List[str] = [],
+    url: Optional[str] = None,
     modules_dir: Optional[str] = None,
     overwrite: bool = False,
     clean: bool = False,
@@ -128,7 +129,8 @@ def install(
     no_fetch: bool = False,
     outer=None,
     error=None,
-    system_worker_state=None**kwargs,
+    stage_handler=None,
+    system_worker_state=None,
 ):
     from .install import get_modules_to_install
     from .install import show_modules_to_install
@@ -141,7 +143,6 @@ def install(
     from ...lib.store.db import try_fetch_ov_store_cache
     from ...lib.exceptions import ModuleToSkipInstallation
 
-    _ = kwargs
     if not no_fetch:
         try_fetch_ov_store_cache()
     to_install = get_modules_to_install(
@@ -150,18 +151,23 @@ def install(
     if len(to_install) == 0:
         if outer:
             outer.write("No module to install")
-        return True
+        return
     show_modules_to_install(to_install, outer=outer)
     if not yes:
         if not get_y_or_n():
-            return True
+            return
     problem_modules = []
     for module_name, module_version in sorted(to_install.items()):
         try:
-            if is_url(module_name):
+            if url:
+                if not is_url(url):
+                    raise ModuleToSkipInstallation(
+                        module_name, msg=f"{url} is not a valid URL"
+                    )
                 if not install_module_from_url(
                     module_name,
-                    modules_dir,
+                    url,
+                    modules_dir=modules_dir,
                     clean=clean,
                     overwrite=overwrite,
                     force_data=force_data,
@@ -175,9 +181,6 @@ def install(
                 ):
                     problem_modules.append(module_name)
             else:
-                stage_handler = InstallProgressStdout(
-                    module_name, module_version, outer=outer
-                )
                 ret = install_module(
                     module_name,
                     version=module_version,
@@ -212,108 +215,145 @@ def install(
         return
 
 
-def update(module_name_patterns: List[str]=[], clean_cache_db: bool=False, clean_cache_files: bool=False, clean: bool=False, publish_time: str="", no_fetch: bool=False, conf: Optional[dict]=None, overwrite: bool=False, modules_dir: Optional[str]=None, outer=None, error=None, system_worker_state=None):
-    from types import SimpleNamespace
+def update(
+    module_name_patterns: List[str] = [],
+    clean_cache_db: bool = False,
+    clean_cache_files: bool = False,
+    clean: bool = False,
+    publish_time: str = "",
+    no_fetch: bool = False,
+    overwrite: bool = False,
+    force_data: bool = False,
+    modules_dir: Optional[str] = None,
+    yes=False,
+    outer=None,
+    error=None,
+    system_worker_state=None,
+):
     from ...lib.module.local import search_local
     from ...lib.module import get_updatable
-    from ...lib.util.util import humanize_bytes
-    from ...lib.util.util import quiet_print
-    from ...lib.util.util import print_tabular_lines
     from ...lib.store.db import try_fetch_ov_store_cache
 
     if not no_fetch:
-        try_fetch_ov_store_cache(clean_cache_db=clean_cache_db, clean_cache_files=clean_cache_files, clean=clean, publish_time=publish_time, outer=outer)
+        try_fetch_ov_store_cache(
+            clean_cache_db=clean_cache_db,
+            clean_cache_files=clean_cache_files,
+            clean=clean,
+            publish_time=publish_time,
+            outer=outer,
+        )
     requested_modules = search_local(*module_name_patterns)
-    status_table = [["Name", "New Version", "Size"]]
-    updates, _, reqs_failed = get_updatable(requested_modules=requested_modules)
-    if reqs_failed:
-        msg = f"Newer versions of ({}) are available, but would break dependencies. You may use --strategy=force to force installation.".format(
-            ", ".join(reqs_failed.keys())
-        )
-        quiet_print(msg, args=args)
-    if not updates:
-        msg = "No module to update was found"
-        quiet_print(msg, args=args)
+    to_update = get_updatable(module_names=requested_modules)
+    if not to_update:
+        if outer:
+            outer.write("No module to update")
         return True
-    for mname, update_info in updates.items():
-        version = update_info.version
-        size = update_info.size
-        status_table.append([mname, version, humanize_bytes(size)])
-    print_tabular_lines(status_table, args=args)
-    if not args["y"]:
-        if not quiet:
-            user_cont = input("Proceed to update? (y/n) > ")
-            if user_cont.lower() not in ["y", "yes"]:
+    if not yes:
+        if outer:
+            outer.write(f"Following modules will be updated.\n")
+            for mn in to_update:
+                outer.write(f"- {mn}\n")
+            yn = input("Proceed? (y/N) > ")
+            if not yn or yn.lower() not in ["y", "yes"]:
                 return True
-    for mname, update_info in updates.items():
-        m_args = SimpleNamespace(
-            modules=[mname],
-            force_data=False,
-            version=update_info.version,
-            yes=True,
-            private=False,
-            skip_dependencies=False,
-            force=False,
-            skip_data=False,
-            md=args.get("md", None),
-            quiet=args.get("quiet"),
-        )
-        ret = install(module_names=base_modules, modules_dir=modules_dir, overwrite=False, clean=clean, force_data=False, yes=True, skip_dependencies=False, skip_data=False, no_fetch=no_fetch, outer=outer, error=error, system_worker_state=system_worker_state)
-        if ret is not None:
-            return False
-    return True
+    ret = install(
+        module_names=to_update,
+        modules_dir=modules_dir,
+        overwrite=overwrite,
+        clean=clean,
+        force_data=force_data,
+        yes=True,
+        skip_dependencies=False,
+        skip_data=False,
+        no_fetch=no_fetch,
+        outer=outer,
+        error=error,
+        system_worker_state=system_worker_state,
+    )
+    if ret is not None:
+        return False
+    else:
+        return True
 
 
-def uninstall(args, __name__="module uninstall"):
+def uninstall(module_names: Optional[List[str]] = None, yes: bool = False, outer=None):
     from ...lib.module.local import search_local
     from ...lib.module import uninstall_module
-    from ...lib.util.util import quiet_print
+    from ...lib.exceptions import ArgumentError
 
-    modules = args.get("modules")
-    if not modules:
-        from ...lib.exceptions import ArgumentError
-
-        e = ArgumentError("no modules was given.")
+    if not module_names:
+        e = ArgumentError("No modules to uninstall.")
         e.traceback = False
         raise e
-    matching_names = search_local(*modules)
-    if len(matching_names) > 0:
-        quiet_print("Uninstalling: {:}".format(", ".join(matching_names)), args=args)
-        if not (args["yes"]):
-            while True:
-                resp = input("Proceed? (y/n) > ")
-                if resp == "y":
-                    break
-                elif resp == "n":
-                    return False
-                else:
-                    quiet_print(
-                        "Response '{:}' not one of (y/n).".format(resp), args=args
-                    )
-        for module_name in matching_names:
-            uninstall_module(module_name)
-            quiet_print("Uninstalled %s" % module_name, args=args)
-    else:
-        quiet_print("No modules to uninstall found", args=args)
-    return True
+    module_names = search_local(*module_names)
+    if len(module_names) == 0:
+        if outer:
+            outer.write("No module to uninstall\n")
+        return True
+    if outer:
+        outer.write("Uninstalling:\n")
+        for mn in module_names:
+            outer.write(f"- {mn}\n")
+    if not yes:
+        yn = input("Proceed? (y/N) > ")
+        if not yn or yn.lower() != "y":
+            return True
+    for module_name in module_names:
+        uninstall_module(module_name)
 
 
-def installbase(clean_cache_db: bool=False, clean_cache_files: bool=False, clean: bool=False, publish_time: str="", no_fetch: bool=False, conf: Optional[dict]=None, overwrite: bool=False, modules_dir: Optional[str]=None, outer=None, error=None, system_worker_state=None):
+def installbase(
+    clean_cache_db: bool = False,
+    clean_cache_files: bool = False,
+    clean: bool = False,
+    publish_time: str = "",
+    no_fetch: bool = False,
+    conf: Optional[dict] = None,
+    overwrite: bool = False,
+    modules_dir: Optional[str] = None,
+    outer=None,
+    error=None,
+    system_worker_state=None,
+):
     from ...lib.system import get_system_conf
     from ...lib.system.consts import base_modules_key
     from ...lib.store.db import try_fetch_ov_store_cache
 
     if not no_fetch:
-        try_fetch_ov_store_cache(clean_cache_db=clean_cache_db, clean_cache_files=clean_cache_files, clean=clean, publish_time=publish_time, outer=outer)
+        try_fetch_ov_store_cache(
+            clean_cache_db=clean_cache_db,
+            clean_cache_files=clean_cache_files,
+            clean=clean,
+            publish_time=publish_time,
+            outer=outer,
+        )
     sys_conf = get_system_conf(conf=conf)
     base_modules = sys_conf.get(base_modules_key, [])
-    ret = install(module_names=base_modules, modules_dir=modules_dir, overwrite=overwrite, clean=clean, force_data=False, yes=True, skip_dependencies=False, skip_data=False, no_fetch=no_fetch, outer=outer, error=error, system_worker_state=system_worker_state)
+    ret = install(
+        module_names=base_modules,
+        modules_dir=modules_dir,
+        overwrite=overwrite,
+        clean=clean,
+        force_data=False,
+        yes=True,
+        skip_dependencies=False,
+        skip_data=False,
+        no_fetch=no_fetch,
+        outer=outer,
+        error=error,
+        system_worker_state=system_worker_state,
+    )
     return ret
 
 
 class InstallProgressStdout(InstallProgressHandler):
-    def __init__(self, module_name: str, module_version: str, outer=None):
-        super().__init__(module_name, module_version)
+    def __init__(
+        self,
+        module_name: Optional[str] = None,
+        module_version: Optional[str] = None,
+        outer=None,
+    ):
+        super().__init__(module_name=module_name, module_version=module_version)
         self.outer = outer
         self.system_worker_state = None
 

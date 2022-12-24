@@ -1,12 +1,73 @@
-from typing import List
 from typing import Any
 from typing import Optional
+from typing import Dict
+from typing import List
 from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
 
+
 class BaseReporter:
-    def __init__(self, args):
+    def __init__(
+        self,
+        dbpath: str,
+        report_types: List[str] = [],
+        filterpath: Optional[str] = None,
+        filter=None,
+        filtersql: Optional[str] = None,
+        filtername: Optional[str] = None,
+        filterstring: Optional[str] = None,
+        savepath: Optional[str] = None,
+        confpath: Optional[str] = None,
+        module_name: Optional[str] = None,
+        nogenelevelonvariantlevel: bool = False,
+        confs: str = "{}",
+        inputfiles: Optional[List[str]] = None,
+        separatesample: bool = False,
+        output_dir: Optional[str] = None,
+        system_option: List[str] = [],
+        module_options: Dict = {},
+        includesample: Optional[List[str]] = [],
+        excludesample: Optional[List[str]] = None,
+        package: Optional[str] = None,
+        modules_dir: Optional[str] = None,
+        cols: Optional[List[str]] = None,
+        level: Optional[str] = None,
+        user: Optional[str] = None,
+        no_summary: bool = False,
+        serveradmindb=None,
+        outer=None,
+    ):
         from ..util.admin_util import get_user_conf
 
+        self.dbpath = dbpath
+        self.report_types = report_types
+        self.filterpath = filterpath
+        self.filter = filter
+        self.filtersql = filtersql
+        self.filtername = filtername
+        self.filterstring = filterstring
+        self.savepath = savepath
+        self.confpath = confpath
+        self.module_name = module_name
+        self.nogenelevelonvariantlevel = nogenelevelonvariantlevel
+        self.confs = confs
+        self.inputfiles = inputfiles
+        self.separatesample = separatesample
+        self.output_dir = output_dir
+        self.system_option = system_option
+        self.module_options = module_options
+        self.includesample = includesample
+        self.excludesample = excludesample
+        self.package = package
+        self.modules_dir = modules_dir
+        self.cols = cols
+        self.level = level
+        if user:
+            self.user = user
+        else:
+            self.user = DEFAULT_SERVER_DEFAULT_USERNAME
+        self.no_summary = no_summary
+        self.serveradmindb = serveradmindb
+        self.outer = outer
         self.cf = None
         self.filtertable = "filter"
         self.colinfo = {}
@@ -25,36 +86,22 @@ class BaseReporter:
         self.extracted_cols = {}
         self.conn = None
         self.levels_to_write = None
-        self.args = None
-        self.dbpath = None
-        self.filterpath = None
-        self.filtername = None
-        self.filterstring = None
-        self.filtersql = None
-        self.filter = None
-        self.output_dir = None
-        self.savepath = None
         self.conf = None
-        self.module_name = None
         self.module_conf = None
-        self.report_types = None
         self.output_basename = None
         self.status_fpath = None
-        self.nogenelevelonvariantlevel = None
         self.concise_report = None
         self.extract_columns_multilevel = {}
         self.logger = None
         self.error_logger = None
         self.unique_excs = None
         self.mapper_name = None
-        self.level = None
         self.no_log = False
         self.colcount = {}
         self.columns = {}
         self.conns = []
         self.gene_summary_datas = {}
         self.total_norows: Optional[int] = None
-        self.module_options: dict = {}
         self.legacy_samples_col = False
         self.priority_colgroupnames = (get_user_conf() or {}).get(
             "report_module_order",
@@ -68,8 +115,7 @@ class BaseReporter:
             ],
         )
         self.modules_to_add_to_base = []
-        self.user = DEFAULT_SERVER_DEFAULT_USERNAME
-        self.parse_cmd_args(args)
+        self.check_and_setup_args()
         self._setup_logger()
 
     async def exec_db(self, func, *args, **kwargs):
@@ -87,62 +133,39 @@ class BaseReporter:
         await cursor.close()
         return ret
 
-    def parse_cmd_args(self, args):
+    def check_and_setup_args(self):
         import sqlite3
-        from os.path import dirname
-        from os.path import basename
-        from os.path import join
-        from os.path import exists
         import json
+        from pathlib import Path
         from ..module.local import get_module_conf
-        from os.path import abspath
-        from ..system import consts
         from ..exceptions import WrongInput
-        from ..util.run import get_module_options
 
-        if not args:
-            return
-        if args.get("md"):
-            consts.custom_modules_dir = args.get("md")
-        self.dbpath = args.get("dbpath")
-        if not exists(self.dbpath):
+        if not Path(self.dbpath).exists():
             raise WrongInput(msg=self.dbpath)
         try:
             with sqlite3.connect(self.dbpath) as db:
-                db.execute("select * from info")
+                db.execute("select count(*) from info")
+                db.execute("select count(*) from variant")
+                db.execute("select count(*) from gene")
         except:
-            raise WrongInput(msg=f"{self.dbpath} is not an OakVar database")
-        self.filterpath = args.get("filterpath")
-        self.filtername = args.get("filtername")
-        self.filterstring = args.get("filterstring")
-        self.filtersql = args.get("filtersql")
-        self.filter = args.get("filter")
-        self.output_dir = args.get("output_dir")
-        self.module_name = args.get("module_name")
-        self.report_types = args.get("reports")
-        self.savepath = args.get("savepath")
-        if self.output_dir:
-            self.output_dir = dirname(self.dbpath)
+            raise WrongInput(msg=f"{self.dbpath} is not an OakVar result database")
         if not self.output_dir:
-            self.output_dir = abspath(".")
-        if self.savepath and dirname(self.savepath) == "":
-            self.savepath = join(self.output_dir, self.savepath)
+            self.output_dir = str(Path(self.dbpath).parent)
+        if not self.output_dir:
+            self.output_dir = str(Path(".").absolute())
+        if self.savepath and Path(self.savepath).parent == "":
+            self.savepath = str(Path(self.output_dir) / self.savepath)
         self.module_conf = get_module_conf(self.module_name, module_type="reporter")
-        self.conf = args.get("conf")
-        self.module_options = get_module_options(args) or {}
-        self.confs = self.module_options # TODO: backward compatibility. Delete later.
-        self.output_basename = basename(self.dbpath)[:-7]
-        self.nogenelevelonvariantlevel = args.get("nogenelevelonvariantlevel", False)
-        inputfiles = args.get("inputfiles")
-        dbpath = args.get("dbpath")
-        if not inputfiles and dbpath:
-            db = sqlite3.connect(dbpath)
+        self.confs = self.module_options  # TODO: backward compatibility. Delete later.
+        self.output_basename = Path(self.dbpath).name[:-7]
+        if not self.inputfiles and self.dbpath:
+            db = sqlite3.connect(self.dbpath)
             c = db.cursor()
             q = 'select colval from info where colkey="_input_paths"'
             c.execute(q)
             r = c.fetchone()
             if r is not None:
-                args["inputfiles"] = []
+                self.inputfiles = []
                 s = r[0]
                 if " " in s:
                     s = s.replace("'", '"')
@@ -150,22 +173,18 @@ class BaseReporter:
                 s = json.loads(s)
                 for k in s:
                     input_path = s[k]
-                    args["inputfiles"].append(input_path)
+                    self.inputfiles.append(input_path)
             c.close()
             db.close()
-        self.inputfiles = args.get("inputfiles")
-        self.serveradmindb = args.get("serveradmindb")
-        self.concise_report = args.get("concise_report")
-        if args.get("cols"):
+        if self.cols:
             self.extract_columns_multilevel = {}
             for level in ["variant", "gene", "sample", "mapping"]:
-                self.extract_columns_multilevel[level] = args.get("cols")
+                self.extract_columns_multilevel[level] = self.cols
         else:
             self.extract_columns_multilevel = self.get_standardized_module_option(
                 self.module_options.get("extract_columns", {})
             )
-        self.add_summary = not args.get("no_summary", False)
-        self.args = args
+        self.add_summary = not self.no_summary
 
     def should_write_level(self, level):
         if self.levels_to_write is None:
@@ -381,11 +400,11 @@ class BaseReporter:
                 add_summary = self.add_summary
             self.dictrow = dictrow
             await self.prep()
-            if not self.args or not self.cf or not self.logger:
+            if not self.cf or not self.logger:
                 raise SetupError(self.module_name)
             self.start_time = time()
             ret = None
-            tab = tab or self.args.get("level", "all")
+            tab = tab or self.level or "all"
             self.log_run_start()
             if self.setup() == False:
                 await self.close_db()
@@ -419,6 +438,7 @@ class BaseReporter:
         except Exception as e:
             await self.close_db()
             import traceback
+
             traceback.print_exc()
             raise e
         return ret
@@ -438,7 +458,7 @@ class BaseReporter:
             return
         if not await self.exec_db(self.table_exists, level):
             return
-        if not self.cf or not self.args:
+        if not self.cf:
             raise SetupError(self.module_name)
         if add_summary and self.level == "gene":
             await self.do_gene_level_summary(add_summary=add_summary)
@@ -451,7 +471,7 @@ class BaseReporter:
         if datacols is None or self.total_norows is None:
             return
         self.sample_newcolno = None
-        if level == "variant" and self.args.get("separatesample"):
+        if level == "variant" and self.separatesample:
             self.write_variant_sample_separately = True
             if self.legacy_samples_col:
                 self.sample_newcolno = self.colnos["variant"]["base__samples"]
@@ -761,7 +781,6 @@ class BaseReporter:
         from ..module.local import get_local_module_infos_of_type
         from ..module.local import get_local_module_info
         from ..util.util import load_class
-        from ..util.util import quiet_print
         from ..util.inout import ColumnDefinition
 
         _ = conn
@@ -786,12 +805,9 @@ class BaseReporter:
             ]:
                 continue
             if module_name not in local_modules:
-                if module_name != "original_input":
-                    quiet_print(
-                        "            [{}] module does not exist in the system. Gene level summary for this module is skipped.".format(
-                            module_name
-                        ),
-                        self.args,
+                if self.logger:
+                    self.logger.info(
+                        f"Skipping gene level summarization with {module_name} as it does not exist in the system."
                     )
                 continue
             module = local_modules[module_name]
@@ -983,11 +999,8 @@ class BaseReporter:
             self.cf = None
 
     async def load_filter(self, user=DEFAULT_SERVER_DEFAULT_USERNAME):
-        from ..exceptions import SetupError
         from ... import ReportFilter
 
-        if self.args is None:
-            raise SetupError()
         self.cf = await ReportFilter.create(dbpath=self.dbpath, user=user, strict=False)
         await self.cf.exec_db(
             self.cf.loadfilter,
@@ -996,8 +1009,8 @@ class BaseReporter:
             filtername=self.filtername,
             filterstring=self.filterstring,
             filtersql=self.filtersql,
-            includesample=self.args.get("includesample"),
-            excludesample=self.args.get("excludesample"),
+            includesample=self.includesample,
+            excludesample=self.excludesample,
         )
 
     async def table_exists(self, tablename, conn=None, cursor=None):
@@ -1020,5 +1033,6 @@ class BaseReporter:
         else:
             ret = True
         return ret
+
 
 CravatReport = BaseReporter

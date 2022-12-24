@@ -1,3 +1,7 @@
+from typing import Optional
+from typing import Dict
+
+
 class BaseAnnotator(object):
 
     from ..util.util import get_crv_def
@@ -17,26 +21,29 @@ class BaseAnnotator(object):
     }
     required_conf_keys = ["level", "output_columns"]
 
-    def __init__(self, *inargs, **inkwargs):
+    def __init__(self, input_file: str, secondary_inputs=None, run_name: Optional[str]=None, output_dir: Optional[str]=None, plainoutput: bool=False, confs: str="{}", logtofile: bool=False, module_options: Dict={}, serveradmindb=None):
         import os
         import sys
         from pathlib import Path
-        from ..util.util import get_args
         from ..consts import cannonical_chroms
         from ..module.local import get_module_conf
         from ..module.data_cache import ModuleDataCache
         from ..exceptions import ModuleLoadingError
         from ..exceptions import LoggerError
 
+        self.primary_input_path = Path(input_file).absolute()
+        self.secondary_inputs = secondary_inputs
+        self.run_name = run_name
+        self.output_dir = output_dir
+        self.plain_output = plainoutput
+        self.confs = confs
+        self.logtofile = logtofile
         fp = sys.modules[self.__module__].__file__
         if not fp:
             raise ModuleLoadingError(self.__module__)
         self.main_fpath = Path(fp).resolve()
-        self.primary_input_path = None
         self.secondary_paths = {}
-        self.output_dir = None
         self.output_basename = None
-        self.plain_output = None
         self.job_conf_path = None
         self.logger = None
         self.error_logger = None
@@ -53,18 +60,9 @@ class BaseAnnotator(object):
         self.log_path = None
         self.unique_excs = []
         self.log_handler = None
-        self.module_options = None
-        self._define_cmd_parser()
-        self.args = get_args(self.cmd_arg_parser, inargs, inkwargs)
-        self.parse_cmd_args(inargs, inkwargs)
-        self.serveradmindb = self.args.get("serveradmindb")
-        if hasattr(self.args, "live") == False:
-            live = False
-        else:
-            live = self.args["live"]
+        self.parse_cmd_args()
+        self.serveradmindb = serveradmindb
         self.supported_chroms = set(cannonical_chroms)
-        if live:
-            return
         self.module_name = self.main_fpath.stem
         self.module_type = "annotator"
         self.annotator_name = self.module_name
@@ -155,78 +153,22 @@ class BaseAnnotator(object):
                 self.conf["input_format"]
             ]
 
-    def _define_cmd_parser(self):
-        import argparse
-
-        parser = argparse.ArgumentParser()
-        parser.add_argument("input_file", help="Input file to be annotated.")
-        parser.add_argument(
-            "-s",
-            action="append",
-            dest="secondary_inputs",
-            help="Secondary inputs. " + "Format as <module_name>:<path>",
-        )
-        parser.add_argument(
-            "-n", dest="run_name", help="Name of job. Default is input file name."
-        )
-        parser.add_argument(
-            "-d",
-            dest="output_dir",
-            help="Output directory. " + "Default is input file directory.",
-        )
-        parser.add_argument(
-            "-c", dest="confpath", help="Path to optional run conf file."
-        )
-        parser.add_argument(
-            "-p",
-            "--plainoutput",
-            action="store_true",
-            dest="plainoutput",
-            help="Skip column definition writing",
-        )
-        parser.add_argument(
-            "--confs", dest="confs", default="{}", help="Configuration string"
-        )
-        parser.add_argument(
-            "--quiet",
-            action="store_true",
-            dest="quiet",
-            default=None,
-            help="Silent operation",
-        )
-        parser.add_argument(
-            "--logtofile",
-            action="store_true",
-            help="Path to a log file. If given without a path, the job's run_name.log will be the log path.",
-        )
-        self.cmd_arg_parser = parser
-
-    # Parse the command line arguments
-    def parse_cmd_args(self, inargs, inkwargs):
+    def parse_cmd_args(self):
         import re
         from pathlib import Path
-        from ..util.util import get_args
-        from ..util.run import get_module_options
 
-        args = get_args(self.cmd_arg_parser, inargs, inkwargs)
-        self.primary_input_path = Path(args["input_file"]).absolute()
-        if args["secondary_inputs"]:
-            for secondary_def in args["secondary_inputs"]:
+        if self.secondary_inputs:
+            for secondary_def in self.secondary_inputs:
                 sec_name, sec_path = re.split(r"(?<!\\)=", secondary_def)
                 self.secondary_paths[sec_name] = str(Path(sec_path).absolute())
-        if args["output_dir"]:
-            self.output_dir = args["output_dir"]
-        else:
+        if not self.output_dir:
             self.output_dir = str(self.primary_input_path.parent)
-        self.plain_output = args["plainoutput"]
-        if "run_name" in args and args["run_name"] is not None:
-            self.output_basename = args["run_name"]
+        if self.run_name is not None:
+            self.output_basename = self.run_name
         else:
             self.output_basename = self.primary_input_path.name
             if Path(self.output_basename).suffix in [".crv", ".crg", ".crx"]:
                 self.output_basename = self.output_basename[:-4]
-        self.module_options = get_module_options(args)
-        self.args = args
 
     def handle_jsondata(self, output_dict):
         import json
@@ -702,3 +644,49 @@ class SecondaryInputFetcher:
             return self.data[key_data]
         else:
             return None
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input_file", help="Input file to be annotated.")
+    parser.add_argument(
+        "-s",
+        action="append",
+        dest="secondary_inputs",
+        help="Secondary inputs. " + "Format as <module_name>:<path>",
+    )
+    parser.add_argument(
+        "-n", dest="run_name", help="Name of job. Default is input file name."
+    )
+    parser.add_argument(
+        "-d",
+        dest="output_dir",
+        help="Output directory. " + "Default is input file directory.",
+    )
+    parser.add_argument(
+        "-c", dest="confpath", help="Path to optional run conf file."
+    )
+    parser.add_argument(
+        "-p",
+        "--plainoutput",
+        action="store_true",
+        dest="plainoutput",
+        help="Skip column definition writing",
+    )
+    parser.add_argument(
+        "--confs", dest="confs", default="{}", help="Configuration string"
+    )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        dest="quiet",
+        default=None,
+        help="Silent operation",
+    )
+    parser.add_argument(
+        "--logtofile",
+        action="store_true",
+        help="Path to a log file. If given without a path, the job's run_name.log will be the log path.",
+    )
+

@@ -1,13 +1,25 @@
+from typing import Optional
 from typing import List
 
-def get_modules_to_install(module_names: List[str]=[], skip_dependencies: bool=False, outer=None) -> dict:
+
+def get_modules_to_install(
+    module_names: List[str] = [],
+    url: Optional[str] = None,
+    skip_dependencies: bool = False,
+    outer=None,
+) -> dict:
     from ...lib.util.download import is_url
     from ...lib.util.download import is_zip_path
     from ...lib.module.remote import get_install_deps
     from ...lib.store.db import get_latest_module_code_version
     from ...lib.store.db import module_code_version_is_not_compatible_with_pkg_version
     from ...lib.util.admin_util import oakvar_version
+    from ...lib.exceptions import ArgumentError
 
+    if url:
+        if len(module_names) > 1:
+            raise ArgumentError(msg=f"--url should be used with only one module name.")
+        return {module_names[0]: None}
     mn_vs = collect_module_name_and_versions(module_names, outer=outer)
     module_versions = {}
     for module_name, version in mn_vs.items():
@@ -15,10 +27,14 @@ def get_modules_to_install(module_names: List[str]=[], skip_dependencies: bool=F
             version = get_latest_module_code_version(module_name)
         else:
             pkg_ver = oakvar_version()
-            min_pkg_ver = module_code_version_is_not_compatible_with_pkg_version(module_name, version)
+            min_pkg_ver = module_code_version_is_not_compatible_with_pkg_version(
+                module_name, version
+            )
             if min_pkg_ver:
                 if outer:
-                    outer.write(f"{module_name}=={version} is not compatible with current OakVar version ({pkg_ver}). Please upgrade OakVar to at least {min_pkg_ver}.")
+                    outer.write(
+                        f"{module_name}=={version} is not compatible with current OakVar version ({pkg_ver}). Please upgrade OakVar to at least {min_pkg_ver}."
+                    )
                 continue
         module_versions[module_name] = version
     # dependency
@@ -60,6 +76,3 @@ def show_modules_to_install(to_install, outer):
             outer.write(f"- {name}=={to_install[name]}")
         else:
             outer.write(f"- {name}")
-
-
-

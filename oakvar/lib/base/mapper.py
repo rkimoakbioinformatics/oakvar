@@ -1,17 +1,57 @@
 from typing import Optional
+from typing import List
+from typing import Dict
+
 
 class BaseMapper(object):
-    def __init__(self, *inargs, **inkwargs):
+    def __init__(
+        self,
+        input_file: Optional[str] = None,
+        run_name: Optional[str] = None,
+        output_dir: Optional[str] = None,
+        confs: str = "{}",
+        seekpos: Optional[int] = None,
+        chunksize: Optional[int] = None,
+        primary_transcript: List[str] = ["mane"],
+        serveradmindb=None,
+        module_options: Dict = {},
+        postfix: str = "",
+    ):
         from time import time
         from pathlib import Path
-        import pkg_resources
         from pathlib import Path
+        from os import makedirs
         from ..module.local import get_module_conf
+        from ..consts import STANDARD_INPUT_FILE_SUFFIX
 
-        self.cmd_parser = None
-        self.input_path: Optional[Path] = None
-        self.input_dir = None
+        self.input_dir: Optional[Path] = None
         self.output_dir: Optional[Path] = None
+        self.input_fname: Optional[str] = None
+        if input_file:
+            p = Path(input_file).absolute()
+            self.input_dir = p.parent
+            self.input_fname = p.name
+        if output_dir:
+            self.output_dir = Path(output_dir)
+        elif self.input_dir:
+            self.output_dir = self.input_dir
+        if self.output_dir and not self.output_dir.exists():
+            makedirs(self.output_dir)
+        self.output_base_fname: Optional[str] = run_name
+        if not self.output_base_fname and self.input_fname:
+            self.output_base_fname = self.input_fname
+            p = Path(self.output_base_fname)
+            if p.suffix == STANDARD_INPUT_FILE_SUFFIX:
+                self.output_base_fname = p.stem
+        self.module_options: Dict = module_options
+        self.primary_transcript_paths: List[str] = [v for v in primary_transcript if v]
+        self.postfix: str = postfix
+        self.confs: str = confs
+        self.seekpos: Optional[int] = seekpos
+        self.chunksize: Optional[int] = chunksize
+        self.primary_transcript = primary_transcript
+        self.serveradmindb = serveradmindb
+        self.input_path: Optional[Path] = None
         self.reader = None
         self.output_base_fname = None
         self.crx_path = None
@@ -19,88 +59,20 @@ class BaseMapper(object):
         self.crx_writer = None
         self.crg_writer = None
         self.input_fname = None
-        self.module_options = None
-        self.primary_transcript_paths = None
-        self.args = None
         self.logger = None
         self.error_logger = None
         self.unique_excs = []
         self.written_primary_transc = None
-        self.define_main_cmd_args()
-        self.parse_args(inargs, inkwargs)
-        if self.args is None:
-            return
         self.t = time()
-        self.serveradmindb = self.args.get("serveradmindb")
-        main_fpath = self.args.get("script_path", __file__)
-        self.module_name = Path(main_fpath).stem
-        self.module_dir = Path(main_fpath).parent
+        main_fpath = Path(__file__)
+        self.module_name = main_fpath.stem
+        print(f"@ main_fpath={main_fpath}. module_name={self.module_name}")
+        self.module_dir = main_fpath.parent
         self.mapper_dir = self.module_dir
         self.gene_sources = []
         self.gene_info = {}
         self.setup_logger()
         self.conf = get_module_conf(self.module_name, module_type="mapper")
-        self.cravat_version = pkg_resources.get_distribution("oakvar").version
-
-    def define_main_cmd_args(self):
-        import argparse
-
-        self.cmd_parser = argparse.ArgumentParser()
-        self.cmd_parser.add_argument("input_file", help="Input crv file")
-        self.cmd_parser.add_argument(
-            "-n", dest="run_name", help="Name of job. " + "Default is input file name."
-        )
-        self.cmd_parser.add_argument(
-            "-d",
-            dest="output_dir",
-            help="Output directory. " + "Default is input file directory.",
-        )
-        self.cmd_parser.add_argument(
-            "--confs", dest="confs", default="{}", help="Configuration string"
-        )
-        self.cmd_parser.add_argument(
-            "--seekpos", dest="seekpos", default=None, help=argparse.SUPPRESS
-        )
-        self.cmd_parser.add_argument(
-            "--chunksize", dest="chunksize", default=None, help=argparse.SUPPRESS
-        )
-        self.cmd_parser.add_argument(
-            "--primary-transcript",
-            dest="primary_transcript",
-            # nargs="*",
-            default=["mane"],
-            help='"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
-        )
-
-    def parse_args(self, inargs, inkwargs):
-        from os import makedirs
-        from pathlib import Path
-        from ..util.util import get_args
-        from ..util.run import get_module_options
-        from ..consts import STANDARD_INPUT_FILE_SUFFIX
-
-        args = get_args(self.cmd_parser, inargs, inkwargs)
-        self.input_path = args.get("input_file") or None
-        if self.input_path:
-            p = Path(self.input_path).absolute()
-            self.input_dir = p.parent
-            self.input_fname = p.name
-            if args.get("output_dir"):
-                self.output_dir = Path(args.get("output_dir"))
-            else:
-                self.output_dir = self.input_dir
-            if not self.output_dir.exists():
-                makedirs(self.output_dir)
-        self.output_base_fname = args.get("run_name")
-        if not self.output_base_fname and self.input_fname:
-            self.output_base_fname = self.input_fname
-            p = Path(self.output_base_fname)
-            if p.suffix == STANDARD_INPUT_FILE_SUFFIX:
-                self.output_base_fname = p.stem
-        self.module_options = get_module_options(args)
-        self.primary_transcript_paths = [v for v in args["primary_transcript"] if v]
-        self.postfix = args.get("postfix") or ""
-        self.args = args
 
     def setup(self):
         raise NotImplementedError("Mapper must have a setup() method.")
@@ -122,15 +94,11 @@ class BaseMapper(object):
     def make_input_reader(self):
         from ..util.inout import FileReader
 
-        if (
-            self.args is not None
-            and self.args["seekpos"] is not None
-            and self.args["chunksize"] is not None
-        ):
+        if self.seekpos is not None and self.chunksize is not None:
             self.reader = FileReader(
                 self.input_path,
-                seekpos=int(self.args["seekpos"]),
-                chunksize=int(self.args["chunksize"]),
+                seekpos=int(self.seekpos),
+                chunksize=int(self.chunksize),
             )
         else:
             self.reader = FileReader(self.input_path)
@@ -142,7 +110,7 @@ class BaseMapper(object):
         from ..consts import crx_idx
         from ..consts import VARIANT_LEVEL_MAPPED_FILE_SUFFIX
 
-        if not self.output_dir or self.conf is None or not self.args:
+        if not self.output_dir or self.conf is None:
             raise
         crx_def = get_crx_def()
         crx_fname = f"{self.output_base_fname}{VARIANT_LEVEL_MAPPED_FILE_SUFFIX}"
@@ -159,9 +127,7 @@ class BaseMapper(object):
             self.crx_writer.write_meta_line("primary_transcript_paths", "")
         else:
             for path in self.primary_transcript_paths:
-                self.crx_writer.write_meta_line(
-                    "primary_transcript_path", path
-                )
+                self.crx_writer.write_meta_line("primary_transcript_path", path)
 
     def make_crg_writer(self):
         from ..util.util import get_crg_def
@@ -169,7 +135,7 @@ class BaseMapper(object):
         from ..consts import GENE_LEVEL_MAPPED_FILE_SUFFIX
         from ..consts import crg_idx
 
-        if not self.output_dir or not self.args:
+        if not self.output_dir:
             raise
         crg_def = get_crg_def()
         crg_fname = f"{self.output_base_fname}{GENE_LEVEL_MAPPED_FILE_SUFFIX}"
@@ -192,7 +158,7 @@ class BaseMapper(object):
         from time import time
         from ..util.run import update_status
 
-        if not self.reader or not self.crx_writer or not self.args:
+        if not self.reader or not self.crx_writer:
             raise
         count = 0
         last_status_update_time = time()
@@ -325,8 +291,7 @@ class BaseMapper(object):
         self.setup_input_output()
         self.extra_setup()
         if (
-            self.args is None
-            or self.logger is None
+            self.logger is None
             or self.conf is None
             or self.reader is None
             or self.crx_writer is None
@@ -334,15 +299,45 @@ class BaseMapper(object):
             raise
         start_time = time()
         tstamp = asctime(localtime(start_time))
-        self.logger.info(f"started: {tstamp} | {self.args['seekpos']}")
+        self.logger.info(f"started: {tstamp} | {self.seekpos}")
         status = f"started {self.conf['title']} ({self.module_name})"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
         self.process_file()
         self.write_crg()
         stop_time = time()
         tstamp = asctime(localtime(stop_time))
-        self.logger.info(f"finished: {tstamp} | {self.args['seekpos']}")
+        self.logger.info(f"finished: {tstamp} | {self.seekpos}")
         runtime = stop_time - start_time
         self.logger.info("runtime: %6.3f" % runtime)
         self.end()
 
+
+if __name__ == "__main__":
+    import argparse
+
+    cmd_parser = argparse.ArgumentParser()
+    cmd_parser.add_argument("input_file", help="Input crv file")
+    cmd_parser.add_argument(
+        "-n", dest="run_name", help="Name of job. " + "Default is input file name."
+    )
+    cmd_parser.add_argument(
+        "-d",
+        dest="output_dir",
+        help="Output directory. " + "Default is input file directory.",
+    )
+    cmd_parser.add_argument(
+        "--confs", dest="confs", default="{}", help="Configuration string"
+    )
+    cmd_parser.add_argument(
+        "--seekpos", dest="seekpos", default=None, help=argparse.SUPPRESS
+    )
+    cmd_parser.add_argument(
+        "--chunksize", dest="chunksize", default=None, help=argparse.SUPPRESS
+    )
+    cmd_parser.add_argument(
+        "--primary-transcript",
+        dest="primary_transcript",
+        # nargs="*",
+        default=["mane"],
+        help='"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
+    )
