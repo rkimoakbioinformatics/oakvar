@@ -17,6 +17,8 @@ def db_func(func):
         conn.row_factory = Row
         cursor = await conn.cursor()
         ret = await func(*args, conn=conn, cursor=cursor, **kwargs)
+        await cursor.close()
+        await conn.close()
         return ret
 
     return outer_func
@@ -228,6 +230,8 @@ class ServerAdminDb:
         q = f"select uid from jobs where username=? and dir=? and name=?"
         await cursor.execute(q, (username, job.info["dir"], job.info["job_name"]))
         ret = await cursor.fetchone()
+        await cursor.close()
+        await conn.close()
         if ret:
             return ret[0]
         else:
@@ -527,14 +531,18 @@ class ServerAdminDb:
             res.append({"email": row[0], "role": row[1]})
         return res
 
-
     @db_func
     async def make_admin(self, email: str, conn=Any, cursor=Any):
         _ = conn
         q = f"update users set role=? where email=?"
-        await cursor.execute(q, ("admin", email,))
+        await cursor.execute(
+            q,
+            (
+                "admin",
+                email,
+            ),
+        )
         await conn.commit()
-
 
     @db_func
     async def remove_admin(self, email: str, conn=Any, cursor=Any):
@@ -542,7 +550,6 @@ class ServerAdminDb:
         q = f"update users set role='user' where email=?"
         await cursor.execute(q, (email,))
         await conn.commit()
-
 
     def retrieve_user_jobs_into_db(self):
         from pathlib import Path
