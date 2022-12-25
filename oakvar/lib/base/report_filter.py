@@ -228,21 +228,22 @@ class ReportFilter:
         self.filtertable = "filter"
         self.generows = {}
         self.table_aliases = None
-        self.conn_read = None
-        self.conn_write = None
         self.uid = uid
         self.user = self.escape_user(user)
 
     async def exec_db(self, func, *args, **kwargs):
-        if not self.conn_read or not self.conn_write:
+        conn_read, conn_write = await self.get_db_conns()
+        if not conn_read or not conn_write:
             return None
-        cursor_read = await self.conn_read.cursor()
-        cursor_write = await self.conn_write.cursor()
+        cursor_read = await conn_read.cursor()
+        cursor_write = await conn_write.cursor()
         ret = await func(
             *args, cursor_read=cursor_read, cursor_write=cursor_write, **kwargs
         )
         await cursor_read.close()
         await cursor_write.close()
+        await conn_read.close()
+        await conn_write.close()
         return ret
 
     async def second_init(self):
@@ -373,36 +374,29 @@ class ReportFilter:
         await cursor.close()
         await self.create_report_filter_registry_table_if_not_exists(conn)
 
-    async def make_db_conns(self):
+    async def get_db_conns(self):
         from aiosqlite import connect
         from aiosqlite import Row
 
         if not self.dbpath:
-            return None
-        if not self.conn_read:
-            self.conn_read = await connect(self.dbpath)
-            self.conn_read.row_factory = Row
-            await self.conn_read.execute("pragma journal_mode=wal")
-            await self.create_and_attach_filter_database(self.conn_read)
-        if not self.conn_write:
-            self.conn_write = await connect(self.dbpath)
-            await self.conn_write.execute("pragma journal_mode=wal")
-            await self.create_and_attach_filter_database(self.conn_write)
+            return None, None
+        conn_read = await connect(self.dbpath)
+        conn_read.row_factory = Row
+        await conn_read.execute("pragma journal_mode=wal")
+        await self.create_and_attach_filter_database(conn_read)
+        conn_write = await connect(self.dbpath)
+        await conn_write.execute("pragma journal_mode=wal")
+        await self.create_and_attach_filter_database(conn_write)
+        return conn_read, conn_write
 
     async def connect_dbs(self, dbpath=None):
         from os.path import abspath
 
         if dbpath != None:
             self.dbpath = abspath(dbpath)
-        await self.make_db_conns()
 
     async def close_db(self):
-        if self.conn_read:
-            await self.conn_read.close()
-            self.conn_read = None
-        if self.conn_write:
-            await self.conn_write.close()
-            self.conn_write = None
+        return
 
     async def filtertable_exists(self, cursor_read=Any, cursor_write=Any):
         _ = cursor_write
@@ -602,7 +596,8 @@ class ReportFilter:
         gene_to_filter=None,
         sample_to_filter=None,
     ):
-        if not self.conn_write:
+        conn_read, conn_write = await self.get_db_conns()
+        if not conn_read or not conn_write:
             return
         _ = cursor_read
         if sample_to_filter:
@@ -617,12 +612,15 @@ class ReportFilter:
                 return
             q = f"drop table if exists {table_name}"
             await cursor_write.execute(q)
-        await self.conn_write.commit()
+        await conn_write.commit()
+        await conn_read.close()
+        await conn_write.close()
 
     async def make_sample_to_filter_table(
         self, uid=None, req=None, rej=None, cursor_read=Any, cursor_write=Any
     ):
-        if not self.conn_write:
+        conn_read, conn_write = await self.get_db_conns()
+        if not conn_read or not conn_write:
             return
         _ = cursor_read
         if not uid or (not req and not rej):
@@ -632,7 +630,7 @@ class ReportFilter:
             return
         q = f"drop table if exists {table_name}"
         await cursor_write.execute(q)
-        await self.conn_write.commit()
+        await conn_write.commit()
         q = f"create table {table_name} as select distinct base__uid from main.sample"
         if req:
             req_s = ", ".join([f'"{sid}"' for sid in req])
@@ -641,13 +639,18 @@ class ReportFilter:
             rej_s = ", ".join([f'"{sid}"' for sid in rej])
             q += f" except select base__uid from main.sample where base__sample_id in ({rej_s})"
         await cursor_write.execute(q)
-        await self.conn_write.commit()
+        await conn_write.commit()
+        await conn_read.close()
+        await conn_write.close()
 
     async def get_existing_report_filter_status(
         self, cursor_read=Any, cursor_write=Any
     ):
         from json import dumps
 
+        conn_read, conn_write = await self.get_db_conns()
+        if not conn_read or not conn_write:
+            return
         _ = cursor_write
         if not self.filter or not self.dbpath or not cursor_read:
             return None
@@ -758,7 +761,8 @@ class ReportFilter:
     ):
         from json import dumps
 
-        if not self.conn_write:
+        conn_read, conn_write = await self.get_db_conns()
+        if not conn_read or not conn_write:
             return
         _ = cursor_read
         filterjson = dumps(self.filter)
@@ -766,7 +770,9 @@ class ReportFilter:
         await cursor_write.execute(
             q, (uid, self.user, self.dbpath, filterjson, REPORT_FILTER_IN_PROGRESS)
         )
-        await self.conn_write.commit()
+        await conn_write.commit()
+        await conn_read.close()
+        await conn_write.close()
 
     def should_bypass_filter(self):
         return (
@@ -817,8 +823,11 @@ class ReportFilter:
         cursor_read=Any,
         cursor_write=Any,
     ):
+        conn_read, conn_write = await self.get_db_conns()
+        if not conn_read or not conn_write:
+            return
         _ = cursor_read
-        if not uid or not self.conn_write:
+        if not uid:
             return
         table_name = self.get_ftable_name(uid=uid, ftype="variant")
         q = self.get_fvariant_sql(
@@ -826,17 +835,24 @@ class ReportFilter:
         )
         q = f"create table {table_name} as {q}"
         await cursor_write.execute(q)
-        await self.conn_write.commit()
+        await conn_write.commit()
+        await conn_read.close()
+        await conn_write.close()
 
     async def populate_fgene(self, uid=None, cursor_read=Any, cursor_write=Any):
-        if not uid or not self.conn_write:
+        conn_read, conn_write = await self.get_db_conns()
+        if not conn_read or not conn_write:
+            return
+        if not uid:
             return
         _ = cursor_read
         table_name = self.get_ftable_name(uid=uid, ftype="gene")
         fvariant = self.get_ftable_name(uid=uid, ftype="variant")
         q = f"create table {table_name} as select distinct v.base__hugo from main.variant as v inner join {fvariant} as vf on vf.base__uid=v.base__uid where v.base__hugo is not null"
         await cursor_write.execute(q)
-        await self.conn_write.commit()
+        await conn_write.commit()
+        await conn_read.close()
+        await conn_write.close()
 
     async def make_fvariant(self, uid=None, sample_to_filter=None, gene_to_filter=None):
         if not uid:
@@ -858,18 +874,24 @@ class ReportFilter:
     async def set_registry_status(
         self, uid=None, status=None, cursor_read=Any, cursor_write=Any
     ):
+        conn_read, conn_write = await self.get_db_conns()
+        if not conn_read or not conn_write:
+            return
         _ = cursor_read
-        if not uid or not status or not self.conn_write:
+        if not uid or not status:
             return
         table_name = self.get_registry_table_name()
         q = f"update {table_name} set status=?"
         await cursor_write.execute(q, (status,))
-        await self.conn_write.commit()
+        await conn_write.commit()
+        await conn_read.close()
+        await conn_write.close()
 
     async def remove_ftables(self, uids, cursor_read=Any, cursor_write=Any):
-        _ = cursor_read
-        if not self.conn_write:
+        conn_read, conn_write = await self.get_db_conns()
+        if not conn_read or not conn_write:
             return
+        _ = cursor_read
         if type(uids) == int:
             uids = [uids]
         tablename = self.get_registry_table_name()
@@ -879,18 +901,25 @@ class ReportFilter:
                 await cursor_write.execute(q)
             q = f"delete from {tablename} where uid=?"
             await cursor_write.execute(q, (uid,))
-        await self.conn_write.commit()
+        await conn_write.commit()
+        await conn_read.close()
+        await conn_write.close()
 
     async def drop_ftable(
         self, uid=None, ftype=None, cursor_read=Any, cursor_write=Any
     ):
-        if not self.conn_write or not ftype or not uid:
+        conn_read, conn_write = await self.get_db_conns()
+        if not conn_read or not conn_write:
+            return
+        if not ftype or not uid:
             return
         _ = cursor_read
         table_name = self.get_ftable_name(uid=uid, ftype=ftype)
         q = f"drop table if exists {table_name}"
         await cursor_write.execute(q)
-        await self.conn_write.commit()
+        await conn_write.commit()
+        await conn_read.close()
+        await conn_write.close()
 
     async def make_ftables(self):
         if self.should_bypass_filter():
@@ -971,12 +1000,13 @@ class ReportFilter:
     async def get_level_data_iterator(self, level, page=None, pagesize=None, uid=None):
         if not level:
             return None
-        if not self.conn_read:
+        conn_read, conn_write = await self.get_db_conns()
+        if not conn_read or not conn_write:
             return None
         ref_col_name = REF_COL_NAMES.get(level)
         if not ref_col_name:
             return None
-        cursor_read = await self.conn_read.cursor()
+        cursor_read = await conn_read.cursor()
         if not uid:
             filter_uid_status = await self.exec_db(
                 self.get_existing_report_filter_status
@@ -993,6 +1023,8 @@ class ReportFilter:
         await cursor_read.execute(q)
         rows = await cursor_read.fetchall()
         await cursor_read.close()
+        await conn_read.close()
+        await conn_write.close()
         return rows
 
     async def get_gene_row(self, hugo=None, cursor_read=Any, cursor_write=Any):
@@ -1018,11 +1050,12 @@ class ReportFilter:
     async def make_gene_to_filter_table(
         self, uid=None, genes=None, cursor_read=Any, cursor_write=Any
     ):
-        if not self.conn_write:
+        conn_read, conn_write = await self.get_db_conns()
+        if not conn_read or not conn_write:
             return
-        _ = cursor_read
         if not uid or not genes:
             return
+        _ = cursor_read
         table_name = self.get_gene_to_filter_table_name(uid=uid)
         if not table_name:
             return
@@ -1033,7 +1066,9 @@ class ReportFilter:
         q = f"insert into {table_name} (base__hugo) values (?)"
         print(f"q={q}")
         await cursor_write.executemany(q, genes)
-        await self.conn_write.commit()
+        await conn_write.commit()
+        await conn_read.close()
+        await conn_write.close()
 
     async def make_filtered_hugo_table(
         self, conn=None, cursor_read=Any, cursor_write=Any
