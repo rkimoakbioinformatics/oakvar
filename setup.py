@@ -5,19 +5,10 @@ from pathlib import Path
 
 def walk_and_add(d, pkg_files):
     folders = [
-        "annotator_template",
-        "base",
+        "api",
         "cli",
         "gui",
-        "liftover",
-        "module",
-        "store",
-        "system",
-        "util",
-        "webresult",
-        "webstore",
-        "websubmit",
-        "assets",
+        "lib",
     ]
     for root, _, files in os.walk(d):
         root_spl = root.split(os.sep)
@@ -33,10 +24,10 @@ def walk_and_add(d, pkg_files):
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.rst").read_text()
 oakvar_files = [
-    "exampleinput",
-    "oakvar.yml",
-    "system.yml",
-    "favicon.ico",
+    # "exampleinput",
+    # "oakvar.yml",
+    # "system.yml",
+    # "favicon.ico",
 ]
 cravat_files = []
 walk_and_add("oakvar", oakvar_files)

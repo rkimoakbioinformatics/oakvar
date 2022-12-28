@@ -214,7 +214,9 @@ def get_annotator_dir(module_name):
     import os
     from ..system import get_modules_dir
 
-    module_dir = os.path.join(get_modules_dir(), "annotators", module_name)
+    modules_dir = get_modules_dir()
+    assert modules_dir is not None
+    module_dir = os.path.join(modules_dir, "annotators", module_name)
     if os.path.exists(module_dir) == False:
         module_dir = None
     return module_dir
@@ -224,8 +226,10 @@ def get_annotator_script_path(module_name):
     import os
     from ..system import get_modules_dir
 
+    modules_dir = get_modules_dir()
+    assert modules_dir is not None
     module_path = os.path.join(
-        get_modules_dir(), "annotators", module_name, module_name + ".py"
+        modules_dir, "annotators", module_name, module_name + ".py"
     )
     if os.path.exists(module_path) == False:
         module_path = None
@@ -236,8 +240,10 @@ def get_mapper_script_path(module_name):
     import os
     from ..system import get_modules_dir
 
+    modules_dir = get_modules_dir()
+    assert modules_dir is not None
     module_path = os.path.join(
-        get_modules_dir(), "mappers", module_name, module_name + ".py"
+        modules_dir, "mappers", module_name, module_name + ".py"
     )
     if os.path.exists(module_path) == False:
         module_path = None
@@ -290,6 +296,7 @@ def get_module_dir(module_name, module_type=None) -> Optional[str]:
     if exists(module_name):
         return module_name
     modules_dir = get_modules_dir()
+    assert modules_dir is not None
     if module_type:  # module name and type are given.
         p = join(modules_dir, module_type + "s", module_name)
         if exists(p):

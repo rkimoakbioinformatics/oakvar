@@ -13,12 +13,12 @@ class MasterConverter(object):
 
     ALREADYCRV = 2
 
-    def __init__(self):
+    def __init__(self, inputs: List[str]=[], format: Optional[str]=None, name: Optional[str]=None, output_dir: Optional[str]=None, genome: Optional[str]=None, confs: str="{}", serveradmindb=None, conf: Dict={}, module_options: Dict={}, outer=None):
         from re import compile
         from oakvar import get_wgs_reader
+        from oakvar.lib.exceptions import ExpectedException
 
         self.logger = None
-        self.serveradmindb = None
         self.crv_writer = None
         self.crs_writer = None
         self.crm_writer = None
@@ -31,10 +31,7 @@ class MasterConverter(object):
         self.input_path_dict = {}
         self.input_path_dict2 = {}
         self.input_file_handles: Dict[str, TextIO] = {}
-        self.output_dir: Optional[str] = None
         self.output_base_fname: Optional[str] = None
-        self.conf = None
-        self.unique_variants = None
         self.error_logger = None
         self.unique_excs: Dict[str, int] = {}
         self.err_holder = []
@@ -67,7 +64,23 @@ class MasterConverter(object):
             "chr23": "chrX",
             "chr24": "chrY",
         }
-        self.parse_cmd_args(inargs, inkwargs)
+        if not inputs:
+            raise ExpectedException("Input files are not given.")
+        self.inputs = inputs
+        self.format = format
+        self.name = name
+        self.output_dir = output_dir
+        self.genome = genome
+        self.confs = confs
+        self.parse_inputs()
+        self.parse_output_dir()
+        self.given_input_assembly = genome
+        self.conf: Dict = {}
+        self.module_options = module_options
+        if conf:
+            self.conf.update(conf)
+        self.serveradmindb = serveradmindb
+        self.outer = outer
         self.setup_logger()
         self.wgsreader = get_wgs_reader(assembly="hg38")
 
@@ -109,21 +122,19 @@ class MasterConverter(object):
             raise InvalidGenomeAssembly(genome_assembly)
         self.lifter = LiftOver(liftover_chain_paths[genome_assembly])
 
-    def parse_inputs(self, args):
+    def parse_inputs(self):
         from pathlib import Path
 
-        if not args["inputs"]:
-            raise
         self.pipeinput = False
         if (
-            args["inputs"] is not None
-            and len(args["inputs"]) == 1
-            and args["inputs"][0] == "-"
+            self.inputs 
+            and len(self.inputs) == 1
+            and self.inputs[0] == "-"
         ):
             self.pipeinput = True
         self.input_paths = []
         if self.pipeinput == False:
-            self.input_paths = [str(Path(x).absolute()) for x in args["inputs"] if x != "-"]
+            self.input_paths = [str(Path(x).absolute()) for x in self.inputs if x != "-"]
         else:
             self.input_paths = [STDIN]
         self.input_dir = str(Path(self.input_paths[0]).parent)
@@ -135,44 +146,23 @@ class MasterConverter(object):
             self.input_path_dict[0] = self.input_paths[0]
             self.input_path_dict2[STDIN] = 0
 
-    def parse_output_dir(self, args):
+    def parse_output_dir(self):
         from pathlib import Path
         from os import makedirs
 
         self.output_dir = None
-        self.output_dir = args.get("output_dir") or None
+        self.output_dir = self.output_dir or None
         if not self.output_dir:
             self.output_dir = self.input_dir
         if not self.output_dir:
             raise
         if not (Path(self.output_dir).exists()):
             makedirs(self.output_dir)
-        self.output_base_fname: Optional[str] = args.get("name")
+        self.output_base_fname: Optional[str] = self.name
         if not self.output_base_fname:
             if not self.input_paths:
                 raise
             self.output_base_fname = Path(self.input_paths[0]).name
-
-    def parse_cmd_args(self, inargs, inkwargs):
-        from oakvar.lib.exceptions import ExpectedException
-        from oakvar.lib.util.util import get_args
-        from oakvar.lib.util.run import get_module_options
-
-        parser = self.get_cmd_args_parser()
-        args = get_args(parser, inargs, inkwargs)
-        if "serveradmindb" in args:
-            self.serveradmindb = args.get("serveradmindb")
-        if args["inputs"] is None:
-            raise ExpectedException("Input files are not given.")
-        self.parse_inputs(args)
-        self.parse_output_dir(args)
-        self.given_input_assembly = args.get("genome")
-        self.conf = {}
-        self.module_options = get_module_options(args)
-        if "conf" in args:
-            self.conf.update(args["conf"])
-        self.unique_variants = args["unique_variants"]
-        self.args = args
 
     def get_file_object_for_input_path(self, input_path: str):
         import gzip
@@ -196,6 +186,7 @@ class MasterConverter(object):
         return f
 
     def collect_input_file_handles(self):
+        print(f"@ input_paths={self.input_paths}")
         if not self.input_paths:
             raise
         for input_path in self.input_paths:
@@ -219,7 +210,6 @@ class MasterConverter(object):
     def collect_converters(self):
         from oakvar.lib.module.local import get_local_module_infos_of_type
         from oakvar.lib.util.util import load_class
-        from oakvar.lib.util.util import quiet_print
 
         for module_name, module_info in get_local_module_infos_of_type("converter").items():
             cls = load_class(module_info.script_path)
@@ -227,20 +217,22 @@ class MasterConverter(object):
             # TODO: backward compatibility
             converter.output_dir = None
             converter.run_name = None
-            converter.module_name = module_info.name
+            converter.module_name = module_name
             converter.name = module_info.name
             converter.version = module_info.version
             converter.conf = module_info.conf
             converter.script_path = module_info.script_path
             # end of backward compatibility
             if not hasattr(converter, "format_name"):
-                quiet_print("{module_info.name} does not have format_name defined and thus was skipped.", args=self.args)
+                if self.outer:
+                    self.outer.write("{module_info.name} does not have format_name defined and thus was skipped.\n")
                 continue
             converter.module_name = module_info.name
             if converter.format_name not in self.converters:
                 self.converters[converter.format_name] = converter
             else:
-                quiet_print("{moule_info.name} is skipped because {converter.format_name} is already handled by {self.converters[converter.format_name].name}.", args=self.args)
+                if self.outer:
+                    self.outer.write("{moule_info.name} is skipped because {converter.format_name} is already handled by {self.converters[converter.format_name].name}.\n")
                 continue
         self.available_input_formats = list(self.converters.keys())
 
@@ -266,9 +258,9 @@ class MasterConverter(object):
     def check_input_format(self):
         from oakvar.lib.exceptions import InvalidInputFormat
 
-        if self.args.get("format") and self.args.get("format") not in self.available_input_formats:
-            raise InvalidInputFormat(self.args.get("format"))
-        if self.pipeinput and not self.args.get("format"):
+        if self.format and self.format not in self.available_input_formats:
+            raise InvalidInputFormat(self.format)
+        if self.pipeinput and not self.format:
             raise InvalidInputFormat(
                 f"--input-format should be given with pipe input"
             )
@@ -278,11 +270,11 @@ class MasterConverter(object):
         from oakvar.lib.exceptions import ArgumentError
 
         if f == sys.stdin:
-            if not self.args.get("format"):
+            if not self.format:
                 raise ArgumentError(msg="--input-format option should be given if stdin is used for input.")
-            if not self.args.get("format") in self.converters:
-                raise ArgumentError(msg=f"{self.args.get('format')} is not found in installed converter modules.")
-            return self.converters[self.args.get("format")]
+            if not self.format in self.converters:
+                raise ArgumentError(msg=f"{self.format} is not found in installed converter modules.")
+            return self.converters[self.format]
         else:
             for converter_name, converter in self.converters.items():
                 f.seek(0)
@@ -796,51 +788,41 @@ class MasterConverter(object):
         pass
 
 
-    def get_cmd_args_parser(self):
-        from argparse import ArgumentParser, SUPPRESS
-
-        parser = ArgumentParser()
-        parser.add_argument("path", help="Path to this converter's python module")
-        parser.add_argument(
-            "inputs", nargs="*", default=None, help="Files to be converted to .crv"
-        )
-        parser.add_argument(
-            "-f", dest="format", default=None, help="Specify an input format"
-        )
-        parser.add_argument(
-            "-n", "--name", dest="name", help="Name of job. Default is input file name."
-        )
-        parser.add_argument(
-            "-d",
-            "--output-dir",
-            dest="output_dir",
-            help="Output directory. Default is input file directory.",
-        )
-        parser.add_argument(
-            "-l",
-            "--genome",
-            dest="genome",
-            default=None,
-            help="Input gene assembly. Will be lifted over to hg38",
-        )
-        parser.add_argument(
-            "--confs", dest="confs", default="{}", help="Configuration string"
-        )
-        parser.add_argument(
-            "--unique-variants",
-            dest="unique_variants",
-            default=False,
-            action="store_true",
-            help=SUPPRESS,
-        )
-        return parser
-
-
 def main():
     master_converter = MasterConverter()
     master_converter.run()
 
 
 if __name__ == "__main__":
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument("path", help="Path to this converter's python module")
+    parser.add_argument(
+        "inputs", nargs="*", default=None, help="Files to be converted to .crv"
+    )
+    parser.add_argument(
+        "-f", dest="format", default=None, help="Specify an input format"
+    )
+    parser.add_argument(
+        "-n", "--name", dest="name", help="Name of job. Default is input file name."
+    )
+    parser.add_argument(
+        "-d",
+        "--output-dir",
+        dest="output_dir",
+        help="Output directory. Default is input file directory.",
+    )
+    parser.add_argument(
+        "-l",
+        "--genome",
+        dest="genome",
+        default=None,
+        help="Input gene assembly. Will be lifted over to hg38",
+    )
+    parser.add_argument(
+        "--confs", dest="confs", default="{}", help="Configuration string"
+    )
+
     master_converter = MasterConverter()
     master_converter.run()

@@ -240,15 +240,13 @@ def check_install_kill(system_worker_state=None, module_name=None):
         raise KillInstallException
 
 
-def get_download_zipfile_path(module_name: str, version: str, temp_dir: str, kind: str):
-    from pathlib import Path
-
+def get_download_zipfile_path(module_name: str, version: str, temp_dir: Path, kind: str):
     zipfile_fname = f"{module_name}__{version}__{kind}.zip"
-    zipfile_path = str(Path(temp_dir) / zipfile_fname)
+    zipfile_path = str(temp_dir / zipfile_fname)
     return zipfile_path
 
 
-def download_code_or_data(urls: Optional[str]=None, module_name: Optional[str]=None, version: Optional[str]=None, kind: Optional[str]=None, temp_dir: Optional[str]=None, outer=None, stage_handler=None, system_worker_state=None) -> Optional[str]:
+def download_code_or_data(urls: Optional[str]=None, module_name: Optional[str]=None, version: Optional[str]=None, kind: Optional[str]=None, temp_dir: Optional[Path]=None, outer=None, stage_handler=None, system_worker_state=None) -> Optional[str]:
     from pathlib import Path
     from os.path import getsize
     from os import remove
@@ -270,6 +268,7 @@ def download_code_or_data(urls: Optional[str]=None, module_name: Optional[str]=N
         return
     if urls[0] == "[":  # a list of URLs
         urls = loads(urls)
+    assert urls is not None
     urls_ty = type(urls)
     if urls_ty == str:
         download(
@@ -318,11 +317,12 @@ def download_code_or_data(urls: Optional[str]=None, module_name: Optional[str]=N
     return zipfile_path
 
 
-def extract_code_or_data(module_name: str="", kind: str="", zipfile_path: str="", temp_dir: str="", stage_handler=None, system_worker_state=None):
+def extract_code_or_data(module_name: str="", kind: str="", zipfile_path: str="", temp_dir: Optional[Path]=None, stage_handler=None, system_worker_state=None):
     import zipfile
     from os import remove
 
     check_install_kill(module_name=module_name, system_worker_state=system_worker_state)
+    assert temp_dir is not None
     assert module_name and kind and zipfile_path
     if not kind or kind not in ["code", "data"]:
         return
@@ -334,7 +334,7 @@ def extract_code_or_data(module_name: str="", kind: str="", zipfile_path: str=""
     remove(zipfile_path)
 
 
-def cleanup_install(module_name: str, module_dir: str, temp_dir: str, installation_finished: bool, code_installed: bool, data_installed: bool):
+def cleanup_install(module_name: str, module_dir: str, temp_dir: Path, installation_finished: bool, code_installed: bool, data_installed: bool):
     from pathlib import Path
     from shutil import rmtree
     from shutil import move
@@ -349,12 +349,12 @@ def cleanup_install(module_name: str, module_dir: str, temp_dir: str, installati
         return
     # New installation
     if not Path(module_dir).exists():
-        move(temp_dir, module_dir)
+        move(str(temp_dir), module_dir)
         return
     # Update
     if data_installed:
         rmtree(module_dir)
-        move(temp_dir, module_dir)
+        move(str(temp_dir), module_dir)
     elif code_installed:
         remove_code_part_of_module(module_name)
         for item in listdir(temp_dir):

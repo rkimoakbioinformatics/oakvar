@@ -26,7 +26,6 @@ def setup_system(clean: bool=False, clean_cache_db: bool=False, clean_cache_file
     if outer:
         outer.write("Logging in...\n")
     ret = setup_store_account(conf=conf, email=email, pw=pw)
-    print(f"@ setup_store_account ret={ret}")
     if ret.get("success") != True:
         if outer:
             outer.write("Login failed\n")
@@ -808,11 +807,10 @@ def save_user_conf(user_conf):
 
 
 def get_system_conf_template_path():
-    from os.path import join
     from .consts import sys_conf_fname
     from ..util.admin_util import get_packagedir
 
-    return join(get_packagedir(), sys_conf_fname)
+    return get_packagedir() / "lib" / "assets" / sys_conf_fname
 
 
 def get_system_conf_template():

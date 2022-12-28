@@ -750,7 +750,7 @@ def get_manifest(conn=None, cursor=None) -> Optional[dict]:
 
 
 @db_func
-def get_urls(module_name: str, code_version: str, args={}, conn=None, cursor=None):
+def get_urls(module_name: str, code_version: str, conn=None, cursor=None):
     from requests import Session
     from .ov.account import get_current_id_token
     from ..exceptions import StoreServerError
@@ -769,7 +769,7 @@ def get_urls(module_name: str, code_version: str, args={}, conn=None, cursor=Non
     if not store:
         return None
     url = f"{get_store_url()}/urls/{module_name}/{code_version}"
-    id_token = get_current_id_token(args=args)
+    id_token = get_current_id_token()
     params = {"idToken": id_token}
     s = Session()
     s.headers["User-Agent"] = "oakvar"

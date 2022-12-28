@@ -1,14 +1,27 @@
 from typing import Optional
+from typing import Dict
+
 
 class BasePostAggregator(object):
 
     cr_type_to_sql = {"string": "text", "int": "integer", "float": "real"}
 
-    def __init__(self, *inargs, **inkwargs):
-        self.serveradmindb = None
-        self.cmd_arg_parser = None
-        self.run_name = None
-        self.output_dir = None
+    def __init__(
+        self,
+        module_name: str,
+        run_name: Optional[str] = None,
+        output_dir: Optional[str] = None,
+        confs: str = "{}",
+        serveradmindb=None,
+        outer=None,
+        module_options: Dict = {},
+    ):
+        from ..exceptions import ArgumentError
+        from ..util.util import get_result_dbpath
+
+        self.serveradmindb = serveradmindb
+        self.run_name = run_name
+        self.output_dir = output_dir
         self.level = None
         self.levelno = None
         self.module_options = None
@@ -16,8 +29,13 @@ class BasePostAggregator(object):
         self.logger = None
         self.error_logger = None
         self.unique_excs = []
-        self.module_name = None
-        self.parse_cmd_args(inargs, inkwargs)
+        self.module_name = module_name
+        if not self.output_dir:
+            raise ArgumentError(msg="Output directory was not given.")
+        if not self.run_name:
+            raise ArgumentError(msg="run_name was not given.")
+        self.db_path = get_result_dbpath(self.output_dir, self.run_name)
+        self.module_options = module_options
         self._setup_logger()
         self.make_conf_and_level()
         self.fix_col_names()
@@ -32,7 +50,8 @@ class BasePostAggregator(object):
         self.where_g: Optional[str] = None
         self.q_v: Optional[str] = None
         self.q_g: Optional[str] = None
-        self.args = None
+        self.outer = outer
+        self.confs = confs
         self._open_db_connection()
         self.should_run_annotate = self.check()
 
@@ -69,45 +88,6 @@ class BasePostAggregator(object):
         else:
             if self.logger:
                 self.logger.exception(e)
-
-    def get_cmd_parser(self):
-        import argparse
-
-        parser = argparse.ArgumentParser()
-        parser.add_argument("-n", dest="run_name", help="name of oakvar run")
-        parser.add_argument(
-            "-d",
-            dest="output_dir",
-            help="Output directory. " + "Default is input file directory.",
-        )
-        parser.add_argument(
-            "--confs", dest="confs", default="{}", help="Configuration string"
-        )
-        return parser
-
-    def parse_cmd_args(self, inargs, inkwargs):
-        from ..exceptions import SetupError
-        from ..exceptions import ParserError
-        from ..util.util import get_args
-        from ..util.run import get_module_options
-        from ..util.util import get_result_dbpath
-
-        parser = self.get_cmd_parser()
-        args = get_args(parser, inargs, inkwargs)
-        self.args = args
-        if args.get("module_name"):
-            self.module_name = args.get("module_name")
-        if args.get("run_name"):
-            self.run_name = args.get("run_name")
-        if args.get("output_dir"):
-            self.output_dir = args.get("output_dir")
-        if not self.output_dir:
-            raise SetupError("Output directory was not given.")
-        if not self.run_name:
-            raise ParserError("postaggregator run_name")
-        self.db_path = get_result_dbpath(self.output_dir, self.run_name)
-        self.module_options = get_module_options(args)
-        self.args = args
 
     def handle_legacy_data(self, output_dict: dict):
         from json import dumps
@@ -564,11 +544,13 @@ class BasePostAggregator(object):
             return None
         if level not in self.input_columns:
             return None
-        return ",".join([
-            column_name
-            for column_name in self.result_level_columns[level]
-            if column_name in self.input_columns[level]
-        ])
+        return ",".join(
+            [
+                column_name
+                for column_name in self.result_level_columns[level]
+                if column_name in self.input_columns[level]
+            ]
+        )
 
     def make_query_components(self):
         if not self.input_columns:
@@ -638,7 +620,7 @@ class BasePostAggregator(object):
                         for gen_row in self.c_gen:
                             for i in range(len(gen_row)):
                                 input_data[self.c_gen.description[i][0]] = gen_row[i]
-                            break # only 1 row should be returned.
+                            break  # only 1 row should be returned.
                 elif self.levelno == GENE and self.q_v and self.columns_v:
                     for column_name in self.columns_v:
                         input_data[column_name] = []
@@ -657,3 +639,18 @@ class BasePostAggregator(object):
 
     def annotate(self, __input_data__):
         raise NotImplementedError()
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-n", dest="run_name", help="name of oakvar run")
+    parser.add_argument(
+        "-d",
+        dest="output_dir",
+        help="Output directory. " + "Default is input file directory.",
+    )
+    parser.add_argument(
+        "--confs", dest="confs", default="{}", help="Configuration string"
+    )

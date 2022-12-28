@@ -135,6 +135,7 @@ def handle_exception(e: Exception):
     returncode = getattr(e, "returncode", 1)
     if hasattr(e, "traceback") and getattr(e, "traceback"):
         import traceback
+
         traceback.print_exc()
     if isinstance(e, ExpectedException):
         if halt:
@@ -163,9 +164,10 @@ def main():
     try:
         p_entry = get_entry_parser()
         args = p_entry.parse_args()
-        print(f"@ args={args}")
         if hasattr(args, "func"):
-            ret = args.func(args)
+            func = args.func
+            delattr(args, "func")
+            ret = func(args)
             if getattr(args, "to", "return") != "stdout":
                 return ret
             return True

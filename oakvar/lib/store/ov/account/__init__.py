@@ -203,7 +203,6 @@ def login(email=None, pw=None, interactive=False, outer=None) -> dict:
     params = {"email": email, "pw": pw}
     try:
         r = post(login_url, json=params)
-        print(f"@ r={r}. text={r.text}")
         status_code = r.status_code
         if status_code == 200:
             save_token_set(r.json())
@@ -511,7 +510,6 @@ def announce_on_email_verification_if_needed(email: str, outer=None):
 
 def login_with_token_set(outer=None) -> bool:
     token_set = get_token_set()
-    print(f"@ token_set={token_set}")
     if token_set:
         email = token_set["email"]
         correct, expired = id_token_is_valid()
@@ -552,7 +550,6 @@ def login_with_email_pw(
         }
     if emailpw_are_valid((email, pw)):
         ret = create(email=email, pw=pw, outer=outer)
-        print(f"@@@ create ret={ret}. email={email}. pw={pw}")
         if ret.get("success"):
             announce_on_email_verification_if_needed(email, outer=outer)
             login(email=email, pw=pw, outer=outer)

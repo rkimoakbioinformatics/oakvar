@@ -27,10 +27,12 @@ class BaseMapper(object):
         self.input_dir: Optional[Path] = None
         self.output_dir: Optional[Path] = None
         self.input_fname: Optional[str] = None
+        self.input_path: Optional[Path] = None
         if input_file:
             p = Path(input_file).absolute()
             self.input_dir = p.parent
             self.input_fname = p.name
+            self.input_path = p
         if output_dir:
             self.output_dir = Path(output_dir)
         elif self.input_dir:
@@ -51,7 +53,6 @@ class BaseMapper(object):
         self.chunksize: Optional[int] = chunksize
         self.primary_transcript = primary_transcript
         self.serveradmindb = serveradmindb
-        self.input_path: Optional[Path] = None
         self.reader = None
         self.output_base_fname = None
         self.crx_path = None
@@ -65,8 +66,8 @@ class BaseMapper(object):
         self.written_primary_transc = None
         self.t = time()
         main_fpath = Path(__file__)
+        print(f"@ main_fpath={main_fpath}")
         self.module_name = main_fpath.stem
-        print(f"@ main_fpath={main_fpath}. module_name={self.module_name}")
         self.module_dir = main_fpath.parent
         self.mapper_dir = self.module_dir
         self.gene_sources = []

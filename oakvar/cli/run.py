@@ -12,6 +12,7 @@ def cli_run(args):
 def run(args, __name__="run"):
     from ..api.run import run
 
+    print(f"@ args={args}")
     ret = run(**args)
     return ret
 
@@ -157,7 +158,6 @@ def add_parser_ov_run(subparsers):
     parser_ov_run.add_argument(
         "-i",
         "--input-format",
-        dest="forcedinputformat",
         default=None,
         help="Force input format",
     )
@@ -192,25 +192,11 @@ def add_parser_ov_run(subparsers):
         help="Job ID for server version",
     )
     parser_ov_run.add_argument(
-        "--version",
-        dest="show_version",
-        action="store_true",
-        default=False,
-        help="Shows OakVar version.",
-    )
-    parser_ov_run.add_argument(
         "--separatesample",
         dest="separatesample",
         action="store_true",
         default=False,
         help="Separate variant results by sample",
-    )
-    parser_ov_run.add_argument(
-        "--unique-variants",
-        dest="unique_variants",
-        action="store_true",
-        default=False,
-        help="Set to get only unique variants in output",
     )
     parser_ov_run.add_argument(
         "--primary-transcript",
@@ -241,13 +227,6 @@ def add_parser_ov_run(subparsers):
     )
     parser_ov_run.add_argument(
         "--quiet", action="store_true", default=None, help="Runs quietly."
-    )
-    parser_ov_run.add_argument(
-        "--concise-report",
-        dest="concise_report",
-        action="store_true",
-        default=None,
-        help="Generate concise reports with default columns defined by each annotation module",
     )
     parser_ov_run.add_argument(
         "--package", dest="package", default=None, help="Use package"

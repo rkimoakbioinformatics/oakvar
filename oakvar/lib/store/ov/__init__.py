@@ -10,7 +10,7 @@ def module_code_url(module_name: str, version=None) -> Optional[str]:
     from ...exceptions import AuthorizationError
     from ...exceptions import StoreServerError
 
-    id_token = get_current_id_token(args={"quiet": True})
+    id_token = get_current_id_token()
     if not id_token:
         raise AuthorizationError()
     s = Session()

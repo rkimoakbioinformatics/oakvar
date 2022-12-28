@@ -6,7 +6,6 @@ env_key_prefix = "OV_"
 #
 # Directories
 #
-custom_modules_dir = None
 conf_dir_name = "conf"
 modules_dir_name = "modules"
 jobs_dir_name = "jobs"

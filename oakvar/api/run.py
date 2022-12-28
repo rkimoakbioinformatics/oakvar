@@ -43,6 +43,13 @@ def run(
     logtofile: bool = False,
     loglevel: str = "INFO",
     combine_input: bool = False,
+    to: Optional[str] = "return",
+    input_format: Optional[str] = None,
+    show_version: bool = False,
+    quiet: bool = False,
+    md: Optional[str] = None,
+    uid: Optional[str] = None,
+    outer=None,
 ):
     from ..lib.base.runner import Runner
     from ..lib.util.asyn import get_event_loop
@@ -90,6 +97,7 @@ def run(
         logtofile=logtofile,
         loglevel=loglevel,
         combine_input=combine_input,
+        input_format=input_format,
     )
     loop = get_event_loop()
     return loop.run_until_complete(module.main())

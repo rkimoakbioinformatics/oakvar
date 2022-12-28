@@ -1,21 +1,37 @@
+from typing import Optional
+from typing import Dict
+
+
 class BasePreparer(object):
-    def __init__(self, *inargs, **inkwargs):
-        import os
+    def __init__(
+        self,
+        script_path: str,
+        input_file: Optional[str] = None,
+        name: Optional[str] = None,
+        output_dir: Optional[str] = None,
+        module_options: Dict = {},
+        conf: Dict = {},
+        serveradmindb=None,
+        outer=None,
+    ):
         import sys
         from pathlib import Path
+        from os.path import split
+        from os import makedirs
         from ..module.local import get_module_conf
         from ..exceptions import ModuleLoadingError
+        from ..exceptions import NoInput
 
-        self.serveradmindb = None
+        self.serveradmindb = serveradmindb
+        self.outer = outer
         self.cmd_parser = None
         self.input_path = None
         self.input_dir = None
         self.reader = None
-        self.output_dir = None
+        self.output_dir: Optional[str] = None
         self.output_base_fname = None
         self.input_fname = None
         self.module_options = None
-        self.args = None
         self.logger = None
         self.error_logger = None
         self.unique_excs = []
@@ -25,64 +41,32 @@ class BasePreparer(object):
             raise ModuleLoadingError(self.__module__)
         self.main_fpath = Path(fp).resolve()
         self.module_name = self.main_fpath.stem
-        self._define_main_cmd_args()
-        self._parse_cmd_args(inargs, inkwargs)
-        if self.args is None:
-            return
-        main_fpath = self.args["script_path"]
-        main_basename = os.path.basename(main_fpath)
-        if "." in main_basename:
-            self.module_name = ".".join(main_basename.split(".")[:-1])
-        else:
-            self.module_name = main_basename
-        self.module_dir = os.path.dirname(main_fpath)
-        self._setup_logger()
-        self.conf = get_module_conf(self.module_name, module_type="preparer")
-
-    def _define_main_cmd_args(self):
-        import argparse
-
-        self.cmd_parser = argparse.ArgumentParser()
-        self.cmd_parser.add_argument("input_file", help="Input crv file")
-        self.cmd_parser.add_argument(
-            "-n", dest="name", help="Name of job. " + "Default is input file name."
-        )
-        self.cmd_parser.add_argument(
-            "-d",
-            dest="output_dir",
-            help="Output directory. " + "Default is input file directory.",
-        )
-        self.cmd_parser.add_argument(
-            "--confs", dest="confs", default="{}", help="Configuration string"
-        )
-
-    def _parse_cmd_args(self, inargs, inkwargs):
-        from os.path import abspath, split, exists
-        from os import makedirs
-        from ..util.util import get_args
-        from ..util.run import get_module_options
-        from ..exceptions import NoInput
-
-        args = get_args(self.cmd_parser, inargs, inkwargs)
-        self.serveradmindb = args.get("serveradmindb")
-        self.input_path = abspath(args["input_file"]) if args["input_file"] else None
+        self.input_path = Path(input_file).absolute() if input_file else None
         if not self.input_path:
             raise NoInput()
         self.output_path = f"{self.input_path}.{self.module_name}.prep.crv"
         self.input_dir, self.input_fname = split(self.input_path)
-        if args["output_dir"]:
-            self.output_dir = args["output_dir"]
+        if output_dir:
+            self.output_dir = output_dir
         else:
             self.output_dir = self.input_dir
-        if not (exists(self.output_dir)):
+        if not Path(self.output_dir).exists():
             makedirs(self.output_dir)
-        self.output_base_fname = args.get("run_name")
+        self.output_base_fname = name
         if not self.output_base_fname:
             self.output_base_fname = self.input_fname
         self.module_options = {}
-        self.module_options.update(get_module_options(args) or {})
-        self.module_options.update(args.get("conf") or {})
-        self.args = args
+        self.module_options.update(module_options)
+        self.module_options.update(conf or {})
+        main_fpath = script_path
+        main_basename = Path(main_fpath).name
+        if "." in main_basename:
+            self.module_name = Path(main_fpath).stem
+        else:
+            self.module_name = main_basename
+        self.module_dir = Path(main_fpath).parent
+        self._setup_logger()
+        self.conf = get_module_conf(self.module_name, module_type="preparer")
 
     def run_setups(self):
         self.setup()
@@ -211,3 +195,21 @@ class BasePreparer(object):
 
         if self.output_path and self.input_path:
             replace(self.output_path, self.input_path)
+
+
+if __name__ == "__main__":
+    import argparse
+
+    cmd_parser = argparse.ArgumentParser()
+    cmd_parser.add_argument("input_file", help="Input crv file")
+    cmd_parser.add_argument(
+        "-n", dest="name", help="Name of job. " + "Default is input file name."
+    )
+    cmd_parser.add_argument(
+        "-d",
+        dest="output_dir",
+        help="Output directory. " + "Default is input file directory.",
+    )
+    cmd_parser.add_argument(
+        "--confs", dest="confs", default="{}", help="Configuration string"
+    )

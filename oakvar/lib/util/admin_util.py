@@ -2,6 +2,7 @@ from typing import Optional
 
 pkg_version: Optional[str] = None
 
+
 def get_user_conf():
     from ..system import get_user_conf_path
     from ..util.util import load_yml_conf
@@ -71,15 +72,6 @@ def get_package_versions():
         return None
 
 
-async def get_updatable_async(modules=[], strategy="consensus"):
-    from ..module import get_updatable
-
-    update_vers, resolution_applied, resolution_failed = get_updatable(
-        modules=modules, strategy=strategy
-    )
-    return [update_vers, resolution_applied, resolution_failed]
-
-
 def get_widgets_for_annotator(annotator_name, skip_installed=False):
     from ..module.local import module_exists_local
     from ..module.remote import get_remote_module_info
@@ -112,8 +104,10 @@ def input_formats():
     import os
     from ..system import get_modules_dir
 
+    modules_dir = get_modules_dir()
+    assert modules_dir is not None
     formats = set()
-    d = os.path.join(get_modules_dir(), "converters")
+    d = os.path.join(modules_dir, "converters")
     if os.path.exists(d):
         fns = os.listdir(d)
         for fn in fns:
@@ -140,14 +134,16 @@ def fn_new_exampleinput(d: str):
     return ofn
 
 
-def create_new_module(name: Optional[str]=None, type: Optional[str]=None):
+def create_new_module(name: Optional[str] = None, type: Optional[str] = None):
     from shutil import copytree
     from pathlib import Path
     from ..system import get_modules_dir
     from ..module.cache import get_module_cache
 
+    modules_dir = get_modules_dir()
+    assert modules_dir is not None
     assert name is not None and type is not None
-    module_dir = Path(get_modules_dir()) /  type / name
+    module_dir = Path(modules_dir) / type / name
     template_dir = Path(get_packagedir()) / "lib" / "assets" / "module_templates" / type
     copytree(template_dir, module_dir)
     for fn in module_dir.iterdir():
@@ -235,11 +231,9 @@ def get_liftover_chain_paths():
 
 
 def get_packagedir():
-    import os.path
+    from pathlib import Path
 
-    return os.path.abspath(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-    )
+    return Path(__file__).parent.parent.parent.absolute()
 
 
 def get_platform():

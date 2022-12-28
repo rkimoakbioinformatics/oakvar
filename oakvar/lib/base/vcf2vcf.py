@@ -1,9 +1,26 @@
+from typing import Optional
+from typing import List
+
+
 class VCF2VCF:
 
     OV_PREFIX: str = "OV_"
 
-    def __init__(self, *inargs, **inkwargs):
+    def __init__(
+        self,
+        inputs: List[str] = [],
+        run_name: Optional[str] = None,
+        output_dir: Optional[str] = None,
+        conf_path: Optional[str] = None,
+        module_options: Optional[str] = None,
+        annotator_names: List[str] = [],
+        genome: Optional[str] = None,
+        mapper_name: Optional[str] = None,
+        serveradmindb=None,
+        outer=None,
+    ):
         import sys
+        import os
         from ..exceptions import ModuleLoadingError
 
         fp = sys.modules[self.__module__].__file__
@@ -15,7 +32,7 @@ class VCF2VCF:
         self.logger = None
         self.error_logger = None
         self.cmd_arg_parser = None
-        self.module_options = None
+        self.module_options = module_options
         self.output_path = None
         self.last_status_update_time = None
         self.output_columns = None
@@ -24,12 +41,21 @@ class VCF2VCF:
         self.unique_excs = []
         self.conf = {}
         self.lifter = None
+        self.genome = genome
         self.module_name = "vcf2vcf"
-        self.define_cmd_parser()
-        self.parse_cmd_args(inargs, inkwargs)
+        self.inputs = [os.path.abspath(v) for v in inputs]
+        self.primary_input_path = os.path.abspath(inputs[0])
+        self.output_dir = os.path.dirname(self.primary_input_path)
+        if output_dir:
+            self.output_dir = output_dir
+        self.job_conf_path = conf_path
+        self.annotator_names = annotator_names
+        self.mapper_name = mapper_name
+        self.run_name = run_name
         self.setup_logger()
         self.setup_liftover()
-        self.serveradmindb = self.args.get("serveradmindb")
+        self.serveradmindb = serveradmindb
+        self.outer = outer
         if self.logger and "logging_level" in self.conf:
             self.logger.setLevel(self.conf["logging_level"].upper())
 
@@ -38,9 +64,9 @@ class VCF2VCF:
         from ..util.admin_util import get_liftover_chain_paths
         from oakvar import get_wgs_reader
 
-        if self.args.get("genome"):
+        if self.genome:
             liftover_chain_paths = get_liftover_chain_paths()
-            self.lifter = LiftOver(liftover_chain_paths[self.args.get("genome")])
+            self.lifter = LiftOver(liftover_chain_paths[self.genome])
             self.do_liftover = True
         else:
             self.lifter = None
@@ -229,70 +255,6 @@ class VCF2VCF:
         else:
             return True
 
-    def define_cmd_parser(self):
-        import argparse
-
-        parser = argparse.ArgumentParser()
-        parser.add_argument("inputs", help="Input file to be annotated.")
-        parser.add_argument(
-            "-n", dest="run_name", help="Name of job. Default is input file name."
-        )
-        parser.add_argument(
-            "-d",
-            dest="output_dir",
-            help="Output directory. " + "Default is input file directory.",
-        )
-        parser.add_argument("-c", dest="conf", help="Path to optional run conf file.")
-        parser.add_argument(
-            "--module-options", dest="module-options", default="{}", help="Configuration string"
-        )
-        parser.add_argument(
-            "-a",
-            dest="annotator_names",
-            nargs="*",
-            help="annotator module names",
-        )
-        parser.add_argument(
-            "-l",
-            "--liftover",
-            dest="genome",
-            default=None,
-            help="reference genome of input. OakVar will lift over to hg38 if needed.",
-        )
-        parser.add_argument(
-            "-m",
-            dest="mapper_name",
-            nargs=1,
-            help="mapper module name",
-        )
-        parser.add_argument(
-            "--quiet",
-            action="store_true",
-            dest="quiet",
-            default=None,
-            help="Silent operation",
-        )
-        self.cmd_arg_parser = parser
-
-    # Parse the command line arguments
-    def parse_cmd_args(self, inargs, inkwargs):
-        import os
-        from ..util.util import get_args
-        from ..util.run import get_module_options
-
-        args = get_args(self.cmd_arg_parser, inargs, inkwargs)
-        self.inputs = [os.path.abspath(v) for v in args.get("inputs")]
-        self.primary_input_path = os.path.abspath(args.get("inputs")[0])
-        self.output_dir = os.path.dirname(self.primary_input_path)
-        if args["output_dir"]:
-            self.output_dir = args["output_dir"]
-        self.job_conf_path = args.get("conf")
-        self.module_options = get_module_options(args)
-        self.annotator_names = args.get("annotator_names", [])
-        self.mapper_name = args.get("mapper_name")
-        self.run_name = args.get("run_name")
-        self.args = args
-
     def log_progress(self, lnum):
         from time import time
         from ..util.run import update_status
@@ -310,7 +272,6 @@ class VCF2VCF:
     def run(self):
         from ..util.seq import normalize_variant_dict_left
         from ..module.local import load_modules
-        from ..util.util import quiet_print
         from ..util.run import log_variant_exception
         from ..exceptions import IgnoredVariant
         from os.path import join
@@ -325,7 +286,8 @@ class VCF2VCF:
         mapper = modules[self.mapper_name]
         output_suffix = ".vcf"
         for p in self.inputs:
-            quiet_print(f"processing {p}", args=self.args)
+            if self.outer:
+                self.outer.write(f"processing {p}\n")
             if self.run_name:
                 if len(self.inputs) == 1:
                     outpath = join(self.output_dir, self.run_name + output_suffix)
@@ -368,10 +330,10 @@ class VCF2VCF:
                     ref = vcf_toks[3]
                     alts = vcf_toks[4].split(",")
                     if read_lnum % 10000 == 0:
-                        quiet_print(
-                            f"{read_lnum}: {chrom} {pos} {ref} {vcf_toks[4]}",
-                            args=self.args,
-                        )
+                        if self.outer:
+                            self.outer.write(
+                                f"{read_lnum}: {chrom} {pos} {ref} {vcf_toks[4]}\n"
+                            )
                     variants = []
                     for alt in alts:
                         if "<" in alt:
@@ -485,3 +447,51 @@ class VCF2VCF:
         self.unique_excs = []
         if not self.logger:
             raise LoggerError(module_name=self.module_name)
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("inputs", help="Input file to be annotated.")
+    parser.add_argument(
+        "-n", dest="run_name", help="Name of job. Default is input file name."
+    )
+    parser.add_argument(
+        "-d",
+        dest="output_dir",
+        help="Output directory. " + "Default is input file directory.",
+    )
+    parser.add_argument("-c", dest="conf", help="Path to optional run conf file.")
+    parser.add_argument(
+        "--module-options",
+        dest="module-options",
+        default="{}",
+        help="Configuration string",
+    )
+    parser.add_argument(
+        "-a",
+        dest="annotator_names",
+        nargs="*",
+        help="annotator module names",
+    )
+    parser.add_argument(
+        "-l",
+        "--liftover",
+        dest="genome",
+        default=None,
+        help="reference genome of input. OakVar will lift over to hg38 if needed.",
+    )
+    parser.add_argument(
+        "-m",
+        dest="mapper_name",
+        nargs=1,
+        help="mapper module name",
+    )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        dest="quiet",
+        default=None,
+        help="Silent operation",
+    )

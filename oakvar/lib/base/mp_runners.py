@@ -34,7 +34,7 @@ def annot_from_queue(start_queue, end_queue, queue_populated, serveradmindb, log
             annotator_class = load_class(module.script_path, "Annotator")
             if not annotator_class:
                 annotator_class = load_class(module.script_path, "CravatAnnotator")
-            annotator = annotator_class(kwargs)
+            annotator = annotator_class(**kwargs)
             annotator.run()
             end_queue.put(module.name)
         except Exception as _:
@@ -60,12 +60,10 @@ def mapper_runner(
     module = get_local_module_info(module_name)
     if module is not None:
         kwargs = {
-            "script_path": module.script_path,
             "input_file": crv_path,
             "run_name": run_name,
             "seekpos": seekpos,
             "chunksize": chunksize,
-            "slavemode": True,
             "postfix": f".{pos_no:010.0f}",
             "output_dir": output_dir,
         }
@@ -73,6 +71,6 @@ def mapper_runner(
             kwargs["primary_transcript"] = primary_transcript.split(";")
         kwargs["serveradmindb"] = serveradmindb
         genemapper_class = load_class(module.script_path, "Mapper")
-        genemapper = genemapper_class(kwargs)
+        genemapper = genemapper_class(**kwargs)
         output = genemapper.run(pos_no)
     return output

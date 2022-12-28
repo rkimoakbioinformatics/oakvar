@@ -31,6 +31,7 @@ class BaseAnnotator(object):
         from ..exceptions import ModuleLoadingError
         from ..exceptions import LoggerError
 
+        self.module_options = module_options
         self.primary_input_path = Path(input_file).absolute()
         self.secondary_inputs = secondary_inputs
         self.run_name = run_name

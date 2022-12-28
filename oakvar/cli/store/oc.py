@@ -12,10 +12,7 @@ def oc_publish(args, __name__="store oc publish"):
     from getpass import getpass
     from ...lib.system import get_system_conf
     from ...lib.store.oc import publish_module
-    from ...lib.system import consts
 
-    if args.get("md"):
-        consts.custom_modules_dir = args.get("md")
     sys_conf = get_system_conf()
     if not args.get("user"):
         if "publish_username" in sys_conf:
@@ -33,7 +30,6 @@ def oc_publish(args, __name__="store oc publish"):
         args.get("password"),
         overwrite=args.get("overwrite"),
         include_data=args.get("data"),
-        quiet=args.get("quiet"),
     )
 
 

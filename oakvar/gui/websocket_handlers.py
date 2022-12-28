@@ -1,5 +1,6 @@
 from multiprocessing.managers import DictProxy
 
+
 class WebSocketHandlers:
     def __init__(self, system_worker_state=None, wss=None, logger=None):
         self.routes = []
@@ -20,17 +21,19 @@ class WebSocketHandlers:
         from .consts import WS_COOKIE_KEY
         from .consts import SYSTEM_STATE_CONNECTION_KEY
         from .consts import SYSTEM_MSG_KEY
+
         assert self.system_worker_state is not None
         ws_id = request.cookies.get(WS_COOKIE_KEY)
         if ws_id and ws_id in self.wss:
             del self.wss[ws_id]
         ws_id = str(uuid4())
-        print(f"@ new ws_id={ws_id}")
         ws = WebSocketResponse(timeout=60 * 60 * 24 * 365)
         self.wss[ws_id] = ws
         await ws.prepare(request)
         try:
-            await ws.send_json({SYSTEM_MSG_KEY: SYSTEM_STATE_CONNECTION_KEY, WS_COOKIE_KEY: ws_id})
+            await ws.send_json(
+                {SYSTEM_MSG_KEY: SYSTEM_STATE_CONNECTION_KEY, WS_COOKIE_KEY: ws_id}
+            )
         except ConnectionResetError:
             raise
         except:
@@ -61,6 +64,7 @@ class WebSocketHandlers:
         from .consts import SYSTEM_STATE_SETUP_KEY
         from .consts import SYSTEM_STATE_MESSAGE_KEY
         from .consts import SYSTEM_MSG_KEY
+
         if ws is None or not self.system_worker_state:
             return
         if SYSTEM_STATE_SETUP_KEY not in self.system_worker_state:
@@ -70,13 +74,12 @@ class WebSocketHandlers:
             msgs = data.get(SYSTEM_STATE_MESSAGE_KEY)
             while msgs:
                 msg = msgs[0]
-                print(f"@@@ sending ws msg: {msg}")
                 await ws.send_json({SYSTEM_MSG_KEY: SYSTEM_STATE_SETUP_KEY, "msg": msg})
                 msgs.pop(0)
-            print(f"@@@ => after delete. {list(data.get('message'))}")
 
     async def process_install_state(self, ws=None):
         from .consts import SYSTEM_STATE_INSTALL_KEY
+
         if ws is None or not self.system_worker_state:
             return
         if SYSTEM_STATE_INSTALL_KEY not in self.system_worker_state:
@@ -88,6 +91,7 @@ class WebSocketHandlers:
 
     async def delete_done_install_states(self):
         from .consts import SYSTEM_STATE_INSTALL_KEY
+
         if SYSTEM_STATE_INSTALL_KEY not in self.system_worker_state:
             return
         install_datas: DictProxy = self.system_worker_state[SYSTEM_STATE_INSTALL_KEY]
@@ -103,4 +107,3 @@ class WebSocketHandlers:
             return
         await self.process_setup_state(ws=ws)
         await self.process_install_state(ws=ws)
-

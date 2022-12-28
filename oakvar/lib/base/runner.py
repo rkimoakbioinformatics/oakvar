@@ -379,18 +379,12 @@ class Runner(object):
     async def process_arguments(self, args):
         from ..exceptions import SetupError
         from ..exceptions import SetupError
-        from ...cli.version import cli_version
-        from ..exceptions import NormalExit
 
         self.set_package_conf(args)
         self.make_self_args_considering_package_conf(args)
         if self.args is None:
             raise SetupError()
-        if self.args.show_version:
-            cli_version({"to": "stdout"})
-            raise NormalExit()
         self.cleandb = self.args.cleandb
-        self.set_md()
         self.set_preparers()
         self.set_mapper()
         self.set_annotators()
@@ -545,7 +539,7 @@ class Runner(object):
             and self.args.inputs[0] == "-"
         ):
             self.pipeinput = True
-            if self.args.forcedinputformat is None:
+            if self.args.input_format is None:
                 raise InvalidInputFormat(fmt="--input-format is needed for pipe input.")
         if self.args.inputs is not None:
             self.inputs = [
@@ -961,15 +955,6 @@ class Runner(object):
         self.check_valid_modules(self.annotator_names)
         self.annotators = get_local_module_infos_by_names(self.annotator_names)
 
-    def set_md(self):
-        from ..exceptions import SetupError
-        from ..system import consts
-
-        if self.args is None:
-            raise SetupError()
-        if self.args.md is not None:
-            consts.custom_modules_dir = self.args.md
-
     def get_package_argument_run_value(self, field: str):
         if not self.package_conf:
             return None
@@ -1083,8 +1068,8 @@ class Runner(object):
 
         if self.args is None:
             raise SetupError()
-        if self.args.reports:
-            self.report_names = self.args.reports
+        if self.args.report_types:
+            self.report_names = self.args.report_types
         elif (
             self.package_conf is not None
             and self.package_conf.get("run")
@@ -1533,7 +1518,7 @@ class Runner(object):
         self.info_json["viewable"] = False
         self.info_json["note"] = self.args.note
         self.info_json["reports"] = (
-            self.args.reports if self.args.reports != None else []
+            self.args.report_types if self.args.report_types != None else []
         )
         self.pkg_ver = oakvar_version()
         self.info_json["package_version"] = self.pkg_ver
@@ -1563,7 +1548,7 @@ class Runner(object):
             input_files = self.inputs
         else:
             input_files = [self.inputs[run_no]]
-        converter_path = os.path.join(get_packagedir(), "base", "master_converter.py")
+        converter_path = os.path.join(get_packagedir(), "lib", "base", "master_converter.py")
         module = SimpleNamespace(
             title="Converter", name="converter", script_path=converter_path
         )
@@ -1576,10 +1561,8 @@ class Runner(object):
             "serveradmindb": self.serveradmindb,
         }
         arg_dict["conf"] = self.run_conf
-        if self.args.forcedinputformat is not None:
-            arg_dict["format"] = self.args.forcedinputformat
-        if self.args.unique_variants:
-            arg_dict["unique_variants"] = True
+        if self.args.input_format is not None:
+            arg_dict["format"] = self.args.input_format
         announce_module(module, logger=self.logger, serveradmindb=self.serveradmindb)
         if self.logger:
             for k, v in arg_dict.items():
@@ -1589,7 +1572,7 @@ class Runner(object):
         converter_class = load_class(module.script_path, "MasterConverter")
         if not converter_class:
             converter_class = load_class(module.script_path, "MasterCravatConverter")
-        converter = converter_class(arg_dict)
+        converter = converter_class(inputs=input_files, name=self.run_name[run_no], output_dir=self.output_dir[run_no], genome=self.args.genome, serveradmindb=self.serveradmindb)
         ret = converter.run()
         self.total_num_converted_variants = ret.get("total_lnum")
         self.total_num_valid_variants = ret.get("write_lnum")

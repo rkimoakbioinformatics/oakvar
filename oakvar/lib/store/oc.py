@@ -208,7 +208,7 @@ def print_stage_handler(cur_stage, total_stages, __cur_size__, __total_size__):
 
 
 def publish_module(
-    module_name, user, password, overwrite=False, include_data=True, quiet=True
+    module_name, user, password, overwrite=False, include_data=True, outer=None
 ):
     import os
     import json
@@ -217,7 +217,6 @@ def publish_module(
     from ..store import stream_multipart_post
     from requests import get
     from ..system import get_modules_dir
-    from ..util.util import quiet_print
     from ..module.cache import get_module_cache
     from ..module.local import get_local_module_info
     from .consts import oc_publish_url
@@ -229,7 +228,8 @@ def publish_module(
     from ..exceptions import StoreServerError
     from ..exceptions import StoreServerError
 
-    quiet_args = {"quiet": quiet}
+    modules_dir = get_modules_dir()
+    assert modules_dir is not None
     get_module_cache().update_local()
     local_info = get_local_module_info(module_name)
     if local_info == None:
@@ -260,8 +260,9 @@ def publish_module(
         else:
             raise StoreServerError(r.status_code)
     zf_name = "%s.%s.zip" % (module_name, local_info.version)
-    zf_path = os.path.join(get_modules_dir(), zf_name)
-    quiet_print("Zipping module and generating checksums", args=quiet_args)
+    zf_path = os.path.join(modules_dir, zf_name)
+    if outer:
+        outer.write("Zipping module and generating checksums\n")
     zip_builder = ModuleArchiveBuilder(zf_path, base_path=local_info.directory)
     for item_name in os.listdir(local_info.directory):
         item_path = os.path.join(local_info.directory, item_name)
@@ -286,14 +287,16 @@ def publish_module(
             "manifest": ("manifest.json", json.dumps(manifest), "application/json"),
             "archive": (zf_name, zf, "application/octet-stream"),
         }
-        quiet_print("Uploading to store", args=quiet_args)
+        if outer:
+            outer.write("Uploading to store\n")
         r = stream_multipart_post(
             post_url, fields, stage_handler=print_stage_handler, auth=(user, password)
         )
     if r.status_code != 200:
         raise StoreServerError(status_code=r.status_code, text=r.text)
     if r.text:
-        quiet_print(r.text, args=quiet_args)
+        if outer:
+            outer.write(r.text + "\n")
     os.remove(zf_path)
 
 
