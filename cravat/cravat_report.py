@@ -1,2 +1,1 @@
-from oakvar.cli.report import *
-CravatReport = BaseReporter
+from oakvar.base.reporter import *
