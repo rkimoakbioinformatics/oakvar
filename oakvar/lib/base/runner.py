@@ -1156,32 +1156,38 @@ class Runner(object):
         from pathlib import Path
 
         run_name, output_dir = self.get_run_name_output_dir_by_run_no(run_no)
-        #from pudb.remote import set_trace; set_trace(term_size=(240, 55))
-        if self.output_dir:
-            crx_path = Path(output_dir) / f"{run_name}.crx"
-            wf = open(str(crx_path), "w")
-            fns = sorted(
-                [
-                    str(v)
-                    for v in crx_path.parent.glob(
-                        escape_glob_pattern(crx_path.name) + ".*"
-                    )
-                ]
-            )
-            fn = fns[0]
+        if not output_dir:
+            return
+        crx_path = Path(output_dir) / f"{run_name}.crx"
+        print(f"@ crx_path={crx_path}")
+        wf = open(str(crx_path), "w")
+        fns = sorted(
+            [
+                str(v)
+                for v in Path(output_dir).glob(
+                    escape_glob_pattern(run_name) + ".crx.*"
+                )
+            ]
+        )
+        print(f"@ fns={fns}")
+        fn = fns[0]
+        f = open(fn)
+        print(f"@ 1")
+        for line in f:
+            wf.write(line)
+        f.close()
+        print(f"@ 1")
+        remove(fn)
+        for fn in fns[1:]:
+            print(f"@ 1 - {fn}")
             f = open(fn)
             for line in f:
-                wf.write(line)
+                if line[0] != "#":
+                    wf.write(line)
             f.close()
             remove(fn)
-            for fn in fns[1:]:
-                f = open(fn)
-                for line in f:
-                    if line[0] != "#":
-                        wf.write(line)
-                f.close()
-                remove(fn)
-            wf.close()
+        wf.close()
+        print(f"@ done")
 
     def collect_crgs(self, run_no: int):
         from os import remove

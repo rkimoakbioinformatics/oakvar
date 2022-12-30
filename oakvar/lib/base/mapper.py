@@ -21,6 +21,7 @@ class BaseMapper(object):
         from pathlib import Path
         from pathlib import Path
         from os import makedirs
+        import sys
         from ..module.local import get_module_conf
         from ..consts import STANDARD_INPUT_FILE_SUFFIX
 
@@ -54,7 +55,6 @@ class BaseMapper(object):
         self.primary_transcript = primary_transcript
         self.serveradmindb = serveradmindb
         self.reader = None
-        self.output_base_fname = None
         self.crx_path = None
         self.crg_path = None
         self.crx_writer = None
@@ -65,8 +65,7 @@ class BaseMapper(object):
         self.unique_excs = []
         self.written_primary_transc = None
         self.t = time()
-        main_fpath = Path(__file__)
-        print(f"@ main_fpath={main_fpath}")
+        main_fpath = Path(sys.modules[self.__class__.__module__].__file__ or "")
         self.module_name = main_fpath.stem
         self.module_dir = main_fpath.parent
         self.mapper_dir = self.module_dir
