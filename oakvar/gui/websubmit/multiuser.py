@@ -276,6 +276,22 @@ async def remove_admin(request):
     return Response(status=200)
 
 
+async def remove_user(request):
+    from aiohttp.web import Response
+
+    if not get_servermode():
+        return Response(status=403)
+    if not await is_admin_loggedin(request):
+        return Response(status=403)
+    queries = request.rel_url.query
+    email = queries.get("email")
+    if not email:
+        return Response(status=400)
+    admindb = await get_serveradmindb()
+    await admindb.remove_user(email)
+    return Response(status=200)
+
+
 def add_routes(router):
     from os.path import dirname
     from os.path import realpath
@@ -291,4 +307,5 @@ def add_routes(router):
     router.add_route("GET", "/server/users", get_users)
     router.add_route("GET", "/server/makeadmin", make_admin)
     router.add_route("GET", "/server/removeadmin", remove_admin)
+    router.add_route("GET", "/server/removeuser", remove_user)
     router.add_static("/server", join(dirname(realpath(__file__))))
