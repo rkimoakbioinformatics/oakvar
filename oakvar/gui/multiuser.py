@@ -4,6 +4,7 @@ servermode = False
 server_ready = False
 admindb_path = None
 
+
 class MultiuserHandlers:
     def __init__(self, servermode=None):
         self.servermode = servermode
@@ -22,6 +23,7 @@ class MultiuserHandlers:
         self.routes.append(["GET", "/server/users", self.get_users])
         self.routes.append(["GET", "/server/makeadmin", self.make_admin])
         self.routes.append(["GET", "/server/removeadmin", self.remove_admin])
+        self.routes.append(["GET", "/server/removeuser", self.remove_user])
 
     async def remove_admin(self, request):
         from aiohttp.web import Response
@@ -37,6 +39,22 @@ class MultiuserHandlers:
             return Response(status=400)
         admindb = await get_serveradmindb()
         await admindb.remove_admin(email)
+        return Response(status=200)
+
+    async def remove_user(self, request):
+        from aiohttp.web import Response
+        from .serveradmindb import get_serveradmindb
+
+        if not self.servermode:
+            return Response(status=403)
+        if not await self.is_admin_loggedin(request):
+            return Response(status=403)
+        queries = request.rel_url.query
+        email = queries.get("email")
+        if not email:
+            return Response(status=400)
+        admindb = await get_serveradmindb()
+        await admindb.remove_user(email)
         return Response(status=200)
 
     async def make_admin(self, request):
@@ -93,7 +111,9 @@ class MultiuserHandlers:
         if not ret.get("success"):
             return json_response({"code": msg}, status=401)
         await serveradmindb.add_user_if_not_exist(email, "", "", "")
-        oakvar_token = jwt.encode({"email": email}, DEFAULT_PRIVATE_KEY, algorithm="HS256")
+        oakvar_token = jwt.encode(
+            {"email": email}, DEFAULT_PRIVATE_KEY, algorithm="HS256"
+        )
         response = json_response({"code": msg}, status=200)
         response.set_cookie(COOKIE_KEY, oakvar_token, httponly=True)
         return response
@@ -161,6 +181,7 @@ class MultiuserHandlers:
         from .serveradmindb import get_serveradmindb
         from .consts import DEFAULT_PRIVATE_KEY
         from .consts import COOKIE_KEY
+
         # from requests import get
         # from cryptography import x509
         # from cryptography.hazmat.backends import default_backend
@@ -188,7 +209,9 @@ class MultiuserHandlers:
         response = json_response({"status": "logged", "email": email, "admin": admin})
         admindb = await get_serveradmindb()
         await admindb.add_user_if_not_exist(email, "", "", "")
-        oakvar_token = jwt.encode({"email": email}, DEFAULT_PRIVATE_KEY, algorithm="HS256")
+        oakvar_token = jwt.encode(
+            {"email": email}, DEFAULT_PRIVATE_KEY, algorithm="HS256"
+        )
         response.set_cookie(COOKIE_KEY, oakvar_token, httponly=True)
         return response
 
@@ -205,4 +228,3 @@ class MultiuserHandlers:
         admindb = await get_serveradmindb()
         role = await admindb.get_user_role_of_email(email, servermode=self.servermode)
         return role == ADMIN_ROLE
-

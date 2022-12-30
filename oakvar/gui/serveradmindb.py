@@ -560,6 +560,13 @@ class ServerAdminDb:
         await cursor.execute(q, (email,))
         await conn.commit()
 
+    @db_func
+    async def remove_user(self, email: str, conn=Any, cursor=Any):
+        _ = conn
+        q = f"delete from users where email=?"
+        await cursor.execute(q, (email,))
+        await conn.commit()
+
     def retrieve_user_jobs_into_db(self):
         from pathlib import Path
         from .userjob import get_user_jobs_dir_list
