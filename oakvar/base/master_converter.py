@@ -190,10 +190,14 @@ class MasterConverter(object):
         return f
 
     def collect_input_file_handles(self):
+        from sys import stdin
         if not self.input_paths:
             raise
         for input_path in self.input_paths:
-            f = self.get_file_object_for_input_path(input_path)
+            if input_path == "./stdin":
+                f = stdin
+            else:
+                f = self.get_file_object_for_input_path(input_path)
             self.input_file_handles[input_path] = f
 
     def setup(self):
@@ -260,6 +264,7 @@ class MasterConverter(object):
     def check_input_format(self):
         from oakvar.exceptions import InvalidInputFormat
 
+        print(f"@ args={self.args}")
         if self.args.get("input_format") and self.args.get("input_format") not in self.available_input_formats:
             raise InvalidInputFormat(self.args.get("input_format"))
         if self.pipeinput and not self.args.get("input_format"):
@@ -589,7 +594,7 @@ class MasterConverter(object):
             "total_lnum": self.total_num_converted_variants,
             "write_lnum": self.total_num_valid_variants,
             "error_lnum": self.total_error_lines,
-            "format": self.input_formats,
+            "input_format": self.input_formats,
             "assemblies": self.genome_assemblies,
         }
         return ret
@@ -799,7 +804,7 @@ class MasterConverter(object):
             "inputs", nargs="*", default=None, help="Files to be converted to .crv"
         )
         parser.add_argument(
-            "-f", dest="format", default=None, help="Specify an input format"
+            "-f", dest="input_format", default=None, help="Specify an input format"
         )
         parser.add_argument(
             "-n", "--name", dest="name", help="Name of job. Default is input file name."

@@ -1577,7 +1577,7 @@ class Runner(object):
         }
         arg_dict["conf"] = self.run_conf
         if self.args.forcedinputformat is not None:
-            arg_dict["format"] = self.args.forcedinputformat
+            arg_dict["input_format"] = self.args.forcedinputformat
         if self.args.unique_variants:
             arg_dict["unique_variants"] = True
         announce_module(module, logger=self.logger, serveradmindb=self.serveradmindb)
@@ -1594,7 +1594,7 @@ class Runner(object):
         self.total_num_converted_variants = ret.get("total_lnum")
         self.total_num_valid_variants = ret.get("write_lnum")
         self.error_lnum = ret.get("error_lnum")
-        self.converter_format = ret.get("format") or []
+        self.converter_format = ret.get("input_format") or []
         genome_assembly: List[str] = ret.get("assemblies") or []
         self.genome_assemblies[run_no] = genome_assembly
 
