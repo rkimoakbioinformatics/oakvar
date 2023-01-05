@@ -99,7 +99,12 @@ def get_module_info_version_table(module_info={}):
     code_vers.sort(key=lambda x: Version(x))
     for code_ver in code_vers:
         dd = versions.get(code_ver)
-        version_table.add_row(code_ver, dd.get("data_version"), dd.get("data_source"), dd.get("min_pkg_ver"))
+        version_table.add_row(
+            code_ver,
+            dd.get("data_version"),
+            dd.get("data_source"),
+            dd.get("min_pkg_ver"),
+        )
     return version_table
 
 
@@ -119,6 +124,3 @@ def get_module_info_output_table(module_info={}):
         ty = col.get("type", "string")
         output_table.add_row(col.get("name"), col.get("title"), col.get("desc"), ty)
     return output_table
-
-
-

@@ -365,12 +365,11 @@ def drop_ov_store_cache(conf=None, conn=None, cursor=None, args={}):
         return
     if conf:
         pass
-    if args.get("clean_cache_db"):
-        for table in ["summary", "versions", "info"]:
-            if table_exists(table):
-                q = f"drop table if exists {table}"
-                cursor.execute(q)
-                conn.commit()
+    for table in ["summary", "versions", "info"]:
+        if table_exists(table):
+            q = f"drop table if exists {table}"
+            cursor.execute(q)
+            conn.commit()
     if args.get("clean_cache_files"):
         for cache_key in cache_dirs:
             fp = get_cache_dir(cache_key)
@@ -379,7 +378,7 @@ def drop_ov_store_cache(conf=None, conn=None, cursor=None, args={}):
 
 
 @db_func
-def create_ov_store_cache(conf=None, args={}, conn=None, cursor=None):
+def create_ov_store_cache(conf=None, conn=None, cursor=None):
     from .consts import summary_table_cols
     from .consts import versions_table_cols
     from ..system.consts import cache_dirs
@@ -392,14 +391,13 @@ def create_ov_store_cache(conf=None, args={}, conn=None, cursor=None):
         return False
     if conf:
         pass
-    clean_cache_db = args.get("clean_cache_db")
-    if clean_cache_db or not table_exists("summary"):
+    if not table_exists("summary"):
         q = f"create table summary ( { ', '.join([col + ' text' for col in summary_table_cols]) }, primary key ( name, store ) )"
         cursor.execute(q)
-    if clean_cache_db or not table_exists("versions"):
+    if not table_exists("versions"):
         q = f"create table versions ( { ', '.join([col + ' text' for col in versions_table_cols]) }, primary key ( name, store, code_version ) )"
         cursor.execute(q)
-    if clean_cache_db or not table_exists("info"):
+    if not table_exists("info"):
         q = f"create table info ( key text primary key, value text )"
         cursor.execute(q)
     conn.commit()
@@ -444,7 +442,6 @@ def fetch_ov_store_cache(
         quiet_print(f"not logged in", args=args)
         return False
     if is_new_store_db_setup():
-        args["clean_cache_db"] = True
         args["clean_cache_files"] = True
         args["clean"] = True
         local_last_updated = None
@@ -452,9 +449,8 @@ def fetch_ov_store_cache(
         local_last_updated = get_local_last_updated()
     if is_store_db_schema_changed():
         quiet_print(f"Need to fetch store cache due to schema change", args=args)
-        args["clean_cache_db"] = True
+    refresh_db = args.get("refresh_db")
     clean_cache_files = args.get("clean_cache_files")
-    clean_cache_db = args.get("clean_cache_db")
     server_last_updated, status_code = get_server_last_updated()
     if not server_last_updated:
         if status_code == 401:
@@ -463,7 +459,7 @@ def fetch_ov_store_cache(
             raise StoreServerError()
         return False
     if (
-        not clean_cache_db
+        not refresh_db
         and not clean_cache_files
         and local_last_updated
         and local_last_updated >= server_last_updated
@@ -472,7 +468,7 @@ def fetch_ov_store_cache(
         return True
     args["publish_time"] = local_last_updated
     drop_ov_store_cache(args=args)
-    create_ov_store_cache(args=args)
+    create_ov_store_cache()
     fetch_summary_cache(args=args)
     fetch_versions_cache(args=args)
     if args.get("clean_cache_files") or args.get("clean"):
@@ -485,6 +481,7 @@ def fetch_ov_store_cache(
     q = f"insert or replace into info ( key, value ) values ( ?, ? )"
     cursor.execute(q, (ov_store_last_updated_col, str(server_last_updated)))
     conn.commit()
+    quiet_print(f"Finalizing fetch...", args=args)
     content = make_remote_manifest()
     save_remote_manifest_cache(content)
     quiet_print("OakVar store cache has been fetched.", args=args)
@@ -646,10 +643,9 @@ def fetch_summary_cache(args={}, conn=Any, cursor=Any):
         elif res.status_code == 500:
             raise StoreServerError()
         return False
-    if args.get("clean_cache_db"):
-        q = f"delete from summary"
-        cursor.execute(q)
-        conn.commit()
+    q = f"delete from summary"
+    cursor.execute(q)
+    conn.commit()
     res = res.json()
     cols = res["cols"]
     for row in res["data"]:
@@ -685,10 +681,9 @@ def fetch_versions_cache(args={}, conn=None, cursor=None):
         elif res.status_code == 500:
             raise StoreServerError(text=res.text)
         return False
-    if args.get("clean_cache_db"):
-        q = f"delete from versions"
-        cursor.execute(q)
-        conn.commit()
+    q = f"delete from versions"
+    cursor.execute(q)
+    conn.commit()
     res = res.json()
     cols = res["cols"]
     for row in res["data"]:

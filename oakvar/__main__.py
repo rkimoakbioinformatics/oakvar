@@ -117,10 +117,11 @@ def get_entry_parser():
 
 
 def handle_exception(e: Exception):
+    import sys
     from sys import stderr
     from traceback import print_exc
+    from requests.exceptions import ConnectionError
     from .exceptions import ExpectedException
-    import sys
 
     msg = getattr(e, "msg", None)
     if msg:
@@ -135,6 +136,7 @@ def handle_exception(e: Exception):
     returncode = getattr(e, "returncode", 1)
     if hasattr(e, "traceback") and getattr(e, "traceback"):
         import traceback
+
         traceback.print_exc()
     if isinstance(e, ExpectedException):
         if halt:
@@ -149,6 +151,10 @@ def handle_exception(e: Exception):
                 return False
     elif isinstance(e, KeyboardInterrupt):
         pass
+    elif isinstance(e, ConnectionError):
+        stderr.write(
+            "Connection could not be established. Please check if the system or the server is online.\n"
+        )
     else:
         raise e
 

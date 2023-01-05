@@ -270,3 +270,43 @@ def register(args={}) -> bool:
 
         traceback.print_exc()
         return False
+
+
+def delete(args={}):
+    from requests import post
+    from .account import get_current_id_token
+    from ...util.util import quiet_print
+
+    id_token = get_current_id_token()
+    module_name = args.get("module_name")
+    code_version = args.get("version")
+    all = args.get("all")
+    keep_only_latest = args.get("keep_only_latest")
+    if not code_version and not keep_only_latest and not all:
+        quiet_print(
+            f"Either --version, --all, or --keep-only-latest should be given.",
+            args=args,
+        )
+        return False
+    url = get_store_url() + "/delete_module"
+    try:
+        params = {}
+        params["idToken"] = id_token
+        params["name"] = module_name
+        params["code_version"] = code_version
+        params["all"] = all
+        params["keep_only_latest"] = keep_only_latest
+        res = post(url, json=params)
+        if res.status_code == 200:
+            quiet_print(f"Success", args=args)
+            return True
+        else:
+            quiet_print(
+                f"Error from the store server: {res.status_code} {res.text}", args=args
+            )
+            return False
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
+        return False
