@@ -55,7 +55,7 @@ def module_data_url(module_name: str, version=None) -> Optional[str]:
 
 
 def setup_ov_store_cache(
-    clean_cache_db: bool = False,
+    refresh_db: bool = False,
     clean_cache_files: bool = False,
     clean: bool = False,
     publish_time: str = "",
@@ -64,7 +64,7 @@ def setup_ov_store_cache(
     from ..db import fetch_ov_store_cache
 
     fetch_ov_store_cache(
-        clean_cache_db=clean_cache_db,
+        refresh_db=refresh_db,
         clean_cache_files=clean_cache_files,
         clean=clean,
         publish_time=publish_time,

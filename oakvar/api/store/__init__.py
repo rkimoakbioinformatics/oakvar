@@ -26,7 +26,7 @@ def register(
 
 
 def fetch(
-    clean_cache_db: bool = False,
+    refresh_db: bool = False,
     clean_cache_files: bool = False,
     clean: bool = False,
     publish_time: str = "",
@@ -35,7 +35,7 @@ def fetch(
     from ...lib.store.db import fetch_ov_store_cache
 
     ret = fetch_ov_store_cache(
-        clean_cache_db=clean_cache_db,
+        refresh_db=refresh_db,
         clean_cache_files=clean_cache_files,
         clean=clean,
         publish_time=publish_time,
@@ -51,11 +51,25 @@ def url(outer=None):
     return ret
 
 
-def delete():
+def delete(
+    module_name: str,
+    code_version: Optional[str] = None,
+    all: bool = False,
+    keep_only_latest: bool = False,
+    outer=None,
+    error=None,
+):
     from ...lib.store.ov import delete
     from ...lib.store.db import fetch_ov_store_cache
 
-    ret = delete()
+    ret = delete(
+        module_name,
+        code_version=code_version,
+        all=all,
+        keep_only_latest=keep_only_latest,
+        outer=outer,
+        error=error,
+    )
     if ret == True:
         ret = fetch_ov_store_cache(refresh_db=True)
     return ret

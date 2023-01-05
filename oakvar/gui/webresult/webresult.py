@@ -869,6 +869,7 @@ async def get_samples(request):
 async def get_variants_for_hugo(request):
     from aiohttp.web import Response
     from ...lib.exceptions import DatabaseConnectionError
+    from ...lib.exceptions import DatabaseConnectionError
 
     hugo = request.match_info["hugo"]
     dbpath = await get_dbpath(request)
@@ -889,6 +890,7 @@ async def get_variants_for_hugo(request):
 
 async def get_variantdbcols(request):
     from aiohttp.web import Response
+    from ...lib.exceptions import DatabaseConnectionError
     from ...lib.exceptions import DatabaseConnectionError
 
     dbpath = await get_dbpath(request)

@@ -527,13 +527,13 @@ function exportContentAdminPanel(_) {
 
 function multiuser_setup() {
   const firebaseConfig = {
-    apiKey: "AIzaSyAX9a9qLUzLoVFy9YrRprTWuf7lwZ-cEi0",
-    authDomain: "fabled-pivot-305219.firebaseapp.com",
-    projectId: "fabled-pivot-305219",
-    storageBucket: "fabled-pivot-305219.appspot.com",
-    messagingSenderId: "293220208202",
-    appId: "1:293220208202:web:59eabbc4f981ead408e0b3",
-    measurementId: "G-7E7PGPVJ99",
+    apiKey: "AIzaSyC9oGhGaax8DlSh-w9pC3TCeIJZzxAw-XU",
+    authDomain: "oakvar-app.firebaseapp.com",
+    projectId: "oakvar-app",
+    storageBucket: "oakvar-app.appspot.com",
+    messagingSenderId: "1070951630158",
+    appId: "1:1070951630158:web:885d40bf4a42a1fc4cca1f",
+    measurementId: "G-0PV5B1ZF6B"
   };
   firebase.initializeApp(firebaseConfig);
 }

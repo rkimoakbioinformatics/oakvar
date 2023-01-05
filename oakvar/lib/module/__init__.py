@@ -4,7 +4,9 @@ from pathlib import Path
 
 
 class InstallProgressHandler:
-    def __init__(self, module_name: Optional[str]=None, module_version: Optional[str]=None):
+    def __init__(
+        self, module_name: Optional[str] = None, module_version: Optional[str] = None
+    ):
         self.module_name = module_name
         self.module_version = module_version
         self.display_name = None
@@ -13,7 +15,7 @@ class InstallProgressHandler:
         if module_name:
             self._make_display_name()
 
-    def set_module(self, module_name: str="", module_version: Optional[str]=None):
+    def set_module(self, module_name: str = "", module_version: Optional[str] = None):
         self.module_name = module_name
         self.module_version = module_version
         if module_name:
@@ -153,16 +155,23 @@ def update_available(module_name: str):
     from packaging.version import Version
     from .local import get_local_module_info
     from .remote import get_remote_module_info
+
     local_info = get_local_module_info(module_name)
     remote_info = get_remote_module_info(module_name)
-    if not local_info or not remote_info or not local_info.code_version or not remote_info.latest_code_version:
+    if (
+        not local_info
+        or not remote_info
+        or not local_info.code_version
+        or not remote_info.latest_code_version
+    ):
         return False
     if Version(remote_info.latest_code_version) > Version(local_info.code_version):
         return True
     else:
         return False
 
-def get_updatable(module_names: List[str]=[]):
+
+def get_updatable(module_names: List[str] = []):
     from .local import get_local_module_info
 
     if not module_names:
@@ -206,7 +215,7 @@ def make_install_temp_dir(
     return temp_dir
 
 
-def set_stage_handler(module_name: str, stage_handler=None, version: str=""):
+def set_stage_handler(module_name: str, stage_handler=None, version: str = ""):
     if not stage_handler:
         stage_handler = InstallProgressHandler(module_name, version)
     stage_handler.set_module_version(version)
@@ -240,13 +249,24 @@ def check_install_kill(system_worker_state=None, module_name=None):
         raise KillInstallException
 
 
-def get_download_zipfile_path(module_name: str, version: str, temp_dir: Path, kind: str):
+def get_download_zipfile_path(
+    module_name: str, version: str, temp_dir: Path, kind: str
+):
     zipfile_fname = f"{module_name}__{version}__{kind}.zip"
     zipfile_path = str(temp_dir / zipfile_fname)
     return zipfile_path
 
 
-def download_code_or_data(urls: Optional[str]=None, module_name: Optional[str]=None, version: Optional[str]=None, kind: Optional[str]=None, temp_dir: Optional[Path]=None, outer=None, stage_handler=None, system_worker_state=None) -> Optional[str]:
+def download_code_or_data(
+    urls: Optional[str] = None,
+    module_name: Optional[str] = None,
+    version: Optional[str] = None,
+    kind: Optional[str] = None,
+    temp_dir: Optional[Path] = None,
+    outer=None,
+    stage_handler=None,
+    system_worker_state=None,
+) -> Optional[str]:
     from pathlib import Path
     from os.path import getsize
     from os import remove
@@ -317,7 +337,14 @@ def download_code_or_data(urls: Optional[str]=None, module_name: Optional[str]=N
     return zipfile_path
 
 
-def extract_code_or_data(module_name: str="", kind: str="", zipfile_path: str="", temp_dir: Optional[Path]=None, stage_handler=None, system_worker_state=None):
+def extract_code_or_data(
+    module_name: str = "",
+    kind: str = "",
+    zipfile_path: str = "",
+    temp_dir: Optional[Path] = None,
+    stage_handler=None,
+    system_worker_state=None,
+):
     import zipfile
     from os import remove
 
@@ -334,7 +361,14 @@ def extract_code_or_data(module_name: str="", kind: str="", zipfile_path: str=""
     remove(zipfile_path)
 
 
-def cleanup_install(module_name: str, module_dir: str, temp_dir: Path, installation_finished: bool, code_installed: bool, data_installed: bool):
+def cleanup_install(
+    module_name: str,
+    module_dir: str,
+    temp_dir: Path,
+    installation_finished: bool,
+    code_installed: bool,
+    data_installed: bool,
+):
     from pathlib import Path
     from shutil import rmtree
     from shutil import move
@@ -384,7 +418,7 @@ def install_module_from_url(
     skip_data=False,
     skip_dependencies=False,
     outer=None,
-    stage_handler: Optional[InstallProgressHandler]=None,
+    stage_handler: Optional[InstallProgressHandler] = None,
 ):
     from shutil import move
     from shutil import rmtree
@@ -577,8 +611,8 @@ def install_module(
     force_data=False,
     skip_data=False,
     skip_dependencies=False,
-    modules_dir: Optional[str]=None,
-    stage_handler: Optional[InstallProgressHandler]=None,
+    modules_dir: Optional[str] = None,
+    stage_handler: Optional[InstallProgressHandler] = None,
     conf_path=None,
     fresh=False,
     clean=False,
@@ -610,7 +644,9 @@ def install_module(
     code_installed: bool = False
     data_installed: bool = False
     try:
-        stage_handler = set_stage_handler(module_name, stage_handler=stage_handler, version=version)
+        stage_handler = set_stage_handler(
+            module_name, stage_handler=stage_handler, version=version
+        )
         if stage_handler:
             stage_handler.stage_start("start")
         conf = get_conf(module_name=module_name, conf_path=conf_path) or {}
@@ -620,9 +656,7 @@ def install_module(
             if outer:
                 outer.write(f"failed in installing pypi package dependence")
             raise ModuleInstallationError(module_name)
-        remote_data_version = remote_module_data_version(
-            module_name, code_version
-        )
+        remote_data_version = remote_module_data_version(module_name, code_version)
         local_data_version = local_module_data_version(module_name)
         r = get_module_urls(module_name, code_version=version)
         if not r:
@@ -647,34 +681,70 @@ def install_module(
             module_type + "s",
             module_name,
         )
-        zipfile_path = download_code_or_data(urls=code_url, module_name=module_name, version=code_version, kind="code", temp_dir=temp_dir, outer=outer, stage_handler=stage_handler, system_worker_state=system_worker_state)
+        zipfile_path = download_code_or_data(
+            urls=code_url,
+            module_name=module_name,
+            version=code_version,
+            kind="code",
+            temp_dir=temp_dir,
+            outer=outer,
+            stage_handler=stage_handler,
+            system_worker_state=system_worker_state,
+        )
         if not zipfile_path:
             if outer:
                 outer.write(f"code download failed")
             raise ModuleInstallationError(module_name)
-        extract_code_or_data(module_name=module_name, kind="code", zipfile_path=zipfile_path, temp_dir=temp_dir, stage_handler=stage_handler, system_worker_state=system_worker_state)
+        extract_code_or_data(
+            module_name=module_name,
+            kind="code",
+            zipfile_path=zipfile_path,
+            temp_dir=temp_dir,
+            stage_handler=stage_handler,
+            system_worker_state=system_worker_state,
+        )
         code_installed = True
         if (
             not skip_data
             and remote_data_version
-            and (
-                remote_data_version != local_data_version
-                or force_data
-            )
+            and (remote_data_version != local_data_version or force_data)
         ):
             if not data_url:
                 if outer:
                     outer.write(f"data_url is empty.")
                 raise ModuleInstallationError(module_name)
-            data_zip_filepath: Optional[str] = download_code_or_data(urls=data_url, module_name=module_name, version=remote_data_version, kind="data", temp_dir=temp_dir, outer=outer, stage_handler=stage_handler, system_worker_state=system_worker_state)
+            data_zip_filepath: Optional[str] = download_code_or_data(
+                urls=data_url,
+                module_name=module_name,
+                version=remote_data_version,
+                kind="data",
+                temp_dir=temp_dir,
+                outer=outer,
+                stage_handler=stage_handler,
+                system_worker_state=system_worker_state,
+            )
             if not data_zip_filepath:
                 if error:
                     error.write(f"Data download failed")
                 raise ModuleInstallationError(module_name)
-            extract_code_or_data(module_name=module_name, kind="data", zipfile_path=zipfile_path, temp_dir=temp_dir, stage_handler=stage_handler, system_worker_state=system_worker_state)
+            extract_code_or_data(
+                module_name=module_name,
+                kind="data",
+                zipfile_path=zipfile_path,
+                temp_dir=temp_dir,
+                stage_handler=stage_handler,
+                system_worker_state=system_worker_state,
+            )
             data_installed = True
         installation_finished = True
-        cleanup_install(module_name, module_dir, temp_dir, installation_finished, code_installed, data_installed)
+        cleanup_install(
+            module_name,
+            module_dir,
+            temp_dir,
+            installation_finished,
+            code_installed,
+            data_installed,
+        )
         write_install_marks(module_dir)
         get_module_cache().update_local()
         if stage_handler:
@@ -686,20 +756,41 @@ def install_module(
             import traceback
 
             traceback.print_exc()
-            cleanup_install(module_name, module_dir, temp_dir, installation_finished, code_installed, data_installed)
+            cleanup_install(
+                module_name,
+                module_dir,
+                temp_dir,
+                installation_finished,
+                code_installed,
+                data_installed,
+            )
         elif isinstance(e, KillInstallException) or isinstance(
             e, ModuleInstallationError
         ):
             if stage_handler:
                 stage_handler.stage_start("killed")
-            cleanup_install(module_name, module_dir, temp_dir, installation_finished, code_installed, data_installed)
+            cleanup_install(
+                module_name,
+                module_dir,
+                temp_dir,
+                installation_finished,
+                code_installed,
+                data_installed,
+            )
         elif isinstance(e, KeyboardInterrupt):
             # signal.signal(signal.SIGINT, original_sigint)
             raise e
         elif isinstance(e, SystemExit):
             return False
         else:
-            cleanup_install(module_name, module_dir, temp_dir, installation_finished, code_installed, data_installed)
+            cleanup_install(
+                module_name,
+                module_dir,
+                temp_dir,
+                installation_finished,
+                code_installed,
+                data_installed,
+            )
             # signal.signal(signal.SIGINT, original_sigint)
             raise e
     # finally:

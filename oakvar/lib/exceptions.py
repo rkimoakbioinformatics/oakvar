@@ -407,9 +407,4 @@ class AuthorizationError(ExpectedException):
         super().__init__(f"authorization failed")
 
 
-class VersionExists(ClientError):
-    code = 4
-    message = "Version already exists"
-
-
 # end of store-related exceptions

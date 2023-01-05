@@ -235,7 +235,7 @@ def install(
 
 def update(
     module_name_patterns: List[str] = [],
-    clean_cache_db: bool = False,
+    refresh_db: bool = False,
     clean_cache_files: bool = False,
     clean: bool = False,
     publish_time: str = "",
@@ -254,7 +254,7 @@ def update(
 
     if not no_fetch:
         try_fetch_ov_store_cache(
-            clean_cache_db=clean_cache_db,
+            refresh_db=refresh_db,
             clean_cache_files=clean_cache_files,
             clean=clean,
             publish_time=publish_time,
@@ -321,7 +321,7 @@ def uninstall(module_names: Optional[List[str]] = None, yes: bool = False, outer
 
 
 def installbase(
-    clean_cache_db: bool = False,
+    refresh_db: bool = False,
     clean_cache_files: bool = False,
     clean: bool = False,
     publish_time: str = "",
@@ -339,7 +339,7 @@ def installbase(
 
     if not no_fetch:
         try_fetch_ov_store_cache(
-            clean_cache_db=clean_cache_db,
+            refresh_db=refresh_db,
             clean_cache_files=clean_cache_files,
             clean=clean,
             publish_time=publish_time,

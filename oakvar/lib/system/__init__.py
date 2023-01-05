@@ -4,7 +4,7 @@ from typing import Dict
 custom_system_conf = None
 
 
-def setup_system(clean: bool=False, clean_cache_db: bool=False, clean_cache_files: bool=False, setup_file: Optional[str]=None, email: Optional[str]=None, pw: Optional[str]=None, publish_time: str="", custom_system_conf: Optional[Dict]=None, outer=None, error=None, system_worker_state=None):
+def setup_system(clean: bool=False, refresh_db: bool=False, clean_cache_files: bool=False, setup_file: Optional[str]=None, email: Optional[str]=None, pw: Optional[str]=None, publish_time: str="", custom_system_conf: Optional[Dict]=None, outer=None, error=None, system_worker_state=None):
     from os import environ
     from ...api.module import installbase
     from .consts import sys_conf_path_key
@@ -35,7 +35,7 @@ def setup_system(clean: bool=False, clean_cache_db: bool=False, clean_cache_file
     # fetch ov store cache
     if outer:
         outer.write("Setting up store cache...\n")
-    setup_ov_store_cache(clean_cache_db=clean_cache_db, clean_cache_files=clean_cache_files, clean=clean, publish_time=publish_time, outer=outer)
+    setup_ov_store_cache(refresh_db=refresh_db, clean_cache_files=clean_cache_files, clean=clean, publish_time=publish_time, outer=outer)
     # set up a multiuser database.
     if outer:
         outer.write("Setting up administrative database...\n")
@@ -44,7 +44,7 @@ def setup_system(clean: bool=False, clean_cache_db: bool=False, clean_cache_file
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
     if outer:
         outer.write("Installing system modules...\n")
-    ret = installbase(clean_cache_files=clean_cache_files, clean_cache_db=clean_cache_db, clean=clean, publish_time=publish_time, no_fetch=True, conf=conf, outer=outer, error=error, system_worker_state=system_worker_state)
+    ret = installbase(clean_cache_files=clean_cache_files, refresh_db=refresh_db, clean=clean, publish_time=publish_time, no_fetch=True, conf=conf, outer=outer, error=error, system_worker_state=system_worker_state)
     if ret is None or ret == 0 or ret is True:  # 0 or None?
         if outer:
             outer.write(f"Done setting up the system.\n")

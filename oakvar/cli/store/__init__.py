@@ -62,7 +62,6 @@ def get_parser_fn_store():
     add_parser_fn_store_register(subparsers)
     add_parser_fn_store_fetch(subparsers)
     add_parser_fn_store_url(subparsers)
-    add_parser_fn_store_oc(subparsers)
     add_parser_fn_store_delete(subparsers)
     return parser_fn_store
 
@@ -156,12 +155,6 @@ def add_parser_fn_store_url(subparsers):
     ]
 
 
-def add_parser_fn_store_oc(subparsers):
-    from ..store.oc import add_parser_fn_store_oc
-
-    add_parser_fn_store_oc(subparsers)
-
-
 def add_parser_fn_store_delete(subparsers):
     parser_cli_store_delete = subparsers.add_parser(
         "delete", help="Deletes a module of a version from the Oakvar store."
@@ -175,7 +168,13 @@ def add_parser_fn_store_delete(subparsers):
     parser_cli_store_delete.add_argument(
         "--all",
         action="store_true",
-        default=None,
+        default=False,
+        help="Deletes all versions of the module.",
+    )
+    parser_cli_store_delete.add_argument(
+        "--keep-only-latest",
+        action="store_true",
+        default=False,
         help="Deletes all versions of the module except the latest.",
     )
     parser_cli_store_delete.set_defaults(func=cli_store_delete)
