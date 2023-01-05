@@ -355,23 +355,21 @@ def is_store_db_schema_changed(conn=Any, cursor=Any) -> bool:
     return False
 
 @db_func
-def drop_ov_store_cache(clean_cache_db=False, clean_cache_files=False, conf=None, conn=None, cursor=None, **kwargs):
+def drop_ov_store_cache(clean_cache_files=False, conf=None, conn=None, cursor=None):
     from os.path import exists
     from ..system import get_cache_dir
     from ..system.consts import cache_dirs
     from shutil import rmtree
 
-    _ = kwargs
     if not conn or not cursor:
         return
     if conf:
         pass
-    if clean_cache_db:
-        for table in ["summary", "versions", "info"]:
-            if table_exists(table):
-                q = f"drop table if exists {table}"
-                cursor.execute(q)
-                conn.commit()
+    for table in ["summary", "versions", "info"]:
+        if table_exists(table):
+            q = f"drop table if exists {table}"
+            cursor.execute(q)
+            conn.commit()
     if clean_cache_files:
         for cache_key in cache_dirs:
             fp = get_cache_dir(cache_key)
@@ -380,7 +378,7 @@ def drop_ov_store_cache(clean_cache_db=False, clean_cache_files=False, conf=None
 
 
 @db_func
-def create_ov_store_cache(clean_cache_db=False, conf=None, conn=None, cursor=None, **kwargs):
+def create_ov_store_cache(conf=None, conn=None, cursor=None):
     from .consts import summary_table_cols
     from .consts import versions_table_cols
     from ..system.consts import cache_dirs
@@ -389,18 +387,17 @@ def create_ov_store_cache(clean_cache_db=False, conf=None, conn=None, cursor=Non
     from os.path import join
     from os import mkdir
 
-    _ = kwargs
     if not conn or not cursor:
         return False
     if conf:
         pass
-    if clean_cache_db or not table_exists("summary"):
+    if not table_exists("summary"):
         q = f"create table summary ( { ', '.join([col + ' text' for col in summary_table_cols]) }, primary key ( name, store ) )"
         cursor.execute(q)
-    if clean_cache_db or not table_exists("versions"):
+    if not table_exists("versions"):
         q = f"create table versions ( { ', '.join([col + ' text' for col in versions_table_cols]) }, primary key ( name, store, code_version ) )"
         cursor.execute(q)
-    if clean_cache_db or not table_exists("info"):
+    if not table_exists("info"):
         q = f"create table info ( key text primary key, value text )"
         cursor.execute(q)
     conn.commit()
@@ -412,9 +409,9 @@ def create_ov_store_cache(clean_cache_db=False, conf=None, conn=None, cursor=Non
             mkdir(join(fp, "oc"))
 
 
-def try_fetch_ov_store_cache(clean_cache_db: bool=False, clean_cache_files: bool=False, clean: bool=False, publish_time: str="", outer=None):
+def try_fetch_ov_store_cache(refresh_db: bool=False, clean_cache_files: bool=False, clean: bool=False, publish_time: str="", outer=None):
     try:
-        return fetch_ov_store_cache(clean_cache_db=clean_cache_db, clean_cache_files=clean_cache_files, clean=clean, publish_time=publish_time, outer=outer)
+        return fetch_ov_store_cache(refresh_db=refresh_db, clean_cache_files=clean_cache_files, clean=clean, publish_time=publish_time, outer=outer)
     except Exception as e:
         if outer:
             outer.write(f"Fetching store update failed:\n\n>>{e}.\n\nContinuing with the current store cache...\n")
@@ -442,7 +439,7 @@ def save_remote_manifest_cache(content: dict):
 def fetch_ov_store_cache(
     conn=None,
     cursor=None,
-    clean_cache_db: bool=False,
+    refresh_db: bool=False,
     clean_cache_files: bool=False,
     clean: bool=False,
     publish_time: str="",
@@ -462,7 +459,7 @@ def fetch_ov_store_cache(
             outer.write(f"Not logged in")
         return False
     if is_new_store_db_setup():
-        clean_cache_db = True
+        refresh_db = True
         clean_cache_files = True
         local_last_updated = ""
     else:
@@ -470,7 +467,6 @@ def fetch_ov_store_cache(
     if is_store_db_schema_changed():
         if outer:
             outer.write(f"Need to fetch store cache due to schema change")
-        clean_cache_db = True
     server_last_updated, status_code = get_server_last_updated()
     if not server_last_updated:
         if status_code == 401:
@@ -479,7 +475,7 @@ def fetch_ov_store_cache(
             raise StoreServerError()
         return False
     if (
-        not clean_cache_db
+        not refresh_db
         and not clean_cache_files
         and local_last_updated
         and local_last_updated >= server_last_updated
@@ -488,10 +484,10 @@ def fetch_ov_store_cache(
             outer.write("No store update to fetch")
         return True
     publish_time = local_last_updated
-    drop_ov_store_cache(clean_cache_db=clean_cache_db, clean_cache_files=clean_cache_files)
-    create_ov_store_cache(clean_cache_db=clean_cache_db)
-    fetch_summary_cache(publish_time=publish_time, clean_cache_db=clean_cache_db, outer=outer)
-    fetch_versions_cache(publish_time=publish_time, clean_cache_db=clean_cache_db, outer=outer)
+    drop_ov_store_cache(clean_cache_files=clean_cache_files)
+    create_ov_store_cache()
+    fetch_summary_cache(publish_time=publish_time, outer=outer)
+    fetch_versions_cache(publish_time=publish_time, outer=outer)
     if clean_cache_files or clean:
         publish_time = ""
     else:
@@ -502,6 +498,8 @@ def fetch_ov_store_cache(
     q = f"insert or replace into info ( key, value ) values ( ?, ? )"
     cursor.execute(q, (ov_store_last_updated_col, str(server_last_updated)))
     conn.commit()
+    if outer:
+        outer.write("Finalizing fetch...\n")
     content = make_remote_manifest()
     save_remote_manifest_cache(content)
     if outer:
@@ -642,7 +640,7 @@ def fetch_readme_cache(publish_time: str="", outer=None, conn=None, cursor=None,
 
 
 @db_func
-def fetch_summary_cache(publish_time: str="", clean_cache_db=False, outer=None, conn=Any, cursor=Any):
+def fetch_summary_cache(publish_time: str="", outer=None, conn=Any, cursor=Any):
     from requests import Session
     from .ov.account import get_current_id_token
     from ..exceptions import StoreServerError
@@ -664,10 +662,9 @@ def fetch_summary_cache(publish_time: str="", clean_cache_db=False, outer=None, 
         elif res.status_code == 500:
             raise StoreServerError()
         return False
-    if clean_cache_db:
-        q = f"delete from summary"
-        cursor.execute(q)
-        conn.commit()
+    q = f"delete from summary"
+    cursor.execute(q)
+    conn.commit()
     res = res.json()
     cols = res["cols"]
     for row in res["data"]:
@@ -677,7 +674,7 @@ def fetch_summary_cache(publish_time: str="", clean_cache_db=False, outer=None, 
 
 
 @db_func
-def fetch_versions_cache(publish_time: str="", clean_cache_db: bool=False, outer=None, conn=None, cursor=None):
+def fetch_versions_cache(publish_time: str="", outer=None, conn=None, cursor=None):
     from requests import Session
     from json import dumps
     from .ov.account import get_current_id_token
@@ -703,10 +700,9 @@ def fetch_versions_cache(publish_time: str="", clean_cache_db: bool=False, outer
         elif res.status_code == 500:
             raise StoreServerError(text=res.text)
         return False
-    if clean_cache_db:
-        q = f"delete from versions"
-        cursor.execute(q)
-        conn.commit()
+    q = f"delete from versions"
+    cursor.execute(q)
+    conn.commit()
     res = res.json()
     cols = res["cols"]
     for row in res["data"]:

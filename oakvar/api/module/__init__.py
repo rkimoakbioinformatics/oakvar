@@ -51,7 +51,9 @@ def info(module_name: Optional[str] = None, local: bool = False, **kwargs):
     from ...lib.module.local import get_local_module_info
     from ...lib.module.remote import get_remote_module_info
     from ...lib.module.local import LocalModule
-    from ...lib.module.remote import get_readme
+    from ...lib.module.remote import get_readme as get_remote_readme
+    from ...lib.module.local import get_readme as get_local_readme
+    from ...lib.module.local import get_remote_manifest_from_local
 
     _ = kwargs
     ret = {}
@@ -63,7 +65,9 @@ def info(module_name: Optional[str] = None, local: bool = False, **kwargs):
     local_info = None
     remote_info = None
     # Readm
-    readme = get_readme(module_name)
+    readme = get_remote_readme(module_name)
+    if not readme:
+        readme = get_local_readme(module_name)
     ret["readme"] = readme
     # Remote
     remote_info = get_remote_module_info(module_name)
@@ -74,6 +78,10 @@ def info(module_name: Optional[str] = None, local: bool = False, **kwargs):
         installed = True
     else:
         installed = False
+    if remote_available and remote_info:
+        ret["store_availability"] = True
+    else:
+        ret["store_availability"] = False
     if not remote_available and not installed:
         return None
     if remote_available and remote_info:
@@ -87,8 +95,18 @@ def info(module_name: Optional[str] = None, local: bool = False, **kwargs):
                 ret["output_columns"].append(
                     {"name": col["name"], "title": col["title"], "desc": desc}
                 )
-    else:
-        ret["store_availability"] = False
+    elif local_info:
+        remote_manifest_from_local = get_remote_manifest_from_local(module_name)
+        if remote_manifest_from_local:
+            ret.update(remote_manifest_from_local)
+            ret["versions"] = {
+                remote_manifest_from_local.get("code_version"): {
+                    "data_version": remote_manifest_from_local.get("data_version"),
+                    "data_source": remote_manifest_from_local.get("data_source"),
+                    "min_pkg_ver": remote_manifest_from_local.get("min_pkg_ver"),
+                }
+            }
+            del ret["conf"]
     ret["installed"] = installed
     if installed:
         if local and isinstance(local_info, LocalModule):

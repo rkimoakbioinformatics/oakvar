@@ -41,6 +41,18 @@ def url(args, __name__="store url"):
     return ret
 
 
+@cli_entry
+def cli_store_delete(args):
+    return delete(args)
+
+
+@cli_func
+def delete(args, __name__="store delete"):
+    from ...api.store import delete
+
+    return delete(**args)
+
+
 def get_parser_fn_store():
     from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
@@ -51,6 +63,7 @@ def get_parser_fn_store():
     add_parser_fn_store_fetch(subparsers)
     add_parser_fn_store_url(subparsers)
     add_parser_fn_store_oc(subparsers)
+    add_parser_fn_store_delete(subparsers)
     return parser_fn_store
 
 
@@ -114,7 +127,7 @@ def add_parser_fn_store_fetch(subparsers):
         "--pw", default=None, help="password of OakVar store account"
     )
     parser_cli_store_fetch.add_argument(
-        "--clean-cache-db", action="store_true", help="clean cache db"
+        "--refresh-db", action="store_true", help="Refresh cache database."
     )
     parser_cli_store_fetch.add_argument(
         "--clean-cache-files", action="store_true", help="clean cache files"
@@ -147,3 +160,27 @@ def add_parser_fn_store_oc(subparsers):
     from ..store.oc import add_parser_fn_store_oc
 
     add_parser_fn_store_oc(subparsers)
+
+
+def add_parser_fn_store_delete(subparsers):
+    parser_cli_store_delete = subparsers.add_parser(
+        "delete", help="Deletes a module of a version from the Oakvar store."
+    )
+    parser_cli_store_delete.add_argument(
+        "module_name", help="Name of the module to delete"
+    )
+    parser_cli_store_delete.add_argument(
+        "--version", default=None, help="Version of the module to delete"
+    )
+    parser_cli_store_delete.add_argument(
+        "--all",
+        action="store_true",
+        default=None,
+        help="Deletes all versions of the module except the latest.",
+    )
+    parser_cli_store_delete.set_defaults(func=cli_store_delete)
+    parser_cli_store_delete.r_return = "A boolean. TRUE if successful, FALSE if not."
+    parser_cli_store_delete.r_examples = [
+        "# Deletes a module from the OakVar store",
+        "#roakvar::store.delete(module_name='clinvar', version='1.0.0')",
+    ]

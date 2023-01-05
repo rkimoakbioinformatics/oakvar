@@ -49,3 +49,13 @@ def url(outer=None):
 
     ret = url(outer=outer)
     return ret
+
+
+def delete():
+    from ...lib.store.ov import delete
+    from ...lib.store.db import fetch_ov_store_cache
+
+    ret = delete()
+    if ret == True:
+        ret = fetch_ov_store_cache(refresh_db=True)
+    return ret

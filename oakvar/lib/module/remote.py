@@ -37,7 +37,7 @@ class RemoteModule(object):
             "output_columns": self.output_columns,
             "requires": self.requires,
             "latest_version": self.latest_code_version,
-            "min_pkg_ver":  self.min_pkg_ver,
+            "min_pkg_ver": self.min_pkg_ver,
         }
         return d
 
@@ -56,7 +56,7 @@ class RemoteModule(object):
             "store": self.store,
             "requires": self.requires,
             "latest_version": self.latest_code_version,
-            "min_pkg_ver":  self.min_pkg_ver,
+            "min_pkg_ver": self.min_pkg_ver,
             "conf": self.conf,
         }
         return d
@@ -85,7 +85,6 @@ class RemoteModule(object):
         else:
             for code_version in self.min_pkg_vers:
                 self.versions[code_version]["min_pkg_ver"] = ""
-
 
     def __init__(self, __name__, **kwargs):
         from ..store import get_developer_dict
