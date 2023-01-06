@@ -1,6 +1,7 @@
 from typing import List
 from typing import Any
 from typing import Optional
+
 from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
 
 class BaseReporter:
@@ -652,7 +653,7 @@ class BaseReporter:
                     {"name": name, "displayname": displayname, "count": 0}
                 )
 
-    async def make_coldefs(self, level, conn=Any, where=None):
+    async def make_coldefs(self, level, conn=Any, group_name=None):
         from ..util.inout import ColumnDefinition
 
         if not conn:
@@ -660,30 +661,35 @@ class BaseReporter:
         cursor = await conn.cursor()
         header_table = f"{level}_header"
         coldefs = []
-        sql = f"select col_name, col_def from {header_table}"
-        if where:
-            sql += f" where {where}"
-        await cursor.execute(sql)
-        rows = await cursor.fetchall()
-        for row in rows:
-            col_name, coljson = row
-            group_name = col_name.split("__")[0]
-            if group_name == "base" or group_name in self.modules_to_add_to_base:
+        group_names = []
+        if group_name:
+            group_names.append(group_name)
+            sql = f"select col_name, col_def from {header_table} where col_name like '{group_name}__%'"
+        else:
+            group_names = [d.get("name") for d in self.columngroups[level]]
+        for group_name in group_names:
+            sql = f"select col_def from {header_table} where col_name like '{group_name}__%'"
+            await cursor.execute(sql)
+            rows = await cursor.fetchall()
+            for row in rows:
+                coljson = row[0]
+                #group_name = col_name.split("__")[0]
+                if group_name == "base" or group_name in self.modules_to_add_to_base:
+                    coldef = ColumnDefinition({})
+                    coldef.from_json(coljson)
+                    coldef.level = level
+                    coldef = await self.gather_col_categories(level, coldef, conn)
+                    coldefs.append(coldef)
+            for row in rows:
+                coljson = row[0]
+                #group_name = col_name.split("__")[0]
+                if group_name == "base" or group_name in self.modules_to_add_to_base:
+                    continue
                 coldef = ColumnDefinition({})
                 coldef.from_json(coljson)
                 coldef.level = level
                 coldef = await self.gather_col_categories(level, coldef, conn)
                 coldefs.append(coldef)
-        for row in rows:
-            col_name, coljson = row
-            group_name = col_name.split("__")[0]
-            if group_name == "base" or group_name in self.modules_to_add_to_base:
-                continue
-            coldef = ColumnDefinition({})
-            coldef.from_json(coljson)
-            coldef.level = level
-            coldef = await self.gather_col_categories(level, coldef, conn)
-            coldefs.append(coldef)
         return coldefs
 
     async def gather_col_categories(self, level, coldef, conn):
@@ -737,9 +743,8 @@ class BaseReporter:
             return
         modules_to_add = await self.get_gene_level_modules_to_add_to_variant_level(conn)
         for module_name in modules_to_add:
-            module_prefix = f"{module_name}__"
             gene_coldefs = await self.make_coldefs(
-                "gene", conn=conn, where=f"col_name like '{module_prefix}%'"
+                "gene", conn=conn, group_name=module_name
             )
             if not gene_coldefs:
                 continue
