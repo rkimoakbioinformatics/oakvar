@@ -85,6 +85,8 @@ class Runner(object):
         self.inkwargs = kwargs
         self.serveradmindb = None
         self.report_response = None
+        self.outer = None
+        self.error = None
 
     def check_valid_modules(self, module_names):
         from ..exceptions import ModuleNotExist
@@ -130,7 +132,6 @@ class Runner(object):
         from os import remove
         from pathlib import Path
         from ..util.util import escape_glob_pattern
-        from ..util.util import quiet_print
         from ..consts import LOG_SUFFIX
         from ..consts import ERROR_LOG_SUFFIX
 
@@ -146,8 +147,8 @@ class Runner(object):
             msg = f"deleting {fn}"
             if self.logger:
                 self.logger.info(msg)
-            else:
-                quiet_print(msg, args=self.args)
+            if self.outer:
+                self.outer.write(msg + "\n")
             remove(fn)
 
     def download_url_input(self, ip):
@@ -263,15 +264,13 @@ class Runner(object):
             log_module(module, self.logger)
 
     async def process_clean(self, run_no: int):
-        from ..util.util import quiet_print
-
         if not self.args or not self.args.clean or not self.run_name:
             return
         msg = f"deleting previous output files for {self.run_name[run_no]}..."
         if self.logger:
             self.logger.info(msg)
-        else:
-            quiet_print(msg=msg, args=self.args)
+        if self.outer:
+            self.outer.write(msg + "\n")
         self.delete_output_files(run_no)
 
     def log_input(self, run_no: int):
@@ -404,7 +403,6 @@ class Runner(object):
     def make_self_args_considering_package_conf(self, args):
         from types import SimpleNamespace
         from ..util.admin_util import get_user_conf
-        from ..util.util import quiet_print
 
         # package including -a (add) and -A (replace)
         if "run" in self.package_conf:
@@ -428,7 +426,8 @@ class Runner(object):
             args["annotators"] = args.get("annotators_replace")
         self.args = SimpleNamespace(**args)
         if self.args.vcf2vcf and self.args.combine_input:
-            quiet_print(f"--vcf2vcf is used. --combine-input is disabled.", args=self.args)
+            if self.outer:
+                self.outer.write(f"--vcf2vcf is used. --combine-input is disabled.\n")
             self.args.combine_input = False
         self.process_module_options()
 
@@ -442,9 +441,8 @@ class Runner(object):
                 job_dir=self.output_dir[run_no], job_name=self.job_name[run_no]
             )
 
-    def make_self_conf(self, args):
+    def make_self_conf(self, args, error=None):
         from ..exceptions import SetupError
-        from ..util.util import quiet_print
         import json
 
         if args is None:
@@ -457,10 +455,10 @@ class Runner(object):
                 confs_conf = json.loads(confs.replace("'", '"'))
                 self.conf.update(confs_conf)
             except Exception:
-                quiet_print(
-                    "Error in processing cs option. --cs option was not applied.",
-                    self.args,
-                )
+                if self.outer:
+                    self.outer.write(
+                        "Error in processing cs option. --cs option was not applied.\n",
+                    )
                 self.conf = conf_bak
 
     def populate_secondary_annotators(self, run_no):
@@ -490,7 +488,6 @@ class Runner(object):
 
     def process_module_options(self):
         from ..exceptions import SetupError
-        from ..util.util import quiet_print
 
         if self.args is None or self.conf is None:
             raise SetupError()
@@ -498,17 +495,17 @@ class Runner(object):
             for opt_str in self.args.module_options:
                 toks = opt_str.split("=")
                 if len(toks) != 2:
-                    quiet_print(
-                        "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value.",
-                        self.args,
-                    )
+                    if self.outer:
+                        self.outer.write(
+                            "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value.\n",
+                        )
                     continue
                 k = toks[0]
                 if k.count(".") != 1:
-                    quiet_print(
-                        "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value.",
-                        self.args,
-                    )
+                    if self.outer:
+                        self.outer.write(
+                            "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value.\n",
+                        )
                     continue
                 [module_name, key] = k.split(".")
                 if module_name not in self.run_conf:
@@ -797,15 +794,14 @@ class Runner(object):
         self.num_input = len(self.inputs)
 
     def use_inputs_from_run_conf(self):
-        from ..util.util import quiet_print
-
         if self.args and not self.args.inputs:
             inputs = self.run_conf.get("inputs")
             if inputs:
                 if type(inputs) == list:
                     self.args.inputs = inputs
                 else:
-                    quiet_print(f"inputs in conf file should be a list (received {inputs}).", self.args)
+                    if self.outer:
+                        self.outer.write(f"inputs in conf file should be a list (received {inputs}).\n")
 
     def set_start_end_levels(self):
         from ..exceptions import SetupError
@@ -1465,7 +1461,6 @@ class Runner(object):
         import aiosqlite
         from json import dumps
         from ...gui.serveradmindb import get_admindb_path
-        from ..util.util import quiet_print
 
         if self.args is None or not self.output_dir:
             raise
@@ -1476,7 +1471,8 @@ class Runner(object):
             s = "{} does not exist.".format(str(admindb_path))
             if self.logger:
                 self.logger.info(s)
-            quiet_print(s, self.args)
+            if self.outer:
+                self.outer.write(s + "\n")
             return
         try:
             info_json_s = dumps(self.info_json)
@@ -1578,7 +1574,7 @@ class Runner(object):
         converter_class = load_class(module.script_path, "MasterConverter")
         if not converter_class:
             converter_class = load_class(module.script_path, "MasterCravatConverter")
-        converter = converter_class(inputs=input_files, name=self.run_name[run_no], output_dir=self.output_dir[run_no], genome=self.args.genome, serveradmindb=self.serveradmindb)
+        converter = converter_class(inputs=input_files, name=self.run_name[run_no], output_dir=self.output_dir[run_no], genome=self.args.genome, input_format=self.args.input_format, serveradmindb=self.serveradmindb)
         ret = converter.run()
         self.total_num_converted_variants = ret.get("total_lnum")
         self.total_num_valid_variants = ret.get("write_lnum")
@@ -1737,7 +1733,6 @@ class Runner(object):
                 "script_path": module.script_path,
                 "input_file": inputpath,
                 "secondary_inputs": secondary_inputs,
-                "quiet": self.args.quiet,
                 "log_path": self.log_path,
                 "module_options": self.run_conf.get(module.name, {}),
             }

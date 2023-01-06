@@ -13,7 +13,7 @@ class MasterConverter(object):
 
     ALREADYCRV = 2
 
-    def __init__(self, inputs: List[str]=[], format: Optional[str]=None, name: Optional[str]=None, output_dir: Optional[str]=None, genome: Optional[str]=None, confs: str="{}", serveradmindb=None, conf: Dict={}, module_options: Dict={}, outer=None):
+    def __init__(self, inputs: List[str]=[], input_format: Optional[str]=None, name: Optional[str]=None, output_dir: Optional[str]=None, genome: Optional[str]=None, confs: str="{}", serveradmindb=None, conf: Dict={}, module_options: Dict={}, outer=None):
         from re import compile
         from oakvar import get_wgs_reader
         from oakvar.lib.exceptions import ExpectedException
@@ -67,7 +67,7 @@ class MasterConverter(object):
         if not inputs:
             raise ExpectedException("Input files are not given.")
         self.inputs = inputs
-        self.format = format
+        self.format = input_format
         self.name = name
         self.output_dir = output_dir
         self.genome = genome
