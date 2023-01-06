@@ -264,7 +264,6 @@ class MasterConverter(object):
     def check_input_format(self):
         from oakvar.exceptions import InvalidInputFormat
 
-        print(f"@ args={self.args}")
         if self.args.get("input_format") and self.args.get("input_format") not in self.available_input_formats:
             raise InvalidInputFormat(self.args.get("input_format"))
         if self.pipeinput and not self.args.get("input_format"):
