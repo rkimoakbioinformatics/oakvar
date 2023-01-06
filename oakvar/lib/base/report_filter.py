@@ -584,7 +584,7 @@ class ReportFilter:
         return [req, rej]
 
     def get_sample_to_filter_table_name(self, uid=None):
-        if not uid:
+        if uid is None:
             return None
         return f"{REPORT_FILTER_DB_NAME}.{SAMPLE_TO_FILTER_TABLE_NAME}_{uid}"
 
@@ -623,7 +623,7 @@ class ReportFilter:
         if not conn_read or not conn_write:
             return
         _ = cursor_read
-        if not uid or (not req and not rej):
+        if uid is None or (not req and not rej):
             return
         table_name = self.get_sample_to_filter_table_name(uid=uid)
         if not table_name:
@@ -695,7 +695,7 @@ class ReportFilter:
     async def get_report_filter_string(
         self, uid=None, cursor_read=Any, cursor_write=Any
     ) -> Optional[str]:
-        if not uid:
+        if uid is None:
             return None
         _ = cursor_write
         tablename = self.get_registry_table_name()
@@ -783,13 +783,13 @@ class ReportFilter:
         )
 
     def get_ftable_name(self, uid=None, ftype=None):
-        if not uid or not ftype:
+        if uid is None or not ftype:
             return None
         return f"{REPORT_FILTER_DB_NAME}.f{ftype}_{uid}"
 
     def get_fvariant_sql(self, uid=None, gene_to_filter=None, sample_to_filter=None):
         q = f"select v.base__uid from main.variant as v"
-        if not uid:
+        if uid is None:
             return q
         if gene_to_filter:
             gene_to_filter_table_name = self.get_gene_to_filter_table_name(uid=uid)
@@ -827,7 +827,7 @@ class ReportFilter:
         if not conn_read or not conn_write:
             return
         _ = cursor_read
-        if not uid:
+        if uid is None:
             return
         table_name = self.get_ftable_name(uid=uid, ftype="variant")
         q = self.get_fvariant_sql(
@@ -843,7 +843,7 @@ class ReportFilter:
         conn_read, conn_write = await self.get_db_conns()
         if not conn_read or not conn_write:
             return
-        if not uid:
+        if uid is None:
             return
         _ = cursor_read
         table_name = self.get_ftable_name(uid=uid, ftype="gene")
@@ -855,7 +855,7 @@ class ReportFilter:
         await conn_write.close()
 
     async def make_fvariant(self, uid=None, sample_to_filter=None, gene_to_filter=None):
-        if not uid:
+        if uid is None:
             return
         await self.exec_db(self.drop_ftable, uid=uid, ftype="variant")
         await self.exec_db(
@@ -866,7 +866,7 @@ class ReportFilter:
         )
 
     async def make_fgene(self, uid=None):
-        if not uid:
+        if uid is None:
             return
         await self.exec_db(self.drop_ftable, uid=uid, ftype="gene")
         await self.exec_db(self.populate_fgene, uid=uid)
@@ -878,7 +878,7 @@ class ReportFilter:
         if not conn_read or not conn_write:
             return
         _ = cursor_read
-        if not uid or not status:
+        if uid is None or not status:
             return
         table_name = self.get_registry_table_name()
         q = f"update {table_name} set status=?"
@@ -911,7 +911,7 @@ class ReportFilter:
         conn_read, conn_write = await self.get_db_conns()
         if not conn_read or not conn_write:
             return
-        if not ftype or not uid:
+        if not ftype or uid is None:
             return
         _ = cursor_read
         table_name = self.get_ftable_name(uid=uid, ftype=ftype)
@@ -1007,14 +1007,14 @@ class ReportFilter:
         if not ref_col_name:
             return None
         cursor_read = await conn_read.cursor()
-        if not uid:
+        if uid is not None:
             filter_uid_status = await self.exec_db(
                 self.get_existing_report_filter_status
             )
             if filter_uid_status:
                 uid = filter_uid_status.get("uid")
         q = f"select d.* from main.{level} as d"
-        if uid:
+        if uid is not None:
             ftable = self.get_ftable_name(uid=uid, ftype=level)
             q += f" join {ftable} as f on d.{ref_col_name}=f.{ref_col_name}"
         if page and pagesize:
@@ -1043,7 +1043,7 @@ class ReportFilter:
         return data
 
     def get_gene_to_filter_table_name(self, uid=None):
-        if not uid:
+        if uid is None:
             return None
         return f"{REPORT_FILTER_DB_NAME}.{GENE_TO_FILTER_TABLE_NAME}_{uid}"
 
@@ -1053,7 +1053,7 @@ class ReportFilter:
         conn_read, conn_write = await self.get_db_conns()
         if not conn_read or not conn_write:
             return
-        if not uid or not genes:
+        if uid is None or not genes:
             return
         _ = cursor_read
         table_name = self.get_gene_to_filter_table_name(uid=uid)
@@ -1152,7 +1152,7 @@ class ReportFilter:
                 return ftable_uid
 
     async def getcount(self, level="variant", uid=None):
-        if self.should_bypass_filter() or uid:
+        if self.should_bypass_filter() or uid is not None:
             norows = await self.exec_db(
                 self.get_ftable_num_rows, level=level, uid=uid, ftype=level
             )

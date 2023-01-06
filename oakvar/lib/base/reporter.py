@@ -480,13 +480,15 @@ class BaseReporter:
         else:
             self.write_variant_sample_separately = False
         datarows_iter = await self.cf.get_level_data_iterator(
-            level, page=page, pagesize=pagesize
+            level, page=page, pagesize=pagesize, uid=self.ftable_uid
         )
         if not datarows_iter:
             return
         row_count = 0
+        c = 0
         for datarow in datarows_iter:
             datarow = dict(datarow)
+            c += 1
             if datarow is None:
                 continue
             if level == "gene" and add_summary:
