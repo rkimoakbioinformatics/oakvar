@@ -1,2 +1,4 @@
-from oakvar.api.report import *
+from oakvar.lib.base.reporter import *
+
 CravatReport = BaseReporter
+
