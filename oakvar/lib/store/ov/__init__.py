@@ -138,7 +138,7 @@ def get_register_args_of_module(
         if len(rmi[k]) > 0:
             for url in rmi[k]:
                 if outer:
-                    outer.write(f"Validating {url}...\n")
+                    outer.write(f"Validating {url}...")
                 try:
                     valid = is_url(url) and url_is_valid(url)
                 except:
@@ -146,7 +146,7 @@ def get_register_args_of_module(
                 if not valid:
                     raise ArgumentError(msg=f"invalid {kind} URL: {url}")
                 if outer:
-                    outer.write(f"Validated\n")
+                    outer.write(f"Validated")
     if not rmi.get("data_url") and no_data and data_version:
         data_url_s = module_data_url(module_name, version=data_version)
         if not data_url_s:
@@ -297,7 +297,7 @@ def register(
         res = post(url, json=params)
         if res.status_code == 200:
             if outer:
-                outer.write(f"Success\n")
+                outer.write(f"Success")
             return True
         else:
             if outer:
@@ -341,7 +341,7 @@ def delete(
         res = post(url, json=params)
         if res.status_code == 200:
             if outer:
-                outer.write("Success\n")
+                outer.write("Success")
             return True
         else:
             if outer:

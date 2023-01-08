@@ -1,16 +1,18 @@
 from oakvar import BaseReporter
-import sys
 
 
 class Reporter(BaseReporter):
-    def __init__(self, args):
+    def __init__(self, *args, **kwargs):
         self.no_log = True
         self.no_status_update = True
         self.levels_to_write = None
         self.data = {}
         self.keep_json_all_mapping = True
         self.data = {}
-        super().__init__(args)
+        if kwargs:
+            super().__init__(**kwargs)
+        if args and isinstance(args[0], dict):
+            super().__init__(**args[0])
 
     def write_preface(self, level):
         self.data[level] = []
@@ -30,8 +32,3 @@ class Reporter(BaseReporter):
         self.data["warning_msgs"] = self.warning_msgs
         self.data["total_norows"] = self.total_norows
         return self.data
-
-
-def main():
-    reporter = Reporter(sys.argv)
-    reporter.run()

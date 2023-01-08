@@ -56,9 +56,11 @@ def cli_module_install(args):
 
 @cli_func
 def install(args, __name__="module install"):
-    from ...api.module import install
+    from ...api.module import install as install_api
+    from .install import InstallProgressStdout
 
-    ret = install(**args)
+    stage_handler = InstallProgressStdout(outer=args.get("outer"))
+    ret = install_api(stage_handler=stage_handler, **args)
     return ret
 
 
@@ -199,9 +201,6 @@ def add_parser_ov_module_installbase(subparsers):
         help="Download data even if latest data is already installed",
     )
     parser_ov_module_installbase.add_argument(
-        "--md", default=None, help="Specify the root directory of OakVar modules"
-    )
-    parser_ov_module_installbase.add_argument(
         "--quiet", action="store_true", default=None, help="suppress stdout output"
     )
     parser_ov_module_installbase.set_defaults(func=cli_module_installbase)
@@ -239,6 +238,7 @@ def add_parser_ov_module_install(subparsers):
     parser_ov_module_install.add_argument(
         "-d",
         "--force-data",
+        default=False,
         action="store_true",
         help="Download data even if latest data is already installed",
     )
@@ -249,21 +249,12 @@ def add_parser_ov_module_install(subparsers):
         "--skip-dependencies", action="store_true", help="Skip installing dependencies"
     )
     parser_ov_module_install.add_argument(
-        "-p", "--private", action="store_true", help="Install a private module"
-    )
-    parser_ov_module_install.add_argument(
         "--skip-data", action="store_true", help="Skip installing data"
     )
     parser_ov_module_install.add_argument(
         "--no-fetch", action="store_true", help="Skip fetching the latest store"
     )
     parser_ov_module_install.add_argument("--url", help="Install from a URL")
-    parser_ov_module_install.add_argument(
-        "--md", default=None, help="Specify the root directory of OakVar modules"
-    )
-    parser_ov_module_install.add_argument(
-        "--to", default="return", help="'stdout' to print. 'return' to return"
-    )
     parser_ov_module_install.add_argument(
         "--quiet", action="store_true", default=None, help="suppress stdout output"
     )
@@ -287,7 +278,7 @@ def add_parser_ov_module(subparsers):
         description="Manages OakVar modules",
         help="Manages OakVar modules",
     )
-    subparsers = parser_ov_module.add_subparsers(title="Commands", dest="command")
+    subparsers = parser_ov_module.add_subparsers()
 
     # installbase
     add_parser_ov_module_installbase(subparsers)
@@ -315,9 +306,6 @@ def add_parser_ov_module(subparsers):
         choices=("consensus", "force", "skip"),
     )
     parser_ov_module_update.add_argument(
-        "--md", default=None, help="Specify the root directory of OakVar modules"
-    )
-    parser_ov_module_update.add_argument(
         "--quiet", action="store_true", default=None, help="suppress stodout output"
     )
     parser_ov_module_update.set_defaults(func=cli_module_update)
@@ -336,9 +324,6 @@ def add_parser_ov_module(subparsers):
     )
     parser_ov_module_uninstall.add_argument(
         "-y", "--yes", action="store_true", help="Proceed without prompt"
-    )
-    parser_ov_module_uninstall.add_argument(
-        "--md", default=None, help="Specify the root directory of OakVar modules"
     )
     parser_ov_module_uninstall.add_argument(
         "--quiet", action="store_true", default=None, help="run quietly"
@@ -366,16 +351,7 @@ def add_parser_ov_module(subparsers):
         action="store_true",
     )
     parser_ov_module_info.add_argument(
-        "--md", default=None, help="Specify the root directory of OakVar modules"
-    )
-    parser_ov_module_info.add_argument(
         "--fmt", default="json", help="format of module information data. json or yaml"
-    )
-    parser_ov_module_info.add_argument(
-        "--to", default="return", help='"stdout" to stdout / "return" to return'
-    )
-    parser_ov_module_info.add_argument(
-        "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_ov_module_info.set_defaults(func=cli_module_info)
     parser_ov_module_info.r_return = "A named list. Information of the queried module"  # type: ignore
@@ -431,16 +407,7 @@ def add_parser_ov_module(subparsers):
         help="Machine readable data sizes",
     )
     parser_ov_module_ls.add_argument(
-        "--md", default=None, help="Specify the root directory of OakVar modules"
-    )
-    parser_ov_module_ls.add_argument(
         "--fmt", default=None, help="Output format. tabular or json"
-    )
-    parser_ov_module_ls.add_argument(
-        "--to", default="return", help="stdout to print / return to return"
-    )
-    parser_ov_module_ls.add_argument(
-        "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_ov_module_ls.set_defaults(func=cli_module_ls)
     parser_ov_module_ls.r_return = "A named list. List of modules"  # type: ignore

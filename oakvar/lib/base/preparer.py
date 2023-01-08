@@ -210,6 +210,3 @@ if __name__ == "__main__":
         dest="output_dir",
         help="Output directory. " + "Default is input file directory.",
     )
-    cmd_parser.add_argument(
-        "--confs", dest="confs", default="{}", help="Configuration string"
-    )

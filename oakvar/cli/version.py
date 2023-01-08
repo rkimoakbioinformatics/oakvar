@@ -10,11 +10,11 @@ def cli_version(args):
 @cli_func
 def version(args, __name__="version"):
     from ..lib.util.admin_util import oakvar_version
-    from ..lib.util.util import quiet_print
 
     ret = oakvar_version()
-    if args["to"] == "stdout":
-        quiet_print(ret, args=args)
+    outer = args.get("outer")
+    if outer:
+        outer.write(ret)
     else:
         return ret
 
@@ -24,9 +24,6 @@ def get_parser_fn_version():
 
     # shows version
     parser_cli_version = ArgumentParser()
-    parser_cli_version.add_argument(
-        "--to", default="return", help='"stdout" to print. "return" to return'
-    )
     parser_cli_version.add_argument(
         "--quiet", action="store_true", default=None, help="run quietly"
     )

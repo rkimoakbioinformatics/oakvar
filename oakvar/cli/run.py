@@ -12,7 +12,6 @@ def cli_run(args):
 def run(args, __name__="run"):
     from ..api.run import run
 
-    print(f"@ args={args}")
     ret = run(**args)
     return ret
 
@@ -29,7 +28,7 @@ def add_parser_ov_run(subparsers):
     parser_ov_run.r_examples = [  # type: ignore
         "# Annotate the input file `input` with ClinVar and COSMIC modules ",
         "# and make a VCF-format report of annotated variants.",
-        '#roakvar::run.input(inputs="input", annotators=list("clinvar", "cosmic"), reports="vcf")',
+        '#roakvar::run.input(inputs="input", annotators=list("clinvar", "cosmic"), report_types="vcf")',
     ]
     parser_ov_run.add_argument(
         "inputs",
@@ -90,8 +89,7 @@ def add_parser_ov_run(subparsers):
             "preparer",
             "mapper",
             "annotator",
-            "aggregator",
-            "postaggregator",
+            "aggregator" "postaggregator",
             "reporter",
         ],
         default=None,
@@ -115,9 +113,6 @@ def add_parser_ov_run(subparsers):
     )
     parser_ov_run.add_argument(
         "-c", "--confpath", dest="confpath", default=None, help="path to a conf file"
-    )
-    parser_ov_run.add_argument(
-        "--cs", dest="confs", default=None, help="configuration string"
     )
     parser_ov_run.add_argument(
         "-t",
@@ -226,9 +221,6 @@ def add_parser_ov_run(subparsers):
         help="System option in key=value syntax. For example, --system-option modules_dir=/home/user/oakvar/modules",
     )
     parser_ov_run.add_argument(
-        "--quiet", action="store_true", default=None, help="Runs quietly."
-    )
-    parser_ov_run.add_argument(
         "--package", dest="package", default=None, help="Use package"
     )
     parser_ov_run.add_argument("--filtersql", default=None, help="Filter SQL")
@@ -241,11 +233,6 @@ def add_parser_ov_run(subparsers):
     parser_ov_run.add_argument("--filter", default=None)
     parser_ov_run.add_argument(
         "-f", dest="filterpath", default=None, help="Path to a filter file"
-    )
-    parser_ov_run.add_argument(
-        "--md",
-        default=None,
-        help="Specify the root directory of OakVar modules (annotators, etc)",
     )
     parser_ov_run.add_argument(
         "--pp",

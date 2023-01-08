@@ -11,7 +11,6 @@ class BasePostAggregator(object):
         module_name: str,
         run_name: Optional[str] = None,
         output_dir: Optional[str] = None,
-        confs: str = "{}",
         serveradmindb=None,
         outer=None,
         module_options: Dict = {},
@@ -51,7 +50,6 @@ class BasePostAggregator(object):
         self.q_v: Optional[str] = None
         self.q_g: Optional[str] = None
         self.outer = outer
-        self.confs = confs
         self._open_db_connection()
         self.should_run_annotate = self.check()
 
@@ -650,7 +648,4 @@ if __name__ == "__main__":
         "-d",
         dest="output_dir",
         help="Output directory. " + "Default is input file directory.",
-    )
-    parser.add_argument(
-        "--confs", dest="confs", default="{}", help="Configuration string"
     )

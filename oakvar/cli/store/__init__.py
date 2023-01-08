@@ -144,9 +144,6 @@ def add_parser_fn_store_url(subparsers):
     parser_cli_store_verifyemail = subparsers.add_parser(
         "url", help="returns the URL of the OakVar store"
     )
-    parser_cli_store_verifyemail.add_argument(
-        "--quiet", action="store_true", default=None, help="run quietly"
-    )
     parser_cli_store_verifyemail.set_defaults(func=cli_store_url)
     parser_cli_store_verifyemail.r_return = "character"  # type: ignore
     parser_cli_store_verifyemail.r_examples = [  # type: ignore

@@ -252,5 +252,5 @@ def url(outer=None):
 
     u = get_store_url()
     if outer:
-        outer.write(f"{u}\n")
+        outer.write(f"{u}")
     return u

@@ -36,6 +36,7 @@ def report(args, __name__="report"):
             v = toks[1]
             module_options[module_name][key] = v
     args["module_options"] = module_options
+    del args["module_option"]
     ret = report(**args)
     return ret
 
@@ -86,9 +87,6 @@ def get_parser_fn_report():
         help="Use this option to prevent gene level result from being added to variant level result.",
     )
     parser_ov_report.add_argument(
-        "--confs", dest="confs", default="{}", help="Configuration string"
-    )
-    parser_ov_report.add_argument(
         "--inputfiles",
         nargs="+",
         dest="inputfiles",
@@ -124,13 +122,6 @@ def get_parser_fn_report():
         help="Module-specific option in module_name.key=value syntax. For example, --module-option vcfreporter.type=separate",
     )
     parser_ov_report.add_argument(
-        "--concise-report",
-        dest="concise_report",
-        action="store_true",
-        default=False,
-        help="Generate concise report with default columns defined by annotation modules",
-    )
-    parser_ov_report.add_argument(
         "--includesample",
         dest="includesample",
         nargs="+",
@@ -146,11 +137,6 @@ def get_parser_fn_report():
     )
     parser_ov_report.add_argument(
         "--package", help="Use filters and report types in a package"
-    )
-    parser_ov_report.add_argument(
-        "--md",
-        default=None,
-        help="Specify the root directory of OakVar modules (annotators, etc)",
     )
     parser_ov_report.add_argument(
         "--cols",

@@ -5,13 +5,14 @@ from pathlib import Path
 
 class InstallProgressHandler:
     def __init__(
-        self, module_name: Optional[str] = None, module_version: Optional[str] = None
+        self, module_name: Optional[str] = None, module_version: Optional[str] = None, outer=None
     ):
         self.module_name = module_name
         self.module_version = module_version
         self.display_name = None
         self.cur_stage = None
         self.install_state = None
+        self.outer = outer
         if module_name:
             self._make_display_name()
 
@@ -112,7 +113,7 @@ def install_pypi_dependency(pypi_dependency: Optional[List[str]] = None, outer=N
     from subprocess import run
 
     if not pypi_dependency:
-        return
+        return True
     if outer:
         outer.write(f"Installing required PyPI packages...")
     idx = 0
@@ -216,9 +217,10 @@ def make_install_temp_dir(
 
 
 def set_stage_handler(module_name: str, stage_handler=None, version: str = ""):
-    if not stage_handler:
+    if stage_handler:
+        stage_handler.set_module(module_name=module_name, module_version=version)
+    else:
         stage_handler = InstallProgressHandler(module_name, version)
-    stage_handler.set_module_version(version)
     return stage_handler
 
 
@@ -470,7 +472,6 @@ def install_module_from_url(
                 stage_handler=stage_handler,
                 force_data=force_data,
                 skip_data=skip_data,
-                skip_dependencies=skip_dependencies,
                 outer=outer,
             )
     ty = conf.get("type") or ""
@@ -610,7 +611,6 @@ def install_module(
     overwrite=False,
     force_data=False,
     skip_data=False,
-    skip_dependencies=False,
     modules_dir: Optional[str] = None,
     stage_handler: Optional[InstallProgressHandler] = None,
     conf_path=None,
@@ -654,7 +654,7 @@ def install_module(
         # Checks and installs pip packages.
         if not install_pypi_dependency(pypi_dependency=pypi_dependency, outer=outer):
             if outer:
-                outer.write(f"failed in installing pypi package dependence")
+                outer.write(f"Failed in installing pypi package dependence")
             raise ModuleInstallationError(module_name)
         remote_data_version = remote_module_data_version(module_name, code_version)
         local_data_version = local_module_data_version(module_name)
@@ -713,7 +713,7 @@ def install_module(
                 if outer:
                     outer.write(f"data_url is empty.")
                 raise ModuleInstallationError(module_name)
-            data_zip_filepath: Optional[str] = download_code_or_data(
+            data_zipfile_path: Optional[str] = download_code_or_data(
                 urls=data_url,
                 module_name=module_name,
                 version=remote_data_version,
@@ -723,14 +723,14 @@ def install_module(
                 stage_handler=stage_handler,
                 system_worker_state=system_worker_state,
             )
-            if not data_zip_filepath:
+            if not data_zipfile_path:
                 if error:
                     error.write(f"Data download failed")
                 raise ModuleInstallationError(module_name)
             extract_code_or_data(
                 module_name=module_name,
                 kind="data",
-                zipfile_path=zipfile_path,
+                zipfile_path=data_zipfile_path,
                 temp_dir=temp_dir,
                 stage_handler=stage_handler,
                 system_worker_state=system_worker_state,

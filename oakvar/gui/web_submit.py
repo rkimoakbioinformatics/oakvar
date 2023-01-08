@@ -1,6 +1,7 @@
 from typing import Optional
 from typing import Tuple
 
+
 class Job(object):
     def __init__(self, job_dir):
         self.info = {}
@@ -10,7 +11,7 @@ class Job(object):
         self.info["note"] = ""
         self.info["db_path"] = ""
         self.info["viewable"] = False
-        self.info["reports"] = []
+        self.info["report_types"] = []
         self.info["annotators"] = []
         self.info["annotator_version"] = ""
         self.info["package_version"] = None
@@ -32,8 +33,19 @@ class Job(object):
     def set_values(self, **kwargs):
         self.info.update(kwargs)
 
+
 class SubmitProcessor:
-    def __init__(self, request=None, loop=None, job_queue=None, logger=None, servermode=None, mu=None, info_of_running_jobs=None, email=None):
+    def __init__(
+        self,
+        request=None,
+        loop=None,
+        job_queue=None,
+        logger=None,
+        servermode=None,
+        mu=None,
+        info_of_running_jobs=None,
+        email=None,
+    ):
         self.request = request
         self.loop = loop
         self.logger = logger
@@ -47,6 +59,7 @@ class SubmitProcessor:
         from ..lib.system import get_user_jobs_dir
         from aiohttp.web import Response
         from aiohttp.web import json_response
+
         assert self.job_queue is not None
         jobs_dir = get_user_jobs_dir(self.email)
         if not jobs_dir:
@@ -60,7 +73,9 @@ class SubmitProcessor:
         uid: Optional[int] = queue_item.get("submit_options", {}).get("uid")
         if not uid:
             if self.logger:
-                self.logger.error("Job UID was not obtained. submit_options={submit_options}")
+                self.logger.error(
+                    "Job UID was not obtained. submit_options={submit_options}"
+                )
             return Response(status=500)
         self.add_job_uid_to_info_of_running_jobs(uid)
         return json_response(job.get_info_dict())
@@ -84,7 +99,9 @@ class SubmitProcessor:
         if not self.job_queue:
             return json_response({"status": "server error. Job queue is not running."})
         if not self.mu:
-            return json_response({"status": "server error. User control is not running."})
+            return json_response(
+                {"status": "server error. User control is not running."}
+            )
         if not jobs_dir:
             return Response(status=404)
 
@@ -124,6 +141,7 @@ class SubmitProcessor:
     async def get_queue_item_and_job(self, request, job_dir) -> Tuple[dict, Job]:
         from .serveradmindb import get_serveradmindb
         from .util import get_email_from_request
+
         assert self.mu is not None
         submit_options = await self.save_job_input_files(request, job_dir)
         self.process_job_options(submit_options)
@@ -175,7 +193,9 @@ class SubmitProcessor:
         submit_options["input_files"] = input_files
         return submit_options
 
-    def add_module_option(self, job_options: dict, module_name, option_name, option_value):
+    def add_module_option(
+        self, job_options: dict, module_name, option_name, option_value
+    ):
         from ..lib.consts import MODULE_OPTIONS_KEY
 
         if not MODULE_OPTIONS_KEY in job_options:
@@ -195,7 +215,9 @@ class SubmitProcessor:
                     if not module_name in job_options[MODULE_OPTIONS_KEY]:
                         job_options[MODULE_OPTIONS_KEY][module_name] = {}
                     for option_name, option_value in option_dict.items():
-                        job_options[MODULE_OPTIONS_KEY][module_name][option_name] = option_value
+                        job_options[MODULE_OPTIONS_KEY][module_name][
+                            option_name
+                        ] = option_value
             else:
                 job_options[k] = v
         return job_options
@@ -205,7 +227,10 @@ class SubmitProcessor:
 
         job_options = submit_options.get("job_options", {})
         input_files = submit_options.get("input_files", [])
-        if "inputServerFiles" in job_options and len(job_options["inputServerFiles"]) > 0:
+        if (
+            "inputServerFiles" in job_options
+            and len(job_options["inputServerFiles"]) > 0
+        ):
             input_files = job_options["inputServerFiles"]
             input_fnames = [str(Path(fn).name) for fn in input_files]
             submit_options["use_server_input_files"] = True
@@ -249,7 +274,9 @@ class SubmitProcessor:
         job_name = submit_options.get("job_name")
         run_name = submit_options.get("run_name")
         if not job_name:
-            raise ArgumentError(msg=f"job_name not found. submit_options={submit_options}")
+            raise ArgumentError(
+                msg=f"job_name not found. submit_options={submit_options}"
+            )
         if not run_name:
             raise ArgumentError(msg="run_name not found for {job_name}")
         job_options = submit_options.get("job_options", {})
@@ -268,7 +295,7 @@ class SubmitProcessor:
         info_json["package_version"] = pkg_ver
         info_json["annotators"] = job_options.get("annotators", [])
         info_json["postaggregators"] = job_options.get("postaggregators", [])
-        info_json["reports"] = job_options.get("reporters", [])
+        info_json["report_types"] = job_options.get("reporters", [])
         with open(Path(job_dir) / (run_name + ".info.json"), "w") as wf:
             dump(info_json, wf, indent=2, sort_keys=True)
         return info_json
@@ -281,7 +308,9 @@ class SubmitProcessor:
         global servermode
         job_options = submit_options.get("job_options", {})
         input_fnames = submit_options.get("input_fnames", [])
-        submit_options["input_fpaths"] = [str(Path(job_dir) / fn) for fn in input_fnames]
+        submit_options["input_fpaths"] = [
+            str(Path(job_dir) / fn) for fn in input_fnames
+        ]
         run_args = ["ov", "run"]
         if submit_options.get("use_server_input_files"):
             for fp in submit_options.get("input_files", []):
@@ -324,10 +353,10 @@ class SubmitProcessor:
             postaggregators = []
         submit_options["postaggregators"] = postaggregators
         # Reports
-        reports = job_options.get("reports", [])
-        if reports:
+        report_types = job_options.get("report_types", [])
+        if report_types:
             run_args.append("-t")
-            run_args.extend(job_options["reports"])
+            run_args.extend(job_options["report_types"])
         # Note
         note = job_options.get("note")
         if note:
@@ -364,4 +393,3 @@ class SubmitProcessor:
                 arg = f"{module_name}.{option_name}={option_value}"
                 args.append(arg)
         return args
-

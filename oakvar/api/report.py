@@ -15,7 +15,6 @@ def report(
     confpath: Optional[str] = None,
     module_name: Optional[str] = None,
     nogenelevelonvariantlevel: bool = False,
-    confs: str = "{}",
     inputfiles: Optional[List[str]] = None,
     separatesample: bool = False,
     output_dir: Optional[str] = None,
@@ -53,8 +52,9 @@ def report(
             m_info = get_local_module_info(package)
             if m_info:
                 package_conf = m_info.conf
-                if "run" in package_conf and "reports" in package_conf["run"]:
-                    report_types = package_conf["run"]["reports"]
+                package_conf_reports = package_conf.get("run", {}).get("reports")
+                if package_conf_reports:
+                    report_types = package_conf_reports
     if not output_dir:
         output_dir = dirname(dbpath)
     if not savepath:
@@ -74,7 +74,7 @@ def report(
             if module_info is None:
                 raise ModuleNotExist(report_type + "reporter")
             if outer:
-                outer.write(f"Generating {report_type} report...\n")
+                outer.write(f"Generating {report_type} report...")
             spec = spec_from_file_location(  # type: ignore
                 module_name, module_info.script_path  # type: ignore
             )
@@ -84,7 +84,7 @@ def report(
             if not module or not spec.loader:
                 continue
             spec.loader.exec_module(module)
-            reporter_module_options = module_options.get(module_name)
+            reporter_module_options = module_options.get(module_name, {})
             reporter = module.Reporter(
                 dbpath,
                 report_types=report_types,
@@ -97,7 +97,6 @@ def report(
                 confpath=confpath,
                 module_name=module_name,
                 nogenelevelonvariantlevel=nogenelevelonvariantlevel,
-                confs=confs,
                 inputfiles=inputfiles,
                 separatesample=separatesample,
                 output_dir=output_dir,
@@ -123,7 +122,7 @@ def report(
                 output_fns = response_t
             if output_fns is not None and type(output_fns) == str:
                 if outer:
-                    outer.write(f"report created: {output_fns}\n")
+                    outer.write(f"report created: {output_fns}")
             response[report_type] = response_t
         except Exception as e:
             handle_exception(e)

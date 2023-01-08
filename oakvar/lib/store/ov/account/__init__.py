@@ -493,11 +493,11 @@ def email_is_verified(email: str, outer=None) -> bool:
         return True
     elif res.status_code == 404:
         if outer:
-            outer.write(f"User not found\n")
+            outer.write(f"User not found")
         return False
     else:
         if outer:
-            outer.write(f"{email} has not been verified. {res.text}\n")
+            outer.write(f"{email} has not been verified. {res.text}")
         return False
 
 

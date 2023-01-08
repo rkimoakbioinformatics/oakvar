@@ -35,29 +35,38 @@ class WebSocketHandlers:
                 {SYSTEM_MSG_KEY: SYSTEM_STATE_CONNECTION_KEY, WS_COOKIE_KEY: ws_id}
             )
         except ConnectionResetError:
+            print(f"@@@ ConnectionResetError")
             raise
-        except:
+        except Exception as e:
+            print(f"@@@ e={e}")
             raise
         to_dels = []
         for ws_id in self.wss:
             ws_t = self.wss[ws_id]
+            print(f"@ ws_t={ws_t}. {ws_t.closed}")
             if ws_t.closed:
                 to_dels.append(ws_id)
+        print(f"@ to_dels={to_dels}. wss={self.wss}. ws={ws}")
         for ws_id in to_dels:
             del self.wss[ws_id]
         while True:
             try:
                 await asyncio.sleep(1)
                 if ws.closed:
+                    print(f"@ ws closed")
                     break
                 await self.process_system_worker_state(ws=ws)
             except concurrent.futures._base.CancelledError:
+                print(f"@@@ CancelledError")
                 pass
             except ConnectionResetError:
+                print(f"@@@ ConnectionResetError")
                 break
             except Exception as e:
+                print(f"@@@ e={e}")
                 if self.logger:
                     self.logger.exception(e)
+        print(f"@@@ returning ws: {ws}")
         return ws
 
     async def process_setup_state(self, ws=None):

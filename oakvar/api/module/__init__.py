@@ -1,6 +1,5 @@
 from typing import Optional
 from typing import List
-from ...lib.module import InstallProgressHandler
 
 
 def pack(
@@ -146,7 +145,6 @@ def install(
     skip_data: bool = False,
     no_fetch: bool = False,
     outer=None,
-    error=None,
     stage_handler=None,
     system_worker_state=None,
 ):
@@ -162,7 +160,7 @@ def install(
     from ...lib.exceptions import ModuleToSkipInstallation
 
     if not no_fetch:
-        try_fetch_ov_store_cache()
+        try_fetch_ov_store_cache(outer=outer)
     to_install = get_modules_to_install(
         module_names, skip_dependencies=skip_dependencies, outer=outer
     )
@@ -207,7 +205,6 @@ def install(
                     stage_handler=stage_handler,
                     skip_data=skip_data,
                     outer=outer,
-                    error=error,
                     system_worker_state=system_worker_state,
                 )
                 if not ret:
@@ -220,8 +217,8 @@ def install(
                 import traceback
 
                 traceback.print_exc()
-            if error:
-                error.write(e)
+            if outer:
+                outer.error(e)
     if problem_modules:
         if outer:
             outer.write(f"Following modules were not installed due to problems:")
@@ -245,7 +242,6 @@ def update(
     modules_dir: Optional[str] = None,
     yes=False,
     outer=None,
-    error=None,
     system_worker_state=None,
 ):
     from ...lib.module.local import search_local
@@ -268,9 +264,9 @@ def update(
         return True
     if not yes:
         if outer:
-            outer.write(f"Following modules will be updated.\n")
+            outer.write(f"Following modules will be updated.")
             for mn in to_update:
-                outer.write(f"- {mn}\n")
+                outer.write(f"- {mn}")
             yn = input("Proceed? (y/N) > ")
             if not yn or yn.lower() not in ["y", "yes"]:
                 return True
@@ -285,7 +281,6 @@ def update(
         skip_data=False,
         no_fetch=no_fetch,
         outer=outer,
-        error=error,
         system_worker_state=system_worker_state,
     )
     if ret is not None:
@@ -306,12 +301,12 @@ def uninstall(module_names: Optional[List[str]] = None, yes: bool = False, outer
     module_names = search_local(*module_names)
     if len(module_names) == 0:
         if outer:
-            outer.write("No module to uninstall\n")
+            outer.write("No module to uninstall")
         return True
     if outer:
-        outer.write("Uninstalling:\n")
+        outer.write("Uninstalling:")
         for mn in module_names:
-            outer.write(f"- {mn}\n")
+            outer.write(f"- {mn}")
     if not yes:
         yn = input("Proceed? (y/N) > ")
         if not yn or yn.lower() != "y":
@@ -330,7 +325,6 @@ def installbase(
     overwrite: bool = False,
     modules_dir: Optional[str] = None,
     outer=None,
-    error=None,
     system_worker_state=None,
 ):
     from ...lib.system import get_system_conf
@@ -358,24 +352,6 @@ def installbase(
         skip_data=False,
         no_fetch=no_fetch,
         outer=outer,
-        error=error,
         system_worker_state=system_worker_state,
     )
     return ret
-
-
-class InstallProgressStdout(InstallProgressHandler):
-    def __init__(
-        self,
-        module_name: Optional[str] = None,
-        module_version: Optional[str] = None,
-        outer=None,
-    ):
-        super().__init__(module_name=module_name, module_version=module_version)
-        self.outer = outer
-        self.system_worker_state = None
-
-    def stage_start(self, stage):
-        self.cur_stage = stage
-        if self.outer:
-            self.outer.write(self._stage_msg(stage))

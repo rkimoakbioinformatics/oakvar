@@ -88,12 +88,6 @@ def add_parser_ov_config_system(subparsers):
     parser_cli_config_oakvar.add_argument(
         "--fmt", default="json", help="Format of output: table / json"
     )
-    parser_cli_config_oakvar.add_argument(
-        "--to", default="return", help='"stdout" to print. "return" to return'
-    )
-    parser_cli_config_oakvar.add_argument(
-        "--quiet", action="store_true", default=None, help="run quietly"
-    )
     parser_cli_config_oakvar.set_defaults(func=cli_config_system)
     parser_cli_config_oakvar.r_return = "A named list. OakVar system config information"  # type: ignore
     parser_cli_config_oakvar.r_examples = [  # type: ignore

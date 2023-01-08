@@ -21,15 +21,14 @@ def cli_system_md(args):
 
 @cli_func
 def md(args, __name__="system md"):
-    from ..lib.util.util import quiet_print
     from ..api.system import md
 
+    outer = args["outer"]
+    del args["outer"]
     ret = md(**args)
-    if args.get("to") == "stdout":
-        if ret is not None:
-            quiet_print(ret, args=args)
-    else:
-        return ret
+    if ret:
+        outer.write(ret)
+    return ret
 
 
 @cli_entry
@@ -82,12 +81,6 @@ def add_parser_ov_system_md(subparsers):
     parser_cli_system_md.add_argument(
         "directory", nargs="?", help="sets modules directory."
     )
-    parser_cli_system_md.add_argument(
-        "--to", default="return", help="'stdout' to print. 'return' to return."
-    )
-    parser_cli_system_md.add_argument(
-        "--quiet", action="store_true", default=None, help="run quietly"
-    )
     parser_cli_system_md.set_defaults(func=cli_system_md)
     parser_cli_system_md.r_return = "A string. OakVar modules directory"  # type: ignore
     parser_cli_system_md.r_examples = [  # type: ignore
@@ -112,9 +105,6 @@ def add_parser_ov_system_config(subparsers):
         "--fmt", default="json", help="Format of output. json or yaml."
     )
     parser_cli_system_config.add_argument(
-        "--to", default="return", help='"stdout" to print. "return" to return'
-    )
-    parser_cli_system_config.add_argument(
         "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_system_config.set_defaults(func=cli_config_system)
@@ -134,9 +124,6 @@ def add_parser_ov_system_check(subparsers):
         "check", help="check if OakVar is set up correctly"
     )
     parser_cli_system_check.add_argument(
-        "--to", default="return", help='"stdout" to print. "return" to return'
-    )
-    parser_cli_system_check.add_argument(
         "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_system_check.set_defaults(func=cli_system_check)
@@ -152,7 +139,7 @@ def add_parser_ov_system(subparser):
         name="system",
         help="Setup OakVar",
     )
-    subparsers = parser_ov_system.add_subparsers(title="Commands", dest="commands")
+    subparsers = parser_ov_system.add_subparsers()
     add_parser_ov_system_setup(subparsers)
     add_parser_ov_system_md(subparsers)
     add_parser_ov_system_config(subparsers)

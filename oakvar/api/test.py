@@ -1,3 +1,5 @@
+from typing import Optional
+from typing import List
 import sys
 from abc import ABC, abstractmethod
 from ..lib.exceptions import ExpectedException
@@ -504,7 +506,7 @@ class CsvReportReader(ReportReader):
 
 # class that actually runs a test of a specific module and then verifies the results.
 class Tester:
-    def __init__(self, module, args, input_file):
+    def __init__(self, module, rundir: str, input_file, outer=None):
         from os.path import exists, join
         from os import makedirs
         from ..lib.exceptions import ModuleLoadingError
@@ -512,9 +514,8 @@ class Tester:
 
         self.parms = None
         self.name = None
-        self.args = args
-        rundir = args.get("rundir")
         self.module_name = None
+        self.outer = outer
         if type(module) == str:
             self.module_name = module
             module = get_local_module_info(self.module_name)
@@ -569,7 +570,6 @@ class Tester:
         from ..lib.module.local import get_local_module_info
         from time import time
         from subprocess import call, STDOUT
-        from ..lib.util.util import quiet_print
         from ..lib.exceptions import ModuleLoadingError
         from ..lib.exceptions import SetupError
 
@@ -621,8 +621,8 @@ class Tester:
             cmd_list.extend(["-l", "hg19"])
         else:
             cmd_list.extend(["-l", "hg38"])
-        if self.args["to"] == "stdout":
-            quiet_print(" ".join(cmd_list), args=self.args)
+        if self.outer:
+            self.outer.write(" ".join(cmd_list))
         exit_code = call(" ".join(cmd_list), shell=True, stdout=self.log, stderr=STDOUT)
         if exit_code != 0:
             self._report(f"{self.module.name}: exit code {exit_code}")
@@ -772,17 +772,14 @@ class Tester:
         return header[: header.index("|")]
 
     # Write a message to the screen and to the log file.
-    def _report(self, s, stdout=False):
-        from ..lib.util.util import quiet_print
-
+    def _report(self, s):
         self.log.write(s + "\n")
-        if stdout:
-            quiet_print(s, args=self.args)
-        else:
-            return s
+        if self.outer:
+            self.outer.write(s)
+        return s
 
     # Log success /failure of test.
-    def write_results(self, stdout=True):
+    def write_results(self):
         if self.module is None:
             from ..lib.exceptions import ModuleLoadingError
 
@@ -797,26 +794,19 @@ class Tester:
         elapsed_time = self.end_time - self.start_time
         self._report(f"{self.module.name}: finished in %.2f seconds" % elapsed_time)
         if self.test_passed:
-            if stdout:
-                self._report(f"{self.module.name}: PASS", stdout=stdout)
-            else:
-                return "PASS"
+            self._report(f"{self.module.name}: PASS")
+            return "PASS"
         else:
-            if stdout:
-                self._report(f"{self.module.name}: FAIL", stdout=stdout)
-            else:
-                return "FAIL"
+            self._report(f"{self.module.name}: FAIL")
+            return "FAIL"
 
 
-def test(args, __name__="util test"):
+def test(rundir: Optional[str]=None, modules: Optional[List[str]]=[], outer=None):
     from os.path import exists
     from os import makedirs
-    from ..lib.module.local import get_local_module_types
     from ..lib.module.local import get_local_module_info
-    from ..lib.util.util import quiet_print
     from ..lib.exceptions import NoInput
 
-    rundir = args.get("rundir")
     if rundir is None:
         num = 1
         while True:
@@ -825,16 +815,14 @@ def test(args, __name__="util test"):
                 break
             else:
                 num += 1
-        args["rundir"] = rundir
     # create run output directory
     if not exists(rundir):
         makedirs(rundir)
     # installed module types
-    __module_types__ = get_local_module_types()
     passed = 0
     failed = 0
     modules_failed = []
-    module_names = args.get("modules")
+    module_names = modules
     if not module_names:
         raise NoInput()
     module_names.sort()
@@ -844,7 +832,7 @@ def test(args, __name__="util test"):
         if module is None:
             continue
         for test_input_file in module.tests:
-            tester = Tester(module, args, test_input_file)
+            tester = Tester(module, rundir, test_input_file, outer=outer)
             exit_code = tester.run()
             if exit_code == 0:
                 tester.verify()
@@ -864,8 +852,8 @@ def test(args, __name__="util test"):
                     "log": tester.log_path,
                 }
     modules_failed.sort()
-    if args.get("to") == "stdout":
-        quiet_print(f"passed {passed} failed {failed}", args=args)
+    if outer:
+        outer.write(f"passed {passed} failed {failed}")
     else:
         return {"result": result, "num_passed": passed, "num_failed": failed}
 

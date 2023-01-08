@@ -287,7 +287,7 @@ class VCF2VCF:
         output_suffix = ".vcf"
         for p in self.inputs:
             if self.outer:
-                self.outer.write(f"processing {p}\n")
+                self.outer.write(f"processing {p}")
             if self.run_name:
                 if len(self.inputs) == 1:
                     outpath = join(self.output_dir, self.run_name + output_suffix)

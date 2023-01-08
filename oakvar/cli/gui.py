@@ -4,6 +4,7 @@ from . import cli_func
 protocol = None
 loop = None
 
+
 def inject_module_variables(args={}):
     from ..gui.webresult import webresult as wr
     from ..gui import multiuser as mu
@@ -27,8 +28,9 @@ def get_protocol(args={}):
 
 def setup(args={}):
     from os.path import abspath
-    #from ..gui.websubmit import multiuser as mu
-    #from ..util.asyn import get_event_loop
+
+    # from ..gui.websubmit import multiuser as mu
+    # from ..util.asyn import get_event_loop
 
     if args.get("result"):
         args["headless"] = False
@@ -36,8 +38,8 @@ def setup(args={}):
     elif args.get("servermode"):
         args["headless"] = True
     inject_module_variables(args=args)
-    #loop = get_event_loop()
-    #loop.run_until_complete(mu.get_serveradmindb())
+    # loop = get_event_loop()
+    # loop.run_until_complete(mu.get_serveradmindb())
     args["ssl_enabled"] = False
 
 
@@ -169,7 +171,6 @@ def get_parser_fn_gui():
     parser_fn_gui.add_argument(
         "--quiet", action="store_true", default=None, help="run quietly"
     )
-    parser_fn_gui.add_argument("--to", default="return", help="run quietly")
     parser_fn_gui.set_defaults(func=cli_gui)
     return parser_fn_gui
 

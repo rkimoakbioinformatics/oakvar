@@ -18,7 +18,6 @@ def get_entry_parser():
     p_entry = ArgumentParser(
         description="OakVar. Genomic variant analysis platform. https://github.com/rkimoakbioinformatics/oakvar"
     )
-    p_entry.add_argument("--to", default="stdout")
     subparsers = p_entry.add_subparsers(title="Commands")
     # run
     add_parser_ov_run(subparsers)
@@ -34,7 +33,7 @@ def get_entry_parser():
     p_report.r_return = "A string, a named list, or a dataframe. Output of reporters"  # type: ignore
     p_report.r_examples = [  # type: ignore
         "# Generate a CSV-format report file from the job result file example.sqlite",
-        '#roakvar::report(dbpath="example.sqlite", reports="csv")',
+        '#roakvar::report(dbpath="example.sqlite", report_types="csv")',
     ]
 
     # module
@@ -160,7 +159,6 @@ def handle_exception(e: Exception):
 
 
 def main():
-    from sys import argv
     import signal
     from .. import raise_break
 
@@ -177,7 +175,8 @@ def main():
                 return ret
             return True
         else:
-            p_entry.parse_args(argv[1:] + ["--help"])
+            p_entry.print_help()
+            exit(1)
     except Exception as e:
         handle_exception(e)
 

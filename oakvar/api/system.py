@@ -12,8 +12,9 @@ def md(directory: Optional[str] = None):
 
     if directory:
         set_modules_dir(directory)
-    d = get_modules_dir()
-    return d
+    else:
+        d = get_modules_dir()
+        return d
 
 
 def check(outer=None):

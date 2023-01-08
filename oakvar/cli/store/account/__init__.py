@@ -105,9 +105,7 @@ def add_parser_fn_store_account(subparsers):
         "# Create a store account",
         '#roakvar::store.createaccount(email="user1", password="password")',
     ]
-    subparsers = parser_cli_store_account.add_subparsers(
-        title="Commands", dest="command"
-    )
+    subparsers = parser_cli_store_account.add_subparsers()
     add_parser_fn_store_account_create(subparsers)
     add_parser_fn_store_account_delete(subparsers)
     add_parser_fn_store_account_change(subparsers)

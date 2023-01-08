@@ -665,9 +665,6 @@ def get_parser_fn_util():
     parser_fn_util_showsqliteinfo.add_argument(
         "--fmt", default="json", help="Output format. text / json / yaml"
     )
-    parser_fn_util_showsqliteinfo.add_argument(
-        "--to", default="return", help="Output to. stdout / return"
-    )
     parser_fn_util_showsqliteinfo.set_defaults(func=sqliteinfo)
     parser_fn_util_showsqliteinfo.r_return = "A named list. Information of a job SQLite file"  # type: ignore
     parser_fn_util_showsqliteinfo.r_examples = [  # type: ignore

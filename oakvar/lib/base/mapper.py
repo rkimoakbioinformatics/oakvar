@@ -9,7 +9,6 @@ class BaseMapper(object):
         input_file: Optional[str] = None,
         run_name: Optional[str] = None,
         output_dir: Optional[str] = None,
-        confs: str = "{}",
         seekpos: Optional[int] = None,
         chunksize: Optional[int] = None,
         primary_transcript: List[str] = ["mane"],
@@ -49,7 +48,6 @@ class BaseMapper(object):
         self.module_options: Dict = module_options
         self.primary_transcript_paths: List[str] = [v for v in primary_transcript if v]
         self.postfix: str = postfix
-        self.confs: str = confs
         self.seekpos: Optional[int] = seekpos
         self.chunksize: Optional[int] = chunksize
         self.primary_transcript = primary_transcript
@@ -324,9 +322,6 @@ if __name__ == "__main__":
         "-d",
         dest="output_dir",
         help="Output directory. " + "Default is input file directory.",
-    )
-    cmd_parser.add_argument(
-        "--confs", dest="confs", default="{}", help="Configuration string"
     )
     cmd_parser.add_argument(
         "--seekpos", dest="seekpos", default=None, help=argparse.SUPPRESS

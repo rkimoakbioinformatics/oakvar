@@ -4,7 +4,7 @@ from typing import Dict
 custom_system_conf = None
 
 
-def setup_system(clean: bool=False, refresh_db: bool=False, clean_cache_files: bool=False, setup_file: Optional[str]=None, email: Optional[str]=None, pw: Optional[str]=None, publish_time: str="", custom_system_conf: Optional[Dict]=None, outer=None, error=None, system_worker_state=None):
+def setup_system(clean: bool=False, refresh_db: bool=False, clean_cache_files: bool=False, setup_file: Optional[str]=None, email: Optional[str]=None, pw: Optional[str]=None, publish_time: str="", custom_system_conf: Optional[Dict]=None, outer=None, system_worker_state=None):
     from os import environ
     from ...api.module import installbase
     from .consts import sys_conf_path_key
@@ -18,36 +18,36 @@ def setup_system(clean: bool=False, refresh_db: bool=False, clean_cache_files: b
     add_system_dirs_to_system_conf(conf)
     save_system_conf(conf)
     if outer:
-        outer.write(f"System configuration file: {conf[sys_conf_path_key]}\n")
+        outer.write(f"System configuration file: {conf[sys_conf_path_key]}")
     setup_system_dirs(conf=conf, outer=outer)
     # set up a user conf file.
     setup_user_conf_file(clean=clean, conf=conf, outer=outer)
     # set up a store account.
     if outer:
-        outer.write("Logging in...\n")
+        outer.write("Logging in...")
     ret = setup_store_account(conf=conf, email=email, pw=pw)
     if ret.get("success") != True:
         if outer:
-            outer.write("Login failed\n")
+            outer.write("Login failed")
         return False
     if outer:
-        outer.write("Login successful\n")
+        outer.write("Login successful")
     # fetch ov store cache
     if outer:
-        outer.write("Setting up store cache...\n")
+        outer.write("Setting up store cache...")
     setup_ov_store_cache(refresh_db=refresh_db, clean_cache_files=clean_cache_files, clean=clean, publish_time=publish_time, outer=outer)
     # set up a multiuser database.
     if outer:
-        outer.write("Setting up administrative database...\n")
+        outer.write("Setting up administrative database...")
     setup_serveradmindb(clean=clean)
     # install base modules.
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
     if outer:
-        outer.write("Installing system modules...\n")
-    ret = installbase(clean_cache_files=clean_cache_files, refresh_db=refresh_db, clean=clean, publish_time=publish_time, no_fetch=True, conf=conf, outer=outer, error=error, system_worker_state=system_worker_state)
+        outer.write("Installing system modules...")
+    ret = installbase(clean_cache_files=clean_cache_files, refresh_db=refresh_db, clean=clean, publish_time=publish_time, no_fetch=True, conf=conf, outer=outer, system_worker_state=system_worker_state)
     if ret is None or ret == 0 or ret is True:  # 0 or None?
         if outer:
-            outer.write(f"Done setting up the system.\n")
+            outer.write(f"Done setting up the system.")
         return True
     else:  # return False is converted to 1 with @cli_func.
         if outer:
@@ -80,7 +80,7 @@ def setup_system_conf(clean: bool=False, setup_file: Optional[str]=None, custom_
     if setup_file:
         conf = get_system_conf(sys_conf_path=setup_file, conf=custom_system_conf)
         if outer:
-            outer.write(f"Loaded system configuration from {setup_file}.\n")
+            outer.write(f"Loaded system configuration from {setup_file}.")
     else:
         conf = get_system_conf(conf=custom_system_conf)
     # set system conf path if absent in sys conf.
@@ -96,7 +96,7 @@ def setup_system_conf(clean: bool=False, setup_file: Optional[str]=None, custom_
         # create the sys conf file.
         save_system_conf(conf)
         if outer:
-            outer.write(f"Created {sys_conf_path}.\n")
+            outer.write(f"Created {sys_conf_path}.")
     return conf
 
 
@@ -199,11 +199,11 @@ def setup_user_conf_file(clean: bool=False, conf: Optional[Dict]=None, outer=Non
             # create oakvar.yml
             copyfile(get_default_user_conf_path(), user_conf_path)
         if outer:
-            outer.write(f"Created: {user_conf_path}\n")
+            outer.write(f"Created: {user_conf_path}")
     # fill in missing fields, due to a newer version, with defaults.
     fill_user_conf_with_defaults_and_save()
     if outer:
-        outer.write(f"User configuration file: {user_conf_path}.\n")
+        outer.write(f"User configuration file: {user_conf_path}.")
 
 
 def fill_user_conf_with_defaults_and_save():
@@ -579,7 +579,7 @@ def create_dir_if_absent(d, outer=None):
         if not exists(d):
             makedirs(d)
             if outer:
-                outer.write(f"Created {d}.\n")
+                outer.write(f"Created {d}.")
 
 
 def is_root_user():
@@ -850,18 +850,18 @@ def check_system_yml(outer=None) -> bool:
     system_conf = get_system_conf()
     if not system_conf:
         if outer:
-            outer.write("System configuration file is missing.\n")
+            outer.write("System configuration file is missing.")
         return False
     system_conf_temp = get_system_conf_template()
     for k in system_conf_temp.keys():
         if k not in system_conf:
             if outer:
-                outer.write(f"System configuration file misses {k} field.\n")
+                outer.write(f"System configuration file misses {k} field.")
             return False
     for k in [conf_dir_key, modules_dir_key, jobs_dir_key, log_dir_key]:
         if k not in system_conf:
             if outer:
-                outer.write(f"System configuration file misses {k} field.\n")
+                outer.write(f"System configuration file misses {k} field.")
             return False
     return True
 
@@ -870,13 +870,13 @@ def check_oakvar_yml(outer=None) -> bool:
     user_conf = get_user_conf()
     if not user_conf:
         if outer:
-            outer.write("User configuration file is missing.\n")
+            outer.write("User configuration file is missing.")
         return False
     user_conf_temp = get_default_user_conf()
     for k in user_conf_temp.keys():
         if k not in user_conf:
             if outer:
-                outer.write(f"User configuration file misses {k} field.\n")
+                outer.write(f"User configuration file misses {k} field.")
             return False
     return True
 
@@ -893,7 +893,7 @@ def check_system_directories(outer=None) -> bool:
         d = system_conf[k]
         if not exists(d):
             if outer:
-                outer.write(f"System directory {k} is missing.\n")
+                outer.write(f"System directory {k} is missing.")
             return False
     return True
 
@@ -910,7 +910,7 @@ def check_account(outer=None) -> bool:
         return False
     if not check_logged_in_with_token(outer=outer):
         if outer:
-            outer.write(f"Not logged in. Use `ov account login` to log in.\n")
+            outer.write(f"Not logged in. Use `ov account login` to log in.")
         return False
     return True
 
@@ -923,7 +923,7 @@ def check_cache_files(outer=None) -> bool:
         d = join(get_cache_dir(k), "oc")
         if len(listdir(d)) == 0:
             if outer:
-                outer.write(f"System directory {d} does not exist.\n")
+                outer.write(f"System directory {d} does not exist.")
             return False
     return True
 

@@ -414,7 +414,7 @@ def try_fetch_ov_store_cache(refresh_db: bool=False, clean_cache_files: bool=Fal
         return fetch_ov_store_cache(refresh_db=refresh_db, clean_cache_files=clean_cache_files, clean=clean, publish_time=publish_time, outer=outer)
     except Exception as e:
         if outer:
-            outer.write(f"Fetching store update failed:\n\n>>{e}.\n\nContinuing with the current store cache...\n")
+            outer.write(f"Fetching store update failed:\n\n>>{e}.\n\nContinuing with the current store cache.")
 
 
 def get_remote_manifest_cache_path():
@@ -499,7 +499,7 @@ def fetch_ov_store_cache(
     cursor.execute(q, (ov_store_last_updated_col, str(server_last_updated)))
     conn.commit()
     if outer:
-        outer.write("Finalizing fetch...\n")
+        outer.write("Finalizing fetch...")
     content = make_remote_manifest()
     save_remote_manifest_cache(content)
     if outer:
@@ -811,7 +811,7 @@ def check_tables(outer=None, conn=Any, cursor=Any) -> bool:
     for table in ["summary", "versions", "info"]:
         if not table_exists(table) or not table_has_entry(table):
             if outer:
-                outer.write(f"Store cache table {table} does not exist.\n")
+                outer.write(f"Store cache table {table} does not exist.")
             return False
     return True
 

@@ -14,7 +14,7 @@ def run(
     endat: Optional[str] = None,
     skip: List[str] = [],
     confpath: Optional[str] = None,
-    confs: Optional[str] = None,
+    conf: dict = {},
     report_types: List[str] = [],
     genome: Optional[str] = None,
     cleandb: bool = False,
@@ -43,11 +43,7 @@ def run(
     logtofile: bool = False,
     loglevel: str = "INFO",
     combine_input: bool = False,
-    to: Optional[str] = "return",
     input_format: Optional[str] = None,
-    show_version: bool = False,
-    quiet: bool = False,
-    md: Optional[str] = None,
     uid: Optional[str] = None,
     outer=None,
 ):
@@ -68,7 +64,7 @@ def run(
         endat=endat,
         skip=skip,
         confpath=confpath,
-        confs=confs,
+        conf=conf,
         report_types=report_types,
         genome=genome,
         cleandb=cleandb,
@@ -98,6 +94,8 @@ def run(
         loglevel=loglevel,
         combine_input=combine_input,
         input_format=input_format,
+        uid=uid,
+        outer=outer,
     )
     loop = get_event_loop()
     return loop.run_until_complete(module.main())

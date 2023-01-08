@@ -1,7 +1,18 @@
+class CliOuter:
+    def write(self, msg: str):
+        print(msg)
+
+    def error(self, msg: str):
+        from sys import stderr
+
+        stderr.write(msg + "\n")
+        stderr.flush()
+
+
 def cli_entry(func):
     def change_args_for_cli(args):
-        args.quiet = False
-        args.to = "stdout"
+        if not hasattr(args, "quiet") or getattr(args, "quiet") != True:
+            args.outer = CliOuter()
         ret = func(args)
         exit(ret)
 
@@ -10,25 +21,17 @@ def cli_entry(func):
 
 def cli_func(func):
     def run_cli_func(*args, **kwargs):
-        from sys import stdout
-        from argparse import Namespace
         from .__main__ import handle_exception
 
-        if len(args) > 0:
-            if isinstance(args[0], Namespace):
-                if getattr(args[0], "quiet", None) == None:
-                    setattr(args[0], "quiet", True)
-        elif kwargs.get("quiet") == None:
-            kwargs["quiet"] = True
         args = get_args(*args, **kwargs)
-        args["outer"] = stdout
+        if "quiet" in args:
+            del args["quiet"]
         try:
             ret = func(args, **kwargs)
-            if args.get("to") == "stdout":
-                if ret == False:
-                    ret = 1
-                else:
-                    ret = None
+            if ret == False:
+                ret = 1
+            else:
+                ret = None
             return ret
         except Exception as e:
             handle_exception(e)

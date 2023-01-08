@@ -64,7 +64,7 @@ class Runner(object):
         self.mapper = None
         self.annotators: Dict[str, LocalModule] = {}
         self.postaggregators = {}
-        self.reports = {}
+        self.reporters = {}
         self.crvinput = None
         self.crxinput = None
         self.crginput = None
@@ -148,7 +148,7 @@ class Runner(object):
             if self.logger:
                 self.logger.info(msg)
             if self.outer:
-                self.outer.write(msg + "\n")
+                self.outer.write(msg)
             remove(fn)
 
     def download_url_input(self, ip):
@@ -249,7 +249,7 @@ class Runner(object):
         self.logger.info(
             f"system: oakvar=={au.get_current_package_version()} {au.get_packagedir()}"
         )
-        if self.package_conf is not None and len(self.package_conf) > 0:
+        if len(self.package_conf) > 0:
             self.logger.info(
                 f'package: {self.args.package} {self.package_conf.get("version")}'
             )
@@ -260,7 +260,7 @@ class Runner(object):
             if module is None:
                 raise ModuleLoadingError("mapper")
             log_module(module, self.logger)
-        for _, module in self.reports.items():
+        for _, module in self.reporters.items():
             log_module(module, self.logger)
 
     async def process_clean(self, run_no: int):
@@ -270,7 +270,7 @@ class Runner(object):
         if self.logger:
             self.logger.info(msg)
         if self.outer:
-            self.outer.write(msg + "\n")
+            self.outer.write(msg)
         self.delete_output_files(run_no)
 
     def log_input(self, run_no: int):
@@ -405,16 +405,16 @@ class Runner(object):
         from ..util.admin_util import get_user_conf
 
         # package including -a (add) and -A (replace)
-        if "run" in self.package_conf:
-            for k, v in self.package_conf.get("run", {}).items():
-                if k == "annotators" and v and isinstance(v, list):
-                    if not args.get("annotators_replace"):
-                        for v2 in v:
-                            if v2 not in args.get("annotators", []):
-                                args["annotators"].append(v2)
-                else:
-                    if k not in args or not args[k]:
-                        args[k] = v
+        run_conf = self.package_conf.get("run", {})
+        for k, v in run_conf.items():
+            if k == "annotators" and v and isinstance(v, list):
+                if not args.get("annotators_replace"):
+                    for v2 in v:
+                        if v2 not in args.get("annotators", []):
+                            args["annotators"].append(v2)
+            else:
+                if k not in args or not args[k]:
+                    args[k] = v
         self.conf_path = args.get("confpath", None)
         self.make_self_conf(args)
         self.main_conf = get_user_conf() or {}
@@ -427,7 +427,7 @@ class Runner(object):
         self.args = SimpleNamespace(**args)
         if self.args.vcf2vcf and self.args.combine_input:
             if self.outer:
-                self.outer.write(f"--vcf2vcf is used. --combine-input is disabled.\n")
+                self.outer.write(f"--vcf2vcf is used. --combine-input is disabled.")
             self.args.combine_input = False
         self.process_module_options()
 
@@ -441,25 +441,12 @@ class Runner(object):
                 job_dir=self.output_dir[run_no], job_name=self.job_name[run_no]
             )
 
-    def make_self_conf(self, args, error=None):
+    def make_self_conf(self, args):
         from ..exceptions import SetupError
-        import json
 
         if args is None:
             raise SetupError()
         self.run_conf = args.get("conf", {}).get("run", {})
-        confs = args.get("confs")
-        if confs:
-            conf_bak = self.conf
-            try:
-                confs_conf = json.loads(confs.replace("'", '"'))
-                self.conf.update(confs_conf)
-            except Exception:
-                if self.outer:
-                    self.outer.write(
-                        "Error in processing cs option. --cs option was not applied.\n",
-                    )
-                self.conf = conf_bak
 
     def populate_secondary_annotators(self, run_no):
         from os import listdir
@@ -671,11 +658,11 @@ class Runner(object):
                 if self.args.combine_input:
                     if len(self.args.output_dir) != 1:
                         raise ArgumentError(msg="-d should have one value when --combine-input is used.")
-                    self.output_dir = self.args.output_dir
+                    self.output_dir = [str(Path(v).absolute()) for v in self.args.output_dir]
                 else:
                     if len(self.args.output_dir) != len(self.inputs):
                         raise ArgumentError(msg="-d should have the same number of values as inputs.")
-                    self.output_dir = self.args.output_dir
+                    self.output_dir = [str(Path(v).absolute()) for v in self.args.output_dir]
         for output_dir in self.output_dir:
             if not Path(output_dir).exists():
                 mkdir(output_dir)
@@ -686,7 +673,7 @@ class Runner(object):
         package_name = args.get("package", None)
         if package_name:
             if package_name in get_module_cache().get_local():
-                self.package_conf = get_module_cache().get_local()[package_name].conf
+                self.package_conf: dict = get_module_cache().get_local()[package_name].conf
             else:
                 self.package_conf = {}
         else:
@@ -801,7 +788,7 @@ class Runner(object):
                     self.args.inputs = inputs
                 else:
                     if self.outer:
-                        self.outer.write(f"inputs in conf file should be a list (received {inputs}).\n")
+                        self.outer.write(f"inputs in conf file should be a list (received {inputs}).")
 
     def set_start_end_levels(self):
         from ..exceptions import SetupError
@@ -851,6 +838,9 @@ class Runner(object):
             self.regenerate_from_db(run_no)
         return True
 
+    def get_package_conf_run_value(self, key: str):
+        return self.package_conf.get("run", {}).get(key)
+
     def set_preparers(self):
         from ..exceptions import SetupError
         from ..module.local import get_local_module_infos_by_names
@@ -860,14 +850,12 @@ class Runner(object):
         self.excludes = self.args.excludes
         if len(self.args.preparers) > 0:
             self.preparer_names = self.args.preparers
-        elif (
-            self.package_conf is not None
-            and "run" in self.package_conf
-            and "preparers" in self.package_conf.get("run", {})
-        ):
-            self.preparer_names = self.package_conf.get("run", {}).get("preparers")
         else:
-            self.preparer_names = []
+            package_conf_preparers = self.get_package_conf_run_value("preparers")
+            if package_conf_preparers:
+                self.preparer_names = package_conf_preparers
+            else:
+                self.preparer_names = []
         if "preparer" in self.args.skip:
             self.preparer_names = []
         elif len(self.excludes) > 0:
@@ -913,7 +901,7 @@ class Runner(object):
             raise SetupError()
         if self.args.mapper_name:
             self.mapper_name = self.args.mapper_name[0]
-        self.mapper_name = self.package_conf.get("run", {}).get("mapper")
+        self.mapper_name = self.get_package_conf_run_value("mapper")
         if not self.mapper_name:
             self.mapper_name = self.main_conf.get("genemapper")
         self.check_valid_modules([self.mapper_name])
@@ -1066,20 +1054,18 @@ class Runner(object):
             raise SetupError()
         if self.args.report_types:
             self.report_names = self.args.report_types
-        elif (
-            self.package_conf is not None
-            and self.package_conf.get("run")
-            and self.package_conf["run"].get("reports")
-        ):
-            self.report_names = self.package_conf["run"]["reports"]
         else:
-            self.report_names = []
+            package_conf_reports = self.get_package_conf_run_value("reports")
+            if package_conf_reports:
+                self.report_names = self.package_conf["run"]["reports"]
+            else:
+                self.report_names = []
         if "reporter" in self.args.skip:
-            self.reports = {}
+            self.reporters = {}
         else:
             self.reporter_names = [v + "reporter" for v in self.report_names]
             self.check_valid_modules(self.reporter_names)
-            self.reports = get_local_module_infos_by_names(self.reporter_names)
+            self.reporters = get_local_module_infos_by_names(self.reporter_names)
 
     def _find_secondary_annotators(self, module, ret):
         sannots = self.get_secondary_modules(module)
@@ -1155,7 +1141,6 @@ class Runner(object):
         if not output_dir:
             return
         crx_path = Path(output_dir) / f"{run_name}.crx"
-        print(f"@ crx_path={crx_path}")
         wf = open(str(crx_path), "w")
         fns = sorted(
             [
@@ -1165,17 +1150,13 @@ class Runner(object):
                 )
             ]
         )
-        print(f"@ fns={fns}")
         fn = fns[0]
         f = open(fn)
-        print(f"@ 1")
         for line in f:
             wf.write(line)
         f.close()
-        print(f"@ 1")
         remove(fn)
         for fn in fns[1:]:
-            print(f"@ 1 - {fn}")
             f = open(fn)
             for line in f:
                 if line[0] != "#":
@@ -1183,7 +1164,6 @@ class Runner(object):
             f.close()
             remove(fn)
         wf.close()
-        print(f"@ done")
 
     def collect_crgs(self, run_no: int):
         from os import remove
@@ -1472,7 +1452,7 @@ class Runner(object):
             if self.logger:
                 self.logger.info(s)
             if self.outer:
-                self.outer.write(s + "\n")
+                self.outer.write(s)
             return
         try:
             info_json_s = dumps(self.info_json)
@@ -1519,7 +1499,7 @@ class Runner(object):
         self.info_json["submission_time"] = datetime.now().isoformat()
         self.info_json["viewable"] = False
         self.info_json["note"] = self.args.note
-        self.info_json["reports"] = (
+        self.info_json["report_types"] = (
             self.args.report_types if self.args.report_types != None else []
         )
         self.pkg_ver = oakvar_version()
@@ -1730,10 +1710,8 @@ class Runner(object):
                             ).replace("=", r"\=")
                         )
             kwargs = {
-                "script_path": module.script_path,
                 "input_file": inputpath,
                 "secondary_inputs": secondary_inputs,
-                "log_path": self.log_path,
                 "module_options": self.run_conf.get(module.name, {}),
             }
             kwargs["run_name"] = run_name
@@ -1936,9 +1914,9 @@ class Runner(object):
             raise
         run_name = self.run_name[run_no]
         output_dir = self.output_dir[run_no]
-        if len(self.reports) > 0:
-            module_names = [v for v in self.reports.keys()]
-            report_types = [v.replace("reporter", "") for v in self.reports.keys()]
+        if len(self.reporters) > 0:
+            module_names = [v for v in self.reporters.keys()]
+            report_types = [v.replace("reporter", "") for v in self.reporters.keys()]
         else:
             module_names = []
             report_types = []
@@ -1950,15 +1928,13 @@ class Runner(object):
             if module is None:
                 raise ModuleNotExist(module_name)
             arg_dict = {} #dict(vars(self.args))
-            arg_dict["script_path"] = module.script_path
             arg_dict["dbpath"] = str(Path(output_dir) / (run_name + ".sqlite"))
             arg_dict["savepath"] = str(Path(output_dir) / run_name)
             arg_dict["output_dir"] = output_dir
             arg_dict["module_name"] = module_name
-            arg_dict["conf"] = self.conf
             arg_dict[MODULE_OPTIONS_KEY] = self.run_conf.get(module_name, {})
             Reporter = load_class(module.script_path, "Reporter")
-            reporter = Reporter(arg_dict)
+            reporter = Reporter(**arg_dict)
             response_t = await self.log_time_of_func(reporter.run, work=module_name)
             output_fns = None
             response_type = type(response_t)
@@ -2048,7 +2024,7 @@ class Runner(object):
     async def do_step_reporter(self, run_no: int):
         step = "reporter"
         self.reporter_ran = False
-        if self.should_run_step(step) and self.reports:
+        if self.should_run_step(step) and self.reporters:
             self.report_response = await self.log_time_of_func(self.run_reporter, run_no, work=f"{step} step")
             self.reporter_ran = True
 

@@ -18,7 +18,6 @@ class BaseReporter:
         confpath: Optional[str] = None,
         module_name: Optional[str] = None,
         nogenelevelonvariantlevel: bool = False,
-        confs: str = "{}",
         inputfiles: Optional[List[str]] = None,
         separatesample: bool = False,
         output_dir: Optional[str] = None,
@@ -49,7 +48,6 @@ class BaseReporter:
         self.confpath = confpath
         self.module_name = module_name
         self.nogenelevelonvariantlevel = nogenelevelonvariantlevel
-        self.confs = confs
         self.inputfiles = inputfiles
         self.separatesample = separatesample
         self.output_dir = output_dir
@@ -90,7 +88,6 @@ class BaseReporter:
         self.module_conf = None
         self.output_basename = None
         self.status_fpath = None
-        self.concise_report = None
         self.extract_columns_multilevel = {}
         self.logger = None
         self.error_logger = None
@@ -641,11 +638,6 @@ class BaseReporter:
                 incl = True
             else:
                 incl = False
-        elif self.concise_report:
-            if "col_hidden" in column and column["col_hidden"] == True:
-                incl = False
-            else:
-                incl = True
         else:
             incl = True
         if incl and col_name not in self.colnames_to_display[level]:
@@ -907,7 +899,7 @@ class BaseReporter:
                 self.columns[level][i]["reportsub"] = reportsub[module_name][field_name]
 
     def set_display_select_columns(self, level):
-        if self.extract_columns_multilevel.get(level, {}) or self.concise_report:
+        if self.extract_columns_multilevel.get(level, {}):
             self.display_select_columns[level] = True
         else:
             self.display_select_columns[level] = False

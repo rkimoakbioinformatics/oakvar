@@ -13,7 +13,7 @@ class MasterConverter(object):
 
     ALREADYCRV = 2
 
-    def __init__(self, inputs: List[str]=[], input_format: Optional[str]=None, name: Optional[str]=None, output_dir: Optional[str]=None, genome: Optional[str]=None, confs: str="{}", serveradmindb=None, conf: Dict={}, module_options: Dict={}, outer=None):
+    def __init__(self, inputs: List[str]=[], input_format: Optional[str]=None, name: Optional[str]=None, output_dir: Optional[str]=None, genome: Optional[str]=None, serveradmindb=None, conf: Dict={}, module_options: Dict={}, outer=None):
         from re import compile
         from oakvar import get_wgs_reader
         from oakvar.lib.exceptions import ExpectedException
@@ -71,7 +71,6 @@ class MasterConverter(object):
         self.name = name
         self.output_dir = output_dir
         self.genome = genome
-        self.confs = confs
         self.parse_inputs()
         self.parse_output_dir()
         self.given_input_assembly = genome
@@ -150,8 +149,6 @@ class MasterConverter(object):
         from pathlib import Path
         from os import makedirs
 
-        self.output_dir = None
-        self.output_dir = self.output_dir or None
         if not self.output_dir:
             self.output_dir = self.input_dir
         if not self.output_dir:
@@ -228,14 +225,14 @@ class MasterConverter(object):
             # end of backward compatibility
             if not hasattr(converter, "format_name"):
                 if self.outer:
-                    self.outer.write("{module_info.name} does not have format_name defined and thus was skipped.\n")
+                    self.outer.write("{module_info.name} does not have format_name defined and thus was skipped.")
                 continue
             converter.module_name = module_info.name
             if converter.format_name not in self.converters:
                 self.converters[converter.format_name] = converter
             else:
                 if self.outer:
-                    self.outer.write("{moule_info.name} is skipped because {converter.format_name} is already handled by {self.converters[converter.format_name].name}.\n")
+                    self.outer.write("{moule_info.name} is skipped because {converter.format_name} is already handled by {self.converters[converter.format_name].name}.")
                 continue
         self.available_input_formats = list(self.converters.keys())
 
@@ -822,9 +819,6 @@ if __name__ == "__main__":
         dest="genome",
         default=None,
         help="Input gene assembly. Will be lifted over to hg38",
-    )
-    parser.add_argument(
-        "--confs", dest="confs", default="{}", help="Configuration string"
     )
 
     master_converter = MasterConverter()

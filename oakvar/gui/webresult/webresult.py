@@ -379,7 +379,7 @@ async def get_result(request):
         separatesample = False
     if separatesample:
         arg_dict["separatesample"] = True
-    arg_dict["reports"] = ["text"]
+    arg_dict["report_types"] = ["text"]
     no_summary = queries.get("no_summary")
     arg_dict["no_summary"] = no_summary
     add_summary = not no_summary
@@ -656,7 +656,7 @@ async def get_colinfo(dbpath, confpath=None, filterstring=None, add_summary=True
         arg_dict["confpath"] = confpath
     if filterstring != None:
         arg_dict["filterstring"] = filterstring
-    arg_dict["reports"] = ["text"]
+    arg_dict["report_types"] = ["text"]
     reporter = m.Reporter(arg_dict)
     await reporter.prep()
     # reporter_levels = await reporter.get_levels_to_run("all")

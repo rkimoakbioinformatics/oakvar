@@ -21,7 +21,7 @@ class BaseAnnotator(object):
     }
     required_conf_keys = ["level", "output_columns"]
 
-    def __init__(self, input_file: str, secondary_inputs=None, run_name: Optional[str]=None, output_dir: Optional[str]=None, plainoutput: bool=False, confs: str="{}", logtofile: bool=False, module_options: Dict={}, serveradmindb=None):
+    def __init__(self, input_file: str, secondary_inputs=None, run_name: Optional[str]=None, output_dir: Optional[str]=None, plainoutput: bool=False, logtofile: bool=False, module_options: Dict={}, serveradmindb=None):
         import os
         import sys
         from pathlib import Path
@@ -37,7 +37,6 @@ class BaseAnnotator(object):
         self.run_name = run_name
         self.output_dir = output_dir
         self.plain_output = plainoutput
-        self.confs = confs
         self.logtofile = logtofile
         fp = sys.modules[self.__module__].__file__
         if not fp:
@@ -674,9 +673,6 @@ if __name__ == "__main__":
         action="store_true",
         dest="plainoutput",
         help="Skip column definition writing",
-    )
-    parser.add_argument(
-        "--confs", dest="confs", default="{}", help="Configuration string"
     )
     parser.add_argument(
         "--quiet",
