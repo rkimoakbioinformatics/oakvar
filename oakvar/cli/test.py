@@ -11,7 +11,14 @@ def cli_util_test(args):
 def test(args, __name__="util test"):
     from ..api.test import test
 
-    return test(**args)
+    ret = test(**args)
+    if ret:
+        num_failed: int = ret.get("num_failed", 0)
+        if num_failed > 0:
+            return False
+        else:
+            return True
+    return True
 
 
 def get_parser_cli_util_test():

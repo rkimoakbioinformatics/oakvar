@@ -718,7 +718,6 @@ class Tester:
     def verify_level(self, level, module_name):
         from ..lib.exceptions import ModuleLoadingError
 
-        # self._report("  Verifying " + level + " level values.")
         if self.module is None:
             raise ModuleLoadingError(self.module_name)
         key_reader = self.create_report_reader(self.report_type, self.key_path)
@@ -854,6 +853,5 @@ def test(rundir: Optional[str]=None, modules: Optional[List[str]]=[], outer=None
     modules_failed.sort()
     if outer:
         outer.write(f"passed {passed} failed {failed}")
-    else:
-        return {"result": result, "num_passed": passed, "num_failed": failed}
+    return {"result": result, "num_passed": passed, "num_failed": failed}
 

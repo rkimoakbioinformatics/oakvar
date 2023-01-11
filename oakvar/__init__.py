@@ -135,7 +135,7 @@ def get_live_annotator(module_name, input_file=None):
     input_file = input_file or "__dummy__"
     ModuleClass = get_module(module_name)
     if ModuleClass:
-        module = ModuleClass(input_file=input_file, live=True)
+        module = ModuleClass(input_file=input_file)
         module.annotator_name = module_name
         module.name = module_name
         module.annotator_dir = os.path.dirname(module.script_path)
