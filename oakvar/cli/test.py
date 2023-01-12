@@ -623,7 +623,7 @@ class Tester:
             cmd_list.extend(["-l", "hg19"])
         else:
             cmd_list.extend(["-l", "hg38"])
-        if self.args["to"] == "stdout":
+        if self.args.get("to") == "stdout":
             quiet_print(" ".join(cmd_list), args=self.args)
         exit_code = call(" ".join(cmd_list), shell=True, stdout=self.log, stderr=STDOUT)
         if exit_code != 0:
@@ -785,29 +785,25 @@ class Tester:
 
     # Log success /failure of test.
     def write_results(self, stdout=True):
+        from time import time
+        from ..exceptions import ModuleLoadingError
+        from ..exceptions import ExpectedException
         if self.module is None:
-            from ..exceptions import ModuleLoadingError
-
             raise ModuleLoadingError(self.module_name)
         if self.start_time is None:
-            from ..exceptions import ExpectedException
-
             raise ExpectedException("start_time does not exist.")
-        from time import time
-
         self.end_time = time()
         elapsed_time = self.end_time - self.start_time
         self._report(f"{self.module.name}: finished in %.2f seconds" % elapsed_time)
+        print(f"@ test_passed={self.test_passed}. stdout={stdout}")
         if self.test_passed:
             if stdout:
                 self._report(f"{self.module.name}: PASS", stdout=stdout)
-            else:
-                return "PASS"
+            return "PASS"
         else:
             if stdout:
                 self._report(f"{self.module.name}: FAIL", stdout=stdout)
-            else:
-                return "FAIL"
+            return "FAIL"
 
 
 @cli_entry
