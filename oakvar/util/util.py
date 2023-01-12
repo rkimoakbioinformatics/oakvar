@@ -613,6 +613,9 @@ def get_df_from_db(
 ):
     import sys
     from pathlib import Path
+    from os import environ
+
+    environ["RUST_LOG"] = "connectorx=warn,connectorx_python=warn"
     import polars as pl
 
     partition_ons = {

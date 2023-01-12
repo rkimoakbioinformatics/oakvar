@@ -795,7 +795,6 @@ class Tester:
         self.end_time = time()
         elapsed_time = self.end_time - self.start_time
         self._report(f"{self.module.name}: finished in %.2f seconds" % elapsed_time)
-        print(f"@ test_passed={self.test_passed}. stdout={stdout}")
         if self.test_passed:
             if stdout:
                 self._report(f"{self.module.name}: PASS", stdout=stdout)
