@@ -349,6 +349,7 @@ class FileWriter(BaseFile):
                     self.csvwriter.writerow(wtoks)
                 except:
                     import traceback
+
                     traceback.print_exc()
         else:
             self.wf.write("\t".join(wtoks) + "\n")
@@ -476,6 +477,7 @@ class ColumnDefinition(object):
         "hidden",
         "category",
         "filterable",
+        "hide_from_gui_filter",
         "link_format",
         "genesummary",
     ]
@@ -490,6 +492,7 @@ class ColumnDefinition(object):
         "col_hidden",
         "col_ctg",
         "col_filterable",
+        "col_hide_from_gui_filter",
         "col_link_format",
     ]
 
@@ -503,6 +506,7 @@ class ColumnDefinition(object):
         "col_hidden": "hidden",
         "col_ctg": "category",
         "col_filterable": "filterable",
+        "col_hide_from_gui_filter": "hide_from_gui_filter",
         "col_link_format": "link_format",
         "col_genesummary": "genesummary",
     }
@@ -518,6 +522,7 @@ class ColumnDefinition(object):
         self.hidden = None
         self.category = None
         self.filterable = None
+        self.hide_from_gui_filter = None
         self.link_format = None
         self.genesummary = None
         self.table = None
@@ -535,6 +540,7 @@ class ColumnDefinition(object):
         self.hidden = bool(d.get("hidden", False))
         self.category = d.get("category")
         self.filterable = bool(d.get("filterable", True))
+        self.hide_from_gui_filter = bool(d.get("hide_from_gui_filter", False))
         self.link_format = d.get("link_format")
         self.genesummary = d.get("genesummary", False)
         self.table = d.get("table", False)
@@ -566,6 +572,8 @@ class ColumnDefinition(object):
                 self.hidden = loads(self.hidden.lower())
             if isinstance(self.filterable, str):
                 self.filterable = loads(self.filterable.lower())
+            if isinstance(self.hide_from_gui_filter, str):
+                self.hide_from_gui_filter = loads(self.hide_from_gui_filter.lower())
             if self.link_format == "":
                 self.link_format = None
 
@@ -590,6 +598,7 @@ class ColumnDefinition(object):
             "col_hidden": self.hidden,
             "col_ctg": self.category,
             "col_filterable": self.filterable,
+            "col_hide_from_gui_filter": self.hide_from_gui_filter,
             "link_format": self.link_format,
             "col_genesummary": self.genesummary,
             "col_index": self.index,

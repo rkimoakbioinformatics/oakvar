@@ -407,6 +407,9 @@ const populateFilterColumnSelector = (colSel, groupTitle) => {
   }
   for (let i = 0; i < allCols.length; i++) {
     const col = allCols[i];
+    if (col.hide_from_gui_filter) {
+      continue;
+    }
     if (filterMgr.qbBannedColumns.indexOf(col.col) > -1) {
       continue;
     }

@@ -525,7 +525,6 @@ class MasterConverter(object):
             self._log_conversion_error(
                 self.read_lnum, e, full_line_error=False
             )
-        print(f"@ {self.input_path_dict2}")
         if self.pipeinput:
             fileno = self.input_path_dict2[STDIN]
         else:
