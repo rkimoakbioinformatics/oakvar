@@ -187,7 +187,7 @@ class MasterConverter(object):
         if not self.input_paths:
             raise
         for input_path in self.input_paths:
-            if input_path == "./stdin":
+            if input_path in ["./stdin", STDIN]:
                 f = stdin
             else:
                 f = self.get_file_object_for_input_path(input_path)
@@ -525,12 +525,17 @@ class MasterConverter(object):
             self._log_conversion_error(
                 self.read_lnum, e, full_line_error=False
             )
+        print(f"@ {self.input_path_dict2}")
+        if self.pipeinput:
+            fileno = self.input_path_dict2[STDIN]
+        else:
+            fileno = self.input_path_dict2[self.input_path]
         self.crm_writer.write_data(
             {
                 "original_line": self.read_lnum,
                 "tags": variant["tags"],
                 "uid": self.uid,
-                "fileno": f"{self.input_path_dict2[self.input_path]}",
+                "fileno": fileno
             }
         )
         self.crs_writer.write_data(variant)
