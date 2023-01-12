@@ -4,6 +4,7 @@ from typing import Optional
 
 ov_system_output_columns: Optional[dict] = None
 
+
 def get_ucsc_bins(start, stop=None):
     if stop is None:
         stop = start + 1
@@ -284,6 +285,7 @@ def get_args(parser, inargs, inkwargs):
                 inarg_dict[key] = [value]
     return inarg_dict
 
+
 def filter_affected_cols(filter):
     cols = set()
     if "column" in filter:
@@ -482,6 +484,7 @@ def get_result_dbpath(output_dir: str, run_name: str):
 
     return str(Path(output_dir) / (run_name + result_db_suffix))
 
+
 def get_unique_path(path: str):
     from pathlib import Path
 
@@ -521,6 +524,7 @@ def print_tabular_lines(l, args=None):
         else:
             print(line)
 
+
 def log_module(module, logger):
     if logger:
         code_version = None
@@ -531,6 +535,7 @@ def log_module(module, logger):
         if not code_version:
             code_version = "?"
         logger.info(f"module: {module.name}=={code_version} {module.script_path}")
+
 
 def get_ov_system_output_columns() -> dict:
     from pathlib import Path
@@ -546,11 +551,13 @@ def get_ov_system_output_columns() -> dict:
         return {}
     return ov_system_output_columns
 
+
 def get_crv_def() -> list:
     from ..consts import INPUT_LEVEL_KEY
 
     output_columns: dict = get_ov_system_output_columns()
     return output_columns[INPUT_LEVEL_KEY]
+
 
 def get_crx_def() -> list:
     from ..consts import VARIANT_LEVEL_KEY
@@ -558,11 +565,13 @@ def get_crx_def() -> list:
     output_columns: dict = get_ov_system_output_columns()
     return output_columns[VARIANT_LEVEL_KEY]
 
+
 def get_crg_def() -> list:
     from ..consts import GENE_LEVEL_KEY
 
     output_columns: dict = get_ov_system_output_columns()
     return output_columns[GENE_LEVEL_KEY]
+
 
 def get_crs_def() -> list:
     from ..consts import SAMPLE_LEVEL_KEY
@@ -570,11 +579,13 @@ def get_crs_def() -> list:
     output_columns: dict = get_ov_system_output_columns()
     return output_columns[SAMPLE_LEVEL_KEY]
 
+
 def get_crm_def() -> list:
     from ..consts import MAPPING_LEVEL_KEY
 
     output_columns: dict = get_ov_system_output_columns()
     return output_columns[MAPPING_LEVEL_KEY]
+
 
 def get_crl_def() -> list:
     from ..consts import LIFTOVER_LEVEL_KEY
@@ -582,3 +593,54 @@ def get_crl_def() -> list:
     output_columns: dict = get_ov_system_output_columns()
     return output_columns[LIFTOVER_LEVEL_KEY]
 
+
+def get_result_db_conn(db_path: str):
+    import sqlite3
+    from pathlib import Path
+
+    p = Path(db_path)
+    if not p.exists():
+        return None
+    conn = sqlite3.connect(p)
+    return conn
+
+
+def get_df_from_db(
+    in_db_path: str,
+    table_name: str = "variant",
+    sql: Optional[str] = None,
+    num_cores: int = 1,
+):
+    import sys
+    from pathlib import Path
+    import polars as pl
+
+    partition_ons = {
+        "variant": "base__uid",
+        "gene": "base__hugo",
+        "sample": "base__uid",
+        "mapping": "base__uid",
+    }
+    df = None
+    db_path = str(Path(in_db_path).absolute())
+    partition_on = partition_ons.get(table_name)
+    db_conn = get_result_db_conn(db_path)
+    if not db_conn:
+        return None
+    if partition_on and table_name:
+        c = db_conn.cursor()
+        c.execute(f"select {partition_on} from {table_name} limit 1")
+        ret = c.fetchone()
+        if not ret:
+            sys.stderr.write(f"{partition_on} does not exist in {table_name}")
+            return None
+    if not sql:
+        sql = f"select * from {table_name}"
+    conn_url = f"sqlite://{db_path}"
+    if partition_on and num_cores:
+        df = pl.read_sql(
+            sql, conn_url, partition_on=partition_on, partition_num=num_cores
+        )
+    else:
+        df = pl.read_sql(sql, conn_url)
+    return df
