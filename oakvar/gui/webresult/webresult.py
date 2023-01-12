@@ -582,6 +582,7 @@ def get_colmodel(tab, colinfo):
                 "default_hidden": d["col_hidden"],
                 "ctg": d["col_ctg"],
                 "filterable": d["col_filterable"],
+                "hide_from_gui_filter": d["col_hide_from_gui_filter"],
                 "link_format": d.get("link_format"),
                 "level": d.get("level"),
             }
