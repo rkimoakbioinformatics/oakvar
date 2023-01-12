@@ -252,9 +252,17 @@ def get_platform():
 
 
 def get_liftover_chains_dir():
+    from pathlib import Path
     from os.path import join as pathjoin
 
-    return pathjoin(get_packagedir(), "liftover")
+    d_new = pathjoin(get_packagedir(), "lib", "liftover")
+    d_old = pathjoin(get_packagedir(), "liftover")
+    if Path(d_new).exists():
+        return d_new
+    elif Path(d_old).exists():
+        return d_old
+    else:
+        return None
 
 
 def get_max_version_supported_for_migration():

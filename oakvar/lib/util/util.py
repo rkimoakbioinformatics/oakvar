@@ -137,7 +137,7 @@ def detect_encoding(path):
     for line in f:
         detector.feed(line)
         count += 1
-        if detector.done or count == 100000:
+        if detector.done or count == 10000:
             encoding = detector.result["encoding"]
             break
     detector.close()
