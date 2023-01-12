@@ -2,6 +2,7 @@ from typing import Optional
 from typing import Dict
 
 
+
 class BasePostAggregator(object):
 
     cr_type_to_sql = {"string": "text", "int": "integer", "float": "real"}
@@ -214,6 +215,39 @@ class BasePostAggregator(object):
                 self.table_headers[col["name"]] = []
                 for h in col["table_header"]:
                     self.table_headers[col["name"]].append(h["name"])
+
+    def get_df(
+        self, level: str = "variant", sql: Optional[str] = None, num_cores: int = 1
+    ):
+        from ..util.util import get_df_from_db
+
+        if not self.db_path:
+            return None
+        df = get_df_from_db(
+            self.db_path, table_name=level, sql=sql, num_cores=num_cores
+        )
+        return df
+
+    def save_df(self, df, level: str):
+        if not self.conf:
+            return
+        assert self.dbconn is not None
+        ref_colnames = {"variant": "base__uid", "gene": "base__hugo", "sample": "base__uid", "mapping": "base__uid"}
+        ref_colname = ref_colnames.get(level)
+        if not ref_colname:
+            return
+        c = self.dbconn.cursor()
+        output_columns = self.conf["output_columns"]
+        for coldef in output_columns:
+            print(coldef)
+            col_name = f"{coldef['name']}"
+            ref_ids = df[ref_colname]
+            for ref_id in ref_ids:
+                value = df[ref_colname==ref_id, col_name]
+                q = f"update {level} set {col_name}=? where {ref_colname}=?"
+                c.execute(q, (value, ref_id))
+        self.dbconn.commit()
+        c.close()
 
     def run(self):
         from time import time, asctime, localtime
