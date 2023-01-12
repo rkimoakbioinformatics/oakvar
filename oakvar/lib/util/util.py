@@ -600,3 +600,55 @@ def get_crl_def() -> list:
 
     output_columns: dict = get_ov_system_output_columns()
     return output_columns[LIFTOVER_LEVEL_KEY]
+
+
+def get_result_db_conn(db_path: str):
+    import sqlite3
+    from pathlib import Path
+
+    p = Path(db_path)
+    if not p.exists():
+        return None
+    conn = sqlite3.connect(p)
+    return conn
+
+
+def get_df_from_db(
+    in_db_path: str,
+    table_name: str = "variant",
+    sql: Optional[str] = None,
+    num_cores: int = 1,
+):
+    import sys
+    from pathlib import Path
+    import polars as pl
+
+    partition_ons = {
+        "variant": "base__uid",
+        "gene": "base__hugo",
+        "sample": "base__uid",
+        "mapping": "base__uid",
+    }
+    df = None
+    db_path = str(Path(in_db_path).absolute())
+    partition_on = partition_ons.get(table_name)
+    db_conn = get_result_db_conn(db_path)
+    if not db_conn:
+        return None
+    if partition_on and table_name:
+        c = db_conn.cursor()
+        c.execute(f"select {partition_on} from {table_name} limit 1")
+        ret = c.fetchone()
+        if not ret:
+            sys.stderr.write(f"{partition_on} does not exist in {table_name}")
+            return None
+    if not sql:
+        sql = f"select * from {table_name}"
+    conn_url = f"sqlite://{db_path}"
+    if partition_on and num_cores:
+        df = pl.read_sql(
+            sql, conn_url, partition_on=partition_on, partition_num=num_cores
+        )
+    else:
+        df = pl.read_sql(sql, conn_url)
+    return df
