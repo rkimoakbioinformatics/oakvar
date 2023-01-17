@@ -44,6 +44,7 @@ def run(
     loglevel: str = "INFO",
     combine_input: bool = False,
     input_format: Optional[str] = None,
+    input_encoding: Optional[str] = None,
     uid: Optional[str] = None,
     outer=None,
 ):
@@ -94,6 +95,7 @@ def run(
         loglevel=loglevel,
         combine_input=combine_input,
         input_format=input_format,
+        input_encoding=input_encoding,
         uid=uid,
         outer=outer,
     )
