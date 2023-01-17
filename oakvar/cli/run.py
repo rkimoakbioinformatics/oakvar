@@ -277,4 +277,9 @@ def add_parser_ov_run(subparsers):
         action="store_true",
         help="Combine input files into one result",
     )
+    parser_ov_run.add_argument(
+        "--input-encoding",
+        default=None,
+        help="Encoding of input files",
+    )
     parser_ov_run.set_defaults(func=cli_run)

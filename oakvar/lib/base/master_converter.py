@@ -13,7 +13,7 @@ class MasterConverter(object):
 
     ALREADYCRV = 2
 
-    def __init__(self, inputs: List[str]=[], input_format: Optional[str]=None, name: Optional[str]=None, output_dir: Optional[str]=None, genome: Optional[str]=None, serveradmindb=None, conf: Dict={}, module_options: Dict={}, outer=None):
+    def __init__(self, inputs: List[str]=[], input_format: Optional[str]=None, name: Optional[str]=None, output_dir: Optional[str]=None, genome: Optional[str]=None, serveradmindb=None, conf: Dict={}, module_options: Dict={}, input_encoding=None, outer=None):
         from re import compile
         from oakvar import get_wgs_reader
         from oakvar.lib.exceptions import ExpectedException
@@ -79,6 +79,7 @@ class MasterConverter(object):
         if conf:
             self.conf.update(conf)
         self.serveradmindb = serveradmindb
+        self.input_encoding = input_encoding
         self.outer = outer
         self.setup_logger()
         self.wgsreader = get_wgs_reader(assembly="hg38")
@@ -171,6 +172,9 @@ class MasterConverter(object):
         else:
             if self.logger:
                 self.logger.info(f"detecting encoding of {input_path}")
+        if self.input_encoding:
+            encoding = self.input_encoding
+        else:
             encoding = detect_encoding(input_path)
         if self.logger:
             self.logger.info(f"encoding: {input_path} {encoding}")
@@ -499,32 +503,41 @@ class MasterConverter(object):
         variant["pos"] = new_pos
         variant["ref_base"] = new_ref
         variant["alt_base"] = new_alt
-        variant["uid"] = self.uid
 
-    def handle_variant(self, variant: dict, var_no: int, converter):
+    def add_unique_variant(self, variant: dict, unique_variants: set):
+        var_str = f"{variant['chrom']}:{variant['pos']}:{variant['ref_base']}:{variant['alt_base']}"
+        is_unique = var_str not in unique_variants
+        if is_unique:
+            unique_variants.add(var_str)
+        return is_unique
+
+    def handle_variant(self, variant: dict, var_no: int, converter, unique_variants: set):
         from oakvar.lib.exceptions import NoVariantError
 
         if not self.crv_writer or not self.crm_writer or not self.crs_writer:
             raise
-        self.handle_chrom(variant)
-        self.handle_ref_base(variant)
-        self.handle_genotype(variant)
-        self.perform_liftover_if_needed(variant)
-        self.check_invalid_base(variant)
-        self.normalize_variant(variant)
         if variant["ref_base"] == variant["alt_base"]:
             raise NoVariantError()
-        self.file_num_valid_variants += 1
-        self.total_num_valid_variants += 1
-        self.crv_writer.write_data(variant)
-        try:
-            converter.addl_operation_for_unique_variant(
-                variant, var_no
-            )
-        except Exception as e:
-            self._log_conversion_error(
-                self.read_lnum, e, full_line_error=False
-            )
+        variant["uid"] = self.uid
+        unique = self.add_unique_variant(variant, unique_variants)
+        if unique:
+            self.handle_chrom(variant)
+            self.handle_ref_base(variant)
+            self.perform_liftover_if_needed(variant)
+            self.check_invalid_base(variant)
+            self.normalize_variant(variant)
+            self.file_num_valid_variants += 1
+            self.total_num_valid_variants += 1
+            self.crv_writer.write_data(variant)
+            try:
+                converter.addl_operation_for_unique_variant(
+                    variant, var_no
+                )
+            except Exception as e:
+                self._log_conversion_error(
+                    self.read_lnum, e, full_line_error=False
+                )
+        self.handle_genotype(variant)
         if self.pipeinput:
             fileno = self.input_path_dict2[STDIN]
         else:
@@ -538,6 +551,8 @@ class MasterConverter(object):
             }
         )
         self.crs_writer.write_data(variant)
+        if unique:
+            self.uid += 1
 
     def handle_converted_variants(self, variants: List[Dict[str, Any]], converter: BaseConverter):
         from oakvar.lib.exceptions import IgnoredVariant
@@ -551,9 +566,9 @@ class MasterConverter(object):
             raise IgnoredVariant(
                 "No valid alternate allele was found in any samples."
             )
+        unique_variants = set()
         for var_no, variant in enumerate(variants):
-            self.handle_variant(variant, var_no, converter)
-            self.uid += 1
+            self.handle_variant(variant, var_no, converter, unique_variants)
 
     def run(self):
         from pathlib import Path
@@ -574,13 +589,15 @@ class MasterConverter(object):
             ):
                 try:
                     self.handle_converted_variants(variants, converter)
-                    if self.read_lnum % 10000 == 0:
-                        status = f"Running Converter ({self.input_fname}): line {self.read_lnum}"
-                        update_status(
-                            status, logger=self.logger, serveradmindb=self.serveradmindb
-                        )
                 except Exception as e:
                     self._log_conversion_error(self.read_lnum, e)
+                if self.read_lnum % 100 == 0:
+                    status = f"Running Converter ({self.input_fname}): line {self.read_lnum}"
+                    update_status(
+                        status, logger=self.logger, serveradmindb=self.serveradmindb
+                    )
+                if self.uid >= 10000:
+                    break
             f.close()
             self.logger.info(f"number of valid variants: {self.file_num_valid_variants}")
             self.logger.info(f"number of error lines: {self.file_error_lines}")
@@ -621,16 +638,15 @@ class MasterConverter(object):
     def perform_liftover_if_needed(self, variant):
         from copy import copy
 
-        if not self.crl_writer:
-            raise
-        prelift_wdict = copy(variant)
-        prelift_wdict["uid"] = self.uid
-        self.crl_writer.write_data(prelift_wdict)
+        assert self.crl_writer is not None
         if self.is_chrM(variant):
             needed = self.do_liftover_chrM
         else:
             needed = self.do_liftover
         if needed:
+            prelift_wdict = copy(variant)
+            prelift_wdict["uid"] = self.uid
+            self.crl_writer.write_data(prelift_wdict)
             (
                 variant["chrom"],
                 variant["pos"],

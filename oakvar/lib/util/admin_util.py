@@ -223,6 +223,8 @@ def get_liftover_chain_paths():
     from os.path import join
 
     liftover_chains_dir = get_liftover_chains_dir()
+    if not liftover_chains_dir:
+        return {}
     liftover_chain_paths = {
         "hg19": join(liftover_chains_dir, "hg19ToHg38.over.chain"),
         "hg18": join(liftover_chains_dir, "hg18ToHg38.over.chain"),
