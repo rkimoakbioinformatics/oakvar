@@ -167,6 +167,7 @@ class MasterConverter(object):
         self.parse_inputs(args)
         self.parse_output_dir(args)
         self.given_input_assembly = args.get("genome")
+        self.input_encoding = args.get("input_encoding")
         self.conf = {}
         self.module_options = get_module_options(args)
         if "conf" in args:
@@ -180,7 +181,10 @@ class MasterConverter(object):
 
         if self.logger:
             self.logger.info(f"detecting encoding of {input_path}")
-        encoding = detect_encoding(input_path)
+        if self.input_encoding:
+            encoding = self.input_encoding
+        else:
+            encoding = detect_encoding(input_path)
         if self.logger:
             self.logger.info(f"encoding: {input_path} {encoding}")
         if input_path.endswith(".gz"):
@@ -505,32 +509,41 @@ class MasterConverter(object):
         variant["pos"] = new_pos
         variant["ref_base"] = new_ref
         variant["alt_base"] = new_alt
-        variant["uid"] = self.uid
 
-    def handle_variant(self, variant: dict, var_no: int, converter):
+    def variant_is_unique(self, variant: dict, unique_variants: set):
+        var_str = f"{variant['chrom']}:{variant['pos']}:{variant['ref_base']}:{variant['alt_base']}"
+        is_unique = var_str not in unique_variants
+        if is_unique:
+            unique_variants.add(var_str)
+            self.uid += 1
+        return is_unique
+
+    def handle_variant(self, variant: dict, var_no: int, converter, unique_variants: set):
         from oakvar.exceptions import NoVariantError
 
         if not self.crv_writer or not self.crm_writer or not self.crs_writer:
             raise
-        self.handle_chrom(variant)
-        self.handle_ref_base(variant)
-        self.handle_genotype(variant)
-        self.perform_liftover_if_needed(variant)
-        self.check_invalid_base(variant)
-        self.normalize_variant(variant)
         if variant["ref_base"] == variant["alt_base"]:
             raise NoVariantError()
-        self.file_num_valid_variants += 1
-        self.total_num_valid_variants += 1
-        self.crv_writer.write_data(variant)
-        try:
-            converter.addl_operation_for_unique_variant(
-                variant, var_no
-            )
-        except Exception as e:
-            self._log_conversion_error(
-                self.read_lnum, e, full_line_error=False
-            )
+        variant["uid"] = self.uid
+        if self.variant_is_unique(variant, unique_variants):
+            self.handle_chrom(variant)
+            self.handle_ref_base(variant)
+            self.perform_liftover_if_needed(variant)
+            self.check_invalid_base(variant)
+            self.normalize_variant(variant)
+            self.file_num_valid_variants += 1
+            self.total_num_valid_variants += 1
+            self.crv_writer.write_data(variant)
+            try:
+                converter.addl_operation_for_unique_variant(
+                    variant, var_no
+                )
+            except Exception as e:
+                self._log_conversion_error(
+                    self.read_lnum, e, full_line_error=False
+                )
+        self.handle_genotype(variant)
         if self.pipeinput:
             fileno = self.input_path_dict2[STDIN]
         else:
@@ -557,9 +570,9 @@ class MasterConverter(object):
             raise IgnoredVariant(
                 "No valid alternate allele was found in any samples."
             )
+        unique_variants = set()
         for var_no, variant in enumerate(variants):
-            self.handle_variant(variant, var_no, converter)
-            self.uid += 1
+            self.handle_variant(variant, var_no, converter, unique_variants)
 
     def run(self):
         from pathlib import Path
@@ -580,13 +593,15 @@ class MasterConverter(object):
             ):
                 try:
                     self.handle_converted_variants(variants, converter)
-                    if self.read_lnum % 10000 == 0:
-                        status = f"Running Converter ({self.input_fname}): line {self.read_lnum}"
-                        update_status(
-                            status, logger=self.logger, serveradmindb=self.serveradmindb
-                        )
                 except Exception as e:
                     self._log_conversion_error(self.read_lnum, e)
+                if self.read_lnum % 100 == 0:
+                    status = f"Running Converter ({self.input_fname}): line {self.read_lnum}"
+                    update_status(
+                        status, logger=self.logger, serveradmindb=self.serveradmindb
+                    )
+                if self.uid >= 10000:
+                    break
             f.close()
             self.logger.info(f"number of valid variants: {self.file_num_valid_variants}")
             self.logger.info(f"number of error lines: {self.file_error_lines}")
@@ -627,16 +642,15 @@ class MasterConverter(object):
     def perform_liftover_if_needed(self, variant):
         from copy import copy
 
-        if not self.crl_writer:
-            raise
-        prelift_wdict = copy(variant)
-        prelift_wdict["uid"] = self.uid
-        self.crl_writer.write_data(prelift_wdict)
+        assert self.crl_writer is not None
         if self.is_chrM(variant):
             needed = self.do_liftover_chrM
         else:
             needed = self.do_liftover
         if needed:
+            prelift_wdict = copy(variant)
+            prelift_wdict["uid"] = self.uid
+            self.crl_writer.write_data(prelift_wdict)
             (
                 variant["chrom"],
                 variant["pos"],

@@ -1574,6 +1574,7 @@ class Runner(object):
             "output_dir": self.output_dir[run_no],
             "genome": self.args.genome,
             "serveradmindb": self.serveradmindb,
+            "input_encoding": self.args.input_encoding,
         }
         arg_dict["conf"] = self.run_conf
         if self.args.forcedinputformat is not None:

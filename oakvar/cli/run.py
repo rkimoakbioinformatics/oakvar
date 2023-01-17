@@ -1,6 +1,7 @@
 from . import cli_entry
 from . import cli_func
 
+
 @cli_entry
 def cli_run(args):
     ret = run(args)
@@ -14,7 +15,7 @@ def run(args, __name__="run"):
     from ..util.asyn import get_event_loop
 
     # nested asyncio
-    #nest_asyncio.apply()
+    # nest_asyncio.apply()
     # Custom system conf
     custom_system_conf = {}
     system_option = args.get("system_option")
@@ -76,9 +77,15 @@ def add_parser_ov_run(subparsers):
     parser_ov_run.add_argument(
         "-e", nargs="+", dest="excludes", default=[], help="modules to exclude"
     )
-    parser_ov_run.add_argument("-n", dest="run_name", nargs="+", help="name of oakvar run")
     parser_ov_run.add_argument(
-        "-d", dest="output_dir", nargs="+", default=None, help="directory for output files"
+        "-n", dest="run_name", nargs="+", help="name of oakvar run"
+    )
+    parser_ov_run.add_argument(
+        "-d",
+        dest="output_dir",
+        nargs="+",
+        default=None,
+        help="directory for output files",
     )
     parser_ov_run.add_argument(
         "--startat",
@@ -324,5 +331,10 @@ def add_parser_ov_run(subparsers):
         "--combine-input",
         action="store_true",
         help="Combine input files into one result",
+    )
+    parser_ov_run.add_argument(
+        "--input-encoding",
+        default=None,
+        help="Encoding of input files",
     )
     parser_ov_run.set_defaults(func=cli_run)
