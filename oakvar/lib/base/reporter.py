@@ -437,13 +437,13 @@ class BaseReporter:
                 run_time = end_time - self.start_time
                 self.logger.info("runtime: {0:0.3f}".format(run_time))
             ret = self.end()
+            return ret
         except Exception as e:
             await self.close_db()
             import traceback
 
             traceback.print_exc()
             raise e
-        return ret
 
     async def write_data(
         self,
