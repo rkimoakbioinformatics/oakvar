@@ -510,12 +510,11 @@ class MasterConverter(object):
         variant["ref_base"] = new_ref
         variant["alt_base"] = new_alt
 
-    def variant_is_unique(self, variant: dict, unique_variants: set):
+    def add_unique_variant(self, variant: dict, unique_variants: set):
         var_str = f"{variant['chrom']}:{variant['pos']}:{variant['ref_base']}:{variant['alt_base']}"
         is_unique = var_str not in unique_variants
         if is_unique:
             unique_variants.add(var_str)
-            self.uid += 1
         return is_unique
 
     def handle_variant(self, variant: dict, var_no: int, converter, unique_variants: set):
@@ -526,7 +525,8 @@ class MasterConverter(object):
         if variant["ref_base"] == variant["alt_base"]:
             raise NoVariantError()
         variant["uid"] = self.uid
-        if self.variant_is_unique(variant, unique_variants):
+        unique = self.add_unique_variant(variant, unique_variants)
+        if unique:
             self.handle_chrom(variant)
             self.handle_ref_base(variant)
             self.perform_liftover_if_needed(variant)
@@ -557,6 +557,8 @@ class MasterConverter(object):
             }
         )
         self.crs_writer.write_data(variant)
+        if unique:
+            self.uid += 1
 
     def handle_converted_variants(self, variants: List[Dict[str, Any]], converter: BaseConverter):
         from oakvar.exceptions import IgnoredVariant
