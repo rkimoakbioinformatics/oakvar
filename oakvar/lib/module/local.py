@@ -347,7 +347,7 @@ def get_module_conf_path(module_name, module_type=None):
 
     p = Path(module_name)
     if p.exists():
-        return p.parent / (p.stem + ".yml")
+        return p / (p.stem + ".yml")
     module_dir = get_module_dir(module_name, module_type=module_type)
     if not module_dir:
         return None

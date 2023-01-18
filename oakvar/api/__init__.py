@@ -3,6 +3,8 @@ from .run import run
 from .report import report
 from .test import test as do_test
 
+_ = issue or run or report or do_test
+
 
 def version():
     from ..lib.util.admin_util import oakvar_version
