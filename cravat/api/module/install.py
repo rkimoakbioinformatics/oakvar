@@ -1,1 +1,1 @@
-from oakvar.api.module.install import *
+from oakvar.api.module.install_defs import *

@@ -45,6 +45,7 @@ from .lib.util.inout import FileReader
 from .lib.util.inout import FileWriter
 from .lib.util import inout
 from .lib.util import admin_util
+from .cli import CliOuter
 import signal
 
 # for compatibility with oc
@@ -126,6 +127,7 @@ _ = (
 _ = system_setup or system_md
 _ = test
 _ = util_addjob or util_filtersqlite or util_mergesqlite or util_sqliteinfo
+_ = CliOuter
 
 
 def get_live_annotator(module_name, input_file=None):

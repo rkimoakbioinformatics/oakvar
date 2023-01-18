@@ -12,7 +12,7 @@ def cli_module_pack(args):
 def pack(args: dict, __name__="module pack"):
     from ...api.module import pack
 
-    pack(**args, outer=args.get("outer"))
+    pack(**args)
     print(f"To register the packed module, use `ov store register`.")
 
 

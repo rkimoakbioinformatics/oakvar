@@ -79,19 +79,18 @@ def add_parser_fn_store_register(subparsers):
     )
     parser_cli_store_register.add_argument("module_name", help="module to register")
     parser_cli_store_register.add_argument(
-        "--md", default=None, help="custom modules root directory"
-    )
-    parser_cli_store_register.add_argument(
         "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_store_register.add_argument(
         "--code-url",
         nargs="+",
+        default=[],
         help="url of a code pack (made with `ov store pack`)",
     )
     parser_cli_store_register.add_argument(
         "--data-url",
         nargs="+",
+        default=[],
         help="url of a data pack (made with `ov store pack`)",
     )
     parser_cli_store_register.add_argument(

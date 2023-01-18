@@ -630,6 +630,10 @@ def pack_module_zip(module_name: str, kind: str, outdir: str=".", split: bool=Fa
         version = get_module_data_version(module_name, module_dir=module_dir)
     else:
         raise ArgumentError(msg=f"wrong module kind: {kind}")
+    if kind == "data" and version is None:
+        e = ArgumentError(msg=f"data_version: <version> or no_data: true should be defined in the module yml file.")
+        e.traceback = False
+        raise e
     pack_dir, outdir = get_pack_dir_out_dir(kind, outdir, module_dir)
     outdir_p = Path(outdir)
     if Path(pack_dir).exists():

@@ -148,8 +148,8 @@ def install(
     stage_handler=None,
     system_worker_state=None,
 ):
-    from .install import get_modules_to_install
-    from .install import show_modules_to_install
+    from .install_defs import get_modules_to_install
+    from .install_defs import show_modules_to_install
     from ...lib.module import install_module
     from ...lib.module import install_module_from_url
     from ...lib.module import install_module_from_zip_path

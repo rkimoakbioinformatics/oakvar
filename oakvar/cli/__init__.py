@@ -1,11 +1,13 @@
 class CliOuter:
     def write(self, msg: str):
-        print(msg)
+        from sys import stdout
+
+        stdout.write(f"{msg}\n")
 
     def error(self, msg: str):
         from sys import stderr
 
-        stderr.write(msg + "\n")
+        stderr.write(f"{msg}\n")
         stderr.flush()
 
 

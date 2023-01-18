@@ -364,7 +364,7 @@ def get_default_user_conf_path() -> str:
     from ..util.admin_util import get_packagedir
     from os.path import join
 
-    default_user_conf_path = join(get_packagedir(), user_conf_fname)
+    default_user_conf_path = join(get_packagedir(), "lib", "assets", user_conf_fname)
     return default_user_conf_path
 
 
@@ -867,13 +867,16 @@ def check_system_yml(outer=None) -> bool:
 
 
 def check_oakvar_yml(outer=None) -> bool:
-    user_conf = get_user_conf()
-    if not user_conf:
+    from pathlib import Path
+    from ..util.util import load_yml_conf
+    user_conf_path = get_user_conf_path()
+    if not Path(user_conf_path).exists():
         if outer:
             outer.write("User configuration file is missing.")
         return False
-    user_conf_temp = get_default_user_conf()
-    for k in user_conf_temp.keys():
+    user_conf = load_yml_conf(user_conf_path)
+    default_user_conf = get_default_user_conf()
+    for k in default_user_conf.keys():
         if k not in user_conf:
             if outer:
                 outer.write(f"User configuration file misses {k} field.")

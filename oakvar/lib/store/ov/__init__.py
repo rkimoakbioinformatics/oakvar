@@ -135,7 +135,7 @@ def get_register_args_of_module(
         return None
     for kind in ["code", "data"]:
         k = f"{kind}_url"
-        if len(rmi[k]) > 0:
+        if rmi[k] and len(rmi[k]) > 0:
             for url in rmi[k]:
                 if outer:
                     outer.write(f"Validating {url}...")

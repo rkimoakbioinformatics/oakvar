@@ -46,6 +46,7 @@ def run(
     input_format: Optional[str] = None,
     input_encoding: Optional[str] = None,
     uid: Optional[str] = None,
+    loop=None,
     outer=None,
 ):
     from ..lib.base.runner import Runner
@@ -99,5 +100,12 @@ def run(
         uid=uid,
         outer=outer,
     )
-    loop = get_event_loop()
+    if isinstance(inputs, str):
+        inputs = [inputs]
+    if isinstance(output_dir, str):
+        output_dir = [output_dir]
+    if isinstance(run_name, str):
+        run_name = [run_name]
+    if not loop:
+        loop = get_event_loop()
     return loop.run_until_complete(module.main())

@@ -35,8 +35,6 @@ def report(
     from os.path import dirname
     from os.path import basename
     from os.path import join
-    import asyncio
-    import nest_asyncio
     from ..lib.util.asyn import get_event_loop
     from ..lib.util.util import is_compatible_version
     from importlib.util import spec_from_file_location
@@ -116,12 +114,14 @@ def report(
             response_t = None
             # uvloop cannot be patched.
             # nest_asyncio patch is necessary for use in Jupyter notebook.
-            old_loop = loop
-            new_loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(new_loop)
-            nest_asyncio.apply(new_loop)
-            response_t = new_loop.run_until_complete(reporter.run())
-            asyncio.set_event_loop(old_loop)
+            # old_loop = loop
+            # new_loop = asyncio.new_event_loop()
+            # asyncio.set_event_loop(new_loop)
+            # nest_asyncio.apply(new_loop)
+            if not loop:
+                loop = get_event_loop()
+            response_t = loop.run_until_complete(reporter.run())
+            # asyncio.set_event_loop(old_loop)
             output_fns = None
             if type(response_t) == list:
                 output_fns = " ".join(response_t)
