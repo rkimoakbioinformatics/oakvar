@@ -16,7 +16,7 @@ OakVar: Genomic Variant Analysis Platform
 
 Internship available
 ====================
-The main project will be OakVar. Full remote work. Potential to become full-time employment. Please send your application to rkim@oakbioinformatics.com.
+The main project will be OakVar. Full remote work. Paid or unpaid depending on the funding status. Potential to become full-time employment. Please send your application to rkim@oakbioinformatics.com.
 
 Resources
 =========
