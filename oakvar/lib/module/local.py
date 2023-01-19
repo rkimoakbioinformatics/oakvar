@@ -1,5 +1,6 @@
 from typing import Optional
 from typing import Tuple
+from pathlib import Path
 
 
 class LocalModule(object):
@@ -215,7 +216,8 @@ def get_annotator_dir(module_name):
     from ..system import get_modules_dir
 
     modules_dir = get_modules_dir()
-    assert modules_dir is not None
+    if not modules_dir:
+        return None
     module_dir = os.path.join(modules_dir, "annotators", module_name)
     if os.path.exists(module_dir) == False:
         module_dir = None
@@ -728,4 +730,34 @@ def remove_code_part_of_module(module_name: str, module_dir=None):
                 rmtree(item_path)
             else:
                 remove(item_path)
+
+def get_temp_module_name():
+    from pathlib import Path
+    from random import randint
+    from oakvar.lib.system import get_modules_dir
+
+    modules_dir = get_modules_dir()
+    if not modules_dir:
+        return None
+    temp_dir = Path(modules_dir) / "temp"
+    if not temp_dir.exists():
+        return None
+    while True:
+        module_name = str(randint(0, 100000000))
+        module_dir = temp_dir / module_name
+        if not module_dir.exists():
+            return module_name
+
+def get_module_name_from_dir(d: Path):
+    from sys import stderr
+
+    py_files = d.glob("*.py")
+    yml_files = d.glob("*.yml")
+    py_stems = [p.stem for p in py_files]
+    yml_stems = [p.stem for p in yml_files]
+    common_stems = set(py_stems).intersection(set(yml_stems))
+    if len(common_stems) > 1:
+        stderr.write(f"multiple possible modules: {common_stems}\n")
+        return None
+    return list(common_stems)[0]
 

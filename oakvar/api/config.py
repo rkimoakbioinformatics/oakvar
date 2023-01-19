@@ -22,4 +22,3 @@ def system(key=None, value=None, type=None):
     else:
         conf = get_system_conf()
         return conf
-

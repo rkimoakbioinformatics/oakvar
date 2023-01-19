@@ -84,37 +84,11 @@ def cli_module_uninstall(args):
 
 @cli_func
 def uninstall(args, __name__="module uninstall"):
-    from ...lib.module.local import search_local
-    from ...lib.module import uninstall_module
-    from ...lib.util.util import quiet_print
+    from ...api.module import uninstall
 
-    modules = args.get("modules")
-    if not modules:
-        from ...lib.exceptions import ArgumentError
-
-        e = ArgumentError("no modules was given.")
-        e.traceback = False
-        raise e
-    matching_names = search_local(*modules)
-    if len(matching_names) > 0:
-        quiet_print("Uninstalling: {:}".format(", ".join(matching_names)), args=args)
-        if not (args["yes"]):
-            while True:
-                resp = input("Proceed? (y/n) > ")
-                if resp == "y":
-                    break
-                elif resp == "n":
-                    return False
-                else:
-                    quiet_print(
-                        "Response '{:}' not one of (y/n).".format(resp), args=args
-                    )
-        for module_name in matching_names:
-            uninstall_module(module_name)
-            quiet_print("Uninstalled %s" % module_name, args=args)
-    else:
-        quiet_print("No modules to uninstall found", args=args)
-    return True
+    args["module_names"] = args.get("module_name")
+    del args["module_name"]
+    return uninstall(**args)
 
 
 @cli_entry
@@ -137,10 +111,9 @@ class InstallProgressStdout(InstallProgressHandler):
         self.system_worker_state = None
 
     def stage_start(self, stage):
-        from ...lib.util.util import quiet_print
-
         self.cur_stage = stage
-        quiet_print(self._stage_msg(stage), args={"quiet": self.quiet})
+        if not self.quiet and self.outer:
+            self.outer.write(self._stage_msg(stage))
 
 
 def add_parser_fn_module_pack(subparsers):
@@ -254,7 +227,9 @@ def add_parser_ov_module_install(subparsers):
     parser_ov_module_install.add_argument(
         "--no-fetch", action="store_true", help="Skip fetching the latest store"
     )
-    parser_ov_module_install.add_argument("--url", help="Install from a URL")
+    parser_ov_module_install.add_argument(
+        "--url", dest="urls", nargs="+", default=[], help="Install from URLs"
+    )
     parser_ov_module_install.add_argument(
         "--quiet", action="store_true", default=None, help="suppress stdout output"
     )
@@ -320,7 +295,10 @@ def add_parser_ov_module(subparsers):
         "uninstall", help="uninstalls modules."
     )
     parser_ov_module_uninstall.add_argument(
-        "module_names", nargs="+", help="Modules to uninstall"
+        "module_name",
+        nargs="+",
+        default=[],
+        help="Modules to uninstall",
     )
     parser_ov_module_uninstall.add_argument(
         "-y", "--yes", action="store_true", help="Proceed without prompt"

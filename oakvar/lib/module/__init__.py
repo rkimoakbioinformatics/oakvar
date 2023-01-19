@@ -23,7 +23,8 @@ class InstallProgressHandler:
             self._make_display_name()
 
     def _make_display_name(self):
-        assert self.module_name
+        if not self.module_name:
+            return
         ver_str = self.module_version if self.module_version is not None else ""
         self.display_name = ":".join([self.module_name, ver_str])
 
@@ -207,8 +208,10 @@ def make_install_temp_dir(
 
     if not modules_dir:
         modules_dir = get_modules_dir()
-    if not modules_dir or not module_name:
-        raise
+    if not modules_dir:
+        raise Exception("modules root directory does not exist.")
+    if not module_name:
+        raise Exception("module_name was not given.")
     temp_dir = Path(modules_dir) / install_tempdir_name / module_name
     if clean:
         rmtree(str(temp_dir), ignore_errors=True)
@@ -277,10 +280,8 @@ def download_code_or_data(
     from ..store.consts import MODULE_PACK_SPLIT_FILE_SIZE
 
     check_install_kill(system_worker_state=system_worker_state, module_name=module_name)
-    assert urls is not None
-    assert module_name is not None
-    assert version is not None
-    assert temp_dir is not None
+    if not module_name or not version or not temp_dir:
+        return
     if not kind or kind not in ["code", "data"]:
         return
     if stage_handler:
@@ -288,9 +289,12 @@ def download_code_or_data(
     zipfile_path = get_download_zipfile_path(module_name, version, temp_dir, kind)
     if not zipfile_path:
         return
+    if urls is None:
+        return
     if urls[0] == "[":  # a list of URLs
         urls = loads(urls)
-    assert urls is not None
+    if urls is None:
+        return
     urls_ty = type(urls)
     if urls_ty == str:
         download(
@@ -326,6 +330,7 @@ def download_code_or_data(
                     system_worker_state=system_worker_state,
                     check_install_kill=check_install_kill,
                     module_name=module_name,
+                    outer=outer,
                 )
                 if i < urls_len - 1:
                     if getsize(part_path) != MODULE_PACK_SPLIT_FILE_SIZE:
@@ -351,8 +356,8 @@ def extract_code_or_data(
     from os import remove
 
     check_install_kill(module_name=module_name, system_worker_state=system_worker_state)
-    assert temp_dir is not None
-    assert module_name and kind and zipfile_path
+    if not temp_dir or not module_name or not kind or not zipfile_path:
+        return
     if not kind or kind not in ["code", "data"]:
         return
     if stage_handler:
@@ -431,24 +436,30 @@ def install_module_from_url(
     from ..util.download import download
     from ..util.util import load_yml_conf
     from .remote import get_install_deps
-    from ..exceptions import ArgumentError
+    from ..util.download import is_url
+    from ..exceptions import ModuleToSkipInstallation
+    from ..system import get_modules_dir
 
+    if not is_url(url):
+        raise ModuleToSkipInstallation(
+            "", msg=f"{url} is not a valid URL"
+        )
     temp_dir = make_install_temp_dir(
         module_name=module_name, modules_dir=modules_dir, clean=clean
     )
     if not temp_dir:
         raise
-    if temp_dir.parent.name == module_name:
-        download(url, temp_dir.parent)
-    else:
-        fname = Path(urlparse(url).path).name
-        if Path(fname).suffix != ".zip":
-            raise ArgumentError(msg=f"--url should point to a zip file of a module.")
+    fname = Path(urlparse(url).path).name
+    if Path(fname).suffix == ".zip":
         fpath = temp_dir / fname
-        download(url, fpath)
+        download(url=url, fpath=fpath, directory=temp_dir, module_name=module_name)
         with ZipFile(fpath) as f:
             f.extractall(path=temp_dir)
         remove(fpath)
+    else:
+        download(url=url, directory=temp_dir, module_name=module_name, outer=outer)
+    if not module_name:
+        raise ModuleToSkipInstallation("", msg=f"No module was found in the URL")
     yml_conf_path = temp_dir / (module_name + ".yml")
     if not yml_conf_path.exists():
         if outer:
@@ -457,6 +468,13 @@ def install_module_from_url(
             )
         return False
     conf = load_yml_conf(yml_conf_path)
+    ty = conf.get("type") or ""
+    if not ty:
+        if outer:
+            outer.write(
+                f"{url} is not a valid OakVar module. {module_name}.yml does not have 'type' field."
+            )
+        return False
     if not skip_dependencies:
         deps, pypi_dependency = get_install_deps(conf_path=str(yml_conf_path))
         if not install_pypi_dependency(pypi_dependency=pypi_dependency, outer=outer):
@@ -474,14 +492,10 @@ def install_module_from_url(
                 skip_data=skip_data,
                 outer=outer,
             )
-    ty = conf.get("type") or ""
-    if not ty:
-        if outer:
-            outer.write(
-                f"{url} is not a valid OakVar module. {module_name}.yml does not have 'type' field."
-            )
-        return False
-    assert modules_dir is not None
+    if not modules_dir:
+        modules_dir = get_modules_dir()
+    if not modules_dir:
+        raise ModuleToSkipInstallation("", msg="modules root directory does not exist.")
     module_type_dir: Path = Path(modules_dir) / (ty + "s")
     if not module_type_dir.exists():
         module_type_dir.mkdir()
@@ -638,7 +652,8 @@ def install_module(
     )
     code_version = version
     temp_dir = make_install_temp_dir(module_name=module_name, clean=clean)
-    assert temp_dir is not None
+    if not temp_dir:
+        raise ModuleInstallationError("cannot make a temp module directory.")
     module_dir: str = ""
     installation_finished: bool = False
     code_installed: bool = False
@@ -675,7 +690,8 @@ def install_module(
             raise ModuleInstallationError(module_name)
         if not modules_dir:
             modules_dir = get_modules_dir(conf=conf)
-        assert modules_dir is not None
+        if not modules_dir:
+            raise ModuleInstallationError("modules root directory does not exist.")
         module_dir = join(
             modules_dir,
             module_type + "s",

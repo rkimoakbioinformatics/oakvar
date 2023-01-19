@@ -1,15 +1,27 @@
+from typing import Optional
+from typing import Tuple
+from pathlib import Path
+
+
 def download(
-    url, fpath, system_worker_state=None, check_install_kill=None, module_name=None
+    url=None,
+    fpath=None,
+    directory=None,
+    system_worker_state=None,
+    check_install_kill=None,
+    module_name=None,
+    outer=None,
 ):
     from .download_library import download as download_util
 
-    assert module_name is not None
+    if not url or (not fpath and not directory):
+        return
     if "drive.google.com" in url:
         import gdown
 
         gdown.download(url=url, output=fpath, quiet=True, fuzzy=True)
     elif "github.com" in url:
-        download_from_github(url=url, fpath=fpath)
+        download_from_github(url=url, fpath=fpath, directory=directory, outer=outer)
     else:
         download_util(
             url,
@@ -20,82 +32,133 @@ def download(
             system_worker_state=system_worker_state,
             check_install_kill=check_install_kill,
             module_name=module_name,
+            outer=outer,
         )
 
 
-def get_git_api_url(url):
+def is_git_repo_url(url: str) -> Optional[Tuple]:
     from re import compile
 
-    branch_re = compile("/(tree|blob)/(.+?)/")
-    branch_match = branch_re.search(url)
-    if not branch_match:
+    ptn = compile(r"^https?://(?:www\.)?github\.com/([\w-]+)/([\w-]+)$")
+    m = ptn.search(url)
+    if not m:
         return None
-    url_1 = url[: branch_match.start()].replace("github.com", "api.github.com/repos", 1)
-    url_2 = "contents"
-    url_3 = url[branch_match.end() :]
-    branch = branch_match.group(2)
-    api_url = f"{url_1}/{url_2}/{url_3}?ref={branch}"
-    return api_url
+    else:
+        owner, repo = m.groups()
+        return owner, repo
 
 
-def download_from_github(url=None, fpath=None):
+def is_git_branch_url(url: str):
+    from re import compile
+
+    ptn = compile(r"https?://(?:www\.)?github\.com/([\w-]+)/([\w-]+)/tree/([\w-]+)$")
+    m = ptn.search(url)
+    if not m:
+        return None
+    else:
+        owner, repo, branch = m.groups()
+        return owner, repo, branch
+
+
+def is_git_branch_folder(url: str):
+    from re import compile
+
+    ptn = compile(
+        r"https?://(?:www\.)?github\.com/([\w-]+)/([\w-]+)/tree/([\w-]+)/([/\w-]+)"
+    )
+    m = ptn.search(url)
+    if not m:
+        return None
+    else:
+        owner, repo, branch, folder = m.groups()
+        return owner, repo, branch, folder
+
+
+def download_github_repo(owner: str, repo: str, directory: str, outer=None):
+    download_github_branch(owner, repo, "master", directory, outer=outer)
+
+
+def download_github_branch(
+    owner: str, repo: str, branch: str, directory: str, outer=None
+):
+    download_github_branch_folder(owner, repo, branch, "", directory, outer=outer)
+
+
+def download_github_branch_folder(
+    owner: str, repo: str, branch: str, folder: str, directory: str, outer=None
+):
     from pathlib import Path
-    import download as download_util
 
-    if not url or not fpath:
+    api_url = (
+        f"https://api.github.com/repos/{owner}/{repo}/contents/{folder}?ref={branch}"
+    )
+    install_dir = Path(directory)
+    download_git_folder(api_url, folder, install_dir, outer=outer)
+
+
+def download_from_github(url=None, fpath=None, directory=None, outer=None):
+    if not url or (not fpath and not directory):
         return
-    api_url = get_git_api_url(url)
-    if not api_url:
-        download_util.download(url, fpath, kind="file", verbose=False, replace=True)
+    g = is_git_repo_url(url)
+    if g and directory:
+        owner, repo = g
+        download_github_repo(owner, repo, directory, outer=outer)
         return
-    install_dir = fpath
-    if not isinstance(install_dir, Path):
-        install_dir = Path(install_dir)
-    download_git_folder(url=url, install_dir=install_dir)
+    g = is_git_branch_url(url)
+    if g and directory:
+        owner, repo, branch = g
+        download_github_branch(owner, repo, branch, directory, outer=outer)
+        return
+    g = is_git_branch_folder(url)
+    if g and directory:
+        owner, repo, branch, folder = g
+        download_github_branch_folder(
+            owner, repo, branch, folder, directory, outer=outer
+        )
+        return
 
 
-def download_git_folder(url=None, install_dir=None):
+def download_git_folder(url: str, path: str, install_dir: Path, outer=None):
     from requests import get
-    from pathlib import Path
 
-    if not url or not install_dir:
-        return
-    if not isinstance(install_dir, Path):
-        install_dir = Path(install_dir)
-    api_url = get_git_api_url(url)
-    if api_url is None:
-        return
-    res = get(api_url)
+    res = get(url)
     data = res.json()
     if isinstance(data, dict) and data.get("type") == "file":
-        download_git_file(data, install_dir)
+        download_git_file(data["download_url"], data["path"], install_dir, outer=outer)
         return
-    folder = install_dir / Path(url).stem
-    if not folder.exists():
-        folder.mkdir(parents=True, exist_ok=True)
+    folder_p = install_dir / path
+    if not folder_p.exists():
+        folder_p.mkdir(parents=True, exist_ok=True)
     for el in data:
-        if el["type"] == "dir":
-            download_git_folder(url=el["html_url"], install_dir=folder)
-        elif el["type"] == "file":
-            download_git_file(el, folder)
+        ty = el["type"]
+        path = el["path"]
+        if ty == "dir":
+            download_git_folder(el["url"], path, install_dir, outer=outer)
+        elif ty == "file":
+            download_git_file(el["download_url"], path, install_dir, outer=outer)
 
 
-def download_git_file(el, folder):
+def download_git_file(url: str, path: str, install_dir: Path, outer=None):
     import download as download_util
-    from re import search
 
-    if search(r"\.zip[0-9]*$", el["download_url"]):
-        download_util.download(
-            el["download_url"], str(folder), kind="file", verbose=False, replace=True
-        )
-    else:
-        download_util.download(
-            el["download_url"],
-            str(folder / el["name"]),
-            kind="file",
-            verbose=False,
-            replace=True,
-        )
+    # if search(r"\.zip[0-9]*$", url):
+    #    download_util.download(
+    #        url,
+    #        str(install_dir),
+    #        kind="file",
+    #        verbose=False,
+    #        replace=True,
+    #    )
+    # else:
+    if outer:
+        outer.write(f"getting {url}...")
+    download_util.download(
+        url,
+        str(install_dir / path),
+        kind="file",
+        verbose=False,
+        replace=True,
+    )
 
 
 def is_url(url):

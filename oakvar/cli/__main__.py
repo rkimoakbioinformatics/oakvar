@@ -9,6 +9,9 @@ from .version import get_parser_fn_version
 from .store import get_parser_fn_store
 from .system import add_parser_ov_system
 from .config import get_parser_fn_config
+from . import CliOuter
+
+_ = CliOuter
 
 
 def get_entry_parser():

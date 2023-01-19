@@ -135,7 +135,7 @@ def info(module_name: Optional[str] = None, local: bool = False, **kwargs):
 
 def install(
     module_names: List[str] = [],
-    url: Optional[str] = None,
+    urls: Optional[str] = None,
     modules_dir: Optional[str] = None,
     overwrite: bool = False,
     clean: bool = False,
@@ -154,7 +154,6 @@ def install(
     from ...lib.module import install_module_from_url
     from ...lib.module import install_module_from_zip_path
     from ...lib.util.run import get_y_or_n
-    from ...lib.util.download import is_url
     from ...lib.util.download import is_zip_path
     from ...lib.store.db import try_fetch_ov_store_cache
     from ...lib.exceptions import ModuleToSkipInstallation
@@ -162,7 +161,10 @@ def install(
     if not no_fetch:
         try_fetch_ov_store_cache(outer=outer)
     to_install = get_modules_to_install(
-        module_names, skip_dependencies=skip_dependencies, outer=outer
+        module_names=module_names,
+        urls=urls,
+        skip_dependencies=skip_dependencies,
+        outer=outer,
     )
     if len(to_install) == 0:
         if outer:
@@ -173,13 +175,12 @@ def install(
         if not get_y_or_n():
             return
     problem_modules = []
-    for module_name, module_version in sorted(to_install.items()):
+    for module_name, data in sorted(to_install.items()):
+        module_version = data.get("version")
+        install_type = data.get("type")
+        url = data.get("url")
         try:
-            if url:
-                if not is_url(url):
-                    raise ModuleToSkipInstallation(
-                        module_name, msg=f"{url} is not a valid URL"
-                    )
+            if install_type == "url":
                 if not install_module_from_url(
                     module_name,
                     url,
@@ -213,10 +214,10 @@ def install(
             if not isinstance(e, ModuleToSkipInstallation):
                 if module_name not in problem_modules:
                     problem_modules.append(module_name)
-            if hasattr(e, "traceback") and getattr(e, "traceback"):
-                import traceback
+            # if hasattr(e, "traceback") and getattr(e, "traceback"):
+            import traceback
 
-                traceback.print_exc()
+            traceback.print_exc()
             if outer:
                 outer.error(e)
     if problem_modules:
@@ -313,6 +314,7 @@ def uninstall(module_names: Optional[List[str]] = None, yes: bool = False, outer
             return True
     for module_name in module_names:
         uninstall_module(module_name)
+    return True
 
 
 def installbase(
