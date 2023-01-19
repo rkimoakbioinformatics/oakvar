@@ -151,8 +151,8 @@ def cli_module_install(args):
 
 @cli_func
 def install(args, no_fetch=False, __name__="module install"):
-    from .install import get_modules_to_install
-    from .install import show_modules_to_install
+    from .install_defs import get_modules_to_install
+    from .install_defs import show_modules_to_install
     from ...module import install_module
     from ...module import install_module_from_url
     from ...module import install_module_from_zip_path
