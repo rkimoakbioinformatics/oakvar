@@ -57,7 +57,7 @@ def cli_module_install(args):
 @cli_func
 def install(args, __name__="module install"):
     from ...api.module import install as install_api
-    from .install import InstallProgressStdout
+    from .install_defs import InstallProgressStdout
 
     stage_handler = InstallProgressStdout(outer=args.get("outer"))
     ret = install_api(stage_handler=stage_handler, **args)

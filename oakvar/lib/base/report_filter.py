@@ -1087,7 +1087,7 @@ class ReportFilter:
             q = f"create table {gftable} as select distinct v.base__hugo from variant as v inner join variant_filtered as vf on vf.base__uid=v.base__uid where v.base__hugo is not null"
             await cursor_write.execute(q)
 
-    async def table_exists(self, table, cursor_read=Any, cursor_write=Any):
+    async def table_exists(self, table, cursor_read=Any, cursor_write=Any) -> bool:
         _ = cursor_write
         sql = (
             'select name from sqlite_master where type="table" and '
