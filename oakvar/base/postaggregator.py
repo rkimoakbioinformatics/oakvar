@@ -424,7 +424,12 @@ class BasePostAggregator(object):
             if err_str not in self.unique_excs:
                 self.unique_excs.append(err_str)
                 self.logger.error(err_str)
-            self.error_logger.error(f"{input_data[0]}\t{str(e)}")
+            if "base__uid" in input_data:
+                self.error_logger.error(f"{input_data['base__uid']}\t{str(e)}")
+            elif "base__hugo" in input_data:
+                self.error_logger.error(f"{input_data['base__hugo']}\t{str(e)}")
+            else:
+                self.error_logger.error(f"{input_data}\t{str(e)}")
         except Exception as e:
             self._log_exception(e, halt=False)
 
