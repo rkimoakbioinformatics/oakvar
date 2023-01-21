@@ -5,6 +5,7 @@ from aiohttp import web_runner
 
 system_setup_needed = False
 
+
 class WebServer(object):
     def __init__(self, loop=None, url=None, args={}):
         from ..lib.util.asyn import get_event_loop
@@ -110,17 +111,23 @@ class WebServer(object):
         from .job_handlers import fetch_job_queue
 
         self.job_worker = Process(
-            target=fetch_job_queue, args=(self.job_queue, self.info_of_running_jobs, self.report_generation_ps)
+            target=fetch_job_queue,
+            args=(self.job_queue, self.info_of_running_jobs, self.report_generation_ps),
         )
         self.job_worker.start()
 
     def start_system_worker(self):
         from multiprocessing import Process
         from .system_worker import system_queue_worker
+
         assert self.manager is not None
         self.system_worker = Process(
             target=system_queue_worker,
-            args=(self.system_queue, self.system_worker_state, self.local_modules_changed),
+            args=(
+                self.system_queue,
+                self.system_worker_state,
+                self.local_modules_changed,
+            ),
         )
         self.system_worker.start()
 
@@ -143,6 +150,7 @@ class WebServer(object):
         from .consts import SYSTEM_STATE_SETUP_KEY
         from .consts import SYSTEM_STATE_INSTALL_KEY
         from .consts import SYSTEM_STATE_MESSAGE_KEY
+
         assert self.system_worker_state is not None
         assert self.manager is not None
         setup = self.manager.dict()
@@ -153,6 +161,7 @@ class WebServer(object):
 
     def make_job_queue_states(self):
         from multiprocessing import Queue
+
         assert self.manager is not None
         self.job_queue = Queue()
         self.info_of_running_jobs = self.manager.list()
@@ -161,6 +170,7 @@ class WebServer(object):
 
     def make_shared_states(self):
         from multiprocessing import Manager
+
         self.manager = Manager()
         self.make_system_queue()
         self.make_system_worker_state()
@@ -170,23 +180,52 @@ class WebServer(object):
 
     def make_store_handlers(self):
         from .store_handlers import StoreHandlers
-        self.store_handlers = StoreHandlers(servermode=self.servermode, mu=self.mu, local_modules_changed=self.local_modules_changed, system_worker_state=self.system_worker_state, system_queue=self.system_queue, logger=self.logger)
+
+        self.store_handlers = StoreHandlers(
+            servermode=self.servermode,
+            mu=self.mu,
+            local_modules_changed=self.local_modules_changed,
+            system_worker_state=self.system_worker_state,
+            system_queue=self.system_queue,
+            logger=self.logger,
+        )
 
     def make_job_handlers(self):
         from .job_handlers import JobHandlers
-        self.job_handlers = JobHandlers(servermode=self.servermode, mu=self.mu, logger=self.logger, job_queue=self.job_queue, info_of_running_jobs=self.info_of_running_jobs, report_generation_ps=self.report_generation_ps)
+
+        self.job_handlers = JobHandlers(
+            servermode=self.servermode,
+            mu=self.mu,
+            logger=self.logger,
+            job_queue=self.job_queue,
+            info_of_running_jobs=self.info_of_running_jobs,
+            report_generation_ps=self.report_generation_ps,
+        )
 
     def make_multiuser_handlers(self):
         from .multiuser import MultiuserHandlers
+
         self.multiuser_handlers = MultiuserHandlers(servermode=self.servermode)
 
     def make_system_handlers(self):
         from .system_handlers import SystemHandlers
-        self.system_handlers = SystemHandlers(servermode=self.servermode, mu=self.mu, logger=self.logger, system_queue=self.system_queue, system_worker_state=self.system_worker_state)
+
+        self.system_handlers = SystemHandlers(
+            servermode=self.servermode,
+            mu=self.mu,
+            logger=self.logger,
+            system_queue=self.system_queue,
+            system_worker_state=self.system_worker_state,
+        )
 
     def make_websocket_handlers(self):
         from .websocket_handlers import WebSocketHandlers
-        self.websocket_handlers = WebSocketHandlers(system_worker_state=self.system_worker_state, wss=self.wss, logger=self.logger)
+
+        self.websocket_handlers = WebSocketHandlers(
+            system_worker_state=self.system_worker_state,
+            wss=self.wss,
+            logger=self.logger,
+        )
 
     def make_handlers(self):
         self.make_job_handlers()
@@ -200,8 +239,12 @@ class WebServer(object):
         from aiohttp import web
         import aiohttp_cors
 
-        self.app = web.Application(loop=self.loop, middlewares=[self.middleware], client_max_size=1024*1024*1024*1024)
-        self.cors = aiohttp_cors.setup(self.app) # type: ignore
+        self.app = web.Application(
+            loop=self.loop,
+            middlewares=[self.middleware],
+            client_max_size=1024 * 1024 * 1024 * 1024,
+        )
+        self.cors = aiohttp_cors.setup(self.app)  # type: ignore
         self.make_shared_states()
         self.make_handlers()
         self.setup_routes()
@@ -260,6 +303,7 @@ class WebServer(object):
 
     def add_static_routes(self):
         from pathlib import Path
+
         assert self.app is not None
         source_dir = Path(__file__).absolute().parent
         self.app.router.add_static("/store", source_dir / "webstore")
@@ -269,6 +313,7 @@ class WebServer(object):
 
     def setup_cors(self):
         from aiohttp_cors import ResourceOptions
+
         assert self.app is not None
         if not self.cors:
             return
@@ -315,6 +360,7 @@ class WebServer(object):
             if exists(join(modules_dir, "webapps")):
                 self.app.router.add_static("/webapps", join(modules_dir, "webapps"))
         self.setup_cors()
+
 
 class TCPSitePatched(web_runner.BaseSite):
     __slots__ = ("loop", "_host", "_port", "_reuse_address", "_reuse_port")
