@@ -3,6 +3,7 @@ from typing import Any
 from aiohttp import web
 from aiohttp import web_runner
 
+
 class WebServer(object):
     def __init__(self, loop=None, url=None, args={}):
         from ..util.asyn import get_event_loop
@@ -93,8 +94,12 @@ class WebServer(object):
         from aiohttp import web
         import aiohttp_cors
 
-        self.app = web.Application(loop=self.loop, middlewares=[self.middleware], client_max_size=1024*1024*1024*1024)
-        self.cors = aiohttp_cors.setup(self.app) # type: ignore
+        self.app = web.Application(
+            loop=self.loop,
+            middlewares=[self.middleware],
+            client_max_size=1024 * 1024 * 1024 * 1024,
+        )
+        self.cors = aiohttp_cors.setup(self.app)  # type: ignore
         self.setup_routes()
         self.start_workers()
         self.runner = web.AppRunner(self.app)
