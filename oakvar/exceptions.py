@@ -135,9 +135,7 @@ class NoInput(ExpectedException):
     halt = True
 
     def __init__(self):
-        import traceback
-
-        super().__init__("No valid input was given.\n" + str(traceback.format_stack()))
+        super().__init__("No valid input was given.")
 
 
 class InvalidInputFormat(ExpectedException):
@@ -354,7 +352,6 @@ class NotAdmin(ExpectedException):
 
     def __init__(self):
         super().__init__(f"No admin privilege")
-
 
 
 class ServerError(Exception):

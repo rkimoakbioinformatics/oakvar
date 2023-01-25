@@ -1,5 +1,6 @@
 from typing import Optional
 
+
 class BaseMapper(object):
     def __init__(self, *inargs, **inkwargs):
         from time import time
@@ -159,9 +160,7 @@ class BaseMapper(object):
             self.crx_writer.write_meta_line("primary_transcript_paths", "")
         else:
             for path in self.primary_transcript_paths:
-                self.crx_writer.write_meta_line(
-                    "primary_transcript_path", path
-                )
+                self.crx_writer.write_meta_line("primary_transcript_path", path)
 
     def make_crg_writer(self):
         from ..util.util import get_crg_def
@@ -212,6 +211,11 @@ class BaseMapper(object):
                     crx_data["all_mappings"] = "{}"
                 else:
                     crx_data = self.map(crv_data)
+                if not crx_data:
+                    continue
+                col_name = "pos_end"
+                if col_name not in crx_data:
+                    crx_data[col_name] = crv_data[col_name]
             except Exception as e:
                 self.log_runtime_error(ln, line, e, fn=self.reader.path)
             if crx_data:
@@ -345,4 +349,3 @@ class BaseMapper(object):
         runtime = stop_time - start_time
         self.logger.info("runtime: %6.3f" % runtime)
         self.end()
-

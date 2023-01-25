@@ -35,6 +35,11 @@ crv:
     type: int
     width: 80
     filterable: True
+  - name: pos_end
+    title: End Position
+    type: int
+    width: 80
+    filterable: True
   - name: ref_base
     title: Ref Base
     type: string
@@ -64,6 +69,11 @@ crx:
     filterable: True
   - name: pos
     title: Position
+    type: int
+    width: 80
+    filterable: True
+  - name: pos_end
+    title: End Position
     type: int
     width: 80
     filterable: True
@@ -156,6 +166,11 @@ crl:
     title: Pos
     type: int
     width: 80
+  - name: pos_end
+    title: End Position
+    type: int
+    width: 80
+    filterable: True
   - name: ref_base
     title: Reference allele
     type: string
