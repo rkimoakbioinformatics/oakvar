@@ -511,6 +511,16 @@ class MasterConverter(object):
             unique_variants.add(var_str)
         return is_unique
 
+    def add_end_pos_if_absent(self, variant: dict):
+        col_name = "pos_end"
+        if col_name not in variant:
+            ref_base = variant["ref_base"]
+            ref_len = len(ref_base)
+            if ref_len == 1:
+                variant[col_name] = variant["pos"]
+            else:
+                variant[col_name] = variant["pos"] + ref_len - 1
+
     def handle_variant(self, variant: dict, var_no: int, converter, unique_variants: set):
         from oakvar.lib.exceptions import NoVariantError
 
@@ -523,9 +533,10 @@ class MasterConverter(object):
         if unique:
             self.handle_chrom(variant)
             self.handle_ref_base(variant)
-            self.perform_liftover_if_needed(variant)
             self.check_invalid_base(variant)
             self.normalize_variant(variant)
+            self.add_end_pos_if_absent(variant)
+            self.perform_liftover_if_needed(variant)
             self.file_num_valid_variants += 1
             self.total_num_valid_variants += 1
             self.crv_writer.write_data(variant)
@@ -591,7 +602,7 @@ class MasterConverter(object):
                     self.handle_converted_variants(variants, converter)
                 except Exception as e:
                     self._log_conversion_error(self.read_lnum, e)
-                if self.read_lnum % 100 == 0:
+                if self.read_lnum % 10000 == 0:
                     status = f"Running Converter ({self.input_fname}): line {self.read_lnum}"
                     update_status(
                         status, logger=self.logger, serveradmindb=self.serveradmindb
@@ -658,6 +669,7 @@ class MasterConverter(object):
                 variant["ref_base"],
                 variant["alt_base"],
             )
+            variant["pos_end"] = self.liftover_one_pos(variant["chrom"], variant["pos_end"])
 
     def is_chrM(self, wdict):
         return wdict["chrom"] == "chrM"

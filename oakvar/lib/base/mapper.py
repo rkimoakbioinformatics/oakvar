@@ -176,6 +176,11 @@ class BaseMapper(object):
                     crx_data["all_mappings"] = "{}"
                 else:
                     crx_data = self.map(crv_data)
+                if not crx_data:
+                    continue
+                col_name = "pos_end"
+                if col_name not in crx_data:
+                    crx_data[col_name] = crv_data[col_name]
             except Exception as e:
                 self.log_runtime_error(ln, line, e, fn=self.reader.path)
             if crx_data:
@@ -308,31 +313,3 @@ class BaseMapper(object):
         runtime = stop_time - start_time
         self.logger.info("runtime: %6.3f" % runtime)
         self.end()
-
-
-if __name__ == "__main__":
-    import argparse
-
-    cmd_parser = argparse.ArgumentParser()
-    cmd_parser.add_argument("input_file", help="Input crv file")
-    cmd_parser.add_argument(
-        "-n", dest="run_name", help="Name of job. " + "Default is input file name."
-    )
-    cmd_parser.add_argument(
-        "-d",
-        dest="output_dir",
-        help="Output directory. " + "Default is input file directory.",
-    )
-    cmd_parser.add_argument(
-        "--seekpos", dest="seekpos", default=None, help=argparse.SUPPRESS
-    )
-    cmd_parser.add_argument(
-        "--chunksize", dest="chunksize", default=None, help=argparse.SUPPRESS
-    )
-    cmd_parser.add_argument(
-        "--primary-transcript",
-        dest="primary_transcript",
-        # nargs="*",
-        default=["mane"],
-        help='"mane" for MANE transcripts as primary transcripts, or a path to a file of primary transcripts. MANE is default.',
-    )
