@@ -1,21 +1,17 @@
-Licensing: dual licensed as open source Affero GPL-3.0 or later and commercial-use license (available for purchase).
+OakVar Dual License
 
-Copyright (c) 2022 Oak Bioinformatics, LLC
+Copyright (c) 2023 Oak Bioinformatics, LLC
 
-Open Source Versus Commercial Licenses for OakVar
+This program is dual licensed under the Affero GPL-3.0 or later for open source
+use, and a commercial license, which is available for purchase, for commercial
+use.
 
-If you use OakVar under the Affero GPL to integrate parts of it, then you are not allowed to sell
-copies of the modified program commercially. These requirements are the condition for including the
-GPL-covered code you received in a program of your own.
-
-If you do not wish to use OakVar under the Affero GPL, then we recommend obtaininig a commercial 
-license for the commercial edition of OakVar available for purchase from Oak Bioinformatics, LLC.
-
-A commercial-use license can be purchased for commercial use. This license does not impose the 
-Affero GPL open source licensing terms, conditions, and limitations. This license is a license 
-to use the updated version of OakVar for commercial activities during one year. 
-To obtain a commercial-use license of OakVar, you can send an mail to rkim@oakbioinformatics.com 
-for more infomation.
+For commercial use, please contact Oak Bioinformatics, LLC for obtaining a
+commercial license. OakVar commercial license does not impose the Affero GPL
+open-source licensing terms, conditions, and limitations. To obtain a
+commercial-use license of OakVar, please visit our website at
+https://oakbioinformatics.com or contact us at info@oakbioinformatics.com for
+more information.
 
 ================
 
@@ -23,12 +19,12 @@ MIT License
 
 Copyright (c) 2021 KarchinLab
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
