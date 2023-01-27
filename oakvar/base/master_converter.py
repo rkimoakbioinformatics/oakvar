@@ -613,8 +613,6 @@ class MasterConverter(object):
                     update_status(
                         status, logger=self.logger, serveradmindb=self.serveradmindb
                     )
-                if self.uid >= 10000:
-                    break
             f.close()
             self.logger.info(f"number of valid variants: {self.file_num_valid_variants}")
             self.logger.info(f"number of error lines: {self.file_error_lines}")
