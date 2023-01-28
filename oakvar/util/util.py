@@ -614,6 +614,8 @@ def get_df_from_db(
     import sys
     from pathlib import Path
     from os import environ
+    import urllib
+    import platform
 
     environ["RUST_LOG"] = "connectorx=warn,connectorx_python=warn"
     import polars as pl
@@ -639,8 +641,12 @@ def get_df_from_db(
             return None
     if not sql:
         sql = f"select * from {table_name}"
-    conn_url = f"sqlite://{db_path}"
-    if partition_on and num_cores:
+    ol_pl = platform.platform()
+    if ol_pl.startswith("Windows"):
+        conn_url = f"sqlite://{urllib.parse.quote(db_path)}"
+    else:
+        conn_url = f"sqlite://{db_path}"
+    if partition_on and num_cores > 1:
         df = pl.read_sql(
             sql, conn_url, partition_on=partition_on, partition_num=num_cores
         )
