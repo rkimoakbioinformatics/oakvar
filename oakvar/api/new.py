@@ -1,12 +1,15 @@
 from typing import Optional
 
 
-def exampleinput(directory: Optional[str] = None):
+def exampleinput(directory: Optional[str] = None, outer=None):
     from ..lib.util.admin_util import fn_new_exampleinput
 
     if not directory:
         return
-    return fn_new_exampleinput(directory)
+    ret = fn_new_exampleinput(directory)
+    if outer:
+        outer.write(ret)
+    return ret
 
 
 def module(name: Optional[str] = None, type: Optional[str] = None):

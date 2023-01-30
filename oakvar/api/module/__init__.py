@@ -215,9 +215,8 @@ def install(
                 if module_name not in problem_modules:
                     problem_modules.append(module_name)
             # if hasattr(e, "traceback") and getattr(e, "traceback"):
-            import traceback
-
-            traceback.print_exc()
+            # import traceback
+            # traceback.print_exc()
             if outer:
                 outer.error(e)
     if problem_modules:

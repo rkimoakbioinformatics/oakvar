@@ -2,10 +2,12 @@ from .issue import issue
 from .run import run
 from .report import report
 from .test import test as do_test
+from . import new
+from . import store
 from . import config
 from . import module
 
-_ = issue or run or report or do_test or config or module
+_ = issue or run or report or do_test or config or module or new or store
 
 
 def version():
