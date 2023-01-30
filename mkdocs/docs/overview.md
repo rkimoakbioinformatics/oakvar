@@ -22,6 +22,7 @@ OakVar automates this annotation work by:
 
 The main OakVar command for annotation is `ov run`. For example, the following command will annotate the variants in a VCF file, `input.vcf`, with annotation sources ClinVar and COSMIC and generate an annotated VCF file, `annotated.vcf` as well as a database file, `annotated.sqlite`.
 
+    ov module install clinvar # if clinvar module is not already installed.
     ov run input.vcf -a clinvar cosmic -t vcf -n annotated
 
 ## Query
