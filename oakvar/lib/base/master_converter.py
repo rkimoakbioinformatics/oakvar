@@ -689,7 +689,8 @@ class MasterConverter(object):
                         res = [(res_prev[0][0], pos_prev + 1)]
                     elif pos_prev == pos_next + 2:
                         res = [(res_prev[0][0], pos_prev - 1)]
-        return res
+        else:
+            return res[0][1] + 1
 
     def liftover(self, chrom, pos, ref, alt):
         from oakvar.lib.exceptions import LiftoverFailure
@@ -701,7 +702,7 @@ class MasterConverter(object):
         reflen = len(ref)
         altlen = len(alt)
         if reflen == 1 and altlen == 1:
-            res = self.liftover_one_pos(chrom, pos)
+            res = self.liftover_one_pos(chrom, pos - 1)
             if res is None or len(res) == 0:
                 raise LiftoverFailure("Liftover failure")
             if len(res) > 1:
@@ -817,39 +818,3 @@ class MasterConverter(object):
     def end(self):
         pass
 
-
-def main():
-    master_converter = MasterConverter()
-    master_converter.run()
-
-
-if __name__ == "__main__":
-    from argparse import ArgumentParser
-
-    parser = ArgumentParser()
-    parser.add_argument("path", help="Path to this converter's python module")
-    parser.add_argument(
-        "inputs", nargs="*", default=None, help="Files to be converted to .crv"
-    )
-    parser.add_argument(
-        "-f", dest="input_format", default=None, help="Specify an input format"
-    )
-    parser.add_argument(
-        "-n", "--name", dest="name", help="Name of job. Default is input file name."
-    )
-    parser.add_argument(
-        "-d",
-        "--output-dir",
-        dest="output_dir",
-        help="Output directory. Default is input file directory.",
-    )
-    parser.add_argument(
-        "-l",
-        "--genome",
-        dest="genome",
-        default=None,
-        help="Input gene assembly. Will be lifted over to hg38",
-    )
-
-    master_converter = MasterConverter()
-    master_converter.run()
