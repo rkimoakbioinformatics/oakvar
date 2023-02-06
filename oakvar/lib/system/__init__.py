@@ -1,5 +1,7 @@
 from typing import Optional
 from typing import Dict
+from typing import Any
+from pathlib import Path
 
 custom_system_conf = None
 
@@ -225,13 +227,13 @@ def get_root_dir(conf=None):
     return get_conf_dirvalue(root_dir_key, conf=conf)
 
 
-def get_conf_dir(conf=None):
+def get_conf_dir(conf=None) -> Optional[Path]:
     from .consts import conf_dir_key
 
     return get_conf_dirvalue(conf_dir_key, conf=conf)
 
 
-def get_modules_dir(conf=None) -> Optional[str]:
+def get_modules_dir(conf=None) -> Optional[Path]:
     from .consts import modules_dir_key
 
     d = get_conf_dirvalue(modules_dir_key, conf=conf)
@@ -251,19 +253,20 @@ def get_log_dir(conf=None):
 
 
 def get_conf_dirvalue(conf_key, conf=None):
-    from os.path import abspath
+    from pathlib import Path
 
-    d = get_sys_conf_value(conf_key, conf=conf)
+    d: Optional[str] = get_sys_conf_value(conf_key, conf=conf)
     if d:
-        d = abspath(d)
-    return d
+        return Path(d).absolute()
+    else:
+        return None
 
 
-def get_cache_dir(cache_key, conf=None):
-    from os.path import join
-
+def get_cache_dir(cache_key, conf=None) -> Optional[Path]:
     d = get_conf_dir(conf=conf)
-    return join(d, cache_key)
+    if d:
+        return d / cache_key
+    return None
 
 
 def get_default_logo_path() -> str:
@@ -279,18 +282,21 @@ def get_default_logo_path() -> str:
     return str(path)
 
 
-def get_logo_path(module_name: str, store: str, conf=None) -> str:
-    from pathlib import Path
+def get_logo_path(module_name: str, store: str, conf=None) -> Optional[Path]:
     from os.path import getsize
 
     fname = module_name + ".png"
-    path = Path(get_cache_dir("logo", conf=conf)) / store / fname
-    if (not path.exists() or getsize(path) == 0) and store == "ov":
-        path = Path(get_cache_dir("logo", conf=conf)) / "oc" / fname
-    return str(path)
+    logo_dir = get_cache_dir("logo", conf=conf)
+    if logo_dir:
+        path = logo_dir / store / fname
+        if (not path.exists() or getsize(path) == 0) and store == "ov":
+            path = logo_dir / "oc" / fname
+        return path
+    else:
+        return None
 
 
-def get_sys_conf_value(conf_key, sys_conf_path=None, conf=None):
+def get_sys_conf_value(conf_key, sys_conf_path=None, conf=None) -> Optional[Any]:
     from os import environ
     from ..util.util import load_yml_conf
     from os.path import exists
@@ -688,49 +694,48 @@ def get_default_log_dir(conf=None):
     return pathjoin(root_dir, log_dir_name)
 
 
-def get_default_root_dir(conf=None):
-    from os.path import exists, join, expandvars
-    from os import sep, environ
+def get_default_root_dir(conf=None) -> Path:
+    from os.path import expandvars
+    from os import environ
     from pathlib import Path
     from ..util.admin_util import get_packagedir
     from ..util.admin_util import get_platform
     from .consts import root_dir_key
 
     if conf and root_dir_key in conf:
-        return conf.get(root_dir_key)
+        d: str = conf.get(root_dir_key)
+        return Path(d)
     pl = get_platform()
     root_dir = None
     if pl == "windows":
-        root_dir = join(expandvars("%systemdrive%"), sep, "open-cravat")
-        if exists(root_dir) == False:  # OakVar first installation
-            root_dir = join(expandvars("%systemdrive%"), sep, "oakvar")
+        root_dir = Path(expandvars("%systemdrive%")) / "open-cravat"
+        if not root_dir.exists():
+            root_dir = Path(expandvars("%systemdrive%")) / "oakvar"
     elif pl == "linux":
         path = ".oakvar"
         root_dir = get_packagedir()
-        if (
-            exists(join(root_dir, "conf")) == False
-        ):  # packagedir/conf is the old conf dir of OpenCRAVAT.
+        if not (root_dir / "conf").exists(): # packagedir/conf is the old conf dir of OpenCRAVAT.
             if is_root_user():
                 sudo_user = environ.get("SUDO_USER")
                 home = environ.get("HOME")
                 if sudo_user is not None:
-                    root_dir = join("/home", sudo_user, path)
+                    root_dir = Path("/home") / sudo_user / path
                 elif home is not None and home == "/root":  # Ubuntu in docker
-                    root_dir = join(home, ".oakvar")
+                    root_dir = Path(home) / ".oakvar"
                 else:
-                    root_dir = join(str(Path.home()), path)
+                    root_dir = Path.home() / path
             else:
                 user = environ.get("USER")
                 if user is not None:
-                    root_dir = join("/home", user, path)
+                    root_dir = Path("/home") / user / path
                 else:
-                    root_dir = join(str(Path.home()), path)
+                    root_dir = Path.home() / path
     elif pl == "macos":
-        root_dir = "/Users/Shared/open-cravat"
-        if exists(root_dir) == False:  # OakVar first installation
-            root_dir = "/Users/Shared/oakvar"
+        root_dir = Path("/Users/Shared/open-cravat")
+        if not root_dir.exists(): # OakVar first installation
+            root_dir = Path("/Users/Shared/oakvar")
     else:
-        root_dir = "."
+        root_dir = Path(".")
     return root_dir
 
 
@@ -919,15 +924,17 @@ def check_account(outer=None) -> bool:
 
 
 def check_cache_files(outer=None) -> bool:
-    from os.path import join
     from os import listdir
 
     for k in ["readme", "logo", "conf"]:
-        d = join(get_cache_dir(k), "oc")
-        if len(listdir(d)) == 0:
-            if outer:
-                outer.write(f"System directory {d} does not exist.")
-            return False
+        d = get_cache_dir(k)
+        if d:
+            ov_dir = d / "ov"
+            oc_dir = d / "oc"
+            if len(listdir(ov_dir)) == 0 and len(listdir(oc_dir)) == 0:
+                if outer:
+                    outer.write(f"System directory {d} does not exist.")
+                return False
     return True
 
 
@@ -951,14 +958,12 @@ def check(outer=None) -> bool:
     return True
 
 
-def get_user_jobs_dir(email=None):
-    from pathlib import Path
-
-    root_jobs_dir = Path(get_jobs_dir()).absolute()
+def get_user_jobs_dir(email=None) -> Optional[Path]:
+    root_jobs_dir = get_jobs_dir()
     if not email:
         return None
     jobs_dir = root_jobs_dir / email
-    return str(jobs_dir)
+    return jobs_dir
 
 
 def get_legacy_status_json_path_in_job_dir(
