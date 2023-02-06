@@ -1,9 +1,18 @@
 from typing import Optional
 
-def create(email: Optional[str]=None, pw: Optional[str]=None, pwconfirm: bool=False, interactive: bool=False, outer=None):
+
+def create(
+    email: Optional[str] = None,
+    pw: Optional[str] = None,
+    pwconfirm: bool = False,
+    interactive: bool = False,
+    outer=None,
+):
     from ....lib.store.ov.account import create
 
-    ret = create(email=email, pw=pw, pwconfirm=pwconfirm, interactive=interactive, outer=outer)
+    ret = create(
+        email=email, pw=pw, pwconfirm=pwconfirm, interactive=interactive, outer=outer
+    )
     ret = ret.get("success")
     return ret
 
@@ -15,7 +24,7 @@ def store_deleteaccount(outer=None):
     return ret
 
 
-def change(newpw: Optional[str]=None, outer=None):
+def change(newpw: Optional[str] = None, outer=None):
     from ....lib.store.ov.account import change
 
     ret = change(newpw=newpw, outer=outer)
@@ -36,10 +45,18 @@ def check(outer=None):
     return ret
 
 
-def login(email: Optional[str]=None, pw: Optional[str]=None, interactive: bool=False, outer=None):
+def login(
+    email: Optional[str] = None,
+    pw: Optional[str] = None,
+    interactive: bool = False,
+    relogin: bool = False,
+    outer=None,
+):
     from ....lib.store.ov.account import login
 
-    ret = login(email=email, pw=pw, interactive=interactive, outer=outer)
+    ret = login(
+        email=email, pw=pw, interactive=interactive, relogin=relogin, outer=outer
+    )
     return ret
 
 
@@ -48,4 +65,3 @@ def logout(outer=None):
 
     ret = logout(outer=outer)
     return ret
-

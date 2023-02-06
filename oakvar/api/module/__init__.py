@@ -1,5 +1,6 @@
 from typing import Optional
 from typing import List
+from pathlib import Path
 
 
 def pack(
@@ -24,35 +25,40 @@ def pack(
 
 
 def ls(
-    patterns: List[str] = [".*"],
+    module_names: List[str] = [".*"],
     available: bool = False,
     types: List[str] = [],
     tags: List[str] = [],
     nameonly: bool = False,
     raw_bytes: bool = False,
+    outer=None,
     **kwargs,
 ):
     from .ls_logic import list_modules
+    from ...lib.util.util import print_list_of_dict
 
     _ = kwargs
     ret = list_modules(
-        patterns=patterns,
+        module_names=module_names,
         types=types,
         tags=tags,
         available=available,
         nameonly=nameonly,
         raw_bytes=raw_bytes,
     )
+    if outer:
+        print_list_of_dict(ret, outer=outer)
     return ret
 
 
-def info(module_name: Optional[str] = None, local: bool = False, **kwargs):
+def info(module_name: Optional[str] = None, local: bool = False, outer=None, **kwargs):
     from ...lib.module.local import get_local_module_info
     from ...lib.module.remote import get_remote_module_info
     from ...lib.module.local import LocalModule
     from ...lib.module.remote import get_readme as get_remote_readme
     from ...lib.module.local import get_readme as get_local_readme
     from ...lib.module.local import get_remote_manifest_from_local
+    from ...cli.module.info_fn import print_module_info
 
     _ = kwargs
     ret = {}
@@ -130,13 +136,15 @@ def info(module_name: Optional[str] = None, local: bool = False, **kwargs):
         ret["latest_version"] = max(
             local_info.code_version, remote_info.latest_code_version
         )
+    if outer:
+        print_module_info(module_info=ret, outer=outer)
     return ret
 
 
 def install(
     module_names: List[str] = [],
     urls: Optional[str] = None,
-    modules_dir: Optional[str] = None,
+    modules_dir: Optional[Path] = None,
     overwrite: bool = False,
     clean: bool = False,
     force_data: bool = False,
@@ -148,6 +156,7 @@ def install(
     stage_handler=None,
     system_worker_state=None,
 ):
+    import sys
     from .install_defs import get_modules_to_install
     from .install_defs import show_modules_to_install
     from ...lib.module import install_module
@@ -219,6 +228,8 @@ def install(
             # traceback.print_exc()
             if outer:
                 outer.error(e)
+            else:
+                sys.stderr.write(str(e) + "\n")
     if problem_modules:
         if outer:
             outer.write(f"Following modules were not installed due to problems:")
@@ -239,7 +250,7 @@ def update(
     no_fetch: bool = False,
     overwrite: bool = False,
     force_data: bool = False,
-    modules_dir: Optional[str] = None,
+    modules_dir: Optional[Path] = None,
     yes=False,
     outer=None,
     system_worker_state=None,
@@ -324,7 +335,7 @@ def installbase(
     no_fetch: bool = False,
     conf: Optional[dict] = None,
     overwrite: bool = False,
-    modules_dir: Optional[str] = None,
+    modules_dir: Optional[Path] = None,
     outer=None,
     system_worker_state=None,
 ):

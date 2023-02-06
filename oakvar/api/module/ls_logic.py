@@ -1,6 +1,14 @@
 from typing import List
 
-def list_modules(patterns: List[str]=[], types: List[str]=[], tags: List[str]=[], available: bool=False, nameonly: bool=False, raw_bytes: bool=False):
+
+def list_modules(
+    module_names: List[str] = [],
+    types: List[str] = [],
+    tags: List[str] = [],
+    available: bool = False,
+    nameonly: bool = False,
+    raw_bytes: bool = False,
+):
     from ...lib.module.remote import search_remote
     from ...lib.module.local import search_local
     from ...lib.module.local import get_local_module_info
@@ -13,11 +21,11 @@ def list_modules(patterns: List[str]=[], types: List[str]=[], tags: List[str]=[]
         if types:
             l = []
             for mt in types:
-                l.extend(search_remote(*patterns, module_type=mt))
+                l.extend(search_remote(*module_names, module_type=mt))
         else:
-            l = search_remote(*patterns)
+            l = search_remote(*module_names)
     else:
-        l = search_local(*patterns)
+        l = search_local(*module_names)
     if not l:
         return all_toks_json
     for module_name in l:
@@ -83,5 +91,3 @@ def add_local_module_info_to_remote_module_info(remote_info):
         remote_info.installed = ""
         remote_info.local_code_version = ""
         remote_info.local_data_source = ""
-
-

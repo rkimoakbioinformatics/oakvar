@@ -521,7 +521,7 @@ class Tester:
             module = get_local_module_info(self.module_name)
         self.module = module
         if not module or not module.name:
-            raise ModuleLoadingError(self.module_name)
+            raise ModuleLoadingError(module_name=self.module_name)
         if not exists(module.directory) or not module.script_exists:
             raise Exception(
                 "No runnable module installed at path %s" % module.directory
@@ -577,7 +577,7 @@ class Tester:
             "" if self.input_file == "input" else self.input_file
         )  # if there is more than one test for the module, include the test file in the log.
         if self.module is None:
-            raise ModuleLoadingError(self.module_name)
+            raise ModuleLoadingError(module_name=self.module_name)
         self._report(f"{self.module.name}: started {input_msg}")
         self.start_time = time()
         self.parse_parms()
@@ -633,7 +633,7 @@ class Tester:
         from ..lib.exceptions import ModuleLoadingError
 
         if self.module is None:
-            raise ModuleLoadingError(self.module_name)
+            raise ModuleLoadingError(module_name=self.module_name)
         self.test_passed = True
         if self.module.type == "annotator":
             self.verify_level(self.module.level, [self.module.title])
@@ -719,7 +719,7 @@ class Tester:
         from ..lib.exceptions import ModuleLoadingError
 
         if self.module is None:
-            raise ModuleLoadingError(self.module_name)
+            raise ModuleLoadingError(module_name=self.module_name)
         key_reader = self.create_report_reader(self.report_type, self.key_path)
         if key_reader is None:
             raise NoReportReader(self.key_path)
@@ -782,7 +782,7 @@ class Tester:
         if self.module is None:
             from ..lib.exceptions import ModuleLoadingError
 
-            raise ModuleLoadingError(self.module_name)
+            raise ModuleLoadingError(module_name=self.module_name)
         if self.start_time is None:
             from ..lib.exceptions import ExpectedException
 

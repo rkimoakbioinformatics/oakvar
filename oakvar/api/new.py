@@ -1,7 +1,7 @@
 from typing import Optional
 
 
-def exampleinput(directory: Optional[str] = None, outer=None):
+def exampleinput(directory: Optional[str] = ".", outer=None):
     from ..lib.util.admin_util import fn_new_exampleinput
 
     if not directory:
