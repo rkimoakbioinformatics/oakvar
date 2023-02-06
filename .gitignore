@@ -19,3 +19,4 @@ makecravat.sh
 .ipynb_checkpoints
 mkdocs/site
 **/pyrightconfig.json
+extras/notebooks/exampleinput*
