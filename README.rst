@@ -24,7 +24,7 @@ What it does
 * Connect genomic data to AI/ML models.
 
 Internship (currently full)
-==========
+===========================
 The main project will be OakVar. Full remote work. Unpaid position (no funding yet). Please send your application to rkim@oakbioinformatics.com.
 
 Resources
