@@ -15,7 +15,10 @@ def system_queue_worker(
     from ..lib.exceptions import ModuleToSkipInstallation
     from .consts import SYSTEM_STATE_SETUP_KEY
     from .consts import SYSTEM_MSG_KEY
+    from .util import GuiOuter
 
+    setup_outer = GuiOuter(kind="setup")
+    install_outer = GuiOuter(kind="install")
     while True:
         try:
             sleep(1)
@@ -27,7 +30,7 @@ def system_queue_worker(
             if work_type == "setup":
                 args = data.get("args")
                 args[SYSTEM_MSG_KEY] = SYSTEM_STATE_SETUP_KEY
-                setup_system()
+                setup_system(outer=setup_outer)
             elif work_type == "install_module":
                 module_name = data["module"]
                 module_version = data["version"]
@@ -49,6 +52,7 @@ def system_queue_worker(
                         stage_handler=stage_handler,
                         overwrite=True,
                         fresh=True,
+                        outer=install_outer,
                     )
                     # unqueue(module_name, system_queue)
                     local_modules_changed.set()

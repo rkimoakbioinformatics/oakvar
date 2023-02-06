@@ -1,3 +1,6 @@
+from pathlib import Path
+
+
 def update_status(status: str, logger=None, serveradmindb=None):
     if logger:
         logger.info(status)
@@ -83,7 +86,7 @@ def show_logo(outer=None):
     )
 
 
-def get_new_job_dir(jobs_dir: str) -> str:
+def get_new_job_dir(jobs_dir: Path) -> Path:
     from datetime import datetime
     from pathlib import Path
 
@@ -97,10 +100,10 @@ def get_new_job_dir(jobs_dir: str) -> str:
             if not job_dir.exists():
                 break
             count += 1
-    return str(job_dir)
+    return job_dir
 
 
-def get_new_job_name(jobs_dir: str) -> str:
+def get_new_job_name(jobs_dir: Path) -> str:
     from pathlib import Path
 
     job_dir = get_new_job_dir(jobs_dir)

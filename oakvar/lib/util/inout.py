@@ -611,5 +611,22 @@ class ColumnDefinition(object):
             yield k, v
 
 
+def read_crv(fpath):
+    import polars as pl
+
+    f = open(fpath)
+    c = 0
+    for line in f:
+        if not line.startswith("#"):
+            break
+        c += 1
+    df = pl.read_csv(
+        f,
+        skip_rows=c,
+        new_columns=["uid", "chrom", "pos", "pos_end", "ref_base", "alt_base"],
+    )
+    return df
+
+
 CravatReader = FileReader
 CravatWriter = FileWriter

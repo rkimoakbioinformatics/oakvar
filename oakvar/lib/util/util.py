@@ -63,7 +63,7 @@ def load_class(path, class_name=None):
             import traceback
 
             traceback.print_exc()
-            raise ModuleLoadingError(module_name)
+            raise ModuleLoadingError(module_name=module_name)
     if module:
         if class_name:
             if hasattr(module, class_name):
@@ -508,7 +508,7 @@ def yield_tabular_lines(l, col_spacing=2, indent=0):
         yield jline
 
 
-def print_list_of_dict(l):
+def print_list_of_dict(l, outer=None):
     from rich.console import Console
     from rich.table import Table
     from rich import box
@@ -529,7 +529,7 @@ def print_list_of_dict(l):
                 v = str(v)
             row.append(v)
         table.add_row(*row)
-    console = Console()
+    console = Console(file=outer)
     console.print(table)
 
 
@@ -622,7 +622,7 @@ def get_df_from_db(
     import sys
     from pathlib import Path
     from os import environ
-    import urllib
+    from urllib.parse import quote
     import platform
 
     environ["RUST_LOG"] = "connectorx=warn,connectorx_python=warn"
@@ -651,7 +651,7 @@ def get_df_from_db(
         sql = f"select * from {table_name}"
     ol_pl = platform.platform()
     if ol_pl.startswith("Windows"):
-        conn_url = f"sqlite://{urllib.parse.quote(db_path)}"
+        conn_url = f"sqlite://{quote(db_path)}"
     else:
         conn_url = f"sqlite://{db_path}"
     if partition_on and num_cores > 1:

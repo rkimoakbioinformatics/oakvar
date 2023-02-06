@@ -63,6 +63,7 @@ def get_log_path(log_dir=None):
     log_path = Path(log_dir) / LOG_FN
     return str(log_path)
 
+
 def get_email_from_oakvar_token(token):
     import jwt
     from .consts import DEFAULT_PRIVATE_KEY
@@ -71,9 +72,12 @@ def get_email_from_oakvar_token(token):
     email = data.get("email")
     return email
 
+
 def get_token(request):
     from .consts import COOKIE_KEY
+
     return request.cookies.get(COOKIE_KEY)
+
 
 def get_email_from_request(request, servermode):
     from ..lib.system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
@@ -89,6 +93,7 @@ def get_email_from_request(request, servermode):
         email = None
     return email
 
+
 async def is_loggedin(request, servermode):
     if not servermode:
         return True
@@ -98,9 +103,11 @@ async def is_loggedin(request, servermode):
     else:
         return False
 
+
 def copy_state(value):
     from multiprocessing.managers import ListProxy
     from multiprocessing.managers import DictProxy
+
     if isinstance(value, ListProxy):
         content = []
         for v in value:
@@ -115,3 +122,40 @@ def copy_state(value):
         content = value
     return content
 
+
+class GuiOuter:
+    def __init__(self, kind: str = "system", stdout_mirror: bool = True):
+        from .system_message_db import get_system_message_db_conn
+
+        self.kind = kind
+        self.stdout_mirror = stdout_mirror
+        self.conn = get_system_message_db_conn()
+
+    def write(self, msg: str):
+        from time import time
+        from .consts import SYSTEM_MESSAGE_TABLE
+
+        if self.stdout_mirror:
+            print(msg)
+        dt = time()
+        self.conn.execute(
+            f"insert into {SYSTEM_MESSAGE_TABLE} (kind, msg, dt) values (?, ?, ?)",
+            (self.kind, msg, dt),
+        )
+        self.conn.commit()
+
+    def error(self, e):
+        from time import time
+        from .consts import SYSTEM_MESSAGE_TABLE
+
+        if self.stdout_mirror:
+            print(str(e))
+        dt = time()
+        self.conn.execute(
+            f"insert into {SYSTEM_MESSAGE_TABLE} (kind, msg, dt) values (?, ?, ?)",
+            (self.kind, str(e), dt),
+        )
+        self.conn.commit()
+
+    def flush(self):
+        pass

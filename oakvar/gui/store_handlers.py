@@ -1,7 +1,16 @@
 from typing import Optional
 
+
 class StoreHandlers:
-    def __init__(self, servermode=False, mu=None, local_modules_changed=None, system_worker_state=None, system_queue=None, logger=None):
+    def __init__(
+        self,
+        servermode=False,
+        mu=None,
+        local_modules_changed=None,
+        system_worker_state=None,
+        system_queue=None,
+        logger=None,
+    ):
         self.servermode = servermode
         self.mu = mu
         self.local_modules_changed = local_modules_changed
@@ -22,11 +31,19 @@ class StoreHandlers:
         self.routes.append(["GET", "/store/addlocal", self.add_local_module_info])
         self.routes.append(["GET", "/store/uninstall", self.uninstall_module])
         self.routes.append(["GET", "/store/getqueue", self.get_queue])
-        self.routes.append(["GET", "/store/getinstallstate", self.get_system_worker_state_web])
+        self.routes.append(
+            ["GET", "/store/getinstallstate", self.get_system_worker_state_web]
+        )
         self.routes.append(["GET", "/store/unqueue", self.unqueue_install])
         self.routes.append(["GET", "/store/getreadme", self.get_readme])
         self.routes.append(["GET", "/store/getmoduleimg", self.get_module_img])
-        self.routes.append(["GET", "/store/locallogoexists/{module_name}", self.local_module_logo_exists])
+        self.routes.append(
+            [
+                "GET",
+                "/store/locallogoexists/{module_name}",
+                self.local_module_logo_exists,
+            ]
+        )
 
     async def local_module_logo_exists(self, request):
         from aiohttp.web import json_response
@@ -45,7 +62,9 @@ class StoreHandlers:
     def handle_modules_changed(self):
         from ..lib.module.cache import get_module_cache
 
-        if not self.local_manifest or (self.local_modules_changed and self.local_modules_changed.is_set()):
+        if not self.local_manifest or (
+            self.local_modules_changed and self.local_modules_changed.is_set()
+        ):
             get_module_cache().update_local()
             if self.local_modules_changed:
                 self.local_modules_changed.clear()
@@ -53,6 +72,7 @@ class StoreHandlers:
 
     def update_local_manifest(self):
         from ..lib.module.cache import get_module_cache
+
         self.local_manifest = {}
         local_cache = get_module_cache().get_local()
         for k, v in local_cache.items():
@@ -81,7 +101,6 @@ class StoreHandlers:
         else:
             return FileResponse(get_default_logo_path())
 
-
     def get_remote_manifest_cache(self) -> Optional[dict]:
         from os.path import exists
         from json import load
@@ -97,6 +116,7 @@ class StoreHandlers:
 
     def make_remote_manifest(self):
         from ..lib.module.remote import make_remote_manifest
+
         content = make_remote_manifest()
         assert self.system_queue is not None
         for queue_data in self.system_queue:
@@ -120,10 +140,8 @@ class StoreHandlers:
         save_remote_manifest_cache(content)
         return json_response(content)
 
-
     async def get_remote_module_logo(self, request):
         from aiohttp.web import FileResponse
-        from os.path import exists
         from os.path import getsize
         from ..lib.system import get_logo_path
         from ..lib.system import get_default_logo_path
@@ -132,16 +150,17 @@ class StoreHandlers:
         module_name = queries.get("module", None)
         store = queries.get("store", None)
         logo_path = get_logo_path(module_name, store)
-        if not exists(logo_path) or getsize(logo_path) == 0:
+        if not logo_path or not logo_path.exists() or getsize(logo_path) == 0:
             if store == "ov":
                 logo_path = get_logo_path(module_name, "oc")
-        if exists(logo_path) and getsize(logo_path) > 0:
+        if logo_path and logo_path.exists() and getsize(logo_path) > 0:
             return FileResponse(logo_path)
         else:
             return FileResponse(get_default_logo_path())
 
     async def queue_install(self, request):
         from aiohttp.web import Response
+
         if self.servermode and self.mu:
             if not await self.mu.is_admin_loggedin(request):
                 return Response(status=403)
@@ -159,7 +178,8 @@ class StoreHandlers:
     async def add_local_module_info(self, request):
         from aiohttp.web import Response
         from aiohttp.web import json_response
-        #from ...module.local import get_local_module_info
+
+        # from ...module.local import get_local_module_info
         from ..lib.module.cache import get_module_cache
 
         queries = request.rel_url.query
@@ -197,6 +217,7 @@ class StoreHandlers:
 
     async def get_queue(self, _):
         from aiohttp.web import json_response
+
         content = []
         if self.system_queue:
             for data in self.system_queue:
@@ -206,19 +227,26 @@ class StoreHandlers:
     async def get_system_worker_state_web(self, _):
         from aiohttp.web import json_response
         from .util import copy_state
+
         content = copy_state(self.system_worker_state)
+        if isinstance(content, dict):
+            del content["last_msg_id"]
         return json_response(content)
 
     def send_kill_install_signal(self, module_name: Optional[str]):
         from .consts import SYSTEM_STATE_INSTALL_KEY
+
         if not self.system_worker_state or not module_name:
             return
         if module_name in self.system_worker_state:
-            self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name]["kill_signal"] = True
+            self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
+                "kill_signal"
+            ] = True
 
     async def unqueue_install(self, request):
         from aiohttp.web import Response
         from .consts import SYSTEM_STATE_INSTALL_KEY
+
         if self.servermode and self.mu:
             if not await self.mu.is_admin_loggedin(request):
                 return Response(status=403)
@@ -260,6 +288,7 @@ class StoreHandlers:
         from aiohttp.web import Response
         from aiohttp.web import FileResponse
         from ..lib.module.local import get_module_dir
+
         queries = request.rel_url.query
         module_name = queries.get("module_name")
         fname = queries.get("file")
@@ -272,5 +301,3 @@ class StoreHandlers:
         if not p.exists():
             return Response(status=404)
         return FileResponse(p)
-
-

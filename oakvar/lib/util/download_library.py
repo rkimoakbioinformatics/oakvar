@@ -89,7 +89,7 @@ def download(
     elif kind in ZIP_KINDS:
         # Create new folder for data if we need it
         if path and not op.isdir(path):
-            if verbose:
+            if verbose and outer:
                 tqdm.write("Creating data folder...", file=sys.stdout)
             os.makedirs(path)
 
@@ -109,7 +109,7 @@ def download(
         )
 
         # Unzip the file to the out path
-        if verbose:
+        if verbose and outer:
             tqdm.write("Extracting {} file...".format(kind), file=sys.stdout)
         if kind == "zip":
             zipper = ZipFile
@@ -138,7 +138,7 @@ def download(
             outer=outer,
         )
         msg = "Successfully downloaded file to {}".format(path)
-    if verbose:
+    if verbose and outer:
         tqdm.write(msg, file=sys.stdout)
     return path
 
@@ -259,7 +259,7 @@ def _fetch_file(
         finally:
             u.close()
             del u
-        if verbose:
+        if verbose and outer:
             tqdm.write(
                 "Downloading data from %s (%s)\n" % (url, sizeof_fmt(remote_file_size)),
                 file=sys.stdout,
@@ -307,7 +307,7 @@ def _fetch_file(
 
         # check md5sum
         if hash_ is not None:
-            if verbose:
+            if verbose and outer:
                 tqdm.write("Verifying download hash.", file=sys.stdout)
             md5 = md5sum(temp_file_name)
             if hash_ != md5:
@@ -378,7 +378,7 @@ def _get_ftp(
         with open(temp_file_name, mode) as local_file:
 
             def chunk_write(chunk):
-                return _chunk_write(chunk, local_file, progress)
+                return _chunk_write(chunk, local_file, progress, outer)
 
             if check_install_kill and system_worker_state:
                 check_install_kill(
@@ -423,67 +423,72 @@ def _get_http(
     try:
         r = session.get(url, headers=headers, stream=True)
     except:
-        tqdm.write(
-            "Resuming download failed (server "
-            "rejected the request). Attempting to "
-            "restart downloading the entire file.",
-            file=sys.stdout,
-        )
+        if outer:
+            tqdm.write(
+                "Resuming download failed (server "
+                "rejected the request). Attempting to "
+                "restart downloading the entire file.",
+                file=sys.stdout,
+            )
         del headers["Range"]
         r = session.get(url, headers=headers, stream=True)
     r.raise_for_status()
     total_size = int(r.headers.get("Content-Length", "0").strip())
     if initial_size > 0 and file_size == total_size:
-        tqdm.write(
-            "Resuming download failed (resume file size "
-            "mismatch). Attempting to restart downloading the "
-            "entire file.",
-            file=sys.stdout,
-        )
+        if outer:
+            tqdm.write(
+                "Resuming download failed (resume file size "
+                "mismatch). Attempting to restart downloading the "
+                "entire file.",
+                file=sys.stdout,
+            )
         initial_size = 0
     total_size += initial_size
     if total_size != file_size:
         raise RuntimeError("URL could not be parsed properly")
     mode = "ab" if initial_size > 0 else "wb"
     cur_size = initial_size
-    with tqdm(
-        total=total_size,
-        initial=initial_size,
-        desc="file_sizes",
-        ncols=ncols,
-        unit="B",
-        unit_scale=True,
-        file=sys.stdout,
-        disable=not progressbar,
-    ) as progress:
-
-        chunk_size = 262144 * 4
-        with open(temp_file_name, mode) as local_file:
-            for chunk in r.iter_content(chunk_size=chunk_size):
-                t0 = time.time()
-                if check_install_kill and system_worker_state:
-                    check_install_kill(
-                        system_worker_state=system_worker_state, module_name=module_name
-                    )
-                dt = time.time() - t0
-                if dt < 0.005:
-                    chunk_size = chunk_size * 2
-                elif dt > 0.1 and chunk_size > 8192:
-                    chunk_size = max(chunk_size // 2, 512)
-                local_file.write(chunk)
-                read_size = len(chunk)
+    if outer:
+        progress = tqdm(
+            total=total_size,
+            initial=initial_size,
+            desc="File size",
+            ncols=ncols,
+            unit="B",
+            unit_scale=True,
+            file=sys.stdout,
+            disable=not progressbar,
+        )
+    else:
+        progress = None
+    chunk_size = 262144 * 4
+    with open(temp_file_name, mode) as local_file:
+        for chunk in r.iter_content(chunk_size=chunk_size):
+            t0 = time.time()
+            if check_install_kill and system_worker_state:
+                check_install_kill(
+                    system_worker_state=system_worker_state, module_name=module_name
+                )
+            dt = time.time() - t0
+            if dt < 0.005:
+                chunk_size = chunk_size * 2
+            elif dt > 0.1 and chunk_size > 8192:
+                chunk_size = max(chunk_size // 2, 512)
+            local_file.write(chunk)
+            read_size = len(chunk)
+            if progress:
                 progress.update(read_size)
-                cur_size += read_size
-                if system_worker_state:
-                    system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
-                        "cur_chunk"
-                    ] += read_size
-                    system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
-                        "total_chunk"
-                    ] += read_size
-                    system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
-                        "update_time"
-                    ] = time.time()
+            cur_size += read_size
+            if system_worker_state:
+                system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
+                    "cur_chunk"
+                ] += read_size
+                system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
+                    "total_chunk"
+                ] += read_size
+                system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
+                    "update_time"
+                ] = time.time()
 
 
 def md5sum(fname, block_size=1048576):  # 2 ** 20
@@ -511,10 +516,10 @@ def md5sum(fname, block_size=1048576):  # 2 ** 20
     return md5.hexdigest()
 
 
-def _chunk_write(chunk, local_file, progress):
+def _chunk_write(chunk, local_file, progress, outer):
     """Write a chunk to file and update the progress bar."""
     local_file.write(chunk)
-    if progress is not None:
+    if progress is not None and outer:
         progress.update(len(chunk))
 
 

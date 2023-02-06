@@ -100,12 +100,13 @@ async def get_user_job_log_path(request, eud={}) -> Optional[str]:
 
 
 def get_user_jobs_dir_list() -> Optional[list]:
-    from pathlib import Path
     from ..lib.system import get_jobs_dir
 
     user_jobs_dir_list = []
     root_jobs_dir = get_jobs_dir()
-    for user_p in Path(root_jobs_dir).glob("*"):
+    if not root_jobs_dir:
+        return user_jobs_dir_list
+    for user_p in root_jobs_dir.glob("*"):
         if not user_p.is_dir():
             continue
         user_jobs_dir_list.append(str(user_p.absolute()))

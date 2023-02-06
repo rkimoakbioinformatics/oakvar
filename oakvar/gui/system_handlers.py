@@ -1,5 +1,12 @@
 class SystemHandlers:
-    def __init__(self, servermode=False, mu=None, logger=None, system_queue=None, system_worker_state=None):
+    def __init__(
+        self,
+        servermode=False,
+        mu=None,
+        logger=None,
+        system_queue=None,
+        system_worker_state=None,
+    ):
         self.servermode = servermode
         self.mu = mu
         self.logger = logger
@@ -19,7 +26,9 @@ class SystemHandlers:
         self.routes.append(["GET", "/submit/logdir", self.get_log_dir])
         self.routes.append(["GET", "/submit/checkserverdir", self.check_server_dir])
         self.routes.append(["POST", "/submit/startsetup", self.start_setup])
-        self.routes.append(["GET", "/submit/localmodules/{module}", self.get_local_module_info_web])
+        self.routes.append(
+            ["GET", "/submit/localmodules/{module}", self.get_local_module_info_web]
+        )
 
     async def get_local_module_info_web(self, request):
         from aiohttp.web import json_response
@@ -41,6 +50,7 @@ class SystemHandlers:
         from .consts import WS_COOKIE_KEY
         from .consts import SYSTEM_STATE_SETUP_KEY
         from .consts import SYSTEM_MSG_KEY
+
         data = await request.json()
         args = {
             "email": data.get("email"),
@@ -73,7 +83,7 @@ class SystemHandlers:
         modules_dir = get_modules_dir()
         if not modules_dir:
             modules_dir = get_default_modules_dir()
-        return json_response({modules_dir_key: modules_dir})
+        return json_response({modules_dir_key: str(modules_dir)})
 
     async def get_jobs_dir(self, _):
         from aiohttp.web import json_response
@@ -84,7 +94,7 @@ class SystemHandlers:
         jobs_dir = get_jobs_dir()
         if not jobs_dir:
             jobs_dir = get_default_jobs_dir()
-        return json_response({jobs_dir_key: jobs_dir})
+        return json_response({jobs_dir_key: str(jobs_dir)})
 
     async def get_log_dir(self, _):
         from aiohttp.web import json_response
@@ -95,11 +105,12 @@ class SystemHandlers:
         log_dir = get_log_dir()
         if not log_dir:
             log_dir = get_default_log_dir()
-        return json_response({log_dir_key: log_dir})
+        return json_response({log_dir_key: str(log_dir)})
 
     async def check_server_dir(self, request):
         from pathlib import Path
         from aiohttp.web import Response
+
         queries = request.rel_url.query
         d = queries.get("dir")
         if not d:
@@ -117,7 +128,7 @@ class SystemHandlers:
         root_dir = get_root_dir()
         if not root_dir:
             root_dir = get_default_root_dir()
-        return json_response({root_dir_key: root_dir})
+        return json_response({root_dir_key: str(root_dir)})
 
     async def get_package_versions(self, _):
         from aiohttp.web import json_response
@@ -156,5 +167,3 @@ class SystemHandlers:
             "Content-Type": "text/plain",
         }
         return web.FileResponse(log_path, headers=headers)
-
-

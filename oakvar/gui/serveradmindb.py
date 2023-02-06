@@ -34,7 +34,6 @@ def db_func(func):
 
 
 def get_admindb_path():
-    from pathlib import Path
     from ..lib.system import get_conf_dir
     from ..lib.system.consts import ADMIN_DB_FN
 
@@ -43,7 +42,7 @@ def get_admindb_path():
         conf_dir = get_conf_dir()
         if not conf_dir:
             return None
-        admindb_path = Path(get_conf_dir()) / ADMIN_DB_FN
+        admindb_path = conf_dir / ADMIN_DB_FN
     return admindb_path
 
 

@@ -26,6 +26,8 @@ class WebServer(object):
         self.servermode = args.get("servermode", False)
         self.mu = mu
         self.wss = {}
+        self.system_message_last_ids = {}
+        self.system_message_db_conn = None
         self.host = args.get("host")
         self.port = args.get("port")
         if loop is None:
@@ -150,6 +152,7 @@ class WebServer(object):
         from .consts import SYSTEM_STATE_SETUP_KEY
         from .consts import SYSTEM_STATE_INSTALL_KEY
         from .consts import SYSTEM_STATE_MESSAGE_KEY
+        from .consts import SYSTEM_LAST_MSG_ID_KEY
 
         assert self.system_worker_state is not None
         assert self.manager is not None
@@ -158,6 +161,7 @@ class WebServer(object):
         setup[SYSTEM_STATE_MESSAGE_KEY] = message
         self.system_worker_state[SYSTEM_STATE_SETUP_KEY] = setup
         self.system_worker_state[SYSTEM_STATE_INSTALL_KEY] = self.manager.dict()
+        self.system_worker_state[SYSTEM_LAST_MSG_ID_KEY] = self.manager.Value("Q", 0)
 
     def make_job_queue_states(self):
         from multiprocessing import Queue
@@ -224,6 +228,7 @@ class WebServer(object):
         self.websocket_handlers = WebSocketHandlers(
             system_worker_state=self.system_worker_state,
             wss=self.wss,
+            system_message_last_ids=self.system_message_last_ids,
             logger=self.logger,
         )
 
@@ -238,6 +243,8 @@ class WebServer(object):
         global server_ready
         from aiohttp import web
         import aiohttp_cors
+        from .system_message_db import get_system_message_db_conn
+        from .system_message_db import clear_system_message_db
 
         self.app = web.Application(
             loop=self.loop,
@@ -245,6 +252,8 @@ class WebServer(object):
             client_max_size=1024 * 1024 * 1024 * 1024,
         )
         self.cors = aiohttp_cors.setup(self.app)  # type: ignore
+        self.system_message_db_conn = get_system_message_db_conn()
+        clear_system_message_db(self.system_message_db_conn)
         self.make_shared_states()
         self.make_handlers()
         self.setup_routes()
@@ -284,10 +293,10 @@ class WebServer(object):
                 if exists(pypath):
                     spec = spec_from_file_location("route", pypath)
                     if spec is None:
-                        raise ModuleLoadingError(module_name)
+                        raise ModuleLoadingError(module_name=module_name)
                     module = module_from_spec(spec)
                     if spec.loader is None:
-                        raise ModuleLoadingError(module_name)
+                        raise ModuleLoadingError(module_name=module_name)
                     spec.loader.exec_module(module)
                     if self.app is None:
                         raise SetupError()

@@ -1,5 +1,6 @@
 from typing import Optional
 from typing import Tuple
+from pathlib import Path
 
 
 class Job(object):
@@ -86,7 +87,7 @@ class SubmitProcessor:
         job_uids.append(job_uid)
         self.info_of_running_jobs = job_uids
 
-    async def pre_submit_check(self, request, jobs_dir: Optional[str]):
+    async def pre_submit_check(self, request, jobs_dir: Path):
         from aiohttp.web import Response
         from aiohttp.web import json_response
         from .util import is_loggedin
@@ -130,7 +131,7 @@ class SubmitProcessor:
                 ),
             )
 
-    def create_new_job_dir(self, jobs_dir: str) -> str:
+    def create_new_job_dir(self, jobs_dir: Path) -> Path:
         from os import makedirs
         from ..lib.util.run import get_new_job_dir
 
