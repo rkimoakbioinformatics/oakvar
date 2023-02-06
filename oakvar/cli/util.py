@@ -102,14 +102,13 @@ def cli_util_addjob(args):
 def addjob(args, __name__="util addjob"):
     from shutil import copyfile
     from time import sleep
-    from pathlib import Path
     from datetime import datetime
     from ..lib.system import get_jobs_dir
     from ..lib.consts import LOG_SUFFIX
 
     dbpath = args.path
     user = args.user
-    jobs_dir = Path(get_jobs_dir())
+    jobs_dir = get_jobs_dir()
     user_dir = jobs_dir / user
     if not user_dir.is_dir():
         exit(f"User {user} not found")

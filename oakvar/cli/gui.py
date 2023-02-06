@@ -180,6 +180,7 @@ def get_logger(args={}):
     from logging import INFO
     from logging import Formatter
     from logging.handlers import TimedRotatingFileHandler
+    from logging import StreamHandler
     from ..lib.system.consts import log_dir_key
     from ..gui.util import get_log_path
 
@@ -191,6 +192,9 @@ def get_logger(args={}):
     if log_path:
         log_handler = TimedRotatingFileHandler(log_path, when="d", backupCount=30)
         log_handler.setFormatter(log_formatter)
+        logger.addHandler(log_handler)
+    if args.get("debug") == True:
+        log_handler = StreamHandler()
         logger.addHandler(log_handler)
     return logger, log_path
 
@@ -288,6 +292,7 @@ def gui(args, __name__="gui"):
 
     sysconf = get_system_conf()
     args["sysconf"] = sysconf
+    print(f"@ args={args}")
     logger, log_path = get_logger(args=args)
     args["logger"] = logger
     exception = None

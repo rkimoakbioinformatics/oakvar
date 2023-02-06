@@ -1,14 +1,25 @@
 class CliOuter:
-    def write(self, msg: str):
-        from sys import stdout
+    def __init__(self, outer=None, error=None):
+        import sys
 
-        stdout.write(f"{msg}\n")
+        if not outer:
+            outer = sys.stdout
+        if not error:
+            error = sys.stderr
+        self.out_writer = outer
+        self.err_writer = error
+
+    def write(self, msg: str):
+        self.out_writer.write(f"{msg}\n")
+        self.out_writer.flush()
 
     def error(self, msg: str):
-        from sys import stderr
+        self.err_writer.write(f"{msg}\n")
+        self.err_writer.flush()
 
-        stderr.write(f"{msg}\n")
-        stderr.flush()
+    def flush(self):
+        self.out_writer.flush()
+        self.err_writer.flush()
 
 
 def cli_entry(func):

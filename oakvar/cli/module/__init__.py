@@ -26,10 +26,8 @@ def cli_module_ls(args):
 @cli_func
 def ls(args, __name__="module ls"):
     from ...api.module import ls
-    from ...lib.util.util import print_list_of_dict
 
-    ret = ls(**args)
-    print_list_of_dict(ret)
+    ls(**args)
 
 
 @cli_entry
@@ -40,13 +38,11 @@ def cli_module_info(args):
 
 @cli_func
 def info(args, __name__="module info"):
-    from ...api.module import info as info_fn
-    from .info import print_module_info
+    from ...api.module import info
 
-    ret = info_fn(**args)
+    ret = info(**args)
     if not ret:
         print(f"Module not found")
-    print_module_info(module_info=ret)
 
 
 @cli_entry
@@ -345,7 +341,7 @@ def add_parser_ov_module(subparsers):
         description="lists modules.",
     )
     parser_ov_module_ls.add_argument(
-        "patterns",
+        "module_names",
         nargs="*",
         default=[".*"],
         help="Regular expression for module names",
