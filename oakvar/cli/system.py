@@ -54,6 +54,12 @@ def add_parser_ov_system_setup(subparsers):
         "-f", dest="setup_file", default=None, help="setup file to use"
     )
     parser_cli_ov_system_setup.add_argument(
+        "--email", help="email for an OakVar store account"
+    )
+    parser_cli_ov_system_setup.add_argument(
+        "--pw", help="password for an OakVar store account"
+    )
+    parser_cli_ov_system_setup.add_argument(
         "--clean",
         action="store_true",
         default=False,
