@@ -1,5 +1,6 @@
 from typing import Optional
 from typing import Tuple
+from pathlib import Path
 
 
 class RemoteModuleLs:
@@ -130,33 +131,34 @@ class RemoteModule(object):
         self.local_code_version: Optional[str] = None
         self.local_data_source: Optional[str] = None
         logo_path = get_logo_path(self.name, self.store)
-        self.has_logo = exists(logo_path) and getsize(logo_path) > 0
+        self.has_logo = logo_path and exists(logo_path) and getsize(logo_path) > 0
 
 
-def get_conf(module_name=None, conf_path=None) -> Optional[dict]:
+def get_conf(module_name=None, conf_path: Optional[Path] = None) -> Optional[dict]:
     from ..system import get_cache_dir
-    from os.path import join
-    from os.path import exists
     from json import load
     from oyaml import safe_load
 
     fpath = None
     if not module_name and not conf_path:
         return fpath
-    if conf_path and exists(conf_path):
+    if conf_path and conf_path.exists():
         fpath = conf_path
+    cache_dir = get_cache_dir("conf")
+    if not cache_dir:
+        return None
     if not fpath and module_name:
         for store in ["ov", "oc"]:
-            tmp_fpath = join(get_cache_dir("conf"), store, module_name + ".json")
-            if exists(tmp_fpath):
+            tmp_fpath = cache_dir / store / (module_name + ".json")
+            if tmp_fpath.exists():
                 fpath = tmp_fpath
                 break
-    if fpath and exists(fpath):
+    if fpath and fpath.exists():
         with open(fpath) as f:
             conf = None
-            if fpath.endswith(".yml"):
+            if fpath.stem.endswith(".yml"):
                 conf = safe_load(f)
-            elif fpath.endswith(".json"):
+            elif fpath.stem.endswith(".json"):
                 conf = load(f)
             return conf
     return None
@@ -165,15 +167,19 @@ def get_conf(module_name=None, conf_path=None) -> Optional[dict]:
 def get_readme(module_name: str) -> Optional[str]:
     from ..system import get_cache_dir
     from ..store.db import find_name_store
-    from os.path import join
-    from os.path import exists
+    from ..exceptions import SystemMissingException
 
     ret = find_name_store(module_name)
     if not ret:
         return None
     _, store = ret
-    fpath = join(get_cache_dir("readme"), store, module_name)
-    if exists(fpath):
+    readme_dir = get_cache_dir("readme")
+    if not readme_dir:
+        raise SystemMissingException(
+            msg="readme directory is missing. Consider running `ov system setup`?"
+        )
+    fpath = readme_dir / store / module_name
+    if fpath.exists():
         with open(fpath, encoding="utf-8") as f:
             out = f.readlines()
             out = "".join(out)

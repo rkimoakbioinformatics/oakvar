@@ -5,7 +5,10 @@ from pathlib import Path
 
 class InstallProgressHandler:
     def __init__(
-        self, module_name: Optional[str] = None, module_version: Optional[str] = None, outer=None
+        self,
+        module_name: Optional[str] = None,
+        module_version: Optional[str] = None,
+        outer=None,
     ):
         self.module_name = module_name
         self.module_version = module_version
@@ -198,7 +201,7 @@ def get_updatable(module_names: List[str] = []):
 
 def make_install_temp_dir(
     module_name: Optional[str] = None,
-    modules_dir: Optional[str] = None,
+    modules_dir: Optional[Path] = None,
     clean: bool = False,
 ) -> Optional[Path]:
     from ..system import get_modules_dir
@@ -418,7 +421,7 @@ def write_install_marks(module_dir: str):
 def install_module_from_url(
     module_name: str,
     url: str,
-    modules_dir: Optional[str] = None,
+    modules_dir: Optional[Path] = None,
     clean: bool = False,
     overwrite=False,
     force_data=False,
@@ -441,9 +444,7 @@ def install_module_from_url(
     from ..system import get_modules_dir
 
     if not is_url(url):
-        raise ModuleToSkipInstallation(
-            "", msg=f"{url} is not a valid URL"
-        )
+        raise ModuleToSkipInstallation("", msg=f"{url} is not a valid URL")
     temp_dir = make_install_temp_dir(
         module_name=module_name, modules_dir=modules_dir, clean=clean
     )
@@ -625,7 +626,7 @@ def install_module(
     overwrite=False,
     force_data=False,
     skip_data=False,
-    modules_dir: Optional[str] = None,
+    modules_dir: Optional[Path] = None,
     stage_handler: Optional[InstallProgressHandler] = None,
     conf_path=None,
     fresh=False,
