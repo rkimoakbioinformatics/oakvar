@@ -829,7 +829,7 @@ class BaseReporter:
             if mi.name in done_var_annotators or mi.name == self.mapper_name:
                 annot_cls = load_class(mi.script_path)
             if not annot_cls:
-                raise ModuleLoadingError(mi.name)
+                raise ModuleLoadingError(module_name=mi.name)
             cmd = {
                 "script_path": mi.script_path,
                 "input_file": "__dummy__",

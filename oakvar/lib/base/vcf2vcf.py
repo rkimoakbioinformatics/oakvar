@@ -25,7 +25,7 @@ class VCF2VCF:
 
         fp = sys.modules[self.__module__].__file__
         if fp is None:
-            raise ModuleLoadingError(self.__module__)
+            raise ModuleLoadingError(module_name=self.__module__)
         self.primary_input_path = None
         self.output_dir = ""
         self.job_conf_path = None

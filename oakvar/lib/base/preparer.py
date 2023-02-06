@@ -38,7 +38,7 @@ class BasePreparer(object):
         self.uid = 0
         fp = sys.modules[self.__module__].__file__
         if not fp:
-            raise ModuleLoadingError(self.__module__)
+            raise ModuleLoadingError(module_name=self.__module__)
         self.main_fpath = Path(fp).resolve()
         self.module_name = self.main_fpath.stem
         self.input_path = Path(input_file).absolute() if input_file else None

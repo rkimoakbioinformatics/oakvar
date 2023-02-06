@@ -718,7 +718,7 @@ class ReportFilter:
             report_filter_max_num_cache_per_user_key
         )
         if not report_filter_max_num_cache_per_user:
-            report_filter_max_num_cache_per_user_key = (
+            report_filter_max_num_cache_per_user = (
                 DEFAULT_REPORT_FILTER_MAX_NUM_CACHE_PER_USER
             )
         count = await self.get_report_filter_count(cursor=cursor_read)

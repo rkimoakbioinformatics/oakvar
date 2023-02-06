@@ -1,3 +1,6 @@
+from typing import Optional
+
+
 class ExpectedException(Exception):
     halt = False
     handled = False
@@ -184,8 +187,11 @@ class ModuleLoadingError(ExpectedException):
     traceback = True
     halt = True
 
-    def __init__(self, module_name):
-        super().__init__(msg=f"module loading error for {module_name}")
+    def __init__(self, module_name: Optional[str] = None, msg: Optional[str] = None):
+        if msg:
+            super().__init__(msg=msg)
+        else:
+            super().__init__(msg=f"module loading error for {module_name}")
 
 
 class UnknownInputFormat(ExpectedException):
@@ -274,8 +280,11 @@ class LoggerError(ExpectedException):
 
 
 class IncompleteModuleError(ExpectedException):
-    def __init__(self, module_name):
-        super().__init__(f"incomplete module {module_name}")
+    def __init__(self, module_name: Optional[str] = None, msg: Optional[str] = None):
+        if msg:
+            super().__init__(msg)
+        elif module_name:
+            super().__init__(f"Incomplete module {module_name}")
 
 
 class ResultMissingMandatoryColumnError(ExpectedException):

@@ -258,7 +258,7 @@ class Runner(object):
         if "mapper" not in self.args.skip:
             module = self.mapper
             if module is None:
-                raise ModuleLoadingError("mapper")
+                raise ModuleLoadingError(module_name="mapper")
             log_module(module, self.logger)
         for _, module in self.reporters.items():
             log_module(module, self.logger)
@@ -738,13 +738,14 @@ class Runner(object):
                         raise
 
     def set_job_name(self):
+        from pathlib import Path
         from ..exceptions import ArgumentError
         from ..util.run import get_new_job_name
 
         if not self.args or not self.output_dir:
             raise
         if not self.args.job_name:
-            self.args.job_name = [f"{get_new_job_name(output_dir)}_{i}" for i, output_dir in enumerate(self.output_dir)]
+            self.args.job_name = [f"{get_new_job_name(Path(output_dir))}_{i}" for i, output_dir in enumerate(self.output_dir)]
         if self.args.combine_input:
             if len(self.args.job_name) != 1:
                 raise ArgumentError(msg="--j should have only one value when --combine-input is given.")
