@@ -273,7 +273,7 @@ def get_module_data_version(
 
 
 def get_new_module_dir(
-    module_name: str, module_type: str, modules_dir: Optional[str] = None
+    module_name: str, module_type: str, modules_dir: Optional[Path] = None
 ):
     from ..system import get_modules_dir
     from pathlib import Path
@@ -514,10 +514,12 @@ def get_conf_str(module_name, module_type=None) -> Optional[str]:
 
 
 def get_conf(module_name, module_type=None) -> Optional[dict]:
+    from pathlib import Path
     from ..util.util import load_yml_conf
 
     p = get_conf_path(module_name, module_type=module_type)
-    return load_yml_conf(p)
+    if p and Path(p).exists():
+        return load_yml_conf(p)
 
 
 def get_cache_conf(module_name, module_type=None) -> Optional[dict]:
@@ -592,7 +594,7 @@ def get_module_name_and_module_dir(module_name: str) -> Tuple[str, str]:
     else:
         module_dir = get_module_dir(module_name)
     if not module_dir:
-        raise ModuleLoadingError(module_name)
+        raise ModuleLoadingError(module_name=module_name)
     return module_name, module_dir
 
 
@@ -704,14 +706,14 @@ def get_default_mapper_name() -> Optional[str]:
 
 
 def load_modules(annotators: list = [], mapper: Optional[str] = None, input_file=None):
-    from ... import get_live_mapper
-    from ... import get_live_annotator
+    from ... import get_mapper
+    from ... import get_annotator
 
     modules = {}
     if mapper:
-        modules[mapper] = get_live_mapper(mapper, input_file=input_file)
+        modules[mapper] = get_mapper(mapper, input_file=input_file)
     for module_name in annotators:
-        modules[module_name] = get_live_annotator(module_name)
+        modules[module_name] = get_annotator(module_name)
     return modules
 
 def remove_code_part_of_module(module_name: str, module_dir=None):
@@ -761,3 +763,87 @@ def get_module_name_from_dir(d: Path):
         return None
     return list(common_stems)[0]
 
+def create_module_files(module, overwrite: bool=False, interactive: bool=False):
+    from pathlib import Path
+    from os import makedirs
+    import inspect
+    import sys
+    from oyaml import dump
+    from ..exceptions import IncompleteModuleError
+    from ..exceptions import SystemMissingException
+    from ..system import get_modules_dir
+
+    def inspect_getfile(obj, old_fn=inspect.getfile):
+        if not inspect.isclass(obj):
+            return old_fn(obj)
+        if hasattr(obj, '__module__'):
+            new_obj = sys.modules.get(obj.__module__)
+            if new_obj and hasattr(new_obj, '__file__'):
+                return new_obj.__file__
+        for _, member in inspect.getmembers(obj):
+            if inspect.isfunction(member) and obj.__qualname__ + '.' + member.__name__ == member.__qualname__:
+                return inspect.getfile(member)
+        else:
+            raise TypeError(f'Source for {obj} not found.')
+    inspect.getfile = inspect_getfile
+    cls = module.__class__
+    if not cls:
+        raise Exception("Only an OakVar class can be saved into module files.")
+    modules_dir = get_modules_dir()
+    if not modules_dir:
+        raise SystemMissingException(msg="Modules root directory does not exist. Consider running 'ov system setup'.")
+    modules_dir = Path(modules_dir)
+    module_type: Optional[str] = getattr(module, "module_type", None)
+    module_name: Optional[str] = getattr(module, "module_name", None)
+    module_title: Optional[str] = getattr(module, "title", None)
+    module_level: Optional[str] = getattr(module, "level", None)
+    output_columns: Optional[dict] = getattr(module, "output_columns", None)
+    if not module_name:
+        raise IncompleteModuleError(msg="name property does not exist in the module. Consider giving 'name' argument at initializing the module.")
+    if not module_title:
+        raise IncompleteModuleError(msg="title property does not exist in the module. Consider giving 'title' argument at initializing the module.")
+    if not module_type:
+        raise IncompleteModuleError(msg="module_type property does not exist in the module.")
+    module_dir = modules_dir / (module_type + "s") / module_name
+    if not module_level:
+        raise IncompleteModuleError(msg="title property does not exist in the module. Consider giving 'level' argument at initializing the module.")
+    if not output_columns:
+        raise IncompleteModuleError(msg="output_columns property does not exist in the module. Consider giving 'output_columns' argument at initializing the module.")
+    if module_dir.exists() and not overwrite:
+        raise Exception(f"{module_dir} already exists.")
+    makedirs(module_dir, exist_ok=True)
+    makedirs(module_dir / "data", exist_ok=True)
+    makedirs(module_dir / "test", exist_ok=True)
+    makedirs(module_dir / "cache", exist_ok=True)
+    md_path = module_dir / (module_name + ".md")
+    py_path = module_dir / (module_name + ".py")
+    yml_path = module_dir / (module_name + ".yml")
+    with open(md_path, "w") as wf:
+        wf.write(f"# {module_title}\n")
+        desc = module.conf.get("description", "")
+        wf.write(f"\n{desc}\n<br>")
+    with open(py_path, "w") as wf:
+        base_classes = {"converter": "BaseConverter", "mapper": "BaseMapper", "annotator": "BaseAnnotator", "postaggregator": "BasePostAggregator", "reporter": "BaseReporter"}
+        base_class = base_classes.get(module_type)
+        if not base_class:
+            raise IncompleteModuleError(msg="Wrong module type: {module_type}")
+        wf.write("import oakvar\n")
+        wf.write(f"from oakvar import {base_class}\n")
+        wf.write("\n")
+        source_lines, _ = inspect.getsourcelines(cls)
+        wf.write("".join(source_lines))
+    with open(yml_path, "w") as wf:
+        wf.write(f"name: {module_name}\n")
+        wf.write(f"type: {module_type}\n")
+        wf.write(f"title: {module_title}\n")
+        wf.write(f"level: {module_level}\n")
+        yml = module.conf.copy()
+        if "name" in yml:
+            del yml["name"]
+        if "type" in yml:
+            del yml["type"]
+        if "title" in yml:
+            del yml["title"]
+        if "level" in yml:
+            del yml["level"]
+        dump(yml, wf)
