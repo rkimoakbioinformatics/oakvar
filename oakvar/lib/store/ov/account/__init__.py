@@ -5,19 +5,21 @@ from typing import Dict
 from oakvar.lib.exceptions import StoreServerError
 
 
-def get_email_pw_from_user_conf():
+def get_email_pw_from_user_conf(email: Optional[str] = None, pw: Optional[str] = None):
     from ....system import get_user_conf
     from ....store.consts import OV_STORE_EMAIL_KEY
     from ....store.consts import OV_STORE_PW_KEY
 
     user_conf = get_user_conf()
-    email = user_conf.get(OV_STORE_EMAIL_KEY)
-    pw = user_conf.get(OV_STORE_PW_KEY)
+    if not email:
+        email = user_conf.get(OV_STORE_EMAIL_KEY)
+    if not pw:
+        pw = user_conf.get(OV_STORE_PW_KEY)
     return email, pw
 
 
 def get_email_pw_interactively(
-    email: Optional[str] = None, pw: Optional[str] = None, pwconfirm=True
+    email: Optional[str] = None, pw: Optional[str] = None, pwconfirm=False
 ) -> Tuple:
     from ....util.util import email_is_valid
     from ....util.util import pw_is_valid
@@ -43,7 +45,7 @@ def get_email_pw_interactively(
 def create(
     email: Optional[str] = None,
     pw: Optional[str] = None,
-    pwconfirm=False,
+    pwconfirm=True,
     interactive: bool = False,
     outer=None,
 ) -> dict:
@@ -187,18 +189,26 @@ def try_login_with_token(email: Optional[str] = None, outer=None) -> bool:
     return True
 
 
-def login(email=None, pw=None, interactive=False, outer=None) -> dict:
+def login(
+    email: Optional[str] = None,
+    pw: Optional[str] = None,
+    interactive: bool = False,
+    relogin: bool = False,
+    outer=None,
+) -> dict:
     from requests import post
     from ...ov import get_store_url
 
-    if try_login_with_token(email=email):
+    if not relogin and try_login_with_token(email=email):
         return {"success": True}
     if not email or not pw:
-        email, pw = get_email_pw_from_user_conf()
+        email, pw = get_email_pw_from_user_conf(email=email, pw=pw)
     if (not email or not pw) and interactive:
         email, pw = get_email_pw_interactively(email=email, pw=pw)
-    if not email or not pw:
-        return {"success": False}
+    if not email:
+        return {"success": False, "msg": "No email"}
+    if not pw:
+        return {"success": False, "msg": "No password"}
     login_url = get_store_url() + "/account/login"
     params = {"email": email, "pw": pw}
     try:
@@ -338,12 +348,18 @@ def change(newpw: Optional[str] = None, outer=None) -> bool:
     from ....exceptions import StoreServerError
 
     id_token = get_id_token()
+    print(f"@ id_token={id_token}")
     if not id_token:
         if outer:
             outer.write(f"Not logged in")
         return False
     valid, expired = id_token_is_valid()
-    if valid and not expired:
+    print(f"@ valid={valid}. expired={expired}")
+    if not valid:
+        if outer:
+            outer.write("Not logged in")
+        return False
+    if expired:
         id_token = None
         refresh_token = get_refresh_token()
         if refresh_token:
@@ -361,6 +377,7 @@ def change(newpw: Optional[str] = None, outer=None) -> bool:
         while not pw_is_valid(newpw):
             newpw = getpass("New password: ")
     refresh_token = get_refresh_token()
+    print(f"@ id_token={id_token}. refresh_token={refresh_token}. newpw={newpw}")
     url = get_store_url() + "/account/change"
     params = {"idToken": id_token, "refreshToken": refresh_token, "newpw": newpw}
     res = post(url, json=params)

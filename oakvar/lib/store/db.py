@@ -2,6 +2,7 @@ from typing import Optional
 from typing import List
 from typing import Tuple
 from typing import Any
+from pathlib import Path
 
 
 def get_ov_store_cache_conn(conf=None):
@@ -10,7 +11,7 @@ def get_ov_store_cache_conn(conf=None):
     from os.path import join
     from ..system import get_conf_dir
 
-    conf_dir: Optional[str] = get_conf_dir(conf=conf)
+    conf_dir: Optional[Path] = get_conf_dir(conf=conf)
     if conf_dir:
         ov_store_cache_path = join(conf_dir, ov_store_cache_fn)
         conn = connect(ov_store_cache_path)
@@ -373,7 +374,7 @@ def drop_ov_store_cache(clean_cache_files=False, conf=None, conn=None, cursor=No
     if clean_cache_files:
         for cache_key in cache_dirs:
             fp = get_cache_dir(cache_key)
-            if exists(fp):
+            if fp and exists(fp):
                 rmtree(fp)
 
 
@@ -403,7 +404,7 @@ def create_ov_store_cache(conf=None, conn=None, cursor=None):
     conn.commit()
     for cache_key in cache_dirs:
         fp = get_cache_dir(cache_key)
-        if not exists(fp):
+        if fp and not exists(fp):
             mkdir(fp)
             mkdir(join(fp, "ov"))
             mkdir(join(fp, "oc"))
@@ -537,7 +538,7 @@ def fetch_conf_cache(publish_time: str="", outer=None, conn=None, cursor=None, c
     from .ov.account import get_current_id_token
     from ..system import get_cache_dir
     from .ov import get_store_url
-    from os.path import join
+    from ..exceptions import SystemMissingException
 
     if not conn or not cursor:
         return
@@ -553,7 +554,10 @@ def fetch_conf_cache(publish_time: str="", outer=None, conn=None, cursor=None, c
     for module_store in module_stores:
         name = module_store["name"]
         store = module_store["store"]
-        fpath = join(get_cache_dir("conf", conf=conf), store, name + ".json")
+        conf_dir = get_cache_dir("conf", conf=conf)
+        if not conf_dir:
+            raise SystemMissingException(msg="readme directory is missing. Consider running `ov system setup`?")
+        fpath = conf_dir / store / (name + ".json")
         url = f"{get_store_url()}/fetch_conf/{store}/{name}"
         res = s.post(url, json=params)
         content = b"{}"
@@ -573,7 +577,7 @@ def fetch_logo_cache(publish_time: str="", outer=None, conn=None, cursor=None, c
     from .ov.account import get_current_id_token
     from ..system import get_cache_dir
     from .ov import get_store_url
-    from os.path import join
+    from ..exceptions import SystemMissingException
 
     if not conn or not cursor:
         return
@@ -589,7 +593,10 @@ def fetch_logo_cache(publish_time: str="", outer=None, conn=None, cursor=None, c
     for module_store in module_stores:
         name = module_store["name"]
         store = module_store["store"]
-        fpath = join(get_cache_dir("logo", conf=conf), store, name + ".png")
+        logo_dir = get_cache_dir("logo", conf=conf)
+        if not logo_dir:
+            raise SystemMissingException(msg="readme directory is missing. Consider running `ov system setup`?")
+        fpath = logo_dir / store / (name + ".png")
         url = f"{get_store_url()}/fetch_logo/{store}/{name}"
         res = s.post(url, json=params)
         content = b""
@@ -609,7 +616,7 @@ def fetch_readme_cache(publish_time: str="", outer=None, conn=None, cursor=None,
     from .ov.account import get_current_id_token
     from ..system import get_cache_dir
     from .ov import get_store_url
-    from os.path import join
+    from ..exceptions import SystemMissingException
 
     if not conn or not cursor:
         return
@@ -625,7 +632,10 @@ def fetch_readme_cache(publish_time: str="", outer=None, conn=None, cursor=None,
     for module_store in module_stores:
         name = module_store["name"]
         store = module_store["store"]
-        fpath = join(get_cache_dir("readme", conf=conf), store, name)
+        readme_dir = get_cache_dir("readme", conf=conf)
+        if not readme_dir:
+            raise SystemMissingException(msg="readme directory is missing. Consider running `ov system setup`?")
+        fpath = readme_dir / store / name
         url = f"{get_store_url()}/fetch_readme/{store}/{name}"
         res = s.post(url, json=params)
         content = b""
