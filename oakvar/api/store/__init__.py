@@ -1,5 +1,6 @@
 from typing import Optional
 from typing import List
+from . import account as account
 
 
 def register(
@@ -72,4 +73,26 @@ def delete(
     )
     if ret == True:
         ret = fetch_ov_store_cache(refresh_db=True)
+    return ret
+
+
+def login(
+    email: Optional[str] = None,
+    pw: Optional[str] = None,
+    interactive: bool = False,
+    relogin: bool = False,
+    outer=None,
+):
+    from ...lib.store.ov.account import login
+
+    ret = login(
+        email=email, pw=pw, interactive=interactive, relogin=relogin, outer=outer
+    )
+    return ret
+
+
+def logout(outer=None):
+    from ...lib.store.ov.account import logout
+
+    ret = logout(outer=outer)
     return ret
