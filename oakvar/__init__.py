@@ -1,38 +1,19 @@
+from . import api
 from .api import version
-from .api.util import sqliteinfo as util_sqliteinfo
-from .api.util import mergesqlite as util_mergesqlite
-from .api.util import filtersqlite as util_filtersqlite
-from .api.util import addjob as util_addjob
 from .api.test import test
-from .api.system import setup as system_setup
-from .api.system import md as system_md
-from .api.store import register as store_register
-from .api.store.account import reset as store_account_reset
-from .api.store.account import create as store_account_create
-from .api.store.account import check as store_account_check
-from .api.store.account import change as store_account_change
-from .api.store import fetch as store_fetch
-from .api.module import pack as module_pack
-from .api.new import module as new_annotator
-from .api.new import exampleinput as new_exampleinput
 from .api.issue import issue
+from .api import module as module
+from .api import system as system
+from .api import store as store
 from .api.report import report
 from .api.run import run
-from .api.module import update as module_update
-from .api.module import uninstall as module_uninstall
-from .api.module import ls as module_ls
-from .api.module import installbase as module_installbase
-from .api.module import install as module_install
-from .api.module import info as module_info
-from .api.config import user as config_user
-from .api.config import system as config_system
 from . import api as api
 from .cli import __main__ as cli
-from .cli.report import report
 from .lib import consts
 from .lib.exceptions import *
 from .lib.base.runner import Runner
 from .lib.base.converter import BaseConverter
+from .lib.base.master_converter import MasterConverter
 from .lib.base.preparer import BasePreparer
 from .lib.base.mapper import BaseMapper
 from .lib.base.annotator import BaseAnnotator
@@ -45,6 +26,8 @@ from .lib.util.inout import FileReader
 from .lib.util.inout import FileWriter
 from .lib.util import inout
 from .lib.util import admin_util
+from .lib.util.util import get_df_from_db
+from .lib.util.inout import read_crv
 from .cli import CliOuter
 import signal
 
@@ -54,6 +37,7 @@ CravatReport = BaseReporter
 BaseReport = BaseReporter
 CravatFilter = ReportFilter
 constants = consts
+stdouter = CliOuter()
 
 
 def raise_break(__signal_number__, __stack_frame__):
@@ -88,49 +72,7 @@ def raise_break(__signal_number__, __stack_frame__):
         os.kill(pid, signal.SIGTERM)
 
 
-# from .api.util import ov_util_updateresult
-
-wgs = None
-_ = admin_util or inout
-_ = (
-    BaseConverter
-    or BasePreparer
-    or BaseAnnotator
-    or BaseMapper
-    or BasePostAggregator
-    or BaseCommonModule
-    or VCF2VCF
-)
-_ = CravatReport or ReportFilter or Runner
-_ = CravatFilter or Cravat
-_ = FileReader or FileWriter
-_ = cli or wgs
-_ = (
-    module_info
-    or module_install
-    or module_installbase
-    or module_ls
-    or module_uninstall
-    or module_update
-)
-_ = report or run or issue or version or config_user or config_system
-_ = new_exampleinput or new_annotator
-_ = (
-    store_account_reset
-    or store_register
-    or store_account_create
-    or store_account_check
-    or store_account_change
-    or store_fetch
-    or module_pack
-)
-_ = system_setup or system_md
-_ = test
-_ = util_addjob or util_filtersqlite or util_mergesqlite or util_sqliteinfo
-_ = CliOuter
-
-
-def get_live_annotator(module_name, input_file=None):
+def get_annotator(module_name, input_file=None):
     import os
 
     module = None
@@ -147,7 +89,7 @@ def get_live_annotator(module_name, input_file=None):
     return module
 
 
-def get_live_mapper(module_name, input_file=None):
+def get_mapper(module_name, input_file=None):
     from os.path import abspath
 
     module = None
@@ -204,13 +146,13 @@ class LiveAnnotator:
     def load_live_modules(self, mapper, annotator_names):
         from .lib.module.cache import get_module_cache
 
-        self.live_mapper = get_live_mapper(mapper)
+        self.live_mapper = get_mapper(mapper)
         for module_name in get_module_cache().local.keys():
             if module_name in annotator_names:
                 module = get_module_cache().local[module_name]
                 if "secondary_inputs" in module.conf:
                     continue
-                annotator = get_live_annotator(module.name)
+                annotator = get_annotator(module.name)
                 if annotator is None:
                     continue
                 self.live_annotators[module.name] = annotator
@@ -266,3 +208,28 @@ class LiveAnnotator:
         if crx_data is not None:
             response["base"] = crx_data
         return response
+
+
+wgs = None
+_ = admin_util or inout
+_ = (
+    BaseConverter
+    or MasterConverter
+    or BasePreparer
+    or BaseAnnotator
+    or BaseMapper
+    or BasePostAggregator
+    or BaseCommonModule
+    or VCF2VCF
+    or CravatReport
+    or ReportFilter
+    or Runner
+    or FileReader
+    or FileWriter
+)
+_ = CravatFilter or Cravat
+_ = cli or wgs
+_ = test or version or issue
+_ = stdouter
+_ = get_df_from_db or read_crv
+_ = run or report
