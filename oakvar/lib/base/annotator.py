@@ -1,4 +1,5 @@
 from typing import Optional
+from typing import List
 from typing import Dict
 
 
@@ -21,7 +22,7 @@ class BaseAnnotator(object):
     }
     required_conf_keys = ["level", "output_columns"]
 
-    def __init__(self, input_file: str, secondary_inputs=None, run_name: Optional[str]=None, output_dir: Optional[str]=None, plainoutput: bool=False, logtofile: bool=False, module_options: Dict={}, serveradmindb=None):
+    def __init__(self, input_file: Optional[str]=None, secondary_inputs=None, run_name: Optional[str]=None, output_dir: Optional[str]=None, plainoutput: bool=False, logtofile: bool=False, module_options: Dict={}, serveradmindb=None, name: Optional[str]=None, title: Optional[str]=None, level: Optional[str]=None, input_columns: List[Dict]=[], output_columns: List[Dict]=[], module_conf: dict={}):
         import os
         import sys
         from pathlib import Path
@@ -32,16 +33,23 @@ class BaseAnnotator(object):
         from ..exceptions import LoggerError
 
         self.module_options = module_options
-        self.primary_input_path = Path(input_file).absolute()
+        if input_file:
+            self.primary_input_path = Path(input_file).absolute()
+        else:
+            self.primary_input_path = None
         self.secondary_inputs = secondary_inputs
         self.run_name = run_name
         self.output_dir = output_dir
         self.plain_output = plainoutput
         self.logtofile = logtofile
-        fp = sys.modules[self.__module__].__file__
-        if not fp:
-            raise ModuleLoadingError(self.__module__)
-        self.main_fpath = Path(fp).resolve()
+        if self.__module__ == "__main__":
+            fp = None
+            self.main_fpath = None
+        else:
+            fp = sys.modules[self.__module__].__file__
+            if not fp:
+                raise ModuleLoadingError(module_name=self.__module__)
+            self.main_fpath = Path(fp).resolve()
         self.secondary_paths = {}
         self.output_basename = None
         self.job_conf_path = None
@@ -63,26 +71,59 @@ class BaseAnnotator(object):
         self.parse_cmd_args()
         self.serveradmindb = serveradmindb
         self.supported_chroms = set(cannonical_chroms)
-        self.module_name = self.main_fpath.stem
         self.module_type = "annotator"
+        if not self.main_fpath:
+            if name:
+                self.module_name = name
+                self.module_dir = Path(os.getcwd()).absolute()
+                self.annotator_dir = Path(os.getcwd()).absolute()
+            else:
+                raise ModuleLoadingError(msg="module_name argument should be given.")
+            self.conf = module_conf.copy()
+        else:
+            self.module_name = self.main_fpath.stem
+            self.module_dir = self.main_fpath.parent
+            self.annotator_dir = self.main_fpath.parent
+            self.conf = get_module_conf(
+                self.module_name, module_type=self.module_type, module_dir=self.module_dir
+            )
+        self.level = level
+        if not self.level and self.conf and "level" in self.conf:
+            self.level = self.conf.get("level")
+        if not self.level:
+            raise ModuleLoadingError(msg="level or module_conf with level should be given.")
+        if self.conf is not None and "level" not in self.conf:
+            self.conf["level"] = self.level
+        self.input_columns = input_columns.copy()
+        if self.input_columns is not None and self.conf is not None and "input_columns" not in self.conf:
+            self.conf["input_columns"] = self.input_columns
+        elif not self.input_columns and self.conf and "input_columns" in self.conf:
+            self.input_columns = self.conf["input_columns"]
+        self.output_columns = output_columns.copy()
+        if self.output_columns is not None and self.conf is not None and "output_columns" not in self.conf:
+            self.conf["output_columns"] = self.output_columns
+        elif not self.output_columns and self.conf and "output_columns" in self.conf:
+            self.output_columns = self.conf["output_columns"]
+        self.title = title
+        if self.title and self.conf is not None:
+            self.conf["title"] = self.title
+        elif self.conf and "title" in self.conf:
+            self.title = self.conf["title"]
         self.annotator_name = self.module_name
-        self.module_dir = self.main_fpath.parent
-        self.annotator_dir = self.main_fpath.parent
         self.data_dir = self.module_dir / "data"
         self._setup_logger()
-        self.conf = get_module_conf(
-            self.module_name, module_type=self.module_type, module_dir=self.module_dir
-        )
         if self.conf is None:
-            raise ModuleLoadingError(self.module_name)
+            raise ModuleLoadingError(module_name=self.module_name)
+        self.set_ref_colname()
         self._verify_conf()
-        self._id_col_name = self.conf["output_columns"][0]["name"]
         if self.logger is None:
             raise LoggerError(module_name=self.module_name)
         if "logging_level" in self.conf:
             self.logger.setLevel(self.conf["logging_level"].upper())
         if "title" in self.conf:
             self.annotator_display_name = self.conf["title"]
+        elif self.module_name:
+            self.annotator_display_name = self.module_name.capitalize()
         else:
             self.annotator_display_name = os.path.basename(self.module_dir).upper()
         if "version" in self.conf:
@@ -91,6 +132,12 @@ class BaseAnnotator(object):
             self.annotator_version = ""
         self.cache = ModuleDataCache(self.module_name, module_type=self.module_type)
 
+    def set_ref_colname(self):
+        ref_colnames = {"variant": "uid", "gene": "hugo", "sample": "uid", "mapping": "uid"}
+        if self.level:
+            self._id_col_name = ref_colnames.get(self.level)
+        else:
+            self._id_col_name = None
 
     def summarize_by_gene(self, __hugo__, __input_data__):
         pass
@@ -122,9 +169,9 @@ class BaseAnnotator(object):
             if k not in self.conf:
                 err_msg = 'Required key "%s" not found in configuration' % k
                 raise ConfigurationError(err_msg)
-        if self.conf["level"] in self.valid_levels:
+        if self.conf["level"] in self.valid_levels and self.level:
             self.conf["output_columns"] = [
-                self.id_col_defs[self.conf["level"]]
+                self.id_col_defs[self.level]
             ] + self.conf["output_columns"]
         else:
             err_msg = "%s is not a valid level. Valid levels are %s" % (
@@ -161,11 +208,11 @@ class BaseAnnotator(object):
             for secondary_def in self.secondary_inputs:
                 sec_name, sec_path = re.split(r"(?<!\\)=", secondary_def)
                 self.secondary_paths[sec_name] = str(Path(sec_path).absolute())
-        if not self.output_dir:
+        if not self.output_dir and self.primary_input_path:
             self.output_dir = str(self.primary_input_path.parent)
         if self.run_name is not None:
             self.output_basename = self.run_name
-        else:
+        elif self.primary_input_path:
             self.output_basename = self.primary_input_path.name
             if Path(self.output_basename).suffix in [".crv", ".crg", ".crx"]:
                 self.output_basename = self.output_basename[:-4]
@@ -217,7 +264,7 @@ class BaseAnnotator(object):
         for output_col in self.conf["output_columns"]:
             col_name = output_col["name"]
             if col_name not in output_dict:
-                output_dict[col_name] = ""
+                output_dict[col_name] = None
         return output_dict
 
     def make_json_colnames(self):
@@ -228,15 +275,37 @@ class BaseAnnotator(object):
             if "table" in col and col["table"] == True:
                 self.json_colnames.append(col["name"])
 
-    # Runs the annotator.
-    def run(self):
+    def annotate_df(self, df):
+        _ = df
+        raise NotImplementedError("annotate_df method should be implemented.")
+
+    def run_df(self, df):
+        return self.annotate_df(df)
+
+    def run(self, df=None):
         if self.conf is None:
             return
         if self.logger is None:
             return
         from time import time, asctime, localtime
         from ..util.run import update_status
+        from ..exceptions import ModuleLoadingError
 
+        if df:
+            return self.run_df(df)
+        if not self.module_name:
+            raise ModuleLoadingError(msg="module_name should be given at initializing Annotator to run.")
+        if self.conf:
+            if "title" not in self.conf:
+                raise ModuleLoadingError(msg="title should be given at initializing Annotator or in the module yml file to run.")
+            if "level" not in self.conf:
+                raise ModuleLoadingError(msg="level should be given at initializing Annotator or in the module yml file to run.")
+            if "output_columns" not in self.conf:
+                raise ModuleLoadingError(msg="output_columns should be given at initializing Annotator or in the module yml file to run.")
+            if not self.primary_input_path:
+                raise ModuleLoadingError(msg="input_file should be given at initializing Annotator to run.")
+        else:
+            raise ModuleLoadingError(msg="module conf should exist to run.")
         status = f"started {self.conf['title']} ({self.module_name})"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
         try:
@@ -273,6 +342,7 @@ class BaseAnnotator(object):
             self.log_handler.close()
 
     def process_file(self):
+        assert self._id_col_name, "_id_col_name should not be None."
         for lnum, line, input_data, secondary_data in self._get_input():
             try:
                 self.log_progress(lnum)
@@ -361,8 +431,6 @@ class BaseAnnotator(object):
         else:
             print(err_logger_s)
 
-    # Setup function for the base_annotator, different from self.setup()
-    # which is intended to be for the derived annotator.
     def base_setup(self):
         self._setup_primary_input()
         self._setup_secondary_inputs()
@@ -523,10 +591,7 @@ class BaseAnnotator(object):
 
     def _setup_logger(self):
         from logging import getLogger
-        from ..exceptions import SetupError
 
-        if self.output_basename is None or self.output_dir is None:
-            raise SetupError(self.module_name)
         self.logger = getLogger("oakvar." + self.module_name)
         self.error_logger = getLogger("err." + self.module_name)
 
@@ -594,6 +659,9 @@ class BaseAnnotator(object):
                 d[colname] = value
         return d
 
+    def save(self, overwrite: bool=False):
+        from ..module.local import create_module_files
+        create_module_files(self, overwrite=overwrite)
 
 class SecondaryInputFetcher:
     def __init__(self, input_path, key_col, fetch_cols=[]):
@@ -644,46 +712,4 @@ class SecondaryInputFetcher:
             return self.data[key_data]
         else:
             return None
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("input_file", help="Input file to be annotated.")
-    parser.add_argument(
-        "-s",
-        action="append",
-        dest="secondary_inputs",
-        help="Secondary inputs. " + "Format as <module_name>:<path>",
-    )
-    parser.add_argument(
-        "-n", dest="run_name", help="Name of job. Default is input file name."
-    )
-    parser.add_argument(
-        "-d",
-        dest="output_dir",
-        help="Output directory. " + "Default is input file directory.",
-    )
-    parser.add_argument(
-        "-c", dest="confpath", help="Path to optional run conf file."
-    )
-    parser.add_argument(
-        "-p",
-        "--plainoutput",
-        action="store_true",
-        dest="plainoutput",
-        help="Skip column definition writing",
-    )
-    parser.add_argument(
-        "--quiet",
-        action="store_true",
-        dest="quiet",
-        default=None,
-        help="Silent operation",
-    )
-    parser.add_argument(
-        "--logtofile",
-        action="store_true",
-        help="Path to a log file. If given without a path, the job's run_name.log will be the log path.",
-    )
 
