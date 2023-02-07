@@ -28,6 +28,8 @@ from .lib.util import inout
 from .lib.util import admin_util
 from .lib.util.util import get_df_from_db
 from .lib.util.inout import read_crv
+from .lib.util.seq import get_lifter
+from .lib.util.seq import liftover
 from .cli import CliOuter
 import signal
 
@@ -231,5 +233,6 @@ _ = CravatFilter or Cravat
 _ = cli or wgs
 _ = test or version or issue
 _ = stdouter
+_ = get_lifter or liftover
 _ = get_df_from_db or read_crv
 _ = run or report
