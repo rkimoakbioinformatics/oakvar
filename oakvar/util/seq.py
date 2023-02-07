@@ -304,3 +304,138 @@ def translate_codon(bases, fallback=None):
             return fallback
     else:
         return codon_table[bases]
+
+
+def get_lifter(source_assembly: str = "hg19", target_assembly: str = "hg38"):
+    from pyliftover import LiftOver
+    from oakvar.util.admin_util import get_liftover_chain_paths
+    from oakvar.exceptions import LiftoverFailure
+
+    lifter = None
+    if target_assembly == "hg38":
+        liftover_chain_paths = get_liftover_chain_paths()
+        if source_assembly in liftover_chain_paths:
+            lifter = LiftOver(liftover_chain_paths[source_assembly])
+        else:
+            lifter = LiftOver(source_assembly, target_assembly)
+    else:
+        try:
+            lifter = LiftOver(source_assembly, target_assembly)
+        except:
+            raise LiftoverFailure(
+                msg=f"Failed to obtain a liftOver chain file ({source_assembly} to {target_assembly})."
+            )
+    return lifter
+
+
+def liftover_one_pos(chrom, pos, lifter=None):
+    from oakvar.exceptions import LiftoverFailure
+
+    if not lifter:
+        raise LiftoverFailure("No lifter")
+    res = lifter.convert_coordinate(chrom, pos - 1)
+    if res is None or len(res) == 0:
+        res_prev = lifter.convert_coordinate(chrom, pos - 2)
+        res_next = lifter.convert_coordinate(chrom, pos)
+        if res_prev is not None and res_next is not None:
+            if len(res_prev) == 1 and len(res_next) == 1:
+                pos_prev = res_prev[0][1]
+                pos_next = res_next[0][1]
+                if pos_prev == pos_next - 2:
+                    res = [(res_prev[0][0], pos_prev + 1)]
+                elif pos_prev == pos_next + 2:
+                    res = [(res_prev[0][0], pos_prev - 1)]
+    return res
+
+
+def liftover(chrom, pos, ref=None, alt=None, lifter=None, wgs_reader=None):
+    from pyliftover import LiftOver
+    from oakvar.exceptions import LiftoverFailure
+    from oakvar.util.seq import reverse_complement
+    from oakvar.exceptions import LiftoverFailure
+
+    if not lifter or not isinstance(lifter, LiftOver):
+        raise LiftoverFailure("No lifter was given. Use oakvar.get_lifter to get one.")
+    if ref is None and alt is None:
+        res = liftover_one_pos(chrom, pos, lifter=lifter)
+        if res is None or len(res) == 0:
+            raise LiftoverFailure("Liftover failure")
+        if len(res) > 1:
+            raise LiftoverFailure("Liftover failure")
+        try:
+            el = res[0]
+        except:
+            raise LiftoverFailure("Liftover failure")
+        newchrom = el[0]
+        newpos = el[1] + 1
+        return [newchrom, newpos, ref, alt]
+    if ref is None or alt is None:
+        raise LiftoverFailure("ref and alt should not be None.")
+    reflen = len(ref)
+    altlen = len(alt)
+    if reflen == 1 and altlen == 1:
+        res = liftover_one_pos(chrom, pos, lifter=lifter)
+        if res is None or len(res) == 0:
+            raise LiftoverFailure("Liftover failure")
+        if len(res) > 1:
+            raise LiftoverFailure("Liftover failure")
+        try:
+            el = res[0]
+        except:
+            raise LiftoverFailure("Liftover failure")
+        newchrom = el[0]
+        newpos = el[1] + 1
+    elif reflen >= 1 and altlen == 0:  # del
+        pos1 = pos
+        pos2 = pos + reflen - 1
+        res1 = lifter.convert_coordinate(chrom, pos1 - 1)
+        res2 = lifter.convert_coordinate(chrom, pos2 - 1)
+        if res1 is None or res2 is None or len(res1) == 0 or len(res2) == 0:
+            raise LiftoverFailure("Liftover failure")
+        if len(res1) > 1 or len(res2) > 1:
+            raise LiftoverFailure("Liftover failure")
+        el1 = res1[0]
+        el2 = res2[0]
+        newchrom1 = el1[0]
+        newpos1 = el1[1] + 1
+        newpos2 = el2[1] + 1
+        newchrom = newchrom1
+        newpos = newpos1
+        newpos = min(newpos1, newpos2)
+    elif reflen == 0 and altlen >= 1:  # ins
+        res = lifter.convert_coordinate(chrom, pos - 1)
+        if res is None or len(res) == 0:
+            raise LiftoverFailure("Liftover failure")
+        if len(res) > 1:
+            raise LiftoverFailure("Liftover failure")
+        el = res[0]
+        newchrom = el[0]
+        newpos = el[1] + 1
+    else:
+        pos1 = pos
+        pos2 = pos + reflen - 1
+        res1 = lifter.convert_coordinate(chrom, pos1 - 1)
+        res2 = lifter.convert_coordinate(chrom, pos2 - 1)
+        if res1 is None or res2 is None or len(res1) == 0 or len(res2) == 0:
+            raise LiftoverFailure("Liftover failure")
+        if len(res1) > 1 or len(res2) > 1:
+            raise LiftoverFailure("Liftover failure")
+        el1 = res1[0]
+        el2 = res2[0]
+        newchrom1 = el1[0]
+        newpos1 = el1[1] + 1
+        newpos2 = el2[1] + 1
+        newchrom = newchrom1
+        newpos = min(newpos1, newpos2)
+    if not wgs_reader:
+        raise LiftoverFailure(
+            "No wgs_reader was given. Use oakvar.get_wgs_reader to get one."
+        )
+    hg38_ref = wgs_reader.get_bases(newchrom, newpos)
+    if hg38_ref == reverse_complement(ref):
+        newref = hg38_ref
+        newalt = reverse_complement(alt)
+    else:
+        newref = ref
+        newalt = alt
+    return [newchrom, newpos, newref, newalt]

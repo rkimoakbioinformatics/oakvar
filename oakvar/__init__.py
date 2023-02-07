@@ -50,6 +50,8 @@ from .util.inout import FileReader
 from .util.inout import FileWriter
 from .util import inout
 from .util import admin_util
+from .util.seq import get_lifter
+from .util.seq import liftover
 import signal
 
 # for compatibility with oc
@@ -91,6 +93,7 @@ def raise_break(__signal_number__, __stack_frame__):
                 pass
         os.kill(pid, signal.SIGTERM)
 
+
 # from .cli.util import ov_util_updateresult
 
 wgs = None
@@ -130,6 +133,7 @@ _ = (
 _ = system_setup or system_md
 _ = test
 _ = util_addjob or util_filtersqlite or util_mergesqlite or util_sqliteinfo
+_ = get_lifter or liftover
 _ = (
     store_oc_publish
     or store_oc_newaccount

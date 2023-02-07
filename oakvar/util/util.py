@@ -614,7 +614,7 @@ def get_df_from_db(
     import sys
     from pathlib import Path
     from os import environ
-    import urllib
+    from urllib.parse import quote
     import platform
 
     environ["RUST_LOG"] = "connectorx=warn,connectorx_python=warn"
@@ -643,7 +643,7 @@ def get_df_from_db(
         sql = f"select * from {table_name}"
     ol_pl = platform.platform()
     if ol_pl.startswith("Windows"):
-        conn_url = f"sqlite://{urllib.parse.quote(db_path)}"
+        conn_url = f"sqlite://{quote(db_path)}"
     else:
         conn_url = f"sqlite://{db_path}"
     if partition_on and num_cores > 1:
