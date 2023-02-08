@@ -3,7 +3,6 @@ workflow OakVarExample{
     call GenerateExample
     call annotation { input: inputFile = GenerateExample.example_out }
     call excel_file { input: sqlite = annotation.annotation_sqlite }
-    #call Visualize  { input: sqlite2 = annotation.annotation_sql }
 }
 #Install module required for variant calling
 task Install_module{
