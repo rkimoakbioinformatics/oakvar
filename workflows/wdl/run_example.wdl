@@ -31,6 +31,7 @@ task annotation {
     #Get input file from the generate example task
     #run VC on example 
     command{
+        #export TMPDIR=/tmp
         ov run ${inputFile} -a clinvar -t vcf -d .
     }
     output{
