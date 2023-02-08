@@ -348,11 +348,12 @@ def liftover_one_pos(chrom, pos, lifter=None):
     return res
 
 
-def liftover(chrom, pos, ref=None, alt=None, lifter=None, wgs_reader=None):
+def liftover(
+    chrom, pos, ref=None, alt=None, lifter=None, wgs_reader=None, get_ref: bool = False
+):
     from pyliftover import LiftOver
-    from oakvar.exceptions import LiftoverFailure
-    from oakvar.util.seq import reverse_complement
-    from oakvar.exceptions import LiftoverFailure
+    from ..exceptions import LiftoverFailure
+    from .. import get_wgs_reader
 
     if not lifter or not isinstance(lifter, LiftOver):
         raise LiftoverFailure("No lifter was given. Use oakvar.get_lifter to get one.")
@@ -368,6 +369,14 @@ def liftover(chrom, pos, ref=None, alt=None, lifter=None, wgs_reader=None):
             raise LiftoverFailure("Liftover failure")
         newchrom = el[0]
         newpos = el[1] + 1
+        if get_ref:
+            if not wgs_reader:
+                wgs_reader = get_wgs_reader()
+                if not wgs_reader:
+                    raise LiftoverFailure(
+                        "No wgs_reader was given. Use oakvar.get_wgs_reader to get one."
+                    )
+            ref = wgs_reader.get_bases(newchrom, newpos)
         return [newchrom, newpos, ref, alt]
     if ref is None or alt is None:
         raise LiftoverFailure("ref and alt should not be None.")
@@ -428,9 +437,11 @@ def liftover(chrom, pos, ref=None, alt=None, lifter=None, wgs_reader=None):
         newchrom = newchrom1
         newpos = min(newpos1, newpos2)
     if not wgs_reader:
-        raise LiftoverFailure(
-            "No wgs_reader was given. Use oakvar.get_wgs_reader to get one."
-        )
+        wgs_reader = get_wgs_reader()
+        if not wgs_reader:
+            raise LiftoverFailure(
+                "No wgs_reader was given. Use oakvar.get_wgs_reader to get one."
+            )
     hg38_ref = wgs_reader.get_bases(newchrom, newpos)
     if hg38_ref == reverse_complement(ref):
         newref = hg38_ref
