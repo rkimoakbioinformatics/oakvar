@@ -308,8 +308,8 @@ def translate_codon(bases, fallback=None):
 
 def get_lifter(source_assembly: str = "hg19", target_assembly: str = "hg38"):
     from pyliftover import LiftOver
-    from oakvar.util.admin_util import get_liftover_chain_paths
-    from oakvar.exceptions import LiftoverFailure
+    from ..util.admin_util import get_liftover_chain_paths
+    from ..exceptions import LiftoverFailure
 
     lifter = None
     if target_assembly == "hg38":
@@ -329,7 +329,7 @@ def get_lifter(source_assembly: str = "hg19", target_assembly: str = "hg38"):
 
 
 def liftover_one_pos(chrom, pos, lifter=None):
-    from oakvar.exceptions import LiftoverFailure
+    from ..exceptions import LiftoverFailure
 
     if not lifter:
         raise LiftoverFailure("No lifter")
@@ -353,7 +353,7 @@ def liftover(
 ):
     from pyliftover import LiftOver
     from ..exceptions import LiftoverFailure
-    from .. import get_wgs_reader
+    from ... import get_wgs_reader
 
     if not lifter or not isinstance(lifter, LiftOver):
         raise LiftoverFailure("No lifter was given. Use oakvar.get_lifter to get one.")
