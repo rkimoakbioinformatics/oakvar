@@ -1,9 +1,11 @@
 
 #Work flow of Oakvar setup
 workflow SetupOakVar{
+    String email
+    String pw
     call pip
     call yaml_file
-    call ov { input: setup = yaml_file.yaml_output  
+    call ov { input: setup = yaml_file.yaml_output ,id = email, password = pw
     }
 
 }
@@ -30,10 +32,12 @@ task yaml_file{
 task ov{
     #input is the output yaml file from yaml_file task
     File setup
-    # File file_name = read_string(setup)
+    String id
+    String password
+
     #Setup withh yaml file
     command{
-        ov system setup -f ${setup}
+        ov system setup -f ${setup} --email ${id} --pw ${password}
     }
     output{
         File ov_output = stdout()
