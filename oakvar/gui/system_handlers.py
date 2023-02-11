@@ -55,7 +55,6 @@ class SystemHandlers:
         args = {
             "email": data.get("email"),
             "pw": data.get("pw"),
-            "quiet": False,
             "custom_system_conf": {
                 root_dir_key: data.get(root_dir_key),
                 modules_dir_key: data.get(modules_dir_key),
@@ -67,7 +66,7 @@ class SystemHandlers:
         args["install_mode"] = "web"
         args["ws_id"] = ws_id
         args["system_worker_state"] = self.system_worker_state
-        args[SYSTEM_MSG_KEY] = SYSTEM_STATE_SETUP_KEY
+        # args[SYSTEM_MSG_KEY] = SYSTEM_STATE_SETUP_KEY
         data = {}
         data["work_type"] = SYSTEM_STATE_SETUP_KEY
         data["args"] = args

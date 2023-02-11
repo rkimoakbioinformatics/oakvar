@@ -179,14 +179,16 @@ def get_email_from_token_set() -> Optional[str]:
     return email
 
 
-def try_login_with_token(email: Optional[str] = None, outer=None) -> bool:
+def try_login_with_token(email: Optional[str] = None, outer=None) -> Tuple[bool, str]:
     if not check_logged_in_with_token(outer=outer):
-        return False
+        return False, ""
     token_set_email = get_email_from_token_set()
+    if not token_set_email:
+        return False, ""
     if not email or token_set_email == email:
         if outer:
             outer.write(f"Logged in as {token_set_email}")
-    return True
+    return True, token_set_email
 
 
 def login(
@@ -199,8 +201,10 @@ def login(
     from requests import post
     from ...ov import get_store_url
 
-    if not relogin and try_login_with_token(email=email):
-        return {"success": True}
+    if not relogin:
+        ret, token_set_email = try_login_with_token(email=email)
+        if ret == True:
+            return {"success": True, "email": token_set_email}
     if not email or not pw:
         email, pw = get_email_pw_from_user_conf(email=email, pw=pw)
     if (not email or not pw) and interactive:
@@ -217,12 +221,12 @@ def login(
         if status_code == 200:
             save_token_set(r.json())
             if outer:
-                outer.write(f"logged in as {email}")
-            return {"success": True}
+                outer.write(f"Logged in as {email}")
+            return {"success": True, "email": email}
         else:
             if outer:
                 outer.write(f"fail. {r.text}")
-            return {"success": False, "status_code": status_code}
+            return {"success": False, "status_code": status_code, "email": email}
     except:
         import traceback
 
@@ -525,18 +529,22 @@ def announce_on_email_verification_if_needed(email: str, outer=None):
         show_email_verify_action_banner()
 
 
-def login_with_token_set(outer=None) -> bool:
+def login_with_token_set(email=None, outer=None) -> Tuple[bool, str]:
     token_set = get_token_set()
+    print(f"@@@ token_set={token_set}")
     if token_set:
-        email = token_set["email"]
+        token_email = token_set["email"]
+        print(f"@@@ token_email={token_email}. email={email}")
+        if email and token_email != email:
+            return False, token_email
         correct, expired = id_token_is_valid()
-        email_verified = email_is_verified(email, outer=outer)
+        email_verified = email_is_verified(token_email, outer=outer)
         if not email_verified:
             if outer:
                 outer.write(
                     f"Email not verified. A verification email should have been sent to your inbox.\n"
                 )
-            return True
+            return True, token_email
         else:
             if correct:
                 if expired:
@@ -544,12 +552,12 @@ def login_with_token_set(outer=None) -> bool:
                     if status_code != 200:
                         delete_token_set()
                         raise StoreServerError(status_code=status_code, text=text)
-                    return False
+                    return False, ""
                 else:
-                    return True
+                    return True, token_email
             else:
                 delete_token_set()
-    return False
+    return False, ""
 
 
 def login_with_email_pw(
@@ -564,6 +572,7 @@ def login_with_email_pw(
             "status_code": 400,
             "success": False,
             "msg": "No email or password was provided",
+            "email": email,
         }
     if emailpw_are_valid((email, pw)):
         ret = create(email=email, pw=pw, outer=outer)
@@ -576,6 +585,7 @@ def login_with_email_pw(
             "status_code": 400,
             "success": False,
             "msg": "invalid email or password)",
+            "email": email,
         }
 
 
@@ -584,8 +594,10 @@ def total_login(
 ) -> dict:
     from ....system import show_no_user_account_prelude
 
-    if login_with_token_set(outer=outer):
-        return {"success": True}
+    ret, logged_email = login_with_token_set(email=email, outer=outer)
+    print(f"@@@ ret={ret}. email={email}")
+    if ret == True:
+        return {"success": True, "email": logged_email}
     ret = login_with_email_pw(email=email, pw=pw, conf=conf)
     if ret.get("success"):
         return {"success": True}

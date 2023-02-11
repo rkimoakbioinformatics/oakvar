@@ -6,7 +6,7 @@ from pathlib import Path
 custom_system_conf = None
 
 
-def setup_system(clean: bool=False, refresh_db: bool=False, clean_cache_files: bool=False, setup_file: Optional[str]=None, email: Optional[str]=None, pw: Optional[str]=None, publish_time: str="", custom_system_conf: Optional[Dict]=None, outer=None, system_worker_state=None):
+def setup_system(clean: bool=False, refresh_db: bool=False, clean_cache_files: bool=False, setup_file: Optional[str]=None, email: Optional[str]=None, pw: Optional[str]=None, publish_time: str="", custom_system_conf: Optional[Dict]=None, outer=None, system_worker_state=None, install_mode: str="", ws_id: str=""):
     from os import environ
     from ...api.module import installbase
     from .consts import sys_conf_path_key
@@ -14,6 +14,7 @@ def setup_system(clean: bool=False, refresh_db: bool=False, clean_cache_files: b
     from ..util.run import show_logo
     from ...gui.serveradmindb import setup_serveradmindb
 
+    _ = ws_id
     show_logo(outer=outer)
     # set up a sys conf file.
     conf = setup_system_conf(clean=clean, setup_file=setup_file, custom_system_conf=custom_system_conf, outer=outer)
@@ -27,13 +28,13 @@ def setup_system(clean: bool=False, refresh_db: bool=False, clean_cache_files: b
     # set up a store account.
     if outer:
         outer.write("Logging in...")
-    ret = setup_store_account(conf=conf, email=email, pw=pw)
+    ret = setup_store_account(conf=conf, email=email, pw=pw, install_mode=install_mode)
     if ret.get("success") != True:
         if outer:
             outer.write("Login failed")
         return False
     if outer:
-        outer.write("Login successful")
+        outer.write(f"Logged in as {ret['email']}")
     # fetch ov store cache
     if outer:
         outer.write("Setting up store cache...")
@@ -177,10 +178,10 @@ def show_email_verify_action_banner():
     )
 
 
-def setup_store_account(conf=None, email=None, pw=None) -> dict:
+def setup_store_account(conf=None, email=None, pw=None, install_mode: str="") -> dict:
     from ..store.ov.account import total_login
 
-    return total_login(email=email, pw=pw, conf=conf)
+    return total_login(email=email, pw=pw, conf=conf, install_mode=install_mode)
 
 
 def setup_user_conf_file(clean: bool=False, conf: Optional[Dict]=None, outer=None):
