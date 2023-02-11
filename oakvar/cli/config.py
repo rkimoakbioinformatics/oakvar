@@ -11,11 +11,12 @@ def cli_config_user(args):
 def user(args, __name__="config user"):
     import oyaml as yaml
     from ..api.config import user
-    from ..lib.util.util import quiet_print
 
     conf = user()
     conf = yaml.dump(conf, default_flow_style=False)
-    quiet_print(conf, args=args)
+    outer = args.get("outer", None)
+    if outer:
+        outer.write(conf)
 
 
 @cli_entry
