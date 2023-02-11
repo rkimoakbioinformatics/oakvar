@@ -1,7 +1,8 @@
 workflow OakVarExample{
+    String? cmd
     call Install_module
     call GenerateExample
-    call annotation { input: inputFile = GenerateExample.example_out }
+    call annotation { input: inputFile = GenerateExample.example_out, cmd = cmd }
     call excel_file { input: sqlite = annotation.annotation_sqlite }
 }
 #Install module required for variant calling
@@ -27,9 +28,11 @@ task GenerateExample{
 #Run annotation job 
 task annotation {
     File inputFile
+    String? cmd
     #Get input file from the generate example task
     #run VC on example 
     command{
+        ${cmd}
         #export TMPDIR=/tmp
         ov run ${inputFile} -a clinvar -t vcf -d .
     }
