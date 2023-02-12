@@ -4,45 +4,43 @@ from pathlib import Path
 
 
 class LocalModule(object):
-    def __init__(self, dir_path, __module_type__=None, name=None):
-        import os
+    def __init__(self, dir_path: Path, __module_type__=None, name=None):
         from ..util.util import load_yml_conf
         from ..store import get_developer_dict
-        from os.path import abspath
 
-        self.directory = abspath(dir_path)
+        self.directory = Path(dir_path).absolute()
         if not name:
-            self.name = os.path.basename(self.directory)
+            self.name = self.directory.name
         else:
             self.name = name
-        self.script_path = os.path.join(self.directory, self.name + ".py")
-        self.script_exists = os.path.exists(self.script_path)
-        self.conf_path = os.path.join(self.directory, self.name + ".yml")
-        self.conf_exists = os.path.exists(self.conf_path)
+        self.script_path = self.directory / (self.name + ".py")
+        self.script_exists = self.script_path.exists()
+        self.conf_path = self.directory / (self.name + ".yml")
+        self.conf_exists = self.conf_path.exists()
         self.exists = self.conf_exists
-        startofinstall_path = os.path.join(self.directory, "startofinstall")
-        if os.path.exists(startofinstall_path):
-            endofinstall_path = os.path.join(self.directory, "endofinstall")
-            if os.path.exists(endofinstall_path):
+        startofinstall_path = self.directory / "startofinstall"
+        if startofinstall_path.exists():
+            endofinstall_path = self.directory / "endofinstall"
+            if endofinstall_path.exists():
                 self.exists = True
             else:
                 self.exists = False
-        self.data_dir = os.path.join(dir_path, "data")
-        self.data_dir_exists = os.path.isdir(self.data_dir)
-        self.has_data = self.data_dir_exists and len(os.listdir(self.data_dir)) > 0
-        self.test_dir = os.path.join(dir_path, "test")
-        self.test_dir_exists = os.path.isdir(self.test_dir)
+        self.data_dir = dir_path / "data"
+        self.data_dir_exists = self.data_dir.exists()
+        self.has_data = self.data_dir_exists and len(list(self.data_dir.iterdir())) > 0
+        self.test_dir = dir_path / "test"
+        self.test_dir_exists = self.test_dir.is_dir()
         self.tests = self.get_tests()
         self.has_test = len(self.tests) > 0
-        self.readme_path = os.path.join(self.directory, self.name + ".md")
-        self.readme_exists = os.path.exists(self.readme_path)
+        self.readme_path = self.directory / (self.name + ".md")
+        self.readme_exists = self.readme_path.exists()
         if self.readme_exists:
             with open(self.readme_path, encoding="utf-8") as f:
                 self.readme = f.read()
         else:
             self.readme = ""
-        self.helphtml_path = os.path.join(self.directory, "help.html")
-        self.helphtml_exists = os.path.exists(self.helphtml_path)
+        self.helphtml_path = self.directory / "help.html"
+        self.helphtml_exists = self.helphtml_path.exists()
         self.conf: dict = {}
         if self.conf_exists:
             self.conf = load_yml_conf(self.conf_path)
@@ -123,7 +121,12 @@ class LocalModule(object):
         return tests
 
     def serialize(self):
-        return self.__dict__
+        d = {}
+        for k, v in self.__dict__.items():
+            if isinstance(v, Path):
+                v = str(v)
+            d[k] = v
+        return d
 
 
 def get_local_module_info(module_name, fresh=False) -> Optional[LocalModule]:
@@ -252,7 +255,7 @@ def get_mapper_script_path(module_name):
     return module_path
 
 
-def get_module_code_version(module_name: str, module_dir=None) -> Optional[str]:
+def get_module_code_version(module_name: str, module_dir: Optional[Path]=None) -> Optional[str]:
     module_conf = get_module_conf(module_name, module_dir=module_dir)
     if not module_conf:
         return None
@@ -263,7 +266,7 @@ def get_module_code_version(module_name: str, module_dir=None) -> Optional[str]:
 
 
 def get_module_data_version(
-    module_name: str, module_dir: Optional[str] = None
+    module_name: str, module_dir: Optional[Path]=None
 ) -> Optional[str]:
     module_conf = get_module_conf(module_name, module_dir=module_dir)
     if not module_conf:
@@ -288,48 +291,41 @@ def get_new_module_dir(
     return str(module_dir)
 
 
-def get_module_dir(module_name, module_type=None) -> Optional[str]:
-    from os import listdir
-    from os.path import join
-    from os.path import exists
-    from os.path import isdir
+def get_module_dir(module_name: str, module_type: str="") -> Optional[Path]:
     from ..system import get_modules_dir
 
-    if exists(module_name):
-        return module_name
+    if Path(module_name).exists():
+        return Path(module_name)
     modules_dir = get_modules_dir()
     assert modules_dir is not None
     if module_type:  # module name and type are given.
-        p = join(modules_dir, module_type + "s", module_name)
-        if exists(p):
+        p = modules_dir / (module_type + "s") / module_name
+        if p.exists():
             return p
     else:  # module folder should be searched.
-        type_fns = listdir(modules_dir)
+        type_fns = list(modules_dir.iterdir())
         for type_fn in type_fns:
-            if type_fn in ["temp"]:
+            if type_fn.name in ["temp"]:
                 continue
-            type_dir = join(modules_dir, type_fn)
-            if isdir(type_dir) == False:
+            if type_fn.is_dir() == False:
                 continue
-            module_fns = listdir(type_dir)
+            module_fns = list(type_fn.iterdir())
             for module_fn in module_fns:
-                if module_fn == module_name:
-                    return join(modules_dir, type_fn, module_fn)
+                if module_fn.name == module_name:
+                    return module_fn
     return None
 
 
-def get_module_data_dir(module_name, module_type=None) -> Optional[str]:
-    from os.path import join
-
+def get_module_data_dir(module_name, module_type: str="") -> Optional[Path]:
     module_dir = get_module_dir(module_name, module_type=module_type)
     if not module_dir:
         return None
-    return join(module_dir, "data")
+    return module_dir / "data"
 
 
-def get_module_conf(module_name, module_type=None, module_dir=None):
-    from ..util.util import load_yml_conf
+def get_module_conf(module_name, module_type: str="", module_dir: Optional[Path]=None):
     from pathlib import Path
+    from ..util.util import load_yml_conf
 
     if module_dir:
         p = Path(module_dir)
@@ -342,9 +338,7 @@ def get_module_conf(module_name, module_type=None, module_dir=None):
         return None
 
 
-def get_module_conf_path(module_name, module_type=None):
-    from os.path import join
-    from os.path import basename
+def get_module_conf_path(module_name: str, module_type: str=""):
     from pathlib import Path
 
     p = Path(module_name)
@@ -354,8 +348,8 @@ def get_module_conf_path(module_name, module_type=None):
     if not module_dir:
         return None
     # module_name can be a folder path.
-    yml_fn = basename(module_name) + ".yml"
-    return join(module_dir, yml_fn)
+    yml_fn = module_name + ".yml"
+    return module_dir / yml_fn
 
 
 def search_local(*patterns):
@@ -399,7 +393,7 @@ def module_exists_local(module_name):
 
 
 def get_logo_b64_path(
-    module_name: str, module_type=None, module_dir=None
+        module_name: str, module_type: str="", module_dir=None
 ) -> Optional[str]:
     from os.path import join
     from os.path import exists
@@ -413,7 +407,7 @@ def get_logo_b64_path(
     return ""
 
 
-def get_logo_path(module_name: str, module_type=None, module_dir=None) -> Optional[str]:
+def get_logo_path(module_name: str, module_type: str="", module_dir=None) -> Optional[str]:
     from os.path import join
     from os.path import exists
 
@@ -426,7 +420,7 @@ def get_logo_path(module_name: str, module_type=None, module_dir=None) -> Option
     return None
 
 
-def get_logo_b64(module_name: str, module_type=None) -> Optional[str]:
+def get_logo_b64(module_name: str, module_type: str="") -> Optional[str]:
     from base64 import b64encode
     from PIL import Image
     from ..store.consts import logo_size
@@ -493,19 +487,16 @@ def get_remote_manifest_from_local(module_name: str, error=None):
     return rmi
 
 
-def get_conf_path(module_name, module_type=None) -> Optional[str]:
-    from os.path import join
-    from os.path import exists
-
+def get_conf_path(module_name, module_type: str="") -> Optional[Path]:
     module_dir = get_module_dir(module_name, module_type=module_type)
     if module_dir:
-        conf_path = join(module_dir, module_name + ".yml")
-        if exists(conf_path):
+        conf_path = module_dir / (module_name + ".yml")
+        if conf_path.exists():
             return conf_path
     return None
 
 
-def get_conf_str(module_name, module_type=None) -> Optional[str]:
+def get_conf_str(module_name, module_type: str="") -> Optional[str]:
     conf_path = get_conf_path(module_name, module_type=module_type)
     if not conf_path:
         return None
@@ -513,7 +504,7 @@ def get_conf_str(module_name, module_type=None) -> Optional[str]:
         return "\n".join(f.readlines())
 
 
-def get_conf(module_name, module_type=None) -> Optional[dict]:
+def get_conf(module_name, module_type: str="") -> Optional[dict]:
     from pathlib import Path
     from ..util.util import load_yml_conf
 
@@ -522,7 +513,7 @@ def get_conf(module_name, module_type=None) -> Optional[dict]:
         return load_yml_conf(p)
 
 
-def get_cache_conf(module_name, module_type=None) -> Optional[dict]:
+def get_cache_conf(module_name, module_type: str="") -> Optional[dict]:
     conf = get_conf(module_name, module_type=module_type)
     if not conf:
         return None
@@ -530,19 +521,16 @@ def get_cache_conf(module_name, module_type=None) -> Optional[dict]:
     return cache_conf
 
 
-def get_readme_path(module_name, module_type=None) -> Optional[str]:
-    from os.path import join
-    from os.path import exists
-
+def get_readme_path(module_name, module_type: str="") -> Optional[str]:
     module_dir = get_module_dir(module_name, module_type=module_type)
     if module_dir:
-        p = join(module_dir, module_name + ".md")
-        if exists(p):
+        p = module_dir / (module_name + ".md")
+        if p.exists():
             return p
     return None
 
 
-def get_readme(module_name, module_type=None) -> Optional[str]:
+def get_readme(module_name, module_type: str="") -> Optional[str]:
     p = get_readme_path(module_name, module_type=module_type)
     if not p:
         return None
@@ -550,7 +538,7 @@ def get_readme(module_name, module_type=None) -> Optional[str]:
         return "\n".join(f.readlines())
 
 
-def get_module_size(module_name, module_type=None) -> Optional[int]:
+def get_module_size(module_name, module_type: str="") -> Optional[int]:
     from ..util.util import get_directory_size
 
     d = get_module_dir(module_name, module_type=module_type)
@@ -558,7 +546,7 @@ def get_module_size(module_name, module_type=None) -> Optional[int]:
         return get_directory_size(d)
 
 
-def get_data_size(module_name, module_type=None) -> Optional[int]:
+def get_data_size(module_name, module_type: str="") -> Optional[int]:
     from ..util.util import get_directory_size
     from os.path import join
     from os.path import exists
@@ -570,7 +558,7 @@ def get_data_size(module_name, module_type=None) -> Optional[int]:
             return get_directory_size(data_dir)
 
 
-def get_code_size(module_name, module_type=None) -> Optional[int]:
+def get_code_size(module_name, module_type: str="") -> Optional[int]:
     module_size = get_module_size(module_name, module_type=module_type)
     data_size = get_data_size(module_name, module_type=module_type) or 0
     if module_size:
@@ -578,7 +566,7 @@ def get_code_size(module_name, module_type=None) -> Optional[int]:
     return None
 
 
-def get_module_name_and_module_dir(module_name: str) -> Tuple[str, str]:
+def get_module_name_and_module_dir(module_name: str) -> Tuple[str, Path]:
     from os.path import exists
     from ..exceptions import ArgumentError
     from ..module.local import get_module_dir
@@ -589,7 +577,7 @@ def get_module_name_and_module_dir(module_name: str) -> Tuple[str, str]:
         raise ArgumentError(msg="argument module is missing")
     if exists(module_name):
         p = Path(module_name)
-        module_dir = str(p.resolve())
+        module_dir = p.resolve()
         module_name = str(p.name)
     else:
         module_dir = get_module_dir(module_name)
@@ -598,18 +586,15 @@ def get_module_name_and_module_dir(module_name: str) -> Tuple[str, str]:
     return module_name, module_dir
 
 
-def get_pack_dir_out_dir(kind: str, outdir: str, module_dir: str) -> Tuple[str, str]:
-    from os.path import exists
-    from os.path import join
+def get_pack_dir_out_dir(kind: str, outdir: Path, module_dir: Path) -> Tuple[Path, Path]:
+    from os import mkdir
 
-    if not exists(outdir):
-        from os import mkdir
-
+    if not outdir.exists():
         mkdir(outdir)
     if kind == "code":
         pack_dir = module_dir
     elif kind == "data":
-        pack_dir = join(module_dir, "data")
+        pack_dir = module_dir / "data"
     else:
         from ..exceptions import ArgumentError
 
@@ -617,7 +602,7 @@ def get_pack_dir_out_dir(kind: str, outdir: str, module_dir: str) -> Tuple[str, 
     return pack_dir, outdir
 
 
-def pack_module_zip(module_name: str, kind: str, outdir: str=".", split: bool=False, outer=None):
+def pack_module_zip(module_name: str, kind: str, outdir: Path=Path(".").absolute(), split: bool=False, outer=None):
     from zipfile import ZipFile
     from os import walk
     from os import sep
@@ -667,8 +652,8 @@ def pack_module_zip(module_name: str, kind: str, outdir: str=".", split: bool=Fa
                     continue
                 p = root_p / file
                 arcname = root_p / file
-                if pack_dir in str(arcname):
-                    arcname = str(arcname)[len(pack_dir) :].lstrip(sep)
+                if str(pack_dir).startswith(str(arcname)):
+                    arcname = str(arcname)[len(str(pack_dir)) :].lstrip(sep)
                 if kind == "code":
                     arcname = arcname  # join(module_name, arcname)
                 elif kind == "data":
@@ -689,7 +674,7 @@ def pack_module_zip(module_name: str, kind: str, outdir: str=".", split: bool=Fa
                 return pack_path
 
 
-def pack_module(module_name: str, outdir: str, code_only: bool, split: bool, outer=None):
+def pack_module(module_name: str, outdir: Path, code_only: bool, split: bool, outer=None):
     conf = get_module_conf(module_name)
     pack_module_zip(module_name, "code", outdir=outdir, split=split, outer=outer)
     if not code_only and not (conf and conf.get("no_data")):

@@ -292,7 +292,6 @@ def gui(args, __name__="gui"):
 
     sysconf = get_system_conf()
     args["sysconf"] = sysconf
-    print(f"@ args={args}")
     logger, log_path = get_logger(args=args)
     args["logger"] = logger
     exception = None

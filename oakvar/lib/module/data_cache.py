@@ -2,7 +2,7 @@ from typing import Optional
 
 
 class ModuleDataCache:
-    def __init__(self, module_name: str, module_type=None):
+    def __init__(self, module_name: str, module_type: str = ""):
         from pathlib import Path
         from .local import get_cache_conf
         from .local import get_module_dir
@@ -39,7 +39,9 @@ class ModuleDataCache:
             try:
                 self.conn = connect(str(self.path))
             except Exception:
-                print(f"Could not open module cache for {self.module_name}. Restarting the cache db.")
+                print(
+                    f"Could not open module cache for {self.module_name}. Restarting the cache db."
+                )
                 remove(self.path)
                 self.conn = connect(str(self.path))
         return self.conn

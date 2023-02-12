@@ -54,7 +54,6 @@ class WebSocketHandlers:
         for ws_id in to_dels:
             del self.wss[ws_id]
         last_msg_id = get_last_msg_id(self.conn)
-        print(f"@ last_msg_id={last_msg_id}")
         while True:
             try:
                 await asyncio.sleep(1)
@@ -86,8 +85,6 @@ class WebSocketHandlers:
         )
         ret = self.cursor.fetchall()
         if ret:
-            print(f"@ last_msg_id={last_msg_id}")
-            print(f"@ => ret={ret}")
             last_msg_id = max([v[0] for v in ret])
             data = []
             for row in ret:

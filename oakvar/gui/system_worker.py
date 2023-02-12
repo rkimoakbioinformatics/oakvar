@@ -30,7 +30,6 @@ def system_queue_worker(
             if work_type == "setup":
                 args = data.get("args")
                 # args[SYSTEM_MSG_KEY] = SYSTEM_STATE_SETUP_KEY
-                print(f"@@@@@ args={args}")
                 setup_system(outer=setup_outer, **args)
             elif work_type == "install_module":
                 module_name = data["module"]

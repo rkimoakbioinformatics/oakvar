@@ -191,7 +191,7 @@ class VCF2VCF:
             all_col_names += [module_name + "__" + v["name"] for v in col_info]
         return all_col_names
 
-    def get_col_info(self, module_name, mapper: str, module_type=None):
+    def get_col_info(self, module_name, mapper: str, module_type: str = ""):
         from ..util.util import get_crx_def
         from ..module.local import get_module_conf
 

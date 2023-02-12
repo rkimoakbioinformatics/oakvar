@@ -54,7 +54,6 @@ def get_last_msg_id(conn):
     c = conn.cursor()
     c.execute(f"select max(uid) from {SYSTEM_MESSAGE_TABLE}")
     ret = c.fetchone()
-    print(f"@ ret={ret}")
     if ret and ret[0]:
         return ret[0]
     else:

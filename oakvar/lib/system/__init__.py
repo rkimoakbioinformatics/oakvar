@@ -347,31 +347,27 @@ def get_user_conf() -> dict:
     return user_conf
 
 
-def get_user_conf_dir() -> str:
-    from os.path import expanduser
-    from os.path import join
+def get_user_conf_dir() -> Path:
     from .consts import user_dir_fname
 
-    home_dir = expanduser("~")
-    user_conf_dir = join(home_dir, user_dir_fname)
+    home_dir = Path().home()
+    user_conf_dir = home_dir / user_dir_fname
     return user_conf_dir
 
 
-def get_user_conf_path() -> str:
-    from os.path import join
+def get_user_conf_path() -> Path:
     from .consts import user_conf_fname
 
     user_conf_dir = get_user_conf_dir()
-    user_conf_path = join(user_conf_dir, user_conf_fname)
+    user_conf_path = user_conf_dir / user_conf_fname
     return user_conf_path
 
 
-def get_default_user_conf_path() -> str:
+def get_default_user_conf_path() -> Path:
     from .consts import user_conf_fname
     from ..util.admin_util import get_packagedir
-    from os.path import join
 
-    default_user_conf_path = join(get_packagedir(), "lib", "assets", user_conf_fname)
+    default_user_conf_path = get_packagedir() / "lib" / "assets" / user_conf_fname
     return default_user_conf_path
 
 
@@ -384,6 +380,7 @@ def get_default_user_conf() -> dict:
 
 
 def add_system_dirs_to_system_conf(system_conf: dict) -> dict:
+    from pathlib import Path
     from .consts import root_dir_key
     from .consts import modules_dir_key
     from .consts import conf_dir_key
@@ -394,26 +391,47 @@ def add_system_dirs_to_system_conf(system_conf: dict) -> dict:
     from ..util.admin_util import get_packagedir
 
     # conf_path
-    if sys_conf_path_key not in system_conf:
-        system_conf[sys_conf_path_key] = get_system_conf_path(conf=system_conf)
+    if sys_conf_path_key in system_conf:
+        sys_conf_path: Path = Path(system_conf[sys_conf_path_key])
+    else:
+        sys_conf_path = get_system_conf_path(conf=system_conf)
+    system_conf[sys_conf_path_key] = str(sys_conf_path.expanduser())
     # root_dir
-    if root_dir_key not in system_conf:
-        system_conf[root_dir_key] = get_default_root_dir(conf=system_conf)
+    if root_dir_key in system_conf:
+        root_dir: Path = Path(system_conf[root_dir_key])
+    else:
+        root_dir = get_default_root_dir(conf=system_conf)
+    system_conf[root_dir_key] = str(root_dir.expanduser())
     # conf_dir
-    if conf_dir_key not in system_conf:
-        system_conf[conf_dir_key] = get_default_conf_dir(conf=system_conf)
+    if conf_dir_key in system_conf:
+        conf_dir: Path = Path(system_conf[conf_dir_key])
+    else:
+        conf_dir: Path = get_default_conf_dir(conf=system_conf)
+    system_conf[conf_dir_key] = str(conf_dir.expanduser())
     # modules_dir
-    if modules_dir_key not in system_conf:
-        system_conf[modules_dir_key] = get_default_modules_dir(conf=system_conf)
+    if modules_dir_key in system_conf:
+        modules_dir = Path(system_conf[modules_dir_key])
+    else:
+        modules_dir = get_default_modules_dir(conf=system_conf)
+    system_conf[modules_dir_key] = str(modules_dir.expanduser())
     # jobs_dir
-    if jobs_dir_key not in system_conf:
-        system_conf[jobs_dir_key] = get_default_jobs_dir(conf=system_conf)
+    if jobs_dir_key in system_conf:
+        jobs_dir = Path(system_conf[jobs_dir_key])
+    else:
+        jobs_dir = get_default_jobs_dir(conf=system_conf)
+    system_conf[jobs_dir_key] = str(jobs_dir.expanduser())
     # log_dir
-    if log_dir_key not in system_conf:
-        system_conf[log_dir_key] = get_default_log_dir(conf=system_conf)
+    if log_dir_key in system_conf:
+        log_dir = Path(system_conf[log_dir_key])
+    else:
+        log_dir = get_default_log_dir(conf=system_conf)
+    system_conf[log_dir_key] = str(log_dir.expanduser())
     # package_dir
-    if package_dir_key not in system_conf:
-        system_conf[package_dir_key] = get_packagedir()
+    if package_dir_key in system_conf:
+        package_dir = Path(system_conf[package_dir_key])
+    else:
+        package_dir = get_packagedir()
+    system_conf[package_dir_key] = str(package_dir.expanduser())
     return system_conf
 
 
@@ -537,16 +555,14 @@ def get_oc_cravat_conf(conf=None) -> dict:
     return oc_cravat_conf
 
 
-def get_oc_cravat_conf_path(conf=None):
-    import os
+def get_oc_cravat_conf_path(conf=None) -> Path:
     from .consts import oc_cravat_conf_fname
+    from ..exceptions import SystemMissingException
 
     conf_dir = get_conf_dir(conf=conf)
     if conf_dir is None:
-        from ..exceptions import SystemMissingException
-
         raise SystemMissingException(msg="conf_dir is missing")
-    return os.path.join(conf_dir, oc_cravat_conf_fname)
+    return conf_dir / oc_cravat_conf_fname
 
 
 def get_main_default_path():
@@ -613,9 +629,9 @@ def get_env_key(conf_key):
     return env_key_prefix + conf_key.upper()
 
 
-def get_system_conf_path(conf=None):
+def get_system_conf_path(conf=None) -> Path:
     from os import environ
-    from os.path import join
+    from pathlib import Path
     from .consts import sys_conf_fname
     from .consts import sys_conf_path_key
     from .consts import root_dir_key
@@ -625,74 +641,69 @@ def get_system_conf_path(conf=None):
     # custom conf
     if conf:
         if sys_conf_path_key in conf:
-            return conf.get(sys_conf_path_key)
+            return Path(conf.get(sys_conf_path_key))
         elif conf_dir_key in conf:
-            return join(conf.get(conf_dir_key), sys_conf_fname)
+            return Path(conf.get(conf_dir_key)) / sys_conf_fname
         elif root_dir_key in conf:
-            return join(conf.get(root_dir_key), conf_dir_name, sys_conf_fname)
+            return Path(conf.get(root_dir_key)) / conf_dir_name / sys_conf_fname
     # ENV
     sys_conf_path_env_key = get_env_key(sys_conf_path_key)
     conf_dir_env_key = get_env_key(conf_dir_key)
     root_dir_env_key = get_env_key(root_dir_key)
     if sys_conf_path_env_key in environ:
-        return environ.get(sys_conf_path_env_key)
+        return Path(environ[sys_conf_path_env_key])
     elif conf_dir_env_key in environ:
-        return join(environ.get(conf_dir_env_key, ""), sys_conf_fname)
+        return Path(environ[conf_dir_env_key]) / sys_conf_fname
     elif root_dir_env_key in environ:
-        return join(environ.get(root_dir_env_key, ""), conf_dir_name, sys_conf_fname)
+        return Path(environ[root_dir_env_key]) / conf_dir_name / sys_conf_fname
     # default
     root_dir = get_default_conf_dir(conf=conf)
-    return join(root_dir, sys_conf_fname)
+    return Path(root_dir) / sys_conf_fname
 
 
-def get_oc_system_conf_path(conf=None):
+def get_oc_system_conf_path(conf=None) -> Path:
     from os import environ
-    from os.path import join
     from .consts import oc_system_conf_fname
     from .consts import sys_conf_path_key
 
     # custom conf
     if conf is not None and sys_conf_path_key in conf:
-        return conf.get(sys_conf_path_key)
+        return Path(conf[sys_conf_path_key])
     # ENV
     sys_conf_path = environ.get(get_env_key(sys_conf_path_key))
     if sys_conf_path is not None:
-        return sys_conf_path
+        return Path(sys_conf_path)
     # default
     root_dir = get_default_conf_dir(conf=conf)
-    return join(root_dir, oc_system_conf_fname)
+    return root_dir / oc_system_conf_fname
 
 
-def get_default_conf_dir(conf=None):
-    from os.path import join as pathjoin
+def get_default_conf_dir(conf=None) -> Path:
     from .consts import conf_dir_name
 
     root_dir = get_default_root_dir(conf=conf)
-    return pathjoin(root_dir, conf_dir_name)
+    return root_dir / conf_dir_name
 
 
-def get_default_modules_dir(conf=None):
-    from os.path import join as pathjoin
+def get_default_modules_dir(conf=None) -> Path:
     from .consts import modules_dir_name
 
     root_dir = get_default_root_dir(conf=conf)
-    return pathjoin(root_dir, modules_dir_name)
+    return root_dir / modules_dir_name
 
 
-def get_default_jobs_dir(conf=None):
-    from os.path import join as pathjoin
+def get_default_jobs_dir(conf=None) -> Path:
     from .consts import jobs_dir_name
 
     root_dir = get_default_root_dir(conf=conf)
-    return pathjoin(root_dir, jobs_dir_name)
+    return root_dir / jobs_dir_name
 
 
 def get_default_log_dir(conf=None):
-    from os.path import join as pathjoin
     from .consts import log_dir_name
 
     root_dir = get_default_root_dir(conf=conf)
-    return pathjoin(root_dir, log_dir_name)
+    return root_dir / log_dir_name
 
 
 def get_default_root_dir(conf=None) -> Path:

@@ -352,13 +352,11 @@ def change(newpw: Optional[str] = None, outer=None) -> bool:
     from ....exceptions import StoreServerError
 
     id_token = get_id_token()
-    print(f"@ id_token={id_token}")
     if not id_token:
         if outer:
             outer.write(f"Not logged in")
         return False
     valid, expired = id_token_is_valid()
-    print(f"@ valid={valid}. expired={expired}")
     if not valid:
         if outer:
             outer.write("Not logged in")
@@ -381,7 +379,6 @@ def change(newpw: Optional[str] = None, outer=None) -> bool:
         while not pw_is_valid(newpw):
             newpw = getpass("New password: ")
     refresh_token = get_refresh_token()
-    print(f"@ id_token={id_token}. refresh_token={refresh_token}. newpw={newpw}")
     url = get_store_url() + "/account/change"
     params = {"idToken": id_token, "refreshToken": refresh_token, "newpw": newpw}
     res = post(url, json=params)
@@ -531,10 +528,8 @@ def announce_on_email_verification_if_needed(email: str, outer=None):
 
 def login_with_token_set(email=None, outer=None) -> Tuple[bool, str]:
     token_set = get_token_set()
-    print(f"@@@ token_set={token_set}")
     if token_set:
         token_email = token_set["email"]
-        print(f"@@@ token_email={token_email}. email={email}")
         if email and token_email != email:
             return False, token_email
         correct, expired = id_token_is_valid()
@@ -595,7 +590,6 @@ def total_login(
     from ....system import show_no_user_account_prelude
 
     ret, logged_email = login_with_token_set(email=email, outer=outer)
-    print(f"@@@ ret={ret}. email={email}")
     if ret == True:
         return {"success": True, "email": logged_email}
     ret = login_with_email_pw(email=email, pw=pw, conf=conf)

@@ -5,7 +5,7 @@ from pathlib import Path
 
 def pack(
     module_name: Optional[str] = None,
-    outdir: str = ".",
+    outdir: Path = Path(".").absolute(),
     code_only: bool = False,
     split: bool = False,
     outer=None,

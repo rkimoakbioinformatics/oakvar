@@ -109,7 +109,7 @@ def get_mapper(module_name, input_file=None):
     return module
 
 
-def get_module(module_name, module_type=None):
+def get_module(module_name, module_type: str = ""):
     from os.path import dirname
     from .lib.module.local import get_local_module_info
     from .lib.module.local import get_module_conf

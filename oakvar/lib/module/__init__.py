@@ -1,7 +1,7 @@
 from typing import Optional
 from typing import List
 from pathlib import Path
-
+from . import local
 
 class InstallProgressHandler:
     def __init__(
@@ -545,8 +545,8 @@ def install_module_from_zip_path(
             )
         yml_path = yml_paths[0]
         module_name = yml_path.stem
-        f = open(str(yml_path))
-        conf = load_yml_conf(str(yml_path))
+        f = open(yml_path)
+        conf = load_yml_conf(yml_path)
         module_type = conf.get("type")
         if not module_type:
             raise ExpectedException(

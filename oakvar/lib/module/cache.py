@@ -8,12 +8,13 @@ class LocalModuleCache(MutableMapping):
         self.update(dict(*args, **kwargs))  # use the free update to set keys
 
     def __getitem__(self, key):
+        from pathlib import Path
         from .local import LocalModule
 
         if key not in self.store:
             raise KeyError(key)
         if not isinstance(self.store[key], LocalModule):
-            self.store[key] = LocalModule(self.store[key])
+            self.store[key] = LocalModule(Path(self.store[key]))
         return self.store[key]
 
     def __setitem__(self, key, value):
@@ -53,11 +54,12 @@ class ModuleCache(object):
 
     def add_local(self, module_name):
         from .local import get_module_dir
-        #from .local import get_local_module_info
+
+        # from .local import get_local_module_info
         mdir = get_module_dir(module_name)
         if not mdir:
             return
-        #module = get_local_module_info(module_name)
+        # module = get_local_module_info(module_name)
         self.local[module_name] = mdir
         return mdir
 

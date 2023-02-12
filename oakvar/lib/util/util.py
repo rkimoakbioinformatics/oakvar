@@ -1,5 +1,6 @@
 from typing import Dict
 from typing import Optional
+from pathlib import Path
 
 ov_system_output_columns: Optional[dict] = None
 
@@ -414,11 +415,11 @@ def pw_is_valid(pw: Optional[str]) -> bool:
         return False
 
 
-def load_yml_conf(yml_conf_path):
+def load_yml_conf(yml_conf_path: Path):
     from oyaml import safe_load
 
     with open(yml_conf_path, encoding="utf-8") as f:
-        conf = safe_load(f)
+        conf: dict = safe_load(f)
     if conf == None:
         conf = {}
     return conf
