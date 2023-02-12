@@ -4,7 +4,6 @@ from oakvar import BaseConverter
 
 
 class Converter(BaseConverter):
-
     def check_format(self, f) -> bool:
         """
         Detect the format of an input file.
@@ -29,7 +28,7 @@ class Converter(BaseConverter):
             l: a string of a line from an input file
         Returns:
             dict: a list of dicts, each dict for a variant collected
-                  from the input line. Each dict should have 
+                  from the input line. Each dict should have
                   the following required fields:
 
                   chrom: chromosome name [str]
@@ -44,11 +43,11 @@ class Converter(BaseConverter):
         """
         _ = l
         var_dicts = []
-        var_dict = { 
-            "chrom": "chr1", 
-            "pos": 2878349, 
-            "ref_base": "A", 
-            "alt_base": "T", 
+        var_dict = {
+            "chrom": "chr1",
+            "pos": 2878349,
+            "ref_base": "A",
+            "alt_base": "T",
             "sample_id": "sample1",
         }
         var_dicts.append(var_dict)

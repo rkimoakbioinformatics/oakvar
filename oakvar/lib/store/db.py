@@ -217,7 +217,9 @@ def get_latest_module_code_version(module_name, conn=None, cursor=None):
 
 
 @db_func
-def module_code_version_is_not_compatible_with_pkg_version(module_name: str, code_version: str, conn=Any, cursor=Any) -> Optional[str]:
+def module_code_version_is_not_compatible_with_pkg_version(
+    module_name: str, code_version: str, conn=Any, cursor=Any
+) -> Optional[str]:
     from packaging.version import Version
     from ..util.admin_util import oakvar_version
 
@@ -236,6 +238,7 @@ def module_code_version_is_not_compatible_with_pkg_version(module_name: str, cod
     if min_pkg_ver is None:
         min_pkg_ver = "?"
     return min_pkg_ver
+
 
 @db_func
 def module_info_ls(module_name, conn=None, cursor=None):
@@ -355,6 +358,7 @@ def is_store_db_schema_changed(conn=Any, cursor=Any) -> bool:
         return True
     return False
 
+
 @db_func
 def drop_ov_store_cache(clean_cache_files=False, conf=None, conn=None, cursor=None):
     from os.path import exists
@@ -410,12 +414,26 @@ def create_ov_store_cache(conf=None, conn=None, cursor=None):
             mkdir(join(fp, "oc"))
 
 
-def try_fetch_ov_store_cache(refresh_db: bool=False, clean_cache_files: bool=False, clean: bool=False, publish_time: str="", outer=None):
+def try_fetch_ov_store_cache(
+    refresh_db: bool = False,
+    clean_cache_files: bool = False,
+    clean: bool = False,
+    publish_time: str = "",
+    outer=None,
+):
     try:
-        return fetch_ov_store_cache(refresh_db=refresh_db, clean_cache_files=clean_cache_files, clean=clean, publish_time=publish_time, outer=outer)
+        return fetch_ov_store_cache(
+            refresh_db=refresh_db,
+            clean_cache_files=clean_cache_files,
+            clean=clean,
+            publish_time=publish_time,
+            outer=outer,
+        )
     except Exception as e:
         if outer:
-            outer.write(f"Fetching store update failed:\n\n>>{e}.\n\nContinuing with the current store cache.")
+            outer.write(
+                f"Fetching store update failed:\n\n>>{e}.\n\nContinuing with the current store cache."
+            )
 
 
 def get_remote_manifest_cache_path():
@@ -436,14 +454,15 @@ def save_remote_manifest_cache(content: dict):
         with open(cache_path, "w") as wf:
             dump(content, wf)
 
+
 @db_func
 def fetch_ov_store_cache(
     conn=None,
     cursor=None,
-    refresh_db: bool=False,
-    clean_cache_files: bool=False,
-    clean: bool=False,
-    publish_time: str="",
+    refresh_db: bool = False,
+    clean_cache_files: bool = False,
+    clean: bool = False,
+    publish_time: str = "",
     outer=None,
 ):
     from .consts import ov_store_last_updated_col
@@ -519,8 +538,9 @@ def is_new_store_db_setup(conn=Any, cursor=Any):
     else:
         return True
 
+
 @db_func
-def get_summary_module_store_list(publish_time: str="", conn=None, cursor=None):
+def get_summary_module_store_list(publish_time: str = "", conn=None, cursor=None):
     if not conn or not cursor:
         return
     q = "select name, store from summary where publish_time >= ?"
@@ -533,7 +553,9 @@ def get_summary_module_store_list(publish_time: str="", conn=None, cursor=None):
 
 
 @db_func
-def fetch_conf_cache(publish_time: str="", outer=None, conn=None, cursor=None, conf={}):
+def fetch_conf_cache(
+    publish_time: str = "", outer=None, conn=None, cursor=None, conf={}
+):
     from requests import Session
     from .ov.account import get_current_id_token
     from ..system import get_cache_dir
@@ -556,7 +578,9 @@ def fetch_conf_cache(publish_time: str="", outer=None, conn=None, cursor=None, c
         store = module_store["store"]
         conf_dir = get_cache_dir("conf", conf=conf)
         if not conf_dir:
-            raise SystemMissingException(msg="readme directory is missing. Consider running `ov system setup`?")
+            raise SystemMissingException(
+                msg="readme directory is missing. Consider running `ov system setup`?"
+            )
         fpath = conf_dir / store / (name + ".json")
         url = f"{get_store_url()}/fetch_conf/{store}/{name}"
         res = s.post(url, json=params)
@@ -572,7 +596,9 @@ def fetch_conf_cache(publish_time: str="", outer=None, conn=None, cursor=None, c
 
 
 @db_func
-def fetch_logo_cache(publish_time: str="", outer=None, conn=None, cursor=None, conf={}):
+def fetch_logo_cache(
+    publish_time: str = "", outer=None, conn=None, cursor=None, conf={}
+):
     from requests import Session
     from .ov.account import get_current_id_token
     from ..system import get_cache_dir
@@ -595,7 +621,9 @@ def fetch_logo_cache(publish_time: str="", outer=None, conn=None, cursor=None, c
         store = module_store["store"]
         logo_dir = get_cache_dir("logo", conf=conf)
         if not logo_dir:
-            raise SystemMissingException(msg="readme directory is missing. Consider running `ov system setup`?")
+            raise SystemMissingException(
+                msg="readme directory is missing. Consider running `ov system setup`?"
+            )
         fpath = logo_dir / store / (name + ".png")
         url = f"{get_store_url()}/fetch_logo/{store}/{name}"
         res = s.post(url, json=params)
@@ -611,7 +639,9 @@ def fetch_logo_cache(publish_time: str="", outer=None, conn=None, cursor=None, c
 
 
 @db_func
-def fetch_readme_cache(publish_time: str="", outer=None, conn=None, cursor=None, conf={}):
+def fetch_readme_cache(
+    publish_time: str = "", outer=None, conn=None, cursor=None, conf={}
+):
     from requests import Session
     from .ov.account import get_current_id_token
     from ..system import get_cache_dir
@@ -634,7 +664,9 @@ def fetch_readme_cache(publish_time: str="", outer=None, conn=None, cursor=None,
         store = module_store["store"]
         readme_dir = get_cache_dir("readme", conf=conf)
         if not readme_dir:
-            raise SystemMissingException(msg="readme directory is missing. Consider running `ov system setup`?")
+            raise SystemMissingException(
+                msg="readme directory is missing. Consider running `ov system setup`?"
+            )
         fpath = readme_dir / store / name
         url = f"{get_store_url()}/fetch_readme/{store}/{name}"
         res = s.post(url, json=params)
@@ -650,7 +682,7 @@ def fetch_readme_cache(publish_time: str="", outer=None, conn=None, cursor=None,
 
 
 @db_func
-def fetch_summary_cache(publish_time: str="", outer=None, conn=Any, cursor=Any):
+def fetch_summary_cache(publish_time: str = "", outer=None, conn=Any, cursor=Any):
     from requests import Session
     from .ov.account import get_current_id_token
     from ..exceptions import StoreServerError
@@ -684,7 +716,7 @@ def fetch_summary_cache(publish_time: str="", outer=None, conn=Any, cursor=Any):
 
 
 @db_func
-def fetch_versions_cache(publish_time: str="", outer=None, conn=None, cursor=None):
+def fetch_versions_cache(publish_time: str = "", outer=None, conn=None, cursor=None):
     from requests import Session
     from json import dumps
     from .ov.account import get_current_id_token

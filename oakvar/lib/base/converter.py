@@ -3,6 +3,7 @@ from typing import Tuple
 from typing import List
 from typing import Iterator
 
+
 class BaseConverter(object):
     IGNORE = "converter_ignore"
 
@@ -26,7 +27,9 @@ class BaseConverter(object):
     def convert_line(self, *__args__, **__kwargs__) -> List[dict]:
         return []
 
-    def convert_file(self, file, *__args__, exc_handler=None, **__kwargs__) -> Iterator[Tuple[int, List[dict]]]:
+    def convert_file(
+        self, file, *__args__, exc_handler=None, **__kwargs__
+    ) -> Iterator[Tuple[int, List[dict]]]:
         line_no = 0
         for line in file:
             line_no += 1

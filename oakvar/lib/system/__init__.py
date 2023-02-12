@@ -6,7 +6,20 @@ from pathlib import Path
 custom_system_conf = None
 
 
-def setup_system(clean: bool=False, refresh_db: bool=False, clean_cache_files: bool=False, setup_file: Optional[str]=None, email: Optional[str]=None, pw: Optional[str]=None, publish_time: str="", custom_system_conf: Optional[Dict]=None, outer=None, system_worker_state=None, install_mode: str="", ws_id: str=""):
+def setup_system(
+    clean: bool = False,
+    refresh_db: bool = False,
+    clean_cache_files: bool = False,
+    setup_file: Optional[str] = None,
+    email: Optional[str] = None,
+    pw: Optional[str] = None,
+    publish_time: str = "",
+    custom_system_conf: Optional[Dict] = None,
+    outer=None,
+    system_worker_state=None,
+    install_mode: str = "",
+    ws_id: str = "",
+):
     from os import environ
     from ...api.module import installbase
     from .consts import sys_conf_path_key
@@ -17,7 +30,12 @@ def setup_system(clean: bool=False, refresh_db: bool=False, clean_cache_files: b
     _ = ws_id
     show_logo(outer=outer)
     # set up a sys conf file.
-    conf = setup_system_conf(clean=clean, setup_file=setup_file, custom_system_conf=custom_system_conf, outer=outer)
+    conf = setup_system_conf(
+        clean=clean,
+        setup_file=setup_file,
+        custom_system_conf=custom_system_conf,
+        outer=outer,
+    )
     add_system_dirs_to_system_conf(conf)
     save_system_conf(conf)
     if outer:
@@ -38,7 +56,13 @@ def setup_system(clean: bool=False, refresh_db: bool=False, clean_cache_files: b
     # fetch ov store cache
     if outer:
         outer.write("Setting up store cache...")
-    setup_ov_store_cache(refresh_db=refresh_db, clean_cache_files=clean_cache_files, clean=clean, publish_time=publish_time, outer=outer)
+    setup_ov_store_cache(
+        refresh_db=refresh_db,
+        clean_cache_files=clean_cache_files,
+        clean=clean,
+        publish_time=publish_time,
+        outer=outer,
+    )
     # set up a multiuser database.
     if outer:
         outer.write("Setting up administrative database...")
@@ -47,7 +71,16 @@ def setup_system(clean: bool=False, refresh_db: bool=False, clean_cache_files: b
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
     if outer:
         outer.write("Installing system modules...")
-    ret = installbase(clean_cache_files=clean_cache_files, refresh_db=refresh_db, clean=clean, publish_time=publish_time, no_fetch=True, conf=conf, outer=outer, system_worker_state=system_worker_state)
+    ret = installbase(
+        clean_cache_files=clean_cache_files,
+        refresh_db=refresh_db,
+        clean=clean,
+        publish_time=publish_time,
+        no_fetch=True,
+        conf=conf,
+        outer=outer,
+        system_worker_state=system_worker_state,
+    )
     if ret is None or ret == 0 or ret is True:  # 0 or None?
         if outer:
             outer.write(f"Done setting up the system.")
@@ -75,7 +108,12 @@ def setup_system_dirs(conf=None, outer=None):
         create_dir_if_absent(conf[log_dir_key], outer=outer)
 
 
-def setup_system_conf(clean: bool=False, setup_file: Optional[str]=None, custom_system_conf: Optional[Dict]=None, outer=None) -> dict:
+def setup_system_conf(
+    clean: bool = False,
+    setup_file: Optional[str] = None,
+    custom_system_conf: Optional[Dict] = None,
+    outer=None,
+) -> dict:
     from .consts import sys_conf_path_key
     from os.path import exists
 
@@ -178,13 +216,13 @@ def show_email_verify_action_banner():
     )
 
 
-def setup_store_account(conf=None, email=None, pw=None, install_mode: str="") -> dict:
+def setup_store_account(conf=None, email=None, pw=None, install_mode: str = "") -> dict:
     from ..store.ov.account import total_login
 
     return total_login(email=email, pw=pw, conf=conf, install_mode=install_mode)
 
 
-def setup_user_conf_file(clean: bool=False, conf: Optional[Dict]=None, outer=None):
+def setup_user_conf_file(clean: bool = False, conf: Optional[Dict] = None, outer=None):
     from os.path import exists
     from shutil import copyfile
     from os import mkdir
@@ -726,7 +764,9 @@ def get_default_root_dir(conf=None) -> Path:
     elif pl == "linux":
         path = ".oakvar"
         root_dir = get_packagedir()
-        if not (root_dir / "conf").exists(): # packagedir/conf is the old conf dir of OpenCRAVAT.
+        if not (
+            root_dir / "conf"
+        ).exists():  # packagedir/conf is the old conf dir of OpenCRAVAT.
             if is_root_user():
                 sudo_user = environ.get("SUDO_USER")
                 home = environ.get("HOME")
@@ -744,7 +784,7 @@ def get_default_root_dir(conf=None) -> Path:
                     root_dir = Path.home() / path
     elif pl == "macos":
         root_dir = Path("/Users/Shared/open-cravat")
-        if not root_dir.exists(): # OakVar first installation
+        if not root_dir.exists():  # OakVar first installation
             root_dir = Path("/Users/Shared/oakvar")
     else:
         root_dir = Path(".")
@@ -753,7 +793,9 @@ def get_default_root_dir(conf=None) -> Path:
 
 def get_max_num_concurrent_modules_per_job():
     from .consts import max_num_concurrent_modules_per_job_key
-    from .consts import max_num_concurrent_annotators_per_job_key # TODO: backward-compatibility. remove after some time.
+    from .consts import (
+        max_num_concurrent_annotators_per_job_key,
+    )  # TODO: backward-compatibility. remove after some time.
 
     value = get_system_conf().get(max_num_concurrent_modules_per_job_key)
     if not value:
@@ -886,6 +928,7 @@ def check_system_yml(outer=None) -> bool:
 def check_oakvar_yml(outer=None) -> bool:
     from pathlib import Path
     from ..util.util import load_yml_conf
+
     user_conf_path = get_user_conf_path()
     if not Path(user_conf_path).exists():
         if outer:

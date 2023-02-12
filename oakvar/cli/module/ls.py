@@ -154,5 +154,3 @@ def add_local_module_info_to_remote_module_info(remote_info):
         remote_info.installed = ""
         remote_info.local_code_version = ""
         remote_info.local_data_source = ""
-
-

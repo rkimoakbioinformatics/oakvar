@@ -135,7 +135,7 @@ class ExcelReportReader(ReportReader):
 
     # Based on the level selected, return column headers and row values.
     def readReport(self, test_level, bDict):
-        from openpyxl import load_workbook # type: ignore
+        from openpyxl import load_workbook  # type: ignore
 
         headers = None
         tabNbr = "Variant"
@@ -234,7 +234,7 @@ class VcfReportReader(ReportReader):
         headers = None
         rows_dict = {}
         rows_list = []
-        import vcf # type: ignore
+        import vcf  # type: ignore
 
         reader = vcf.Reader(filename=self.rsltFile)
         if headers == None:
@@ -800,7 +800,7 @@ class Tester:
             return "FAIL"
 
 
-def test(rundir: Optional[str]=None, modules: Optional[List[str]]=[], outer=None):
+def test(rundir: Optional[str] = None, modules: Optional[List[str]] = [], outer=None):
     from os.path import exists
     from os import makedirs
     from ..lib.module.local import get_local_module_info
@@ -854,4 +854,3 @@ def test(rundir: Optional[str]=None, modules: Optional[List[str]]=[], outer=None
     if outer:
         outer.write(f"passed {passed} failed {failed}")
     return {"result": result, "num_passed": passed, "num_failed": failed}
-

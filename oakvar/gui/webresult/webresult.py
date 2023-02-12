@@ -23,6 +23,7 @@ async def get_nowg_annot_modules(_):
 
 async def get_filter_save_names(request):
     from aiohttp.web import Response
+
     _ = request.rel_url.query
     dbpath = await get_dbpath(request)
     conn = None
@@ -56,6 +57,7 @@ async def get_filter_save_names(request):
 
 async def get_layout_save_names(request):
     from aiohttp.web import Response
+
     _ = request.rel_url.query
     dbpath = await get_dbpath(request)
     content = []
@@ -78,6 +80,7 @@ async def get_layout_save_names(request):
 
 async def rename_layout_setting(request):
     from aiohttp.web import Response
+
     queries = request.rel_url.query
     dbpath = await get_dbpath(request)
     content = {}
@@ -115,6 +118,7 @@ async def get_db_conn(dbpath):
 
 async def delete_layout_setting(request):
     from aiohttp.web import Response
+
     queries = request.rel_url.query
     dbpath = await get_dbpath(request)
     name = queries["name"]
@@ -126,13 +130,7 @@ async def delete_layout_setting(request):
     table = "viewersetup"
     r = await table_exists(cursor, table)
     if r == True:
-        q = (
-            "DELETE FROM "
-            + table
-            + ' WHERE datatype="layout" and name="'
-            + name
-            + '"'
-        )
+        q = "DELETE FROM " + table + ' WHERE datatype="layout" and name="' + name + '"'
         await cursor.execute(q)
     await conn.commit()
     await cursor.close()
@@ -142,6 +140,7 @@ async def delete_layout_setting(request):
 
 async def load_layout_setting(request):
     from aiohttp.web import Response
+
     queries = request.rel_url.query
     dbpath = await get_dbpath(request)
     name = queries["name"]
@@ -174,6 +173,7 @@ async def load_layout_setting(request):
 
 async def load_filter_setting(request):
     from aiohttp.web import Response
+
     queries = request.rel_url.query
     dbpath = await get_dbpath(request)
     name = queries["name"]
@@ -850,6 +850,7 @@ async def get_modules_info(request):
 
 async def get_samples(request):
     from aiohttp.web import Response
+
     dbpath = await get_dbpath(request)
     conn = await get_db_conn(dbpath)
     samples = []

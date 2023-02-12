@@ -5,12 +5,22 @@ REPORT_RUNNING = 1
 REPORT_FINISHED = 2
 REPORT_ERROR = 3
 
+
 class JobHandlers:
     FINISHED = "Finished"
     ABORTED = "Aborted"
     ERROR = "Error"
 
-    def __init__(self, servermode=False, mu=None, logger=None, job_queue=None, info_of_running_jobs=None, report_generation_ps=None, loop=None):
+    def __init__(
+        self,
+        servermode=False,
+        mu=None,
+        logger=None,
+        job_queue=None,
+        info_of_running_jobs=None,
+        report_generation_ps=None,
+        loop=None,
+    ):
         self.loop = loop
         self.servermode = servermode
         self.mu = mu
@@ -36,10 +46,16 @@ class JobHandlers:
         self.routes.append(["GET", "/submit/jobstatus", self.get_job_status])
         self.routes.append(["GET", "/submit/jobs/{job_id}/status", self.get_job_status])
         self.routes.append(["POST", "/submit/delete_jobs", self.delete_jobs])
-        self.routes.append(["POST", "/submit/jobs/reports", self.get_available_report_types])
-        self.routes.append(["POST", "/submit/downloadreport/{report_type}", self.download_report])
+        self.routes.append(
+            ["POST", "/submit/jobs/reports", self.get_available_report_types]
+        )
+        self.routes.append(
+            ["POST", "/submit/downloadreport/{report_type}", self.download_report]
+        )
         self.routes.append(["GET", "/submit/joblog", self.get_job_log])
-        self.routes.append(["POST", "/submit/makereport/{report_type}", self.generate_report])
+        self.routes.append(
+            ["POST", "/submit/makereport/{report_type}", self.generate_report]
+        )
         self.routes.append(["GET", "/submit/jobdb", self.download_db])
         self.routes.append(["GET", "/submit/reporttypes", self.get_report_types])
 
@@ -212,7 +228,9 @@ class JobHandlers:
         from .userjob import get_user_job_report_paths
         from pathlib import Path
 
-        report_filenames = await get_user_job_report_paths(request, report_type, eud=eud)
+        report_filenames = await get_user_job_report_paths(
+            request, report_type, eud=eud
+        )
         if report_filenames is None:
             return None
         job_dir = await get_job_dir_from_eud(request, eud=eud)
@@ -235,7 +253,9 @@ class JobHandlers:
         reporter_infos = get_local_module_infos(types=["reporter"])
         self.valid_report_types = [x.name.split("reporter")[0] for x in reporter_infos]
         self.valid_report_types = [
-            v for v in self.valid_report_types if not v in ["pandas", "stdout", "example"]
+            v
+            for v in self.valid_report_types
+            if not v in ["pandas", "stdout", "example"]
         ]
         return self.valid_report_types
 
@@ -252,7 +272,9 @@ class JobHandlers:
         job_dir = Path(job_dir)
         existing_reports = []
         for report_type in self.get_valid_report_types():
-            report_paths = await get_user_job_report_paths(request, report_type, eud=eud)
+            report_paths = await get_user_job_report_paths(
+                request, report_type, eud=eud
+            )
             if report_paths:
                 report_exist = True
                 for p in report_paths:
@@ -323,7 +345,14 @@ class JobHandlers:
         global job_queue
         global mu
         assert self.job_queue is not None
-        submit_processor = SubmitProcessor(request=request, loop=self.loop, job_queue=self.job_queue, logger=self.logger, servermode=self.servermode, mu=self.mu)
+        submit_processor = SubmitProcessor(
+            request=request,
+            loop=self.loop,
+            job_queue=self.job_queue,
+            logger=self.logger,
+            servermode=self.servermode,
+            mu=self.mu,
+        )
         ret = await submit_processor.run()
         return ret
 
@@ -359,7 +388,9 @@ class JobHandlers:
     def mark_job_as_aborted(self, job):
         job["status"] = self.ABORTED
 
-    async def get_uid_dbpath_from_request(self, request) -> Tuple[Optional[str], Optional[str]]:
+    async def get_uid_dbpath_from_request(
+        self, request
+    ) -> Tuple[Optional[str], Optional[str]]:
         # from urllib.parse import unquote
         try:
             json_data = await request.json()
@@ -383,6 +414,7 @@ class JobHandlers:
         else:
             return None, None
         return uid, dbpath
+
 
 def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
     from asyncio import new_event_loop
@@ -568,9 +600,9 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
             with open(tmp_flag_path, "w") as wf:
                 wf.write(report_type)
                 wf.close()
-            self.add_to_report_generation_ps(key, report_type)        
+            self.add_to_report_generation_ps(key, report_type)
             p = subprocess.Popen(run_args, stderr=subprocess.PIPE)
-            err = p.stderr.read() # type: ignore
+            err = p.stderr.read()  # type: ignore
             if len(err) > 0:
                 logger = getLogger()
                 logger.error(err.decode("utf-8"))
@@ -631,6 +663,7 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
                 pass
             except Exception as e:
                 import traceback
+
                 traceback.print_exc()
                 logger = getLogger()
                 logger.exception(e)
@@ -648,5 +681,5 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
         pass
     except:
         import traceback
-        traceback.print_exc()
 
+        traceback.print_exc()

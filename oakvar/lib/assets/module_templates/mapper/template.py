@@ -2,14 +2,13 @@ from oakvar import BaseMapper
 
 
 class Mapper(BaseMapper):
-
     def map(self, input_data: dict) -> dict:
         """
         Returns a dict of the result of mapping an input variant
         to a gene model.
 
         Parameters:
-            input_data: a dict of a variant. It should have the following 
+            input_data: a dict of a variant. It should have the following
             fields:
                 chrom: chromosome
                 pos: position
@@ -24,9 +23,9 @@ class Mapper(BaseMapper):
                   ref_base: str
                   alt_base: str
                   transcript: primary transcript, str
-                  so: sequence ontology of the input variant on 
+                  so: sequence ontology of the input variant on
                       the primary transcript, [str]
-                  cchange: cDNA change by the input variant on 
+                  cchange: cDNA change by the input variant on
                            the primary transcript, str
                   achange: amino acid change by the input variant on
                            the primary transcript, str

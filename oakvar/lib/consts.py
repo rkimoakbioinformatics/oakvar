@@ -73,4 +73,3 @@ JOB_STATUS_ABORTED = "Abort"
 JOB_STATUS_ERROR = "Error"
 
 MODULE_OPTIONS_KEY = "module_options"
-

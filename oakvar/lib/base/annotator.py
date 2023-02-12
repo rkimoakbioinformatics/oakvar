@@ -22,7 +22,23 @@ class BaseAnnotator(object):
     }
     required_conf_keys = ["level", "output_columns"]
 
-    def __init__(self, input_file: Optional[str]=None, secondary_inputs=None, run_name: Optional[str]=None, output_dir: Optional[str]=None, plainoutput: bool=False, logtofile: bool=False, module_options: Dict={}, serveradmindb=None, name: Optional[str]=None, title: Optional[str]=None, level: Optional[str]=None, input_columns: List[Dict]=[], output_columns: List[Dict]=[], module_conf: dict={}):
+    def __init__(
+        self,
+        input_file: Optional[str] = None,
+        secondary_inputs=None,
+        run_name: Optional[str] = None,
+        output_dir: Optional[str] = None,
+        plainoutput: bool = False,
+        logtofile: bool = False,
+        module_options: Dict = {},
+        serveradmindb=None,
+        name: Optional[str] = None,
+        title: Optional[str] = None,
+        level: Optional[str] = None,
+        input_columns: List[Dict] = [],
+        output_columns: List[Dict] = [],
+        module_conf: dict = {},
+    ):
         import os
         import sys
         from pathlib import Path
@@ -85,22 +101,34 @@ class BaseAnnotator(object):
             self.module_dir = self.main_fpath.parent
             self.annotator_dir = self.main_fpath.parent
             self.conf = get_module_conf(
-                self.module_name, module_type=self.module_type, module_dir=self.module_dir
+                self.module_name,
+                module_type=self.module_type,
+                module_dir=self.module_dir,
             )
         self.level = level
         if not self.level and self.conf and "level" in self.conf:
             self.level = self.conf.get("level")
         if not self.level:
-            raise ModuleLoadingError(msg="level or module_conf with level should be given.")
+            raise ModuleLoadingError(
+                msg="level or module_conf with level should be given."
+            )
         if self.conf is not None and "level" not in self.conf:
             self.conf["level"] = self.level
         self.input_columns = input_columns.copy()
-        if self.input_columns is not None and self.conf is not None and "input_columns" not in self.conf:
+        if (
+            self.input_columns is not None
+            and self.conf is not None
+            and "input_columns" not in self.conf
+        ):
             self.conf["input_columns"] = self.input_columns
         elif not self.input_columns and self.conf and "input_columns" in self.conf:
             self.input_columns = self.conf["input_columns"]
         self.output_columns = output_columns.copy()
-        if self.output_columns is not None and self.conf is not None and "output_columns" not in self.conf:
+        if (
+            self.output_columns is not None
+            and self.conf is not None
+            and "output_columns" not in self.conf
+        ):
             self.conf["output_columns"] = self.output_columns
         elif not self.output_columns and self.conf and "output_columns" in self.conf:
             self.output_columns = self.conf["output_columns"]
@@ -133,7 +161,12 @@ class BaseAnnotator(object):
         self.cache = ModuleDataCache(self.module_name, module_type=self.module_type)
 
     def set_ref_colname(self):
-        ref_colnames = {"variant": "uid", "gene": "hugo", "sample": "uid", "mapping": "uid"}
+        ref_colnames = {
+            "variant": "uid",
+            "gene": "hugo",
+            "sample": "uid",
+            "mapping": "uid",
+        }
         if self.level:
             self._id_col_name = ref_colnames.get(self.level)
         else:
@@ -170,9 +203,9 @@ class BaseAnnotator(object):
                 err_msg = 'Required key "%s" not found in configuration' % k
                 raise ConfigurationError(err_msg)
         if self.conf["level"] in self.valid_levels and self.level:
-            self.conf["output_columns"] = [
-                self.id_col_defs[self.level]
-            ] + self.conf["output_columns"]
+            self.conf["output_columns"] = [self.id_col_defs[self.level]] + self.conf[
+                "output_columns"
+            ]
         else:
             err_msg = "%s is not a valid level. Valid levels are %s" % (
                 self.conf["level"],
@@ -294,16 +327,26 @@ class BaseAnnotator(object):
         if df:
             return self.run_df(df)
         if not self.module_name:
-            raise ModuleLoadingError(msg="module_name should be given at initializing Annotator to run.")
+            raise ModuleLoadingError(
+                msg="module_name should be given at initializing Annotator to run."
+            )
         if self.conf:
             if "title" not in self.conf:
-                raise ModuleLoadingError(msg="title should be given at initializing Annotator or in the module yml file to run.")
+                raise ModuleLoadingError(
+                    msg="title should be given at initializing Annotator or in the module yml file to run."
+                )
             if "level" not in self.conf:
-                raise ModuleLoadingError(msg="level should be given at initializing Annotator or in the module yml file to run.")
+                raise ModuleLoadingError(
+                    msg="level should be given at initializing Annotator or in the module yml file to run."
+                )
             if "output_columns" not in self.conf:
-                raise ModuleLoadingError(msg="output_columns should be given at initializing Annotator or in the module yml file to run.")
+                raise ModuleLoadingError(
+                    msg="output_columns should be given at initializing Annotator or in the module yml file to run."
+                )
             if not self.primary_input_path:
-                raise ModuleLoadingError(msg="input_file should be given at initializing Annotator to run.")
+                raise ModuleLoadingError(
+                    msg="input_file should be given at initializing Annotator to run."
+                )
         else:
             raise ModuleLoadingError(msg="module conf should exist to run.")
         status = f"started {self.conf['title']} ({self.module_name})"
@@ -532,7 +575,10 @@ class BaseAnnotator(object):
             output_suffix = ".out"
         if not (Path(self.output_dir).exists):
             makedirs(self.output_dir)
-        self.output_path = Path(self.output_dir) / f"{self.output_basename}.{self.module_name}{output_suffix}"
+        self.output_path = (
+            Path(self.output_dir)
+            / f"{self.output_basename}.{self.module_name}{output_suffix}"
+        )
         if self.plain_output:
             self.output_writer = FileWriter(
                 self.output_path,
@@ -659,9 +705,11 @@ class BaseAnnotator(object):
                 d[colname] = value
         return d
 
-    def save(self, overwrite: bool=False):
+    def save(self, overwrite: bool = False):
         from ..module.local import create_module_files
+
         create_module_files(self, overwrite=overwrite)
+
 
 class SecondaryInputFetcher:
     def __init__(self, input_path, key_col, fetch_cols=[]):
@@ -712,4 +760,3 @@ class SecondaryInputFetcher:
             return self.data[key_data]
         else:
             return None
-

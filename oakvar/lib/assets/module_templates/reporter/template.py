@@ -2,7 +2,6 @@ from oakvar import BaseReporter
 
 
 class Reporter(BaseReporter):
-
     def write_preface(self, level):
         _ = level
         pass
@@ -14,4 +13,3 @@ class Reporter(BaseReporter):
     def write_table_row(self, row):
         _ = row
         pass
-

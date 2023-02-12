@@ -215,6 +215,7 @@ class BaseReporter:
 
     async def prep(self, user=None):
         from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
+
         if user is None:
             user = DEFAULT_SERVER_DEFAULT_USERNAME
         await self.set_dbpath()
@@ -689,7 +690,7 @@ class BaseReporter:
             rows = await cursor.fetchall()
             for row in rows:
                 coljson = row[0]
-                #group_name = col_name.split("__")[0]
+                # group_name = col_name.split("__")[0]
                 if group_name == "base" or group_name in self.modules_to_add_to_base:
                     coldef = ColumnDefinition({})
                     coldef.from_json(coljson)
@@ -698,7 +699,7 @@ class BaseReporter:
                     coldefs.append(coldef)
             for row in rows:
                 coljson = row[0]
-                #group_name = col_name.split("__")[0]
+                # group_name = col_name.split("__")[0]
                 if group_name == "base" or group_name in self.modules_to_add_to_base:
                     continue
                 coldef = ColumnDefinition({})

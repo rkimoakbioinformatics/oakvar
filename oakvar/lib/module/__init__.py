@@ -3,6 +3,7 @@ from typing import List
 from pathlib import Path
 from . import local
 
+
 class InstallProgressHandler:
     def __init__(
         self,

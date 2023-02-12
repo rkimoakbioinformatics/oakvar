@@ -247,15 +247,15 @@ def get_mapper_script_path(module_name):
 
     modules_dir = get_modules_dir()
     assert modules_dir is not None
-    module_path = os.path.join(
-        modules_dir, "mappers", module_name, module_name + ".py"
-    )
+    module_path = os.path.join(modules_dir, "mappers", module_name, module_name + ".py")
     if os.path.exists(module_path) == False:
         module_path = None
     return module_path
 
 
-def get_module_code_version(module_name: str, module_dir: Optional[Path]=None) -> Optional[str]:
+def get_module_code_version(
+    module_name: str, module_dir: Optional[Path] = None
+) -> Optional[str]:
     module_conf = get_module_conf(module_name, module_dir=module_dir)
     if not module_conf:
         return None
@@ -266,7 +266,7 @@ def get_module_code_version(module_name: str, module_dir: Optional[Path]=None) -
 
 
 def get_module_data_version(
-    module_name: str, module_dir: Optional[Path]=None
+    module_name: str, module_dir: Optional[Path] = None
 ) -> Optional[str]:
     module_conf = get_module_conf(module_name, module_dir=module_dir)
     if not module_conf:
@@ -291,7 +291,7 @@ def get_new_module_dir(
     return str(module_dir)
 
 
-def get_module_dir(module_name: str, module_type: str="") -> Optional[Path]:
+def get_module_dir(module_name: str, module_type: str = "") -> Optional[Path]:
     from ..system import get_modules_dir
 
     if Path(module_name).exists():
@@ -316,14 +316,16 @@ def get_module_dir(module_name: str, module_type: str="") -> Optional[Path]:
     return None
 
 
-def get_module_data_dir(module_name, module_type: str="") -> Optional[Path]:
+def get_module_data_dir(module_name, module_type: str = "") -> Optional[Path]:
     module_dir = get_module_dir(module_name, module_type=module_type)
     if not module_dir:
         return None
     return module_dir / "data"
 
 
-def get_module_conf(module_name, module_type: str="", module_dir: Optional[Path]=None):
+def get_module_conf(
+    module_name, module_type: str = "", module_dir: Optional[Path] = None
+):
     from pathlib import Path
     from ..util.util import load_yml_conf
 
@@ -338,7 +340,7 @@ def get_module_conf(module_name, module_type: str="", module_dir: Optional[Path]
         return None
 
 
-def get_module_conf_path(module_name: str, module_type: str=""):
+def get_module_conf_path(module_name: str, module_type: str = ""):
     from pathlib import Path
 
     p = Path(module_name)
@@ -393,7 +395,7 @@ def module_exists_local(module_name):
 
 
 def get_logo_b64_path(
-        module_name: str, module_type: str="", module_dir=None
+    module_name: str, module_type: str = "", module_dir=None
 ) -> Optional[str]:
     from os.path import join
     from os.path import exists
@@ -407,7 +409,9 @@ def get_logo_b64_path(
     return ""
 
 
-def get_logo_path(module_name: str, module_type: str="", module_dir=None) -> Optional[str]:
+def get_logo_path(
+    module_name: str, module_type: str = "", module_dir=None
+) -> Optional[str]:
     from os.path import join
     from os.path import exists
 
@@ -420,7 +424,7 @@ def get_logo_path(module_name: str, module_type: str="", module_dir=None) -> Opt
     return None
 
 
-def get_logo_b64(module_name: str, module_type: str="") -> Optional[str]:
+def get_logo_b64(module_name: str, module_type: str = "") -> Optional[str]:
     from base64 import b64encode
     from PIL import Image
     from ..store.consts import logo_size
@@ -487,7 +491,7 @@ def get_remote_manifest_from_local(module_name: str, error=None):
     return rmi
 
 
-def get_conf_path(module_name, module_type: str="") -> Optional[Path]:
+def get_conf_path(module_name, module_type: str = "") -> Optional[Path]:
     module_dir = get_module_dir(module_name, module_type=module_type)
     if module_dir:
         conf_path = module_dir / (module_name + ".yml")
@@ -496,7 +500,7 @@ def get_conf_path(module_name, module_type: str="") -> Optional[Path]:
     return None
 
 
-def get_conf_str(module_name, module_type: str="") -> Optional[str]:
+def get_conf_str(module_name, module_type: str = "") -> Optional[str]:
     conf_path = get_conf_path(module_name, module_type=module_type)
     if not conf_path:
         return None
@@ -504,7 +508,7 @@ def get_conf_str(module_name, module_type: str="") -> Optional[str]:
         return "\n".join(f.readlines())
 
 
-def get_conf(module_name, module_type: str="") -> Optional[dict]:
+def get_conf(module_name, module_type: str = "") -> Optional[dict]:
     from pathlib import Path
     from ..util.util import load_yml_conf
 
@@ -513,7 +517,7 @@ def get_conf(module_name, module_type: str="") -> Optional[dict]:
         return load_yml_conf(p)
 
 
-def get_cache_conf(module_name, module_type: str="") -> Optional[dict]:
+def get_cache_conf(module_name, module_type: str = "") -> Optional[dict]:
     conf = get_conf(module_name, module_type=module_type)
     if not conf:
         return None
@@ -521,7 +525,7 @@ def get_cache_conf(module_name, module_type: str="") -> Optional[dict]:
     return cache_conf
 
 
-def get_readme_path(module_name, module_type: str="") -> Optional[str]:
+def get_readme_path(module_name, module_type: str = "") -> Optional[str]:
     module_dir = get_module_dir(module_name, module_type=module_type)
     if module_dir:
         p = module_dir / (module_name + ".md")
@@ -530,7 +534,7 @@ def get_readme_path(module_name, module_type: str="") -> Optional[str]:
     return None
 
 
-def get_readme(module_name, module_type: str="") -> Optional[str]:
+def get_readme(module_name, module_type: str = "") -> Optional[str]:
     p = get_readme_path(module_name, module_type=module_type)
     if not p:
         return None
@@ -538,7 +542,7 @@ def get_readme(module_name, module_type: str="") -> Optional[str]:
         return "\n".join(f.readlines())
 
 
-def get_module_size(module_name, module_type: str="") -> Optional[int]:
+def get_module_size(module_name, module_type: str = "") -> Optional[int]:
     from ..util.util import get_directory_size
 
     d = get_module_dir(module_name, module_type=module_type)
@@ -546,7 +550,7 @@ def get_module_size(module_name, module_type: str="") -> Optional[int]:
         return get_directory_size(d)
 
 
-def get_data_size(module_name, module_type: str="") -> Optional[int]:
+def get_data_size(module_name, module_type: str = "") -> Optional[int]:
     from ..util.util import get_directory_size
     from os.path import join
     from os.path import exists
@@ -558,7 +562,7 @@ def get_data_size(module_name, module_type: str="") -> Optional[int]:
             return get_directory_size(data_dir)
 
 
-def get_code_size(module_name, module_type: str="") -> Optional[int]:
+def get_code_size(module_name, module_type: str = "") -> Optional[int]:
     module_size = get_module_size(module_name, module_type=module_type)
     data_size = get_data_size(module_name, module_type=module_type) or 0
     if module_size:
@@ -586,7 +590,9 @@ def get_module_name_and_module_dir(module_name: str) -> Tuple[str, Path]:
     return module_name, module_dir
 
 
-def get_pack_dir_out_dir(kind: str, outdir: Path, module_dir: Path) -> Tuple[Path, Path]:
+def get_pack_dir_out_dir(
+    kind: str, outdir: Path, module_dir: Path
+) -> Tuple[Path, Path]:
     from os import mkdir
 
     if not outdir.exists():
@@ -602,7 +608,13 @@ def get_pack_dir_out_dir(kind: str, outdir: Path, module_dir: Path) -> Tuple[Pat
     return pack_dir, outdir
 
 
-def pack_module_zip(module_name: str, kind: str, outdir: Path=Path(".").absolute(), split: bool=False, outer=None):
+def pack_module_zip(
+    module_name: str,
+    kind: str,
+    outdir: Path = Path(".").absolute(),
+    split: bool = False,
+    outer=None,
+):
     from zipfile import ZipFile
     from os import walk
     from os import sep
@@ -620,7 +632,9 @@ def pack_module_zip(module_name: str, kind: str, outdir: Path=Path(".").absolute
     else:
         raise ArgumentError(msg=f"wrong module kind: {kind}")
     if kind == "data" and version is None:
-        e = ArgumentError(msg=f"data_version: <version> or no_data: true should be defined in the module yml file.")
+        e = ArgumentError(
+            msg=f"data_version: <version> or no_data: true should be defined in the module yml file."
+        )
         e.traceback = False
         raise e
     pack_dir, outdir = get_pack_dir_out_dir(kind, outdir, module_dir)
@@ -674,7 +688,9 @@ def pack_module_zip(module_name: str, kind: str, outdir: Path=Path(".").absolute
                 return pack_path
 
 
-def pack_module(module_name: str, outdir: Path, code_only: bool, split: bool, outer=None):
+def pack_module(
+    module_name: str, outdir: Path, code_only: bool, split: bool, outer=None
+):
     conf = get_module_conf(module_name)
     pack_module_zip(module_name, "code", outdir=outdir, split=split, outer=outer)
     if not code_only and not (conf and conf.get("no_data")):
@@ -701,11 +717,13 @@ def load_modules(annotators: list = [], mapper: Optional[str] = None, input_file
         modules[module_name] = get_annotator(module_name)
     return modules
 
+
 def remove_code_part_of_module(module_name: str, module_dir=None):
     from pathlib import Path
     from os import listdir
     from os import remove
     from shutil import rmtree
+
     if not module_dir:
         module_dir = get_module_dir(module_name)
     if not module_dir:
@@ -717,6 +735,7 @@ def remove_code_part_of_module(module_name: str, module_dir=None):
                 rmtree(item_path)
             else:
                 remove(item_path)
+
 
 def get_temp_module_name():
     from pathlib import Path
@@ -735,6 +754,7 @@ def get_temp_module_name():
         if not module_dir.exists():
             return module_name
 
+
 def get_module_name_from_dir(d: Path):
     from sys import stderr
 
@@ -748,7 +768,8 @@ def get_module_name_from_dir(d: Path):
         return None
     return list(common_stems)[0]
 
-def create_module_files(module, overwrite: bool=False, interactive: bool=False):
+
+def create_module_files(module, overwrite: bool = False, interactive: bool = False):
     from pathlib import Path
     from os import makedirs
     import inspect
@@ -761,22 +782,28 @@ def create_module_files(module, overwrite: bool=False, interactive: bool=False):
     def inspect_getfile(obj, old_fn=inspect.getfile):
         if not inspect.isclass(obj):
             return old_fn(obj)
-        if hasattr(obj, '__module__'):
+        if hasattr(obj, "__module__"):
             new_obj = sys.modules.get(obj.__module__)
-            if new_obj and hasattr(new_obj, '__file__'):
+            if new_obj and hasattr(new_obj, "__file__"):
                 return new_obj.__file__
         for _, member in inspect.getmembers(obj):
-            if inspect.isfunction(member) and obj.__qualname__ + '.' + member.__name__ == member.__qualname__:
+            if (
+                inspect.isfunction(member)
+                and obj.__qualname__ + "." + member.__name__ == member.__qualname__
+            ):
                 return inspect.getfile(member)
         else:
-            raise TypeError(f'Source for {obj} not found.')
+            raise TypeError(f"Source for {obj} not found.")
+
     inspect.getfile = inspect_getfile
     cls = module.__class__
     if not cls:
         raise Exception("Only an OakVar class can be saved into module files.")
     modules_dir = get_modules_dir()
     if not modules_dir:
-        raise SystemMissingException(msg="Modules root directory does not exist. Consider running 'ov system setup'.")
+        raise SystemMissingException(
+            msg="Modules root directory does not exist. Consider running 'ov system setup'."
+        )
     modules_dir = Path(modules_dir)
     module_type: Optional[str] = getattr(module, "module_type", None)
     module_name: Optional[str] = getattr(module, "module_name", None)
@@ -784,16 +811,26 @@ def create_module_files(module, overwrite: bool=False, interactive: bool=False):
     module_level: Optional[str] = getattr(module, "level", None)
     output_columns: Optional[dict] = getattr(module, "output_columns", None)
     if not module_name:
-        raise IncompleteModuleError(msg="name property does not exist in the module. Consider giving 'name' argument at initializing the module.")
+        raise IncompleteModuleError(
+            msg="name property does not exist in the module. Consider giving 'name' argument at initializing the module."
+        )
     if not module_title:
-        raise IncompleteModuleError(msg="title property does not exist in the module. Consider giving 'title' argument at initializing the module.")
+        raise IncompleteModuleError(
+            msg="title property does not exist in the module. Consider giving 'title' argument at initializing the module."
+        )
     if not module_type:
-        raise IncompleteModuleError(msg="module_type property does not exist in the module.")
+        raise IncompleteModuleError(
+            msg="module_type property does not exist in the module."
+        )
     module_dir = modules_dir / (module_type + "s") / module_name
     if not module_level:
-        raise IncompleteModuleError(msg="title property does not exist in the module. Consider giving 'level' argument at initializing the module.")
+        raise IncompleteModuleError(
+            msg="title property does not exist in the module. Consider giving 'level' argument at initializing the module."
+        )
     if not output_columns:
-        raise IncompleteModuleError(msg="output_columns property does not exist in the module. Consider giving 'output_columns' argument at initializing the module.")
+        raise IncompleteModuleError(
+            msg="output_columns property does not exist in the module. Consider giving 'output_columns' argument at initializing the module."
+        )
     if module_dir.exists() and not overwrite:
         raise Exception(f"{module_dir} already exists.")
     makedirs(module_dir, exist_ok=True)
@@ -808,7 +845,13 @@ def create_module_files(module, overwrite: bool=False, interactive: bool=False):
         desc = module.conf.get("description", "")
         wf.write(f"\n{desc}\n<br>")
     with open(py_path, "w") as wf:
-        base_classes = {"converter": "BaseConverter", "mapper": "BaseMapper", "annotator": "BaseAnnotator", "postaggregator": "BasePostAggregator", "reporter": "BaseReporter"}
+        base_classes = {
+            "converter": "BaseConverter",
+            "mapper": "BaseMapper",
+            "annotator": "BaseAnnotator",
+            "postaggregator": "BasePostAggregator",
+            "reporter": "BaseReporter",
+        }
         base_class = base_classes.get(module_type)
         if not base_class:
             raise IncompleteModuleError(msg="Wrong module type: {module_type}")

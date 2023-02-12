@@ -4,6 +4,7 @@ from typing import List
 from typing import Tuple
 from typing import Dict
 
+
 class Runner(object):
     def __init__(self, **kwargs):
         from sys import executable
@@ -120,6 +121,7 @@ class Runner(object):
 
     def shutdown_logging(self):
         import logging
+
         logging.shutdown()
 
     def sanity_check_run_name_output_dir(self):
@@ -142,7 +144,11 @@ class Runner(object):
         pattern = escape_glob_pattern(run_name) + ".*"
         log_fn = Path(output_dir) / (run_name + LOG_SUFFIX)
         error_log_fn = Path(output_dir) / (run_name + ERROR_LOG_SUFFIX)
-        fns = [v for v in Path(output_dir).glob(pattern) if v != log_fn and v != error_log_fn]
+        fns = [
+            v
+            for v in Path(output_dir).glob(pattern)
+            if v != log_fn and v != error_log_fn
+        ]
         for fn in fns:
             msg = f"deleting {fn}"
             if self.logger:
@@ -356,6 +362,7 @@ class Runner(object):
                 self.exception = e
             finally:
                 import traceback
+
                 if self.exception:
                     traceback.print_exc()
                 if not self.exception:
@@ -393,12 +400,12 @@ class Runner(object):
         self.sort_postaggregators()
         self.set_reporters()
         self.set_start_end_levels()
-        self.set_self_inputs() # self.inputs is list.
-        self.set_and_create_output_dir() # self.output_dir is list.
-        self.set_run_name() # self.run_name is list.
-        self.set_job_name() # self.job_name is list.
-        self.set_append_mode() # self.append_mode is list.
-        self.set_genome_assemblies() # self.genome_assemblies is list.
+        self.set_self_inputs()  # self.inputs is list.
+        self.set_and_create_output_dir()  # self.output_dir is list.
+        self.set_run_name()  # self.run_name is list.
+        self.set_job_name()  # self.job_name is list.
+        self.set_append_mode()  # self.append_mode is list.
+        self.set_genome_assemblies()  # self.genome_assemblies is list.
 
     def make_self_args_considering_package_conf(self, args):
         from types import SimpleNamespace
@@ -466,7 +473,8 @@ class Runner(object):
             if len(toks) == 3:
                 extension = toks[2]
                 if toks[0] == run_name and (
-                    extension == VARIANT_LEVEL_OUTPUT_SUFFIX or extension == GENE_LEVEL_OUTPUT_SUFFIX
+                    extension == VARIANT_LEVEL_OUTPUT_SUFFIX
+                    or extension == GENE_LEVEL_OUTPUT_SUFFIX
                 ):
                     annot_name = toks[1]
                     if annot_name not in annot_names:
@@ -650,19 +658,29 @@ class Runner(object):
                 if self.args.combine_input:
                     self.output_dir = [cwd]
                 else:
-                    self.output_dir = [str(Path(inp).absolute().parent) for inp in self.inputs]
+                    self.output_dir = [
+                        str(Path(inp).absolute().parent) for inp in self.inputs
+                    ]
         else:
             if self.pipeinput:
                 self.output_dir = [cwd]
             else:
                 if self.args.combine_input:
                     if len(self.args.output_dir) != 1:
-                        raise ArgumentError(msg="-d should have one value when --combine-input is used.")
-                    self.output_dir = [str(Path(v).absolute()) for v in self.args.output_dir]
+                        raise ArgumentError(
+                            msg="-d should have one value when --combine-input is used."
+                        )
+                    self.output_dir = [
+                        str(Path(v).absolute()) for v in self.args.output_dir
+                    ]
                 else:
                     if len(self.args.output_dir) != len(self.inputs):
-                        raise ArgumentError(msg="-d should have the same number of values as inputs.")
-                    self.output_dir = [str(Path(v).absolute()) for v in self.args.output_dir]
+                        raise ArgumentError(
+                            msg="-d should have the same number of values as inputs."
+                        )
+                    self.output_dir = [
+                        str(Path(v).absolute()) for v in self.args.output_dir
+                    ]
         for output_dir in self.output_dir:
             if not Path(output_dir).exists():
                 mkdir(output_dir)
@@ -673,7 +691,9 @@ class Runner(object):
         package_name = args.get("package", None)
         if package_name:
             if package_name in get_module_cache().get_local():
-                self.package_conf: dict = get_module_cache().get_local()[package_name].conf
+                self.package_conf: dict = (
+                    get_module_cache().get_local()[package_name].conf
+                )
             else:
                 self.package_conf = {}
         else:
@@ -708,20 +728,28 @@ class Runner(object):
                     run_name = Path(self.inputs[0]).name
                     if len(self.inputs) > 1:
                         run_name = run_name + "_etc"
-                        run_name = self.get_unique_run_name(self.output_dir[0], run_name)
+                        run_name = self.get_unique_run_name(
+                            self.output_dir[0], run_name
+                        )
                     self.run_name = [run_name]
                 else:
                     self.run_name = [Path(v).name for v in self.inputs]
         else:
             if self.args.combine_input:
                 if len(self.args.run_name) != 1:
-                    raise ArgumentError(msg="-n should have only one value when --combine-input is given.")
+                    raise ArgumentError(
+                        msg="-n should have only one value when --combine-input is given."
+                    )
                 self.run_name = self.args.run_name
             else:
                 if len(self.args.run_name) == 1:
                     if self.inputs:
-                        if self.output_dir and len(self.output_dir) != len(set(self.output_dir)):
-                            raise ArgumentError(msg="-n should have a unique value for each input when -d has duplicate directories.")
+                        if self.output_dir and len(self.output_dir) != len(
+                            set(self.output_dir)
+                        ):
+                            raise ArgumentError(
+                                msg="-n should have a unique value for each input when -d has duplicate directories."
+                            )
                         self.run_name = self.args.run_name * len(self.inputs)
                     elif self.pipeinput:
                         self.run_name = self.args.run_name
@@ -729,10 +757,14 @@ class Runner(object):
                         raise
                 else:
                     if self.pipeinput:
-                        raise ArgumentError(msg="Only one -n option value should be given with pipe input.")
+                        raise ArgumentError(
+                            msg="Only one -n option value should be given with pipe input."
+                        )
                     if self.inputs:
                         if len(self.inputs) != len(self.args.run_name):
-                            raise ArgumentError(msg="Just one or the same number of -n option values as input files should be given.")
+                            raise ArgumentError(
+                                msg="Just one or the same number of -n option values as input files should be given."
+                            )
                         self.run_name = self.args.run_name
                     else:
                         raise
@@ -745,16 +777,23 @@ class Runner(object):
         if not self.args or not self.output_dir:
             raise
         if not self.args.job_name:
-            self.args.job_name = [f"{get_new_job_name(Path(output_dir))}_{i}" for i, output_dir in enumerate(self.output_dir)]
+            self.args.job_name = [
+                f"{get_new_job_name(Path(output_dir))}_{i}"
+                for i, output_dir in enumerate(self.output_dir)
+            ]
         if self.args.combine_input:
             if len(self.args.job_name) != 1:
-                raise ArgumentError(msg="--j should have only one value when --combine-input is given.")
+                raise ArgumentError(
+                    msg="--j should have only one value when --combine-input is given."
+                )
             self.job_name = self.args.job_name
         else:
             if len(self.args.job_name) == 1:
                 if self.inputs:
                     if len(self.output_dir) != len(set(self.output_dir)):
-                        raise ArgumentError(msg="-j should have a unique value for each input when -d has duplicate directories. Or, give --combine-input to combine input files into one job.")
+                        raise ArgumentError(
+                            msg="-j should have a unique value for each input when -d has duplicate directories. Or, give --combine-input to combine input files into one job."
+                        )
                     self.job_name = self.args.job_name * len(self.inputs)
                 elif self.pipeinput:
                     self.job_name = self.args.job_name
@@ -762,10 +801,14 @@ class Runner(object):
                     raise
             else:
                 if self.pipeinput:
-                    raise ArgumentError(msg="Only one -j option value should be given with pipe input.")
+                    raise ArgumentError(
+                        msg="Only one -j option value should be given with pipe input."
+                    )
                 if self.inputs:
                     if len(self.inputs) != len(self.args.job_name):
-                        raise ArgumentError(msg="Just one or the same number of -j option values as input files should be given.")
+                        raise ArgumentError(
+                            msg="Just one or the same number of -j option values as input files should be given."
+                        )
                     self.job_name = self.args.job_name
             return
 
@@ -789,7 +832,9 @@ class Runner(object):
                     self.args.inputs = inputs
                 else:
                     if self.outer:
-                        self.outer.write(f"inputs in conf file should be a list (received {inputs}).")
+                        self.outer.write(
+                            f"inputs in conf file should be a list (received {inputs})."
+                        )
 
     def set_start_end_levels(self):
         from ..exceptions import SetupError
@@ -821,8 +866,12 @@ class Runner(object):
         run_name = self.run_name[run_no]
         output_dir = self.output_dir[run_no]
         self.crvinput = str(Path(output_dir) / (run_name + STANDARD_INPUT_FILE_SUFFIX))
-        self.crxinput = str(Path(output_dir) / (run_name + VARIANT_LEVEL_MAPPED_FILE_SUFFIX))
-        self.crginput = str(Path(output_dir) / (run_name + GENE_LEVEL_MAPPED_FILE_SUFFIX))
+        self.crxinput = str(
+            Path(output_dir) / (run_name + VARIANT_LEVEL_MAPPED_FILE_SUFFIX)
+        )
+        self.crginput = str(
+            Path(output_dir) / (run_name + GENE_LEVEL_MAPPED_FILE_SUFFIX)
+        )
         if Path(self.crvinput).exists():
             self.crv_present = True
         else:
@@ -915,7 +964,9 @@ class Runner(object):
 
         if self.args is None:
             raise SetupError()
-        annotator_names_from_package = self.get_package_argument_run_value("annotators") or []
+        annotator_names_from_package = (
+            self.get_package_argument_run_value("annotators") or []
+        )
         if len(self.args.annotators) > 0:
             if self.args.annotators == ["all"]:
                 self.annotator_names = sorted(
@@ -1089,9 +1140,7 @@ class Runner(object):
             postfix = GENE_LEVEL_OUTPUT_SUFFIX
         else:
             return None
-        path = os.path.join(
-            output_dir, run_name + "." + module.name + postfix
-        )
+        path = os.path.join(output_dir, run_name + "." + module.name + postfix)
         return path
 
     def check_module_output(self, module, run_no: int):
@@ -1146,9 +1195,7 @@ class Runner(object):
         fns = sorted(
             [
                 str(v)
-                for v in Path(output_dir).glob(
-                    escape_glob_pattern(run_name) + ".crx.*"
-                )
+                for v in Path(output_dir).glob(escape_glob_pattern(run_name) + ".crx.*")
             ]
         )
         fn = fns[0]
@@ -1181,9 +1228,7 @@ class Runner(object):
         fns = sorted(
             [
                 str(v)
-                for v in crg_path.parent.glob(
-                    escape_glob_pattern(crg_path.name) + ".*"
-                )
+                for v in crg_path.parent.glob(escape_glob_pattern(crg_path.name) + ".*")
             ]
         )
         fn = fns[0]
@@ -1228,7 +1273,9 @@ class Runner(object):
         else:
             return True
 
-    async def get_mapper_info_from_crx(self, run_no: int) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    async def get_mapper_info_from_crx(
+        self, run_no: int
+    ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         from pathlib import Path
         from ..consts import VARIANT_LEVEL_MAPPED_FILE_SUFFIX
 
@@ -1314,11 +1361,15 @@ class Runner(object):
         else:
             inputs = [self.inputs[run_no]]
         job_name = self.job_name[run_no]
-        genome_assemblies = list(set(self.genome_assemblies[run_no])) if self.genome_assemblies else []
+        genome_assemblies = (
+            list(set(self.genome_assemblies[run_no])) if self.genome_assemblies else []
+        )
         created = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         await self.write_info_row("created_at", created, cursor)
         await self.write_info_row("inputs", json.dumps(inputs), cursor)
-        await self.write_info_row("genome_assemblies", json.dumps(genome_assemblies), cursor)
+        await self.write_info_row(
+            "genome_assemblies", json.dumps(genome_assemblies), cursor
+        )
         q = "select count(*) from variant"
         await cursor.execute(q)
         r = await cursor.fetchone()
@@ -1327,15 +1378,23 @@ class Runner(object):
         no_input = str(r[0])
         await self.write_info_row("num_variants", no_input, cursor)
         await self.write_info_row("oakvar", self.pkg_ver, cursor)
-        (mapper_title, mapper_version, _,) = await self.get_mapper_info_from_crx(run_no)
+        (
+            mapper_title,
+            mapper_version,
+            _,
+        ) = await self.get_mapper_info_from_crx(run_no)
         gene_mapper_str = f"{mapper_title}=={mapper_version}"
         await self.write_info_row("mapper", gene_mapper_str, cursor)
         input_paths = self.get_input_paths_from_mapping_file(run_no)
         if input_paths:
             await self.write_info_row("input_paths", json.dumps(input_paths), cursor)
-        await self.write_info_row("primary_transcript", ",".join(self.args.primary_transcript), cursor)
+        await self.write_info_row(
+            "primary_transcript", ",".join(self.args.primary_transcript), cursor
+        )
         await self.write_info_row("job_name", job_name, cursor)
-        await self.write_info_row("converter_format", json.dumps(self.converter_format), cursor)
+        await self.write_info_row(
+            "converter_format", json.dumps(self.converter_format), cursor
+        )
 
     async def write_info_table_annotator_info(self, cursor):
         import json
@@ -1370,8 +1429,12 @@ class Runner(object):
             module_info = get_local_module_info(name)
             if module_info is not None and module_info.conf is not None:
                 annotator_descs[name] = module_info.conf.get("description", "")
-        await self.write_info_row("annotator_descs", json.dumps(annotator_descs), cursor)
-        await self.write_info_row("annotator_titles", json.dumps(annotator_titles), cursor)
+        await self.write_info_row(
+            "annotator_descs", json.dumps(annotator_descs), cursor
+        )
+        await self.write_info_row(
+            "annotator_titles", json.dumps(annotator_titles), cursor
+        )
         await self.write_info_row("annotators", json.dumps(annotators), cursor)
 
     async def write_info_table(self, run_no):
@@ -1407,6 +1470,7 @@ class Runner(object):
         from ..consts import SAMPLE_FILE_SUFFIX
         from ..consts import MAPPING_FILE_SUFFIX
         from ..consts import ERROR_LOG_SUFFIX
+
         if (
             self.exception
             or not self.args
@@ -1419,7 +1483,9 @@ class Runner(object):
         run_name = self.run_name[run_no]
         output_dir = self.output_dir[run_no]
         fns = listdir(output_dir)
-        pattern = compile(f"{run_name}(\\..*({VARIANT_LEVEL_OUTPUT_SUFFIX}|{GENE_LEVEL_OUTPUT_SUFFIX})|({STANDARD_INPUT_FILE_SUFFIX}|{VARIANT_LEVEL_MAPPED_FILE_SUFFIX}|{GENE_LEVEL_MAPPED_FILE_SUFFIX}|{SAMPLE_FILE_SUFFIX}|{MAPPING_FILE_SUFFIX}))")
+        pattern = compile(
+            f"{run_name}(\\..*({VARIANT_LEVEL_OUTPUT_SUFFIX}|{GENE_LEVEL_OUTPUT_SUFFIX})|({STANDARD_INPUT_FILE_SUFFIX}|{VARIANT_LEVEL_MAPPED_FILE_SUFFIX}|{GENE_LEVEL_MAPPED_FILE_SUFFIX}|{SAMPLE_FILE_SUFFIX}|{MAPPING_FILE_SUFFIX}))"
+        )
         error_logger_pattern = compile(f"{run_name}{ERROR_LOG_SUFFIX}")
         for fn in fns:
             fn_path = Path(output_dir) / fn
@@ -1432,11 +1498,10 @@ class Runner(object):
             if error_logger_pattern.match(fn) and getsize(fn_path) == 0:
                 if self.logger:
                     self.logger.info(f"removing {fn_path}")
-                try: # Windows does not allow deleting a file when it is open.
+                try:  # Windows does not allow deleting a file when it is open.
                     remove(str(fn_path))
                 except:
                     pass
-                    
 
     async def write_admin_db_final_info(self, runtime: float, run_no: int):
         import aiosqlite
@@ -1481,12 +1546,7 @@ class Runner(object):
         from pathlib import Path
         from ..util.admin_util import oakvar_version
 
-        if (
-            not self.run_name
-            or not self.inputs
-            or not self.args
-            or not self.output_dir
-        ):
+        if not self.run_name or not self.inputs or not self.args or not self.output_dir:
             raise
         run_name = self.run_name[run_no]
         output_dir = self.output_dir[run_no]
@@ -1525,13 +1585,21 @@ class Runner(object):
         from ..util.admin_util import get_packagedir
         from ..util.run import announce_module
 
-        if self.conf is None or not self.args or not self.inputs or not self.run_name or not self.output_dir:
+        if (
+            self.conf is None
+            or not self.args
+            or not self.inputs
+            or not self.run_name
+            or not self.output_dir
+        ):
             raise
         if self.args.combine_input:
             input_files = self.inputs
         else:
             input_files = [self.inputs[run_no]]
-        converter_path = os.path.join(get_packagedir(), "lib", "base", "master_converter.py")
+        converter_path = os.path.join(
+            get_packagedir(), "lib", "base", "master_converter.py"
+        )
         module = SimpleNamespace(
             title="Converter", name="converter", script_path=converter_path
         )
@@ -1556,7 +1624,14 @@ class Runner(object):
         converter_class = load_class(module.script_path, "MasterConverter")
         if not converter_class:
             converter_class = load_class(module.script_path, "MasterCravatConverter")
-        converter = converter_class(inputs=input_files, name=self.run_name[run_no], output_dir=self.output_dir[run_no], genome=self.args.genome, input_format=self.args.input_format, serveradmindb=self.serveradmindb)
+        converter = converter_class(
+            inputs=input_files,
+            name=self.run_name[run_no],
+            output_dir=self.output_dir[run_no],
+            genome=self.args.genome,
+            input_format=self.args.input_format,
+            serveradmindb=self.serveradmindb,
+        )
         ret = converter.run()
         self.total_num_converted_variants = ret.get("total_lnum")
         self.total_num_valid_variants = ret.get("write_lnum")
@@ -1659,7 +1734,12 @@ class Runner(object):
         from ..consts import INPUT_LEVEL_KEY
         from ..consts import VARIANT_LEVEL_KEY
 
-        if not self.args or not self.manager or not self.run_name or not self.output_dir:
+        if (
+            not self.args
+            or not self.manager
+            or not self.run_name
+            or not self.output_dir
+        ):
             raise
         run_name = self.run_name[run_no]
         output_dir = self.output_dir[run_no]
@@ -1707,9 +1787,9 @@ class Runner(object):
                         secondary_inputs.append(
                             secondary_module.name.replace("=", r"\=")
                             + "="
-                            + os.path.join(
-                                output_dir, secondary_output_path
-                            ).replace("=", r"\=")
+                            + os.path.join(output_dir, secondary_output_path).replace(
+                                "=", r"\="
+                            )
                         )
             kwargs = {
                 "input_file": inputpath,
@@ -1859,7 +1939,12 @@ class Runner(object):
         from ..util.run import update_status
         from ..base import vcf2vcf
 
-        if self.conf is None or not self.args or not self.output_dir or not self.run_name:
+        if (
+            self.conf is None
+            or not self.args
+            or not self.output_dir
+            or not self.run_name
+        ):
             raise
         if not self.inputs:
             raise
@@ -1912,7 +1997,13 @@ class Runner(object):
         from ..util.run import announce_module
         from ..consts import MODULE_OPTIONS_KEY
 
-        if not self.run_name or self.conf is None or not self.args or not self.output_dir or not self.inputs:
+        if (
+            not self.run_name
+            or self.conf is None
+            or not self.args
+            or not self.output_dir
+            or not self.inputs
+        ):
             raise
         run_name = self.run_name[run_no]
         output_dir = self.output_dir[run_no]
@@ -1929,7 +2020,7 @@ class Runner(object):
             announce_module(module, serveradmindb=self.serveradmindb)
             if module is None:
                 raise ModuleNotExist(module_name)
-            arg_dict = {} #dict(vars(self.args))
+            arg_dict = {}  # dict(vars(self.args))
             arg_dict["dbpath"] = str(Path(output_dir) / (run_name + ".sqlite"))
             arg_dict["savepath"] = str(Path(output_dir) / run_name)
             arg_dict["output_dir"] = output_dir
@@ -2004,15 +2095,25 @@ class Runner(object):
             aname: self.annotators[aname]
             for aname in set(self.annotators) - set(self.done_annotators)
         }
-        if self.should_run_step(step) and (self.mapper_ran or len(self.annotators_to_run) > 0):
-            await self.log_time_of_func(self.run_annotators, run_no, work=f"{step} step")
+        if self.should_run_step(step) and (
+            self.mapper_ran or len(self.annotators_to_run) > 0
+        ):
+            await self.log_time_of_func(
+                self.run_annotators, run_no, work=f"{step} step"
+            )
             self.annotator_ran = True
 
     async def do_step_aggregator(self, run_no: int):
         step = "aggregator"
         self.aggregator_ran = False
-        if self.should_run_step(step) and (self.mapper_ran or self.annotator_ran or self.startlevel == self.runlevels["aggregator"]):
-            self.result_path = await self.log_time_of_func(self.run_aggregator, run_no, work=f"{step} step")
+        if self.should_run_step(step) and (
+            self.mapper_ran
+            or self.annotator_ran
+            or self.startlevel == self.runlevels["aggregator"]
+        ):
+            self.result_path = await self.log_time_of_func(
+                self.run_aggregator, run_no, work=f"{step} step"
+            )
             await self.write_info_table(run_no)
             self.aggregator_ran = True
 
@@ -2020,14 +2121,18 @@ class Runner(object):
         step = "postaggregator"
         self.postaggregator_ran = False
         if self.should_run_step(step):
-            await self.log_time_of_func(self.run_postaggregators, run_no, work=f"{step} step")
+            await self.log_time_of_func(
+                self.run_postaggregators, run_no, work=f"{step} step"
+            )
             self.postaggregator_ran = True
 
     async def do_step_reporter(self, run_no: int):
         step = "reporter"
         self.reporter_ran = False
         if self.should_run_step(step) and self.reporters:
-            self.report_response = await self.log_time_of_func(self.run_reporter, run_no, work=f"{step} step")
+            self.report_response = await self.log_time_of_func(
+                self.run_reporter, run_no, work=f"{step} step"
+            )
             self.reporter_ran = True
 
     async def log_time_of_func(self, func, *args, work="", **kwargs):
@@ -2048,4 +2153,3 @@ class Runner(object):
             serveradmindb=self.serveradmindb,
         )
         return ret
-

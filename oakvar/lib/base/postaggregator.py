@@ -2,7 +2,6 @@ from typing import Optional
 from typing import Dict
 
 
-
 class BasePostAggregator(object):
 
     cr_type_to_sql = {"string": "text", "int": "integer", "float": "real"}
@@ -232,7 +231,12 @@ class BasePostAggregator(object):
         if not self.conf:
             return
         assert self.dbconn is not None
-        ref_colnames = {"variant": "base__uid", "gene": "base__hugo", "sample": "base__uid", "mapping": "base__uid"}
+        ref_colnames = {
+            "variant": "base__uid",
+            "gene": "base__hugo",
+            "sample": "base__uid",
+            "mapping": "base__uid",
+        }
         ref_colname = ref_colnames.get(level)
         if not ref_colname:
             return
@@ -243,7 +247,7 @@ class BasePostAggregator(object):
             col_name = f"{coldef['name']}"
             ref_ids = df[ref_colname]
             for ref_id in ref_ids:
-                value = df[ref_colname==ref_id, col_name]
+                value = df[ref_colname == ref_id, col_name]
                 q = f"update {level} set {col_name}=? where {ref_colname}=?"
                 c.execute(q, (value, ref_id))
         self.dbconn.commit()
