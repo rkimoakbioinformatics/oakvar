@@ -21,7 +21,7 @@ task pip{
 task yaml_file{
     #write yaml file 
     command{
-        echo "---" > setup.yaml && echo "modules_dir: ~/oakvar_modules" >> setup.yaml  && echo "logs_dir: ~/oakvar_logs" >> setup.yaml 
+        echo "---" > setup.yaml && echo "modules_dir: ~/oakvar_modules" >> setup.yaml  && echo "log_dir: ~/oakvar_logs" >> setup.yaml 
     }
     #output the value of stdoutput 
     output{
