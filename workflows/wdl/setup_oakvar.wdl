@@ -3,8 +3,9 @@
 workflow SetupOakVar{
     String email
     String pw
+    String? modules_dir
     call pip
-    call yaml_file
+    call yaml_file { input: m_dir = modules_dir }
     call ov { input: setup = yaml_file.yaml_output ,id = email, password = pw
     }
 
@@ -20,8 +21,9 @@ task pip{
 }
 task yaml_file{
     #write yaml file 
+    String? m_dir
     command{
-        echo "---" > setup.yaml && echo "modules_dir: ~/oakvar_modules" >> setup.yaml  && echo "log_dir: ~/oakvar_logs" >> setup.yaml 
+        echo "---" > setup.yaml && echo "${m_dir}" >> setup.yaml   
     }
     #output the value of stdoutput 
     output{
