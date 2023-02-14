@@ -1,7 +1,6 @@
 from typing import Optional
 from typing import List
 from pathlib import Path
-from . import local
 
 
 class InstallProgressHandler:
@@ -636,8 +635,10 @@ def install_module(
     error=None,
     system_worker_state=None,
 ):
+    import traceback
     from os.path import join
     from ..exceptions import KillInstallException
+    from ..exceptions import ModuleToSkipInstallation
     from ..exceptions import ModuleInstallationError
     from ..store import get_module_urls
     from ..store.db import remote_module_data_version
@@ -649,10 +650,6 @@ def install_module(
 
     if outer:
         outer.write(f"Installing {module_name}...")
-    version = get_module_install_version(
-        module_name, version=version, fresh=fresh, overwrite=overwrite
-    )
-    code_version = version
     temp_dir = make_install_temp_dir(module_name=module_name, clean=clean)
     if not temp_dir:
         raise ModuleInstallationError("cannot make a temp module directory.")
@@ -661,6 +658,10 @@ def install_module(
     code_installed: bool = False
     data_installed: bool = False
     try:
+        version = get_module_install_version(
+            module_name, version=version, fresh=fresh, overwrite=overwrite
+        )
+        code_version = version
         stage_handler = set_stage_handler(
             module_name, stage_handler=stage_handler, version=version
         )
@@ -691,7 +692,7 @@ def install_module(
                 outer.write(f"module type not found")
             raise ModuleInstallationError(module_name)
         if not modules_dir:
-            modules_dir = get_modules_dir(conf=conf)
+            modules_dir = get_modules_dir()
         if not modules_dir:
             raise ModuleInstallationError("modules root directory does not exist.")
         module_dir = join(
@@ -767,13 +768,19 @@ def install_module(
         get_module_cache().update_local()
         if stage_handler:
             stage_handler.stage_start("finish")
+        if outer:
+            outer.write(f"Installed {module_name}.")
         return True
     # except (Exception, KeyboardInterrupt, SystemExit) as e:
     except Exception as e:
-        if isinstance(e, ModuleInstallationError):
-            import traceback
-
+        if isinstance(e, ModuleToSkipInstallation):
+            if outer:
+                outer.write(str(e))
+            return True
+        elif isinstance(e, ModuleInstallationError):
             traceback.print_exc()
+            if outer:
+                outer.error(e)
             cleanup_install(
                 module_name,
                 module_dir,
@@ -782,9 +789,7 @@ def install_module(
                 code_installed,
                 data_installed,
             )
-        elif isinstance(e, KillInstallException) or isinstance(
-            e, ModuleInstallationError
-        ):
+        elif isinstance(e, KillInstallException):
             if stage_handler:
                 stage_handler.stage_start("killed")
             cleanup_install(
@@ -795,6 +800,7 @@ def install_module(
                 code_installed,
                 data_installed,
             )
+            return False
         elif isinstance(e, KeyboardInterrupt):
             # signal.signal(signal.SIGINT, original_sigint)
             raise e

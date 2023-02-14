@@ -80,16 +80,16 @@ class WebSocketHandlers:
         if ws is None or not self.system_worker_state:
             return last_msg_id
         self.cursor.execute(
-            f"select uid, msg, dt from {SYSTEM_MESSAGE_TABLE} where uid > ?",
+            f"select uid, kind, msg, dt from {SYSTEM_MESSAGE_TABLE} where uid > ?",
             (last_msg_id,),
         )
         ret = self.cursor.fetchall()
         if ret:
             last_msg_id = max([v[0] for v in ret])
-            data = []
+            items = []
             for row in ret:
-                data.append({"msg": row[1], "dt": row[2]})
-            await ws.send_json({SYSTEM_MSG_KEY: SYSTEM_STATE_SETUP_KEY, "msg": data})
+                items.append({"kind": row[1], "msg": row[2], "dt": row[3]})
+            await ws.send_json({SYSTEM_MSG_KEY: SYSTEM_STATE_SETUP_KEY, "items": items})
         return last_msg_id
 
     async def process_install_state(self, ws=None):

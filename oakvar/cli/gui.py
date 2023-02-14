@@ -91,6 +91,7 @@ def main(url=None, args={}):
     from ..gui.util import get_host_port
     from ..lib.util.asyn import get_event_loop
 
+    outer = args.get("outer")
     logger = args.get("logger")
     if is_port_occupied(args=args):
         msg = (
@@ -102,7 +103,7 @@ def main(url=None, args={}):
         if url and not args.get("headless"):
             open_browser(url)
         return
-    show_logo()
+    show_logo(outer=outer)
     host, port = get_host_port(args=args)
     msg = f"OakVar Server is served at {host}:{port}"
     if logger:

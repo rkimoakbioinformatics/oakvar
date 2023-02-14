@@ -128,7 +128,11 @@ def cli_store_account_login(args):
 def login(args, __name__="store account login"):
     from ...lib.store.ov.account import login
 
+    outer = args.get("outer")
     ret = login(**args)
+    msg = ret.get("msg")
+    if outer and msg:
+        outer.write(msg)
     return ret
 
 

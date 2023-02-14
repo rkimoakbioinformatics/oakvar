@@ -217,7 +217,7 @@ def get_server_last_updated() -> Tuple[str, int]:
     params = {"idToken": id_token}
     res = s.post(url, json=params)
     if res.status_code != 200:
-        return "", res.status_code
+        return res.text, res.status_code
     server_last_updated = res.text
     return server_last_updated, res.status_code
 

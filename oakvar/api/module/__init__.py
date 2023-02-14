@@ -214,6 +214,7 @@ def install(
                     overwrite=overwrite,
                     stage_handler=stage_handler,
                     skip_data=skip_data,
+                    modules_dir=modules_dir,
                     outer=outer,
                     system_worker_state=system_worker_state,
                 )
@@ -223,9 +224,6 @@ def install(
             if not isinstance(e, ModuleToSkipInstallation):
                 if module_name not in problem_modules:
                     problem_modules.append(module_name)
-            # if hasattr(e, "traceback") and getattr(e, "traceback"):
-            # import traceback
-            # traceback.print_exc()
             if outer:
                 outer.error(e)
             else:
@@ -352,7 +350,7 @@ def installbase(
             outer=outer,
         )
     sys_conf = get_system_conf(conf=conf)
-    base_modules = sys_conf.get(base_modules_key, [])
+    base_modules: List[str] = sys_conf.get(base_modules_key, [])
     ret = install(
         module_names=base_modules,
         modules_dir=modules_dir,

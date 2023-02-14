@@ -44,7 +44,7 @@ class WebServer(object):
     @web.middleware
     async def middleware(self, request, handler):
         from json import dumps
-        from traceback import print_exc
+        import traceback
         from sys import stderr
         from aiohttp.web_exceptions import HTTPNotFound
         from aiohttp.web import Response
@@ -68,7 +68,7 @@ class WebServer(object):
             if self.logger:
                 self.logger.exception(e)
             self.system_setup_needed = True
-            return Response(status=500, reason="system_setup_needed")
+            return Response(status=500, reason="SYSTEM_SETUP_NEEDED")
         except Exception as e:
             msg = "Exception with {}".format(request.rel_url)
             if self.logger:
@@ -77,9 +77,9 @@ class WebServer(object):
             if self.args.get("debug"):
                 if not isinstance(e, HTTPNotFound):
                     stderr.write(msg + "\n")
-                    print_exc()
+                    traceback.print_exc()
             return web.HTTPInternalServerError(
-                text=dumps({"status": "error", "msg": str(e)})
+                text=dumps({"status": "error", "msg": traceback.format_exc()})
             )
 
     def server_done(self, task):

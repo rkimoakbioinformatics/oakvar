@@ -57,7 +57,7 @@ def create(
     if (not email or not pw) and interactive:
         email, pw = get_email_pw_interactively(email=email, pw=pw, pwconfirm=pwconfirm)
     if not email:
-        return {"msg": "no email", "success": False}
+        return {"msg": "no email", "success": False, "email": email}
     sys_conf = get_system_conf()
     store_url = sys_conf[store_url_key]
     create_account_url = store_url + "/account/create"
@@ -95,7 +95,12 @@ def create(
     finally:
         if outer:
             outer.write(msg)
-        return {"status_code": status_code, "msg": msg, "success": success}
+        return {
+            "status_code": status_code,
+            "msg": msg,
+            "success": success,
+            "email": email,
+        }
 
 
 def delete(outer=None) -> bool:
@@ -188,7 +193,9 @@ def try_login_with_token(email: Optional[str] = None, outer=None) -> Tuple[bool,
     if not email or token_set_email == email:
         if outer:
             outer.write(f"Logged in as {token_set_email}")
-    return True, token_set_email
+        return True, token_set_email
+    else:
+        return False, email
 
 
 def login(
@@ -201,18 +208,22 @@ def login(
     from requests import post
     from ...ov import get_store_url
 
-    if not relogin:
+    if not relogin and not email:
         ret, token_set_email = try_login_with_token(email=email)
         if ret == True:
-            return {"success": True, "email": token_set_email}
+            return {
+                "success": True,
+                "msg": f"Logged in as {token_set_email}",
+                "email": token_set_email,
+            }
     if not email or not pw:
         email, pw = get_email_pw_from_user_conf(email=email, pw=pw)
     if (not email or not pw) and interactive:
         email, pw = get_email_pw_interactively(email=email, pw=pw)
     if not email:
-        return {"success": False, "msg": "No email"}
+        return {"success": False, "msg": "No email", "email": email}
     if not pw:
-        return {"success": False, "msg": "No password"}
+        return {"success": False, "msg": "No password", "email": email}
     login_url = get_store_url() + "/account/login"
     params = {"email": email, "pw": pw}
     try:
@@ -233,7 +244,7 @@ def login(
         msg = traceback.format_exc()
         if outer:
             outer.write(f"server error")
-        return {"success": False, "status_code": 500, "msg": msg}
+        return {"success": False, "status_code": 500, "msg": msg, "email": email}
 
 
 def get_token_set_path():
@@ -332,8 +343,8 @@ def refresh_token_set() -> Tuple[int, str]:
         token_set = get_token_set()
         if token_set:
             j = res.json()
-            id_token = j["id_token"]
-            refresh_token = j["refresh_token"]
+            id_token = j.get("id_token", j.get("idToken"))
+            refresh_token = j.get("refresh_token", j.get("refreshToken"))
             token_set["idToken"] = id_token
             token_set["refreshToken"] = refresh_token
             save_token_set(token_set)
@@ -491,12 +502,10 @@ def get_email_pw_from_settings(
     return email, pw
 
 
-def emailpw_are_valid(emailpw: Tuple[str, str]) -> bool:
+def emailpw_are_valid(email: str = "", pw: str = "") -> bool:
     from ....util.util import email_is_valid
     from ....util.util import pw_is_valid
 
-    email = emailpw[0]
-    pw = emailpw[1]
     return email_is_valid(email) and pw_is_valid(pw)
 
 
@@ -523,14 +532,14 @@ def announce_on_email_verification_if_needed(email: str, outer=None):
     from ....system import show_email_verify_action_banner
 
     if not email_is_verified(email, outer=outer):
-        show_email_verify_action_banner()
+        show_email_verify_action_banner(email)
 
 
 def login_with_token_set(email=None, outer=None) -> Tuple[bool, str]:
     token_set = get_token_set()
     if token_set:
         token_email = token_set["email"]
-        if email and token_email != email:
+        if token_email != email:
             return False, token_email
         correct, expired = id_token_is_valid()
         email_verified = email_is_verified(token_email, outer=outer)
@@ -569,11 +578,9 @@ def login_with_email_pw(
             "msg": "No email or password was provided",
             "email": email,
         }
-    if emailpw_are_valid((email, pw)):
-        ret = create(email=email, pw=pw, outer=outer)
-        if ret.get("success"):
-            announce_on_email_verification_if_needed(email, outer=outer)
-            login(email=email, pw=pw, outer=outer)
+    if emailpw_are_valid(email=email, pw=pw):
+        announce_on_email_verification_if_needed(email, outer=outer)
+        ret = login(email=email, pw=pw, outer=outer)
         return ret
     else:
         return {
@@ -594,12 +601,11 @@ def total_login(
         return {"success": True, "email": logged_email}
     ret = login_with_email_pw(email=email, pw=pw, conf=conf)
     if ret.get("success"):
-        return {"success": True}
+        return {"success": True, "email": ret["email"]}
     elif install_mode == "web":
         if outer:
             outer.write(ret)
         return ret
-    # if not already logged in nor email and pw in settings did not work, get manual input.
     show_no_user_account_prelude()
     email, pw = get_email_pw_interactively(email=email, pw=pw, pwconfirm=True)
     ret = create(email=email, pw=pw, outer=outer)

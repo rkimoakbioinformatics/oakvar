@@ -87,25 +87,26 @@ class MultiuserHandlers:
         return json_response(users)
 
     async def signup(self, request):
-        from aiohttp.web import Response
         from aiohttp.web import json_response
         import jwt
         from ..lib.store.ov.account import create
         from .serveradmindb import get_serveradmindb
+        from .serveradmindb import setup_serveradmindb
         from .consts import DEFAULT_PRIVATE_KEY
         from .consts import COOKIE_KEY
 
-        global servermode
-        if not servermode:
-            return Response(status=403)
         data = await request.json()
         email = data.get("email")
         password = data.get("password")
+        new_setup = data.get("newSetup", False)
         if not email:
             return json_response({"code": "auth/missing-email"}, status=403)
         if not password:
             return json_response({"code": "missing-password"}, status=403)
-        serveradmindb = await get_serveradmindb()
+        if new_setup:
+            serveradmindb = setup_serveradmindb()
+        else:
+            serveradmindb = await get_serveradmindb(new_setup=new_setup)
         ret = create(email=email, pw=password)
         msg = ret.get("msg")
         if not ret.get("success"):

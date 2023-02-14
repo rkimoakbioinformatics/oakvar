@@ -6,12 +6,12 @@ admindb_path = None
 serveradmindb = None
 
 
-async def get_serveradmindb():
+async def get_serveradmindb(new_setup: bool = False):
     from .serveradmindb import ServerAdminDb
 
     global serveradmindb
     if not serveradmindb:
-        serveradmindb = ServerAdminDb()
+        serveradmindb = ServerAdminDb(new_setup=new_setup)
     return serveradmindb
 
 
@@ -35,19 +35,22 @@ def db_func(func):
 
 def get_admindb_path():
     from ..lib.system import get_conf_dir
+    from ..lib.system import get_default_conf_dir
     from ..lib.system.consts import ADMIN_DB_FN
 
     global admindb_path
     if not admindb_path:
         conf_dir = get_conf_dir()
         if not conf_dir:
-            return None
+            conf_dir = get_default_conf_dir()
+        if not conf_dir.exists():
+            conf_dir.mkdir(parents=True)
         admindb_path = conf_dir / ADMIN_DB_FN
     return admindb_path
 
 
 class ServerAdminDb:
-    def __init__(self, new_setup=False, job_dir=None, job_name=None):
+    def __init__(self, new_setup: bool = False, job_dir=None, job_name=None):
         from ..lib.exceptions import SystemMissingException
 
         self.job_dir = job_dir
@@ -55,7 +58,7 @@ class ServerAdminDb:
         admindb_path = get_admindb_path()
         if (not admindb_path or not admindb_path.exists()) and not new_setup:
             raise SystemMissingException("server admin database is missing.")
-        self.admindb_path = str(admindb_path)
+        self.admindb_path = admindb_path
 
     def setup(self, args={}):
         from sqlite3 import connect
@@ -647,7 +650,7 @@ class ServerAdminDb:
         conn.close()
 
 
-def setup_serveradmindb(clean: bool = False):
+def setup_serveradmindb(clean: bool = False) -> ServerAdminDb:
     from os import remove
     from pathlib import Path
 
@@ -656,3 +659,4 @@ def setup_serveradmindb(clean: bool = False):
         remove(admindb_path)
     admindb = ServerAdminDb(new_setup=True)
     admindb.setup()
+    return admindb

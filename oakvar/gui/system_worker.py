@@ -10,11 +10,13 @@ def system_queue_worker(
     local_modules_changed,
 ):
     from time import sleep
+    import traceback
     from ..lib.module import install_module
     from ..lib.system import setup_system
     from ..lib.exceptions import ModuleToSkipInstallation
-    from .consts import SYSTEM_STATE_SETUP_KEY
-    from .consts import SYSTEM_MSG_KEY
+
+    # from .consts import SYSTEM_STATE_SETUP_KEY
+    # from .consts import SYSTEM_MSG_KEY
     from .util import GuiOuter
 
     setup_outer = GuiOuter(kind="setup")
@@ -30,7 +32,10 @@ def system_queue_worker(
             if work_type == "setup":
                 args = data.get("args")
                 # args[SYSTEM_MSG_KEY] = SYSTEM_STATE_SETUP_KEY
-                setup_system(outer=setup_outer, **args)
+                try:
+                    setup_system(outer=setup_outer, **args)
+                except Exception as e:
+                    setup_outer.error(e)
             elif work_type == "install_module":
                 module_name = data["module"]
                 module_version = data["version"]
@@ -59,17 +64,14 @@ def system_queue_worker(
                 except ModuleToSkipInstallation:
                     # unqueue(module_name, system_queue)
                     stage_handler.stage_start("skip")
-                except:
+                except Exception as e:
                     # unqueue(module_name, system_queue)
+                    local_modules_changed.set()
                     stage_handler.stage_start("error")
-                    raise
+                    exc_str = traceback.format_exc()
+                    install_outer.error(exc_str)
         except KeyboardInterrupt:
             break
-        except Exception as _:
-            import traceback
-
-            traceback.print_exc()
-            local_modules_changed.set()
 
 
 def unqueue(module_name: Optional[str], system_queue):

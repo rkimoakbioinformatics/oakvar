@@ -1,3 +1,6 @@
+from typing import List
+
+
 class SystemHandlers:
     def __init__(
         self,
@@ -26,9 +29,20 @@ class SystemHandlers:
         self.routes.append(["GET", "/submit/logdir", self.get_log_dir])
         self.routes.append(["GET", "/submit/checkserverdir", self.check_server_dir])
         self.routes.append(["POST", "/submit/startsetup", self.start_setup])
+        self.routes.append(["GET", "/submit/basemodules", self.get_base_modules])
         self.routes.append(
             ["GET", "/submit/localmodules/{module}", self.get_local_module_info_web]
         )
+
+    async def get_base_modules(self, request):
+        from aiohttp.web import json_response
+        from ..lib.system import get_system_conf
+        from ..lib.system.consts import base_modules_key
+
+        _ = request
+        sys_conf = get_system_conf()
+        base_modules: List[str] = sys_conf.get(base_modules_key, [])
+        return json_response(base_modules)
 
     async def get_local_module_info_web(self, request):
         from aiohttp.web import json_response
@@ -49,7 +63,8 @@ class SystemHandlers:
         from ..lib.system.consts import log_dir_key
         from .consts import WS_COOKIE_KEY
         from .consts import SYSTEM_STATE_SETUP_KEY
-        from .consts import SYSTEM_MSG_KEY
+
+        # from .consts import SYSTEM_MSG_KEY
 
         data = await request.json()
         args = {
@@ -108,15 +123,15 @@ class SystemHandlers:
 
     async def check_server_dir(self, request):
         from pathlib import Path
-        from aiohttp.web import Response
+        from aiohttp.web import json_response
 
         queries = request.rel_url.query
         d = queries.get("dir")
-        if not d:
-            return Response(status=404)
-        if not Path(d).exists():
-            return Response(status=404)
-        return Response(status=200)
+        if not d or not Path(d).exists():
+            content = {"exists": False}
+        else:
+            content = {"exists": True}
+        return json_response(content)
 
     async def get_root_dir(self, _):
         from aiohttp.web import json_response

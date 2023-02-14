@@ -488,7 +488,7 @@ def fetch_ov_store_cache(
         if outer:
             outer.write(f"Need to fetch store cache due to schema change")
     server_last_updated, status_code = get_server_last_updated()
-    if not server_last_updated:
+    if status_code != 200:
         if status_code == 401:
             raise AuthorizationError()
         elif status_code == 500:

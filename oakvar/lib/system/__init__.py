@@ -71,11 +71,14 @@ def setup_system(
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
     if outer:
         outer.write("Installing system modules...")
+    modules_dir_op = conf.get("modules_dir")
+    modules_dir = Path(modules_dir_op) if modules_dir_op else None
     ret = installbase(
         clean_cache_files=clean_cache_files,
         refresh_db=refresh_db,
         clean=clean,
         publish_time=publish_time,
+        modules_dir=modules_dir,
         no_fetch=True,
         conf=conf,
         outer=outer,
@@ -203,15 +206,13 @@ def show_invalid_account_prelude():
     )
 
 
-def show_email_verify_action_banner():
+def show_email_verify_action_banner(email: str):
     print(
-        """
-
-> The email and password have not been verified yet.
+        f"""
+> {email} has not been verified yet.
 >
 > Please check your inbox for a verification email
 > and click the verification link in the email.
-
 """
     )
 
@@ -503,7 +504,6 @@ def get_system_conf(sys_conf_path=None, conf=None):
     dir_keys = [modules_dir_key, log_dir_key, conf_dir_key, jobs_dir_key]
     # order is: given conf > custom conf path > env > sys conf > template
     # template
-    conf_template = get_system_conf_template()
     final_conf = get_system_conf_template()
     # sys conf
     if not sys_conf_path:
@@ -535,15 +535,8 @@ def get_system_conf(sys_conf_path=None, conf=None):
     # given conf
     if conf is not None:
         for k, v in conf.items():
-            if k in dir_keys and final_conf.get(root_dir_key):
-                continue
             final_conf[k] = v
-    global custom_system_conf
-    if custom_system_conf:
-        for k, v in custom_system_conf.items():
-            if k in dir_keys and final_conf.get(k):
-                continue
-            final_conf[k] = v
+    conf_template = get_system_conf_template()
     augment_with_sys_conf_temp(final_conf, conf_template)
     return final_conf
 
@@ -838,14 +831,13 @@ def save_system_conf(conf: Dict):
     from .consts import sys_conf_path_key
     from oyaml import dump
     from os import makedirs
-    from os.path import dirname, exists
     from ..exceptions import SystemMissingException
 
-    sys_conf_path = conf.get(sys_conf_path_key)
+    sys_conf_path: Optional[str] = conf.get(sys_conf_path_key)
     if sys_conf_path is None or sys_conf_path == "":
         raise SystemMissingException(msg="System conf file path is null")
-    sys_conf_dir = dirname(sys_conf_path)
-    if not exists(sys_conf_dir):
+    sys_conf_dir = Path(sys_conf_path).parent
+    if not sys_conf_dir.exists():
         makedirs(sys_conf_dir)
     wf = open(sys_conf_path, "w")
     dump(conf, wf, default_flow_style=False)

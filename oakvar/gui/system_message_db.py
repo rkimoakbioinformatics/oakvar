@@ -1,15 +1,24 @@
+from typing import Optional
+from pathlib import Path
+
+
 def get_system_message_db_conn():
     import sqlite3
     from .consts import SYSTEM_MESSAGE_DB_FNAME
     from .consts import SYSTEM_MESSAGE_TABLE
     from ..lib.system import get_conf_dir
+    from ..lib.system import get_default_conf_dir
     from ..lib.exceptions import SystemMissingException
 
-    conf_dir = get_conf_dir()
+    conf_dir: Optional[Path] = get_conf_dir()
+    if not conf_dir:
+        conf_dir = get_default_conf_dir()
     if not conf_dir:
         raise SystemMissingException(
             msg="Configuration directory does not exist. Please run `ov system setup` to setup OakVar."
         )
+    if not Path(conf_dir).exists():
+        conf_dir.mkdir(parents=True)
     db_path = conf_dir / SYSTEM_MESSAGE_DB_FNAME
     conn = sqlite3.connect(db_path)
     c = conn.cursor()

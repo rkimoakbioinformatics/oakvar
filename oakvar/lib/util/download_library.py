@@ -246,6 +246,7 @@ def _fetch_file(
         u = urllib.request.urlopen(req, timeout=timeout)  # type: ignore
         try:
             remote_file_size = int(u.headers.get("Content-Length", "0").strip())
+            """
             if system_worker_state:
                 system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
                     "cur_size"
@@ -256,6 +257,7 @@ def _fetch_file(
                 system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
                     "cur_chunk"
                 ] = 0
+            """
         finally:
             u.close()
             del u
@@ -264,7 +266,6 @@ def _fetch_file(
                 "Downloading data from %s (%s)\n" % (url, sizeof_fmt(remote_file_size)),
                 file=sys.stdout,
             )
-
         # Triage resume
         if not os.path.exists(temp_file_name):
             resume = False
@@ -272,6 +273,7 @@ def _fetch_file(
             initial_size = op.getsize(temp_file_name)
         else:
             initial_size = 0
+        """
         if system_worker_state:
             system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
                 "cur_chunk"
@@ -282,6 +284,7 @@ def _fetch_file(
             system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
                 "update_time"
             ] = time.time()
+        """
         # This should never happen if our functions work properly
         if initial_size > remote_file_size:
             raise RuntimeError(
@@ -304,7 +307,6 @@ def _fetch_file(
             module_name=module_name,
             outer=outer,
         )
-
         # check md5sum
         if hash_ is not None:
             if verbose and outer:
@@ -413,7 +415,6 @@ def _get_http(
 ):
     """Safely (resume a) download to a file from http(s)."""
     import requests
-    from ...gui.consts import SYSTEM_STATE_INSTALL_KEY
 
     assert module_name is not None
     session = requests.Session()
@@ -479,6 +480,7 @@ def _get_http(
             if progress:
                 progress.update(read_size)
             cur_size += read_size
+            """
             if system_worker_state:
                 system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
                     "cur_chunk"
@@ -489,6 +491,7 @@ def _get_http(
                 system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
                     "update_time"
                 ] = time.time()
+            """
 
 
 def md5sum(fname, block_size=1048576):  # 2 ** 20

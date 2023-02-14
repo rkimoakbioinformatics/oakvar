@@ -144,16 +144,26 @@ class GuiOuter:
         )
         self.conn.commit()
 
-    def error(self, e):
+    def error(self, _):
         from time import time
+        import traceback
+        import json
         from .consts import SYSTEM_MESSAGE_TABLE
 
         if self.stdout_mirror:
-            print(str(e))
+            traceback.print_exc()
         dt = time()
+        err = {
+            "response": {
+                "status": 500,
+                "data": {
+                    "msg": traceback.format_exc(),
+                },
+            }
+        }
         self.conn.execute(
             f"insert into {SYSTEM_MESSAGE_TABLE} (kind, msg, dt) values (?, ?, ?)",
-            (self.kind, str(e), dt),
+            (self.kind + "_error", json.dumps(err), dt),
         )
         self.conn.commit()
 
