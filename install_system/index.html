@@ -658,13 +658,14 @@
 <p>Install OakVar.</p>
 <pre><code>pip install oakvar
 </code></pre>
-<p>Then, set up OakVar.</p>
+<p>Then, set up OakVar, which will set up configuration files, system folders, an OakVar account, and OakVar store cache files.</p>
 <pre><code>ov system setup
 </code></pre>
 <blockquote>
 <h4 id="note-for-open-cravat-users">Note for open-cravat users</h4>
-<p>OakVar does not share system files with nor transfer system configuration from open-cravat anymore. OakVar's default modules directory is different and <code>oc</code> will still call open-cravat and only <code>ov</code> will invoke OakVar. </p>
-<p>OakVar is still backward-compatible with open-cravat modules. If you have been using open-cravat and want to use open-cravat modules with OakVar, you can do so by setting OakVar modules directory to that of open-cravat with <code>ov system md</code> command. Please keep in mind that OakVar has its own updated versions for some of open-cravat modules, so if you are sharing the same modules directory between OakVar and open-cravat, <code>ov module update</code> may break oc-compatibility of some of the updated modules.</p>
+<p>OakVar supports backward compatibility with open-cravat and thus open-cravat should be first removed before installing OakVar by <code>pip uninstall open-cravat</code>. open-cravat can simply be restored by removing OakVar by <code>pip uninstall oakvar</code> and installing open-cravat by <code>pip install open-cravat</code>. There is no side-effect of doing this switch unless you share open-cravat modules with OakVar as described below.</p>
+<p>OakVar does not share system files with nor transfer system configuration from open-cravat. OakVar's default modules directory is different.</p>
+<p>OakVar is backward-compatible with open-cravat modules. If you have been using open-cravat and want to continue to use open-cravat modules with OakVar, you can do so by setting OakVar modules directory to point to that of open-cravat with <code>ov system md</code> command. Please keep in mind that OakVar has its own updated versions for some of open-cravat modules, so if you are sharing the same modules directory between OakVar and open-cravat, <code>ov module update</code> may break oc-compatibility of some of the updated modules.</p>
 </blockquote>
 <h2 id="setup">Setup</h2>
 <p><code>ov system setup</code> will set up OakVar with sane defaults.</p>
