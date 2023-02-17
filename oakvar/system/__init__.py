@@ -82,34 +82,9 @@ def setup_system_conf(args={}) -> dict:
     # if sys conf file does not exist,
     # this is the first time installing OakVar.
     if not sys_conf_path or not exists(sys_conf_path) or clean:
-        # use the content of an old OC sys conf if present.
-        conf = update_new_system_conf_with_existing(conf)
         # create the sys conf file.
         save_system_conf(conf)
         quiet_print(f"Created {sys_conf_path}", args=args)
-    return conf
-
-
-def update_new_system_conf_with_existing(conf):
-    from os.path import exists
-    from ..util.util import load_yml_conf
-    from .consts import sys_conf_path_key
-    from ..store.consts import store_url_key
-
-    oc_sys_conf_path = get_oc_system_conf_path()
-    if exists(oc_sys_conf_path):
-        old_conf = load_yml_conf(oc_sys_conf_path)
-        for k, v in old_conf.items():
-            # do not copy the old OC sys conf's conf_path.
-            if k in [
-                sys_conf_path_key,
-                "conf_path",
-                "publish_url",
-                store_url_key,
-                "base_modules",
-            ]:
-                continue
-            conf[k] = v
     return conf
 
 
@@ -183,13 +158,8 @@ def setup_user_conf_file(args={}, conf=None):
         mkdir(user_conf_dir)
     user_conf_path = get_user_conf_path()
     if not exists(user_conf_path) or clean:
-        oc_cravat_conf_path = get_oc_cravat_conf_path(conf=conf)
-        if exists(oc_cravat_conf_path):
-            # copy cravat.yml as oakvar.yml.
-            copyfile(oc_cravat_conf_path, user_conf_path)
-        else:
-            # create oakvar.yml
-            copyfile(get_default_user_conf_path(), user_conf_path)
+        # create oakvar.yml
+        copyfile(get_default_user_conf_path(), user_conf_path)
         quiet_print(f"Created: {user_conf_path}", args=args)
     # fill in missing fields, due to a newer version, with defaults.
     fill_user_conf_with_defaults_and_save()
@@ -512,26 +482,6 @@ def update_system_conf_file(d):
     return True
 
 
-def get_oc_cravat_conf(conf=None) -> dict:
-    from ..util.util import load_yml_conf
-
-    oc_cravat_conf_path = get_oc_cravat_conf_path(conf=conf)
-    oc_cravat_conf = load_yml_conf(oc_cravat_conf_path)
-    return oc_cravat_conf
-
-
-def get_oc_cravat_conf_path(conf=None):
-    import os
-    from .consts import oc_cravat_conf_fname
-
-    conf_dir = get_conf_dir(conf=conf)
-    if conf_dir is None:
-        from ..exceptions import SystemMissingException
-
-        raise SystemMissingException(msg="conf_dir is missing")
-    return os.path.join(conf_dir, oc_cravat_conf_fname)
-
-
 def get_main_default_path():
     import os
     from .consts import user_conf_fname
@@ -628,24 +578,6 @@ def get_system_conf_path(conf=None):
     return join(root_dir, sys_conf_fname)
 
 
-def get_oc_system_conf_path(conf=None):
-    from os import environ
-    from os.path import join
-    from .consts import oc_system_conf_fname
-    from .consts import sys_conf_path_key
-
-    # custom conf
-    if conf is not None and sys_conf_path_key in conf:
-        return conf.get(sys_conf_path_key)
-    # ENV
-    sys_conf_path = environ.get(get_env_key(sys_conf_path_key))
-    if sys_conf_path is not None:
-        return sys_conf_path
-    # default
-    root_dir = get_default_conf_dir(conf=conf)
-    return join(root_dir, oc_system_conf_fname)
-
-
 def get_default_conf_dir(conf=None):
     from os.path import join as pathjoin
     from .consts import conf_dir_name
@@ -679,10 +611,9 @@ def get_default_log_dir(conf=None):
 
 
 def get_default_root_dir(conf=None):
-    from os.path import exists, join, expandvars
-    from os import sep, environ
+    from os.path import expandvars
+    from os import environ
     from pathlib import Path
-    from ..util.admin_util import get_packagedir
     from ..util.admin_util import get_platform
     from .consts import root_dir_key
 
@@ -691,34 +622,26 @@ def get_default_root_dir(conf=None):
     pl = get_platform()
     root_dir = None
     if pl == "windows":
-        root_dir = join(expandvars("%systemdrive%"), sep, "open-cravat")
-        if exists(root_dir) == False:  # OakVar first installation
-            root_dir = join(expandvars("%systemdrive%"), sep, "oakvar")
+        root_dir = str(Path(expandvars("%systemdrive%")) / "oakvar")
     elif pl == "linux":
         path = ".oakvar"
-        root_dir = get_packagedir()
-        if (
-            exists(join(root_dir, "conf")) == False
-        ):  # packagedir/conf is the old conf dir of OpenCRAVAT.
-            if is_root_user():
-                sudo_user = environ.get("SUDO_USER")
-                home = environ.get("HOME")
-                if sudo_user is not None:
-                    root_dir = join("/home", sudo_user, path)
-                elif home is not None and home == "/root":  # Ubuntu in docker
-                    root_dir = join(home, ".oakvar")
-                else:
-                    root_dir = join(str(Path.home()), path)
+        if is_root_user():
+            sudo_user = environ.get("SUDO_USER")
+            home = environ.get("HOME")
+            if sudo_user is not None:
+                root_dir = str(Path("/home") / sudo_user / path)
+            elif home is not None and home == "/root":  # Ubuntu in docker
+                root_dir = str(Path(home) / ".oakvar")
             else:
-                user = environ.get("USER")
-                if user is not None:
-                    root_dir = join("/home", user, path)
-                else:
-                    root_dir = join(str(Path.home()), path)
+                root_dir = str(Path.home() / path)
+        else:
+            user = environ.get("USER")
+            if user is not None:
+                root_dir = str(Path("/home") / user / path)
+            else:
+                root_dir = str(Path.home() / path)
     elif pl == "macos":
-        root_dir = "/Users/Shared/open-cravat"
-        if exists(root_dir) == False:  # OakVar first installation
-            root_dir = "/Users/Shared/oakvar"
+        root_dir = "/Users/Shared/oakvar"
     else:
         root_dir = "."
     return root_dir

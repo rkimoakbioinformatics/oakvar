@@ -43,7 +43,7 @@ walk_and_add("oakvar", oakvar_files)
 walk_and_add("cravat", cravat_files)
 setup(
     name="oakvar",
-    version="2.7.38",
+    version="2.7.39",
     description="A genomic variant analysis platform",
     long_description=long_description,
     long_description_content_type="text/x-rst",
@@ -94,7 +94,5 @@ setup(
     package_data={"oakvar": oakvar_files, "cravat": cravat_files},
     data_files=[],
     scripts=[],
-    entry_points={
-        "console_scripts": ["ov=oakvar.__main__:main", "oc=oakvar.__main__:main"]
-    },
+    entry_points={"console_scripts": ["ov=oakvar.__main__:main"]},
 )

@@ -53,12 +53,6 @@ default_postaggregator_names = ["tagsampler", "vcfinfo"]
 DEFAULT_REPORT_FILTER_MAX_NUM_CACHE_PER_USER = 20
 
 #
-# oc
-#
-oc_system_conf_fname = "cravat-system.yml"
-oc_cravat_conf_fname = "cravat.yml"
-
-#
 # Server
 #
 DEFAULT_SERVER_DEFAULT_USERNAME = "default"
