@@ -92,7 +92,7 @@ class BaseReporter:
         self.logger = None
         self.error_logger = None
         self.unique_excs = None
-        self.mapper_name = None
+        self.mapper_name: str = ""
         self.no_log = False
         self.colcount = {}
         self.columns = {}
@@ -345,7 +345,7 @@ class BaseReporter:
         if r is None:
             self.mapper_name = "hg38"
         else:
-            self.mapper_name = r[0].split(":")[0]
+            self.mapper_name = str(r[0].split(":")[0])
 
     def write_log(self, msg):
         if not self.logger:

@@ -30,6 +30,8 @@ mapping_parser_name = "mapping_parser"
 VARIANT = 0
 GENE = 1
 LEVELS = {"variant": VARIANT, "gene": GENE}
+VARIANT_LEVEL = "variant"
+GENE_LEVEL = "gene"
 
 gene_level_so_exclude = ["2KU", "2KD"]
 

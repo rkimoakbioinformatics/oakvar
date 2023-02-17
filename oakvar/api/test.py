@@ -602,7 +602,7 @@ class Tester:
             self.report_type,
         ]
         if self.module.type == "annotator":
-            cmd_list.extend(["-a", self.module.directory])
+            cmd_list.extend(["-a", str(self.module.directory)])
         elif (
             (self.module.type == "reporter")
             and (get_local_module_info("vest") is not None)

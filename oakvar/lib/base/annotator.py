@@ -1,4 +1,5 @@
 from typing import Optional
+from typing import Any
 from typing import List
 from typing import Dict
 
@@ -15,7 +16,7 @@ class BaseAnnotator(object):
     valid_levels = ["variant", "gene"]
     valid_input_formats = [INPUT_LEVEL_KEY, VARIANT_LEVEL_KEY, GENE_LEVEL_KEY]
     id_col_defs = {"variant": get_crv_def()[0], "gene": get_crg_def()[0]}
-    default_input_columns = {
+    default_input_columns: Dict[str, List[Any]] = {
         INPUT_LEVEL_KEY: [x["name"] for x in get_crv_def()],
         VARIANT_LEVEL_KEY: [x["name"] for x in get_crx_def()],
         GENE_LEVEL_KEY: [x["name"] for x in get_crg_def()],
@@ -35,7 +36,8 @@ class BaseAnnotator(object):
         name: Optional[str] = None,
         title: Optional[str] = None,
         level: Optional[str] = None,
-        input_columns: List[Dict] = [],
+        input_format: Optional[str] = None,
+        input_columns: List[str] = [],
         output_columns: List[Dict] = [],
         module_conf: dict = {},
     ):
@@ -43,6 +45,10 @@ class BaseAnnotator(object):
         import sys
         from pathlib import Path
         from ..consts import cannonical_chroms
+        from ..consts import VARIANT_LEVEL
+        from ..consts import GENE_LEVEL
+        from ..consts import INPUT_LEVEL_KEY
+        from ..consts import GENE_LEVEL_KEY
         from ..module.local import get_module_conf
         from ..module.data_cache import ModuleDataCache
         from ..exceptions import ModuleLoadingError
@@ -114,11 +120,23 @@ class BaseAnnotator(object):
             )
         if self.conf is not None and "level" not in self.conf:
             self.conf["level"] = self.level
+        if not input_format:
+            if self.level == VARIANT_LEVEL:
+                input_format = INPUT_LEVEL_KEY
+            elif self.level == GENE_LEVEL:
+                input_format = GENE_LEVEL_KEY
+            else:
+                input_format = INPUT_LEVEL_KEY
+        self.input_format = input_format
+        if not input_columns:
+            if input_format in self.default_input_columns:
+                input_columns = self.default_input_columns[input_format]
+            else:
+                raise ModuleLoadingError(msg=f"{self.module_name}: input_format ({input_format}) is invalid. It should be one of {', '.join(self.default_input_columns.keys())}.")
         self.input_columns = input_columns.copy()
         if (
             self.input_columns is not None
             and self.conf is not None
-            and "input_columns" not in self.conf
         ):
             self.conf["input_columns"] = self.input_columns
         elif not self.input_columns and self.conf and "input_columns" in self.conf:

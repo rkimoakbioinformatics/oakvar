@@ -1,8 +1,10 @@
+from typing import Any
+from typing import List
 from typing import Dict
 from typing import Optional
 from pathlib import Path
 
-ov_system_output_columns: Optional[dict] = None
+ov_system_output_columns: Optional[Dict[str, List[Dict[str, Any]]]] = None
 
 
 def get_ucsc_bins(start, stop=None):
@@ -546,7 +548,7 @@ def log_module(module, logger):
         logger.info(f"module: {module.name}=={code_version} {module.script_path}")
 
 
-def get_ov_system_output_columns() -> dict:
+def get_ov_system_output_columns() -> Dict[str, List[Dict[str, Any]]]:
     from pathlib import Path
     from oyaml import safe_load
 
@@ -561,42 +563,42 @@ def get_ov_system_output_columns() -> dict:
     return ov_system_output_columns
 
 
-def get_crv_def() -> list:
+def get_crv_def() -> List[Dict[str, Any]]:
     from ..consts import INPUT_LEVEL_KEY
 
-    output_columns: dict = get_ov_system_output_columns()
+    output_columns = get_ov_system_output_columns()
     return output_columns[INPUT_LEVEL_KEY]
 
 
-def get_crx_def() -> list:
+def get_crx_def() -> List[Dict[str, Any]]:
     from ..consts import VARIANT_LEVEL_KEY
 
     output_columns: dict = get_ov_system_output_columns()
     return output_columns[VARIANT_LEVEL_KEY]
 
 
-def get_crg_def() -> list:
+def get_crg_def() -> List[Dict[str, Any]]:
     from ..consts import GENE_LEVEL_KEY
 
     output_columns: dict = get_ov_system_output_columns()
     return output_columns[GENE_LEVEL_KEY]
 
 
-def get_crs_def() -> list:
+def get_crs_def() -> List[Dict[str, Any]]:
     from ..consts import SAMPLE_LEVEL_KEY
 
     output_columns: dict = get_ov_system_output_columns()
     return output_columns[SAMPLE_LEVEL_KEY]
 
 
-def get_crm_def() -> list:
+def get_crm_def() -> List[Dict[str, Any]]:
     from ..consts import MAPPING_LEVEL_KEY
 
     output_columns: dict = get_ov_system_output_columns()
     return output_columns[MAPPING_LEVEL_KEY]
 
 
-def get_crl_def() -> list:
+def get_crl_def() -> List[Dict[str, Any]]:
     from ..consts import LIFTOVER_LEVEL_KEY
 
     output_columns: dict = get_ov_system_output_columns()

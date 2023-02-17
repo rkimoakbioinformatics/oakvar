@@ -52,9 +52,11 @@ def get_modules_to_install(
     # dependency
     deps_install = {}
     if not skip_dependencies:
-        for module_name, version in module_install_data.items():
+        for module_name, install_data in module_install_data.items():
             if not is_url(module_name) and not is_zip_path(module_name):
-                deps, _ = get_install_deps(module_name=module_name, version=version)
+                deps, _ = get_install_deps(
+                    module_name=module_name, version=install_data.get("version")
+                )
                 deps_install.update(deps)
     to_install = module_install_data
     for module_name, version in deps_install.items():

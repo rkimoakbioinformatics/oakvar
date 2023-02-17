@@ -511,7 +511,7 @@ def get_system_conf(sys_conf_path=None, conf=None):
         if sp and exists(sp):
             sys_conf = load_yml_conf(sp)
             final_conf.update(sys_conf)
-            final_conf[sys_conf_path_key] = sp
+            final_conf[sys_conf_path_key] = str(sp)
     # ENV
     for k in final_conf.keys():
         if k in dir_keys and final_conf.get(root_dir_key):
