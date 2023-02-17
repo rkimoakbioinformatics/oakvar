@@ -1,16 +1,18 @@
 ## Installation
 
-OakVar and open-cravat share the same package name, thus if your system already have open-cravat, then for oakvar to properly function, open-cravat should be uninstalled first.
-
-    pip uninstall open-cravat
-
-Then, install OakVar.
+Install OakVar.
 
     pip install oakvar
 
 Then, set up OakVar.
 
     ov system setup
+
+> #### Note for open-cravat users
+>
+> OakVar does not share system files with nor transfer system configuration from open-cravat anymore. OakVar's default modules directory is different and `oc` will still call open-cravat and only `ov` will invoke OakVar. 
+>
+> OakVar is still backward-compatible with open-cravat modules. If you have been using open-cravat and want to use open-cravat modules with OakVar, you can do so by setting OakVar modules directory to that of open-cravat with `ov system md` command. Please keep in mind that OakVar has its own updated versions for some of open-cravat modules, so if you are sharing the same modules directory between OakVar and open-cravat, `ov module update` may break oc-compatibility of some of the updated modules.
 
 ## Setup
 
