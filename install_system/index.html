@@ -256,6 +256,19 @@
     Installation
   </a>
   
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#note-for-open-cravat-users" class="md-nav__link">
+    Note for open-cravat users
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -576,6 +589,19 @@
     Installation
   </a>
   
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#note-for-open-cravat-users" class="md-nav__link">
+    Note for open-cravat users
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -629,15 +655,17 @@
   <h1>System</h1>
 
 <h2 id="installation">Installation</h2>
-<p>OakVar and open-cravat share the same package name, thus if your system already have open-cravat, then for oakvar to properly function, open-cravat should be uninstalled first.</p>
-<pre><code>pip uninstall open-cravat
-</code></pre>
-<p>Then, install OakVar.</p>
+<p>Install OakVar.</p>
 <pre><code>pip install oakvar
 </code></pre>
 <p>Then, set up OakVar.</p>
 <pre><code>ov system setup
 </code></pre>
+<blockquote>
+<h4 id="note-for-open-cravat-users">Note for open-cravat users</h4>
+<p>OakVar does not share system files with nor transfer system configuration from open-cravat anymore. OakVar's default modules directory is different and <code>oc</code> will still call open-cravat and only <code>ov</code> will invoke OakVar. </p>
+<p>OakVar is still backward-compatible with open-cravat modules. If you have been using open-cravat and want to use open-cravat modules with OakVar, you can do so by setting OakVar modules directory to that of open-cravat with <code>ov system md</code> command. Please keep in mind that OakVar has its own updated versions for some of open-cravat modules, so if you are sharing the same modules directory between OakVar and open-cravat, <code>ov module update</code> may break oc-compatibility of some of the updated modules.</p>
+</blockquote>
 <h2 id="setup">Setup</h2>
 <p><code>ov system setup</code> will set up OakVar with sane defaults.</p>
 <p>Setup process can be customized with a setup file or environment variables, which can be useful in automated deployment.</p>
