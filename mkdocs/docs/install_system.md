@@ -4,10 +4,6 @@ Install OakVar.
 
     pip install oakvar
 
-Then, set up OakVar, which will set up configuration files, system folders, an OakVar account, and OakVar store cache files.
-
-    ov system setup
-
 > #### Note for open-cravat users
 >
 > OakVar supports backward compatibility with open-cravat and thus open-cravat should be first removed before installing OakVar by `pip uninstall open-cravat`. open-cravat can simply be restored by removing OakVar by `pip uninstall oakvar` and installing open-cravat by `pip install open-cravat`. There is no side-effect of doing this switch unless you share open-cravat modules with OakVar as described below.
