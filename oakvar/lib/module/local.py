@@ -1,5 +1,6 @@
 from typing import Optional
 from typing import Tuple
+from typing import List
 from pathlib import Path
 
 
@@ -129,12 +130,12 @@ class LocalModule(object):
         return d
 
 
-def get_local_module_info(module_name, fresh=False) -> Optional[LocalModule]:
-    from os.path import exists
+def get_local_module_info(module_name: str, fresh=False) -> Optional[LocalModule]:
     from .cache import get_module_cache
 
-    if exists(module_name):
-        module_info = LocalModule(module_name)
+    p = Path(module_name)
+    if p.exists():
+        module_info = LocalModule(p)
     else:
         module_info = None
         mc = get_module_cache(fresh=fresh)
@@ -166,7 +167,7 @@ def get_local_module_infos(types=[], names=[]):
     return return_infos
 
 
-def get_local_module_infos_by_names(module_names):
+def get_local_module_infos_by_names(module_names: List[str]):
     modules = {}
     if not module_names:
         return modules

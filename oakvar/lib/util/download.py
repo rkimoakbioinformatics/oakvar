@@ -10,6 +10,8 @@ def download(
     system_worker_state=None,
     check_install_kill=None,
     module_name=None,
+    total_size=0,
+    cur_size=0,
     outer=None,
 ):
     from .download_library import download as download_util
@@ -32,6 +34,8 @@ def download(
             system_worker_state=system_worker_state,
             check_install_kill=check_install_kill,
             module_name=module_name,
+            total_size=total_size,
+            cur_size=cur_size,
             outer=outer,
         )
 

@@ -74,6 +74,7 @@ class WebSocketHandlers:
 
     async def process_setup_state(self, ws=None, last_msg_id=0):
         from .consts import SYSTEM_STATE_SETUP_KEY
+        from .consts import SYSTEM_STATE_INSTALL_KEY
         from .consts import SYSTEM_MSG_KEY
         from .consts import SYSTEM_MESSAGE_TABLE
 
@@ -86,10 +87,24 @@ class WebSocketHandlers:
         ret = self.cursor.fetchall()
         if ret:
             last_msg_id = max([v[0] for v in ret])
-            items = []
+            setup_items = []
+            install_items = []
             for row in ret:
-                items.append({"kind": row[1], "msg": row[2], "dt": row[3]})
-            await ws.send_json({SYSTEM_MSG_KEY: SYSTEM_STATE_SETUP_KEY, "items": items})
+                kind = row[1]
+                if kind == "setup":
+                    setup_items.append({"kind": kind, "msg": row[2], "dt": row[3]})
+                elif kind == "install":
+                    install_items.append({"kind": kind, "msg": row[2], "dt": row[3]})
+                else:
+                    setup_items.append({"kind": kind, "msg": row[2], "dt": row[3]})
+            if setup_items:
+                await ws.send_json(
+                    {SYSTEM_MSG_KEY: SYSTEM_STATE_SETUP_KEY, "items": setup_items}
+                )
+            if install_items:
+                await ws.send_json(
+                    {SYSTEM_MSG_KEY: SYSTEM_STATE_INSTALL_KEY, "items": install_items}
+                )
         return last_msg_id
 
     async def process_install_state(self, ws=None):

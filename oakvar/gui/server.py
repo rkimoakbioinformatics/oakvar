@@ -9,7 +9,7 @@ system_setup_needed = False
 class WebServer(object):
     def __init__(self, loop=None, url=None, args={}):
         from ..lib.util.asyn import get_event_loop
-        from . import multiuser as mu
+        from .multiuser import MultiuserHandlers
 
         global system_setup_needed
         self.manager = None
@@ -24,7 +24,7 @@ class WebServer(object):
         self.runner = None
         self.site = None
         self.servermode = args.get("servermode", False)
-        self.mu = mu
+        self.mu = MultiuserHandlers(servermode=self.servermode)
         self.wss = {}
         self.system_message_last_ids = {}
         self.system_message_db_conn = None

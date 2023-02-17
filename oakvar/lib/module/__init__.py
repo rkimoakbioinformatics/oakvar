@@ -294,21 +294,27 @@ def download_code_or_data(
         return
     if urls is None:
         return
+    one_url = ""
+    url_list: List[str] = []
     if urls[0] == "[":  # a list of URLs
-        urls = loads(urls)
-    if urls is None:
+        url_list = loads(urls)
+    else:
+        one_url = urls
+    if not one_url and not url_list:
         return
-    urls_ty = type(urls)
-    if urls_ty == str:
+    if one_url:
         download(
-            urls,
+            one_url,
             zipfile_path,
             system_worker_state=system_worker_state,
             check_install_kill=check_install_kill,
             module_name=module_name,
+            outer=outer,
         )
-    elif urls_ty == list:
+    elif url_list:
+        num_urls = len(url_list)
         download_from = 0
+        total_size = num_urls * MODULE_PACK_SPLIT_FILE_SIZE
         if Path(zipfile_path).exists():
             zs = getsize(zipfile_path)
             if zs % MODULE_PACK_SPLIT_FILE_SIZE == 0:
@@ -316,9 +322,9 @@ def download_code_or_data(
                 download_from = int(getsize(zipfile_path) / MODULE_PACK_SPLIT_FILE_SIZE)
             else:
                 remove(zipfile_path)
+        cur_size = download_from
         with open(zipfile_path, "ab") as wf:
-            urls_len = len(urls)
-            for i in range(urls_len):
+            for i in range(num_urls):
                 if i < download_from:
                     continue
                 part_path = f"{zipfile_path}{i:03d}"
@@ -328,17 +334,19 @@ def download_code_or_data(
                 ):
                     continue
                 download(
-                    urls[i],
+                    url_list[i],
                     part_path,
                     system_worker_state=system_worker_state,
                     check_install_kill=check_install_kill,
                     module_name=module_name,
+                    total_size=total_size,
+                    cur_size=cur_size,
                     outer=outer,
                 )
-                if i < urls_len - 1:
+                if i < num_urls - 1:
                     if getsize(part_path) != MODULE_PACK_SPLIT_FILE_SIZE:
                         if outer:
-                            outer.write(f"corrupt download {part_path} at {urls[i]}")
+                            outer.write(f"corrupt download {part_path} at {url_list[i]}")
                         remove(part_path)
                         return
                 with open(part_path, "rb") as f:
@@ -672,14 +680,14 @@ def install_module(
         # Checks and installs pip packages.
         if not install_pypi_dependency(pypi_dependency=pypi_dependency, outer=outer):
             if outer:
-                outer.write(f"Failed in installing pypi package dependence")
+                outer.error(f"Failed in installing pypi package dependence")
             raise ModuleInstallationError(module_name)
         remote_data_version = remote_module_data_version(module_name, code_version)
         local_data_version = local_module_data_version(module_name)
         r = get_module_urls(module_name, code_version=version)
         if not r:
             if outer:
-                outer.write(f"failed in getting module URLs")
+                outer.error(f"failed in getting module URLs")
             raise ModuleInstallationError(module_name)
         code_url: Optional[str] = r.get("code_url")
         data_url: Optional[str] = r.get("data_url")
@@ -689,7 +697,7 @@ def install_module(
             module_type = conf.get("type")
         if not module_type:
             if outer:
-                outer.write(f"module type not found")
+                outer.error(f"module type not found")
             raise ModuleInstallationError(module_name)
         if not modules_dir:
             modules_dir = get_modules_dir()
@@ -712,7 +720,7 @@ def install_module(
         )
         if not zipfile_path:
             if outer:
-                outer.write(f"code download failed")
+                outer.error(f"code download failed")
             raise ModuleInstallationError(module_name)
         extract_code_or_data(
             module_name=module_name,
@@ -730,7 +738,7 @@ def install_module(
         ):
             if not data_url:
                 if outer:
-                    outer.write(f"data_url is empty.")
+                    outer.error(f"data_url is empty.")
                 raise ModuleInstallationError(module_name)
             data_zipfile_path: Optional[str] = download_code_or_data(
                 urls=data_url,

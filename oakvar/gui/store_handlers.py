@@ -170,7 +170,11 @@ class StoreHandlers:
         else:
             module_version = None
         module_name = queries["module"]
-        data = {"module": module_name, "version": module_version}
+        data = {
+            "work_type": "install_module",
+            "module": module_name,
+            "version": module_version,
+        }
         if self.system_queue is not None:
             self.system_queue.append(data)
         return Response(status=200)

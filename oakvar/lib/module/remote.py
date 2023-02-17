@@ -156,9 +156,9 @@ def get_conf(module_name=None, conf_path: Optional[Path] = None) -> Optional[dic
     if fpath and fpath.exists():
         with open(fpath) as f:
             conf = None
-            if fpath.stem.endswith(".yml"):
+            if fpath.suffix == ".yml":
                 conf = safe_load(f)
-            elif fpath.stem.endswith(".json"):
+            elif fpath.suffix == ".json":
                 conf = load(f)
             return conf
     return None

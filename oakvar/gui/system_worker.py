@@ -48,7 +48,7 @@ def system_queue_worker(
                     module_name=module_name,
                     module_version=module_version,
                     system_worker_state=system_worker_state,
-                    quiet=False,
+                    outer=install_outer,
                 )
                 try:
                     install_module(
@@ -92,13 +92,12 @@ class InstallProgressMpDict(InstallProgressHandler):
         module_name=None,
         module_version=None,
         system_worker_state=None,
-        quiet=True,
+        outer=None,
     ):
-        super().__init__(module_name, module_version)
+        super().__init__(module_name, module_version, outer)
         self.module_name = module_name
         self.module_version = module_version
         self.system_worker_state = system_worker_state
-        self.quiet = quiet
 
     def _reset_progress(self, update_time=False):
         from time import time
@@ -117,7 +116,6 @@ class InstallProgressMpDict(InstallProgressHandler):
         ] = module_data
 
     def stage_start(self, stage):
-        from ..lib.util.util import quiet_print
         from .consts import SYSTEM_STATE_INSTALL_KEY
         from .consts import SYSTEM_STATE_MESSAGE_KEY
 
@@ -136,7 +134,8 @@ class InstallProgressMpDict(InstallProgressHandler):
             self.module_name
         ] = module_data
         self._reset_progress(update_time=True)
-        quiet_print(msg, {"quiet": self.quiet})
+        if self.outer:
+            self.outer.write(msg)
 
 
 def initialize_system_worker_state_for_install(

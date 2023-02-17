@@ -7,7 +7,6 @@ from six.moves import urllib  # type: ignore
 from zipfile import ZipFile
 import tarfile
 from math import log
-import time
 import sys
 import shutil
 import tempfile
@@ -30,6 +29,8 @@ def download(
     system_worker_state=None,
     check_install_kill=None,
     module_name=None,
+    total_size=0,
+    cur_size=0,
     outer=None,
 ):
     """Download a URL.
@@ -135,6 +136,8 @@ def download(
             system_worker_state=system_worker_state,
             check_install_kill=check_install_kill,
             module_name=module_name,
+            cur_size=cur_size,
+            total_size=total_size,
             outer=outer,
         )
         msg = "Successfully downloaded file to {}".format(path)
@@ -172,6 +175,8 @@ def _fetch_file(
     system_worker_state=None,
     check_install_kill=None,
     module_name=None,
+    cur_size=0,
+    total_size=0,
     outer=None,
 ):
     """Load requested file, downloading it if needed or requested.
@@ -195,6 +200,7 @@ def _fetch_file(
     # Adapted from NISL and MNE-python:
     # https://github.com/nisl/tutorial/blob/master/nisl/datasets.py
     # https://martinos.org/mne
+    from time import time
     from ...gui.consts import SYSTEM_STATE_INSTALL_KEY
 
     assert module_name is not None
@@ -217,6 +223,17 @@ def _fetch_file(
             )
         resp = requests.get(url, stream=True)
         chunk_size = 8192  # 2 ** 13
+        if system_worker_state:
+            cur_chunk = system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
+                "cur_chunk"
+            ]
+            total_chunk = system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
+                "cur_chunk"
+            ]
+        else:
+            cur_chunk = 0
+            total_chunk = 0
+        t = time()
         with open(temp_file_name, "wb") as ff:
             for chunk in resp.iter_content(chunk_size=chunk_size):
                 if check_install_kill and system_worker_state:
@@ -226,15 +243,10 @@ def _fetch_file(
                 if chunk:
                     ff.write(chunk)
                     if system_worker_state:
-                        system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
-                            "cur_chunk"
-                        ] += chunk_size
-                        system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
-                            "total_chunk"
-                        ] += chunk_size
-                        system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
-                            "update_time"
-                        ] = time.time()
+                        cur_chunk += chunk_size
+                        total_chunk += chunk_size
+                        if outer and time() - t > 1:
+                            outer.write(f"download_state:{cur_chunk}:{total_chunk}")
     else:
         # Check file size and displaying it alongside the download url
         req = request_agent(url)
@@ -246,18 +258,6 @@ def _fetch_file(
         u = urllib.request.urlopen(req, timeout=timeout)  # type: ignore
         try:
             remote_file_size = int(u.headers.get("Content-Length", "0").strip())
-            """
-            if system_worker_state:
-                system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
-                    "cur_size"
-                ] = remote_file_size
-                system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
-                    "total_size"
-                ] += remote_file_size
-                system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
-                    "cur_chunk"
-                ] = 0
-            """
         finally:
             u.close()
             del u
@@ -270,41 +270,31 @@ def _fetch_file(
         if not os.path.exists(temp_file_name):
             resume = False
         if resume:
-            initial_size = op.getsize(temp_file_name)
+            cur_file_size = op.getsize(temp_file_name)
         else:
-            initial_size = 0
-        """
-        if system_worker_state:
-            system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
-                "cur_chunk"
-            ] = initial_size
-            system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
-                "total_chunk"
-            ] += initial_size
-            system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
-                "update_time"
-            ] = time.time()
-        """
+            cur_file_size = 0
         # This should never happen if our functions work properly
-        if initial_size > remote_file_size:
+        if cur_file_size > remote_file_size:
             raise RuntimeError(
                 "Local file (%s) is larger than remote "
                 "file (%s), cannot resume download"
-                % (sizeof_fmt(initial_size), sizeof_fmt(remote_file_size))
+                % (sizeof_fmt(cur_file_size), sizeof_fmt(remote_file_size))
             )
+        cur_size += cur_file_size
         scheme = urllib.parse.urlparse(url).scheme  # type: ignore
         fun = _get_http if scheme in ("http", "https") else _get_ftp
         fun(
             url,
             temp_file_name,
-            initial_size,
+            cur_file_size,
             remote_file_size,
-            verbose,
             progressbar,
             ncols=80,
             system_worker_state=system_worker_state,
             check_install_kill=check_install_kill,
             module_name=module_name,
+            cur_size=cur_size,
+            total_size=total_size,
             outer=outer,
         )
         # check md5sum
@@ -332,17 +322,19 @@ def _get_ftp(
     temp_file_name,
     initial_size,
     file_size,
-    _,
     progressbar,
     ncols=80,
     system_worker_state=None,
     check_install_kill=None,
     module_name=None,
+    cur_size=0,
+    total_size=0,
     outer=None,
 ):
     """Safely (resume a) download to a file from FTP."""
     # Adapted from: https://pypi.python.org/pypi/fileDownloader.py
     # but with changes
+    from time import time
     from ...gui.consts import SYSTEM_STATE_INSTALL_KEY
 
     assert module_name is not None
@@ -396,31 +388,33 @@ def _get_ftp(
                 ] += chunk_size
                 system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
                     "update_time"
-                ] = time.time()
+                ] = time()
             data.close()
 
 
 def _get_http(
     url,
     temp_file_name,
-    initial_size,
-    file_size,
-    _,
+    cur_file_size,
+    remote_file_size,
     progressbar,
     ncols=80,
     system_worker_state=None,
     check_install_kill=None,
     module_name=None,
+    cur_size=0,
+    total_size=0,
     outer=None,
 ):
     """Safely (resume a) download to a file from http(s)."""
     import requests
+    from time import time
 
     assert module_name is not None
     session = requests.Session()
     headers = {"User-Agent": "oakvar"}
-    if initial_size > 0:
-        headers["Range"] = "bytes=%s-" % (initial_size,)
+    if cur_file_size > 0:
+        headers["Range"] = "bytes=%s-" % (cur_file_size,)
     try:
         r = session.get(url, headers=headers, stream=True)
     except:
@@ -435,7 +429,7 @@ def _get_http(
         r = session.get(url, headers=headers, stream=True)
     r.raise_for_status()
     total_size = int(r.headers.get("Content-Length", "0").strip())
-    if initial_size > 0 and file_size == total_size:
+    if cur_file_size > 0 and remote_file_size == total_size:
         if outer:
             tqdm.write(
                 "Resuming download failed (resume file size "
@@ -443,16 +437,15 @@ def _get_http(
                 "entire file.",
                 file=sys.stdout,
             )
-        initial_size = 0
-    total_size += initial_size
-    if total_size != file_size:
+        cur_file_size = 0
+    total_size += cur_file_size
+    if total_size != remote_file_size:
         raise RuntimeError("URL could not be parsed properly")
-    mode = "ab" if initial_size > 0 else "wb"
-    cur_size = initial_size
+    mode = "ab" if cur_file_size > 0 else "wb"
     if outer:
         progress = tqdm(
-            total=total_size,
-            initial=initial_size,
+            total=remote_file_size,
+            initial=cur_file_size,
             desc="File size",
             ncols=ncols,
             unit="B",
@@ -463,14 +456,15 @@ def _get_http(
     else:
         progress = None
     chunk_size = 262144 * 4
+    t = time()
     with open(temp_file_name, mode) as local_file:
         for chunk in r.iter_content(chunk_size=chunk_size):
-            t0 = time.time()
+            t0 = time()
             if check_install_kill and system_worker_state:
                 check_install_kill(
                     system_worker_state=system_worker_state, module_name=module_name
                 )
-            dt = time.time() - t0
+            dt = time() - t0
             if dt < 0.005:
                 chunk_size = chunk_size * 2
             elif dt > 0.1 and chunk_size > 8192:
@@ -480,6 +474,8 @@ def _get_http(
             if progress:
                 progress.update(read_size)
             cur_size += read_size
+            if outer and time() - t > 1:
+                outer.write(f"download_state:{module_name}:{cur_size}:{total_size}")
             """
             if system_worker_state:
                 system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
