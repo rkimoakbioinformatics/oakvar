@@ -4,15 +4,17 @@ Install OakVar.
 
     pip install oakvar
 
-Then, set up OakVar.
+Then, set up OakVar, which will set up configuration files, system folders, an OakVar account, and OakVar store cache files.
 
     ov system setup
 
 > #### Note for open-cravat users
 >
-> OakVar does not share system files with nor transfer system configuration from open-cravat anymore. OakVar's default modules directory is different and `oc` will still call open-cravat and only `ov` will invoke OakVar. 
+> OakVar supports backward compatibility with open-cravat and thus open-cravat should be first removed before installing OakVar by `pip uninstall open-cravat`. open-cravat can simply be restored by removing OakVar by `pip uninstall oakvar` and installing open-cravat by `pip install open-cravat`. There is no side-effect of doing this switch unless you share open-cravat modules with OakVar as described below.
 >
-> OakVar is still backward-compatible with open-cravat modules. If you have been using open-cravat and want to use open-cravat modules with OakVar, you can do so by setting OakVar modules directory to that of open-cravat with `ov system md` command. Please keep in mind that OakVar has its own updated versions for some of open-cravat modules, so if you are sharing the same modules directory between OakVar and open-cravat, `ov module update` may break oc-compatibility of some of the updated modules.
+> OakVar does not share system files with nor transfer system configuration from open-cravat. OakVar's default modules directory is different.
+>
+> OakVar is backward-compatible with open-cravat modules. If you have been using open-cravat and want to continue to use open-cravat modules with OakVar, you can do so by setting OakVar modules directory to point to that of open-cravat with `ov system md` command. Please keep in mind that OakVar has its own updated versions for some of open-cravat modules, so if you are sharing the same modules directory between OakVar and open-cravat, `ov module update` may break oc-compatibility of some of the updated modules.
 
 ## Setup
 

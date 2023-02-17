@@ -1,14 +1,6 @@
-#### Installation
+#### Installation and setup
 
-First, let's install OakVar.
-
-    pip install oakvar
-
-#### Setup
-
-Then, we set up OakVar, including configuration files, system folders, an OakVar account, and OakVar store cache files.
-
-    ov system setup
+Install OakVar and setup following [this instruction](install_system.md).
 
 #### Check system configuration
 
