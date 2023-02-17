@@ -135,35 +135,10 @@ def setup_system_conf(
     # if sys conf file does not exist,
     # this is the first time installing OakVar.
     if not sys_conf_path or not exists(sys_conf_path) or clean:
-        # use the content of an old OC sys conf if present.
-        conf = update_new_system_conf_with_existing(conf)
         # create the sys conf file.
         save_system_conf(conf)
         if outer:
             outer.write(f"Created {sys_conf_path}.")
-    return conf
-
-
-def update_new_system_conf_with_existing(conf):
-    from os.path import exists
-    from ..util.util import load_yml_conf
-    from .consts import sys_conf_path_key
-    from ..store.consts import store_url_key
-
-    oc_sys_conf_path = get_oc_system_conf_path()
-    if exists(oc_sys_conf_path):
-        old_conf = load_yml_conf(oc_sys_conf_path)
-        for k, v in old_conf.items():
-            # do not copy the old OC sys conf's conf_path.
-            if k in [
-                sys_conf_path_key,
-                "conf_path",
-                "publish_url",
-                store_url_key,
-                "base_modules",
-            ]:
-                continue
-            conf[k] = v
     return conf
 
 
@@ -233,13 +208,7 @@ def setup_user_conf_file(clean: bool = False, conf: Optional[Dict] = None, outer
         mkdir(user_conf_dir)
     user_conf_path = get_user_conf_path()
     if not exists(user_conf_path) or clean:
-        oc_cravat_conf_path = get_oc_cravat_conf_path(conf=conf)
-        if exists(oc_cravat_conf_path):
-            # copy cravat.yml as oakvar.yml.
-            copyfile(oc_cravat_conf_path, user_conf_path)
-        else:
-            # create oakvar.yml
-            copyfile(get_default_user_conf_path(), user_conf_path)
+        copyfile(get_default_user_conf_path(), user_conf_path)
         if outer:
             outer.write(f"Created: {user_conf_path}")
     # fill in missing fields, due to a newer version, with defaults.
@@ -578,24 +547,6 @@ def update_system_conf_file(d):
     return True
 
 
-def get_oc_cravat_conf(conf=None) -> dict:
-    from ..util.util import load_yml_conf
-
-    oc_cravat_conf_path = get_oc_cravat_conf_path(conf=conf)
-    oc_cravat_conf = load_yml_conf(oc_cravat_conf_path)
-    return oc_cravat_conf
-
-
-def get_oc_cravat_conf_path(conf=None) -> Path:
-    from .consts import oc_cravat_conf_fname
-    from ..exceptions import SystemMissingException
-
-    conf_dir = get_conf_dir(conf=conf)
-    if conf_dir is None:
-        raise SystemMissingException(msg="conf_dir is missing")
-    return conf_dir / oc_cravat_conf_fname
-
-
 def get_main_default_path():
     import os
     from .consts import user_conf_fname
@@ -692,23 +643,6 @@ def get_system_conf_path(conf=None) -> Path:
     return Path(root_dir) / sys_conf_fname
 
 
-def get_oc_system_conf_path(conf=None) -> Path:
-    from os import environ
-    from .consts import oc_system_conf_fname
-    from .consts import sys_conf_path_key
-
-    # custom conf
-    if conf is not None and sys_conf_path_key in conf:
-        return Path(conf[sys_conf_path_key])
-    # ENV
-    sys_conf_path = environ.get(get_env_key(sys_conf_path_key))
-    if sys_conf_path is not None:
-        return Path(sys_conf_path)
-    # default
-    root_dir = get_default_conf_dir(conf=conf)
-    return root_dir / oc_system_conf_fname
-
-
 def get_default_conf_dir(conf=None) -> Path:
     from .consts import conf_dir_name
 
@@ -741,7 +675,6 @@ def get_default_root_dir(conf=None) -> Path:
     from os.path import expandvars
     from os import environ
     from pathlib import Path
-    from ..util.admin_util import get_packagedir
     from ..util.admin_util import get_platform
     from .consts import root_dir_key
 
@@ -756,29 +689,23 @@ def get_default_root_dir(conf=None) -> Path:
             root_dir = Path(expandvars("%systemdrive%")) / "oakvar"
     elif pl == "linux":
         path = ".oakvar"
-        root_dir = get_packagedir()
-        if not (
-            root_dir / "conf"
-        ).exists():  # packagedir/conf is the old conf dir of OpenCRAVAT.
-            if is_root_user():
-                sudo_user = environ.get("SUDO_USER")
-                home = environ.get("HOME")
-                if sudo_user is not None:
-                    root_dir = Path("/home") / sudo_user / path
-                elif home is not None and home == "/root":  # Ubuntu in docker
-                    root_dir = Path(home) / ".oakvar"
-                else:
-                    root_dir = Path.home() / path
+        if is_root_user():
+            sudo_user = environ.get("SUDO_USER")
+            home = environ.get("HOME")
+            if sudo_user is not None:
+                root_dir = Path("/home") / sudo_user / path
+            elif home is not None and home == "/root":  # Ubuntu in docker
+                root_dir = Path(home) / ".oakvar"
             else:
-                user = environ.get("USER")
-                if user is not None:
-                    root_dir = Path("/home") / user / path
-                else:
-                    root_dir = Path.home() / path
+                root_dir = Path.home() / path
+        else:
+            user = environ.get("USER")
+            if user is not None:
+                root_dir = Path("/home") / user / path
+            else:
+                root_dir = Path.home() / path
     elif pl == "macos":
-        root_dir = Path("/Users/Shared/open-cravat")
-        if not root_dir.exists():  # OakVar first installation
-            root_dir = Path("/Users/Shared/oakvar")
+        root_dir = Path("/Users/Shared/oakvar")
     else:
         root_dir = Path(".")
     return root_dir
