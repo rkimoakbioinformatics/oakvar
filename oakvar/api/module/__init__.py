@@ -14,6 +14,8 @@ def pack(
 
     if not module_name:
         return
+    if isinstance(outdir, str):
+        outdir = Path(outdir).absolute()
     ret = pack_module(
         module_name=module_name,
         outdir=outdir,
