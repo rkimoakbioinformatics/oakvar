@@ -129,6 +129,7 @@ class WebServer(object):
                 self.system_queue,
                 self.system_worker_state,
                 self.local_modules_changed,
+                self.manager,
             ),
         )
         self.system_worker.start()
@@ -149,19 +150,11 @@ class WebServer(object):
         self.initialize_system_worker_state()
 
     def initialize_system_worker_state(self):
-        from .consts import SYSTEM_STATE_SETUP_KEY
         from .consts import SYSTEM_STATE_INSTALL_KEY
-        from .consts import SYSTEM_STATE_MESSAGE_KEY
-        from .consts import SYSTEM_LAST_MSG_ID_KEY
 
         assert self.system_worker_state is not None
         assert self.manager is not None
-        setup = self.manager.dict()
-        message = self.manager.list()
-        setup[SYSTEM_STATE_MESSAGE_KEY] = message
-        self.system_worker_state[SYSTEM_STATE_SETUP_KEY] = setup
         self.system_worker_state[SYSTEM_STATE_INSTALL_KEY] = self.manager.dict()
-        self.system_worker_state[SYSTEM_LAST_MSG_ID_KEY] = self.manager.Value("Q", 0)
 
     def make_job_queue_states(self):
         from multiprocessing import Queue

@@ -1,3 +1,4 @@
+from multiprocessing.managers import SyncManager
 from typing import Optional
 from multiprocessing.managers import ListProxy
 from multiprocessing.managers import DictProxy
@@ -8,6 +9,7 @@ def system_queue_worker(
     system_queue: ListProxy,
     system_worker_state: Optional[DictProxy],
     local_modules_changed,
+    manager,
 ):
     from time import sleep
     import traceback
@@ -41,10 +43,12 @@ def system_queue_worker(
                 module_version = data["version"]
                 initialize_system_worker_state_for_install(
                     system_worker_state,
+                    manager,
                     module_name=module_name,
                     module_version=module_version,
                 )
                 stage_handler = InstallProgressMpDict(
+                    manager,
                     module_name=module_name,
                     module_version=module_version,
                     system_worker_state=system_worker_state,
@@ -89,6 +93,7 @@ def unqueue(module_name: Optional[str], system_queue):
 class InstallProgressMpDict(InstallProgressHandler):
     def __init__(
         self,
+        manager,
         module_name=None,
         module_version=None,
         system_worker_state=None,
@@ -98,6 +103,7 @@ class InstallProgressMpDict(InstallProgressHandler):
         self.module_name = module_name
         self.module_version = module_version
         self.system_worker_state = system_worker_state
+        self.manager = manager
 
     def _reset_progress(self, update_time=False):
         from time import time
@@ -106,7 +112,6 @@ class InstallProgressMpDict(InstallProgressHandler):
         module_data = self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][
             self.module_name
         ]
-        module_data["cur_chunk"] = 0
         module_data["cur_size"] = 0
         module_data["total_size"] = 0
         if update_time:
@@ -117,18 +122,13 @@ class InstallProgressMpDict(InstallProgressHandler):
 
     def stage_start(self, stage):
         from .consts import SYSTEM_STATE_INSTALL_KEY
-        from .consts import SYSTEM_STATE_MESSAGE_KEY
 
         self.cur_stage = stage
         msg = self._stage_msg(self.cur_stage)
-        initialize_system_worker_state_for_install(
-            self.system_worker_state, module_name=self.module_name
-        )
         module_data = self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][
             self.module_name
         ]
         module_data["stage"] = [self.cur_stage]
-        module_data[SYSTEM_STATE_MESSAGE_KEY].append(self._stage_msg(self.cur_stage))
         module_data["kill_signal"] = False
         self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][
             self.module_name
@@ -139,25 +139,20 @@ class InstallProgressMpDict(InstallProgressHandler):
 
 
 def initialize_system_worker_state_for_install(
-    system_worker_state: Optional[DictProxy], module_name="", module_version=""
+    system_worker_state: Optional[DictProxy],
+    manager: SyncManager,
+    module_name="",
+    module_version="",
 ):
-    from time import time
     from .consts import SYSTEM_STATE_INSTALL_KEY
-    from .consts import SYSTEM_MSG_KEY
-    from .consts import SYSTEM_STATE_MESSAGE_KEY
 
     if system_worker_state is None:
         return
-    d = {}
-    d[SYSTEM_MSG_KEY] = SYSTEM_STATE_INSTALL_KEY
+    d = manager.dict()
     d["stage"] = ""
-    d[SYSTEM_STATE_MESSAGE_KEY] = []
     d["module_name"] = module_name
     d["module_version"] = module_version
-    d["cur_chunk"] = 0
-    d["total_chunk"] = 0
     d["cur_size"] = 0
     d["total_size"] = 0
-    d["update_time"] = time()
     d["kill"] = False
     system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name] = d

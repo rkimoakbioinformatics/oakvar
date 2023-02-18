@@ -233,18 +233,17 @@ class StoreHandlers:
         from .util import copy_state
 
         content = copy_state(self.system_worker_state)
-        if isinstance(content, dict):
-            del content["last_msg_id"]
         return json_response(content)
 
     def send_kill_install_signal(self, module_name: Optional[str]):
         from .consts import SYSTEM_STATE_INSTALL_KEY
+        from .consts import INSTALL_KILL_SIGNAL
 
         if not self.system_worker_state or not module_name:
             return
         if module_name in self.system_worker_state:
             self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
-                "kill_signal"
+                INSTALL_KILL_SIGNAL
             ] = True
 
     async def unqueue_install(self, request):
