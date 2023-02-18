@@ -761,17 +761,13 @@ class SecondaryInputFetcher:
     def load_input(self):
         for _, _, all_col_data in self.input_reader.loop_data():
             key_data = all_col_data.get(self.key_col)
-            if not key_data:
-                continue
             if key_data not in self.data:
                 self.data[key_data] = []
             fetch_col_data = {}
             for col in self.fetch_cols:
                 val = all_col_data.get(col)
-                if val:
-                    fetch_col_data[col] = val
-            if fetch_col_data:
-                self.data[key_data].append(fetch_col_data)
+                fetch_col_data[col] = val
+            self.data[key_data].append(fetch_col_data)
 
     def get(self, key_data):
         if key_data in self.data:
