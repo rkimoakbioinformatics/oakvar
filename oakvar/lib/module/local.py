@@ -667,7 +667,7 @@ def pack_module_zip(
                     continue
                 p = root_p / file
                 arcname = root_p / file
-                if str(pack_dir).startswith(str(arcname)):
+                if str(arcname).startswith(str(pack_dir)):
                     arcname = str(arcname)[len(str(pack_dir)) :].lstrip(sep)
                 if kind == "code":
                     arcname = arcname  # join(module_name, arcname)
