@@ -12,6 +12,7 @@ def download(
     module_name=None,
     total_size=0,
     cur_size=0,
+    kind: str = "file",
     outer=None,
 ):
     from .download_library import download as download_util
@@ -29,6 +30,7 @@ def download(
             url,
             fpath,
             kind="file",
+            file_kind=kind,
             verbose=False,
             replace=True,
             system_worker_state=system_worker_state,

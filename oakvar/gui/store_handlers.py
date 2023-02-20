@@ -5,6 +5,7 @@ class StoreHandlers:
     def __init__(
         self,
         servermode=False,
+        manager=None,
         mu=None,
         local_modules_changed=None,
         system_worker_state=None,
@@ -16,6 +17,7 @@ class StoreHandlers:
         self.local_modules_changed = local_modules_changed
         self.local_manifest = {}
         self.system_worker_state = system_worker_state
+        self.manager = manager
         self.system_queue = system_queue
         self.logger = logger
         self.wss = {}
@@ -177,6 +179,7 @@ class StoreHandlers:
         }
         if self.system_queue is not None:
             self.system_queue.append(data)
+        self.initialize_system_worker_state_for_install(module_name, module_version)
         return Response(status=200)
 
     async def add_local_module_info(self, request):
@@ -221,18 +224,23 @@ class StoreHandlers:
 
     async def get_queue(self, _):
         from aiohttp.web import json_response
+        from .consts import SYSTEM_STATE_INSTALL_QUEUE_KEY
 
         content = []
-        if self.system_queue:
-            for data in self.system_queue:
-                content.append(data.get("module"))
+        if (
+            self.system_worker_state
+            and self.system_worker_state[SYSTEM_STATE_INSTALL_QUEUE_KEY]
+        ):
+            for module_name in self.system_worker_state[SYSTEM_STATE_INSTALL_QUEUE_KEY]:
+                content.append(module_name)
         return json_response(content)
 
     async def get_system_worker_state_web(self, _):
         from aiohttp.web import json_response
         from .util import copy_state
+        from .consts import SYSTEM_STATE_INSTALL_KEY
 
-        content = copy_state(self.system_worker_state)
+        content = copy_state(self.system_worker_state[SYSTEM_STATE_INSTALL_KEY])
         return json_response(content)
 
     def send_kill_install_signal(self, module_name: Optional[str]):
@@ -265,13 +273,20 @@ class StoreHandlers:
         return Response(status=200)
 
     def unqueue(self, module_name):
+        from .consts import SYSTEM_STATE_INSTALL_KEY
+        from .consts import SYSTEM_STATE_INSTALL_QUEUE_KEY
+
         to_del = None
         for i in range(len(self.system_queue)):
-            if self.system_queue[i].get("module_name") == module_name:
+            if self.system_queue[i].get("module") == module_name:
                 to_del = i
                 break
-        if to_del:
+        if to_del is not None:
             self.system_queue.pop(to_del)
+        if module_name in self.system_worker_state[SYSTEM_STATE_INSTALL_QUEUE_KEY]:
+            self.system_worker_state[SYSTEM_STATE_INSTALL_QUEUE_KEY].remove(module_name)
+        if module_name in self.system_worker_state[SYSTEM_STATE_INSTALL_KEY]:
+            del self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name]
 
     async def get_readme(self, request):
         from aiohttp.web import Response
@@ -304,3 +319,25 @@ class StoreHandlers:
         if not p.exists():
             return Response(status=404)
         return FileResponse(p)
+
+    def initialize_system_worker_state_for_install(
+        self,
+        module_name: str = "",
+        module_version: Optional[str] = None,
+    ):
+        from .consts import SYSTEM_STATE_INSTALL_KEY
+        from .consts import SYSTEM_STATE_INSTALL_QUEUE_KEY
+
+        if self.system_worker_state is None:
+            return
+        if self.manager is None:
+            return
+        d = self.manager.dict()
+        d["stage"] = ""
+        d["module_name"] = module_name
+        d["module_version"] = module_version
+        d["cur_size"] = 0
+        d["total_size"] = 0
+        d["kill"] = False
+        self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name] = d
+        self.system_worker_state[SYSTEM_STATE_INSTALL_QUEUE_KEY].append(module_name)

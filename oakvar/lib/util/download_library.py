@@ -22,6 +22,7 @@ def download(
     url,
     path,
     kind="file",
+    file_kind: str = "file",
     progressbar=True,
     replace=False,
     timeout=10.0,
@@ -100,6 +101,7 @@ def download(
         _fetch_file(
             download_url,
             path_temp_file,
+            file_kind,
             timeout=timeout,
             verbose=verbose,
             progressbar=progressbar,
@@ -130,6 +132,7 @@ def download(
         _fetch_file(
             download_url,
             path,
+            file_kind,
             timeout=timeout,
             verbose=verbose,
             progressbar=progressbar,
@@ -167,6 +170,7 @@ def _convert_url_to_downloadable(url):
 def _fetch_file(
     url,
     file_name,
+    file_kind: str,
     resume=True,
     hash_=None,
     timeout=10.0,
@@ -246,7 +250,9 @@ def _fetch_file(
                         cur_chunk += chunk_size
                         total_chunk += chunk_size
                         if outer and time() - t > 1:
-                            outer.write(f"download_state:{cur_chunk}:{total_chunk}")
+                            outer.write(
+                                f"download_{file_kind}:{cur_chunk}:{total_chunk}"
+                            )
     else:
         # Check file size and displaying it alongside the download url
         req = request_agent(url)
@@ -289,6 +295,7 @@ def _fetch_file(
             cur_file_size,
             remote_file_size,
             progressbar,
+            file_kind,
             ncols=80,
             system_worker_state=system_worker_state,
             check_install_kill=check_install_kill,
@@ -323,6 +330,7 @@ def _get_ftp(
     initial_size,
     file_size,
     progressbar,
+    file_kind: str,
     ncols=80,
     system_worker_state=None,
     check_install_kill=None,
@@ -398,6 +406,7 @@ def _get_http(
     cur_file_size,
     remote_file_size,
     progressbar,
+    file_kind: str,
     ncols=80,
     system_worker_state=None,
     check_install_kill=None,
@@ -475,7 +484,9 @@ def _get_http(
                 progress.update(read_size)
             cur_size += read_size
             if outer and time() - t > 1:
-                outer.write(f"download_state:{module_name}:{cur_size}:{total_size}")
+                outer.write(
+                    f"download_{file_kind}:{module_name}:{cur_size}:{total_size}"
+                )
             """
             if system_worker_state:
                 system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][

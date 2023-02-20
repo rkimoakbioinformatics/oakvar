@@ -151,10 +151,12 @@ class WebServer(object):
 
     def initialize_system_worker_state(self):
         from .consts import SYSTEM_STATE_INSTALL_KEY
+        from .consts import SYSTEM_STATE_INSTALL_QUEUE_KEY
 
         assert self.system_worker_state is not None
         assert self.manager is not None
         self.system_worker_state[SYSTEM_STATE_INSTALL_KEY] = self.manager.dict()
+        self.system_worker_state[SYSTEM_STATE_INSTALL_QUEUE_KEY] = self.manager.list()
 
     def make_job_queue_states(self):
         from multiprocessing import Queue
@@ -180,6 +182,7 @@ class WebServer(object):
 
         self.store_handlers = StoreHandlers(
             servermode=self.servermode,
+            manager=self.manager,
             mu=self.mu,
             local_modules_changed=self.local_modules_changed,
             system_worker_state=self.system_worker_state,

@@ -1,4 +1,3 @@
-from multiprocessing.managers import SyncManager
 from typing import Optional
 from multiprocessing.managers import ListProxy
 from multiprocessing.managers import DictProxy
@@ -41,12 +40,6 @@ def system_queue_worker(
             elif work_type == "install_module":
                 module_name = data["module"]
                 module_version = data["version"]
-                initialize_system_worker_state_for_install(
-                    system_worker_state,
-                    manager,
-                    module_name=module_name,
-                    module_version=module_version,
-                )
                 stage_handler = InstallProgressMpDict(
                     manager,
                     module_name=module_name,
@@ -63,8 +56,13 @@ def system_queue_worker(
                         fresh=True,
                         outer=install_outer,
                     )
+                    if system_worker_state:
+                        remove_module_from_system_worker(
+                            system_worker_state, module_name
+                        )
                     # unqueue(module_name, system_queue)
                     local_modules_changed.set()
+                    install_outer.write(f"finished:{module_name}::")
                 except ModuleToSkipInstallation:
                     # unqueue(module_name, system_queue)
                     stage_handler.stage_start("skip")
@@ -120,11 +118,39 @@ class InstallProgressMpDict(InstallProgressHandler):
             self.module_name
         ] = module_data
 
+    def _stage_msg(self, stage):
+        if stage is None or stage == "":
+            return ""
+        elif stage == "start":
+            return f"start:{self.module_name}::"
+        elif stage == "download_code":
+            return f"download_code:{self.module_name}::"
+        elif stage == "extract_code":
+            return f"extract_code:{self.module_name}::"
+        elif stage == "verify_code":
+            return f"verify_code:{self.module_name}::"
+        elif stage == "download_data":
+            return f"download_data:{self.module_name}::"
+        elif stage == "extract_data":
+            return f"extract_data:{self.module_name}::"
+        elif stage == "verify_data":
+            return f"verify_data:{self.module_name}::"
+        elif stage == "finish":
+            return f"finish:{self.module_name}::"
+        elif stage == "killed":
+            return f"killed:{self.module_name}::"
+        elif stage == "Unqueued":
+            return f"unqueued:{self.module_name}::"
+        else:
+            return f"{stage}:{self.module_name}::"
+
     def stage_start(self, stage):
         from .consts import SYSTEM_STATE_INSTALL_KEY
 
         self.cur_stage = stage
         msg = self._stage_msg(self.cur_stage)
+        if self.module_name not in self.system_worker_state[SYSTEM_STATE_INSTALL_KEY]:
+            return
         module_data = self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][
             self.module_name
         ]
@@ -138,21 +164,11 @@ class InstallProgressMpDict(InstallProgressHandler):
             self.outer.write(msg)
 
 
-def initialize_system_worker_state_for_install(
-    system_worker_state: Optional[DictProxy],
-    manager: SyncManager,
-    module_name="",
-    module_version="",
-):
+def remove_module_from_system_worker(system_worker_state: DictProxy, module_name: str):
     from .consts import SYSTEM_STATE_INSTALL_KEY
+    from .consts import SYSTEM_STATE_INSTALL_QUEUE_KEY
 
-    if system_worker_state is None:
-        return
-    d = manager.dict()
-    d["stage"] = ""
-    d["module_name"] = module_name
-    d["module_version"] = module_version
-    d["cur_size"] = 0
-    d["total_size"] = 0
-    d["kill"] = False
-    system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name] = d
+    if module_name in system_worker_state[SYSTEM_STATE_INSTALL_KEY]:
+        del system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name]
+    if module_name in system_worker_state[SYSTEM_STATE_INSTALL_QUEUE_KEY]:
+        system_worker_state[SYSTEM_STATE_INSTALL_QUEUE_KEY].remove(module_name)
