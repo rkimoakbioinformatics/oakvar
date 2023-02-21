@@ -530,13 +530,8 @@ def login_with_email_pw(email=None, pw=None, args={}, conf={}) -> bool:
         if emailpw_are_valid(emailpw):
             email = emailpw[0]
             pw = emailpw[1]
-            while True:
-                ret = create(email=email, pw=pw, quiet=False)
-                if ret.get("success"):
-                    break
             announce_on_email_verification_if_needed(email, args=args)
-            login(email=email, pw=pw, args=args)
-            return True
+            return login(email=email, pw=pw, args=args)
     return False
 
 
