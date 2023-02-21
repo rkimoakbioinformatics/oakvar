@@ -1,11 +1,16 @@
 cwlVersion: v1.2
 class: CommandLineTool
-baseCommand: [ ov, run ]
+baseCommand: [ ov ]
 
 inputs:
-  message:
+  cmd:
     type: string
-    default: exampleinput
+    inputBinding:
+      position: 1
+  message:
+    type: File
+    inputBinding:
+      position: 2
 
 outputs:
   out:

@@ -1,0 +1,5 @@
+message:  # type 'File'
+    class: File
+    path: exampleinput
+cmd: run  # type 'string'
+
