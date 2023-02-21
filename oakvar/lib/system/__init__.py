@@ -42,7 +42,7 @@ def setup_system(
         outer.write(f"System configuration file: {conf[sys_conf_path_key]}")
     setup_system_dirs(conf=conf, outer=outer)
     # set up a user conf file.
-    setup_user_conf_file(clean=clean, conf=conf, outer=outer)
+    setup_user_conf_file(clean=clean, outer=outer)
     # set up a store account.
     if outer:
         outer.write("Logging in...")
@@ -177,7 +177,7 @@ def setup_store_account(conf=None, email=None, pw=None, install_mode: str = "") 
     return total_login(email=email, pw=pw, conf=conf, install_mode=install_mode)
 
 
-def setup_user_conf_file(clean: bool = False, conf: Optional[Dict] = None, outer=None):
+def setup_user_conf_file(clean: bool = False, outer=None):
     from os.path import exists
     from shutil import copyfile
     from os import mkdir

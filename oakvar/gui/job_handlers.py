@@ -345,6 +345,8 @@ class JobHandlers:
         global job_queue
         global mu
         assert self.job_queue is not None
+        eud = await self.get_eud_from_request(request)
+        email = eud.get("username")
         submit_processor = SubmitProcessor(
             request=request,
             loop=self.loop,
@@ -352,6 +354,7 @@ class JobHandlers:
             logger=self.logger,
             servermode=self.servermode,
             mu=self.mu,
+            email=email,
         )
         ret = await submit_processor.run()
         return ret
@@ -396,11 +399,10 @@ class JobHandlers:
             json_data = await request.json()
         except:
             json_data = None
-        # text_data = await request.text()
-        # text_data = unquote(text_data, encoding='utf-8', errors='replace')
-        # if text_data and "=" in text_data:
-        #    return text_data.split("=")[1]
-        post_data = await request.post()  # post with form
+        try:
+            post_data = await request.post()  # post with form
+        except:
+            post_data = None
         queries = request.rel_url.query  # get
         if json_data:
             uid = json_data.get("uid", None)

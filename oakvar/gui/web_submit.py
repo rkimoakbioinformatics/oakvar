@@ -62,6 +62,7 @@ class SubmitProcessor:
         from aiohttp.web import json_response
 
         assert self.job_queue is not None
+        print(f"@ email={self.email}")
         jobs_dir = get_user_jobs_dir(self.email)
         if not jobs_dir:
             return Response(body="No jobs directory found", status=500)
@@ -169,8 +170,10 @@ class SubmitProcessor:
         input_files = []
         job_options = {}
         reader = await request.multipart()
+        print(f"@ reader={reader}")
         while True:
             part = await reader.next()
+            print(f"@ part={part}")
             if not part:
                 break
             if part.name.startswith("file_"):
