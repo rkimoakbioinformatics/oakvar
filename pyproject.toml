@@ -1,0 +1,3 @@
+[tool.vulture]
+paths = ["/mnt/d/Git/oakvar/oakvar", "/mnt/e/oakvar"]
+ignore_names = ["r_examples", "r_return", "row_factory"]
