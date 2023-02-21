@@ -84,7 +84,6 @@ def get_annotator(module_name, input_file=None):
         module = ModuleClass(input_file=input_file)
         module.annotator_name = module_name
         module.name = module_name
-        module.annotator_dir = os.path.dirname(module.script_path)
         module.data_dir = os.path.join(module.module_dir, "data")
         module.connect_db()
         module.setup()
@@ -136,80 +135,6 @@ def get_wgs_reader(assembly="hg38"):
         wgs = ModuleClass()
         wgs.setup()
     return wgs
-
-
-class LiveAnnotator:
-    def __init__(self, mapper="hg38", annotators=[]):
-        self.live_annotators = {}
-        self.load_live_modules(mapper, annotators)
-        self.variant_uid = 1
-        self.live_mapper = None
-
-    def load_live_modules(self, mapper, annotator_names):
-        from .lib.module.cache import get_module_cache
-
-        self.live_mapper = get_mapper(mapper)
-        for module_name in get_module_cache().local.keys():
-            if module_name in annotator_names:
-                module = get_module_cache().local[module_name]
-                if "secondary_inputs" in module.conf:
-                    continue
-                annotator = get_annotator(module.name)
-                if annotator is None:
-                    continue
-                self.live_annotators[module.name] = annotator
-
-    def clean_annot_dict(self, d):
-        keys = d.keys()
-        for key in keys:
-            value = d[key]
-            if value == "" or value == {}:
-                d[key] = None
-            elif type(value) is dict:
-                d[key] = self.clean_annot_dict(value)
-        if type(d) is dict:
-            all_none = True
-            for key in keys:
-                if d[key] is not None:
-                    all_none = False
-                    break
-            if all_none:
-                d = None
-        return d
-
-    def annotate(self, crv):
-        from .lib.util.inout import AllMappingsParser
-        from .lib.consts import all_mappings_col_name
-
-        if "uid" not in crv:
-            crv["uid"] = self.variant_uid
-            self.variant_uid += 1
-        response = {}
-        crx_data = None
-        if self.live_mapper is not None:
-            crx_data = self.live_mapper.map(crv)
-            crx_data = self.live_mapper.live_report_substitute(crx_data)
-            crx_data["tmp_mapper"] = AllMappingsParser(crx_data[all_mappings_col_name])
-        for k, v in self.live_annotators.items():
-            try:
-                if crx_data is not None:
-                    annot_data = v.annotate(input_data=crx_data)
-                    annot_data = v.live_report_substitute(annot_data)
-                    if annot_data == "" or annot_data == {}:
-                        annot_data = None
-                    elif type(annot_data) is dict:
-                        annot_data = self.clean_annot_dict(annot_data)
-                    response[k] = annot_data
-            except Exception as _:
-                import traceback
-
-                traceback.print_exc()
-                response[k] = None
-        if crx_data is not None and "tmp_mapper" in crx_data:
-            del crx_data["tmp_mapper"]
-        if crx_data is not None:
-            response["base"] = crx_data
-        return response
 
 
 wgs = None

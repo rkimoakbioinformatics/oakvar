@@ -1,6 +1,5 @@
 from typing import Optional
 
-job_statuses = {}
 servermode = None
 
 

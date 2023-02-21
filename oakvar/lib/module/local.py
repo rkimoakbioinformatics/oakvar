@@ -27,12 +27,9 @@ class LocalModule(object):
             else:
                 self.exists = False
         self.data_dir = dir_path / "data"
-        self.data_dir_exists = self.data_dir.exists()
-        self.has_data = self.data_dir_exists and len(list(self.data_dir.iterdir())) > 0
         self.test_dir = dir_path / "test"
         self.test_dir_exists = self.test_dir.is_dir()
         self.tests = self.get_tests()
-        self.has_test = len(self.tests) > 0
         self.readme_path = self.directory / (self.name + ".md")
         self.readme_exists = self.readme_path.exists()
         if self.readme_exists:
@@ -74,7 +71,6 @@ class LocalModule(object):
         self.data_size = None
         self.tags = self.conf.get("tags", [])
         self.data_source = str(self.conf.get("datasource", ""))
-        self.smartfilters = self.conf.get("smartfilters")
         self.groups = self.conf.get("groups", [])
         self.installed = True
         self.local_code_version = self.code_version
@@ -182,17 +178,6 @@ def get_local_module_info_by_name(module_name) -> Optional[LocalModule]:
     return get_local_module_info(module_name)
 
 
-def get_local_reporter_module_infos_by_names(module_names):
-    modules = {}
-    for module_name in module_names:
-        if not module_name.endswith("reporter"):
-            module_name += "reporter"
-        module = get_local_module_info(module_name)
-        if module is not None:
-            modules[module.name] = module
-    return modules
-
-
 def get_local_module_infos_of_type(t, update=False):
     from .cache import get_module_cache
 
@@ -203,55 +188,6 @@ def get_local_module_infos_of_type(t, update=False):
         if get_module_cache().get_local()[module_name].type == t:
             modules[module_name] = get_module_cache().get_local()[module_name]
     return modules
-
-
-def get_local_module_types():
-    from .cache import get_module_cache
-
-    types = []
-    for module in get_module_cache().get_local():
-        if get_module_cache().get_local()[module].type not in types:
-            types.append(get_module_cache().get_local()[module].type)
-    return types
-
-
-def get_annotator_dir(module_name):
-    import os
-    from ..system import get_modules_dir
-
-    modules_dir = get_modules_dir()
-    if not modules_dir:
-        return None
-    module_dir = os.path.join(modules_dir, "annotators", module_name)
-    if os.path.exists(module_dir) == False:
-        module_dir = None
-    return module_dir
-
-
-def get_annotator_script_path(module_name):
-    import os
-    from ..system import get_modules_dir
-
-    modules_dir = get_modules_dir()
-    assert modules_dir is not None
-    module_path = os.path.join(
-        modules_dir, "annotators", module_name, module_name + ".py"
-    )
-    if os.path.exists(module_path) == False:
-        module_path = None
-    return module_path
-
-
-def get_mapper_script_path(module_name):
-    import os
-    from ..system import get_modules_dir
-
-    modules_dir = get_modules_dir()
-    assert modules_dir is not None
-    module_path = os.path.join(modules_dir, "mappers", module_name, module_name + ".py")
-    if os.path.exists(module_path) == False:
-        module_path = None
-    return module_path
 
 
 def get_module_code_version(
@@ -315,13 +251,6 @@ def get_module_dir(module_name: str, module_type: str = "") -> Optional[Path]:
                 if module_fn.name == module_name:
                     return module_fn
     return None
-
-
-def get_module_data_dir(module_name, module_type: str = "") -> Optional[Path]:
-    module_dir = get_module_dir(module_name, module_type=module_type)
-    if not module_dir:
-        return None
-    return module_dir / "data"
 
 
 def get_module_conf(
@@ -499,14 +428,6 @@ def get_conf_path(module_name, module_type: str = "") -> Optional[Path]:
         if conf_path.exists():
             return conf_path
     return None
-
-
-def get_conf_str(module_name, module_type: str = "") -> Optional[str]:
-    conf_path = get_conf_path(module_name, module_type=module_type)
-    if not conf_path:
-        return None
-    with open(conf_path) as f:
-        return "\n".join(f.readlines())
 
 
 def get_conf(module_name, module_type: str = "") -> Optional[dict]:
@@ -698,15 +619,6 @@ def pack_module(
         pack_module_zip(module_name, "data", outdir=outdir, split=split, outer=outer)
 
 
-def get_default_mapper_name() -> Optional[str]:
-    from ..util.admin_util import get_user_conf
-
-    conf = get_user_conf()
-    if conf:
-        default_assembly = conf.get("default_mapper", None)
-        return default_assembly
-
-
 def load_modules(annotators: list = [], mapper: Optional[str] = None, input_file=None):
     from ... import get_mapper
     from ... import get_annotator
@@ -736,38 +648,6 @@ def remove_code_part_of_module(module_name: str, module_dir=None):
                 rmtree(item_path)
             else:
                 remove(item_path)
-
-
-def get_temp_module_name():
-    from pathlib import Path
-    from random import randint
-    from oakvar.lib.system import get_modules_dir
-
-    modules_dir = get_modules_dir()
-    if not modules_dir:
-        return None
-    temp_dir = Path(modules_dir) / "temp"
-    if not temp_dir.exists():
-        return None
-    while True:
-        module_name = str(randint(0, 100000000))
-        module_dir = temp_dir / module_name
-        if not module_dir.exists():
-            return module_name
-
-
-def get_module_name_from_dir(d: Path):
-    from sys import stderr
-
-    py_files = d.glob("*.py")
-    yml_files = d.glob("*.yml")
-    py_stems = [p.stem for p in py_files]
-    yml_stems = [p.stem for p in yml_files]
-    common_stems = set(py_stems).intersection(set(yml_stems))
-    if len(common_stems) > 1:
-        stderr.write(f"multiple possible modules: {common_stems}\n")
-        return None
-    return list(common_stems)[0]
 
 
 def create_module_files(module, overwrite: bool = False, interactive: bool = False):

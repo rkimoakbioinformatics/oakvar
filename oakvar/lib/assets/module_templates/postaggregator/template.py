@@ -19,3 +19,6 @@ class PostAggregator(BasePostAggregator):
         assert input_data is not None
         out = {}
         return out
+
+
+_ = PostAggregator

@@ -268,25 +268,6 @@ def get_remote_module_info(module_name) -> Optional[RemoteModule]:
     return mc.remote[module_name]
 
 
-def get_remote_module_readme(module_name, version=None):
-    from .cache import get_module_cache
-
-    return get_module_cache().get_remote_readme(module_name, version=version)
-
-
-def get_remote_module_infos_of_type(t):
-    from .cache import get_module_cache
-
-    mic = get_module_cache()
-    if mic and mic.remote:
-        modules = {}
-        for module_name in mic.remote:
-            if mic.remote[module_name]["type"] == t:
-                modules[module_name] = mic.remote[module_name]
-        return modules
-    return None
-
-
 def make_remote_manifest():
     from ..store.db import get_manifest
     from ..consts import module_tag_desc

@@ -14,7 +14,6 @@ class InstallProgressHandler:
         self.module_version = module_version
         self.display_name = None
         self.cur_stage = None
-        self.install_state = None
         self.outer = outer
         if module_name:
             self._make_display_name()
@@ -33,10 +32,6 @@ class InstallProgressHandler:
 
     def stage_start(self, __stage__):
         pass
-
-    def set_module_version(self, module_version):
-        self.module_version = module_version
-        self._make_display_name()
 
     def _stage_msg(self, stage):
         from ..util.util import get_current_time_str
@@ -857,18 +852,19 @@ def install_module(
     #    signal.signal(signal.SIGINT, original_sigint)
 
 
-def uninstall_module(module_name, args={}):
+def uninstall_module(module_name, outer=None):
     import shutil
     from .local import get_local_module_info
     from .cache import get_module_cache
-    from ..util.util import quiet_print
 
     if not module_name in list_local():
-        quiet_print(f"{module_name} does not exist.", args=args)
+        if outer:
+            outer.write(f"{module_name} does not exist.")
         return False
     local_info = get_local_module_info(module_name)
     if not local_info:
-        quiet_print(f"{module_name} does not exist.", args=args)
+        if outer:
+            outer.write(f"{module_name} does not exist.")
         return False
     shutil.rmtree(local_info.directory)
     mc = get_module_cache()

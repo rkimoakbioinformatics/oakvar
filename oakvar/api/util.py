@@ -1,55 +1,55 @@
-def addjob(args, __name__="util addjob"):
-    from shutil import copyfile
-    from time import sleep
-    from datetime import datetime
-    from ..lib.system import get_jobs_dir
-    from ..lib.consts import LOG_SUFFIX
+from typing import Optional
+from typing import List
 
-    dbpath = args.path
-    user = args.user
-    jobs_dir = get_jobs_dir()
-    user_dir = jobs_dir / user
-    if not user_dir.is_dir():
-        exit(f"User {user} not found")
-    attempts = 0
-    while (
-        True
-    ):  # TODO this will currently overwrite if called in parallel. is_dir check and creation is not atomic
-        job_id = datetime.now().strftime(r"%y%m%d-%H%M%S")
-        job_dir = user_dir / job_id
-        if not job_dir.is_dir():
-            break
-        else:
-            attempts += 1
-            sleep(1)
-        if attempts >= 5:
-            exit(
-                "Could not acquire a job id. Too many concurrent job submissions. Wait, or reduce submission frequency."
-            )
-    job_dir.mkdir()
-    new_dbpath = job_dir / dbpath.name
-    copyfile(dbpath, new_dbpath)
-    log_path = dbpath.with_suffix(LOG_SUFFIX)
-    if log_path.exists():
-        copyfile(log_path, job_dir / log_path.name)
-    err_path = dbpath.with_suffix(".err")
-    if err_path.exists():
-        copyfile(err_path, job_dir / err_path.name)
-    return True
+# def addjob(args, __name__="util addjob"):
+#    from shutil import copyfile
+#    from time import sleep
+#    from datetime import datetime
+#    from ..lib.system import get_jobs_dir
+#    from ..lib.consts import LOG_SUFFIX
+#
+#    dbpath = args.path
+#    user = args.user
+#    jobs_dir = get_jobs_dir()
+#    user_dir = jobs_dir / user
+#    if not user_dir.is_dir():
+#        exit(f"User {user} not found")
+#    attempts = 0
+#    while (
+#        True
+#    ):  # TODO this will currently overwrite if called in parallel. is_dir check and creation is not atomic
+#        job_id = datetime.now().strftime(r"%y%m%d-%H%M%S")
+#        job_dir = user_dir / job_id
+#        if not job_dir.is_dir():
+#            break
+#        else:
+#            attempts += 1
+#            sleep(1)
+#        if attempts >= 5:
+#            exit(
+#                "Could not acquire a job id. Too many concurrent job submissions. Wait, or reduce submission frequency."
+#            )
+#    job_dir.mkdir()
+#    new_dbpath = job_dir / dbpath.name
+#    copyfile(dbpath, new_dbpath)
+#    log_path = dbpath.with_suffix(LOG_SUFFIX)
+#    if log_path.exists():
+#        copyfile(log_path, job_dir / log_path.name)
+#    err_path = dbpath.with_suffix(".err")
+#    if err_path.exists():
+#        copyfile(err_path, job_dir / err_path.name)
+#    return True
 
 
 def variant_id(chrom, pos, ref, alt):
     return chrom + str(pos) + ref + alt
 
 
-def get_sqliteinfo(args):
+def get_sqliteinfo(fmt: str = "json", outer=None, dbpaths: List[str] = []):
     import sqlite3
     from json import loads
     from oyaml import dump
 
-    fmt = args["fmt"]
-    to = args["to"]
-    dbpaths = args["paths"]
     width_colname = 30
     width_coltitle = 40
     ret_list = []
@@ -63,15 +63,25 @@ def get_sqliteinfo(args):
         conn = sqlite3.connect(dbpath)
         c = conn.cursor()
         c.execute('select colval from info where colkey="_input_paths"')
-        input_paths = loads(c.fetchone()[0].replace("'", '"'))
+        ret = c.fetchone()
+        if not ret:
+            c.execute('select colval from info where colkey="inputs"')
+            ret = c.fetchone()
+        input_paths = loads(ret[0].replace("'", '"'))
         if fmt == "text":
             s = f"\n# Input files:"
             ret_list.append(s)
-            for p in input_paths.values():
-                s = f"{p}"
-                ret_list.append(s)
+            if isinstance(input_paths, dict):
+                for p in input_paths.values():
+                    s = f"{p}"
+                    ret_list.append(s)
+            elif isinstance(input_paths, list):
+                ret_list.extend(input_paths)
         elif fmt in ["json", "yaml"]:
-            ret_dict["inputs"] = list(input_paths.values())
+            if isinstance(input_paths, dict):
+                ret_dict["inputs"] = list(input_paths.values())
+            elif isinstance(input_paths, list):
+                ret_dict["inputs"] = input_paths
         if fmt == "text":
             s = f"\n# Output columns"
             ret_list.append(s)
@@ -117,13 +127,13 @@ def get_sqliteinfo(args):
                 )
         c.close()
         conn.close()
-        if to == "stdout":
+        if outer:
             if fmt == "text":
-                print("\n".join(ret_list))
+                outer.write("\n".join(ret_list))
             elif fmt == "json":
-                print(ret_dict)
+                outer.write(ret_dict)
             elif fmt == "yaml":
-                print(dump(ret_dict, default_flow_style=False))
+                outer.write(dump(ret_dict, default_flow_style=False))
         else:
             if fmt == "text":
                 return ret_list
@@ -133,19 +143,17 @@ def get_sqliteinfo(args):
                 return dump(ret_dict, default_flow_style=False)
 
 
-def sqliteinfo(args, __name__="util sqliteinfo"):
-    return get_sqliteinfo(args)
+def sqliteinfo(dbpaths: List[str] = [], outer=None, fmt: str = "json"):
+    return get_sqliteinfo(dbpaths=dbpaths, outer=outer, fmt=fmt)
 
 
-def mergesqlite(args, __name__="util mergesqlite"):
+def mergesqlite(dbpaths: List[str] = [], outpath: str = ""):
     import sqlite3
     from json import loads, dumps
     from shutil import copy
 
-    dbpaths = args.path
     if len(dbpaths) < 2:
         exit("Multiple sqlite file paths should be given")
-    outpath = args.outpath
     if outpath.endswith(".sqlite") == False:
         outpath = outpath + ".sqlite"
     # Checks columns being the same.
@@ -276,11 +284,27 @@ def mergesqlite(args, __name__="util mergesqlite"):
     return True
 
 
-def filtersqlite(args, __name__="util filtersqlite"):
+def filtersqlite(
+    dbpaths: List[str] = [],
+    suffix: str = "filtered",
+    filterpath: Optional[str] = None,
+    filtersql: Optional[str] = None,
+    includesample: List[str] = [],
+    excludesample: List[str] = [],
+):
     from ..lib.util.asyn import get_event_loop
 
     loop = get_event_loop()
-    return loop.run_until_complete(filtersqlite_async(args))
+    return loop.run_until_complete(
+        filtersqlite_async(
+            dbpaths=dbpaths,
+            suffix=suffix,
+            filterpath=filterpath,
+            filtersql=filtersql,
+            includesample=includesample,
+            excludesample=excludesample,
+        )
+    )
 
 
 def filtersqlite_async_drop_copy_table(c, table_name):
@@ -289,18 +313,24 @@ def filtersqlite_async_drop_copy_table(c, table_name):
     c.execute(f"create table main.{table_name} as select * from old_db.{table_name}")
 
 
-async def filtersqlite_async(args):
+async def filtersqlite_async(
+    dbpaths: List[str] = [],
+    suffix: str = "filtered",
+    filterpath: Optional[str] = None,
+    filtersql: Optional[str] = None,
+    includesample: List[str] = [],
+    excludesample: List[str] = [],
+):
     import sqlite3
     from os import remove
     from os.path import exists
     from .. import ReportFilter
 
-    dbpaths = args["paths"]
     for dbpath in dbpaths:
         if not dbpath.endswith(".sqlite"):
             print(f"  Skipping")
             continue
-        opath = dbpath[:-7] + "." + args["suffix"] + ".sqlite"
+        opath = f"{dbpath[:-7]}.{suffix}.sqlite"
         print(f"{opath}")
         if exists(opath):
             remove(opath)
@@ -310,10 +340,10 @@ async def filtersqlite_async(args):
             c.execute("attach database '" + dbpath + "' as old_db")
             cf = await ReportFilter.create(
                 dbpath=dbpath,
-                filterpath=args["filterpath"],
-                filtersql=args["filtersql"],
-                includesample=args["includesample"],
-                excludesample=args["excludesample"],
+                filterpath=filterpath,
+                filtersql=filtersql,
+                includesample=includesample,
+                excludesample=excludesample,
             )
             await cf.exec_db(cf.loadfilter)
             if (
@@ -326,7 +356,6 @@ async def filtersqlite_async(args):
                 raise FilterLoadingError()
             for table_name in [
                 "info",
-                "smartfilters",
                 "viewersetup",
                 "variant_annotator",
                 "variant_header",

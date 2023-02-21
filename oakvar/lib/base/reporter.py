@@ -67,15 +67,12 @@ class BaseReporter:
         self.serveradmindb = serveradmindb
         self.outer = outer
         self.cf = None
-        self.filtertable = "filter"
         self.colinfo = {}
         self.colnos = {}
         self.var_added_cols = []
         self.summarizing_modules = []
         self.columngroups = {}
         self.column_subs = {}
-        self.column_sub_allow_partial_match = {}
-        self.colname_conversion = {}
         self.warning_msgs = []
         self.colnames_to_display = {}
         self.cols_to_display = {}
@@ -87,7 +84,6 @@ class BaseReporter:
         self.conf = None
         self.module_conf = None
         self.output_basename = None
-        self.status_fpath = None
         self.extract_columns_multilevel = {}
         self.logger = None
         self.error_logger = None
@@ -100,17 +96,6 @@ class BaseReporter:
         self.gene_summary_datas = {}
         self.total_norows: Optional[int] = None
         self.legacy_samples_col = False
-        self.priority_colgroupnames = (get_user_conf() or {}).get(
-            "report_module_order",
-            [
-                "base",
-                "tagsampler",
-                "gencode",
-                "hg38",
-                "hg19",
-                "hg18",
-            ],
-        )
         self.modules_to_add_to_base = []
         self.check_and_setup_args()
         self._setup_logger()
@@ -473,13 +458,8 @@ class BaseReporter:
         self.total_norows = await self.cf.exec_db(self.cf.get_ftable_num_rows, level=level, uid=self.ftable_uid, ftype=level)  # type: ignore
         if datacols is None or self.total_norows is None:
             return
-        self.sample_newcolno = None
         if level == "variant" and self.separatesample:
             self.write_variant_sample_separately = True
-            if self.legacy_samples_col:
-                self.sample_newcolno = self.colnos["variant"]["base__samples"]
-            else:
-                self.sample_newcolno = self.colnos["variant"]["tagsampler__samples"]
         else:
             self.write_variant_sample_separately = False
         datarows_iter = await self.cf.get_level_data_iterator(

@@ -13,7 +13,6 @@ VARIANT_LEVEL_MAPPED_FILE_SUFFIX = "." + VARIANT_LEVEL_KEY
 GENE_LEVEL_MAPPED_FILE_SUFFIX = "." + GENE_LEVEL_KEY
 SAMPLE_FILE_SUFFIX = "." + SAMPLE_LEVEL_KEY
 MAPPING_FILE_SUFFIX = "." + MAPPING_LEVEL_KEY
-LIFTOVER_FILE_SUFFIX = "." + LIFTOVER_LEVEL_KEY
 VARIANT_LEVEL_OUTPUT_SUFFIX = ".var"
 GENE_LEVEL_OUTPUT_SUFFIX = ".gen"
 crm_idx = [["uid"], ["tags"]]
@@ -21,8 +20,6 @@ crs_idx = [["uid"], ["sample_id"], ["sample_id", "uid"]]
 crv_idx = [["uid"]]
 crx_idx = [["uid"]]
 crg_idx = [["hugo"]]
-
-exit_codes = {"alreadycrv": 2, 2: "alreadycrv"}
 
 all_mappings_col_name = "all_mappings"
 mapping_parser_name = "mapping_parser"
@@ -32,8 +29,6 @@ GENE = 1
 LEVELS = {"variant": VARIANT, "gene": GENE}
 VARIANT_LEVEL = "variant"
 GENE_LEVEL = "gene"
-
-gene_level_so_exclude = ["2KU", "2KD"]
 
 module_tag_desc = {
     "allele frequency": "modules for studying allele frequency across populations",
@@ -56,7 +51,6 @@ module_tag_desc = {
     "visualization widgets": "modules for visualizing variants",
 }
 
-assembly_choices = ["hg38", "hg19", "hg18"]
 publish_time_fmt = "%Y-%m-%dT%H:%M:%S"
 install_tempdir_name = "temp"
 cannonical_chroms = ["chr" + str(n) for n in range(1, 23)] + ["chrX", "chrY"]
@@ -71,7 +65,6 @@ ERROR_LOG_SUFFIX = ".err"
 
 JOB_STATUS_UPDATE_INTERVAL = 10  # seconds
 JOB_STATUS_FINISHED = "Finished"
-JOB_STATUS_ABORTED = "Abort"
 JOB_STATUS_ERROR = "Error"
 
 MODULE_OPTIONS_KEY = "module_options"

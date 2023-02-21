@@ -28,7 +28,6 @@ class VCF2VCF:
             raise ModuleLoadingError(module_name=self.__module__)
         self.primary_input_path = None
         self.output_dir = ""
-        self.job_conf_path = None
         self.logger = None
         self.error_logger = None
         self.cmd_arg_parser = None
@@ -48,7 +47,6 @@ class VCF2VCF:
         self.output_dir = os.path.dirname(self.primary_input_path)
         if output_dir:
             self.output_dir = output_dir
-        self.job_conf_path = conf_path
         self.annotator_names = annotator_names
         self.mapper_name = mapper_name
         self.run_name = run_name

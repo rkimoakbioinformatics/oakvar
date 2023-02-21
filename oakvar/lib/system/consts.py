@@ -18,13 +18,11 @@ cache_dirs = ["readme", "logo", "conf"]
 sys_conf_fname = "system.yml"
 user_conf_fname = "oakvar.yml"
 user_dir_fname = ".oakvar"
-live_conf_fname = "live.yml"
 
 #
 # system conf keys
 #
 sys_conf_path_key = "sys_conf_path"
-user_conf_path_key = "user_conf_path"
 root_dir_key = "root_dir"
 conf_dir_key = "conf_dir"
 jobs_dir_key = "jobs_dir"
@@ -40,11 +38,7 @@ report_filter_max_num_cache_per_user_key = "report_filter_max_num_cache_per_user
 #
 # default system conf values
 #
-default_num_input_line_warning_cutoff = 25000
-default_gui_input_size_limit = 500
 DEFAULT_MAX_NUM_CONCURRENT_JOBS = 4
-default_max_num_concurrent_modules_per_job = 1
-default_multicore_mapper_mode = True
 default_gui_port = 8080
 default_gui_port_ssl = 8443
 default_assembly = "hg38"
@@ -55,9 +49,6 @@ DEFAULT_REPORT_FILTER_MAX_NUM_CACHE_PER_USER = 20
 # Server
 #
 DEFAULT_SERVER_DEFAULT_USERNAME = "default"
-DEFAULT_SERVER_ADMIN_PW = "admin"
-server_admin_pw_key = "server_admin_pw"
-server_default_username_key = "server_default_username"
 ADMIN_ROLE = "admin"
 USER_ROLE = "user"
 ADMIN_DB_FN = "server.sqlite"

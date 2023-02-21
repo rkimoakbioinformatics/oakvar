@@ -1,8 +1,3 @@
-oc_store_url = "https://store.opencravat.org"
-oc_publish_url = "https://publish.opencravat.org"
-oc_store_module_url = oc_store_url + "/modules"
-oc_manifest_url = oc_store_url + "/manifest.yml"
-oc_manifest_fn = "oc_manifest.yml"
 OV_STORE_EMAIL_KEY = "ov_store_email"
 OV_STORE_PW_KEY = "ov_store_pw"
 ov_store_cache_fn = "store.sqlite"

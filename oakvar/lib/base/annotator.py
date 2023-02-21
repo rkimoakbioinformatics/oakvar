@@ -74,7 +74,6 @@ class BaseAnnotator(object):
             self.main_fpath = Path(fp).resolve()
         self.secondary_paths = {}
         self.output_basename = None
-        self.job_conf_path = None
         self.logger = None
         self.error_logger = None
         self.dbconn = None
@@ -98,14 +97,12 @@ class BaseAnnotator(object):
             if name:
                 self.module_name = name
                 self.module_dir = Path(os.getcwd()).absolute()
-                self.annotator_dir = Path(os.getcwd()).absolute()
             else:
                 raise ModuleLoadingError(msg="module_name argument should be given.")
             self.conf = module_conf.copy()
         else:
             self.module_name = self.main_fpath.stem
             self.module_dir = self.main_fpath.parent
-            self.annotator_dir = self.main_fpath.parent
             self.conf = get_module_conf(
                 self.module_name,
                 module_type=self.module_type,

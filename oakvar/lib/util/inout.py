@@ -33,7 +33,6 @@ class FileReader(BaseFile):
         self.annotator_name = ""
         self.annotator_displayname = ""
         self.annotator_version = ""
-        self.no_aggregate_cols = []
         self.index_columns = []
         self.report_substitution = None
         self.f = None
@@ -56,8 +55,6 @@ class FileReader(BaseFile):
                 self.annotator_displayname = l.split("=")[1]
             elif l.startswith("#version="):
                 self.annotator_version = l.split("=")[1]
-            elif l.startswith("#no_aggregate="):
-                self.no_aggregate_cols = l.split("=")[1].split(",")
             elif l.startswith("#index="):
                 cols = l.split("=")[1].split(",")
                 self.index_columns.append(cols)
@@ -262,9 +259,7 @@ class FileWriter(BaseFile):
         self.name_to_col_index = {}
         self.title_toks = []
         self.include_definition = include_definition
-        self.definition_written = False
         self.include_titles = include_titles
-        self.titles_written = False
         self.titles_prefix = titles_prefix
         self.add_columns(columns)
 
@@ -323,7 +318,6 @@ class FileWriter(BaseFile):
             self.write_meta_line(
                 "report_substitution", dumps(conf["report_substitution"])
             )
-        self.definition_written = True
         self.wf.flush()
 
     def write_input_paths(self, input_path_dict):
@@ -331,13 +325,6 @@ class FileWriter(BaseFile):
 
         s = "#input_paths={}\n".format(dumps(input_path_dict))
         self.wf.write(s)
-        self.wf.flush()
-
-    def write_titles(self):
-        self.prep_for_write()
-        title_line = self.titles_prefix + "\t".join(self.title_toks) + "\n"
-        self.wf.write(title_line)
-        self.titles_written = True
         self.wf.flush()
 
     def write_data(self, data):

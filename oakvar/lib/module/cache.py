@@ -44,9 +44,6 @@ class ModuleCache(object):
         self.remote = {}
         self.remote_ls = {}
         self.remote_readme = {}
-        self.remote_config = {}
-        self.download_counts = {}
-        self.remote_module_piece = {}
         self.update_local()
 
     def get_local(self):
@@ -113,33 +110,6 @@ class ModuleCache(object):
         readme = get_readme(module_name)
         self.remote_readme[module_name][version] = readme
         return readme
-
-    def get_remote_module_piece_url(self, module_name, kind, version=None):
-        import oyaml as yaml
-        from ..store import fetch_file_content_to_string
-        from ..store import get_module_urls
-
-        if (
-            kind in self.remote_module_piece
-            and module_name in self.remote_module_piece[kind]
-        ):
-            return self.remote_module_piece[kind][module_name]
-        url = get_module_urls(module_name, code_version=version)
-        if not url:
-            return None
-        content = yaml.safe_load(fetch_file_content_to_string(url))
-        if kind not in self.remote_module_piece:
-            self.remote_module_piece[kind] = {}
-        if module_name not in self.remote_module_piece[kind]:
-            self.remote_module_piece[kind][module_name] = content
-        return content
-
-
-def update_mic():
-    global module_cache
-    global custom_system_conf
-
-    module_cache = ModuleCache()
 
 
 def get_module_cache(fresh=False):

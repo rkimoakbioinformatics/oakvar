@@ -3,7 +3,6 @@ from typing import Optional
 
 class ExpectedException(Exception):
     halt = False
-    handled = False
     traceback = True
     msg = ""
     returncode = 1
@@ -11,11 +10,6 @@ class ExpectedException(Exception):
     def __init__(self, msg=""):
         self.msg = msg
         super().__init__(f"{msg}")
-
-
-class NormalExit(ExpectedException):
-    traceback = False
-    returncode = 0
 
 
 class NoGenomeException(ExpectedException):
@@ -35,7 +29,7 @@ class InvalidGenomeAssembly(ExpectedException):
 
 
 class InvalidData(ExpectedException):
-    nolog = True
+    pass
 
 
 class ConfigurationError(ExpectedException):
@@ -111,13 +105,6 @@ class ModuleNotExist(ExpectedException):
             super().__init__(f"module [{module_name}] does not exist.")
 
 
-class InvalidModule(ExpectedException):
-    traceback = False
-
-    def __init__(self, module_name):
-        super().__init__(f"module {module_name} is invalid.")
-
-
 class NoConverterFound(ExpectedException):
     traceback = False
     halt = True
@@ -160,20 +147,6 @@ class SystemMissingException(ExpectedException):
         super().__init__(msg)
 
 
-class NoModulesDir(ExpectedException):
-    traceback = False
-
-    def __init__(self):
-        super().__init__("no modules directory. Run `ov system setup` to setup.")
-
-
-class NoSystemModule(ExpectedException):
-    traceback = False
-
-    def __init__(self):
-        super().__init__("no system module. Run `ov system setup` to setup.")
-
-
 class IncompatibleResult(ExpectedException):
     traceback = False
 
@@ -192,32 +165,6 @@ class ModuleLoadingError(ExpectedException):
             super().__init__(msg=msg)
         else:
             super().__init__(msg=f"module loading error for {module_name}")
-
-
-class UnknownInputFormat(ExpectedException):
-    traceback = False
-    halt = True
-
-    def __init__(self, input_format):
-        super().__init__(
-            f"converter for {input_format} is not found. Please check if a converter is available for the format with `ov module ls -a -t converter`."
-        )
-
-
-class AbsentJobConf(ExpectedException):
-    traceback = False
-    halt = True
-
-    def __init__(self, job_conf_path):
-        super().__init__(f"{job_conf_path} does not exist.")
-
-
-class StoreIncorrectLogin(ExpectedException):
-    traceback = False
-    halt = True
-
-    def __init__(self):
-        super().__init__(f"store login is incorrect.")
 
 
 class StoreServerError(ExpectedException):
@@ -287,28 +234,9 @@ class IncompleteModuleError(ExpectedException):
             super().__init__(f"Incomplete module {module_name}")
 
 
-class ResultMissingMandatoryColumnError(ExpectedException):
-    traceback = False
-    halt = False
-
-    def __init__(self, dbpath, cols):
-        super().__init__(f"Error: {dbpath} lacks {cols}")
-
-
 class FilterLoadingError(ExpectedException):
     def __init__(self):
         super().__init__(f"filter loading error")
-
-
-class ParserError(ExpectedException):
-    traceback = True
-    halt = True
-
-    def __init__(self, module_name=None):
-        if module_name is not None:
-            super().__init__(f"parser loading error for {module_name}")
-        else:
-            super().__init__(f"parser loading error")
 
 
 class DatabaseConnectionError(ExpectedException):
@@ -355,14 +283,6 @@ class WrongInput(ExpectedException):
             super().__init__(f"wrong input")
 
 
-class NotAdmin(ExpectedException):
-    halt = False
-    traceback = False
-
-    def __init__(self):
-        super().__init__(f"No admin privilege")
-
-
 class ServerError(Exception):
     def __init__(self, msg: str = ""):
         import traceback
@@ -371,41 +291,6 @@ class ServerError(Exception):
 
 
 # store-related exceptions
-class ClientError(object):
-    code = 0
-    message = "Unspecified client error"
-
-
-class InvalidModuleName(ClientError):
-    code = 1
-    message = "Invalid module name"
-
-
-class InvalidVersionNumber(ClientError):
-    code = 2
-    message = "Invalid version number"
-
-
-class WrongDeveloper(ClientError):
-    code = 3
-    message = "Developer does not have permission to edit this module"
-
-
-class VersionDecrease(ClientError):
-    code = 5
-    message = "Version must increase"
-
-
-class EmailUnverified(ClientError):
-    code = 6
-    message = "Email address unverified. Check your email for instructions to verify your email address"
-
-
-class NoSuchModule(ClientError):
-    code = 7
-    message = "Module does not exist"
-
-
 class AuthorizationError(ExpectedException):
     traceback = False
     halt = True

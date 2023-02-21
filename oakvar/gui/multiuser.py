@@ -1,7 +1,6 @@
 serveradmindb = None
 logger = None
 servermode = False
-server_ready = False
 admindb_path = None
 
 

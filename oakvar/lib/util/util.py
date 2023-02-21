@@ -341,58 +341,6 @@ def humanize_bytes(num, binary=False):
     return "{quotient} {unit}".format(quotient=quot_str, unit=unit)
 
 
-def get_dict_from_namespace(n):
-    from types import SimpleNamespace
-    from argparse import Namespace
-
-    if type(n) == SimpleNamespace or type(n) == Namespace:
-        n = vars(n)
-    return n
-
-
-def quiet_print(msg, args=None, quiet=None):
-    from time import time
-    from .util import get_dict_from_namespace
-    from ...gui.consts import SYSTEM_STATE_SETUP_KEY
-    from ...gui.consts import SYSTEM_STATE_INSTALL_KEY
-    from ...gui.consts import SYSTEM_STATE_MESSAGE_KEY
-    from ...gui.consts import SYSTEM_MSG_KEY
-
-    args = get_dict_from_namespace(args)
-    if not args:
-        return
-    if quiet is None:
-        if args.get("quiet") is not None:
-            quiet = args.get("quiet")
-        else:
-            quiet = True
-    if quiet == False:
-        if args:
-            outfn = args.get("outfn", print)
-        else:
-            outfn = print
-        outfn(msg, flush=True)
-    system_worker_state = args.get("system_worker_state")
-    if system_worker_state is None:
-        return
-    msg_kind = args.get(SYSTEM_MSG_KEY)
-    if msg_kind == SYSTEM_STATE_SETUP_KEY:
-        system_worker_state[SYSTEM_STATE_SETUP_KEY][SYSTEM_MSG_KEY] = msg_kind
-        system_worker_state[SYSTEM_STATE_SETUP_KEY][SYSTEM_STATE_MESSAGE_KEY].append(
-            msg
-        )
-        system_worker_state[SYSTEM_STATE_SETUP_KEY]["update_time"] = time()
-    elif msg_kind == SYSTEM_STATE_INSTALL_KEY:
-        module_name = args.get("module_name")
-        system_worker_state[SYSTEM_STATE_SETUP_KEY][module_name][
-            SYSTEM_MSG_KEY
-        ] = msg_kind
-        system_worker_state[SYSTEM_STATE_SETUP_KEY][module_name][
-            SYSTEM_STATE_MESSAGE_KEY
-        ].append(msg)
-        system_worker_state[SYSTEM_STATE_SETUP_KEY][module_name]["update_time"] = time()
-
-
 def email_is_valid(email: Optional[str]) -> bool:
     from re import fullmatch
 
@@ -489,26 +437,6 @@ def get_unique_path(path: str):
     while p.exists():
         p = Path(f"{stem}_{count}{suffix}")
     return str(p)
-
-
-def yield_tabular_lines(l, col_spacing=2, indent=0):
-    if not l:
-        return
-    sl = []
-    n_toks = len(l[0])
-    max_lens = [0] * n_toks
-    for toks in l:
-        if len(toks) != n_toks:
-            raise RuntimeError("Inconsistent sub-list length")
-        stoks = [str(x) for x in toks]
-        sl.append(stoks)
-        stoks_len = [len(x) for x in stoks]
-        max_lens = [max(x) for x in zip(stoks_len, max_lens)]
-    for stoks in sl:
-        jline = " " * indent
-        for i, stok in enumerate(stoks):
-            jline += stok + " " * (max_lens[i] + col_spacing - len(stok))
-        yield jline
 
 
 def print_list_of_dict(l, outer=None):

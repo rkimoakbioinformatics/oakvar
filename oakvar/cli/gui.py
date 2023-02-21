@@ -85,7 +85,6 @@ def get_ssl_context(args={}):
 
 def main(url=None, args={}):
     from webbrowser import open as open_browser
-    from ..lib.util.util import quiet_print
     from ..lib.util.run import show_logo
     from ..gui.server import WebServer
     from ..gui.util import get_host_port
@@ -99,7 +98,7 @@ def main(url=None, args={}):
         )
         if logger:
             logger.info(msg)
-        quiet_print(msg, args)
+        print(msg)
         if url and not args.get("headless"):
             open_browser(url)
         return
@@ -108,8 +107,8 @@ def main(url=None, args={}):
     msg = f"OakVar Server is served at {host}:{port}"
     if logger:
         logger.info(msg)
-    quiet_print(msg, args=args)
-    quiet_print("(To quit: Press Ctrl-C or Ctrl-Break)", args=args)
+    print(msg)
+    print("(To quit: Press Ctrl-C or Ctrl-Break)")
     loop = get_event_loop()
     if args["ssl_enabled"]:
         args["ssl_context"] = get_ssl_context(args=args)

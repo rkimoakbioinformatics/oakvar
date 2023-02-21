@@ -4,7 +4,6 @@ from oakvar import BaseReporter
 class Reporter(BaseReporter):
     def __init__(self, *args, **kwargs):
         self.no_log = True
-        self.no_status_update = True
         self.levels_to_write = None
         self.data = {}
         self.keep_json_all_mapping = True

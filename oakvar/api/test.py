@@ -544,7 +544,6 @@ class Tester:
         self.log = open(self.log_path, "w", encoding="UTF-8")
         self.start_time = None
         self.end_time = None
-        self.failures = []
         self.test_passed = False
         self.report_type = "text"
 

@@ -61,13 +61,10 @@ class BaseMapper(object):
         self.logger = None
         self.error_logger = None
         self.unique_excs = []
-        self.written_primary_transc = None
         self.t = time()
         main_fpath = Path(sys.modules[self.__class__.__module__].__file__ or "")
         self.module_name = main_fpath.stem
         self.module_dir = main_fpath.parent
-        self.mapper_dir = self.module_dir
-        self.gene_sources = []
         self.gene_info = {}
         self.setup_logger()
         self.conf = get_module_conf(self.module_name, module_type="mapper")

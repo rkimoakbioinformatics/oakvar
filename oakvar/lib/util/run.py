@@ -40,17 +40,17 @@ def log_variant_exception(
         error_logger.error("\n[{:d}]{}\n({})\n#".format(lnum, line.rstrip(), str(e)))
 
 
-def print_log_handlers():
-    import logging
-
-    for k, v in logging.Logger.manager.loggerDict.items():
-        if "oakvar" in k:
-            print("+ [%s] {%s} " % (str.ljust(k, 20), str(v.__class__)[8:-2]))
-            if not isinstance(v, logging.PlaceHolder):
-                for h in v.handlers:
-                    print("     +++", str(h.__class__)[8:-2])
-                    for fld, val in h.__dict__.items():
-                        print("%s%s=%s" % ("   -", fld, val))
+# def print_log_handlers():
+#    import logging
+#
+#    for k, v in logging.Logger.manager.loggerDict.items():
+#        if "oakvar" in k:
+#            print("+ [%s] {%s} " % (str.ljust(k, 20), str(v.__class__)[8:-2]))
+#            if not isinstance(v, logging.PlaceHolder):
+#                for h in v.handlers:
+#                    print("     +++", str(h.__class__)[8:-2])
+#                    for fld, val in h.__dict__.items():
+#                        print("%s%s=%s" % ("   -", fld, val))
 
 
 def get_y_or_n():

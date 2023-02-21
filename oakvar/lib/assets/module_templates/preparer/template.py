@@ -7,3 +7,6 @@ class Preparer(BasePreparer):
 
     def postloop(self):
         pass
+
+
+_ = Preparer

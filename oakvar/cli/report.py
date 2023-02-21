@@ -9,7 +9,6 @@ def cli_report(args):
 
 @cli_func
 def report(args, __name__="report"):
-    from ..lib.util.util import quiet_print
     from ..api.report import report
 
     module_options = {}
@@ -18,14 +17,14 @@ def report(args, __name__="report"):
         for opt_str in module_option:
             toks = opt_str.split("=")
             if len(toks) != 2:
-                quiet_print(
+                print(
                     "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value.",
                     args,
                 )
                 continue
             k = toks[0]
             if k.count(".") != 1:
-                quiet_print(
+                print(
                     "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value.",
                     args,
                 )

@@ -24,31 +24,6 @@ def get_current_package_version():
     return version
 
 
-def get_default_assembly():
-    conf = get_user_conf()
-    if conf:
-        default_assembly = conf.get("default_assembly", None)
-        return default_assembly
-
-
-def get_last_assembly():
-    conf = get_user_conf()
-    if conf:
-        last_assembly = conf.get("last_assembly")
-        return last_assembly
-
-
-def get_latest_package_version():
-    """
-    Return latest oakvar version on pypi
-    """
-    all_vers = get_package_versions()
-    if all_vers:
-        return all_vers[-1]
-    else:
-        return None
-
-
 def get_package_versions():
     """
     Return available oakvar versions from pypi, sorted asc
@@ -72,34 +47,6 @@ def get_package_versions():
         return None
 
 
-def get_widgets_for_annotator(annotator_name, skip_installed=False):
-    from ..module.local import module_exists_local
-    from ..module.remote import get_remote_module_info
-    from ..module import list_remote
-    from ..module.cache import get_module_cache
-
-    linked_widgets = []
-    l = list_remote()
-    if not l:
-        return None
-    for widget_name in l:
-        widget_info = get_remote_module_info(widget_name)
-        if widget_info is not None and widget_info.type == "webviewerwidget":
-            widget_config = get_module_cache().get_remote_module_piece_url(
-                widget_name, "config"
-            )
-            if widget_config:
-                linked_annotator = widget_config.get("required_annotator")
-            else:
-                linked_annotator = None
-            if linked_annotator == annotator_name:
-                if skip_installed and module_exists_local(widget_name):
-                    continue
-                else:
-                    linked_widgets.append(widget_info)
-    return linked_widgets
-
-
 def input_formats():
     import os
     from ..system import get_modules_dir
@@ -114,13 +61,6 @@ def input_formats():
             if fn.endswith("-converter"):
                 formats.add(fn.split("-")[0])
     return formats
-
-
-def install_widgets_for_module(module_name):
-    from ..module import install_module
-
-    widget_name = "wg" + module_name
-    install_module(widget_name)
 
 
 def fn_new_exampleinput(d: str):
@@ -196,27 +136,11 @@ def set_user_conf_prop(key, val):
         wf.close()
 
 
-def set_jobs_dir(d):
-    from ..system import update_system_conf_file
-
-    update_system_conf_file({"jobs_dir": d})
-
-
 def oakvar_version():
     global pkg_version
     if not pkg_version:
         pkg_version = get_current_package_version()
     return pkg_version
-
-
-def write_user_conf(user_conf):
-    import oyaml as yaml
-    from ..system import get_user_conf_path
-
-    confpath = get_user_conf_path()
-    wf = open(confpath, "w")
-    yaml.dump(user_conf, wf, default_flow_style=False)
-    wf.close()
 
 
 def get_liftover_chain_paths():

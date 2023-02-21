@@ -4,31 +4,6 @@ from typing import Tuple
 from . import account as account
 
 
-def module_code_url(module_name: str, version=None) -> Optional[str]:
-    from requests import Session
-    from .account import get_current_id_token
-    from ...exceptions import AuthorizationError
-    from ...exceptions import StoreServerError
-
-    id_token = get_current_id_token()
-    if not id_token:
-        raise AuthorizationError()
-    s = Session()
-    s.headers["User-Agent"] = "oakvar"
-    url = get_store_url() + f"/code_url/{module_name}/{version}"
-    params = {"idToken": id_token}
-    res = s.post(url, json=params)
-    if res.status_code == 200:
-        code_url = res.text
-        return code_url
-    elif res.status_code == 401:
-        raise AuthorizationError()
-    elif res.status_code == 500:
-        raise StoreServerError()
-    else:
-        return None
-
-
 def module_data_url(module_name: str, version=None) -> Optional[str]:
     from requests import Session
     from .account import get_current_id_token
@@ -81,12 +56,6 @@ def url_is_valid(url: str) -> bool:
         return True
     else:
         return False
-
-
-def get_version_from_url(url: str):
-    basename = url.split("/")[-1]
-    words = basename.split("__")
-    return words[1]
 
 
 def get_register_args_of_module(
@@ -163,49 +132,6 @@ def get_register_args_of_module(
     return rmi
 
 
-def make_remote_module_info_from_local(module_name: str) -> Optional[dict]:
-    from ...module.local import get_local_module_info
-    from ...consts import publish_time_fmt
-    from datetime import datetime
-
-    mi = get_local_module_info(module_name)
-    if not mi:
-        return None
-    versions = {}
-    latest_version = ""
-    ty = mi.type
-    title = mi.title
-    description = mi.description
-    size = mi.size
-    code_size = 0
-    data_size = 0
-    datasource = mi.data_source
-    hidden = mi.conf.get("hidden", False)
-    developer = mi.developer
-    data_versions = {}
-    data_sources = {}
-    tags = mi.tags
-    publish_time = datetime.now().strftime(publish_time_fmt)
-    rmi = {
-        "versions": versions,
-        "latest_version": latest_version,
-        "type": ty,
-        "title": title,
-        "description": description,
-        "size": size,
-        "code_size": code_size,
-        "data_size": data_size,
-        "datasource": datasource,
-        "hidden": hidden,
-        "developer": developer,
-        "data_versions": data_versions,
-        "data_sources": data_sources,
-        "tags": tags,
-        "publish_time": publish_time,
-    }
-    return rmi
-
-
 def get_server_last_updated() -> Tuple[str, int]:
     from requests import Session
     from .account import get_current_id_token
@@ -220,25 +146,6 @@ def get_server_last_updated() -> Tuple[str, int]:
         return res.text, res.status_code
     server_last_updated = res.text
     return server_last_updated, res.status_code
-
-
-def make_module_info_from_table_row(row: dict) -> dict:
-    d = {
-        "name": row["name"],
-        "type": row["type"],
-        "code_version": row["code_version"],
-        "data_version": row["data_version"],
-        "tags": row["tags"],
-        "code_size": row["code_size"],
-        "data_size": row["data_size"],
-        "logo_url": row["logo_url"],
-        "description": row["description"],
-        "readme": row["readme"],
-        "logo": row["logo"],
-        "conf": row["conf"],
-        "store": row["store"],
-    }
-    return d
 
 
 def get_store_url() -> str:

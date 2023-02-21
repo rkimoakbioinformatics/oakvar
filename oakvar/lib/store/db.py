@@ -155,24 +155,6 @@ def module_sizes(
 
 
 @db_func
-def module_data_source(
-    module_name: str, code_version: str, conn=None, cursor=None
-) -> Optional[str]:
-    if not conn or not cursor:
-        return None
-    r = find_name_store(module_name)
-    if not r:
-        return None
-    name, store = r
-    q = f"select data_source from versions where name=? and store=? and code_version=?"
-    cursor.execute(q, (name, store, code_version))
-    r = cursor.fetchone()
-    if not r:
-        return None
-    return r[0]
-
-
-@db_func
 def remote_module_data_version(
     module_name: str, code_version: str, conn=None, cursor=None
 ) -> Optional[str]:
@@ -823,22 +805,6 @@ def get_urls(module_name: str, code_version: str, conn=None, cursor=None):
 
 
 @db_func
-def set_server_last_updated(args={}, conn=None, cursor=None):
-    from .consts import ov_store_last_updated_col
-    from ..consts import publish_time_fmt
-    from datetime import datetime
-
-    if not conn or not cursor:
-        return
-    if args:
-        pass
-    dt = datetime.now().strftime(publish_time_fmt)
-    q = f"insert or replace into info ( key, value ) values ( ?, ? )"
-    cursor.execute(q, (ov_store_last_updated_col, dt))
-    conn.commit()
-
-
-@db_func
 def table_has_entry(table: str, conn=Any, cursor=Any) -> bool:
     _ = conn or cursor
     q = f"select count(*) from {table}"
@@ -857,14 +823,3 @@ def check_tables(outer=None, conn=Any, cursor=Any) -> bool:
             return False
     return True
 
-
-@db_func
-def module_is_in_store(module_name: str, conn=Any, cursor=Any) -> bool:
-    _ = conn
-    q = f"select name from summary where name=?"
-    cursor.execute(q, (module_name,))
-    ret = cursor.fetchone()
-    if ret:
-        return True
-    else:
-        return False

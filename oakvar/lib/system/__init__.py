@@ -160,27 +160,6 @@ def show_no_user_account_prelude():
     )
 
 
-def show_invalid_account_prelude():
-    print(
-        f"""
-########################################################################
-#                                                                      #
-# An OakVar account was found in the user configuration, but           #
-# not in the server.                                                   #
-#                                                                      #
-# Please use `ov issue` to report if you believe that it is            #
-# the server's issue.                                                  #
-#                                                                      #
-# Otherwise, please enter an email address and a password to register. #
-#                                                                      #
-# It's free, is securely stored, and will be used only for             #
-# the operation and communication of OakVar.                           #
-#                                                                      #
-########################################################################
-"""
-    )
-
-
 def show_email_verify_action_banner(email: str):
     print(
         f"""
@@ -510,34 +489,6 @@ def get_system_conf(sys_conf_path=None, conf=None):
     return final_conf
 
 
-def show_system_conf(args):
-    from os.path import exists
-    from rich.console import Console
-    from rich.table import Table
-    from rich.box import SQUARE
-    from ..util.util import quiet_print
-
-    # args.setdefault("fmt", "json")
-    # args.setdefault("to", "return")
-    sys_conf_path = get_system_conf_path()
-    if not sys_conf_path or not exists(sys_conf_path):
-        return None
-    conf = get_system_conf()
-    if args.get("to") == "stdout":
-        if args.get("fmt") == "json":
-            quiet_print(conf, args=args)
-        else:
-            console = Console()
-            table = Table(title=conf.get("sys_conf_path"), box=SQUARE)
-            table.add_column("Key")
-            table.add_column("Value")
-            for k, v in conf.items():
-                table.add_row(k, str(v))
-            console.print(table)
-    else:
-        return conf
-
-
 def update_system_conf_file(d):
     from ..util.admin_util import recursive_update
 
@@ -723,37 +674,6 @@ def get_max_num_concurrent_modules_per_job():
     return value
 
 
-def get_system_conf_dir():
-    from os.path import dirname
-
-    path = get_system_conf_path()
-    if path:
-        return dirname(path)
-    else:
-        return None
-
-
-def copy_system_conf_template_if_absent(
-    sys_conf_path=None, sys_conf_template_path=None, quiet=False
-):
-    from os.path import exists, join, dirname
-    from os import makedirs
-    from shutil import copy
-    from .consts import sys_conf_fname
-    from ..util.admin_util import get_packagedir
-    from ..util.util import quiet_print
-
-    if sys_conf_path is None:
-        sys_conf_path = get_system_conf_path()
-    if sys_conf_path and not exists(sys_conf_path):
-        sys_conf_dir = dirname(sys_conf_path)
-        if not exists(sys_conf_dir):
-            makedirs(sys_conf_dir)
-        sys_conf_template_path = join(get_packagedir(), sys_conf_fname)
-        copy(sys_conf_template_path, sys_conf_path)
-        quiet_print(f"Created {sys_conf_path}", args={"quiet": quiet})
-
-
 def save_system_conf(conf: Dict):
     from .consts import sys_conf_path_key
     from oyaml import dump
@@ -769,19 +689,6 @@ def save_system_conf(conf: Dict):
     wf = open(sys_conf_path, "w")
     dump(conf, wf, default_flow_style=False)
     wf.close()
-
-
-def save_user_conf(user_conf):
-    from oyaml import dump
-    from os import makedirs
-    from os.path import exists
-
-    user_conf_dir = get_user_conf_dir()
-    user_conf_path = get_user_conf_path()
-    if not exists(user_conf_dir):
-        makedirs(user_conf_dir)
-    with open(user_conf_path, "w") as wf:
-        dump(user_conf, wf, default_flow_style=False)
 
 
 def get_system_conf_template_path():
@@ -806,17 +713,6 @@ def write_system_conf_file(d):
     if path:
         with open(path, "w") as wf:
             wf.write(dump(d, default_flow_style=False))
-
-
-def get_system_conf_info(conf=None, json=False):
-    from oyaml import dump
-
-    conf = get_system_conf(conf=conf)
-    if json:
-        content = conf
-    else:
-        content = dump(conf, default_flow_style=False)
-    return content
 
 
 def check_system_yml(outer=None) -> bool:

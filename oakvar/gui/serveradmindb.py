@@ -294,28 +294,6 @@ class ServerAdminDb:
         await cursor.close()
         await conn.close()
 
-    async def set_temp_password(self, email):
-        from hashlib import sha256
-        from random import randint
-
-        temppassword = "".join([chr(randint(97, 122)) for _ in range(8)])
-        m = sha256()
-        m.update(temppassword.encode("utf-16be"))
-        temppasswordhash = m.hexdigest()
-        conn = await self.get_db_conn()
-        if not conn:
-            return None
-        cursor = await conn.cursor()
-        await cursor.execute(
-            'update users set passwordhash="{}" where email="{}"'.format(
-                temppasswordhash, email
-            )
-        )
-        await conn.commit()
-        await cursor.close()
-        await conn.close()
-        return temppassword
-
     async def get_user_settings(self, username):
         from json import loads
 
@@ -362,21 +340,6 @@ class ServerAdminDb:
         conn.commit()
         cursor.close()
         conn.close()
-
-    async def write_single_api_access_count_to_db(self, t, count):
-        from time import strftime
-        from time import localtime
-
-        conn = await self.get_db_conn()
-        if not conn:
-            return
-        cursor = await conn.cursor()
-        ts = strftime("%Y-%m-%d %H:%M:%S", localtime(t))
-        q = f'insert into apilog values ("{ts}", {count})'
-        await cursor.execute(q)
-        await conn.commit()
-        await cursor.close()
-        await conn.close()
 
     @db_func
     async def get_job_status(self, uid=None, conn=Any, cursor=Any):

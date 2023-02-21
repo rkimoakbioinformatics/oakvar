@@ -5,7 +5,6 @@ from typing import Optional
 REPORT_FILTER_DB_NAME = "report_filter"
 REPORT_FILTER_DB_DIRNAME = "report_filters"
 REPORT_FILTER_REGISTRY_NAME = "registry"
-DEFAULT_FILTER_NAME = "default"
 SAMPLE_TO_FILTER_TABLE_NAME = "fsamplegiven"
 GENE_TO_FILTER_TABLE_NAME = "fgenegiven"
 REPORT_FILTER_IN_PROGRESS = "in_progress"
@@ -150,10 +149,10 @@ class ReportFilter:
     @classmethod
     async def create(
         cls,
-        dbpath=None,
-        filterpath=None,
-        filtername=None,
-        filterstring=None,
+        dbpath: Optional[str]=None,
+        filterpath: Optional[str]=None,
+        filtername: Optional[str]=None,
+        filterstring: Optional[str]=None,
         filter=None,
         mode="sub",
         filtersql=None,
@@ -203,7 +202,7 @@ class ReportFilter:
         else:
             self.stdout = False
         self.dbpath = dbpath
-        if self.dbpath:
+        if self.dbpath is not None:
             self.dbpath = str(Path(dbpath).absolute())
         self.conn = None
         self.filterpath = filterpath
@@ -225,9 +224,6 @@ class ReportFilter:
                 self.filtername = filtername
             elif filterpath != None:
                 self.filterpath = filterpath
-        self.filtertable = "filter"
-        self.generows = {}
-        self.table_aliases = None
         self.uid = uid
         self.user = self.escape_user(user)
 

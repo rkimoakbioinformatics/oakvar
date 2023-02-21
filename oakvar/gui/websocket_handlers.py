@@ -107,34 +107,8 @@ class WebSocketHandlers:
                 )
         return last_msg_id
 
-    async def process_install_state(self, ws=None):
-        from .consts import SYSTEM_STATE_INSTALL_KEY
-
-        if ws is None or not self.system_worker_state:
-            return
-        if SYSTEM_STATE_INSTALL_KEY not in self.system_worker_state:
-            return
-        install_datas = self.system_worker_state[SYSTEM_STATE_INSTALL_KEY]
-        for _, data in install_datas.items():
-            await ws.send_json(data)
-        await self.delete_done_install_states()
-
-    async def delete_done_install_states(self):
-        from .consts import SYSTEM_STATE_INSTALL_KEY
-
-        if SYSTEM_STATE_INSTALL_KEY not in self.system_worker_state:
-            return
-        install_datas: DictProxy = self.system_worker_state[SYSTEM_STATE_INSTALL_KEY]
-        to_del = []
-        for module_name, data in install_datas.items():
-            if data["stage"] in ["finish", "error", "skip", "killed"]:
-                to_del.append(module_name)
-        for module_name in to_del:
-            del install_datas[module_name]
-
     async def process_system_worker_state(self, ws=None, last_msg_id=0):
         if ws is None:
             return last_msg_id
         last_msg_id = await self.process_setup_state(ws=ws, last_msg_id=last_msg_id)
-        # await self.process_install_state(ws=ws, last_msg_id=last_msg_id)
         return last_msg_id

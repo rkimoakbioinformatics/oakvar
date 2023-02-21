@@ -20,13 +20,9 @@ class Runner(object):
             "postaggregator": 6,
             "reporter": 7,
         }
-        self.converter_ran = False
-        self.preparer_ran = False
         self.mapper_ran = False
         self.annotator_ran = False
         self.aggregator_ran = False
-        self.postaggregator_ran = False
-        self.reporter_ran = False
         self.annotators_to_run = {}
         self.done_annotators = {}
         self.info_json = None
@@ -38,7 +34,6 @@ class Runner(object):
         self.log_handler = None
         self.error_log_handler = None
         self.start_time = None
-        self.unique_logs = None
         self.manager = None
         self.result_path = None
         self.package_conf = {}
@@ -47,7 +42,6 @@ class Runner(object):
         self.run_conf = {}
         self.conf_path = None
         self.conf = {}
-        self.num_input = None
         self.first_non_url_input = None
         self.inputs: Optional[List[str]] = None
         self.run_name: Optional[List[str]] = None
@@ -75,11 +69,8 @@ class Runner(object):
         self.crg_present = False
         self.total_num_converted_variants = None
         self.total_num_valid_variants = None
-        self.error_lnum = None
         self.converter_format: Optional[List[str]] = None
         self.genemapper = None
-        self.ordered_summarizers = []
-        self.pythonpath = executable
         self.append_mode = []
         self.pipeinput = False
         self.exception = None
@@ -302,7 +293,6 @@ class Runner(object):
         self.get_logger(run_no)
         if not self.logger:
             return
-        self.unique_logs = {}
         self.logger.info(f'{" ".join(argv)}')
         self.logger.info("started: {0}".format(asctime(localtime(self.start_time))))
         if self.conf_path != "":
@@ -823,7 +813,6 @@ class Runner(object):
         self.remove_absent_inputs()
         if not self.inputs:
             raise NoInput()
-        self.num_input = len(self.inputs)
 
     def use_inputs_from_run_conf(self):
         if self.args and not self.args.inputs:
@@ -1636,7 +1625,6 @@ class Runner(object):
         ret = converter.run()
         self.total_num_converted_variants = ret.get("total_lnum")
         self.total_num_valid_variants = ret.get("write_lnum")
-        self.error_lnum = ret.get("error_lnum")
         self.converter_format = ret.get("input_format") or []
         genome_assembly: List[str] = ret.get("assemblies") or []
         self.genome_assemblies[run_no] = genome_assembly
@@ -2058,7 +2046,6 @@ class Runner(object):
         if not self.inputs or not self.args:
             raise
         step = "converter"
-        self.converter_ran = False
         if not self.should_run_step("converter"):
             return
         await self.log_time_of_func(self.run_converter, run_no, work=f"{step} step")
@@ -2067,15 +2054,12 @@ class Runner(object):
             update_status(msg, logger=self.logger, serveradmindb=self.serveradmindb)
             if self.logger:
                 self.logger.info(msg)
-        self.converter_ran = True
 
     async def do_step_preparer(self, run_no: int):
         step = "preparer"
-        self.preparer_ran = False
         if not self.should_run_step(step):
             return
         await self.log_time_of_func(self.run_preparers, run_no, work=f"{step} step")
-        self.preparer_ran = True
 
     async def do_step_mapper(self, run_no: int):
         step = "mapper"
@@ -2120,21 +2104,17 @@ class Runner(object):
 
     async def do_step_postaggregator(self, run_no: int):
         step = "postaggregator"
-        self.postaggregator_ran = False
         if self.should_run_step(step):
             await self.log_time_of_func(
                 self.run_postaggregators, run_no, work=f"{step} step"
             )
-            self.postaggregator_ran = True
 
     async def do_step_reporter(self, run_no: int):
         step = "reporter"
-        self.reporter_ran = False
         if self.should_run_step(step) and self.reporters:
             self.report_response = await self.log_time_of_func(
                 self.run_reporter, run_no, work=f"{step} step"
             )
-            self.reporter_ran = True
 
     async def log_time_of_func(self, func, *args, work="", **kwargs):
         from time import time

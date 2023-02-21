@@ -323,7 +323,7 @@ def uninstall(module_names: Optional[List[str]] = None, yes: bool = False, outer
         if not yn or yn.lower() != "y":
             return True
     for module_name in module_names:
-        uninstall_module(module_name)
+        uninstall_module(module_name, outer=outer)
     return True
 
 

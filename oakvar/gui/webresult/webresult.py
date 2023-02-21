@@ -10,7 +10,6 @@ import time
 
 wu = None
 logger = None
-server_ready = None
 default_gui_result_pagesize = 100000
 gui_result_pagesize_key = "gui_result_pagesize"
 servermode = None

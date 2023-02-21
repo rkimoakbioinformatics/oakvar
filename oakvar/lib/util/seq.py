@@ -268,44 +268,6 @@ def reverse_complement(bases):
     return "".join([complementary_base[base] for base in bases[::-1]])
 
 
-def switch_strand(bases, start_strand=None, dest_strand=None, pos=0):
-    rev_comp = reverse_complement(bases)
-    if start_strand == "-" or dest_strand == "+":
-        new_pos = pos + len(bases.replace("-", "")) - 1
-    elif start_strand == "+" or dest_strand == "-":
-        new_pos = pos - len(bases.replace("-", "")) + 1
-    else:
-        err_msg = "start_strand or dest_strand must be specified as + or -"
-        raise ValueError(err_msg)
-    return rev_comp, new_pos
-
-
-def aa_let_to_abbv(lets):
-    return "".join([aa_123[x] for x in lets])
-
-
-def aa_abbv_to_let(abbvs):
-    if type(abbvs) != str:
-        raise TypeError("Expected str not %s" % type(abbvs).__name__)
-    if len(abbvs) % 3 != 0:
-        raise ValueError("Must be evenly divisible by 3")
-    out = ""
-    for i in range(0, len(abbvs), 3):
-        abbv = abbvs[i].upper() + abbvs[i + 1 : i + 3].lower()
-        out += aa_321[abbv]
-    return out
-
-
-def translate_codon(bases, fallback=None):
-    if len(bases) != 3:
-        if fallback is None:
-            return KeyError(bases)
-        else:
-            return fallback
-    else:
-        return codon_table[bases]
-
-
 def get_lifter(source_assembly: str = "hg19", target_assembly: str = "hg38"):
     from pyliftover import LiftOver
     from ..util.admin_util import get_liftover_chain_paths

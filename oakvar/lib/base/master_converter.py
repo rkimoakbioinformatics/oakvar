@@ -11,8 +11,6 @@ STDIN = "stdin"
 
 class MasterConverter(object):
 
-    ALREADYCRV = 2
-
     def __init__(
         self,
         inputs: List[str] = [],
@@ -48,7 +46,6 @@ class MasterConverter(object):
         self.unique_excs: Dict[str, int] = {}
         self.err_holder = []
         self.wpath = None
-        self.err_path = None
         self.crm_path = None
         self.crs_path = None
         self.crl_path = None
@@ -409,14 +406,10 @@ class MasterConverter(object):
         self.crl_writer.write_names("original_input", "Original Input", "")
 
     def open_output_files(self):
-        from pathlib import Path
         from oakvar.lib.exceptions import SetupError
 
         if not self.output_base_fname or not self.output_dir:
             raise SetupError()
-        self.err_path = Path(self.output_dir) / (
-            self.output_base_fname + ".master_converter.err"
-        )
         self.setup_crv_writer()
         self.setup_crs_writer()
         self.setup_crm_writer()

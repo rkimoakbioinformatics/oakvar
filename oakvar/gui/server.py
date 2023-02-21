@@ -236,7 +236,6 @@ class WebServer(object):
         self.make_websocket_handlers()
 
     async def start(self):
-        global server_ready
         from aiohttp import web
         import aiohttp_cors
         from .system_message_db import get_system_message_db_conn
@@ -415,7 +414,7 @@ class TCPSitePatched(web_runner.BaseSite):
         await super().start()
         if self._runner.server is None:
             raise SetupError()
-        self._server = await self.loop.create_server(
+        _ = await self.loop.create_server(
             self._runner.server,
             self._host,
             self._port,

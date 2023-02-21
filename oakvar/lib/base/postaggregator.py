@@ -519,15 +519,6 @@ class BasePostAggregator(object):
             self._log_exception(e)
         self.error_logger = logging.getLogger("err." + self.module_name)
 
-    def columns_to_columns_str(self, columns):
-        return ",".join(columns)
-
-    def make_variant_level_query(self):
-        pass
-
-    def make_gene_level_query(self):
-        pass
-
     def make_default_query_components(self):
         from ..consts import VARIANT
         from ..consts import GENE
@@ -609,16 +600,6 @@ class BasePostAggregator(object):
             self.q_g = f"select {self.columns_g} from {self.from_g}"
             if self.where_g:
                 self.q_g += f" where {self.where_g}"
-
-    def add_variant_level_input_data(self, input_data: dict):
-        if not self.columns_v or not self.c_var or not self.q_v:
-            raise
-        for column_name in self.columns_v:
-            input_data[column_name] = []
-        self.c_var.execute(self.q_v, (input_data["base__hugo"],))
-        for var_row in self.c_var:
-            for i in range(len(var_row)):
-                input_data[self.c_var.description[i][0]].append(var_row[i])
 
     def get_column_names_of_table(self, table_name):
         assert self.dbconn is not None
