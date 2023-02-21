@@ -261,7 +261,7 @@ def get_default_logo_path() -> str:
     from pathlib import Path
 
     path = (
-        Path(__file__).parent.parent
+        Path(__file__).parent.parent.parent
         / "gui"
         / "webstore"
         / "images"

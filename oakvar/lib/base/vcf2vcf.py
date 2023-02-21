@@ -11,7 +11,6 @@ class VCF2VCF:
         inputs: List[str] = [],
         run_name: Optional[str] = None,
         output_dir: Optional[str] = None,
-        conf_path: Optional[str] = None,
         module_options: Optional[str] = None,
         annotator_names: List[str] = [],
         genome: Optional[str] = None,

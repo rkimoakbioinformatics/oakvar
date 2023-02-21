@@ -7,10 +7,9 @@ from .api import system as system
 from .api import store as store
 from .api.report import report
 from .api.run import run
-from . import api as api
 from .cli import __main__ as cli
+from . import lib
 from .lib import consts
-from .lib.exceptions import *
 from .lib.base.runner import Runner
 from .lib.base.converter import BaseConverter
 from .lib.base.master_converter import MasterConverter
@@ -138,6 +137,7 @@ def get_wgs_reader(assembly="hg38"):
 
 
 wgs = None
+_ = api or lib
 _ = admin_util or inout
 _ = (
     BaseConverter

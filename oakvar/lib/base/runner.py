@@ -8,7 +8,6 @@ from typing import Dict
 
 class Runner(object):
     def __init__(self, **kwargs):
-        from sys import executable
         from ..module.local import LocalModule
 
         self.runlevels = {

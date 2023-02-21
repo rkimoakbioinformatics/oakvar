@@ -1,6 +1,3 @@
-from multiprocessing.managers import DictProxy
-
-
 class WebSocketHandlers:
     def __init__(
         self, system_worker_state=None, wss={}, system_message_last_ids={}, logger=None

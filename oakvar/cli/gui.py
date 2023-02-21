@@ -107,7 +107,8 @@ def main(url=None, args={}):
     msg = f"OakVar Server is served at {host}:{port}"
     if logger:
         logger.info(msg)
-    print(msg)
+    else:
+        print(msg)
     print("(To quit: Press Ctrl-C or Ctrl-Break)")
     loop = get_event_loop()
     if args["ssl_enabled"]:

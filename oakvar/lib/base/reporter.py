@@ -34,7 +34,6 @@ class BaseReporter:
         serveradmindb=None,
         outer=None,
     ):
-        from ..util.admin_util import get_user_conf
         from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
 
         self.dbpath = dbpath

@@ -246,7 +246,8 @@ class WebServer(object):
             middlewares=[self.middleware],
             client_max_size=1024 * 1024 * 1024 * 1024,
         )
-        self.cors = aiohttp_cors.setup(self.app)  # type: ignore
+        options = {"*": aiohttp_cors.ResourceOptions()}
+        self.cors = aiohttp_cors.setup(self.app, defaults=options)
         self.system_message_db_conn = get_system_message_db_conn()
         clear_system_message_db(self.system_message_db_conn)
         self.make_shared_states()
@@ -325,7 +326,7 @@ class WebServer(object):
             self.cors.add(
                 resource,
                 {
-                    "*": ResourceOptions(
+                    "http://0.0.0.0:3000": ResourceOptions(
                         allow_credentials=True,
                         expose_headers="*",
                         allow_headers="*",

@@ -95,11 +95,14 @@ class StoreHandlers:
 
         queries = request.rel_url.query
         module = queries.get("module", None)
+        if not module:
+            return FileResponse(get_default_logo_path())
         module_info = get_module_cache().local[module]
         module_dir = module_info.directory
         logo_path = Path(module_dir) / "logo.png"
         if logo_path.exists():
-            return FileResponse(logo_path)
+            res = FileResponse(logo_path)
+            return res
         else:
             return FileResponse(get_default_logo_path())
 
