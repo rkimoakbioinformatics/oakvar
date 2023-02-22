@@ -12,6 +12,17 @@ def register(
     outer=None,
     error=None,
 ):
+    """register.
+
+    Args:
+        module_name (str): module_name
+        url_file (Optional[str]): url_file
+        code_url (List[str]): code_url
+        data_url (List[str]): data_url
+        overwrite (bool): overwrite
+        outer:
+        error:
+    """
     from ...lib.store.ov import register
 
     ret = register(
@@ -33,6 +44,18 @@ def fetch(
     publish_time: str = "",
     outer=None,
 ) -> bool:
+    """fetch.
+
+    Args:
+        refresh_db (bool): refresh_db
+        clean_cache_files (bool): clean_cache_files
+        clean (bool): clean
+        publish_time (str): publish_time
+        outer:
+
+    Returns:
+        bool:
+    """
     from ...lib.store.db import fetch_ov_store_cache
 
     ret = fetch_ov_store_cache(
@@ -46,6 +69,11 @@ def fetch(
 
 
 def url(outer=None):
+    """url.
+
+    Args:
+        outer:
+    """
     from ...lib.store import url
 
     ret = url(outer=outer)
@@ -60,6 +88,16 @@ def delete(
     outer=None,
     error=None,
 ):
+    """delete.
+
+    Args:
+        module_name (str): module_name
+        code_version (Optional[str]): code_version
+        all (bool): all
+        keep_only_latest (bool): keep_only_latest
+        outer:
+        error:
+    """
     from ...lib.store.ov import delete
     from ...lib.store.db import fetch_ov_store_cache
 
@@ -83,6 +121,15 @@ def login(
     relogin: bool = False,
     outer=None,
 ):
+    """login.
+
+    Args:
+        email (Optional[str]): email
+        pw (Optional[str]): pw
+        interactive (bool): interactive
+        relogin (bool): relogin
+        outer:
+    """
     from ...lib.store.ov.account import login
 
     ret = login(
@@ -92,6 +139,11 @@ def login(
 
 
 def logout(outer=None):
+    """logout.
+
+    Args:
+        outer:
+    """
     from ...lib.store.ov.account import logout
 
     ret = logout(outer=outer)

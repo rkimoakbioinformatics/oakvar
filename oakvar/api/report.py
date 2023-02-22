@@ -32,6 +32,37 @@ def report(
     outer=None,
     loop=None,
 ):
+    """report.
+
+    Args:
+        dbpath (str): dbpath
+        report_types (List[str]): report_types
+        filterpath (Optional[str]): filterpath
+        filter:
+        filtersql (Optional[str]): filtersql
+        filtername (Optional[str]): filtername
+        filterstring (Optional[str]): filterstring
+        savepath (Optional[str]): savepath
+        confpath (Optional[str]): confpath
+        module_name (Optional[str]): module_name
+        nogenelevelonvariantlevel (bool): nogenelevelonvariantlevel
+        inputfiles (Optional[List[str]]): inputfiles
+        separatesample (bool): separatesample
+        output_dir (Optional[str]): output_dir
+        system_option (List[str]): system_option
+        includesample (Optional[List[str]]): includesample
+        excludesample (Optional[List[str]]): excludesample
+        package (Optional[str]): package
+        modules_dir (Optional[str]): modules_dir
+        cols (Optional[List[str]]): cols
+        level (Optional[str]): level
+        user (Optional[str]): user
+        no_summary (bool): no_summary
+        serveradmindb:
+        module_options (Dict[str, Dict]): module_options
+        outer:
+        loop:
+    """
     from os.path import dirname
     from os.path import basename
     from os.path import join

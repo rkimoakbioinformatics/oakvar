@@ -14,6 +14,20 @@ def setup(
     outer=None,
     system_worker_state=None,
 ):
+    """setup.
+
+    Args:
+        clean (bool): clean
+        refresh_db (bool): refresh_db
+        clean_cache_files (bool): clean_cache_files
+        setup_file (Optional[str]): setup_file
+        email (Optional[str]): email
+        pw (Optional[str]): pw
+        publish_time (str): publish_time
+        custom_system_conf (Optional[Dict]): custom_system_conf
+        outer:
+        system_worker_state:
+    """
     from ..lib.system import setup_system
 
     return setup_system(
@@ -31,6 +45,11 @@ def setup(
 
 
 def md(directory: Optional[str] = None):
+    """md.
+
+    Args:
+        directory (Optional[str]): directory
+    """
     from ..lib.system import set_modules_dir, get_modules_dir
 
     if directory:
@@ -41,6 +60,11 @@ def md(directory: Optional[str] = None):
 
 
 def check(outer=None):
+    """check.
+
+    Args:
+        outer:
+    """
     from ..lib.system import check
 
     ret = check(outer=outer)

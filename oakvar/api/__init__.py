@@ -11,6 +11,7 @@ _ = issue or run or report or do_test or config or module or new or store
 
 
 def version():
+    """version."""
     from ..lib.util.admin_util import oakvar_version
 
     ret = oakvar_version()
@@ -18,6 +19,11 @@ def version():
 
 
 def handle_exception(e: Exception):
+    """handle_exception.
+
+    Args:
+        e (Exception): e
+    """
     from sys import stderr
     from traceback import print_exc
     from ..lib.exceptions import ExpectedException

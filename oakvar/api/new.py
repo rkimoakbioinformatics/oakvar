@@ -2,6 +2,12 @@ from typing import Optional
 
 
 def exampleinput(directory: Optional[str] = ".", outer=None):
+    """exampleinput.
+
+    Args:
+        directory (Optional[str]): directory
+        outer:
+    """
     from ..lib.util.admin_util import fn_new_exampleinput
 
     if not directory:
@@ -13,6 +19,12 @@ def exampleinput(directory: Optional[str] = ".", outer=None):
 
 
 def module(name: Optional[str] = None, type: Optional[str] = None):
+    """module.
+
+    Args:
+        name (Optional[str]): name
+        type (Optional[str]): type
+    """
     from ..lib.util.admin_util import create_new_module
     from ..lib.module.local import get_local_module_info
 

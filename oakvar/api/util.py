@@ -42,10 +42,25 @@ from typing import List
 
 
 def variant_id(chrom, pos, ref, alt):
+    """variant_id.
+
+    Args:
+        chrom:
+        pos:
+        ref:
+        alt:
+    """
     return chrom + str(pos) + ref + alt
 
 
 def get_sqliteinfo(fmt: str = "json", outer=None, dbpaths: List[str] = []):
+    """get_sqliteinfo.
+
+    Args:
+        fmt (str): fmt
+        outer:
+        dbpaths (List[str]): dbpaths
+    """
     import sqlite3
     from json import loads
     from oyaml import dump
@@ -144,10 +159,23 @@ def get_sqliteinfo(fmt: str = "json", outer=None, dbpaths: List[str] = []):
 
 
 def sqliteinfo(dbpaths: List[str] = [], outer=None, fmt: str = "json"):
+    """sqliteinfo.
+
+    Args:
+        dbpaths (List[str]): dbpaths
+        outer:
+        fmt (str): fmt
+    """
     return get_sqliteinfo(dbpaths=dbpaths, outer=outer, fmt=fmt)
 
 
 def mergesqlite(dbpaths: List[str] = [], outpath: str = ""):
+    """mergesqlite.
+
+    Args:
+        dbpaths (List[str]): dbpaths
+        outpath (str): outpath
+    """
     import sqlite3
     from json import loads, dumps
     from shutil import copy
@@ -292,6 +320,16 @@ def filtersqlite(
     includesample: List[str] = [],
     excludesample: List[str] = [],
 ):
+    """filtersqlite.
+
+    Args:
+        dbpaths (List[str]): dbpaths
+        suffix (str): suffix
+        filterpath (Optional[str]): filterpath
+        filtersql (Optional[str]): filtersql
+        includesample (List[str]): includesample
+        excludesample (List[str]): excludesample
+    """
     from ..lib.util.asyn import get_event_loop
 
     loop = get_event_loop()
@@ -308,6 +346,12 @@ def filtersqlite(
 
 
 def filtersqlite_async_drop_copy_table(c, table_name):
+    """filtersqlite_async_drop_copy_table.
+
+    Args:
+        c:
+        table_name:
+    """
     print(f"- {table_name}")
     c.execute(f"drop table if exists main.{table_name}")
     c.execute(f"create table main.{table_name} as select * from old_db.{table_name}")
@@ -321,6 +365,16 @@ async def filtersqlite_async(
     includesample: List[str] = [],
     excludesample: List[str] = [],
 ):
+    """filtersqlite_async.
+
+    Args:
+        dbpaths (List[str]): dbpaths
+        suffix (str): suffix
+        filterpath (Optional[str]): filterpath
+        filtersql (Optional[str]): filtersql
+        includesample (List[str]): includesample
+        excludesample (List[str]): excludesample
+    """
     import sqlite3
     from os import remove
     from os.path import exists

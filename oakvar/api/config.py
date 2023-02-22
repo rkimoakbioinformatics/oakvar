@@ -1,4 +1,5 @@
 def user():
+    """user."""
     from ..lib.util.admin_util import get_user_conf
 
     conf = get_user_conf()
@@ -6,6 +7,13 @@ def user():
 
 
 def system(key=None, value=None, type=None):
+    """system.
+
+    Args:
+        key:
+        value:
+        type:
+    """
     from ..lib.system import get_sys_conf_value
     from ..lib.system import set_sys_conf_value
     from ..lib.system import get_system_conf

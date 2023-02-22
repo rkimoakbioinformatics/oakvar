@@ -10,6 +10,15 @@ def pack(
     split: bool = False,
     outer=None,
 ):
+    """pack.
+
+    Args:
+        module_name (Optional[str]): module_name
+        outdir (Path): outdir
+        code_only (bool): code_only
+        split (bool): split
+        outer:
+    """
     from ...lib.module.local import pack_module
 
     if not module_name:
@@ -36,6 +45,18 @@ def ls(
     outer=None,
     **kwargs,
 ):
+    """ls.
+
+    Args:
+        module_names (List[str]): module_names
+        available (bool): available
+        types (List[str]): types
+        tags (List[str]): tags
+        nameonly (bool): nameonly
+        raw_bytes (bool): raw_bytes
+        outer:
+        kwargs:
+    """
     from .ls_logic import list_modules
     from ...lib.util.util import print_list_of_dict
 
@@ -54,6 +75,14 @@ def ls(
 
 
 def info(module_name: Optional[str] = None, local: bool = False, outer=None, **kwargs):
+    """info.
+
+    Args:
+        module_name (Optional[str]): module_name
+        local (bool): local
+        outer:
+        kwargs:
+    """
     from ...lib.module.local import get_local_module_info
     from ...lib.module.remote import get_remote_module_info
     from ...lib.module.local import LocalModule
@@ -158,6 +187,23 @@ def install(
     stage_handler=None,
     system_worker_state=None,
 ):
+    """install.
+
+    Args:
+        module_names (List[str]): module_names
+        urls (Optional[str]): urls
+        modules_dir (Optional[Path]): modules_dir
+        overwrite (bool): overwrite
+        clean (bool): clean
+        force_data (bool): force_data
+        yes (bool): yes
+        skip_dependencies (bool): skip_dependencies
+        skip_data (bool): skip_data
+        no_fetch (bool): no_fetch
+        outer:
+        stage_handler:
+        system_worker_state:
+    """
     import sys
     from .install_defs import get_modules_to_install
     from .install_defs import show_modules_to_install
@@ -255,6 +301,22 @@ def update(
     outer=None,
     system_worker_state=None,
 ):
+    """update.
+
+    Args:
+        module_name_patterns (List[str]): module_name_patterns
+        refresh_db (bool): refresh_db
+        clean_cache_files (bool): clean_cache_files
+        clean (bool): clean
+        publish_time (str): publish_time
+        no_fetch (bool): no_fetch
+        overwrite (bool): overwrite
+        force_data (bool): force_data
+        modules_dir (Optional[Path]): modules_dir
+        yes:
+        outer:
+        system_worker_state:
+    """
     from ...lib.module.local import search_local
     from ...lib.module import get_updatable
     from ...lib.store.db import try_fetch_ov_store_cache
@@ -301,6 +363,13 @@ def update(
 
 
 def uninstall(module_names: Optional[List[str]] = None, yes: bool = False, outer=None):
+    """uninstall.
+
+    Args:
+        module_names (Optional[List[str]]): module_names
+        yes (bool): yes
+        outer:
+    """
     from ...lib.module.local import search_local
     from ...lib.module import uninstall_module
     from ...lib.exceptions import ArgumentError
@@ -339,6 +408,20 @@ def installbase(
     outer=None,
     system_worker_state=None,
 ):
+    """installbase.
+
+    Args:
+        refresh_db (bool): refresh_db
+        clean_cache_files (bool): clean_cache_files
+        clean (bool): clean
+        publish_time (str): publish_time
+        no_fetch (bool): no_fetch
+        conf (Optional[dict]): conf
+        overwrite (bool): overwrite
+        modules_dir (Optional[Path]): modules_dir
+        outer:
+        system_worker_state:
+    """
     from ...lib.system import get_system_conf
     from ...lib.system.consts import base_modules_key
     from ...lib.store.db import try_fetch_ov_store_cache

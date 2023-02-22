@@ -49,6 +49,54 @@ def run(
     loop=None,
     outer=None,
 ):
+    """run.
+
+    Args:
+        inputs (List[str]): inputs
+        annotators (List[str]): annotators
+        annotators_replace (List[str]): annotators_replace
+        excludes (List[str]): excludes
+        run_name (List[str]): run_name
+        output_dir (List[str]): output_dir
+        startat (Optional[str]): startat
+        endat (Optional[str]): endat
+        skip (List[str]): skip
+        confpath (Optional[str]): confpath
+        conf (dict): conf
+        report_types (List[str]): report_types
+        genome (Optional[str]): genome
+        cleandb (bool): cleandb
+        newlog (bool): newlog
+        note (str): note
+        mp (Optional[int]): mp
+        keep_temp (bool): keep_temp
+        writeadmindb (bool): writeadmindb
+        job_name (Optional[List[str]]): job_name
+        separatesample (bool): separatesample
+        primary_transcript (List[str]): primary_transcript
+        clean (bool): clean
+        module_options (Dict): module_options
+        system_option (Dict): system_option
+        package (Optional[str]): package
+        filtersql (Optional[str]): filtersql
+        includesample (Optional[List[str]]): includesample
+        excludesample (Optional[List[str]]): excludesample
+        filter (Optional[str]): filter
+        filterpath (Optional[str]): filterpath
+        modules_dir (Optional[str]): modules_dir
+        preparers (List[str]): preparers
+        mapper_name (List[str]): mapper_name
+        postaggregators (List[str]): postaggregators
+        vcf2vcf (bool): vcf2vcf
+        logtofile (bool): logtofile
+        loglevel (str): loglevel
+        combine_input (bool): combine_input
+        input_format (Optional[str]): input_format
+        input_encoding (Optional[str]): input_encoding
+        uid (Optional[str]): uid
+        loop:
+        outer:
+    """
     from ..lib.base.runner import Runner
     from ..lib.util.asyn import get_event_loop
 

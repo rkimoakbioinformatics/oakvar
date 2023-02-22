@@ -8,6 +8,15 @@ def create(
     interactive: bool = False,
     outer=None,
 ):
+    """create.
+
+    Args:
+        email (Optional[str]): email
+        pw (Optional[str]): pw
+        pwconfirm (bool): pwconfirm
+        interactive (bool): interactive
+        outer:
+    """
     from ....lib.store.ov.account import create
 
     ret = create(
@@ -18,6 +27,11 @@ def create(
 
 
 def store_deleteaccount(outer=None):
+    """store_deleteaccount.
+
+    Args:
+        outer:
+    """
     from ....lib.store.ov.account import delete
 
     ret = delete(outer=outer)
@@ -25,6 +39,12 @@ def store_deleteaccount(outer=None):
 
 
 def change(newpw: Optional[str] = None, outer=None):
+    """change.
+
+    Args:
+        newpw (Optional[str]): newpw
+        outer:
+    """
     from ....lib.store.ov.account import change
 
     ret = change(newpw=newpw, outer=outer)
@@ -32,6 +52,12 @@ def change(newpw: Optional[str] = None, outer=None):
 
 
 def reset(email: Optional[str], outer=None):
+    """reset.
+
+    Args:
+        email (Optional[str]): email
+        outer:
+    """
     from ....lib.store.ov.account import reset
 
     ret = reset(email=email, outer=outer)
@@ -39,6 +65,11 @@ def reset(email: Optional[str], outer=None):
 
 
 def check(outer=None):
+    """check.
+
+    Args:
+        outer:
+    """
     from ....lib.store.ov.account import check_logged_in_with_token
 
     ret = check_logged_in_with_token(outer=outer)
@@ -52,6 +83,15 @@ def login(
     relogin: bool = False,
     outer=None,
 ):
+    """login.
+
+    Args:
+        email (Optional[str]): email
+        pw (Optional[str]): pw
+        interactive (bool): interactive
+        relogin (bool): relogin
+        outer:
+    """
     from ....lib.store.ov.account import login
 
     ret = login(
@@ -61,6 +101,11 @@ def login(
 
 
 def logout(outer=None):
+    """logout.
+
+    Args:
+        outer:
+    """
     from ....lib.store.ov.account import logout
 
     ret = logout(outer=outer)
