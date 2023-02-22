@@ -228,3 +228,11 @@ class MultiuserHandlers:
         admindb = await get_serveradmindb()
         role = await admindb.get_user_role_of_email(email, servermode=self.servermode)
         return role == ADMIN_ROLE
+
+    async def update_user_settings(self, request, d):
+        from .serveradmindb import get_serveradmindb
+        from .util import get_email_from_request
+
+        admindb = await get_serveradmindb()
+        email = get_email_from_request(request, self.servermode)
+        return await admindb.update_user_settings(email, d)

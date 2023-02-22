@@ -38,6 +38,10 @@ CravatReport = BaseReporter
 BaseReport = BaseReporter
 CravatFilter = ReportFilter
 constants = consts
+from .lib.exceptions import BadFormatError
+
+#
+
 stdouter = CliOuter()
 
 
@@ -138,6 +142,7 @@ def get_wgs_reader(assembly="hg38"):
 
 wgs = None
 _ = api or lib
+_ = BadFormatError
 _ = admin_util or inout
 _ = (
     BaseConverter

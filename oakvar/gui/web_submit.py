@@ -4,9 +4,9 @@ from pathlib import Path
 
 
 class Job(object):
-    def __init__(self, job_dir):
+    def __init__(self, job_dir: Path):
         self.info = {}
-        self.info["dir"] = job_dir
+        self.info["dir"] = str(job_dir)
         self.info["orig_input_fname"] = ""
         self.info["assembly"] = ""
         self.info["note"] = ""
@@ -38,7 +38,6 @@ class Job(object):
 class SubmitProcessor:
     def __init__(
         self,
-        request=None,
         loop=None,
         job_queue=None,
         logger=None,
@@ -47,7 +46,6 @@ class SubmitProcessor:
         info_of_running_jobs=None,
         email=None,
     ):
-        self.request = request
         self.loop = loop
         self.logger = logger
         self.job_queue = job_queue
@@ -56,13 +54,13 @@ class SubmitProcessor:
         self.info_of_running_jobs = info_of_running_jobs
         self.email = email
 
-    async def run(self):
+    async def run(self, request):
         from ..lib.system import get_user_jobs_dir
         from aiohttp.web import Response
         from aiohttp.web import json_response
 
         assert self.job_queue is not None
-        print(f"@ email={self.email}")
+        self.request = request
         jobs_dir = get_user_jobs_dir(self.email)
         if not jobs_dir:
             return Response(body="No jobs directory found", status=500)
@@ -169,18 +167,17 @@ class SubmitProcessor:
         job_options = {}
         input_files = []
         job_options = {}
+        chunk_size = 131072
         reader = await request.multipart()
-        print(f"@ reader={reader}")
         while True:
             part = await reader.next()
-            print(f"@ part={part}")
             if not part:
                 break
             if part.name.startswith("file_"):
                 input_files.append(part)
                 path = Path(job_dir) / part.filename
                 with open(path, "wb") as wf:
-                    chunk = await part.read_chunk()
+                    chunk = await part.read_chunk(size=chunk_size)
                     while chunk:
                         wf.write(chunk)
                         chunk = await part.read_chunk()
@@ -250,7 +247,7 @@ class SubmitProcessor:
         if job_name:
             submit_options["job_name"] = job_name
 
-    def get_job(self, submit_options: dict, job_dir: str):
+    def get_job(self, submit_options: dict, job_dir: Path):
         from datetime import datetime
         from pathlib import Path
 
@@ -285,7 +282,7 @@ class SubmitProcessor:
             raise ArgumentError(msg="run_name not found for {job_name}")
         job_options = submit_options.get("job_options", {})
         info_json = {}
-        info_json["job_dir"] = job_dir
+        info_json["job_dir"] = str(job_dir)
         info_json["job_name"] = job_name
         info_json["run_name"] = run_name
         info_json["assembly"] = job_options.get("genome")

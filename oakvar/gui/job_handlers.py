@@ -348,15 +348,15 @@ class JobHandlers:
         eud = await self.get_eud_from_request(request)
         email = eud.get("username")
         submit_processor = SubmitProcessor(
-            request=request,
             loop=self.loop,
             job_queue=self.job_queue,
             logger=self.logger,
             servermode=self.servermode,
             mu=self.mu,
+            info_of_running_jobs=self.info_of_running_jobs,
             email=email,
         )
-        ret = await submit_processor.run()
+        ret = await submit_processor.run(request)
         return ret
 
     async def get_jobs(self, request):
