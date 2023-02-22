@@ -12,7 +12,7 @@ wu = None
 logger = None
 default_gui_result_pagesize = 100000
 gui_result_pagesize_key = "gui_result_pagesize"
-servermode = None
+servermode = False
 
 
 async def get_nowg_annot_modules(_):

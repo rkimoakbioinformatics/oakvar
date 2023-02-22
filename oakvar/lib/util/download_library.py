@@ -377,6 +377,7 @@ def _get_ftp(
         # Callback lambda function that will be passed the downloaded data
         # chunk and will write it to file and update the progress bar
         mode = "ab" if initial_size > 0 else "wb"
+        t = time()
         with open(temp_file_name, mode) as local_file:
 
             def chunk_write(chunk):
@@ -387,16 +388,13 @@ def _get_ftp(
                     system_worker_state=system_worker_state, module_name=module_name
                 )
             data.retrbinary(down_cmd, chunk_write, blocksize=chunk_size)
-            if system_worker_state:
-                system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
-                    "cur_chunk"
-                ] += chunk_size
-                system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
-                    "total_chunk"
-                ] += chunk_size
-                system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
-                    "update_time"
-                ] = time()
+            if progress:
+                progress.update(chunk_size)
+            cur_size += chunk_size
+            if outer and time() - t > 1:
+                outer.write(
+                    f"download_{file_kind}:{module_name}:{cur_size}:{total_size}"
+                )
             data.close()
 
 
@@ -487,18 +485,6 @@ def _get_http(
                 outer.write(
                     f"download_{file_kind}:{module_name}:{cur_size}:{total_size}"
                 )
-            """
-            if system_worker_state:
-                system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
-                    "cur_chunk"
-                ] += read_size
-                system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
-                    "total_chunk"
-                ] += read_size
-                system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
-                    "update_time"
-                ] = time.time()
-            """
 
 
 def md5sum(fname, block_size=1048576):  # 2 ** 20

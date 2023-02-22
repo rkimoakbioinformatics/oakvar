@@ -692,18 +692,28 @@ def create_module_files(module, overwrite: bool = False, interactive: bool = Fal
     module_level: Optional[str] = getattr(module, "level", None)
     output_columns: Optional[dict] = getattr(module, "output_columns", None)
     if not module_name:
+        if interactive:
+            module_name = input("Module name:")
+    if not module_name:
         raise IncompleteModuleError(
             msg="name property does not exist in the module. Consider giving 'name' argument at initializing the module."
         )
+    if not module_title:
+        if interactive:
+            module_title = input("Module title:")
     if not module_title:
         raise IncompleteModuleError(
             msg="title property does not exist in the module. Consider giving 'title' argument at initializing the module."
         )
     if not module_type:
+        module_type = input("Module type:")
+    if not module_type:
         raise IncompleteModuleError(
             msg="module_type property does not exist in the module."
         )
     module_dir = modules_dir / (module_type + "s") / module_name
+    if not module_level:
+        module_level = input("Module level:")
     if not module_level:
         raise IncompleteModuleError(
             msg="title property does not exist in the module. Consider giving 'level' argument at initializing the module."

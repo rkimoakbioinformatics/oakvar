@@ -652,35 +652,6 @@ def install_module(
     from .local import get_module_data_version as local_module_data_version
     from ..system import get_modules_dir
 
-    # TODO: For testing. Remove the below code.
-    if False:
-        stage_handler = set_stage_handler(
-            module_name, stage_handler=stage_handler, version="1.0.0"
-        )
-        if outer and stage_handler:
-            import time
-
-            interval = 1
-            stage_handler.stage_start("start")
-            time.sleep(interval)
-            stage_handler.stage_start(f"download_code")
-            time.sleep(interval)
-            for i in range(0, 100, 25):
-                outer.write(f"download_code:{module_name}:{i}:{100}")
-                time.sleep(interval)
-            stage_handler.stage_start(f"extract_code")
-            time.sleep(interval)
-            stage_handler.stage_start(f"download_code")
-            time.sleep(interval)
-            for i in range(0, 100, 10):
-                outer.write(f"download_data:{module_name}:{i}:{100}")
-                time.sleep(interval)
-            stage_handler.stage_start(f"extract_data")
-            time.sleep(interval)
-            stage_handler.stage_start("finish")
-            time.sleep(interval)
-        return True
-    # End of TODO
     temp_dir = make_install_temp_dir(module_name=module_name, clean=clean)
     if not temp_dir:
         raise ModuleInstallationError("cannot make a temp module directory.")
