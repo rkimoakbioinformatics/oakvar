@@ -39,7 +39,9 @@ class ModuleDataCache:
             try:
                 self.conn = connect(str(self.path))
             except Exception:
-                print(f"Could not open module cache for {self.module_name}. Restarting the cache db.")
+                print(
+                    f"Could not open module cache for {self.module_name}. Restarting the cache db."
+                )
                 remove(self.path)
                 self.conn = connect(str(self.path))
         return self.conn
@@ -64,7 +66,7 @@ class ModuleDataCache:
             return
         key = key
         value = dumps(value)
-        q = f"insert into cache (k, v, timestamp) values (?, ?, ?)"
+        q = f"insert or replace into cache (k, v, timestamp) values (?, ?, ?)"
         ts = time.time()
         self.conn.execute(q, (key, value, ts))
         if not defer_commit:
