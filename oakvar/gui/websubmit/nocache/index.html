@@ -1,0 +1,699 @@
+<!doctype html>
+<meta charset="utf-8" />
+<html class="h-full">
+  <head>
+    <title>OakVar</title>
+    <script>
+      CLOSURE_NO_DEPS = true;
+    </script>
+    <link rel="shortcut icon" href='#'>
+    <link rel="icon" href="/submit/images/logo_only.png" />
+    <script src="/submit/js/jquery-3.3.1.min.js"></script>
+    <script src="/result/js/jquery-ui-1.12.1.custom/jquery-ui.min.js"></script>
+    <link rel='stylesheet' href='/result/js/jquery-ui-1.12.1.custom/jquery-ui.css' />
+    <script type='text/javascript' src='/submit/js/pqselect.dev.customforsubmit.js'></script>
+    <script src='/submit/js/Chart.bundle.min.js'></script>
+    <script src='/store/js/showdown-1.9.1.min.js'></script>
+    <script src="/submit/js/axios.min.js"></script>
+    <script src="/submit/js/firebase-app.js"></script>
+    <script src="/submit/js/firebase-auth.js"></script>
+    <script src="/submit/nocache/element_getters.js"></script>
+    <script src="/submit/nocache/select_modules.js"></script>
+    <script src="/submit/nocache/input.js"></script>
+    <script src="/submit/nocache/submit.js"></script>
+    <script src="/submit/nocache/alerts.js"></script>
+    <script src="/submit/nocache/showhide.js"></script>
+    <script src="/submit/nocache/jobstable.js"></script>
+    <script src="/submit/nocache/jobstable.js"></script>
+    <script src="/submit/nocache/util.js"></script>
+    <script src='/store/nocache/webstore.js'></script>
+    <script src="/submit/nocache/multiuser.js"></script>
+    <script src="/submit/nocache/websubmit.js"></script>
+    <link rel="stylesheet" href="/submit/nocache/websubmit.css">
+    <link rel="stylesheet" href="/store/nocache/webstore.css">
+    <link rel='stylesheet' href='/result/css/pqselect.min.css' />
+    <!-- tailwind css -->
+    <script src="/submit/js/tailwindcss.js"></script>
+    <link href="/submit/css/forms.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/result/fonts/Inter_Web/inter.css" />
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              clifford: '#da373d',
+            },
+          }
+        }
+      }
+    </script>
+    <style type="text/tailwindcss"> @layer components {
+      .tabhead {
+          @apply text-gray-600 hover:bg-gray-50 hover:text-gray-900 flex items-center px-2 py-2 text-sm font-medium rounded-md;
+      }
+      .tabhead.selected {
+          @apply bg-gray-200 text-gray-900;
+      }
+      .tabheadicon {
+          @apply text-gray-400 group-hover:text-gray-500 mr-3 flex-shrink-0 h-6 w-6;
+      }
+      .filter-category {
+        @apply text-gray-500 hover:text-gray-900 bg-white hover:bg-gray-100 rounded-md border border-transparent px-3 py-1.5 text-sm font-medium;
+      }
+      .filter-category.pinned {
+        @apply text-gray-900 bg-gray-100 hover:bg-gray-200;
+      }
+      .jobs-table-th {
+        @apply px-3 py-3.5 text-left text-sm font-semibold text-gray-900;
+      }
+      .jobs-table-td {
+        @apply px-3 py-4 text-sm text-gray-500 break-words;
+      }
+    }
+    </style>
+    <!-- end tailwind css -->
+    <script>
+      $(document).ready(function() {
+        websubmit_run().then(function(_) {})
+      });
+    </script>
+  </head>
+  <body class="h-full">
+    <div id="menu_div" class='menu1_container hidden'>
+      <div class='menu1' id='layout_menu' onclick="onClickMenu1(this);">
+        <div class='menu2_container hide shadow'>
+          <div class='menu2' id="save_layout_div" onclick="saveLayoutSettingAs(event);">Save as...</div>
+          <div class='menu2' id="load_layout_div" onclick="loadLayoutSettingAs(event);">Load... <div class='menu3' id='load_layout_select_div'></div>
+          </div>
+          <div class='menu2' onclick="deleteLayoutSettingAs(event);">Delete... <div class='menu3' id='delete_layout_select_div'></div>
+          </div>
+          <div class='menu2' onclick="renameLayoutSettingAs(event);">Rename... <div class='menu3' id='rename_layout_select_div'></div>
+          </div>
+          <div class='menu2' id='layout_columns_menu' style='display: none;' onclick="return; onClickColumnsMenu(event);">Columns... <div class='menu3 hoveron shadow' id='columns_showhide_select_div'></div>
+          </div>
+          <div class='menu2' id='layout_widgets_menu' style='display: none;' onclick="return; onClickWidgetsMenu(event);">Widgets... <div class='menu3 hoveron shadow' id='widgets_showhide_select_div'></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id='tabledetailmaxbuttondiv_submit' class="fixed top-2 right-2 flex flex-col">
+      <button title="Settings">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </button>
+      <div id="logdiv" class="flex flex-col">
+        <button onclick="sendPasswordResetEmail()" title="Reset password">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3" />
+          </svg>
+        </button>
+      </div>
+      <a href='https://docs.oakvar.com' target='_blank' title='Documentation'>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+        </svg>
+      </a>
+      <a href='mailto:rkim@oakbioinformatics.com?Subject=OakVar%20Feedback' title='Email feedback'>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+        </svg>
+      </a>
+    </div>
+    <!-- controls -->
+    <div>
+      <!-- Static sidebar for desktop -->
+      <div id="sidebar_static" class="hidden md:flex md:w-36 md:flex-col md:fixed md:inset-y-0">
+        <!-- Sidebar component, swap this element with another sidebar if you like -->
+        <div class="flex-1 flex flex-col min-h-0 border-r border-gray-200">
+          <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
+            <div class="flex items-center flex-shrink-0 px-4">
+              <img class="h-16 w-auto" src="/submit/images/logo_transparent_bw.png" alt="Workflow">
+            </div>
+            <nav class="mt-5 flex-1 px-2 space-y-1">
+              <a id="tabhead_submit" href="#" class="tabhead selected" onclick="changeTab(event)" value="submit">
+                <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg> Submit </a>
+              <a id="tabhead_jobs" href="#" class="tabhead" onclick="changeTab(event)" value="jobs">
+                <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                </svg> Jobs </a>
+              <a id="tabhead_store" href="#" class="tabhead" onclick="changeTab(event)" value="store">
+                <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                </svg> Store </a>
+              <a id="tabhead_apps" href="#" class="tabhead" onclick="changeTab(event)" value="apps">
+                <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                </svg> Apps </a>
+              <a id="tabhead_system" href="#" class="tabhead" onclick="changeTab(event)" value="system">
+                <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+                </svg> System </a>
+              <a id="tabhead_account" href="#" class="tabhead" onclick="changeTab(event)" value="account">
+                <svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                </svg> Account </a>
+            </nav>
+            <div id='verdiv' class="text-xs absolute left-4 bottom-2 text-gray-400">
+              <span class="text-xs">v</span>
+              <span class="curverspan text-xs"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- End of menu -->
+      <!-- Start of content -->
+      <div class="md:pl-36 flex flex-col flex-1">
+        <div class="sticky top-0 z-10 md:hidden pl-1 pt-1 sm:pl-3 sm:pt-3 bg-white">
+          <button type="button" class="-ml-0.5 -mt-0.5 h-12 w-12 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
+            <span class="sr-only">Open sidebar</span>
+            <!-- Heroicon name: outline/menu -->
+            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
+        <main class="flex-1">
+          <div class="">
+            <!--<div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">-->
+            <div class="mx-auto">
+              <!-- Replace with your content -->
+              <div>
+                <div id="tab_submit" class="tabcontent p-4 snap-y snap-mandatory h-screen overflow-y-auto">
+                  <div id='submit-variant-div' class='relative container flex gap-8 snap-center max-w-7xl h-[95vh] justify-center items-center'><!-- input variant panel -->
+                    <div id="input-div" class="w-[40rem] justify-center items-center">
+                      <div class="flex">
+                        <div id="assembly-select-panel" class="select-div relative inline-block text-left" value="">
+                          <div>
+                            <button onclick="onClickSelectBtn(event)" type="button" class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100" id="assembly-select-div" aria-expanded="true" aria-haspopup="true" title="Genome assembly"> Genome assembly <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                          </div>
+                          <div id="assembly-select" class="option-list hidden ease-in absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="menu-button" tabindex="-1">
+                            <div class="py-1" role="none">
+                              <!-- Active: "bg-gray-100 text-gray-900", Not Active: "text-gray-700" -->
+                              <a href="#" class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value="" onclick="onClickSelectItem(event)">auto</a>
+                              <a href="#" class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value="hg38" onclick="onClickSelectItem(event)">GRCh38/hg38</a>
+                              <a href="#" class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value="hg19" onclick="onClickSelectItem(event)">GRCh37/hg19</a>
+                              <a href="#" class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value="hg18" onclick="onClickSelectItem(event)">GRCh36/hg18</a>
+                            </div>
+                          </div>
+                        </div>
+                        <div id="input-format-select-panel" class="select-div relative inline-block text-left ml-6">
+                          <div>
+                            <button onclick="onClickSelectBtn(event)" type="button" class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100" id="input-format-select-div" aria-expanded="true" aria-haspopup="true" title="Format"> Format
+                              <!-- Heroicon name: mini/chevron-down -->
+                              <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                          </div>
+                          <div id="input-format-select" class="option-list hidden ease-in absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="menu-button" tabindex="-1">
+                            <div class="py-1" role="none">
+                              <!-- Active: "bg-gray-100 text-gray-900", Not Active: "text-gray-700" -->
+                              <a href="#" class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" onclick="onClickSelectItem(event)">auto</a>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="w-full flex items-center justify-center mt-1" ondragenter="onDragEnterInputFiles(event)" ondragover="onDragOverInputFiles(event)" ondragleave="onDragLeaveInputFiles(event)" ondrop="onDropInputFiles(event)">
+                        <label id="input-drop-area" for="input-file" class="flex items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-md cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
+                          <div id="input-upload-list-div" class="w-1/2 flex flex-col justify-center items-center p-2 relative hidden h-full bg-gray-50">
+                            <button id='clear_inputfilelist_button' class='text-gray-500 bg-neutral-200 hover:bg-neutral-300 p-1 w-16 rounded-md absolute top-1 left-1' onclick='clearInputUploadList()'>Clear</button>
+                            <div id="input-upload-list-wrapper" class="flex w-full overflow-auto h-[13rem] absolute bottom-1 bg-gray-50">
+                              <div id="input-upload-list" class="h-full overflow-auto"></div>
+                            </div>
+                          </div>
+                          <div id="input-drop-box" class="w-1/2">
+                            <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                              <svg class="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                              </svg>
+                              <p class="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                                <span class="font-semibold">Click to upload</span> or drag and drop input files
+                              </p><p class="text-gray-500 mb-2"> or </p><button class="mb-2 text-sm text-gray-500 dark:text-gray-400 bg-neutral-200 hover:bg-neutral-300 p-2 rounded-md" onclick="switchToInputPaste()">Enter variants</button>
+                            </div>
+                            <input type="file" name="input-file" id="input-file" multiple onchange="onInputFileChange(event)" />
+                          </div>
+                        </label>
+                        <div id="input-paste-area" class="hidden relative w-full h-64 border-2 border-gray-300 border-dashed rounded-md">
+                          <textarea id="input-text" class="font-mono border-0 bg-gray-50 text-gray-600 p-4 resize-none w-full h-full" onkeyup="onChangeInputText(event)" placeholder="Copy and paste or type input variants. VCF is supported. A quick and simple format is space-delimited one:
+
+chr1 9384934 + A T
+
+which is chromosome, position, strand, a reference allele, and an alternate allele.
+
+Alternatively, paths to input files in the server can be used as well. For example,
+
+/mnt/oakvar/input/sample/sample_1.vcf
+"></textarea>
+                          <div class="top-2 right-3 absolute cursor-pointer" onclick="switchToInputUpload()" title="Click to go back">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                              <path class="stroke-gray-400" stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                            </svg>
+                          </div>
+                          <div class="absolute bottom-1 right-1 text-gray-400 text-sm">
+                            <button value="cravat" class='p-1 text-gray-500 bg-neutral-200 hover:bg-neutral-300' onclick="inputExampleChangeHandler(event)">Try an example</button>
+                          </div>
+                        </div>
+                      </div>
+                      <div id="job-name-div" class="hidden mt-4">
+                        <textarea id="job-name" class="font-mono text-sm border-0 bg-gray-100 text-gray-600 p-4 resize-none rounded-md w-full " placeholder="(Optional) job name"></textarea>
+                      </div>
+                      <div id="submit-note-div" class="hidden mt-4">
+                        <textarea id="submit-note" class="font-mono text-sm border-0 bg-gray-100 text-gray-600 p-4 resize-none rounded-md w-full" placeholder="(Optional) note for this job"></textarea>
+                      </div>
+                      <div id="submit-job-button-div" class="mt-4 hidden">
+                        <button id="submit-job-button" type="button" class="inline-flex items-center h-12 rounded-md border border-transparent bg-indigo-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2" onclick="submit()">Annotate</button>
+                      </div>
+                    </div>
+                    <div id="report-choice-div" class="hidden w-[36rem] flex flex-col justify-center items-center">
+                      <div class="text-md text-gray-600">Select optional report files to generate.</div>
+                      <div id="report-choice-items" class="w-96 h-[28rem] grid gap-2 justify-center overflow-y-auto bg-gray-100 py-4 rounded-md"></div>
+                    </div>
+                    <!-- call to action for analysis modules -->
+                    <div id="cta-analysis-module-choice" class="absolute inset-x-0 bottom-0 pb-2 sm:pb-5 hidden cursor-pointer" onclick="onClickCtaAnalysisModuleChoice()">
+                      <div class="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
+                        <div class="rounded-lg bg-indigo-50 p-2 shadow-lg sm:p-3">
+                          <div class="flex flex-wrap items-center justify-between">
+                            <div class="flex w-0 flex-1 items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                                <path class="text-gray-500" stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
+                              </svg>
+                              <p class="ml-3 truncate font-medium text-gray-500 text-center">
+                                <span>Scroll down or click to select analysis modules</span>
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div><!-- input variant panel -->
+                  <div id='analysis-module-choice-div' class='container mt-6 mb-4 hidden snap-center flex justify-center max-w-7xl h-[95vh] max-w-7xl'><!-- module selection -->
+                    <div id="analysis-module-filter-div" class="bg-white p-4 rounded-md ml-4 mt-4 overflow-auto flex flex-col gap-8 text-gray-600 h-[95vh] w-full">
+                      <div id="analysis-module-div" class="grid grid-cols-12 gap-2" style="height: calc(95vh - 8rem);">
+                        <div class="analysis-module-filter-wrapper col-span-7">
+                          <div id="analysis-module-filter-kinds" class="w-full">
+                            <button class="filter-category pinned" role="filter-category" type="button" value="all" onclick="onChangeFilterCategoryRadio(event)">All</button>
+                            <button class="filter-category ml-2" role="filter-category" type="button" value="tags" onclick="onChangeFilterCategoryRadio(event)">Tags</button>
+                          </div>
+                          <div id="analysis-module-filter-panel-all" class="analysis-module-filter-panel w-full mt-4 overflow-auto hidden">
+                            <div id="search-filtered-modules-all" class="flex mb-2">
+                              <label for="search" class="sr-only">Search</label>
+                              <input type="text" name="search" class="block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mr-2" placeholder="Search">
+                              <button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Select all</button>
+                              <button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-2">Deselect all</button>
+                            </div>
+                            <div id="filtered-modules-all" class="filtered-modules-div overflow-auto pr-2 grid grid-cols-2 gap-1" style="height: calc(95vh - 8rem);"></div>
+                          </div>
+                          <div id="analysis-module-filter-panel-tags" class="analysis-module-filter-panel w-full mt-4 overflow-auto grid grid-cols-3 hidden">
+                            <div id="analysis-module-filter-items-tags" class="col-span-1 flex flex-col justify-center pl-1 overflow-y-auto" style="height: calc(95vh - 8rem);"></div>
+                            <div class="col-span-2">
+                              <div id="search-filtered-modules-all" class="flex mb-2">
+                                <label for="search" class="sr-only">Search</label>
+                                <input type="text" name="search" class="block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mr-2" placeholder="Search">
+                                <button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Select all</button>
+                                <button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-1">Deselect all</button>
+                              </div>
+                              <div id="filtered-modules-tags" class="filtered-modules-div overflow-auto pr-2 grid grid-cols-1 gap-1" style="height: calc(95vh - 8rem);"></div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="col-span-1 flex flex-col justify-center content-center items-center">
+                          <svg class="text-gray-400 w-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 8.25L21 12m0 0l-3.75 3.75M21 12H3" />
+                          </svg>
+                        </div>
+                        <div class="col-span-4">
+                          <div class="text-gray-600 bg-gray-100 rounded-md border border-transparent font-medium px-3 py-1.5 h-[34px] invisible">Selected analysis modules</div>
+                          <div id="search-filtered-modules-all" class="flex mb-2 mt-4">
+                            <button id="clear-selected-modules-btn" type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 h-[38px] invisible" onclick="onClickClearSelectedModulesBtn()">Clear</button>
+                          </div>
+                          <div id="selected-modules-div" class="overflow-auto p-2 bg-gray-100 rounded-md" style="height: calc(95vh - 8rem);"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div><!-- analysis module choice -->
+                </div>
+                <div id="tab_jobs" class="tabcontent px-6 hidden">
+<div>
+    <div class="flex bg-white px-4 pb-2 sm:px-6">
+      <div class="hidden sm:flex sm:flex-1 justify-end sm:items-center">
+        <div>
+          <nav class="isolate inline-flex rounded-md shadow-sm" aria-label="Pagination">
+            <a href="#" class="jobs-table-page-nav-btn relative inline-flex items-center rounded-l-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20" value="-1" onclick="onClickJobsTablePageNav(event)">
+              <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clip-rule="evenodd" />
+              </svg>
+            </a>
+            <!-- Current: "z-10 bg-indigo-50 border-indigo-500 text-indigo-600", Default: "bg-white border-gray-300 text-gray-500 hover:bg-gray-50" -->
+            <span id="jobs-table-pageno" aria-current="page" class="relative z-10 inline-flex items-center border bg-white border-gray-300 text-gray-500 px-4 py-2 text-sm font-medium focus:z-20" value="1">1</span>
+            <a href="#" class="jobs-table-page-nav-btn relative inline-flex items-center rounded-r-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20" value="1" onclick="onClickJobsTablePageNav(event)">
+              <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+              </svg>
+            </a>
+            <span class="relative inline-flex items-center border-gray-300 bg-white ml-4 px-2 py-2 text-sm font-medium text-gray-500">
+              Go to page
+            </span>
+            <input id="jobs-table-jump-pageno" type="text" class="relative inline-flex items-center rounded-md w-12 border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500" onkeyup="onKeyupJobsTablePageJumpBtn(event)" />
+            <a href="#" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20" onclick="onClickJobsTablePageJumpBtn()">
+              Go
+            </a>
+          </nav>
+        </div>
+      </div>
+    </div>
+  <div class="flex flex-col">
+        <div class="relative shadow ring-1 ring-black ring-opacity-5 md:rounded-lg overflow-auto">
+          <table id="jobs-table" class="table-fixed divide-y divide-gray-300">
+            <thead class="table-header-group bg-gray-50 block">
+              <tr>
+                <th scope="col" class="relative w-12 px-6 sm:w-16 sm:px-8">
+                  <input type="checkbox" class="absolute left-4 top-1/2 -mt-2 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 sm:left-6">
+                </th>
+                <th scope="col" class="jobs-table-th min-w-[20rem]">Name</th>
+                <th scope="col" class="jobs-table-th min-w-[10rem]">Input</th>
+                <th scope="col" class="jobs-table-th min-w-[10rem]">Submitted</th>
+                <th scope="col" class="jobs-table-th min-w-[5rem]">State</th>
+                <th scope="col" class="jobs-table-th min-w-[20rem]">Note</th>
+                <th scope="col" class="jobs-table-th min-w-[5rem]">View</th>
+              </tr>
+            </thead>
+            <tbody id="jobs-tbody" class="table-row-group divide-y divide-gray-200 bg-white block overflow-auto h-[36rem]">
+            </tbody>
+          </table>
+        </div>
+    <div class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
+        <div>
+          <p class="text-sm text-gray-700">
+            Showing
+            <span class="font-medium">1</span>
+            to
+            <span class="font-medium">10</span>
+            of
+            <span class="font-medium">97</span>
+            results
+          </p>
+        </div>
+    </div>
+  </div>
+</div>
+
+                </div>
+                <div id="tab_store" class="tabcontent hidden">
+                  <div id='store-module-choice-div' class='container mt-6 mb-4 snap-center flex justify-center max-w-7xl h-[95vh] max-w-7xl'><!-- module selection -->
+                    <div id="store-module-filter-div" class="bg-white p-4 rounded-md ml-4 mt-4 overflow-auto flex flex-col gap-8 text-gray-600 h-[95vh] w-full">
+                      <div id="store-module-div" class="grid grid-cols-12 gap-2" style="height: calc(95vh - 8rem);">
+                        <div class="store-module-filter-wrapper col-span-7">
+                          <div id="store-module-filter-kinds" class="w-full">
+                            <button class="filter-category pinned" role="filter-category" type="button" value="all" onclick="onChangeFilterCategoryRadioStore(event)">All</button>
+                            <button class="filter-category ml-2" role="filter-category" type="button" value="tags" onclick="onChangeFilterCategoryRadio(event)">Tags</button>
+                          </div>
+                          <div id="store-module-filter-panel-all" class="analysis-module-filter-panel w-full mt-4 overflow-auto hidden">
+                            <div id="store-search-filtered-modules-all" class="flex mb-2">
+                              <label for="search" class="sr-only">Search</label>
+                              <input type="text" name="search" class="block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mr-2" placeholder="Search">
+                              <button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Select all</button>
+                              <button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-2">Deselect all</button>
+                            </div>
+                            <div id="store-filtered-modules-all" class="filtered-modules-div overflow-auto pr-2 grid grid-cols-2 gap-1" style="height: calc(95vh - 8rem);"></div>
+                          </div>
+                          <div id="store-module-filter-panel-tags" class="analysis-module-filter-panel w-full mt-4 overflow-auto grid grid-cols-3 hidden">
+                            <div id="store-module-filter-items-tags" class="col-span-1 flex flex-col justify-center pl-1 overflow-y-auto" style="height: calc(95vh - 8rem);"></div>
+                            <div class="col-span-2">
+                              <div id="store-search-filtered-modules-all" class="flex mb-2">
+                                <label for="search" class="sr-only">Search</label>
+                                <input type="text" name="search" class="block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mr-2" placeholder="Search">
+                                <button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Select all</button>
+                                <button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-1">Deselect all</button>
+                              </div>
+                              <div id="store-filtered-modules-tags" class="filtered-modules-div overflow-auto pr-2 grid grid-cols-1 gap-1" style="height: calc(95vh - 8rem);"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div><!-- analysis module choice -->
+
+<ul role="list" class="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+  <li class="col-span-1 flex flex-col divide-y divide-gray-200 rounded-lg bg-white text-center shadow">
+    <div class="flex flex-1 flex-col p-8">
+      <img class="mx-auto h-16 w-16 flex-shrink-0" src="/store/locallogo?module=clinvar" alt="">
+      <h3 class="mt-6 text-sm font-medium text-gray-900">ClinVar</h3>
+      <dl class="mt-1 flex flex-grow flex-col justify-between">
+        <dd class="text-sm text-gray-500">ClinVar is an archive of reports of the relationships among human variations and phenotypes, with supporting evidence.</dd>
+        <dd class="mt-3">
+          <span class="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">Installed</span>
+        </dd>
+      </dl>
+    </div>
+    <div>
+      <div class="-mt-px flex divide-x divide-gray-200">
+        <div class="flex w-0 flex-1">
+          <a href="mailto:janecooper@example.com" class="relative -mr-px inline-flex w-0 flex-1 items-center justify-center rounded-bl-lg border border-transparent py-4 text-sm font-medium text-gray-700 hover:text-gray-500">
+            <!-- Heroicon name: mini/envelope -->
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 15.75l-2.489-2.489m0 0a3.375 3.375 0 10-4.773-4.773 3.375 3.375 0 004.774 4.774zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="ml-3">Details...</span>
+          </a>
+        </div>
+        <div class="-ml-px flex w-0 flex-1">
+          <a href="tel:+1-202-555-0170" class="relative inline-flex w-0 flex-1 items-center justify-center rounded-br-lg border border-transparent py-4 text-sm font-medium text-gray-700 hover:text-gray-500">
+            <!-- Heroicon name: mini/phone -->
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+            </svg>
+            <span class="ml-3">Uninstall</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </li>
+
+  <!-- More people... -->
+</ul>
+
+</div>
+
+                <div id="tab_apps" class="tabcontent hidden"></div>
+                <div id="tab_system" class="tabcontent hidden">
+                  <div class="p-4">
+                    <button type="button" class="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-3 py-2 text-sm font-medium leading-4 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2" onclick="getSystemLog()">Download system log</button>
+                  </div>
+                </div>
+                <div id="tab_account" class="tabcontent hidden p-4">
+                    <button type="button" class="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-3 py-2 text-sm font-medium leading-4 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2" onclick="logout()">Logout</button>
+                </div>
+                <div id="tab_systemnotready" class="tabcontent hidden">
+                  <div class="relative z-10" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+                    <div class="fixed inset-0 z-10 overflow-y-auto">
+                      <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                        <div class="relative transform overflow-hidden rounded-md bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+                          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                            <div class="sm:flex sm:items-start">
+                              <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                                <!-- Heroicon name: outline/exclamation-triangle -->
+                                <svg class="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 10.5v3.75m-9.303 3.376C1.83 19.126 2.914 21 4.645 21h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 4.88c-.866-1.501-3.032-1.501-3.898 0L2.697 17.626zM12 17.25h.007v.008H12v-.008z" />
+                                </svg>
+                              </div>
+                              <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                <h3 class="text-lg font-medium leading-6 text-gray-900" id="modal-title">System not ready</h3>
+                                <div class="mt-2">
+                                  <p class="text-sm text-gray-500">OakVar server is not running or it is having a problem. Please contact your system administrator.</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div><!-- end of system not ready dialog -->
+              </div>
+              <div id="error-dialog" class="relative z-10 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true"><!-- Error dialog -->
+                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+                <div class="fixed inset-0 z-10 overflow-y-auto">
+                  <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                    <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+                      <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                          <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                            <!-- Heroicon name: outline/exclamation-triangle -->
+                            <svg class="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M12 10.5v3.75m-9.303 3.376C1.83 19.126 2.914 21 4.645 21h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 4.88c-.866-1.501-3.032-1.501-3.898 0L2.697 17.626zM12 17.25h.007v.008H12v-.008z" />
+                            </svg>
+                          </div>
+                          <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                            <h3 id="error-dialog-title" class="text-lg font-medium leading-6 text-gray-900" id="modal-title"></h3>
+                            <div class="mt-2">
+                              <p id="error-dialog-text" class="text-sm text-gray-500"></p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                        <button id="error-dialog-dismiss-button" type="button" class="inline-flex w-full justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm" onclick="hideErrorDialog()">Dismiss</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div><!-- end of error dialog -->
+              <div id="ok-dialog" class="relative z-10 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true"><!-- Ok dialog -->
+                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+                <div class="fixed inset-0 z-10 overflow-y-auto">
+                  <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                    <div class="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6">
+                      <div>
+                        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+                          <svg class="h-6 w-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                          </svg>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-5">
+                          <h3 id="ok-dialog-title" class="text-lg font-medium leading-6 text-gray-900" id="modal-title"></h3>
+                          <div class="mt-2">
+                            <p id="ok-dialog-text" class="text-sm text-gray-500"></p>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="mt-5 sm:mt-6">
+                        <button type="button" class="inline-flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:text-sm">Dismiss</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div><!-- end of Ok dialog -->
+
+              <!-- /End replace -->
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+    <div id='store-systemmoduleupdate-announce-div'> System update available <button id='store-systemmoduleupdate-button' class='butn' onclick='onClickSystemModuleUpdateButton();'>Update</button>
+    </div>
+    <!-- Below is old -->
+    <div id='storediv' class='appdiv' style='display: none;'>
+      <div id='messagediv'></div>
+      <div id='storebodydiv'>
+        <div id='installationprogressmsgdiv'>
+          <img id="progressdivcloseicon" src="/store/images/x-lg.svg" onclick="onClickProgressDivCloseIcon()"></img>
+        </div>
+        <div id='chaticondiv'>
+          <img id="chaticon"></img>
+        </div>
+        <div id='storemenudiv'>
+          <input type='text' id='store-namefilter' name='namefilter' placeholder='Search the Store' oninput='updateFilter()' />
+          <hr />
+          <label id='update-available-div' class='checkbox-store-container'>Update available <input type='checkbox' class='store-tag-checkbox' value='newavailable' id='store-tag-checkbox-newavailable' onclick='onStoreTagCheckboxChange();' />
+            <span class='checkmark-store'>
+          </label>
+          <hr />
+          <div id='bycategory-div'>By Category</div>
+          <div id='store-tag-custom-div'></div>
+          <hr />
+          <!--<div id='store-install-all-button-div'><button id='store-install-all-button' onclick='onClickStoreInstallAllButton();' style='font-size: 18px; display: none;'>Install All</button></div>-->
+        </div>
+        <div style='max-width: 100%; overflow-x: hidden'>
+          <div id='store-allmodule-div'>
+            <div id='store-sort-div'>
+              <span id='store-sort-label'>Sort by</span>
+              <select id='store-sort-select' onchange='populateAllModulesDiv(true);'>
+                <option value='name'>Name</option>
+                <option value='date'>Date</option>
+                <option value='size'>Size</option>
+              </select>
+            </div>
+            <div id='store-update-all-div'>
+              <button id='store-update-all-button' class='butn' onclick='onClickStoreUpdateAllButton();' style='font-size: 12px;'>Update All</button>
+            </div>
+            <div id='remotemodulepanels'></div>
+          </div>
+          <div id='store-modulegroup-div'>
+            <div>
+              <img src='/result/images/back_arrow.png' class='back-arrow' onclick='onClickModuleGroupDivBackArrow();'>
+              <span id='store-modulegroup-title-span'></span>
+            </div>
+            <div id='store-modulegroup-content-div'></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- storediv -->
+    <div id='admindiv' class='appdiv' style='display: none;'></div>
+    <!-- admindiv -->
+    <div id='store-systemmodule-div' class="hidden">
+      <div id='store-systemmodule-systemnotready-div' style='display: none;'>
+        <span id='store-systemmodule-systemnotready-span'></span>
+        <br />
+        <br />
+        <span id='store-systemmodule-systemnotready-span2'></span>
+      </div>
+      <div id='store-systemmodule-missing-div' class="hidden"> There are missing system modules which OakVar needs. <br /> Click this button to install them: <button id='store-systemmodule-install-button' class="butn" style='position: relative; top: -2px;' onclick="onClickInstallBaseComponents();">Install system modules</button>
+        <br />
+      </div>
+      <div id='store-systemmodule-update-div' style='display: none;'> System updates in progress... </div>
+      <div id='store-systemmodule-msg-div'></div>
+    </div>
+    <!-- systemmodule-div -->
+    <div id='settingsdiv'>
+      <span class="settingsdiv-elem">System configuration file:</span>
+      <br />
+      <input id='sysconfpathspan' class="settingsdiv-elem" type='text' size='60' disabled />
+      <br />
+      <span class="settingsdiv-elem">Jobs dir: </span>
+      <input id='settings_jobs_dir_input' class="settingsdiv-elem" type='text' size='30' autocomplete="on" />
+      <span id='server_user_span'></span>
+      <br />
+      <span class="settingsdiv-elem">Modules dir: </span>
+      <input id='settings_modules_dir_input' class="settingsdiv-elem" autocomplete="on" type='text' size='60' />
+      <br />
+      <span class="settingsdiv-elem">Limit the sum of input file sizes to: </span>
+      <input id='settings_gui_input_size_limit' class="settingsdiv-elem" type='text' size='5' />
+      <span>MB</span>
+      <br />
+      <span class="settingsdiv-elem">Maximum number of concurrent jobs: </span>
+      <input id='settings_max_num_concurrent_jobs' class="settingsdiv-elem" type='text' size='10' />
+      <br />
+      <span class="settingsdiv-elem">Maximum number of concurrent annotators per job: </span>
+      <input id='settings_max_num_concurrent_annotators_per_job' class="settingsdiv-elem" type='text' size='10' />
+      <br />
+      <button class="settingdsiv-elem butn" onclick='onClickStoreUpdateRemoteButton()'>Refresh store</button>
+      <br />
+      <br />
+      <button class="settingdsiv-elem butn" onclick='onClickCheckUpdatesButton()'>Check updates</button>
+      <p>
+        <button id='job-import' class='butn' onclick="document.getElementById('job-import-file').click()"> Import Job <input type="file" id="job-import-file" style='display:none;' onchange="importJob()">
+        </button>
+      </p>
+      <button class="settingsdiv-elem butn" onclick='onClickSaveSystemConf();'>Save</button>
+      <button class="settingsdiv-elem butn" onclick='resetSystemConf();'>Reset</button>
+    </div>
+    <!-- settingsdiv -->
+    <div id='spinner-div' class="hidden">
+      <div id='spinner-div-progress-title'>Uploading input file(s)...</div>
+      <div id='spinner-div-progress-div'>
+        <div id='spinner-div-progress-bar'></div>
+      </div>
+      <div id='spinner-div-progress-num'></div>
+    </div>
+    <div id='update-remote-spinner-div' class="hidden">
+      <div id='update-remote-spinner-div-text'>Updating store information...</div>
+    </div>
+    <div id='report_generation_div'> Choose a report type: <select id='report_generation_div_select'></select>
+      <br />
+      <br />
+      <button id='report_generation_generate_button' onclick='createJobReport'>Generate</button>
+      <button id='report_generation_close_button' onclick='closeReportGenerationDiv'>Cancel</button>
+    </div>
+  </body>
+</html>

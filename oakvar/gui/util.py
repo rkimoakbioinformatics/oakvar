@@ -79,7 +79,7 @@ def get_token(request):
     return request.cookies.get(COOKIE_KEY)
 
 
-def get_email_from_request(request, servermode):
+def get_email_from_request(request, servermode: bool):
     from ..lib.system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
     from .util import get_email_from_oakvar_token
     from .util import get_token

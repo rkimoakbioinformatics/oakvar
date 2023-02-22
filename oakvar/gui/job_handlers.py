@@ -13,7 +13,7 @@ class JobHandlers:
 
     def __init__(
         self,
-        servermode=False,
+        servermode: bool=False,
         mu=None,
         logger=None,
         job_queue=None,
@@ -22,7 +22,7 @@ class JobHandlers:
         loop=None,
     ):
         self.loop = loop
-        self.servermode = servermode
+        self.servermode: bool = servermode
         self.mu = mu
         self.logger = logger
         self.job_queue = job_queue
@@ -341,12 +341,12 @@ class JobHandlers:
 
     async def submit(self, request):
         from .web_submit import SubmitProcessor
+        from .util import get_email_from_request
 
         global job_queue
         global mu
         assert self.job_queue is not None
-        eud = await self.get_eud_from_request(request)
-        email = eud.get("username")
+        email = get_email_from_request(request, self.servermode)
         submit_processor = SubmitProcessor(
             loop=self.loop,
             job_queue=self.job_queue,
