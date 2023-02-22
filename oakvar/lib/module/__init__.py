@@ -481,7 +481,7 @@ def install_module_from_url(
             )
         return False
     if not skip_dependencies:
-        deps, pypi_dependency = get_install_deps(conf_path=str(yml_conf_path))
+        deps, pypi_dependency = get_install_deps(conf_path=yml_conf_path)
         if not install_pypi_dependency(pypi_dependency=pypi_dependency, outer=outer):
             if outer:
                 outer.write(
@@ -560,7 +560,7 @@ def install_module_from_zip_path(
         if not module_dir:
             raise ExpectedException(msg=f"{module_dir} could not be created.")
         # dependencies
-        deps, pypi_dependency = get_install_deps(conf_path=str(yml_path))
+        deps, pypi_dependency = get_install_deps(conf_path=yml_path)
         if not install_pypi_dependency(pypi_dependency=pypi_dependency, outer=outer):
             raise ExpectedException("failed in installing pypi package dependence")
         for deps_mn, deps_ver in deps.items():

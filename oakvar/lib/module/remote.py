@@ -188,7 +188,10 @@ def get_readme(module_name: str) -> Optional[str]:
 
 
 def get_install_deps(
-    module_name=None, version=None, conf_path=None, skip_installed=True
+    module_name=None,
+    version=None,
+    conf_path: Optional[Path] = None,
+    skip_installed=True,
 ) -> Tuple[dict, list]:
     from pkg_resources import Requirement
     from .local import get_local_module_info

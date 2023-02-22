@@ -343,7 +343,6 @@ def _get_ftp(
     # Adapted from: https://pypi.python.org/pypi/fileDownloader.py
     # but with changes
     from time import time
-    from ...gui.consts import SYSTEM_STATE_INSTALL_KEY
 
     assert module_name is not None
     parsed_url = urllib.parse.urlparse(url)  # type: ignore

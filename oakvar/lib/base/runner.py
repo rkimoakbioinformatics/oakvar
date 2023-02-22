@@ -199,6 +199,8 @@ class Runner(object):
         import logging
         from pathlib import Path
         from os import remove
+        from sys import stdout
+        from sys import stderr
         from ..consts import LOG_SUFFIX
 
         if self.args is None or self.run_name is None or self.output_dir is None:
@@ -217,7 +219,7 @@ class Runner(object):
                 remove(self.log_path)
             self.log_handler = logging.FileHandler(self.log_path, mode=self.logmode)
         else:
-            self.log_handler = logging.StreamHandler()
+            self.log_handler = logging.StreamHandler(stream=stdout)
         formatter = logging.Formatter(
             "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
         )
@@ -226,10 +228,13 @@ class Runner(object):
         self.logger.setLevel(self.args.loglevel)
         self.error_logger = logging.getLogger("err")
         self.error_logger.setLevel(self.args.loglevel)
-        error_log_path = Path(output_dir) / (run_name + ".err")
-        if error_log_path.exists():
-            remove(error_log_path)
-        self.error_log_handler = logging.FileHandler(error_log_path, mode=self.logmode)
+        if self.args.logtofile:
+            error_log_path = Path(output_dir) / (run_name + ".err")
+            if error_log_path.exists():
+                remove(error_log_path)
+            self.error_log_handler = logging.FileHandler(error_log_path, mode=self.logmode)
+        else:
+            self.error_log_handler = logging.StreamHandler(stream=stderr)
         formatter = logging.Formatter("%(name)s\t%(message)s")
         self.error_log_handler.setFormatter(formatter)
         self.error_logger.addHandler(self.error_log_handler)
