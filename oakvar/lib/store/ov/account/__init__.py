@@ -1,4 +1,5 @@
 from typing import Optional
+from typing import Any
 from typing import Tuple
 from typing import Dict
 
@@ -204,7 +205,7 @@ def login(
     interactive: bool = False,
     relogin: bool = False,
     outer=None,
-) -> dict:
+) -> Dict[str, Any]:
     from requests import post
     from ...ov import get_store_url
 

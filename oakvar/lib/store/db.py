@@ -446,7 +446,7 @@ def fetch_ov_store_cache(
     clean: bool = False,
     publish_time: str = "",
     outer=None,
-):
+) -> bool:
     from .consts import ov_store_last_updated_col
     from ..exceptions import StoreServerError
     from ..exceptions import AuthorizationError

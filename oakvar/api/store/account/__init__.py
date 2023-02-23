@@ -7,30 +7,36 @@ def create(
     pwconfirm: bool = False,
     interactive: bool = False,
     outer=None,
-):
-    """create.
+) -> bool:
+    """Creates an OakVar store account.
 
     Args:
-        email (Optional[str]): email
-        pw (Optional[str]): pw
-        pwconfirm (bool): pwconfirm
-        interactive (bool): interactive
+        email (Optional[str]): Email of an OakVar store account
+        pw (Optional[str]): Password of an OakVar store account
+        pwconfirm (bool): Should be the same as `pw`.
+        interactive (bool): If `True` and `email` or `pw` is not given, missing fields will be interactvely received with prompts.
         outer:
+
+    Returns:
+        `True` if successful. `False` if not.
     """
     from ....lib.store.ov.account import create
 
     ret = create(
         email=email, pw=pw, pwconfirm=pwconfirm, interactive=interactive, outer=outer
     )
-    ret = ret.get("success")
-    return ret
+    success: bool = ret.get("success", False)
+    return success
 
 
-def store_deleteaccount(outer=None):
-    """store_deleteaccount.
+def delete(outer=None) -> bool:
+    """Deletes an OakVar store account. You should be already logged in.
 
     Args:
         outer:
+
+    Returns:
+        `True` if successful. `False` if not.
     """
     from ....lib.store.ov.account import delete
 
@@ -38,12 +44,15 @@ def store_deleteaccount(outer=None):
     return ret
 
 
-def change(newpw: Optional[str] = None, outer=None):
-    """change.
+def change(newpw: Optional[str] = None, outer=None) -> bool:
+    """Changes the password of an OakVar store account. You should be already logged in.
 
     Args:
-        newpw (Optional[str]): newpw
+        newpw (Optional[str]): New password
         outer:
+
+    Returns:
+        `True` if successful. `False` if not.
     """
     from ....lib.store.ov.account import change
 
@@ -51,12 +60,15 @@ def change(newpw: Optional[str] = None, outer=None):
     return ret
 
 
-def reset(email: Optional[str], outer=None):
-    """reset.
+def reset(email: Optional[str], outer=None) -> bool:
+    """Sends a password reset email for an OakVar store account. You should be already logged in.
 
     Args:
-        email (Optional[str]): email
+        email (Optional[str]): Email of the logged in OakVar store account
         outer:
+
+    Returns:
+        `True` if successful. `False` if not.
     """
     from ....lib.store.ov.account import reset
 
@@ -64,49 +76,16 @@ def reset(email: Optional[str], outer=None):
     return ret
 
 
-def check(outer=None):
-    """check.
+def check(outer=None) -> bool:
+    """Checks if you are logged in to the OakVar store.
 
     Args:
         outer:
+
+    Returns:
+        `True` if logged in. `False` if not.
     """
     from ....lib.store.ov.account import check_logged_in_with_token
 
     ret = check_logged_in_with_token(outer=outer)
-    return ret
-
-
-def login(
-    email: Optional[str] = None,
-    pw: Optional[str] = None,
-    interactive: bool = False,
-    relogin: bool = False,
-    outer=None,
-):
-    """login.
-
-    Args:
-        email (Optional[str]): email
-        pw (Optional[str]): pw
-        interactive (bool): interactive
-        relogin (bool): relogin
-        outer:
-    """
-    from ....lib.store.ov.account import login
-
-    ret = login(
-        email=email, pw=pw, interactive=interactive, relogin=relogin, outer=outer
-    )
-    return ret
-
-
-def logout(outer=None):
-    """logout.
-
-    Args:
-        outer:
-    """
-    from ....lib.store.ov.account import logout
-
-    ret = logout(outer=outer)
     return ret

@@ -9,10 +9,9 @@ def cli_store_createaccount(args):
 
 @cli_func
 def create(args, __name__="store account create"):
-    from ....lib.store.ov.account import create
+    from ....api.store.account import create
 
     ret = create(**args)
-    ret = ret.get("success")
     return ret
 
 
@@ -23,7 +22,7 @@ def cli_store_deleteaccount(args):
 
 @cli_func
 def store_deleteaccount(args, __name__="store account delete"):
-    from ....lib.store.ov.account import delete
+    from ....api.store.account import delete
 
     ret = delete(**args)
     return ret
@@ -35,8 +34,8 @@ def cli_store_changepassword(args):
 
 
 @cli_func
-def change(args, __name__="store account change"):
-    from ....lib.store.ov.account import change
+def change(args, __name__="store account change") -> bool:
+    from ....api.store.account import change
 
     ret = change(**args)
     return ret
@@ -49,7 +48,7 @@ def cli_store_account_reset(args):
 
 @cli_func
 def reset(args, __name__="store account reset"):
-    from ....lib.store.ov.account import reset
+    from ....api.store.account import reset
 
     ret = reset(**args)
     return ret
@@ -62,35 +61,9 @@ def cli_store_check(args):
 
 @cli_func
 def check(args, __name__="store account check"):
-    from ....lib.store.ov.account import check_logged_in_with_token
+    from ....api.store.account import check
 
-    ret = check_logged_in_with_token(**args)
-    return ret
-
-
-@cli_entry
-def cli_store_account_login(args):
-    return login(args)
-
-
-@cli_func
-def login(args, __name__="store account login"):
-    from ....lib.store.ov.account import login
-
-    ret = login(**args)
-    return ret
-
-
-@cli_entry
-def cli_store_account_logout(args):
-    return logout(args)
-
-
-@cli_func
-def logout(args, __name__="store account logout"):
-    from ....lib.store.ov.account import logout
-
-    ret = logout(**args)
+    ret = check(**args)
     return ret
 
 
@@ -110,8 +83,6 @@ def add_parser_fn_store_account(subparsers):
     add_parser_fn_store_account_delete(subparsers)
     add_parser_fn_store_account_change(subparsers)
     add_parser_fn_store_account_check(subparsers)
-    add_parser_fn_store_account_login(subparsers)
-    add_parser_fn_store_account_logout(subparsers)
     add_parser_fn_store_account_reset(subparsers)
     return parser_cli_store_account
 
@@ -201,38 +172,4 @@ def add_parser_fn_store_account_check(subparsers):
     parser_cli_store_checklogin.r_examples = [  # type: ignore
         "# Check if the current is logged in the OakVar Store nor not. ",
         '#roakvar::store.checklogin(email="user1", password="password")',
-    ]
-
-
-def add_parser_fn_store_account_login(subparsers):
-    # verify-email
-    parser_cli_store_verifyemail = subparsers.add_parser(
-        "login", help="log in to the OakVar Store"
-    )
-    parser_cli_store_verifyemail.add_argument("--email", help="email")
-    parser_cli_store_verifyemail.add_argument("--pw", help="email")
-    parser_cli_store_verifyemail.add_argument(
-        "--quiet", action="store_true", default=None, help="run quietly"
-    )
-    parser_cli_store_verifyemail.set_defaults(func=cli_store_account_login)
-    parser_cli_store_verifyemail.r_return = "`NULL`"  # type: ignore
-    parser_cli_store_verifyemail.r_examples = [  # type: ignore
-        "# Log in to the OakVar Store",
-        '#roakvar::store.account.login(email="user1", pw="password")',
-    ]
-
-
-def add_parser_fn_store_account_logout(subparsers):
-    # verify-email
-    parser_cli_store_verifyemail = subparsers.add_parser(
-        "logout", help="log out of the OakVar Store"
-    )
-    parser_cli_store_verifyemail.add_argument(
-        "--quiet", action="store_true", default=None, help="run quietly"
-    )
-    parser_cli_store_verifyemail.set_defaults(func=cli_store_account_logout)
-    parser_cli_store_verifyemail.r_return = "`NULL`"  # type: ignore
-    parser_cli_store_verifyemail.r_examples = [  # type: ignore
-        "# Log out from the OakVar Store",
-        "#roakvar::store.account.logout()",
     ]

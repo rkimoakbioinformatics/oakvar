@@ -3,15 +3,28 @@ from typing import List
 from typing import Dict
 from typing import Optional
 from pathlib import Path
+from polars import DataFrame
 
 ov_system_output_columns: Optional[Dict[str, List[Dict[str, Any]]]] = None
 
 
 def get_ucsc_bins(start, stop=None):
+    """get_ucsc_bins.
+
+    Args:
+        start:
+        stop:
+    """
     if stop is None:
         stop = start + 1
 
     def range_per_level(start, stop):
+        """range_per_level.
+
+        Args:
+            start:
+            stop:
+        """
         BIN_OFFSETS = [512 + 64 + 8 + 1, 64 + 8 + 1, 8 + 1, 1, 0]
         SHIFT_FIRST = 17
         SHIFT_NEXT = 3
@@ -35,6 +48,12 @@ def get_ucsc_bins(start, stop=None):
 
 
 def load_class(path, class_name=None):
+    """load_class.
+
+    Args:
+        path:
+        class_name:
+    """
     from importlib.util import spec_from_file_location, module_from_spec
     from importlib import import_module
     import sys
@@ -116,6 +135,11 @@ def get_directory_size(start_path):
 
 
 def get_argument_parser_defaults(parser):
+    """get_argument_parser_defaults.
+
+    Args:
+        parser:
+    """
     defaults = {
         action.dest: action.default
         for action in parser._actions
@@ -125,6 +149,11 @@ def get_argument_parser_defaults(parser):
 
 
 def detect_encoding(path):
+    """detect_encoding.
+
+    Args:
+        path:
+    """
     from chardet.universaldetector import UniversalDetector
     from gzip import open as gzipopen
 
@@ -154,6 +183,12 @@ def detect_encoding(path):
 
 
 def get_job_version(dbpath, platform_name):
+    """get_job_version.
+
+    Args:
+        dbpath:
+        platform_name:
+    """
     from packaging.version import Version
     import sqlite3
 
@@ -169,6 +204,11 @@ def get_job_version(dbpath, platform_name):
 
 
 def is_compatible_version(dbpath):
+    """is_compatible_version.
+
+    Args:
+        dbpath:
+    """
     from .admin_util import get_max_version_supported_for_migration
     from packaging.version import Version
     from pkg_resources import get_distribution
@@ -202,6 +242,14 @@ def is_compatible_version(dbpath):
 
 
 def is_url(s: str) -> bool:
+    """is_url.
+
+    Args:
+        s (str): s
+
+    Returns:
+        bool:
+    """
     if s.startswith("http://") or s.startswith("https://"):
         return True
     else:
@@ -209,6 +257,8 @@ def is_url(s: str) -> bool:
 
 
 def get_current_time_str():
+    """get_current_time_str.
+    """
     from datetime import datetime
 
     t = datetime.now()
@@ -216,6 +266,14 @@ def get_current_time_str():
 
 
 def get_args_conf(args: dict) -> Dict:
+    """get_args_conf.
+
+    Args:
+        args (dict): args
+
+    Returns:
+        Dict:
+    """
     if args is None:
         return {}
     old_to_new_keys = {
@@ -245,6 +303,14 @@ def get_args_conf(args: dict) -> Dict:
 
 
 def get_args_package(args: dict) -> Dict:
+    """get_args_package.
+
+    Args:
+        args (dict): args
+
+    Returns:
+        Dict:
+    """
     if args is None:
         return {}
     package = args.get("package")
@@ -263,6 +329,16 @@ def get_args_package(args: dict) -> Dict:
 
 
 def get_args(parser, inargs, inkwargs) -> dict:
+    """get_args.
+
+    Args:
+        parser:
+        inargs:
+        inkwargs:
+
+    Returns:
+        dict:
+    """
     from types import SimpleNamespace
     from argparse import Namespace
 
@@ -303,6 +379,11 @@ def get_args(parser, inargs, inkwargs) -> dict:
 
 
 def filter_affected_cols(filter):
+    """filter_affected_cols.
+
+    Args:
+        filter:
+    """
     cols = set()
     if "column" in filter:
         cols.add(filter["column"])
@@ -342,6 +423,14 @@ def humanize_bytes(num, binary=False):
 
 
 def email_is_valid(email: Optional[str]) -> bool:
+    """email_is_valid.
+
+    Args:
+        email (Optional[str]): email
+
+    Returns:
+        bool:
+    """
     from re import fullmatch
 
     if not email:
@@ -355,6 +444,14 @@ def email_is_valid(email: Optional[str]) -> bool:
 
 
 def pw_is_valid(pw: Optional[str]) -> bool:
+    """pw_is_valid.
+
+    Args:
+        pw (Optional[str]): pw
+
+    Returns:
+        bool:
+    """
     from re import fullmatch
 
     if not pw:
@@ -366,6 +463,11 @@ def pw_is_valid(pw: Optional[str]) -> bool:
 
 
 def load_yml_conf(yml_conf_path: Path):
+    """load_yml_conf.
+
+    Args:
+        yml_conf_path (Path): yml_conf_path
+    """
     from oyaml import safe_load
 
     with open(yml_conf_path, encoding="utf-8") as f:
@@ -376,6 +478,12 @@ def load_yml_conf(yml_conf_path: Path):
 
 
 def compare_version(v1, v2):
+    """compare_version.
+
+    Args:
+        v1:
+        v2:
+    """
     from packaging.version import Version
 
     sv1 = Version(v1)
@@ -389,6 +497,15 @@ def compare_version(v1, v2):
 
 
 def version_requirement_met(version, target_version) -> bool:
+    """version_requirement_met.
+
+    Args:
+        version:
+        target_version:
+
+    Returns:
+        bool:
+    """
     from packaging.version import Version
 
     if not target_version:
@@ -397,6 +514,12 @@ def version_requirement_met(version, target_version) -> bool:
 
 
 def get_latest_version(versions, target_version=None):
+    """get_latest_version.
+
+    Args:
+        versions:
+        target_version:
+    """
     from packaging.version import Version
 
     latest_version = ""
@@ -409,11 +532,21 @@ def get_latest_version(versions, target_version=None):
 
 
 def escape_glob_pattern(pattern):
+    """escape_glob_pattern.
+
+    Args:
+        pattern:
+    """
     new_pattern = "[[]".join(["[]]".join(v.split("]")) for v in pattern.split("[")])
     return new_pattern.replace("*", "[*]").replace("?", "[?]")
 
 
 def get_random_string(k=16):
+    """get_random_string.
+
+    Args:
+        k:
+    """
     from random import choices
     from string import ascii_lowercase
 
@@ -421,6 +554,12 @@ def get_random_string(k=16):
 
 
 def get_result_dbpath(output_dir: str, run_name: str):
+    """get_result_dbpath.
+
+    Args:
+        output_dir (str): output_dir
+        run_name (str): run_name
+    """
     from pathlib import Path
     from ..consts import result_db_suffix
 
@@ -428,6 +567,11 @@ def get_result_dbpath(output_dir: str, run_name: str):
 
 
 def get_unique_path(path: str):
+    """get_unique_path.
+
+    Args:
+        path (str): path
+    """
     from pathlib import Path
 
     count = 1
@@ -440,6 +584,12 @@ def get_unique_path(path: str):
 
 
 def print_list_of_dict(l, outer=None):
+    """print_list_of_dict.
+
+    Args:
+        l:
+        outer:
+    """
     from rich.console import Console
     from rich.table import Table
     from rich import box
@@ -465,6 +615,12 @@ def print_list_of_dict(l, outer=None):
 
 
 def log_module(module, logger):
+    """log_module.
+
+    Args:
+        module:
+        logger:
+    """
     if logger:
         code_version = None
         if hasattr(module, "conf"):
@@ -477,6 +633,13 @@ def log_module(module, logger):
 
 
 def get_ov_system_output_columns() -> Dict[str, List[Dict[str, Any]]]:
+    """get_ov_system_output_columns.
+
+    Args:
+
+    Returns:
+        Dict[str, List[Dict[str, Any]]]:
+    """
     from pathlib import Path
     from oyaml import safe_load
 
@@ -492,6 +655,13 @@ def get_ov_system_output_columns() -> Dict[str, List[Dict[str, Any]]]:
 
 
 def get_crv_def() -> List[Dict[str, Any]]:
+    """get_crv_def.
+
+    Args:
+
+    Returns:
+        List[Dict[str, Any]]:
+    """
     from ..consts import INPUT_LEVEL_KEY
 
     output_columns = get_ov_system_output_columns()
@@ -499,6 +669,13 @@ def get_crv_def() -> List[Dict[str, Any]]:
 
 
 def get_crx_def() -> List[Dict[str, Any]]:
+    """get_crx_def.
+
+    Args:
+
+    Returns:
+        List[Dict[str, Any]]:
+    """
     from ..consts import VARIANT_LEVEL_KEY
 
     output_columns: dict = get_ov_system_output_columns()
@@ -506,6 +683,13 @@ def get_crx_def() -> List[Dict[str, Any]]:
 
 
 def get_crg_def() -> List[Dict[str, Any]]:
+    """get_crg_def.
+
+    Args:
+
+    Returns:
+        List[Dict[str, Any]]:
+    """
     from ..consts import GENE_LEVEL_KEY
 
     output_columns: dict = get_ov_system_output_columns()
@@ -513,6 +697,13 @@ def get_crg_def() -> List[Dict[str, Any]]:
 
 
 def get_crs_def() -> List[Dict[str, Any]]:
+    """get_crs_def.
+
+    Args:
+
+    Returns:
+        List[Dict[str, Any]]:
+    """
     from ..consts import SAMPLE_LEVEL_KEY
 
     output_columns: dict = get_ov_system_output_columns()
@@ -520,6 +711,13 @@ def get_crs_def() -> List[Dict[str, Any]]:
 
 
 def get_crm_def() -> List[Dict[str, Any]]:
+    """get_crm_def.
+
+    Args:
+
+    Returns:
+        List[Dict[str, Any]]:
+    """
     from ..consts import MAPPING_LEVEL_KEY
 
     output_columns: dict = get_ov_system_output_columns()
@@ -527,6 +725,13 @@ def get_crm_def() -> List[Dict[str, Any]]:
 
 
 def get_crl_def() -> List[Dict[str, Any]]:
+    """get_crl_def.
+
+    Args:
+
+    Returns:
+        List[Dict[str, Any]]:
+    """
     from ..consts import LIFTOVER_LEVEL_KEY
 
     output_columns: dict = get_ov_system_output_columns()
@@ -534,6 +739,11 @@ def get_crl_def() -> List[Dict[str, Any]]:
 
 
 def get_result_db_conn(db_path: str):
+    """get_result_db_conn.
+
+    Args:
+        db_path (str): db_path
+    """
     import sqlite3
     from pathlib import Path
 
@@ -545,11 +755,22 @@ def get_result_db_conn(db_path: str):
 
 
 def get_df_from_db(
-    in_db_path: str,
+    db_path: str,
     table_name: str = "variant",
     sql: Optional[str] = None,
     num_cores: int = 1,
-):
+) -> Optional[DataFrame]:
+    """Gets a Polars DataFrame of a table in an OakVar result database.
+
+    Args:
+        db_path (str): Path to the OakVar result database file from which a Polars DataFrame will be extracted.
+        table_name (str): Table name to dump to the DataFrame
+        sql (Optional[str]): Custom SQL to apply before dumping to the DataFrame. For example, `"select base__uid, base__chrom, base__pos from variant where clinvar__sig='Pathogenic'"`.
+        num_cores (int): Number of CPU cores to use
+
+    Returns:
+        DataFrame of the given or default table of the OakVar result database
+    """
     import sys
     from pathlib import Path
     from os import environ
@@ -566,9 +787,9 @@ def get_df_from_db(
         "mapping": "base__uid",
     }
     df = None
-    db_path = str(Path(in_db_path).absolute())
+    db_path_to_use = str(Path(db_path).absolute())
     partition_on = partition_ons.get(table_name)
-    db_conn = get_result_db_conn(db_path)
+    db_conn = get_result_db_conn(db_path_to_use)
     if not db_conn:
         return None
     if partition_on and table_name:
@@ -582,9 +803,9 @@ def get_df_from_db(
         sql = f"select * from {table_name}"
     ol_pl = platform.platform()
     if ol_pl.startswith("Windows"):
-        conn_url = f"sqlite://{quote(db_path)}"
+        conn_url = f"sqlite://{quote(db_path_to_use)}"
     else:
-        conn_url = f"sqlite://{db_path}"
+        conn_url = f"sqlite://{db_path_to_use}"
     if partition_on and num_cores > 1:
         df = pl.read_sql(
             sql, conn_url, partition_on=partition_on, partition_num=num_cores

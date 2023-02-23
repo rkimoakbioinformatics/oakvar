@@ -225,7 +225,6 @@ def delete(
     all: bool = False,
     keep_only_latest: bool = False,
     outer=None,
-    error=None,
 ):
     from requests import post
     from .account import get_current_id_token
@@ -256,10 +255,7 @@ def delete(
                     "Error from the store server: {res.status_code}: {res.text}\n"
                 )
             return False
-    except:
-        import traceback
-
-        if error:
-            error.write(traceback.format_exc())
-            error.write("\n")
+    except Exception as e:
+        if outer:
+            outer.error(e)
         return False

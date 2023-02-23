@@ -74,10 +74,6 @@ def setup_system(
     modules_dir_op = conf.get("modules_dir")
     modules_dir = Path(modules_dir_op) if modules_dir_op else None
     ret = installbase(
-        clean_cache_files=clean_cache_files,
-        refresh_db=refresh_db,
-        clean=clean,
-        publish_time=publish_time,
         modules_dir=modules_dir,
         no_fetch=True,
         conf=conf,

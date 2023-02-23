@@ -1,5 +1,7 @@
 from typing import Optional
+from typing import Any
 from typing import List
+from typing import Dict
 from . import account as account
 
 
@@ -73,17 +75,17 @@ def fetch(
     publish_time: str = "",
     outer=None,
 ) -> bool:
-    """fetch.
+    """Fetches OakVar store cache.
 
     Args:
-        refresh_db (bool): refresh_db
-        clean_cache_files (bool): clean_cache_files
-        clean (bool): clean
-        publish_time (str): publish_time
+        refresh_db (bool): `True` will fetch a clean copy of OakVar store database.
+        clean_cache_files (bool): `True` will fetch a clean copy of OakVar store cache files.
+        clean (bool): `True` will install OakVar store cache from scratch.
+        publish_time (str): `YYYY-MM-DDTHH:MM:SS` format datetime string. Fetch will be done for new entries newer than this datetime.
         outer:
 
     Returns:
-        bool:
+        `True` if successful. `False` if not.
     """
     from ...lib.store.db import fetch_ov_store_cache
 
@@ -97,11 +99,14 @@ def fetch(
     return ret
 
 
-def url(outer=None):
-    """url.
+def url(outer=None) -> str:
+    """Gets the URL of the OakVar store.
 
     Args:
         outer:
+
+    Returns:
+        str of the URL
     """
     from ...lib.store import url
 
@@ -115,17 +120,18 @@ def delete(
     all: bool = False,
     keep_only_latest: bool = False,
     outer=None,
-    error=None,
-):
-    """delete.
+) -> bool:
+    """Deletes a module from the OakVar store and fetches the OakVar store.
 
     Args:
-        module_name (str): module_name
-        code_version (Optional[str]): code_version
-        all (bool): all
-        keep_only_latest (bool): keep_only_latest
+        module_name (str): Module name
+        code_version (Optional[str]): Version number of the module
+        all (bool): `True` will delete all versions of the module.
+        keep_only_latest (bool): `True` will delete all but the latest version of the module.
         outer:
-        error:
+
+    Returns:
+        `True` if successful. `False` if not.
     """
     from ...lib.store.ov import delete
     from ...lib.store.db import fetch_ov_store_cache
@@ -136,7 +142,6 @@ def delete(
         all=all,
         keep_only_latest=keep_only_latest,
         outer=outer,
-        error=error,
     )
     if ret == True:
         ret = fetch_ov_store_cache(refresh_db=True)
@@ -149,15 +154,18 @@ def login(
     interactive: bool = False,
     relogin: bool = False,
     outer=None,
-):
-    """login.
+) -> Dict[str, Any]:
+    """Logs in to the OakVar store.
 
     Args:
-        email (Optional[str]): email
-        pw (Optional[str]): pw
-        interactive (bool): interactive
-        relogin (bool): relogin
+        email (Optional[str]): Email of an OakVar store account
+        pw (Optional[str]): Password of an OakVar store account
+        interactive (bool): If `True` and `email` or `pw` is not given, missing fields will be interactvely received with prompts.
+        relogin (bool): If `True`, fresh login will be performed.
         outer:
+
+    Returns:
+        Result of login as a dict, with the fields `success`, `status_code`, `msg`, and `email`.
     """
     from ...lib.store.ov.account import login
 
@@ -167,11 +175,14 @@ def login(
     return ret
 
 
-def logout(outer=None):
-    """logout.
+def logout(outer=None) -> bool:
+    """Logs out from the OakVar store.
 
     Args:
         outer:
+
+    Returns:
+        `True` if successful. `False` if not.
     """
     from ...lib.store.ov.account import logout
 
