@@ -9,23 +9,23 @@ def cli_report(args):
 
 @cli_func
 def report(args, __name__="report"):
-    from ..api.report import report
+    from ..api import report
 
     module_options = {}
-    module_option = args.get("module_option")
-    if module_option:
-        for opt_str in module_option:
+    module_options = args.get("module_options")
+    if module_options:
+        for opt_str in module_options:
             toks = opt_str.split("=")
             if len(toks) != 2:
                 print(
-                    "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value.",
+                    "Ignoring invalid module option {opt_str}. module-options should be module_name.key=value.",
                     args,
                 )
                 continue
             k = toks[0]
             if k.count(".") != 1:
                 print(
-                    "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value.",
+                    "Ignoring invalid module option {opt_str}. module-options should be module_name.key=value.",
                     args,
                 )
                 continue
@@ -35,7 +35,7 @@ def report(args, __name__="report"):
             v = toks[1]
             module_options[module_name][key] = v
     args["module_options"] = module_options
-    del args["module_option"]
+    del args["module_options"]
     ret = report(**args)
     return ret
 
@@ -53,8 +53,8 @@ def get_parser_fn_report():
     parser_ov_report.add_argument(
         "-t",
         dest="report_types",
-        nargs="+",
-        default=[],
+        nargs="*",
+        default=None,
         help="report types",
     )
     parser_ov_report.add_argument(
@@ -76,7 +76,11 @@ def get_parser_fn_report():
     )
     parser_ov_report.add_argument("-c", dest="confpath", help="path to a conf file")
     parser_ov_report.add_argument(
-        "--module-name", dest="module_name", default=None, help="report module name"
+        "--module-paths",
+        dest="module_paths",
+        nargs="*",
+        default=None,
+        help="report module name",
     )
     parser_ov_report.add_argument(
         "--nogenelevelonvariantlevel",
@@ -109,16 +113,10 @@ def get_parser_fn_report():
         help="Suppress output to STDOUT",
     )
     parser_ov_report.add_argument(
-        "--system-option",
-        dest="system_option",
+        "--module-options",
+        dest="module_options",
         nargs="*",
-        help="System option in key=value syntax. For example, --system-option modules_dir=/home/user/oakvar/modules",
-    )
-    parser_ov_report.add_argument(
-        "--module-option",
-        dest="module_option",
-        nargs="*",
-        help="Module-specific option in module_name.key=value syntax. For example, --module-option vcfreporter.type=separate",
+        help="Module-specific option in module_name.key=value syntax. For example, --module-options vcfreporter.type=separate",
     )
     parser_ov_report.add_argument(
         "--includesample",

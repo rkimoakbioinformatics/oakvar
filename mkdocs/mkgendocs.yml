@@ -1,0 +1,18 @@
+sources_dir: docs/api
+templates_dir: docs/api/templates
+repo: https://github.com/rkimoakbioinformatics/oakvar
+version: master
+pages:
+  - page: "config.md"
+    source: "../oakvar/api/config.py"
+    functions:
+      - user
+      - system
+  - page: "version.md"
+    source: "../oakvar/api/__init__.py"
+    functions:
+      - version
+  - page: "issue.md"
+    source: "../oakvar/api/issue.py"
+    functions:
+      - issue

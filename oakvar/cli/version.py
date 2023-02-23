@@ -9,9 +9,9 @@ def cli_version(args):
 
 @cli_func
 def version(args, __name__="version"):
-    from ..lib.util.admin_util import oakvar_version
+    from ..api import version
 
-    ret = oakvar_version()
+    ret = version()
     outer = args.get("outer")
     if outer:
         outer.write(ret)

@@ -38,7 +38,7 @@ report_filter_max_num_cache_per_user_key = "report_filter_max_num_cache_per_user
 #
 # default system conf values
 #
-DEFAULT_MAX_NUM_CONCURRENT_JOBS = 4
+DEFAULT_MAX_NUM_CONCURRENT_JOBS = 1
 default_gui_port = 8080
 default_gui_port_ssl = 8443
 default_assembly = "hg38"

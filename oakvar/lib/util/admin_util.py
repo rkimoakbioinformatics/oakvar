@@ -1,4 +1,5 @@
 from typing import Optional
+from pathlib import Path
 
 pkg_version: Optional[str] = None
 
@@ -63,7 +64,7 @@ def input_formats():
     return formats
 
 
-def fn_new_exampleinput(d: str):
+def fn_new_exampleinput(d: str) -> Path:
     from pathlib import Path
     import shutil
 

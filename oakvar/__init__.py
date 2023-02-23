@@ -1,12 +1,4 @@
 from . import api
-from .api import version
-from .api.test import test
-from .api.issue import issue
-from .api import module as module
-from .api import system as system
-from .api import store as store
-from .api.report import report
-from .api.run import run
 from .cli import __main__ as cli
 from . import lib
 from .lib import consts
@@ -162,8 +154,6 @@ _ = (
 )
 _ = CravatFilter or Cravat
 _ = cli or wgs
-_ = test or version or issue
 _ = stdouter
 _ = get_lifter or liftover
 _ = get_df_from_db or read_crv
-_ = run or report

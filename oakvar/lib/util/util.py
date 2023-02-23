@@ -201,7 +201,7 @@ def is_compatible_version(dbpath):
         return compatible, job_version_ov, ov_version
 
 
-def is_url(s) -> bool:
+def is_url(s: str) -> bool:
     if s.startswith("http://") or s.startswith("https://"):
         return True
     else:

@@ -1,28 +1,35 @@
 from typing import Optional
+from typing import Any
 from typing import List
+from typing import Dict
 from pathlib import Path
 
 
 def pack(
-    module_name: Optional[str] = None,
-    outdir: Path = Path(".").absolute(),
+    module_name: str,
+    outdir: Optional[Path] = None,
     code_only: bool = False,
     split: bool = False,
     outer=None,
-):
-    """pack.
+) -> Optional[Dict[str, Optional[Path]]]:
+    """Packs a module's code and optionally data to register it with OakVar store. This will produce zip files. They are supposed to be uploaded to somewhere on the web, and `oakvar.api.store.register` is used to register the module in the OakVar store. After this, the module will be available to all OakVar users worldwide.
 
     Args:
-        module_name (Optional[str]): module_name
-        outdir (Path): outdir
-        code_only (bool): code_only
-        split (bool): split
+        module_name (str): Module name
+        outdir (Optional[Path]): Directory to store the module pack zip files. Default is the current working directory.
+        code_only (bool): `True` will pack only the code. Useful if only updated code will be registered.
+        split (bool): `True` will split the code and data zip files by 100MB.
         outer:
+
+    Returns:
+        `None` if the module does not exist. A dict of { "code": [Path], "data": [Path] } if successful.}
     """
     from ...lib.module.local import pack_module
 
     if not module_name:
         return
+    if not outdir:
+        outdir = Path(".").absolute()
     if isinstance(outdir, str):
         outdir = Path(outdir).absolute()
     ret = pack_module(
@@ -37,25 +44,41 @@ def pack(
 
 def ls(
     module_names: List[str] = [".*"],
-    available: bool = False,
-    types: List[str] = [],
+    module_types: List[str] = [],
+    search_store: bool = False,
     tags: List[str] = [],
     nameonly: bool = False,
-    raw_bytes: bool = False,
+    humanized_size: bool = False,
     outer=None,
     **kwargs,
-):
-    """ls.
+) -> List[Dict[str, Any]]:
+    """List installed and available OakVar modules.
 
     Args:
-        module_names (List[str]): module_names
-        available (bool): available
-        types (List[str]): types
-        tags (List[str]): tags
-        nameonly (bool): nameonly
-        raw_bytes (bool): raw_bytes
+        module_names (List[str]): Module names
+        module_types (List[str]): Module types
+        search_store (bool): `True` will search not yet installed modules on the OakVar store. `False` for only locally installed modules.
+        humanized_size (bool): `True` will show humanized module size.
+        tags (List[str]): Module tags to search. Regular expression can be used.
+        nameonly (bool): `True` will return module names only.
         outer:
-        kwargs:
+
+    Returns:
+        List of Dict, each element of which has an installed module's information.
+
+    Examples:
+        Get the information on the installed ClinVar module.
+
+        >>> oakvar.api.module.ls(module_names=["clinvar"])
+
+        Search for all reporter modules in the OakVar store.
+
+        >>> oakvar.api.module.ls(module_types=["reporter"], search_store=True)
+
+        Search the OakVar store for modules with "allele" in their tags.
+
+        >>> oakvar.api.module.ls(tags=[".*allele.*"], search_store=True)
+
     """
     from .ls_logic import list_modules
     from ...lib.util.util import print_list_of_dict
@@ -63,25 +86,35 @@ def ls(
     _ = kwargs
     ret = list_modules(
         module_names=module_names,
-        types=types,
+        module_types=module_types,
         tags=tags,
-        available=available,
+        search_store=search_store,
         nameonly=nameonly,
-        raw_bytes=raw_bytes,
+        humanized_size=humanized_size,
     )
     if outer:
         print_list_of_dict(ret, outer=outer)
     return ret
 
 
-def info(module_name: Optional[str] = None, local: bool = False, outer=None, **kwargs):
+def info(
+    module_name: str, local: bool = False, outer=None, **kwargs
+) -> Optional[Dict[str, Any]]:
     """info.
 
     Args:
-        module_name (Optional[str]): module_name
-        local (bool): local
-        outer:
+        module_name (str): Module name
+        local (bool): `True` will search the module in local installation. `False` will fetch the module's information from the OakVar store.
+        outer: If set, tabulated output will be sent to it. For example, `sys.stdout`.
         kwargs:
+
+    Returns:
+        `None` if the module is not found. The module's information as a dict if found.
+
+    Examples:
+        Print `clinvar` module's information to the terminal and get the same information as a dict.
+
+        >>> clinvar_info = oakvar.api.module.info("clinvar", outer=sys.stdout)
     """
     from ...lib.module.local import get_local_module_info
     from ...lib.module.remote import get_remote_module_info
@@ -186,23 +219,26 @@ def install(
     outer=None,
     stage_handler=None,
     system_worker_state=None,
-):
-    """install.
+) -> Optional[bool]:
+    """Install modules.
 
     Args:
-        module_names (List[str]): module_names
-        urls (Optional[str]): urls
-        modules_dir (Optional[Path]): modules_dir
-        overwrite (bool): overwrite
+        module_names (List[str]): Module names
+        urls (Optional[str]): URLs of module zip files. If given, `module_names` also should be given to specify the module name of each URL.
+        yes (bool): `True` will skip a confirmation prompt.
+        no_fetch (bool): `True` will skip fetching the latest the OakVar store cache.
+        overwrite (bool): `True` will overwrite the module even if the same version.
+        force_data (bool): `True` will re-install module data.
+        skip_data (bool): `True` will skip installing module data.
+        modules_dir (Optional[Path]): custom OakVar modules directory
+        skip_dependencies (bool): `True` will bypass installing dependencies.
         clean (bool): clean
-        force_data (bool): force_data
-        yes (bool): yes
-        skip_dependencies (bool): skip_dependencies
-        skip_data (bool): skip_data
-        no_fetch (bool): no_fetch
-        outer:
         stage_handler:
         system_worker_state:
+        outer:
+
+    Returns:
+        `None` if no problem. `False` if there was a problem.
     """
     import sys
     from .install_defs import get_modules_to_install
@@ -289,33 +325,26 @@ def install(
 
 def update(
     module_name_patterns: List[str] = [],
-    refresh_db: bool = False,
-    clean_cache_files: bool = False,
-    clean: bool = False,
-    publish_time: str = "",
+    yes: bool = False,
     no_fetch: bool = False,
-    overwrite: bool = False,
     force_data: bool = False,
     modules_dir: Optional[Path] = None,
-    yes=False,
     outer=None,
     system_worker_state=None,
-):
-    """update.
+) -> bool:
+    """Update installed modules.
 
     Args:
-        module_name_patterns (List[str]): module_name_patterns
-        refresh_db (bool): refresh_db
-        clean_cache_files (bool): clean_cache_files
-        clean (bool): clean
-        publish_time (str): publish_time
-        no_fetch (bool): no_fetch
-        overwrite (bool): overwrite
-        force_data (bool): force_data
-        modules_dir (Optional[Path]): modules_dir
-        yes:
-        outer:
+        module_name_patterns (List[str]): Module name patterns. For example, `["clin.*"]` will check `clinvar`, `clingen`, etc.
+        yes (bool): `True` to skip a confirmation prompt.
+        no_fetch (bool): `True` will skip fetching the latest the OakVar store cache.
+        force_data (bool): `True` will re-install module data.
+        modules_dir (Optional[Path]): custom OakVar modules directory
         system_worker_state:
+        outer:
+
+    Returns:
+        `True` if update was successful. `False` if not.
     """
     from ...lib.module.local import search_local
     from ...lib.module import get_updatable
@@ -323,10 +352,6 @@ def update(
 
     if not no_fetch:
         try_fetch_ov_store_cache(
-            refresh_db=refresh_db,
-            clean_cache_files=clean_cache_files,
-            clean=clean,
-            publish_time=publish_time,
             outer=outer,
         )
     requested_modules = search_local(*module_name_patterns)
@@ -346,8 +371,6 @@ def update(
     ret = install(
         module_names=to_update,
         modules_dir=modules_dir,
-        overwrite=overwrite,
-        clean=clean,
         force_data=force_data,
         yes=True,
         skip_dependencies=False,
@@ -362,13 +385,18 @@ def update(
         return True
 
 
-def uninstall(module_names: Optional[List[str]] = None, yes: bool = False, outer=None):
-    """uninstall.
+def uninstall(
+    module_names: Optional[List[str]] = None, yes: bool = False, outer=None
+) -> bool:
+    """Uninstall modules.
 
     Args:
-        module_names (Optional[List[str]]): module_names
-        yes (bool): yes
+        module_names (Optional[List[str]]): Modules names
+        yes (bool): `True` to skip a confirmation prompt.
         outer:
+
+    Returns:
+        `True` if successful. `False` if not.
     """
     from ...lib.module.local import search_local
     from ...lib.module import uninstall_module
@@ -397,30 +425,25 @@ def uninstall(module_names: Optional[List[str]] = None, yes: bool = False, outer
 
 
 def installbase(
-    refresh_db: bool = False,
-    clean_cache_files: bool = False,
-    clean: bool = False,
-    publish_time: str = "",
     no_fetch: bool = False,
     conf: Optional[dict] = None,
     overwrite: bool = False,
     modules_dir: Optional[Path] = None,
-    outer=None,
     system_worker_state=None,
-):
-    """installbase.
+    outer=None,
+) -> Optional[bool]:
+    """Installs OakVar system/default modules.
 
     Args:
-        refresh_db (bool): refresh_db
-        clean_cache_files (bool): clean_cache_files
-        clean (bool): clean
-        publish_time (str): publish_time
-        no_fetch (bool): no_fetch
-        conf (Optional[dict]): conf
-        overwrite (bool): overwrite
-        modules_dir (Optional[Path]): modules_dir
+        no_fetch (bool): `True` will skip fetching the latest the OakVar store cache.
+        overwrite (bool): `True` will overwrite the module even if the same version.
+        modules_dir (Optional[Path]): custom OakVar modules directory
+        conf (Optional[dict]): Custom system configuration as a dict
         outer:
         system_worker_state:
+
+    Returns:
+        `None` if successful. `False` if not.
     """
     from ...lib.system import get_system_conf
     from ...lib.system.consts import base_modules_key
@@ -428,10 +451,6 @@ def installbase(
 
     if not no_fetch:
         try_fetch_ov_store_cache(
-            refresh_db=refresh_db,
-            clean_cache_files=clean_cache_files,
-            clean=clean,
-            publish_time=publish_time,
             outer=outer,
         )
     sys_conf = get_system_conf(conf=conf)
@@ -440,7 +459,6 @@ def installbase(
         module_names=base_modules,
         modules_dir=modules_dir,
         overwrite=overwrite,
-        clean=clean,
         force_data=False,
         yes=True,
         skip_dependencies=False,

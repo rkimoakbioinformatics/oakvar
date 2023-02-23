@@ -1,14 +1,17 @@
+from typing import Any
 from typing import List
+from typing import Dict
 
 
 def list_modules(
     module_names: List[str] = [],
-    types: List[str] = [],
+    module_types: List[str] = [],
     tags: List[str] = [],
-    available: bool = False,
+    search_store: bool = False,
     nameonly: bool = False,
-    raw_bytes: bool = False,
-):
+    humanized_size: bool = False,
+) -> List[Dict[str, Any]]:
+    import re
     from ...lib.module.remote import search_remote
     from ...lib.module.local import search_local
     from ...lib.module.local import get_local_module_info
@@ -17,10 +20,10 @@ def list_modules(
     from ...lib.module.remote import RemoteModuleLs
 
     all_toks_json = []
-    if available:
-        if types:
+    if search_store:
+        if module_types:
             l = []
-            for mt in types:
+            for mt in module_types:
                 l.extend(search_remote(*module_names, module_type=mt))
         else:
             l = search_remote(*module_names)
@@ -29,7 +32,7 @@ def list_modules(
     if not l:
         return all_toks_json
     for module_name in l:
-        if available:
+        if search_store:
             module_info = get_remote_module_info_ls(module_name)
             if module_info:
                 add_local_module_info_to_remote_module_info(module_info)
@@ -37,22 +40,30 @@ def list_modules(
             module_info = get_local_module_info(module_name)
         if not module_info:
             continue
-        if types and module_info.type not in types:
+        if module_types and module_info.type not in module_types:
             continue
-        if tags:
+        if tags and module_info.tags:
             if not module_info.tags:
                 continue
-            if not set(tags).intersection(module_info.tags):
+            matched = False
+            for pattern in tags:
+                for tag in module_info.tags:
+                    if re.match(pattern, tag):
+                        matched = True
+                        break
+                if matched:
+                    break
+            if not matched:
                 continue
         if isinstance(module_info, RemoteModuleLs):
             size = module_info.size
         else:
             size = module_info.get_size()
-        if not raw_bytes:
+        if humanized_size:
             size = humanize_bytes(size)
         toks = {"name": module_name}
         if not nameonly:
-            if available:
+            if search_store:
                 toks.update(
                     {
                         "title": module_info.title,

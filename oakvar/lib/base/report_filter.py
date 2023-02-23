@@ -704,13 +704,13 @@ class ReportFilter:
             return ret
 
     async def get_new_report_filter_uid(self, cursor_read=Any, cursor_write=Any):
-        from ..system import get_sys_conf_value
+        from ..system import get_sys_conf_int_value
         from ..system.consts import report_filter_max_num_cache_per_user_key
         from ..system.consts import DEFAULT_REPORT_FILTER_MAX_NUM_CACHE_PER_USER
 
         _ = cursor_write
         delete_uids = []
-        report_filter_max_num_cache_per_user = get_sys_conf_value(
+        report_filter_max_num_cache_per_user = get_sys_conf_int_value(
             report_filter_max_num_cache_per_user_key
         )
         if not report_filter_max_num_cache_per_user:

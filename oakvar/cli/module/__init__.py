@@ -12,7 +12,10 @@ def cli_module_pack(args):
 def pack(args: dict, __name__="module pack"):
     from ...api.module import pack
 
-    pack(**args)
+    module_name = args.get("module_name", "")
+    if "module_name" in args:
+        del args["module_name"]
+    pack(module_name, **args)
     print(f"To register the packed module, use `ov store register`.")
 
 
@@ -40,7 +43,11 @@ def cli_module_info(args):
 def info(args, __name__="module info"):
     from ...api.module import info
 
-    ret = info(**args)
+    module_name = args.get("module_name")
+    if not module_name:
+        return None
+    del args["module_name"]
+    ret = info(module_name, **args)
     if not ret:
         print(f"Module not found")
 
@@ -264,17 +271,10 @@ def add_parser_ov_module(subparsers):
         description="updates modules.",
     )
     parser_ov_module_update.add_argument(
-        "modules", nargs="*", help="Modules to update."
+        "module_name_patterns", nargs="*", help="Modules to update."
     )
     parser_ov_module_update.add_argument(
-        "-y", action="store_true", help="Proceed without prompt"
-    )
-    parser_ov_module_update.add_argument(
-        "--strategy",
-        help='Dependency resolution strategy. "consensus" will attempt to resolve dependencies. "force" will install the highest available version. "skip" will skip modules with constraints.',
-        default="consensus",
-        type=str,
-        choices=("consensus", "force", "skip"),
+        "-y", "--yes", action="store_true", help="Proceed without prompt"
     )
     parser_ov_module_update.add_argument(
         "--quiet", action="store_true", default=None, help="suppress stodout output"
@@ -348,14 +348,14 @@ def add_parser_ov_module(subparsers):
     )
     parser_ov_module_ls.add_argument(
         "-a",
-        "--available",
+        "--search-store",
         action="store_true",
         default=False,
         help="Include available modules",
     )
     parser_ov_module_ls.add_argument(
         "-t",
-        "--types",
+        "--module-types",
         nargs="+",
         default=[],
         help="Only list modules of certain types",
@@ -374,7 +374,7 @@ def add_parser_ov_module(subparsers):
         "--nameonly", action="store_true", default=False, help="Only list module names"
     )
     parser_ov_module_ls.add_argument(
-        "--raw-bytes",
+        "--humanized-size",
         action="store_true",
         default=False,
         dest="raw_bytes",

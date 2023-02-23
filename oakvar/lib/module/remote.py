@@ -1,10 +1,12 @@
 from typing import Optional
 from typing import Tuple
+from typing import List
 from pathlib import Path
 
 
 class RemoteModuleLs:
     def __init__(self, __name__, **kwargs):
+        from json import loads
         from ..store.db import latest_module_version_size
 
         self.name = kwargs.get("name") or ""
@@ -17,7 +19,8 @@ class RemoteModuleLs:
         self.latest_code_version = latest["code_version"]
         self.latest_data_source = latest["data_source"]
         self.latest_data_version = latest["data_version"]
-        self.tags = kwargs.get("tags") or []
+        tags: str = kwargs.get("tags") or "[]"
+        self.tags: List[str] = loads(tags)
         self.installed = False
         self.local_code_version = ""
         self.local_data_source = ""

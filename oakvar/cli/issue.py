@@ -5,9 +5,9 @@ from . import cli_func
 @cli_entry
 @cli_func
 def issue(__args__, __name__="issue"):
-    from ..api.issue import issue
+    from ..api import report_issue
 
-    return issue()
+    return report_issue()
 
 
 def get_parser_fn_issue():

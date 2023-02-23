@@ -377,7 +377,7 @@ class SubmitProcessor:
         # module options
         module_option_args = self.get_module_option_args(job_options)
         if module_option_args:
-            run_args.append("--module-option")
+            run_args.append("--module-options")
             run_args.extend(module_option_args)
         if job_options.get("combine_input"):
             run_args.append("--combine-input")

@@ -1,4 +1,3 @@
-from __future__ import annotations
 from typing import Any
 from typing import Optional
 from typing import List
@@ -302,7 +301,7 @@ class Runner(object):
         if self.conf_path != "":
             self.logger.info("conf file: {}".format(self.conf_path))
 
-    async def process_files(self, run_no: int):
+    async def process_file(self, run_no: int):
         await self.do_step_converter(run_no)
         await self.do_step_preparer(run_no)
         await self.do_step_mapper(run_no)
@@ -311,7 +310,7 @@ class Runner(object):
         await self.do_step_postaggregator(run_no)
         await self.do_step_reporter(run_no)
 
-    async def main(self):
+    async def main(self) -> Optional[Dict[str, Any]]:
         from time import time, asctime, localtime
         from ..util.run import update_status
         from ..consts import JOB_STATUS_FINISHED
@@ -340,7 +339,7 @@ class Runner(object):
                 if self.args and self.args.vcf2vcf:
                     await self.run_vcf2vcf(run_no)
                 else:
-                    await self.process_files(run_no)
+                    await self.process_file(run_no)
                 end_time = time()
                 runtime = end_time - self.start_time
                 display_time = asctime(localtime(end_time))
@@ -487,14 +486,14 @@ class Runner(object):
                 if len(toks) != 2:
                     if self.outer:
                         self.outer.write(
-                            "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value.\n",
+                            "Ignoring invalid module option {opt_str}. module-options should be module_name.key=value.\n",
                         )
                     continue
                 k = toks[0]
                 if k.count(".") != 1:
                     if self.outer:
                         self.outer.write(
-                            "Ignoring invalid module option {opt_str}. module-option should be module_name.key=value.\n",
+                            "Ignoring invalid module option {opt_str}. module-options should be module_name.key=value.\n",
                         )
                     continue
                 [module_name, key] = k.split(".")

@@ -1,6 +1,8 @@
 from typing import Optional
+from typing import Union
 from typing import Tuple
 from typing import List
+from typing import Dict
 from pathlib import Path
 
 
@@ -69,7 +71,7 @@ class LocalModule(object):
         self.size = None
         self.code_size = None
         self.data_size = None
-        self.tags = self.conf.get("tags", [])
+        self.tags: List[str] = self.conf.get("tags", [])
         self.data_source = str(self.conf.get("datasource", ""))
         self.groups = self.conf.get("groups", [])
         self.installed = True
@@ -126,17 +128,20 @@ class LocalModule(object):
         return d
 
 
-def get_local_module_info(module_name: str, fresh=False) -> Optional[LocalModule]:
+def get_local_module_info(module_name: Union[str, Path], fresh=False) -> Optional[LocalModule]:
     from .cache import get_module_cache
 
-    p = Path(module_name)
+    if isinstance(module_name, str):
+        p = Path(module_name)
+    else:
+        p = module_name
     if p.exists():
         module_info = LocalModule(p)
     else:
         module_info = None
         mc = get_module_cache(fresh=fresh)
         if fresh:
-            module_path = get_module_dir(module_name)
+            module_path = get_module_dir(str(module_name))
             if module_path:
                 module_info = LocalModule(module_path)
                 if module_info:
@@ -536,7 +541,7 @@ def pack_module_zip(
     outdir: Path = Path(".").absolute(),
     split: bool = False,
     outer=None,
-):
+) -> Optional[Path]:
     from zipfile import ZipFile
     from os import walk
     from os import sep
@@ -612,11 +617,14 @@ def pack_module_zip(
 
 def pack_module(
     module_name: str, outdir: Path, code_only: bool, split: bool, outer=None
-):
+) -> Dict[str, Optional[Path]]:
     conf = get_module_conf(module_name)
-    pack_module_zip(module_name, "code", outdir=outdir, split=split, outer=outer)
+    code_zip_path = pack_module_zip(module_name, "code", outdir=outdir, split=split, outer=outer)
     if not code_only and not (conf and conf.get("no_data")):
-        pack_module_zip(module_name, "data", outdir=outdir, split=split, outer=outer)
+        data_zip_path = pack_module_zip(module_name, "data", outdir=outdir, split=split, outer=outer)
+    else:
+        data_zip_path = None
+    return {"code": code_zip_path, "data": data_zip_path}
 
 
 def load_modules(annotators: list = [], mapper: Optional[str] = None, input_file=None):

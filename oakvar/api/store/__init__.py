@@ -11,17 +11,46 @@ def register(
     overwrite: bool = False,
     outer=None,
     error=None,
-):
-    """register.
+) -> bool:
+    """Register a module in the OakVar store.
 
     Args:
-        module_name (str): module_name
-        url_file (Optional[str]): url_file
-        code_url (List[str]): code_url
-        data_url (List[str]): data_url
+        module_name (str): Module name
+        code_url (List[str]): URLs of code zip files
+        data_url (List[str]): URLs of data zip files
+        url_file (Optional[str]): Path to a yaml file which contains the URLs of code and data zip files.
         overwrite (bool): overwrite
         outer:
         error:
+
+    Returns:
+        `True` if successful. `False` if not.
+
+    Examples:
+        Pack `custommodule` module to produce `custommodule__1.0.0__code.zip` and `custommodule__1.0.0__data.zip`.
+
+        >>> oakvar.api.module.pack("custommodule")
+
+        Upload the two files to `https://module.storage.com/annotators/custommodule__1.0.0__code.zip` and `https://module.storage.com/annotators/custommodule__1.0.0__data.zip`.
+
+        Then, register the module.
+
+        >>> oakvar.api.store.register("custommodule",\\
+            code_url=\\
+                ["https://module.storage.com/annotators/custommodule__1.0.0__code.zip"],\\
+            data_url=\\
+                ["https://module.storage.com/annotators/custommodule__1.0.0__data.zip"])
+
+        `url_file.yml` for this registration can be made:
+
+            - code:
+              - https://module.storage.com/annotators/custommodule__1.0.0__code.zip
+            - data:
+              - https://module.storage.com/annotators/custommodule__1.0.0__data.zip
+
+        and used:
+
+        >>> oakvar.api.store.register("custommodule", url_file="url_file.yml")
     """
     from ...lib.store.ov import register
 

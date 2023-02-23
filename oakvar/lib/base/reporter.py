@@ -21,12 +21,10 @@ class BaseReporter:
         inputfiles: Optional[List[str]] = None,
         separatesample: bool = False,
         output_dir: Optional[str] = None,
-        system_option: List[str] = [],
         module_options: Dict = {},
         includesample: Optional[List[str]] = [],
         excludesample: Optional[List[str]] = None,
         package: Optional[str] = None,
-        modules_dir: Optional[str] = None,
         cols: Optional[List[str]] = None,
         level: Optional[str] = None,
         user: Optional[str] = None,
@@ -50,12 +48,10 @@ class BaseReporter:
         self.inputfiles = inputfiles
         self.separatesample = separatesample
         self.output_dir = output_dir
-        self.system_option = system_option
         self.module_options = module_options
         self.includesample = includesample
         self.excludesample = excludesample
         self.package = package
-        self.modules_dir = modules_dir
         self.cols = cols
         self.level = level
         if user:

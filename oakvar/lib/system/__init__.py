@@ -1,6 +1,6 @@
 from typing import Optional
+from typing import Union
 from typing import Dict
-from typing import Any
 from pathlib import Path
 
 custom_system_conf = None
@@ -10,7 +10,7 @@ def setup_system(
     clean: bool = False,
     refresh_db: bool = False,
     clean_cache_files: bool = False,
-    setup_file: Optional[str] = None,
+    setup_file: Optional[Path] = None,
     email: Optional[str] = None,
     pw: Optional[str] = None,
     publish_time: str = "",
@@ -113,7 +113,7 @@ def setup_system_dirs(conf=None, outer=None):
 
 def setup_system_conf(
     clean: bool = False,
-    setup_file: Optional[str] = None,
+    setup_file: Optional[Path] = None,
     custom_system_conf: Optional[Dict] = None,
     outer=None,
 ) -> dict:
@@ -240,10 +240,10 @@ def get_log_dir(conf=None):
     return get_conf_dirvalue(log_dir_key, conf=conf)
 
 
-def get_conf_dirvalue(conf_key, conf=None):
+def get_conf_dirvalue(conf_key, conf=None) -> Optional[Path]:
     from pathlib import Path
 
-    d: Optional[str] = get_sys_conf_value(conf_key, conf=conf)
+    d: Optional[str] = get_sys_conf_str_value(conf_key, conf=conf)
     if d:
         return Path(d).absolute()
     else:
@@ -284,7 +284,27 @@ def get_logo_path(module_name: str, store: str, conf=None) -> Optional[Path]:
         return None
 
 
-def get_sys_conf_value(conf_key, sys_conf_path=None, conf=None) -> Optional[Any]:
+def get_sys_conf_str_value(conf_key: str, sys_conf_path: Optional[Path]=None, conf: Optional[dict]=None) -> Optional[str]:
+    v = get_sys_conf_value(conf_key, sys_conf_path=sys_conf_path, conf=conf)
+    if v is None:
+        return None
+    elif isinstance(v, str):
+        return v
+    else:
+        return str(v)
+
+
+def get_sys_conf_int_value(conf_key: str, sys_conf_path: Optional[Path]=None, conf: Optional[dict]=None) -> Optional[int]:
+    v = get_sys_conf_value(conf_key, sys_conf_path=sys_conf_path, conf=conf)
+    if isinstance(v, int):
+        return v
+    elif isinstance(v, str):
+        return int(v)
+    else:
+        return None
+
+
+def get_sys_conf_value(conf_key: str, sys_conf_path=None, conf=None) -> Optional[Union[str, int, float, dict]]:
     from os import environ
     from ..util.util import load_yml_conf
     from os.path import exists
@@ -438,7 +458,7 @@ def augment_with_sys_conf_temp(conf: dict, conf_template: dict):
                         conf[k_t][kk_t] = vv_t
 
 
-def get_system_conf(sys_conf_path=None, conf=None):
+def get_system_conf(sys_conf_path=None, conf=None) -> dict:
     from os import environ
     from os.path import exists
     from .consts import sys_conf_path_key
@@ -662,15 +682,18 @@ def get_default_root_dir(conf=None) -> Path:
     return root_dir
 
 
-def get_max_num_concurrent_modules_per_job():
+def get_max_num_concurrent_modules_per_job() -> int:
     from .consts import max_num_concurrent_modules_per_job_key
     from .consts import (
         max_num_concurrent_annotators_per_job_key,
     )  # TODO: backward-compatibility. remove after some time.
+    from .consts import DEFAULT_MAX_NUM_CONCURRENT_JOBS
 
-    value = get_system_conf().get(max_num_concurrent_modules_per_job_key)
+    value = get_sys_conf_int_value(max_num_concurrent_modules_per_job_key)
     if not value:
-        value = get_system_conf().get(max_num_concurrent_annotators_per_job_key)
+        value = get_sys_conf_int_value(max_num_concurrent_annotators_per_job_key)
+    if not value:
+        value = DEFAULT_MAX_NUM_CONCURRENT_JOBS
     return value
 
 
@@ -824,7 +847,7 @@ def check(outer=None) -> bool:
     if not check_cache_files(outer=outer):
         return False
     if outer:
-        outer.write(f"Success")
+        outer.write(f"\nSuccess\n")
     return True
 
 

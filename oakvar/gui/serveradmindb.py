@@ -1,6 +1,7 @@
 from logging import getLogger
 from typing import Any
 from typing import Optional
+from typing import Union
 
 admindb_path = None
 serveradmindb = None
@@ -420,13 +421,15 @@ class ServerAdminDb:
                 pageno = 1
         return pageno
 
-    def get_pagesize(self, in_pagesize: Optional[str]) -> int:
+    def get_pagesize(self, in_pagesize: Optional[Union[str, int]]) -> int:
         from ..lib.system import get_sys_conf_value
         from .consts import job_table_pagesize_key
         from .consts import DEFAULT_JOB_TABLE_PAGESIZE
 
         if not in_pagesize:
-            in_pagesize = get_sys_conf_value(job_table_pagesize_key)
+            v = get_sys_conf_value(job_table_pagesize_key)
+            if v is None or isinstance(v, str) or isinstance(v, int):
+                in_pagesize = v
         if not in_pagesize:
             pagesize = DEFAULT_JOB_TABLE_PAGESIZE
         else:

@@ -10,7 +10,7 @@ def cli_run(args):
 
 @cli_func
 def run(args, __name__="run"):
-    from ..api.run import run
+    from ..api import run
 
     ret = run(**args)
     return ret
