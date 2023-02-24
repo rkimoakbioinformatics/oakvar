@@ -8,21 +8,21 @@
       
       
       
-        <link rel="canonical" href="https://oakvar.com/devguide_debugging/">
+        <link rel="canonical" href="https://oakvar.com/api/lib_util_util/">
       
-      <link rel="icon" href="../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.3.1, mkdocs-material-8.3.9">
     
     
       
-        <title>Debugging - OakVar</title>
+        <title>oakvar.lib.util.util - OakVar</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.1d29e8d0.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.1d29e8d0.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.cbb835fc.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.cbb835fc.min.css">
         
       
       
@@ -38,9 +38,9 @@
       
     
     
-      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
     
-    <script>__md_scope=new URL("..",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -64,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#entrypoints" class="md-skip">
+        <a href="#oakvar.lib.util.util" class="md-skip">
           Skip to content
         </a>
       
@@ -78,9 +78,9 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="OakVar" class="md-header__button md-logo" aria-label="OakVar" data-md-component="logo">
+    <a href="../.." title="OakVar" class="md-header__button md-logo" aria-label="OakVar" data-md-component="logo">
       
-  <img src="../images/logo.png" alt="logo">
+  <img src="../../images/logo.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -96,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Debugging
+              oakvar.lib.util.util
             
           </span>
         </div>
@@ -163,9 +163,9 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="OakVar" class="md-nav__button md-logo" aria-label="OakVar" data-md-component="logo">
+    <a href="../.." title="OakVar" class="md-nav__button md-logo" aria-label="OakVar" data-md-component="logo">
       
-  <img src="../images/logo.png" alt="logo">
+  <img src="../../images/logo.png" alt="logo">
 
     </a>
     OakVar
@@ -181,7 +181,7 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         Home
       </a>
     </li>
@@ -222,7 +222,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../install_system/" class="md-nav__link">
+      <a href="../../install_system/" class="md-nav__link">
         System
       </a>
     </li>
@@ -236,7 +236,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../install_modules/" class="md-nav__link">
+      <a href="../../install_modules/" class="md-nav__link">
         Modules
       </a>
     </li>
@@ -258,7 +258,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../overview/" class="md-nav__link">
+      <a href="../../overview/" class="md-nav__link">
         Overview
       </a>
     </li>
@@ -273,7 +273,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../tutorial/" class="md-nav__link">
+      <a href="../../tutorial/" class="md-nav__link">
         Tutorial
       </a>
     </li>
@@ -288,7 +288,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../vcf2vcf/" class="md-nav__link">
+      <a href="../../vcf2vcf/" class="md-nav__link">
         VCF2VCF
       </a>
     </li>
@@ -303,7 +303,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cli/" class="md-nav__link">
+      <a href="../../cli/" class="md-nav__link">
         Command-line interface
       </a>
     </li>
@@ -318,7 +318,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../gui/" class="md-nav__link">
+      <a href="../../gui/" class="md-nav__link">
         Graphical user interface
       </a>
     </li>
@@ -333,7 +333,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../register/" class="md-nav__link">
+      <a href="../../register/" class="md-nav__link">
         Publishing your module
       </a>
     </li>
@@ -346,14 +346,12 @@
 
   
   
-    
-  
   
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
       
-        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_9" type="checkbox" id="__nav_9" checked>
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_9" type="checkbox" id="__nav_9" >
       
       
       
@@ -376,7 +374,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../devguide_modules/" class="md-nav__link">
+      <a href="../../devguide_modules/" class="md-nav__link">
         Modules
       </a>
     </li>
@@ -390,7 +388,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../devguide_workflows/" class="md-nav__link">
+      <a href="../../devguide_workflows/" class="md-nav__link">
         Workflows
       </a>
     </li>
@@ -402,55 +400,11 @@
               
   
   
-    
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          Debugging
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../devguide_debugging/" class="md-nav__link">
         Debugging
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#entrypoints" class="md-nav__link">
-    Entrypoints
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#base-classes" class="md-nav__link">
-    Base classes
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -468,12 +422,14 @@
 
   
   
+    
+  
   
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
       
-        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_10" type="checkbox" id="__nav_10" >
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_10" type="checkbox" id="__nav_10" checked>
       
       
       
@@ -481,7 +437,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../api/main/">Python API</a>
+          <a href="../main/">Python API</a>
           
             <label for="__nav_10">
               <span class="md-nav__icon md-icon"></span>
@@ -513,7 +469,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../api/oakvar_api/">oakvar.api</a>
+          <a href="../oakvar_api/">oakvar.api</a>
           
             <label for="__nav_10_1">
               <span class="md-nav__icon md-icon"></span>
@@ -534,7 +490,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../api/config/" class="md-nav__link">
+      <a href="../config/" class="md-nav__link">
         config
       </a>
     </li>
@@ -548,7 +504,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../api/module/" class="md-nav__link">
+      <a href="../module/" class="md-nav__link">
         module
       </a>
     </li>
@@ -562,7 +518,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../api/new/" class="md-nav__link">
+      <a href="../new/" class="md-nav__link">
         new
       </a>
     </li>
@@ -587,7 +543,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../api/store/">store</a>
+          <a href="../store/">store</a>
           
             <label for="__nav_10_1_4">
               <span class="md-nav__icon md-icon"></span>
@@ -608,7 +564,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../api/store_account/" class="md-nav__link">
+      <a href="../store_account/" class="md-nav__link">
         account
       </a>
     </li>
@@ -629,7 +585,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../api/system/" class="md-nav__link">
+      <a href="../system/" class="md-nav__link">
         system
       </a>
     </li>
@@ -648,11 +604,55 @@
               
   
   
+    
   
-    <li class="md-nav__item">
-      <a href="../api/lib_util_util/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          oakvar.lib.util.util
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         oakvar.lib.util.util
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#oakvar.lib.util.util" class="md-nav__link">
+    oakvar.lib.util.util
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oakvar.lib.util.util.get_df_from_db" class="md-nav__link">
+    get_df_from_db()
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -749,15 +749,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#entrypoints" class="md-nav__link">
-    Entrypoints
+  <a href="#oakvar.lib.util.util" class="md-nav__link">
+    oakvar.lib.util.util
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#base-classes" class="md-nav__link">
-    Base classes
+  <a href="#oakvar.lib.util.util.get_df_from_db" class="md-nav__link">
+    get_df_from_db()
   </a>
   
 </li>
@@ -776,84 +776,147 @@
                 
 
 
-  <h1>Debugging</h1>
+  <h1>oakvar.lib.util.util</h1>
 
-<h3 id="entrypoints">Entrypoints</h3>
-<table>
-<thead>
-<tr>
-<th>Command</th>
-<th>Entrypoint</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>ov</td>
-<td>oakvar/__main__.py</td>
-</tr>
-<tr>
-<td>ov run</td>
-<td>oakvar/cli/run.py</td>
-</tr>
-<tr>
-<td>ov report</td>
-<td>oakvar/cli/report.py</td>
-</tr>
-<tr>
-<td>ov gui</td>
-<td>oakvar/cli/gui.py</td>
-</tr>
-</tbody>
-</table>
-<p>oakvar/__main__.py is intentional, to make <code>python -m oakvar</code> style of use possible.</p>
-<h3 id="base-classes">Base classes</h3>
-<p>OakVar modules inherit one of OakVar base module classes. Converters, mappers, annotators, postaggregators, and reporters have different base module classes.</p>
-<table>
-<thead>
-<tr>
-<th>Type</th>
-<th>Module</th>
-<th>Class</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>converter</td>
-<td>oakvar/base/converter.py</td>
-<td>BaseConverter</td>
-</tr>
-<tr>
-<td>mapper</td>
-<td>oakvar/base/mapper.py</td>
-<td>BaseMapper</td>
-</tr>
-<tr>
-<td>annotator</td>
-<td>oakvar/base/annotator.py</td>
-<td>BaseAnnotator</td>
-</tr>
-<tr>
-<td>postaggregator</td>
-<td>oakvar/base/postaggregator.py</td>
-<td>BasePostAggregator</td>
-</tr>
-<tr>
-<td>reporter</td>
-<td>oakvar/cli/report.py</td>
-<td>BaseReporter</td>
-</tr>
-<tr>
-<td>common</td>
-<td>oakvar/base/commonmodule.py</td>
-<td>BaseCommonModule</td>
-</tr>
-</tbody>
-</table>
-<p>To develop a new OakVar module, it should inherit one of these base classes. For example, an annotator module's class definition should be:</p>
-<pre><code>from oakvar import BaseAnnotator
+<div class="doc doc-object doc-module">
 
-class Annotator(BaseAnnotator):
-</code></pre>
+
+<a id="oakvar.lib.util.util"></a>
+  <div class="doc doc-contents first">
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h2 id="oakvar.lib.util.util.get_df_from_db" class="doc doc-heading">
+        <span class="doc doc-object-name doc-function-name">get_df_from_db</span>
+
+
+</h2>
+<div class="highlight"><pre><span></span><code><span class="n">get_df_from_db</span><span class="p">(</span>
+    <span class="n">db_path</span><span class="p">,</span> <span class="n">table_name</span><span class="o">=</span><span class="s2">&quot;variant&quot;</span><span class="p">,</span> <span class="n">sql</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">num_cores</span><span class="o">=</span><span class="mi">1</span>
+<span class="p">)</span>
+</code></pre></div>
+
+  <div class="doc doc-contents ">
+  
+      <p>Gets a Polars DataFrame of a table in an OakVar result database.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>db_path</code></td>
+          <td class="doc-param-details">
+            <p>Path to the OakVar result database file from which a Polars DataFrame will be extracted.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>str</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>table_name</code></td>
+          <td class="doc-param-details">
+            <p>Table name to dump to the DataFrame</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>str</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;variant&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>sql</code></td>
+          <td class="doc-param-details">
+            <p>Custom SQL to apply before dumping to the DataFrame. For example, <code>"select base__uid, base__chrom, base__pos from variant where clinvar__sig='Pathogenic'"</code>.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="typing.Optional">Optional</span>[str]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>num_cores</code></td>
+          <td class="doc-param-details">
+            <p>Number of CPU cores to use</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>int</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>1</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>RETURNS</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td>
+              <span class="doc-returns-annotation">
+                  <code><span title="typing.Optional">Optional</span>[<span title="polars.DataFrame">DataFrame</span>]</code>
+              </span>
+          </td>
+          <td class="doc-returns-details">
+            <p>DataFrame of the given or default table of the OakVar result database</p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
 
               
             </article>
@@ -869,7 +932,7 @@ class Annotator(BaseAnnotator):
     <nav class="md-footer__inner md-grid" aria-label="Footer" >
       
         
-        <a href="../devguide_workflows/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Workflows" rel="prev">
+        <a href="../system/" class="md-footer__link md-footer__link--prev" aria-label="Previous: system" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
           </div>
@@ -878,26 +941,11 @@ class Annotator(BaseAnnotator):
               <span class="md-footer__direction">
                 Previous
               </span>
-              Workflows
+              system
             </div>
           </div>
         </a>
       
-      
-        
-        <a href="../api/main/" class="md-footer__link md-footer__link--next" aria-label="Next: Python API" rel="next">
-          <div class="md-footer__title">
-            <div class="md-ellipsis">
-              <span class="md-footer__direction">
-                Next
-              </span>
-              Python API
-            </div>
-          </div>
-          <div class="md-footer__button md-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
-          </div>
-        </a>
       
     </nav>
   
@@ -921,10 +969,10 @@ class Annotator(BaseAnnotator):
     <div class="md-dialog" data-md-component="dialog">
       <div class="md-dialog__inner md-typeset"></div>
     </div>
-    <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.b97dbffb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.b97dbffb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.6c7ad80a.min.js"></script>
+      <script src="../../assets/javascripts/bundle.6c7ad80a.min.js"></script>
       
     
   </body>

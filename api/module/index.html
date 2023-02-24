@@ -1,0 +1,2054 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://oakvar.com/api/module/">
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.3.1, mkdocs-material-8.3.9">
+    
+    
+      
+        <title>module - OakVar</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.1d29e8d0.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.cbb835fc.min.css">
+        
+      
+      
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="" data-md-color-primary="none" data-md-color-accent="none">
+  
+    
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#oakvar.api.module" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="OakVar" class="md-header__button md-logo" aria-label="OakVar" data-md-component="logo">
+      
+  <img src="../../images/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            OakVar
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              module
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="OakVar" class="md-nav__button md-logo" aria-label="OakVar" data-md-component="logo">
+      
+  <img src="../../images/logo.png" alt="logo">
+
+    </a>
+    OakVar
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        Home
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_2" type="checkbox" id="__nav_2" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2">
+          Install
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Install" data-md-level="1">
+        <label class="md-nav__title" for="__nav_2">
+          <span class="md-nav__icon md-icon"></span>
+          Install
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install_system/" class="md-nav__link">
+        System
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install_modules/" class="md-nav__link">
+        Modules
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/" class="md-nav__link">
+        Overview
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorial/" class="md-nav__link">
+        Tutorial
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vcf2vcf/" class="md-nav__link">
+        VCF2VCF
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/" class="md-nav__link">
+        Command-line interface
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../gui/" class="md-nav__link">
+        Graphical user interface
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../register/" class="md-nav__link">
+        Publishing your module
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_9" type="checkbox" id="__nav_9" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_9">
+          Developer guide
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Developer guide" data-md-level="1">
+        <label class="md-nav__title" for="__nav_9">
+          <span class="md-nav__icon md-icon"></span>
+          Developer guide
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../devguide_modules/" class="md-nav__link">
+        Modules
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../devguide_workflows/" class="md-nav__link">
+        Workflows
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../devguide_debugging/" class="md-nav__link">
+        Debugging
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_10" type="checkbox" id="__nav_10" checked>
+      
+      
+      
+      
+        
+        
+        <div class="md-nav__link md-nav__link--index ">
+          <a href="../main/">Python API</a>
+          
+            <label for="__nav_10">
+              <span class="md-nav__icon md-icon"></span>
+            </label>
+          
+        </div>
+      
+      <nav class="md-nav" aria-label="Python API" data-md-level="1">
+        <label class="md-nav__title" for="__nav_10">
+          <span class="md-nav__icon md-icon"></span>
+          Python API
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_10_1" type="checkbox" id="__nav_10_1" checked>
+      
+      
+      
+      
+        
+        
+        <div class="md-nav__link md-nav__link--index ">
+          <a href="../oakvar_api/">oakvar.api</a>
+          
+            <label for="__nav_10_1">
+              <span class="md-nav__icon md-icon"></span>
+            </label>
+          
+        </div>
+      
+      <nav class="md-nav" aria-label="oakvar.api" data-md-level="2">
+        <label class="md-nav__title" for="__nav_10_1">
+          <span class="md-nav__icon md-icon"></span>
+          oakvar.api
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config/" class="md-nav__link">
+        config
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          module
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        module
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#oakvar.api.module" class="md-nav__link">
+    oakvar.api.module
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oakvar.api.module.info" class="md-nav__link">
+    info()
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oakvar.api.module.install" class="md-nav__link">
+    install()
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oakvar.api.module.installbase" class="md-nav__link">
+    installbase()
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oakvar.api.module.ls" class="md-nav__link">
+    ls()
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oakvar.api.module.pack" class="md-nav__link">
+    pack()
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oakvar.api.module.uninstall" class="md-nav__link">
+    uninstall()
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oakvar.api.module.update" class="md-nav__link">
+    update()
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../new/" class="md-nav__link">
+        new
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_10_1_4" type="checkbox" id="__nav_10_1_4" >
+      
+      
+      
+      
+        
+        
+        <div class="md-nav__link md-nav__link--index ">
+          <a href="../store/">store</a>
+          
+            <label for="__nav_10_1_4">
+              <span class="md-nav__icon md-icon"></span>
+            </label>
+          
+        </div>
+      
+      <nav class="md-nav" aria-label="store" data-md-level="3">
+        <label class="md-nav__title" for="__nav_10_1_4">
+          <span class="md-nav__icon md-icon"></span>
+          store
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../store_account/" class="md-nav__link">
+        account
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../system/" class="md-nav__link">
+        system
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lib_util_util/" class="md-nav__link">
+        oakvar.lib.util.util
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/rkimoakbioinformatics/oakvar/releases" class="md-nav__link">
+        Release notes &#128279
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/rkimoakbioinformatics/oakvar" class="md-nav__link">
+        Repository &#128279
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/rkimoakbioinformatics/oakvar/blob/master/LICENSE" class="md-nav__link">
+        License &#128279
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/sponsors/rkimoakbioinformatics" class="md-nav__link">
+        Sponsor &#128279
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#oakvar.api.module" class="md-nav__link">
+    oakvar.api.module
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oakvar.api.module.info" class="md-nav__link">
+    info()
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oakvar.api.module.install" class="md-nav__link">
+    install()
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oakvar.api.module.installbase" class="md-nav__link">
+    installbase()
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oakvar.api.module.ls" class="md-nav__link">
+    ls()
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oakvar.api.module.pack" class="md-nav__link">
+    pack()
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oakvar.api.module.uninstall" class="md-nav__link">
+    uninstall()
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oakvar.api.module.update" class="md-nav__link">
+    update()
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content" data-md-component="content">
+            <article class="md-content__inner md-typeset">
+              
+                
+
+
+  <h1>module</h1>
+
+<div class="doc doc-object doc-module">
+
+
+<a id="oakvar.api.module"></a>
+  <div class="doc doc-contents first">
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h2 id="oakvar.api.module.info" class="doc doc-heading">
+        <span class="doc doc-object-name doc-function-name">info</span>
+
+
+</h2>
+<div class="highlight"><pre><span></span><code><span class="n">info</span><span class="p">(</span><span class="n">module_name</span><span class="p">,</span> <span class="n">local</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">outer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div>
+
+  <div class="doc doc-contents ">
+  
+      <p>info.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>module_name</code></td>
+          <td class="doc-param-details">
+            <p>Module name</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>str</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>local</code></td>
+          <td class="doc-param-details">
+            <p><code>True</code> will search the module in local installation. <code>False</code> will fetch the module's information from the OakVar store.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>bool</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>outer</code></td>
+          <td class="doc-param-details">
+            <p>If set, tabulated output will be sent to it. For example, <code>sys.stdout</code>.</p>
+            <p>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>kwargs</code></td>
+          <td class="doc-param-details">
+            
+            <p>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>{}</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>RETURNS</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td>
+              <span class="doc-returns-annotation">
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Dict">Dict</span>[str, <span title="typing.Any">Any</span>]]</code>
+              </span>
+          </td>
+          <td class="doc-returns-details">
+            <p><code>None</code> if the module is not found. The module's information as a dict if found.</p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+<p><strong>Examples:</strong></p>
+    <p>Print <code>clinvar</code> module's information to the terminal and get the same information as a dict.</p>
+    <div class="highlight"><pre><span></span><code><span class="gp">&gt;&gt;&gt; </span><span class="n">clinvar_info</span> <span class="o">=</span> <span class="n">oakvar</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">module</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;clinvar&quot;</span><span class="p">,</span> <span class="n">outer</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
+</code></pre></div>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h2 id="oakvar.api.module.install" class="doc doc-heading">
+        <span class="doc doc-object-name doc-function-name">install</span>
+
+
+</h2>
+<div class="highlight"><pre><span></span><code><span class="n">install</span><span class="p">(</span>
+    <span class="n">module_names</span><span class="o">=</span><span class="p">[],</span>
+    <span class="n">urls</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">modules_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">clean</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">force_data</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">yes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">skip_dependencies</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">skip_data</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">no_fetch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">outer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">stage_handler</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">system_worker_state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+  <div class="doc doc-contents ">
+  
+      <p>Install modules.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>module_names</code></td>
+          <td class="doc-param-details">
+            <p>Module names</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="typing.List">List</span>[str]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>[]</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>urls</code></td>
+          <td class="doc-param-details">
+            <p>URLs of module zip files. If given, <code>module_names</code> also should be given to specify the module name of each URL.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="typing.Optional">Optional</span>[str]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>yes</code></td>
+          <td class="doc-param-details">
+            <p><code>True</code> will skip a confirmation prompt.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>bool</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>no_fetch</code></td>
+          <td class="doc-param-details">
+            <p><code>True</code> will skip fetching the latest the OakVar store cache.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>bool</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>overwrite</code></td>
+          <td class="doc-param-details">
+            <p><code>True</code> will overwrite the module even if the same version.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>bool</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>force_data</code></td>
+          <td class="doc-param-details">
+            <p><code>True</code> will re-install module data.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>bool</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>skip_data</code></td>
+          <td class="doc-param-details">
+            <p><code>True</code> will skip installing module data.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>bool</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>modules_dir</code></td>
+          <td class="doc-param-details">
+            <p>custom OakVar modules directory</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="typing.Optional">Optional</span>[<span title="pathlib.Path">Path</span>]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>skip_dependencies</code></td>
+          <td class="doc-param-details">
+            <p><code>True</code> will bypass installing dependencies.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>bool</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>clean</code></td>
+          <td class="doc-param-details">
+            <p>clean</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>bool</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>stage_handler</code></td>
+          <td class="doc-param-details">
+            
+            <p>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>system_worker_state</code></td>
+          <td class="doc-param-details">
+            
+            <p>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>outer</code></td>
+          <td class="doc-param-details">
+            
+            <p>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>RETURNS</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td>
+              <span class="doc-returns-annotation">
+                  <code><span title="typing.Optional">Optional</span>[bool]</code>
+              </span>
+          </td>
+          <td class="doc-returns-details">
+            <p><code>None</code> if no problem. <code>False</code> if there was a problem.</p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h2 id="oakvar.api.module.installbase" class="doc doc-heading">
+        <span class="doc doc-object-name doc-function-name">installbase</span>
+
+
+</h2>
+<div class="highlight"><pre><span></span><code><span class="n">installbase</span><span class="p">(</span>
+    <span class="n">no_fetch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">conf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">modules_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">system_worker_state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">outer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+  <div class="doc doc-contents ">
+  
+      <p>Installs OakVar system/default modules.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>no_fetch</code></td>
+          <td class="doc-param-details">
+            <p><code>True</code> will skip fetching the latest the OakVar store cache.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>bool</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>overwrite</code></td>
+          <td class="doc-param-details">
+            <p><code>True</code> will overwrite the module even if the same version.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>bool</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>modules_dir</code></td>
+          <td class="doc-param-details">
+            <p>custom OakVar modules directory</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="typing.Optional">Optional</span>[<span title="pathlib.Path">Path</span>]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>conf</code></td>
+          <td class="doc-param-details">
+            <p>Custom system configuration as a dict</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="typing.Optional">Optional</span>[dict]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>outer</code></td>
+          <td class="doc-param-details">
+            
+            <p>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>system_worker_state</code></td>
+          <td class="doc-param-details">
+            
+            <p>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>RETURNS</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td>
+              <span class="doc-returns-annotation">
+                  <code><span title="typing.Optional">Optional</span>[bool]</code>
+              </span>
+          </td>
+          <td class="doc-returns-details">
+            <p><code>None</code> if successful. <code>False</code> if not.</p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h2 id="oakvar.api.module.ls" class="doc doc-heading">
+        <span class="doc doc-object-name doc-function-name">ls</span>
+
+
+</h2>
+<div class="highlight"><pre><span></span><code><span class="n">ls</span><span class="p">(</span>
+    <span class="n">module_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;.*&quot;</span><span class="p">],</span>
+    <span class="n">module_types</span><span class="o">=</span><span class="p">[],</span>
+    <span class="n">search_store</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">tags</span><span class="o">=</span><span class="p">[],</span>
+    <span class="n">nameonly</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">humanized_size</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">outer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span>
+<span class="p">)</span>
+</code></pre></div>
+
+  <div class="doc doc-contents ">
+  
+      <p>List installed and available OakVar modules.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>module_names</code></td>
+          <td class="doc-param-details">
+            <p>Module names</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="typing.List">List</span>[str]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>[&#39;.*&#39;]</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>module_types</code></td>
+          <td class="doc-param-details">
+            <p>Module types</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="typing.List">List</span>[str]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>[]</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>search_store</code></td>
+          <td class="doc-param-details">
+            <p><code>True</code> will search not yet installed modules on the OakVar store. <code>False</code> for only locally installed modules.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>bool</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>humanized_size</code></td>
+          <td class="doc-param-details">
+            <p><code>True</code> will show humanized module size.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>bool</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>tags</code></td>
+          <td class="doc-param-details">
+            <p>Module tags to search. Regular expression can be used.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="typing.List">List</span>[str]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>[]</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>nameonly</code></td>
+          <td class="doc-param-details">
+            <p><code>True</code> will return module names only.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>bool</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>outer</code></td>
+          <td class="doc-param-details">
+            
+            <p>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>RETURNS</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td>
+              <span class="doc-returns-annotation">
+                  <code><span title="typing.List">List</span>[<span title="typing.Dict">Dict</span>[str, <span title="typing.Any">Any</span>]]</code>
+              </span>
+          </td>
+          <td class="doc-returns-details">
+            <p>List of Dict, each element of which has an installed module's information.</p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+<p><strong>Examples:</strong></p>
+    <p>Get the information on the installed ClinVar module.</p>
+    <div class="highlight"><pre><span></span><code><span class="gp">&gt;&gt;&gt; </span><span class="n">oakvar</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">module</span><span class="o">.</span><span class="n">ls</span><span class="p">(</span><span class="n">module_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;clinvar&quot;</span><span class="p">])</span>
+</code></pre></div>
+    <p>Search for all reporter modules in the OakVar store.</p>
+    <div class="highlight"><pre><span></span><code><span class="gp">&gt;&gt;&gt; </span><span class="n">oakvar</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">module</span><span class="o">.</span><span class="n">ls</span><span class="p">(</span><span class="n">module_types</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;reporter&quot;</span><span class="p">],</span> <span class="n">search_store</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+    <p>Search the OakVar store for modules with "allele" in their tags.</p>
+    <div class="highlight"><pre><span></span><code><span class="gp">&gt;&gt;&gt; </span><span class="n">oakvar</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">module</span><span class="o">.</span><span class="n">ls</span><span class="p">(</span><span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;.*allele.*&quot;</span><span class="p">],</span> <span class="n">search_store</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h2 id="oakvar.api.module.pack" class="doc doc-heading">
+        <span class="doc doc-object-name doc-function-name">pack</span>
+
+
+</h2>
+<div class="highlight"><pre><span></span><code><span class="n">pack</span><span class="p">(</span>
+    <span class="n">module_name</span><span class="p">,</span>
+    <span class="n">outdir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">code_only</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">split</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">outer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+  <div class="doc doc-contents ">
+  
+      <p>Packs a module's code and optionally data to register it with OakVar store. This will produce zip files. They are supposed to be uploaded to somewhere on the web, and <code>oakvar.api.store.register</code> is used to register the module in the OakVar store. After this, the module will be available to all OakVar users worldwide.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>module_name</code></td>
+          <td class="doc-param-details">
+            <p>Module name</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>str</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>outdir</code></td>
+          <td class="doc-param-details">
+            <p>Directory to store the module pack zip files. Default is the current working directory.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="typing.Optional">Optional</span>[<span title="pathlib.Path">Path</span>]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>code_only</code></td>
+          <td class="doc-param-details">
+            <p><code>True</code> will pack only the code. Useful if only updated code will be registered.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>bool</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>split</code></td>
+          <td class="doc-param-details">
+            <p><code>True</code> will split the code and data zip files by 100MB.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>bool</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>outer</code></td>
+          <td class="doc-param-details">
+            
+            <p>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>RETURNS</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td>
+              <span class="doc-returns-annotation">
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Dict">Dict</span>[str, <span title="typing.Optional">Optional</span>[<span title="pathlib.Path">Path</span>]]]</code>
+              </span>
+          </td>
+          <td class="doc-returns-details">
+            <p><code>None</code> if the module does not exist. A dict of { "code": [Path], "data": [Path] } if successful.}</p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h2 id="oakvar.api.module.uninstall" class="doc doc-heading">
+        <span class="doc doc-object-name doc-function-name">uninstall</span>
+
+
+</h2>
+<div class="highlight"><pre><span></span><code><span class="n">uninstall</span><span class="p">(</span><span class="n">module_names</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">yes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">outer</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+  <div class="doc doc-contents ">
+  
+      <p>Uninstall modules.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>module_names</code></td>
+          <td class="doc-param-details">
+            <p>Modules names</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="typing.Optional">Optional</span>[<span title="typing.List">List</span>[str]]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>yes</code></td>
+          <td class="doc-param-details">
+            <p><code>True</code> to skip a confirmation prompt.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>bool</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>outer</code></td>
+          <td class="doc-param-details">
+            
+            <p>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>RETURNS</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td>
+              <span class="doc-returns-annotation">
+                  <code>bool</code>
+              </span>
+          </td>
+          <td class="doc-returns-details">
+            <p><code>True</code> if successful. <code>False</code> if not.</p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h2 id="oakvar.api.module.update" class="doc doc-heading">
+        <span class="doc doc-object-name doc-function-name">update</span>
+
+
+</h2>
+<div class="highlight"><pre><span></span><code><span class="n">update</span><span class="p">(</span>
+    <span class="n">module_name_patterns</span><span class="o">=</span><span class="p">[],</span>
+    <span class="n">yes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">no_fetch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">force_data</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">modules_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">outer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">system_worker_state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+  <div class="doc doc-contents ">
+  
+      <p>Update installed modules.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>module_name_patterns</code></td>
+          <td class="doc-param-details">
+            <p>Module name patterns. For example, <code>["clin.*"]</code> will check <code>clinvar</code>, <code>clingen</code>, etc.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="typing.List">List</span>[str]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>[]</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>yes</code></td>
+          <td class="doc-param-details">
+            <p><code>True</code> to skip a confirmation prompt.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>bool</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>no_fetch</code></td>
+          <td class="doc-param-details">
+            <p><code>True</code> will skip fetching the latest the OakVar store cache.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>bool</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>force_data</code></td>
+          <td class="doc-param-details">
+            <p><code>True</code> will re-install module data.</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>bool</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>modules_dir</code></td>
+          <td class="doc-param-details">
+            <p>custom OakVar modules directory</p>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="typing.Optional">Optional</span>[<span title="pathlib.Path">Path</span>]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>system_worker_state</code></td>
+          <td class="doc-param-details">
+            
+            <p>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>outer</code></td>
+          <td class="doc-param-details">
+            
+            <p>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>RETURNS</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td>
+              <span class="doc-returns-annotation">
+                  <code>bool</code>
+              </span>
+          </td>
+          <td class="doc-returns-details">
+            <p><code>True</code> if update was successful. <code>False</code> if not.</p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+              
+            </article>
+            
+          </div>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+    <nav class="md-footer__inner md-grid" aria-label="Footer" >
+      
+        
+        <a href="../config/" class="md-footer__link md-footer__link--prev" aria-label="Previous: config" rel="prev">
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+          </div>
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              config
+            </div>
+          </div>
+        </a>
+      
+      
+        
+        <a href="../new/" class="md-footer__link md-footer__link--next" aria-label="Next: new" rel="next">
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              new
+            </div>
+          </div>
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+          </div>
+        </a>
+      
+    </nav>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    <script id="__config" type="application/json">{"base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.b97dbffb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.6c7ad80a.min.js"></script>
+      
+    
+  </body>
+</html>
