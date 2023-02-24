@@ -1,24 +1,19 @@
 class CliOuter:
-    def __init__(self, outer=None, error=None):
+    def __init__(self):
         import sys
+        from rich.console import Console
 
-        if not outer:
-            outer = sys.stdout
-        if not error:
-            error = sys.stderr
-        self.out_writer = outer
-        self.err_writer = error
+        self.out_writer = Console()
+        self.err_writer = sys.stderr
 
-    def write(self, msg: str):
-        self.out_writer.write(f"{msg}\n")
-        self.out_writer.flush()
+    def write(self, msg):
+        self.out_writer.print(msg)
 
-    def error(self, msg: str):
+    def error(self, msg):
         self.err_writer.write(f"{msg}\n")
         self.err_writer.flush()
 
     def flush(self):
-        self.out_writer.flush()
         self.err_writer.flush()
 
 

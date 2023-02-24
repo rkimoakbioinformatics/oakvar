@@ -759,7 +759,7 @@ def check_system_yml(outer=None) -> bool:
     return True
 
 
-def check_oakvar_yml(outer=None) -> bool:
+def check_user_yml(outer=None) -> bool:
     from pathlib import Path
     from ..util.util import load_yml_conf
 
@@ -827,23 +827,116 @@ def check_cache_files(outer=None) -> bool:
     return True
 
 
+def check_module_version_requirement(outer=None) -> bool:
+    from ..util.admin_util import get_packagedir
+    from ..util.util import compare_version
+    from ..module.local import get_local_module_info
+
+    pkg_dir = get_packagedir()
+    p = pkg_dir / "module_requirement.txt"
+    if not p.exists():
+        return True
+    invalid_modules = []
+    for line in open(p):
+        [module_name, required_version] = line.strip().split()
+        mi = get_local_module_info(module_name)
+        if not mi:
+            continue
+        if not mi.code_version:
+            continue
+        if compare_version(required_version, mi.code_version) > 0:
+            invalid_modules.append([module_name, required_version])
+    if not invalid_modules:
+        return True
+    if outer:
+        for module_name, required_version in invalid_modules:
+            outer.write(f"Module version requirement not met for this version of OakVar: {module_name}>={required_version}")
+    return False
+
+
 def check(outer=None) -> bool:
+    from rich.console import Console
+    from rich.table import Table
+    from rich.text import Text
+    from rich import box
     from ..store.db import check_tables
 
-    if not check_system_yml(outer=outer):
-        return False
-    if not check_oakvar_yml(outer=outer):
-        return False
-    if not check_system_directories(outer=outer):
-        return False
-    if not check_account(outer=outer):
-        return False
-    if not check_tables(outer=outer):
-        return False
-    if not check_cache_files(outer=outer):
-        return False
+    ok = Text()
+    ok.append("Ok", style="green")
+    err = Text()
+    err.append("Error", style="red")
+    if check_system_yml(outer=outer) == True:
+        if outer:
+            outer.write("System configuration file Ok")
+        ok2 = Text()
+        ok2.append("Ok", style="green")
+        status_system_yml = ok2
+    else:
+        if outer:
+            outer.error("System configuration file Error")
+        status_system_yml = err
+    if check_user_yml(outer=outer):
+        status_user_yml = ok
+        if outer:
+            outer.write("User configuration file Ok")
+    else:
+        status_user_yml = err
+        if outer:
+            outer.error("User configuration file Error")
+    if check_system_directories(outer=outer):
+        status_system_directories = ok
+        if outer:
+            outer.write("System directories Ok")
+    else:
+        status_system_directories = err
+        if outer:
+            outer.error("System directories Error")
+    if check_account(outer=outer):
+        if outer:
+            outer.write("OakVar store account Ok")
+        status_account = ok
+    else:
+        status_account = err
+        if outer:
+            outer.error("OakVar store account Error")
+    if check_tables(outer=outer):
+        status_tables = ok
+        if outer:
+            outer.write("OakVar store database Ok")
+    else:
+        status_tables = err
+        if outer:
+            outer.error("OakVar store database Error")
+    if check_cache_files(outer=outer):
+        status_cache_files = ok
+        if outer:
+            outer.write("OakVar store cache files Ok")
+    else:
+        status_cache_files = err
+        if outer:
+            outer.error("OakVar store cache files Error")
+    if check_module_version_requirement(outer=outer):
+        status_module_version_requirement = ok
+        if outer:
+            outer.write("Module version requirement Ok")
+    else:
+        status_module_version_requirement = err
+        if outer:
+            outer.error("Module version requirement Error")
     if outer:
-        outer.write(f"\nSuccess\n")
+        outer.write(f"Success")
+        console = Console()
+        table = Table(title="System Check Result", title_style="bold", box=box.SQUARE)
+        table.add_column("Item")
+        table.add_column("Status")
+        table.add_row("System configuration file", status_system_yml)
+        table.add_row("User configuration file", status_user_yml)
+        table.add_row("System directories", status_system_directories)
+        table.add_row("Store account", status_account)
+        table.add_row("Store database", status_tables)
+        table.add_row("Store cache files", status_cache_files)
+        table.add_row("Module version requirements", status_module_version_requirement)
+        console.print(table)
     return True
 
 

@@ -540,7 +540,7 @@ def login_with_token_set(email=None, outer=None) -> Tuple[bool, str]:
     token_set = get_token_set()
     if token_set:
         token_email = token_set["email"]
-        if token_email != email:
+        if email and token_email != email:
             return False, token_email
         correct, expired = id_token_is_valid()
         email_verified = email_is_verified(token_email, outer=outer)

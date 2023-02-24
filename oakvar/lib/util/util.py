@@ -477,7 +477,7 @@ def load_yml_conf(yml_conf_path: Path):
     return conf
 
 
-def compare_version(v1, v2):
+def compare_version(v1: str, v2: str) -> int:
     """compare_version.
 
     Args:

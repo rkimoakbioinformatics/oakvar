@@ -38,10 +38,8 @@ def cli_system_check(args):
 
 @cli_func
 def check(args, __name__="system check"):
-    from sys import stdout as outer
     from ..api.system import check
 
-    args["outer"] = outer
     ret = check(**args)
     return ret
 

@@ -94,7 +94,7 @@ def get_readme(module_name):
         if local_info and remote_ver:
             remote_version = remote_module_latest_version(module_name)
             local_version = local_info.version
-            if compare_version(remote_version, local_version) > 0:
+            if remote_version and local_version and compare_version(remote_version, local_version) > 0:
                 return remote_readme
             else:
                 return local_readme
