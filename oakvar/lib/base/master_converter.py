@@ -91,7 +91,7 @@ class MasterConverter(object):
         self.input_encoding = input_encoding
         self.outer = outer
         self.setup_logger()
-        self.wgsreader = get_wgs_reader(assembly="hg38")
+        self.wgs_reader = get_wgs_reader(assembly="hg38")
 
     def get_genome_assembly(self, converter) -> str:
         from oakvar.lib.system.consts import default_assembly_key
@@ -476,9 +476,9 @@ class MasterConverter(object):
             "",
             ".",
         ]:
-            if not self.wgsreader:
+            if not self.wgs_reader:
                 raise
-            variant["ref_base"] = self.wgsreader.get_bases(
+            variant["ref_base"] = self.wgs_reader.get_bases(
                 variant.get("chrom"), int(variant["pos"])
             ).upper()
         else:
@@ -491,9 +491,9 @@ class MasterConverter(object):
             ]:
                 raise IgnoredVariant("Reference base required for non SNV")
             elif ref_base is None or ref_base == "":
-                if not self.wgsreader:
+                if not self.wgs_reader:
                     raise
-                variant["ref_base"] = self.wgsreader.get_bases(
+                variant["ref_base"] = self.wgs_reader.get_bases(
                     variant.get("chrom"), int(variant.get("pos"))
                 )
 
@@ -591,7 +591,7 @@ class MasterConverter(object):
         from oakvar.lib.exceptions import IgnoredVariant
 
         if (
-            not self.wgsreader
+            not self.wgs_reader
             or not self.crv_writer
             or not self.crm_writer
             or not self.crs_writer
@@ -629,6 +629,8 @@ class MasterConverter(object):
             ):
                 try:
                     self.handle_converted_variants(variants, converter)
+                except KeyboardInterrupt:
+                    raise
                 except Exception as e:
                     self._log_conversion_error(self.read_lnum, e)
                 if self.read_lnum % 10000 == 0:
@@ -683,6 +685,8 @@ class MasterConverter(object):
 
     def perform_liftover_if_needed(self, variant):
         from copy import copy
+        from oakvar.lib.util.seq import liftover_one_pos
+        from oakvar.lib.util.seq import liftover
 
         assert self.crl_writer is not None
         if self.is_chrM(variant):
@@ -698,110 +702,25 @@ class MasterConverter(object):
                 variant["pos"],
                 variant["ref_base"],
                 variant["alt_base"],
-            ) = self.liftover(
+            ) = liftover(
                 variant["chrom"],
                 int(variant["pos"]),
                 variant["ref_base"],
                 variant["alt_base"],
+                lifter=self.lifter,
+                wgs_reader=self.wgs_reader
             )
-            variant["pos_end"] = self.liftover_one_pos(
-                variant["chrom"], variant["pos_end"]
+            converted_end = liftover_one_pos(
+                variant["chrom"], variant["pos_end"], lifter=self.lifter
             )
+            if converted_end is None:
+                pos_end = ""
+            else:
+                pos_end = converted_end[1]
+            variant["pos_end"] = pos_end
 
     def is_chrM(self, wdict):
         return wdict["chrom"] == "chrM"
-
-    def liftover_one_pos(self, chrom, pos):
-        from oakvar.lib.exceptions import SetupError
-
-        if not self.lifter:
-            raise SetupError("no lifter")
-        res = self.lifter.convert_coordinate(chrom, pos - 1)
-        if res is None or len(res) == 0:
-            res_prev = self.lifter.convert_coordinate(chrom, pos - 2)
-            res_next = self.lifter.convert_coordinate(chrom, pos)
-            if res_prev is not None and res_next is not None:
-                if len(res_prev) == 1 and len(res_next) == 1:
-                    pos_prev = res_prev[0][1]
-                    pos_next = res_next[0][1]
-                    if pos_prev == pos_next - 2:
-                        res = [(res_prev[0][0], pos_prev + 1)]
-                    elif pos_prev == pos_next + 2:
-                        res = [(res_prev[0][0], pos_prev - 1)]
-        else:
-            return res[0][1] + 1
-
-    def liftover(self, chrom, pos, ref, alt):
-        from oakvar.lib.exceptions import LiftoverFailure
-        from oakvar.lib.util.seq import reverse_complement
-        from oakvar.lib.exceptions import SetupError
-
-        if not self.lifter or not self.wgsreader:
-            raise SetupError("no lifter")
-        reflen = len(ref)
-        altlen = len(alt)
-        if reflen == 1 and altlen == 1:
-            res = self.liftover_one_pos(chrom, pos - 1)
-            if res is None or len(res) == 0:
-                raise LiftoverFailure("Liftover failure")
-            if len(res) > 1:
-                raise LiftoverFailure("Liftover failure")
-            try:
-                el = res[0]
-            except:
-                raise LiftoverFailure("Liftover failure")
-            newchrom = el[0]
-            newpos = el[1] + 1
-        elif reflen >= 1 and altlen == 0:  # del
-            pos1 = pos
-            pos2 = pos + reflen - 1
-            res1 = self.lifter.convert_coordinate(chrom, pos1 - 1)
-            res2 = self.lifter.convert_coordinate(chrom, pos2 - 1)
-            if res1 is None or res2 is None or len(res1) == 0 or len(res2) == 0:
-                raise LiftoverFailure("Liftover failure")
-            if len(res1) > 1 or len(res2) > 1:
-                raise LiftoverFailure("Liftover failure")
-            el1 = res1[0]
-            el2 = res2[0]
-            newchrom1 = el1[0]
-            newpos1 = el1[1] + 1
-            newpos2 = el2[1] + 1
-            newchrom = newchrom1
-            newpos = newpos1
-            newpos = min(newpos1, newpos2)
-        elif reflen == 0 and altlen >= 1:  # ins
-            res = self.lifter.convert_coordinate(chrom, pos - 1)
-            if res is None or len(res) == 0:
-                raise LiftoverFailure("Liftover failure")
-            if len(res) > 1:
-                raise LiftoverFailure("Liftover failure")
-            el = res[0]
-            newchrom = el[0]
-            newpos = el[1] + 1
-        else:
-            pos1 = pos
-            pos2 = pos + reflen - 1
-            res1 = self.lifter.convert_coordinate(chrom, pos1 - 1)
-            res2 = self.lifter.convert_coordinate(chrom, pos2 - 1)
-            if res1 is None or res2 is None or len(res1) == 0 or len(res2) == 0:
-                raise LiftoverFailure("Liftover failure")
-            if len(res1) > 1 or len(res2) > 1:
-                raise LiftoverFailure("Liftover failure")
-            el1 = res1[0]
-            el2 = res2[0]
-            newchrom1 = el1[0]
-            newpos1 = el1[1] + 1
-            newpos2 = el2[1] + 1
-            newchrom = newchrom1
-            newpos = min(newpos1, newpos2)
-        hg38_ref = self.wgsreader.get_bases(newchrom, newpos)
-        if hg38_ref == reverse_complement(ref):
-            newref = hg38_ref
-            newalt = reverse_complement(alt)
-        else:
-            newref = ref
-            newalt = alt
-        return [newchrom, newpos, newref, newalt]
 
     def _log_conversion_error(self, line_no: int, e, full_line_error=True):
         from traceback import format_exc

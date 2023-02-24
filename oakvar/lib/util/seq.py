@@ -1,3 +1,6 @@
+from typing import Optional
+from typing import Tuple
+
 complementary_base = {
     "A": "T",
     "T": "A",
@@ -268,12 +271,18 @@ def reverse_complement(bases):
     return "".join([complementary_base[base] for base in bases[::-1]])
 
 
-def get_lifter(source_assembly: str = "hg19", target_assembly: str = "hg38"):
+def get_lifter(
+    source_assembly: Optional[str] = None, target_assembly: Optional[str] = None
+):
     from pyliftover import LiftOver
     from ..util.admin_util import get_liftover_chain_paths
     from ..exceptions import LiftoverFailure
 
     lifter = None
+    if not source_assembly:
+        source_assembly = "hg19"
+    if not target_assembly:
+        target_assembly = "hg38"
     if target_assembly == "hg38":
         liftover_chain_paths = get_liftover_chain_paths()
         if source_assembly in liftover_chain_paths:
@@ -290,47 +299,64 @@ def get_lifter(source_assembly: str = "hg19", target_assembly: str = "hg38"):
     return lifter
 
 
-def liftover_one_pos(chrom, pos, lifter=None):
-    from ..exceptions import LiftoverFailure
+def liftover_one_pos(
+    chrom: str,
+    pos: int,
+    lifter=None,
+    source_assembly: Optional[str] = None,
+    target_assembly: Optional[str] = None,
+) -> Optional[Tuple[str, int]]:
+    from oakvar import get_lifter
 
     if not lifter:
-        raise LiftoverFailure("No lifter")
-    res = lifter.convert_coordinate(chrom, pos - 1)
-    if res is None or len(res) == 0:
-        res_prev = lifter.convert_coordinate(chrom, pos - 2)
-        res_next = lifter.convert_coordinate(chrom, pos)
-        if res_prev is not None and res_next is not None:
-            if len(res_prev) == 1 and len(res_next) == 1:
-                pos_prev = res_prev[0][1]
-                pos_next = res_next[0][1]
-                if pos_prev == pos_next - 2:
-                    res = [(res_prev[0][0], pos_prev + 1)]
-                elif pos_prev == pos_next + 2:
-                    res = [(res_prev[0][0], pos_prev - 1)]
-    return res
+        lifter = get_lifter(
+            source_assembly=source_assembly, target_assembly=target_assembly
+        )
+    # res = Optional[[(chrom, pos, strand, score)...]]
+    hits = lifter.convert_coordinate(chrom, pos - 1)
+    converted = None
+    if hits is not None:
+        converted = (hits[0][0], hits[0][1] + 1)
+    else:
+        hits_prev = lifter.convert_coordinate(chrom, pos - 2)
+        hits_next = lifter.convert_coordinate(chrom, pos)
+        if hits_prev is not None and hits_next is not None:
+            hit_prev_1 = hits_prev[0]
+            hit_next_1 = hits_next[0]
+            pos_prev = hit_prev_1[1]
+            pos_next = hit_next_1[1]
+            if pos_prev == pos_next - 2:
+                converted = (hit_prev_1[0], pos_prev + 1 + 1)
+            elif pos_prev == pos_next + 2:
+                converted = (hit_prev_1[0], pos_prev - 1 + 1)
+    return converted
 
 
 def liftover(
-    chrom, pos, ref=None, alt=None, lifter=None, wgs_reader=None, get_ref: bool = False
+    chrom: str,
+    pos: int,
+    ref: Optional[str] = None,
+    alt: Optional[str] = None,
+    get_ref: bool = False,
+    lifter=None,
+    source_assembly: Optional[str] = None,
+    target_assembly: Optional[str] = None,
+    wgs_reader=None,
 ):
-    from pyliftover import LiftOver
-    from ..exceptions import LiftoverFailure
-    from ... import get_wgs_reader
+    from oakvar.lib.exceptions import LiftoverFailure
+    from oakvar.lib.util.seq import reverse_complement
+    from oakvar import get_wgs_reader
 
-    if not lifter or not isinstance(lifter, LiftOver):
-        raise LiftoverFailure("No lifter was given. Use oakvar.get_lifter to get one.")
-    if ref is None and alt is None:
-        res = liftover_one_pos(chrom, pos, lifter=lifter)
-        if res is None or len(res) == 0:
+    if not lifter:
+        lifter = get_lifter(
+            source_assembly=source_assembly, target_assembly=target_assembly
+        )
+    if ref is None:
+        converted = liftover_one_pos(chrom, pos, lifter=lifter)
+        if converted is None:
             raise LiftoverFailure("Liftover failure")
-        if len(res) > 1:
-            raise LiftoverFailure("Liftover failure")
-        try:
-            el = res[0]
-        except:
-            raise LiftoverFailure("Liftover failure")
-        newchrom = el[0]
-        newpos = el[1] + 1
+        newchrom = converted[0]
+        newpos = converted[1]
         if get_ref:
             if not wgs_reader:
                 wgs_reader = get_wgs_reader()
@@ -338,64 +364,43 @@ def liftover(
                     raise LiftoverFailure(
                         "No wgs_reader was given. Use oakvar.get_wgs_reader to get one."
                     )
-            ref = wgs_reader.get_bases(newchrom, newpos)
+            ref = wgs_reader.get_bases(newchrom, newpos).upper()
         return [newchrom, newpos, ref, alt]
-    if ref is None or alt is None:
-        raise LiftoverFailure("ref and alt should not be None.")
     reflen = len(ref)
-    altlen = len(alt)
+    altlen = len(alt) if alt else 1
     if reflen == 1 and altlen == 1:
-        res = liftover_one_pos(chrom, pos, lifter=lifter)
-        if res is None or len(res) == 0:
+        converted = liftover_one_pos(chrom, pos, lifter=lifter)
+        if converted is None:
             raise LiftoverFailure("Liftover failure")
-        if len(res) > 1:
-            raise LiftoverFailure("Liftover failure")
-        try:
-            el = res[0]
-        except:
-            raise LiftoverFailure("Liftover failure")
-        newchrom = el[0]
-        newpos = el[1] + 1
+        newchrom = converted[0]
+        newpos = converted[1]
     elif reflen >= 1 and altlen == 0:  # del
         pos1 = pos
         pos2 = pos + reflen - 1
-        res1 = lifter.convert_coordinate(chrom, pos1 - 1)
-        res2 = lifter.convert_coordinate(chrom, pos2 - 1)
-        if res1 is None or res2 is None or len(res1) == 0 or len(res2) == 0:
+        converted1 = liftover_one_pos(chrom, pos1, lifter=lifter)
+        converted2 = liftover_one_pos(chrom, pos2, lifter=lifter)
+        if converted1 is None or converted2 is None:
             raise LiftoverFailure("Liftover failure")
-        if len(res1) > 1 or len(res2) > 1:
-            raise LiftoverFailure("Liftover failure")
-        el1 = res1[0]
-        el2 = res2[0]
-        newchrom1 = el1[0]
-        newpos1 = el1[1] + 1
-        newpos2 = el2[1] + 1
-        newchrom = newchrom1
-        newpos = newpos1
+        newchrom = converted1[0]
+        newpos1 = converted1[1]
+        newpos2 = converted2[1]
         newpos = min(newpos1, newpos2)
     elif reflen == 0 and altlen >= 1:  # ins
-        res = lifter.convert_coordinate(chrom, pos - 1)
-        if res is None or len(res) == 0:
+        converted = liftover_one_pos(chrom, pos, lifter=lifter)
+        if converted is None:
             raise LiftoverFailure("Liftover failure")
-        if len(res) > 1:
-            raise LiftoverFailure("Liftover failure")
-        el = res[0]
-        newchrom = el[0]
-        newpos = el[1] + 1
+        newchrom = converted[0]
+        newpos = converted[1]
     else:
         pos1 = pos
         pos2 = pos + reflen - 1
-        res1 = lifter.convert_coordinate(chrom, pos1 - 1)
-        res2 = lifter.convert_coordinate(chrom, pos2 - 1)
-        if res1 is None or res2 is None or len(res1) == 0 or len(res2) == 0:
+        converted1 = liftover_one_pos(chrom, pos1, lifter=lifter)
+        converted2 = liftover_one_pos(chrom, pos2, lifter=lifter)
+        if converted1 is None or converted2 is None:
             raise LiftoverFailure("Liftover failure")
-        if len(res1) > 1 or len(res2) > 1:
-            raise LiftoverFailure("Liftover failure")
-        el1 = res1[0]
-        el2 = res2[0]
-        newchrom1 = el1[0]
-        newpos1 = el1[1] + 1
-        newpos2 = el2[1] + 1
+        newchrom1 = converted1[0]
+        newpos1 = converted1[1]
+        newpos2 = converted2[1]
         newchrom = newchrom1
         newpos = min(newpos1, newpos2)
     if not wgs_reader:
@@ -405,10 +410,10 @@ def liftover(
                 "No wgs_reader was given. Use oakvar.get_wgs_reader to get one."
             )
     hg38_ref = wgs_reader.get_bases(newchrom, newpos)
-    if hg38_ref == reverse_complement(ref):
+    if hg38_ref == reverse_complement(ref):  # strand reversal
         newref = hg38_ref
         newalt = reverse_complement(alt)
-    else:
+    else:  # same strand
         newref = ref
         newalt = alt
     return [newchrom, newpos, newref, newalt]

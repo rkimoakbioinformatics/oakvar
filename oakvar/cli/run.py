@@ -123,7 +123,7 @@ def add_parser_ov_run(subparsers):
     )
     parser_ov_run.add_argument(
         "-l",
-        "--liftover",
+        "--genome",
         dest="genome",
         default=None,
         help="reference genome of input. OakVar will lift over to hg38 if needed.",
