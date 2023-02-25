@@ -92,6 +92,7 @@ class MasterConverter(object):
         self.outer = outer
         self.setup_logger()
         self.wgs_reader = get_wgs_reader(assembly="hg38")
+        self.time_error_written: float = 0
 
     def get_genome_assembly(self, converter) -> str:
         from oakvar.lib.system.consts import default_assembly_key
@@ -723,6 +724,7 @@ class MasterConverter(object):
         return wdict["chrom"] == "chrM"
 
     def _log_conversion_error(self, line_no: int, e, full_line_error=True):
+        from time import time
         from traceback import format_exc
         from oakvar.lib.exceptions import ExpectedException
         from oakvar.lib.exceptions import NoAlternateAllele
@@ -755,7 +757,8 @@ class MasterConverter(object):
         else:
             err_no = self.unique_excs[err_str]
             self.err_holder.append(f"{err_no}:{line_no}\t{str(e)}")
-        if len(self.err_holder) % 1000 == 0:
+        t = time()
+        if self.err_holder and t - self.time_error_written > 60:
             for s in self.err_holder:
                 self.error_logger.error(s)
             self.err_holder = []

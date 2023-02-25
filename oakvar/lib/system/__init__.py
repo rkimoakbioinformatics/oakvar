@@ -740,21 +740,23 @@ def check_system_yml(outer=None) -> bool:
     from .consts import jobs_dir_key
     from .consts import log_dir_key
 
+    if outer:
+        outer.write("Checking system configuration file...")
     system_conf = get_system_conf()
     if not system_conf:
         if outer:
-            outer.write("System configuration file is missing.")
+            outer.error("  System configuration file is missing.")
         return False
     system_conf_temp = get_system_conf_template()
     for k in system_conf_temp.keys():
         if k not in system_conf:
             if outer:
-                outer.write(f"System configuration file misses {k} field.")
+                outer.error(f"  System configuration file misses {k} field.")
             return False
     for k in [conf_dir_key, modules_dir_key, jobs_dir_key, log_dir_key]:
         if k not in system_conf:
             if outer:
-                outer.write(f"System configuration file misses {k} field.")
+                outer.error(f"  System configuration file misses {k} field.")
             return False
     return True
 
@@ -763,17 +765,19 @@ def check_user_yml(outer=None) -> bool:
     from pathlib import Path
     from ..util.util import load_yml_conf
 
+    if outer:
+        outer.write("Checking user configuration file...")
     user_conf_path = get_user_conf_path()
     if not Path(user_conf_path).exists():
         if outer:
-            outer.write("User configuration file is missing.")
+            outer.error("User configuration file is missing.")
         return False
     user_conf = load_yml_conf(user_conf_path)
     default_user_conf = get_default_user_conf()
     for k in default_user_conf.keys():
         if k not in user_conf:
             if outer:
-                outer.write(f"User configuration file misses {k} field.")
+                outer.error(f"User configuration file misses {k} field.")
             return False
     return True
 
@@ -786,11 +790,15 @@ def check_system_directories(outer=None) -> bool:
     from os.path import exists
 
     system_conf = get_system_conf(conf=None)
+    if not system_conf:
+        if outer:
+            outer.error(f"System configuration file is missing.")
+        return False
     for k in [conf_dir_key, modules_dir_key, jobs_dir_key, log_dir_key]:
-        d = system_conf[k]
-        if not exists(d):
+        d = system_conf.get(k)
+        if not d or not exists(d):
             if outer:
-                outer.write(f"System directory {k} is missing.")
+                outer.error(f"System directory {k} is missing.")
             return False
     return True
 
@@ -868,9 +876,7 @@ def check(outer=None) -> bool:
     if check_system_yml(outer=outer) == True:
         if outer:
             outer.write("System configuration file Ok")
-        ok2 = Text()
-        ok2.append("Ok", style="green")
-        status_system_yml = ok2
+        status_system_yml = ok
     else:
         if outer:
             outer.error("System configuration file Error")
