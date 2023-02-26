@@ -382,6 +382,12 @@ def version() -> str:
     return ret
 
 
+def license(outer=None):
+    from ..lib.system import show_license
+
+    show_license(outer=outer)
+
+
 def handle_exception(e: Exception):
     """handle_exception.
 

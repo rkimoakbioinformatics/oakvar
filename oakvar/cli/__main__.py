@@ -9,6 +9,7 @@ from .version import get_parser_fn_version
 from .store import get_parser_fn_store
 from .system import add_parser_ov_system
 from .config import get_parser_fn_config
+from .license import get_parser_ov_license
 from . import CliOuter
 
 _ = CliOuter
@@ -115,6 +116,15 @@ def get_entry_parser():
     add_parser_ov_system(subparsers)
     """_ = subparsers.add_parser(
     )"""
+
+    # license
+    p_license = subparsers.add_parser(
+        "license",
+        parents=[get_parser_ov_license()],
+        description="Shows license information.",
+        add_help=False,
+        help="Shows license information.",
+    )
     return p_entry
 
 
