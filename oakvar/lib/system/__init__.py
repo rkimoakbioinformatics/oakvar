@@ -1057,3 +1057,36 @@ def show_liftover_license(outer=None):
     fpath = get_license_dir() / "liftover.txt"
     get_file_content_as_table(fpath, "LiftOver License", outer=outer)
 
+def update(outer=None):
+    from subprocess import run
+    from packaging.version import Version
+    from ..util.admin_util import get_current_package_version
+    from ..util.admin_util import get_latest_package_version
+
+    if outer:
+        outer.write("Updating OakVar PyPI package...")
+    cur_ver = Version(get_current_package_version())
+    pypi_ver = get_latest_package_version()
+    if not pypi_ver or cur_ver > pypi_ver:
+        if outer:
+            outer.error(f"Installed OakVer version ({str(cur_ver)}) is higher than the latest version at PyPI ({str(pypi_ver)}). Aborting.")
+        return True
+    cmd = ["pip", "install", "-U", "oakvar"]
+    cp = run(cmd)
+    if cp.returncode != 0:
+        if outer:
+            outer.error(str(cp.stderr))
+            outer.error("Updating OakVar PyPI package failed.")
+        return False
+    if outer:
+        outer.write("Package updated successfully.")
+        outer.write("Setting up system...")
+    ret = setup_system(outer=outer)
+    if ret == True:
+        if outer:
+            outer.write("System setup successful.")
+    else:
+        if outer:
+            outer.error("System setup failed.")
+    return ret
+

@@ -388,6 +388,12 @@ def license(outer=None):
     show_license(outer=outer)
 
 
+def update(outer=None):
+    from ..lib.system import update
+
+    update(outer=outer)
+
+
 def handle_exception(e: Exception):
     """handle_exception.
 

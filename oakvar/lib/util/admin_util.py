@@ -1,5 +1,7 @@
 from typing import Optional
+from typing import List
 from pathlib import Path
+from packaging.version import Version
 
 pkg_version: Optional[str] = None
 
@@ -18,21 +20,20 @@ def get_user_conf():
         return None
 
 
-def get_current_package_version():
+def get_current_package_version() -> str:
     from pkg_resources import get_distribution
 
     version = get_distribution("oakvar").version
     return version
 
 
-def get_package_versions():
+def get_package_versions() -> Optional[List[str]]:
     """
     Return available oakvar versions from pypi, sorted asc
     """
     import json
     from requests import get
     from requests.exceptions import ConnectionError
-    from packaging.version import Version
     from ..exceptions import InternetConnectionError
 
     try:
@@ -41,7 +42,7 @@ def get_package_versions():
         raise InternetConnectionError()
     if r.status_code == 200:
         d = json.loads(r.text)
-        all_vers = list(d["releases"].keys())
+        all_vers: List[str] = list(d["releases"].keys())
         all_vers.sort(key=Version)
         return all_vers
     else:
@@ -166,6 +167,13 @@ def get_platform():
 
 
 def get_max_version_supported_for_migration():
-    from packaging.version import Version
-
     return Version("1.7.0")
+
+
+def get_latest_package_version() -> Optional[Version]:
+    vers = get_package_versions()
+    if vers:
+        latest_ver = max([Version(v) for v in vers])
+    else:
+        latest_ver = None
+    return latest_ver
