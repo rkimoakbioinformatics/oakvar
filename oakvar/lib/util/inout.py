@@ -1,3 +1,6 @@
+from typing import Union
+from pathlib import Path
+
 class BaseFile(object):
     valid_types = ["string", "int", "float"]
 
@@ -614,6 +617,21 @@ def read_crv(fpath):
     )
     return df
 
+
+def get_file_content_as_table(fpath: Union[Path, str], title: str, outer=None):
+    from rich.table import Table
+
+    if not outer:
+        return
+    table = Table(title=title, show_header=False)
+    table.add_column("License")
+    with open(fpath) as f:
+        lines = "".join(f.readlines())
+        table.add_row(lines)
+    if hasattr(outer, "print"):
+        outer.print(table)
+    else:
+        outer.write(table)
 
 CravatReader = FileReader
 CravatWriter = FileWriter

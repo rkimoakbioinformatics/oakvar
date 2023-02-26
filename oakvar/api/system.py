@@ -80,3 +80,9 @@ def check(outer=None) -> bool:
 
     ret = check(outer=outer)
     return ret
+
+
+def license(outer=None):
+    from ..lib.system import show_license
+
+    show_license(outer=outer)

@@ -44,6 +44,18 @@ def check(args, __name__="system check"):
     return ret
 
 
+@cli_entry
+def cli_system_license(args):
+    return license(args)
+
+
+@cli_func
+def license(args, __name__="system license"):
+    from ..api.system import license
+
+    return license(**args)
+
+
 def add_parser_ov_system_setup(subparsers):
     parser_cli_ov_system_setup = subparsers.add_parser(
         "setup", help="Sets up OakVar system", description="Sets up OakVar system"
@@ -138,14 +150,22 @@ def add_parser_ov_system_check(subparsers):
     ]
 
 
+def add_parser_ov_system_license(subparsers):
+    parser_cli_system_license = subparsers.add_parser(
+        "license",
+        help="Shows license information",
+    )
+    parser_cli_system_license.set_defaults(func=cli_system_license)
+
+
 def add_parser_ov_system(subparser):
     parser_ov_system = subparser.add_parser(
         name="system",
-        help="Setup OakVar",
+        help="Commands on OakVar system",
     )
     subparsers = parser_ov_system.add_subparsers()
     add_parser_ov_system_setup(subparsers)
     add_parser_ov_system_md(subparsers)
     add_parser_ov_system_config(subparsers)
     add_parser_ov_system_check(subparsers)
-    return parser_ov_system
+    add_parser_ov_system_license(subparsers)

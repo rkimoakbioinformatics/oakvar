@@ -1027,3 +1027,33 @@ def get_liftover_dir() -> Union[Path, None]:
     liftover_dir = conf_dir / LIFTOVER_DIR_NAME
     return liftover_dir
 
+
+def get_license_dir() -> Path:
+    from ..util.admin_util import get_packagedir
+
+    return get_packagedir() / "lib" / "assets" / "license"
+
+def show_license(outer=None):
+    from rich.console import Console
+    if not outer:
+        outer = Console()
+    show_oakvar_license(outer=outer)
+    show_liftover_license(outer=outer)
+
+def show_oakvar_license(outer=None):
+    from ..util.admin_util import get_packagedir
+    from ..util.inout import get_file_content_as_table
+
+    if not outer:
+        return
+    fpath = get_packagedir() / ".." / "LICENSE"
+    get_file_content_as_table(fpath, "OakVar License", outer=outer)
+
+def show_liftover_license(outer=None):
+    from ..util.inout import get_file_content_as_table
+
+    if not outer:
+        return
+    fpath = get_license_dir() / "liftover.txt"
+    get_file_content_as_table(fpath, "LiftOver License", outer=outer)
+

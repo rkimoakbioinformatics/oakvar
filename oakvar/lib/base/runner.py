@@ -426,6 +426,7 @@ class Runner(object):
         if args.get("annotators_replace"):
             args["annotators"] = args.get("annotators_replace")
         self.args = SimpleNamespace(**args)
+        self.outer = self.args.outer
         if self.args.vcf2vcf and self.args.combine_input:
             if self.outer:
                 self.outer.write(f"--vcf2vcf is used. --combine-input is disabled.")
@@ -1624,6 +1625,7 @@ class Runner(object):
             genome=self.args.genome,
             input_format=self.args.input_format,
             serveradmindb=self.serveradmindb,
+            outer=self.outer
         )
         ret = converter.run()
         self.total_num_converted_variants = ret.get("total_lnum")
