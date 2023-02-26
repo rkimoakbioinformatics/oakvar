@@ -5,6 +5,7 @@ from typing import Dict
 from typing import Tuple
 from typing import TextIO
 from oakvar import BaseConverter
+from pyliftover import LiftOver
 
 STDIN = "stdin"
 
@@ -122,15 +123,10 @@ class MasterConverter(object):
             self.logger.info(f"liftover needed: {self.do_liftover}")
             self.logger.info(f"liftover for chrM needed: {self.do_liftover_chrM}")
 
-    def setup_lifter(self, genome_assembly):
-        from oakvar.lib.util.admin_util import get_liftover_chain_paths
-        from oakvar.lib.exceptions import InvalidGenomeAssembly
-        from pyliftover import LiftOver
+    def setup_lifter(self, genome_assembly) -> Optional[LiftOver]:
+        from oakvar.lib.util.seq import get_lifter
 
-        liftover_chain_paths = get_liftover_chain_paths()
-        if genome_assembly not in liftover_chain_paths:
-            raise InvalidGenomeAssembly(genome_assembly)
-        self.lifter = LiftOver(liftover_chain_paths[genome_assembly])
+        self.lifter = get_lifter(source_assembly=genome_assembly)
 
     def parse_inputs(self):
         from pathlib import Path

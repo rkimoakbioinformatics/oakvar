@@ -11,6 +11,7 @@ modules_dir_name = "modules"
 jobs_dir_name = "jobs"
 log_dir_name = "logs"
 cache_dirs = ["readme", "logo", "conf"]
+LIFTOVER_DIR_NAME = "liftover"
 
 #
 # file names
@@ -29,6 +30,7 @@ jobs_dir_key = "jobs_dir"
 log_dir_key = "log_dir"
 modules_dir_key = "modules_dir"
 package_dir_key = "package_dir"
+LIFTOVER_DIR_KEY = "liftover_dir"
 base_modules_key = "base_modules"
 max_num_concurrent_annotators_per_job_key = "max_num_concurrent_annotators_per_job"
 max_num_concurrent_modules_per_job_key = "max_num_concurrent_modules_per_job"

@@ -57,106 +57,16 @@ class VCF2VCF:
             self.logger.setLevel(self.conf["logging_level"].upper())
 
     def setup_liftover(self):
-        from pyliftover import LiftOver
-        from ..util.admin_util import get_liftover_chain_paths
-        from oakvar import get_wgs_reader
+        from ..util.seq import get_lifter
+        from ..util.seq import get_wgs_reader
 
         if self.genome:
-            liftover_chain_paths = get_liftover_chain_paths()
-            self.lifter = LiftOver(liftover_chain_paths[self.genome])
+            self.lifter = get_lifter(source_assembly=self.genome)
             self.do_liftover = True
         else:
             self.lifter = None
             self.do_liftover = False
         self.wgsreader = get_wgs_reader(assembly="hg38")
-
-    def liftover(self, chrom, pos, ref, alt):
-        from ..exceptions import LiftoverFailure
-        from ..util.seq import reverse_complement
-
-        if not self.lifter or not self.wgsreader:
-            return None
-        reflen = len(ref)
-        altlen = len(alt)
-        if reflen == 1 and altlen == 1:
-            res = self.liftover_one_pos(chrom, pos)
-            if res is None or len(res) == 0:
-                raise LiftoverFailure("Liftover failure")
-            if len(res) > 1:
-                raise LiftoverFailure("Liftover failure")
-            try:
-                el = res[0]
-            except:
-                raise LiftoverFailure("Liftover failure")
-            newchrom = el[0]
-            newpos = el[1] + 1
-        elif reflen >= 1 and altlen == 0:  # del
-            pos1 = pos
-            pos2 = pos + reflen - 1
-            res1 = self.lifter.convert_coordinate(chrom, pos1 - 1)
-            res2 = self.lifter.convert_coordinate(chrom, pos2 - 1)
-            if res1 is None or res2 is None or len(res1) == 0 or len(res2) == 0:
-                raise LiftoverFailure("Liftover failure")
-            if len(res1) > 1 or len(res2) > 1:
-                raise LiftoverFailure("Liftover failure")
-            el1 = res1[0]
-            el2 = res2[0]
-            newchrom1 = el1[0]
-            newpos1 = el1[1] + 1
-            newpos2 = el2[1] + 1
-            newchrom = newchrom1
-            newpos = newpos1
-            newpos = min(newpos1, newpos2)
-        elif reflen == 0 and altlen >= 1:  # ins
-            res = self.lifter.convert_coordinate(chrom, pos - 1)
-            if res is None or len(res) == 0:
-                raise LiftoverFailure("Liftover failure")
-            if len(res) > 1:
-                raise LiftoverFailure("Liftover failure")
-            el = res[0]
-            newchrom = el[0]
-            newpos = el[1] + 1
-        else:
-            pos1 = pos
-            pos2 = pos + reflen - 1
-            res1 = self.lifter.convert_coordinate(chrom, pos1 - 1)
-            res2 = self.lifter.convert_coordinate(chrom, pos2 - 1)
-            if res1 is None or res2 is None or len(res1) == 0 or len(res2) == 0:
-                raise LiftoverFailure("Liftover failure")
-            if len(res1) > 1 or len(res2) > 1:
-                raise LiftoverFailure("Liftover failure")
-            el1 = res1[0]
-            el2 = res2[0]
-            newchrom1 = el1[0]
-            newpos1 = el1[1] + 1
-            newpos2 = el2[1] + 1
-            newchrom = newchrom1
-            newpos = min(newpos1, newpos2)
-        hg38_ref = self.wgsreader.get_bases(newchrom, newpos)
-        if hg38_ref == reverse_complement(ref):
-            newref = hg38_ref
-            newalt = reverse_complement(alt)
-        else:
-            newref = ref
-            newalt = alt
-        return [newchrom, newpos, newref, newalt]
-
-    def liftover_one_pos(self, chrom, pos):
-        if not self.lifter:
-            return None
-        res = self.lifter.convert_coordinate(chrom, pos - 1)
-        if res is None or len(res) == 0:
-            res_prev = self.lifter.convert_coordinate(chrom, pos - 2)
-            res_next = self.lifter.convert_coordinate(chrom, pos)
-            if res_prev is not None and res_next is not None:
-                if len(res_prev) == 1 and len(res_next) == 1:
-                    pos_prev = res_prev[0][1]
-                    pos_next = res_next[0][1]
-                    if pos_prev == pos_next - 2:
-                        res = [(res_prev[0][0], pos_prev + 1)]
-                    elif pos_prev == pos_next + 2:
-                        res = [(res_prev[0][0], pos_prev - 1)]
-        return res
 
     def load_col_infos(self, module_names: list, mapper: str):
         col_infos = {}
@@ -267,12 +177,13 @@ class VCF2VCF:
             self.last_status_update_time = cur_time
 
     def run(self):
+        from os.path import join
+        from re import compile
         from ..util.seq import normalize_variant_dict_left
+        from ..util.seq import liftover
         from ..module.local import load_modules
         from ..util.run import log_variant_exception
         from ..exceptions import IgnoredVariant
-        from os.path import join
-        from re import compile
 
         if not self.mapper_name or not self.inputs:
             return False
@@ -337,7 +248,9 @@ class VCF2VCF:
                             continue
                         pos, ref, alt = self.trim_variant(pos, ref, alt)
                         if self.do_liftover:
-                            _, pos, ref, alt = self.liftover(chrom, pos, ref, alt)
+                            _, pos, ref, alt = liftover(
+                                chrom, pos, ref, alt, lifter=self.lifter
+                            )
                         uid += 1
                         variant = {"uid": uid}
                         if ref == alt:

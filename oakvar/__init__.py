@@ -21,6 +21,7 @@ from .lib.util.util import get_df_from_db
 from .lib.util.inout import read_crv
 from .lib.util.seq import get_lifter
 from .lib.util.seq import liftover
+from .lib.util.seq import get_wgs_reader
 from .cli import CliOuter
 import signal
 
@@ -123,16 +124,6 @@ def get_module(module_name, module_type: str = ""):
     return ModuleClass
 
 
-def get_wgs_reader(assembly="hg38"):
-    ModuleClass = get_module(assembly + "wgs")
-    if ModuleClass is None:
-        wgs = None
-    else:
-        wgs = ModuleClass()
-        wgs.setup()
-    return wgs
-
-
 wgs = None
 _ = api or lib
 _ = BadFormatError or InvalidData
@@ -155,5 +146,5 @@ _ = (
 _ = CravatFilter or Cravat
 _ = cli or wgs
 _ = stdouter
-_ = get_lifter or liftover
+_ = get_lifter or liftover or get_wgs_reader
 _ = get_df_from_db or read_crv

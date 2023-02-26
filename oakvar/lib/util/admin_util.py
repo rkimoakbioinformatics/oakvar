@@ -144,19 +144,6 @@ def oakvar_version():
     return pkg_version
 
 
-def get_liftover_chain_paths():
-    from os.path import join
-
-    liftover_chains_dir = get_liftover_chains_dir()
-    if not liftover_chains_dir:
-        return {}
-    liftover_chain_paths = {
-        "hg19": join(liftover_chains_dir, "hg19ToHg38.over.chain"),
-        "hg18": join(liftover_chains_dir, "hg18ToHg38.over.chain"),
-    }
-    return liftover_chain_paths
-
-
 def get_packagedir():
     from pathlib import Path
 
@@ -176,20 +163,6 @@ def get_platform():
     else:
         pl = "linux"
     return pl
-
-
-def get_liftover_chains_dir():
-    from pathlib import Path
-    from os.path import join as pathjoin
-
-    d_new = pathjoin(get_packagedir(), "lib", "liftover")
-    d_old = pathjoin(get_packagedir(), "liftover")
-    if Path(d_new).exists():
-        return d_new
-    elif Path(d_old).exists():
-        return d_old
-    else:
-        return None
 
 
 def get_max_version_supported_for_migration():

@@ -1,5 +1,6 @@
 from typing import Optional
 from typing import Tuple
+from pyliftover import LiftOver
 
 complementary_base = {
     "A": "T",
@@ -194,6 +195,14 @@ codon_table = {
 
 
 def trim_input_left_adjust(ref, alt, pos, strand):
+    """trim_input_left_adjust.
+
+    Args:
+        ref:
+        alt:
+        pos:
+        strand:
+    """
     pos = int(pos)
     reflen = len(ref)
     altlen = len(alt)
@@ -228,6 +237,14 @@ def trim_input_left_adjust(ref, alt, pos, strand):
 
 
 def normalize_variant_left(strand, pos, ref, alt):
+    """normalize_variant_left.
+
+    Args:
+        strand:
+        pos:
+        ref:
+        alt:
+    """
     reflen = len(ref)
     altlen = len(alt)
     # Returns without change if same single nucleotide for ref and alt.
@@ -244,6 +261,11 @@ def normalize_variant_left(strand, pos, ref, alt):
 
 
 def normalize_variant_dict_left(wdict):
+    """normalize_variant_dict_left.
+
+    Args:
+        wdict:
+    """
     from ..exceptions import NoVariantError
 
     chrom = wdict["chrom"]
@@ -268,34 +290,35 @@ def normalize_variant_dict_left(wdict):
 
 
 def reverse_complement(bases):
+    """reverse_complement.
+
+    Args:
+        bases:
+    """
     return "".join([complementary_base[base] for base in bases[::-1]])
 
 
-def get_lifter(
-    source_assembly: Optional[str] = None, target_assembly: Optional[str] = None
-):
-    from pyliftover import LiftOver
-    from ..util.admin_util import get_liftover_chain_paths
-    from ..exceptions import LiftoverFailure
+def get_lifter(source_assembly: str) -> Optional[LiftOver]:
+    """get_lifter.
 
-    lifter = None
-    if not source_assembly:
-        source_assembly = "hg19"
-    if not target_assembly:
-        target_assembly = "hg38"
-    if target_assembly == "hg38":
-        liftover_chain_paths = get_liftover_chain_paths()
-        if source_assembly in liftover_chain_paths:
-            lifter = LiftOver(liftover_chain_paths[source_assembly])
-        else:
-            lifter = LiftOver(source_assembly, target_assembly)
-    else:
-        try:
-            lifter = LiftOver(source_assembly, target_assembly)
-        except:
-            raise LiftoverFailure(
-                msg=f"Failed to obtain a liftOver chain file ({source_assembly} to {target_assembly})."
-            )
+    Args:
+        source_assembly (str): source_assembly
+
+    Returns:
+        Optional[LiftOver]:
+    """
+    from os import makedirs
+    from ..system import get_liftover_dir
+    from ..consts import SYSTEM_GENOME_ASSEMBLY
+
+    liftover_dir = get_liftover_dir()
+    if not liftover_dir:
+        return None
+    if not liftover_dir.exists():
+        makedirs(liftover_dir, exist_ok=True)
+    lifter = LiftOver(
+        source_assembly, to_db=SYSTEM_GENOME_ASSEMBLY, cache_dir=liftover_dir
+    )
     return lifter
 
 
@@ -304,23 +327,33 @@ def liftover_one_pos(
     pos: int,
     lifter=None,
     source_assembly: Optional[str] = None,
-    target_assembly: Optional[str] = None,
 ) -> Optional[Tuple[str, int]]:
-    from oakvar import get_lifter
+    """liftover_one_pos.
 
+    Args:
+        chrom (str): Chromosome
+        pos (int): Position
+        lifter: LiftOver instance. Use `oakvar.get_lifter` to get one.
+        source_assembly (Optional[str]): Genome assembly of input. If `lifter` is given, this parameter will be ignored.
+
+    Returns:
+        (chromosome, position) if liftover was successful. `None` if not.
+    """
     if not lifter:
-        lifter = get_lifter(
-            source_assembly=source_assembly, target_assembly=target_assembly
-        )
+        if not source_assembly:
+            raise ValueError(f"Either lifter or source_assembly should be given")
+        lifter = get_lifter(source_assembly)
+    if not lifter:
+        raise ValueError(f"LiftOver not found for {source_assembly}")
     # res = Optional[[(chrom, pos, strand, score)...]]
     hits = lifter.convert_coordinate(chrom, pos - 1)
     converted = None
-    if hits is not None:
+    if hits:
         converted = (hits[0][0], hits[0][1] + 1)
     else:
         hits_prev = lifter.convert_coordinate(chrom, pos - 2)
         hits_next = lifter.convert_coordinate(chrom, pos)
-        if hits_prev is not None and hits_next is not None:
+        if hits_prev and hits_next:
             hit_prev_1 = hits_prev[0]
             hit_next_1 = hits_next[0]
             pos_prev = hit_prev_1[1]
@@ -340,17 +373,29 @@ def liftover(
     get_ref: bool = False,
     lifter=None,
     source_assembly: Optional[str] = None,
-    target_assembly: Optional[str] = None,
     wgs_reader=None,
 ):
+    """liftover.
+
+    Args:
+        chrom (str): chrom
+        pos (int): pos
+        ref (Optional[str]): ref
+        alt (Optional[str]): alt
+        get_ref (bool): get_ref
+        lifter:
+        source_assembly (Optional[str]): source_assembly
+        wgs_reader:
+    """
     from oakvar.lib.exceptions import LiftoverFailure
     from oakvar.lib.util.seq import reverse_complement
-    from oakvar import get_wgs_reader
 
     if not lifter:
-        lifter = get_lifter(
-            source_assembly=source_assembly, target_assembly=target_assembly
-        )
+        if not source_assembly:
+            raise ValueError(f"Either lifter or source_assembly should be given")
+        lifter = get_lifter(source_assembly)
+    if not lifter:
+        raise ValueError(f"LiftOver not found for {source_assembly}")
     if ref is None:
         converted = liftover_one_pos(chrom, pos, lifter=lifter)
         if converted is None:
@@ -417,3 +462,20 @@ def liftover(
         newref = ref
         newalt = alt
     return [newchrom, newpos, newref, newalt]
+
+
+def get_wgs_reader(assembly="hg38"):
+    """get_wgs_reader.
+
+    Args:
+        assembly:
+    """
+    from ... import get_module
+
+    ModuleClass = get_module(assembly + "wgs")
+    if ModuleClass is None:
+        wgs = None
+    else:
+        wgs = ModuleClass()
+        wgs.setup()
+    return wgs

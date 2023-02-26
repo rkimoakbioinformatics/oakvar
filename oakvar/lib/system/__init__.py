@@ -98,6 +98,7 @@ def setup_system_dirs(conf=None, outer=None):
     from .consts import modules_dir_key
     from .consts import jobs_dir_key
     from .consts import log_dir_key
+    from .consts import LIFTOVER_DIR_KEY
 
     if conf:
         create_dir_if_absent(conf[root_dir_key], outer=outer)
@@ -105,6 +106,7 @@ def setup_system_dirs(conf=None, outer=None):
         create_dir_if_absent(conf[modules_dir_key], outer=outer)
         create_dir_if_absent(conf[jobs_dir_key], outer=outer)
         create_dir_if_absent(conf[log_dir_key], outer=outer)
+        create_dir_if_absent(conf[LIFTOVER_DIR_KEY], outer=outer)
 
 
 def setup_system_conf(
@@ -391,6 +393,8 @@ def add_system_dirs_to_system_conf(system_conf: dict) -> dict:
     from .consts import log_dir_key
     from .consts import package_dir_key
     from .consts import sys_conf_path_key
+    from .consts import LIFTOVER_DIR_KEY
+    from .consts import LIFTOVER_DIR_NAME
     from ..util.admin_util import get_packagedir
 
     # conf_path
@@ -411,6 +415,9 @@ def add_system_dirs_to_system_conf(system_conf: dict) -> dict:
     else:
         conf_dir: Path = get_default_conf_dir(conf=system_conf)
     system_conf[conf_dir_key] = str(conf_dir.expanduser())
+    # liftover dir
+    liftover_dir = conf_dir / LIFTOVER_DIR_NAME
+    system_conf[LIFTOVER_DIR_KEY] = str(liftover_dir)
     # modules_dir
     if modules_dir_key in system_conf:
         modules_dir = Path(system_conf[modules_dir_key])
@@ -1009,3 +1016,14 @@ def get_legacy_status_json(job_dir: Optional[str]) -> Optional[dict]:
         logger = getLogger()
         logger.exception(e)
         return None
+
+
+def get_liftover_dir() -> Union[Path, None]:
+    from .consts import LIFTOVER_DIR_NAME
+
+    conf_dir = get_conf_dir()
+    if not conf_dir:
+        return None
+    liftover_dir = conf_dir / LIFTOVER_DIR_NAME
+    return liftover_dir
+
