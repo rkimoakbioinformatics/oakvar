@@ -9,8 +9,10 @@ from . import new
 from . import store
 from . import config
 from . import module
+from . import system
+from . import util
 
-_ = do_test or config or module or new or store
+_ = do_test or config or module or new or store or system or util
 
 
 def report_issue():

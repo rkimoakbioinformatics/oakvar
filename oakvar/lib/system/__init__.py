@@ -789,6 +789,8 @@ def check_system_directories(outer=None) -> bool:
     from .consts import log_dir_key
     from os.path import exists
 
+    if outer:
+        outer.write("Checking system directories...")
     system_conf = get_system_conf(conf=None)
     if not system_conf:
         if outer:
@@ -807,6 +809,8 @@ def check_account(outer=None) -> bool:
     from ..store.ov.account import token_set_exists
     from ..store.ov.account import check_logged_in_with_token
 
+    if outer:
+        outer.write("Checking OakVar account...")
     if not token_set_exists():
         if outer:
             outer.write(
@@ -823,6 +827,8 @@ def check_account(outer=None) -> bool:
 def check_cache_files(outer=None) -> bool:
     from os import listdir
 
+    if outer:
+        outer.write("Checking OakVar store cache files...")
     for k in ["readme", "logo", "conf"]:
         d = get_cache_dir(k)
         if d:
@@ -840,6 +846,8 @@ def check_module_version_requirement(outer=None) -> bool:
     from ..util.util import compare_version
     from ..module.local import get_local_module_info
 
+    if outer:
+        outer.write("Checking module version requirements...")
     pkg_dir = get_packagedir()
     p = pkg_dir / "module_requirement.txt"
     if not p.exists():
@@ -869,6 +877,7 @@ def check(outer=None) -> bool:
     from rich import box
     from ..store.db import check_tables
 
+    success = True
     ok = Text()
     ok.append("Ok", style="green")
     err = Text()
@@ -881,6 +890,7 @@ def check(outer=None) -> bool:
         if outer:
             outer.error("System configuration file Error")
         status_system_yml = err
+        success = False
     if check_user_yml(outer=outer):
         status_user_yml = ok
         if outer:
@@ -889,6 +899,7 @@ def check(outer=None) -> bool:
         status_user_yml = err
         if outer:
             outer.error("User configuration file Error")
+        success = False
     if check_system_directories(outer=outer):
         status_system_directories = ok
         if outer:
@@ -897,6 +908,7 @@ def check(outer=None) -> bool:
         status_system_directories = err
         if outer:
             outer.error("System directories Error")
+        success = False
     if check_account(outer=outer):
         if outer:
             outer.write("OakVar store account Ok")
@@ -905,6 +917,7 @@ def check(outer=None) -> bool:
         status_account = err
         if outer:
             outer.error("OakVar store account Error")
+        success = False
     if check_tables(outer=outer):
         status_tables = ok
         if outer:
@@ -913,6 +926,7 @@ def check(outer=None) -> bool:
         status_tables = err
         if outer:
             outer.error("OakVar store database Error")
+        success = False
     if check_cache_files(outer=outer):
         status_cache_files = ok
         if outer:
@@ -921,6 +935,7 @@ def check(outer=None) -> bool:
         status_cache_files = err
         if outer:
             outer.error("OakVar store cache files Error")
+        success = False
     if check_module_version_requirement(outer=outer):
         status_module_version_requirement = ok
         if outer:
@@ -929,8 +944,12 @@ def check(outer=None) -> bool:
         status_module_version_requirement = err
         if outer:
             outer.error("Module version requirement Error")
+        success = False
     if outer:
-        outer.write(f"Success")
+        if success:
+            outer.write(ok)
+        else:
+            outer.write(err)
         console = Console()
         table = Table(title="System Check Result", title_style="bold", box=box.SQUARE)
         table.add_column("Item")

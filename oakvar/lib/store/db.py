@@ -816,6 +816,8 @@ def table_has_entry(table: str, conn=Any, cursor=Any) -> bool:
 @db_func
 def check_tables(outer=None, conn=Any, cursor=Any) -> bool:
     _ = conn or cursor
+    if outer:
+        outer.write("Checking OakVar store database...")
     for table in ["summary", "versions", "info"]:
         if not table_exists(table) or not table_has_entry(table):
             if outer:
