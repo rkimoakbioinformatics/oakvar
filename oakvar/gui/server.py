@@ -351,6 +351,7 @@ class WebServer(object):
         self.routes.extend(self.system_handlers.routes)
         self.routes.extend(self.websocket_handlers.routes)
         self.routes.extend(webresult.routes)
+        self.routes.append(["GET", "/", self.index])
         for route in self.routes:
             method, path, func_name = route
             self.app.router.add_route(method, path, func_name)
@@ -365,6 +366,12 @@ class WebServer(object):
             if exists(join(modules_dir, "webapps")):
                 self.app.router.add_static("/webapps", join(modules_dir, "webapps"))
         self.setup_cors()
+
+    def index(self, request):
+        from aiohttp.web import FileResponse
+
+        _ = request
+        return FileResponse("www/index.html")
 
 
 class TCPSitePatched(web_runner.BaseSite):
