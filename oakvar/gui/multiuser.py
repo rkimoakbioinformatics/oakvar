@@ -189,6 +189,11 @@ class MultiuserHandlers:
         global logger
         data = await request.json()
         email = data.get("email")
+        if not email:
+            response = json_response(
+                {"status": "error", "email": email, "admin": False}
+            )
+            return response
         # token = data.get("login_token")
         # if not token:
         #    return Response(status=404)
