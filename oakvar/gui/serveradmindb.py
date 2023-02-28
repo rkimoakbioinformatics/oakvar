@@ -267,9 +267,13 @@ class ServerAdminDb:
         await conn.close()
         return ret
 
-    async def add_user_if_not_exist(self, username, passwordhash, question, answerhash):
+    async def add_user_if_not_exist(
+        self, username: str, passwordhash: str, question: str, answerhash: str
+    ):
         from json import dumps
 
+        if not username:
+            return
         conn = await self.get_db_conn()
         if not conn:
             return
