@@ -11,7 +11,6 @@ class BaseConverter(object):
         self.format_name = None
         self.output_dir = None
         self.run_name = None
-        self.format_name = None
         self.module_name: Optional[str] = None
         self.version = None
         self.conf: dict = {}

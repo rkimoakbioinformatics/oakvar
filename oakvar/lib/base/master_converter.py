@@ -235,9 +235,11 @@ class MasterConverter(object):
             converter.script_path = module_info.script_path
             # end of backward compatibility
             if not hasattr(converter, "format_name"):
+                converter.format_name = module_name.split("-")[0]
+            if not hasattr(converter, "format_name"):
                 if self.outer:
                     self.outer.write(
-                        "{module_info.name} does not have format_name defined and thus was skipped."
+                        "Skipping {module_info.name} as it does not have format_name defined."
                     )
                 continue
             converter.module_name = module_info.name
