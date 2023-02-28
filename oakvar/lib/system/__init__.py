@@ -1041,12 +1041,11 @@ def show_license(outer=None):
     show_liftover_license(outer=outer)
 
 def show_oakvar_license(outer=None):
-    from ..util.admin_util import get_packagedir
     from ..util.inout import get_file_content_as_table
 
     if not outer:
         return
-    fpath = get_packagedir() / ".." / "LICENSE"
+    fpath = get_license_dir() / "LICENSE"
     get_file_content_as_table(fpath, "OakVar License", outer=outer)
 
 def show_liftover_license(outer=None):

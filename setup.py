@@ -23,18 +23,13 @@ def walk_and_add(d, pkg_files):
 
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.rst").read_text()
-oakvar_files = [
-    # "exampleinput",
-    # "oakvar.yml",
-    # "system.yml",
-    # "favicon.ico",
-]
+oakvar_files = []
 cravat_files = []
 walk_and_add("oakvar", oakvar_files)
 walk_and_add("cravat", cravat_files)
 setup(
     name="oakvar",
-    version="2.8.9",
+    version="2.8.10",
     description="A genomic variant analysis platform",
     long_description=long_description,
     long_description_content_type="text/x-rst",
