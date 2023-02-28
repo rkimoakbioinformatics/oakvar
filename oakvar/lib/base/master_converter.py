@@ -295,20 +295,30 @@ class MasterConverter(object):
                 )
             return self.converters[self.format]
         else:
-            for converter_name, converter in self.converters.items():
-                f.seek(0)
-                try:
-                    check_success = converter.check_format(f)
-                except:
-                    import traceback
+            converter: Optional[BaseConverter] = None
+            if self.format:
+                converter_name = self.format + "-converter"
+                if converter_name in self.converters:
+                    converter = self.converters[converter_name]
+            else:
+                for converter_name, check_converter in self.converters.items():
+                    f.seek(0)
+                    try:
+                        check_success = check_converter.check_format(f)
+                    except:
+                        import traceback
 
-                    traceback.print_exc()
-                    check_success = False
-                f.seek(0)
-                if check_success:
-                    if self.logger:
-                        self.logger.info(f"using {converter_name} for {f.name}")
-                    return converter
+                        if self.error_logger:
+                            self.error_logger.error(traceback.format_exc())
+                        check_success = False
+                    f.seek(0)
+                    if check_success:
+                        converter = check_converter
+                        break
+            if converter:
+                if self.logger:
+                    self.logger.info(f"Using {converter.module_name} for {f.name}")
+                return converter
         return None
 
     def set_converter_properties(self, converter):
@@ -319,8 +329,7 @@ class MasterConverter(object):
             raise SetupError()
         converter.output_dir = self.output_dir
         converter.run_name = self.output_base_fname
-        module_name = converter.format_name + "-converter"
-        converter.module_name = module_name
+        module_name = converter.module_name
         converter.version = get_module_code_version(converter.module_name)
         if module_name in self.conf:
             if hasattr(converter, "conf") == False:
