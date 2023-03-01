@@ -21,7 +21,7 @@ inputs:
   home: string
   tmp: string
   mail:
-    type: string
+    type: string?
   password:
-    type: string
+    type: string?
 outputs: []
