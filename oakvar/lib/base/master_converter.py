@@ -297,11 +297,10 @@ class MasterConverter(object):
         else:
             converter: Optional[BaseConverter] = None
             if self.format:
-                converter_name = self.format + "-converter"
-                if converter_name in self.converters:
-                    converter = self.converters[converter_name]
+                if self.format in self.converters:
+                    converter = self.converters[self.format]
             else:
-                for converter_name, check_converter in self.converters.items():
+                for check_converter in self.converters.values():
                     f.seek(0)
                     try:
                         check_success = check_converter.check_format(f)
