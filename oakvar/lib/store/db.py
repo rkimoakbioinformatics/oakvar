@@ -342,7 +342,7 @@ def is_store_db_schema_changed(conn=Any, cursor=Any) -> bool:
 
 
 @db_func
-def drop_ov_store_cache(clean_cache_files=False, conf=None, conn=None, cursor=None):
+def drop_ov_store_cache(refresh_db: bool=False, clean_cache_files=False, conf=None, conn=None, cursor=None):
     from os.path import exists
     from ..system import get_cache_dir
     from ..system.consts import cache_dirs
@@ -350,9 +350,10 @@ def drop_ov_store_cache(clean_cache_files=False, conf=None, conn=None, cursor=No
 
     if not conn or not cursor:
         return
-    if conf:
-        pass
+    _ = conf
     for table in ["summary", "versions", "info"]:
+        if not refresh_db and table == "info":
+            continue
         if table_exists(table):
             q = f"drop table if exists {table}"
             cursor.execute(q)
@@ -486,7 +487,7 @@ def fetch_ov_store_cache(
             outer.write("No store update to fetch")
         return True
     publish_time = local_last_updated
-    drop_ov_store_cache(clean_cache_files=clean_cache_files)
+    drop_ov_store_cache(refresh_db=refresh_db, clean_cache_files=clean_cache_files)
     create_ov_store_cache()
     fetch_summary_cache(publish_time=publish_time, outer=outer)
     fetch_versions_cache(publish_time=publish_time, outer=outer)

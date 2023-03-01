@@ -151,12 +151,6 @@ def add_parser_fn_store_fetch(subparsers):
         "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_store_fetch.add_argument(
-        "--email", default=None, help="email of OakVar store account"
-    )
-    parser_cli_store_fetch.add_argument(
-        "--pw", default=None, help="password of OakVar store account"
-    )
-    parser_cli_store_fetch.add_argument(
         "--refresh-db", action="store_true", help="Refresh cache database."
     )
     parser_cli_store_fetch.add_argument(
