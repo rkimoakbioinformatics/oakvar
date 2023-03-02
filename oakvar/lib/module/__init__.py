@@ -1,6 +1,10 @@
 from typing import Optional
 from typing import List
 from pathlib import Path
+from . import local
+from . import remote
+
+_ = local or remote
 
 
 class InstallProgressHandler:
