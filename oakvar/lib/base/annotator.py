@@ -339,7 +339,7 @@ class BaseAnnotator(object):
         from ..util.run import update_status
         from ..exceptions import ModuleLoadingError
 
-        if df:
+        if df is not None:
             return self.run_df(df)
         if not self.module_name:
             raise ModuleLoadingError(
