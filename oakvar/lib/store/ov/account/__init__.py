@@ -72,7 +72,10 @@ def create(
     try:
         r = post(create_account_url, json=params)
         status_code = r.status_code
-        if status_code == 500:
+        if status_code == 200:
+            msg = ""
+            success = True
+        elif status_code == 500:
             msg = "Server error"
             success = False
         elif status_code == 403:

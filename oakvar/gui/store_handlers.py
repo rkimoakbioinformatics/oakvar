@@ -243,7 +243,7 @@ class StoreHandlers:
         from .util import copy_state
         from .consts import SYSTEM_STATE_INSTALL_KEY
 
-        content = copy_state(self.system_worker_state[SYSTEM_STATE_INSTALL_KEY])
+        content = dict(copy_state(self.system_worker_state[SYSTEM_STATE_INSTALL_KEY]))
         return json_response(content)
 
     def send_kill_install_signal(self, module_name: Optional[str]):
