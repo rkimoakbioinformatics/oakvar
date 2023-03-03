@@ -251,18 +251,18 @@ def login(
 
 
 def get_token_set_path() -> Path:
-    from ....system import get_conf_dir
+    from ....system import get_root_dir
     from ....system import get_system_conf_path
     from ....exceptions import SystemMissingException
     from ....store.consts import ov_store_id_token_fname
 
-    conf_dir = get_conf_dir()
-    if not conf_dir:
+    root_dir = get_root_dir()
+    if not root_dir:
         sys_conf_path = get_system_conf_path()
         raise SystemMissingException(
-            f"conf_dir does not exist in the system configuration file at {sys_conf_path}. Please consider running `ov system setup`."
+            f"root_dir does not exist in the system configuration file at {sys_conf_path}. Please consider running `ov system setup`."
         )
-    token_path = conf_dir / ov_store_id_token_fname
+    token_path = root_dir / ov_store_id_token_fname
     return token_path
 
 
