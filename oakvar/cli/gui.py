@@ -182,10 +182,17 @@ def get_logger(args={}):
     from logging import Formatter
     from logging.handlers import TimedRotatingFileHandler
     from logging import StreamHandler
-    from ..lib.system.consts import log_dir_key
+    from ..lib.exceptions import SystemMissingException
+    from ..lib.system import get_system_conf_path
+    from ..lib.system import get_log_dir
     from ..gui.util import get_log_path
 
-    log_dir = args.get("sysconf", {}).get(log_dir_key)
+    log_dir = get_log_dir()
+    if not log_dir:
+        sys_conf_path = get_system_conf_path()
+        raise SystemMissingException(
+            f"log_dir does not exist in {sys_conf_path}. Please consider running `ov system setup`."
+        )
     log_path = get_log_path(log_dir=log_dir)
     logger = getLogger()
     logger.setLevel(INFO)

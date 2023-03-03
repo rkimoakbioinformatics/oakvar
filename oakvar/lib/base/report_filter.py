@@ -1,6 +1,7 @@
 from typing import Any
 from typing import List
 from typing import Optional
+from pathlib import Path
 
 REPORT_FILTER_DB_NAME = "report_filter"
 REPORT_FILTER_DB_DIRNAME = "report_filters"
@@ -323,12 +324,16 @@ class ReportFilter:
         self.filterstring = parsed_args.filterstring
         self.filtersql = parsed_args.filtersql
 
-    def get_report_filter_db_dir(self):
-        from ..system import get_user_conf_dir
-        from os.path import join
+    def get_report_filter_db_dir(self) -> Path:
+        from ..system import get_conf_dir
+        from ..system import get_system_conf_path
+        from ..exceptions import SystemMissingException
 
-        user_conf_dir = get_user_conf_dir()
-        return join(user_conf_dir, REPORT_FILTER_DB_DIRNAME)
+        conf_dir = get_conf_dir()
+        if not conf_dir:
+            sys_conf_path = get_system_conf_path()
+            raise SystemMissingException(f"conf_dir does not exist in the system configuration file at {sys_conf_path}. Please consider running `ov system setup`.")
+        return conf_dir / REPORT_FILTER_DB_DIRNAME
 
     def escape_user(self, user):
         return "".join([c if c.isalnum() else "_" for c in user])
@@ -337,12 +342,10 @@ class ReportFilter:
         report_filter_db_fn = f"report_filter.{self.user}.sqlite"
         return report_filter_db_fn
 
-    def get_report_filter_db_path(self):
-        from os.path import join
-
+    def get_report_filter_db_path(self) -> Path:
         report_filter_db_dir = self.get_report_filter_db_dir()
         report_filter_db_fn = self.get_report_filter_db_fn()
-        return join(report_filter_db_dir, report_filter_db_fn)
+        return report_filter_db_dir / report_filter_db_fn
 
     def get_registry_table_name(self):
         return f"{REPORT_FILTER_DB_NAME}.{REPORT_FILTER_REGISTRY_NAME}"
@@ -355,14 +358,13 @@ class ReportFilter:
         await cursor.close()
 
     async def create_and_attach_filter_database(self, conn):
-        from os.path import exists
         from os import mkdir
 
         if not conn:
             return
         cursor = await conn.cursor()
         report_filter_db_dir = self.get_report_filter_db_dir()
-        if not exists(report_filter_db_dir):
+        if not report_filter_db_dir.exists():
             mkdir(report_filter_db_dir)
         report_filter_db_path = self.get_report_filter_db_path()
         q = f"attach database '{report_filter_db_path}' as {REPORT_FILTER_DB_NAME}"

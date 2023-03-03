@@ -14,7 +14,7 @@ def get_user_conf():
     conf_path = get_user_conf_path()
     if exists(conf_path):
         ret = load_yml_conf(conf_path)
-        ret["conf_path"] = conf_path
+        ret["conf_path"] = str(conf_path)
         return ret
     else:
         return None
@@ -128,14 +128,20 @@ def report_issue():
 
 def set_user_conf_prop(key, val):
     import oyaml as yaml
+    from pathlib import Path
     from ..system import get_user_conf_path
 
-    conf = get_user_conf()
-    if conf:
-        conf[key] = val
-        wf = open(get_user_conf_path(), "w")
-        yaml.dump(conf, wf, default_flow_style=False)
-        wf.close()
+    if isinstance(val, Path):
+        val = str(val)
+    user_conf = get_user_conf()
+    if not user_conf:
+        user_conf = {key: val}
+    else:
+        user_conf[key] = val
+    user_conf_path = get_user_conf_path()
+    wf = open(user_conf_path, "w")
+    yaml.dump(user_conf, wf, default_flow_style=False)
+    wf.close()
 
 
 def oakvar_version():

@@ -2,8 +2,7 @@ from typing import Optional
 from typing import Any
 from typing import Tuple
 from typing import Dict
-
-from oakvar.lib.exceptions import StoreServerError
+from pathlib import Path
 
 
 def get_email_pw_from_user_conf(email: Optional[str] = None, pw: Optional[str] = None):
@@ -251,13 +250,19 @@ def login(
         return {"success": False, "status_code": 500, "msg": msg, "email": email}
 
 
-def get_token_set_path():
-    from os.path import join
-    from ....system import get_user_conf_dir
+def get_token_set_path() -> Path:
+    from ....system import get_conf_dir
+    from ....system import get_system_conf_path
+    from ....exceptions import SystemMissingException
     from ....store.consts import ov_store_id_token_fname
 
-    user_conf_dir = get_user_conf_dir()
-    token_path = join(user_conf_dir, ov_store_id_token_fname)
+    conf_dir = get_conf_dir()
+    if not conf_dir:
+        sys_conf_path = get_system_conf_path()
+        raise SystemMissingException(
+            f"conf_dir does not exist in the system configuration file at {sys_conf_path}. Please consider running `ov system setup`."
+        )
+    token_path = conf_dir / ov_store_id_token_fname
     return token_path
 
 
@@ -540,6 +545,8 @@ def announce_on_email_verification_if_needed(email: str, outer=None):
 
 
 def login_with_token_set(email=None, outer=None) -> Tuple[bool, str]:
+    from ....exceptions import StoreServerError
+
     token_set = get_token_set()
     if token_set:
         token_email = token_set["email"]
