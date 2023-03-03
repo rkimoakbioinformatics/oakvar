@@ -44,12 +44,11 @@ def setup_system(
     # set up a user conf file.
     setup_user_conf_file(clean=clean, outer=outer)
     # set up a store account.
-    if outer:
-        outer.write("Logging in...")
     ret = setup_store_account(conf=conf, email=email, pw=pw, install_mode=install_mode)
     if ret.get("success") != True:
         if outer:
-            outer.write("Login failed")
+            msg = ret.get("msg")
+            outer.write(f"Login failed: {msg}")
         return False
     if outer:
         outer.write(f"Logged in as {ret['email']}")
@@ -143,17 +142,11 @@ def setup_system_conf(
 def show_no_user_account_prelude():
     print(
         f"""
-###############################################################
-#                                                             #
-# Welcome to OakVar.                                          #
-#                                                             #
 # An OakVar Store account is needed for its proper operation. #
 # of OakVar.                                                  #
 #                                                             #
 # It's free, is securely stored, and will be used only for    #
 # the operation of and communication with OakVar.             #
-#                                                             #
-###############################################################
 """
     )
 

@@ -610,13 +610,23 @@ def total_login(
         if outer:
             outer.write(ret)
         return ret
-    show_no_user_account_prelude()
-    email, pw = get_email_pw_interactively(email=email, pw=pw, pwconfirm=True)
-    ret = create(email=email, pw=pw, outer=outer)
-    if not ret.get("success"):
-        if outer:
-            outer.write(ret)
+    yn = None
+    while True:
+        yn = input("Do you already have an OakVar store account? (y/N): ")
+        if yn.lower() in ["y", "n", ""]:
+            break
+    if yn == "y":
+        email, pw = get_email_pw_interactively(email=email, pw=pw, pwconfirm=False)
+        ret = login_with_email_pw(email=email, pw=pw, conf=conf)
         return ret
-    announce_on_email_verification_if_needed(email, outer=outer)
-    ret = login(email=email, pw=pw, outer=outer)
-    return ret
+    else:
+        show_no_user_account_prelude()
+        email, pw = get_email_pw_interactively(email=email, pw=pw, pwconfirm=True)
+        ret = create(email=email, pw=pw, outer=outer)
+        if not ret.get("success"):
+            if outer:
+                outer.write(ret)
+            return ret
+        announce_on_email_verification_if_needed(email, outer=outer)
+        ret = login(email=email, pw=pw, outer=outer)
+        return ret
