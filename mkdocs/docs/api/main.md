@@ -9,6 +9,8 @@ CLI | Python API | Functionality
 ----|------------|--------------
 ov config system | [oakvar.api.config.system](/api/config/#oakvar.api.config.system) | Gets or sets system configuration.
 ov config user | [oakvar.api.config.user](/api/config/#oakvar.api.config.user) | Gets user configuration.
+ov issue | [oakvar.api.report_issues](/api/oakvar_api/#oakvar.api.report_issue) | Opens a webpage to report OakVar issues.
+ov license | [oakvar.api.license](/api/oakvar_api/#oakvar.api.license) | Gets the OakVar license information.
 ov module info | [oakvar.api.module.info](/api/module/#oakvar.api.module.info) | Gets information on a module.
 ov module install | [oakvar.api.module.install](/api/module/#oakvar.api.module.install) | Installs modules.
 ov module installbase | [oakvar.api.module.installbase](/api/module/#oakvar.api.module.installbase) | Installs system modules.
@@ -18,6 +20,8 @@ ov module uninstall | [oakvar.api.module.uninstall](/api/module/#oakvar.api.modu
 ov module update | [oakvar.api.module.update](/api/module/#oakvar.api.module.update) | Updates modules.
 ov new exampleinput | [oakvar.api.new.exampleinput](/api/new/#oakvar.api.new.exampleinput) | Creates an example input file.
 ov new module | [oakvar.api.new.module](/api/new/#oakvar.api.new.module) | Creates a template for a new module.
+ov report | [oakvar.api.report](/api/oakvar_api/#oakvar.api.report) | Generates report files from OakVar result databases.
+ov run | [oakvar.api.run](/api/oakvar_api#oakvar.api.run) | Runs the OakVar annotation pipeline.
 ov store delete | [oakvar.api.store.delete](/api/store/#oakvar.api.store.delete) | Deletes a module from the OakVar store.
 ov store fetch | [oakvar.api.store.fetch](/api/store/#oakvar.api.store.fetch) | Fetches the OakVar store cache.
 ov store login | [oakvar.api.store.login](/api/store/#oakvar.api.store.login) | Logs in to the OakVar store.
@@ -32,6 +36,8 @@ ov store account reset | [oakvar.api.store.account.reset](/api/store_account/#oa
 ov system account check | [oakvar.api.system.check](/api/system/#oakvar.api.system.check) | Checks OakVar installation on the system.
 ov system md | [oakvar.api.system.md](/api/system/#oakvar.api.system.md) | Gets or sets the OakVar modules directory.
 ov system setup | [oakvar.api.system.setup](/api/system/#oakvar.api.system.setup) | Sets up OakVar in the system.
+ov update | [oakvar.api.update](/api/oakvar_api/#oakvar.api.update) | Gets OakVar version.
+ov version | [oakvar.api.version](/api/oakvar_api/#oakvar.api.version) | Gets OakVar version.
 
 OakVar Python API has a utility function to help data science with genomic data. If an OakVar analysis produced `ov_result.sqlite` result database file, the following will produce a Polars DataFrame from `variant` level data of the result database.
 

@@ -383,15 +383,24 @@ def version() -> str:
 
 
 def license(outer=None):
+    """Shows the OakVar license information."""
     from ..lib.system import show_license
 
     show_license(outer=outer)
 
 
-def update(outer=None):
+def update(outer=None) -> bool:
+    """Updates OakVar to the latest version and sets up OakVar again.
+
+    Args:
+        outer:
+
+    Returns:
+        `True` if successful, `False` if not.
+    """
     from ..lib.system import update
 
-    update(outer=outer)
+    return update(outer=outer)
 
 
 def handle_exception(e: Exception):

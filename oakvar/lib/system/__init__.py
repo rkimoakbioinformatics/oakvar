@@ -1056,7 +1056,7 @@ def show_liftover_license(outer=None):
     fpath = get_license_dir() / "liftover.txt"
     get_file_content_as_table(fpath, "LiftOver License", outer=outer)
 
-def update(outer=None):
+def update(outer=None) -> bool:
     from subprocess import run
     from packaging.version import Version
     from ..util.admin_util import get_current_package_version
