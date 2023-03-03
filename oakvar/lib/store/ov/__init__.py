@@ -148,6 +148,13 @@ def get_server_last_updated() -> Tuple[str, int]:
     return server_last_updated, res.status_code
 
 
+def set_store_url(url: str):
+    from ...system import set_sys_conf_value
+    from ...store.consts import store_url_key
+
+    set_sys_conf_value(store_url_key, url, "str")
+
+
 def get_store_url() -> str:
     from ...system import get_system_conf
     from ...store.consts import store_url_key

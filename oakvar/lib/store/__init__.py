@@ -131,10 +131,15 @@ def get_developer_dict(kwargs):
         }
 
 
-def url(outer=None):
+def url(url: str = "", outer=None) -> str:
     from .ov import get_store_url
+    from .ov import set_store_url
 
-    u = get_store_url()
-    if outer:
-        outer.write(f"{u}")
+    if url:
+        set_store_url(url)
+        u = url
+    else:
+        u = get_store_url()
+        if outer:
+            outer.write(f"{u}")
     return u

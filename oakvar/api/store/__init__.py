@@ -99,18 +99,19 @@ def fetch(
     return ret
 
 
-def url(outer=None) -> str:
-    """Gets the URL of the OakVar store.
+def url(url: str = "", outer=None) -> str:
+    """Gets or sets the URL of the OakVar store.
 
     Args:
+        url (str): OakVar Store URL to use
         outer:
 
     Returns:
-        str of the URL
+        str of the OakVar Store URL
     """
-    from ...lib.store import url
+    from ...lib.store import url as url_fn
 
-    ret = url(outer=outer)
+    ret = url_fn(url=url, outer=outer)
     return ret
 
 
