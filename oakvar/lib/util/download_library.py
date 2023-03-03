@@ -415,6 +415,7 @@ def _get_http(
     """Safely (resume a) download to a file from http(s)."""
     import requests
     from time import time
+    from ...gui.util import GuiOuter
 
     assert module_name is not None
     session = requests.Session()
@@ -480,7 +481,7 @@ def _get_http(
             if progress:
                 progress.update(read_size)
             cur_size += read_size
-            if outer and time() - t > 1:
+            if outer and isinstance(outer, GuiOuter) and time() - t > 1:
                 outer.write(
                     f"download_{file_kind}:{module_name}:{cur_size}:{total_size}"
                 )

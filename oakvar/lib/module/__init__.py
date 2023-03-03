@@ -341,6 +341,7 @@ def download_code_or_data(
                     module_name=module_name,
                     total_size=total_size,
                     cur_size=cur_size,
+                    kind=kind,
                     outer=outer,
                 )
                 if i < num_urls - 1:

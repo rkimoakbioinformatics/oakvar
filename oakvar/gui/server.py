@@ -109,7 +109,7 @@ class WebServer(object):
         self.start_system_worker()
 
     def start_job_worker(self):
-        from multiprocess import Process
+        from multiprocess import Process  # type: ignore
         from .job_handlers import fetch_job_queue
 
         self.job_worker = Process(
@@ -119,7 +119,7 @@ class WebServer(object):
         self.job_worker.start()
 
     def start_system_worker(self):
-        from multiprocess import Process
+        from multiprocess import Process  # type: ignore
         from .system_worker import system_queue_worker
 
         assert self.manager is not None
@@ -159,7 +159,7 @@ class WebServer(object):
         self.system_worker_state[SYSTEM_STATE_INSTALL_QUEUE_KEY] = self.manager.list()
 
     def make_job_queue_states(self):
-        from multiprocess import Queue
+        from multiprocess import Queue  # type: ignore
 
         assert self.manager is not None
         self.job_queue = Queue()
@@ -168,7 +168,7 @@ class WebServer(object):
         self.report_generation_ps.append("initial")
 
     def make_shared_states(self):
-        from multiprocess import Manager
+        from multiprocess import Manager  # type: ignore
 
         self.manager = Manager()
         self.make_system_queue()

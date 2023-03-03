@@ -109,7 +109,7 @@ class MultiuserHandlers:
         ret = create(email=email, pw=password)
         msg = ret.get("msg")
         if not ret.get("success"):
-            return json_response({"code": msg}, status=ret.get("status_code"))
+            return json_response({"code": msg}, status=ret.get("status_code", 500))
         await serveradmindb.add_user_if_not_exist(email, "", "", "")
         oakvar_token = jwt.encode(
             {"email": email}, DEFAULT_PRIVATE_KEY, algorithm="HS256"
