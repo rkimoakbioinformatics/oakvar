@@ -166,12 +166,15 @@ def add_parser_fn_store_fetch(subparsers):
 
 def add_parser_fn_store_url(subparsers):
     # verify-email
-    parser_cli_store_verifyemail = subparsers.add_parser(
+    parser_cli_store_url = subparsers.add_parser(
         "url", help="returns the URL of the OakVar store"
     )
-    parser_cli_store_verifyemail.set_defaults(func=cli_store_url)
-    parser_cli_store_verifyemail.r_return = "character"  # type: ignore
-    parser_cli_store_verifyemail.r_examples = [  # type: ignore
+    parser_cli_store_url.add_argument(
+        "--to", dest="url", default=None, help="New OakVar store URL to use"
+    )
+    parser_cli_store_url.set_defaults(func=cli_store_url)
+    parser_cli_store_url.r_return = "character"  # type: ignore
+    parser_cli_store_url.r_examples = [  # type: ignore
         "# Returns the URL of the OakVar store.",
         "#roakvar::store.account.url()",
     ]
