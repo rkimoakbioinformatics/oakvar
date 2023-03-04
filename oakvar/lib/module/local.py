@@ -799,5 +799,4 @@ def create_module_files(module, overwrite: bool = False, interactive: bool = Fal
                     break
             if del_idx is not None:
                 del yml["output_columns"][del_idx]
-        print("output_columns=", yml["output_columns"])
         dump(yml, wf)
