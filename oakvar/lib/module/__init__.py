@@ -297,14 +297,18 @@ def download_code_or_data(
     url_list: List[str] = []
     if urls[0] == "[":  # a list of URLs
         url_list = loads(urls)
+        if len(url_list) == 1:
+            one_url = url_list[0]
+            url_list = []
     else:
         one_url = urls
     if not one_url and not url_list:
         return
     if one_url:
         download(
-            one_url,
-            zipfile_path,
+            url=one_url,
+            fpath=zipfile_path,
+            directory=temp_dir,
             system_worker_state=system_worker_state,
             check_install_kill=check_install_kill,
             module_name=module_name,

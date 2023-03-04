@@ -24,7 +24,9 @@ def download(
 
         gdown.download(url=url, output=fpath, quiet=True, fuzzy=True)
     elif "github.com" in url:
-        download_from_github(url=url, fpath=fpath, directory=directory, outer=outer)
+        if not directory:
+            raise Exception(f"directory should be given.")
+        download_from_github(url, directory, outer=outer)
     else:
         download_util(
             url,
@@ -102,9 +104,7 @@ def download_github_branch_folder(
     download_git_folder(api_url, folder, install_dir, outer=outer)
 
 
-def download_from_github(url=None, fpath=None, directory=None, outer=None):
-    if not url or (not fpath and not directory):
-        return
+def download_from_github(url: str, directory: str, outer=None):
     g = is_git_repo_url(url)
     if g and directory:
         owner, repo = g
@@ -121,6 +121,10 @@ def download_from_github(url=None, fpath=None, directory=None, outer=None):
         download_github_branch_folder(
             owner, repo, branch, folder, directory, outer=outer
         )
+        return
+    if url.endswith(".zip"):
+        path = Path(url).name
+        download_git_file(url, path, Path(directory), outer=outer)
         return
 
 
