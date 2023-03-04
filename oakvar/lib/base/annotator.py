@@ -40,6 +40,7 @@ class BaseAnnotator(object):
         input_columns: List[str] = [],
         output_columns: List[Dict] = [],
         module_conf: dict = {},
+        code_version: Optional[str]=None,
     ):
         import os
         import sys
@@ -169,10 +170,15 @@ class BaseAnnotator(object):
             self.annotator_display_name = self.module_name.capitalize()
         else:
             self.annotator_display_name = os.path.basename(self.module_dir).upper()
-        if "version" in self.conf:
-            self.annotator_version = self.conf["version"]
+        if code_version:
+            self.code_version: str = code_version
         else:
-            self.annotator_version = ""
+            if "code_version" in self.conf:
+                self.code_version: str = self.conf["version"]
+            elif "version" in self.conf:
+                self.code_version: str = self.conf["version"]
+            else:
+                self.code_version: str = ""
         self.cache = ModuleDataCache(self.module_name, module_type=self.module_type)
 
     def set_ref_colname(self):
@@ -607,7 +613,7 @@ class BaseAnnotator(object):
             self.output_writer.write_meta_line(
                 "displayname", self.annotator_display_name
             )
-            self.output_writer.write_meta_line("version", self.annotator_version)
+            self.output_writer.write_meta_line("version", self.code_version)
         skip_aggregation = []
         for col_def in self.conf["output_columns"]:
             self.output_writer.add_column(col_def)
@@ -720,10 +726,10 @@ class BaseAnnotator(object):
                 d[colname] = value
         return d
 
-    def save(self, overwrite: bool = False):
+    def save(self, overwrite: bool = False, interactive: bool=False):
         from ..module.local import create_module_files
 
-        create_module_files(self, overwrite=overwrite)
+        create_module_files(self, overwrite=overwrite, interactive=interactive)
 
 
 class SecondaryInputFetcher:

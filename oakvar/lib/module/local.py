@@ -1,3 +1,4 @@
+from typing import Any
 from typing import Optional
 from typing import Union
 from typing import Tuple
@@ -694,17 +695,26 @@ def create_module_files(module, overwrite: bool = False, interactive: bool = Fal
             msg="Modules root directory does not exist. Consider running 'ov system setup'."
         )
     modules_dir = Path(modules_dir)
-    module_type: Optional[str] = getattr(module, "module_type", None)
-    module_name: Optional[str] = getattr(module, "module_name", None)
-    module_title: Optional[str] = getattr(module, "title", None)
-    module_level: Optional[str] = getattr(module, "level", None)
-    output_columns: Optional[dict] = getattr(module, "output_columns", None)
+    module_conf = getattr(module, "conf", {})
+    module_name: Optional[str] = getattr(module, "module_name", module_conf.get("name"))
+    module_type: Optional[str] = getattr(module, "module_type", module_conf.get("type"))
+    module_version: Optional[str] = getattr(module, "code_version", module_conf.get("code_version"))
+    module_title: Optional[str] = getattr(module, "title", module_conf.get("title"))
+    module_level: Optional[str] = getattr(module, "level", module_conf.get("level"))
+    output_columns: Optional[List[Dict[str, Any]]] = getattr(module, "output_columns", module_conf.get("output_columns", []))
     if not module_name:
         if interactive:
             module_name = input("Module name:")
     if not module_name:
         raise IncompleteModuleError(
             msg="name property does not exist in the module. Consider giving 'name' argument at initializing the module."
+        )
+    if not module_version:
+        if interactive:
+            module_version = input("Module version:")
+    if not module_version:
+        raise IncompleteModuleError(
+            msg="version property does not exist in the module. Consider giving 'version' argument at initializing the module."
         )
     if not module_title:
         if interactive:
@@ -741,7 +751,7 @@ def create_module_files(module, overwrite: bool = False, interactive: bool = Fal
     yml_path = module_dir / (module_name + ".yml")
     with open(md_path, "w") as wf:
         wf.write(f"# {module_title}\n")
-        desc = module.conf.get("description", "")
+        desc = module_conf.get("description", "")
         wf.write(f"\n{desc}\n<br>")
     with open(py_path, "w") as wf:
         base_classes = {
@@ -761,16 +771,33 @@ def create_module_files(module, overwrite: bool = False, interactive: bool = Fal
         wf.write("".join(source_lines))
     with open(yml_path, "w") as wf:
         wf.write(f"name: {module_name}\n")
-        wf.write(f"type: {module_type}\n")
         wf.write(f"title: {module_title}\n")
+        wf.write(f"code_version: {module_version}\n")
+        wf.write(f"type: {module_type}\n")
         wf.write(f"level: {module_level}\n")
-        yml = module.conf.copy()
+        yml = module_conf.copy()
         if "name" in yml:
             del yml["name"]
-        if "type" in yml:
-            del yml["type"]
         if "title" in yml:
             del yml["title"]
+        if "code_version" in yml:
+            del yml["code_version"]
+        if "type" in yml:
+            del yml["type"]
         if "level" in yml:
             del yml["level"]
+        if "output_columns" not in yml and output_columns:
+            yml["output_columns"] = output_columns
+        if "output_columns" in yml:
+            del_idx = None
+            for i, col in enumerate(yml["output_columns"]):
+                if module_level == "variant" and col.get("name") == "uid":
+                    del_idx = i
+                    break
+                elif module_level == "gene" and col.get("name") == "hugo":
+                    del_idx = i
+                    break
+            if del_idx is not None:
+                del yml["output_columns"][del_idx]
+        print("output_columns=", yml["output_columns"])
         dump(yml, wf)
