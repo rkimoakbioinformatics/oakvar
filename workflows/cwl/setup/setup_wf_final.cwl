@@ -8,8 +8,8 @@ inputs:
   home_dir: string
   tmp_dir: string
   modules_path: string?
-  email: string?
-  pw: string?
+  email: string
+  pw: string
 outputs: []
 #specify workflow steps
 steps:
