@@ -2,22 +2,27 @@ cwlVersion: v1.2
 class: CommandLineTool
 
 baseCommand: ov
+
 arguments: 
-  - valueFrom: $(inputs.ex_file)
-    prefix: new
+  - valueFrom: $(inputs.sqlite_file)
+    prefix: report
+  - valueFrom: excel
+    prefix: -t
+  - valueFrom: annotated
+    prefix: -s
 requirements:
   EnvVarRequirement:
     envDef:
       TMP: $(inputs.tmp)
       HOME: $(inputs.home) 
-inputs:
-  ex_file:
-    type: string
-    default: exampleinput
+
+inputs: 
+  sqlite_file:
+    type: File
   home: string
   tmp: string
 outputs:
-  exampleInput: 
+  excel_file:
     type: File
     outputBinding:
-      glob: '*'
+      glob: "*.xlsx"

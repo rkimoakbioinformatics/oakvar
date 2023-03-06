@@ -25,9 +25,12 @@ inputs:
   home:
     type: string
 outputs:
-  out_file:
-    type: 
-      type: array
-      items: File
+  sqlite:
+    type: File
     outputBinding:
-      glob: '*'
+      glob: "*.sqlite"
+  
+  vcf:
+    type: File
+    outputBinding:
+      glob: "*.vcf"
