@@ -13,6 +13,8 @@ baseCommand: ov
 arguments:
   - valueFrom: $(inputs.vcf_file)
     prefix: run
+  - valueFrom: $(inputs.module_name)
+    prefix: -a
   - valueFrom: vcf
     prefix: -t
 
@@ -24,6 +26,8 @@ inputs:
     type: string
   home:
     type: string
+  module_name: 
+    type: string?
 outputs:
   sqlite:
     type: File

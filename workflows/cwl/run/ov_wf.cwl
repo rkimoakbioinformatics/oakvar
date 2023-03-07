@@ -12,6 +12,8 @@ inputs:
   home_dir: string
   tmp_dir: string
   module: string? 
+  module_run: 
+    type: string?
 outputs:
   example_file:
     type: File
@@ -48,6 +50,7 @@ steps:
       vcf_file: ov_new/exampleInput
       home: home_dir
       tmp: tmp_dir
+      module_name: module_run
     out: [sqlite, vcf]
   ov_report:
     run: ov_report.cwl
