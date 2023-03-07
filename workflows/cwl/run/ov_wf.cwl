@@ -38,7 +38,9 @@ steps:
     run: ov_modules.cwl
     in: 
       module_name: module
-    when: $(inputs.module == "a_string" || inputs.module == "")
+      home: home_dir
+      tmp: tmp_dir
+    when: $(inputs.module_name != "a_string")
     out: []
   ov_run:
     run: ov_run.cwl

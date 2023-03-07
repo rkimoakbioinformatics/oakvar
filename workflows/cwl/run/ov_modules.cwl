@@ -5,11 +5,19 @@ baseCommand: ov
 
 arguments:
   - valueFrom: module
-  - valueFrom: module_name
+  - valueFrom: $(inputs.module_name)
     prefix: install
   - valueFrom: -y
+requirements:
+  EnvVarRequirement:
+    envDef:
+      HOME: $(inputs.home)
+      TMP: $(inputs.tmp)
+
 inputs:
   module_name:
     type: string?
-
+    default: a_string
+  home: string
+  tmp: string
 outputs: []
