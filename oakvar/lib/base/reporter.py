@@ -1,5 +1,6 @@
 from typing import Any
 from typing import Optional
+from typing import Union
 from typing import Dict
 from typing import List
 
@@ -428,7 +429,7 @@ class BaseReporter:
 
     async def write_data(
         self,
-        level,
+        level: str,
         add_summary=True,
         pagesize=None,
         page=None,
@@ -585,16 +586,16 @@ class BaseReporter:
     def end(self):
         pass
 
-    def write_preface(self, __level__):
+    def write_preface(self, __level__: str):
         pass
 
-    def write_header(self, __level__):
+    def write_header(self, __level__: str):
         pass
 
-    def write_table_row(self, __row__):
+    def write_table_row(self, __row__: Union[Dict[str, Any], List[Any]]):
         pass
 
-    def get_extracted_row(self, row):
+    def get_extracted_row(self, row) -> Union[Dict[str, Any], List[Any]]:
         if self.dictrow:
             filtered_row = {col: row[col] for col in self.cols_to_display[self.level]}
         else:
