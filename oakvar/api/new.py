@@ -22,7 +22,7 @@ def exampleinput(directory: Optional[str] = ".", outer=None) -> Optional[Path]:
     return ret
 
 
-def module(module_name: str, module_type: str) -> Optional[Path]:
+def module(module_name: str, module_type: str, outer=None) -> Optional[Path]:
     """module.
 
     Args:
@@ -35,7 +35,19 @@ def module(module_name: str, module_type: str) -> Optional[Path]:
     from ..lib.util.admin_util import create_new_module
     from ..lib.module.local import get_local_module_info
 
-    create_new_module(module_name, module_type)
+    if not module_name:
+        e = ValueError("module_name should not be empty.")
+        if outer:
+            outer.error(e)
+        raise e
+    if not module_type:
+        e = ValueError("module_type should not be empty.")
+        if outer:
+            outer.error(e)
+        raise e
+    ret = create_new_module(module_name, module_type, outer=outer)
+    if not ret:
+        return
     module_info = get_local_module_info(module_name)
     if module_info is not None:
         return module_info.directory

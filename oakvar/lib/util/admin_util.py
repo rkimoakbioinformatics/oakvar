@@ -76,22 +76,45 @@ def fn_new_exampleinput(d: str) -> Path:
     return ofn
 
 
-def create_new_module(name: Optional[str] = None, type: Optional[str] = None):
+def create_new_module(module_name: str, module_type: str, outer=None) -> bool:
     from shutil import copytree
     from pathlib import Path
     from ..system import get_modules_dir
     from ..module.cache import get_module_cache
 
     modules_dir = get_modules_dir()
-    assert modules_dir is not None
-    assert name is not None and type is not None
-    module_dir = Path(modules_dir) / type / name
-    template_dir = Path(get_packagedir()) / "lib" / "assets" / "module_templates" / type
+    if not modules_dir:
+        if outer:
+            outer.error(f"modules_dir does not exist. Run `ov system setup`?")
+        return False
+    module_dir = Path(modules_dir) / module_type / module_name
+    template_dir = (
+        Path(get_packagedir()) / "lib" / "assets" / "module_templates" / module_type
+    )
+    if not template_dir.exists():
+        e = ValueError(
+            f"{template_dir} does not exist. Maybe a wrong module_type {module_type}?"
+        )
+        if outer:
+            outer.error(e)
+        raise e
     copytree(template_dir, module_dir)
     for fn in module_dir.iterdir():
-        new_fn = str(fn).replace("template", name)
+        new_fn = str(fn).replace("template", module_name)
         fn.rename(new_fn)
+    customize_module_template(module_name, module_dir / f"{module_name}.md")
+    customize_module_template(module_name, module_dir / f"{module_name}.yml")
     get_module_cache().update_local()
+    return True
+
+
+def customize_module_template(module_name: str, fpath: Path):
+    with open(fpath) as f:
+        lines = f.readlines()
+    with open(fpath, "w") as wf:
+        for line in lines:
+            new_line = line.replace("MODULE_TITLE", module_name)
+            wf.write(new_line)
 
 
 def recursive_update(d1, d2):

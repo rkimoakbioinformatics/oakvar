@@ -1,5 +1,7 @@
 from typing import List
+from typing import Tuple
 from typing import Dict
+from typing import Iterator
 from oakvar import BaseConverter
 
 
@@ -19,6 +21,29 @@ class Converter(BaseConverter):
         """
         line = f.readline()
         return line.startswith("##fileformat=VCF")
+
+    # If your converter module needs something else than
+    # the standard way of opening a text input file,
+    # read line by line, and coverting each line into
+    # a list of dictionaries of variants,
+    # you may want to start with modifying
+    # convert_file method. In that case, uncomment
+    # the below convert_file method and add your implementation.
+    #
+    # def convert_file(
+    #     self, file, *__args__, exc_handler=None, **__kwargs__
+    # ) -> Iterator[Tuple[int, List[dict]]]:
+    #     line_no = 0
+    #     for line in file:
+    #         line_no += 1
+    #         try:
+    #             yield line_no, self.convert_line(line)
+    #         except Exception as e:
+    #             if exc_handler:
+    #                 exc_handler(line_no, e)
+    #             else:
+    #                 raise e
+    #     return None
 
     def convert_line(self, l) -> List[Dict]:
         """

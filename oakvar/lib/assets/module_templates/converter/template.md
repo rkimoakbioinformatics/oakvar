@@ -1,4 +1,4 @@
-# Module Title
+# MODULE_TITLE
 
 This awesome module is for analyzing genomic variants.
 
@@ -19,7 +19,6 @@ A dotted list:
 
 - First
 - Second
-
 
 **Bold** with two double-quotation marks around the text to make bold. 
 

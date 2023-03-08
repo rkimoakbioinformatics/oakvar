@@ -15,15 +15,15 @@ def exampleinput(args, __name__="new exampleinput"):
 
 
 @cli_entry
-def cli_new_annotator(args):
+def cli_new_module(args):
     return module(args)
 
 
 @cli_func
-def module(args, __name__="new annotator"):
+def module(args, __name__="new module"):
     from ..api.new import module
 
-    ret = module(args.get("name"), args.get("type"))
+    ret = module(args.get("name"), args.get("type"), outer=args.get("outer"))
     if ret:
         print(f"Created {ret}")
 
@@ -58,18 +58,14 @@ def get_parser_fn_new():
 
     # new-annotator
     parser_cli_new_annotator = _subparsers.add_parser(
-        "annotator", help="creates a new annotator"
+        "module", help="creates a new module skeleton."
     )
-    parser_cli_new_annotator.add_argument(
-        "-n", dest="name", default="newmodule", help="Module name"
-    )
-    parser_cli_new_annotator.add_argument(
-        "-t", dest="type", default="annotator", help="Module type"
-    )
+    parser_cli_new_annotator.add_argument("-n", dest="name", help="Module name")
+    parser_cli_new_annotator.add_argument("-t", dest="type", help="Module type")
     parser_cli_new_annotator.add_argument(
         "--quiet", action="store_true", default=None, help="No print to stdout"
     )
-    parser_cli_new_annotator.set_defaults(func=cli_new_annotator)
+    parser_cli_new_annotator.set_defaults(func=cli_new_module)
     parser_cli_new_annotator.r_return = "A string. Location of the new annotator module"  # type: ignore
     parser_cli_new_annotator.r_examples = [  # type: ignore
         "# Create an annotator template at the OakVar modules directory/annotators/annotatortest",

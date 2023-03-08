@@ -1,13 +1,19 @@
+##################################
 #
 # Mandatory fields
 #
-title: Template Module
-description: This is an OakVar module template.
+##################################
+title: MODULE_TITLE
+description: This is an OakVar mapper module.
 type: mapper
 level: variant
 version: 0.0.1
+
+# If your module does not have its own data under module_dir/data folder,
+# remove data_version field and uncomment no_data field.
 data_version: 0.0.1
-no_data: false
+# no_data: true
+
 input_format: crv
 developer:
   module:
@@ -22,15 +28,31 @@ developer:
     email: ''
     website: ''
     citation: ''
+
+#################################
 #
 # Optional fields
 #
+#################################
 tags:
-- gene mapping
-requires:
-- module
-requires_oakvar: "2.7.0"
-pypi_dependency:
-- sqlite3
+- gene_mapping
+
+# If your module depends on other OakVar modules, 
+# list them below and uncomment.
+
+# requires:
+# - oakvar_module_name
+
+# If your module depends on PyPI packages,
+# list the name of the PyPI packages below and uncommont.
+
+# pypi_dependency:
+# - sqlite3
+
+# If your module works with OakVar versions higher than
+# a number, uncomment below and put the number.
+
+# requires_oakvar: "2.8.0"
+
 release_note:
   0.0.1: initial version

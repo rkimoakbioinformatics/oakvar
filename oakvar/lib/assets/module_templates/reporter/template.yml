@@ -1,13 +1,19 @@
+##################################
 #
 # Mandatory fields
 #
-title: Template Module
-description: This is an OakVar module template.
+##################################
+title: MODULE_TITLE
+description: This is an OakVar reporter module.
 type: reporter
 level: variant
-version: 0.0.1
-data_version: 0.0.1
-no_data: false
+
+# If your module has its own data under module_dir/data folder,
+# remove no_data field and uncomment data_version field with 
+# a data version number.
+no_data: true
+# data_version: 0.0.1
+
 developer:
   module:
     name: ''
@@ -21,15 +27,35 @@ developer:
     email: ''
     website: ''
     citation: ''
+
+#################################
 #
 # Optional fields
 #
-tags:
-- clinical relevance
-requires:
-- module
-requires_oakvar: "2.7.0"
-pypi_dependency:
-- sqlite3
+#################################
+
+# tags are what users of OakVar can use to find your module.
+# Please consider adding tags useful in finding your module.
+
+# tags:
+# - input_preprocessing
+
+# If your module depends on other OakVar modules, 
+# list them below and uncomment.
+
+# requires:
+# - oakvar_module_name
+
+# If your module depends on PyPI packages,
+# list the name of the PyPI packages below and uncommont.
+
+# pypi_dependency:
+# - sqlite3
+
+# If your module works with OakVar versions higher than
+# a number, uncomment below and put the number.
+
+# requires_oakvar: "2.8.0"
+
 release_note:
   0.0.1: initial version
