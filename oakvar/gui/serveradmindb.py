@@ -88,10 +88,15 @@ class ServerAdminDb:
 
     def create_tables(self, conn, cursor):
         cursor.execute(
-            "create table if not exists users (email text primary key, role text, passwordhash text, question text, answerhash text, settings text)"
+            "create table if not exists users (email text primary key, "
+            + "role text, passwordhash text, question text, answerhash text, "
+            + "settings text)"
         )
         cursor.execute(
-            "create table if not exists jobs (uid integer primary key autoincrement, username text, dir text, name text, submit date, runtime integer, numinput integer, modules text, assembly text, note text, info_json text, status text)"
+            "create table if not exists jobs (uid integer primary key "
+            + "autoincrement, username text, dir text, name text, submit date, "
+            + "runtime integer, numinput integer, modules text, assembly text, "
+            + "note text, info_json text, status text)"
         )
         cursor.execute(
             "create table if not exists config (key text primary key, value text)"
@@ -102,17 +107,17 @@ class ServerAdminDb:
         conn.commit()
 
     def change_statusjson_to_info_json_column(self, conn, cursor):
-        q = f"alter table jobs rename column statusjson to info_json"  # statusjson Ok here.
+        q = "alter table jobs rename column statusjson to info_json"  # statusjson Ok
         cursor.execute(q)
         conn.commit()
 
     def add_status_column(self, conn, cursor):
         from json import loads
 
-        q = f"alter table jobs add column status text"
+        q = "alter table jobs add column status text"
         cursor.execute(q)
         conn.commit()
-        q = f"select jobid, statusjson from jobs"  # statusjson Ok here.
+        q = "select jobid, statusjson from jobs"  # statusjson Ok here.
         cursor.execute(q)
         rets = cursor.fetchall()
         for ret in rets:
@@ -123,7 +128,7 @@ class ServerAdminDb:
             else:
                 legacy_status_json = loads(ret[1])
             status = legacy_status_json.get("status")
-            q = f"update jobs set status=? where jobid=?"
+            q = "update jobs set status=? where jobid=?"
             cursor.execute(q, (status, jobid))
         conn.commit()
 
@@ -133,7 +138,7 @@ class ServerAdminDb:
             ctype = column_types[idx]
             if ctype == "TEXT":
                 if "name" in columns:
-                    q = f"update jobs set name=jobid"
+                    q = "update jobs set name=jobid"
                     cursor.execute(q)
                     conn.commit()
                 else:
@@ -150,13 +155,15 @@ class ServerAdminDb:
                     [f"{v[0]} {v[1]}" for v in list(zip(new_cols, new_ctypes))]
                 )
                 schema = f"create table jobs ({cols_def})"
-                q = f"drop table jobs"
+                q = "drop table jobs"
                 cursor.execute(q)
                 conn.commit()
                 cursor.execute(schema)
                 conn.commit()
                 for row in rows:
-                    q = f"insert into jobs ({','.join(ex_cols)}) values ({','.join(['?'] * len(ex_cols))})"
+                    col_defs = ",".join(ex_cols)
+                    vals = ",".join(["?"] * len(ex_cols))
+                    q = f"insert into jobs ({col_defs}) values ({vals})"
                     cursor.execute(q, row)
                 conn.commit()
                 return False
@@ -164,7 +171,7 @@ class ServerAdminDb:
 
     def do_backward_compatibility(self, conn, cursor) -> bool:
         need_clean_start = False
-        q = f"select name, type, pk from pragma_table_info('jobs') as tblinfo"
+        q = "select name, type, pk from pragma_table_info('jobs') as tblinfo"
         cursor.execute(q)
         columns = []
         column_types = []
@@ -173,9 +180,9 @@ class ServerAdminDb:
             column_types.append(row[1])
         if not columns:
             return True
-        if not "status" in columns:
+        if "status" not in columns:
             self.add_status_column(conn, cursor)
-        if not "uid" in columns:
+        if "uid" not in columns:
             need_clean_start = self.add_uid_column(columns, column_types, conn, cursor)
         if "statusjson" in columns:  # statusjson Ok here.
             self.change_statusjson_to_info_json_column(conn, cursor)
@@ -220,7 +227,11 @@ class ServerAdminDb:
         annotators = job.info.get("annotators", [])
         postaggregators = job.info.get("postaggregators", [])
         modules = ",".join(annotators + postaggregators)
-        q = "insert into jobs (username, dir, name, submit, runtime, numinput, modules, assembly, note, info_json, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        q = (
+            "insert into jobs (username, dir, name, submit, runtime, "
+            + "numinput, modules, assembly, note, info_json, status) values "
+            + "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        )
         info_json = dumps(job.info["info_json"])
         await cursor.execute(
             q,
@@ -239,7 +250,7 @@ class ServerAdminDb:
             ),
         )
         await conn.commit()
-        q = f"select uid from jobs where username=? and dir=? and name=?"
+        q = "select uid from jobs where username=? and dir=? and name=?"
         await cursor.execute(q, (username, job.info["dir"], job.info["job_name"]))
         ret = await cursor.fetchone()
         await cursor.close()
@@ -258,7 +269,7 @@ class ServerAdminDb:
         if not conn:
             return
         cursor = await conn.cursor()
-        q = f"select role from users where email=?"
+        q = "select role from users where email=?"
         await cursor.execute(q, (email,))
         ret = await cursor.fetchone()
         if ret:
@@ -278,12 +289,15 @@ class ServerAdminDb:
         if not conn:
             return
         cursor = await conn.cursor()
-        q = f"select email from users where email=?"
+        q = "select email from users where email=?"
         await cursor.execute(q, (username,))
         ret = await cursor.fetchone()
         if not ret:
             default_settings = {"lastAssembly": None}
-            q = f"insert into users (email, role, passwordhash, question, answerhash, settings) values (?, ?, ?, ?, ?, ?)"
+            q = (
+                "insert into users (email, role, passwordhash, question, "
+                + "answerhash, settings) values (?, ?, ?, ?, ?, ?)"
+            )
             await cursor.execute(
                 q,
                 (
@@ -340,7 +354,7 @@ class ServerAdminDb:
     def delete_job(self, uid: int):
         conn = self.get_sync_db_conn()
         cursor = conn.cursor()
-        q = f"delete from jobs where uid=?"
+        q = "delete from jobs where uid=?"
         cursor.execute(q, (uid,))
         conn.commit()
         cursor.close()
@@ -365,7 +379,7 @@ class ServerAdminDb:
         if not eud.get("uid") or not eud.get("username"):
             return None
         _ = conn
-        q = f"select dir from jobs where username=? and uid=?"
+        q = "select dir from jobs where username=? and uid=?"
         await cursor.execute(q, (eud.get("username"), eud.get("uid")))
         ret = await cursor.fetchone()
         if not ret:
@@ -380,7 +394,7 @@ class ServerAdminDb:
         if not eud.get("uid") or not eud.get("username"):
             return None
         _ = conn
-        q = f"select info_json from jobs where username=? and uid=?"
+        q = "select info_json from jobs where username=? and uid=?"
         await cursor.execute(q, (eud.get("username"), eud.get("uid")))
         ret = await cursor.fetchone()
         if not ret:
@@ -406,7 +420,7 @@ class ServerAdminDb:
         elif self.job_dir and self.job_name:
             values.extend([self.job_dir, self.job_name])
         else:
-            stderr.write(f"no job_dir nor job_name for server admin DB")
+            stderr.write("no job_dir nor job_name for server admin DB")
             return
         cursor.execute(q, values)
         conn.commit()
@@ -459,12 +473,15 @@ class ServerAdminDb:
         _ = conn
         if not email:
             return
-        q = f"select uid, name, info_json, status from jobs where username=? order by uid desc limit {limit} offset {offset}"
+        q = (
+            "select uid, name, info_json, status from jobs where username=? "
+            + f"order by uid desc limit {limit} offset {offset}"
+        )
         await cursor.execute(q, (email,))
         ret = await cursor.fetchall()
         ret = [dict(v) for v in ret]
         if len(ret) == 0:
-            q = f"select count(*) from jobs where username=?"
+            q = "select count(*) from jobs where username=?"
             await cursor.execute(q, (email,))
             total_ret = await cursor.fetchone()
             total = total_ret[0]
@@ -486,7 +503,7 @@ class ServerAdminDb:
         _ = conn
         if not username or not uid:
             return None
-        q = f"select info_json from jobs where username=? and uid=?"
+        q = "select info_json from jobs where username=? and uid=?"
         await cursor.execute(q, (username, uid))
         ret = await cursor.fetchone()
         if not ret:
@@ -498,14 +515,14 @@ class ServerAdminDb:
     async def mark_job_as_aborted(self, username=None, uid=None, conn=Any, cursor=Any):
         if not username or not uid:
             return
-        q = f"update jobs set status=? where username=? and uid=?"
+        q = "update jobs set status=? where username=? and uid=?"
         await cursor.execute(q, ("Aborted", username, uid))
         await conn.commit()
 
     @db_func
     async def get_users(self, conn=Any, cursor=Any):
         _ = conn
-        q = f"select email, role from users"
+        q = "select email, role from users"
         await cursor.execute(q)
         res = []
         for row in await cursor.fetchall():
@@ -515,7 +532,7 @@ class ServerAdminDb:
     @db_func
     async def make_admin(self, email: str, conn=Any, cursor=Any):
         _ = conn
-        q = f"update users set role=? where email=?"
+        q = "update users set role=? where email=?"
         await cursor.execute(
             q,
             (
@@ -528,14 +545,14 @@ class ServerAdminDb:
     @db_func
     async def remove_admin(self, email: str, conn=Any, cursor=Any):
         _ = conn
-        q = f"update users set role='user' where email=?"
+        q = "update users set role='user' where email=?"
         await cursor.execute(q, (email,))
         await conn.commit()
 
     @db_func
     async def remove_user(self, email: str, conn=Any, cursor=Any):
         _ = conn
-        q = f"delete from users where email=?"
+        q = "delete from users where email=?"
         await cursor.execute(q, (email,))
         await conn.commit()
 
@@ -595,12 +612,16 @@ class ServerAdminDb:
             info_json = dumps(job_status)
             if not job_name or not submit:
                 continue
-            q = f"select uid from jobs where dir=?"
+            q = "select uid from jobs where dir=?"
             cursor.execute(q, (job_dir,))
             ret = cursor.fetchone()
             if ret:
                 continue
-            q = "insert into jobs (username, dir, name, submit, runtime, numinput, modules, assembly, note, info_json, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            q = (
+                "insert into jobs (username, dir, name, submit, runtime, "
+                + "numinput, modules, assembly, note, info_json, status) values "
+                + "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            )
             values = (
                 email,
                 job_dir,

@@ -66,7 +66,7 @@ def system_queue_worker(
                 except ModuleToSkipInstallation:
                     # unqueue(module_name, system_queue)
                     stage_handler.stage_start("skip")
-                except Exception as e:
+                except Exception:
                     # unqueue(module_name, system_queue)
                     local_modules_changed.set()
                     stage_handler.stage_start("error")

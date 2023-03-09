@@ -25,7 +25,7 @@ def download(
         gdown.download(url=url, output=fpath, quiet=True, fuzzy=True)
     elif "github.com" in url:
         if not directory:
-            raise Exception(f"directory should be given.")
+            raise Exception("directory should be given.")
         download_from_github(url, directory, outer=outer)
     else:
         download_util(

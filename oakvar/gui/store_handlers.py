@@ -217,7 +217,7 @@ class StoreHandlers:
         module_name = queries["moduleName"]
         try:
             uninstall_module(module_name)
-        except:
+        except Exception:
             raise ServerError()
         mc = get_module_cache()
         mc.update_local()

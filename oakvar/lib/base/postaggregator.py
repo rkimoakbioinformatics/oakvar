@@ -209,7 +209,7 @@ class BasePostAggregator(object):
             return
         output_columns = self.conf["output_columns"]
         for col in output_columns:
-            if "table" in col and col["table"] == True:
+            if "table" in col and col["table"] is True:
                 self.json_colnames.append(col["name"])
                 self.table_headers[col["name"]] = []
                 for h in col["table_header"]:
@@ -479,7 +479,7 @@ class BasePostAggregator(object):
             # data table
             try:
                 self.cursor.execute(f"select {colname} from {self.level} limit 1")
-            except:
+            except Exception:
                 if coltype is not None:
                     q = (
                         "alter table "
@@ -502,7 +502,7 @@ class BasePostAggregator(object):
 
     def base_cleanup(self):
         self.cleanup()
-        if self.dbconn != None:
+        if self.dbconn is not None:
             self._close_db_connection()
 
     def cleanup(self):
@@ -524,17 +524,17 @@ class BasePostAggregator(object):
         from ..consts import GENE
 
         if self.levelno == VARIANT:
-            self.from_v = f"variant"
+            self.from_v = "variant"
             self.where_v = ""
             self.columns_v = "*"
-            self.from_g = f"gene"
+            self.from_g = "gene"
             self.where_g = "base__hugo=?"
             self.columns_g = "*"
         elif self.levelno == GENE:
             self.from_v = None
             self.where_v = None
             self.columns_v = None
-            self.from_g = f"gene"
+            self.from_g = "gene"
             self.where_g = ""
             self.columns_g = "*"
 

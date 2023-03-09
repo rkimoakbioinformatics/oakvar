@@ -85,7 +85,7 @@ def create_new_module(module_name: str, module_type: str, outer=None) -> bool:
     modules_dir = get_modules_dir()
     if not modules_dir:
         if outer:
-            outer.error(f"modules_dir does not exist. Run `ov system setup`?")
+            outer.error("modules_dir does not exist. Run `ov system setup`?")
         return False
     module_dir = Path(modules_dir) / module_type / module_name
     template_dir = (
@@ -131,7 +131,7 @@ def recursive_update(d1, d2):
         if k in d3:
             orig_v = d3[k]
             if isinstance(v, dict):
-                if isinstance(orig_v, dict) == False:
+                if isinstance(orig_v, dict) is False:
                     d3[k] = v
                 else:
                     t = recursive_update(d3.get(k, {}), v)

@@ -140,7 +140,7 @@ def info(
     ret["readme"] = readme
     # Remote
     remote_info = get_remote_module_info(module_name)
-    remote_available = remote_info != None
+    remote_available = remote_info is not None
     # Local
     local_info = get_local_module_info(module_name)
     if local_info:
@@ -314,7 +314,7 @@ def install(
                 sys.stderr.write(str(e) + "\n")
     if problem_modules:
         if outer:
-            outer.write(f"Following modules were not installed due to problems:")
+            outer.write("Following modules were not installed due to problems:")
         for mn in problem_modules:
             if outer:
                 outer.write(f"- {mn}")
@@ -362,7 +362,7 @@ def update(
         return True
     if not yes:
         if outer:
-            outer.write(f"Following modules will be updated.")
+            outer.write("Following modules will be updated.")
             for mn in to_update:
                 outer.write(f"- {mn}")
             yn = input("Proceed? (y/N) > ")

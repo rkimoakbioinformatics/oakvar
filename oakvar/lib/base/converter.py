@@ -43,3 +43,8 @@ class BaseConverter(object):
 
     def addl_operation_for_unique_variant(self, __wdict__, __wdict_no__):
         pass
+
+    def save(self, overwrite: bool = False, interactive: bool = False):
+        from ..module.local import create_module_files
+
+        create_module_files(self, overwrite=overwrite, interactive=interactive)

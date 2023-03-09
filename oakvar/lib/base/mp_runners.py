@@ -37,7 +37,7 @@ def annot_from_queue(start_queue, end_queue, queue_populated, serveradmindb, log
             annotator = annotator_class(**kwargs)
             annotator.run()
             end_queue.put(module.name)
-        except Exception as _:
+        except Exception:
             err = ModuleLoadingError(module_name=module.name)
             logger.exception(err)
 

@@ -25,7 +25,8 @@ class BaseCommonModule(object):
             parser.add_argument(
                 "--logtofile",
                 action="store_true",
-                help="Path to a log file. If given without a path, the job's run_name.log will be the log path.",
+                help="Path to a log file. If given without a path, the "
+                + "job's run_name.log will be the log path.",
             )
             self.cmd_arg_parser = parser
         except Exception as e:

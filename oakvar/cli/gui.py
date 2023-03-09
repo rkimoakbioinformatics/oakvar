@@ -75,7 +75,7 @@ def get_ssl_context(args={}):
     from ssl import create_default_context, Purpose
 
     pem_path = get_pem_path(args=args)
-    if pem_path and exists(pem_path) and args.get("http_only") == False:
+    if pem_path and exists(pem_path) and args.get("http_only") is False:
         sc = create_default_context(Purpose.CLIENT_AUTH)
         sc.load_cert_chain(pem_path)
     else:
@@ -201,7 +201,7 @@ def get_logger(args={}):
         log_handler = TimedRotatingFileHandler(log_path, when="d", backupCount=30)
         log_handler.setFormatter(log_formatter)
         logger.addHandler(log_handler)
-    if args.get("debug") == True:
+    if args.get("debug") is True:
         log_handler = StreamHandler()
         logger.addHandler(log_handler)
     return logger, log_path
@@ -219,7 +219,7 @@ def get_webapp_url(args={}):
     index_path = join(
         sysconf.get(modules_dir_key), "webapps", args["webapp"], "index.html"
     )
-    if exists(index_path) == False:
+    if exists(index_path) is False:
         stderr.write(f"Webapp {args['webapp']} does not exist. Exiting.\n")
         return
     url = f"{host}:{port}/webapps/{args['webapp']}/index.html"
@@ -234,7 +234,7 @@ def get_result_url(args={}):
     from ..gui.util import get_host_port
 
     dbpath = args.get("result")
-    if exists(dbpath) == False:
+    if exists(dbpath) is False:
         raise NoInput()
     (compatible_version, db_version, oc_version) = is_compatible_version(dbpath)
     host, port = get_host_port(args=args)

@@ -40,7 +40,8 @@ class ModuleDataCache:
                 self.conn = connect(str(self.path))
             except Exception:
                 print(
-                    f"Could not open module cache for {self.module_name}. Restarting the cache db."
+                    f"Could not open module cache for {self.module_name}. "
+                    + "Restarting the cache db."
                 )
                 remove(self.path)
                 self.conn = connect(str(self.path))
@@ -49,7 +50,10 @@ class ModuleDataCache:
     def create_cache_table_if_needed(self):
         if not self.conn:
             return
-        q = f"create table if not exists cache (k text primary key, v text, timestamp float)"
+        q = (
+            "create table if not exists cache (k text primary key, v text, "
+            + "timestamp float)"
+        )
         self.conn.execute(q)
         self.conn.commit()
 
@@ -66,7 +70,7 @@ class ModuleDataCache:
             return
         key = key
         value = dumps(value)
-        q = f"insert or replace into cache (k, v, timestamp) values (?, ?, ?)"
+        q = "insert or replace into cache (k, v, timestamp) values (?, ?, ?)"
         ts = time.time()
         self.conn.execute(q, (key, value, ts))
         if not defer_commit:
@@ -75,7 +79,7 @@ class ModuleDataCache:
     def delete_cache(self, key, defer_commit=False):
         if not self.conn:
             return
-        q = f"delete from cache where key=?"
+        q = "delete from cache where key=?"
         self.conn.execute(q, (key,))
         if not defer_commit:
             self.conn.commit()
@@ -87,13 +91,13 @@ class ModuleDataCache:
 
         if not self.conn:
             return
-        q = f"select v, timestamp from cache where k=?"
+        q = "select v, timestamp from cache where k=?"
         ret = self.conn.execute(q, (key,)).fetchone()
         if ret:
             v = ret[0]  # type: ignore
             try:
                 v = loads(v)
-            except:
+            except Exception:
                 print_exc()
             timestamp = float(ret[1])  # type: ignore
             if self.expiration:

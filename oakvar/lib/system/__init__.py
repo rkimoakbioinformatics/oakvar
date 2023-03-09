@@ -45,7 +45,7 @@ def setup_system(
     setup_user_conf_file(clean=clean, outer=outer)
     # set up a store account.
     ret = setup_store_account(conf=conf, email=email, pw=pw, install_mode=install_mode)
-    if ret.get("success") != True:
+    if ret.get("success") is not True:
         if outer:
             msg = ret.get("msg")
             outer.write(f"Login failed: {msg}")
@@ -81,12 +81,14 @@ def setup_system(
     )
     if ret is None or ret == 0 or ret is True:  # 0 or None?
         if outer:
-            outer.write(f"Done setting up the system.")
+            outer.write("Done setting up the system.")
         return True
     else:  # return False is converted to 1 with @cli_func.
         if outer:
             outer.write(
-                f"Problem occurred while installing system modules. Return value is {ret}.\nPlease run `ov system setup` again to install the missing modules.\n"
+                "Problem occurred while installing system modules. " +\
+                f"Return value is {ret}.\nPlease run `ov system setup` " +\
+                "again to install the missing modules.\n"
             )
         return False
 
@@ -141,7 +143,7 @@ def setup_system_conf(
 
 def show_no_user_account_prelude():
     print(
-        f"""
+        """
 # An OakVar Store account is needed for its proper operation. #
 # of OakVar.                                                  #
 #                                                             #
@@ -275,7 +277,8 @@ def get_logo_path(module_name: str, store: str, conf=None) -> Optional[Path]:
         return None
 
 
-def get_sys_conf_str_value(conf_key: str, sys_conf_path: Optional[Path]=None, conf: Optional[dict]=None) -> Optional[str]:
+def get_sys_conf_str_value(conf_key: str, sys_conf_path: Optional[Path]=None, 
+        conf: Optional[dict]=None) -> Optional[str]:
     v = get_sys_conf_value(conf_key, sys_conf_path=sys_conf_path, conf=conf)
     if v is None:
         return None
@@ -285,7 +288,8 @@ def get_sys_conf_str_value(conf_key: str, sys_conf_path: Optional[Path]=None, co
         return str(v)
 
 
-def get_sys_conf_int_value(conf_key: str, sys_conf_path: Optional[Path]=None, conf: Optional[dict]=None) -> Optional[int]:
+def get_sys_conf_int_value(conf_key: str, sys_conf_path: Optional[Path]=None, 
+        conf: Optional[dict]=None) -> Optional[int]:
     v = get_sys_conf_value(conf_key, sys_conf_path=sys_conf_path, conf=conf)
     if isinstance(v, int):
         return v
@@ -295,7 +299,8 @@ def get_sys_conf_int_value(conf_key: str, sys_conf_path: Optional[Path]=None, co
         return None
 
 
-def get_sys_conf_value(conf_key: str, sys_conf_path=None, conf=None) -> Optional[Union[str, int, float, dict]]:
+def get_sys_conf_value(conf_key: str, sys_conf_path=None, conf=None) \
+        -> Optional[Union[str, int, float, dict]]:
     from os import environ
     from ..util.util import load_yml_conf
     from os.path import exists
@@ -794,7 +799,7 @@ def check_system_directories(outer=None) -> bool:
     system_conf = get_system_conf(conf=None)
     if not system_conf:
         if outer:
-            outer.error(f"System configuration file is missing.")
+            outer.error("System configuration file is missing.")
         return False
     for k in [conf_dir_key, modules_dir_key, jobs_dir_key, log_dir_key]:
         d = system_conf.get(k)
@@ -814,12 +819,14 @@ def check_account(outer=None) -> bool:
     if not token_set_exists():
         if outer:
             outer.write(
-                f"Store account information does not exist. Use `ov store account login` to log in or `ov store account create` to create one.\n"
+                "Store account information does not exist. " +\
+                "Use `ov store account login` to log in or " +\
+                "`ov store account create` to create one.\n"
             )
         return False
     if not check_logged_in_with_token(outer=outer):
         if outer:
-            outer.write(f"Not logged in. Use `ov account login` to log in.")
+            outer.write("Not logged in. Use `ov account login` to log in.")
         return False
     return True
 
@@ -866,7 +873,8 @@ def check_module_version_requirement(outer=None) -> bool:
         return True
     if outer:
         for module_name, required_version in invalid_modules:
-            outer.write(f"Module version requirement not met for this version of OakVar: {module_name}>={required_version}")
+            outer.write("Module version requirement not met for " +\
+                "this version of OakVar: {module_name}>={required_version}")
     return False
 
 
@@ -882,7 +890,7 @@ def check(outer=None) -> bool:
     ok.append("Ok", style="green")
     err = Text()
     err.append("Error", style="red")
-    if check_system_yml(outer=outer) == True:
+    if check_system_yml(outer=outer) is True:
         if outer:
             outer.write("System configuration file Ok")
         status_system_yml = ok
@@ -1002,7 +1010,7 @@ def get_legacy_status_json(job_dir: Optional[str]) -> Optional[dict]:
         with open(legacy_status_path) as f:
             try:
                 legacy_status_json = load(f)
-            except:
+            except Exception:
                 return None
         return legacy_status_json
     except Exception as e:
@@ -1061,7 +1069,9 @@ def update(outer=None) -> bool:
     pypi_ver = get_latest_package_version()
     if not pypi_ver or cur_ver > pypi_ver:
         if outer:
-            outer.error(f"Installed OakVer version ({str(cur_ver)}) is higher than the latest version at PyPI ({str(pypi_ver)}). Aborting.")
+            outer.error(f"Installed OakVer version ({str(cur_ver)}) " +\
+                "is higher than the latest version at PyPI " +\
+                f"({str(pypi_ver)}). Aborting.")
         return True
     cmd = ["pip", "install", "-U", "oakvar"]
     cp = run(cmd)
@@ -1074,7 +1084,7 @@ def update(outer=None) -> bool:
         outer.write("Package updated successfully.")
         outer.write("Setting up system...")
     ret = setup_system(outer=outer)
-    if ret == True:
+    if ret is True:
         if outer:
             outer.write("System setup successful.")
     else:

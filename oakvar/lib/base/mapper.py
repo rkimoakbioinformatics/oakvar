@@ -18,7 +18,6 @@ class BaseMapper(object):
     ):
         from time import time
         from pathlib import Path
-        from pathlib import Path
         from os import makedirs
         import sys
         from ..module.local import get_module_conf
@@ -232,7 +231,7 @@ class BaseMapper(object):
         cols = [
             "base__" + coldef["name"]
             for coldef in get_crx_def()
-            if not coldef["name"] in ["cchange", "exonno"]
+            if coldef["name"] not in ["cchange", "exonno"]
         ]
         cols.extend(["tagsampler__numsample"])
         data = {}

@@ -100,7 +100,8 @@ def get_parser_fn_util():
     # parser_fn_util_mergesqlite.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     # parser_fn_util_mergesqlite.r_examples = [  # type: ignore
     #    "# Merge two OakVar analysis result files into one SQLite file",
-    #    '#roakvar::util.mergesqlite(path=list("example1.sqlite", "example2.sqlite"), outpath="merged.sqlite")',
+    #    '#roakvar::util.mergesqlite(path=list("example1.sqlite",
+    #          "example2.sqlite"), outpath="merged.sqlite")',
     # ]
 
     # Show SQLite info
@@ -155,7 +156,8 @@ def get_parser_fn_util():
     #    help="Sample IDs to exclude",
     # )
     # parser_fn_util_filtersqlite.set_defaults(func=filtersqlite)
-    # parser_fn_util_filtersqlite.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
+    # parser_fn_util_filtersqlite.r_return = "A boolean. TRUE if " +\
+    #        "successful, FALSE if not"  # type: ignore
     # parser_fn_util_filtersqlite.r_examples = [  # type: ignore
     #    "# Filter an analysis result file with an SQL filter set",
     #    '#roakvar::util.filtersqlite(paths="example.sqlite", ',

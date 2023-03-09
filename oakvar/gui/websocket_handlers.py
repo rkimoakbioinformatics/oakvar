@@ -41,7 +41,7 @@ class WebSocketHandlers:
             )
         except ConnectionResetError:
             raise
-        except Exception as e:
+        except Exception:
             raise
         to_dels = []
         for ws_id in self.wss:

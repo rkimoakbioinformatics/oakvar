@@ -84,7 +84,7 @@ def get_sqliteinfo(fmt: str = "json", outer=None, dbpaths: List[str] = []):
             ret = c.fetchone()
         input_paths = loads(ret[0].replace("'", '"'))
         if fmt == "text":
-            s = f"\n# Input files:"
+            s = "\n# Input files:"
             ret_list.append(s)
             if isinstance(input_paths, dict):
                 for p in input_paths.values():
@@ -98,7 +98,7 @@ def get_sqliteinfo(fmt: str = "json", outer=None, dbpaths: List[str] = []):
             elif isinstance(input_paths, list):
                 ret_dict["inputs"] = input_paths
         if fmt == "text":
-            s = f"\n# Output columns"
+            s = "\n# Output columns"
             ret_list.append(s)
             s = f'{"# Name".ljust(width_colname)} {"Title".ljust(width_coltitle)} Type'
             ret_list.append(s)
@@ -182,7 +182,7 @@ def mergesqlite(dbpaths: List[str] = [], outpath: str = ""):
 
     if len(dbpaths) < 2:
         exit("Multiple sqlite file paths should be given")
-    if outpath.endswith(".sqlite") == False:
+    if outpath.endswith(".sqlite") is False:
         outpath = outpath + ".sqlite"
     # Checks columns being the same.
     conn = sqlite3.connect(dbpaths[0])
@@ -382,7 +382,7 @@ async def filtersqlite_async(
 
     for dbpath in dbpaths:
         if not dbpath.endswith(".sqlite"):
-            print(f"  Skipping")
+            print("  Skipping")
             continue
         opath = f"{dbpath[:-7]}.{suffix}.sqlite"
         print(f"{opath}")
@@ -401,7 +401,7 @@ async def filtersqlite_async(
             )
             await cf.exec_db(cf.loadfilter)
             if (
-                hasattr(cf, "filter") == False
+                hasattr(cf, "filter") is False
                 or cf.filter is None
                 or type(cf.filter) is not dict
             ):
@@ -424,20 +424,20 @@ async def filtersqlite_async(
             ]:
                 filtersqlite_async_drop_copy_table(c, table_name)
             # Variant
-            print(f"- variant")
+            print("- variant")
             if hasattr(cf, "make_filtered_uid_table"):
                 await cf.exec_db(getattr(cf, "make_filtered_uid_table"))
             c.execute(
                 "create table variant as select v.* from old_db.variant as v, old_db.variant_filtered as f where v.base__uid=f.base__uid"
             )
             # Gene
-            print(f"- gene")
+            print("- gene")
             await cf.exec_db(cf.make_filtered_hugo_table)
             c.execute(
                 "create table gene as select g.* from old_db.gene as g, old_db.gene_filtered as f where g.base__hugo=f.base__hugo"
             )
             # Sample
-            print(f"- sample")
+            print("- sample")
             req = []
             rej = []
             if "sample" in cf.filter:

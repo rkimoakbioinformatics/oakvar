@@ -183,15 +183,16 @@ class Runner(object):
                     cur_prog = "*" * cur_star
                     rem_prog = " " * rem_stars
                     print(
-                        f"[{cur_prog}{rem_prog}] {humanize_bytes(cur_size)} / {humanize_bytes(total_size)} ({perc * 100.0:.0f}%)",
+                        f"[{cur_prog}{rem_prog}] {humanize_bytes(cur_size)} " +\
+                        f"/ {humanize_bytes(total_size)} ({perc * 100.0:.0f}%)",
                         end="\r",
                         flush=True,
                     )
                     if cur_size == total_size:
                         print("\n")
             return str(Path(fpath).absolute())
-        except:
-            print(f"File downloading unsuccessful. Exiting.")
+        except Exception:
+            print("File downloading unsuccessful. Exiting.")
             exit()
 
     def get_logger(self, run_no: int):
@@ -206,7 +207,7 @@ class Runner(object):
             raise
         output_dir = self.output_dir[run_no]
         run_name = self.run_name[run_no]
-        if self.args.newlog == True:
+        if self.args.newlog is True:
             self.logmode = "w"
         else:
             self.logmode = "a"
@@ -231,7 +232,8 @@ class Runner(object):
             error_log_path = Path(output_dir) / (run_name + ".err")
             if error_log_path.exists():
                 remove(error_log_path)
-            self.error_log_handler = logging.FileHandler(error_log_path, mode=self.logmode)
+            self.error_log_handler = logging.FileHandler(
+                    error_log_path, mode=self.logmode)
         else:
             self.error_log_handler = logging.StreamHandler(stream=stderr)
         formatter = logging.Formatter("%(name)s\t%(message)s")
@@ -378,7 +380,6 @@ class Runner(object):
 
     async def process_arguments(self, args):
         from ..exceptions import SetupError
-        from ..exceptions import SetupError
 
         self.set_package_conf(args)
         self.make_self_args_considering_package_conf(args)
@@ -429,7 +430,7 @@ class Runner(object):
         self.outer = self.args.outer
         if self.args.vcf2vcf and self.args.combine_input:
             if self.outer:
-                self.outer.write(f"--vcf2vcf is used. --combine-input is disabled.")
+                self.outer.write("--vcf2vcf is used. --combine-input is disabled.")
             self.args.combine_input = False
         self.process_module_options()
 
@@ -487,14 +488,16 @@ class Runner(object):
                 if len(toks) != 2:
                     if self.outer:
                         self.outer.write(
-                            "Ignoring invalid module option {opt_str}. module-options should be module_name.key=value.\n",
+                            "Ignoring invalid module option {opt_str}. " +\
+                            "module-options should be module_name.key=value.\n",
                         )
                     continue
                 k = toks[0]
                 if k.count(".") != 1:
                     if self.outer:
                         self.outer.write(
-                            "Ignoring invalid module option {opt_str}. module-options should be module_name.key=value.\n",
+                            "Ignoring invalid module option {opt_str}. " +\
+                            "module-options should be module_name.key=value.\n",
                         )
                     continue
                 [module_name, key] = k.split(".")
@@ -733,7 +736,8 @@ class Runner(object):
             if self.args.combine_input:
                 if len(self.args.run_name) != 1:
                     raise ArgumentError(
-                        msg="-n should have only one value when --combine-input is given."
+                        msg="-n should have only one value when --combine-input " +\
+                            "is given."
                     )
                 self.run_name = self.args.run_name
             else:
@@ -743,7 +747,8 @@ class Runner(object):
                             set(self.output_dir)
                         ):
                             raise ArgumentError(
-                                msg="-n should have a unique value for each input when -d has duplicate directories."
+                                msg="-n should have a unique value for each " +\
+                                    "input when -d has duplicate directories."
                             )
                         self.run_name = self.args.run_name * len(self.inputs)
                     elif self.pipeinput:
@@ -753,12 +758,14 @@ class Runner(object):
                 else:
                     if self.pipeinput:
                         raise ArgumentError(
-                            msg="Only one -n option value should be given with pipe input."
+                            msg="Only one -n option value should be given " +\
+                                "with pipe input."
                         )
                     if self.inputs:
                         if len(self.inputs) != len(self.args.run_name):
                             raise ArgumentError(
-                                msg="Just one or the same number of -n option values as input files should be given."
+                                msg="Just one or the same number of -n option " +\
+                                    "values as input files should be given."
                             )
                         self.run_name = self.args.run_name
                     else:
@@ -787,7 +794,9 @@ class Runner(object):
                 if self.inputs:
                     if len(self.output_dir) != len(set(self.output_dir)):
                         raise ArgumentError(
-                            msg="-j should have a unique value for each input when -d has duplicate directories. Or, give --combine-input to combine input files into one job."
+                            msg="-j should have a unique value for each input " +\
+                                "when -d has duplicate directories. Or, give " +\
+                                "--combine-input to combine input files into one job."
                         )
                     self.job_name = self.args.job_name * len(self.inputs)
                 elif self.pipeinput:
@@ -802,7 +811,8 @@ class Runner(object):
                 if self.inputs:
                     if len(self.inputs) != len(self.args.job_name):
                         raise ArgumentError(
-                            msg="Just one or the same number of -j option values as input files should be given."
+                            msg="Just one or the same number of -j option values " +\
+                                "as input files should be given."
                         )
                     self.job_name = self.args.job_name
             return
@@ -925,7 +935,8 @@ class Runner(object):
                 if not self.is_in_annotators_or_postaggregators(module_name):
                     module = get_local_module_info_by_name(module_name)
                     if not module:
-                        msg = f"{module_name} is required by {postaggregator.name}, but does not exist."
+                        msg = f"{module_name} is required by {postaggregator.name}" +\
+                                ", but does not exist."
                         raise ModuleNotExist(module_name, msg=msg)
                     if module.type == "annotator" and self.annotator_names is not None:
                         self.annotator_names.append(module_name)
@@ -1066,7 +1077,7 @@ class Runner(object):
                 if (
                     module
                     and module.conf.get("type") == module_type
-                    and not module_name in final_module_names
+                    and module_name not in final_module_names
                 ):
                     final_module_names.append(module_name)
         elif isinstance(input_module_names, str):
@@ -1082,7 +1093,8 @@ class Runner(object):
                     )
                 else:
                     raise Exception(
-                        f"module requirement configuration error: {module_name} => {required_module_names}"
+                        f"module requirement configuration error: {module_name} " +\
+                        f"=> {required_module_names}"
                     )
             else:
                 if module_name in final_module_names:
@@ -1165,7 +1177,7 @@ class Runner(object):
                 self.args.mp = int(self.args.mp)
                 if self.args.mp >= 1:
                     num_workers = self.args.mp
-            except:
+            except Exception:
                 if self.logger:
                     self.logger.exception(
                         f"error handling --mp argument: {self.args.mp}"
@@ -1262,7 +1274,7 @@ class Runner(object):
             + '"'
         )
         cursor.execute(sql)
-        if cursor.fetchone() == None:
+        if cursor.fetchone() is None:
             return False
         else:
             return True
@@ -1287,7 +1299,7 @@ class Runner(object):
                     version = line.strip().split("=")[1]
                 elif line.startswith("#modulename="):
                     modulename = line.strip().split("=")[1]
-                elif line.startswith("#") == False:
+                elif line.startswith("#") is False:
                     break
             f.close()
         return title, version, modulename
@@ -1483,7 +1495,7 @@ class Runner(object):
         error_logger_pattern = compile(f"{run_name}{ERROR_LOG_SUFFIX}")
         for fn in fns:
             fn_path = Path(output_dir) / fn
-            if fn_path.is_file() == False:
+            if fn_path.is_file() is False:
                 continue
             if pattern.match(fn):
                 if self.logger:
@@ -1494,7 +1506,7 @@ class Runner(object):
                     self.logger.info(f"removing {fn_path}")
                 try:  # Windows does not allow deleting a file when it is open.
                     remove(str(fn_path))
-                except:
+                except Exception:
                     pass
 
     async def write_admin_db_final_info(self, runtime: float, run_no: int):
@@ -1507,7 +1519,7 @@ class Runner(object):
         if runtime is None or self.total_num_converted_variants is None:
             return
         admindb_path = get_admindb_path()
-        if not admindb_path or admindb_path.exists() == False:
+        if not admindb_path or admindb_path.exists() is False:
             s = "{} does not exist.".format(str(admindb_path))
             if self.logger:
                 self.logger.info(s)
@@ -1516,7 +1528,7 @@ class Runner(object):
             return
         try:
             info_json_s = dumps(self.info_json)
-        except:
+        except Exception:
             info_json_s = ""
         db = await aiosqlite.connect(str(admindb_path))
         cursor = await db.cursor()
@@ -1555,7 +1567,7 @@ class Runner(object):
         self.info_json["viewable"] = False
         self.info_json["note"] = self.args.note
         self.info_json["report_types"] = (
-            self.args.report_types if self.args.report_types != None else []
+            self.args.report_types if self.args.report_types is not None else []
         )
         self.pkg_ver = oakvar_version()
         self.info_json["package_version"] = self.pkg_ver
@@ -1672,7 +1684,8 @@ class Runner(object):
         )
         if self.logger:
             self.logger.info(
-                f"input line chunksize={chunksize} total number of input lines={num_lines} number of chunks={len_poss}"
+                f"input line chunksize={chunksize} total number of " +\
+                f"input lines={num_lines} number of chunks={len_poss}"
             )
         pool = mp.Pool(num_workers, init_worker)
         pos_no = 0
@@ -1743,7 +1756,7 @@ class Runner(object):
                 self.args.mp = int(self.args.mp)
                 if self.args.mp >= 1:
                     num_workers = self.args.mp
-            except:
+            except Exception:
                 if self.logger:
                     self.logger.exception("error handling mp argument:")
         if self.logger:
@@ -1775,7 +1788,8 @@ class Runner(object):
                     if secondary_output_path is None:
                         if self.logger:
                             self.logger.warning(
-                                f"secondary output file does not exist for {secondary_module_name}"
+                                "secondary output file does not exist for " +\
+                                f"{secondary_module_name}"
                             )
                     else:
                         secondary_inputs.append(
@@ -2042,7 +2056,7 @@ class Runner(object):
         return (
             self.endlevel >= self.runlevels[step]
             and self.startlevel <= self.runlevels[step]
-            and (self.args and not step in self.args.skip)
+            and (self.args and step not in self.args.skip)
         )
 
     async def do_step_converter(self, run_no: int):

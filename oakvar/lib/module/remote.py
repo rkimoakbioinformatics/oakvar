@@ -241,8 +241,8 @@ def search_remote(*patterns, module_type=None):
     from . import list_remote
 
     matching_names = []
-    l = list_remote(module_type=module_type)
-    for module_name in l:
+    module_names = list_remote(module_type=module_type)
+    for module_name in module_names:
         if any([fullmatch(pattern, module_name) for pattern in patterns]):
             matching_names.append(module_name)
     matching_names.sort()
@@ -285,7 +285,7 @@ def make_remote_manifest():
         manifest = get_manifest()
         if manifest:
             content["data"] = manifest
-    except:
+    except Exception:
         print_exc()
         content = {"data": {}}
     return content

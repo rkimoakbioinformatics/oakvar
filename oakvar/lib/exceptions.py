@@ -141,9 +141,15 @@ class SystemMissingException(ExpectedException):
 
     def __init__(self, msg=""):
         if msg is not None and msg != "":
-            msg = f"OakVar system component is missing ({msg}).\nPlease run 'ov system setup' to set up OakVar."
+            msg = (
+                f"OakVar system component is missing ({msg}).\n"
+                + "Please run 'ov system setup' to set up OakVar."
+            )
         else:
-            msg = f"OakVar system component is missing.\nPlease run 'ov system setup' to set up OakVar."
+            msg = (
+                "OakVar system component is missing.\nPlease run "
+                + "'ov system setup' to set up OakVar."
+            )
         super().__init__(msg)
 
 
@@ -180,7 +186,7 @@ class StoreServerError(ExpectedException):
 
 class InternetConnectionError(ExpectedException):
     def __init__(self):
-        super().__init__(f"internet connection is unavailable.")
+        super().__init__("internet connection is unavailable.")
 
 
 class ModuleVersionError(ExpectedException):
@@ -212,7 +218,7 @@ class SetupError(ExpectedException):
             if module_name:
                 super().__init__(msg=f"setup for {module_name}")
             else:
-                super().__init__(msg=f"setup error")
+                super().__init__(msg="setup error")
 
 
 class LoggerError(ExpectedException):
@@ -223,7 +229,7 @@ class LoggerError(ExpectedException):
         if module_name is not None:
             super().__init__(f"logger is None for {module_name}")
         else:
-            super().__init__(f"logger is None")
+            super().__init__("logger is None")
 
 
 class IncompleteModuleError(ExpectedException):
@@ -236,7 +242,7 @@ class IncompleteModuleError(ExpectedException):
 
 class FilterLoadingError(ExpectedException):
     def __init__(self):
-        super().__init__(f"filter loading error")
+        super().__init__("filter loading error")
 
 
 class DatabaseConnectionError(ExpectedException):
@@ -247,7 +253,7 @@ class DatabaseConnectionError(ExpectedException):
         if module_name is not None:
             super().__init__(f"database connection error for {module_name}")
         else:
-            super().__init__(f"database connection error")
+            super().__init__("database connection error")
 
 
 class DatabaseError(ExpectedException):
@@ -258,7 +264,7 @@ class DatabaseError(ExpectedException):
         if msg is not None:
             super().__init__(f"database error. {msg}")
         else:
-            super().__init__(f"database error")
+            super().__init__("database error")
 
 
 class ArgumentError(ExpectedException):
@@ -269,7 +275,7 @@ class ArgumentError(ExpectedException):
         if msg is not None:
             super().__init__(f"{msg}")
         else:
-            super().__init__(f"argument")
+            super().__init__("argument")
 
 
 class WrongInput(ExpectedException):
@@ -280,7 +286,7 @@ class WrongInput(ExpectedException):
         if msg is not None:
             super().__init__(f"wrong input. {msg}")
         else:
-            super().__init__(f"wrong input")
+            super().__init__("wrong input")
 
 
 class ServerError(Exception):
@@ -296,7 +302,7 @@ class AuthorizationError(ExpectedException):
     halt = True
 
     def __init__(self):
-        super().__init__(f"authorization failed")
+        super().__init__("authorization failed")
 
 
 # end of store-related exceptions

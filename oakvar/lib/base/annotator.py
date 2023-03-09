@@ -130,7 +130,10 @@ class BaseAnnotator(object):
             if input_format in self.default_input_columns:
                 input_columns = self.default_input_columns[input_format]
             else:
-                raise ModuleLoadingError(msg=f"{self.module_name}: input_format ({input_format}) is invalid. It should be one of {', '.join(self.default_input_columns.keys())}.")
+                valid_formats = ', '.join(self.default_input_columns.keys())
+                raise ModuleLoadingError(msg=f"{self.module_name}: input_format " +\
+                    "({input_format}) is invalid. It should be one of " +\
+                    f"{valid_formats}.")
         self.input_columns = input_columns.copy()
         if (
             self.input_columns is not None
@@ -309,7 +312,7 @@ class BaseAnnotator(object):
             return
         return (
             self.conf["level"] == "variant"
-            and not input_data.get("chrom") in self.supported_chroms
+            and input_data.get("chrom") not in self.supported_chroms
         )
 
     def fill_empty_output(self, output_dict):
@@ -326,7 +329,7 @@ class BaseAnnotator(object):
             return
         self.json_colnames = []
         for col in self.output_columns:
-            if "table" in col and col["table"] == True:
+            if "table" in col and col["table"] is True:
                 self.json_colnames.append(col["name"])
 
     def annotate_df(self, df):
@@ -354,15 +357,18 @@ class BaseAnnotator(object):
         if self.conf:
             if "title" not in self.conf:
                 raise ModuleLoadingError(
-                    msg="title should be given at initializing Annotator or in the module yml file to run."
+                    msg="title should be given at initializing Annotator or in " +\
+                        "the module yml file to run."
                 )
             if "level" not in self.conf:
                 raise ModuleLoadingError(
-                    msg="level should be given at initializing Annotator or in the module yml file to run."
+                    msg="level should be given at initializing Annotator or in " +\
+                        "the module yml file to run."
                 )
             if "output_columns" not in self.conf:
                 raise ModuleLoadingError(
-                    msg="output_columns should be given at initializing Annotator or in the module yml file to run."
+                    msg="output_columns should be given at initializing Annotator " +\
+                        "or in the module yml file to run."
                 )
             if not self.primary_input_path:
                 raise ModuleLoadingError(
@@ -556,7 +562,8 @@ class BaseAnnotator(object):
         num_provided = len(self.secondary_paths)
         if num_expected > num_provided:
             raise Exception(
-                f"Too few secondary inputs. {num_expected} expected, {num_provided} provided"
+                f"Too few secondary inputs. {num_expected} expected, " +\
+                f"{num_provided} provided"
             )
         elif num_expected < num_provided:
             raise Exception(
@@ -648,7 +655,7 @@ class BaseAnnotator(object):
         if self.output_writer:
             self.output_writer.close()
         # self.invalid_file.close()
-        if self.dbconn != None:
+        if self.dbconn is not None:
             self.close_db_connection()
         self.cleanup()
 

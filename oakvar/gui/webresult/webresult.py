@@ -35,7 +35,7 @@ async def get_filter_save_names(request):
         cursor = await conn.cursor()
         table = "viewersetup"
         r = await table_exists(cursor, table)
-        if r == False:
+        if r is False:
             pass
         else:
             q = "select distinct name from " + table + ' where datatype="filter"'
@@ -91,7 +91,7 @@ async def rename_layout_setting(request):
     cursor = await conn.cursor()
     table = "viewersetup"
     r = await table_exists(cursor, table)
-    if r == True:
+    if r is True:
         q = (
             "update "
             + table
@@ -128,7 +128,7 @@ async def delete_layout_setting(request):
     cursor = await conn.cursor()
     table = "viewersetup"
     r = await table_exists(cursor, table)
-    if r == True:
+    if r is True:
         q = "DELETE FROM " + table + ' WHERE datatype="layout" and name="' + name + '"'
         await cursor.execute(q)
     await conn.commit()
@@ -150,7 +150,7 @@ async def load_layout_setting(request):
     cursor = await conn.cursor()
     table = "viewersetup"
     r = await table_exists(cursor, table)
-    if r == True:
+    if r is True:
         q = (
             "select viewersetup from "
             + table
@@ -160,7 +160,7 @@ async def load_layout_setting(request):
         )
         await cursor.execute(q)
         r = await cursor.fetchone()
-        if r != None:
+        if r is not None:
             data = r[0]
             content = json.loads(data)
         else:
@@ -183,7 +183,7 @@ async def load_filter_setting(request):
     cursor = await conn.cursor()
     table = "viewersetup"
     r = await table_exists(cursor, table)
-    if r == True:
+    if r is True:
         q = (
             "select viewersetup from "
             + table
@@ -193,7 +193,7 @@ async def load_filter_setting(request):
         )
         await cursor.execute(q)
         r = await cursor.fetchone()
-        if r != None:
+        if r is not None:
             data = r[0]
             content = json.loads(data)
         else:
@@ -221,7 +221,7 @@ async def save_layout_setting(request):
     cursor = await conn.cursor()
     table = "viewersetup"
     r = await table_exists(cursor, table)
-    if r == False:
+    if r is False:
         q = (
             "create table "
             + table
@@ -363,9 +363,9 @@ async def get_result(request):
         "module_name": reporter_name,
         "nogenelevelonvariantlevel": True,
     }
-    if confpath != None:
+    if confpath is not None:
         arg_dict["confpath"] = confpath
-    if filterstring != None:
+    if filterstring is not None:
         arg_dict["filterstring"] = filterstring
     arg_dict["nogenelevelonvariantlevel"] = True
     if "separatesample" in queries:
@@ -421,7 +421,7 @@ async def get_pagesize(request, valueonly=False):
     sys_conf = get_system_conf()
     try:
         queries = await request.json()
-    except:
+    except Exception:
         queries = {}
     gui_result_pagesize = queries.get(
         "pagesize",
@@ -630,7 +630,7 @@ def get_colmodel(tab, colinfo):
                 column["retfilttype"] = "between"
                 column["dataType"] = "float"
                 column["multiseloptions"] = []
-            if "col_genesummary" in d and d["col_genesummary"] == True:
+            if "col_genesummary" in d and d["col_genesummary"] is True:
                 genesummary_present = True
             columngroupdef["colModel"].append(column)
             dataindx += 1
@@ -652,9 +652,9 @@ async def get_colinfo(dbpath, confpath=None, filterstring=None, add_summary=True
     )
     m = imp.load_module(reporter_name, f, fn, d)  # type: ignore
     arg_dict = {"dbpath": dbpath, "module_name": reporter_name}
-    if confpath != None:
+    if confpath is not None:
         arg_dict["confpath"] = confpath
-    if filterstring != None:
+    if filterstring is not None:
         arg_dict["filterstring"] = filterstring
     arg_dict["report_types"] = ["text"]
     reporter = m.Reporter(arg_dict)
@@ -683,7 +683,7 @@ async def table_exists(cursor, table):
     )
     await cursor.execute(q)
     r = await cursor.fetchone()
-    if r == None:
+    if r is None:
         return False
     else:
         return True
@@ -831,7 +831,7 @@ async def get_modules_info(request):
     else:
         try:
             content = loads(r[0])
-        except:
+        except Exception:
             # TODO: backward-compatibility. Remove after a while.
             s = r[0].strip("{").strip("}")
             toks = s.split("', '")
@@ -870,7 +870,6 @@ async def get_samples(request):
 async def get_variants_for_hugo(request):
     from aiohttp.web import Response
     from ...lib.exceptions import DatabaseConnectionError
-    from ...lib.exceptions import DatabaseConnectionError
 
     hugo = request.match_info["hugo"]
     dbpath = await get_dbpath(request)
@@ -880,7 +879,7 @@ async def get_variants_for_hugo(request):
     if not conn:
         return Response(status=500)
     cursor = await conn.cursor()
-    q = f"select * from variant where base__hugo=?"
+    q = "select * from variant where base__hugo=?"
     await cursor.execute(q, (hugo,))
     rows = await cursor.fetchall()
     out = []
@@ -892,7 +891,6 @@ async def get_variants_for_hugo(request):
 async def get_variantdbcols(request):
     from aiohttp.web import Response
     from ...lib.exceptions import DatabaseConnectionError
-    from ...lib.exceptions import DatabaseConnectionError
 
     dbpath = await get_dbpath(request)
     if dbpath is None:
@@ -901,7 +899,7 @@ async def get_variantdbcols(request):
     if not conn:
         return Response(status=500)
     cursor = await conn.cursor()
-    q = f"select sql from sqlite_master where name='variant'"
+    q = "select sql from sqlite_master where name='variant'"
     await cursor.execute(q)
     row = await cursor.fetchone()
     if not row:

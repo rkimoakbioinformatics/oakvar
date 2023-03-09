@@ -51,19 +51,19 @@ class FileReader(BaseFile):
             line = f.readline()[:-1]
             if line.startswith("#fmt=csv"):
                 self.csvfmt = True
-        for l in self._loop_definition():
-            if l.startswith("#name="):
-                self.annotator_name = l.split("=")[1]
-            elif l.startswith("#displayname="):
-                self.annotator_displayname = l.split("=")[1]
-            elif l.startswith("#version="):
-                self.annotator_version = l.split("=")[1]
-            elif l.startswith("#index="):
-                cols = l.split("=")[1].split(",")
+        for line in self._loop_definition():
+            if line.startswith("#name="):
+                self.annotator_name = line.split("=")[1]
+            elif line.startswith("#displayname="):
+                self.annotator_displayname = line.split("=")[1]
+            elif line.startswith("#version="):
+                self.annotator_version = line.split("=")[1]
+            elif line.startswith("#index="):
+                cols = line.split("=")[1].split(",")
                 self.index_columns.append(cols)
-            elif l.startswith("#column="):
+            elif line.startswith("#column="):
                 coldef = ColumnDefinition({})
-                col_s = "=".join(l.split("=")[1:])
+                col_s = "=".join(line.split("=")[1:])
                 try:
                     coldef.from_json(col_s)
                 except JSONDecodeError:
@@ -72,8 +72,8 @@ class FileReader(BaseFile):
                     coldef.from_var_csv(col_s)
                 self._validate_col_type(coldef.type)
                 self.columns[coldef.index] = coldef
-            elif l.startswith("#report_substitution="):
-                self.report_substitution = loads(l.split("=")[1])
+            elif line.startswith("#report_substitution="):
+                self.report_substitution = loads(line.split("=")[1])
             else:
                 continue
 
@@ -83,7 +83,7 @@ class FileReader(BaseFile):
     def override_column(
         self, index, name, title=None, data_type="string", cats=[], category=None
     ):
-        if title == None:
+        if title is None:
             title = " ".join(x.title() for x in name.split("_"))
         if index not in self.columns:
             self.columns[index] = ColumnDefinition({})
@@ -160,9 +160,9 @@ class FileReader(BaseFile):
                         except ValueError:
                             try:
                                 out[col_name] = int(float(tok))
-                            except:
+                            except Exception:
                                 out[col_name] = None
-                        except:
+                        except Exception:
                             out[col_name] = None
                     elif col_type == "float":
                         try:
@@ -171,7 +171,7 @@ class FileReader(BaseFile):
                                 out[col_name] = ",".join([str(v) for v in tok])
                             else:
                                 out[col_name] = float(tok)
-                        except:
+                        except Exception:
                             tok = None
             yield lnum, toks, out
 
@@ -184,10 +184,10 @@ class FileReader(BaseFile):
             f = open(self.path, newline="", encoding=self.encoding)
         else:
             f = open(self.path, encoding=self.encoding)
-        for l in f:
-            l = l.rstrip().lstrip()
-            if l.startswith("#"):
-                yield l
+        for line in f:
+            line = line.rstrip().lstrip()
+            if line.startswith("#"):
+                yield line
             else:
                 break
         f.close()
@@ -219,13 +219,13 @@ class FileReader(BaseFile):
                 if self.seekpos is not None:
                     f.seek(self.seekpos)
                 lnum = 0
-                for l in f:
-                    l = l.decode(self.encoding)
-                    if l.startswith("#"):
+                for line in f:
+                    line = line.decode(self.encoding)
+                    if line.startswith("#"):
                         continue
                     else:
-                        l = l.rstrip("\r\n")
-                        yield lnum, l.split("\t")
+                        line = line.rstrip("\r\n")
+                        yield lnum, line.split("\t")
                     lnum += 1
                     if self.chunksize is not None and lnum == self.chunksize:
                         break
@@ -337,7 +337,7 @@ class FileWriter(BaseFile):
             if self.csvwriter is not None:
                 try:
                     self.csvwriter.writerow(wtoks)
-                except:
+                except Exception:
                     import traceback
 
                     traceback.print_exc()
@@ -424,7 +424,7 @@ class AllMappingsParser(object):
         return sos
 
     def none_to_empty(self, s):
-        if s == None:
+        if s is None:
             return ""
         else:
             return s
@@ -551,8 +551,8 @@ class ColumnDefinition(object):
         from csv import reader
 
         if self.index is not None:
-            l = list(reader([row], dialect="oakvar"))[0]
-            self._load_dict(dict(zip(self.csv_order[: len(l)], l)))
+            row = list(reader([row], dialect="oakvar"))[0]
+            self._load_dict(dict(zip(self.csv_order[: len(row)], row)))
             self.index = int(self.index)
             if isinstance(self.categories, str):
                 self.categories = loads(self.categories)

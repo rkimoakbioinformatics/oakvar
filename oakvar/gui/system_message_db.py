@@ -15,7 +15,8 @@ def get_system_message_db_conn():
         conf_dir = get_default_conf_dir()
     if not conf_dir:
         raise SystemMissingException(
-            msg="Configuration directory does not exist. Please run `ov system setup` to setup OakVar."
+            msg="Configuration directory does not exist. Please run "
+            + "`ov system setup` to setup OakVar."
         )
     if not Path(conf_dir).exists():
         conf_dir.mkdir(parents=True)
@@ -23,7 +24,8 @@ def get_system_message_db_conn():
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
     c.execute(
-        f"select * from sqlite_master where type='table' and name='{SYSTEM_MESSAGE_TABLE}'"
+        "select * from sqlite_master where type='table' and "
+        + f"name='{SYSTEM_MESSAGE_TABLE}'"
     )
     ret = c.fetchone()
     if not ret:
@@ -38,11 +40,13 @@ def create_system_message_db(conn):
     c = conn.cursor()
     c.execute(f"drop table if exists {SYSTEM_MESSAGE_TABLE}")
     c.execute(
-        f"create table {SYSTEM_MESSAGE_TABLE} (uid integer primary key, kind text, msg text, dt float)"
+        f"create table {SYSTEM_MESSAGE_TABLE} (uid integer primary key, "
+        + "kind text, msg text, dt float)"
     )
     c.execute(f"drop table if exists {SYSTEM_ERROR_TABLE}")
     c.execute(
-        f"create table {SYSTEM_ERROR_TABLE} (uid integer primary key, kind text, msg text, dt float)"
+        f"create table {SYSTEM_ERROR_TABLE} (uid integer primary key, "
+        + "kind text, msg text, dt float)"
     )
     conn.commit()
 

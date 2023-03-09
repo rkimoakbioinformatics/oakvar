@@ -200,9 +200,11 @@ class MultiuserHandlers:
         # kid = jwt.get_unverified_header(token)["kid"]
         # r = get(FIREBASE_PUBLIC_KEY_URL)
         # x509_key = r.json()[kid]
-        # key = x509.load_pem_x509_certificate(x509_key.encode("utf-8"), backend=default_backend)
+        # key = x509.load_pem_x509_certificate(x509_key.encode("utf-8"),
+        #     backend=default_backend)
         # try:
-        #    payload = jwt.decode(token, key.public_key(), ["RS256"], audience=PROJECT_ID) # type: ignore
+        #    payload = jwt.decode(token, key.public_key(), ["RS256"],
+        #                  audience=PROJECT_ID) # type: ignore
         # except:
         #    if logger:
         #        logger.error(f"JWT decode error: {token}")

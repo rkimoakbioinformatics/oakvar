@@ -227,10 +227,10 @@ class VCF2VCF:
                     break
             read_lnum = 0
             uid = 0
-            for l in f:
+            for line in f:
                 try:
                     read_lnum += 1
-                    vcf_toks = l[:-1].split("\t")
+                    vcf_toks = line[:-1].split("\t")
                     chrom = vcf_toks[0]
                     if not chrom.startswith("chr"):
                         chrom = "chr" + chrom
@@ -261,7 +261,7 @@ class VCF2VCF:
                             if not base_re.fullmatch(alt):
                                 log_variant_exception(
                                     lnum=read_lnum,
-                                    line=l,
+                                    line=line,
                                     unique_excs=self.unique_excs,
                                     logger=self.logger,
                                     error_logger=self.error_logger,
@@ -337,7 +337,7 @@ class VCF2VCF:
                     print(e)
                     log_variant_exception(
                         lnum=read_lnum,
-                        line=l,
+                        line=line,
                         unique_excs=self.unique_excs,
                         logger=self.logger,
                         error_logger=self.error_logger,

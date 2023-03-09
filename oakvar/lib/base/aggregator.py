@@ -53,7 +53,7 @@ class Aggregator(object):
         if not self.output_dir:
             self.output_dir = self.input_dir
         self.set_input_base_fname()
-        if self.input_base_fname == None:
+        if self.input_base_fname is None:
             raise
         self.set_output_base_fname()
         if not Path(self.output_dir).exists():
@@ -72,7 +72,7 @@ class Aggregator(object):
         from ..util.run import update_status
 
         self.setup()
-        if self.input_base_fname == None:
+        if self.input_base_fname is None:
             return
         if self.dbconn is None or self.cursor is None:
             return
@@ -228,7 +228,7 @@ class Aggregator(object):
                     self.cursor.execute(q)
                     col_set = set([])
                     for r in self.cursor:
-                        if r[0] == None:
+                        if r[0] is None:
                             continue
                         col_set.update(r[0].split(";"))
                     col_cats = list(col_set)
@@ -314,12 +314,12 @@ class Aggregator(object):
                 body = fname[len_prefix:]
                 if self.level == "variant" and fname.endswith(".var"):
                     annot_name = body[:-4]
-                    if not "." in annot_name:
+                    if "." not in annot_name:
                         self.annotators.append(annot_name)
                         self.ipaths[annot_name] = join(self.input_dir, fname)
                 elif self.level == "gene" and fname.endswith(".gen"):
                     annot_name = body[:-4]
-                    if not "." in annot_name:
+                    if "." not in annot_name:
                         self.annotators.append(annot_name)
                         self.ipaths[annot_name] = join(self.input_dir, fname)
         self.annotators.sort()
@@ -346,9 +346,15 @@ class Aggregator(object):
         if not self.append:
             q = f"drop table if exists {annotator_table}"
             self.cursor.execute(q)
-            q = f"create table {annotator_table} (name text primary key, displayname text, version text)"
+            q = (
+                f"create table {annotator_table} (name text primary key, "
+                + "displayname text, version text)"
+            )
             self.cursor.execute(q)
-            q = f'insert into {annotator_table} values ("base", "Variant Annotation", "")'
+            q = (
+                f'insert into {annotator_table} values ("base", '
+                + '"Variant Annotation", "")'
+            )
             self.cursor.execute(q)
         for _, col_def in self.base_reader.get_all_col_defs().items():
             col_name = self.base_prefix + "__" + col_def.name
@@ -429,7 +435,10 @@ class Aggregator(object):
         if not self.append:
             q = f"drop table if exists {self.header_table_name}"
             self.cursor.execute(q)
-            q = f"create table {self.header_table_name} (col_name text primary key, col_def text);"
+            q = (
+                f"create table {self.header_table_name} (col_name text "
+                + "primary key, col_def text);"
+            )
             self.cursor.execute(q)
         q = f"select col_name, col_def from {self.header_table_name}"
         self.cursor.execute(q)
@@ -449,25 +458,37 @@ class Aggregator(object):
             if not self.append:
                 q = f"drop table if exists {self.reportsub_table_name}"
                 self.cursor.execute(q)
-                q = f"create table {self.reportsub_table_name} (module text primary key, subdict text)"
+                q = (
+                    f"create table {self.reportsub_table_name} (module text "
+                    + "primary key, subdict text)"
+                )
                 self.cursor.execute(q)
                 if hasattr(self.base_reader, "report_substitution"):
                     sub = self.base_reader.report_substitution
                     if sub:
-                        q = f'insert into {self.reportsub_table_name} values ("base", ?)'
+                        q = (
+                            f"insert into {self.reportsub_table_name} values "
+                            + '("base", ?)'
+                        )
                         self.cursor.execute(q, [dumps(sub)])
             for module in self.readers:
                 if hasattr(self.base_reader, "report_substitution"):
                     sub = self.readers[module].report_substitution
                     if sub:
-                        q = f"insert or replace into {self.reportsub_table_name} values (?, ?)"
+                        q = (
+                            f"insert or replace into {self.reportsub_table_name} "
+                            + "values (?, ?)"
+                        )
                         self.cursor.execute(q, [module, dumps(sub)])
         self.make_reportsub()
         # filter and layout save table
         if not self.append:
             q = "drop table if exists viewersetup"
             self.cursor.execute(q)
-            q = "create table viewersetup (datatype text, name text, viewersetup text, unique (datatype, name))"
+            q = (
+                "create table viewersetup (datatype text, name text, "
+                + "viewersetup text, unique (datatype, name))"
+            )
             self.cursor.execute(q)
         self.dbconn.commit()
 

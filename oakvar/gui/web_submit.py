@@ -199,9 +199,9 @@ class SubmitProcessor:
     ):
         from ..lib.consts import MODULE_OPTIONS_KEY
 
-        if not MODULE_OPTIONS_KEY in job_options:
+        if MODULE_OPTIONS_KEY not in job_options:
             job_options[MODULE_OPTIONS_KEY] = {}
-        if not module_name in job_options[MODULE_OPTIONS_KEY]:
+        if module_name not in job_options[MODULE_OPTIONS_KEY]:
             job_options[MODULE_OPTIONS_KEY][module_name] = {}
         job_options[MODULE_OPTIONS_KEY][module_name][option_name] = option_value
 
@@ -210,10 +210,10 @@ class SubmitProcessor:
 
         for k, v in data.items():
             if k == MODULE_OPTIONS_KEY:
-                if not MODULE_OPTIONS_KEY in job_options:
+                if MODULE_OPTIONS_KEY not in job_options:
                     job_options[MODULE_OPTIONS_KEY] = {}
                 for module_name, option_dict in v.items():
-                    if not module_name in job_options[MODULE_OPTIONS_KEY]:
+                    if module_name not in job_options[MODULE_OPTIONS_KEY]:
                         job_options[MODULE_OPTIONS_KEY][module_name] = {}
                     for option_name, option_value in option_dict.items():
                         job_options[MODULE_OPTIONS_KEY][module_name][

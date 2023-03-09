@@ -36,7 +36,7 @@ class WebServer(object):
         self.loop = loop
         self.server_started = False
         self.system_setup_needed = system_setup_needed
-        if args.get("headless") == False and url:
+        if args.get("headless") is False and url:
             self.loop.create_task(self.open_url(url))
         task = loop.create_task(self.start())
         task.add_done_callback(self.server_done)
@@ -99,7 +99,7 @@ class WebServer(object):
         from webbrowser import open as webbrowseropen
         from asyncio import sleep
 
-        while self.server_started == False:
+        while self.server_started is False:
             await sleep(0.2)
         if self.server_started:
             webbrowseropen(url)
@@ -271,7 +271,6 @@ class WebServer(object):
         from importlib.util import spec_from_file_location, module_from_spec
         from os.path import join, exists
         from os import listdir
-        from ..lib.exceptions import ModuleLoadingError
         from ..lib.exceptions import SetupError
         from ..lib.system import get_modules_dir
 
@@ -279,7 +278,7 @@ class WebServer(object):
         if modules_dir is None:
             return False
         webapps_dir = join(modules_dir, "webapps")
-        if exists(webapps_dir) == False:
+        if exists(webapps_dir) is False:
             return False
         module_names = listdir(webapps_dir)
         for module_name in module_names:

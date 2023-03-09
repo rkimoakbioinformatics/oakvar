@@ -32,7 +32,7 @@ def get_email_pw_interactively(
         while not pw_is_valid(pw):
             pw = getpass("Password (alphabets, numbers, and !?&@-+): ")
             if not pw_is_valid(pw):
-                print(f"Password is invalid")
+                print("Password is invalid")
                 pw = None
             if pw and pwconfirm:
                 pwagain = getpass("Confirm password: ")
@@ -81,12 +81,10 @@ def create(
             msg = "account-exists"
             success = False
         elif status_code == 202:
-            msg = f"Check your inbox for a verification email."
+            msg = "Check your inbox for a verification email."
             success = True
         elif status_code == 201:
-            msg = (
-                f"Account has been created. Check your inbox for a verification email."
-            )
+            msg = "Account has been created. Check your inbox for a verification email."
             success = True
         else:
             msg = f"{r.text}"
@@ -113,7 +111,7 @@ def delete(outer=None) -> bool:
     token_set = get_token_set()
     if not token_set:
         if outer:
-            outer.write(f"Log in first")
+            outer.write("Log in first")
         return False
     store_url = get_store_url()
     url = store_url + "/account/delete"
@@ -122,7 +120,7 @@ def delete(outer=None) -> bool:
     status_code = r.status_code
     if status_code == 200:
         if outer:
-            outer.write(f"Success")
+            outer.write("Success")
         return True
     else:
         if outer:
@@ -136,7 +134,7 @@ def check_logged_in_with_token(outer=None) -> bool:
     id_token = get_id_token()
     if not id_token:
         if outer:
-            outer.write(f"not logged in")
+            outer.write("not logged in")
         return False
     valid, expired = id_token_is_valid()
     if valid:
@@ -151,7 +149,7 @@ def check_logged_in_with_token(outer=None) -> bool:
         return True
     else:
         if outer:
-            outer.write(f"not logged in")
+            outer.write("not logged in")
         return False
 
 
@@ -164,7 +162,7 @@ def reset(email: Optional[str] = None, outer=None) -> bool:
         return False
     if not email_is_valid(email):
         if outer:
-            outer.write(f"Invalid email")
+            outer.write("Invalid email")
         return False
     url = get_store_url() + "/account/reset"
     params = {"email": email}
@@ -213,7 +211,7 @@ def login(
 
     if not relogin and not email:
         ret, token_set_email = try_login_with_token(email=email)
-        if ret == True:
+        if ret is True:
             return {
                 "success": True,
                 "msg": f"Logged in as {token_set_email}",
@@ -241,12 +239,12 @@ def login(
             if outer:
                 outer.write(f"fail. {r.text}")
             return {"success": False, "status_code": status_code, "email": email}
-    except:
+    except Exception:
         import traceback
 
         msg = traceback.format_exc()
         if outer:
-            outer.write(f"server error")
+            outer.write("server error")
         return {"success": False, "status_code": 500, "msg": msg, "email": email}
 
 
@@ -260,7 +258,8 @@ def get_token_set_path() -> Path:
     if not root_dir:
         sys_conf_path = get_system_conf_path()
         raise SystemMissingException(
-            f"root_dir does not exist in the system configuration file at {sys_conf_path}. Please consider running `ov system setup`."
+            "root_dir does not exist in the system configuration "
+            + f"file at {sys_conf_path}. Please consider running `ov system setup`."
         )
     token_path = root_dir / ov_store_id_token_fname
     return token_path
@@ -317,7 +316,7 @@ def delete_id_token(outer=None):
         return True
     else:
         if outer:
-            outer.write(f"Not logged in")
+            outer.write("Not logged in")
         return False
 
 
@@ -374,7 +373,7 @@ def change(newpw: Optional[str] = None, outer=None) -> bool:
     id_token = get_id_token()
     if not id_token:
         if outer:
-            outer.write(f"Not logged in")
+            outer.write("Not logged in")
         return False
     valid, expired = id_token_is_valid()
     if not valid:
@@ -393,7 +392,7 @@ def change(newpw: Optional[str] = None, outer=None) -> bool:
                 id_token = token_set["idToken"]
         if not id_token:
             if outer:
-                outer.write(f"Not logged in")
+                outer.write("Not logged in")
             return False
     if not newpw:
         while not pw_is_valid(newpw):
@@ -411,21 +410,21 @@ def change(newpw: Optional[str] = None, outer=None) -> bool:
         token_set = get_token_set()
         if not token_set:
             if outer:
-                outer.write(f"Password changed but re-login failed")
+                outer.write("Password changed but re-login failed")
             return False
         email = token_set["email"]
         if login(email=email, pw=newpw):
             return True
         else:
             if outer:
-                outer.write(f"Password changed but re-login failed")
+                outer.write("Password changed but re-login failed")
             return True
 
 
 def logout(outer=None) -> bool:
     ret = delete_id_token(outer=outer)
     if ret and outer:
-        outer.write(f"Success")
+        outer.write("Success")
     return ret
 
 
@@ -529,7 +528,7 @@ def email_is_verified(email: str, outer=None) -> bool:
         return True
     elif res.status_code == 404:
         if outer:
-            outer.write(f"User not found")
+            outer.write("User not found")
         return False
     else:
         if outer:
@@ -557,7 +556,8 @@ def login_with_token_set(email=None, outer=None) -> Tuple[bool, str]:
         if not email_verified:
             if outer:
                 outer.write(
-                    f"Email not verified. A verification email should have been sent to your inbox.\n"
+                    "Email not verified. A verification email should "
+                    + "have been sent to your inbox.\n"
                 )
             return True, token_email
         else:
@@ -608,7 +608,7 @@ def total_login(
     from ....system import show_no_user_account_prelude
 
     ret, logged_email = login_with_token_set(email=email, outer=outer)
-    if ret == True:
+    if ret is True:
         return {"success": True, "email": logged_email}
     ret = login_with_email_pw(email=email, pw=pw, conf=conf)
     if ret.get("success"):

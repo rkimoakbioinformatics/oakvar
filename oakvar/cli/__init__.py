@@ -19,7 +19,7 @@ class CliOuter:
 
 def cli_entry(func):
     def change_args_for_cli(args):
-        if not hasattr(args, "quiet") or getattr(args, "quiet") != True:
+        if not hasattr(args, "quiet") or getattr(args, "quiet") is not True:
             args.outer = CliOuter()
         ret = func(args)
         exit(ret)
@@ -36,7 +36,7 @@ def cli_func(func):
             del args["quiet"]
         try:
             ret = func(args, **kwargs)
-            if ret == False:
+            if ret is False:
                 ret = 1
             else:
                 ret = None

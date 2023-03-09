@@ -144,7 +144,7 @@ def delete(
         keep_only_latest=keep_only_latest,
         outer=outer,
     )
-    if ret == True:
+    if ret is True:
         ret = fetch_ov_store_cache(refresh_db=True)
     return ret
 

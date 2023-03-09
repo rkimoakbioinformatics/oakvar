@@ -33,7 +33,7 @@ def log_variant_exception(
             err_str_log = str(e)
         else:
             err_str_log = err_str
-        if not err_str_log in unique_excs:
+        if err_str_log not in unique_excs:
             unique_excs.append(err_str_log)
             logger.error(err_str_log)
     if error_logger:

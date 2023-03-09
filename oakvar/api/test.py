@@ -1,6 +1,5 @@
 from typing import Optional
 from typing import List
-import sys
 from abc import ABC, abstractmethod
 from ..lib.exceptions import ExpectedException
 
@@ -55,7 +54,7 @@ class TextReportReader(ReportReader):
                     continue
 
                 # load headers for the section
-                if headers == None:
+                if headers is None:
                     line2 = f.readline().strip("\n")
                     headers = self.readSectionHeader(line, line2)
                     line = f.readline().strip("\n")
@@ -153,7 +152,7 @@ class ExcelReportReader(ReportReader):
         sheet = wb[tabNbr]
         rows_dict = {}
         rows_list = []
-        if headers == None:
+        if headers is None:
             headers = self.readSectionHeader(test_level, sheet)
         for i in range(3, sheet.max_row + 1):
             columns = []
@@ -237,7 +236,7 @@ class VcfReportReader(ReportReader):
         import vcf  # type: ignore
 
         reader = vcf.Reader(filename=self.rsltFile)
-        if headers == None:
+        if headers is None:
             headers = self.readSectionHeader(reader)
         for record in reader:
             columns = []
@@ -339,7 +338,7 @@ class TsvReportReader(ReportReader):
                     continue
 
                 # load headers for the section
-                if headers == None:
+                if headers is None:
                     headers = self.readSectionHeader(line)
                     line = f.readline().strip("\n")
                     continue
@@ -363,7 +362,7 @@ class TsvReportReader(ReportReader):
         headers = []
         for col in cols:
             header = col.replace(".", "|", 1)
-            if not "|" in header:
+            if "|" not in header:
                 header = "Variant Annotation|" + header
             headers.append(header)
         return headers
@@ -436,7 +435,7 @@ class CsvReportReader(ReportReader):
                     continue
 
                 # load headers for the section
-                if headers == None:
+                if headers is None:
                     headers = self.readSectionHeader(row)
                     continue
 
@@ -459,7 +458,7 @@ class CsvReportReader(ReportReader):
             # tester use '|' and csv uses ':', just switch the character
             header = col.replace(".", "|", 1)
             # tester is expecting base module to be 'Variant Annotation' so switch it.
-            if not "|" in header:
+            if "|" not in header:
                 header = "Variant Annotation|" + header
 
             headers.append(header)
@@ -582,7 +581,6 @@ class Tester:
         self.parse_parms()
         if self.parms is None:
             raise SetupError(module_name=self.module_name)
-        __python_exc__ = sys.executable
         # default is to run 'text' report but it can be overridden in the optional parms file.
         if "Report_Type" in self.parms:
             self.report_type = self.parms["Report_Type"]
@@ -809,7 +807,7 @@ def test(rundir: Optional[str] = None, modules: Optional[List[str]] = [], outer=
         num = 1
         while True:
             rundir = f"oakvartest_{num}"
-            if exists(rundir) == False:
+            if exists(rundir) is False:
                 break
             else:
                 num += 1

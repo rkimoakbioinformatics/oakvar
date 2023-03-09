@@ -103,7 +103,8 @@ class LocalModule(object):
 
     def get_tests(self):
         """
-        Gets the module test input file(s) if the module has tests.  A test is a input file / key file pair.
+        Gets the module test input file(s) if the module has tests.  
+        A test is a input file / key file pair.
         """
         import os
 
@@ -129,7 +130,8 @@ class LocalModule(object):
         return d
 
 
-def get_local_module_info(module_name: Union[str, Path], fresh=False) -> Optional[LocalModule]:
+def get_local_module_info(module_name: Union[str, Path], 
+        fresh=False) -> Optional[LocalModule]:
     from .cache import get_module_cache
 
     if isinstance(module_name, str):
@@ -162,7 +164,7 @@ def get_local_module_infos(types=[], names=[]):
             continue
         elif names and minfo.name not in names:
             continue
-        elif minfo.exists == False:
+        elif minfo.exists is False:
             continue
         else:
             return_infos.append(minfo)
@@ -250,7 +252,7 @@ def get_module_dir(module_name: str, module_type: str = "") -> Optional[Path]:
         for type_fn in type_fns:
             if type_fn.name in ["temp"]:
                 continue
-            if type_fn.is_dir() == False:
+            if type_fn.is_dir() is False:
                 continue
             module_fns = list(type_fn.iterdir())
             for module_fn in module_fns:
@@ -302,15 +304,15 @@ def search_local(*patterns):
         mic._modules_dir = modules_dir
         mic.update_local()
     matching_names = []
-    l = list_local()
-    for module_name in l:
+    module_names = list_local()
+    for module_name in module_names:
         for pattern in patterns:
             try:
                 ret = fullmatch(pattern, module_name)
                 if ret:
                     matching_names.append(module_name)
                     break
-            except:
+            except Exception:
                 continue
     return matching_names
 
@@ -393,7 +395,7 @@ def get_remote_manifest_from_local(module_name: str, error=None):
     rmi = {}
     rmi["name"] = module_name
     rmi["commercial_warning"] = module_conf.get("commercial_warning", "")
-    if exists(module_info.data_dir) == False:
+    if exists(module_info.data_dir) is False:
         rmi["data_size"] = 0
     else:
         rmi["data_size"] = module_info.get_data_size()
@@ -561,7 +563,8 @@ def pack_module_zip(
         raise ArgumentError(msg=f"wrong module kind: {kind}")
     if kind == "data" and version is None:
         e = ArgumentError(
-            msg=f"data_version: <version> or no_data: true should be defined in the module yml file."
+            msg="data_version: <version> or no_data: true should be " +\
+                "defined in the module yml file."
         )
         e.traceback = False
         raise e
@@ -620,9 +623,11 @@ def pack_module(
     module_name: str, outdir: Path, code_only: bool, split: bool, outer=None
 ) -> Dict[str, Optional[Path]]:
     conf = get_module_conf(module_name)
-    code_zip_path = pack_module_zip(module_name, "code", outdir=outdir, split=split, outer=outer)
+    code_zip_path = pack_module_zip(module_name, "code", outdir=outdir, 
+            split=split, outer=outer)
     if not code_only and not (conf and conf.get("no_data")):
-        data_zip_path = pack_module_zip(module_name, "data", outdir=outdir, split=split, outer=outer)
+        data_zip_path = pack_module_zip(module_name, "data", outdir=outdir, 
+                split=split, outer=outer)
     else:
         data_zip_path = None
     return {"code": code_zip_path, "data": data_zip_path}
@@ -692,36 +697,42 @@ def create_module_files(module, overwrite: bool = False, interactive: bool = Fal
     modules_dir = get_modules_dir()
     if not modules_dir:
         raise SystemMissingException(
-            msg="Modules root directory does not exist. Consider running 'ov system setup'."
+            msg="Modules root directory does not exist. Consider running " +\
+                "'ov system setup'."
         )
     modules_dir = Path(modules_dir)
     module_conf = getattr(module, "conf", {})
     module_name: Optional[str] = getattr(module, "module_name", module_conf.get("name"))
     module_type: Optional[str] = getattr(module, "module_type", module_conf.get("type"))
-    module_version: Optional[str] = getattr(module, "code_version", module_conf.get("code_version"))
+    module_version: Optional[str] = getattr(module, "code_version", 
+            module_conf.get("code_version"))
     module_title: Optional[str] = getattr(module, "title", module_conf.get("title"))
     module_level: Optional[str] = getattr(module, "level", module_conf.get("level"))
-    output_columns: Optional[List[Dict[str, Any]]] = getattr(module, "output_columns", module_conf.get("output_columns", []))
+    output_columns: Optional[List[Dict[str, Any]]] = \
+            getattr(module, "output_columns", module_conf.get("output_columns", []))
     if not module_name:
         if interactive:
             module_name = input("Module name:")
     if not module_name:
         raise IncompleteModuleError(
-            msg="name property does not exist in the module. Consider giving 'name' argument at initializing the module."
+            msg="name property does not exist in the module. Consider " +\
+                "giving 'name' argument at initializing the module."
         )
     if not module_version:
         if interactive:
             module_version = input("Module version:")
     if not module_version:
         raise IncompleteModuleError(
-            msg="version property does not exist in the module. Consider giving 'version' argument at initializing the module."
+            msg="version property does not exist in the module. Consider " +\
+                "giving 'version' argument at initializing the module."
         )
     if not module_title:
         if interactive:
             module_title = input("Module title:")
     if not module_title:
         raise IncompleteModuleError(
-            msg="title property does not exist in the module. Consider giving 'title' argument at initializing the module."
+            msg="title property does not exist in the module. Consider giving " +\
+                "'title' argument at initializing the module."
         )
     if not module_type:
         module_type = input("Module type:")
@@ -734,11 +745,13 @@ def create_module_files(module, overwrite: bool = False, interactive: bool = Fal
         module_level = input("Module level:")
     if not module_level:
         raise IncompleteModuleError(
-            msg="title property does not exist in the module. Consider giving 'level' argument at initializing the module."
+            msg="title property does not exist in the module. Consider giving " +\
+                "'level' argument at initializing the module."
         )
     if not output_columns:
         raise IncompleteModuleError(
-            msg="output_columns property does not exist in the module. Consider giving 'output_columns' argument at initializing the module."
+            msg="output_columns property does not exist in the module. " +\
+                "Consider giving 'output_columns' argument at initializing the module."
         )
     if module_dir.exists() and not overwrite:
         raise Exception(f"{module_dir} already exists.")

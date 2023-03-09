@@ -255,7 +255,7 @@ class JobHandlers:
         self.valid_report_types = [
             v
             for v in self.valid_report_types
-            if not v in ["pandas", "stdout", "example"]
+            if v not in ["pandas", "stdout", "example"]
         ]
         return self.valid_report_types
 
@@ -383,7 +383,7 @@ class JobHandlers:
         return json_response(jobs)
 
     def job_not_running(self, job):
-        return not job.get("uid") in self.info_of_running_jobs
+        return job.get("uid") not in self.info_of_running_jobs
 
     def job_not_finished(self, job):
         return job.get("status") not in [self.FINISHED, self.ERROR, self.ABORTED]
@@ -397,11 +397,11 @@ class JobHandlers:
         # from urllib.parse import unquote
         try:
             json_data = await request.json()
-        except:
+        except Exception:
             json_data = None
         try:
             post_data = await request.post()  # post with form
-        except:
+        except Exception:
             post_data = None
         queries = request.rel_url.query  # get
         if json_data:
@@ -489,14 +489,14 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
                 try:
                     int(words[0])
                     idx = 0
-                except:
+                except Exception:
                     try:
                         int(words[1])
                         idx = 1
-                    except:
+                    except Exception:
                         idx = None
                 if idx is not None:
-                    pids = [int(l.strip().split()[idx]) for l in lines if l != ""]
+                    pids = [int(line.strip().split()[idx]) for line in lines if line != ""]
                     for pid in pids:
                         if pid == p.pid:
                             p.terminate()
@@ -636,7 +636,7 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
             value = queue_item["max_num_concurrent_jobs"]
             try:
                 self.max_num_concurrent_jobs = int(value)
-            except:
+            except Exception:
                 logger = getLogger()
                 logger.info(
                     "Invalid maximum number of concurrent jobs [{}]".format(value)
@@ -681,7 +681,7 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
         main_loop.run_until_complete(job_worker_main())
     except KeyboardInterrupt:
         pass
-    except:
+    except Exception:
         import traceback
 
         traceback.print_exc()

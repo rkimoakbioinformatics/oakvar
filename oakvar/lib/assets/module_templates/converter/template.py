@@ -1,7 +1,5 @@
 from typing import List
-from typing import Tuple
 from typing import Dict
-from typing import Iterator
 from oakvar import BaseConverter
 
 
@@ -45,7 +43,7 @@ class Converter(BaseConverter):
     #                 raise e
     #     return None
 
-    def convert_line(self, l) -> List[Dict]:
+    def convert_line(self, line) -> List[Dict]:
         """
         Converts a line from an input file to OakVar's variant dict.
 
@@ -66,7 +64,7 @@ class Converter(BaseConverter):
                   sample_id: the ID or name of a sample having the variant [list[str]]
                   tags: a custom tag given to the variant [list[str]]
         """
-        _ = l
+        _ = line
         var_dicts = []
         var_dict = {
             "chrom": "chr1",

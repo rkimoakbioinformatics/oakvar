@@ -216,11 +216,11 @@ def is_compatible_version(dbpath):
     max_version_supported_for_migration = get_max_version_supported_for_migration()
     try:
         ov_version = Version(get_distribution("oakvar").version)
-    except:
+    except Exception:
         ov_version = None
     try:
         oc_version = Version(get_distribution("open-cravat").version)
-    except:
+    except Exception:
         oc_version = None
     job_version_ov = get_job_version(dbpath, "oakvar")
     job_version_oc = get_job_version(dbpath, "open-cravat")
@@ -257,8 +257,7 @@ def is_url(s: str) -> bool:
 
 
 def get_current_time_str():
-    """get_current_time_str.
-    """
+    """get_current_time_str."""
     from datetime import datetime
 
     t = datetime.now()
@@ -472,7 +471,7 @@ def load_yml_conf(yml_conf_path: Path):
 
     with open(yml_conf_path, encoding="utf-8") as f:
         conf: dict = safe_load(f)
-    if conf == None:
+    if conf is None:
         conf = {}
     return conf
 
@@ -583,24 +582,24 @@ def get_unique_path(path: str):
     return str(p)
 
 
-def print_list_of_dict(l, outer=None):
+def print_list_of_dict(ld: List[Dict], outer=None):
     """print_list_of_dict.
 
     Args:
-        l:
+        ld (List[Dict]):
         outer:
     """
     from rich.console import Console
     from rich.table import Table
     from rich import box
 
-    if not l:
+    if not ld:
         return
     table = Table(show_header=True, title_style="bold", box=box.SQUARE)
-    headers = list(l[0].keys())
+    headers = list(ld[0].keys())
     for header in headers:
         table.add_column(header)
-    for d in l:
+    for d in ld:
         row = []
         for header in headers:
             v = d[header]
@@ -763,9 +762,13 @@ def get_df_from_db(
     """Gets a Polars DataFrame of a table in an OakVar result database.
 
     Args:
-        db_path (str): Path to the OakVar result database file from which a Polars DataFrame will be extracted.
+        db_path (str): Path to the OakVar result database file
+                       from which a Polars DataFrame will be extracted.
         table_name (str): Table name to dump to the DataFrame
-        sql (Optional[str]): Custom SQL to apply before dumping to the DataFrame. For example, `"select base__uid, base__chrom, base__pos from variant where clinvar__sig='Pathogenic'"`.
+        sql (Optional[str]): Custom SQL to apply before dumping to the DataFrame.
+            For example,
+            `"select base__uid, base__chrom, base__pos from variant where
+            clinvar__sig='Pathogenic'"`.
         num_cores (int): Number of CPU cores to use
 
     Returns:

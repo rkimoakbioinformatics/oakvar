@@ -35,7 +35,7 @@ def find_name_store(
 ) -> Optional[Tuple[str, str]]:
     if not conn or not cursor:
         return None
-    q = f"select name, store from summary where name=?"
+    q = "select name, store from summary where name=?"
     cursor.execute(q, (module_name,))
     ret = cursor.fetchall()
     name = None
@@ -57,7 +57,8 @@ def latest_module_version_size(
     from packaging.version import Version
 
     _ = conn
-    q = f"select store, code_version, data_version, data_source, code_size, data_size from versions where name=?"
+    q = "select store, code_version, data_version, data_source, " +\
+        "code_size, data_size from versions where name=?"
     cursor.execute(q, (module_name,))
     ret = cursor.fetchall()
     latest_code_version = ""
@@ -89,7 +90,7 @@ def module_code_versions(module_name, conn=None, cursor=None) -> Optional[List[s
     if not r:
         return None
     name, store = r
-    q = f"select code_version from versions where name=? and store=?"
+    q = "select code_version from versions where name=? and store=?"
     cursor.execute(q, (name, store))
     values = [r[0] for r in cursor.fetchall()]
     return values
@@ -103,7 +104,7 @@ def module_data_versions(module_name, conn=None, cursor=None) -> Optional[List[s
     if not r:
         return None
     name, store = r
-    q = f"select data_version from versions where name=? and store=?"
+    q = "select data_version from versions where name=? and store=?"
     cursor.execute(q, (name, store))
     values = [r[0] for r in cursor.fetchall()]
     return values
@@ -116,7 +117,7 @@ def module_data_sources(module_name, conn=Any, cursor=Any) -> Optional[List[str]
     if not r:
         return None
     name, store = r
-    q = f"select data_source from versions where name=? and store=?"
+    q = "select data_source from versions where name=? and store=?"
     cursor.execute(q, (name, store))
     values = [r[0] for r in cursor.fetchall()]
     return values
@@ -129,7 +130,7 @@ def module_min_pkg_vers(module_name, conn=Any, cursor=Any) -> Optional[List[str]
     if not r:
         return None
     name, store = r
-    q = f"select min_pkg_ver from versions where name=? and store=?"
+    q = "select min_pkg_ver from versions where name=? and store=?"
     cursor.execute(q, (name, store))
     values = [r[0] for r in cursor.fetchall()]
     return values
@@ -145,7 +146,8 @@ def module_sizes(
     if not r:
         return None
     name, store = r
-    q = f"select code_size, data_size from versions where name=? and store=? and code_version=?"
+    q = "select code_size, data_size from versions where " +\
+        "name=? and store=? and code_version=?"
     cursor.execute(q, (name, store, code_version))
     r = cursor.fetchone()
     if not r:
@@ -164,7 +166,7 @@ def remote_module_data_version(
     if not r:
         return None
     name, store = r
-    q = f"select data_version from versions where name=? and store=? and code_version=?"
+    q = "select data_version from versions where name=? and store=? and code_version=?"
     cursor.execute(q, (name, store, code_version))
     r = cursor.fetchone()
     if not r:
@@ -185,7 +187,7 @@ def get_latest_module_code_version(module_name, conn=None, cursor=None):
         return None
     pkg_ver = Version(oakvar_version())
     name, store = r
-    q = f"select code_version, min_pkg_ver from versions where name=? and store=?"
+    q = "select code_version, min_pkg_ver from versions where name=? and store=?"
     cursor.execute(q, (name, store))
     code_versions = []
     for row in cursor.fetchall():
@@ -207,7 +209,7 @@ def module_code_version_is_not_compatible_with_pkg_version(
 
     _ = conn
     pkg_ver = Version(oakvar_version())
-    q = f"select min_pkg_ver from versions where name=? and code_version=?"
+    q = "select min_pkg_ver from versions where name=? and code_version=?"
     cursor.execute(q, (module_name, code_version))
     min_pkg_ver = None
     for row in cursor.fetchall():
@@ -295,16 +297,16 @@ def module_list(module_type=None, conn=None, cursor=None) -> List[str]:
     if not conn or not cursor:
         return []
     if module_type:
-        q = f"select distinct(name) from summary where type=?"
+        q = "select distinct(name) from summary where type=?"
         cursor.execute(q, (module_type,))
     else:
-        q = f"select distinct(name) from summary"
+        q = "select distinct(name) from summary"
         cursor.execute(q)
     ret = cursor.fetchall()
-    l = set()
+    module_names = set()
     for v in ret:
-        l.add(v[0])
-    return list(l)
+        module_names.add(v[0])
+    return list(module_names)
 
 
 @db_func
@@ -313,7 +315,7 @@ def table_exists(table: str, conf=None, conn=None, cursor=None) -> bool:
         return False
     if conf:
         pass
-    q = f"select name from sqlite_master where type='table' and name=?"
+    q = "select name from sqlite_master where type='table' and name=?"
     cursor.execute(q, (table,))
     ret = cursor.fetchone()
     if not ret:
@@ -328,12 +330,12 @@ def is_store_db_schema_changed(conn=Any, cursor=Any) -> bool:
     from .consts import versions_table_cols
 
     _ = conn
-    q = f'pragma table_info("summary")'
+    q = 'pragma table_info("summary")'
     cursor.execute(q)
     cols = [row[1] for row in cursor.fetchall()]
     if len(cols) > 0 and cols != summary_table_cols:
         return True
-    q = f'pragma table_info("versions")'
+    q = 'pragma table_info("versions")'
     cursor.execute(q)
     cols = [row[1] for row in cursor.fetchall()]
     if len(cols) > 0 and cols != versions_table_cols:
@@ -342,7 +344,8 @@ def is_store_db_schema_changed(conn=Any, cursor=Any) -> bool:
 
 
 @db_func
-def drop_ov_store_cache(refresh_db: bool=False, clean_cache_files=False, conf=None, conn=None, cursor=None):
+def drop_ov_store_cache(refresh_db: bool=False, clean_cache_files=False, 
+        conf=None, conn=None, cursor=None):
     from os.path import exists
     from ..system import get_cache_dir
     from ..system.consts import cache_dirs
@@ -380,13 +383,16 @@ def create_ov_store_cache(conf=None, conn=None, cursor=None):
     if conf:
         pass
     if not table_exists("summary"):
-        q = f"create table summary ( { ', '.join([col + ' text' for col in summary_table_cols]) }, primary key ( name, store ) )"
+        col_def = ', '.join([col + ' text' for col in summary_table_cols])
+        q = f"create table summary ( {col_def}, primary key ( name, store ) )"
         cursor.execute(q)
     if not table_exists("versions"):
-        q = f"create table versions ( { ', '.join([col + ' text' for col in versions_table_cols]) }, primary key ( name, store, code_version ) )"
+        col_def = ', '.join([col + ' text' for col in versions_table_cols])
+        q = f"create table versions ( {col_def}, primary key " +\
+            "( name, store, code_version ) )"
         cursor.execute(q)
     if not table_exists("info"):
-        q = f"create table info ( key text primary key, value text )"
+        q = "create table info ( key text primary key, value text )"
         cursor.execute(q)
     conn.commit()
     for cache_key in cache_dirs:
@@ -415,7 +421,8 @@ def try_fetch_ov_store_cache(
     except Exception as e:
         if outer:
             outer.write(
-                f"Fetching store update failed:\n\n>>{e}.\n\nContinuing with the current store cache."
+                f"Fetching store update failed:\n\n>>{e}.\n\n" +\
+                "Continuing with the current store cache."
             )
 
 
@@ -459,7 +466,7 @@ def fetch_ov_store_cache(
         return False
     if not login_with_token_set():
         if outer:
-            outer.write(f"Not logged in")
+            outer.write("Not logged in")
         return False
     if is_new_store_db_setup():
         refresh_db = True
@@ -469,7 +476,7 @@ def fetch_ov_store_cache(
         local_last_updated = get_local_last_updated()
     if is_store_db_schema_changed():
         if outer:
-            outer.write(f"Need to fetch store cache due to schema change")
+            outer.write("Need to fetch store cache due to schema change")
     server_last_updated, status_code = get_server_last_updated()
     if status_code != 200:
         if status_code == 401:
@@ -498,7 +505,7 @@ def fetch_ov_store_cache(
     fetch_readme_cache(publish_time=publish_time, outer=outer)
     fetch_logo_cache(publish_time=publish_time, outer=outer)
     fetch_conf_cache(publish_time=publish_time, outer=outer)
-    q = f"insert or replace into info ( key, value ) values ( ?, ? )"
+    q = "insert or replace into info ( key, value ) values ( ?, ? )"
     cursor.execute(q, (ov_store_last_updated_col, str(server_last_updated)))
     conn.commit()
     if outer:
@@ -555,7 +562,7 @@ def fetch_conf_cache(
     s = Session()
     s.headers["User-Agent"] = "oakvar"
     if outer:
-        outer.write(f"Fetching store cache 5/5...")
+        outer.write("Fetching store cache 5/5...")
     for module_store in module_stores:
         name = module_store["name"]
         store = module_store["store"]
@@ -598,7 +605,7 @@ def fetch_logo_cache(
     s = Session()
     s.headers["User-Agent"] = "oakvar"
     if outer:
-        outer.write(f"Fetching store cache 4/5...")
+        outer.write("Fetching store cache 4/5...")
     for module_store in module_stores:
         name = module_store["name"]
         store = module_store["store"]
@@ -641,7 +648,7 @@ def fetch_readme_cache(
     s = Session()
     s.headers["User-Agent"] = "oakvar"
     if outer:
-        outer.write(f"Fetching store cache 3/5...")
+        outer.write("Fetching store cache 3/5...")
     for module_store in module_stores:
         name = module_store["name"]
         store = module_store["store"]
@@ -679,7 +686,7 @@ def fetch_summary_cache(publish_time: str = "", outer=None, conn=Any, cursor=Any
     s = Session()
     s.headers["User-Agent"] = "oakvar"
     if outer:
-        outer.write(f"Fetching store cache 1/5...")
+        outer.write("Fetching store cache 1/5...")
     res = s.post(url, json=params)
     if res.status_code != 200:
         if res.status_code == 401:
@@ -687,13 +694,14 @@ def fetch_summary_cache(publish_time: str = "", outer=None, conn=Any, cursor=Any
         elif res.status_code == 500:
             raise StoreServerError()
         return False
-    q = f"delete from summary"
+    q = "delete from summary"
     cursor.execute(q)
     conn.commit()
     res = res.json()
     cols = res["cols"]
     for row in res["data"]:
-        q = f"insert or replace into summary ( {', '.join(cols)} ) values ( {', '.join(['?'] * len(cols))} )"
+        q = f"insert or replace into summary ( {', '.join(cols)} ) " +\
+            f"values ( {', '.join(['?'] * len(cols))} )"
         cursor.execute(q, row)
     conn.commit()
 
@@ -717,7 +725,7 @@ def fetch_versions_cache(publish_time: str = "", outer=None, conn=None, cursor=N
     s = Session()
     s.headers["User-Agent"] = "oakvar"
     if outer:
-        outer.write(f"Fetching store cache 2/5...")
+        outer.write("Fetching store cache 2/5...")
     res = s.post(url, json=params)
     if res.status_code != 200:
         if res.status_code == 401:
@@ -725,13 +733,14 @@ def fetch_versions_cache(publish_time: str = "", outer=None, conn=None, cursor=N
         elif res.status_code == 500:
             raise StoreServerError(text=res.text)
         return False
-    q = f"delete from versions"
+    q = "delete from versions"
     cursor.execute(q)
     conn.commit()
     res = res.json()
     cols = res["cols"]
     for row in res["data"]:
-        q = f"insert or replace into versions ( {', '.join(cols)} ) values ( {', '.join(['?'] * len(cols))} )"
+        q = f"insert or replace into versions ( {', '.join(cols)} ) " +\
+            f"values ( {', '.join(['?'] * len(cols))} )"
         cursor.execute(q, row)
     conn.commit()
 
@@ -758,7 +767,7 @@ def get_manifest(conn=None, cursor=None) -> Optional[dict]:
     if not conn or not cursor:
         return None
     cursor.row_factory = sqlite3.Row
-    q = f"select distinct(name) from summary"
+    q = "select distinct(name) from summary"
     cursor.execute(q)
     res = cursor.fetchall()
     mi = {}
@@ -780,7 +789,7 @@ def get_urls(module_name: str, code_version: str, conn=None, cursor=None):
 
     if not conn or not cursor:
         return
-    q = f"select store from versions where name=? and code_version=?"
+    q = "select store from versions where name=? and code_version=?"
     cursor.execute(q, (module_name, code_version))
     ret = cursor.fetchall()
     store = None

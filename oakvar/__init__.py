@@ -26,13 +26,14 @@ from .cli import CliOuter
 import signal
 
 # for compatibility with oc
+from .lib.exceptions import BadFormatError
+from .lib.exceptions import InvalidData
+
 Cravat = Runner
 CravatReport = BaseReporter
 BaseReport = BaseReporter
 CravatFilter = ReportFilter
 constants = consts
-from .lib.exceptions import BadFormatError
-from .lib.exceptions import InvalidData
 
 #
 

@@ -129,28 +129,16 @@ codon_table = {
     "TAG": "*",
     "AUG": "M",
     "GCU": "A",
-    "GCC": "A",
-    "GCA": "A",
-    "GCG": "A",
     "UGU": "C",
     "UGC": "C",
     "GAU": "D",
-    "GAC": "D",
-    "GAA": "E",
-    "GAG": "E",
     "UUU": "F",
     "UUC": "F",
     "GGU": "G",
-    "GGC": "G",
-    "GGA": "G",
-    "GGG": "G",
     "CAU": "H",
-    "CAC": "H",
     "AUU": "I",
     "AUC": "I",
     "AUA": "I",
-    "AAA": "K",
-    "AAG": "K",
     "UUA": "L",
     "UUG": "L",
     "CUU": "L",
@@ -158,29 +146,14 @@ codon_table = {
     "CUA": "L",
     "CUG": "L",
     "AAU": "N",
-    "AAC": "N",
     "CCU": "P",
-    "CCC": "P",
-    "CCA": "P",
-    "CCG": "P",
-    "CAA": "Q",
-    "CAG": "Q",
     "UCU": "S",
     "UCC": "S",
     "UCA": "S",
     "UCG": "S",
     "AGU": "S",
-    "AGC": "S",
     "ACU": "T",
-    "ACC": "T",
-    "ACA": "T",
-    "ACG": "T",
     "CGU": "R",
-    "CGC": "R",
-    "CGA": "R",
-    "CGG": "R",
-    "AGA": "R",
-    "AGG": "R",
     "GUU": "V",
     "GUC": "V",
     "GUA": "V",
@@ -334,14 +307,15 @@ def liftover_one_pos(
         chrom (str): Chromosome
         pos (int): Position
         lifter: LiftOver instance. Use `oakvar.get_lifter` to get one.
-        source_assembly (Optional[str]): Genome assembly of input. If `lifter` is given, this parameter will be ignored.
+        source_assembly (Optional[str]): Genome assembly of input.
+            If `lifter` is given, this parameter will be ignored.
 
     Returns:
         (chromosome, position) if liftover was successful. `None` if not.
     """
     if not lifter:
         if not source_assembly:
-            raise ValueError(f"Either lifter or source_assembly should be given")
+            raise ValueError("Either lifter or source_assembly should be given")
         lifter = get_lifter(source_assembly)
     if not lifter:
         raise ValueError(f"LiftOver not found for {source_assembly}")
@@ -392,7 +366,7 @@ def liftover(
 
     if not lifter:
         if not source_assembly:
-            raise ValueError(f"Either lifter or source_assembly should be given")
+            raise ValueError("Either lifter or source_assembly should be given")
         lifter = get_lifter(source_assembly)
     if not lifter:
         raise ValueError(f"LiftOver not found for {source_assembly}")

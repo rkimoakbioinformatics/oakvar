@@ -85,7 +85,8 @@ def get_register_args_of_module(
         mi = get_local_module_info(module_name)
         if mi and error:
             error.write(
-                f"data_version should be given or no_data should be set to true in {mi.conf_path}.\n",
+                "data_version should be given or no_data should "
+                + f"be set to true in {mi.conf_path}.\n",
             )
         return None
     if url_file and Path(url_file).exists():
@@ -99,7 +100,7 @@ def get_register_args_of_module(
     if not rmi["code_url"]:
         if error:
             error.write(
-                f"--code-url or -f with a file having code_url should be given.\n"
+                "--code-url or -f with a file having code_url should be given.\n"
             )
         return None
     for kind in ["code", "data"]:
@@ -110,16 +111,16 @@ def get_register_args_of_module(
                     outer.write(f"Validating {url}...")
                 try:
                     valid = is_url(url) and url_is_valid(url)
-                except:
+                except Exception:
                     valid = False
                 if not valid:
                     raise ArgumentError(msg=f"invalid {kind} URL: {url}")
                 if outer:
-                    outer.write(f"Validated")
+                    outer.write("Validated")
     if not rmi.get("data_url") and no_data and data_version:
         data_url_s = module_data_url(module_name, version=data_version)
         if not data_url_s:
-            raise ArgumentError(msg=f"--data-url should be given for new data.")
+            raise ArgumentError(msg="--data-url should be given for new data.")
     rmi["code_url"] = dumps(rmi["code_url"])
     rmi["data_url"] = dumps(rmi["data_url"])
     rmi["overwrite"] = overwrite
@@ -211,7 +212,7 @@ def register(
         res = post(url, json=params)
         if res.status_code == 200:
             if outer:
-                outer.write(f"Success")
+                outer.write("Success")
             return True
         else:
             if outer:

@@ -92,7 +92,7 @@ class ModuleCache(object):
                     continue
                 module_dir = os.path.join(mg_path, module_name)
                 if (
-                    module_dir.startswith(".") == False
+                    module_dir.startswith(".") is False
                     and os.path.isdir(module_dir)
                     and not module_name.startswith(".")
                     and not module_name.startswith("_")

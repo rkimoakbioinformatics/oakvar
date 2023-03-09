@@ -47,11 +47,14 @@ class InstallProgressHandler:
                 f"[{get_current_time_str()}] Starting to install {self.display_name}..."
             )
         elif stage == "download_code":
-            return f"[{get_current_time_str()}] Downloading code archive of {self.display_name}..."
+            return f"[{get_current_time_str()}] Downloading code archive of " +\
+                    f"{self.display_name}..."
         elif stage == "extract_code":
-            return f"[{get_current_time_str()}] Extracting code archive of {self.display_name}..."
+            return f"[{get_current_time_str()}] Extracting code archive of " +\
+                    f"{self.display_name}..."
         elif stage == "verify_code":
-            return f"[{get_current_time_str()}] Verifying code integrity of {self.display_name}..."
+            return f"[{get_current_time_str()}] Verifying code integrity of " +\
+                    f"{self.display_name}..."
         elif stage == "download_data":
             return (
                 f"[{get_current_time_str()}] Downloading data of {self.display_name}..."
@@ -61,11 +64,14 @@ class InstallProgressHandler:
                 f"[{get_current_time_str()}] Extracting data of {self.display_name}..."
             )
         elif stage == "verify_data":
-            return f"[{get_current_time_str()}] Verifying data integrity of {self.display_name}..."
+            return f"[{get_current_time_str()}] Verifying data integrity of " +\
+                    f"{self.display_name}..."
         elif stage == "finish":
-            return f"[{get_current_time_str()}] finished installation of {self.display_name}"
+            return f"[{get_current_time_str()}] finished installation of " +\
+                    f"{self.display_name}"
         elif stage == "killed":
-            return f"[{get_current_time_str()}] Aborted installation of {self.display_name}"
+            return f"[{get_current_time_str()}] Aborted installation of " +\
+                    f"{self.display_name}"
         elif stage == "Unqueued":
             return f"Unqueued {self.display_name} from installation"
         else:
@@ -98,7 +104,8 @@ def get_readme(module_name):
         if local_info and remote_ver:
             remote_version = remote_module_latest_version(module_name)
             local_version = local_info.version
-            if remote_version and local_version and compare_version(remote_version, local_version) > 0:
+            if remote_version and local_version and compare_version(
+                    remote_version, local_version) > 0:
                 return remote_readme
             else:
                 return local_readme
@@ -118,7 +125,7 @@ def install_pypi_dependency(pypi_dependency: Optional[List[str]] = None, outer=N
     if not pypi_dependency:
         return True
     if outer:
-        outer.write(f"Installing required PyPI packages...")
+        outer.write("Installing required PyPI packages...")
     idx = 0
     while idx < len(pypi_dependency):
         dep = pypi_dependency[idx]
@@ -128,7 +135,7 @@ def install_pypi_dependency(pypi_dependency: Optional[List[str]] = None, outer=N
         else:
             idx += 1
     if len(pypi_dependency) > 0 and outer:
-        outer.write(f"Following PyPI dependencies could not be installed.")
+        outer.write("Following PyPI dependencies could not be installed.")
         for dep in pypi_dependency:
             outer.write(f"- {dep}")
     if pypi_dependency:
@@ -248,10 +255,8 @@ def check_install_kill(system_worker_state=None, module_name=None):
     if not system_worker_state or not module_name:
         return
     if (
-        system_worker_state[SYSTEM_STATE_INSTALL_KEY]
-        .get(module_name, {})
-        .get("kill_signal")
-        == True
+        system_worker_state[SYSTEM_STATE_INSTALL_KEY].get(module_name, 
+            {}).get("kill_signal") is True
     ):
         raise KillInstallException
 
@@ -351,7 +356,8 @@ def download_code_or_data(
                 if i < num_urls - 1:
                     if getsize(part_path) != MODULE_PACK_SPLIT_FILE_SIZE:
                         if outer:
-                            outer.write(f"corrupt download {part_path} at {url_list[i]}")
+                            outer.write(f"corrupt download {part_path} at " +\
+                                    f"{url_list[i]}")
                         remove(part_path)
                         return
                 with open(part_path, "rb") as f:
@@ -396,7 +402,6 @@ def cleanup_install(
     from shutil import rmtree
     from shutil import move
     from os import listdir
-    from pathlib import Path
     from .local import remove_code_part_of_module
 
     if not module_dir:
@@ -473,7 +478,7 @@ def install_module_from_url(
     else:
         download(url=url, directory=temp_dir, module_name=module_name, outer=outer)
     if not module_name:
-        raise ModuleToSkipInstallation("", msg=f"No module was found in the URL")
+        raise ModuleToSkipInstallation("", msg="No module was found in the URL")
     yml_conf_path = temp_dir / (module_name + ".yml")
     if not yml_conf_path.exists():
         if outer:
@@ -486,7 +491,8 @@ def install_module_from_url(
     if not ty:
         if outer:
             outer.write(
-                f"{url} is not a valid OakVar module. {module_name}.yml does not have 'type' field."
+                f"{url} is not a valid OakVar module. {module_name}.yml " +\
+                "does not have 'type' field."
             )
         return False
     if not skip_dependencies:
@@ -494,7 +500,8 @@ def install_module_from_url(
         if not install_pypi_dependency(pypi_dependency=pypi_dependency, outer=outer):
             if outer:
                 outer.write(
-                    f"Skipping installation of {module_name} due to some PyPI dependency was not installed."
+                    f"Skipping installation of {module_name} due to " +\
+                    "some PyPI dependency was not installed."
                 )
             return False
         for deps_mn, deps_ver in deps.items():
@@ -531,7 +538,6 @@ def install_module_from_zip_path(
     from pathlib import Path
     from ..util.util import load_yml_conf
     from ..util.util import get_random_string
-    from ..util.util import load_yml_conf
     from ..exceptions import ExpectedException
     from .local import get_new_module_dir
     from .remote import get_install_deps
@@ -554,7 +560,8 @@ def install_module_from_zip_path(
         yml_paths = [v for v in temp_module_path.glob("*.yml")]
         if len(yml_paths) > 1:
             raise ExpectedException(
-                msg=f"Only 1 module config file should exist in {str(temp_module_path)}."
+                msg="Only 1 module config file should exist in " +\
+                    f"{str(temp_module_path)}."
             )
         yml_path = yml_paths[0]
         module_name = yml_path.stem
@@ -627,7 +634,9 @@ def get_module_install_version(
     ):
         raise ModuleToSkipInstallation(
             module_name,
-            msg=f"{module_name}: Local version ({local_info.code_version}) is higher than the latest store version ({version}). Use --overwrite to overwrite.",
+            msg=f"{module_name}: Local version ({local_info.code_version}) " +\
+                f"is higher than the latest store version ({version}). " +\
+                "Use --overwrite to overwrite.",
         )
     else:
         return version
@@ -683,14 +692,14 @@ def install_module(
         # Checks and installs pip packages.
         if not install_pypi_dependency(pypi_dependency=pypi_dependency, outer=outer):
             if outer:
-                outer.error(f"Failed in installing pypi package dependence")
+                outer.error("Failed in installing pypi package dependence")
             raise ModuleInstallationError(module_name)
         remote_data_version = remote_module_data_version(module_name, code_version)
         local_data_version = local_module_data_version(module_name)
         r = get_module_urls(module_name, code_version=version)
         if not r:
             if outer:
-                outer.error(f"failed in getting module URLs")
+                outer.error("failed in getting module URLs")
             raise ModuleInstallationError(module_name)
         code_url: Optional[str] = r.get("code_url")
         data_url: Optional[str] = r.get("data_url")
@@ -700,7 +709,7 @@ def install_module(
             module_type = conf.get("type")
         if not module_type:
             if outer:
-                outer.error(f"module type not found")
+                outer.error("module type not found")
             raise ModuleInstallationError(module_name)
         if not modules_dir:
             modules_dir = get_modules_dir()
@@ -723,7 +732,7 @@ def install_module(
         )
         if not zipfile_path:
             if outer:
-                outer.error(f"code download failed")
+                outer.error("code download failed")
             raise ModuleInstallationError(module_name)
         extract_code_or_data(
             module_name=module_name,
@@ -741,7 +750,7 @@ def install_module(
         ):
             if not data_url:
                 if outer:
-                    outer.error(f"data_url is empty.")
+                    outer.error("data_url is empty.")
                 raise ModuleInstallationError(module_name)
             data_zipfile_path: Optional[str] = download_code_or_data(
                 urls=data_url,
@@ -755,7 +764,7 @@ def install_module(
             )
             if not data_zipfile_path:
                 if error:
-                    error.write(f"Data download failed")
+                    error.write("Data download failed")
                 raise ModuleInstallationError(module_name)
             extract_code_or_data(
                 module_name=module_name,
@@ -837,7 +846,7 @@ def uninstall_module(module_name, outer=None):
     from .local import get_local_module_info
     from .cache import get_module_cache
 
-    if not module_name in list_local():
+    if module_name not in list_local():
         if outer:
             outer.write(f"{module_name} does not exist.")
         return False

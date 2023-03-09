@@ -125,7 +125,7 @@ class BaseReporter:
                 db.execute("select count(*) from info")
                 db.execute("select count(*) from variant")
                 db.execute("select count(*) from gene")
-        except:
+        except Exception:
             raise WrongInput(msg=f"{self.dbpath} is not an OakVar result database")
         if not self.output_dir:
             self.output_dir = str(Path(self.dbpath).parent)
@@ -182,7 +182,7 @@ class BaseReporter:
             raise
         conn = connect(self.dbpath)
         cursor = conn.cursor()
-        q = f"pragma table_info(variant)"
+        q = "pragma table_info(variant)"
         cursor.execute(q)
         header_cols = [row[1] for row in cursor.fetchall()]
         if "tagsampler__samples" in header_cols:
@@ -390,7 +390,7 @@ class BaseReporter:
             ret = None
             tab = tab or self.level or "all"
             self.log_run_start()
-            if self.setup() == False:
+            if self.setup() is False:
                 await self.close_db()
                 raise SetupError(self.module_name)
             self.ftable_uid = await self.cf.make_ftables_and_ftable_uid(
@@ -438,7 +438,7 @@ class BaseReporter:
         from ..exceptions import SetupError
 
         _ = make_filtered_table
-        if self.should_write_level(level) == False:
+        if self.should_write_level(level) is False:
             return
         if not await self.exec_db(self.table_exists, level):
             return
@@ -451,7 +451,9 @@ class BaseReporter:
         self.write_header(level)
         self.hugo_colno = self.colnos[level].get("base__hugo", None)
         datacols = await self.cf.exec_db(self.cf.get_variant_data_cols)
-        self.total_norows = await self.cf.exec_db(self.cf.get_ftable_num_rows, level=level, uid=self.ftable_uid, ftype=level)  # type: ignore
+        self.total_norows = await self.cf.exec_db(
+                self.cf.get_ftable_num_rows, level=level, 
+                uid=self.ftable_uid, ftype=level)  # type: ignore
         if datacols is None or self.total_norows is None:
             return
         if level == "variant" and self.separatesample:
@@ -508,7 +510,7 @@ class BaseReporter:
     def stringify_all_mapping(self, level, datarow):
         from json import loads
 
-        if hasattr(self, "keep_json_all_mapping") == True or level != "variant":
+        if hasattr(self, "keep_json_all_mapping") is True or level != "variant":
             return
         col_name = "base__all_mappings"
         all_map = loads(datarow[col_name])
@@ -521,13 +523,14 @@ class BaseReporter:
                     exonno = ""
                 else:
                     [protid, protchange, so, transcript, rnachange, exonno] = maprow
-                if protid == None:
+                if protid is None:
                     protid = "(na)"
-                if protchange == None:
+                if protchange is None:
                     protchange = "(na)"
-                if rnachange == None:
+                if rnachange is None:
                     rnachange = "(na)"
-                newval = f"{transcript}:{hugo}:{protid}:{so}:{protchange}:{rnachange}:{exonno}"
+                newval = f"{transcript}:{hugo}:{protid}:{so}:{protchange}" +\
+                        f":{rnachange}:{exonno}"
                 newvals.append(newval)
         newvals.sort()
         newcell = "; ".join(newvals)
@@ -567,13 +570,13 @@ class BaseReporter:
     async def get_variant_colinfo(self, add_summary=True):
         try:
             await self.prep()
-            if self.setup() == False:
+            if self.setup() is False:
                 await self.close_db()
                 return None
             self.levels = await self.get_levels_to_run("all")
             await self.make_col_infos(add_summary=add_summary)
             return self.colinfo
-        except Exception as _:
+        except Exception:
             import traceback
 
             traceback.print_exc()
@@ -657,11 +660,13 @@ class BaseReporter:
         group_names = []
         if group_name:
             group_names.append(group_name)
-            sql = f"select col_name, col_def from {header_table} where col_name like '{group_name}__%'"
+            sql = f"select col_name, col_def from {header_table} where " +\
+                    f"col_name like '{group_name}__%'"
         else:
             group_names = [d.get("name") for d in self.columngroups[level]]
         for group_name in group_names:
-            sql = f"select col_def from {header_table} where col_name like '{group_name}__%'"
+            sql = "select col_def from {header_table} where col_name " +\
+                    f"like '{group_name}__%'"
             await cursor.execute(sql)
             rows = await cursor.fetchall()
             for row in rows:
@@ -687,7 +692,7 @@ class BaseReporter:
 
     async def gather_col_categories(self, level, coldef, conn):
         cursor = await conn.cursor()
-        if not coldef.category in ["single", "multi"] or len(coldef.categories) > 0:
+        if coldef.category not in ["single", "multi"] or len(coldef.categories) > 0:
             return coldef
         sql = f"select distinct {coldef.name} from {level}"
         await cursor.execute(sql)
@@ -787,7 +792,8 @@ class BaseReporter:
             if module_name not in local_modules:
                 if self.logger:
                     self.logger.info(
-                        f"Skipping gene level summarization with {module_name} as it does not exist in the system."
+                        f"Skipping gene level summarization with {module_name} " +\
+                        "as it does not exist in the system."
                     )
                 continue
             module = local_modules[module_name]
@@ -850,7 +856,7 @@ class BaseReporter:
         from json import loads
         from types import SimpleNamespace
 
-        if not level in ["variant", "gene"]:
+        if level not in ["variant", "gene"]:
             return
         reportsubtable = f"{level}_reportsub"
         if not await self.exec_db(self.table_exists, reportsubtable):
@@ -958,7 +964,7 @@ class BaseReporter:
         from ..exceptions import NoInput
         from ..exceptions import WrongInput
 
-        if dbpath != None:
+        if dbpath is not None:
             self.dbpath = dbpath
         if not self.dbpath:
             raise NoInput()
@@ -1011,7 +1017,7 @@ class BaseReporter:
         )
         await cursor.execute(sql)
         row = await cursor.fetchone()
-        if row == None:
+        if row is None:
             ret = False
         else:
             ret = True

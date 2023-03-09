@@ -135,14 +135,14 @@ class MasterConverter(object):
         if self.inputs and len(self.inputs) == 1 and self.inputs[0] == "-":
             self.pipeinput = True
         self.input_paths = []
-        if self.pipeinput == False:
+        if self.pipeinput is False:
             self.input_paths = [
                 str(Path(x).absolute()) for x in self.inputs if x != "-"
             ]
         else:
             self.input_paths = [STDIN]
         self.input_dir = str(Path(self.input_paths[0]).parent)
-        if self.pipeinput == False:
+        if self.pipeinput is False:
             for i in range(len(self.input_paths)):
                 self.input_path_dict[i] = self.input_paths[i]
                 self.input_path_dict2[self.input_paths[i]] = i
@@ -239,7 +239,8 @@ class MasterConverter(object):
             if not hasattr(converter, "format_name"):
                 if self.outer:
                     self.outer.write(
-                        "Skipping {module_info.name} as it does not have format_name defined."
+                        "Skipping {module_info.name} as it does not " +\
+                        "have format_name defined."
                     )
                 continue
             converter.module_name = module_info.name
@@ -248,7 +249,9 @@ class MasterConverter(object):
             else:
                 if self.outer:
                     self.outer.write(
-                        "{moule_info.name} is skipped because {converter.format_name} is already handled by {self.converters[converter.format_name].name}."
+                        f"{module_info.name} is skipped because " +\
+                        f"{converter.format_name} is already handled by " +\
+                        f"{self.converters[converter.format_name].name}."
                     )
                 continue
         self.available_input_formats = list(self.converters.keys())
@@ -278,7 +281,7 @@ class MasterConverter(object):
         if self.format and self.format not in self.available_input_formats:
             raise InvalidInputFormat(self.format)
         if self.pipeinput and not self.format:
-            raise InvalidInputFormat(f"--input-format should be given with pipe input")
+            raise InvalidInputFormat("--input-format should be given with pipe input")
 
     def get_converter_for_input_file(self, f) -> Optional[BaseConverter]:
         import sys
@@ -287,9 +290,10 @@ class MasterConverter(object):
         if f == sys.stdin:
             if not self.format:
                 raise ArgumentError(
-                    msg="--input-format option should be given if stdin is used for input."
+                    msg="--input-format option should be given if " +\
+                            "stdin is used for input."
                 )
-            if not self.format in self.converters:
+            if self.format not in self.converters:
                 raise ArgumentError(
                     msg=f"{self.format} is not found in installed converter modules."
                 )
@@ -304,7 +308,7 @@ class MasterConverter(object):
                     f.seek(0)
                     try:
                         check_success = check_converter.check_format(f)
-                    except:
+                    except Exception:
                         import traceback
 
                         if self.error_logger:
@@ -331,7 +335,7 @@ class MasterConverter(object):
         module_name = converter.module_name
         converter.version = get_module_code_version(converter.module_name)
         if module_name in self.conf:
-            if hasattr(converter, "conf") == False:
+            if hasattr(converter, "conf") is False:
                 converter.conf = {}
             converter.conf.update(self.conf[module_name])
 
@@ -461,7 +465,7 @@ class MasterConverter(object):
         self.set_do_liftover(genome_assembly, converter, f)
         if self.do_liftover or self.do_liftover_chrM:
             self.setup_lifter(genome_assembly)
-        if self.pipeinput == False:
+        if self.pipeinput is False:
             f.seek(0)
         return (f, converter)
 
@@ -534,7 +538,8 @@ class MasterConverter(object):
         variant["alt_base"] = new_alt
 
     def add_unique_variant(self, variant: dict, unique_variants: set):
-        var_str = f"{variant['chrom']}:{variant['pos']}:{variant['ref_base']}:{variant['alt_base']}"
+        var_str = f"{variant['chrom']}:{variant['pos']}:{variant['ref_base']}" +\
+                f":{variant['alt_base']}"
         is_unique = var_str not in unique_variants
         if is_unique:
             unique_variants.add(var_str)
@@ -620,7 +625,7 @@ class MasterConverter(object):
         if not self.input_paths or not self.logger:
             raise
         update_status(
-            f"started converter", logger=self.logger, serveradmindb=self.serveradmindb
+            "started converter", logger=self.logger, serveradmindb=self.serveradmindb
         )
         self.setup()
         self.set_variables_pre_run()
@@ -687,7 +692,7 @@ class MasterConverter(object):
         self.logger.info("finished: %s" % asctime(localtime(end_time)))
         runtime = round(end_time - self.start_time, 3)
         self.logger.info("runtime: %s" % runtime)
-        status = f"finished Converter"
+        status = "finished Converter"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
 
     def perform_liftover_if_needed(self, variant):
@@ -755,7 +760,7 @@ class MasterConverter(object):
         if err_str not in self.unique_excs:
             err_no = len(self.unique_excs)
             self.unique_excs[err_str] = err_no
-            if hasattr(e, "traceback") and e.traceback == False:
+            if hasattr(e, "traceback") and e.traceback is False:
                 pass
             else:
                 self.logger.error(f"Error [{err_no}]: {self.input_path}: {err_str}")
