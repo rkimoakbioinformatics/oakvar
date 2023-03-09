@@ -40,7 +40,7 @@ class BaseAnnotator(object):
         input_columns: List[str] = [],
         output_columns: List[Dict] = [],
         module_conf: dict = {},
-        code_version: Optional[str]=None,
+        code_version: Optional[str] = None,
     ):
         import os
         import sys
@@ -130,15 +130,14 @@ class BaseAnnotator(object):
             if input_format in self.default_input_columns:
                 input_columns = self.default_input_columns[input_format]
             else:
-                valid_formats = ', '.join(self.default_input_columns.keys())
-                raise ModuleLoadingError(msg=f"{self.module_name}: input_format " +\
-                    "({input_format}) is invalid. It should be one of " +\
-                    f"{valid_formats}.")
+                valid_formats = ", ".join(self.default_input_columns.keys())
+                raise ModuleLoadingError(
+                    msg=f"{self.module_name}: input_format "
+                    + "({input_format}) is invalid. It should be one of "
+                    + f"{valid_formats}."
+                )
         self.input_columns = input_columns.copy()
-        if (
-            self.input_columns is not None
-            and self.conf is not None
-        ):
+        if self.input_columns is not None and self.conf is not None:
             self.conf["input_columns"] = self.input_columns
         elif not self.input_columns and self.conf and "input_columns" in self.conf:
             self.input_columns = self.conf["input_columns"]
@@ -357,18 +356,18 @@ class BaseAnnotator(object):
         if self.conf:
             if "title" not in self.conf:
                 raise ModuleLoadingError(
-                    msg="title should be given at initializing Annotator or in " +\
-                        "the module yml file to run."
+                    msg="title should be given at initializing Annotator or in "
+                    + "the module yml file to run."
                 )
             if "level" not in self.conf:
                 raise ModuleLoadingError(
-                    msg="level should be given at initializing Annotator or in " +\
-                        "the module yml file to run."
+                    msg="level should be given at initializing Annotator or in "
+                    + "the module yml file to run."
                 )
             if "output_columns" not in self.conf:
                 raise ModuleLoadingError(
-                    msg="output_columns should be given at initializing Annotator " +\
-                        "or in the module yml file to run."
+                    msg="output_columns should be given at initializing Annotator "
+                    + "or in the module yml file to run."
                 )
             if not self.primary_input_path:
                 raise ModuleLoadingError(
@@ -562,8 +561,8 @@ class BaseAnnotator(object):
         num_provided = len(self.secondary_paths)
         if num_expected > num_provided:
             raise Exception(
-                f"Too few secondary inputs. {num_expected} expected, " +\
-                f"{num_provided} provided"
+                f"Too few secondary inputs. {num_expected} expected, "
+                + f"{num_provided} provided"
             )
         elif num_expected < num_provided:
             raise Exception(
@@ -733,7 +732,7 @@ class BaseAnnotator(object):
                 d[colname] = value
         return d
 
-    def save(self, overwrite: bool = False, interactive: bool=False):
+    def save(self, overwrite: bool = False, interactive: bool = False):
         from ..module.local import create_module_files
 
         create_module_files(self, overwrite=overwrite, interactive=interactive)

@@ -183,8 +183,8 @@ class Runner(object):
                     cur_prog = "*" * cur_star
                     rem_prog = " " * rem_stars
                     print(
-                        f"[{cur_prog}{rem_prog}] {humanize_bytes(cur_size)} " +\
-                        f"/ {humanize_bytes(total_size)} ({perc * 100.0:.0f}%)",
+                        f"[{cur_prog}{rem_prog}] {humanize_bytes(cur_size)} "
+                        + f"/ {humanize_bytes(total_size)} ({perc * 100.0:.0f}%)",
                         end="\r",
                         flush=True,
                     )
@@ -233,7 +233,8 @@ class Runner(object):
             if error_log_path.exists():
                 remove(error_log_path)
             self.error_log_handler = logging.FileHandler(
-                    error_log_path, mode=self.logmode)
+                error_log_path, mode=self.logmode
+            )
         else:
             self.error_log_handler = logging.StreamHandler(stream=stderr)
         formatter = logging.Formatter("%(name)s\t%(message)s")
@@ -488,16 +489,16 @@ class Runner(object):
                 if len(toks) != 2:
                     if self.outer:
                         self.outer.write(
-                            "Ignoring invalid module option {opt_str}. " +\
-                            "module-options should be module_name.key=value.\n",
+                            "Ignoring invalid module option {opt_str}. "
+                            + "module-options should be module_name.key=value.\n",
                         )
                     continue
                 k = toks[0]
                 if k.count(".") != 1:
                     if self.outer:
                         self.outer.write(
-                            "Ignoring invalid module option {opt_str}. " +\
-                            "module-options should be module_name.key=value.\n",
+                            "Ignoring invalid module option {opt_str}. "
+                            + "module-options should be module_name.key=value.\n",
                         )
                     continue
                 [module_name, key] = k.split(".")
@@ -736,8 +737,8 @@ class Runner(object):
             if self.args.combine_input:
                 if len(self.args.run_name) != 1:
                     raise ArgumentError(
-                        msg="-n should have only one value when --combine-input " +\
-                            "is given."
+                        msg="-n should have only one value when --combine-input "
+                        + "is given."
                     )
                 self.run_name = self.args.run_name
             else:
@@ -747,8 +748,8 @@ class Runner(object):
                             set(self.output_dir)
                         ):
                             raise ArgumentError(
-                                msg="-n should have a unique value for each " +\
-                                    "input when -d has duplicate directories."
+                                msg="-n should have a unique value for each "
+                                + "input when -d has duplicate directories."
                             )
                         self.run_name = self.args.run_name * len(self.inputs)
                     elif self.pipeinput:
@@ -758,14 +759,14 @@ class Runner(object):
                 else:
                     if self.pipeinput:
                         raise ArgumentError(
-                            msg="Only one -n option value should be given " +\
-                                "with pipe input."
+                            msg="Only one -n option value should be given "
+                            + "with pipe input."
                         )
                     if self.inputs:
                         if len(self.inputs) != len(self.args.run_name):
                             raise ArgumentError(
-                                msg="Just one or the same number of -n option " +\
-                                    "values as input files should be given."
+                                msg="Just one or the same number of -n option "
+                                + "values as input files should be given."
                             )
                         self.run_name = self.args.run_name
                     else:
@@ -794,9 +795,9 @@ class Runner(object):
                 if self.inputs:
                     if len(self.output_dir) != len(set(self.output_dir)):
                         raise ArgumentError(
-                            msg="-j should have a unique value for each input " +\
-                                "when -d has duplicate directories. Or, give " +\
-                                "--combine-input to combine input files into one job."
+                            msg="-j should have a unique value for each input "
+                            + "when -d has duplicate directories. Or, give "
+                            + "--combine-input to combine input files into one job."
                         )
                     self.job_name = self.args.job_name * len(self.inputs)
                 elif self.pipeinput:
@@ -811,8 +812,8 @@ class Runner(object):
                 if self.inputs:
                     if len(self.inputs) != len(self.args.job_name):
                         raise ArgumentError(
-                            msg="Just one or the same number of -j option values " +\
-                                "as input files should be given."
+                            msg="Just one or the same number of -j option values "
+                            + "as input files should be given."
                         )
                     self.job_name = self.args.job_name
             return
@@ -935,8 +936,10 @@ class Runner(object):
                 if not self.is_in_annotators_or_postaggregators(module_name):
                     module = get_local_module_info_by_name(module_name)
                     if not module:
-                        msg = f"{module_name} is required by {postaggregator.name}" +\
-                                ", but does not exist."
+                        msg = (
+                            f"{module_name} is required by {postaggregator.name}"
+                            + ", but does not exist."
+                        )
                         raise ModuleNotExist(module_name, msg=msg)
                     if module.type == "annotator" and self.annotator_names is not None:
                         self.annotator_names.append(module_name)
@@ -1093,8 +1096,8 @@ class Runner(object):
                     )
                 else:
                     raise Exception(
-                        f"module requirement configuration error: {module_name} " +\
-                        f"=> {required_module_names}"
+                        f"module requirement configuration error: {module_name} "
+                        + f"=> {required_module_names}"
                     )
             else:
                 if module_name in final_module_names:
@@ -1637,7 +1640,7 @@ class Runner(object):
             genome=self.args.genome,
             input_format=self.args.input_format,
             serveradmindb=self.serveradmindb,
-            outer=self.outer
+            outer=self.outer,
         )
         ret = converter.run()
         self.total_num_converted_variants = ret.get("total_lnum")
@@ -1684,8 +1687,8 @@ class Runner(object):
         )
         if self.logger:
             self.logger.info(
-                f"input line chunksize={chunksize} total number of " +\
-                f"input lines={num_lines} number of chunks={len_poss}"
+                f"input line chunksize={chunksize} total number of "
+                + f"input lines={num_lines} number of chunks={len_poss}"
             )
         pool = mp.Pool(num_workers, init_worker)
         pos_no = 0
@@ -1788,8 +1791,8 @@ class Runner(object):
                     if secondary_output_path is None:
                         if self.logger:
                             self.logger.warning(
-                                "secondary output file does not exist for " +\
-                                f"{secondary_module_name}"
+                                "secondary output file does not exist for "
+                                + f"{secondary_module_name}"
                             )
                     else:
                         secondary_inputs.append(

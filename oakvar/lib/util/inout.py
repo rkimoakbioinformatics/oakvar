@@ -1,6 +1,7 @@
 from typing import Union
 from pathlib import Path
 
+
 class BaseFile(object):
     valid_types = ["string", "int", "float"]
 
@@ -632,6 +633,7 @@ def get_file_content_as_table(fpath: Union[Path, str], title: str, outer=None):
         outer.print(table)
     else:
         outer.write(table)
+
 
 CravatReader = FileReader
 CravatWriter = FileWriter

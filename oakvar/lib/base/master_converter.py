@@ -11,7 +11,6 @@ STDIN = "stdin"
 
 
 class MasterConverter(object):
-
     def __init__(
         self,
         inputs: List[str] = [],
@@ -239,8 +238,8 @@ class MasterConverter(object):
             if not hasattr(converter, "format_name"):
                 if self.outer:
                     self.outer.write(
-                        "Skipping {module_info.name} as it does not " +\
-                        "have format_name defined."
+                        "Skipping {module_info.name} as it does not "
+                        + "have format_name defined."
                     )
                 continue
             converter.module_name = module_info.name
@@ -249,9 +248,9 @@ class MasterConverter(object):
             else:
                 if self.outer:
                     self.outer.write(
-                        f"{module_info.name} is skipped because " +\
-                        f"{converter.format_name} is already handled by " +\
-                        f"{self.converters[converter.format_name].name}."
+                        f"{module_info.name} is skipped because "
+                        + f"{converter.format_name} is already handled by "
+                        + f"{self.converters[converter.format_name].name}."
                     )
                 continue
         self.available_input_formats = list(self.converters.keys())
@@ -290,8 +289,8 @@ class MasterConverter(object):
         if f == sys.stdin:
             if not self.format:
                 raise ArgumentError(
-                    msg="--input-format option should be given if " +\
-                            "stdin is used for input."
+                    msg="--input-format option should be given if "
+                    + "stdin is used for input."
                 )
             if self.format not in self.converters:
                 raise ArgumentError(
@@ -538,8 +537,10 @@ class MasterConverter(object):
         variant["alt_base"] = new_alt
 
     def add_unique_variant(self, variant: dict, unique_variants: set):
-        var_str = f"{variant['chrom']}:{variant['pos']}:{variant['ref_base']}" +\
-                f":{variant['alt_base']}"
+        var_str = (
+            f"{variant['chrom']}:{variant['pos']}:{variant['ref_base']}"
+            + f":{variant['alt_base']}"
+        )
         is_unique = var_str not in unique_variants
         if is_unique:
             unique_variants.add(var_str)
@@ -720,7 +721,7 @@ class MasterConverter(object):
                 variant["ref_base"],
                 variant["alt_base"],
                 lifter=self.lifter,
-                wgs_reader=self.wgs_reader
+                wgs_reader=self.wgs_reader,
             )
             converted_end = liftover_one_pos(
                 variant["chrom"], variant["pos_end"], lifter=self.lifter

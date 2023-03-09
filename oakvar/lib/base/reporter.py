@@ -452,8 +452,8 @@ class BaseReporter:
         self.hugo_colno = self.colnos[level].get("base__hugo", None)
         datacols = await self.cf.exec_db(self.cf.get_variant_data_cols)
         self.total_norows = await self.cf.exec_db(
-                self.cf.get_ftable_num_rows, level=level, 
-                uid=self.ftable_uid, ftype=level)  # type: ignore
+            self.cf.get_ftable_num_rows, level=level, uid=self.ftable_uid, ftype=level
+        )  # type: ignore
         if datacols is None or self.total_norows is None:
             return
         if level == "variant" and self.separatesample:
@@ -529,8 +529,10 @@ class BaseReporter:
                     protchange = "(na)"
                 if rnachange is None:
                     rnachange = "(na)"
-                newval = f"{transcript}:{hugo}:{protid}:{so}:{protchange}" +\
-                        f":{rnachange}:{exonno}"
+                newval = (
+                    f"{transcript}:{hugo}:{protid}:{so}:{protchange}"
+                    + f":{rnachange}:{exonno}"
+                )
                 newvals.append(newval)
         newvals.sort()
         newcell = "; ".join(newvals)
@@ -660,13 +662,17 @@ class BaseReporter:
         group_names = []
         if group_name:
             group_names.append(group_name)
-            sql = f"select col_name, col_def from {header_table} where " +\
-                    f"col_name like '{group_name}__%'"
+            sql = (
+                f"select col_name, col_def from {header_table} where "
+                + f"col_name like '{group_name}__%'"
+            )
         else:
             group_names = [d.get("name") for d in self.columngroups[level]]
         for group_name in group_names:
-            sql = "select col_def from {header_table} where col_name " +\
-                    f"like '{group_name}__%'"
+            sql = (
+                "select col_def from {header_table} where col_name "
+                + f"like '{group_name}__%'"
+            )
             await cursor.execute(sql)
             rows = await cursor.fetchall()
             for row in rows:
@@ -792,8 +798,8 @@ class BaseReporter:
             if module_name not in local_modules:
                 if self.logger:
                     self.logger.info(
-                        f"Skipping gene level summarization with {module_name} " +\
-                        "as it does not exist in the system."
+                        f"Skipping gene level summarization with {module_name} "
+                        + "as it does not exist in the system."
                     )
                 continue
             module = local_modules[module_name]

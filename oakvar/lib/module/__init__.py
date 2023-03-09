@@ -47,14 +47,20 @@ class InstallProgressHandler:
                 f"[{get_current_time_str()}] Starting to install {self.display_name}..."
             )
         elif stage == "download_code":
-            return f"[{get_current_time_str()}] Downloading code archive of " +\
-                    f"{self.display_name}..."
+            return (
+                f"[{get_current_time_str()}] Downloading code archive of "
+                + f"{self.display_name}..."
+            )
         elif stage == "extract_code":
-            return f"[{get_current_time_str()}] Extracting code archive of " +\
-                    f"{self.display_name}..."
+            return (
+                f"[{get_current_time_str()}] Extracting code archive of "
+                + f"{self.display_name}..."
+            )
         elif stage == "verify_code":
-            return f"[{get_current_time_str()}] Verifying code integrity of " +\
-                    f"{self.display_name}..."
+            return (
+                f"[{get_current_time_str()}] Verifying code integrity of "
+                + f"{self.display_name}..."
+            )
         elif stage == "download_data":
             return (
                 f"[{get_current_time_str()}] Downloading data of {self.display_name}..."
@@ -64,14 +70,20 @@ class InstallProgressHandler:
                 f"[{get_current_time_str()}] Extracting data of {self.display_name}..."
             )
         elif stage == "verify_data":
-            return f"[{get_current_time_str()}] Verifying data integrity of " +\
-                    f"{self.display_name}..."
+            return (
+                f"[{get_current_time_str()}] Verifying data integrity of "
+                + f"{self.display_name}..."
+            )
         elif stage == "finish":
-            return f"[{get_current_time_str()}] finished installation of " +\
-                    f"{self.display_name}"
+            return (
+                f"[{get_current_time_str()}] finished installation of "
+                + f"{self.display_name}"
+            )
         elif stage == "killed":
-            return f"[{get_current_time_str()}] Aborted installation of " +\
-                    f"{self.display_name}"
+            return (
+                f"[{get_current_time_str()}] Aborted installation of "
+                + f"{self.display_name}"
+            )
         elif stage == "Unqueued":
             return f"Unqueued {self.display_name} from installation"
         else:
@@ -104,8 +116,11 @@ def get_readme(module_name):
         if local_info and remote_ver:
             remote_version = remote_module_latest_version(module_name)
             local_version = local_info.version
-            if remote_version and local_version and compare_version(
-                    remote_version, local_version) > 0:
+            if (
+                remote_version
+                and local_version
+                and compare_version(remote_version, local_version) > 0
+            ):
                 return remote_readme
             else:
                 return local_readme
@@ -255,8 +270,10 @@ def check_install_kill(system_worker_state=None, module_name=None):
     if not system_worker_state or not module_name:
         return
     if (
-        system_worker_state[SYSTEM_STATE_INSTALL_KEY].get(module_name, 
-            {}).get("kill_signal") is True
+        system_worker_state[SYSTEM_STATE_INSTALL_KEY]
+        .get(module_name, {})
+        .get("kill_signal")
+        is True
     ):
         raise KillInstallException
 
@@ -356,8 +373,9 @@ def download_code_or_data(
                 if i < num_urls - 1:
                     if getsize(part_path) != MODULE_PACK_SPLIT_FILE_SIZE:
                         if outer:
-                            outer.write(f"corrupt download {part_path} at " +\
-                                    f"{url_list[i]}")
+                            outer.write(
+                                f"corrupt download {part_path} at " + f"{url_list[i]}"
+                            )
                         remove(part_path)
                         return
                 with open(part_path, "rb") as f:
@@ -491,8 +509,8 @@ def install_module_from_url(
     if not ty:
         if outer:
             outer.write(
-                f"{url} is not a valid OakVar module. {module_name}.yml " +\
-                "does not have 'type' field."
+                f"{url} is not a valid OakVar module. {module_name}.yml "
+                + "does not have 'type' field."
             )
         return False
     if not skip_dependencies:
@@ -500,8 +518,8 @@ def install_module_from_url(
         if not install_pypi_dependency(pypi_dependency=pypi_dependency, outer=outer):
             if outer:
                 outer.write(
-                    f"Skipping installation of {module_name} due to " +\
-                    "some PyPI dependency was not installed."
+                    f"Skipping installation of {module_name} due to "
+                    + "some PyPI dependency was not installed."
                 )
             return False
         for deps_mn, deps_ver in deps.items():
@@ -560,8 +578,8 @@ def install_module_from_zip_path(
         yml_paths = [v for v in temp_module_path.glob("*.yml")]
         if len(yml_paths) > 1:
             raise ExpectedException(
-                msg="Only 1 module config file should exist in " +\
-                    f"{str(temp_module_path)}."
+                msg="Only 1 module config file should exist in "
+                + f"{str(temp_module_path)}."
             )
         yml_path = yml_paths[0]
         module_name = yml_path.stem
@@ -634,9 +652,9 @@ def get_module_install_version(
     ):
         raise ModuleToSkipInstallation(
             module_name,
-            msg=f"{module_name}: Local version ({local_info.code_version}) " +\
-                f"is higher than the latest store version ({version}). " +\
-                "Use --overwrite to overwrite.",
+            msg=f"{module_name}: Local version ({local_info.code_version}) "
+            + f"is higher than the latest store version ({version}). "
+            + "Use --overwrite to overwrite.",
         )
     else:
         return version

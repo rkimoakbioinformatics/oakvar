@@ -57,8 +57,10 @@ def latest_module_version_size(
     from packaging.version import Version
 
     _ = conn
-    q = "select store, code_version, data_version, data_source, " +\
-        "code_size, data_size from versions where name=?"
+    q = (
+        "select store, code_version, data_version, data_source, "
+        + "code_size, data_size from versions where name=?"
+    )
     cursor.execute(q, (module_name,))
     ret = cursor.fetchall()
     latest_code_version = ""
@@ -146,8 +148,10 @@ def module_sizes(
     if not r:
         return None
     name, store = r
-    q = "select code_size, data_size from versions where " +\
-        "name=? and store=? and code_version=?"
+    q = (
+        "select code_size, data_size from versions where "
+        + "name=? and store=? and code_version=?"
+    )
     cursor.execute(q, (name, store, code_version))
     r = cursor.fetchone()
     if not r:
@@ -344,8 +348,9 @@ def is_store_db_schema_changed(conn=Any, cursor=Any) -> bool:
 
 
 @db_func
-def drop_ov_store_cache(refresh_db: bool=False, clean_cache_files=False, 
-        conf=None, conn=None, cursor=None):
+def drop_ov_store_cache(
+    refresh_db: bool = False, clean_cache_files=False, conf=None, conn=None, cursor=None
+):
     from os.path import exists
     from ..system import get_cache_dir
     from ..system.consts import cache_dirs
@@ -383,13 +388,15 @@ def create_ov_store_cache(conf=None, conn=None, cursor=None):
     if conf:
         pass
     if not table_exists("summary"):
-        col_def = ', '.join([col + ' text' for col in summary_table_cols])
+        col_def = ", ".join([col + " text" for col in summary_table_cols])
         q = f"create table summary ( {col_def}, primary key ( name, store ) )"
         cursor.execute(q)
     if not table_exists("versions"):
-        col_def = ', '.join([col + ' text' for col in versions_table_cols])
-        q = f"create table versions ( {col_def}, primary key " +\
-            "( name, store, code_version ) )"
+        col_def = ", ".join([col + " text" for col in versions_table_cols])
+        q = (
+            f"create table versions ( {col_def}, primary key "
+            + "( name, store, code_version ) )"
+        )
         cursor.execute(q)
     if not table_exists("info"):
         q = "create table info ( key text primary key, value text )"
@@ -421,8 +428,8 @@ def try_fetch_ov_store_cache(
     except Exception as e:
         if outer:
             outer.write(
-                f"Fetching store update failed:\n\n>>{e}.\n\n" +\
-                "Continuing with the current store cache."
+                f"Fetching store update failed:\n\n>>{e}.\n\n"
+                + "Continuing with the current store cache."
             )
 
 
@@ -700,8 +707,10 @@ def fetch_summary_cache(publish_time: str = "", outer=None, conn=Any, cursor=Any
     res = res.json()
     cols = res["cols"]
     for row in res["data"]:
-        q = f"insert or replace into summary ( {', '.join(cols)} ) " +\
-            f"values ( {', '.join(['?'] * len(cols))} )"
+        q = (
+            f"insert or replace into summary ( {', '.join(cols)} ) "
+            + f"values ( {', '.join(['?'] * len(cols))} )"
+        )
         cursor.execute(q, row)
     conn.commit()
 
@@ -739,8 +748,10 @@ def fetch_versions_cache(publish_time: str = "", outer=None, conn=None, cursor=N
     res = res.json()
     cols = res["cols"]
     for row in res["data"]:
-        q = f"insert or replace into versions ( {', '.join(cols)} ) " +\
-            f"values ( {', '.join(['?'] * len(cols))} )"
+        q = (
+            f"insert or replace into versions ( {', '.join(cols)} ) "
+            + f"values ( {', '.join(['?'] * len(cols))} )"
+        )
         cursor.execute(q, row)
     conn.commit()
 
@@ -834,4 +845,3 @@ def check_tables(outer=None, conn=Any, cursor=Any) -> bool:
                 outer.write(f"Store cache table {table} does not exist.")
             return False
     return True
-

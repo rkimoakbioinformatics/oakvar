@@ -13,7 +13,7 @@ class JobHandlers:
 
     def __init__(
         self,
-        servermode: bool=False,
+        servermode: bool = False,
         mu=None,
         logger=None,
         job_queue=None,
@@ -496,7 +496,9 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
                     except Exception:
                         idx = None
                 if idx is not None:
-                    pids = [int(line.strip().split()[idx]) for line in lines if line != ""]
+                    pids = [
+                        int(line.strip().split()[idx]) for line in lines if line != ""
+                    ]
                     for pid in pids:
                         if pid == p.pid:
                             p.terminate()

@@ -150,10 +150,10 @@ class ReportFilter:
     @classmethod
     async def create(
         cls,
-        dbpath: Optional[str]=None,
-        filterpath: Optional[str]=None,
-        filtername: Optional[str]=None,
-        filterstring: Optional[str]=None,
+        dbpath: Optional[str] = None,
+        filterpath: Optional[str] = None,
+        filtername: Optional[str] = None,
+        filterstring: Optional[str] = None,
         filter=None,
         mode="sub",
         filtersql=None,
@@ -332,9 +332,11 @@ class ReportFilter:
         conf_dir = get_conf_dir()
         if not conf_dir:
             sys_conf_path = get_system_conf_path()
-            raise SystemMissingException("conf_dir does not exist " +\
-                f"in the system configuration file at {sys_conf_path}. " +\
-                "Please consider running `ov system setup`.")
+            raise SystemMissingException(
+                "conf_dir does not exist "
+                + f"in the system configuration file at {sys_conf_path}. "
+                + "Please consider running `ov system setup`."
+            )
         return conf_dir / REPORT_FILTER_DB_DIRNAME
 
     def escape_user(self, user):
@@ -354,9 +356,11 @@ class ReportFilter:
 
     async def create_report_filter_registry_table_if_not_exists(self, conn):
         cursor = await conn.cursor()
-        q = f"create table if not exists {REPORT_FILTER_DB_NAME}." +\
-            f"{REPORT_FILTER_REGISTRY_NAME} ( uid int primary key, " +\
-            "user text, dbpath text, filterjson text, status text )"
+        q = (
+            f"create table if not exists {REPORT_FILTER_DB_NAME}."
+            + f"{REPORT_FILTER_REGISTRY_NAME} ( uid int primary key, "
+            + "user text, dbpath text, filterjson text, status text )"
+        )
         await cursor.execute(q)
         await conn.commit()
         await cursor.close()
@@ -640,8 +644,10 @@ class ReportFilter:
             q += f" where base__sample_id in ({req_s})"
         if rej:
             rej_s = ", ".join([f'"{sid}"' for sid in rej])
-            q += " except select base__uid from main.sample where " +\
-                    f"base__sample_id in ({rej_s})"
+            q += (
+                " except select base__uid from main.sample where "
+                + f"base__sample_id in ({rej_s})"
+            )
         await cursor_write.execute(q)
         await conn_write.commit()
         await conn_read.close()
@@ -660,8 +666,10 @@ class ReportFilter:
             return None
         filterjson = dumps(self.filter)
         tablename = self.get_registry_table_name()
-        q = f"select uid, status from {tablename} where " +\
-                "user=? and dbpath=? and filterjson=?"
+        q = (
+            f"select uid, status from {tablename} where "
+            + "user=? and dbpath=? and filterjson=?"
+        )
         await cursor_read.execute(q, (self.user, self.dbpath, filterjson))
         ret = await cursor_read.fetchone()
         if not ret:
@@ -771,9 +779,11 @@ class ReportFilter:
             return
         _ = cursor_read
         filterjson = dumps(self.filter)
-        q = f"insert or replace into {REPORT_FILTER_DB_NAME}." +\
-            f"{REPORT_FILTER_REGISTRY_NAME} ( uid, user, dbpath, " +\
-            "filterjson, status) values (?, ?, ?, ?, ?)"
+        q = (
+            f"insert or replace into {REPORT_FILTER_DB_NAME}."
+            + f"{REPORT_FILTER_REGISTRY_NAME} ( uid, user, dbpath, "
+            + "filterjson, status) values (?, ?, ?, ?, ?)"
+        )
         await cursor_write.execute(
             q, (uid, self.user, self.dbpath, filterjson, REPORT_FILTER_IN_PROGRESS)
         )
@@ -855,9 +865,11 @@ class ReportFilter:
         _ = cursor_read
         table_name = self.get_ftable_name(uid=uid, ftype="gene")
         fvariant = self.get_ftable_name(uid=uid, ftype="variant")
-        q = f"create table {table_name} as select distinct v.base__hugo " +\
-            f"from main.variant as v inner join {fvariant} as vf on " +\
-            "vf.base__uid=v.base__uid where v.base__hugo is not null"
+        q = (
+            f"create table {table_name} as select distinct v.base__hugo "
+            + f"from main.variant as v inner join {fvariant} as vf on "
+            + "vf.base__uid=v.base__uid where v.base__hugo is not null"
+        )
         await cursor_write.execute(q)
         await conn_write.commit()
         await conn_read.close()
@@ -1093,9 +1105,11 @@ class ReportFilter:
             gftable = "gene_filtered"
             q = f"drop table if exists {gftable}"
             await cursor_write.execute(q)
-            q = f"create table {gftable} as select distinct v.base__hugo " +\
-                "from variant as v inner join variant_filtered as vf on " +\
-                "vf.base__uid=v.base__uid where v.base__hugo is not null"
+            q = (
+                f"create table {gftable} as select distinct v.base__hugo "
+                + "from variant as v inner join variant_filtered as vf on "
+                + "vf.base__uid=v.base__uid where v.base__hugo is not null"
+            )
             await cursor_write.execute(q)
 
     async def table_exists(self, table, cursor_read=Any, cursor_write=Any) -> bool:
@@ -1146,8 +1160,10 @@ class ReportFilter:
 
         _ = cursor_write
         output_columns = []
-        q = 'select col_def from variant_header where col_name like' +\
-                ' "{module_name}\\_\\_%" escape "\\"'
+        q = (
+            "select col_def from variant_header where col_name like"
+            + ' "{module_name}\\_\\_%" escape "\\"'
+        )
         await cursor_read.execute(q)
         for row in await cursor_read.fetchall():
             d = loads(row[0])

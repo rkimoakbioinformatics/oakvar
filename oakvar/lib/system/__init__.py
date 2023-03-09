@@ -86,9 +86,9 @@ def setup_system(
     else:  # return False is converted to 1 with @cli_func.
         if outer:
             outer.write(
-                "Problem occurred while installing system modules. " +\
-                f"Return value is {ret}.\nPlease run `ov system setup` " +\
-                "again to install the missing modules.\n"
+                "Problem occurred while installing system modules. "
+                + f"Return value is {ret}.\nPlease run `ov system setup` "
+                + "again to install the missing modules.\n"
             )
         return False
 
@@ -277,8 +277,9 @@ def get_logo_path(module_name: str, store: str, conf=None) -> Optional[Path]:
         return None
 
 
-def get_sys_conf_str_value(conf_key: str, sys_conf_path: Optional[Path]=None, 
-        conf: Optional[dict]=None) -> Optional[str]:
+def get_sys_conf_str_value(
+    conf_key: str, sys_conf_path: Optional[Path] = None, conf: Optional[dict] = None
+) -> Optional[str]:
     v = get_sys_conf_value(conf_key, sys_conf_path=sys_conf_path, conf=conf)
     if v is None:
         return None
@@ -288,8 +289,9 @@ def get_sys_conf_str_value(conf_key: str, sys_conf_path: Optional[Path]=None,
         return str(v)
 
 
-def get_sys_conf_int_value(conf_key: str, sys_conf_path: Optional[Path]=None, 
-        conf: Optional[dict]=None) -> Optional[int]:
+def get_sys_conf_int_value(
+    conf_key: str, sys_conf_path: Optional[Path] = None, conf: Optional[dict] = None
+) -> Optional[int]:
     v = get_sys_conf_value(conf_key, sys_conf_path=sys_conf_path, conf=conf)
     if isinstance(v, int):
         return v
@@ -299,8 +301,9 @@ def get_sys_conf_int_value(conf_key: str, sys_conf_path: Optional[Path]=None,
         return None
 
 
-def get_sys_conf_value(conf_key: str, sys_conf_path=None, conf=None) \
-        -> Optional[Union[str, int, float, dict]]:
+def get_sys_conf_value(
+    conf_key: str, sys_conf_path=None, conf=None
+) -> Optional[Union[str, int, float, dict]]:
     from os import environ
     from ..util.util import load_yml_conf
     from os.path import exists
@@ -819,9 +822,9 @@ def check_account(outer=None) -> bool:
     if not token_set_exists():
         if outer:
             outer.write(
-                "Store account information does not exist. " +\
-                "Use `ov store account login` to log in or " +\
-                "`ov store account create` to create one.\n"
+                "Store account information does not exist. "
+                + "Use `ov store account login` to log in or "
+                + "`ov store account create` to create one.\n"
             )
         return False
     if not check_logged_in_with_token(outer=outer):
@@ -873,8 +876,10 @@ def check_module_version_requirement(outer=None) -> bool:
         return True
     if outer:
         for module_name, required_version in invalid_modules:
-            outer.write("Module version requirement not met for " +\
-                "this version of OakVar: {module_name}>={required_version}")
+            outer.write(
+                "Module version requirement not met for "
+                + "this version of OakVar: {module_name}>={required_version}"
+            )
     return False
 
 
@@ -1034,12 +1039,15 @@ def get_license_dir() -> Path:
 
     return get_packagedir() / "lib" / "assets" / "license"
 
+
 def show_license(outer=None):
     from rich.console import Console
+
     if not outer:
         outer = Console()
     show_oakvar_license(outer=outer)
     show_liftover_license(outer=outer)
+
 
 def show_oakvar_license(outer=None):
     from ..util.inout import get_file_content_as_table
@@ -1049,6 +1057,7 @@ def show_oakvar_license(outer=None):
     fpath = get_license_dir() / "LICENSE"
     get_file_content_as_table(fpath, "OakVar License", outer=outer)
 
+
 def show_liftover_license(outer=None):
     from ..util.inout import get_file_content_as_table
 
@@ -1056,6 +1065,7 @@ def show_liftover_license(outer=None):
         return
     fpath = get_license_dir() / "liftover.txt"
     get_file_content_as_table(fpath, "LiftOver License", outer=outer)
+
 
 def update(outer=None) -> bool:
     from subprocess import run
@@ -1069,9 +1079,11 @@ def update(outer=None) -> bool:
     pypi_ver = get_latest_package_version()
     if not pypi_ver or cur_ver > pypi_ver:
         if outer:
-            outer.error(f"Installed OakVer version ({str(cur_ver)}) " +\
-                "is higher than the latest version at PyPI " +\
-                f"({str(pypi_ver)}). Aborting.")
+            outer.error(
+                f"Installed OakVer version ({str(cur_ver)}) "
+                + "is higher than the latest version at PyPI "
+                + f"({str(pypi_ver)}). Aborting."
+            )
         return True
     cmd = ["pip", "install", "-U", "oakvar"]
     cp = run(cmd)
@@ -1091,4 +1103,3 @@ def update(outer=None) -> bool:
         if outer:
             outer.error("System setup failed.")
     return ret
-
