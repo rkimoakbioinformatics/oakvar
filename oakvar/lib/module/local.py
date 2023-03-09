@@ -690,14 +690,14 @@ def is_same_class_val(a_val, b_val):
                 return True
 
 
-def get_code_for_class_val(key, val) -> str:
+def get_code_for_class_val(key, val, cls) -> str:
     import types
     from inspect import getsourcelines
 
     ty = type(val)
     if ty == types.FunctionType:
         lines = getsourcelines(val)[0]
-        if not str(val).startswith("<function Annotator"):
+        if not str(val).startswith(f"<function {cls.__name__}"):
             lines = ["    " + line for line in lines]
         return "".join(lines)
     else:
@@ -735,11 +735,12 @@ def get_class_code(cls) -> List[str]:
             continue
     for key in keys_to_write_non_fn:
         val = getattr(cls, key)
-        code.append(get_code_for_class_val(key, val))
-    code.append("")
+        code.append(get_code_for_class_val(key, val, cls))
+    if keys_to_write_non_fn:
+        code.append("")
     for key in keys_to_write_fn:
         val = getattr(cls, key)
-        code.append(get_code_for_class_val(key, val))
+        code.append(get_code_for_class_val(key, val, cls))
     return code
 
 
@@ -878,4 +879,5 @@ def create_module_files(instance, overwrite: bool = False, interactive: bool = F
                 del yml["output_columns"][del_idx]
         if "output_columns" in yml and not yml["output_columns"]:
             del yml["output_columns"]
-        dump(yml, wf)
+        if yml:
+            dump(yml, wf)
