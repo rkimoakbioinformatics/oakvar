@@ -7,7 +7,14 @@ from typing import Iterator
 class BaseConverter(object):
     IGNORE = "converter_ignore"
 
-    def __init__(self):
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        title: Optional[str] = None,
+        module_conf: dict = {},
+        code_version: Optional[str] = None,
+    ):
+        self.module_type = "converter"
         self.format_name = None
         self.output_dir = None
         self.run_name = None
@@ -16,6 +23,24 @@ class BaseConverter(object):
         self.conf: dict = {}
         self.input_path = ""
         self.input_paths: Optional[List[str]] = None
+        if name:
+            self.module_name = name
+        self.title = title
+        if self.title and self.conf is not None:
+            self.conf["title"] = self.title
+        elif self.conf and "title" in self.conf:
+            self.title = self.conf["title"]
+        if module_conf:
+            self.conf = module_conf.copy()
+        if code_version:
+            self.code_version: str = code_version
+        else:
+            if "code_version" in self.conf:
+                self.code_version: str = self.conf["version"]
+            elif "version" in self.conf:
+                self.code_version: str = self.conf["version"]
+            else:
+                self.code_version: str = ""
 
     def check_format(self, *__args__, **__kwargs__):
         pass

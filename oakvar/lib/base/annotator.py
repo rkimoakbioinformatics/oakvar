@@ -732,6 +732,9 @@ class BaseAnnotator(object):
                 d[colname] = value
         return d
 
+    def add_method(self, fn):
+        setattr(self.__class__, fn.__name__, fn)
+
     def save(self, overwrite: bool = False, interactive: bool = False):
         from ..module.local import create_module_files
 

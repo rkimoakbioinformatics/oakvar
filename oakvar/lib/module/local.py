@@ -667,34 +667,91 @@ def remove_code_part_of_module(module_name: str, module_dir=None):
                 remove(item_path)
 
 
-def create_module_files(module, overwrite: bool = False, interactive: bool = False):
+def is_same_class_val(a_val, b_val):
+    from types import FunctionType
+    from inspect import getsource
+
+    a_ty = type(a_val)
+    b_ty = type(b_val)
+    if a_ty != b_ty:
+        return False
+    else:
+        if a_ty == FunctionType:
+            a_code = getsource(a_val)
+            b_code = getsource(b_val)
+            if a_code != b_code:
+                return False
+            else:
+                return True
+        else:
+            if a_val != b_val:
+                return False
+            else:
+                return True
+
+
+def get_code_for_class_val(key, val) -> str:
+    import types
+    from inspect import getsourcelines
+
+    ty = type(val)
+    if ty == types.FunctionType:
+        lines = getsourcelines(val)[0]
+        if not str(val).startswith("<function Annotator"):
+            lines = ["    " + line for line in lines]
+        return "".join(lines)
+    else:
+        if isinstance(val, str):
+            return f'    {key} = "{val}"'
+        else:
+            return f"    {key} = {val}"
+
+
+def get_class_code(cls) -> List[str]:
+    from types import FunctionType
+
+    code = []
+    base_cls = cls.__mro__[1]
+    code.append(f"class {cls.__name__}({base_cls.__name__}):\n")
+    keys_to_write_non_fn = []
+    keys_to_write_fn = []
+    for key in dir(cls):
+        if key.startswith("__"):
+            continue
+        a_val = getattr(cls, key)
+        a_type = type(a_val)
+        if key not in dir(base_cls):
+            if a_type == FunctionType:
+                keys_to_write_fn.append(key)
+            else:
+                keys_to_write_non_fn.append(key)
+            continue
+        ba_val = getattr(base_cls, key)
+        if not is_same_class_val(a_val, ba_val):
+            if a_type == FunctionType:
+                keys_to_write_fn.append(key)
+            else:
+                keys_to_write_non_fn.append(key)
+            continue
+    for key in keys_to_write_non_fn:
+        val = getattr(cls, key)
+        code.append(get_code_for_class_val(key, val))
+    code.append("")
+    for key in keys_to_write_fn:
+        val = getattr(cls, key)
+        code.append(get_code_for_class_val(key, val))
+    return code
+
+
+def create_module_files(instance, overwrite: bool = False, interactive: bool = False):
     from pathlib import Path
     from os import makedirs
-    import inspect
-    import sys
     from oyaml import dump
     from ..exceptions import IncompleteModuleError
     from ..exceptions import SystemMissingException
     from ..system import get_modules_dir
 
-    def inspect_getfile(obj, old_fn=inspect.getfile):
-        if not inspect.isclass(obj):
-            return old_fn(obj)
-        if hasattr(obj, "__module__"):
-            new_obj = sys.modules.get(obj.__module__)
-            if new_obj and hasattr(new_obj, "__file__"):
-                return new_obj.__file__
-        for _, member in inspect.getmembers(obj):
-            if (
-                inspect.isfunction(member)
-                and obj.__qualname__ + "." + member.__name__ == member.__qualname__
-            ):
-                return inspect.getfile(member)
-        else:
-            raise TypeError(f"Source for {obj} not found.")
-
-    inspect.getfile = inspect_getfile
-    cls = module.__class__
+    cls = instance.__class__
     if not cls:
         raise Exception("Only an OakVar class can be saved into module files.")
     modules_dir = get_modules_dir()
@@ -704,16 +761,20 @@ def create_module_files(module, overwrite: bool = False, interactive: bool = Fal
             + "'ov system setup'."
         )
     modules_dir = Path(modules_dir)
-    module_conf = getattr(module, "conf", {})
-    module_name: Optional[str] = getattr(module, "module_name", module_conf.get("name"))
-    module_type: Optional[str] = getattr(module, "module_type", module_conf.get("type"))
-    module_version: Optional[str] = getattr(
-        module, "code_version", module_conf.get("code_version")
+    module_conf = getattr(instance, "conf", {})
+    module_name: Optional[str] = getattr(
+        instance, "module_name", module_conf.get("name")
     )
-    module_title: Optional[str] = getattr(module, "title", module_conf.get("title"))
-    module_level: Optional[str] = getattr(module, "level", module_conf.get("level"))
+    module_type: Optional[str] = getattr(
+        instance, "module_type", module_conf.get("type")
+    )
+    module_version: Optional[str] = getattr(
+        instance, "code_version", module_conf.get("code_version")
+    )
+    module_title: Optional[str] = getattr(instance, "title", module_conf.get("title"))
+    module_level: Optional[str] = getattr(instance, "level", module_conf.get("level"))
     output_columns: Optional[List[Dict[str, Any]]] = getattr(
-        module, "output_columns", module_conf.get("output_columns", [])
+        instance, "output_columns", module_conf.get("output_columns", [])
     )
     if not module_name:
         if interactive:
@@ -728,8 +789,8 @@ def create_module_files(module, overwrite: bool = False, interactive: bool = Fal
             module_version = input("Module version:")
     if not module_version:
         raise IncompleteModuleError(
-            msg="version property does not exist in the module. Consider "
-            + "giving 'version' argument at initializing the module."
+            msg="code_version property does not exist in the module. Consider "
+            + "giving 'code_version' argument at initializing the module."
         )
     if not module_title:
         if interactive:
@@ -746,18 +807,19 @@ def create_module_files(module, overwrite: bool = False, interactive: bool = Fal
             msg="module_type property does not exist in the module."
         )
     module_dir = modules_dir / (module_type + "s") / module_name
-    if not module_level:
-        module_level = input("Module level:")
-    if not module_level:
-        raise IncompleteModuleError(
-            msg="title property does not exist in the module. Consider giving "
-            + "'level' argument at initializing the module."
-        )
-    if not output_columns:
-        raise IncompleteModuleError(
-            msg="output_columns property does not exist in the module. "
-            + "Consider giving 'output_columns' argument at initializing the module."
-        )
+    if module_type in ["annotator", "postaggregator"]:
+        if not module_level:
+            module_level = input("Module level:")
+        if not module_level:
+            raise IncompleteModuleError(
+                msg="title property does not exist in the module. Consider giving "
+                + "'level' argument at initializing the module."
+            )
+        if not output_columns:
+            raise IncompleteModuleError(
+                msg="output_columns property does not exist in the module. "
+                + "Consider giving 'output_columns' argument at initializing the module."
+            )
     if module_dir.exists() and not overwrite:
         raise Exception(f"{module_dir} already exists.")
     makedirs(module_dir, exist_ok=True)
@@ -767,32 +829,29 @@ def create_module_files(module, overwrite: bool = False, interactive: bool = Fal
     md_path = module_dir / (module_name + ".md")
     py_path = module_dir / (module_name + ".py")
     yml_path = module_dir / (module_name + ".yml")
-    with open(md_path, "w") as wf:
-        wf.write(f"# {module_title}\n")
-        desc = module_conf.get("description", "")
-        wf.write(f"\n{desc}\n<br>")
+    template_md_path = (
+        Path(__file__).parent.parent
+        / "assets"
+        / "module_templates"
+        / module_type
+        / "template.md"
+    )
+    with open(md_path, "w") as wf, open(template_md_path) as f:
+        lines = f.readlines()
+        for line in lines:
+            wf.write(line.replace("MODULE_TITLE", module_title))
     with open(py_path, "w") as wf:
-        base_classes = {
-            "converter": "BaseConverter",
-            "mapper": "BaseMapper",
-            "annotator": "BaseAnnotator",
-            "postaggregator": "BasePostAggregator",
-            "reporter": "BaseReporter",
-        }
-        base_class = base_classes.get(module_type)
-        if not base_class:
-            raise IncompleteModuleError(msg="Wrong module type: {module_type}")
-        wf.write("import oakvar\n")
-        wf.write(f"from oakvar import {base_class}\n")
+        base_cls = cls.__mro__[1]
+        wf.write(f"from oakvar import {base_cls.__name__}\n")
         wf.write("\n")
-        source_lines, _ = inspect.getsourcelines(cls)
-        wf.write("".join(source_lines))
+        wf.write("\n".join(get_class_code(cls)))
     with open(yml_path, "w") as wf:
         wf.write(f"name: {module_name}\n")
         wf.write(f"title: {module_title}\n")
         wf.write(f"code_version: {module_version}\n")
         wf.write(f"type: {module_type}\n")
-        wf.write(f"level: {module_level}\n")
+        if module_level:
+            wf.write(f"level: {module_level}\n")
         yml = module_conf.copy()
         if "name" in yml:
             del yml["name"]
@@ -817,4 +876,6 @@ def create_module_files(module, overwrite: bool = False, interactive: bool = Fal
                     break
             if del_idx is not None:
                 del yml["output_columns"][del_idx]
+        if "output_columns" in yml and not yml["output_columns"]:
+            del yml["output_columns"]
         dump(yml, wf)
