@@ -5,6 +5,9 @@ from typing import Dict
 
 
 class BaseAnnotator(object):
+    """BaseAnnotator.
+    """
+
 
     from ..util.util import get_crv_def
     from ..util.util import get_crx_def
@@ -42,6 +45,26 @@ class BaseAnnotator(object):
         module_conf: dict = {},
         code_version: Optional[str] = None,
     ):
+        """__init__.
+
+        Args:
+            input_file (Optional[str]): input_file
+            secondary_inputs:
+            run_name (Optional[str]): run_name
+            output_dir (Optional[str]): output_dir
+            plainoutput (bool): plainoutput
+            logtofile (bool): logtofile
+            module_options (Dict): module_options
+            serveradmindb:
+            name (Optional[str]): name
+            title (Optional[str]): title
+            level (Optional[str]): level
+            input_format (Optional[str]): input_format
+            input_columns (List[str]): input_columns
+            output_columns (List[Dict]): output_columns
+            module_conf (dict): module_conf
+            code_version (Optional[str]): code_version
+        """
         import os
         import sys
         from pathlib import Path
@@ -99,7 +122,7 @@ class BaseAnnotator(object):
                 self.module_name = name
                 self.module_dir = Path(os.getcwd()).absolute()
             else:
-                raise ModuleLoadingError(msg="module_name argument should be given.")
+                raise ModuleLoadingError(msg="name argument should be given.")
             self.conf = module_conf.copy()
         else:
             self.module_name = self.main_fpath.stem
@@ -184,6 +207,8 @@ class BaseAnnotator(object):
         self.cache = ModuleDataCache(self.module_name, module_type=self.module_type)
 
     def set_ref_colname(self):
+        """set_ref_colname.
+        """
         ref_colnames = {
             "variant": "uid",
             "gene": "hugo",
@@ -196,9 +221,21 @@ class BaseAnnotator(object):
             self._id_col_name = None
 
     def summarize_by_gene(self, __hugo__, __input_data__):
+        """summarize_by_gene.
+
+        Args:
+            __hugo__:
+            __input_data__:
+        """
         pass
 
     def _log_exception(self, e, halt=True):
+        """_log_exception.
+
+        Args:
+            e:
+            halt:
+        """
         import traceback
 
         if self.logger:
@@ -212,6 +249,8 @@ class BaseAnnotator(object):
             return True
 
     def _verify_conf(self):
+        """_verify_conf.
+        """
         from ..consts import VARIANT_LEVEL_KEY
         from ..consts import GENE_LEVEL_KEY
 
@@ -257,6 +296,8 @@ class BaseAnnotator(object):
             ]
 
     def parse_cmd_args(self):
+        """parse_cmd_args.
+        """
         import re
         from pathlib import Path
 
@@ -274,6 +315,11 @@ class BaseAnnotator(object):
                 self.output_basename = self.output_basename[:-4]
 
     def handle_jsondata(self, output_dict):
+        """handle_jsondata.
+
+        Args:
+            output_dict:
+        """
         import json
 
         if self.json_colnames is None:
@@ -286,6 +332,11 @@ class BaseAnnotator(object):
         return output_dict
 
     def log_progress(self, lnum):
+        """log_progress.
+
+        Args:
+            lnum:
+        """
         from time import time
         from ..util.run import update_status
         from ..consts import JOB_STATUS_UPDATE_INTERVAL
@@ -302,11 +353,21 @@ class BaseAnnotator(object):
             self.last_status_update_time = cur_time
 
     def is_star_allele(self, input_data):
+        """is_star_allele.
+
+        Args:
+            input_data:
+        """
         if self.conf is None:
             return
         return self.conf["level"] == "variant" and input_data.get("alt_base", "") == "*"
 
     def should_skip_chrom(self, input_data):
+        """should_skip_chrom.
+
+        Args:
+            input_data:
+        """
         if self.conf is None:
             return
         return (
@@ -315,6 +376,11 @@ class BaseAnnotator(object):
         )
 
     def fill_empty_output(self, output_dict):
+        """fill_empty_output.
+
+        Args:
+            output_dict:
+        """
         if self.conf is None:
             return
         for output_col in self.conf["output_columns"]:
@@ -324,6 +390,8 @@ class BaseAnnotator(object):
         return output_dict
 
     def make_json_colnames(self):
+        """make_json_colnames.
+        """
         if self.output_columns is None:
             return
         self.json_colnames = []
@@ -332,13 +400,28 @@ class BaseAnnotator(object):
                 self.json_colnames.append(col["name"])
 
     def annotate_df(self, df):
+        """annotate_df.
+
+        Args:
+            df:
+        """
         _ = df
         raise NotImplementedError("annotate_df method should be implemented.")
 
     def run_df(self, df):
+        """run_df.
+
+        Args:
+            df:
+        """
         return self.annotate_df(df)
 
     def run(self, df=None):
+        """run.
+
+        Args:
+            df:
+        """
         if self.conf is None:
             return
         if self.logger is None:
@@ -411,6 +494,8 @@ class BaseAnnotator(object):
             self.log_handler.close()
 
     def process_file(self):
+        """process_file.
+        """
         assert self._id_col_name, "_id_col_name should not be None."
         for lnum, line, input_data, secondary_data in self._get_input():
             try:
@@ -452,9 +537,16 @@ class BaseAnnotator(object):
                 )
 
     def postprocess(self):
+        """postprocess.
+        """
         pass
 
     async def get_gene_summary_data(self, cf):
+        """get_gene_summary_data.
+
+        Args:
+            cf:
+        """
         hugos = await cf.exec_db(cf.get_filtered_hugo_list)
         output_columns = await cf.exec_db(
             cf.get_stored_output_columns, self.module_name
@@ -482,6 +574,15 @@ class BaseAnnotator(object):
         return data
 
     def _log_runtime_exception(self, lnum, __line__, __input_data__, e, fn=None):
+        """_log_runtime_exception.
+
+        Args:
+            lnum:
+            __line__:
+            __input_data__:
+            e:
+            fn:
+        """
         import traceback
 
         err_str = traceback.format_exc().rstrip()
@@ -501,6 +602,8 @@ class BaseAnnotator(object):
             print(err_logger_s)
 
     def base_setup(self):
+        """base_setup.
+        """
         self._setup_primary_input()
         self._setup_secondary_inputs()
         self._setup_outputs()
@@ -512,6 +615,8 @@ class BaseAnnotator(object):
             )
 
     def _setup_primary_input(self):
+        """_setup_primary_input.
+        """
         if self.conf is None:
             from ..exceptions import SetupError
 
@@ -549,6 +654,8 @@ class BaseAnnotator(object):
                     )
 
     def _setup_secondary_inputs(self):
+        """_setup_secondary_inputs.
+        """
         from ..exceptions import SetupError
 
         if self.conf is None:
@@ -582,6 +689,8 @@ class BaseAnnotator(object):
             self.secondary_readers[sec_name] = fetcher
 
     def _setup_outputs(self):
+        """_setup_outputs.
+        """
         from os import makedirs
         from pathlib import Path
         from ..util.inout import FileWriter
@@ -632,6 +741,8 @@ class BaseAnnotator(object):
             )
 
     def connect_db(self):
+        """connect_db.
+        """
         from pathlib import Path
         import sqlite3
 
@@ -641,6 +752,8 @@ class BaseAnnotator(object):
             self.cursor = self.dbconn.cursor()
 
     def close_db_connection(self):
+        """close_db_connection.
+        """
         if self.cursor is not None:
             self.cursor.close()
         if self.dbconn is not None:
@@ -648,9 +761,13 @@ class BaseAnnotator(object):
 
     # Placeholder, intended to be overridded in derived class
     def setup(self):
+        """setup.
+        """
         pass
 
     def base_cleanup(self):
+        """base_cleanup.
+        """
         if self.output_writer:
             self.output_writer.close()
         # self.invalid_file.close()
@@ -660,15 +777,21 @@ class BaseAnnotator(object):
 
     # Placeholder, intended to be overridden in derived class
     def cleanup(self):
+        """cleanup.
+        """
         pass
 
     def _setup_logger(self):
+        """_setup_logger.
+        """
         from logging import getLogger
 
         self.logger = getLogger("oakvar." + self.module_name)
         self.error_logger = getLogger("err." + self.module_name)
 
     def _get_input(self):
+        """_get_input.
+        """
         from ..util.inout import AllMappingsParser
         from ..consts import all_mappings_col_name
         from ..consts import mapping_parser_name
@@ -702,6 +825,12 @@ class BaseAnnotator(object):
                 continue
 
     def annotate(self, input_data, secondary_data=None):
+        """annotate.
+
+        Args:
+            input_data:
+            secondary_data:
+        """
         return {
             "default__annotation": "no annotate has been defined",
             "input_data": input_data,
@@ -709,6 +838,11 @@ class BaseAnnotator(object):
         }
 
     def live_report_substitute(self, d):
+        """live_report_substitute.
+
+        Args:
+            d:
+        """
         import re
         from ..exceptions import SetupError
 
@@ -733,16 +867,37 @@ class BaseAnnotator(object):
         return d
 
     def add_method(self, fn):
+        """add_method.
+
+        Args:
+            fn:
+        """
         setattr(self.__class__, fn.__name__, fn)
 
     def save(self, overwrite: bool = False, interactive: bool = False):
+        """save.
+
+        Args:
+            overwrite (bool): overwrite
+            interactive (bool): interactive
+        """
         from ..module.local import create_module_files
 
         create_module_files(self, overwrite=overwrite, interactive=interactive)
 
 
 class SecondaryInputFetcher:
+    """SecondaryInputFetcher.
+    """
+
     def __init__(self, input_path, key_col, fetch_cols=[]):
+        """__init__.
+
+        Args:
+            input_path:
+            key_col:
+            fetch_cols:
+        """
         from ..util.inout import FileReader
         from ..exceptions import ConfigurationError
 
@@ -771,6 +926,8 @@ class SecondaryInputFetcher:
         self.load_input()
 
     def load_input(self):
+        """load_input.
+        """
         for _, _, all_col_data in self.input_reader.loop_data():
             key_data = all_col_data.get(self.key_col)
             if key_data not in self.data:
@@ -782,6 +939,11 @@ class SecondaryInputFetcher:
             self.data[key_data].append(fetch_col_data)
 
     def get(self, key_data):
+        """get.
+
+        Args:
+            key_data:
+        """
         if key_data in self.data:
             return self.data[key_data]
         else:

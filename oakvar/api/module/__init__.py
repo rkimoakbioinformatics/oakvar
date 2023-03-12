@@ -177,10 +177,9 @@ def info(
             }
             del ret["conf"]
     ret["installed"] = installed
-    if installed:
-        if local and isinstance(local_info, LocalModule):
-            ret["installed_version"] = local_info.code_version
-            ret["location"] = local_info.directory
+    if installed and local_info:
+        ret["installed_version"] = local_info.code_version
+        ret["location"] = local_info.directory
     else:
         pass
     if (
