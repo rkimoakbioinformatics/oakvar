@@ -41,8 +41,8 @@ class BaseAnnotator(object):
         level: Optional[str] = None,
         input_format: Optional[str] = None,
         input_columns: List[str] = [],
-        output_columns: List[Dict] = [],
-        module_conf: dict = {},
+        output_columns: List[Dict[str, Any]] = [],
+        module_conf: Dict[str, Any] = {},
         code_version: Optional[str] = None,
     ):
         """__init__.
@@ -107,7 +107,7 @@ class BaseAnnotator(object):
         self.primary_input_reader = None
         self.output_path = None
         self.last_status_update_time = None
-        self.output_columns = None
+        self.output_columns: Optional[List[Dict[str, Any]]] = None
         self.secondary_readers = {}
         self.output_writer = None
         self.log_path = None
@@ -117,6 +117,7 @@ class BaseAnnotator(object):
         self.serveradmindb = serveradmindb
         self.supported_chroms = set(cannonical_chroms)
         self.module_type = "annotator"
+        self.conf = {}
         if not self.main_fpath:
             if name:
                 self.module_name = name
@@ -132,14 +133,16 @@ class BaseAnnotator(object):
                 module_type=self.module_type,
                 module_dir=self.module_dir,
             )
+            if not self.conf:
+                self.conf = {}
         self.level = level
-        if not self.level and self.conf and "level" in self.conf:
+        if not self.level and "level" in self.conf:
             self.level = self.conf.get("level")
         if not self.level:
             raise ModuleLoadingError(
                 msg="level or module_conf with level should be given."
             )
-        if self.conf is not None and "level" not in self.conf:
+        if "level" not in self.conf:
             self.conf["level"] = self.level
         if not input_format:
             if self.level == VARIANT_LEVEL:
@@ -160,28 +163,23 @@ class BaseAnnotator(object):
                     + f"{valid_formats}."
                 )
         self.input_columns = input_columns.copy()
-        if self.input_columns is not None and self.conf is not None:
+        if self.input_columns is not None:
             self.conf["input_columns"] = self.input_columns
-        elif not self.input_columns and self.conf and "input_columns" in self.conf:
+        elif not self.input_columns and "input_columns" in self.conf:
             self.input_columns = self.conf["input_columns"]
-        self.output_columns = output_columns.copy()
-        if (
-            self.output_columns is not None
-            and self.conf is not None
-            and "output_columns" not in self.conf
-        ):
-            self.conf["output_columns"] = self.output_columns
-        elif not self.output_columns and self.conf and "output_columns" in self.conf:
-            self.output_columns = self.conf["output_columns"]
+        if output_columns:
+            self.set_output_columns(output_columns.copy())
+        elif "output_columns" in self.conf:
+            self.set_output_columns(self.conf["output_columns"].copy())
         self.title = title
-        if self.title and self.conf is not None:
+        if self.title:
             self.conf["title"] = self.title
-        elif self.conf and "title" in self.conf:
+        elif "title" in self.conf:
             self.title = self.conf["title"]
         self.annotator_name = self.module_name
         self.data_dir = self.module_dir / "data"
         self._setup_logger()
-        if self.conf is None:
+        if not self.conf:
             raise ModuleLoadingError(module_name=self.module_name)
         self.set_ref_colname()
         self._verify_conf()
@@ -205,6 +203,24 @@ class BaseAnnotator(object):
             else:
                 self.code_version: str = ""
         self.cache = ModuleDataCache(self.module_name, module_type=self.module_type)
+
+    def set_output_columns(self, output_columns: List[Dict[str, Any]]):
+        if not self.level:
+            return
+        key_col_name: str = self.id_col_defs[self.level].get("name", "")
+        if not key_col_name:
+            return
+        key_col_found = False
+        for col_def in output_columns:
+            if col_def.get("name") == key_col_name:
+                key_col_found = True
+                break
+        if not key_col_found:
+            output_columns = [self.id_col_defs[self.level]] + output_columns
+        self.output_columns = output_columns
+        if not self.conf:
+            self.conf = {}
+        self.conf["output_columns"] = output_columns
 
     def set_ref_colname(self):
         """set_ref_colname.
@@ -469,7 +485,8 @@ class BaseAnnotator(object):
             )
             self.base_setup()
             self.last_status_update_time = time()
-            self.output_columns = self.conf["output_columns"]
+            if not self.output_columns:
+                self.output_columns = self.conf["output_columns"]
             self.make_json_colnames()
             self.process_file()
             self.postprocess()

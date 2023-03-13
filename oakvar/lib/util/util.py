@@ -461,7 +461,7 @@ def pw_is_valid(pw: Optional[str]) -> bool:
         return False
 
 
-def load_yml_conf(yml_conf_path: Path):
+def load_yml_conf(yml_conf_path: Path) -> Dict[str, Any]:
     """load_yml_conf.
 
     Args:

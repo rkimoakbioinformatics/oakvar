@@ -264,7 +264,7 @@ def get_module_dir(module_name: str, module_type: str = "") -> Optional[Path]:
 
 def get_module_conf(
     module_name, module_type: str = "", module_dir: Optional[Path] = None
-):
+) -> Optional[Dict[str, Any]]:
     from pathlib import Path
     from ..util.util import load_yml_conf
 
@@ -747,6 +747,9 @@ def get_class_code(cls) -> List[str]:
 def create_module_files(instance, overwrite: bool = False, interactive: bool = False):
     from pathlib import Path
     from os import makedirs
+    from os import getcwd
+    from shutil import copytree
+    from shutil import ignore_patterns
     from oyaml import dump
     from ..exceptions import IncompleteModuleError
     from ..exceptions import SystemMissingException
@@ -881,3 +884,7 @@ def create_module_files(instance, overwrite: bool = False, interactive: bool = F
             del yml["output_columns"]
         if yml:
             dump(yml, wf)
+    cwd = Path(getcwd())
+    data_dir = cwd / "data"
+    if data_dir.exists():
+        copytree(data_dir, module_dir / "data", ignore=ignore_patterns(".ipynb_checkpoints"), dirs_exist_ok=True)
