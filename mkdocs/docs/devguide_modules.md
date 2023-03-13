@@ -1,3 +1,5 @@
+- ##### [Check out a guide on interactive annotation module development](https://medium.com/@ryanggukkim/interactively-make-variant-annotation-modules-with-oakvar-7719e2c8bf49).
+
 OakVar's functionalities are mostly performed by Python modules. OakVar orchestrates their execution as well as their management.
 
 To understand OakVar's modules, let's first see which modules are already installed in the system.
