@@ -4,7 +4,9 @@ def init_worker():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
-def annot_from_queue(start_queue, end_queue, queue_populated, serveradmindb, logtofile):
+def annot_from_queue(
+    start_queue, end_queue, queue_populated, serveradmindb, logtofile, log_path
+):
     from ..util.util import load_class
     from logging import getLogger, StreamHandler, FileHandler, Formatter
     from queue import Empty
@@ -18,17 +20,23 @@ def annot_from_queue(start_queue, end_queue, queue_populated, serveradmindb, log
                 break
             else:
                 continue
+        logger = None
         module, kwargs = task
-        logger = getLogger(module.name)
-        if logtofile:
-            log_handler = FileHandler(kwargs["log_path"], "a")
-        else:
-            log_handler = StreamHandler()
-        formatter = Formatter(
-            "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
-        )
-        log_handler.setFormatter(formatter)
-        logger.addHandler(log_handler)
+        try:
+            logger = getLogger(module.name)
+            if logtofile:
+                log_handler = FileHandler(log_path, "a")
+            else:
+                log_handler = StreamHandler()
+            formatter = Formatter(
+                "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
+            )
+            log_handler.setFormatter(formatter)
+            logger.addHandler(log_handler)
+        except Exception:
+            import traceback
+
+            traceback.print_exc()
         try:
             kwargs["serveradmindb"] = serveradmindb
             annotator_class = load_class(module.script_path, "Annotator")
@@ -39,7 +47,8 @@ def annot_from_queue(start_queue, end_queue, queue_populated, serveradmindb, log
             end_queue.put(module.name)
         except Exception:
             err = ModuleLoadingError(module_name=module.name)
-            logger.exception(err)
+            if logger:
+                logger.exception(err)
 
 
 def mapper_runner(

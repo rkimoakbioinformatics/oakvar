@@ -229,11 +229,11 @@ class Runner(object):
         self.error_logger = logging.getLogger("err")
         self.error_logger.setLevel(self.args.loglevel)
         if self.args.logtofile:
-            error_log_path = Path(output_dir) / (run_name + ".err")
-            if error_log_path.exists():
-                remove(error_log_path)
+            self.error_log_path = Path(output_dir) / (run_name + ".err")
+            if self.error_log_path.exists():
+                remove(self.error_log_path)
             self.error_log_handler = logging.FileHandler(
-                error_log_path, mode=self.logmode
+                self.error_log_path, mode=self.logmode
             )
         else:
             self.error_log_handler = logging.StreamHandler(stream=stderr)
@@ -1823,6 +1823,7 @@ class Runner(object):
                 queue_populated,
                 self.serveradmindb,
                 self.args.logtofile,
+                self.log_path
             ]
         ] * num_workers
         with Pool(num_workers, init_worker) as pool:
