@@ -1,5 +1,7 @@
 from typing import Optional
+from typing import Tuple
 from typing import List
+from typing import Dict
 from pathlib import Path
 from . import local
 from . import remote
@@ -177,7 +179,7 @@ def list_remote(module_type=None):
     return module_list(module_type=module_type)
 
 
-def update_available(module_name: str):
+def update_available(module_name: str) -> Tuple[bool, str, str]:
     from packaging.version import Version
     from .local import get_local_module_info
     from .remote import get_remote_module_info
@@ -190,33 +192,35 @@ def update_available(module_name: str):
         or not local_info.code_version
         or not remote_info.latest_code_version
     ):
-        return False
+        return False, "", ""
     if Version(remote_info.latest_code_version) > Version(local_info.code_version):
-        return True
+        return True, local_info.code_version, remote_info.latest_code_version
     else:
-        return False
+        return False, "", ""
 
 
-def get_updatable(module_names: List[str] = []):
+def get_updatable(module_names: List[str] = []) -> Dict[str, Tuple[str, str]]:
     from .local import get_local_module_info
 
     if not module_names:
         module_names = list_local()
-    to_update = []
+    to_update: Dict[str, Tuple[str, str]] = {}
     for mn in module_names:
         local_info = get_local_module_info(mn)
         if not local_info:
             continue
-        if update_available(mn):
-            to_update.append(mn)
+        avail, local_version, remote_version = update_available(mn)
+        if avail:
+            to_update[mn] = (local_version, remote_version)
         requires = local_info.conf.get("requires")
         if not requires:
             continue
         for req_mn in requires:
             if req_mn in to_update:
                 continue
-            if update_available(req_mn):
-                to_update.append(req_mn)
+            avail, local_version, remote_version = update_available(req_mn)
+            if avail:
+                to_update[req_mn] = (local_version, remote_version)
     return to_update
 
 
