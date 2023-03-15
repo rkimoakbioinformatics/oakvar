@@ -324,7 +324,7 @@ def report(
             spec.loader.exec_module(module)
             reporter_module_options = module_options.get(module_name, {})
             reporter = module.Reporter(
-                dbpath,
+                dbpath=dbpath,
                 report_types=report_types,
                 filterpath=filterpath,
                 filter=filter,
