@@ -8,7 +8,7 @@ from typing import List
 class BaseReporter:
     def __init__(
         self,
-        dbpath: str,
+        dbpath: str="",
         report_types: List[str] = [],
         filterpath: Optional[str] = None,
         filter=None,
@@ -965,12 +965,12 @@ class BaseReporter:
             v = False
         return v
 
-    async def set_dbpath(self, dbpath=None):
+    async def set_dbpath(self, dbpath: str=""):
         from os.path import exists
         from ..exceptions import NoInput
         from ..exceptions import WrongInput
 
-        if dbpath is not None:
+        if dbpath:
             self.dbpath = dbpath
         if not self.dbpath:
             raise NoInput()
