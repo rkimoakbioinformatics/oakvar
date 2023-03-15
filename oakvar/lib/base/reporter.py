@@ -970,7 +970,7 @@ class BaseReporter:
         from ..exceptions import NoInput
         from ..exceptions import WrongInput
 
-        if not dbpath:
+        if dbpath:
             self.dbpath = dbpath
         if not self.dbpath:
             raise NoInput()
