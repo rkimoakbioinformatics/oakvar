@@ -406,8 +406,8 @@ class ReportFilter:
 
     async def filtertable_exists(self, cursor_read=Any, cursor_write=Any):
         _ = cursor_write
-        sql = 'select * from viewersetup where datatype="filter" and " +\
-                f"name="{self.filtername}"'
+        sql = 'select * from viewersetup where datatype="filter" and ' +\
+                f'name="{self.filtername}"'
         await cursor_read.execute(sql)
         row = await cursor_read.fetchone()
         if row is None:

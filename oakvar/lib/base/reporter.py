@@ -670,7 +670,7 @@ class BaseReporter:
             group_names = [d.get("name") for d in self.columngroups[level]]
         for group_name in group_names:
             sql = (
-                "select col_def from {header_table} where col_name "
+                f"select col_def from {header_table} where col_name "
                 + f"like '{group_name}__%'"
             )
             await cursor.execute(sql)
