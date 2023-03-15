@@ -687,7 +687,7 @@ class Tester:
         try:
             v1 = float(str_val1)
             v2 = float(str_val2)
-        except:
+        except Exception:
             return True
         if abs(v1 - v2) < 0.002:
             return False

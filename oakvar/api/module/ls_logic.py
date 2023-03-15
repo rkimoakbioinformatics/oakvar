@@ -22,16 +22,18 @@ def list_modules(
     all_toks_json = []
     if search_store:
         if module_types:
-            l = []
+            module_names_to_search = []
             for mt in module_types:
-                l.extend(search_remote(*module_names, module_type=mt))
+                module_names_to_search.extend(
+                    search_remote(*module_names, module_type=mt)
+                )
         else:
-            l = search_remote(*module_names)
+            module_names_to_search = search_remote(*module_names)
     else:
-        l = search_local(*module_names)
-    if not l:
+        module_names_to_search = search_local(*module_names)
+    if not module_names_to_search:
         return all_toks_json
-    for module_name in l:
+    for module_name in module_names_to_search:
         if search_store:
             module_info = get_remote_module_info_ls(module_name)
             if module_info:

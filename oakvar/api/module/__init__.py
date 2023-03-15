@@ -118,7 +118,6 @@ def info(
     """
     from ...lib.module.local import get_local_module_info
     from ...lib.module.remote import get_remote_module_info
-    from ...lib.module.local import LocalModule
     from ...lib.module.remote import get_readme as get_remote_readme
     from ...lib.module.local import get_readme as get_local_readme
     from ...lib.module.local import get_remote_manifest_from_local
