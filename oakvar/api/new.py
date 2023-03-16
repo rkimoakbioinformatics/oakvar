@@ -45,7 +45,7 @@ def module(module_name: str, module_type: str, outer=None) -> Optional[Path]:
         if outer:
             outer.error(e)
         raise e
-    ret = create_new_module(module_name, module_type, outer=outer)
+    ret = create_new_module(module_name, module_type + "s", outer=outer)
     if not ret:
         return
     module_info = get_local_module_info(module_name)
