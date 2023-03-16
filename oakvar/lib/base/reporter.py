@@ -805,7 +805,10 @@ class BaseReporter:
             module = local_modules[module_name]
             if "can_summarize_by_gene" in module.conf:
                 summarizer_module_names.append(module_name)
-        local_modules[self.mapper_name] = get_local_module_info(self.mapper_name)
+        mapper = get_local_module_info(self.mapper_name)
+        if not mapper:
+            raise ModuleLoadingError(module_name=self.mapper_name)
+        local_modules[self.mapper_name] = mapper
         summarizer_module_names = [self.mapper_name] + summarizer_module_names
         for module_name in summarizer_module_names:
             if not module_name:

@@ -7,6 +7,7 @@ from . import inout
 from . import run
 from . import seq
 from . import util
+from . import module
 from .util import get_ucsc_bins
 
 _ = (
@@ -19,5 +20,6 @@ _ = (
     or run
     or seq
     or util
+    or module
     or get_ucsc_bins
 )

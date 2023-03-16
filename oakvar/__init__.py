@@ -1,3 +1,5 @@
+from typing import Optional
+from typing import Type
 from . import api
 from .cli import __main__ as cli
 from . import lib
@@ -106,7 +108,7 @@ def get_mapper(module_name, input_file=None):
     return module
 
 
-def get_module(module_name, module_type: str = ""):
+def get_module(module_name, module_type: str = "") -> Optional[Type]:
     from os.path import dirname
     from .lib.module.local import get_local_module_info
     from .lib.module.local import get_module_conf
@@ -118,6 +120,8 @@ def get_module(module_name, module_type: str = ""):
     if module_info is not None:
         script_path = module_info.script_path
         ModuleClass = load_class(script_path)
+        if not ModuleClass:
+            return None
         ModuleClass.script_path = script_path
         ModuleClass.module_name = module_name
         ModuleClass.module_dir = dirname(script_path)

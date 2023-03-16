@@ -1,27 +1,31 @@
+from typing import Dict
+from pathlib import Path
 from collections.abc import MutableMapping
 
 
 class LocalModuleCache(MutableMapping):
+    from .local import LocalModule
+
     def __init__(self, *args, **kwargs):
+        from .local import LocalModule
+
         self.version = None
-        self.store = dict()
+        self.store: Dict[str, LocalModule] = dict()
         self.update(dict(*args, **kwargs))  # use the free update to set keys
 
-    def __getitem__(self, key):
-        from pathlib import Path
+    def __getitem__(self, key: str) -> LocalModule:
         from .local import LocalModule
 
         if key not in self.store:
             raise KeyError(key)
         if not isinstance(self.store[key], LocalModule):
-            self.store[key] = LocalModule(Path(self.store[key]))
+            self.store[key] = LocalModule(Path(key))
         return self.store[key]
 
-    def __setitem__(self, key, value):
-        from os.path import isdir
+    def __setitem__(self, key, value: LocalModule):
         from .local import LocalModule
 
-        if not (isinstance(value, LocalModule) or isdir(value)):
+        if not (isinstance(value, LocalModule) or Path(value).is_dir()):
             raise ValueError(value)
         self.store[key] = value
 
@@ -31,7 +35,7 @@ class LocalModuleCache(MutableMapping):
     def __iter__(self):
         return iter(self.store)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.store)
 
 
@@ -51,13 +55,14 @@ class ModuleCache(object):
 
     def add_local(self, module_name):
         from .local import get_module_dir
+        from .local import LocalModule
 
         # from .local import get_local_module_info
         mdir = get_module_dir(module_name)
         if not mdir:
             return
         # module = get_local_module_info(module_name)
-        self.local[module_name] = mdir
+        self.local[module_name] = LocalModule(mdir)
         return mdir
 
     def remove_local(self, module_name):
@@ -65,40 +70,42 @@ class ModuleCache(object):
             del self.local[module_name]
 
     def update_local(self):
-        import os
         from ..consts import install_tempdir_name
         from ..system import get_modules_dir
         from ..exceptions import SystemMissingException
+        from .local import LocalModule
 
         self.local = LocalModuleCache()
         self._modules_dir = get_modules_dir()
         if self._modules_dir is None:
             raise SystemMissingException(msg="Modules directory is not set")
-        if not (os.path.exists(self._modules_dir)):
+        if not self._modules_dir.exists():
             return None
-        for mg in os.listdir(self._modules_dir):
-            if mg == install_tempdir_name:
+        for mg in self._modules_dir.iterdir():
+            basename = mg.name
+            if basename == install_tempdir_name:
                 continue
-            mg_path = os.path.join(self._modules_dir, mg)
-            basename = os.path.basename(mg_path)
+            mg_path = self._modules_dir / mg
             if (
-                not (os.path.isdir(mg_path))
+                not mg_path.is_dir()
                 or basename.startswith(".")
                 or basename.startswith("_")
             ):
                 continue
-            for module_name in os.listdir(mg_path):
+            for path in mg_path.iterdir():
+                module_name = path.name
                 if module_name == "hgvs":  # deprecate hgvs
                     continue
-                module_dir = os.path.join(mg_path, module_name)
+                module_dir = mg_path / module_name
+                yml_path = module_dir / (module_name + ".yml")
                 if (
-                    module_dir.startswith(".") is False
-                    and os.path.isdir(module_dir)
+                    module_name.startswith(".") is False
+                    and module_dir.is_dir()
                     and not module_name.startswith(".")
                     and not module_name.startswith("_")
-                    and os.path.exists(os.path.join(module_dir, module_name + ".yml"))
+                    and yml_path.exists()
                 ):
-                    self.local[module_name] = module_dir
+                    self.local[path.name] = LocalModule(Path(module_dir))
 
     def get_remote_readme(self, module_name, version=None):
         from .remote import get_readme

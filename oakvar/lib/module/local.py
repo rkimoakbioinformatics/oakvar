@@ -45,7 +45,7 @@ class LocalModule(object):
         self.conf: dict = {}
         if self.conf_exists:
             self.conf = load_yml_conf(self.conf_path)
-        self.type = self.conf.get("type")
+        self.type: str = self.conf.get("type") or ""
         self.code_version: Optional[str] = self.conf.get("code_version")
         if not self.code_version:
             self.code_version = self.conf.get("version")
@@ -187,15 +187,18 @@ def get_local_module_info_by_name(module_name) -> Optional[LocalModule]:
     return get_local_module_info(module_name)
 
 
-def get_local_module_infos_of_type(t, update=False):
+def get_local_module_infos_of_type(module_type: str, update=False) -> Dict[str, LocalModule]:
     from .cache import get_module_cache
+    from .cache import LocalModuleCache
 
-    modules = {}
+    modules: Dict[str, LocalModule] = {}
     if update:
         get_module_cache().update_local()
-    for module_name in get_module_cache().get_local():
-        if get_module_cache().get_local()[module_name].type == t:
-            modules[module_name] = get_module_cache().get_local()[module_name]
+    local_module_cache: LocalModuleCache = get_module_cache().get_local()
+    for module_name in local_module_cache:
+        local_module = local_module_cache[module_name]
+        if local_module.type == module_type:
+            modules[module_name] = local_module
     return modules
 
 
@@ -235,6 +238,13 @@ def get_new_module_dir(
     if not module_dir.exists():
         module_dir.mkdir(parents=True)
     return str(module_dir)
+
+
+def get_module_py(module_name: str, module_type: str = "") -> Optional[Path]:
+    module_dir = get_module_dir(module_name, module_type=module_type)
+    if not module_dir:
+        return None
+    return module_dir / (module_name + ".py")
 
 
 def get_module_dir(module_name: str, module_type: str = "") -> Optional[Path]:
@@ -635,6 +645,21 @@ def pack_module(
         data_zip_path = None
     return {"code": code_zip_path, "data": data_zip_path}
 
+
+def get_module_names_for_module_type(module_type: str) -> List[str]:
+    from ..system import get_modules_dir
+
+    module_names = []
+    modules_dir = get_modules_dir()
+    if not modules_dir:
+        return module_names
+    module_type_dir = modules_dir / (module_type + "s")
+    if not module_type_dir.exists():
+        return module_names
+    for item in module_type_dir.iterdir():
+        if item.is_dir():
+            module_names.append(item.name)
+    return module_names
 
 def load_modules(annotators: list = [], mapper: Optional[str] = None, input_file=None):
     from ... import get_mapper

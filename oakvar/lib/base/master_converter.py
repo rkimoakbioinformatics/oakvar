@@ -36,7 +36,7 @@ class MasterConverter(object):
         self.converters = {}
         self.available_input_formats = []
         self.pipeinput = False
-        self.input_paths = None
+        self.input_paths: List[str] = []
         self.input_dir = None
         self.input_path_dict = {}
         self.input_path_dict2 = {}
@@ -223,6 +223,11 @@ class MasterConverter(object):
             "converter"
         ).items():
             cls = load_class(module_info.script_path)
+            if not cls:
+                if self.outer:
+                    self.outer.error(f"Skipping {module_info.name} "
+                            "as it was not found.")
+                continue
             converter = cls()
             # TODO: backward compatibility
             converter.output_dir = None
@@ -237,8 +242,8 @@ class MasterConverter(object):
                 converter.format_name = module_name.split("-")[0]
             if not hasattr(converter, "format_name"):
                 if self.outer:
-                    self.outer.write(
-                        "Skipping {module_info.name} as it does not "
+                    self.outer.error(
+                        f"Skipping {module_info.name} as it does not "
                         + "have format_name defined."
                     )
                 continue
@@ -247,7 +252,7 @@ class MasterConverter(object):
                 self.converters[converter.format_name] = converter
             else:
                 if self.outer:
-                    self.outer.write(
+                    self.outer.error(
                         f"{module_info.name} is skipped because "
                         + f"{converter.format_name} is already handled by "
                         + f"{self.converters[converter.format_name].name}."
@@ -456,8 +461,7 @@ class MasterConverter(object):
         log_module(converter, self.logger)
         self.error_logger = getLogger("err." + converter.module_name)
         converter.input_path = input_path
-        converter.input_paths = self.input_paths
-        converter.setup(f)
+        converter.inputs = self.input_paths
         genome_assembly = self.get_genome_assembly(converter)
         self.genome_assemblies.append(genome_assembly)
         self.log_input_and_genome_assembly(input_path, genome_assembly, converter)

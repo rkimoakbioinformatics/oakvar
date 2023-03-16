@@ -2,6 +2,7 @@ from typing import Any
 from typing import List
 from typing import Dict
 from typing import Optional
+from typing import Type
 from pathlib import Path
 from polars import DataFrame
 
@@ -47,7 +48,7 @@ def get_ucsc_bins(start, stop=None):
     ]
 
 
-def load_class(path, class_name=None):
+def load_class(path, class_name=None) -> Optional[Type]:
     """load_class.
 
     Args:
@@ -65,7 +66,7 @@ def load_class(path, class_name=None):
     path_dir = str(p.parent)
     sys.path = [path_dir] + sys.path
     module = None
-    module_class = None
+    module_class: Optional[Type] = None
     module_name = p.stem
     try:
         module = import_module(module_name)

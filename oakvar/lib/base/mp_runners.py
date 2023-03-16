@@ -42,6 +42,11 @@ def annot_from_queue(
             annotator_class = load_class(module.script_path, "Annotator")
             if not annotator_class:
                 annotator_class = load_class(module.script_path, "CravatAnnotator")
+            if not annotator_class:
+                err = ModuleLoadingError(module_name=module.name)
+                if logger:
+                    logger.exception(err)
+                continue
             annotator = annotator_class(**kwargs)
             annotator.run()
             end_queue.put(module.name)
@@ -64,6 +69,7 @@ def mapper_runner(
 ):
     from ..util.util import load_class
     from ..module.local import get_local_module_info
+    from ..exceptions import ModuleLoadingError
 
     output = None
     module = get_local_module_info(module_name)
@@ -80,6 +86,8 @@ def mapper_runner(
             kwargs["primary_transcript"] = primary_transcript.split(";")
         kwargs["serveradmindb"] = serveradmindb
         genemapper_class = load_class(module.script_path, "Mapper")
+        if not genemapper_class:
+            raise ModuleLoadingError(module_name=module.name)
         genemapper = genemapper_class(**kwargs)
         output = genemapper.run(pos_no)
     return output
