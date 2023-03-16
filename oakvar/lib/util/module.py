@@ -28,3 +28,25 @@ def get_converter_for_input_file(input_file: Optional[Path]) -> Optional[Type]:
         if module.check_format(input_file):
             return module
     return None
+
+
+def get_annotator(name: str, *args, **kwargs) -> Optional[Type]:
+    from .util import load_class
+    from ..module.local import get_module_py
+
+    cls = load_class(get_module_py(name, module_type="annotator"))
+    if not cls:
+        return None
+    module = cls(*args, name=name, **kwargs)
+    return module
+
+
+def get_mapper(name: str, *args, **kwargs) -> Optional[Type]:
+    from .util import load_class
+    from ..module.local import get_module_py
+
+    cls = load_class(get_module_py(name, module_type="mapper"))
+    if not cls:
+        return None
+    module = cls(*args, name=name, **kwargs)
+    return module

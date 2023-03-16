@@ -2,6 +2,7 @@ from typing import Optional
 from typing import Any
 from typing import List
 from typing import Dict
+import polars as pl
 
 
 class BaseAnnotator(object):
@@ -9,6 +10,7 @@ class BaseAnnotator(object):
     """
 
 
+    import polars as pl
     from ..util.util import get_crv_def
     from ..util.util import get_crx_def
     from ..util.util import get_crg_def
@@ -424,13 +426,49 @@ class BaseAnnotator(object):
         _ = df
         raise NotImplementedError("annotate_df method should be implemented.")
 
-    def run_df(self, df):
+    def run_df(self, df: pl.DataFrame):
         """run_df.
 
         Args:
             df:
         """
-        return self.annotate_df(df)
+        if not self.conf:
+            return
+        var_ld: Dict[str, List[Any]] = {}
+        col_names = [v.get("name") for v in self.conf.get("output_columns", []) if v.get("name") != "uid"]
+        full_col_names = [f"{self.module_name}__{col_name}" for col_name in col_names]
+        for full_col_name in full_col_names:
+            var_ld[full_col_name] = []
+        self.connect_db()
+        self.setup()
+        if not hasattr(self, "supported_chroms"):
+            self.supported_chroms = set(
+                ["chr" + str(n) for n in range(1, 23)] + ["chrX", "chrY"]
+            )
+        if not self.output_columns:
+            self.output_columns = self.conf["output_columns"]
+        self.make_json_colnames()
+        len_col_names = len(col_names)
+        for row in df.iter_rows(named=True):
+            input_data: Dict[str, Dict[str, Any]] = {}
+            for k, v in row.items():
+                if "__" in k:
+                    module_name, col_name = k.split("__")
+                    if module_name not in input_data:
+                        input_data[module_name] = {}
+                    input_data[module_name][col_name] = v
+                else:
+                    input_data[k] = v
+            output_dict = self.annotate(input_data)
+            for i in range(len_col_names):
+                if not output_dict:
+                    var_ld[full_col_names[i]].append(None)
+                else:
+                    var_ld[full_col_names[i]].append(output_dict.get(col_names[i]))
+        for full_col_name in full_col_names:
+            df.insert_at_idx(-1, pl.Series(full_col_name, var_ld[full_col_name]))
+        return df
+
 
     def run(self, df=None):
         """run.

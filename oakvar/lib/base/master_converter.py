@@ -324,7 +324,7 @@ class MasterConverter(object):
                         break
             if converter:
                 if self.logger:
-                    self.logger.info(f"Using {converter.module_name} for {f.name}")
+                    self.logger.info(f"Using {converter.name} for {f.name}")
                 return converter
         return None
 
@@ -453,13 +453,13 @@ class MasterConverter(object):
         converter = self.converter_by_input_path[input_path]
         if not converter:
             raise NoConverterFound(input_path)
-        if not converter.module_name or not converter.format_name:
+        if not converter.name or not converter.format_name:
             raise NoConverterFound(input_path)
         self.input_formats.append(converter.format_name)
         self.fileno += 1
         self.set_converter_properties(converter)
         log_module(converter, self.logger)
-        self.error_logger = getLogger("err." + converter.module_name)
+        self.error_logger = getLogger("err." + converter.name)
         converter.input_path = input_path
         converter.inputs = self.input_paths
         genome_assembly = self.get_genome_assembly(converter)

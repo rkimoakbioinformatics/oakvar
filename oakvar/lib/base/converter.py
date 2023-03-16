@@ -422,11 +422,11 @@ class BaseConverter(object):
             except Exception as e:
                 self._log_conversion_error(self.read_lnum, e, full_line_error=False)
         self.handle_genotype(variant)
-        var_ld["uid"].append(variant["uid"])
-        var_ld["chrom"].append(variant["chrom"])
-        var_ld["pos"].append(variant["pos"])
-        var_ld["ref_base"].append(variant["ref_base"])
-        var_ld["alt_base"].append(variant["alt_base"])
+        var_ld["base__uid"].append(variant["uid"])
+        var_ld["base__chrom"].append(variant["chrom"])
+        var_ld["base__pos"].append(variant["pos"])
+        var_ld["base__ref_base"].append(variant["ref_base"])
+        var_ld["base__alt_base"].append(variant["alt_base"])
         if unique:
             self.uid += 1
 
@@ -485,7 +485,7 @@ class BaseConverter(object):
                     update_status(
                         status, logger=self.logger, serveradmindb=self.serveradmindb
                     )
-            if var_ld["uid"]:
+            if var_ld["base__uid"]:
                 df = self.get_df_from_var_ld(var_ld)
                 yield df
                 self.initialize_var_ld(var_ld)
@@ -507,19 +507,19 @@ class BaseConverter(object):
         return ret
 
     def initialize_var_ld(self, var_ld):
-        var_ld["uid"] = []
-        var_ld["chrom"] = []
-        var_ld["pos"] = []
-        var_ld["ref_base"] = []
-        var_ld["alt_base"] = []
+        var_ld["base__uid"] = []
+        var_ld["base__chrom"] = []
+        var_ld["base__pos"] = []
+        var_ld["base__ref_base"] = []
+        var_ld["base__alt_base"] = []
 
     def get_df_from_var_ld(self, var_ld: Dict[str, List[Any]]) -> pl.DataFrame:
         df: pl.DataFrame = pl.DataFrame([
-            pl.Series("uid", var_ld["uid"]),
-            pl.Series("chrom", var_ld["chrom"]),
-            pl.Series("pos", var_ld["pos"]),
-            pl.Series("ref_base", var_ld["ref_base"]),
-            pl.Series("alt_base", var_ld["alt_base"]),
+            pl.Series("uid", var_ld["base__uid"]),
+            pl.Series("chrom", var_ld["base__chrom"]),
+            pl.Series("pos", var_ld["base__pos"]),
+            pl.Series("ref_base", var_ld["base__ref_base"]),
+            pl.Series("alt_base", var_ld["base__alt_base"]),
         ])
         return df
 

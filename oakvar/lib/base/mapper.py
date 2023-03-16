@@ -1,6 +1,8 @@
 from typing import Optional
+from typing import Any
 from typing import List
 from typing import Dict
+import polars as pl
 
 
 class BaseMapper(object):
@@ -281,6 +283,34 @@ class BaseMapper(object):
                         value = rs_dic[colname][value]
                 d[colname] = value
         return d
+
+    def run_df(self, df: pl.DataFrame):
+        from ..util.util import get_crx_def
+
+        if not self.conf:
+            return
+        self.setup()
+        self.extra_setup()
+        var_ld: Dict[str, List[Any]] = {}
+        crx_def = get_crx_def()
+        col_names = [v.get("name") for v in crx_def]
+        full_col_names = [f"{col_name}" for col_name in col_names]
+        for full_col_name in full_col_names:
+            var_ld[full_col_name] = []
+        len_col_names = len(col_names)
+        for input_data in df.iter_rows(named=True):
+            if input_data["alt_base"] == "*":
+                output_dict = {}
+            else:
+                output_dict = self.map(input_data)
+            for i in range(len_col_names):
+                if not output_dict:
+                    var_ld[full_col_names[i]].append(None)
+                else:
+                    var_ld[full_col_names[i]].append(output_dict.get(col_names[i]))
+        for full_col_name in full_col_names:
+            df.insert_at_idx(-1, pl.Series(full_col_name, var_ld[full_col_name]))
+        return df
 
     def run(self, __pos_no__):
         from time import time, asctime, localtime
