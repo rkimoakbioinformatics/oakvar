@@ -84,7 +84,7 @@ class BaseConverter(object):
         }
         if not inputs:
             raise ExpectedException("Input files are not given.")
-        self.inputs = inputs
+        self.input_paths = inputs
         self.format = input_format
         self.script_path = Path(inspect.getfile(self.__class__))
         if name:
@@ -180,18 +180,18 @@ class BaseConverter(object):
         from pathlib import Path
 
         self.pipeinput = False
-        if self.inputs and len(self.inputs) == 1 and self.inputs[0] == "-":
+        if self.input_paths and len(self.input_paths) == 1 and self.input_paths[0] == "-":
             self.pipeinput = True
-            self.inputs = [STDIN]
+            self.input_paths = [STDIN]
         else:
-            self.inputs = [str(Path(x).absolute()) for x in self.inputs if x != "-"]
-        self.input_dir = str(Path(self.inputs[0]).parent)
+            self.input_paths = [str(Path(x).absolute()) for x in self.input_paths if x != "-"]
+        self.input_dir = str(Path(self.input_paths[0]).parent)
         if self.pipeinput is False:
-            for i in range(len(self.inputs)):
-                self.input_path_dict[i] = self.inputs[i]
-                self.input_path_dict2[self.inputs[i]] = i
+            for i in range(len(self.input_paths)):
+                self.input_path_dict[i] = self.input_paths[i]
+                self.input_path_dict2[self.input_paths[i]] = i
         else:
-            self.input_path_dict[0] = self.inputs[0]
+            self.input_path_dict[0] = self.input_paths[0]
             self.input_path_dict2[STDIN] = 0
 
     def parse_output_dir(self):
@@ -206,9 +206,9 @@ class BaseConverter(object):
             makedirs(self.output_dir)
         self.output_base_fname: Optional[str] = self.name
         if not self.output_base_fname:
-            if not self.inputs:
+            if not self.input_paths:
                 raise
-            self.output_base_fname = Path(self.inputs[0]).name
+            self.output_base_fname = Path(self.input_paths[0]).name
 
     def get_file_object_for_input_path(self, input_path: str):
         import gzip
@@ -259,9 +259,9 @@ class BaseConverter(object):
     def collect_input_file_handles(self):
         from sys import stdin
 
-        if not self.inputs:
+        if not self.input_paths:
             raise
-        for input_path in self.inputs:
+        for input_path in self.input_paths:
             if input_path in ["./stdin", STDIN]:
                 f = stdin
             else:
@@ -450,7 +450,7 @@ class BaseConverter(object):
         from pathlib import Path
         from oakvar.lib.util.run import update_status
 
-        if not self.inputs or not self.logger:
+        if not self.input_paths or not self.logger:
             raise
         update_status(
             "started converter", logger=self.logger, serveradmindb=self.serveradmindb
@@ -462,7 +462,7 @@ class BaseConverter(object):
             chunk_size = df_size
         total_df: Optional[pl.DataFrame] = None
         len_df: int = 0
-        for self.input_path in self.inputs:
+        for self.input_path in self.input_paths:
             self.input_fname = (
                 Path(self.input_path).name if not self.pipeinput else STDIN
             )

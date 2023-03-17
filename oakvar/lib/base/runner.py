@@ -7,6 +7,7 @@ from typing import Dict
 
 class Runner(object):
     def __init__(self, **kwargs):
+        from types import SimpleNamespace
         from ..module.local import LocalModule
 
         self.runlevels = {
@@ -35,13 +36,13 @@ class Runner(object):
         self.manager = None
         self.result_path = None
         self.package_conf = {}
-        self.args = None
+        self.args = SimpleNamespace()
         self.main_conf = {}
         self.run_conf = {}
         self.conf_path = None
         self.conf = {}
         self.first_non_url_input = None
-        self.inputs: Optional[List[str]] = None
+        self.input_paths: List[str] = []
         self.run_name: Optional[List[str]] = None
         self.output_dir: Optional[List[str]] = None
         self.startlevel = self.runlevels["converter"]
@@ -153,7 +154,7 @@ class Runner(object):
         from ..util.util import is_url, humanize_bytes
         from ..util.run import update_status
 
-        if not self.inputs:
+        if not self.input_paths:
             raise
         if " " in ip:
             print(f"Space is not allowed in input file paths ({ip})")
@@ -280,17 +281,17 @@ class Runner(object):
     def log_input(self, run_no: int):
         from ..consts import STDIN
 
-        if not self.inputs or not self.args:
+        if not self.input_paths or not self.args:
             raise
         if self.logger:
             if self.pipeinput:
                 self.logger.info(f"input file: {STDIN}")
             else:
                 if self.args.combine_input:
-                    for input_file in self.inputs:
+                    for input_file in self.input_paths:
                         self.logger.info(f"input file: {input_file}")
                 else:
-                    self.logger.info(f"input file: {self.inputs[run_no]}")
+                    self.logger.info(f"input file: {self.input_paths[run_no]}")
 
     def start_log(self, run_no: int):
         from time import asctime, localtime
@@ -305,6 +306,10 @@ class Runner(object):
             self.logger.info("conf file: {}".format(self.conf_path))
 
     async def process_file(self, run_no: int):
+        if self.args.combine_input:
+            input_files = self.input_paths
+        else:
+            input_files = [self.input_paths[run_no]]
         await self.do_step_converter(run_no)
         await self.do_step_preparer(run_no)
         await self.do_step_mapper(run_no)
@@ -396,7 +401,7 @@ class Runner(object):
         self.sort_postaggregators()
         self.set_reporters()
         self.set_start_end_levels()
-        self.set_self_inputs()  # self.inputs is list.
+        self.set_self_inputs()  # self.input_paths is list.
         self.set_and_create_output_dir()  # self.output_dir is list.
         self.set_run_name()  # self.run_name is list.
         self.set_job_name()  # self.job_name is list.
@@ -510,11 +515,11 @@ class Runner(object):
     def remove_absent_inputs(self):
         from pathlib import Path
 
-        if not self.inputs:
+        if not self.input_paths:
             return
-        inputs_to_remove = [v for v in self.inputs if not Path(v).exists() and v != "-"]
+        inputs_to_remove = [v for v in self.input_paths if not Path(v).exists() and v != "-"]
         for v in inputs_to_remove:
-            self.inputs.remove(v)
+            self.input_paths.remove(v)
 
     def process_url_and_pipe_inputs(self):
         import os
@@ -533,21 +538,21 @@ class Runner(object):
             if self.args.input_format is None:
                 raise InvalidInputFormat(fmt="--input-format is needed for pipe input.")
         if self.args.inputs is not None:
-            self.inputs = [
+            self.input_paths = [
                 os.path.abspath(x) if not is_url(x) and x != "-" else x
                 for x in self.args.inputs
             ]
-            if self.inputs is None:
+            if self.input_paths is None:
                 raise
-            for input_no in range(len(self.inputs)):
-                inp = self.inputs[input_no]
+            for input_no in range(len(self.input_paths)):
+                inp = self.input_paths[input_no]
                 if is_url(inp):
                     fpath = self.download_url_input(inp)
-                    self.inputs[input_no] = fpath
+                    self.input_paths[input_no] = fpath
                 elif not self.first_non_url_input:
                     self.first_non_url_input = inp
         else:
-            self.inputs = []
+            self.input_paths = []
 
     def regenerate_from_db(self, run_no: int):
         import sqlite3
@@ -556,9 +561,9 @@ class Runner(object):
         from ..util.util import get_crx_def
         from ..util.util import get_crg_def
 
-        if not self.inputs:
+        if not self.input_paths:
             raise
-        dbpath = self.inputs[run_no]
+        dbpath = self.input_paths[run_no]
         db = sqlite3.connect(dbpath)
         c = db.cursor()
         crv_def = get_crv_def()
@@ -612,13 +617,13 @@ class Runner(object):
         import shutil
         from pathlib import Path
 
-        if not self.inputs:
+        if not self.input_paths:
             raise
         if not self.run_name or not self.output_dir or not self.args:
             raise
         self.append_mode = []
         for run_no in range(len(self.run_name)):
-            inp = self.inputs[run_no]
+            inp = self.input_paths[run_no]
             run_name = self.run_name[run_no]
             output_dir = self.output_dir[run_no]
             if not inp.endswith(".sqlite"):
@@ -633,7 +638,7 @@ class Runner(object):
             target_name = run_name + ".sqlite"
             target_path = Path(output_dir) / target_name
             shutil.copyfile(inp, target_path)
-            self.inputs[run_no] = str(target_path)
+            self.input_paths[run_no] = str(target_path)
 
     def set_genome_assemblies(self):
         if self.run_name:
@@ -647,7 +652,7 @@ class Runner(object):
         from os import mkdir
         from ..exceptions import ArgumentError
 
-        if not self.args or not self.inputs:
+        if not self.args or not self.input_paths:
             raise
         cwd = getcwd()
         if not self.args.output_dir:
@@ -658,7 +663,7 @@ class Runner(object):
                     self.output_dir = [cwd]
                 else:
                     self.output_dir = [
-                        str(Path(inp).absolute().parent) for inp in self.inputs
+                        str(Path(inp).absolute().parent) for inp in self.input_paths
                     ]
         else:
             if self.pipeinput:
@@ -673,7 +678,7 @@ class Runner(object):
                         str(Path(v).absolute()) for v in self.args.output_dir
                     ]
                 else:
-                    if len(self.args.output_dir) != len(self.inputs):
+                    if len(self.args.output_dir) != len(self.input_paths):
                         raise ArgumentError(
                             msg="-d should have the same number of values as inputs."
                         )
@@ -722,17 +727,17 @@ class Runner(object):
         if not self.args.run_name:
             if self.pipeinput:
                 self.run_name = ["oakvar_run"]
-            elif self.inputs:
+            elif self.input_paths:
                 if self.args.combine_input:
-                    run_name = Path(self.inputs[0]).name
-                    if len(self.inputs) > 1:
+                    run_name = Path(self.input_paths[0]).name
+                    if len(self.input_paths) > 1:
                         run_name = run_name + "_etc"
                         run_name = self.get_unique_run_name(
                             self.output_dir[0], run_name
                         )
                     self.run_name = [run_name]
                 else:
-                    self.run_name = [Path(v).name for v in self.inputs]
+                    self.run_name = [Path(v).name for v in self.input_paths]
         else:
             if self.args.combine_input:
                 if len(self.args.run_name) != 1:
@@ -743,7 +748,7 @@ class Runner(object):
                 self.run_name = self.args.run_name
             else:
                 if len(self.args.run_name) == 1:
-                    if self.inputs:
+                    if self.input_paths:
                         if self.output_dir and len(self.output_dir) != len(
                             set(self.output_dir)
                         ):
@@ -751,7 +756,7 @@ class Runner(object):
                                 msg="-n should have a unique value for each "
                                 + "input when -d has duplicate directories."
                             )
-                        self.run_name = self.args.run_name * len(self.inputs)
+                        self.run_name = self.args.run_name * len(self.input_paths)
                     elif self.pipeinput:
                         self.run_name = self.args.run_name
                     else:
@@ -762,8 +767,8 @@ class Runner(object):
                             msg="Only one -n option value should be given "
                             + "with pipe input."
                         )
-                    if self.inputs:
-                        if len(self.inputs) != len(self.args.run_name):
+                    if self.input_paths:
+                        if len(self.input_paths) != len(self.args.run_name):
                             raise ArgumentError(
                                 msg="Just one or the same number of -n option "
                                 + "values as input files should be given."
@@ -792,14 +797,14 @@ class Runner(object):
             self.job_name = self.args.job_name
         else:
             if len(self.args.job_name) == 1:
-                if self.inputs:
+                if self.input_paths:
                     if len(self.output_dir) != len(set(self.output_dir)):
                         raise ArgumentError(
                             msg="-j should have a unique value for each input "
                             + "when -d has duplicate directories. Or, give "
                             + "--combine-input to combine input files into one job."
                         )
-                    self.job_name = self.args.job_name * len(self.inputs)
+                    self.job_name = self.args.job_name * len(self.input_paths)
                 elif self.pipeinput:
                     self.job_name = self.args.job_name
                 else:
@@ -809,8 +814,8 @@ class Runner(object):
                     raise ArgumentError(
                         msg="Only one -j option value should be given with pipe input."
                     )
-                if self.inputs:
-                    if len(self.inputs) != len(self.args.job_name):
+                if self.input_paths:
+                    if len(self.input_paths) != len(self.args.job_name):
                         raise ArgumentError(
                             msg="Just one or the same number of -j option values "
                             + "as input files should be given."
@@ -826,7 +831,7 @@ class Runner(object):
         self.use_inputs_from_run_conf()
         self.process_url_and_pipe_inputs()
         self.remove_absent_inputs()
-        if not self.inputs:
+        if not self.input_paths:
             raise NoInput()
 
     def use_inputs_from_run_conf(self):
@@ -864,7 +869,7 @@ class Runner(object):
 
         if not self.run_name or not self.output_dir:
             raise
-        if not self.inputs:
+        if not self.input_paths:
             raise
         if not self.append_mode:
             raise
@@ -1363,12 +1368,12 @@ class Runner(object):
 
         if self.append_mode[run_no]:
             return
-        if not self.inputs or not self.job_name or not self.args:
+        if not self.input_paths or not self.job_name or not self.args:
             raise
         if self.args.combine_input:
-            inputs = self.inputs
+            inputs = self.input_paths
         else:
-            inputs = [self.inputs[run_no]]
+            inputs = [self.input_paths[run_no]]
         job_name = self.job_name[run_no]
         genome_assemblies = (
             list(set(self.genome_assemblies[run_no])) if self.genome_assemblies else []
@@ -1555,7 +1560,7 @@ class Runner(object):
         from pathlib import Path
         from ..util.admin_util import oakvar_version
 
-        if not self.run_name or not self.inputs or not self.args or not self.output_dir:
+        if not self.run_name or not self.input_paths or not self.args or not self.output_dir:
             raise
         run_name = self.run_name[run_no]
         output_dir = self.output_dir[run_no]
@@ -1564,8 +1569,8 @@ class Runner(object):
         self.info_json["job_name"] = self.args.job_name
         self.info_json["run_name"] = run_name
         self.info_json["db_path"] = str(Path(output_dir) / (run_name + ".sqlite"))
-        self.info_json["orig_input_fname"] = [Path(x).name for x in self.inputs]
-        self.info_json["orig_input_path"] = self.inputs
+        self.info_json["orig_input_fname"] = [Path(x).name for x in self.input_paths]
+        self.info_json["orig_input_path"] = self.input_paths
         self.info_json["submission_time"] = datetime.now().isoformat()
         self.info_json["viewable"] = False
         self.info_json["note"] = self.args.note
@@ -1598,15 +1603,15 @@ class Runner(object):
         if (
             self.conf is None
             or not self.args
-            or not self.inputs
+            or not self.input_paths
             or not self.run_name
             or not self.output_dir
         ):
             raise
         if self.args.combine_input:
-            input_files = self.inputs
+            input_files = self.input_paths
         else:
-            input_files = [self.inputs[run_no]]
+            input_files = [self.input_paths[run_no]]
         converter_path = os.path.join(
             get_packagedir(), "lib", "base", "master_converter.py"
         )
@@ -1967,7 +1972,7 @@ class Runner(object):
             or not self.run_name
         ):
             raise
-        if not self.inputs:
+        if not self.input_paths:
             raise
         response = {}
         module = {
@@ -2026,7 +2031,7 @@ class Runner(object):
             or self.conf is None
             or not self.args
             or not self.output_dir
-            or not self.inputs
+            or not self.input_paths
         ):
             raise
         run_name = self.run_name[run_no]
@@ -2080,7 +2085,7 @@ class Runner(object):
     async def do_step_converter(self, run_no: int):
         from ..util.run import update_status
 
-        if not self.inputs or not self.args:
+        if not self.input_paths or not self.args:
             raise
         step = "converter"
         if not self.should_run_step("converter"):
