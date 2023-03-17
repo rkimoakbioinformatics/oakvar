@@ -205,6 +205,7 @@ class BaseAnnotator(object):
             else:
                 self.code_version: str = ""
         self.cache = ModuleDataCache(self.module_name, module_type=self.module_type)
+        self.setup_needed = True
 
     def set_output_columns(self, output_columns: List[Dict[str, Any]]):
         if not self.level:
@@ -435,20 +436,16 @@ class BaseAnnotator(object):
         if not self.conf:
             return
         var_ld: Dict[str, List[Any]] = {}
-        col_names = [v.get("name") for v in self.conf.get("output_columns", []) if v.get("name") != "uid"]
-        full_col_names = [f"{self.module_name}__{col_name}" for col_name in col_names]
-        for full_col_name in full_col_names:
-            var_ld[full_col_name] = []
-        self.connect_db()
-        self.setup()
-        if not hasattr(self, "supported_chroms"):
-            self.supported_chroms = set(
-                ["chr" + str(n) for n in range(1, 23)] + ["chrX", "chrY"]
-            )
-        if not self.output_columns:
-            self.output_columns = self.conf["output_columns"]
-        self.make_json_colnames()
-        len_col_names = len(col_names)
+        if self.setup_needed:
+            self.col_names = [v.get("name") for v in self.conf.get("output_columns", []) if v.get("name") != "uid"]
+            self.full_col_names = [f"{self.module_name}__{col_name}" for col_name in self.col_names]
+            for full_col_name in self.full_col_names:
+                var_ld[full_col_name] = []
+            self.base_setup(mode="df")
+            if not self.output_columns:
+                self.output_columns = self.conf["output_columns"]
+            self.make_json_colnames()
+        len_col_names = len(self.col_names)
         for row in df.iter_rows(named=True):
             input_data: Dict[str, Dict[str, Any]] = {}
             for k, v in row.items():
@@ -462,11 +459,12 @@ class BaseAnnotator(object):
             output_dict = self.annotate(input_data)
             for i in range(len_col_names):
                 if not output_dict:
-                    var_ld[full_col_names[i]].append(None)
+                    var_ld[self.full_col_names[i]].append(None)
                 else:
-                    var_ld[full_col_names[i]].append(output_dict.get(col_names[i]))
-        for full_col_name in full_col_names:
-            df.insert_at_idx(-1, pl.Series(full_col_name, var_ld[full_col_name]))
+                    var_ld[self.full_col_names[i]].append(output_dict.get(self.col_names[i]))
+        num_cols = df.shape[1]
+        for i, full_col_name in enumerate(self.full_col_names):
+            df.insert_at_idx(num_cols + i, pl.Series(full_col_name, var_ld[full_col_name]))
         return df
 
 
@@ -656,12 +654,13 @@ class BaseAnnotator(object):
         else:
             print(err_logger_s)
 
-    def base_setup(self):
+    def base_setup(self, mode: str="old"):
         """base_setup.
         """
-        self._setup_primary_input()
-        self._setup_secondary_inputs()
-        self._setup_outputs()
+        if mode == "old":
+            self._setup_primary_input()
+            self._setup_secondary_inputs()
+            self._setup_outputs()
         self.connect_db()
         self.setup()
         if not hasattr(self, "supported_chroms"):

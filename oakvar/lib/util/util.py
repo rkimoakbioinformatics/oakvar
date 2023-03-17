@@ -48,7 +48,7 @@ def get_ucsc_bins(start, stop=None):
     ]
 
 
-def load_class(path, class_name=None) -> Optional[Type]:
+def load_class(path: Optional[Path], class_name=None) -> Optional[Type]:
     """load_class.
 
     Args:
@@ -59,15 +59,14 @@ def load_class(path, class_name=None) -> Optional[Type]:
     from importlib import import_module
     import sys
     import inspect
-    from pathlib import Path
     from ..exceptions import ModuleLoadingError
 
-    p = Path(path)
-    path_dir = str(p.parent)
-    sys.path = [path_dir] + sys.path
+    if not path:
+        return None
+    sys.path = [str(path.parent)] + sys.path
     module = None
     module_class: Optional[Type] = None
-    module_name = p.stem
+    module_name = path.stem
     try:
         module = import_module(module_name)
     except Exception:

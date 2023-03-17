@@ -94,7 +94,9 @@ class BaseConverter(object):
         self.output_dir = output_dir
         self.parse_inputs()
         self.parse_output_dir()
-        self.conf: Dict[str, Any] = get_module_conf(self.name, module_type="converter") or {}
+        self.conf: Dict[str, Any] = (
+            get_module_conf(self.name, module_type="converter") or {}
+        )
         if conf:
             self.conf.update(conf.copy())
         self.module_options = module_options
@@ -406,8 +408,8 @@ class BaseConverter(object):
         if variant["ref_base"] == variant["alt_base"]:
             raise NoVariantError()
         variant["uid"] = self.uid
-        #unique = self.add_unique_variant(variant, unique_variants)
-        unique = True # to bypass getting unique variants.
+        # unique = self.add_unique_variant(variant, unique_variants)
+        unique = True  # to bypass getting unique variants.
         if unique:
             self.handle_chrom(variant)
             self.handle_ref_base(variant)
@@ -431,7 +433,7 @@ class BaseConverter(object):
             self.uid += 1
 
     def handle_converted_variants(
-            self, variants: List[Dict[str, Any]], var_ld: Dict[str, List[Any]]
+        self, variants: List[Dict[str, Any]], var_ld: Dict[str, List[Any]]
     ):
         from oakvar.lib.exceptions import IgnoredVariant
 
@@ -444,11 +446,10 @@ class BaseConverter(object):
         for var_no, variant in enumerate(variants):
             self.handle_variant(variant, var_no, unique_variants, var_ld)
 
-    def run(self):
+    def run(self, df_size: Optional[int] = None, ignore_sample: bool=False):
         from pathlib import Path
         from oakvar.lib.util.run import update_status
 
-        df_chunk_size = 100
         if not self.inputs or not self.logger:
             raise
         update_status(
@@ -456,6 +457,11 @@ class BaseConverter(object):
         )
         self.collect_input_file_handles()
         self.set_variables_pre_run()
+        chunk_size: int = 1000
+        if df_size and chunk_size > df_size:
+            chunk_size = df_size
+        total_df: Optional[pl.DataFrame] = None
+        len_df: int = 0
         for self.input_path in self.inputs:
             self.input_fname = (
                 Path(self.input_path).name if not self.pipeinput else STDIN
@@ -465,8 +471,9 @@ class BaseConverter(object):
             self.file_error_lines = 0
             var_ld: Dict[str, List[Any]] = {}
             self.initialize_var_ld(var_ld)
+            len_chunk: int = 0
             for self.read_lnum, variants in self.convert_file(
-                f, exc_handler=self._log_conversion_error
+                f, exc_handler=self._log_conversion_error, ignore_sample=ignore_sample
             ):
                 try:
                     self.handle_converted_variants(variants, var_ld)
@@ -474,10 +481,21 @@ class BaseConverter(object):
                     raise
                 except Exception as e:
                     self._log_conversion_error(self.read_lnum, e)
-                if self.read_lnum % df_chunk_size == 0:
+                len_variants: int = len(variants)
+                len_chunk += len_variants
+                len_df += len_variants
+                if len_chunk > chunk_size:
                     df = self.get_df_from_var_ld(var_ld)
-                    yield df
+                    if total_df is None:
+                        total_df = df
+                    else:
+                        total_df.extend(df)
                     self.initialize_var_ld(var_ld)
+                    len_chunk = 0
+                if df_size and len_df > df_size:
+                    yield total_df
+                    total_df = None
+                    len_df = 0
                 if self.read_lnum % 10000 == 0:
                     status = (
                         f"Running Converter ({self.input_fname}): line {self.read_lnum}"
@@ -485,10 +503,18 @@ class BaseConverter(object):
                     update_status(
                         status, logger=self.logger, serveradmindb=self.serveradmindb
                     )
-            if var_ld["base__uid"]:
+            print(f"@ len_chunk={len_chunk}")
+            if len_chunk:
                 df = self.get_df_from_var_ld(var_ld)
-                yield df
+                if total_df is None:
+                    total_df = df
+                else:
+                    total_df.extend(df)
                 self.initialize_var_ld(var_ld)
+                len_chunk = 0
+                yield total_df
+                total_df = None
+                len_df = 0
             f.close()
             self.logger.info(
                 f"number of valid variants: {self.file_num_valid_variants}"
@@ -514,13 +540,15 @@ class BaseConverter(object):
         var_ld["base__alt_base"] = []
 
     def get_df_from_var_ld(self, var_ld: Dict[str, List[Any]]) -> pl.DataFrame:
-        df: pl.DataFrame = pl.DataFrame([
-            pl.Series("uid", var_ld["base__uid"]),
-            pl.Series("chrom", var_ld["base__chrom"]),
-            pl.Series("pos", var_ld["base__pos"]),
-            pl.Series("ref_base", var_ld["base__ref_base"]),
-            pl.Series("alt_base", var_ld["base__alt_base"]),
-        ])
+        df: pl.DataFrame = pl.DataFrame(
+            [
+                pl.Series("uid", var_ld["base__uid"]),
+                pl.Series("chrom", var_ld["base__chrom"]),
+                pl.Series("pos", var_ld["base__pos"]),
+                pl.Series("ref_base", var_ld["base__ref_base"]),
+                pl.Series("alt_base", var_ld["base__alt_base"]),
+            ]
+        )
         return df
 
     def set_variables_pre_run(self):
@@ -554,7 +582,7 @@ class BaseConverter(object):
         from oakvar.lib.util.seq import liftover_one_pos
         from oakvar.lib.util.seq import liftover
 
-        #assert self.crl_writer is not None
+        # assert self.crl_writer is not None
         if self.is_chrM(variant):
             needed = self.do_liftover_chrM
         else:
@@ -562,7 +590,7 @@ class BaseConverter(object):
         if needed:
             prelift_wdict = copy(variant)
             prelift_wdict["uid"] = self.uid
-            #self.crl_writer.write_data(prelift_wdict)
+            # self.crl_writer.write_data(prelift_wdict)
             (
                 variant["chrom"],
                 variant["pos"],

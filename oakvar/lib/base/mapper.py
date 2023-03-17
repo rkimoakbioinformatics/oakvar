@@ -8,6 +8,7 @@ import polars as pl
 class BaseMapper(object):
     def __init__(
         self,
+        name: str = "",
         input_file: Optional[str] = None,
         run_name: Optional[str] = None,
         output_dir: Optional[str] = None,
@@ -64,11 +65,15 @@ class BaseMapper(object):
         self.unique_excs = []
         self.t = time()
         main_fpath = Path(sys.modules[self.__class__.__module__].__file__ or "")
-        self.module_name = main_fpath.stem
+        if name:
+            self.module_name = name
+        else:
+            self.module_name = main_fpath.stem
         self.module_dir = main_fpath.parent
         self.gene_info = {}
         self.setup_logger()
         self.conf = get_module_conf(self.module_name, module_type="mapper")
+        self.setup_needed: bool = True
 
     def setup(self):
         raise NotImplementedError("Mapper must have a setup() method.")
@@ -285,19 +290,25 @@ class BaseMapper(object):
         return d
 
     def run_df(self, df: pl.DataFrame):
+        from ..util.util import get_crv_def
         from ..util.util import get_crx_def
 
         if not self.conf:
             return
-        self.setup()
-        self.extra_setup()
+        if self.setup_needed:
+            self.setup()
+            self.extra_setup()
+            self.setup_needed = False
+            crx_def = get_crx_def()
+            crv_col_names = [v.get("name") for v in get_crv_def()]
+            self.col_names = [
+                v.get("name") for v in crx_def if v.get("name") not in crv_col_names
+            ]
+            self.full_col_names = [f"{col_name}" for col_name in self.col_names]
         var_ld: Dict[str, List[Any]] = {}
-        crx_def = get_crx_def()
-        col_names = [v.get("name") for v in crx_def]
-        full_col_names = [f"{col_name}" for col_name in col_names]
-        for full_col_name in full_col_names:
+        for full_col_name in self.full_col_names:
             var_ld[full_col_name] = []
-        len_col_names = len(col_names)
+        len_col_names = len(self.col_names)
         for input_data in df.iter_rows(named=True):
             if input_data["alt_base"] == "*":
                 output_dict = {}
@@ -305,11 +316,16 @@ class BaseMapper(object):
                 output_dict = self.map(input_data)
             for i in range(len_col_names):
                 if not output_dict:
-                    var_ld[full_col_names[i]].append(None)
+                    var_ld[self.full_col_names[i]].append(None)
                 else:
-                    var_ld[full_col_names[i]].append(output_dict.get(col_names[i]))
-        for full_col_name in full_col_names:
-            df.insert_at_idx(-1, pl.Series(full_col_name, var_ld[full_col_name]))
+                    var_ld[self.full_col_names[i]].append(
+                        output_dict.get(self.col_names[i])
+                    )
+        num_cols = df.shape[1]
+        for i, full_col_name in enumerate(self.full_col_names):
+            df.insert_at_idx(
+                num_cols + i, pl.Series(full_col_name, var_ld[full_col_name])
+            )
         return df
 
     def run(self, __pos_no__):

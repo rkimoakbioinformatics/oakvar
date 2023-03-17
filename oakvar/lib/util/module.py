@@ -44,9 +44,10 @@ def get_annotator(name: str, *args, **kwargs) -> Optional[Type]:
 def get_mapper(name: str, *args, **kwargs) -> Optional[Type]:
     from .util import load_class
     from ..module.local import get_module_py
+    from ..exceptions import ModuleNotExist
 
     cls = load_class(get_module_py(name, module_type="mapper"))
     if not cls:
-        return None
+        raise ModuleNotExist(module_name=name)
     module = cls(*args, name=name, **kwargs)
     return module

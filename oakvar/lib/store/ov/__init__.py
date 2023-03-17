@@ -65,7 +65,6 @@ def get_register_args_of_module(
     data_url: List[str] = [],
     overwrite: bool = False,
     outer=None,
-    error=None,
 ) -> Optional[dict]:
     from json import dumps
     from oyaml import safe_load
@@ -76,15 +75,15 @@ def get_register_args_of_module(
     from ...module.local import get_local_module_info
     from ..ov import module_data_url
 
-    rmi = get_remote_manifest_from_local(module_name, error=error)
+    rmi = get_remote_manifest_from_local(module_name, outer=outer)
     if not rmi:
         return None
     data_version = rmi.get("data_version")
     no_data = rmi.get("no_data")
     if not data_version and not no_data:
         mi = get_local_module_info(module_name)
-        if mi and error:
-            error.write(
+        if mi and outer:
+            outer.error(
                 "data_version should be given or no_data should "
                 + f"be set to true in {mi.conf_path}.\n",
             )
@@ -98,8 +97,8 @@ def get_register_args_of_module(
         rmi["code_url"] = code_url
         rmi["data_url"] = data_url
     if not rmi["code_url"]:
-        if error:
-            error.write(
+        if outer:
+            outer.error(
                 "--code-url or -f with a file having code_url should be given.\n"
             )
         return None
@@ -193,7 +192,6 @@ def register(
             data_url=data_url,
             overwrite=overwrite,
             outer=outer,
-            error=error,
         )
         if not params:
             return False
