@@ -144,7 +144,7 @@ class BaseConverter(object):
         create_module_files(self, overwrite=overwrite, interactive=interactive)
 
     def convert_file(
-        self, file, *__args__, exc_handler=None, **__kwargs__
+        self, file, *__args__, exc_handler=None, input_path=None, **__kwargs__
     ) -> Iterator[Tuple[int, List[dict]]]:
         line_no = 0
         for line in file:

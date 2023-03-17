@@ -789,7 +789,6 @@ def create_module_files(instance, overwrite: bool = False, interactive: bool = F
             msg="Modules root directory does not exist. Consider running "
             + "'ov system setup'."
         )
-    modules_dir = Path(modules_dir)
     module_conf = getattr(instance, "conf", {})
     module_name: Optional[str] = getattr(
         instance, "module_name", module_conf.get("name")
