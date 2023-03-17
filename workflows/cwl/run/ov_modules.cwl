@@ -16,8 +16,9 @@ requirements:
 
 inputs:
   module_name:
-    type: string?
-    default: a_string
+    type: string[]?
+    default:
+      - a_string 
   home: string
   tmp: string
 outputs: []

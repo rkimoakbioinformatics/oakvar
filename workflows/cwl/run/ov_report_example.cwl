@@ -8,9 +8,10 @@ arguments:
     prefix: report
   - valueFrom: excel
     prefix: -t
-  - valueFrom: annotated
-    prefix: -s
 requirements:
+  InitialWorkDirRequirement:
+    listing:
+      - $(inputs.input_files)
   EnvVarRequirement:
     envDef:
       TMP: $(inputs.tmp)

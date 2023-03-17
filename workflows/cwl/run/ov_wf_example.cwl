@@ -11,20 +11,20 @@ requirements:
 inputs: 
   home_dir: string
   tmp_dir: string
-  module: string? 
-  module_run: 
+  module: string[]? 
+  module_run:
     type: string?
 outputs:
   example_file:
-    type: File
+    type: File[]
     outputSource: ov_new/exampleInput
   vcf_file:
-     type: File
-     outputSource: ov_run/vcf
+     type: File[]
+     outputSource: ov_run_example/output_files
   file_sqlite:
      type: File
-     outputSource: ov_run/sqlite
-  file_anno:
+     outputSource: ov_run_example/sqlite
+  file_report:
      type: File
      outputSource: ov_report/excel_file
 
@@ -44,19 +44,18 @@ steps:
       tmp: tmp_dir
     when: $(inputs.module_name != "a_string")
     out: []
-  ov_run:
-    run: ov_run.cwl
+  ov_run_example:
+    run: ov_run_example.cwl
     in:
-      vcf_file: ov_new/exampleInput
+      input_files: ov_new/exampleInput
       home: home_dir
       tmp: tmp_dir
       module_name: module_run
-    out: [sqlite, vcf]
+    out: [sqlite, output_files]
   ov_report:
-    run: ov_report.cwl
+    run: ov_report_example.cwl
     in: 
-      sqlite_file: ov_run/sqlite
+      sqlite_file: ov_run_example/sqlite
       home: home_dir
       tmp: tmp_dir
     out: [excel_file]
-    

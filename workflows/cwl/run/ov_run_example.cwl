@@ -1,9 +1,10 @@
 cwlVersion: v1.2
 class: CommandLineTool
 requirements:
+  InlineJavascriptRequirement: {}
   InitialWorkDirRequirement:
     listing:
-      - $(inputs.vcf_file)
+      - $(inputs.input_files)
   EnvVarRequirement:
     envDef:
       TMP: $(inputs.tmp)
@@ -11,7 +12,7 @@ requirements:
 baseCommand: ov
 
 arguments:
-  - valueFrom: $(inputs.vcf_file)
+  - valueFrom: $(inputs.input_files)
     prefix: run
   - valueFrom: $(inputs.module_name)
     prefix: -a
@@ -20,8 +21,8 @@ arguments:
 
 
 inputs:
-  vcf_file:
-    type: File
+  input_files:
+    type: File[]
   tmp:
     type: string
   home:
@@ -34,7 +35,9 @@ outputs:
     outputBinding:
       glob: "*.sqlite"
   
-  vcf:
-    type: File
+  output_files:
+    type:
+      type: array
+      items: File
     outputBinding:
-      glob: "*.vcf"
+      glob: "*"

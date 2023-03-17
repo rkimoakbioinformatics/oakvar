@@ -18,6 +18,6 @@ inputs:
   tmp: string
 outputs:
   exampleInput: 
-    type: File
+    type: File[]
     outputBinding:
       glob: '*'
