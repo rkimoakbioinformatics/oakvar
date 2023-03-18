@@ -31,7 +31,7 @@ inputs:
     type: string?
 outputs:
   sqlite:
-    type: File
+    type: File[]
     outputBinding:
       glob: "*.sqlite"
   

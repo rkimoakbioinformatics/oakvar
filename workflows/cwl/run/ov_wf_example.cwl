@@ -22,7 +22,7 @@ outputs:
      type: File[]
      outputSource: ov_run_example/output_files
   file_sqlite:
-     type: File
+     type: File[]
      outputSource: ov_run_example/sqlite
   file_report:
      type: File
