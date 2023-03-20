@@ -17,6 +17,7 @@ class BaseMapper(object):
         primary_transcript: List[str] = ["mane"],
         serveradmindb=None,
         module_options: Dict = {},
+        output_columns: List[Dict[str, Any]] = [],
         postfix: str = "",
     ):
         from time import time
@@ -62,6 +63,9 @@ class BaseMapper(object):
         self.input_fname = None
         self.logger = None
         self.error_logger = None
+        self.output_column_types: Dict[str, Any] = {}
+        self.col_names: List[str] = []
+        self.full_col_names: Dict[str, str] = {}
         self.unique_excs = []
         self.t = time()
         main_fpath = Path(sys.modules[self.__class__.__module__].__file__ or "")
@@ -72,8 +76,43 @@ class BaseMapper(object):
         self.module_dir = main_fpath.parent
         self.gene_info = {}
         self.setup_logger()
-        self.conf = get_module_conf(self.module_name, module_type="mapper")
+        self.conf: Dict[str, Any] = (
+            get_module_conf(self.module_name, module_type="mapper") or {}
+        )
+        self.set_output_columns(output_columns)
         self.setup_needed: bool = True
+
+    def set_output_columns(self, output_columns: List[Dict[str, Any]] = []):
+        from ..util.util import get_crx_def
+
+        if output_columns:
+            self.output_columns = output_columns.copy()
+            return
+        if "output_columns" in self.conf:
+            self.output_columns = self.conf["output_columns"].copy()
+            return
+        self.output_columns = get_crx_def().copy()
+        self.conf["output_columns"] = output_columns.copy()
+        self.col_names = [
+            v.get("name", "") for v in output_columns if v.get("name") != "uid"
+        ]
+        self.full_col_names = {
+            col_name: f"{self.module_name}__{col_name}" for col_name in self.col_names
+        }
+        for col_def in output_columns:
+            col_name = col_def.get("name", "")
+            if col_name == "uid":
+                continue
+            ty = col_def.get("type")
+            if ty == "string":
+                dtype = pl.Utf8
+            elif ty == "int":
+                dtype = pl.Int64
+            elif ty == "float":
+                dtype = pl.Float64
+            else:
+                dtype = pl.Utf8
+            self.output_column_types[self.full_col_names[col_name]] = dtype
 
     def setup(self):
         raise NotImplementedError("Mapper must have a setup() method.")
@@ -290,8 +329,6 @@ class BaseMapper(object):
         return d
 
     def run_df(self, df: pl.DataFrame):
-        from ..util.util import get_crv_def
-        from ..util.util import get_crx_def
 
         if not self.conf:
             return
@@ -299,27 +336,20 @@ class BaseMapper(object):
             self.setup()
             self.extra_setup()
             self.setup_needed = False
-            crx_def = get_crx_def()
-            crv_col_names = [v.get("name") for v in get_crv_def()]
-            self.col_names = [
-                v.get("name") for v in crx_def if v.get("name") not in crv_col_names
-            ]
-            self.full_col_names = [f"{col_name}" for col_name in self.col_names]
         var_ld: Dict[str, List[Any]] = {}
         for full_col_name in self.full_col_names:
             var_ld[full_col_name] = []
-        len_col_names = len(self.col_names)
         for input_data in df.iter_rows(named=True):
             if input_data["alt_base"] == "*":
                 output_dict = {}
             else:
                 output_dict = self.map(input_data)
-            for i in range(len_col_names):
+            for col_name in self.col_names:
                 if not output_dict:
-                    var_ld[self.full_col_names[i]].append(None)
+                    var_ld[self.full_col_names[col_name]].append(None)
                 else:
-                    var_ld[self.full_col_names[i]].append(
-                        output_dict.get(self.col_names[i])
+                    var_ld[self.full_col_names[col_name]].append(
+                        output_dict.get(col_name)
                     )
         num_cols = df.shape[1]
         for i, full_col_name in enumerate(self.full_col_names):

@@ -109,7 +109,8 @@ class BaseAnnotator(object):
         self.primary_input_reader = None
         self.output_path = None
         self.last_status_update_time = None
-        self.output_columns: Optional[List[Dict[str, Any]]] = None
+        self.output_columns: List[Dict[str, Any]] = []
+        self.output_column_types: Dict[str, Any] = {}
         self.secondary_readers = {}
         self.output_writer = None
         self.log_path = None
@@ -120,6 +121,8 @@ class BaseAnnotator(object):
         self.supported_chroms = set(cannonical_chroms)
         self.module_type = "annotator"
         self.conf = {}
+        self.col_names: List[str] = []
+        self.full_col_names: Dict[str, str] = {}
         if not self.main_fpath:
             if name:
                 self.module_name = name
@@ -224,6 +227,22 @@ class BaseAnnotator(object):
         if not self.conf:
             self.conf = {}
         self.conf["output_columns"] = output_columns
+        self.col_names = [v.get("name", "") for v in output_columns if v.get("name") != "uid"]
+        self.full_col_names = {col_name: f"{self.module_name}__{col_name}" for col_name in self.col_names}
+        for col_def in output_columns:
+            col_name = col_def.get("name", "")
+            if col_name == "uid":
+                continue
+            ty = col_def.get("type")
+            if ty == "string":
+                dtype = pl.Utf8
+            elif ty == "int":
+                dtype = pl.Int64
+            elif ty == "float":
+                dtype = pl.Float64
+            else:
+                dtype = pl.Utf8
+            self.output_column_types[self.full_col_names[col_name]] = dtype
 
     def set_ref_colname(self):
         """set_ref_colname.
@@ -437,15 +456,11 @@ class BaseAnnotator(object):
             return
         var_ld: Dict[str, List[Any]] = {}
         if self.setup_needed:
-            self.col_names = [v.get("name") for v in self.conf.get("output_columns", []) if v.get("name") != "uid"]
-            self.full_col_names = [f"{self.module_name}__{col_name}" for col_name in self.col_names]
-            for full_col_name in self.full_col_names:
+            for col_name in self.col_names:
+                full_col_name = self.full_col_names[col_name]
                 var_ld[full_col_name] = []
             self.base_setup(mode="df")
-            if not self.output_columns:
-                self.output_columns = self.conf["output_columns"]
             self.make_json_colnames()
-        len_col_names = len(self.col_names)
         for row in df.iter_rows(named=True):
             input_data: Dict[str, Dict[str, Any]] = {}
             for k, v in row.items():
@@ -457,16 +472,24 @@ class BaseAnnotator(object):
                 else:
                     input_data[k] = v
             output_dict = self.annotate(input_data)
-            for i in range(len_col_names):
+            for col_name in self.col_names:
                 if not output_dict:
-                    var_ld[self.full_col_names[i]].append(None)
+                    var_ld[self.full_col_names[col_name]].append(None)
                 else:
-                    var_ld[self.full_col_names[i]].append(output_dict.get(self.col_names[i]))
+                    var_ld[self.full_col_names[col_name]].append(output_dict.get(col_name))
         num_cols = df.shape[1]
-        for i, full_col_name in enumerate(self.full_col_names):
-            df.insert_at_idx(num_cols + i, pl.Series(full_col_name, var_ld[full_col_name]))
+        for i, col_name in enumerate(self.col_names):
+            full_col_name = self.full_col_names[col_name]
+            dtype = self.output_column_types[full_col_name]
+            df.insert_at_idx(num_cols + i, pl.Series(full_col_name, var_ld[full_col_name], dtype=dtype))
         return df
 
+
+    def get_output_col_def(self, col_name):
+        for col_def in self.output_columns:
+            if col_def.get("name") == col_name:
+                return col_def
+        return None
 
     def run(self, df=None):
         """run.
