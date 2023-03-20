@@ -33,7 +33,7 @@ outputs:
   sqlite:
     type: File[]
     outputBinding:
-      glob: "*.sqlite"
+      glob: $(inputs.input_files + ".sqlite")
   
   output_files:
     type:
