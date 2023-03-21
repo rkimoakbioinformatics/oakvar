@@ -87,21 +87,22 @@ class BaseMapper(object):
 
         if output_columns:
             self.output_columns = output_columns.copy()
-            return
-        if "output_columns" in self.conf:
+            self.conf["output_columns"] = self.output_columns.copy()
+        elif "output_columns" in self.conf:
             self.output_columns = self.conf["output_columns"].copy()
-            return
-        self.output_columns = get_crx_def().copy()
-        self.conf["output_columns"] = output_columns.copy()
+        else:
+            self.output_columns = get_crx_def().copy()
+            self.conf["output_columns"] = self.output_columns.copy()
         self.col_names = [
-            v.get("name", "") for v in output_columns if v.get("name") != "uid"
+            v.get("name", "")
+            for v in self.output_columns
+            if v.get("name")
+            not in ["uid", "chrom", "pos", "ref_base", "alt_base", "note"]
         ]
-        self.full_col_names = {
-            col_name: f"{self.module_name}__{col_name}" for col_name in self.col_names
-        }
-        for col_def in output_columns:
+        self.full_col_names = {col_name: f"{col_name}" for col_name in self.col_names}
+        for col_def in self.output_columns:
             col_name = col_def.get("name", "")
-            if col_name == "uid":
+            if col_name not in self.col_names:
                 continue
             ty = col_def.get("type")
             if ty == "string":
@@ -356,6 +357,7 @@ class BaseMapper(object):
             df.insert_at_idx(
                 num_cols + i, pl.Series(full_col_name, var_ld[full_col_name])
             )
+        print(f"@ df={df}")
         return df
 
     def run(self, __pos_no__):
