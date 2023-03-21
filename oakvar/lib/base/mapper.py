@@ -83,6 +83,7 @@ class BaseMapper(object):
         self.setup_needed: bool = True
 
     def set_output_columns(self, output_columns: List[Dict[str, Any]] = []):
+        from ..util.util import get_crv_def
         from ..util.util import get_crx_def
 
         if output_columns:
@@ -93,11 +94,11 @@ class BaseMapper(object):
         else:
             self.output_columns = get_crx_def().copy()
             self.conf["output_columns"] = self.output_columns.copy()
+        crv_col_names = [col_def.get("name") for col_def in get_crv_def()]
         self.col_names = [
             v.get("name", "")
             for v in self.output_columns
-            if v.get("name")
-            not in ["uid", "chrom", "pos", "ref_base", "alt_base", "note"]
+            if v.get("name") not in crv_col_names
         ]
         self.full_col_names = {col_name: f"{col_name}" for col_name in self.col_names}
         for col_def in self.output_columns:
@@ -354,10 +355,15 @@ class BaseMapper(object):
                     )
         num_cols = df.shape[1]
         for i, full_col_name in enumerate(self.full_col_names):
+            dtype = self.output_column_types[full_col_name]
             df.insert_at_idx(
-                num_cols + i, pl.Series(full_col_name, var_ld[full_col_name])
+                num_cols + i,
+                pl.Series(
+                    full_col_name,
+                    var_ld[full_col_name],
+                    dtype=dtype,
+                ),
             )
-        print(f"@ df={df}")
         return df
 
     def run(self, __pos_no__):
