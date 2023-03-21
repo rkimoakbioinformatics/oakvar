@@ -75,34 +75,22 @@ def raise_break(__signal_number__, __stack_frame__):
 
 
 def get_annotator(module_name, input_file=None):
-    import os
 
     module = None
     input_file = input_file or "__dummy__"
     ModuleClass = get_module(module_name)
     if ModuleClass:
         module = ModuleClass(input_file=input_file)
-        module.annotator_name = module_name
-        module.name = module_name
-        module.data_dir = os.path.join(module.module_dir, "data")
         module.connect_db()
         module.setup()
     return module
 
 
 def get_mapper(module_name, input_file=None):
-    from os.path import abspath
-
     module = None
     ModuleClass = get_module(module_name)
     if ModuleClass:
-        module = ModuleClass(
-            {
-                "script_path": abspath(ModuleClass.script_path),
-                "input_file": input_file or None,
-                "live": True,
-            }
-        )
+        module = ModuleClass(input_file=input_file)
         module.name = module_name
         module.setup()
     return module
