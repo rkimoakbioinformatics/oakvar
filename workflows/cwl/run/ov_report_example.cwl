@@ -26,4 +26,4 @@ outputs:
   excel_file:
     type: File
     outputBinding:
-      glob: $(inputs.sqlite_file)
+      glob: "*.xlsx"
