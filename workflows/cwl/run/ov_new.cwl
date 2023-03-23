@@ -8,14 +8,14 @@ arguments:
 requirements:
   EnvVarRequirement:
     envDef:
-      TMP: $(inputs.tmp)
-      HOME: $(inputs.home) 
+      TMP: $(inputs.tmp_directory)
+      HOME: $(inputs.home_directory) 
 inputs:
   ex_file:
     type: string
     default: exampleinput
-  home: string
-  tmp: string
+  home_directory: string
+  tmp_directory: string
 outputs:
   exampleInput: 
     type: File[]

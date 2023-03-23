@@ -11,19 +11,19 @@ arguments:
 requirements:
   InitialWorkDirRequirement:
     listing:
-      - $(inputs.input_files)
+      - $(inputs.sqlite_file)
   EnvVarRequirement:
     envDef:
-      TMP: $(inputs.tmp)
-      HOME: $(inputs.home) 
-
+      TMP: $(inputs.tmp_directory)
+      HOME: $(inputs.home_directory) 
+  InitialWorkDirRequirement: {}
 inputs: 
   sqlite_file:
     type: File
-  home: string
-  tmp: string
+  home_directory: string
+  tmp_directory: string
 outputs:
   excel_file:
     type: File
     outputBinding:
-      glob: "*.xlsx"
+      glob: $(inputs.sqlite_file)

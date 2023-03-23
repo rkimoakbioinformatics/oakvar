@@ -7,8 +7,8 @@ requirements:
       - $(inputs.input_files)
   EnvVarRequirement:
     envDef:
-      TMP: $(inputs.tmp)
-      HOME: $(inputs.home) 
+      TMP: $(inputs.tmp_directory)
+      HOME: $(inputs.home_directory) 
 baseCommand: ov
 
 arguments:
@@ -23,9 +23,9 @@ arguments:
 inputs:
   input_files:
     type: File[]
-  tmp:
+  tmp_directory:
     type: string
-  home:
+  home_directory:
     type: string
   module_name: 
     type: string?

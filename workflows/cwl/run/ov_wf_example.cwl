@@ -32,30 +32,30 @@ steps:
   ov_new:
     run: ov_new.cwl
     in: 
-      home: home_dir
-      tmp: tmp_dir
+      home_directory: home_dir
+      tmp_directory: tmp_dir
     out: [exampleInput]
 
   ov_module:
     run: ov_modules.cwl
     in: 
       module_name: module
-      home: home_dir
-      tmp: tmp_dir
+      home_directory: home_dir
+      tmp_directory: tmp_dir
     when: $(inputs.module_name != "a_string")
     out: []
   ov_run_example:
     run: ov_run_example.cwl
     in:
       input_files: ov_new/exampleInput
-      home: home_dir
-      tmp: tmp_dir
+      home_directory: home_dir
+      tmp_directory: tmp_dir
       module_name: module_run
     out: [sqlite, output_files]
   ov_report:
     run: ov_report_example.cwl
     in: 
       sqlite_file: ov_run_example/sqlite
-      home: home_dir
-      tmp: tmp_dir
+      home_directory: home_dir
+      tmp_directory: tmp_dir
     out: [excel_file]
