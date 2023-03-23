@@ -1,6 +1,8 @@
 from typing import Optional
 from typing import Tuple
 from pyliftover import LiftOver
+from ..base.commonmodule import BaseCommonModule
+
 
 complementary_base = {
     "A": "T",
@@ -438,18 +440,20 @@ def liftover(
     return [newchrom, newpos, newref, newalt]
 
 
-def get_wgs_reader(assembly="hg38"):
+def get_wgs_reader(assembly="hg38") -> BaseCommonModule:
     """get_wgs_reader.
 
     Args:
         assembly:
     """
-    from ... import get_module
+    from ... import get_module_class
 
-    ModuleClass = get_module(assembly + "wgs")
-    if ModuleClass is None:
-        wgs = None
-    else:
-        wgs = ModuleClass()
-        wgs.setup()
+    module_name = assembly + "wgs"
+    ModuleClass = get_module_class(module_name)
+    if not issubclass(ModuleClass, BaseCommonModule):
+        raise ValueError(
+            f"Could not obtain whole genome sequence reader {module_name} for {assembly}. Instead got {ModuleClass}."
+        )
+    wgs = ModuleClass()
+    wgs.setup()
     return wgs

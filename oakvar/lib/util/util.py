@@ -1,10 +1,17 @@
 from typing import Any
+from typing import Union
 from typing import List
 from typing import Dict
 from typing import Optional
 from typing import Type
 from pathlib import Path
 from polars import DataFrame
+from ..base.converter import BaseConverter
+from ..base.master_converter import MasterConverter
+from ..base.preparer import BasePreparer
+from ..base.annotator import BaseAnnotator
+from ..base.postaggregator import BasePostAggregator
+from ..base.reporter import BaseReporter
 
 ov_system_output_columns: Optional[Dict[str, List[Dict[str, Any]]]] = None
 
@@ -48,7 +55,16 @@ def get_ucsc_bins(start, stop=None):
     ]
 
 
-def load_class(path: Optional[Path], class_name=None) -> Optional[Type]:
+def load_class(
+    path: Optional[Path], class_name=None
+) -> Union[
+    Type[BaseConverter],
+    Type[MasterConverter],
+    Type[BasePreparer],
+    Type[BaseAnnotator],
+    Type[BasePostAggregator],
+    Type[BaseReporter],
+]:
     """load_class.
 
     Args:
@@ -59,19 +75,18 @@ def load_class(path: Optional[Path], class_name=None) -> Optional[Type]:
     from importlib import import_module
     import sys
     import inspect
+    import traceback
     from ..exceptions import ModuleLoadingError
 
     if not path:
-        return None
+        raise ValueError(f"{path} does not exist.")
     sys.path = [str(path.parent)] + sys.path
     module = None
-    module_class: Optional[Type] = None
     module_name = path.stem
+    module_class = None
     try:
         module = import_module(module_name)
     except Exception:
-        import traceback
-
         traceback.print_exc()
         try:
             if class_name:
@@ -82,8 +97,6 @@ def load_class(path: Optional[Path], class_name=None) -> Optional[Type]:
                     if loader is not None:
                         loader.exec_module(module)
         except Exception:
-            import traceback
-
             traceback.print_exc()
             raise ModuleLoadingError(module_name=module_name)
     if module:
@@ -91,7 +104,9 @@ def load_class(path: Optional[Path], class_name=None) -> Optional[Type]:
             if hasattr(module, class_name):
                 module_class = getattr(module, class_name)
                 if not inspect.isclass(module_class):
-                    module_class = None
+                    raise ValueError(
+                        f"{class_name} not found in {module.name} does not exist."
+                    )
         else:
             for n in dir(module):
                 if n in [
@@ -111,7 +126,17 @@ def load_class(path: Optional[Path], class_name=None) -> Optional[Type]:
                     if hasattr(module, n):
                         module_class = getattr(module, n)
                         if not inspect.isclass(module_class):
-                            module_class = None
+                            raise ValueError(f"{module_class} is not a class.")
+    if not module_class:
+        raise ValueError(f"No OakVar class was found at {path}.")
+    if (
+        not issubclass(module_class, BaseConverter)
+        and not issubclass(module_class, BasePreparer)
+        and not issubclass(module_class, BaseAnnotator)
+        and not issubclass(module_class, BasePostAggregator)
+        and not issubclass(module_class, BaseReporter)
+    ):
+        raise ValueError(f"{module_class} is not a proper OakVar class.")
     del sys.path[0]
     return module_class
 

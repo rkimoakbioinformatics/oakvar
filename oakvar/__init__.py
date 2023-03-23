@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Union
 from typing import Type
 from . import api
 from .cli import __main__ as cli
@@ -74,46 +74,86 @@ def raise_break(__signal_number__, __stack_frame__):
         os.kill(pid, signal.SIGTERM)
 
 
-def get_annotator(module_name, input_file=None):
+def get_converter_class(module_name: str) -> Type[BaseConverter]:
+    cls = get_module_class(module_name, module_type="converter")
+    if not issubclass(cls, BaseConverter):
+        raise ValueError(f"{module_name} is not a converter class.")
+    return cls
 
-    module = None
+
+def get_preparer_class(module_name: str) -> Type[BasePreparer]:
+    cls = get_module_class(module_name, module_type="converter")
+    if not issubclass(cls, BasePreparer):
+        raise ValueError(f"{module_name} is not a converter class.")
+    return cls
+
+
+def get_mapper_class(module_name: str) -> Type[BaseMapper]:
+    cls = get_module_class(module_name, module_type="mapper")
+    if not issubclass(cls, BaseMapper):
+        raise ValueError(f"{module_name} is not a mapper class.")
+    return cls
+
+
+def get_annotator_class(module_name: str) -> Type[BaseAnnotator]:
+    cls = get_module_class(module_name, module_type="mapper")
+    if not issubclass(cls, BaseAnnotator):
+        raise ValueError(f"{module_name} is not a mapper class.")
+    return cls
+
+
+def get_reporter_class(module_name: str) -> Type[BaseReporter]:
+    cls = get_module_class(module_name, module_type="mapper")
+    if not issubclass(cls, BaseReporter):
+        raise ValueError(f"{module_name} is not a mapper class.")
+    return cls
+
+
+def get_annotator(module_name, input_file=None) -> BaseAnnotator:
+
     input_file = input_file or "__dummy__"
-    ModuleClass = get_module(module_name)
-    if ModuleClass:
-        module = ModuleClass(input_file=input_file)
-        module.connect_db()
-        module.setup()
+    ModuleClass = get_module_class(module_name)
+    if not ModuleClass:
+        raise ValueError(f"{module_name} was not found.")
+    if not issubclass(ModuleClass, BaseAnnotator):
+        raise ValueError(f"{ModuleClass} is not an annotator class.")
+    module = ModuleClass(input_file=input_file)
+    module.connect_db()
+    module.setup()
     return module
 
 
-def get_mapper(module_name, input_file=None):
-    module = None
-    ModuleClass = get_module(module_name)
-    if ModuleClass:
-        module = ModuleClass(input_file=input_file)
-        module.name = module_name
-        module.setup()
+def get_mapper(module_name, input_file=None) -> BaseMapper:
+    ModuleClass = get_module_class(module_name)
+    if not ModuleClass:
+        raise ValueError(f"{module_name} was not found.")
+    if not issubclass(ModuleClass, BaseMapper):
+        raise ValueError(f"{ModuleClass} is not a mapper class.")
+    module = ModuleClass(input_file=input_file)
+    module.setup()
     return module
 
 
-def get_module(module_name, module_type: str = "") -> Optional[Type]:
-    from os.path import dirname
+def get_module_class(
+    module_name, module_type: str = ""
+) -> Union[
+    Type[BaseConverter],
+    Type[MasterConverter],
+    Type[BasePreparer],
+    Type[BaseMapper],
+    Type[BaseAnnotator],
+    Type[BasePostAggregator],
+    Type[BaseReporter],
+    Type[BaseCommonModule],
+]:
     from .lib.module.local import get_local_module_info
-    from .lib.module.local import get_module_conf
     from .lib.util.util import load_class
 
-    ModuleClass = None
-    module_conf = get_module_conf(module_name, module_type=module_type)
-    module_info = get_local_module_info(module_name)
-    if module_info is not None:
-        script_path = module_info.script_path
-        ModuleClass = load_class(script_path)
-        if not ModuleClass:
-            return None
-        ModuleClass.script_path = script_path
-        ModuleClass.module_name = module_name
-        ModuleClass.module_dir = dirname(script_path)
-        ModuleClass.conf = module_conf
+    module_info = get_local_module_info(module_name, module_type=module_type)
+    if module_info is None:
+        raise ValueError(f"{module_name} does not exist.")
+    script_path = module_info.script_path
+    ModuleClass = load_class(script_path)
     return ModuleClass
 
 

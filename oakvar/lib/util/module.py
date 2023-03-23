@@ -1,6 +1,7 @@
 from typing import Optional
 from typing import Type
 from pathlib import Path
+from ..base.mapper import BaseMapper
 
 
 def get_converter(name: str, *args, **kwargs) -> Optional[Type]:
@@ -41,7 +42,7 @@ def get_annotator(name: str, *args, **kwargs) -> Optional[Type]:
     return module
 
 
-def get_mapper(name: str, *args, **kwargs) -> Optional[Type]:
+def get_mapper(name: str, *args, **kwargs) -> Type[BaseMapper]:
     from .util import load_class
     from ..module.local import get_module_py
     from ..exceptions import ModuleNotExist
@@ -49,5 +50,9 @@ def get_mapper(name: str, *args, **kwargs) -> Optional[Type]:
     cls = load_class(get_module_py(name, module_type="mapper"))
     if not cls:
         raise ModuleNotExist(module_name=name)
+    if not issubclass(cls, BaseMapper):
+        raise ValueError(f"{name} is not a mapper class.")
+    if not cls.__name__ != "Mapper":
+        raise ValueError(f"{name} is not a mapper class.")
     module = cls(*args, name=name, **kwargs)
     return module

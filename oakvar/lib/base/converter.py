@@ -108,11 +108,10 @@ class BaseConverter(object):
         self.time_error_written: float = 0
 
         self.module_type = "converter"
-        self.format_name = None
+        self.format_name: str = ""
         self.run_name = run_name
         self.input_path = ""
         self.total_num_converted_variants = 0
-        self.wgs_reader = get_wgs_reader(assembly="hg38")
         self.title = title
         if self.title:
             self.conf["title"] = self.title
@@ -328,7 +327,7 @@ class BaseConverter(object):
         ]:
             if not self.wgs_reader:
                 raise
-            variant["ref_base"] = self.wgs_reader.get_bases(
+            variant["ref_base"] = self.wgs_reader.get_bases( # type: ignore
                 variant.get("chrom"), int(variant["pos"])
             ).upper()
         else:
@@ -343,7 +342,7 @@ class BaseConverter(object):
             elif ref_base is None or ref_base == "":
                 if not self.wgs_reader:
                     raise
-                variant["ref_base"] = self.wgs_reader.get_bases(
+                variant["ref_base"] = self.wgs_reader.get_bases( # type: ignore
                     variant.get("chrom"), int(variant.get("pos"))
                 )
 

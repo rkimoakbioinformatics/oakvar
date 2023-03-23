@@ -80,6 +80,7 @@ class BaseAnnotator(object):
         from ..exceptions import ModuleLoadingError
         from ..exceptions import LoggerError
 
+        self.script_path: str = ""
         self.module_options = module_options
         if input_file:
             self.primary_input_path = Path(input_file).absolute()

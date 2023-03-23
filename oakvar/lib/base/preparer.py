@@ -22,6 +22,7 @@ class BasePreparer(object):
         from ..exceptions import ModuleLoadingError
         from ..exceptions import NoInput
 
+        self.script_path: str = ""
         self.serveradmindb = serveradmindb
         self.outer = outer
         self.cmd_parser = None

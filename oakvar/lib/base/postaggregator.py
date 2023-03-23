@@ -18,6 +18,7 @@ class BasePostAggregator(object):
         from ..exceptions import ArgumentError
         from ..util.util import get_result_dbpath
 
+        self.script_path: str = ""
         self.serveradmindb = serveradmindb
         self.run_name = run_name
         self.output_dir = output_dir

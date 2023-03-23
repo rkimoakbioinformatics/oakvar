@@ -131,7 +131,7 @@ class LocalModule(object):
 
 
 def get_local_module_info(
-    module_name: Union[str, Path], fresh=False
+        module_name: Union[str, Path], module_type: str="", fresh=False
 ) -> Optional[LocalModule]:
     from .cache import get_module_cache
 
@@ -145,7 +145,7 @@ def get_local_module_info(
         module_info = None
         mc = get_module_cache(fresh=fresh)
         if fresh:
-            module_path = get_module_dir(str(module_name))
+            module_path = get_module_dir(str(module_name), module_type=module_type)
             if module_path:
                 module_info = LocalModule(module_path)
                 if module_info:

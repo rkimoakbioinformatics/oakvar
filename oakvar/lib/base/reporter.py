@@ -35,6 +35,7 @@ class BaseReporter:
     ):
         from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
 
+        self.script_path: str = ""
         self.dbpath = dbpath
         self.report_types = report_types
         self.filterpath = filterpath
@@ -773,6 +774,8 @@ class BaseReporter:
         from ..module.local import get_local_module_info
         from ..util.util import load_class
         from ..util.inout import ColumnDefinition
+        from ... import get_annotator_class
+        from ... import get_mapper_class
 
         _ = conn
         if not add_summary:
@@ -818,17 +821,19 @@ class BaseReporter:
                 continue
             sys.path = sys.path + [dirname(mi.script_path)]
             annot_cls = None
-            if mi.name in done_var_annotators or mi.name == self.mapper_name:
-                annot_cls = load_class(mi.script_path)
-            if not annot_cls:
-                raise ModuleLoadingError(module_name=mi.name)
+            if mi.name in done_var_annotators:
+                annot_cls = get_annotator_class(module_name)
+            elif mi.name == self.mapper_name:
+                annot_cls = get_mapper_class(module_name)
+            else:
+                continue
             cmd = {
                 "script_path": mi.script_path,
                 "input_file": "__dummy__",
                 "output_dir": self.output_dir,
                 "serveradmindb": self.serveradmindb,
             }
-            annot = annot_cls(cmd)
+            annot = annot_cls(**cmd)
             cols = mi.conf["gene_summary_output_columns"]
             columngroup = {
                 "name": mi.name,

@@ -73,6 +73,7 @@ class BaseMapper(object):
             self.module_name = name
         else:
             self.module_name = main_fpath.stem
+        self.name = self.module_name
         self.module_dir = main_fpath.parent
         self.gene_info = {}
         self.setup_logger()

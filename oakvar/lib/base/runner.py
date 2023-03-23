@@ -1594,6 +1594,7 @@ class Runner(object):
 
     async def run_converter(self, run_no: int):
         import os
+        from .master_converter import MasterConverter
         from ..util.util import load_class
         from types import SimpleNamespace
         from ..util.admin_util import get_packagedir
@@ -1636,10 +1637,8 @@ class Runner(object):
                     continue
                 self.logger.info(f"master_converter. {k}={v}")
         converter_class = load_class(module.script_path, "MasterConverter")
-        if not converter_class:
-            converter_class = load_class(module.script_path, "MasterCravatConverter")
-        if not converter_class:
-            raise ModuleNotExist("MasterConverter", msg="MasterConverter class was not found.")
+        if not issubclass(converter_class, MasterConverter):
+            raise ModuleNotExist("MasterConverter", msg="MasterConverter class was not found at {module.script_path}.")
         converter = converter_class(
             inputs=input_files,
             name=self.run_name[run_no],
@@ -1678,7 +1677,7 @@ class Runner(object):
             module_cls = load_class(module.script_path, "Preparer")
             if not module_cls:
                 raise ModuleLoadingError(module_name=module.name)
-            module_ins = module_cls(kwargs)
+            module_ins = module_cls(**kwargs)
             await self.log_time_of_func(module_ins.run, work=module_name)
 
     async def run_mapper(self, run_no: int):

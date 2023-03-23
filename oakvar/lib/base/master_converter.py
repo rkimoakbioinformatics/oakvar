@@ -226,27 +226,15 @@ class MasterConverter(object):
 
     def collect_converters(self):
         from oakvar.lib.module.local import get_local_module_infos_of_type
-        from oakvar.lib.util.util import load_class
+        from ... import get_converter_class
 
         for module_name, module_info in get_local_module_infos_of_type(
             "converter"
         ).items():
-            cls = load_class(module_info.script_path)
-            if not cls:
-                if self.outer:
-                    self.outer.error(f"Skipping {module_info.name} "
-                            "as it was not found.")
-                continue
-            converter = cls()
+            cls = get_converter_class(module_name)
+            converter = cls(name=module_name, code_version=module_info.version)
             # TODO: backward compatibility
-            converter.output_dir = None
-            converter.run_name = None
-            converter.module_name = module_name
-            converter.name = module_info.name
-            converter.version = module_info.version
-            converter.conf = module_info.conf
-            converter.script_path = module_info.script_path
-            format_name = module_info.conf.get("format_name")
+            format_name: str = module_info.conf.get("format_name", "")
             # end of backward compatibility
             if format_name:
                 converter.format_name = format_name
@@ -259,7 +247,6 @@ class MasterConverter(object):
                         + "have format_name defined."
                     )
                 continue
-            converter.module_name = module_info.name
             if converter.format_name not in self.converters:
                 self.converters[converter.format_name] = converter
             else:
@@ -504,7 +491,7 @@ class MasterConverter(object):
         ]:
             if not self.wgs_reader:
                 raise
-            variant["ref_base"] = self.wgs_reader.get_bases(
+            variant["ref_base"] = self.wgs_reader.get_bases( # type: ignore
                 variant.get("chrom"), int(variant["pos"])
             ).upper()
         else:
@@ -519,7 +506,7 @@ class MasterConverter(object):
             elif ref_base is None or ref_base == "":
                 if not self.wgs_reader:
                     raise
-                variant["ref_base"] = self.wgs_reader.get_bases(
+                variant["ref_base"] = self.wgs_reader.get_bases( # type: ignore
                     variant.get("chrom"), int(variant.get("pos"))
                 )
 
