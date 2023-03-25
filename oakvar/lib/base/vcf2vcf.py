@@ -347,6 +347,7 @@ class VCF2VCF:
                         break
             f.close()
             wf.close()
+        return True
 
     def setup_logger(self):
         import logging

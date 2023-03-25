@@ -81,7 +81,8 @@ class BaseMapper(object):
             get_module_conf(self.module_name, module_type="mapper") or {}
         )
         self.set_output_columns(output_columns)
-        self.setup_needed: bool = True
+        self.var_ld: Dict[str, List[Any]] = {}
+        self.df_dtypes: Dict[str, Any] = {}
 
     def set_output_columns(self, output_columns: List[Dict[str, Any]] = []):
         from ..util.util import get_crv_def
@@ -331,17 +332,16 @@ class BaseMapper(object):
                 d[colname] = value
         return d
 
-    def run_df(self, df: pl.DataFrame):
-
-        if not self.conf:
-            return
-        if self.setup_needed:
-            self.setup()
-            self.extra_setup()
-            self.setup_needed = False
-        var_ld: Dict[str, List[Any]] = {}
+    def setup_df(self):
+        self.setup()
+        self.extra_setup()
         for full_col_name in self.full_col_names:
-            var_ld[full_col_name] = []
+            dtype = self.output_column_types[full_col_name]
+            self.df_dtypes[full_col_name] = dtype
+
+    def run_df(self, df: pl.DataFrame):
+        for full_col_name in self.full_col_names:
+            self.var_ld[full_col_name] = []
         for input_data in df.iter_rows(named=True):
             if input_data["alt_base"] == "*":
                 output_dict = {}
@@ -349,20 +349,19 @@ class BaseMapper(object):
                 output_dict = self.map(input_data)
             for col_name in self.col_names:
                 if not output_dict:
-                    var_ld[self.full_col_names[col_name]].append(None)
+                    self.var_ld[self.full_col_names[col_name]].append(None)
                 else:
-                    var_ld[self.full_col_names[col_name]].append(
+                    self.var_ld[self.full_col_names[col_name]].append(
                         output_dict.get(col_name)
                     )
         num_cols = df.shape[1]
         for i, full_col_name in enumerate(self.full_col_names):
-            dtype = self.output_column_types[full_col_name]
             df.insert_at_idx(
                 num_cols + i,
                 pl.Series(
                     full_col_name,
-                    var_ld[full_col_name],
-                    dtype=dtype,
+                    self.var_ld[full_col_name],
+                    dtype=self.df_dtypes[full_col_name],
                 ),
             )
         return df

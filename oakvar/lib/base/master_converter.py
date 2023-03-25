@@ -5,7 +5,7 @@ from typing import List
 from typing import Dict
 from typing import Tuple
 from typing import TextIO
-from oakvar import BaseConverter
+from .converter import BaseConverter
 from pyliftover import LiftOver
 from io import BufferedReader
 

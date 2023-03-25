@@ -145,6 +145,7 @@ def get_module_class(
     Type[BasePostAggregator],
     Type[BaseReporter],
     Type[BaseCommonModule],
+    Type[VCF2VCF],
 ]:
     from .lib.module.local import get_local_module_info
     from .lib.util.util import load_class

@@ -143,8 +143,10 @@ class BaseConverter(object):
         create_module_files(self, overwrite=overwrite, interactive=interactive)
 
     def convert_file(
-        self, file, *__args__, exc_handler=None, input_path=None, **__kwargs__
+            self, file, *__args__, line_no: int=0, file_pos: int=0, exc_handler=None, input_path=None, **__kwargs__
     ) -> Iterator[Tuple[int, List[dict]]]:
+        import linecache
+
         line_no = 0
         for line in file:
             line_no += 1
@@ -407,46 +409,104 @@ class BaseConverter(object):
         if variant["ref_base"] == variant["alt_base"]:
             raise NoVariantError()
         variant["uid"] = self.uid
-        # unique = self.add_unique_variant(variant, unique_variants)
-        unique = True  # to bypass getting unique variants.
-        if unique:
-            self.handle_chrom(variant)
-            self.handle_ref_base(variant)
-            self.check_invalid_base(variant)
-            self.normalize_variant(variant)
-            self.add_end_pos_if_absent(variant)
-            self.perform_liftover_if_needed(variant)
-            self.file_num_valid_variants += 1
-            self.total_num_valid_variants += 1
-            try:
-                self.addl_operation_for_unique_variant(variant, var_no)
-            except Exception as e:
-                self._log_conversion_error(self.read_lnum, e, full_line_error=False)
+        self.handle_chrom(variant)
+        self.handle_ref_base(variant)
+        self.check_invalid_base(variant)
+        self.normalize_variant(variant)
+        self.add_end_pos_if_absent(variant)
+        self.perform_liftover_if_needed(variant)
+        self.file_num_valid_variants += 1
+        self.total_num_valid_variants += 1
+        try:
+            self.addl_operation_for_unique_variant(variant, var_no)
+        except Exception as e:
+            self._log_conversion_error(self.read_lnum, e, full_line_error=False)
         self.handle_genotype(variant)
         var_ld["base__uid"].append(variant["uid"])
         var_ld["base__chrom"].append(variant["chrom"])
         var_ld["base__pos"].append(variant["pos"])
         var_ld["base__ref_base"].append(variant["ref_base"])
         var_ld["base__alt_base"].append(variant["alt_base"])
-        if unique:
-            self.uid += 1
+        self.uid += 1
 
     def handle_converted_variants(
         self, variants: List[Dict[str, Any]], var_ld: Dict[str, List[Any]]
-    ):
+    ) -> int:
         from oakvar.lib.exceptions import IgnoredVariant
 
         if variants is BaseConverter.IGNORE:
-            return
+            return 0
         self.total_num_converted_variants += 1
         if not variants:
             raise IgnoredVariant("No valid alternate allele was found in any samples.")
         unique_variants = set()
+        num_handled_variant: int = 0
         for var_no, variant in enumerate(variants):
             self.handle_variant(variant, var_no, unique_variants, var_ld)
+            num_handled_variant += 1
+        return num_handled_variant
 
-    def run(self, df_size: Optional[int] = None, ignore_sample: bool=False):
+    def get_df(self, input_path: str, line_no: int=0, file_pos: int=0, ignore_sample: bool=False):
         from pathlib import Path
+
+        input_fname = (
+            Path(input_path).name if not self.pipeinput else STDIN
+        )
+        f = self.setup_file(self.input_path)
+        for self.read_lnum, variants in self.convert_file(
+            f, input_path=input_path, line_no=line_no, file_pos=file_pos, exc_handler=self._log_conversion_error, ignore_sample=ignore_sample
+        ):
+            num_handled_variant: int = 0
+            try:
+                num_handled_variant = self.handle_converted_variants(variants, var_ld)
+            except KeyboardInterrupt:
+                raise
+            except Exception as e:
+                self._log_conversion_error(self.read_lnum, e)
+            len_variants: int = num_handled_variant
+            len_chunk += len_variants
+            len_df += len_variants
+            if len_chunk >= chunk_size:
+                df = self.get_df_from_var_ld(var_ld)
+                if total_df is None:
+                    total_df = df
+                else:
+                    total_df.extend(df)
+                self.initialize_var_ld(var_ld)
+                len_chunk = 0
+            if df_size > 0 and len_df >= df_size:
+                total_dfs[df_no] = total_df
+                df_no += 1
+                if df_no == list_size:
+                    yield total_dfs
+                    total_dfs = [None] * list_size
+                    df_no = 0
+                total_df = None
+                len_df = 0
+            if self.read_lnum % 10000 == 0:
+                status = (
+                    f"Running Converter ({self.input_fname}): line {self.read_lnum}"
+                )
+                update_status(
+                    status, logger=self.logger, serveradmindb=self.serveradmindb
+                )
+        if len_chunk:
+            df = self.get_df_from_var_ld(var_ld)
+            if total_df is None:
+                total_df = df
+            else:
+                total_df.extend(df)
+            self.initialize_var_ld(var_ld)
+            len_chunk = 0
+            total_dfs[df_no] = total_df
+            yield total_dfs
+            total_df = None
+            len_df = 0
+            df_no = 0
+
+    def run_df(self, df_size: int = 0, list_size: int=1, ignore_sample: bool=False):
+        from pathlib import Path
+        from multiprocess import Pool
         from oakvar.lib.util.run import update_status
 
         if not self.input_paths or not self.logger:
@@ -457,7 +517,7 @@ class BaseConverter(object):
         self.collect_input_file_handles()
         self.set_variables_pre_run()
         chunk_size: int = 1000
-        if df_size and chunk_size > df_size:
+        if df_size > 0 and chunk_size > df_size:
             chunk_size = df_size
         total_df: Optional[pl.DataFrame] = None
         len_df: int = 0
@@ -471,19 +531,23 @@ class BaseConverter(object):
             var_ld: Dict[str, List[Any]] = {}
             self.initialize_var_ld(var_ld)
             len_chunk: int = 0
+            total_dfs: List[Optional[pl.DataFrame]] = [None] * list_size
+            df_no = 0
+            pool = Pool(list_size)
             for self.read_lnum, variants in self.convert_file(
-                f, exc_handler=self._log_conversion_error, ignore_sample=ignore_sample
+                f, input_path=self.input_path, exc_handler=self._log_conversion_error, ignore_sample=ignore_sample
             ):
+                num_handled_variant: int = 0
                 try:
-                    self.handle_converted_variants(variants, var_ld)
+                    num_handled_variant = self.handle_converted_variants(variants, var_ld)
                 except KeyboardInterrupt:
                     raise
                 except Exception as e:
                     self._log_conversion_error(self.read_lnum, e)
-                len_variants: int = len(variants)
+                len_variants: int = num_handled_variant
                 len_chunk += len_variants
                 len_df += len_variants
-                if len_chunk > chunk_size:
+                if len_chunk >= chunk_size:
                     df = self.get_df_from_var_ld(var_ld)
                     if total_df is None:
                         total_df = df
@@ -491,8 +555,13 @@ class BaseConverter(object):
                         total_df.extend(df)
                     self.initialize_var_ld(var_ld)
                     len_chunk = 0
-                if df_size and len_df > df_size:
-                    yield total_df
+                if df_size > 0 and len_df >= df_size:
+                    total_dfs[df_no] = total_df
+                    df_no += 1
+                    if df_no == list_size:
+                        yield total_dfs
+                        total_dfs = [None] * list_size
+                        df_no = 0
                     total_df = None
                     len_df = 0
                 if self.read_lnum % 10000 == 0:
@@ -502,7 +571,6 @@ class BaseConverter(object):
                     update_status(
                         status, logger=self.logger, serveradmindb=self.serveradmindb
                     )
-            print(f"@ len_chunk={len_chunk}")
             if len_chunk:
                 df = self.get_df_from_var_ld(var_ld)
                 if total_df is None:
@@ -511,9 +579,11 @@ class BaseConverter(object):
                     total_df.extend(df)
                 self.initialize_var_ld(var_ld)
                 len_chunk = 0
-                yield total_df
+                total_dfs[df_no] = total_df
+                yield total_dfs
                 total_df = None
                 len_df = 0
+                df_no = 0
             f.close()
             self.logger.info(
                 f"number of valid variants: {self.file_num_valid_variants}"

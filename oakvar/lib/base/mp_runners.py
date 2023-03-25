@@ -11,6 +11,7 @@ def annot_from_queue(
     from logging import getLogger, StreamHandler, FileHandler, Formatter
     from queue import Empty
     from ..exceptions import ModuleLoadingError
+    from ..base.annotator import BaseAnnotator
 
     while True:
         try:
@@ -39,10 +40,8 @@ def annot_from_queue(
             traceback.print_exc()
         try:
             kwargs["serveradmindb"] = serveradmindb
-            annotator_class = load_class(module.script_path, "Annotator")
-            if not annotator_class:
-                annotator_class = load_class(module.script_path, "CravatAnnotator")
-            if not annotator_class:
+            annotator_class = load_class(module.script_path)
+            if not issubclass(annotator_class, BaseAnnotator):
                 err = ModuleLoadingError(module_name=module.name)
                 if logger:
                     logger.exception(err)

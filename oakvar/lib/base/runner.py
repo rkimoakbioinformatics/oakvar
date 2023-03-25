@@ -1659,6 +1659,7 @@ class Runner(object):
         from ..util.util import load_class
         from ..consts import MODULE_OPTIONS_KEY
         from ..exceptions import ModuleLoadingError
+        from .preparer import BasePreparer
 
         if self.conf is None or not self.run_name or not self.output_dir:
             raise
@@ -1675,7 +1676,7 @@ class Runner(object):
                 "serveradmindb": self.serveradmindb,
             }
             module_cls = load_class(module.script_path, "Preparer")
-            if not module_cls:
+            if not issubclass(module_cls, BasePreparer):
                 raise ModuleLoadingError(module_name=module.name)
             module_ins = module_cls(**kwargs)
             await self.log_time_of_func(module_ins.run, work=module_name)
@@ -1920,6 +1921,7 @@ class Runner(object):
         from ..util.run import update_status
         from ..system.consts import default_postaggregator_names
         from ..consts import MODULE_OPTIONS_KEY
+        from ..base.postaggregator import BasePostAggregator
 
         if self.conf is None:
             raise SetupError()
@@ -1939,10 +1941,8 @@ class Runner(object):
             postagg_conf = self.run_conf.get(module_name, {})
             if postagg_conf:
                 arg_dict[MODULE_OPTIONS_KEY] = postagg_conf
-            post_agg_cls = load_class(module.script_path, "PostAggregator")
-            if not post_agg_cls:
-                post_agg_cls = load_class(module.script_path, "CravatPostAggregator")
-            if not post_agg_cls:
+            post_agg_cls = load_class(module.script_path)
+            if not issubclass(post_agg_cls, BasePostAggregator):
                 raise ModuleLoadingError(module_name=module.name)
             post_agg = post_agg_cls(**arg_dict)
             announce_module(module, serveradmindb=self.serveradmindb)
@@ -1959,10 +1959,12 @@ class Runner(object):
         from time import time
         from os.path import abspath
         from types import SimpleNamespace
+        import traceback
         from ..util.util import load_class
         from ..util.run import update_status
         from ..base import vcf2vcf
         from ..exceptions import ModuleLoadingError
+        from ..base.vcf2vcf import VCF2VCF
 
         if (
             self.conf is None
@@ -1988,25 +1990,17 @@ class Runner(object):
         arg_dict["annotator_names"] = self.annotator_names
         arg_dict["run_name"] = self.run_name[run_no]
         Module = load_class(module.script_path, "VCF2VCF")
-        if not Module:
-            raise ModuleLoadingError(module_name=module.name)
-        m = Module(arg_dict)
+        if not issubclass(Module, VCF2VCF):
+            raise ModuleLoadingError(msg="VCF2VCF class could not be loaded.")
+        m = Module(**arg_dict)
         stime = time()
-        response_t = m.run()
-        output_fns = None
-        response_type = type(response_t)
-        if response_type == list:
-            output_fns = " ".join(response_t)
-        elif response_type == str:
-            output_fns = response_t
-        if output_fns is not None:
-            update_status(
-                f"report created: {output_fns} ",
-                logger=self.logger,
-                serveradmindb=self.serveradmindb,
-            )
+        try:
+            ran_ok = m.run()
+        except Exception:
+            ran_ok = False
+            traceback.print_exc()
         report_type = "vcf2vcf"
-        response[report_type] = response_t
+        response[report_type] = ran_ok
         rtime = time() - stime
         update_status(
             "vcf2vcf finished in {0:.3f}s".format(rtime),
@@ -2024,6 +2018,7 @@ class Runner(object):
         from ..exceptions import ModuleLoadingError
         from ..util.run import announce_module
         from ..consts import MODULE_OPTIONS_KEY
+        from ..base.reporter import BaseReporter
 
         if (
             not self.run_name
@@ -2055,7 +2050,7 @@ class Runner(object):
             arg_dict["module_name"] = module_name
             arg_dict[MODULE_OPTIONS_KEY] = self.run_conf.get(module_name, {})
             Reporter = load_class(module.script_path, "Reporter")
-            if not Reporter:
+            if not issubclass(Reporter, BaseReporter):
                 raise ModuleLoadingError(module_name=module.name)
             reporter = Reporter(**arg_dict)
             response_t = await self.log_time_of_func(reporter.run, work=module_name)

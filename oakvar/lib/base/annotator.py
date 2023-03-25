@@ -10,24 +10,6 @@ class BaseAnnotator(object):
     """
 
 
-    import polars as pl
-    from ..util.util import get_crv_def
-    from ..util.util import get_crx_def
-    from ..util.util import get_crg_def
-    from ..consts import INPUT_LEVEL_KEY
-    from ..consts import VARIANT_LEVEL_KEY
-    from ..consts import GENE_LEVEL_KEY
-
-    valid_levels = ["variant", "gene"]
-    valid_input_formats = [INPUT_LEVEL_KEY, VARIANT_LEVEL_KEY, GENE_LEVEL_KEY]
-    id_col_defs = {"variant": get_crv_def()[0], "gene": get_crg_def()[0]}
-    default_input_columns: Dict[str, List[Any]] = {
-        INPUT_LEVEL_KEY: [x["name"] for x in get_crv_def()],
-        VARIANT_LEVEL_KEY: [x["name"] for x in get_crx_def()],
-        GENE_LEVEL_KEY: [x["name"] for x in get_crg_def()],
-    }
-    required_conf_keys = ["level", "output_columns"]
-
     def __init__(
         self,
         input_file: Optional[str] = None,
@@ -79,7 +61,23 @@ class BaseAnnotator(object):
         from ..module.data_cache import ModuleDataCache
         from ..exceptions import ModuleLoadingError
         from ..exceptions import LoggerError
+        import polars as pl
+        from ..util.util import get_crv_def
+        from ..util.util import get_crx_def
+        from ..util.util import get_crg_def
+        from ..consts import INPUT_LEVEL_KEY
+        from ..consts import VARIANT_LEVEL_KEY
+        from ..consts import GENE_LEVEL_KEY
 
+        self.valid_levels = ["variant", "gene"]
+        self.valid_input_formats = [INPUT_LEVEL_KEY, VARIANT_LEVEL_KEY, GENE_LEVEL_KEY]
+        self.id_col_defs = {"variant": get_crv_def()[0], "gene": get_crg_def()[0]}
+        self.default_input_columns: Dict[str, List[Any]] = {
+            INPUT_LEVEL_KEY: [x["name"] for x in get_crv_def()],
+            VARIANT_LEVEL_KEY: [x["name"] for x in get_crx_def()],
+            GENE_LEVEL_KEY: [x["name"] for x in get_crg_def()],
+        }
+        self.required_conf_keys = ["level", "output_columns"]
         self.script_path: str = ""
         self.module_options = module_options
         if input_file:
@@ -209,7 +207,7 @@ class BaseAnnotator(object):
             else:
                 self.code_version: str = ""
         self.cache = ModuleDataCache(self.module_name, module_type=self.module_type)
-        self.setup_needed = True
+        self.var_ld: Dict[str, List[Any]] = {}
 
     def set_output_columns(self, output_columns: List[Dict[str, Any]]):
         if not self.level:
@@ -447,21 +445,19 @@ class BaseAnnotator(object):
         _ = df
         raise NotImplementedError("annotate_df method should be implemented.")
 
+    def setup_df(self):
+        self.base_setup(mode="df")
+        self.make_json_colnames()
+
     def run_df(self, df: pl.DataFrame):
         """run_df.
 
         Args:
             df:
         """
-        if not self.conf:
-            return
-        var_ld: Dict[str, List[Any]] = {}
-        if self.setup_needed:
-            for col_name in self.col_names:
-                full_col_name = self.full_col_names[col_name]
-                var_ld[full_col_name] = []
-            self.base_setup(mode="df")
-            self.make_json_colnames()
+        for col_name in self.col_names:
+            full_col_name = self.full_col_names[col_name]
+            self.var_ld[full_col_name] = []
         for row in df.iter_rows(named=True):
             input_data: Dict[str, Dict[str, Any]] = {}
             for k, v in row.items():
@@ -475,14 +471,12 @@ class BaseAnnotator(object):
             output_dict = self.annotate(input_data)
             for col_name in self.col_names:
                 if not output_dict:
-                    var_ld[self.full_col_names[col_name]].append(None)
-                else:
-                    var_ld[self.full_col_names[col_name]].append(output_dict.get(col_name))
+                    self.var_ld[self.full_col_names[col_name]].append(output_dict.get(col_name))
         num_cols = df.shape[1]
         for i, col_name in enumerate(self.col_names):
             full_col_name = self.full_col_names[col_name]
             dtype = self.output_column_types[full_col_name]
-            df.insert_at_idx(num_cols + i, pl.Series(full_col_name, var_ld[full_col_name], dtype=dtype))
+            df.insert_at_idx(num_cols + i, pl.Series(full_col_name, self.var_ld[full_col_name], dtype=dtype))
         return df
 
 
