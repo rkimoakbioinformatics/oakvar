@@ -9,9 +9,12 @@ from polars import DataFrame
 from ..base.converter import BaseConverter
 from ..base.master_converter import MasterConverter
 from ..base.preparer import BasePreparer
+from ..base.mapper import BaseMapper
 from ..base.annotator import BaseAnnotator
 from ..base.postaggregator import BasePostAggregator
 from ..base.reporter import BaseReporter
+from ..base.vcf2vcf import VCF2VCF
+from ..base.commonmodule import BaseCommonModule
 
 ov_system_output_columns: Optional[Dict[str, List[Dict[str, Any]]]] = None
 
@@ -61,9 +64,12 @@ def load_class(
     Type[BaseConverter],
     Type[MasterConverter],
     Type[BasePreparer],
+    Type[BaseMapper],
     Type[BaseAnnotator],
     Type[BasePostAggregator],
     Type[BaseReporter],
+    Type[VCF2VCF],
+    Type[BaseCommonModule],
 ]:
     """load_class.
 
@@ -122,6 +128,7 @@ def load_class(
                     "CravatPostAggregator",
                     "CravatReporter",
                     "CravatCommonModule",
+                    "VCF2VCF",
                 ]:
                     if hasattr(module, n):
                         module_class = getattr(module, n)
@@ -132,9 +139,13 @@ def load_class(
     if (
         not issubclass(module_class, BaseConverter)
         and not issubclass(module_class, BasePreparer)
+        and not issubclass(module_class, BaseMapper)
         and not issubclass(module_class, BaseAnnotator)
         and not issubclass(module_class, BasePostAggregator)
         and not issubclass(module_class, BaseReporter)
+        and not issubclass(module_class, BaseReporter)
+        and not issubclass(module_class, VCF2VCF)
+        and not issubclass(module_class, BaseCommonModule)
     ):
         raise ValueError(f"{module_class} is not a proper OakVar class.")
     del sys.path[0]

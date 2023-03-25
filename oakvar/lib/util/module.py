@@ -1,7 +1,9 @@
 from typing import Optional
 from typing import Type
 from pathlib import Path
+from ..base.converter import BaseConverter
 from ..base.mapper import BaseMapper
+from ..base.annotator import BaseAnnotator
 
 
 def get_converter(name: str, *args, **kwargs) -> Optional[Type]:
@@ -9,7 +11,7 @@ def get_converter(name: str, *args, **kwargs) -> Optional[Type]:
     from ..module.local import get_module_py
 
     cls = load_class(get_module_py(name, module_type="converter"))
-    if not cls:
+    if not issubclass(cls, BaseConverter):
         return None
     converter = cls(*args, name=name, **kwargs)
     if not hasattr(converter, "format_name"):
@@ -31,18 +33,18 @@ def get_converter_for_input_file(input_file: Optional[Path]) -> Optional[Type]:
     return None
 
 
-def get_annotator(name: str, *args, **kwargs) -> Optional[Type]:
+def get_annotator(name: str, *args, **kwargs) -> BaseAnnotator:
     from .util import load_class
     from ..module.local import get_module_py
 
     cls = load_class(get_module_py(name, module_type="annotator"))
-    if not cls:
-        return None
+    if not issubclass(cls, BaseAnnotator):
+        raise ValueError(f"{name} is not an annotator module.")
     module = cls(*args, name=name, **kwargs)
     return module
 
 
-def get_mapper(name: str, *args, **kwargs) -> Type[BaseMapper]:
+def get_mapper(name: str, *args, **kwargs) -> BaseMapper:
     from .util import load_class
     from ..module.local import get_module_py
     from ..exceptions import ModuleNotExist
@@ -51,8 +53,6 @@ def get_mapper(name: str, *args, **kwargs) -> Type[BaseMapper]:
     if not cls:
         raise ModuleNotExist(module_name=name)
     if not issubclass(cls, BaseMapper):
-        raise ValueError(f"{name} is not a mapper class.")
-    if not cls.__name__ != "Mapper":
         raise ValueError(f"{name} is not a mapper class.")
     module = cls(*args, name=name, **kwargs)
     return module

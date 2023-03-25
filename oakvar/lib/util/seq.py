@@ -385,7 +385,7 @@ def liftover(
                     raise LiftoverFailure(
                         "No wgs_reader was given. Use oakvar.get_wgs_reader to get one."
                     )
-            ref = wgs_reader.get_bases(newchrom, newpos).upper()
+            ref = wgs_reader.get_bases(newchrom, newpos).upper()  # type: ignore
         return [newchrom, newpos, ref, alt]
     reflen = len(ref)
     altlen = len(alt) if alt else 1
@@ -430,7 +430,7 @@ def liftover(
             raise LiftoverFailure(
                 "No wgs_reader was given. Use oakvar.get_wgs_reader to get one."
             )
-    hg38_ref = wgs_reader.get_bases(newchrom, newpos)
+    hg38_ref = wgs_reader.get_bases(newchrom, newpos)  # type: ignore
     if hg38_ref == reverse_complement(ref):  # strand reversal
         newref = hg38_ref
         newalt = reverse_complement(alt)
