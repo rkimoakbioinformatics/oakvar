@@ -422,8 +422,11 @@ class ServerAdminDb:
         else:
             stderr.write("no job_dir nor job_name for server admin DB")
             return
-        cursor.execute(q, values)
-        conn.commit()
+        try:
+            cursor.execute(q, values)
+            conn.commit()
+        except Exception:
+            pass  # competing job status update can be ignored.
         cursor.close()
         conn.close()
 
