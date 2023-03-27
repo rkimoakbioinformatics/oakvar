@@ -177,7 +177,7 @@ def oakvar_version():
 def get_packagedir():
     from pathlib import Path
 
-    return Path(__file__).parent.parent.parent.absolute()
+    return Path(__file__).parent.parent.parent.resolve()
 
 
 def get_platform():

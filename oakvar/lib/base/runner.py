@@ -191,7 +191,7 @@ class Runner(object):
                     )
                     if cur_size == total_size:
                         print("\n")
-            return str(Path(fpath).absolute())
+            return str(Path(fpath).resolve())
         except Exception:
             print("File downloading unsuccessful. Exiting.")
             exit()
@@ -663,7 +663,7 @@ class Runner(object):
                     self.output_dir = [cwd]
                 else:
                     self.output_dir = [
-                        str(Path(inp).absolute().parent) for inp in self.input_paths
+                        str(Path(inp).resolve().parent) for inp in self.input_paths
                     ]
         else:
             if self.pipeinput:
@@ -675,7 +675,7 @@ class Runner(object):
                             msg="-d should have one value when --combine-input is used."
                         )
                     self.output_dir = [
-                        str(Path(v).absolute()) for v in self.args.output_dir
+                        str(Path(v).resolve()) for v in self.args.output_dir
                     ]
                 else:
                     if len(self.args.output_dir) != len(self.input_paths):
@@ -683,7 +683,7 @@ class Runner(object):
                             msg="-d should have the same number of values as inputs."
                         )
                     self.output_dir = [
-                        str(Path(v).absolute()) for v in self.args.output_dir
+                        str(Path(v).resolve()) for v in self.args.output_dir
                     ]
         for output_dir in self.output_dir:
             if not Path(output_dir).exists():

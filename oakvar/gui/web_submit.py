@@ -186,7 +186,7 @@ class SubmitProcessor:
             elif part.name.startswith("module_option_file__"):
                 [_, module_name, option_name] = part.name.split("__")
                 fname = f"{module_name}__{option_name}"
-                path = get_unique_path(str((Path(job_dir) / fname).absolute()))
+                path = get_unique_path(str((Path(job_dir) / fname).resolve()))
                 with open(path, "wb") as wf:
                     wf.write(await part.read())
                 self.add_module_option(job_options, module_name, option_name, path)

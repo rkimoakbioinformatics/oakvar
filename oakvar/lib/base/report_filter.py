@@ -204,7 +204,7 @@ class ReportFilter:
             self.stdout = False
         self.dbpath = dbpath
         if self.dbpath is not None:
-            self.dbpath = str(Path(dbpath).absolute())
+            self.dbpath = str(Path(dbpath).resolve())
         self.conn = None
         self.filterpath = filterpath
         self.cmd = None

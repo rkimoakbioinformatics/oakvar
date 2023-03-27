@@ -826,7 +826,7 @@ def get_df_from_db(
         "mapping": "base__uid",
     }
     df = None
-    db_path_to_use = str(Path(db_path).absolute())
+    db_path_to_use = str(Path(db_path).resolve())
     partition_on = partition_ons.get(table_name)
     db_conn = get_result_db_conn(db_path_to_use)
     if not db_conn:

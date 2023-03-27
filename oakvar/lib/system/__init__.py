@@ -238,7 +238,7 @@ def get_conf_dirvalue(conf_key, conf=None) -> Optional[Path]:
 
     d: Optional[str] = get_sys_conf_str_value(conf_key, conf=conf)
     if d:
-        return Path(d).absolute()
+        return Path(d).resolve()
     else:
         return None
 
@@ -994,7 +994,7 @@ def get_legacy_status_json_path_in_job_dir(
     legacy_status_suffix = ".status.json"
     if not job_dir:
         return None
-    job_dir_p = Path(job_dir).absolute()
+    job_dir_p = Path(job_dir).resolve()
     if run_name:
         legacy_status_json_path = job_dir_p / (run_name + legacy_status_suffix)
         return str(legacy_status_json_path)

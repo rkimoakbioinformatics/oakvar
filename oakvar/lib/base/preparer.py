@@ -42,7 +42,7 @@ class BasePreparer(object):
             raise ModuleLoadingError(module_name=self.__module__)
         self.main_fpath = Path(fp).resolve()
         self.module_name = self.main_fpath.stem
-        self.input_path = Path(input_file).absolute() if input_file else None
+        self.input_path = Path(input_file).resolve() if input_file else None
         if not self.input_path:
             raise NoInput()
         self.output_path = f"{self.input_path}.{self.module_name}.prep.crv"

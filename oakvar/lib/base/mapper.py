@@ -32,7 +32,7 @@ class BaseMapper(object):
         self.input_fname: Optional[str] = None
         self.input_path: Optional[Path] = None
         if input_file:
-            p = Path(input_file).absolute()
+            p = Path(input_file).resolve()
             self.input_dir = p.parent
             self.input_fname = p.name
             self.input_path = p

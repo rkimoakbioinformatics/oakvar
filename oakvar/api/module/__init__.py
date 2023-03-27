@@ -29,9 +29,9 @@ def pack(
     if not module_name:
         return
     if not outdir:
-        outdir = Path(".").absolute()
+        outdir = Path(".").resolve()
     if isinstance(outdir, str):
-        outdir = Path(outdir).absolute()
+        outdir = Path(outdir).resolve()
     ret = pack_module(
         module_name=module_name,
         outdir=outdir,

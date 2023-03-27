@@ -108,7 +108,7 @@ def get_user_jobs_dir_list() -> Optional[list]:
     for user_p in root_jobs_dir.glob("*"):
         if not user_p.is_dir():
             continue
-        user_jobs_dir_list.append(str(user_p.absolute()))
+        user_jobs_dir_list.append(str(user_p.resolve()))
     return user_jobs_dir_list
 
 

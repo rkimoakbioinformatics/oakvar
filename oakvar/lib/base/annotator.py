@@ -81,7 +81,7 @@ class BaseAnnotator(object):
         self.script_path: str = ""
         self.module_options = module_options
         if input_file:
-            self.primary_input_path = Path(input_file).absolute()
+            self.primary_input_path = Path(input_file).resolve()
         else:
             self.primary_input_path = None
         self.secondary_inputs = secondary_inputs
@@ -125,7 +125,7 @@ class BaseAnnotator(object):
         if not self.main_fpath:
             if name:
                 self.module_name = name
-                self.module_dir = Path(os.getcwd()).absolute()
+                self.module_dir = Path(os.getcwd()).resolve()
             else:
                 raise ModuleLoadingError(msg="name argument should be given.")
             self.conf = module_conf.copy()
@@ -341,7 +341,7 @@ class BaseAnnotator(object):
         if self.secondary_inputs:
             for secondary_def in self.secondary_inputs:
                 sec_name, sec_path = re.split(r"(?<!\\)=", secondary_def)
-                self.secondary_paths[sec_name] = str(Path(sec_path).absolute())
+                self.secondary_paths[sec_name] = str(Path(sec_path).resolve())
         if not self.output_dir and self.primary_input_path:
             self.output_dir = str(self.primary_input_path.parent)
         if self.run_name is not None:

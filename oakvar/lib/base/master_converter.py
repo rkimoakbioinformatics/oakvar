@@ -138,7 +138,7 @@ class MasterConverter(object):
         self.input_paths = []
         if self.pipeinput is False:
             self.input_paths = [
-                str(Path(x).absolute()) for x in self.inputs if x != "-"
+                str(Path(x).resolve()) for x in self.inputs if x != "-"
             ]
         else:
             self.input_paths = [STDIN]

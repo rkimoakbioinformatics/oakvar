@@ -185,7 +185,7 @@ class BaseConverter(object):
             self.pipeinput = True
             self.input_paths = [STDIN]
         else:
-            self.input_paths = [str(Path(x).absolute()) for x in self.input_paths if x != "-"]
+            self.input_paths = [str(Path(x).resolve()) for x in self.input_paths if x != "-"]
         self.input_dir = str(Path(self.input_paths[0]).parent)
         if self.pipeinput is False:
             for i in range(len(self.input_paths)):
@@ -504,9 +504,8 @@ class BaseConverter(object):
             len_df = 0
             df_no = 0
 
-    def run_df(self, df_size: int = 0, list_size: int=1, ignore_sample: bool=False):
+    def run_df(self, input_path: str="", chunk_size: int=1000, start: int=0, df_size: int = 0, ignore_sample: bool=False):
         from pathlib import Path
-        from multiprocess import Pool
         from oakvar.lib.util.run import update_status
 
         if not self.input_paths or not self.logger:
@@ -516,7 +515,6 @@ class BaseConverter(object):
         )
         self.collect_input_file_handles()
         self.set_variables_pre_run()
-        chunk_size: int = 1000
         if df_size > 0 and chunk_size > df_size:
             chunk_size = df_size
         total_df: Optional[pl.DataFrame] = None

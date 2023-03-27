@@ -12,7 +12,7 @@ class LocalModule(object):
         from ..util.util import load_yml_conf
         from ..store import get_developer_dict
 
-        self.directory = Path(dir_path).absolute()
+        self.directory = Path(dir_path).resolve()
         if not name:
             self.name = self.directory.name
         else:
@@ -552,7 +552,7 @@ def get_pack_dir_out_dir(
 def pack_module_zip(
     module_name: str,
     kind: str,
-    outdir: Path = Path(".").absolute(),
+    outdir: Path = Path(".").resolve(),
     split: bool = False,
     outer=None,
 ) -> Optional[Path]:

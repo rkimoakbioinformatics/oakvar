@@ -131,7 +131,7 @@ class BaseReporter:
         if not self.output_dir:
             self.output_dir = str(Path(self.dbpath).parent)
         if not self.output_dir:
-            self.output_dir = str(Path(".").absolute())
+            self.output_dir = str(Path(".").resolve())
         if self.savepath and Path(self.savepath).parent == "":
             self.savepath = str(Path(self.output_dir) / self.savepath)
         self.module_conf = get_module_conf(self.module_name, module_type="reporter")

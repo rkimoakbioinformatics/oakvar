@@ -309,7 +309,7 @@ class WebServer(object):
         from pathlib import Path
 
         assert self.app is not None
-        source_dir = Path(__file__).absolute().parent
+        source_dir = Path(__file__).resolve().parent
         self.app.router.add_static("/store", source_dir / "webstore")
         self.app.router.add_static("/result", source_dir / "webresult")
         self.app.router.add_static("/submit", source_dir / "websubmit")
