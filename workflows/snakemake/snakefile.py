@@ -1,11 +1,14 @@
 rule run_ov:
     input:
         "exampleinput"
+
+    output:
+        "exampleinput.xlsx",
+        "exampleinput.vcf"
         
     params:
         annotator = ["clinvar", "cosmic"],
         reporter = ["vcf", "excel"]
 
     shell:
-        "python wrapper.py {input} --annotator {params.annotator} --reporter {params.reporter}"
-
+        "ov run {input} -a {params.annotator} -t {params.reporter}"
