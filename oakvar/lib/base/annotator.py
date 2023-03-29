@@ -149,12 +149,14 @@ class BaseAnnotator(object):
         if "level" not in self.conf:
             self.conf["level"] = self.level
         if not input_format:
-            if self.level == VARIANT_LEVEL:
-                input_format = INPUT_LEVEL_KEY
-            elif self.level == GENE_LEVEL:
-                input_format = GENE_LEVEL_KEY
-            else:
-                input_format = INPUT_LEVEL_KEY
+            input_format = self.conf.get("input_format")
+            if not input_format:
+                if self.level == VARIANT_LEVEL:
+                    input_format = INPUT_LEVEL_KEY
+                elif self.level == GENE_LEVEL:
+                    input_format = GENE_LEVEL_KEY
+                else:
+                    input_format = INPUT_LEVEL_KEY
         self.input_format = input_format
         if not input_columns:
             if input_format in self.default_input_columns:
