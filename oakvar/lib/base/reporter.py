@@ -8,7 +8,7 @@ from typing import List
 class BaseReporter:
     def __init__(
         self,
-        dbpath: str,
+        dbpath: str="",
         report_types: List[str] = [],
         filterpath: Optional[str] = None,
         filter=None,
@@ -460,16 +460,16 @@ class BaseReporter:
             self.write_variant_sample_separately = True
         else:
             self.write_variant_sample_separately = False
-        datarows_iter = await self.cf.get_level_data_iterator(
-            level, page=page, pagesize=pagesize, uid=self.ftable_uid
-        )
-        if not datarows_iter:
-            return
         row_count = 0
-        c = 0
-        for datarow in datarows_iter:
+        conn_read, conn_write = await self.cf.get_db_conns()
+        if not conn_read or not conn_write:
+            return None
+        cursor_read = await conn_read.cursor()
+        await self.cf.get_level_data_iterator(
+            level, page=page, pagesize=pagesize, uid=self.ftable_uid, cursor_read=cursor_read
+        )
+        async for datarow in cursor_read:
             datarow = dict(datarow)
-            c += 1
             if datarow is None:
                 continue
             if level == "gene" and add_summary:
@@ -483,6 +483,9 @@ class BaseReporter:
             row_count += 1
             if pagesize and row_count == pagesize:
                 break
+        await cursor_read.close()
+        await conn_read.close()
+        await conn_write.close()
 
     def write_row_with_samples_separate_or_not(self, datarow):
         if self.legacy_samples_col:
@@ -670,7 +673,7 @@ class BaseReporter:
             group_names = [d.get("name") for d in self.columngroups[level]]
         for group_name in group_names:
             sql = (
-                "select col_def from {header_table} where col_name "
+                f"select col_def from {header_table} where col_name "
                 + f"like '{group_name}__%'"
             )
             await cursor.execute(sql)
@@ -965,12 +968,12 @@ class BaseReporter:
             v = False
         return v
 
-    async def set_dbpath(self, dbpath=None):
+    async def set_dbpath(self, dbpath: str=""):
         from os.path import exists
         from ..exceptions import NoInput
         from ..exceptions import WrongInput
 
-        if dbpath is not None:
+        if dbpath:
             self.dbpath = dbpath
         if not self.dbpath:
             raise NoInput()

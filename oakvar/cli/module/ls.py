@@ -44,15 +44,15 @@ def list_modules(args):
         all_toks_json = []
     if available:
         if types:
-            l = []
+            module_names = []
             for mt in types:
-                l.extend(search_remote(args.get("pattern"), module_type=mt))
+                module_names.extend(search_remote(args.get("pattern"), module_type=mt))
         else:
-            l = search_remote(args.get("pattern"))
+            module_names = search_remote(args.get("pattern"))
     else:
-        l = search_local(args.get("pattern"))
-    if l:
-        for module_name in l:
+        module_names = search_local(args.get("pattern"))
+    if module_names:
+        for module_name in module_names:
             if available:
                 module_info = get_remote_module_info_ls(module_name)
                 if module_info:

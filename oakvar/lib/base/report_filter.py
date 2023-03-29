@@ -228,7 +228,7 @@ class ReportFilter:
         self.uid = uid
         self.user = self.escape_user(user)
 
-    async def exec_db(self, func, *args, **kwargs):
+    async def exec_db(self, func, *args, **kwargs) -> Any:
         conn_read, conn_write = await self.get_db_conns()
         if not conn_read or not conn_write:
             return None
@@ -406,8 +406,8 @@ class ReportFilter:
 
     async def filtertable_exists(self, cursor_read=Any, cursor_write=Any):
         _ = cursor_write
-        sql = 'select * from viewersetup where datatype="filter" and " +\
-                f"name="{self.filtername}"'
+        sql = 'select * from viewersetup where datatype="filter" and ' +\
+                f'name="{self.filtername}"'
         await cursor_read.execute(sql)
         row = await cursor_read.fetchone()
         if row is None:
@@ -1018,16 +1018,14 @@ class ReportFilter:
         ret = await cursor_read.fetchone()
         return ret[0]
 
-    async def get_level_data_iterator(self, level, page=None, pagesize=None, uid=None):
+    async def get_level_data_iterator(self, level, page=None, pagesize=None, uid=None, cursor_read=None):
         if not level:
             return None
-        conn_read, conn_write = await self.get_db_conns()
-        if not conn_read or not conn_write:
+        if not cursor_read:
             return None
         ref_col_name = REF_COL_NAMES.get(level)
         if not ref_col_name:
             return None
-        cursor_read = await conn_read.cursor()
         if uid is not None:
             filter_uid_status = await self.exec_db(
                 self.get_existing_report_filter_status
@@ -1042,11 +1040,6 @@ class ReportFilter:
             offset = (page - 1) * pagesize
             q += f" limit {pagesize} offset {offset}"
         await cursor_read.execute(q)
-        rows = await cursor_read.fetchall()
-        await cursor_read.close()
-        await conn_read.close()
-        await conn_write.close()
-        return rows
 
     async def get_gene_row(self, hugo=None, cursor_read=Any, cursor_write=Any):
         _ = cursor_write

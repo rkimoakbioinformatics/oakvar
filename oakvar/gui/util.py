@@ -105,15 +105,16 @@ async def is_loggedin(request, servermode):
 
 
 def copy_state(value):
-    from multiprocessing.managers import ListProxy
-    from multiprocessing.managers import DictProxy
+    from multiprocess.managers import ListProxy
+    from multiprocess.managers import DictProxy
 
-    if isinstance(value, ListProxy):
+    ty = type(value)
+    if ty == ListProxy:
         content = []
         for v in value:
             v2 = copy_state(v)
             content.append(v2)
-    elif isinstance(value, DictProxy):
+    elif ty == DictProxy:
         content = {}
         for k, v in value.items():
             v2 = copy_state(v)

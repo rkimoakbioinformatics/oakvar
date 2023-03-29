@@ -1,11 +1,13 @@
 from typing import Any
 from typing import Optional
+from typing import Union
 from typing import List
 from typing import Dict
 from typing import Tuple
 from typing import TextIO
 from oakvar import BaseConverter
 from pyliftover import LiftOver
+from io import BufferedReader
 
 STDIN = "stdin"
 
@@ -40,7 +42,7 @@ class MasterConverter(object):
         self.input_dir = None
         self.input_path_dict = {}
         self.input_path_dict2 = {}
-        self.input_file_handles: Dict[str, TextIO] = {}
+        self.input_file_handles: Dict[str, Union[TextIO, BufferedReader]] = {}
         self.output_base_fname: Optional[str] = None
         self.error_logger = None
         self.unique_excs: Dict[str, int] = {}
@@ -168,23 +170,30 @@ class MasterConverter(object):
     def get_file_object_for_input_path(self, input_path: str):
         import gzip
         import sys
+        from pathlib import Path
         from oakvar.lib.util.util import detect_encoding
 
-        if input_path == STDIN:
-            encoding = "utf-8"
+        suffix = Path(input_path).suffix
+        # TODO: Remove the hardcoding.
+        if suffix in [".parquet"]:
+            encoding = None
         else:
-            if self.logger:
-                self.logger.info(f"detecting encoding of {input_path}")
-        if self.input_encoding:
-            encoding = self.input_encoding
-        else:
-            encoding = detect_encoding(input_path)
+            if input_path == STDIN:
+                encoding = "utf-8"
+            elif self.input_encoding:
+                encoding = self.input_encoding
+            else:
+                if self.logger:
+                    self.logger.info(f"detecting encoding of {input_path}")
+                encoding = detect_encoding(input_path)
         if self.logger:
             self.logger.info(f"encoding: {input_path} {encoding}")
         if input_path == STDIN:
             f = sys.stdin
         elif input_path.endswith(".gz"):
             f = gzip.open(input_path, mode="rt", encoding=encoding)
+        elif suffix in [".parquet"]:
+            f = open(input_path, "rb")
         else:
             f = open(input_path, encoding=encoding)
         return f
@@ -202,8 +211,8 @@ class MasterConverter(object):
             self.input_file_handles[input_path] = f
 
     def setup(self):
-        self.collect_input_file_handles()
         self.collect_converters()
+        self.collect_input_file_handles()
         self.check_input_format()
         self.collect_converter_by_input()
         self.collect_extra_output_columns()
@@ -232,13 +241,16 @@ class MasterConverter(object):
             converter.version = module_info.version
             converter.conf = module_info.conf
             converter.script_path = module_info.script_path
+            format_name = module_info.conf.get("format_name")
             # end of backward compatibility
-            if not hasattr(converter, "format_name"):
+            if format_name:
+                converter.format_name = format_name
+            elif not hasattr(converter, "format_name"):
                 converter.format_name = module_name.split("-")[0]
-            if not hasattr(converter, "format_name"):
+            if not converter.format_name:
                 if self.outer:
                     self.outer.write(
-                        "Skipping {module_info.name} as it does not "
+                        f"Skipping {module_info.name} as it does not "
                         + "have format_name defined."
                     )
                 continue
@@ -435,7 +447,7 @@ class MasterConverter(object):
         self.logger.info("input format: %s" % converter.format_name)
         self.logger.info(f"genome_assembly: {genome_assembly}")
 
-    def setup_file(self, input_path: str) -> Tuple[TextIO, BaseConverter]:
+    def setup_file(self, input_path: str) -> Tuple[Union[BufferedReader, TextIO], BaseConverter]:
         from sys import stdin
         from logging import getLogger
         from oakvar.lib.util.util import log_module
@@ -589,7 +601,7 @@ class MasterConverter(object):
         self.crm_writer.write_data(
             {
                 "original_line": self.read_lnum,
-                "tags": variant["tags"],
+                "tags": variant.get("tags"),
                 "uid": self.uid,
                 "fileno": fileno,
             }
@@ -638,7 +650,7 @@ class MasterConverter(object):
             self.file_num_valid_variants = 0
             self.file_error_lines = 0
             for self.read_lnum, variants in converter.convert_file(
-                f, exc_handler=self._log_conversion_error
+                f, input_path=self.input_path, exc_handler=self._log_conversion_error
             ):
                 try:
                     self.handle_converted_variants(variants, converter)

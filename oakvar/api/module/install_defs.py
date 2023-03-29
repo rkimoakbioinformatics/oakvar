@@ -76,7 +76,7 @@ def collect_module_name_and_versions(modules, outer=None) -> list:
                 module_name = mv
                 version = None
             mn_vs.append({"module_name": module_name, "version": version})
-        except:
+        except Exception:
             if outer:
                 outer.write(f"Wrong module name==version format: {mv}")
     return mn_vs
