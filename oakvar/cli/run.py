@@ -282,4 +282,10 @@ def add_parser_ov_run(subparsers):
         default=None,
         help="Encoding of input files",
     )
+    parser_ov_run.add_argument(
+        "--ignore-sample",
+        action="store_true",
+        default=False,
+        help="Ignore samples",
+    )
     parser_ov_run.set_defaults(func=cli_run)

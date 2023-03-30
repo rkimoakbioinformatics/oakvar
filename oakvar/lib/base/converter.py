@@ -12,6 +12,7 @@ class BaseConverter(object):
         name: Optional[str] = None,
         title: Optional[str] = None,
         module_conf: dict = {},
+        ignore_sample: bool = False,
         code_version: Optional[str] = None,
     ):
         self.module_type = "converter"
@@ -23,6 +24,7 @@ class BaseConverter(object):
         self.conf: dict = {}
         self.input_path = ""
         self.input_paths: Optional[List[str]] = None
+        self.ignore_sample: bool = ignore_sample
         if name:
             self.module_name = name
         self.title = title
