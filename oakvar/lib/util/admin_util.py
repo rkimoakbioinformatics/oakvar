@@ -87,7 +87,7 @@ def create_new_module(module_name: str, module_type: str, outer=None) -> bool:
         if outer:
             outer.error("modules_dir does not exist. Run `ov system setup`?")
         return False
-    module_dir = Path(modules_dir) / module_type / module_name
+    module_dir = Path(modules_dir) / (module_type + "s") / module_name
     template_dir = (
         Path(get_packagedir()) / "lib" / "assets" / "module_templates" / module_type
     )
