@@ -878,7 +878,7 @@ def check_module_version_requirement(outer=None) -> bool:
         for module_name, required_version in invalid_modules:
             outer.write(
                 "Module version requirement not met for "
-                + "this version of OakVar: {module_name}>={required_version}"
+                + f"this version of OakVar: {module_name} >= {required_version}"
             )
     return False
 

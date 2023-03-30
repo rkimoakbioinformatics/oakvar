@@ -1,3 +1,11 @@
 wggosummary 2.6.2
 wgsosummary 1.8.1
 gencode 41.3.1
+csvreporter 3.0.0
+excelreporter 3.0.0
+pandasreporter 2.0.0
+rdatareporter 2.0.0
+stdoutreporter 2.0.0
+textreporter 3.0.0
+tsvreporter 3.0.0
+vcfreporter 5.0.0
