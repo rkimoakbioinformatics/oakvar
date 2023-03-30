@@ -17,16 +17,16 @@ class VCF2VCF:
         mapper_name: Optional[str] = None,
         serveradmindb=None,
         outer=None,
+        **kwargs,
     ):
         import sys
-        import os
-        from ..exceptions import ModuleLoadingError
+        from pathlib import Path
+        from oakvar.lib.exceptions import ModuleLoadingError
 
         fp = sys.modules[self.__module__].__file__
         if fp is None:
             raise ModuleLoadingError(module_name=self.__module__)
         self.primary_input_path = None
-        self.output_dir = ""
         self.logger = None
         self.error_logger = None
         self.cmd_arg_parser = None
@@ -41,11 +41,11 @@ class VCF2VCF:
         self.lifter = None
         self.genome = genome
         self.module_name = "vcf2vcf"
-        self.inputs = [os.path.abspath(v) for v in inputs]
-        self.primary_input_path = os.path.abspath(inputs[0])
-        self.output_dir = os.path.dirname(self.primary_input_path)
+        self.inputs = [Path(v).resolve() for v in inputs]
+        self.primary_input_path = self.inputs[0]
+        self.output_dir = self.primary_input_path.parent
         if output_dir:
-            self.output_dir = output_dir
+            self.output_dir = Path(output_dir).resolve()
         self.annotator_names = annotator_names
         self.mapper_name = mapper_name
         self.run_name = run_name
@@ -57,8 +57,8 @@ class VCF2VCF:
             self.logger.setLevel(self.conf["logging_level"].upper())
 
     def setup_liftover(self):
-        from ..util.seq import get_lifter
-        from ..util.seq import get_wgs_reader
+        from oakvar.lib.util.seq import get_lifter
+        from oakvar.lib.util.seq import get_wgs_reader
 
         if self.genome:
             self.lifter = get_lifter(source_assembly=self.genome)
@@ -99,8 +99,8 @@ class VCF2VCF:
         return all_col_names
 
     def get_col_info(self, module_name, mapper: str, module_type: str = ""):
-        from ..util.util import get_crx_def
-        from ..module.local import get_module_conf
+        from oakvar.lib.util.util import get_crx_def
+        from oakvar.lib.module.local import get_module_conf
 
         if module_name == mapper:
             mc = get_crx_def()
@@ -164,7 +164,7 @@ class VCF2VCF:
 
     def log_progress(self, lnum):
         from time import time
-        from ..util.run import update_status
+        from oakvar.lib.util.run import update_status
 
         if self.last_status_update_time is None:
             return
@@ -177,13 +177,12 @@ class VCF2VCF:
             self.last_status_update_time = cur_time
 
     def run(self):
-        from os.path import join
         from re import compile
-        from ..util.seq import normalize_variant_dict_left
-        from ..util.seq import liftover
-        from ..module.local import load_modules
-        from ..util.run import log_variant_exception
-        from ..exceptions import IgnoredVariant
+        from oakvar.lib.util.seq import normalize_variant_dict_left
+        from oakvar.lib.util.seq import liftover
+        from oakvar.lib.module.local import load_modules
+        from oakvar.lib.util.run import log_variant_exception
+        from oakvar.lib.exceptions import IgnoredVariant
 
         if not self.mapper_name or not self.inputs:
             return False
@@ -194,17 +193,17 @@ class VCF2VCF:
         mapper = modules[self.mapper_name]
         output_suffix = ".vcf"
         for p in self.inputs:
-            if self.outer:
-                self.outer.write(f"processing {p}")
+            if self.logger:
+                self.logger.info(f"processing {p}")
             if self.run_name:
                 if len(self.inputs) == 1:
-                    outpath = join(self.output_dir, self.run_name + output_suffix)
+                    outpath = self.output_dir / (self.run_name + output_suffix)
                 else:
-                    outpath = join(
-                        self.output_dir, p + "." + self.run_name + output_suffix
+                    outpath = self.output_dir / (
+                        p.name + "." + self.run_name + output_suffix
                     )
             else:
-                outpath = p + output_suffix
+                outpath = p.with_name(p.name + output_suffix)
             f = open(p)
             wf = open(outpath, "w", 1024 * 128)
             f.seek(0)
@@ -238,9 +237,9 @@ class VCF2VCF:
                     ref = vcf_toks[3]
                     alts = vcf_toks[4].split(",")
                     if read_lnum % 10000 == 0:
-                        if self.outer:
-                            self.outer.write(
-                                f"{read_lnum}: {chrom} {pos} {ref} {vcf_toks[4]}\n"
+                        if self.logger:
+                            self.logger.info(
+                                f"{read_lnum}: {chrom} {pos} {ref} {vcf_toks[4]}"
                             )
                     variants = []
                     for alt in alts:
@@ -350,7 +349,7 @@ class VCF2VCF:
 
     def setup_logger(self):
         import logging
-        from ..exceptions import LoggerError
+        from oakvar.lib.exceptions import LoggerError
 
         self.logger = logging.getLogger(f"oakvar.{self.module_name}")
         self.error_logger = logging.getLogger("err." + self.module_name)
