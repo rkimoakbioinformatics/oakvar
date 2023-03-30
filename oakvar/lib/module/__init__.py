@@ -34,7 +34,7 @@ class InstallProgressHandler:
         if not self.module_name:
             return
         ver_str = self.module_version if self.module_version is not None else ""
-        self.display_name = ":".join([self.module_name, ver_str])
+        self.display_name = "==".join([self.module_name, ver_str])
 
     def stage_start(self, __stage__):
         pass
