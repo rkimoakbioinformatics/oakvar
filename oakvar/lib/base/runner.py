@@ -1899,7 +1899,7 @@ class Runner(object):
         v_aggregator.run()
         rtime = time() - stime
         update_status(
-            f"Aggregator {level} finished in {0:.3f}s".format(rtime),
+            f"Aggregator {level} finished in {rtime:.3f}s",
             logger=self.logger,
             serveradmindb=self.serveradmindb,
         )
@@ -1941,7 +1941,7 @@ class Runner(object):
             post_agg.run()
             rtime = time() - stime
             update_status(
-                f"{module_name} finished in {0:.3f}s".format(rtime),
+                f"{module_name} finished in {rtime:.3f}s",
                 logger=self.logger,
                 serveradmindb=self.serveradmindb,
             )
@@ -1997,7 +1997,7 @@ class Runner(object):
         response[report_type] = response_t
         rtime = time() - stime
         update_status(
-            "vcf2vcf finished in {0:.3f}s".format(rtime),
+            f"vcf2vcf finished in {rtime:.3f}s",
             logger=self.logger,
             serveradmindb=self.serveradmindb,
         )
@@ -2156,7 +2156,7 @@ class Runner(object):
         ret = await func(*args, **kwargs)
         rtime = time() - stime
         update_status(
-            f"{work} finished in {0:.3f}s".format(rtime),
+            f"{work} finished in {rtime:.3f}s",
             logger=self.logger,
             serveradmindb=self.serveradmindb,
         )
