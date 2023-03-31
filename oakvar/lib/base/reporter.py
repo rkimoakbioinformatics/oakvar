@@ -75,7 +75,8 @@ class BaseReporter:
         self.cols_to_display = {}
         self.colnos_to_display = {}
         self.display_select_columns = {}
-        self.extracted_cols = {}
+        self.extracted_cols: Dict[str, Any] = {}
+        self.extracted_col_names: Dict[str, List[str]] = {}
         self.conn = None
         self.levels_to_write = None
         self.conf = None
@@ -367,7 +368,7 @@ class BaseReporter:
         page=None,
         make_filtered_table=True,
         user=None,
-        dictrow=False,
+        dictrow=True,
     ):
         from ..exceptions import SetupError
         from time import time
@@ -449,6 +450,7 @@ class BaseReporter:
             await self.do_gene_level_summary(add_summary=add_summary)
         self.write_preface(level)
         self.extracted_cols[level] = self.get_extracted_header_columns(level)
+        self.extracted_col_names[level] = [col_def.get("col_name") for col_def in self.extracted_cols[level]]
         self.write_header(level)
         self.hugo_colno = self.colnos[level].get("base__hugo", None)
         datacols = await self.cf.exec_db(self.cf.get_variant_data_cols)
@@ -467,16 +469,18 @@ class BaseReporter:
             return None
         cursor_read = await conn_read.cursor()
         await self.cf.get_level_data_iterator(
-            level, page=page, pagesize=pagesize, uid=self.ftable_uid, cursor_read=cursor_read
+            level, page=page, pagesize=pagesize, uid=self.ftable_uid, cursor_read=cursor_read, var_added_cols=self.var_added_cols
         )
+        c = 0
         async for datarow in cursor_read:
+            c += 1
+            if c % 1000 == 0:
+                print(c)
             datarow = dict(datarow)
             if datarow is None:
                 continue
             if level == "gene" and add_summary:
                 await self.add_gene_summary_data_to_gene_level(datarow)
-            if level == "variant":
-                await self.add_gene_level_data_to_variant_level(datarow)
             datarow = self.substitute_val(level, datarow)
             self.stringify_all_mapping(level, datarow)
             self.escape_characters(datarow)

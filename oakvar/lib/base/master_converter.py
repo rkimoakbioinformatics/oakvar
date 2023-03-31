@@ -24,6 +24,7 @@ class MasterConverter(object):
         conf: Dict = {},
         module_options: Dict = {},
         input_encoding=None,
+        ignore_sample: bool=False,
         outer=None,
     ):
         from re import compile
@@ -63,10 +64,13 @@ class MasterConverter(object):
         self.total_num_valid_variants = 0
         self.total_error_lines = 0
         self.fileno = 0
+        self.ignore_sample = ignore_sample
         self.total_num_converted_variants = 0
         self.input_formats: List[str] = []
         self.genome_assemblies: List[str] = []
         self.base_re = compile("^[ATGC]+|[-]+$")
+        self.last_var: str = ""
+        self.unique_vars: dict = {}
         self.chromdict = {
             "chrx": "chrX",
             "chry": "chrY",
@@ -539,15 +543,24 @@ class MasterConverter(object):
         variant["ref_base"] = new_ref
         variant["alt_base"] = new_alt
 
-    def add_unique_variant(self, variant: dict, unique_variants: set):
-        var_str = (
-            f"{variant['chrom']}:{variant['pos']}:{variant['ref_base']}"
-            + f":{variant['alt_base']}"
-        )
-        is_unique = var_str not in unique_variants
-        if is_unique:
-            unique_variants.add(var_str)
-        return is_unique
+    def is_unique_variant(self, variant: dict) -> bool:
+        chrom = variant["chrom"]
+        pos = variant["pos"]
+        ref_base = variant["ref_base"]
+        alt_base = variant["alt_base"]
+        if chrom not in self.unique_vars:
+            self.unique_vars[chrom] = {pos: {ref_base: {alt_base: 1}}}
+            return True
+        if pos not in self.unique_vars[chrom]:
+            self.unique_vars[chrom][pos] = {ref_base: {alt_base: 1}}
+            return True
+        if ref_base not in self.unique_vars[chrom][pos]:
+            self.unique_vars[chrom][pos][ref_base] = {alt_base: 1}
+            return True
+        if alt_base not in self.unique_vars[chrom][pos][ref_base]:
+            self.unique_vars[chrom][pos][ref_base][alt_base] = 1
+            return True
+        return False
 
     def add_end_pos_if_absent(self, variant: dict):
         col_name = "pos_end"
@@ -560,7 +573,7 @@ class MasterConverter(object):
                 variant[col_name] = variant["pos"] + ref_len - 1
 
     def handle_variant(
-        self, variant: dict, var_no: int, converter, unique_variants: set
+        self, variant: dict, var_no: int, converter
     ):
         from oakvar.lib.exceptions import NoVariantError
 
@@ -569,8 +582,12 @@ class MasterConverter(object):
         if variant["ref_base"] == variant["alt_base"]:
             raise NoVariantError()
         variant["uid"] = self.uid
-        unique = self.add_unique_variant(variant, unique_variants)
-        if unique:
+        unique = self.is_unique_variant(variant)
+        if not unique:
+            variant["uid"] = self.uid
+        else:
+            self.uid += 1
+            variant["uid"] = self.uid
             self.handle_chrom(variant)
             self.handle_ref_base(variant)
             self.check_invalid_base(variant)
@@ -589,17 +606,16 @@ class MasterConverter(object):
             fileno = self.input_path_dict2[STDIN]
         else:
             fileno = self.input_path_dict2[self.input_path]
-        self.crm_writer.write_data(
-            {
-                "original_line": self.read_lnum,
-                "tags": variant.get("tags"),
-                "uid": self.uid,
-                "fileno": fileno,
-            }
-        )
-        self.crs_writer.write_data(variant)
         if unique:
-            self.uid += 1
+            self.crm_writer.write_data(
+                {
+                    "original_line": self.read_lnum,
+                    "tags": variant.get("tags"),
+                    "uid": self.uid,
+                    "fileno": fileno,
+                }
+            )
+        self.crs_writer.write_data(variant)
 
     def handle_converted_variants(
         self, variants: List[Dict[str, Any]], converter: BaseConverter
@@ -618,9 +634,9 @@ class MasterConverter(object):
         self.total_num_converted_variants += 1
         if not variants:
             raise IgnoredVariant("No valid alternate allele was found in any samples.")
-        unique_variants = set()
+        self.unique_vars = {}
         for var_no, variant in enumerate(variants):
-            self.handle_variant(variant, var_no, converter, unique_variants)
+            self.handle_variant(variant, var_no, converter)
 
     def run(self):
         from pathlib import Path
@@ -641,7 +657,9 @@ class MasterConverter(object):
             self.file_num_valid_variants = 0
             self.file_error_lines = 0
             for self.read_lnum, variants in converter.convert_file(
-                f, input_path=self.input_path, exc_handler=self._log_conversion_error
+                f, 
+                input_path=self.input_path, 
+                exc_handler=self._log_conversion_error
             ):
                 try:
                     self.handle_converted_variants(variants, converter)
@@ -678,7 +696,7 @@ class MasterConverter(object):
 
         self.start_time = time()
         self.total_num_converted_variants = 0
-        self.uid = 1
+        self.uid = 0
 
     def log_ending(self):
         from time import time, asctime, localtime

@@ -87,6 +87,7 @@ class BaseConverter(object):
         self.input_paths = inputs
         self.format = input_format
         self.script_path = Path(inspect.getfile(self.__class__))
+        self.ignore_sample: bool = ignore_sample
         if name:
             self.name: str = name
         else:

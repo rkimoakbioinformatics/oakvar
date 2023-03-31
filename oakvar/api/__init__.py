@@ -64,6 +64,7 @@ def run(
     combine_input: bool = False,
     input_format: Optional[str] = None,
     input_encoding: Optional[str] = None,
+    ignore_sample: bool = False,
     uid: Optional[str] = None,
     loop=None,
     outer=None,
@@ -180,6 +181,7 @@ def run(
         combine_input=combine_input,
         input_format=input_format,
         input_encoding=input_encoding,
+        ignore_sample=ignore_sample,
         uid=uid,
         outer=outer,
     )

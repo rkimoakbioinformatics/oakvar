@@ -1,5 +1,6 @@
 from typing import Any
 from typing import Optional
+from typing import Type
 from typing import List
 from typing import Tuple
 from typing import Dict
@@ -432,6 +433,7 @@ class Runner(object):
                 args[k] = v
         if args.get("annotators_replace"):
             args["annotators"] = args.get("annotators_replace")
+        self.ignore_sample = args.get("ignore_sample", False)
         self.args = SimpleNamespace(**args)
         self.outer = self.args.outer
         if self.args.vcf2vcf and self.args.combine_input:
@@ -621,14 +623,14 @@ class Runner(object):
             raise
         if not self.run_name or not self.output_dir or not self.args:
             raise
-        self.append_mode = []
+        self.append_mode = [False] * len(self.run_name)
         for run_no in range(len(self.run_name)):
             inp = self.input_paths[run_no]
             run_name = self.run_name[run_no]
             output_dir = self.output_dir[run_no]
             if not inp.endswith(".sqlite"):
-                self.append_mode.append(False)
                 continue
+            self.append_mode[run_no] = True
             if run_name.endswith(".sqlite"):
                 self.run_name[run_no] = run_name[:-7]
             if "converter" not in self.args.skip:
@@ -1646,6 +1648,7 @@ class Runner(object):
             genome=self.args.genome,
             input_format=self.args.input_format,
             serveradmindb=self.serveradmindb,
+            ignore_sample=self.ignore_sample,
             outer=self.outer,
         )
         ret = converter.run()
@@ -1906,7 +1909,7 @@ class Runner(object):
         v_aggregator.run()
         rtime = time() - stime
         update_status(
-            f"Aggregator {level} finished in {0:.3f}s".format(rtime),
+            f"Aggregator {level} finished in {rtime:.3f}s",
             logger=self.logger,
             serveradmindb=self.serveradmindb,
         )
@@ -1950,7 +1953,7 @@ class Runner(object):
             post_agg.run()
             rtime = time() - stime
             update_status(
-                f"{module_name} finished in {0:.3f}s".format(rtime),
+                f"{module_name} finished in {rtime:.3f}s",
                 logger=self.logger,
                 serveradmindb=self.serveradmindb,
             )
@@ -2003,7 +2006,7 @@ class Runner(object):
         response[report_type] = ran_ok
         rtime = time() - stime
         update_status(
-            "vcf2vcf finished in {0:.3f}s".format(rtime),
+            f"vcf2vcf finished in {rtime:.3f}s",
             logger=self.logger,
             serveradmindb=self.serveradmindb,
         )
@@ -2018,7 +2021,7 @@ class Runner(object):
         from ..exceptions import ModuleLoadingError
         from ..util.run import announce_module
         from ..consts import MODULE_OPTIONS_KEY
-        from ..base.reporter import BaseReporter
+        from .reporter import BaseReporter
 
         if (
             not self.run_name
@@ -2049,7 +2052,7 @@ class Runner(object):
             arg_dict["output_dir"] = output_dir
             arg_dict["module_name"] = module_name
             arg_dict[MODULE_OPTIONS_KEY] = self.run_conf.get(module_name, {})
-            Reporter = load_class(module.script_path, "Reporter")
+            Reporter: Type[BaseReporter] = load_class(module.script_path, "Reporter")
             if not issubclass(Reporter, BaseReporter):
                 raise ModuleLoadingError(module_name=module.name)
             reporter = Reporter(**arg_dict)
@@ -2165,7 +2168,7 @@ class Runner(object):
         ret = await func(*args, **kwargs)
         rtime = time() - stime
         update_status(
-            f"{work} finished in {0:.3f}s".format(rtime),
+            f"{work} finished in {rtime:.3f}s",
             logger=self.logger,
             serveradmindb=self.serveradmindb,
         )

@@ -1018,7 +1018,7 @@ class ReportFilter:
         ret = await cursor_read.fetchone()
         return ret[0]
 
-    async def get_level_data_iterator(self, level, page=None, pagesize=None, uid=None, cursor_read=None):
+    async def get_level_data_iterator(self, level, page=None, pagesize=None, uid=None, var_added_cols=[], cursor_read=None):
         if not level:
             return None
         if not cursor_read:
@@ -1032,7 +1032,11 @@ class ReportFilter:
             )
             if filter_uid_status:
                 uid = filter_uid_status.get("uid")
-        q = f"select d.* from main.{level} as d"
+        if level == "variant" and var_added_cols:
+            gene_level_cols = [f"g.{col}" for col in var_added_cols]
+            q = f"select d.*, {','.join(gene_level_cols)} from main.{level} as d join main.gene as g on d.base__hugo=g.base__hugo"
+        else:
+            q = f"select d.* from main.{level} as d"
         if uid is not None:
             ftable = self.get_ftable_name(uid=uid, ftype=level)
             q += f" join {ftable} as f on d.{ref_col_name}=f.{ref_col_name}"
