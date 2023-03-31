@@ -90,23 +90,27 @@ class Aggregator(object):
             self.dbconn.commit()
         if self.cursor is not None:
             self.cursor.execute("pragma synchronous=0;")
-            self.cursor.execute("pragma journal_mode=WAL;")
+            self.cursor.execute("pragma journal_mode=off;")
+            self.cursor.execute("pragma cache_size=1000000;")
+            self.cursor.execute("pragma locking_mode=EXCLUSIVE;")
+            self.cursor.execute("pragma temp_store=MEMORY;")
         n = 0
-        # Insert rows
         if not self.append:
             col_names = self.base_reader.get_column_names()
-            q = "insert into {table} ({columns}) values ({placeholders});".format(
-                table=self.table_name,
-                columns=", ".join(col_names),
-                placeholders=", ".join(["?"] * len(col_names)),
-            )
+            columns = ",".join(col_names)
+            placeholders = ",".join(["?"] * len(col_names))
+            q = f"insert into {self.table_name} ({columns}) values ({placeholders});"
+            batch_size = 1_000_000
+            value_batch = []
             for lnum, line, rd in self.base_reader.loop_data():
                 try:
                     n += 1
                     vals = [rd.get(c) for c in col_names]
-                    self.cursor.execute(q, vals)
-                    if n % self.commit_threshold == 0:
+                    value_batch.append(vals)
+                    if len(value_batch) == batch_size:
+                        self.cursor.executemany(q, value_batch)
                         self.dbconn.commit()
+                        value_batch = []
                     cur_time = time()
                     if lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
                         status = f"Running Aggregator ({self.level}:base): line {lnum}"
@@ -116,7 +120,9 @@ class Aggregator(object):
                         last_status_update_time = cur_time
                 except Exception as e:
                     self._log_runtime_error(lnum, line, e, fn=self.base_reader.path)
-            self.dbconn.commit()
+            if value_batch:
+                self.cursor.executemany(q, value_batch)
+                self.dbconn.commit()
         for annot_name in self.annotators:
             reader = self.readers[annot_name]
             n = 0
