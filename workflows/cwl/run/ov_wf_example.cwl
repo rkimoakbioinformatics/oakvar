@@ -51,11 +51,11 @@ steps:
       home_directory: home_dir
       tmp_directory: tmp_dir
       module_name: module_run
-    out: [sqlite, output_files]
+    out: [sqlite_out, vcf_out]
   ov_report:
     run: ov_report_example.cwl
     in: 
-      sqlite_file: ov_run_example/sqlite
+      sqlite_file: ov_run_example/sqlite_out
       home_directory: home_dir
       tmp_directory: tmp_dir
     out: [excel_file]
