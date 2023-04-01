@@ -64,7 +64,6 @@ outputs:
     outputBinding:
       outputEval: |        
         ${ var inputFiles = [].concat(inputs.input_files);
-          var out = self;
           var outputFiles = [];
         for (var i = 0; i < inputFiles.length ; i++){
           var fileName = inputFiles[i].basename;
@@ -79,7 +78,6 @@ outputs:
     outputBinding:
       outputEval: | 
         ${ var inputFiles = [].concat(inputs.input_files);
-          var out = self;
           var outputFiles = [];
         for (var i = 0; i < inputFiles.length ; i++){
           var fileName = inputFiles[i].basename;
