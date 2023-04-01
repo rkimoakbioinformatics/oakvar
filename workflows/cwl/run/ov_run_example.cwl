@@ -46,7 +46,7 @@ arguments:
 
 inputs:
   input_files:
-    type: File
+    type: File[]
   tmp_dir:
     type: string?
   home_dir:
@@ -67,7 +67,7 @@ outputs:
           var outputFiles = [];
         for (var i = 0; i < inputFiles.length ; i++){
           var fileName = inputFiles[i].basename;
-          var outFile = fileName.concat(".vcf");
+          var outFile = fileName.concat(".sqlite");
           outputFiles.push({ class: "File", path: outFile })
         }
         return outputFiles;}
