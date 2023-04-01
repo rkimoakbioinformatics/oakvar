@@ -62,7 +62,6 @@ outputs:
   sqlite_out:
     type: File[]
     outputBinding:
-      glob: "*.sqlite"
       outputEval: |        
         ${ var inputFiles = [].concat(inputs.input_files);
           var out = self;
