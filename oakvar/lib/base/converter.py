@@ -54,18 +54,54 @@ class BaseConverter(object):
         return []
 
     def convert_file(
-        self, file, *__args__, exc_handler=None, input_path=None, **__kwargs__
+        self,
+        f,
+        logger,
+        error_logger,
+        serveradmindb,
+        input_path,
+        input_fname,
+        unique_excs,
+        err_holder,
+        *__args__,
+        exc_handler=None,
+        batch_size: int = 0,
+        core_num: int = 0,
+        start_line: int = 0,
+        **__kwargs__,
     ) -> Iterator[Tuple[int, List[dict]]]:
-        line_no = 0
-        for line in file:
-            line_no += 1
+        import linecache
+
+        line_no = start_line + batch_size * core_num + 1
+        end_line_no = line_no + batch_size - 1 if batch_size else 0
+        if not input_path:
+            input_path = f.name
+        while True:
+            line = linecache.getline(input_path, line_no)
+            # print(f"@ core_num={core_num}. line_no={line_no}. line={line[:-1]}")
+            if not line:
+                break
+            line = line[:-1]
             try:
                 yield line_no, self.convert_line(line)
             except Exception as e:
                 if exc_handler:
-                    exc_handler(line_no, e)
+                    exc_handler(
+                        logger,
+                        error_logger,
+                        serveradmindb,
+                        input_path,
+                        input_fname,
+                        line_no,
+                        e,
+                        unique_excs,
+                        err_holder,
+                    )
                 else:
                     raise e
+            if line_no >= end_line_no:
+                break
+            line_no += 1
         return None
 
     def addl_operation_for_unique_variant(self, __wdict__, __wdict_no__):

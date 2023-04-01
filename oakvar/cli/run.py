@@ -147,7 +147,8 @@ def add_parser_ov_run(subparsers):
     parser_ov_run.add_argument(
         "--mp",
         dest="mp",
-        default=None,
+        type=int,
+        default=1,
         help="number of processes to use to run annotators",
     )
     parser_ov_run.add_argument(

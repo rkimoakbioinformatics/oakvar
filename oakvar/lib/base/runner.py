@@ -1614,24 +1614,7 @@ class Runner(object):
         module = SimpleNamespace(
             title="Converter", name="converter", script_path=converter_path
         )
-        arg_dict = {
-            "path": module.script_path,
-            "inputs": input_files,
-            "name": self.run_name[run_no],
-            "output_dir": self.output_dir[run_no],
-            "genome": self.args.genome,
-            "serveradmindb": self.serveradmindb,
-            "input_encoding": self.args.input_encoding,
-        }
-        arg_dict["conf"] = self.run_conf
-        if self.args.input_format is not None:
-            arg_dict["input_format"] = self.args.input_format
         announce_module(module, logger=self.logger, serveradmindb=self.serveradmindb)
-        if self.logger:
-            for k, v in arg_dict.items():
-                if k in ["serveradmindb", "genome"]:
-                    continue
-                self.logger.info(f"master_converter. {k}={v}")
         converter_class = load_class(module.script_path, "MasterConverter")
         if not converter_class:
             converter_class = load_class(module.script_path, "MasterCravatConverter")
@@ -1643,6 +1626,7 @@ class Runner(object):
             input_format=self.args.input_format,
             serveradmindb=self.serveradmindb,
             ignore_sample=self.ignore_sample,
+            mp=self.args.mp,
             outer=self.outer,
         )
         ret = converter.run()
