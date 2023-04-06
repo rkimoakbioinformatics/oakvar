@@ -905,7 +905,6 @@ class MasterConverter(object):
         from oakvar.lib.util.seq import liftover_one_pos
         from oakvar.lib.util.seq import liftover
 
-        assert self.crl_writer is not None
         if self.is_chrM(variant):
             needed = self.do_liftover_chrM
         else:
