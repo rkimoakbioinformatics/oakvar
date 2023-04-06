@@ -271,8 +271,6 @@ class Runner(object):
         msg = f"deleting previous output files for {self.run_name[run_no]}..."
         if self.logger:
             self.logger.info(msg)
-        if self.outer:
-            self.outer.write(msg)
         self.delete_output_files(run_no)
 
     def log_input(self, run_no: int):
