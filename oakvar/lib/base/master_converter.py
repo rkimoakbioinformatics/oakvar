@@ -8,8 +8,254 @@ from typing import TextIO
 from .converter import BaseConverter
 from pyliftover import LiftOver
 from io import BufferedReader
+from re import compile
 
 STDIN = "stdin"
+chromdict = {
+    "chrx": "chrX",
+    "chry": "chrY",
+    "chrMT": "chrM",
+    "chrMt": "chrM",
+    "chr23": "chrX",
+    "chr24": "chrY",
+}
+base_re = compile("^[ATGC]+|[-]+$")
+
+class LinesData:
+    def __init__(self, lines_data: Dict[int, List[Tuple[int, Dict[str, Any]]]]):
+        self.lines_data = lines_data
+
+def handle_genotype(variant):
+    if "genotype" in variant and "." in variant["genotype"]:
+        variant["genotype"] = variant["genotype"].replace(".", variant["ref_base"])
+
+def flush_err_holder(err_holder: list, error_logger, force: bool=False):
+    if len(err_holder) > 1000 or force:
+        for err_line in err_holder:
+            error_logger.error(err_line)
+        err_holder.clear()
+
+def _log_conversion_error(logger, error_logger, input_path: str, line_no: int, e, unique_excs: dict, err_holder: list):
+    from traceback import format_exc
+    from oakvar.lib.exceptions import ExpectedException
+    from oakvar.lib.exceptions import NoAlternateAllele
+
+    if isinstance(e, NoAlternateAllele):
+        return
+    if isinstance(e, ExpectedException):
+        err_str = str(e)
+    else:
+        err_str = format_exc().rstrip()
+    if err_str not in unique_excs:
+        err_no = len(unique_excs)
+        unique_excs[err_str] = err_no
+        logger.error(f"Error [{err_no}]: {input_path}: {err_str}")
+        err_holder.append(f"{err_no}:{line_no}\t{str(e)}")
+    else:
+        err_no = unique_excs[err_str]
+        err_holder.append(f"{err_no}:{line_no}\t{str(e)}")
+    flush_err_holder(err_holder, error_logger)
+
+def is_chrM(wdict):
+    return wdict["chrom"] == "chrM"
+
+def perform_liftover_if_needed(variant, do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader) -> Optional[Dict[str, Any]]:
+    from copy import copy
+    from oakvar.lib.util.seq import liftover_one_pos
+    from oakvar.lib.util.seq import liftover
+
+    if is_chrM(variant):
+        needed = do_liftover_chrM
+    else:
+        needed = do_liftover
+    if needed:
+        prelift_wdict = copy(variant)
+        crl_data = prelift_wdict
+        (
+            variant["chrom"],
+            variant["pos"],
+            variant["ref_base"],
+            variant["alt_base"],
+        ) = liftover(
+            variant["chrom"],
+            int(variant["pos"]),
+            variant["ref_base"],
+            variant["alt_base"],
+            lifter=lifter,
+            wgs_reader=wgs_reader,
+        )
+        converted_end = liftover_one_pos(
+            variant["chrom"], variant["pos_end"], lifter=lifter
+        )
+        if converted_end is None:
+            pos_end = ""
+        else:
+            pos_end = converted_end[1]
+        variant["pos_end"] = pos_end
+    else:
+        crl_data = None
+    return crl_data
+
+def add_end_pos_if_absent(variant: dict):
+    col_name = "pos_end"
+    if col_name not in variant:
+        ref_base = variant["ref_base"]
+        ref_len = len(ref_base)
+        if ref_len == 1:
+            variant[col_name] = variant["pos"]
+        else:
+            variant[col_name] = variant["pos"] + ref_len - 1
+
+def normalize_variant(variant):
+    from oakvar.lib.util.seq import normalize_variant_left
+
+    p, r, a = (
+        int(variant["pos"]),
+        variant["ref_base"],
+        variant["alt_base"],
+    )
+    (
+        new_pos,
+        new_ref,
+        new_alt,
+    ) = normalize_variant_left("+", p, r, a)
+    variant["pos"] = new_pos
+    variant["ref_base"] = new_ref
+    variant["alt_base"] = new_alt
+
+def check_invalid_base(variant: dict):
+    from oakvar.lib.exceptions import IgnoredVariant
+
+    if not base_re.fullmatch(variant["ref_base"]):
+        raise IgnoredVariant(f"Invalid reference base {variant['ref_base']}")
+    if not base_re.fullmatch(variant["alt_base"]):
+        raise IgnoredVariant(f"Invalid alternate base {variant['alt_base']}")
+
+def handle_ref_base(variant, wgs_reader):
+    from oakvar.lib.exceptions import IgnoredVariant
+
+    if "ref_base" not in variant or variant["ref_base"] in [
+        "",
+        ".",
+    ]:
+        variant["ref_base"] = wgs_reader.get_bases(
+            variant.get("chrom"), int(variant["pos"])
+        ).upper()
+    else:
+        ref_base = variant["ref_base"]
+        if ref_base == "" and variant["alt_base"] not in [
+            "A",
+            "T",
+            "C",
+            "G",
+        ]:
+            raise IgnoredVariant("Reference base required for non SNV")
+        elif ref_base is None or ref_base == "":
+            variant["ref_base"] = wgs_reader.get_bases(
+                variant.get("chrom"), int(variant.get("pos"))
+            )
+
+def handle_chrom(variant):
+    from oakvar.lib.exceptions import IgnoredVariant
+
+    if not variant.get("chrom"):
+        raise IgnoredVariant("No chromosome")
+    if not variant.get("chrom").startswith("chr"):
+        variant["chrom"] = "chr" + variant.get("chrom")
+    variant["chrom"] = chromdict.get(
+        variant.get("chrom"), variant.get("chrom")
+    )
+
+def is_unique_variant(variant: dict, unique_vars: dict) -> bool:
+    return variant["var_no"] not in unique_vars
+
+def handle_variant(
+        variant: dict, unique_vars: dict, do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, line_no: int, num_valid_error_lines: Dict[str, int]
+) -> Optional[Dict[str, Any]]:
+    from oakvar.lib.exceptions import NoVariantError
+
+    if variant["ref_base"] == variant["alt_base"]:
+        raise NoVariantError()
+    tags = variant.get("tags")
+    unique = is_unique_variant(variant, unique_vars)
+    if unique:
+        variant["unique"] = True
+        unique_vars[variant["var_no"]] = True
+        handle_chrom(variant)
+        handle_ref_base(variant, wgs_reader)
+        check_invalid_base(variant)
+        normalize_variant(variant)
+        add_end_pos_if_absent(variant)
+        crl_data = perform_liftover_if_needed(variant, do_liftover, do_liftover_chrM, lifter, wgs_reader)
+        num_valid_error_lines["valid"] += 1
+    else:
+        variant["unique"] = False
+        crl_data = None
+    handle_genotype(variant)
+    if unique:
+        variant["original_line"] = line_no
+        variant["tags"] = tags
+    return crl_data
+
+def handle_converted_variants(
+        variants: List[Dict[str, Any]], do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, logger, error_logger, input_path: str, input_fname: str, unique_excs: dict, err_holder: list, line_no: int, num_valid_error_lines: Dict[str, int]
+):
+    from oakvar.lib.exceptions import IgnoredVariant
+
+    if variants is BaseConverter.IGNORE:
+        return None, None
+    if not variants:
+        raise IgnoredVariant("No valid alternate allele was found in any samples.")
+    unique_vars = {}
+    variant_l: List[Dict[str, Any]] = []
+    crl_l: List[Dict[str, Any]] = []
+    for variant in variants:
+        try:
+            crl_data = handle_variant(variant, unique_vars, do_liftover, do_liftover_chrM, lifter, wgs_reader, line_no, num_valid_error_lines)
+        except Exception as e:
+            _log_conversion_error(logger, error_logger, input_path, line_no, e, unique_excs, err_holder)
+            continue
+        variant_l.append(variant)
+        if crl_data:
+            crl_l.append(crl_data)
+    return variant_l, crl_l
+
+def gather_variantss_wrapper(args):
+    return gather_variantss(*args)
+
+def gather_variantss(
+        converter: BaseConverter, 
+        lines_data: Dict[int, List[Tuple[int, Dict[str, Any]]]],
+        core_num: int, 
+        do_liftover: bool, 
+        do_liftover_chrM: bool, 
+        lifter, 
+        wgs_reader, 
+        logger, 
+        error_logger, 
+        input_path: str, 
+        input_fname: str, 
+        unique_excs: dict, 
+        err_holder: list,
+        num_valid_error_lines: Dict[str, int],
+) -> Tuple[List[List[Dict[str, Any]]], List[Dict[str, Any]]]:
+    variants_l = []
+    crl_l = []
+    line_data = lines_data[core_num]
+    for (line_no, line) in line_data:
+        try:
+            variants = converter.convert_line(line)
+            variants_datas, crl_datas = handle_converted_variants(variants, do_liftover, do_liftover_chrM, lifter, wgs_reader, logger, error_logger, input_path, input_fname, unique_excs, err_holder, line_no, num_valid_error_lines)
+            if variants_datas is None or crl_datas is None:
+                continue
+            variants_l.append(variants_datas)
+            crl_l.append(crl_datas)
+        except KeyboardInterrupt:
+            raise
+        except Exception as e:
+            _log_conversion_error(logger, error_logger, input_path, line_no, e, unique_excs, err_holder)
+            num_valid_error_lines["error"] += 1
+    return variants_l, crl_l
 
 
 class MasterConverter(object):
@@ -25,6 +271,7 @@ class MasterConverter(object):
         module_options: Dict = {},
         input_encoding=None,
         ignore_sample: bool=False,
+        mp: int=1,
         outer=None,
     ):
         from re import compile
@@ -38,7 +285,6 @@ class MasterConverter(object):
         self.crl_writer = None
         self.converters = {}
         self.available_input_formats = []
-        self.pipeinput = False
         self.input_paths: List[str] = []
         self.input_dir = None
         self.input_path_dict = {}
@@ -99,6 +345,7 @@ class MasterConverter(object):
         self.setup_logger()
         self.wgs_reader = get_wgs_reader(assembly="hg38")
         self.time_error_written: float = 0
+        self.mp = mp
 
     def get_genome_assembly(self, converter) -> str:
         from oakvar.lib.system.consts import default_assembly_key
@@ -116,11 +363,11 @@ class MasterConverter(object):
             return genome_assembly
         raise NoGenomeException()
 
-    def set_do_liftover(self, genome_assembly, converter, f):
+    def set_do_liftover(self, genome_assembly, converter, input_path):
         self.do_liftover = genome_assembly != "hg38"
         if hasattr(converter, "get_do_liftover_chrM"):
             self.do_liftover_chrM = converter.get_do_liftover_chrM(
-                genome_assembly, f, self.do_liftover
+                genome_assembly, input_path, self.do_liftover
             )
         else:
             self.do_liftover_chrM = self.do_liftover
@@ -136,24 +383,14 @@ class MasterConverter(object):
     def parse_inputs(self):
         from pathlib import Path
 
-        self.pipeinput = False
-        if self.inputs and len(self.inputs) == 1 and self.inputs[0] == "-":
-            self.pipeinput = True
         self.input_paths = []
-        if self.pipeinput is False:
-            self.input_paths = [
-                str(Path(x).resolve()) for x in self.inputs if x != "-"
-            ]
-        else:
-            self.input_paths = [STDIN]
+        self.input_paths = [
+            str(Path(x).resolve()) for x in self.inputs if x != "-"
+        ]
         self.input_dir = str(Path(self.input_paths[0]).parent)
-        if self.pipeinput is False:
-            for i in range(len(self.input_paths)):
-                self.input_path_dict[i] = self.input_paths[i]
-                self.input_path_dict2[self.input_paths[i]] = i
-        else:
-            self.input_path_dict[0] = self.input_paths[0]
-            self.input_path_dict2[STDIN] = 0
+        for i in range(len(self.input_paths)):
+            self.input_path_dict[i] = self.input_paths[i]
+            self.input_path_dict2[self.input_paths[i]] = i
 
     def parse_output_dir(self):
         from pathlib import Path
@@ -287,48 +524,31 @@ class MasterConverter(object):
 
         if self.format and self.format not in self.available_input_formats:
             raise InvalidInputFormat(self.format)
-        if self.pipeinput and not self.format:
-            raise InvalidInputFormat("--input-format should be given with pipe input")
 
     def get_converter_for_input_file(self, f) -> Optional[BaseConverter]:
-        import sys
-        from oakvar.lib.exceptions import ArgumentError
-
-        if f == sys.stdin:
-            if not self.format:
-                raise ArgumentError(
-                    msg="--input-format option should be given if "
-                    + "stdin is used for input."
-                )
-            if self.format not in self.converters:
-                raise ArgumentError(
-                    msg=f"{self.format} is not found in installed converter modules."
-                )
-            return self.converters[self.format]
+        converter: Optional[BaseConverter] = None
+        if self.format:
+            if self.format in self.converters:
+                converter = self.converters[self.format]
         else:
-            converter: Optional[BaseConverter] = None
-            if self.format:
-                if self.format in self.converters:
-                    converter = self.converters[self.format]
-            else:
-                for check_converter in self.converters.values():
-                    f.seek(0)
-                    try:
-                        check_success = check_converter.check_format(f)
-                    except Exception:
-                        import traceback
+            for check_converter in self.converters.values():
+                f.seek(0)
+                try:
+                    check_success = check_converter.check_format(f)
+                except Exception:
+                    import traceback
 
-                        if self.error_logger:
-                            self.error_logger.error(traceback.format_exc())
-                        check_success = False
-                    f.seek(0)
-                    if check_success:
-                        converter = check_converter
-                        break
-            if converter:
-                if self.logger:
-                    self.logger.info(f"Using {converter.name} for {f.name}")
-                return converter
+                    if self.error_logger:
+                        self.error_logger.error(traceback.format_exc())
+                    check_success = False
+                f.seek(0)
+                if check_success:
+                    converter = check_converter
+                    break
+        if converter:
+            if self.logger:
+                self.logger.info(f"Using {converter.name} for {f.name}")
+            return converter
         return None
 
     def set_converter_properties(self, converter):
@@ -436,23 +656,16 @@ class MasterConverter(object):
     def log_input_and_genome_assembly(self, input_path, genome_assembly, converter):
         if not self.logger:
             return
-        if self.pipeinput:
-            self.logger.info(f"input file: {STDIN}")
-        else:
-            self.logger.info(f"input file: {input_path}")
+        self.logger.info(f"input file: {input_path}")
         self.logger.info("input format: %s" % converter.format_name)
         self.logger.info(f"genome_assembly: {genome_assembly}")
 
-    def setup_file(self, input_path: str) -> Tuple[Union[BufferedReader, TextIO], BaseConverter]:
-        from sys import stdin
+    def setup_file(self, input_path: str) -> BaseConverter:
         from logging import getLogger
         from oakvar.lib.util.util import log_module
         from oakvar.lib.exceptions import NoConverterFound
 
-        if self.pipeinput:
-            f = stdin
-        else:
-            f = self.input_file_handles[input_path]
+        f = self.input_file_handles[input_path]
         converter = self.converter_by_input_path[input_path]
         if not converter:
             raise NoConverterFound(input_path)
@@ -468,12 +681,11 @@ class MasterConverter(object):
         genome_assembly = self.get_genome_assembly(converter)
         self.genome_assemblies.append(genome_assembly)
         self.log_input_and_genome_assembly(input_path, genome_assembly, converter)
-        self.set_do_liftover(genome_assembly, converter, f)
+        self.set_do_liftover(genome_assembly, converter, input_path)
         if self.do_liftover or self.do_liftover_chrM:
             self.setup_lifter(genome_assembly)
-        if self.pipeinput is False:
-            f.seek(0)
-        return (f, converter)
+        f.seek(0)
+        return converter
 
     def handle_chrom(self, variant):
         from oakvar.lib.exceptions import IgnoredVariant
@@ -522,9 +734,9 @@ class MasterConverter(object):
         from oakvar.lib.exceptions import IgnoredVariant
 
         if not self.base_re.fullmatch(variant["ref_base"]):
-            raise IgnoredVariant("Invalid reference base")
+            raise IgnoredVariant(f"Invalid reference base {variant['ref_base']}")
         if not self.base_re.fullmatch(variant["alt_base"]):
-            raise IgnoredVariant("Invalid alternate base")
+            raise IgnoredVariant(f"Invalid alternate base {variant['alt_base']}")
 
     def normalize_variant(self, variant):
         from oakvar.lib.util.seq import normalize_variant_left
@@ -543,25 +755,6 @@ class MasterConverter(object):
         variant["ref_base"] = new_ref
         variant["alt_base"] = new_alt
 
-    def is_unique_variant(self, variant: dict) -> bool:
-        chrom = variant["chrom"]
-        pos = variant["pos"]
-        ref_base = variant["ref_base"]
-        alt_base = variant["alt_base"]
-        if chrom not in self.unique_vars:
-            self.unique_vars[chrom] = {pos: {ref_base: {alt_base: 1}}}
-            return True
-        if pos not in self.unique_vars[chrom]:
-            self.unique_vars[chrom][pos] = {ref_base: {alt_base: 1}}
-            return True
-        if ref_base not in self.unique_vars[chrom][pos]:
-            self.unique_vars[chrom][pos][ref_base] = {alt_base: 1}
-            return True
-        if alt_base not in self.unique_vars[chrom][pos][ref_base]:
-            self.unique_vars[chrom][pos][ref_base][alt_base] = 1
-            return True
-        return False
-
     def add_end_pos_if_absent(self, variant: dict):
         col_name = "pos_end"
         if col_name not in variant:
@@ -572,74 +765,10 @@ class MasterConverter(object):
             else:
                 variant[col_name] = variant["pos"] + ref_len - 1
 
-    def handle_variant(
-        self, variant: dict, var_no: int, converter
-    ):
-        from oakvar.lib.exceptions import NoVariantError
-
-        if not self.crv_writer or not self.crm_writer or not self.crs_writer:
-            raise
-        if variant["ref_base"] == variant["alt_base"]:
-            raise NoVariantError()
-        variant["uid"] = self.uid
-        unique = self.is_unique_variant(variant)
-        if not unique:
-            variant["uid"] = self.uid
-        else:
-            self.uid += 1
-            variant["uid"] = self.uid
-            self.handle_chrom(variant)
-            self.handle_ref_base(variant)
-            self.check_invalid_base(variant)
-            self.normalize_variant(variant)
-            self.add_end_pos_if_absent(variant)
-            self.perform_liftover_if_needed(variant)
-            self.file_num_valid_variants += 1
-            self.total_num_valid_variants += 1
-            self.crv_writer.write_data(variant)
-            try:
-                converter.addl_operation_for_unique_variant(variant, var_no)
-            except Exception as e:
-                self._log_conversion_error(self.read_lnum, e, full_line_error=False)
-        self.handle_genotype(variant)
-        if self.pipeinput:
-            fileno = self.input_path_dict2[STDIN]
-        else:
-            fileno = self.input_path_dict2[self.input_path]
-        if unique:
-            self.crm_writer.write_data(
-                {
-                    "original_line": self.read_lnum,
-                    "tags": variant.get("tags"),
-                    "uid": self.uid,
-                    "fileno": fileno,
-                }
-            )
-        self.crs_writer.write_data(variant)
-
-    def handle_converted_variants(
-        self, variants: List[Dict[str, Any]], converter: BaseConverter
-    ):
-        from oakvar.lib.exceptions import IgnoredVariant
-
-        if (
-            not self.wgs_reader
-            or not self.crv_writer
-            or not self.crm_writer
-            or not self.crs_writer
-        ):
-            raise
-        if variants is BaseConverter.IGNORE:
-            return
-        self.total_num_converted_variants += 1
-        if not variants:
-            raise IgnoredVariant("No valid alternate allele was found in any samples.")
-        self.unique_vars = {}
-        for var_no, variant in enumerate(variants):
-            self.handle_variant(variant, var_no, converter)
-
     def run(self):
         from pathlib import Path
+        from multiprocessing.pool import ThreadPool
+        #import time
         from oakvar.lib.util.run import update_status
 
         if not self.input_paths or not self.logger:
@@ -649,36 +778,90 @@ class MasterConverter(object):
         )
         self.setup()
         self.set_variables_pre_run()
-        for self.input_path in self.input_paths:
-            self.input_fname = (
-                Path(self.input_path).name if not self.pipeinput else STDIN
-            )
-            f, converter = self.setup_file(self.input_path)
+        if not self.crv_writer:
+            raise ValueError("No crv_writer")
+        if not self.crs_writer:
+            raise ValueError("No crs_writer")
+        if not self.crm_writer:
+            raise ValueError("No crm_writer")
+        if not self.crl_writer:
+            raise ValueError("No crl_writer")
+        batch_size: int = 2500
+        uid = 1
+        num_pool = 4
+        pool = ThreadPool(num_pool)
+        for input_path in self.input_paths:
+            self.input_fname = Path(input_path).name
+            fileno = self.input_path_dict2[input_path]
+            converter = self.setup_file(input_path)
             self.file_num_valid_variants = 0
             self.file_error_lines = 0
-            for self.read_lnum, variants in converter.convert_file(
-                f, 
-                input_path=self.input_path, 
-                exc_handler=self._log_conversion_error
-            ):
-                try:
-                    self.handle_converted_variants(variants, converter)
-                except KeyboardInterrupt:
-                    raise
-                except Exception as e:
-                    self._log_conversion_error(self.read_lnum, e)
-                if self.read_lnum % 10000 == 0:
-                    status = (
-                        f"Running Converter ({self.input_fname}): line {self.read_lnum}"
-                    )
-                    update_status(
-                        status, logger=self.logger, serveradmindb=self.serveradmindb
-                    )
-            f.close()
+            self.num_valid_error_lines = {"valid": 0, "error": 0}
+            start_line_pos: int = 1
+            start_line_no: int = start_line_pos
+            round_no: int = 0
+            #stime = time.time()
+            while True:
+                #ctime = time.time()
+                lines_data, immature_exit = converter.get_variant_lines(input_path, num_pool, start_line_no, batch_size)
+                args = [
+                    (
+                        converter, 
+                        lines_data,
+                        core_num, 
+                        self.do_liftover, 
+                        self.do_liftover_chrM, 
+                        self.lifter, 
+                        self.wgs_reader, 
+                        self.logger, 
+                        self.error_logger, 
+                        input_path, 
+                        self.input_fname, 
+                        self.unique_excs, 
+                        self.err_holder,
+                        self.num_valid_error_lines,
+                    ) for core_num in range(num_pool)
+                ]
+                results = pool.map(gather_variantss_wrapper, args)
+                lines_data = None
+                for result in results:
+                    variants_l, crl_l = result
+                    for i in range(len(variants_l)):
+                        variants = variants_l[i]
+                        crl_data = crl_l[i]
+                        if len(variants) == 0:
+                            continue
+                        for variant in variants:
+                            variant["uid"] = uid + variant["var_no"]
+                            if variant["unique"]:
+                                self.crv_writer.write_data(variant)
+                                variant["fileno"] = fileno
+                                self.crm_writer.write_data(variant)
+                                converter.write_extra_info(variant)
+                            self.crs_writer.write_data(variant)
+                        for crl in crl_data:
+                            self.crl_writer.write_data(crl)
+                        uid += max([v["var_no"] for v in variants]) + 1
+                    variants_l = None
+                    crl_l = None
+                if not immature_exit:
+                    break
+                start_line_no += batch_size * num_pool
+                round_no += 1
+                status = (
+                    f"Running Converter ({self.input_fname}): line {start_line_no - 1}"
+                )
+                update_status(
+                    status, logger=self.logger, serveradmindb=self.serveradmindb
+                )
             self.logger.info(
-                f"number of valid variants: {self.file_num_valid_variants}"
+                f"{input_path}: number of valid variants: {self.num_valid_error_lines['valid']}"
             )
-            self.logger.info(f"number of error lines: {self.file_error_lines}")
+            self.logger.info(f"{input_path}: number of lines skipped due to errors: {self.num_valid_error_lines['error']}")
+            self.total_num_converted_variants += self.num_valid_error_lines["valid"]
+            self.total_num_valid_variants += self.num_valid_error_lines["valid"]
+            self.total_error_lines += self.num_valid_error_lines["error"]
+        flush_err_holder(self.err_holder, self.error_logger, force=True)
         self.close_output_files()
         self.end()
         self.log_ending()
@@ -705,11 +888,11 @@ class MasterConverter(object):
         if not self.logger:
             raise
         self.logger.info(
-            "total number of converted variants: {}".format(
+            "total number of valid variants: {}".format(
                 self.total_num_converted_variants
             )
         )
-        self.logger.info("number of total error lines: %d" % self.total_error_lines)
+        self.logger.info("total number of lines skipped due to errors: %d" % self.total_error_lines)
         end_time = time()
         self.logger.info("finished: %s" % asctime(localtime(end_time)))
         runtime = round(end_time - self.start_time, 3)
@@ -717,7 +900,7 @@ class MasterConverter(object):
         status = "finished Converter"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
 
-    def perform_liftover_if_needed(self, variant):
+    def perform_liftover_if_needed(self, variant) -> Optional[Dict[str, Any]]:
         from copy import copy
         from oakvar.lib.util.seq import liftover_one_pos
         from oakvar.lib.util.seq import liftover
@@ -729,8 +912,9 @@ class MasterConverter(object):
             needed = self.do_liftover
         if needed:
             prelift_wdict = copy(variant)
-            prelift_wdict["uid"] = self.uid
-            self.crl_writer.write_data(prelift_wdict)
+            #prelift_wdict["uid"] = self.uid
+            #self.crl_writer.write_data(prelift_wdict)
+            crl_data = prelift_wdict
             (
                 variant["chrom"],
                 variant["pos"],
@@ -752,52 +936,12 @@ class MasterConverter(object):
             else:
                 pos_end = converted_end[1]
             variant["pos_end"] = pos_end
+        else:
+            crl_data = None
+        return crl_data
 
     def is_chrM(self, wdict):
         return wdict["chrom"] == "chrM"
-
-    def _log_conversion_error(self, line_no: int, e, full_line_error=True):
-        from time import time
-        from traceback import format_exc
-        from oakvar.lib.exceptions import ExpectedException
-        from oakvar.lib.exceptions import NoAlternateAllele
-        from oakvar.lib.util.run import update_status
-
-        if isinstance(e, NoAlternateAllele):
-            if line_no % 10000 == 0:
-                status = f"Running Converter ({self.input_fname}): line {line_no}"
-                update_status(
-                    status, logger=self.logger, serveradmindb=self.serveradmindb
-                )
-            return
-        if not self.logger or not self.error_logger:
-            raise
-        if full_line_error:
-            self.file_error_lines += 1
-            self.total_error_lines += 1
-        if isinstance(e, ExpectedException):
-            err_str = str(e)
-        else:
-            err_str = format_exc().rstrip()
-        if err_str not in self.unique_excs:
-            err_no = len(self.unique_excs)
-            self.unique_excs[err_str] = err_no
-            if hasattr(e, "traceback") and e.traceback is False:
-                pass
-            else:
-                self.logger.error(f"Error [{err_no}]: {self.input_path}: {err_str}")
-            self.err_holder.append(f"{err_no}:{line_no}\t{str(e)}")
-        else:
-            err_no = self.unique_excs[err_str]
-            self.err_holder.append(f"{err_no}:{line_no}\t{str(e)}")
-        t = time()
-        if self.err_holder and t - self.time_error_written > 60:
-            for s in self.err_holder:
-                self.error_logger.error(s)
-            self.err_holder = []
-        if line_no % 10000 == 0:
-            status = f"Running Converter ({self.input_fname}): line {line_no}"
-            update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
 
     def close_output_files(self):
         if self.crv_writer is not None:

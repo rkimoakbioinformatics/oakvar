@@ -8,8 +8,6 @@ from typing import TextIO
 import polars as pl
 from pyliftover import LiftOver
 
-STDIN = "stdin"
-
 
 class BaseConverter(object):
     IGNORE = "converter_ignore"
@@ -29,6 +27,7 @@ class BaseConverter(object):
         conf: Dict[str, Any] = {},
         code_version: Optional[str] = None,
         run_name: Optional[str] = None,
+        ignore_sample: bool=False,
     ):
         from re import compile
         from pathlib import Path
@@ -88,6 +87,8 @@ class BaseConverter(object):
         self.format = input_format
         self.script_path = Path(inspect.getfile(self.__class__))
         self.ignore_sample: bool = ignore_sample
+        self.header_num_line: int = 0
+        self.line_no: int = 0
         if name:
             self.name: str = name
         else:
@@ -132,7 +133,40 @@ class BaseConverter(object):
     def check_format(self, *__args__, **__kwargs__):
         pass
 
-    def convert_line(self, *__args__, **__kwargs__) -> List[dict]:
+    def get_variant_lines(
+        self, input_path: str, mp: int, start_line_no: int, batch_size: int
+    ) -> Tuple[Dict[int, List[Tuple[int, Any]]], bool]:
+        import linecache
+
+        immature_exit: bool = False
+        line_no: int = start_line_no
+        end_line_no = line_no + mp * batch_size - 1
+        lines: Dict[int, List[Tuple[int, Any]]] = {i: [] for i in range(mp)}
+        chunk_no: int = 0
+        chunk_size: int = 0
+        while True:
+            line = linecache.getline(input_path, line_no)
+            if not line:
+                break
+            line = line[:-1]
+            lines[chunk_no].append((line_no, line))
+            chunk_size += 1
+            if line_no >= end_line_no:
+                immature_exit = True
+                break
+            line_no += 1
+            if chunk_size >= batch_size:
+                chunk_no += 1
+                chunk_size = 0
+        return lines, immature_exit
+
+    def prepare_for_mp(self):
+        pass
+
+    def write_extra_info(self, _: dict):
+        pass
+
+    def convert_line(self, *__args__, **__kwargs__) -> List[Dict[str, Any]]:
         return []
 
     def addl_operation_for_unique_variant(self, __wdict__, __wdict_no__):

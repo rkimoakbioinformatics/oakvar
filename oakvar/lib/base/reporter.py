@@ -471,11 +471,7 @@ class BaseReporter:
         await self.cf.get_level_data_iterator(
             level, page=page, pagesize=pagesize, uid=self.ftable_uid, cursor_read=cursor_read, var_added_cols=self.var_added_cols
         )
-        c = 0
         async for datarow in cursor_read:
-            c += 1
-            if c % 1000 == 0:
-                print(c)
             datarow = dict(datarow)
             if datarow is None:
                 continue
