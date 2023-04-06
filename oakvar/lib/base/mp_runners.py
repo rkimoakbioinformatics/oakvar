@@ -1,3 +1,6 @@
+from typing import Type
+
+
 def init_worker():
     import signal
 
@@ -64,22 +67,23 @@ def mapper_runner(
 ):
     from ..util.util import load_class
     from ..module.local import get_local_module_info
+    from .mapper import BaseMapper
 
     output = None
     module = get_local_module_info(module_name)
     if module is not None:
-        kwargs = {
-            "input_file": crv_path,
-            "run_name": run_name,
-            "seekpos": seekpos,
-            "chunksize": chunksize,
-            "postfix": f".{pos_no:010.0f}",
-            "output_dir": output_dir,
-        }
-        if primary_transcript is not None:
-            kwargs["primary_transcript"] = primary_transcript.split(";")
-        kwargs["serveradmindb"] = serveradmindb
-        genemapper_class = load_class(module.script_path, "Mapper")
-        genemapper = genemapper_class(**kwargs)
+        if primary_transcript:
+            primary_transcript = primary_transcript.split(";")
+        genemapper_class: Type[BaseMapper] = load_class(module.script_path, "Mapper")
+        genemapper = genemapper_class(
+            input_file=crv_path,
+            run_name=run_name,
+            seekpos=seekpos,
+            chunksize=chunksize,
+            postfix=f".{pos_no:010.0f}",
+            primary_transcript=primary_transcript,
+            serveradmindb=serveradmindb,
+            output_dir=output_dir,
+        )
         output = genemapper.run(pos_no)
     return output

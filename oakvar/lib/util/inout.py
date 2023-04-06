@@ -1,4 +1,5 @@
 from typing import Union
+from typing import Optional
 from pathlib import Path
 
 
@@ -27,7 +28,7 @@ class BaseFile(object):
 
 
 class FileReader(BaseFile):
-    def __init__(self, path, seekpos=None, chunksize=None, logger=None):
+    def __init__(self, path, seekpos: int=0, chunksize: Optional[int]=None, logger=None):
         from .util import detect_encoding
 
         super().__init__(path)
@@ -198,8 +199,7 @@ class FileReader(BaseFile):
             return
         if self.csvfmt:
             with open(self.path, newline="") as f:
-                if self.seekpos is not None:
-                    f.seek(self.seekpos)
+                f.seek(self.seekpos)
                 lnum = 0
                 import csv
 
@@ -213,8 +213,8 @@ class FileReader(BaseFile):
                         continue
                     yield csvreader.line_num, row
                     num_data_rows += 1
-                    if num_data_rows == self.chunksize:
-                        break
+                    if self.chunksize and num_data_rows >= self.chunksize:
+                        return
         else:
             with open(self.path, "rb") as f:
                 if self.seekpos is not None:
@@ -332,6 +332,8 @@ class FileWriter(BaseFile):
         self.wf.flush()
 
     def write_data(self, data):
+        if not data:
+            return
         self.prep_for_write()
         wtoks = [data.get(col.name, "") for col in self.columns.values()]
         if self.csvfmt:

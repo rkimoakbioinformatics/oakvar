@@ -1,7 +1,8 @@
 from typing import Optional
-from typing import Tuple
+from typing import Any
 from typing import List
-from typing import Iterator
+from typing import Dict
+from typing import Tuple
 
 
 class BaseConverter(object):
@@ -25,6 +26,8 @@ class BaseConverter(object):
         self.input_path = ""
         self.input_paths: Optional[List[str]] = None
         self.ignore_sample: bool = ignore_sample
+        self.header_num_line: int = 0
+        self.line_no: int = 0
         if name:
             self.module_name = name
         self.title = title
@@ -50,61 +53,41 @@ class BaseConverter(object):
     def setup(self, *__args__, **__kwargs__):
         pass
 
-    def convert_line(self, *__args__, **__kwargs__) -> List[dict]:
+    def convert_line(self, *__args__, **__kwargs__) -> List[Dict[str, Any]]:
         return []
 
-    def convert_file(
-        self,
-        f,
-        logger,
-        error_logger,
-        serveradmindb,
-        input_path,
-        input_fname,
-        unique_excs,
-        err_holder,
-        *__args__,
-        exc_handler=None,
-        batch_size: int = 0,
-        core_num: int = 0,
-        start_line: int = 0,
-        **__kwargs__,
-    ) -> Iterator[Tuple[int, List[dict]]]:
+    def get_variant_lines(
+        self, input_path: str, mp: int, start_line_no: int, batch_size: int
+    ) -> Tuple[Dict[int, List[Tuple[int, Any]]], bool]:
         import linecache
 
-        line_no = start_line + batch_size * core_num + 1
-        end_line_no = line_no + batch_size - 1 if batch_size else 0
-        if not input_path:
-            input_path = f.name
+        immature_exit: bool = False
+        line_no: int = start_line_no
+        end_line_no = line_no + mp * batch_size - 1
+        lines: Dict[int, List[Tuple[int, Any]]] = {i: [] for i in range(mp)}
+        chunk_no: int = 0
+        chunk_size: int = 0
         while True:
             line = linecache.getline(input_path, line_no)
-            # print(f"@ core_num={core_num}. line_no={line_no}. line={line[:-1]}")
             if not line:
                 break
             line = line[:-1]
-            try:
-                yield line_no, self.convert_line(line)
-            except Exception as e:
-                if exc_handler:
-                    exc_handler(
-                        logger,
-                        error_logger,
-                        serveradmindb,
-                        input_path,
-                        input_fname,
-                        line_no,
-                        e,
-                        unique_excs,
-                        err_holder,
-                    )
-                else:
-                    raise e
+            lines[chunk_no].append((line_no, line))
+            chunk_size += 1
             if line_no >= end_line_no:
+                immature_exit = True
                 break
             line_no += 1
-        return None
+            if chunk_size >= batch_size:
+                chunk_no += 1
+                chunk_size = 0
+        return lines, immature_exit
 
-    def addl_operation_for_unique_variant(self, __wdict__, __wdict_no__):
+    def prepare_for_mp(self):
+        pass
+
+    def write_extra_info(self, wdict: dict):
+        _ = wdict
         pass
 
     def save(self, overwrite: bool = False, interactive: bool = False):

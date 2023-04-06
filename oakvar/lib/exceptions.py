@@ -47,6 +47,9 @@ class IgnoredVariant(InvalidData):
 class NoAlternateAllele(ExpectedException):
     traceback = False
 
+    def __init__(self):
+        super().__init__(msg="No alternate allele")
+
 
 class LiftoverFailure(InvalidData):
     traceback = False
