@@ -71,7 +71,6 @@ class Runner(object):
         self.converter_format: Optional[List[str]] = None
         self.genemapper = None
         self.append_mode = []
-        self.pipeinput = False
         self.exception = None
         self.genome_assemblies: List[List[str]] = []
         self.inkwargs = kwargs
@@ -144,8 +143,6 @@ class Runner(object):
             msg = f"deleting {fn}"
             if self.logger:
                 self.logger.info(msg)
-            if self.outer:
-                self.outer.write(msg)
             remove(fn)
 
     def download_url_input(self, ip):
@@ -279,19 +276,15 @@ class Runner(object):
         self.delete_output_files(run_no)
 
     def log_input(self, run_no: int):
-        from ..consts import STDIN
 
         if not self.inputs or not self.args:
             raise
         if self.logger:
-            if self.pipeinput:
-                self.logger.info(f"input file: {STDIN}")
+            if self.args.combine_input:
+                for input_file in self.inputs:
+                    self.logger.info(f"input file: {input_file}")
             else:
-                if self.args.combine_input:
-                    for input_file in self.inputs:
-                        self.logger.info(f"input file: {input_file}")
-                else:
-                    self.logger.info(f"input file: {self.inputs[run_no]}")
+                self.logger.info(f"input file: {self.inputs[run_no]}")
 
     def start_log(self, run_no: int):
         from time import asctime, localtime
@@ -521,19 +514,10 @@ class Runner(object):
     def process_url_and_pipe_inputs(self):
         import os
         from ..util.util import is_url
-        from ..exceptions import InvalidInputFormat
 
         if not self.args:
             raise
         self.first_non_url_input = None
-        if (
-            self.args.inputs is not None
-            and len(self.args.inputs) == 1
-            and self.args.inputs[0] == "-"
-        ):
-            self.pipeinput = True
-            if self.args.input_format is None:
-                raise InvalidInputFormat(fmt="--input-format is needed for pipe input.")
         if self.args.inputs is not None:
             self.inputs = [
                 os.path.abspath(x) if not is_url(x) and x != "-" else x
@@ -653,35 +637,29 @@ class Runner(object):
             raise
         cwd = getcwd()
         if not self.args.output_dir:
-            if self.pipeinput:
+            if self.args.combine_input:
                 self.output_dir = [cwd]
             else:
-                if self.args.combine_input:
-                    self.output_dir = [cwd]
-                else:
-                    self.output_dir = [
-                        str(Path(inp).absolute().parent) for inp in self.inputs
-                    ]
+                self.output_dir = [
+                    str(Path(inp).absolute().parent) for inp in self.inputs
+                ]
         else:
-            if self.pipeinput:
-                self.output_dir = [cwd]
+            if self.args.combine_input:
+                if len(self.args.output_dir) != 1:
+                    raise ArgumentError(
+                        msg="-d should have one value when --combine-input is used."
+                    )
+                self.output_dir = [
+                    str(Path(v).absolute()) for v in self.args.output_dir
+                ]
             else:
-                if self.args.combine_input:
-                    if len(self.args.output_dir) != 1:
-                        raise ArgumentError(
-                            msg="-d should have one value when --combine-input is used."
-                        )
-                    self.output_dir = [
-                        str(Path(v).absolute()) for v in self.args.output_dir
-                    ]
-                else:
-                    if len(self.args.output_dir) != len(self.inputs):
-                        raise ArgumentError(
-                            msg="-d should have the same number of values as inputs."
-                        )
-                    self.output_dir = [
-                        str(Path(v).absolute()) for v in self.args.output_dir
-                    ]
+                if len(self.args.output_dir) != len(self.inputs):
+                    raise ArgumentError(
+                        msg="-d should have the same number of values as inputs."
+                    )
+                self.output_dir = [
+                    str(Path(v).absolute()) for v in self.args.output_dir
+                ]
         for output_dir in self.output_dir:
             if not Path(output_dir).exists():
                 mkdir(output_dir)
@@ -722,9 +700,7 @@ class Runner(object):
         if not self.args or not self.output_dir:
             raise
         if not self.args.run_name:
-            if self.pipeinput:
-                self.run_name = ["oakvar_run"]
-            elif self.inputs:
+            if self.inputs:
                 if self.args.combine_input:
                     run_name = Path(self.inputs[0]).name
                     if len(self.inputs) > 1:
@@ -754,16 +730,9 @@ class Runner(object):
                                 + "input when -d has duplicate directories."
                             )
                         self.run_name = self.args.run_name * len(self.inputs)
-                    elif self.pipeinput:
-                        self.run_name = self.args.run_name
                     else:
                         raise
                 else:
-                    if self.pipeinput:
-                        raise ArgumentError(
-                            msg="Only one -n option value should be given "
-                            + "with pipe input."
-                        )
                     if self.inputs:
                         if len(self.inputs) != len(self.args.run_name):
                             raise ArgumentError(
@@ -802,15 +771,9 @@ class Runner(object):
                             + "--combine-input to combine input files into one job."
                         )
                     self.job_name = self.args.job_name * len(self.inputs)
-                elif self.pipeinput:
-                    self.job_name = self.args.job_name
                 else:
                     raise
             else:
-                if self.pipeinput:
-                    raise ArgumentError(
-                        msg="Only one -j option value should be given with pipe input."
-                    )
                 if self.inputs:
                     if len(self.inputs) != len(self.args.job_name):
                         raise ArgumentError(
@@ -1632,7 +1595,7 @@ class Runner(object):
         ret = converter.run()
         self.total_num_converted_variants = ret.get("total_lnum")
         self.total_num_valid_variants = ret.get("write_lnum")
-        self.converter_format = ret.get("input_format") or []
+        self.converter_format = ret.get("input_formats") or []
         genome_assembly: List[str] = ret.get("assemblies") or []
         self.genome_assemblies[run_no] = genome_assembly
 

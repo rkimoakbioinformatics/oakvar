@@ -74,7 +74,9 @@ class Aggregator(object):
         self.setup()
         if self.input_base_fname is None:
             return
-        if self.dbconn is None or self.cursor is None:
+        if self.dbconn is None:
+            return
+        if self.cursor is None:
             return
         if self.base_reader is None:
             return
@@ -83,17 +85,9 @@ class Aggregator(object):
         start_time = time()
         status = f"started aggregator ({self.level})"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
-        last_status_update_time = time()
         if self.logger is not None:
             self.logger.info("started: %s" % asctime(localtime(start_time)))
-        if self.dbconn is not None:
-            self.dbconn.commit()
-        if self.cursor is not None:
-            self.cursor.execute("pragma synchronous=0;")
-            self.cursor.execute("pragma journal_mode=off;")
-            self.cursor.execute("pragma cache_size=1000000;")
-            self.cursor.execute("pragma locking_mode=EXCLUSIVE;")
-            self.cursor.execute("pragma temp_store=MEMORY;")
+        self.dbconn.commit()
         n = 0
         if not self.append:
             col_names = self.base_reader.get_column_names()
@@ -111,13 +105,11 @@ class Aggregator(object):
                         self.cursor.executemany(q, value_batch)
                         self.dbconn.commit()
                         value_batch = []
-                    cur_time = time()
-                    if lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
+                    if lnum % 10000 == 0:
                         status = f"Running Aggregator ({self.level}:base): line {lnum}"
                         update_status(
                             status, logger=self.logger, serveradmindb=self.serveradmindb
                         )
-                        last_status_update_time = cur_time
                 except Exception as e:
                     self._log_runtime_error(lnum, line, e, fn=self.base_reader.path)
             if value_batch:
@@ -145,19 +137,17 @@ class Aggregator(object):
                     self.cursor.execute(update_template, ins_vals)
                     if n % self.commit_threshold == 0:
                         self.dbconn.commit()
-                    cur_time = time()
-                    if lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
-                        status = f"Running Aggregator ({self.level}:base): line {lnum}"
+                    if lnum % 10000 == 0:
+                        status = f"Running Aggregator ({self.level}:{annot_name}): line {lnum}"
                         update_status(
                             status, logger=self.logger, serveradmindb=self.serveradmindb
                         )
-                        last_status_update_time = cur_time
                 except Exception as e:
                     self._log_runtime_error(lnum, line, e, fn=reader.path)
             self.dbconn.commit()
         self.fill_categories()
-        self.cursor.execute("pragma synchronous=2;")
-        self.cursor.execute("pragma journal_mode=delete;")
+        # self.cursor.execute("pragma synchronous=2;")
+        # self.cursor.execute("pragma journal_mode=delete;")
         end_time = time()
         if self.logger is not None:
             self.logger.info("finished: %s" % asctime(localtime(end_time)))
@@ -328,9 +318,9 @@ class Aggregator(object):
                     if "." not in annot_name:
                         self.annotators.append(annot_name)
                         self.ipaths[annot_name] = join(self.input_dir, fname)
-        self.annotators.sort()
         self.base_fpath = join(self.input_dir, self.input_base_fname)
         self._setup_io()
+        self.annotators.sort()
         self._setup_table()
 
     def _setup_table(self):
@@ -519,6 +509,11 @@ class Aggregator(object):
             remove(self.db_path)
         self.dbconn = connect(self.db_path)
         self.cursor = self.dbconn.cursor()
+        self.cursor.execute("pragma synchronous=0;")
+        self.cursor.execute("pragma journal_mode=off;")
+        self.cursor.execute("pragma cache_size=1000000;")
+        self.cursor.execute("pragma locking_mode=EXCLUSIVE;")
+        self.cursor.execute("pragma temp_store=MEMORY;")
 
     def _log_runtime_error(self, ln, line, e, fn=None):
         if self.logger is None:

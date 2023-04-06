@@ -10,7 +10,6 @@ from pyliftover import LiftOver
 from io import BufferedReader
 from re import compile
 
-STDIN = "stdin"
 chromdict = {
     "chrx": "chrX",
     "chry": "chrY",
@@ -289,7 +288,7 @@ class MasterConverter(object):
         self.input_dir = None
         self.input_path_dict = {}
         self.input_path_dict2 = {}
-        self.input_file_handles: Dict[str, Union[TextIO, BufferedReader]] = {}
+        self.input_file_handles: Dict[str, Tuple[Union[TextIO, BufferedReader], str]] = {}
         self.output_base_fname: Optional[str] = None
         self.error_logger = None
         self.unique_excs: Dict[str, int] = {}
@@ -410,18 +409,15 @@ class MasterConverter(object):
 
     def get_file_object_for_input_path(self, input_path: str):
         import gzip
-        import sys
         from pathlib import Path
         from oakvar.lib.util.util import detect_encoding
 
         suffix = Path(input_path).suffix
         # TODO: Remove the hardcoding.
         if suffix in [".parquet"]:
-            encoding = None
+            encoding = ""
         else:
-            if input_path == STDIN:
-                encoding = "utf-8"
-            elif self.input_encoding:
+            if self.input_encoding:
                 encoding = self.input_encoding
             else:
                 if self.logger:
@@ -429,27 +425,20 @@ class MasterConverter(object):
                 encoding = detect_encoding(input_path)
         if self.logger:
             self.logger.info(f"encoding: {input_path} {encoding}")
-        if input_path == STDIN:
-            f = sys.stdin
-        elif input_path.endswith(".gz"):
+        if input_path.endswith(".gz"):
             f = gzip.open(input_path, mode="rt", encoding=encoding)
         elif suffix in [".parquet"]:
             f = open(input_path, "rb")
         else:
             f = open(input_path, encoding=encoding)
-        return f
+        return f, encoding
 
     def collect_input_file_handles(self):
-        from sys import stdin
-
         if not self.input_paths:
             raise
         for input_path in self.input_paths:
-            if input_path in ["./stdin", STDIN]:
-                f = stdin
-            else:
-                f = self.get_file_object_for_input_path(input_path)
-            self.input_file_handles[input_path] = f
+            f, encoding = self.get_file_object_for_input_path(input_path)
+            self.input_file_handles[input_path] = (f, encoding)
 
     def setup(self):
         self.collect_converters()
@@ -489,8 +478,8 @@ class MasterConverter(object):
             elif not hasattr(converter, "format_name"):
                 converter.format_name = module_name.split("-")[0]
             if not converter.format_name:
-                if self.outer:
-                    self.outer.write(
+                if self.logger:
+                    self.logger.info(
                         f"Skipping {module_info.name} as it does not "
                         + "have format_name defined."
                     )
@@ -512,7 +501,7 @@ class MasterConverter(object):
         if not self.input_paths:
             return
         for input_path in self.input_paths:
-            f = self.input_file_handles[input_path]
+            f, _ = self.input_file_handles[input_path]
             converter = self.get_converter_for_input_file(f)
             self.converter_by_input_path[input_path] = converter
 
@@ -673,7 +662,7 @@ class MasterConverter(object):
         from oakvar.lib.util.util import log_module
         from oakvar.lib.exceptions import NoConverterFound
 
-        f = self.input_file_handles[input_path]
+        f, encoding = self.input_file_handles[input_path]
         converter = self.converter_by_input_path[input_path]
         if not converter:
             raise NoConverterFound(input_path)
@@ -686,7 +675,7 @@ class MasterConverter(object):
         self.error_logger = getLogger("err." + converter.module_name)
         converter.input_path = input_path
         converter.input_paths = self.input_paths
-        converter.setup(input_path)
+        converter.setup(input_path, encoding=encoding)
         genome_assembly = self.get_genome_assembly(converter)
         self.genome_assemblies.append(genome_assembly)
         self.log_input_and_genome_assembly(input_path, genome_assembly, converter)
@@ -878,7 +867,7 @@ class MasterConverter(object):
             "total_lnum": self.total_num_converted_variants,
             "write_lnum": self.total_num_valid_variants,
             "error_lnum": self.total_error_lines,
-            "input_format": self.input_formats,
+            "input_formats": self.input_formats,
             "assemblies": self.genome_assemblies,
         }
         return ret
