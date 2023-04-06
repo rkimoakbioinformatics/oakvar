@@ -5,6 +5,25 @@
 OakVar: Genomic Variant Analysis Platform
 *****************************************
 
+News
+====
+
+Greetings everyone!
+
+I am thrilled to announce the OakVar Hackathon, an exciting opportunity to showcase your creativity and ingenuity by utilizing the power of OakVar! The challenge is to create something innovative with OakVar and submit it by April 21, 2023. The best part? The winner will receive a $100 cash prize, and all submissions will be listed in a blog post summarizing the hackathon.
+
+The possibilities are endless - you can create anything with OakVar! Whether it's connecting OakVar to ML/AI, building a chatbot using OakVar, embedding OakVar in a web app, creating a new module for OakVar, developing an app using OakVar annotation data, or building a personal genomics app with OakVar - let your imagination run wild.
+
+OakVar Hackathon/Competition
+
+Submission deadline: April 21, 2023
+How to submit: Host your work on GitHub
+Prize: $100 cash prize for the winner
+
+If you have any questions regarding the hackathon, please do not hesitate to ask at info@oakbioinformatics.com. We are excited to see what you will create!
+
+Let the hackathon begin!
+
 Mission
 =======
 
