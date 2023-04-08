@@ -205,12 +205,13 @@ def report(
     filtersql: Optional[str] = None,
     filtername: Optional[str] = None,
     filterstring: Optional[str] = None,
-    savepath: Optional[str] = None,
+    savepath: Optional[Path] = None,
     confpath: Optional[str] = None,
     nogenelevelonvariantlevel: bool = False,
     inputfiles: Optional[List[str]] = None,
     separatesample: bool = False,
-    output_dir: Optional[str] = None,
+    output_dir: Optional[Path] = None,
+    run_name: str = "",
     includesample: Optional[List[str]] = [],
     excludesample: Optional[List[str]] = None,
     package: Optional[str] = None,
@@ -220,6 +221,7 @@ def report(
     no_summary: bool = False,
     serveradmindb=None,
     module_options: Dict[str, Dict] = {},
+    logtofile: bool = False,
     outer=None,
     loop=None,
 ) -> Dict[str, Any]:
@@ -239,7 +241,7 @@ def report(
         filtersql (Optional[str]): filter sql
         filtername (Optional[str]): filter file
         filterstring (Optional[str]): filter dict as str
-        savepath (Optional[str]): savepath
+        savepath (Optional[Path]): savepath
         confpath (Optional[str]): confpath
         nogenelevelonvariantlevel (bool): nogenelevelonvariantlevel
         inputfiles (Optional[List[str]]): inputfiles
@@ -256,9 +258,8 @@ def report(
     Returns:
         None or a dict of reporter names and their return values
     """
-    from os.path import dirname
-    from os.path import basename
-    from os.path import join
+    import logging
+    from pathlib import Path
     from ..lib.util.asyn import get_event_loop
     from ..lib.util.util import is_compatible_version
     from importlib.util import spec_from_file_location
@@ -266,6 +267,7 @@ def report(
     from ..lib.exceptions import IncompatibleResult
     from ..lib.module.local import get_local_module_info
     from ..lib.module.local import LocalModule
+    from ..lib.util.run import set_logger_handler
     from . import handle_exception
 
     if not report_types:
@@ -281,13 +283,15 @@ def report(
     compatible_version, _, _ = is_compatible_version(dbpath)
     if not compatible_version:
         raise IncompatibleResult()
+    dbpath = Path(dbpath)
     if not output_dir:
-        output_dir = dirname(dbpath)
+        output_dir = dbpath.parent
     if not savepath:
-        run_name = basename(dbpath).rstrip("sqlite").rstrip(".")
-        savepath = join(output_dir, run_name)
+        run_name = dbpath.name.rstrip("sqlite").rstrip(".")
+        savepath = output_dir / run_name
     else:
-        savedir = dirname(savepath)
+        run_name = savepath.name
+        savedir = savepath.parent
         if savedir != "":
             output_dir = savedir
     response: Dict[str, Any] = {}
@@ -311,9 +315,21 @@ def report(
                     outer.error(f"{module_name} does not exist.")
     else:
         return response
+    logger = logging.getLogger("oakvar")
+    error_logger = logging.getLogger("err")
+    set_logger_handler(
+        logger,
+        error_logger,
+        output_dir=output_dir,
+        run_name=run_name,
+        mode="a",
+        logtofile=logtofile,
+    )
     for module_name, module_info in module_infos.items():
         try:
-            if outer:
+            if logger:
+                logger.info(f"Generating {module_name} report...")
+            elif outer:
                 outer.write(f"Generating {module_name} report...")
             spec = spec_from_file_location(  # type: ignore
                 module_name, module_info.script_path  # type: ignore
@@ -340,6 +356,7 @@ def report(
                 inputfiles=inputfiles,
                 separatesample=separatesample,
                 output_dir=output_dir,
+                run_name=run_name,
                 includesample=includesample,
                 excludesample=excludesample,
                 package=package,
@@ -349,6 +366,7 @@ def report(
                 no_summary=no_summary,
                 serveradmindb=serveradmindb,
                 module_options=reporter_module_options,
+                logtofile=logtofile,
                 outer=outer,
             )
             response_t = None
@@ -367,7 +385,7 @@ def report(
                 output_fns = " ".join(response_t)
             else:
                 output_fns = response_t
-            if output_fns is not None and type(output_fns) == str:
+            if output_fns is not None:
                 if outer:
                     outer.write(f"report created: {output_fns}")
             response[module_name] = response_t

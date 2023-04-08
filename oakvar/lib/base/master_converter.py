@@ -197,7 +197,7 @@ def handle_variant(
     return crl_data
 
 def handle_converted_variants(
-        variants: List[Dict[str, Any]], do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, logger, error_logger, input_path: str, input_fname: str, unique_excs: dict, err_holder: list, line_no: int, num_valid_error_lines: Dict[str, int]
+        variants: List[Dict[str, Any]], do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, logger, error_logger, input_path: str, unique_excs: dict, err_holder: list, line_no: int, num_valid_error_lines: Dict[str, int]
 ):
     from oakvar.lib.exceptions import IgnoredVariant
 
@@ -233,7 +233,6 @@ def gather_variantss(
         logger, 
         error_logger, 
         input_path: str, 
-        input_fname: str, 
         unique_excs: dict, 
         err_holder: list,
         num_valid_error_lines: Dict[str, int],
@@ -244,7 +243,7 @@ def gather_variantss(
     for (line_no, line) in line_data:
         try:
             variants = converter.convert_line(line)
-            variants_datas, crl_datas = handle_converted_variants(variants, do_liftover, do_liftover_chrM, lifter, wgs_reader, logger, error_logger, input_path, input_fname, unique_excs, err_holder, line_no, num_valid_error_lines)
+            variants_datas, crl_datas = handle_converted_variants(variants, do_liftover, do_liftover_chrM, lifter, wgs_reader, logger, error_logger, input_path, unique_excs, err_holder, line_no, num_valid_error_lines)
             if variants_datas is None or crl_datas is None:
                 continue
             variants_l.append(variants_datas)
@@ -814,7 +813,6 @@ class MasterConverter(object):
                         self.logger, 
                         self.error_logger, 
                         input_path, 
-                        self.input_fname, 
                         self.unique_excs, 
                         self.err_holder,
                         self.num_valid_error_lines,

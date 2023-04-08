@@ -3,15 +3,13 @@ from oakvar import BaseReporter
 
 class Reporter(BaseReporter):
     def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.no_log = True
         self.levels_to_write = None
         self.data = {}
         self.keep_json_all_mapping = True
         self.data = {}
-        if kwargs:
-            super().__init__(**kwargs)
-        if args and isinstance(args[0], dict):
-            super().__init__(**args[0])
+        self.dictrow = True
 
     def write_preface(self, level):
         self.data[level] = []

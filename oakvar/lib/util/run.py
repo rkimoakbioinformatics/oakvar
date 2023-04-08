@@ -1,4 +1,6 @@
+from typing import Optional
 from pathlib import Path
+import logging
 
 
 def update_status(status: str, logger=None, serveradmindb=None):
@@ -109,3 +111,50 @@ def get_new_job_name(jobs_dir: Path) -> str:
     job_dir = get_new_job_dir(jobs_dir)
     job_name = Path(job_dir).name
     return job_name
+
+
+def set_logger_handler(
+    logger,
+    error_logger,
+    output_dir: Optional[Path] = None,
+    run_name: str = "",
+    mode: str = "w",
+    level: int = logging.INFO,
+    logtofile: bool = False,
+    clean: bool = False,
+    newlog: bool = False,
+):
+    from os import remove
+    from sys import stdout
+    from sys import stderr
+    from ..consts import LOG_SUFFIX
+
+    # logging.basicConfig(level=logging.INFO, force=True)
+    # logging.getLogger().propagate = False
+    logging.getLogger().setLevel(logging.WARN)
+    log_formatter = logging.Formatter(
+        "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
+    )
+    err_formatter = logging.Formatter("%(name)s\t%(message)s")
+    if logtofile and output_dir:
+        log_path = Path(output_dir) / (run_name + LOG_SUFFIX)
+        if (newlog or clean) and log_path.exists():
+            remove(log_path)
+        log_handler = logging.FileHandler(log_path, mode=mode)
+    else:
+        log_handler = logging.StreamHandler(stream=stdout)
+    log_handler.setFormatter(log_formatter)
+    if logtofile and output_dir:
+        error_log_path = Path(output_dir) / (run_name + ".err")
+        if error_log_path.exists():
+            remove(error_log_path)
+        error_log_handler = logging.FileHandler(error_log_path, mode=mode)
+    else:
+        error_log_handler = logging.StreamHandler(stream=stderr)
+    error_log_handler.setFormatter(err_formatter)
+    logger.setLevel(level)
+    error_logger.setLevel(level)
+    log_handler.setLevel(level)
+    logger.addHandler(log_handler)
+    error_log_handler.setLevel(level)
+    error_logger.addHandler(error_log_handler)

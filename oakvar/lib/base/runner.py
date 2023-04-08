@@ -196,48 +196,19 @@ class Runner(object):
     def get_logger(self, run_no: int):
         import logging
         from pathlib import Path
-        from os import remove
-        from sys import stdout
-        from sys import stderr
-        from ..consts import LOG_SUFFIX
+        from ..util.run import set_logger_handler
 
         if self.args is None or self.run_name is None or self.output_dir is None:
             raise
-        output_dir = self.output_dir[run_no]
+        output_dir = Path(self.output_dir[run_no])
         run_name = self.run_name[run_no]
         if self.args.newlog is True:
             self.logmode = "w"
         else:
             self.logmode = "a"
         self.logger = logging.getLogger("oakvar")
-        self.logger.setLevel("INFO")
-        if self.args.logtofile:
-            self.log_path = Path(output_dir) / (run_name + LOG_SUFFIX)
-            if (self.args.newlog or self.args.clean) and self.log_path.exists():
-                remove(self.log_path)
-            self.log_handler = logging.FileHandler(self.log_path, mode=self.logmode)
-        else:
-            self.log_handler = logging.StreamHandler(stream=stdout)
-        formatter = logging.Formatter(
-            "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
-        )
-        self.log_handler.setFormatter(formatter)
-        self.logger.addHandler(self.log_handler)
-        self.logger.setLevel(self.args.loglevel)
         self.error_logger = logging.getLogger("err")
-        self.error_logger.setLevel(self.args.loglevel)
-        if self.args.logtofile:
-            self.error_log_path = Path(output_dir) / (run_name + ".err")
-            if self.error_log_path.exists():
-                remove(self.error_log_path)
-            self.error_log_handler = logging.FileHandler(
-                self.error_log_path, mode=self.logmode
-            )
-        else:
-            self.error_log_handler = logging.StreamHandler(stream=stderr)
-        formatter = logging.Formatter("%(name)s\t%(message)s")
-        self.error_log_handler.setFormatter(formatter)
-        self.error_logger.addHandler(self.error_log_handler)
+        set_logger_handler(self.logger, self.error_logger, output_dir=output_dir, run_name=run_name, mode=self.logmode, level=self.args.loglevel, logtofile=self.args.logtofile, clean=self.args.clean, newlog=self.args.newlog)
 
     def log_versions(self):
         from ..util import admin_util as au
@@ -1967,7 +1938,7 @@ class Runner(object):
         ):
             raise
         run_name = self.run_name[run_no]
-        output_dir = self.output_dir[run_no]
+        output_dir = Path(self.output_dir[run_no])
         if len(self.reporters) > 0:
             module_names = [v for v in self.reporters.keys()]
             report_types = [v.replace("reporter", "") for v in self.reporters.keys()]
@@ -1982,9 +1953,10 @@ class Runner(object):
             if module is None:
                 raise ModuleNotExist(module_name)
             arg_dict = {}  # dict(vars(self.args))
-            arg_dict["dbpath"] = str(Path(output_dir) / (run_name + ".sqlite"))
-            arg_dict["savepath"] = str(Path(output_dir) / run_name)
+            arg_dict["dbpath"] = output_dir / (run_name + ".sqlite")
+            arg_dict["savepath"] = output_dir / run_name
             arg_dict["output_dir"] = output_dir
+            arg_dict["run_name"] = run_name
             arg_dict["module_name"] = module_name
             arg_dict[MODULE_OPTIONS_KEY] = self.run_conf.get(module_name, {})
             Reporter: Type[BaseReporter] = load_class(module.script_path, "Reporter")

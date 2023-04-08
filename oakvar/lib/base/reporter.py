@@ -3,6 +3,7 @@ from typing import Optional
 from typing import Union
 from typing import Dict
 from typing import List
+from pathlib import Path
 
 
 class BaseReporter:
@@ -15,13 +16,14 @@ class BaseReporter:
         filtersql: Optional[str] = None,
         filtername: Optional[str] = None,
         filterstring: Optional[str] = None,
-        savepath: Optional[str] = None,
+        savepath: Optional[Path] = None,
         confpath: Optional[str] = None,
         module_name: Optional[str] = None,
         nogenelevelonvariantlevel: bool = False,
         inputfiles: Optional[List[str]] = None,
         separatesample: bool = False,
         output_dir: Optional[str] = None,
+        run_name: str = "",
         module_options: Dict = {},
         includesample: Optional[List[str]] = [],
         excludesample: Optional[List[str]] = None,
@@ -30,6 +32,7 @@ class BaseReporter:
         level: Optional[str] = None,
         user: Optional[str] = None,
         no_summary: bool = False,
+        logtofile: bool = False,
         serveradmindb=None,
         outer=None,
     ):
@@ -49,6 +52,7 @@ class BaseReporter:
         self.inputfiles = inputfiles
         self.separatesample = separatesample
         self.output_dir = output_dir
+        self.run_name = run_name
         self.module_options = module_options
         self.includesample = includesample
         self.excludesample = excludesample
@@ -70,12 +74,14 @@ class BaseReporter:
         self.columngroups = {}
         self.column_subs = {}
         self.warning_msgs = []
-        self.colnames_to_display = {}
+        self.colnames_to_display: Dict[str, List[str]] = {}
         self.cols_to_display = {}
-        self.colnos_to_display = {}
+        self.colnos_to_display: Dict[str, List[int]] = {}
         self.display_select_columns = {}
         self.extracted_cols: Dict[str, Any] = {}
         self.extracted_col_names: Dict[str, List[str]] = {}
+        self.extracted_col_nos: Dict[str, List[int]] = {}
+        self.retrieved_col_names: Dict[str, List[str]] = {}
         self.conn = None
         self.levels_to_write = None
         self.conf = None
@@ -90,6 +96,8 @@ class BaseReporter:
         self.colcount = {}
         self.columns = {}
         self.conns = []
+        self.logtofile = logtofile
+        self.dictrow: bool = True
         self.gene_summary_datas = {}
         self.total_norows: Optional[int] = None
         self.legacy_samples_col = False
@@ -132,8 +140,8 @@ class BaseReporter:
             self.output_dir = str(Path(self.dbpath).parent)
         if not self.output_dir:
             self.output_dir = str(Path(".").absolute())
-        if self.savepath and Path(self.savepath).parent == "":
-            self.savepath = str(Path(self.output_dir) / self.savepath)
+        if self.savepath and self.savepath.parent == "":
+            self.savepath = Path(self.output_dir) / self.savepath
         self.module_conf = get_module_conf(self.module_name, module_type="reporter")
         self.confs = self.module_options  # TODO: backward compatibility. Delete later.
         self.output_basename = Path(self.dbpath).name[:-7]
@@ -206,17 +214,26 @@ class BaseReporter:
         await self.load_filter(user=user)
 
     def _setup_logger(self):
-        if self.module_name is None:
-            return
         import logging
+        from ..util.run import set_logger_handler
 
+        if self.module_name is None or self.output_dir is None or self.savepath is None:
+            return
         if getattr(self, "no_log", False):
             return
         try:
             self.logger = logging.getLogger(self.module_name)
+            self.error_logger = logging.getLogger("err." + self.module_name)
+            set_logger_handler(
+                self.logger,
+                self.error_logger,
+                output_dir=Path(self.output_dir),
+                run_name=self.run_name,
+                mode="a",
+                logtofile=self.logtofile,
+            )
         except Exception as e:
             self._log_exception(e)
-        self.error_logger = logging.getLogger("err." + self.module_name)
         self.unique_excs = []
 
     async def get_db_conn(self):
@@ -239,9 +256,16 @@ class BaseReporter:
         from json import loads
         from json import dumps
 
+        idx: int = -1
         for sub in self.column_subs.get(level, []):
             col_name = f"{sub.module}__{sub.col}"
-            value = row[col_name]
+            if self.dictrow:
+                value = row[col_name]
+            else:
+                if col_name not in self.retrieved_col_names[level]:
+                    continue
+                idx = self.retrieved_col_names[level].index(col_name)
+                value = row[idx]
             if value is None or value == "" or value == "{}":
                 continue
             if (
@@ -266,7 +290,10 @@ class BaseReporter:
                 value = ",".join(vals)
             else:
                 value = sub.subs.get(value, value)
-            row[col_name] = value
+            if self.dictrow:
+                row[col_name] = value
+            else:
+                row[idx] = value
         return row
 
     def get_extracted_header_columns(self, level):
@@ -367,7 +394,6 @@ class BaseReporter:
         page=None,
         make_filtered_table=True,
         user=None,
-        dictrow=True,
     ):
         from ..exceptions import SetupError
         from time import time
@@ -383,9 +409,8 @@ class BaseReporter:
             add_summary = False
             if add_summary is None:
                 add_summary = self.add_summary
-            self.dictrow = dictrow
             await self.prep()
-            if not self.cf or not self.logger:
+            if not self.cf:
                 raise SetupError(self.module_name)
             self.start_time = time()
             ret = None
@@ -410,12 +435,12 @@ class BaseReporter:
                 )
             await self.close_db()
             if self.module_conf:
-                status = "finished {self.module_conf['title']} ({self.module_name})"
+                status = f"finished {self.module_conf['title']} ({self.module_name})"
                 update_status(
                     status, logger=self.logger, serveradmindb=self.serveradmindb
                 )
             end_time = time()
-            if not (hasattr(self, "no_log") and self.no_log):
+            if not (hasattr(self, "no_log") and self.no_log) and self.logger:
                 self.logger.info("finished: {0}".format(asctime(localtime(end_time))))
                 run_time = end_time - self.start_time
                 self.logger.info("runtime: {0:0.3f}".format(run_time))
@@ -449,7 +474,9 @@ class BaseReporter:
             await self.do_gene_level_summary(add_summary=add_summary)
         self.write_preface(level)
         self.extracted_cols[level] = self.get_extracted_header_columns(level)
-        self.extracted_col_names[level] = [col_def.get("col_name") for col_def in self.extracted_cols[level]]
+        self.extracted_col_names[level] = [
+            col_def.get("col_name") for col_def in self.extracted_cols[level]
+        ]
         self.write_header(level)
         self.hugo_colno = self.colnos[level].get("base__hugo", None)
         datacols = await self.cf.exec_db(self.cf.get_variant_data_cols)
@@ -470,10 +497,17 @@ class BaseReporter:
         await self.cf.get_level_data_iterator(
             level, page=page, pagesize=pagesize, uid=self.ftable_uid, cursor_read=cursor_read, var_added_cols=self.var_added_cols
         )
+        import time; ctime = time.time()
+        self.retrieved_col_names[level] = [d[0] for d in cursor_read.description]
+        self.extracted_col_nos[level] = [self.retrieved_col_names[level].index(col_name) for col_name in self.extracted_col_names[level]]
+        self.num_retrieved_cols = len(self.retrieved_col_names[level])
+        self.colnos_to_display[level] = [self.retrieved_col_names[level].index(c) for c in self.colnames_to_display[level]]
+        self.extracted_colnos_in_retrieved = [self.retrieved_col_names[level].index(c) for c in self.extracted_col_names[level]]
         async for datarow in cursor_read:
-            datarow = dict(datarow)
-            if datarow is None:
-                continue
+            if self.dictrow:
+                datarow = dict(datarow)
+            else:
+                datarow = list(datarow)
             if level == "gene" and add_summary:
                 await self.add_gene_summary_data_to_gene_level(datarow)
             datarow = self.substitute_val(level, datarow)
@@ -481,6 +515,13 @@ class BaseReporter:
             self.escape_characters(datarow)
             self.write_row_with_samples_separate_or_not(datarow)
             row_count += 1
+            if row_count % 10000 == 0:
+                t = time.time()
+                msg = f"Wrote {row_count} rows. {(t - ctime) / row_count}"
+                if self.logger is not None:
+                    self.logger.info(msg)
+                elif self.outer is not None:
+                    self.outer.write(msg)
             if pagesize and row_count == pagesize:
                 break
         await cursor_read.close()
@@ -506,9 +547,15 @@ class BaseReporter:
             self.write_table_row(self.get_extracted_row(datarow))
 
     def escape_characters(self, datarow):
-        for k, v in datarow.items():
-            if isinstance(v, str) and "\n" in v:
-                datarow[k] = v.replace("\n", "%0A")
+        if self.dictrow:
+            for k, v in datarow.items():
+                if isinstance(v, str) and "\n" in v:
+                    datarow[k] = v.replace("\n", "%0A")
+        else:
+            for col_no in range(self.num_retrieved_cols):
+                v = datarow[col_no]
+                if isinstance(v, str) and "\n" in v:
+                    datarow[col_no] = v.replace("\n", "%0A")
 
     def stringify_all_mapping(self, level, datarow):
         from json import loads
@@ -516,7 +563,14 @@ class BaseReporter:
         if hasattr(self, "keep_json_all_mapping") is True or level != "variant":
             return
         col_name = "base__all_mappings"
-        all_map = loads(datarow[col_name])
+        idx: Optional[int] = None
+        if self.dictrow:
+            all_map = loads(datarow[col_name])
+        else:
+            if not col_name in self.retrieved_col_names[level]:
+                return
+            idx = self.retrieved_col_names[level].index(col_name)
+            all_map = loads(datarow[idx])
         newvals = []
         for hugo in all_map:
             for maprow in all_map[hugo]:
@@ -539,7 +593,10 @@ class BaseReporter:
                 newvals.append(newval)
         newvals.sort()
         newcell = "; ".join(newvals)
-        datarow[col_name] = newcell
+        if self.dictrow:
+            datarow[col_name] = newcell
+        elif idx is not None:
+            datarow[idx] = newcell
 
     async def add_gene_summary_data_to_gene_level(self, datarow):
         hugo = datarow["base__hugo"]
@@ -592,6 +649,9 @@ class BaseReporter:
         pass
 
     def end(self):
+        self.flush()
+
+    def flush(self):
         pass
 
     def write_preface(self, __level__: str):
@@ -604,10 +664,12 @@ class BaseReporter:
         pass
 
     def get_extracted_row(self, row) -> Union[Dict[str, Any], List[Any]]:
+        if not self.level:
+            return row
         if self.dictrow:
             filtered_row = {col: row[col] for col in self.cols_to_display[self.level]}
         else:
-            filtered_row = [row[col] for col in self.colnames_to_display[self.level]]
+            filtered_row = [row[colno] for colno in self.colnos_to_display[self.level]]
         return filtered_row
 
     def add_to_colnames_to_display(self, level, column):
