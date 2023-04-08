@@ -534,39 +534,3 @@ class Aggregator(object):
         else:
             self.logger.error(err_str)
 
-
-if __name__ == "__main__":
-    import sys
-    from argparse import ArgumentParser
-    from ..util.util import get_args
-
-    parser = ArgumentParser()
-    parser.add_argument(
-        "-i",
-        dest="input_dir",
-        required=True,
-        help="Directory containing annotator outputs",
-    )
-    parser.add_argument("-l", dest="level", required=True, help="Level to aggregate")
-    parser.add_argument("-n", dest="run_name", required=True, help="Name of run")
-    parser.add_argument(
-        "-d",
-        dest="output_dir",
-        help="Directory for aggregator output. Default is input directory.",
-    )
-    parser.add_argument(
-        "-x",
-        dest="delete",
-        action="store_true",
-        help="Force deletion of existing database",
-    )
-    parser.add_argument(
-        "-a",
-        "--append",
-        dest="append",
-        action="store_true",
-        help="Append annotators to existing database",
-    )
-    args = get_args(parser, sys.argv, {})
-    agg = Aggregator(**args)
-    agg.run()
