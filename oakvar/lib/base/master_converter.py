@@ -20,10 +20,6 @@ chromdict = {
 }
 base_re = compile("^[ATGC]+|[-]+$")
 
-class LinesData:
-    def __init__(self, lines_data: Dict[int, List[Tuple[int, Dict[str, Any]]]]):
-        self.lines_data = lines_data
-
 def handle_genotype(variant):
     if "genotype" in variant and "." in variant["genotype"]:
         variant["genotype"] = variant["genotype"].replace(".", variant["ref_base"])
@@ -302,7 +298,7 @@ class MasterConverter(object):
         self.module_options = None
         self.given_input_assembly: Optional[str] = None
         self.converter_by_input_path: Dict[str, Optional[BaseConverter]] = {}
-        self.extra_output_columns = []
+        self.extra_output_columns: List[Dict[str, Any]] = []
         self.file_num_valid_variants = 0
         self.file_error_lines = 0
         self.total_num_valid_variants = 0
@@ -637,10 +633,6 @@ class MasterConverter(object):
         self.crl_writer.write_names("original_input", "Original Input", "")
 
     def open_output_files(self):
-        from oakvar.lib.exceptions import SetupError
-
-        if not self.output_base_fname or not self.output_dir:
-            raise SetupError()
         self.setup_crv_writer()
         self.setup_crs_writer()
         self.setup_crm_writer()

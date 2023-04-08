@@ -4,7 +4,6 @@ from typing import Union
 from typing import Tuple
 from typing import List
 from typing import Dict
-from typing import Iterator
 from typing import TextIO
 from io import BufferedReader
 import polars as pl
@@ -45,7 +44,6 @@ class BaseConverter(object):
         self.crl_writer = None
         self.converters = {}
         self.available_input_formats: List[str] = []
-        self.pipeinput = False
         self.input_dir = None
         self.input_path_dict = {}
         self.input_path_dict2 = {}
@@ -71,6 +69,7 @@ class BaseConverter(object):
         self.total_num_valid_variants = 0
         self.total_error_lines = 0
         self.fileno = 0
+        self.extra_output_columns: List[Dict[str, Any]] = []
         self.total_num_converted_variants = 0
         self.input_formats: List[str] = []
         self.genome_assemblies: List[str] = []
@@ -131,6 +130,8 @@ class BaseConverter(object):
                 self.code_version: str = self.conf["version"]
             else:
                 self.code_version: str = ""
+        self.collect_input_file_handles()
+        self.collect_extra_output_columns()
 
     def check_format(self, *__args__, **__kwargs__):
         pass
@@ -178,23 +179,6 @@ class BaseConverter(object):
         from ..module.local import create_module_files
 
         create_module_files(self, overwrite=overwrite, interactive=interactive)
-
-    def convert_file(
-            self, file, *__args__, line_no: int=0, file_pos: int=0, exc_handler=None, input_path=None, **__kwargs__
-    ) -> Iterator[Tuple[int, List[dict]]]:
-        import linecache
-
-        line_no = 0
-        for line in file:
-            line_no += 1
-            try:
-                yield line_no, self.convert_line(line)
-            except Exception as e:
-                if exc_handler:
-                    exc_handler(line_no, e)
-                else:
-                    raise e
-        return None
 
     def get_do_liftover_chrM(self, genome_assembly, f, do_liftover):
         _ = genome_assembly or f
@@ -271,12 +255,6 @@ class BaseConverter(object):
         self.logger = getLogger("oakvar.converter")
         self.error_logger = getLogger("err.converter")
 
-    def check_input_format(self):
-        from oakvar.lib.exceptions import InvalidInputFormat
-
-        if self.pipeinput and not self.format:
-            raise InvalidInputFormat("input_format should be given with pipe input")
-
     def log_input_and_genome_assembly(self, input_path, genome_assembly):
         if not self.logger:
             return
@@ -285,8 +263,6 @@ class BaseConverter(object):
         self.logger.info(f"genome_assembly: {genome_assembly}")
 
     def collect_input_file_handles(self):
-        if not self.input_paths:
-            raise
         for input_path in self.input_paths:
             f = self.get_file_object_for_input_path(input_path)
             self.input_file_handles[input_path] = f
@@ -295,13 +271,9 @@ class BaseConverter(object):
         raise NotImplementedError("setup method should be implemented.")
 
     def setup_file(self, input_path: str) -> Union[TextIO, BufferedReader]:
-        from sys import stdin
         from oakvar.lib.util.util import log_module
 
-        if self.pipeinput:
-            f = stdin
-        else:
-            f = self.input_file_handles[input_path]
+        f = self.input_file_handles[input_path]
         log_module(self, self.logger)
         self.input_path = input_path
         self.setup(f)
@@ -311,8 +283,7 @@ class BaseConverter(object):
         self.set_do_liftover(genome_assembly, f)
         if self.do_liftover or self.do_liftover_chrM:
             self.setup_lifter(genome_assembly)
-        if self.pipeinput is False:
-            f.seek(0)
+        f.seek(0)
         return f
 
     def get_genome_assembly(self) -> str:
@@ -566,6 +537,13 @@ class BaseConverter(object):
             len_df = 0
             df_no = 0
 
+    def collect_extra_output_columns(self):
+        extra_output_columns = self.conf.get("extra_output_columns")
+        if not extra_output_columns:
+            return
+        for col in extra_output_columns:
+            self.extra_output_columns.append(col)
+
     def run(self):
         from pathlib import Path
         from multiprocessing.pool import ThreadPool
@@ -577,7 +555,6 @@ class BaseConverter(object):
         update_status(
             "started converter", logger=self.logger, serveradmindb=self.serveradmindb
         )
-        self.setup()
         self.set_variables_pre_run()
         if not self.crv_writer:
             raise ValueError("No crv_writer")
@@ -691,9 +668,7 @@ class BaseConverter(object):
         total_df: Optional[pl.DataFrame] = None
         len_df: int = 0
         for self.input_path in self.input_paths:
-            self.input_fname = (
-                Path(self.input_path).name if not self.pipeinput else STDIN
-            )
+            self.input_fname = Path(self.input_path).name
             f = self.setup_file(self.input_path)
             self.file_num_valid_variants = 0
             self.file_error_lines = 0
@@ -862,7 +837,7 @@ class BaseConverter(object):
                     self.error_logger.error(err_line)
             err_holder.clear()
 
-    def _log_conversion_error(self, line_no: int, e, full_line_error=True):
+    def _log_conversion_error(self, line_no: int, e):
         from traceback import format_exc
         from oakvar.lib.exceptions import ExpectedException
         from oakvar.lib.exceptions import NoAlternateAllele
