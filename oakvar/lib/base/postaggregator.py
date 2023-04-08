@@ -292,16 +292,15 @@ class BasePostAggregator(object):
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
 
     def process_file(self):
-        from time import time
         from ..exceptions import ConfigurationError
         from ..util.run import update_status
 
         if self.conf is None:
             raise ConfigurationError()
-        if not self.dbconn:
+        if not self.dbconn or not self.cursor_w:
             return
         lnum = 0
-        last_status_update_time = time()
+        self.cursor_w.execute("begin")
         for input_data in self._get_input():
             try:
                 output_dict = self.annotate(input_data)
@@ -309,18 +308,19 @@ class BasePostAggregator(object):
                     continue
                 output_dict = self.handle_legacy_data(output_dict)
                 self.write_output(output_dict, input_data=input_data)
-                cur_time = time()
                 lnum += 1
-                if lnum % 10000 == 0 or cur_time - last_status_update_time > 3:
+                if lnum % 10000 == 0:
                     status = (
                         f"Running {self.conf['title']} ({self.module_name}): row {lnum}"
                     )
                     update_status(
                         status, logger=self.logger, serveradmindb=self.serveradmindb
                     )
-                    last_status_update_time = cur_time
+                    self.cursor_w.execute("commit")
+                    self.cursor_w.execute("begin")
             except Exception as e:
                 self._log_runtime_exception(input_data, e)
+        self.cursor_w.execute("commit")
 
     def postprocess(self):
         pass
@@ -332,8 +332,9 @@ class BasePostAggregator(object):
 
         if self.conf is None:
             raise ConfigurationError()
-        if self.cursor is None:
+        if not self.cursor or not self.cursor_w:
             raise SetupError()
+        self.cursor_w.execute("begin")
         for col_d in self.conf["output_columns"]:
             col_def = ColumnDefinition(col_d)
             if col_def.category not in ["single", "multi"]:
@@ -350,7 +351,8 @@ class BasePostAggregator(object):
             col_cats.sort()
             col_def.categories = col_cats
             q = "update {}_header set col_def=? where col_name=?".format(self.level)
-            self.cursor.execute(q, [col_def.get_json(), col_def.name])
+            self.cursor_w.execute(q, [col_def.get_json(), col_def.name])
+        self.cursor_w.execute("commit")
 
     def write_output(
         self, output_dict, input_data=None, base__uid=None, base__hugo=None
@@ -434,6 +436,12 @@ class BasePostAggregator(object):
             self.cursor = self.dbconn.cursor()
             self.cursor_w = self.dbconn.cursor()
             self.cursor_w.execute('pragma journal_mode="wal"')
+            self.cursor_w.execute("pragma synchronous=0;")
+            self.cursor_w.execute("pragma journal_mode=off;")
+            self.cursor_w.execute("pragma cache_size=1000000;")
+            self.cursor_w.execute("pragma locking_mode=EXCLUSIVE;")
+            self.cursor_w.execute("pragma temp_store=MEMORY;")
+            self.dbconn.isolation_level = None
         else:
             msg = str(self.db_path) + " not found"
             if self.logger:
@@ -446,6 +454,10 @@ class BasePostAggregator(object):
         if self.cursor is not None:
             self.cursor.close()
         if self.cursor_w is not None:
+            try:
+                self.cursor_w.execute("commit")
+            except Exception:
+                pass
             self.cursor_w.close()
         if self.dbconn is not None:
             self.dbconn.close()
@@ -463,6 +475,7 @@ class BasePostAggregator(object):
             raise SetupError()
         from ..util.inout import ColumnDefinition
 
+        self.cursor_w.execute("begin")
         # annotator table
         q = 'insert or replace into {:} values ("{:}", "{:}", "{}")'.format(
             self.level + "_annotator",
@@ -495,7 +508,8 @@ class BasePostAggregator(object):
             # use prepared statement to allow " characters in colcats and coldesc
             q = "insert or replace into {} values (?, ?)".format(header_table_name)
             self.cursor_w.execute(q, [colname, col_def.get_json()])
-        self.dbconn.commit()
+        self.cursor_w.execute("commit")
+        #self.dbconn.commit()
 
     # Placeholder, intended to be overridded in derived class
     def setup(self):
@@ -663,14 +677,3 @@ class BasePostAggregator(object):
     def annotate(self, __input_data__):
         raise NotImplementedError()
 
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-n", dest="run_name", help="name of oakvar run")
-    parser.add_argument(
-        "-d",
-        dest="output_dir",
-        help="Output directory. " + "Default is input file directory.",
-    )

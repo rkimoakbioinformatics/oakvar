@@ -9,6 +9,7 @@ def cli_report(args):
 
 @cli_func
 def report(args, __name__="report"):
+    from pathlib import Path
     from ..api import report
 
     module_options = {}
@@ -36,6 +37,10 @@ def report(args, __name__="report"):
             module_options[module_name][key] = v
     args["module_options"] = module_options
     del args["module_options"]
+    if args["savepath"]:
+        args["savepath"] = Path(args["savepath"])
+    if args["output_dir"]:
+        args["output_dir"] = Path(args["output_dir"])
     ret = report(**args)
     return ret
 
@@ -157,6 +162,11 @@ def get_parser_fn_report():
         action="store_true",
         default=False,
         help="Skip gene level summarization. This saves time.",
+    )
+    parser_ov_report.add_argument(
+        "--logtofile",
+        action="store_true",
+        help="Use this option to prevent gene level result from being added to variant level result.",
     )
     parser_ov_report.set_defaults(func=cli_report)
     return parser_ov_report

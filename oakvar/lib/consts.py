@@ -1,7 +1,6 @@
 from os.path import join
 from os.path import dirname
 
-STDIN = "stdin"
 INPUT_LEVEL_KEY = "crv"
 VARIANT_LEVEL_KEY = "crx"
 GENE_LEVEL_KEY = "crg"
