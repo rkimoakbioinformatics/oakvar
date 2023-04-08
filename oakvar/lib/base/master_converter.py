@@ -460,8 +460,13 @@ class MasterConverter(object):
         for module_name, module_info in get_local_module_infos_of_type(
             "converter"
         ).items():
-            cls = get_converter_class(module_name)
-            converter = cls(name=module_name, code_version=module_info.version)
+            try:
+                cls = get_converter_class(module_name)
+                converter = cls(name=module_name, code_version=module_info.version)
+            except Exception as e:
+                if self.logger:
+                    self.logger.error(f"Skipping {module_name} as it could not be loaded. ({e})")
+                continue
             # TODO: backward compatibility
             format_name: str = module_info.conf.get("format_name", "")
             # end of backward compatibility
