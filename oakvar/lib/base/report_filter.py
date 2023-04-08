@@ -205,7 +205,7 @@ class ReportFilter:
         self.dbpath = dbpath
         if self.dbpath is not None:
             self.dbpath = str(Path(dbpath).absolute())
-        self.conn = None
+        #self.conn = None
         self.filterpath = filterpath
         self.cmd = None
         self.level = None
@@ -663,6 +663,8 @@ class ReportFilter:
             return
         _ = cursor_write
         if not self.filter or not self.dbpath or not cursor_read:
+            await conn_read.close()
+            await conn_write.close()
             return None
         filterjson = dumps(self.filter)
         tablename = self.get_registry_table_name()
@@ -673,8 +675,12 @@ class ReportFilter:
         await cursor_read.execute(q, (self.user, self.dbpath, filterjson))
         ret = await cursor_read.fetchone()
         if not ret:
+            await conn_read.close()
+            await conn_write.close()
             return None
         [uid, status] = ret
+        await conn_read.close()
+        await conn_write.close()
         return {"uid": uid, "status": status}
 
     async def get_report_filter_count(self, cursor=Any):
@@ -923,6 +929,7 @@ class ReportFilter:
             q = f"delete from {tablename} where uid=?"
             await cursor_write.execute(q, (uid,))
         await conn_write.commit()
+        await conn_read.commit()
         await conn_read.close()
         await conn_write.close()
 
@@ -972,9 +979,7 @@ class ReportFilter:
             # genes to filter
             gene_to_filter = self.get_gene_to_filter()
             if gene_to_filter:
-                await self.exec_db(
-                    self.make_gene_to_filter_table, uid=uid, genes=gene_to_filter
-                )
+                self.make_gene_to_filter_table(uid=uid, genes=gene_to_filter)
             await self.make_fvariant(
                 uid=uid,
                 sample_to_filter=sample_to_filter,
@@ -1065,28 +1070,39 @@ class ReportFilter:
             return None
         return f"{REPORT_FILTER_DB_NAME}.{GENE_TO_FILTER_TABLE_NAME}_{uid}"
 
-    async def make_gene_to_filter_table(
-        self, uid=None, genes=None, cursor_read=Any, cursor_write=Any
+    def make_gene_to_filter_table(
+        self, uid=None, genes=None
     ):
-        conn_read, conn_write = await self.get_db_conns()
-        if not conn_read or not conn_write:
-            return
+        import sqlite3
+        from os import mkdir
+
         if uid is None or not genes:
             return
-        _ = cursor_read
+        conn = sqlite3.connect(self.dbpath)
+        cursor = conn.cursor()
+        report_filter_db_dir = self.get_report_filter_db_dir()
+        if not report_filter_db_dir.exists():
+            mkdir(report_filter_db_dir)
+        report_filter_db_path = self.get_report_filter_db_path()
+        q = f"attach database '{report_filter_db_path}' as {REPORT_FILTER_DB_NAME}"
+        cursor.execute(q)
+        q = (
+            f"create table if not exists {REPORT_FILTER_DB_NAME}."
+            + f"{REPORT_FILTER_REGISTRY_NAME} ( uid int primary key, "
+            + "user text, dbpath text, filterjson text, status text )"
+        )
+        cursor.execute(q)
         table_name = self.get_gene_to_filter_table_name(uid=uid)
         if not table_name:
             return
         q = f"drop table if exists {table_name}"
-        await cursor_write.execute(q)
+        cursor.execute(q)
         q = f"create table {table_name} (base__hugo text)"
-        await cursor_write.execute(q)
+        cursor.execute(q)
         q = f"insert into {table_name} (base__hugo) values (?)"
-        print(f"q={q}")
-        await cursor_write.executemany(q, genes)
-        await conn_write.commit()
-        await conn_read.close()
-        await conn_write.close()
+        cursor.executemany(q, genes)
+        conn.commit()
+        conn.close()
 
     async def make_filtered_hugo_table(
         self, conn=None, cursor_read=Any, cursor_write=Any
