@@ -9,3 +9,17 @@ stdoutreporter 2.0.0
 textreporter 3.0.0
 tsvreporter 3.0.0
 vcfreporter 5.0.0
+23andme-converter 2.0.0
+ancestrydna-converter 2.0.0
+cravat-converter 2.0.0
+ftdna-converter 2.0.0
+oldcravat-converter 2.0.0
+vcf-converter 4.1.0
+csvreporter 3.0.1
+excelreporter 3.0.0
+pandasreporter 2.0.0
+rdatareporter 2.0.0
+stdoutreporter 2.0.0
+textreporter 3.0.0
+tsvreporter 3.0.0
+vcfreporter 5.1.0

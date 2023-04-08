@@ -12,7 +12,6 @@ def register(
     data_url: List[str] = [],
     overwrite: bool = False,
     outer=None,
-    error=None,
 ) -> bool:
     """Register a module in the OakVar store.
 
@@ -63,7 +62,6 @@ def register(
         data_url=data_url,
         overwrite=overwrite,
         outer=outer,
-        error=error,
     )
     return ret
 

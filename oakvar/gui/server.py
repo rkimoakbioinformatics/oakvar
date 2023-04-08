@@ -366,11 +366,12 @@ class WebServer(object):
                 self.app.router.add_static("/webapps", join(modules_dir, "webapps"))
         self.setup_cors()
 
-    def index(self, request):
+    def index(self, _):
         from aiohttp.web import FileResponse
+        from pathlib import Path
 
-        _ = request
-        return FileResponse("www/index.html")
+        index_path = Path(__file__).parent / "www" / "index.html"
+        return FileResponse(index_path)
 
 
 class TCPSitePatched(web_runner.BaseSite):
