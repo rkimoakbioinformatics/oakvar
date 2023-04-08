@@ -358,16 +358,6 @@ async def get_result(request):
         ],
     )
     m = imp.load_module(reporter_name, f, fn, d)  # type: ignore
-    arg_dict = {
-        "dbpath": dbpath,
-        "module_name": reporter_name,
-        "nogenelevelonvariantlevel": True,
-    }
-    if confpath is not None:
-        arg_dict["confpath"] = confpath
-    if filterstring is not None:
-        arg_dict["filterstring"] = filterstring
-    arg_dict["nogenelevelonvariantlevel"] = True
     if "separatesample" in queries:
         separatesample = queries["separatesample"]
         if separatesample == "true":
@@ -376,20 +366,24 @@ async def get_result(request):
             separatesample = False
     else:
         separatesample = False
-    if separatesample:
-        arg_dict["separatesample"] = True
-    arg_dict["report_types"] = ["text"]
     no_summary = queries.get("no_summary")
-    arg_dict["no_summary"] = no_summary
     add_summary = not no_summary
-    reporter = m.Reporter(arg_dict)
+    reporter = m.Reporter(
+        dbpath=dbpath,
+        module_name=reporter_name,
+        nogenelevelonvariantlevel=True,
+        confpath=confpath,
+        filterstring=filterstring,
+        separatesample=separatesample,
+        report_types=["text"],
+        no_summary=no_summary
+    )
     data = await reporter.run(
         tab=tab,
         pagesize=pagesize,
         page=page,
         add_summary=add_summary,
         make_filtered_table=make_filtered_table,
-        dictrow=True,
     )
     data["modules_info"] = await get_modules_info(request)
     content = {}
@@ -651,13 +645,13 @@ async def get_colinfo(dbpath, confpath=None, filterstring=None, add_summary=True
         ],
     )
     m = imp.load_module(reporter_name, f, fn, d)  # type: ignore
-    arg_dict = {"dbpath": dbpath, "module_name": reporter_name}
-    if confpath is not None:
-        arg_dict["confpath"] = confpath
-    if filterstring is not None:
-        arg_dict["filterstring"] = filterstring
-    arg_dict["report_types"] = ["text"]
-    reporter = m.Reporter(arg_dict)
+    reporter = m.Reporter(
+        dbpath,
+        module_name=reporter_name,
+        confpath=confpath,
+        filterstring=filterstring,
+        report_types=["text"]
+    )
     await reporter.prep()
     # reporter_levels = await reporter.get_levels_to_run("all")
     # reporter.levels = reporter_levels
@@ -885,6 +879,8 @@ async def get_variants_for_hugo(request):
     out = []
     for row in rows:
         out.append(list(row))
+    await cursor.close()
+    await conn.close()
     return web.json_response(out)
 
 
