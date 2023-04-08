@@ -171,7 +171,6 @@ def register(
     data_url: List[str] = [],
     overwrite: bool = False,
     outer=None,
-    error=None,
 ) -> bool:
     from requests import post
     from .account import get_current_id_token
@@ -204,8 +203,8 @@ def register(
         params["overwrite"] = overwrite
         params["publish_time"] = datetime.now().strftime(publish_time_fmt)
         if not params["conf"]:
-            if error:
-                error.write(f"No configuration file exists for {module_name}.\n")
+            if outer:
+                outer.error(f"No configuration file exists for {module_name}.\n")
             return False
         res = post(url, json=params)
         if res.status_code == 200:
