@@ -383,7 +383,7 @@ def get_logo_b64(module_name: str, module_type: str = "") -> Optional[str]:
     return None
 
 
-def get_remote_manifest_from_local(module_name: str, error=None):
+def get_remote_manifest_from_local(module_name: str, outer=None):
     from os.path import exists
     from datetime import datetime
     from ..util.admin_util import oakvar_version
@@ -417,8 +417,8 @@ def get_remote_manifest_from_local(module_name: str, error=None):
     if not rmi["code_version"]:
         rmi["code_version"] = module_conf.get("version", "")
     if not rmi["code_version"]:
-        if error:
-            error.write(f"code_version should be defined in {module_name}.yml\n")
+        if outer:
+            outer.error(f"code_version should be defined in {module_name}.yml\n")
         return None
     rmi["data_version"] = module_conf.get("data_version", "")
     rmi["data_source"] = module_info.latest_data_source
