@@ -86,9 +86,19 @@ def get_annotator(module_name, input_file=None):
 
 def get_mapper(module_name, input_file=None):
     module = None
-    ModuleClass = get_module(module_name)
+    ModuleClass = get_module(module_name, module_type="mapper")
     if ModuleClass:
         module = ModuleClass(input_file=input_file)
+        module.name = module_name
+        module.setup()
+    return module
+
+
+def get_converter(module_name):
+    module = None
+    ModuleClass = get_module(module_name, module_type="converter")
+    if ModuleClass:
+        module = ModuleClass()
         module.name = module_name
         module.setup()
     return module

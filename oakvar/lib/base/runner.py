@@ -8,6 +8,7 @@ from typing import Dict
 
 class Runner(object):
     def __init__(self, **kwargs):
+        from pathlib import Path
         from ..module.local import LocalModule
 
         self.runlevels = {
@@ -42,7 +43,7 @@ class Runner(object):
         self.conf_path = None
         self.conf = {}
         self.first_non_url_input = None
-        self.inputs: Optional[List[str]] = None
+        self.inputs: Optional[List[Path]] = None
         self.run_name: Optional[List[str]] = None
         self.output_dir: Optional[List[str]] = None
         self.startlevel = self.runlevels["converter"]
@@ -472,16 +473,14 @@ class Runner(object):
                 self.run_conf[module_name][key] = v
 
     def remove_absent_inputs(self):
-        from pathlib import Path
-
         if not self.inputs:
             return
-        inputs_to_remove = [v for v in self.inputs if not Path(v).exists() and v != "-"]
+        inputs_to_remove = [v for v in self.inputs if not v.exists() and not "*" in str(v)]
         for v in inputs_to_remove:
             self.inputs.remove(v)
 
     def process_url_and_pipe_inputs(self):
-        import os
+        from pathlib import Path
         from ..util.util import is_url
 
         if not self.args:
@@ -489,14 +488,14 @@ class Runner(object):
         self.first_non_url_input = None
         if self.args.inputs is not None:
             self.inputs = [
-                os.path.abspath(x) if not is_url(x) and x != "-" else x
+                Path(x).resolve() if not is_url(x) and x != "-" else x
                 for x in self.args.inputs
             ]
             if self.inputs is None:
                 raise
             for input_no in range(len(self.inputs)):
                 inp = self.inputs[input_no]
-                if is_url(inp):
+                if is_url(str(inp)):
                     fpath = self.download_url_input(inp)
                     self.inputs[input_no] = fpath
                 elif not self.first_non_url_input:
@@ -576,7 +575,7 @@ class Runner(object):
             inp = self.inputs[run_no]
             run_name = self.run_name[run_no]
             output_dir = self.output_dir[run_no]
-            if not inp.endswith(".sqlite"):
+            if not inp.suffix == ".sqlite":
                 continue
             self.append_mode[run_no] = True
             if run_name.endswith(".sqlite"):
@@ -588,7 +587,7 @@ class Runner(object):
             target_name = run_name + ".sqlite"
             target_path = Path(output_dir) / target_name
             shutil.copyfile(inp, target_path)
-            self.inputs[run_no] = str(target_path)
+            self.inputs[run_no] = target_path
 
     def set_genome_assemblies(self):
         if self.run_name:
@@ -1303,6 +1302,7 @@ class Runner(object):
             inputs = self.inputs
         else:
             inputs = [self.inputs[run_no]]
+        inputs = [str(v) for v in inputs]
         job_name = self.job_name[run_no]
         genome_assemblies = (
             list(set(self.genome_assemblies[run_no])) if self.genome_assemblies else []

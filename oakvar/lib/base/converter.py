@@ -23,7 +23,7 @@ class BaseConverter(object):
         self.module_name: Optional[str] = None
         self.version = None
         self.conf: dict = {}
-        self.input_path = ""
+        self.input_path: str = ""
         self.input_paths: Optional[List[str]] = None
         self.ignore_sample: bool = ignore_sample
         self.header_num_line: int = 0
