@@ -69,7 +69,7 @@ def mapper_runner(
     primary_transcript,
     serveradmindb,
 ):
-    from ... import get_mapper_class
+    from ..util.module import get_mapper_class
     from ..module.local import get_local_module_info
     from .mapper import BaseMapper
 

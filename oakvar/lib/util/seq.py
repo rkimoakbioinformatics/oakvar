@@ -446,7 +446,7 @@ def get_wgs_reader(assembly="hg38") -> BaseCommonModule:
     Args:
         assembly:
     """
-    from ... import get_module_class
+    from .module import get_module_class
 
     module_name = assembly + "wgs"
     ModuleClass = get_module_class(module_name)

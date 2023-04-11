@@ -19,6 +19,7 @@ class BaseMapper(object):
         module_options: Dict = {},
         output_columns: List[Dict[str, Any]] = [],
         postfix: str = "",
+        df_mode: bool = False,
     ):
         from time import time
         from pathlib import Path
@@ -63,10 +64,10 @@ class BaseMapper(object):
         self.input_fname = None
         self.logger = None
         self.error_logger = None
-        self.output_column_types: Dict[str, Any] = {}
         self.col_names: List[str] = []
         self.full_col_names: Dict[str, str] = {}
         self.unique_excs = []
+        self.df_mode = df_mode
         self.t = time()
         main_fpath = Path(sys.modules[self.__class__.__module__].__file__ or "")
         if name:
@@ -83,6 +84,10 @@ class BaseMapper(object):
         self.set_output_columns(output_columns)
         self.var_ld: Dict[str, List[Any]] = {}
         self.df_dtypes: Dict[str, Any] = {}
+        self.setup()
+        self.extra_setup()
+        if self.df_mode:
+            self.setup_df()
 
     def set_output_columns(self, output_columns: List[Dict[str, Any]] = []):
         from ..util.util import get_crv_def
@@ -102,21 +107,6 @@ class BaseMapper(object):
             for v in self.output_columns
             if v.get("name") not in crv_col_names
         ]
-        self.full_col_names = {col_name: f"{col_name}" for col_name in self.col_names}
-        for col_def in self.output_columns:
-            col_name = col_def.get("name", "")
-            if col_name not in self.col_names:
-                continue
-            ty = col_def.get("type")
-            if ty == "string":
-                dtype = pl.Utf8
-            elif ty == "int":
-                dtype = pl.Int64
-            elif ty == "float":
-                dtype = pl.Float64
-            else:
-                dtype = pl.Utf8
-            self.output_column_types[self.full_col_names[col_name]] = dtype
 
     def setup(self):
         raise NotImplementedError("Mapper must have a setup() method.")
@@ -333,13 +323,28 @@ class BaseMapper(object):
         return d
 
     def setup_df(self):
-        self.setup()
-        self.extra_setup()
-        for full_col_name in self.full_col_names:
-            dtype = self.output_column_types[full_col_name]
-            self.df_dtypes[full_col_name] = dtype
+        self.full_col_names = {
+            col_name: f"{col_name}" for col_name in self.col_names if col_name != "uid"
+        }
+        self.df_dtypes = {}
+        for col_def in self.output_columns:
+            col_name = col_def.get("name")
+            if not col_name or col_name not in self.col_names:
+                continue
+            if col_name == "uid":
+                continue
+            ty = col_def.get("type")
+            if ty == "string":
+                dtype = pl.Utf8
+            elif ty == "int":
+                dtype = pl.Int64
+            elif ty == "float":
+                dtype = pl.Float64
+            else:
+                dtype = pl.Utf8
+            self.df_dtypes[self.full_col_names[col_name]] = dtype
 
-    def run_df(self, df: pl.DataFrame):
+    def run_df(self, df: pl.DataFrame) -> pl.DataFrame:
         for full_col_name in self.full_col_names:
             self.var_ld[full_col_name] = []
         for input_data in df.iter_rows(named=True):
@@ -370,7 +375,7 @@ class BaseMapper(object):
         from time import time, asctime, localtime
         from ..util.run import update_status
 
-        self.setup()
+        # self.setup()
         self.setup_input_output()
         self.extra_setup()
         if (

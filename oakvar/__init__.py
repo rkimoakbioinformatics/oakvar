@@ -1,5 +1,3 @@
-from typing import Union
-from typing import Type
 from . import api
 from .cli import __main__ as cli
 from . import lib
@@ -24,6 +22,11 @@ from .lib.util.inout import read_crv
 from .lib.util.seq import get_lifter
 from .lib.util.seq import liftover
 from .lib.util.seq import get_wgs_reader
+from .lib.util.module import get_converter
+from .lib.util.module import get_mapper
+from .lib.util.module import get_annotator
+from .lib.util.module import get_postaggregator
+from .lib.util.module import get_reporter
 from .cli import CliOuter
 import signal
 
@@ -36,8 +39,6 @@ CravatReport = BaseReporter
 BaseReport = BaseReporter
 CravatFilter = ReportFilter
 constants = consts
-
-#
 
 stdouter = CliOuter()
 
@@ -74,90 +75,6 @@ def raise_break(__signal_number__, __stack_frame__):
         os.kill(pid, signal.SIGTERM)
 
 
-def get_converter_class(module_name: str) -> Type[BaseConverter]:
-    cls = get_module_class(module_name, module_type="converter")
-    if not issubclass(cls, BaseConverter):
-        raise ValueError(f"{module_name} is not a converter class.")
-    return cls
-
-
-def get_preparer_class(module_name: str) -> Type[BasePreparer]:
-    cls = get_module_class(module_name, module_type="converter")
-    if not issubclass(cls, BasePreparer):
-        raise ValueError(f"{module_name} is not a converter class.")
-    return cls
-
-
-def get_mapper_class(module_name: str) -> Type[BaseMapper]:
-    cls = get_module_class(module_name, module_type="mapper")
-    if not issubclass(cls, BaseMapper):
-        raise ValueError(f"{module_name} is not a mapper class.")
-    return cls
-
-
-def get_annotator_class(module_name: str) -> Type[BaseAnnotator]:
-    cls = get_module_class(module_name, module_type="mapper")
-    if not issubclass(cls, BaseAnnotator):
-        raise ValueError(f"{module_name} is not a mapper class.")
-    return cls
-
-
-def get_reporter_class(module_name: str) -> Type[BaseReporter]:
-    cls = get_module_class(module_name, module_type="mapper")
-    if not issubclass(cls, BaseReporter):
-        raise ValueError(f"{module_name} is not a mapper class.")
-    return cls
-
-
-def get_annotator(module_name, input_file=None) -> BaseAnnotator:
-
-    input_file = input_file or "__dummy__"
-    ModuleClass = get_module_class(module_name)
-    if not ModuleClass:
-        raise ValueError(f"{module_name} was not found.")
-    if not issubclass(ModuleClass, BaseAnnotator):
-        raise ValueError(f"{ModuleClass} is not an annotator class.")
-    module = ModuleClass(input_file=input_file)
-    module.connect_db()
-    module.setup()
-    return module
-
-
-def get_mapper(module_name, input_file=None) -> BaseMapper:
-    ModuleClass = get_module_class(module_name)
-    if not ModuleClass:
-        raise ValueError(f"{module_name} was not found.")
-    if not issubclass(ModuleClass, BaseMapper):
-        raise ValueError(f"{ModuleClass} is not a mapper class.")
-    module = ModuleClass(input_file=input_file)
-    module.setup()
-    return module
-
-
-def get_module_class(
-    module_name, module_type: str = ""
-) -> Union[
-    Type[BaseConverter],
-    Type[MasterConverter],
-    Type[BasePreparer],
-    Type[BaseMapper],
-    Type[BaseAnnotator],
-    Type[BasePostAggregator],
-    Type[BaseReporter],
-    Type[BaseCommonModule],
-    Type[VCF2VCF],
-]:
-    from .lib.module.local import get_local_module_info
-    from .lib.util.util import load_class
-
-    module_info = get_local_module_info(module_name, module_type=module_type)
-    if module_info is None:
-        raise ValueError(f"{module_name} does not exist.")
-    script_path = module_info.script_path
-    ModuleClass = load_class(script_path)
-    return ModuleClass
-
-
 wgs = None
 _ = api or lib
 _ = BadFormatError or InvalidData
@@ -182,3 +99,4 @@ _ = cli or wgs
 _ = stdouter
 _ = get_lifter or liftover or get_wgs_reader
 _ = get_df_from_db or read_crv
+_ = get_converter or get_mapper or get_annotator or get_postaggregator or get_reporter

@@ -146,6 +146,7 @@ def get_local_module_info(
         mc = get_module_cache(fresh=fresh)
         if fresh:
             module_path = get_module_dir(str(module_name), module_type=module_type)
+            print(f"@ module_path={module_path}")
             if module_path:
                 module_info = LocalModule(module_path)
                 if module_info:

@@ -12,12 +12,12 @@ from pyliftover import LiftOver
 
 class BaseConverter(object):
     IGNORE = "converter_ignore"
+    unique_var_key = "_unique"
 
     def __init__(
         self,
         inputs: List[str] = [],
         input_format: Optional[str] = None,
-        name: Optional[str] = None,
         output_dir: Optional[str] = None,
         genome: Optional[str] = None,
         serveradmindb=None,
@@ -29,13 +29,15 @@ class BaseConverter(object):
         code_version: Optional[str] = None,
         run_name: Optional[str] = None,
         ignore_sample: bool=False,
+        df_mode: bool = False,
+        output_columns: List[Dict[str, Any]] = [],
     ):
         from re import compile
         from pathlib import Path
         import inspect
         from oakvar import get_wgs_reader
-        from oakvar.lib.exceptions import ExpectedException
         from oakvar.lib.module.local import get_module_conf
+        from oakvar.lib.util.util import get_crv_def
 
         self.logger = None
         self.crv_writer = None
@@ -47,7 +49,6 @@ class BaseConverter(object):
         self.input_dir = None
         self.input_path_dict = {}
         self.input_path_dict2 = {}
-        self.input_file_handles: Dict[str, Union[TextIO, BufferedReader]] = {}
         self.output_base_fname: Optional[str] = None
         self.error_logger = None
         self.unique_excs: Dict[str, int] = {}
@@ -69,10 +70,15 @@ class BaseConverter(object):
         self.total_num_valid_variants = 0
         self.total_error_lines = 0
         self.fileno = 0
+        self.module_options = module_options
+        self.serveradmindb = serveradmindb
+        self.input_encoding = input_encoding
+        self.outer = outer
         self.extra_output_columns: List[Dict[str, Any]] = []
         self.total_num_converted_variants = 0
         self.input_formats: List[str] = []
         self.genome_assemblies: List[str] = []
+        self.df_mode = df_mode
         self.base_re = compile("^[ATGC]+|[-]+$")
         self.chromdict = {
             "chrx": "chrX",
@@ -82,19 +88,21 @@ class BaseConverter(object):
             "chr23": "chrX",
             "chr24": "chrY",
         }
-        if not inputs:
-            raise ExpectedException("Input files are not given.")
+        #if not inputs:
+        #    raise ExpectedException("Input files are not given.")
         self.input_paths = inputs
         self.format = input_format
         self.script_path = Path(inspect.getfile(self.__class__))
+        self.module_type = "converter"
         self.ignore_sample: bool = ignore_sample
         self.header_num_line: int = 0
         self.line_no: int = 0
-        if name:
-            self.name: str = name
-        else:
-            self.name = self.script_path.stem.split("-")[0]
+        self.name: str = self.script_path.stem
         self.output_dir = output_dir
+        if run_name:
+            self.run_name = run_name
+        else:
+            self.run_name = Path(self.input_paths[0]).name
         self.parse_inputs()
         self.parse_output_dir()
         self.conf: Dict[str, Any] = (
@@ -102,18 +110,13 @@ class BaseConverter(object):
         )
         if conf:
             self.conf.update(conf.copy())
-        self.module_options = module_options
-        self.serveradmindb = serveradmindb
-        self.input_encoding = input_encoding
-        self.outer = outer
         self.setup_logger()
         self.wgs_reader = get_wgs_reader(assembly="hg38")
         self.time_error_written: float = 0
 
         self.module_type = "converter"
         self.format_name: str = ""
-        self.run_name = run_name
-        self.input_path = ""
+        self.input_path: str = ""
         self.total_num_converted_variants = 0
         self.title = title
         if self.title:
@@ -130,7 +133,7 @@ class BaseConverter(object):
                 self.code_version: str = self.conf["version"]
             else:
                 self.code_version: str = ""
-        self.collect_input_file_handles()
+        self.output_columns: List[Dict[str, Any]] = get_crv_def()
         self.collect_extra_output_columns()
 
     def check_format(self, *__args__, **__kwargs__):
@@ -162,9 +165,6 @@ class BaseConverter(object):
                 chunk_no += 1
                 chunk_size = 0
         return lines, immature_exit
-
-    def prepare_for_mp(self):
-        pass
 
     def write_extra_info(self, _: dict):
         pass
@@ -202,7 +202,10 @@ class BaseConverter(object):
         from pathlib import Path
 
         self.input_paths = [str(Path(x).resolve()) for x in self.input_paths if x != "-"]
-        self.input_dir = str(Path(self.input_paths[0]).parent)
+        if not self.input_paths:
+            self.input_dir = Path(".").resolve().parent
+        else:
+            self.input_dir = Path(self.input_paths[0]).parent
         for i in range(len(self.input_paths)):
             self.input_path_dict[i] = self.input_paths[i]
             self.input_path_dict2[self.input_paths[i]] = i
@@ -217,11 +220,14 @@ class BaseConverter(object):
             raise
         if not (Path(self.output_dir).exists()):
             makedirs(self.output_dir)
-        self.output_base_fname: Optional[str] = self.name
+        self.output_base_fname: Optional[str] = self.run_name
         if not self.output_base_fname:
+            #if not self.input_paths:
+            #    raise
             if not self.input_paths:
-                raise
-            self.output_base_fname = Path(self.input_paths[0]).name
+                self.output_base_fname = "oakvar_result"
+            else:
+                self.output_base_fname = Path(self.input_paths[0]).name
 
     def get_file_object_for_input_path(self, input_path: str):
         import gzip
@@ -262,29 +268,23 @@ class BaseConverter(object):
         self.logger.info(f"input format: {self.format_name}")
         self.logger.info(f"genome_assembly: {genome_assembly}")
 
-    def collect_input_file_handles(self):
-        for input_path in self.input_paths:
-            f = self.get_file_object_for_input_path(input_path)
-            self.input_file_handles[input_path] = f
+    def setup(self, input_path: str, encoding="utf-8"):
+        _ = input_path or encoding
+        pass
 
-    def setup(self, _):
-        raise NotImplementedError("setup method should be implemented.")
-
-    def setup_file(self, input_path: str) -> Union[TextIO, BufferedReader]:
+    def setup_file(self, input_path: str):
         from oakvar.lib.util.util import log_module
 
-        f = self.input_file_handles[input_path]
+        f = self.get_file_object_for_input_path(input_path)
         log_module(self, self.logger)
         self.input_path = input_path
-        self.setup(f)
+        self.setup(input_path)
         genome_assembly = self.get_genome_assembly()
         self.genome_assemblies.append(genome_assembly)
         self.log_input_and_genome_assembly(input_path, genome_assembly)
         self.set_do_liftover(genome_assembly, f)
         if self.do_liftover or self.do_liftover_chrM:
             self.setup_lifter(genome_assembly)
-        f.seek(0)
-        return f
 
     def get_genome_assembly(self) -> str:
         from oakvar.lib.system.consts import default_assembly_key
@@ -396,17 +396,6 @@ class BaseConverter(object):
     def gather_variantss(self,
             lines_data: Dict[int, List[Tuple[int, Dict[str, Any]]]],
             core_num: int, 
-            do_liftover: bool, 
-            do_liftover_chrM: bool, 
-            lifter, 
-            wgs_reader, 
-            logger, 
-            error_logger, 
-            input_path: str, 
-            input_fname: str, 
-            unique_excs: dict, 
-            err_holder: list,
-            num_valid_error_lines: Dict[str, int],
     ) -> Tuple[List[List[Dict[str, Any]]], List[Dict[str, Any]]]:
         variants_l = []
         crl_l = []
@@ -414,7 +403,7 @@ class BaseConverter(object):
         for (line_no, line) in line_data:
             try:
                 variants = self.convert_line(line)
-                variants_datas, crl_datas = self.handle_converted_variants(variants, do_liftover, do_liftover_chrM, lifter, wgs_reader, logger, error_logger, input_path, input_fname, unique_excs, err_holder, line_no, num_valid_error_lines)
+                variants_datas, crl_datas = self.handle_converted_variants(variants, line_no)
                 if variants_datas is None or crl_datas is None:
                     continue
                 variants_l.append(variants_datas)
@@ -423,14 +412,14 @@ class BaseConverter(object):
                 raise
             except Exception as e:
                 self._log_conversion_error(line_no, e)
-                num_valid_error_lines["error"] += 1
+                self.num_valid_error_lines["error"] += 1
         return variants_l, crl_l
 
     def is_unique_variant(self, variant: dict, unique_vars: dict) -> bool:
         return variant["var_no"] not in unique_vars
 
     def handle_converted_variants(self,
-            variants: List[Dict[str, Any]], do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, logger, error_logger, input_path: str, input_fname: str, unique_excs: dict, err_holder: list, line_no: int, num_valid_error_lines: Dict[str, int]
+            variants: List[Dict[str, Any]], line_no: int
     ):
         from oakvar.lib.exceptions import IgnoredVariant
 
@@ -443,7 +432,7 @@ class BaseConverter(object):
         crl_l: List[Dict[str, Any]] = []
         for variant in variants:
             try:
-                crl_data = self.handle_variant(variant, unique_vars, do_liftover, do_liftover_chrM, lifter, wgs_reader, line_no, num_valid_error_lines)
+                crl_data = self.handle_variant(variant, unique_vars, line_no)
             except Exception as e:
                 self._log_conversion_error(line_no, e)
                 continue
@@ -454,7 +443,7 @@ class BaseConverter(object):
 
     def handle_variant(
         self,
-        variant: dict, unique_vars: dict, do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, line_no: int, num_valid_error_lines: Dict[str, int]
+        variant: dict, unique_vars: dict, line_no: int
     ) -> Optional[Dict[str, Any]]:
         from oakvar.lib.exceptions import NoVariantError
 
@@ -463,7 +452,7 @@ class BaseConverter(object):
         tags = variant.get("tags")
         unique = self.is_unique_variant(variant, unique_vars)
         if unique:
-            variant["unique"] = True
+            variant[self.unique_var_key] = True
             unique_vars[variant["var_no"]] = True
             self.handle_chrom(variant)
             self.handle_ref_base(variant)
@@ -471,71 +460,15 @@ class BaseConverter(object):
             self.normalize_variant(variant)
             self.add_end_pos_if_absent(variant)
             crl_data = self.perform_liftover_if_needed(variant)
-            num_valid_error_lines["valid"] += 1
+            self.num_valid_error_lines["valid"] += 1
         else:
-            variant["unique"] = False
+            variant[self.unique_var_key] = False
             crl_data = None
         self.handle_genotype(variant)
         if unique:
             variant["original_line"] = line_no
             variant["tags"] = tags
         return crl_data
-
-    def get_df(self, input_path: str, line_no: int=0, file_pos: int=0, ignore_sample: bool=False):
-        from pathlib import Path
-
-        input_fname = Path(input_path).name
-        f = self.setup_file(self.input_path)
-        for self.read_lnum, variants in self.convert_file(
-            f, input_path=input_path, line_no=line_no, file_pos=file_pos, exc_handler=self._log_conversion_error, ignore_sample=ignore_sample
-        ):
-            num_handled_variant: int = 0
-            try:
-                num_handled_variant = self.handle_converted_variants(variants, var_ld)
-            except KeyboardInterrupt:
-                raise
-            except Exception as e:
-                self._log_conversion_error(self.read_lnum, e)
-            len_variants: int = num_handled_variant
-            len_chunk += len_variants
-            len_df += len_variants
-            if len_chunk >= chunk_size:
-                df = self.get_df_from_var_ld(var_ld)
-                if total_df is None:
-                    total_df = df
-                else:
-                    total_df.extend(df)
-                self.initialize_var_ld(var_ld)
-                len_chunk = 0
-            if df_size > 0 and len_df >= df_size:
-                total_dfs[df_no] = total_df
-                df_no += 1
-                if df_no == list_size:
-                    yield total_dfs
-                    total_dfs = [None] * list_size
-                    df_no = 0
-                total_df = None
-                len_df = 0
-            if self.read_lnum % 10000 == 0:
-                status = (
-                    f"Running Converter ({self.input_fname}): line {self.read_lnum}"
-                )
-                update_status(
-                    status, logger=self.logger, serveradmindb=self.serveradmindb
-                )
-        if len_chunk:
-            df = self.get_df_from_var_ld(var_ld)
-            if total_df is None:
-                total_df = df
-            else:
-                total_df.extend(df)
-            self.initialize_var_ld(var_ld)
-            len_chunk = 0
-            total_dfs[df_no] = total_df
-            yield total_dfs
-            total_df = None
-            len_df = 0
-            df_no = 0
 
     def collect_extra_output_columns(self):
         extra_output_columns = self.conf.get("extra_output_columns")
@@ -571,7 +504,7 @@ class BaseConverter(object):
         for input_path in self.input_paths:
             self.input_fname = Path(input_path).name
             fileno = self.input_path_dict2[input_path]
-            converter = self.setup_file(input_path)
+            self.setup_file(input_path)
             self.file_num_valid_variants = 0
             self.file_error_lines = 0
             self.num_valid_error_lines = {"valid": 0, "error": 0}
@@ -581,26 +514,14 @@ class BaseConverter(object):
             #stime = time.time()
             while True:
                 #ctime = time.time()
-                lines_data, immature_exit = converter.get_variant_lines(input_path, num_pool, start_line_no, batch_size)
+                lines_data, immature_exit = self.get_variant_lines(input_path, num_pool, start_line_no, batch_size)
                 args = [
                     (
-                        converter, 
                         lines_data,
                         core_num, 
-                        self.do_liftover, 
-                        self.do_liftover_chrM, 
-                        self.lifter, 
-                        self.wgs_reader, 
-                        self.logger, 
-                        self.error_logger, 
-                        input_path, 
-                        self.input_fname, 
-                        self.unique_excs, 
-                        self.err_holder,
-                        self.num_valid_error_lines,
                     ) for core_num in range(num_pool)
                 ]
-                results = pool.map(gather_variantss_wrapper, args)
+                results = pool.map(self.gather_variantss_wrapper, args)
                 lines_data = None
                 for result in results:
                     variants_l, crl_l = result
@@ -611,11 +532,11 @@ class BaseConverter(object):
                             continue
                         for variant in variants:
                             variant["uid"] = uid + variant["var_no"]
-                            if variant["unique"]:
+                            if variant[self.unique_var_key]:
                                 self.crv_writer.write_data(variant)
                                 variant["fileno"] = fileno
                                 self.crm_writer.write_data(variant)
-                                converter.write_extra_info(variant)
+                                self.write_extra_info(variant)
                             self.crs_writer.write_data(variant)
                         for crl in crl_data:
                             self.crl_writer.write_data(crl)
@@ -639,7 +560,7 @@ class BaseConverter(object):
             self.total_num_converted_variants += self.num_valid_error_lines["valid"]
             self.total_num_valid_variants += self.num_valid_error_lines["valid"]
             self.total_error_lines += self.num_valid_error_lines["error"]
-        flush_err_holder(self.err_holder, self.error_logger, force=True)
+        self.flush_err_holder(force=True)
         self.close_output_files()
         self.end()
         self.log_ending()
@@ -652,88 +573,115 @@ class BaseConverter(object):
         }
         return ret
 
-    def run_df(self, input_path: str="", chunk_size: int=1000, start: int=0, df_size: int = 0, ignore_sample: bool=False):
-        from pathlib import Path
-        from oakvar.lib.util.run import update_status
+    def get_df_headers(self):
+        df_headers = []
+        for col in self.output_columns:
+            ty = col.get("type")
+            if ty in ["str", "string"]:
+                ty = pl.Utf8
+            elif ty == "int":
+                ty = pl.Int64
+            elif ty == "float":
+                ty = pl.Float64
+            else:
+                ty = None
+            df_headers.append({"name": col.get("name"), "type": ty})
+        return df_headers
 
-        if not self.input_paths or not self.logger:
-            raise
+    def get_intialized_var_ld(self, df_headers: List[Dict[str, Any]]):
+        var_ld: Dict[str, List[Any]] = {}
+        for header in df_headers:
+            var_ld[header["name"]] = []
+        return var_ld
+
+    def iter_df_chunk(self, start: int=0, size: int = 3, ignore_sample: bool=False):
+        from pathlib import Path
+        from multiprocessing.pool import ThreadPool
+        from oakvar.lib.util.run import update_status
+        from oakvar.lib.exceptions import LoggerError
+
+        #raise ValueError("No input file was given. Consider giving `inputs` argument when initializing this module or giving `input_path` argument to this method.")
+        if not self.logger:
+            raise LoggerError(module_name=self.name)
         update_status(
             "started converter", logger=self.logger, serveradmindb=self.serveradmindb
         )
-        self.collect_input_file_handles()
         self.set_variables_pre_run()
-        if df_size > 0 and chunk_size > df_size:
-            chunk_size = df_size
-        total_df: Optional[pl.DataFrame] = None
-        len_df: int = 0
-        for self.input_path in self.input_paths:
-            self.input_fname = Path(self.input_path).name
-            f = self.setup_file(self.input_path)
+        batch_size: int = 2
+        uid = 1
+        num_pool = 4
+        pool = ThreadPool(num_pool)
+        df_headers = self.get_df_headers()
+        df_header_names: List[str] = [header["name"] for header in df_headers]
+        var_ld = self.get_intialized_var_ld(df_headers)
+        df: Optional[pl.DataFrame] = None
+        for input_path in self.input_paths:
+            self.input_fname = Path(input_path).name
+            fileno = self.input_path_dict2[input_path]
+            self.setup_file(input_path)
             self.file_num_valid_variants = 0
             self.file_error_lines = 0
-            var_ld: Dict[str, List[Any]] = {}
-            self.initialize_var_ld(var_ld)
-            len_chunk: int = 0
-            total_dfs: List[Optional[pl.DataFrame]] = [None] * list_size
-            df_no = 0
-            pool = Pool(list_size)
-            for self.read_lnum, variants in self.convert_file(
-                f, input_path=self.input_path, exc_handler=self._log_conversion_error, ignore_sample=ignore_sample
-            ):
-                num_handled_variant: int = 0
-                try:
-                    num_handled_variant = self.handle_converted_variants(variants, var_ld)
-                except KeyboardInterrupt:
-                    raise
-                except Exception as e:
-                    self._log_conversion_error(self.read_lnum, e)
-                len_variants: int = num_handled_variant
-                len_chunk += len_variants
-                len_df += len_variants
-                if len_chunk >= chunk_size:
-                    df = self.get_df_from_var_ld(var_ld)
-                    if total_df is None:
-                        total_df = df
-                    else:
-                        total_df.extend(df)
-                    self.initialize_var_ld(var_ld)
-                    len_chunk = 0
-                if df_size > 0 and len_df >= df_size:
-                    total_dfs[df_no] = total_df
-                    df_no += 1
-                    if df_no == list_size:
-                        yield total_dfs
-                        total_dfs = [None] * list_size
-                        df_no = 0
-                    total_df = None
-                    len_df = 0
-                if self.read_lnum % 10000 == 0:
-                    status = (
-                        f"Running Converter ({self.input_fname}): line {self.read_lnum}"
-                    )
-                    update_status(
-                        status, logger=self.logger, serveradmindb=self.serveradmindb
-                    )
-            if len_chunk:
-                df = self.get_df_from_var_ld(var_ld)
-                if total_df is None:
-                    total_df = df
+            self.num_valid_error_lines = {"valid": 0, "error": 0}
+            start_line_pos: int = 1
+            start_line_no: int = start_line_pos
+            round_no: int = 0
+            #stime = time.time()
+            while True:
+                #ctime = time.time()
+                lines_data, immature_exit = self.get_variant_lines(input_path, num_pool, start_line_no, batch_size)
+                args = [
+                    (
+                        lines_data,
+                        core_num, 
+                    ) for core_num in range(num_pool)
+                ]
+                results = pool.map(self.gather_variantss_wrapper, args)
+                lines_data = None
+                for result in results:
+                    variants_l, crl_l = result
+                    for i in range(len(variants_l)):
+                        variants = variants_l[i]
+                        crl_data = crl_l[i]
+                        if len(variants) == 0:
+                            continue
+                        for variant in variants:
+                            if variant[self.unique_var_key]:
+                                variant["uid"] = uid + variant["var_no"]
+                                if variant[self.unique_var_key]:
+                                    variant["fileno"] = fileno
+                                for header_name in df_header_names:
+                                    var_ld[header_name].append(variant.get(header_name))
+                        uid += max([v["var_no"] for v in variants]) + 1
+                df2 = self.get_df_from_var_ld(var_ld, df_headers)
+                if df is None:
+                    df = df2
                 else:
-                    total_df.extend(df)
-                self.initialize_var_ld(var_ld)
-                len_chunk = 0
-                total_dfs[df_no] = total_df
-                yield total_dfs
-                total_df = None
-                len_df = 0
-                df_no = 0
-            f.close()
+                    df = df.vstack(df2)
+                if df is not None and df.height >= size:
+                    while df.height >= size:
+                        yield df[:size]
+                        df = df[size:]
+                var_ld = self.get_intialized_var_ld(df_headers)
+                if not immature_exit:
+                    if df is not None and df.height > 0:
+                        yield df
+                    break
+                start_line_no += batch_size * num_pool
+                round_no += 1
+                status = (
+                    f"Running Converter ({self.input_fname}): line {start_line_no - 1}"
+                )
+                update_status(
+                    status, logger=self.logger, serveradmindb=self.serveradmindb
+                )
             self.logger.info(
-                f"number of valid variants: {self.file_num_valid_variants}"
+                f"{input_path}: number of valid variants: {self.num_valid_error_lines['valid']}"
             )
-            self.logger.info(f"number of error lines: {self.file_error_lines}")
-        self.close_output_files()
+            self.logger.info(f"{input_path}: number of lines skipped due to errors: {self.num_valid_error_lines['error']}")
+            self.total_num_converted_variants += self.num_valid_error_lines["valid"]
+            self.total_num_valid_variants += self.num_valid_error_lines["valid"]
+            self.total_error_lines += self.num_valid_error_lines["error"]
+        self.flush_err_holder(force=True)
         self.end()
         self.log_ending()
         ret = {
@@ -752,15 +700,9 @@ class BaseConverter(object):
         var_ld["base__ref_base"] = []
         var_ld["base__alt_base"] = []
 
-    def get_df_from_var_ld(self, var_ld: Dict[str, List[Any]]) -> pl.DataFrame:
+    def get_df_from_var_ld(self, var_ld: Dict[str, List[Any]], headers: List[Dict[str, Any]]) -> pl.DataFrame:
         df: pl.DataFrame = pl.DataFrame(
-            [
-                pl.Series("uid", var_ld["base__uid"]),
-                pl.Series("chrom", var_ld["base__chrom"]),
-                pl.Series("pos", var_ld["base__pos"]),
-                pl.Series("ref_base", var_ld["base__ref_base"]),
-                pl.Series("alt_base", var_ld["base__alt_base"]),
-            ]
+            [pl.Series(header["name"], var_ld[header["name"]], dtype=header["type"]) for header in headers]
         )
         return df
 
@@ -790,7 +732,7 @@ class BaseConverter(object):
         status = "finished Converter"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
 
-    def perform_liftover_if_needed(self, variant):
+    def perform_liftover_if_needed(self, variant, crl_to_variant: bool=False):
         from copy import copy
         from oakvar.lib.util.seq import liftover_one_pos
         from oakvar.lib.util.seq import liftover
@@ -799,9 +741,14 @@ class BaseConverter(object):
             needed = self.do_liftover_chrM
         else:
             needed = self.do_liftover
+        crl_data = None
         if needed:
             prelift_wdict = copy(variant)
-            crl_data = prelift_wdict
+            if crl_to_variant:
+                variant["original_chrom"] = variant["chrom"]
+                variant["original_pos"] = variant["pos"]
+            else:
+                crl_data = prelift_wdict
             (
                 variant["chrom"],
                 variant["pos"],
@@ -823,19 +770,17 @@ class BaseConverter(object):
             else:
                 pos_end = converted_end[1]
             variant["pos_end"] = pos_end
-        else:
-            crl_data = None
         return crl_data
 
     def is_chrM(self, wdict):
         return wdict["chrom"] == "chrM"
 
-    def flush_err_holder(self, err_holder: list, force: bool=False):
-        if len(err_holder) > 1000 or force:
+    def flush_err_holder(self, force: bool=False):
+        if len(self.err_holder) > 1000 or force:
             if self.error_logger:
-                for err_line in err_holder:
+                for err_line in self.err_holder:
                     self.error_logger.error(err_line)
-            err_holder.clear()
+            self.err_holder.clear()
 
     def _log_conversion_error(self, line_no: int, e):
         from traceback import format_exc
@@ -857,7 +802,7 @@ class BaseConverter(object):
         else:
             err_no = self.unique_excs[err_str]
             self.err_holder.append(f"{err_no}:{line_no}\t{str(e)}")
-        self.flush_err_holder(self.err_holder)
+        self.flush_err_holder()
 
     def close_output_files(self):
         if self.crv_writer is not None:

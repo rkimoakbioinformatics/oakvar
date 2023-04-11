@@ -28,6 +28,7 @@ class BaseAnnotator(object):
         output_columns: List[Dict[str, Any]] = [],
         module_conf: Dict[str, Any] = {},
         code_version: Optional[str] = None,
+        df_mode: bool = False,
     ):
         """__init__.
 
@@ -61,7 +62,6 @@ class BaseAnnotator(object):
         from ..module.data_cache import ModuleDataCache
         from ..exceptions import ModuleLoadingError
         from ..exceptions import LoggerError
-        import polars as pl
         from ..util.util import get_crv_def
         from ..util.util import get_crx_def
         from ..util.util import get_crg_def
@@ -109,7 +109,6 @@ class BaseAnnotator(object):
         self.output_path = None
         self.last_status_update_time = None
         self.output_columns: List[Dict[str, Any]] = []
-        self.output_column_types: Dict[str, Any] = {}
         self.secondary_readers = {}
         self.output_writer = None
         self.log_path = None
@@ -122,6 +121,8 @@ class BaseAnnotator(object):
         self.conf = {}
         self.col_names: List[str] = []
         self.full_col_names: Dict[str, str] = {}
+        self.df_dtypes: Dict[str, Any] = {}
+        self.df_mode: bool = df_mode
         if not self.main_fpath:
             if name:
                 self.module_name = name
@@ -210,6 +211,8 @@ class BaseAnnotator(object):
                 self.code_version: str = ""
         self.cache = ModuleDataCache(self.module_name, module_type=self.module_type)
         self.var_ld: Dict[str, List[Any]] = {}
+        if self.df_mode:
+            self.setup_df()
 
     def set_output_columns(self, output_columns: List[Dict[str, Any]]):
         if not self.level:
@@ -229,21 +232,6 @@ class BaseAnnotator(object):
             self.conf = {}
         self.conf["output_columns"] = output_columns
         self.col_names = [v.get("name", "") for v in output_columns if v.get("name") != "uid"]
-        self.full_col_names = {col_name: f"{self.module_name}__{col_name}" for col_name in self.col_names}
-        for col_def in output_columns:
-            col_name = col_def.get("name", "")
-            if col_name == "uid":
-                continue
-            ty = col_def.get("type")
-            if ty == "string":
-                dtype = pl.Utf8
-            elif ty == "int":
-                dtype = pl.Int64
-            elif ty == "float":
-                dtype = pl.Float64
-            else:
-                dtype = pl.Utf8
-            self.output_column_types[self.full_col_names[col_name]] = dtype
 
     def set_ref_colname(self):
         """set_ref_colname.
@@ -449,6 +437,22 @@ class BaseAnnotator(object):
         raise NotImplementedError("annotate_df method should be implemented.")
 
     def setup_df(self):
+        self.full_col_names = {col_name: f"{self.module_name}__{col_name}" for col_name in self.col_names if col_name != "uid"}
+        self.df_dtypes = {}
+        for col_def in self.output_columns:
+            col_name = col_def.get("name")
+            if not col_name or col_name == "uid":
+                continue
+            ty = col_def.get("type")
+            if ty == "string":
+                dtype = pl.Utf8
+            elif ty == "int":
+                dtype = pl.Int64
+            elif ty == "float":
+                dtype = pl.Float64
+            else:
+                dtype = pl.Utf8
+            self.df_dtypes[self.full_col_names[col_name]] = dtype
         self.base_setup(mode="df")
         self.make_json_colnames()
 
@@ -474,11 +478,14 @@ class BaseAnnotator(object):
             output_dict = self.annotate(input_data)
             for col_name in self.col_names:
                 if not output_dict:
-                    self.var_ld[self.full_col_names[col_name]].append(output_dict.get(col_name))
+                    val = None
+                else:
+                    val = output_dict.get(col_name)
+                self.var_ld[self.full_col_names[col_name]].append(val)
         num_cols = df.shape[1]
         for i, col_name in enumerate(self.col_names):
             full_col_name = self.full_col_names[col_name]
-            dtype = self.output_column_types[full_col_name]
+            dtype = self.df_dtypes[full_col_name]
             df.insert_at_idx(num_cols + i, pl.Series(full_col_name, self.var_ld[full_col_name], dtype=dtype))
         return df
 

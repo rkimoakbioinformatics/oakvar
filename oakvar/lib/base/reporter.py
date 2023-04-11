@@ -4,6 +4,7 @@ from typing import Union
 from typing import Dict
 from typing import List
 from pathlib import Path
+import polars as pl
 
 
 class BaseReporter:
@@ -18,7 +19,7 @@ class BaseReporter:
         filterstring: Optional[str] = None,
         savepath: Optional[Path] = None,
         confpath: Optional[str] = None,
-        module_name: Optional[str] = None,
+        name: Optional[str] = None,
         nogenelevelonvariantlevel: bool = False,
         inputfiles: Optional[List[str]] = None,
         separatesample: bool = False,
@@ -31,13 +32,20 @@ class BaseReporter:
         cols: Optional[List[str]] = None,
         level: Optional[str] = None,
         user: Optional[str] = None,
+        module_conf: Dict[str, Any] = {},
         no_summary: bool = False,
         logtofile: bool = False,
+        df_mode: bool = False,
         serveradmindb=None,
         outer=None,
     ):
+        import sys
+        import os
         from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
+        from ..exceptions import ModuleLoadingError
+        from ..module.local import get_module_conf
 
+        self.module_type = "annotator"
         self.script_path: str = ""
         self.dbpath = dbpath
         self.report_types = report_types
@@ -48,7 +56,7 @@ class BaseReporter:
         self.filterstring = filterstring
         self.savepath = savepath
         self.confpath = confpath
-        self.module_name = module_name
+        self.module_name = name
         self.nogenelevelonvariantlevel = nogenelevelonvariantlevel
         self.inputfiles = inputfiles
         self.separatesample = separatesample
@@ -85,7 +93,6 @@ class BaseReporter:
         self.retrieved_col_names: Dict[str, List[str]] = {}
         self.conn = None
         self.levels_to_write = None
-        self.conf = None
         self.module_conf = None
         self.output_basename = None
         self.extract_columns_multilevel = {}
@@ -99,9 +106,35 @@ class BaseReporter:
         self.conns = []
         self.logtofile = logtofile
         self.dictrow: bool = True
+        if self.__module__ == "__main__":
+            fp = None
+            self.main_fpath = None
+        else:
+            fp = sys.modules[self.__module__].__file__
+            if not fp:
+                raise ModuleLoadingError(module_name=self.__module__)
+            self.main_fpath = Path(fp).resolve()
+        if not self.main_fpath:
+            if name:
+                self.module_name = name
+                self.module_dir = Path(os.getcwd()).resolve()
+            else:
+                raise ModuleLoadingError(msg="name argument should be given.")
+            self.conf = module_conf.copy()
+        else:
+            self.module_name = self.main_fpath.stem
+            self.module_dir = self.main_fpath.parent
+            self.conf = get_module_conf(
+                self.module_name,
+                module_type=self.module_type,
+                module_dir=self.module_dir,
+            )
+            if not self.conf:
+                self.conf = {}
         self.gene_summary_datas = {}
         self.total_norows: Optional[int] = None
         self.legacy_samples_col = False
+        self.df_mode = df_mode
         self.modules_to_add_to_base = []
         self.check_and_setup_args()
         self._setup_logger()
@@ -128,15 +161,16 @@ class BaseReporter:
         from ..module.local import get_module_conf
         from ..exceptions import WrongInput
 
-        if not Path(self.dbpath).exists():
+        if not self.df_mode and not Path(self.dbpath).exists():
             raise WrongInput(msg=self.dbpath)
-        try:
-            with sqlite3.connect(self.dbpath) as db:
-                db.execute("select count(*) from info")
-                db.execute("select count(*) from variant")
-                db.execute("select count(*) from gene")
-        except Exception:
-            raise WrongInput(msg=f"{self.dbpath} is not an OakVar result database")
+        if not self.df_mode:
+            try:
+                with sqlite3.connect(self.dbpath) as db:
+                    db.execute("select count(*) from info")
+                    db.execute("select count(*) from variant")
+                    db.execute("select count(*) from gene")
+            except Exception:
+                raise WrongInput(msg=f"{self.dbpath} is not an OakVar result database")
         if not self.output_dir:
             self.output_dir = str(Path(self.dbpath).parent)
         if not self.output_dir:
@@ -146,7 +180,7 @@ class BaseReporter:
         self.module_conf = get_module_conf(self.module_name, module_type="reporter")
         self.confs = self.module_options  # TODO: backward compatibility. Delete later.
         self.output_basename = Path(self.dbpath).name[:-7]
-        if not self.inputfiles and self.dbpath:
+        if not self.df_mode and not self.inputfiles and self.dbpath:
             db = sqlite3.connect(self.dbpath)
             c = db.cursor()
             q = 'select colval from info where colkey="_input_paths"'
@@ -387,6 +421,10 @@ class BaseReporter:
             return []
         return levels
 
+    def run_df(self, df: pl.DataFrame, columns: List[Dict[str, Any]], savepath: str = ""):
+        self.write_data_df(df, columns, savepath)
+        self.end()
+
     async def run(
         self,
         tab="all",
@@ -453,6 +491,67 @@ class BaseReporter:
 
             traceback.print_exc()
             raise e
+
+    def write_preface_df(self, df, columns):
+        pass
+
+    def write_header_df(self, columns):
+        pass
+
+    def write_data_df(
+        self, df, columns, savepath
+    ):
+        import time
+        import copy
+        from ..exceptions import SetupError
+
+        colnos = {columns[i]["name"]: i for i in range(len(columns))}
+        self.write_preface_df(df, savepath)
+        self.write_header_df(columns)
+        #self.extracted_cols[level] = self.get_extracted_header_columns(level)
+        #self.extracted_col_names[level] = [
+        #    col_def.get("col_name") for col_def in self.extracted_cols[level]
+        #]
+        #self.hugo_colno = self.colnos[level].get("base__hugo", None)
+        #datacols = await self.cf.exec_db(self.cf.get_variant_data_cols)
+        #self.total_norows = await self.cf.exec_db(
+        #    self.cf.get_ftable_num_rows, level=level, uid=self.ftable_uid, ftype=level
+        #)  # type: ignore
+        #if datacols is None or self.total_norows is None:
+        #    return
+        #if level == "variant" and self.separatesample:
+        #    self.write_variant_sample_separately = True
+        #else:
+        #    self.write_variant_sample_separately = False
+        row_count = 0
+        #conn_read, conn_write = await self.cf.get_db_conns()
+        #if not conn_read or not conn_write:
+        #    return None
+        #cursor_read = await conn_read.cursor()
+        #await self.cf.get_level_data_iterator(
+        #    level, page=page, pagesize=pagesize, uid=self.ftable_uid, cursor_read=cursor_read, var_added_cols=self.var_added_cols
+        #)
+        ctime = time.time()
+        #self.retrieved_col_names[level] = [d[0] for d in cursor_read.description]
+        #self.extracted_col_nos[level] = [self.retrieved_col_names[level].index(col_name) for col_name in self.extracted_col_names[level]]
+        #self.num_retrieved_cols = len(self.retrieved_col_names[level])
+        #self.colnos_to_display[level] = [self.retrieved_col_names[level].index(c) for c in self.colnames_to_display[level]]
+        #self.extracted_colnos_in_retrieved = [self.retrieved_col_names[level].index(c) for c in self.extracted_col_names[level]]
+        self.vcf_format = False
+        self.level = "variant"
+        self.extracted_col_names = {"variant": copy.deepcopy(df.columns)}
+        for datarow in df.iter_rows():
+            #self.stringify_all_mapping(level, datarow)
+            self.escape_characters_df(datarow)
+            self.write_row_with_samples_separate_or_not_df(datarow, columns, colnos)
+            row_count += 1
+            if row_count % 10000 == 0:
+                t = time.time()
+                msg = f"Wrote {row_count} rows. {(t - ctime) / row_count}"
+                if self.logger is not None:
+                    self.logger.info(msg)
+                elif self.outer is not None:
+                    self.outer.write(msg)
 
     async def write_data(
         self,
@@ -529,6 +628,12 @@ class BaseReporter:
         await conn_read.close()
         await conn_write.close()
 
+    def write_table_row_df(self, datarow, columns):
+        pass
+
+    def write_row_with_samples_separate_or_not_df(self, datarow, columns, colnos):
+        self.write_table_row_df(datarow, columns)
+
     def write_row_with_samples_separate_or_not(self, datarow):
         if self.legacy_samples_col:
             col_name = "base__samples"
@@ -546,6 +651,11 @@ class BaseReporter:
                 self.write_table_row(self.get_extracted_row(datarow))
         else:
             self.write_table_row(self.get_extracted_row(datarow))
+
+    def escape_characters_df(self, datarow):
+        for i, v in enumerate(datarow):
+            if isinstance(v, str) and "\n" in v:
+                datarow[i] = v.replace("\n", "%0A")
 
     def escape_characters(self, datarow):
         if self.dictrow:
@@ -838,8 +948,8 @@ class BaseReporter:
         from ..module.local import get_local_module_infos_of_type
         from ..module.local import get_local_module_info
         from ..util.inout import ColumnDefinition
-        from ... import get_annotator_class
-        from ... import get_mapper_class
+        from ..util.module import get_annotator_class
+        from ..util.module import get_mapper_class
 
         _ = conn
         if not add_summary:

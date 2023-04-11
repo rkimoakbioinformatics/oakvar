@@ -1,13 +1,10 @@
 from typing import Any
 from typing import Optional
-from typing import Union
 from typing import List
 from typing import Dict
 from typing import Tuple
-from typing import TextIO
-from .converter import BaseConverter
+from oakvar.lib.base.converter import BaseConverter
 from pyliftover import LiftOver
-from io import BufferedReader
 from re import compile
 
 chromdict = {
@@ -257,7 +254,7 @@ class MasterConverter(object):
         self,
         inputs: List[str] = [],
         input_format: Optional[str] = None,
-        name: Optional[str] = None,
+        run_name: Optional[str] = None,
         output_dir: Optional[str] = None,
         genome: Optional[str] = None,
         serveradmindb=None,
@@ -283,7 +280,7 @@ class MasterConverter(object):
         self.input_dir = None
         self.input_path_dict = {}
         self.input_path_dict2 = {}
-        self.input_file_handles: Dict[str, Tuple[Union[TextIO, BufferedReader], str]] = {}
+        self.input_file_handles: Dict[str, str] = {}
         self.output_base_fname: Optional[str] = None
         self.error_logger = None
         self.unique_excs: Dict[str, int] = {}
@@ -323,7 +320,7 @@ class MasterConverter(object):
             raise ExpectedException("Input files are not given.")
         self.inputs = inputs
         self.format = input_format
-        self.name = name
+        self.run_name = run_name
         self.output_dir = output_dir
         self.genome = genome
         self.parse_inputs()
@@ -396,14 +393,13 @@ class MasterConverter(object):
             raise
         if not (Path(self.output_dir).exists()):
             makedirs(self.output_dir)
-        self.output_base_fname: Optional[str] = self.name
+        self.output_base_fname: Optional[str] = self.run_name
         if not self.output_base_fname:
             if not self.input_paths:
                 raise
             self.output_base_fname = Path(self.input_paths[0]).name
 
     def get_file_object_for_input_path(self, input_path: str):
-        import gzip
         from pathlib import Path
         from oakvar.lib.util.util import detect_encoding
 
@@ -420,20 +416,14 @@ class MasterConverter(object):
                 encoding = detect_encoding(input_path)
         if self.logger:
             self.logger.info(f"encoding: {input_path} {encoding}")
-        if input_path.endswith(".gz"):
-            f = gzip.open(input_path, mode="rt", encoding=encoding)
-        elif suffix in [".parquet"]:
-            f = open(input_path, "rb")
-        else:
-            f = open(input_path, encoding=encoding)
-        return f, encoding
+        return encoding
 
     def collect_input_file_handles(self):
         if not self.input_paths:
             raise
         for input_path in self.input_paths:
-            f, encoding = self.get_file_object_for_input_path(input_path)
-            self.input_file_handles[input_path] = (f, encoding)
+            encoding = self.get_file_object_for_input_path(input_path)
+            self.input_file_handles[input_path] = encoding
 
     def setup(self):
         self.collect_converters()
@@ -451,17 +441,19 @@ class MasterConverter(object):
 
     def collect_converters(self):
         from oakvar.lib.module.local import get_local_module_infos_of_type
-        from ... import get_converter_class
+        from ..util.module import get_converter_class
 
         for module_name, module_info in get_local_module_infos_of_type(
             "converter"
         ).items():
             try:
                 cls = get_converter_class(module_name)
-                converter = cls(name=module_name, code_version=module_info.version)
+                converter = cls(inputs=self.input_paths, code_version=module_info.version)
             except Exception as e:
+                import traceback
+
                 if self.logger:
-                    self.logger.error(f"Skipping {module_name} as it could not be loaded. ({e})")
+                    self.logger.error(f"{traceback.format_exc()}\nSkipping {module_name} as it could not be loaded. ({e})")
                 continue
             # TODO: backward compatibility
             format_name: str = module_info.conf.get("format_name", "")
@@ -493,8 +485,8 @@ class MasterConverter(object):
         if not self.input_paths:
             return
         for input_path in self.input_paths:
-            f, _ = self.input_file_handles[input_path]
-            converter = self.get_converter_for_input_file(f)
+            encoding = self.input_file_handles[input_path]
+            converter = self.get_converter_for_input_file(input_path)
             self.converter_by_input_path[input_path] = converter
 
     def collect_extra_output_columns(self):
@@ -514,29 +506,27 @@ class MasterConverter(object):
         if self.format and self.format not in self.available_input_formats:
             raise InvalidInputFormat(self.format)
 
-    def get_converter_for_input_file(self, f) -> Optional[BaseConverter]:
+    def get_converter_for_input_file(self, input_path) -> Optional[BaseConverter]:
         converter: Optional[BaseConverter] = None
         if self.format:
             if self.format in self.converters:
                 converter = self.converters[self.format]
         else:
             for check_converter in self.converters.values():
-                f.seek(0)
                 try:
-                    check_success = check_converter.check_format(f)
+                    check_success = check_converter.check_format(input_path)
                 except Exception:
                     import traceback
 
                     if self.error_logger:
                         self.error_logger.error(traceback.format_exc())
                     check_success = False
-                f.seek(0)
                 if check_success:
                     converter = check_converter
                     break
         if converter:
             if self.logger:
-                self.logger.info(f"Using {converter.name} for {f.name}")
+                self.logger.info(f"Using {converter.name} for {input_path}")
             return converter
         return None
 
@@ -548,12 +538,11 @@ class MasterConverter(object):
             raise SetupError()
         converter.output_dir = self.output_dir
         converter.run_name = self.output_base_fname
-        module_name = converter.module_name
-        converter.version = get_module_code_version(converter.module_name)
-        if module_name in self.conf:
+        converter.version = get_module_code_version(converter.name)
+        if converter.name in self.conf:
             if hasattr(converter, "conf") is False:
                 converter.conf = {}
-            converter.conf.update(self.conf[module_name])
+            converter.conf.update(self.conf[converter.name])
 
     def setup_crv_writer(self):
         from pathlib import Path
@@ -650,7 +639,7 @@ class MasterConverter(object):
         from oakvar.lib.util.util import log_module
         from oakvar.lib.exceptions import NoConverterFound
 
-        f, encoding = self.input_file_handles[input_path]
+        encoding = self.input_file_handles[input_path]
         converter = self.converter_by_input_path[input_path]
         if not converter:
             raise NoConverterFound(input_path)
@@ -670,7 +659,6 @@ class MasterConverter(object):
         self.set_do_liftover(genome_assembly, converter, input_path)
         if self.do_liftover or self.do_liftover_chrM:
             self.setup_lifter(genome_assembly)
-        f.seek(0)
         return converter
 
     def handle_chrom(self, variant):

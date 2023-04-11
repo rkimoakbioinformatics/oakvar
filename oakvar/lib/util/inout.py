@@ -9,7 +9,10 @@ class BaseFile(object):
     def __init__(self, path):
         from os.path import abspath
 
-        self.path = abspath(path)
+        if path:
+            self.path = abspath(path)
+        else:
+            self.path = path
         self.columns = {}
 
     def _validate_col_type(self, col_type):
@@ -248,15 +251,16 @@ class FileWriter(BaseFile):
         if fmt == "csv":
             self.csvfmt = True
         self.csvwriter = None
-        if fmt == "csv":
-            self.wf = open(self.path, mode, newline="", encoding="utf-8")
-            from csv import writer
+        if self.path:
+            if fmt == "csv":
+                self.wf = open(self.path, mode, newline="", encoding="utf-8")
+                from csv import writer
 
-            self.csvwriter = writer(self.wf)
-            if mode == "w":
-                self.wf.write("#fmt=csv\n")
-        else:
-            self.wf = open(self.path, mode, encoding="utf-8")
+                self.csvwriter = writer(self.wf)
+                if mode == "w":
+                    self.wf.write("#fmt=csv\n")
+            else:
+                self.wf = open(self.path, mode, encoding="utf-8")
         self.mode: str = mode
         self.ready_to_write = False
         self.ordered_columns = []

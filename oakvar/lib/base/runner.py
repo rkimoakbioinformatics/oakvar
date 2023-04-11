@@ -273,10 +273,6 @@ class Runner(object):
             self.logger.info("conf file: {}".format(self.conf_path))
 
     async def process_file(self, run_no: int):
-        if self.args.combine_input:
-            input_files = self.input_paths
-        else:
-            input_files = [self.input_paths[run_no]]
         await self.do_step_converter(run_no)
         await self.do_step_preparer(run_no)
         await self.do_step_mapper(run_no)
@@ -490,7 +486,7 @@ class Runner(object):
             self.input_paths.remove(v)
 
     def process_url_and_pipe_inputs(self):
-        import os
+        from pathlib import Path
         from ..util.util import is_url
 
         if not self.args:
@@ -498,7 +494,7 @@ class Runner(object):
         self.first_non_url_input = None
         if self.args.inputs is not None:
             self.input_paths = [
-                os.path.abspath(x) if not is_url(x) and x != "-" else x
+                str(Path(x).resolve()) if not is_url(x) else x
                 for x in self.args.inputs
             ]
             if self.input_paths is None:
@@ -1543,13 +1539,11 @@ class Runner(object):
         self.info_json["postaggregators"] = postagg_names
 
     async def run_converter(self, run_no: int):
-        import os
         from .master_converter import MasterConverter
-        from ..util.util import load_class
         from types import SimpleNamespace
         from ..util.admin_util import get_packagedir
         from ..util.run import announce_module
-        from ..exceptions import ModuleNotExist
+        from .master_converter import MasterConverter
 
         if (
             self.conf is None
@@ -1563,25 +1557,19 @@ class Runner(object):
             input_files = self.input_paths
         else:
             input_files = [self.input_paths[run_no]]
-        converter_path = os.path.join(
-            get_packagedir(), "lib", "base", "master_converter.py"
-        )
+        converter_path = get_packagedir() / "lib" / "base" / "master_converter.py"
         module = SimpleNamespace(
             title="Converter", name="converter", script_path=converter_path
         )
         announce_module(module, logger=self.logger, serveradmindb=self.serveradmindb)
-        converter_class = load_class(module.script_path, "MasterConverter")
-        if not issubclass(converter_class, MasterConverter):
-            raise ModuleNotExist("MasterConverter", msg="MasterConverter class was not found at {module.script_path}.")
-        converter = converter_class(
+        converter = MasterConverter(
             inputs=input_files,
-            name=self.run_name[run_no],
+            run_name=self.run_name[run_no],
             output_dir=self.output_dir[run_no],
             genome=self.args.genome,
             input_format=self.args.input_format,
             serveradmindb=self.serveradmindb,
             ignore_sample=self.ignore_sample,
-            mp=self.args.mp,
             outer=self.outer,
         )
         ret = converter.run()
@@ -1948,7 +1936,7 @@ class Runner(object):
     async def run_reporter(self, run_no: int):
         from pathlib import Path
         from ..module.local import get_local_module_info
-        from ..util.util import load_class
+        from ..util.module import get_reporter_class
         from ..util.run import update_status
         from ..exceptions import ModuleNotExist
         from ..exceptions import ModuleLoadingError
@@ -1984,9 +1972,8 @@ class Runner(object):
             arg_dict["savepath"] = output_dir / run_name
             arg_dict["output_dir"] = output_dir
             arg_dict["run_name"] = run_name
-            arg_dict["module_name"] = module_name
             arg_dict[MODULE_OPTIONS_KEY] = self.run_conf.get(module_name, {})
-            Reporter: Type[BaseReporter] = load_class(module.script_path, "Reporter")
+            Reporter: Type[BaseReporter] = get_reporter_class(module_name)
             if not issubclass(Reporter, BaseReporter):
                 raise ModuleLoadingError(module_name=module.name)
             reporter = Reporter(**arg_dict)

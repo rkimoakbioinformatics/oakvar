@@ -7,7 +7,6 @@ from typing import Type
 from pathlib import Path
 from polars import DataFrame
 from ..base.converter import BaseConverter
-from ..base.master_converter import MasterConverter
 from ..base.preparer import BasePreparer
 from ..base.mapper import BaseMapper
 from ..base.annotator import BaseAnnotator
@@ -62,7 +61,6 @@ def load_class(
     path: Optional[Path], class_name=None
 ) -> Union[
     Type[BaseConverter],
-    Type[MasterConverter],
     Type[BasePreparer],
     Type[BaseMapper],
     Type[BaseAnnotator],
@@ -79,6 +77,7 @@ def load_class(
     """
     from importlib.util import spec_from_file_location, module_from_spec
     from importlib import import_module
+    from importlib import reload
     import sys
     import inspect
     import traceback
@@ -89,9 +88,21 @@ def load_class(
     sys.path = [str(path.parent)] + sys.path
     module = None
     module_name = path.stem
-    module_class = None
+    module_class: Optional[
+        Union[
+            Type[BaseConverter],
+            Type[BasePreparer],
+            Type[BaseMapper],
+            Type[BaseAnnotator],
+            Type[BasePostAggregator],
+            Type[BaseReporter],
+            Type[VCF2VCF],
+            Type[BaseCommonModule],
+        ]
+    ] = None
     try:
         module = import_module(module_name)
+        module = reload(module)
     except Exception:
         traceback.print_exc()
         try:
@@ -117,6 +128,7 @@ def load_class(
             for n in dir(module):
                 if n in [
                     "Converter",
+                    "MasterConverter",
                     "Mapper",
                     "Annotator",
                     "PostAggregator",
@@ -277,7 +289,7 @@ def is_compatible_version(dbpath):
         return compatible, job_version_ov, ov_version
 
 
-def is_url(s: str) -> bool:
+def is_url(s: Union[str, Path]) -> bool:
     """is_url.
 
     Args:
@@ -286,7 +298,8 @@ def is_url(s: str) -> bool:
     Returns:
         bool:
     """
-    if s.startswith("http://") or s.startswith("https://"):
+    ss = str(s)
+    if ss.startswith("http://") or ss.startswith("https://"):
         return True
     else:
         return False
