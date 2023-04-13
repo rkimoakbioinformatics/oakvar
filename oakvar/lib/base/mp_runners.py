@@ -27,7 +27,7 @@ def annot_from_queue(
         module, kwargs = task
         try:
             logger = getLogger(module.name)
-            if logtofile:
+            if logtofile and log_path:
                 log_handler = FileHandler(log_path, "a")
             else:
                 log_handler = StreamHandler()
@@ -45,9 +45,12 @@ def annot_from_queue(
             annotator_class = load_class(module.script_path, "Annotator")
             if not annotator_class:
                 annotator_class = load_class(module.script_path, "CravatAnnotator")
-            annotator = annotator_class(**kwargs)
-            annotator.run()
-            end_queue.put(module.name)
+            if annotator_class:
+                annotator = annotator_class(**kwargs)
+                annotator.run()
+                end_queue.put(module.name)
+            else:
+                raise ModuleLoadingError(msg=f"Annotator of {module.name} could not be loaded.")
         except Exception:
             err = ModuleLoadingError(module_name=module.name)
             if logger:
@@ -68,22 +71,26 @@ def mapper_runner(
     from ..util.util import load_class
     from ..module.local import get_local_module_info
     from .mapper import BaseMapper
+    from ..exceptions import ModuleLoadingError
 
     output = None
     module = get_local_module_info(module_name)
     if module is not None:
         if primary_transcript:
             primary_transcript = primary_transcript.split(";")
-        genemapper_class: Type[BaseMapper] = load_class(module.script_path, "Mapper")
-        genemapper = genemapper_class(
-            input_file=crv_path,
-            run_name=run_name,
-            seekpos=seekpos,
-            chunksize=chunksize,
-            postfix=f".{pos_no:010.0f}",
-            primary_transcript=primary_transcript,
-            serveradmindb=serveradmindb,
-            output_dir=output_dir,
-        )
-        output = genemapper.run(pos_no)
+        genemapper_class = load_class(module.script_path, "Mapper")
+        if genemapper_class:
+            genemapper = genemapper_class(
+                input_file=crv_path,
+                run_name=run_name,
+                seekpos=seekpos,
+                chunksize=chunksize,
+                postfix=f".{pos_no:010.0f}",
+                primary_transcript=primary_transcript,
+                serveradmindb=serveradmindb,
+                output_dir=output_dir,
+            )
+            output = genemapper.run(pos_no)
+        else:
+            raise ModuleLoadingError(msg=f"Mapper of {module_name} could not be loaded.")
     return output
