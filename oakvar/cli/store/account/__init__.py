@@ -11,6 +11,7 @@ def cli_store_createaccount(args):
 def create(args, __name__="store account create"):
     from ....api.store.account import create
 
+    args["interactive"] = True
     ret = create(**args)
     return ret
 
