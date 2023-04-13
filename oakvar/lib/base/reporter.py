@@ -885,12 +885,10 @@ class BaseReporter:
             if not annot_cls:
                 raise ModuleLoadingError(module_name=mi.name)
             cmd = {
-                "script_path": mi.script_path,
-                "input_file": "__dummy__",
                 "output_dir": self.output_dir,
                 "serveradmindb": self.serveradmindb,
             }
-            annot = annot_cls(cmd)
+            annot = annot_cls(**cmd)
             cols = mi.conf["gene_summary_output_columns"]
             columngroup = {
                 "name": mi.name,

@@ -80,7 +80,7 @@ class BaseAnnotator(object):
 
         self.module_options = module_options
         if input_file:
-            self.primary_input_path = Path(input_file).absolute()
+            self.primary_input_path = Path(input_file).resolve()
         else:
             self.primary_input_path = None
         self.secondary_inputs = secondary_inputs
