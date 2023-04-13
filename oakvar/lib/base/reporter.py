@@ -1002,8 +1002,6 @@ class BaseReporter:
             else:
                 continue
             cmd = {
-                "script_path": mi.script_path,
-                "input_file": "__dummy__",
                 "output_dir": self.output_dir,
                 "serveradmindb": self.serveradmindb,
             }
