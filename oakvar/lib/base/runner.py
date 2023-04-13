@@ -1465,7 +1465,9 @@ class Runner(object):
             return
         try:
             info_json_s = dumps(self.info_json)
-        except Exception:
+        except Exception as e:
+            if self.logger:
+                self.logger.exception(e)
             info_json_s = ""
         db = await aiosqlite.connect(str(admindb_path))
         cursor = await db.cursor()
@@ -1499,7 +1501,7 @@ class Runner(object):
         self.info_json["run_name"] = run_name
         self.info_json["db_path"] = str(Path(output_dir) / (run_name + ".sqlite"))
         self.info_json["orig_input_fname"] = [Path(x).name for x in self.inputs]
-        self.info_json["orig_input_path"] = self.inputs
+        self.info_json["orig_input_path"] = [str(v) for v in self.inputs]
         self.info_json["submission_time"] = datetime.now().isoformat()
         self.info_json["viewable"] = False
         self.info_json["note"] = self.args.note
