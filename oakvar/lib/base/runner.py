@@ -149,7 +149,7 @@ class Runner(object):
     def download_url_input(self, ip):
         import requests
         from pathlib import Path
-        from ..util.util import is_url, humanize_bytes
+        from ..util.util import humanize_bytes
         from ..util.run import update_status
 
         if not self.input_paths:
@@ -157,8 +157,6 @@ class Runner(object):
         if " " in ip:
             print(f"Space is not allowed in input file paths ({ip})")
             exit()
-        if not is_url(ip):
-            return
         update_status(
             f"Fetching {ip}... ",
             logger=self.logger,
@@ -581,7 +579,7 @@ class Runner(object):
             inp = self.input_paths[run_no]
             run_name = self.run_name[run_no]
             output_dir = self.output_dir[run_no]
-            if not inp.endswith(".sqlite"):
+            if not Path(inp).suffix == ".sqlite":
                 continue
             self.append_mode[run_no] = True
             if run_name.endswith(".sqlite"):

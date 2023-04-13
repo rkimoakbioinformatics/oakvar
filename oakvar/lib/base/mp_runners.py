@@ -28,7 +28,7 @@ def annot_from_queue(
         module, kwargs = task
         try:
             logger = getLogger(module.name)
-            if logtofile:
+            if logtofile and log_path:
                 log_handler = FileHandler(log_path, "a")
             else:
                 log_handler = StreamHandler()
