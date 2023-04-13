@@ -123,6 +123,19 @@ class FilterManager {
         .text("Clear")
         .click(this.sectionClearClick.bind(this))
     );
+    // Apply button
+    var filterApply = getEl("button");
+    filterApply.id = "load_button";
+    filterApply.classList.add("butn");
+    filterApply.style.marginLeft = "0.25rem";
+    addEl(filterApply, getTn("Apply"));
+    filterApply.addEventListener("click", function (_) {
+      makeFilterJson();
+      drawingRetrievingDataDiv("filter");
+      loadData()
+      loadLayoutSetting(quickSaveName, null);
+    });
+    filterControls.append(filterApply);
 
     return rootDiv;
   }
@@ -955,23 +968,24 @@ function makeFilterTab(rightDiv) {
   var btn = getEl("button")
   btn.classList.add(...stringToArray("ml-2 butn"))
   btn.title = "Count the result of filter"
-  btn.textContent = "Refresh"
+  btn.textContent = "Preview"
   btn.addEventListener("click", function(_) {
     countFilterVariants();
   })
   loadControls[0].appendChild(btn)
-  var filterApply = getEl("button");
-  filterApply.id = "load_button";
-  filterApply.classList.add("butn");
-  addEl(filterApply, getTn("Load"));
-  filterApply.addEventListener("click", function (_) {
-    makeFilterJson();
-    drawingRetrievingDataDiv("filter");
-    loadData()
-    loadLayoutSetting(quickSaveName, null);
-  });
-  loadControls.append(filterApply);
+  //var filterApply = getEl("button");
+  //filterApply.id = "load_button";
+  //filterApply.classList.add("butn");
+  //addEl(filterApply, getTn("Apply"));
+  //filterApply.addEventListener("click", function (_) {
+  //  makeFilterJson();
+  //  drawingRetrievingDataDiv("filter");
+  //  loadData()
+  //  loadLayoutSetting(quickSaveName, null);
+  //});
+  //loadControls.append(filterApply);
   var saveIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  saveIcon.style.marginLeft = "auto";
   saveIcon.setAttribute("id", "filter-save");
   saveIcon.setAttribute("class", "h-5 w-5");
   saveIcon.setAttribute("title", "Save filter");
