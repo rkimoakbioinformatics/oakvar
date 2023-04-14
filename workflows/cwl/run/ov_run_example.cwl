@@ -4,6 +4,7 @@ requirements:
   InlineJavascriptRequirement:
     expressionLib:
       - |
+        ${ include }
         function getTmpDir(dir) {
           if (dir) {
             return dir;
@@ -22,7 +23,11 @@ requirements:
           if (dir) {
             return dir;
           } else {
-            return inputs.root_dir + "/" + dir;
+            var fs = require("fs");
+            var YAML = require("js-yaml");
+            var doc = YAML.load(fs.readFileSync(`{inputs.root_dir}/conf/system.yml` , 'utf8'));
+            var moules_dir = doc["modules_dir"];
+            return modules_dir;
           }
         }
   InitialWorkDirRequirement:
@@ -85,4 +90,3 @@ outputs:
           outputFiles.push({ class: "File", path: outFile })
         }
         return outputFiles;}
-
