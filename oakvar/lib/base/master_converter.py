@@ -4,8 +4,9 @@ from typing import List
 from typing import Dict
 from typing import Tuple
 from oakvar.lib.base.converter import BaseConverter
-from pyliftover import LiftOver
 from re import compile
+from liftover import ChainFile
+from oakvar import BaseConverter
 
 chromdict = {
     "chrx": "chrX",
@@ -212,9 +213,6 @@ def handle_converted_variants(
             crl_l.append(crl_data)
     return variant_l, crl_l
 
-def gather_variantss_wrapper(args):
-    return gather_variantss(*args)
-
 def gather_variantss(
         converter: BaseConverter, 
         lines_data: Dict[int, List[Tuple[int, Dict[str, Any]]]],
@@ -248,6 +246,8 @@ def gather_variantss(
             num_valid_error_lines["error"] += 1
     return variants_l, crl_l
 
+def gather_variantss_wrapper(args):
+    return gather_variantss(*args)
 
 class MasterConverter(object):
     def __init__(
@@ -366,7 +366,7 @@ class MasterConverter(object):
             self.logger.info(f"liftover needed: {self.do_liftover}")
             self.logger.info(f"liftover for chrM needed: {self.do_liftover_chrM}")
 
-    def setup_lifter(self, genome_assembly) -> Optional[LiftOver]:
+    def setup_lifter(self, genome_assembly) -> Optional[ChainFile]:
         from oakvar.lib.util.seq import get_lifter
 
         self.lifter = get_lifter(source_assembly=genome_assembly)
@@ -485,7 +485,6 @@ class MasterConverter(object):
         if not self.input_paths:
             return
         for input_path in self.input_paths:
-            encoding = self.input_file_handles[input_path]
             converter = self.get_converter_for_input_file(input_path)
             self.converter_by_input_path[input_path] = converter
 
