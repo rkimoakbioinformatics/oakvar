@@ -1,6 +1,7 @@
 from typing import Optional
 from typing import Tuple
-from pyliftover import LiftOver
+from liftover.chain_file import ChainFile
+from liftover.download_file import download_file
 
 complementary_base = {
     "A": "T",
@@ -271,16 +272,17 @@ def reverse_complement(bases):
     return "".join([complementary_base[base] for base in bases[::-1]])
 
 
-def get_lifter(source_assembly: str) -> Optional[LiftOver]:
+def get_lifter(source_assembly: str) -> Optional[ChainFile]:
     """get_lifter.
 
     Args:
         source_assembly (str): source_assembly
 
     Returns:
-        Optional[LiftOver]:
+        Optional[liftover.ChainFile]:
     """
     from os import makedirs
+    from pathlib import Path
     from ..system import get_liftover_dir
     from ..consts import SYSTEM_GENOME_ASSEMBLY
 
@@ -289,9 +291,12 @@ def get_lifter(source_assembly: str) -> Optional[LiftOver]:
         return None
     if not liftover_dir.exists():
         makedirs(liftover_dir, exist_ok=True)
-    lifter = LiftOver(
-        source_assembly, to_db=SYSTEM_GENOME_ASSEMBLY, cache_dir=liftover_dir
-    )
+    chain_file_basename = f"{source_assembly.lower()}To{SYSTEM_GENOME_ASSEMBLY.capitalize()}.over.chain.gz"
+    chain_file_path: Path = liftover_dir / chain_file_basename
+    if not chain_file_path.exists():
+        url = "https://hgdownload.cse.ucsc.edu/goldenPath/{SYSTEM_GENOME_ASSEMBLY}/liftOver/{chain_file_basename}"
+        download_file(url, chain_file_path)
+    lifter = ChainFile(str(chain_file_path), SYSTEM_GENOME_ASSEMBLY, source_assembly)
     return lifter
 
 
@@ -306,7 +311,7 @@ def liftover_one_pos(
     Args:
         chrom (str): Chromosome
         pos (int): Position
-        lifter: LiftOver instance. Use `oakvar.get_lifter` to get one.
+        lifter: liftover.ChainFile instance. Use `oakvar.get_lifter` to get one.
         source_assembly (Optional[str]): Genome assembly of input.
             If `lifter` is given, this parameter will be ignored.
 
