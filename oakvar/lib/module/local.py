@@ -695,7 +695,7 @@ def get_code_for_class_val(key, val, cls) -> str:
     from inspect import getsourcelines
 
     ty = type(val)
-    if ty == types.FunctionType:
+    if isinstance(ty, types.FunctionType):
         lines = getsourcelines(val)[0]
         if not str(val).startswith(f"<function {cls.__name__}"):
             lines = ["    " + line for line in lines]

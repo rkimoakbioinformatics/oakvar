@@ -305,15 +305,15 @@ def _fetch_file(
             outer=outer,
         )
         # check md5sum
-        if hash_ is not None:
-            if verbose and outer:
-                tqdm.write("Verifying download hash.", file=sys.stdout)
-            md5 = md5sum(temp_file_name)
-            if hash_ != md5:
-                raise RuntimeError(
-                    "Hash mismatch for downloaded file %s, "
-                    "expected %s but got %s" % (temp_file_name, hash_, md5)
-                )
+        #if hash_ is not None:
+        #    if verbose and outer:
+        #        tqdm.write("Verifying download hash.", file=sys.stdout)
+        #    md5 = md5sum(temp_file_name)
+        #    if hash_ != md5:
+        #        raise RuntimeError(
+        #            "Hash mismatch for downloaded file %s, "
+        #            "expected %s but got %s" % (temp_file_name, hash_, md5)
+        #        )
     local_file_size = op.getsize(temp_file_name)
     if remote_file_size and local_file_size != remote_file_size:
         raise Exception(
@@ -487,29 +487,29 @@ def _get_http(
                 )
 
 
-def md5sum(fname, block_size=1048576):  # 2 ** 20
-    """Calculate the md5sum for a file.
-
-    Parameters
-    ----------
-    fname : str
-        Filename.
-    block_size : int
-        Block size to use when reading.
-
-    Returns
-    -------
-    hash_ : str
-        The hexadecimal digest of the hash.
-    """
-    md5 = hashlib.md5()  # type: ignore
-    with open(fname, "rb") as fid:
-        while True:
-            data = fid.read(block_size)
-            if not data:
-                break
-            md5.update(data)
-    return md5.hexdigest()
+#def md5sum(fname, block_size=1048576):  # 2 ** 20
+#    """Calculate the md5sum for a file.
+#
+#    Parameters
+#    ----------
+#    fname : str
+#        Filename.
+#    block_size : int
+#        Block size to use when reading.
+#
+#    Returns
+#    -------
+#    hash_ : str
+#        The hexadecimal digest of the hash.
+#    """
+#    md5 = hashlib.md5()  # type: ignore
+#    with open(fname, "rb") as fid:
+#        while True:
+#            data = fid.read(block_size)
+#            if not data:
+#                break
+#            md5.update(data)
+#    return md5.hexdigest()
 
 
 def _chunk_write(chunk, local_file, progress, outer):

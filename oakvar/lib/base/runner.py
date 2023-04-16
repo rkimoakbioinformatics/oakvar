@@ -475,7 +475,7 @@ class Runner(object):
     def remove_absent_inputs(self):
         if not self.inputs:
             return
-        inputs_to_remove = [v for v in self.inputs if not v.exists() and not "*" in str(v)]
+        inputs_to_remove = [v for v in self.inputs if not v.exists() and "*" not in str(v)]
         for v in inputs_to_remove:
             self.inputs.remove(v)
 
