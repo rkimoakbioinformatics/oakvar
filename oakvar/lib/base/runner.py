@@ -479,7 +479,7 @@ class Runner(object):
 
         if not self.input_paths:
             return
-        inputs_to_remove = [v for v in self.input_paths if not Path(v).exists() and v != "-"]
+        inputs_to_remove = [v for v in self.input_paths if not Path(v).exists() and "*" not in v]
         for v in inputs_to_remove:
             self.input_paths.remove(v)
 

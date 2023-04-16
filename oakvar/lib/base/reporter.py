@@ -561,6 +561,7 @@ class BaseReporter:
         page=None,
         make_filtered_table=True,
     ):
+        import time
         from ..exceptions import SetupError
 
         _ = make_filtered_table
@@ -597,7 +598,7 @@ class BaseReporter:
         await self.cf.get_level_data_iterator(
             level, page=page, pagesize=pagesize, uid=self.ftable_uid, cursor_read=cursor_read, var_added_cols=self.var_added_cols
         )
-        import time; ctime = time.time()
+        ctime = time.time()
         self.retrieved_col_names[level] = [d[0] for d in cursor_read.description]
         self.extracted_col_nos[level] = [self.retrieved_col_names[level].index(col_name) for col_name in self.extracted_col_names[level]]
         self.num_retrieved_cols = len(self.retrieved_col_names[level])
@@ -678,7 +679,7 @@ class BaseReporter:
         if self.dictrow:
             all_map = loads(datarow[col_name])
         else:
-            if not col_name in self.retrieved_col_names[level]:
+            if col_name not in self.retrieved_col_names[level]:
                 return
             idx = self.retrieved_col_names[level].index(col_name)
             all_map = loads(datarow[idx])

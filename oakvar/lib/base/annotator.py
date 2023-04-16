@@ -292,7 +292,7 @@ class BaseAnnotator(object):
                 err_msg = 'Required key "%s" not found in configuration' % k
                 raise ConfigurationError(err_msg)
         if self.conf["level"] in self.valid_levels and self.level:
-            if not self.id_col_defs[self.level]["name"] in [c["name"] for c in self.conf["output_columns"]]:
+            if self.id_col_defs[self.level]["name"] not in [c["name"] for c in self.conf["output_columns"]]:
                 self.conf["output_columns"] = [self.id_col_defs[self.level]] + self.conf[
                     "output_columns"
                 ]
