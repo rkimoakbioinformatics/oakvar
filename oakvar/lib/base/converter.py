@@ -139,6 +139,9 @@ class BaseConverter(object):
     def check_format(self, *__args__, **__kwargs__):
         pass
 
+    def get_variants_df(self, input_path, start_line_no, batch_size, num_pool=1):
+        return None, None
+
     def get_variant_lines(
         self, input_path: str, mp: int, start_line_no: int, batch_size: int
     ) -> Tuple[Dict[int, List[Tuple[int, Any]]], bool]:
@@ -180,14 +183,14 @@ class BaseConverter(object):
 
         create_module_files(self, overwrite=overwrite, interactive=interactive)
 
-    def get_do_liftover_chrM(self, genome_assembly, f, do_liftover):
-        _ = genome_assembly or f
+    def get_do_liftover_chrM(self, genome_assembly, input_path: str, do_liftover):
+        _ = genome_assembly or input_path 
         return do_liftover
 
-    def set_do_liftover(self, genome_assembly, f):
+    def set_do_liftover(self, genome_assembly, input_path: str):
         self.do_liftover = genome_assembly != "hg38"
         self.do_liftover_chrM = self.get_do_liftover_chrM(
-            genome_assembly, f, self.do_liftover
+            genome_assembly, input_path, self.do_liftover
         )
         if self.logger:
             self.logger.info(f"liftover needed: {self.do_liftover}")
@@ -282,7 +285,7 @@ class BaseConverter(object):
         genome_assembly = self.get_genome_assembly()
         self.genome_assemblies.append(genome_assembly)
         self.log_input_and_genome_assembly(input_path, genome_assembly)
-        self.set_do_liftover(genome_assembly, f)
+        self.set_do_liftover(genome_assembly, input_path)
         if self.do_liftover or self.do_liftover_chrM:
             self.setup_lifter(genome_assembly)
 
@@ -594,7 +597,7 @@ class BaseConverter(object):
             var_ld[header["name"]] = []
         return var_ld
 
-    def iter_df_chunk(self, start: int=0, size: int = 3, ignore_sample: bool=False):
+    def iter_df_chunk(self, start: int=0, size: int = 10000, ignore_sample: bool=False):
         from pathlib import Path
         from multiprocessing.pool import ThreadPool
         from oakvar.lib.util.run import update_status
@@ -607,7 +610,6 @@ class BaseConverter(object):
             "started converter", logger=self.logger, serveradmindb=self.serveradmindb
         )
         self.set_variables_pre_run()
-        batch_size: int = 2
         uid = 1
         num_pool = 4
         pool = ThreadPool(num_pool)
@@ -628,45 +630,52 @@ class BaseConverter(object):
             #stime = time.time()
             while True:
                 #ctime = time.time()
-                lines_data, immature_exit = self.get_variant_lines(input_path, num_pool, start_line_no, batch_size)
-                args = [
-                    (
-                        lines_data,
-                        core_num, 
-                    ) for core_num in range(num_pool)
-                ]
-                results = pool.map(self.gather_variantss_wrapper, args)
-                lines_data = None
-                for result in results:
-                    variants_l, crl_l = result
-                    for i in range(len(variants_l)):
-                        variants = variants_l[i]
-                        crl_data = crl_l[i]
-                        if len(variants) == 0:
-                            continue
-                        for variant in variants:
-                            if variant[self.unique_var_key]:
-                                variant["uid"] = uid + variant["var_no"]
-                                if variant[self.unique_var_key]:
-                                    variant["fileno"] = fileno
-                                for header_name in df_header_names:
-                                    var_ld[header_name].append(variant.get(header_name))
-                        uid += max([v["var_no"] for v in variants]) + 1
-                df2 = self.get_df_from_var_ld(var_ld, df_headers)
-                if df is None:
-                    df = df2
+                df, immature_exit = self.get_variants_df(input_path, start_line_no, size)
+                if not immature_exit is None:
+                    yield df
+                    if not immature_exit:
+                        break
+                    start_line_no += size
                 else:
-                    df = df.vstack(df2)
-                if df is not None and df.height >= size:
-                    while df.height >= size:
-                        yield df[:size]
-                        df = df[size:]
-                var_ld = self.get_intialized_var_ld(df_headers)
-                if not immature_exit:
-                    if df is not None and df.height > 0:
-                        yield df
-                    break
-                start_line_no += batch_size * num_pool
+                    lines_data, immature_exit = self.get_variant_lines(input_path, num_pool, start_line_no, size)
+                    args = [
+                        (
+                            lines_data,
+                            core_num, 
+                        ) for core_num in range(num_pool)
+                    ]
+                    results = pool.map(self.gather_variantss_wrapper, args)
+                    lines_data = None
+                    for result in results:
+                        variants_l, crl_l = result
+                        for i in range(len(variants_l)):
+                            variants = variants_l[i]
+                            crl_data = crl_l[i]
+                            if len(variants) == 0:
+                                continue
+                            for variant in variants:
+                                if variant[self.unique_var_key]:
+                                    variant["uid"] = uid + variant["var_no"]
+                                    if variant[self.unique_var_key]:
+                                        variant["fileno"] = fileno
+                                    for header_name in df_header_names:
+                                        var_ld[header_name].append(variant.get(header_name))
+                            uid += max([v["var_no"] for v in variants]) + 1
+                    df2 = self.get_df_from_var_ld(var_ld, df_headers)
+                    if df is None:
+                        df = df2
+                    else:
+                        df = df.vstack(df2)
+                    if df is not None and df.height >= size:
+                        while df.height >= size:
+                            yield df[:size]
+                            df = df[size:]
+                    var_ld = self.get_intialized_var_ld(df_headers)
+                    if not immature_exit:
+                        if df is not None and df.height > 0:
+                            yield df
+                        break
+                    start_line_no += size * num_pool
                 round_no += 1
                 status = (
                     f"Running Converter ({self.input_fname}): line {start_line_no - 1}"
@@ -731,6 +740,46 @@ class BaseConverter(object):
         self.logger.info("runtime: %s" % runtime)
         status = "finished Converter"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
+
+    def perform_liftover_if_needed_df(self, df: pl.DataFrame):
+        from copy import copy
+        from oakvar.lib.util.seq import liftover_one_pos
+        from oakvar.lib.util.seq import liftover
+
+        if self.is_chrM(variant):
+            needed = self.do_liftover_chrM
+        else:
+            needed = self.do_liftover
+        crl_data = None
+        if needed:
+            prelift_wdict = copy(variant)
+            if crl_to_variant:
+                variant["original_chrom"] = variant["chrom"]
+                variant["original_pos"] = variant["pos"]
+            else:
+                crl_data = prelift_wdict
+            (
+                variant["chrom"],
+                variant["pos"],
+                variant["ref_base"],
+                variant["alt_base"],
+            ) = liftover(
+                variant["chrom"],
+                int(variant["pos"]),
+                variant["ref_base"],
+                variant["alt_base"],
+                lifter=self.lifter,
+                wgs_reader=self.wgs_reader,
+            )
+            converted_end = liftover_one_pos(
+                variant["chrom"], variant["pos_end"], lifter=self.lifter
+            )
+            if converted_end is None:
+                pos_end = ""
+            else:
+                pos_end = converted_end[1]
+            variant["pos_end"] = pos_end
+        return crl_data
 
     def perform_liftover_if_needed(self, variant, crl_to_variant: bool=False):
         from copy import copy

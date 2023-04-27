@@ -6,7 +6,6 @@ from typing import Tuple
 from oakvar.lib.base.converter import BaseConverter
 from re import compile
 from liftover import ChainFile
-from oakvar import BaseConverter
 
 chromdict = {
     "chrx": "chrX",
