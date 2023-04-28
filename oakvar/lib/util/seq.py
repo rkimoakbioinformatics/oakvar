@@ -292,10 +292,10 @@ def get_lifter(source_assembly: str) -> Optional[ChainFile]:
         return None
     if not liftover_dir.exists():
         makedirs(liftover_dir, exist_ok=True)
-    chain_file_basename = f"{source_assembly.lower()}To{SYSTEM_GENOME_ASSEMBLY.capitalize()}.over.chain.gz"
+    chain_file_basename = f"hg{source_assembly}To{SYSTEM_GENOME_ASSEMBLY.capitalize()}.over.chain.gz"
     chain_file_path: Path = liftover_dir / chain_file_basename
     if not chain_file_path.exists():
-        url = "https://hgdownload.cse.ucsc.edu/goldenPath/{SYSTEM_GENOME_ASSEMBLY}/liftOver/{chain_file_basename}"
+        url = f"https://hgdownload.cse.ucsc.edu/goldenPath/{SYSTEM_GENOME_ASSEMBLY}/liftOver/{chain_file_basename}"
         download_file(url, chain_file_path)
     lifter = ChainFile(str(chain_file_path), SYSTEM_GENOME_ASSEMBLY, source_assembly)
     return lifter

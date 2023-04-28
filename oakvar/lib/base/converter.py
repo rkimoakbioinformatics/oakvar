@@ -1,11 +1,8 @@
 from typing import Optional
 from typing import Any
-from typing import Union
 from typing import Tuple
 from typing import List
 from typing import Dict
-from typing import TextIO
-from io import BufferedReader
 import polars as pl
 from pyliftover import LiftOver
 
@@ -188,7 +185,7 @@ class BaseConverter(object):
         return do_liftover
 
     def set_do_liftover(self, genome_assembly, input_path: str):
-        self.do_liftover = genome_assembly != "hg38"
+        self.do_liftover = genome_assembly != 38
         self.do_liftover_chrM = self.get_do_liftover_chrM(
             genome_assembly, input_path, self.do_liftover
         )

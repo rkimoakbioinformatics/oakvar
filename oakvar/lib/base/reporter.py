@@ -387,7 +387,7 @@ class BaseReporter:
         await cursor.execute(q)
         r = await cursor.fetchone()
         if r is None:
-            self.mapper_name = "hg38"
+            self.mapper_name = "gencode"
         else:
             self.mapper_name = str(r[0].split(":")[0])
 

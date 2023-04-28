@@ -354,7 +354,7 @@ class MasterConverter(object):
         raise NoGenomeException()
 
     def set_do_liftover(self, genome_assembly, converter, input_path):
-        self.do_liftover = genome_assembly != "hg38"
+        self.do_liftover = genome_assembly != 38
         if hasattr(converter, "get_do_liftover_chrM"):
             self.do_liftover_chrM = converter.get_do_liftover_chrM(
                 genome_assembly, input_path, self.do_liftover
@@ -750,14 +750,6 @@ class MasterConverter(object):
         )
         self.setup()
         self.set_variables_pre_run()
-        if not self.crv_writer:
-            raise ValueError("No crv_writer")
-        if not self.crs_writer:
-            raise ValueError("No crs_writer")
-        if not self.crm_writer:
-            raise ValueError("No crm_writer")
-        if not self.crl_writer:
-            raise ValueError("No crl_writer")
         batch_size: int = 2500
         uid = 1
         num_pool = 4
