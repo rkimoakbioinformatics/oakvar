@@ -1,4 +1,4 @@
-arams.email = ""
+params.email = ""
 params.pw = ""
 
 process ov_setup{
