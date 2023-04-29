@@ -1,8 +1,9 @@
 params.module = ""
+//enter your desired output directory using --outputdir parameter in the command line
 params.outputdir = ""
 //Generate input file
 process examplefile{
-    publishDir '/mnt/d/Bioinformatics/OakVar/oakvar/workflows/nextflow', mode: 'copy'
+    publishDir params.outputdir, mode: 'copy'
     script:
     """
     ov new exampleinput
@@ -53,7 +54,6 @@ process ov_report{
 workflow{
     examplefile()
     (sqlite_file, vcf_file) = ov_run(examplefile.out)
-    sqlite_file.view {"$it.name"}
     ov_report(sqlite_file)
     //if you wish to install an oakvar module , uncomment the following line of code
     //install_module(params.module)
