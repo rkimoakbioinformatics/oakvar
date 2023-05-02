@@ -4,6 +4,7 @@ from typing import Type
 from typing import List
 from typing import Tuple
 from typing import Dict
+import polars as pl
 
 
 class Runner(object):
@@ -271,10 +272,10 @@ class Runner(object):
             self.logger.info("conf file: {}".format(self.conf_path))
 
     async def process_file(self, run_no: int):
-        await self.do_step_converter(run_no)
-        await self.do_step_preparer(run_no)
-        await self.do_step_mapper(run_no)
-        await self.do_step_annotator(run_no)
+        for df, immature_exit in self.do_step_converter(run_no):
+            #await self.do_step_preparer(run_no)
+            df = self.do_step_mapper(run_no, df)
+            df = self.do_step_annotator(run_no, df)
         await self.do_step_aggregator(run_no)
         await self.do_step_postaggregator(run_no)
         await self.do_step_reporter(run_no)
@@ -1538,47 +1539,6 @@ class Runner(object):
         postagg_names.sort()
         self.info_json["postaggregators"] = postagg_names
 
-    async def run_converter(self, run_no: int):
-        from .master_converter import MasterConverter
-        from types import SimpleNamespace
-        from ..util.admin_util import get_packagedir
-        from ..util.run import announce_module
-        from .master_converter import MasterConverter
-
-        if (
-            self.conf is None
-            or not self.args
-            or not self.input_paths
-            or not self.run_name
-            or not self.output_dir
-        ):
-            raise
-        if self.args.combine_input:
-            input_files = self.input_paths
-        else:
-            input_files = [self.input_paths[run_no]]
-        converter_path = get_packagedir() / "lib" / "base" / "master_converter.py"
-        module = SimpleNamespace(
-            title="Converter", name="converter", script_path=converter_path
-        )
-        announce_module(module, logger=self.logger, serveradmindb=self.serveradmindb)
-        converter = MasterConverter(
-            inputs=input_files,
-            run_name=self.run_name[run_no],
-            output_dir=self.output_dir[run_no],
-            genome=self.args.genome,
-            input_format=self.args.input_format,
-            serveradmindb=self.serveradmindb,
-            ignore_sample=self.ignore_sample,
-            outer=self.outer,
-        )
-        ret = converter.run()
-        self.total_num_converted_variants = ret.get("total_lnum")
-        self.total_num_valid_variants = ret.get("write_lnum")
-        self.converter_format = ret.get("input_formats") or []
-        genome_assembly: List[str] = ret.get("assemblies") or []
-        self.genome_assemblies[run_no] = genome_assembly
-
     async def run_preparers(self, run_no: int):
         from ..util.util import load_class
         from ..consts import MODULE_OPTIONS_KEY
@@ -1605,71 +1565,6 @@ class Runner(object):
             module_ins = module_cls(**kwargs)
             await self.log_time_of_func(module_ins.run, work=module_name)
 
-    async def run_mapper(self, run_no: int):
-        import multiprocessing as mp
-        from ..base.mp_runners import init_worker, mapper_runner
-        from ..util.inout import FileReader
-
-        if not self.args or not self.run_name or not self.output_dir:
-            raise
-        run_name = self.run_name[run_no]
-        output_dir = self.output_dir[run_no]
-        num_workers = self.get_num_workers()
-        reader = FileReader(self.crvinput)
-        num_lines, chunksize, poss, len_poss, max_num_lines = reader.get_chunksize(
-            num_workers
-        )
-        if self.logger:
-            self.logger.info(
-                f"input line chunksize={chunksize} total number of "
-                + f"input lines={num_lines} number of chunks={len_poss}"
-            )
-        pool = mp.Pool(num_workers, init_worker)
-        pos_no = 0
-        while pos_no < len_poss:
-            jobs = []
-            for _ in range(num_workers):
-                if pos_no == len_poss:
-                    break
-                (seekpos, num_lines) = poss[pos_no]
-                if pos_no == len_poss - 1:
-                    job = pool.apply_async(
-                        mapper_runner,
-                        (
-                            self.crvinput,
-                            seekpos,
-                            max_num_lines - num_lines,
-                            run_name,
-                            output_dir,
-                            self.mapper_name,
-                            pos_no,
-                            ";".join(self.args.primary_transcript),
-                            self.serveradmindb,
-                        ),
-                    )
-                else:
-                    job = pool.apply_async(
-                        mapper_runner,
-                        (
-                            self.crvinput,
-                            seekpos,
-                            chunksize,
-                            run_name,
-                            output_dir,
-                            self.mapper_name,
-                            pos_no,
-                            ";".join(self.args.primary_transcript),
-                            self.serveradmindb,
-                        ),
-                    )
-                jobs.append(job)
-                pos_no += 1
-            for job in jobs:
-                job.get()
-        pool.close()
-        self.collect_crxs(run_no)
-        self.collect_crgs(run_no)
-
     async def run_annotators(self, run_no: int):
         import os
         from ..base.mp_runners import init_worker, annot_from_queue
@@ -1677,6 +1572,9 @@ class Runner(object):
         from ..system import get_max_num_concurrent_modules_per_job
         from ..consts import INPUT_LEVEL_KEY
         from ..consts import VARIANT_LEVEL_KEY
+
+        for module in self.annotators_to_run.values():
+            module.get_series(df)
 
         if (
             not self.args
@@ -2000,20 +1898,37 @@ class Runner(object):
             and (self.args and step not in self.args.skip)
         )
 
-    async def do_step_converter(self, run_no: int):
-        from ..util.run import update_status
+    def do_step_converter(self, run_no: int):
+        from .master_converter import MasterConverter
 
-        if not self.input_paths or not self.args:
+        if (
+            self.conf is None
+            or not self.args
+            or not self.input_paths
+            or not self.run_name
+            or not self.output_dir
+        ):
             raise
-        step = "converter"
-        if not self.should_run_step("converter"):
-            return
-        await self.log_time_of_func(self.run_converter, run_no, work=f"{step} step")
-        if self.total_num_converted_variants == 0:
-            msg = "No variant found in input"
-            update_status(msg, logger=self.logger, serveradmindb=self.serveradmindb)
-            if self.logger:
-                self.logger.info(msg)
+        if self.args.combine_input:
+            input_files = self.input_paths
+        else:
+            input_files = [self.input_paths[run_no]]
+        converter = MasterConverter(
+            inputs=input_files,
+            run_name=self.run_name[run_no],
+            output_dir=self.output_dir[run_no],
+            genome=self.args.genome,
+            input_format=self.args.input_format,
+            serveradmindb=self.serveradmindb,
+            ignore_sample=self.ignore_sample,
+            outer=self.outer,
+        )
+        while True:
+            df, immature_exit = converter.iter_df_chunk()
+            yield df, immature_exit
+            if not immature_exit:
+                break
+
 
     async def do_step_preparer(self, run_no: int):
         step = "preparer"
@@ -2021,14 +1936,15 @@ class Runner(object):
             return
         await self.log_time_of_func(self.run_preparers, run_no, work=f"{step} step")
 
-    async def do_step_mapper(self, run_no: int):
-        step = "mapper"
-        self.mapper_ran = False
-        if self.should_run_step("mapper"):
-            await self.log_time_of_func(self.run_mapper, run_no, work=f"{step} step")
-            self.mapper_ran = True
+    def do_step_mapper(self, df: pl.DataFrame):
+        from ... import get_mapper
 
-    async def do_step_annotator(self, run_no: int):
+        mapper = get_mapper(self.mapper_name)
+        df = mapper.run_df(df)
+        return df
+
+
+    def do_step_annotator(self, run_no: int):
         step = "annotator"
         self.annotator_ran = False
         self.done_annotators = {}

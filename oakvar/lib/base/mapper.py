@@ -344,7 +344,7 @@ class BaseMapper(object):
                 dtype = pl.Utf8
             self.df_dtypes[self.full_col_names[col_name]] = dtype
 
-    def run_df(self, df: pl.DataFrame) -> pl.DataFrame:
+    def get_series(self, df: pl.DataFrame) -> List[pl.Series]:
         for full_col_name in self.full_col_names:
             self.var_ld[full_col_name] = []
         for input_data in df.iter_rows(named=True):
@@ -359,16 +359,21 @@ class BaseMapper(object):
                     self.var_ld[self.full_col_names[col_name]].append(
                         output_dict.get(col_name)
                     )
-        num_cols = df.shape[1]
-        for i, full_col_name in enumerate(self.full_col_names):
-            df.insert_at_idx(
-                num_cols + i,
+        seriess = []
+        for full_col_name in self.full_col_names:
+            seriess.append(
                 pl.Series(
                     full_col_name,
                     self.var_ld[full_col_name],
                     dtype=self.df_dtypes[full_col_name],
                 ),
             )
+        return seriess
+
+    def run_df(self, df: pl.DataFrame) -> pl.DataFrame:
+        seriess = self.get_series(df)
+        for series in seriess:
+            df.with_column(series)
         return df
 
     def run(self, __pos_no__):

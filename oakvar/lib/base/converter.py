@@ -37,10 +37,6 @@ class BaseConverter(object):
         from oakvar.lib.util.util import get_crv_def
 
         self.logger = None
-        self.crv_writer = None
-        self.crs_writer = None
-        self.crm_writer = None
-        self.crl_writer = None
         self.converters = {}
         self.available_input_formats: List[str] = []
         self.input_dir = None
@@ -489,14 +485,6 @@ class BaseConverter(object):
             "started converter", logger=self.logger, serveradmindb=self.serveradmindb
         )
         self.set_variables_pre_run()
-        if not self.crv_writer:
-            raise ValueError("No crv_writer")
-        if not self.crs_writer:
-            raise ValueError("No crs_writer")
-        if not self.crm_writer:
-            raise ValueError("No crm_writer")
-        if not self.crl_writer:
-            raise ValueError("No crl_writer")
         batch_size: int = 2500
         uid = 1
         num_pool = 4
@@ -533,13 +521,10 @@ class BaseConverter(object):
                         for variant in variants:
                             variant["uid"] = uid + variant["var_no"]
                             if variant[self.unique_var_key]:
-                                self.crv_writer.write_data(variant)
                                 variant["fileno"] = fileno
-                                self.crm_writer.write_data(variant)
                                 self.write_extra_info(variant)
-                            self.crs_writer.write_data(variant)
                         for crl in crl_data:
-                            self.crl_writer.write_data(crl)
+                            pass
                         uid += max([v["var_no"] for v in variants]) + 1
                     variants_l = None
                     crl_l = None
@@ -849,14 +834,6 @@ class BaseConverter(object):
             err_no = self.unique_excs[err_str]
             self.err_holder.append(f"{err_no}:{line_no}\t{str(e)}")
         self.flush_err_holder()
-
-    def close_output_files(self):
-        if self.crv_writer is not None:
-            self.crv_writer.close()
-        if self.crm_writer is not None:
-            self.crm_writer.close()
-        if self.crs_writer is not None:
-            self.crs_writer.close()
 
     def end(self):
         pass

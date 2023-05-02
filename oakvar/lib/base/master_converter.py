@@ -2,7 +2,6 @@ from typing import Any
 from typing import Optional
 from typing import List
 from typing import Dict
-from typing import Tuple
 from oakvar.lib.base.converter import BaseConverter
 from re import compile
 from liftover import ChainFile
@@ -211,42 +210,6 @@ def handle_converted_variants(
         if crl_data:
             crl_l.append(crl_data)
     return variant_l, crl_l
-
-def gather_variantss(
-        converter: BaseConverter, 
-        lines_data: Dict[int, List[Tuple[int, Dict[str, Any]]]],
-        core_num: int, 
-        do_liftover: bool, 
-        do_liftover_chrM: bool, 
-        lifter, 
-        wgs_reader, 
-        logger, 
-        error_logger, 
-        input_path: str, 
-        unique_excs: dict, 
-        err_holder: list,
-        num_valid_error_lines: Dict[str, int],
-) -> Tuple[List[List[Dict[str, Any]]], List[Dict[str, Any]]]:
-    variants_l = []
-    crl_l = []
-    line_data = lines_data[core_num]
-    for (line_no, line) in line_data:
-        try:
-            variants = converter.convert_line(line)
-            variants_datas, crl_datas = handle_converted_variants(variants, do_liftover, do_liftover_chrM, lifter, wgs_reader, logger, error_logger, input_path, unique_excs, err_holder, line_no, num_valid_error_lines)
-            if variants_datas is None or crl_datas is None:
-                continue
-            variants_l.append(variants_datas)
-            crl_l.append(crl_datas)
-        except KeyboardInterrupt:
-            raise
-        except Exception as e:
-            _log_conversion_error(logger, error_logger, input_path, line_no, e, unique_excs, err_holder)
-            num_valid_error_lines["error"] += 1
-    return variants_l, crl_l
-
-def gather_variantss_wrapper(args):
-    return gather_variantss(*args)
 
 class MasterConverter(object):
     def __init__(
@@ -737,7 +700,7 @@ class MasterConverter(object):
             else:
                 variant[col_name] = variant["pos"] + ref_len - 1
 
-    def run(self):
+    def iter_df_chunk(self):
         from pathlib import Path
         from multiprocessing.pool import ThreadPool
         #import time
@@ -745,9 +708,6 @@ class MasterConverter(object):
 
         if not self.input_paths or not self.logger:
             raise
-        update_status(
-            "started converter", logger=self.logger, serveradmindb=self.serveradmindb
-        )
         self.setup()
         self.set_variables_pre_run()
         batch_size: int = 2500
@@ -794,36 +754,12 @@ class MasterConverter(object):
                         crl_data = crl_l[i]
                         if len(variants) == 0:
                             continue
-                        for variant in variants:
-                            variant["uid"] = uid + variant["var_no"]
-                            if variant["unique"]:
-                                self.crv_writer.write_data(variant)
-                                variant["fileno"] = fileno
-                                self.crm_writer.write_data(variant)
-                                converter.write_extra_info(variant)
-                            self.crs_writer.write_data(variant)
-                        for crl in crl_data:
-                            self.crl_writer.write_data(crl)
-                        uid += max([v["var_no"] for v in variants]) + 1
                     variants_l = None
                     crl_l = None
                 if not immature_exit:
                     break
                 start_line_no += batch_size * num_pool
                 round_no += 1
-                status = (
-                    f"Running Converter ({self.input_fname}): line {start_line_no - 1}"
-                )
-                update_status(
-                    status, logger=self.logger, serveradmindb=self.serveradmindb
-                )
-            self.logger.info(
-                f"{input_path}: number of valid variants: {self.num_valid_error_lines['valid']}"
-            )
-            self.logger.info(f"{input_path}: number of lines skipped due to errors: {self.num_valid_error_lines['error']}")
-            self.total_num_converted_variants += self.num_valid_error_lines["valid"]
-            self.total_num_valid_variants += self.num_valid_error_lines["valid"]
-            self.total_error_lines += self.num_valid_error_lines["error"]
         flush_err_holder(self.err_holder, self.error_logger, force=True)
         self.close_output_files()
         self.end()

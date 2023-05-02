@@ -456,12 +456,7 @@ class BaseAnnotator(object):
         self.base_setup(mode="df")
         self.make_json_colnames()
 
-    def run_df(self, df: pl.DataFrame):
-        """run_df.
-
-        Args:
-            df:
-        """
+    def get_series(self, df: pl.DataFrame) -> List[pl.Series]:
         for col_name in self.col_names:
             full_col_name = self.full_col_names[col_name]
             self.var_ld[full_col_name] = []
@@ -482,13 +477,18 @@ class BaseAnnotator(object):
                 else:
                     val = output_dict.get(col_name)
                 self.var_ld[self.full_col_names[col_name]].append(val)
-        num_cols = df.shape[1]
-        for i, col_name in enumerate(self.col_names):
+        seriess: List[pl.Series] = []
+        for col_name in self.col_names:
             full_col_name = self.full_col_names[col_name]
             dtype = self.df_dtypes[full_col_name]
-            df.insert_at_idx(num_cols + i, pl.Series(full_col_name, self.var_ld[full_col_name], dtype=dtype))
-        return df
+            seriess.append(pl.Series(full_col_name, self.var_ld[full_col_name], dtype=dtype))
+        return seriess
 
+    def run_df(self, df: pl.DataFrame) -> pl.DataFrame:
+        seriess = self.get_series(df)
+        for series in seriess:
+            df.with_column(series)
+        return df
 
     def get_output_col_def(self, col_name):
         for col_def in self.output_columns:
