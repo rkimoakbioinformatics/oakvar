@@ -16,7 +16,7 @@ The possibilities are endless - you can create anything with OakVar! Whether it'
 
 OakVar Hackathon/Competition
 
-Submission deadline: April 21, 2023
+Submission deadline: April 30, 2023
 How to submit: Host your work on GitHub
 Prize: $100 cash prize for the winner
 
