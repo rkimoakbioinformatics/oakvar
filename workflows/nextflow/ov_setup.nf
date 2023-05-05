@@ -7,10 +7,15 @@ process ov_setup{
     val email
     val pw
     script:
-    """
-    pip install oakvar
-    ov system setup --email $email --pw $pw
-    """
+    if(params.email != '' && params.pw != '')
+        """
+        pip install oakvar
+        ov system setup --email $email --pw $pw
+        """
+    else
+        """
+        echo "Please enter email and pw values"
+        """
     output:
     stdout
 }
