@@ -14,7 +14,7 @@ process ov_setup{
         """
     else
         """
-        echo "Please enter email and pw values"
+        echo "Please enter email and pw values in the nextflow script or as Command Line arguments for example:\n nextflow run ov_setup.nf --email yourmail@doman.com --pw yourpw"
         """
     output:
     stdout
