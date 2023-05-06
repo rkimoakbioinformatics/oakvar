@@ -44,7 +44,7 @@ def setup_system(
     # set up a user conf file.
     setup_user_conf_file(clean=clean, outer=outer)
     # set up a store account.
-    ret = setup_store_account(conf=conf, email=email, pw=pw, install_mode=install_mode)
+    ret = setup_store_account(conf=conf, email=email, pw=pw, install_mode=install_mode, outer=outer)
     if ret.get("success") is not True:
         if outer:
             msg = ret.get("msg")
@@ -164,10 +164,10 @@ def show_email_verify_action_banner(email: str):
     )
 
 
-def setup_store_account(conf=None, email=None, pw=None, install_mode: str = "") -> dict:
+def setup_store_account(conf=None, email=None, pw=None, install_mode: str = "", outer=None) -> dict:
     from ..store.ov.account import total_login
 
-    return total_login(email=email, pw=pw, conf=conf, install_mode=install_mode)
+    return total_login(email=email, pw=pw, conf=conf, install_mode=install_mode, outer=outer)
 
 
 def setup_user_conf_file(clean: bool = False, outer=None):
@@ -659,9 +659,9 @@ def get_default_root_dir(conf=None) -> Path:
     pl = get_platform()
     root_dir = None
     if pl == "windows":
-        root_dir = Path(expandvars("%systemdrive%")) / "open-cravat"
+        root_dir = Path(expandvars("%systemdrive%")) / "\open-cravat"
         if not root_dir.exists():
-            root_dir = Path(expandvars("%systemdrive%")) / "oakvar"
+            root_dir = Path(expandvars("%systemdrive%")) / "\oakvar"
     elif pl == "linux":
         path = ".oakvar"
         if is_root_user():

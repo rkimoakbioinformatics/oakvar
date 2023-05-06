@@ -19,17 +19,21 @@ def get_email_pw_from_user_conf(email: Optional[str] = None, pw: Optional[str] =
 
 
 def get_email_pw_interactively(
-    email: Optional[str] = None, pw: Optional[str] = None, pwconfirm=False
+    email: Optional[str] = None, pw: Optional[str] = None, pwconfirm=False, outer=None
 ) -> Tuple:
     from ....util.util import email_is_valid
     from ....util.util import pw_is_valid
     from getpass import getpass
 
     if not email:
-        while not email_is_valid(email):
+        while True:
             email = input("Email: ")
+            if email_is_valid(email):
+                break
+            if outer:
+                outer.error("Email is not vaild.")
     if not pw:
-        while not pw_is_valid(pw):
+        while True:
             pw = getpass("Password (alphabets, numbers, and !?&@-+): ")
             if not pw_is_valid(pw):
                 print("Password is invalid")
@@ -39,6 +43,8 @@ def get_email_pw_interactively(
                 if pw != pwagain:
                     print("Password mismatch")
                     pw = None
+            if pw:
+                break
     return email, pw
 
 
@@ -238,7 +244,8 @@ def login(
         else:
             if outer:
                 outer.write(f"fail. {r.text}")
-            return {"success": False, "status_code": status_code, "email": email}
+            d = {"success": False, "status_code": status_code, "mgs": "Login failed.", "email": email}
+            return d
     except Exception:
         import traceback
 
@@ -510,7 +517,7 @@ def get_email_pw_from_settings(
     return email, pw
 
 
-def emailpw_are_valid(email: str = "", pw: str = "") -> bool:
+def emailpw_are_valid(email: str = "", pw: str = "", outer=None) -> bool:
     from ....util.util import email_is_valid
     from ....util.util import pw_is_valid
 
@@ -589,7 +596,7 @@ def login_with_email_pw(
             "msg": "No email or password was provided",
             "email": email,
         }
-    if emailpw_are_valid(email=email, pw=pw):
+    if emailpw_are_valid(email=email, pw=pw, outer=outer):
         announce_on_email_verification_if_needed(email, outer=outer)
         ret = login(email=email, pw=pw, outer=outer)
         return ret
@@ -610,7 +617,7 @@ def total_login(
     ret, logged_email = login_with_token_set(email=email, outer=outer)
     if ret is True:
         return {"success": True, "email": logged_email}
-    ret = login_with_email_pw(email=email, pw=pw, conf=conf)
+    ret = login_with_email_pw(email=email, pw=pw, conf=conf, outer=outer)
     if ret.get("success"):
         return {"success": True, "email": ret["email"]}
     elif install_mode == "web":
@@ -623,7 +630,7 @@ def total_login(
         if yn.lower() in ["y", "n", ""]:
             break
     if yn == "y":
-        email, pw = get_email_pw_interactively(email=email, pw=pw, pwconfirm=False)
+        email, pw = get_email_pw_interactively(email=email, pw=pw, pwconfirm=False, outer=outer)
         ret = login_with_email_pw(email=email, pw=pw, conf=conf)
         return ret
     else:
