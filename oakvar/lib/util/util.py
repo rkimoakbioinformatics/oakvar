@@ -484,7 +484,7 @@ def email_is_valid(email: Optional[str]) -> bool:
     if not email:
         return False
     if fullmatch(
-        r"([A-Za-z0-9]+[.-_])*[A-Za-z0-9]+@[A-Za-z0-9-]+(\.[A-Z|a-z]{2,})+", email
+        r"([A-Za-z0-9]+[.\-_])*[A-Za-z0-9]+@[A-Za-z0-9-]+(\.[A-Z|a-z]{2,})+", email
     ):
         return True
     else:

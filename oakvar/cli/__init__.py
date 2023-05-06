@@ -5,6 +5,7 @@ class CliOuter:
 
         self.out_writer = Console()
         self.err_writer = sys.stderr
+        self.fileno = lambda: False
 
     def write(self, msg):
         self.out_writer.print(msg)
