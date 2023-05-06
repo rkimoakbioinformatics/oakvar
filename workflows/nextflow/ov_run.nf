@@ -1,6 +1,6 @@
 params.module = ""
 //enter your desired output directory using --outputdir parameter in the command line
-params.outputdir = ""
+params.outputdir = "."
 //Generate input file
 process examplefile{
     publishDir params.outputdir, mode: 'copy'
