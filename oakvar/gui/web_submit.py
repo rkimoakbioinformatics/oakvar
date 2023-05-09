@@ -41,7 +41,7 @@ class SubmitProcessor:
         loop=None,
         job_queue=None,
         logger=None,
-        servermode=None,
+        servermode=False,
         mu=None,
         info_of_running_jobs=None,
         email=None,

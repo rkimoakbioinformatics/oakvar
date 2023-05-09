@@ -19,7 +19,6 @@ class BaseMapper(object):
         module_options: Dict = {},
         output_columns: List[Dict[str, Any]] = [],
         postfix: str = "",
-        df_mode: bool = False,
     ):
         from time import time
         from pathlib import Path
@@ -67,7 +66,6 @@ class BaseMapper(object):
         self.col_names: List[str] = []
         self.full_col_names: Dict[str, str] = {}
         self.unique_excs = []
-        self.df_mode = df_mode
         self.t = time()
         main_fpath = Path(sys.modules[self.__class__.__module__].__file__ or "")
         if name:
@@ -86,8 +84,7 @@ class BaseMapper(object):
         self.df_dtypes: Dict[str, Any] = {}
         self.setup()
         self.extra_setup()
-        if self.df_mode:
-            self.setup_df()
+        self.setup_df()
 
     def set_output_columns(self, output_columns: List[Dict[str, Any]] = []):
         from ..util.util import get_crv_def
@@ -214,7 +211,7 @@ class BaseMapper(object):
                     crx_data = self.map(crv_data)
                 if not crx_data:
                     continue
-                col_name = "pos_end"
+                col_name = "end_pos"
                 if col_name not in crx_data:
                     crx_data[col_name] = crv_data[col_name]
             except Exception as e:
@@ -323,6 +320,7 @@ class BaseMapper(object):
         return d
 
     def setup_df(self):
+        print(f"@ col_names={self.col_names}")
         self.full_col_names = {
             col_name: f"{col_name}" for col_name in self.col_names if col_name != "uid"
         }
@@ -348,17 +346,25 @@ class BaseMapper(object):
         for full_col_name in self.full_col_names:
             self.var_ld[full_col_name] = []
         for input_data in df.iter_rows(named=True):
-            if input_data["alt_base"] == "*":
+            print(f"@ input_data={input_data}")
+            if input_data["alt_base"] in ["*", ".", ""]:
                 output_dict = {}
             else:
                 output_dict = self.map(input_data)
+            print(f"@ output_dict={output_dict}")
+            print(f"@ val_ld={self.var_ld}")
+            print(f"@ full_col_names={self.full_col_names}")
             for col_name in self.col_names:
+                print(f"@ col_name={col_name}")
                 if not output_dict:
                     self.var_ld[self.full_col_names[col_name]].append(None)
                 else:
-                    self.var_ld[self.full_col_names[col_name]].append(
-                        output_dict.get(col_name)
-                    )
+                    if col_name in self.var_ld:
+                        self.var_ld[self.full_col_names[col_name]].append(
+                            output_dict.get(col_name)
+                        )
+                    else:
+                        self.var_ld[self.full_col_names[col_name]].append(None)
         seriess = []
         for full_col_name in self.full_col_names:
             seriess.append(
@@ -372,8 +378,7 @@ class BaseMapper(object):
 
     def run_df(self, df: pl.DataFrame) -> pl.DataFrame:
         seriess = self.get_series(df)
-        for series in seriess:
-            df.with_column(series)
+        df.with_columns(seriess)
         return df
 
     def run(self, __pos_no__):

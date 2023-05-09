@@ -486,8 +486,7 @@ class BaseAnnotator(object):
 
     def run_df(self, df: pl.DataFrame) -> pl.DataFrame:
         seriess = self.get_series(df)
-        for series in seriess:
-            df.with_column(series)
+        df.with_columns(seriess)
         return df
 
     def get_output_col_def(self, col_name):

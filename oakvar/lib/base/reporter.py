@@ -203,9 +203,11 @@ class BaseReporter:
             for level in ["variant", "gene", "sample", "mapping"]:
                 self.extract_columns_multilevel[level] = self.cols
         else:
-            self.extract_columns_multilevel = self.get_standardized_module_option(
+            extract_columns = self.get_standardized_module_option(
                 self.module_options.get("extract_columns", {})
             )
+            if isinstance(extract_columns, dict):
+                self.extract_columns_multilevel = extract_columns
         self.add_summary = not self.no_summary
 
     def should_write_level(self, level):

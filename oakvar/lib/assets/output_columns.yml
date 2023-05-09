@@ -35,7 +35,7 @@ crv:
     type: int
     width: 80
     filterable: True
-  - name: pos_end
+  - name: end_pos
     title: End Position
     type: int
     width: 80
@@ -72,7 +72,7 @@ crx:
     type: int
     width: 80
     filterable: True
-  - name: pos_end
+  - name: end_pos
     title: End Position
     type: int
     width: 80
@@ -166,7 +166,7 @@ crl:
     title: Pos
     type: int
     width: 80
-  - name: pos_end
+  - name: end_pos
     title: End Position
     type: int
     width: 80

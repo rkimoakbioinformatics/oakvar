@@ -94,7 +94,7 @@ class InstallProgressMpDict(InstallProgressHandler):
         manager,
         module_name=None,
         module_version=None,
-        system_worker_state=None,
+        system_worker_state={},
         outer=None,
     ):
         super().__init__(module_name, module_version, outer)

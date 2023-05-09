@@ -7,6 +7,18 @@ import polars as pl
 from pyliftover import LiftOver
 
 
+CHROM = "chrom"
+POS = "pos"
+END_POS = "end_pos"
+REF_BASE = "ref_base"
+ALT_BASE = "alt_base"
+ORIG_CHROM = "ori_chrom"
+ORIG_POS = "ori_pos"
+ORIG_END_POS = "ori_end_pos"
+ORIG_REF_BASE = "ori_ref_base"
+ORIG_ALT_BASE = "ori_alt_base"
+
+
 class BaseConverter(object):
     IGNORE = "converter_ignore"
     unique_var_key = "_unique"
@@ -83,6 +95,11 @@ class BaseConverter(object):
         }
         #if not inputs:
         #    raise ExpectedException("Input files are not given.")
+        self.chrom_colno: int = -1
+        self.pos_colno: int = -1
+        self.end_pos_colno: int = -1
+        self.ref_base_colno: int = -1
+        self.alt_base_colno: int = -1
         self.input_paths = inputs
         self.format = input_format
         self.script_path = Path(inspect.getfile(self.__class__))
@@ -106,7 +123,6 @@ class BaseConverter(object):
         self.setup_logger()
         self.wgs_reader = get_wgs_reader(assembly="hg38")
         self.time_error_written: float = 0
-
         self.module_type = "converter"
         self.format_name: str = ""
         self.input_path: str = ""
@@ -271,7 +287,6 @@ class BaseConverter(object):
     def setup_file(self, input_path: str):
         from oakvar.lib.util.util import log_module
 
-        f = self.get_file_object_for_input_path(input_path)
         log_module(self, self.logger)
         self.input_path = input_path
         self.setup(input_path)
@@ -377,7 +392,7 @@ class BaseConverter(object):
         return is_unique
 
     def add_end_pos_if_absent(self, variant: dict):
-        col_name = "pos_end"
+        col_name = "end_pos"
         if col_name not in variant:
             ref_base = variant["ref_base"]
             ref_len = len(ref_base)
@@ -498,7 +513,6 @@ class BaseConverter(object):
             self.num_valid_error_lines = {"valid": 0, "error": 0}
             start_line_pos: int = 1
             start_line_no: int = start_line_pos
-            round_no: int = 0
             #stime = time.time()
             while True:
                 #ctime = time.time()
@@ -531,7 +545,6 @@ class BaseConverter(object):
                 if not immature_exit:
                     break
                 start_line_no += batch_size * num_pool
-                round_no += 1
                 status = (
                     f"Running Converter ({self.input_fname}): line {start_line_no - 1}"
                 )
@@ -546,7 +559,6 @@ class BaseConverter(object):
             self.total_num_valid_variants += self.num_valid_error_lines["valid"]
             self.total_error_lines += self.num_valid_error_lines["error"]
         self.flush_err_holder(force=True)
-        self.close_output_files()
         self.end()
         self.log_ending()
         ret = {
@@ -597,6 +609,11 @@ class BaseConverter(object):
         pool = ThreadPool(num_pool)
         df_headers = self.get_df_headers()
         df_header_names: List[str] = [header["name"] for header in df_headers]
+        self.chrom_colno = df_header_names.index("chrom") + 1 if "chrom" in df_header_names else -1
+        self.pos_colno = df_header_names.index("pos") + 1 if "pos" in df_header_names else -1
+        self.end_pos_colno = df_header_names.index("pos") + 1 if "pos" in df_header_names else -1
+        self.ref_base_colno = df_header_names.index("ref_base") + 1 if "ref_base" in df_header_names else -1
+        self.alt_base_colno = df_header_names.index("alt_base") + 1 if "alt_base" in df_header_names else -1
         var_ld = self.get_intialized_var_ld(df_headers)
         df: Optional[pl.DataFrame] = None
         for input_path in self.input_paths:
@@ -608,18 +625,16 @@ class BaseConverter(object):
             self.num_valid_error_lines = {"valid": 0, "error": 0}
             start_line_pos: int = 1
             start_line_no: int = start_line_pos
-            round_no: int = 0
             #stime = time.time()
             while True:
                 #ctime = time.time()
                 df, immature_exit = self.get_variants_df(input_path, start_line_no, size)
-                if not immature_exit is None:
-                    yield df
-                    if not immature_exit:
-                        break
+                print(f"@ 1st df={df}. immature_exit={immature_exit}")
+                if immature_exit is not None:
                     start_line_no += size
                 else:
                     lines_data, immature_exit = self.get_variant_lines(input_path, num_pool, start_line_no, size)
+                    print(f"@ lines_data={lines_data}. immature_exit={immature_exit}")
                     args = [
                         (
                             lines_data,
@@ -629,10 +644,9 @@ class BaseConverter(object):
                     results = pool.map(self.gather_variantss_wrapper, args)
                     lines_data = None
                     for result in results:
-                        variants_l, crl_l = result
+                        variants_l, _ = result
                         for i in range(len(variants_l)):
                             variants = variants_l[i]
-                            crl_data = crl_l[i]
                             if len(variants) == 0:
                                 continue
                             for variant in variants:
@@ -643,28 +657,43 @@ class BaseConverter(object):
                                     for header_name in df_header_names:
                                         var_ld[header_name].append(variant.get(header_name))
                             uid += max([v["var_no"] for v in variants]) + 1
-                    df2 = self.get_df_from_var_ld(var_ld, df_headers)
-                    if df is None:
-                        df = df2
-                    else:
-                        df = df.vstack(df2)
-                    if df is not None and df.height >= size:
-                        while df.height >= size:
-                            yield df[:size]
-                            df = df[size:]
+                    df = self.get_df_from_var_ld(var_ld, df_headers)
                     var_ld = self.get_intialized_var_ld(df_headers)
-                    if not immature_exit:
-                        if df is not None and df.height > 0:
-                            yield df
-                        break
                     start_line_no += size * num_pool
-                round_no += 1
+                if df is None:
+                    continue
+                if self.do_liftover:
+                    df = self.perform_liftover_if_needed_df(df)
+                df_columns = df.columns
+                df_len = df.shape[0]
+                series_to_add: List[pl.Series] = []
+                for header in df_headers:
+                    header_name = header["name"]
+                    header_type = header["type"]
+                    if header_name not in df_columns:
+                        data = []
+                        if header_type == pl.Int64:
+                            data = [0] * df_len
+                        elif header_type == pl.Float64:
+                            data = [0.0] * df_len
+                        elif header_type == pl.Utf8:
+                            data = [""] * df_len
+                        if data:
+                            series = pl.Series(header_name, data, dtype=header_type)
+                            series_to_add.append(series)
+                print(f"@ series_to_add={series_to_add}")
+                if series_to_add:
+                    df = df.with_columns(series_to_add)
+                df.glimpse()
+                yield df
                 status = (
                     f"Running Converter ({self.input_fname}): line {start_line_no - 1}"
                 )
                 update_status(
                     status, logger=self.logger, serveradmindb=self.serveradmindb
                 )
+                if not immature_exit:
+                    break
             self.logger.info(
                 f"{input_path}: number of valid variants: {self.num_valid_error_lines['valid']}"
             )
@@ -724,44 +753,79 @@ class BaseConverter(object):
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
 
     def perform_liftover_if_needed_df(self, df: pl.DataFrame):
-        from copy import copy
         from oakvar.lib.util.seq import liftover_one_pos
         from oakvar.lib.util.seq import liftover
+        from oakvar.lib.exceptions import LiftoverFailure
 
-        if self.is_chrM(variant):
-            needed = self.do_liftover_chrM
+        columns = df.columns
+        if self.chrom_colno == -1 or self.pos_colno == -1 or self.ref_base_colno == -1 or self.alt_base_colno == -1:
+            return df
+        df_len = df.shape[0]
+        chrom_vals: List[str] = [""] * df_len
+        pos_vals: List[int] = [0] * df_len
+        end_pos_vals: List[int] = [0] * df_len
+        ref_base_vals: List[str] = [""] * df_len
+        alt_base_vals: List[str] = [""] * df_len
+        row_no: int = 0
+        for row in df.iter_rows():
+            chrom: str = row[self.chrom_colno]
+            pos: int = row[self.pos_colno]
+            end_pos: int = row[self.pos_colno]
+            ref_base: str = row[self.ref_base_colno]
+            alt_base: str = row[self.alt_base_colno]
+            print(f"@ chrom={chrom}. pos={pos}. ref_base={ref_base}. alt_base={alt_base}")
+            if self.is_chrM(chrom):
+                needed = self.do_liftover_chrM
+            else:
+                needed = self.do_liftover
+            if needed:
+                try:
+                    (
+                        chrom,
+                        pos,
+                        ref_base,
+                        alt_base,
+                    ) = liftover(
+                        chrom,
+                        pos,
+                        ref_base,
+                        alt_base,
+                        lifter=self.lifter,
+                        wgs_reader=self.wgs_reader,
+                    )
+                    converted_end = liftover_one_pos(
+                        chrom, end_pos, lifter=self.lifter
+                    )
+                    if converted_end is None:
+                        end_pos = pos
+                    else:
+                        end_pos = converted_end[1]
+                except LiftoverFailure:
+                    chrom = ""
+                    pos = 0
+                    end_pos = 0
+                    ref_base = ""
+                    alt_base = ""
+            chrom_vals[row_no] = chrom
+            pos_vals[row_no] = pos
+            end_pos_vals[row_no] = end_pos
+            ref_base_vals[row_no] = ref_base
+            alt_base_vals[row_no] = alt_base
+            row_no += 1
+        if ORIG_POS not in columns:
+            df.rename({CHROM: ORIG_CHROM, POS: ORIG_POS, REF_BASE: ORIG_REF_BASE, ALT_BASE: ORIG_ALT_BASE})
         else:
-            needed = self.do_liftover
-        crl_data = None
-        if needed:
-            prelift_wdict = copy(variant)
-            if crl_to_variant:
-                variant["original_chrom"] = variant["chrom"]
-                variant["original_pos"] = variant["pos"]
-            else:
-                crl_data = prelift_wdict
-            (
-                variant["chrom"],
-                variant["pos"],
-                variant["ref_base"],
-                variant["alt_base"],
-            ) = liftover(
-                variant["chrom"],
-                int(variant["pos"]),
-                variant["ref_base"],
-                variant["alt_base"],
-                lifter=self.lifter,
-                wgs_reader=self.wgs_reader,
-            )
-            converted_end = liftover_one_pos(
-                variant["chrom"], variant["pos_end"], lifter=self.lifter
-            )
-            if converted_end is None:
-                pos_end = ""
-            else:
-                pos_end = converted_end[1]
-            variant["pos_end"] = pos_end
-        return crl_data
+            df = df.drop([CHROM, POS, END_POS, REF_BASE, ALT_BASE])
+        df = df.with_columns(
+            [
+                pl.Series(CHROM, chrom_vals, dtype=pl.Utf8),
+                pl.Series(POS, pos_vals, dtype=pl.Int32),
+                pl.Series(END_POS, end_pos_vals, dtype=pl.Int32),
+                pl.Series(REF_BASE, ref_base_vals, dtype=pl.Utf8),
+                pl.Series(ALT_BASE, alt_base_vals, dtype=pl.Utf8),
+            ]
+        )
+        return df
 
     def perform_liftover_if_needed(self, variant, crl_to_variant: bool=False):
         from copy import copy
@@ -794,17 +858,17 @@ class BaseConverter(object):
                 wgs_reader=self.wgs_reader,
             )
             converted_end = liftover_one_pos(
-                variant["chrom"], variant["pos_end"], lifter=self.lifter
+                variant["chrom"], variant["end_pos"], lifter=self.lifter
             )
             if converted_end is None:
-                pos_end = ""
+                end_pos = ""
             else:
-                pos_end = converted_end[1]
-            variant["pos_end"] = pos_end
+                end_pos = converted_end[1]
+            variant["end_pos"] = end_pos
         return crl_data
 
-    def is_chrM(self, wdict):
-        return wdict["chrom"] == "chrM"
+    def is_chrM(self, chrom: str):
+        return chrom == "chrM"
 
     def flush_err_holder(self, force: bool=False):
         if len(self.err_holder) > 1000 or force:

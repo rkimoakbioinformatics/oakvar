@@ -7,7 +7,7 @@ class SystemHandlers:
         servermode=False,
         mu=None,
         logger=None,
-        system_queue=None,
+        system_queue=[],
         system_worker_state=None,
     ):
         self.servermode = servermode

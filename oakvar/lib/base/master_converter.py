@@ -76,19 +76,19 @@ def perform_liftover_if_needed(variant, do_liftover: bool, do_liftover_chrM: boo
             wgs_reader=wgs_reader,
         )
         converted_end = liftover_one_pos(
-            variant["chrom"], variant["pos_end"], lifter=lifter
+            variant["chrom"], variant["end_pos"], lifter=lifter
         )
         if converted_end is None:
-            pos_end = ""
+            end_pos = ""
         else:
-            pos_end = converted_end[1]
-        variant["pos_end"] = pos_end
+            end_pos = converted_end[1]
+        variant["end_pos"] = end_pos
     else:
         crl_data = None
     return crl_data
 
 def add_end_pos_if_absent(variant: dict):
-    col_name = "pos_end"
+    col_name = "end_pos"
     if col_name not in variant:
         ref_base = variant["ref_base"]
         ref_len = len(ref_base)
@@ -241,8 +241,8 @@ class MasterConverter(object):
         self.input_paths: List[str] = []
         self.input_dir = None
         self.input_path_dict = {}
-        self.input_path_dict2 = {}
-        self.input_file_handles: Dict[str, str] = {}
+        self.input_filenos = {}
+        self.input_file_encodings: Dict[str, str] = {}
         self.output_base_fname: Optional[str] = None
         self.error_logger = None
         self.unique_excs: Dict[str, int] = {}
@@ -343,7 +343,7 @@ class MasterConverter(object):
         self.input_dir = str(Path(self.input_paths[0]).parent)
         for i in range(len(self.input_paths)):
             self.input_path_dict[i] = self.input_paths[i]
-            self.input_path_dict2[self.input_paths[i]] = i
+            self.input_filenos[self.input_paths[i]] = i
 
     def parse_output_dir(self):
         from pathlib import Path
@@ -380,20 +380,20 @@ class MasterConverter(object):
             self.logger.info(f"encoding: {input_path} {encoding}")
         return encoding
 
-    def collect_input_file_handles(self):
+    def collect_input_file_encodings(self):
         if not self.input_paths:
             raise
         for input_path in self.input_paths:
             encoding = self.get_file_object_for_input_path(input_path)
-            self.input_file_handles[input_path] = encoding
+            self.input_file_encodings[input_path] = encoding
 
     def setup(self):
         self.collect_converters()
-        self.collect_input_file_handles()
+        self.collect_input_file_encodings()
         self.check_input_format()
         self.collect_converter_by_input()
-        self.collect_extra_output_columns()
-        self.open_output_files()
+        #self.collect_extra_output_columns()
+        #self.open_output_files()
 
     def setup_logger(self):
         from logging import getLogger
@@ -450,16 +450,16 @@ class MasterConverter(object):
             converter = self.get_converter_for_input_file(input_path)
             self.converter_by_input_path[input_path] = converter
 
-    def collect_extra_output_columns(self):
-        for converter in self.converter_by_input_path.values():
-            if not converter:
-                continue
-            if converter.conf:
-                extra_output_columns = converter.conf.get("extra_output_columns")
-                if not extra_output_columns:
-                    continue
-                for col in extra_output_columns:
-                    self.extra_output_columns.append(col)
+    #def collect_extra_output_columns(self):
+    #    for converter in self.converter_by_input_path.values():
+    #        if not converter:
+    #            continue
+    #        if converter.conf:
+    #            extra_output_columns = converter.conf.get("extra_output_columns")
+    #            if not extra_output_columns:
+    #                continue
+    #            for col in extra_output_columns:
+    #                self.extra_output_columns.append(col)
 
     def check_input_format(self):
         from oakvar.lib.exceptions import InvalidInputFormat
@@ -582,11 +582,11 @@ class MasterConverter(object):
         self.crl_writer.write_definition()
         self.crl_writer.write_names("original_input", "Original Input", "")
 
-    def open_output_files(self):
-        self.setup_crv_writer()
-        self.setup_crs_writer()
-        self.setup_crm_writer()
-        self.setup_crl_writer()
+    #def open_output_files(self):
+    #    self.setup_crv_writer()
+    #    self.setup_crs_writer()
+    #    self.setup_crm_writer()
+    #    self.setup_crl_writer()
 
     def log_input_and_genome_assembly(self, input_path, genome_assembly, converter):
         if not self.logger:
@@ -600,7 +600,7 @@ class MasterConverter(object):
         from oakvar.lib.util.util import log_module
         from oakvar.lib.exceptions import NoConverterFound
 
-        encoding = self.input_file_handles[input_path]
+        encoding = self.input_file_encodings[input_path]
         converter = self.converter_by_input_path[input_path]
         if not converter:
             raise NoConverterFound(input_path)
@@ -691,7 +691,7 @@ class MasterConverter(object):
         variant["alt_base"] = new_alt
 
     def add_end_pos_if_absent(self, variant: dict):
-        col_name = "pos_end"
+        col_name = "end_pos"
         if col_name not in variant:
             ref_base = variant["ref_base"]
             ref_len = len(ref_base)
@@ -700,69 +700,23 @@ class MasterConverter(object):
             else:
                 variant[col_name] = variant["pos"] + ref_len - 1
 
-    def iter_df_chunk(self):
+    def iter_df_chunk(self, size: int=10000):
         from pathlib import Path
-        from multiprocessing.pool import ThreadPool
-        #import time
-        from oakvar.lib.util.run import update_status
 
         if not self.input_paths or not self.logger:
             raise
         self.setup()
         self.set_variables_pre_run()
-        batch_size: int = 2500
-        uid = 1
-        num_pool = 4
-        pool = ThreadPool(num_pool)
         for input_path in self.input_paths:
             self.input_fname = Path(input_path).name
-            fileno = self.input_path_dict2[input_path]
             converter = self.setup_file(input_path)
             self.file_num_valid_variants = 0
             self.file_error_lines = 0
             self.num_valid_error_lines = {"valid": 0, "error": 0}
-            start_line_pos: int = 1
-            start_line_no: int = start_line_pos
-            round_no: int = 0
-            #stime = time.time()
-            while True:
-                #ctime = time.time()
-                lines_data, immature_exit = converter.get_variant_lines(input_path, num_pool, start_line_no, batch_size)
-                args = [
-                    (
-                        converter, 
-                        lines_data,
-                        core_num, 
-                        self.do_liftover, 
-                        self.do_liftover_chrM, 
-                        self.lifter, 
-                        self.wgs_reader, 
-                        self.logger, 
-                        self.error_logger, 
-                        input_path, 
-                        self.unique_excs, 
-                        self.err_holder,
-                        self.num_valid_error_lines,
-                    ) for core_num in range(num_pool)
-                ]
-                results = pool.map(gather_variantss_wrapper, args)
-                lines_data = None
-                for result in results:
-                    variants_l, crl_l = result
-                    for i in range(len(variants_l)):
-                        variants = variants_l[i]
-                        crl_data = crl_l[i]
-                        if len(variants) == 0:
-                            continue
-                    variants_l = None
-                    crl_l = None
-                if not immature_exit:
-                    break
-                start_line_no += batch_size * num_pool
-                round_no += 1
+            for df in converter.iter_df_chunk(size=size, ignore_sample=self.ignore_sample):
+                print(f"@ df from converter={df}")
+                yield df
         flush_err_holder(self.err_holder, self.error_logger, force=True)
-        self.close_output_files()
-        self.end()
         self.log_ending()
         ret = {
             "total_lnum": self.total_num_converted_variants,
@@ -827,27 +781,19 @@ class MasterConverter(object):
                 wgs_reader=self.wgs_reader,
             )
             converted_end = liftover_one_pos(
-                variant["chrom"], variant["pos_end"], lifter=self.lifter
+                variant["chrom"], variant["end_pos"], lifter=self.lifter
             )
             if converted_end is None:
-                pos_end = ""
+                end_pos = ""
             else:
-                pos_end = converted_end[1]
-            variant["pos_end"] = pos_end
+                end_pos = converted_end[1]
+            variant["end_pos"] = end_pos
         else:
             crl_data = None
         return crl_data
 
     def is_chrM(self, wdict):
         return wdict["chrom"] == "chrM"
-
-    def close_output_files(self):
-        if self.crv_writer is not None:
-            self.crv_writer.close()
-        if self.crm_writer is not None:
-            self.crm_writer.close()
-        if self.crs_writer is not None:
-            self.crs_writer.close()
 
     def end(self):
         pass

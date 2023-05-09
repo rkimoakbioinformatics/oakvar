@@ -272,13 +272,15 @@ class Runner(object):
             self.logger.info("conf file: {}".format(self.conf_path))
 
     async def process_file(self, run_no: int):
-        for df, immature_exit in self.do_step_converter(run_no):
-            #await self.do_step_preparer(run_no)
-            df = self.do_step_mapper(run_no, df)
-            df = self.do_step_annotator(run_no, df)
-        await self.do_step_aggregator(run_no)
-        await self.do_step_postaggregator(run_no)
-        await self.do_step_reporter(run_no)
+        for df in self.do_step_converter(run_no):
+            print(f"@ converter df={df}")
+            if df is not None:
+                df = self.do_step_mapper(df)
+                print(f"@ mapper df={df}")
+                df = self.do_step_annotator(df)
+        #await self.do_step_aggregator(run_no)
+        #await self.do_step_postaggregator(run_no)
+        #await self.do_step_reporter(run_no)
 
     async def main(self) -> Optional[Dict[str, Any]]:
         from time import time, asctime, localtime
@@ -420,30 +422,13 @@ class Runner(object):
             raise SetupError()
         self.run_conf = args.get("conf", {}).get("run", {})
 
-    def populate_secondary_annotators(self, run_no):
-        from os import listdir
-        from ..consts import VARIANT_LEVEL_OUTPUT_SUFFIX
-        from ..consts import GENE_LEVEL_OUTPUT_SUFFIX
-
-        run_name, output_dir = self.get_run_name_output_dir_by_run_no(run_no)
+    def populate_secondary_annotators(self):
         secondaries = {}
         for module in self.annotators.values():
             self._find_secondary_annotators(module, secondaries)
         self.annotators.update(secondaries)
         annot_names = [v.name for v in self.annotators.values()]
         annot_names = list(set(annot_names))
-        filenames = listdir(output_dir)
-        for filename in filenames:
-            toks = filename.split(".")
-            if len(toks) == 3:
-                extension = toks[2]
-                if toks[0] == run_name and (
-                    extension == VARIANT_LEVEL_OUTPUT_SUFFIX
-                    or extension == GENE_LEVEL_OUTPUT_SUFFIX
-                ):
-                    annot_name = toks[1]
-                    if annot_name not in annot_names:
-                        annot_names.append(annot_name)
         annot_names.sort()
 
     def process_module_options(self):
@@ -1102,14 +1087,10 @@ class Runner(object):
         path = os.path.join(output_dir, run_name + "." + module.name + postfix)
         return path
 
-    def check_module_output(self, module, run_no: int):
-        import os
-
-        path = self.get_module_output_path(module, run_no)
-        if path is not None and os.path.exists(path):
-            return path
-        else:
-            return None
+    def check_module_output(self, module_name: str) -> bool:
+        # TODO: in the future, use column names to check module done.
+        _ = module_name
+        return False
 
     def get_secondary_modules(self, primary_module):
         from ..module.local import get_local_module_info
@@ -1913,7 +1894,7 @@ class Runner(object):
             input_files = self.input_paths
         else:
             input_files = [self.input_paths[run_no]]
-        converter = MasterConverter(
+        master_converter = MasterConverter(
             inputs=input_files,
             run_name=self.run_name[run_no],
             output_dir=self.output_dir[run_no],
@@ -1923,11 +1904,8 @@ class Runner(object):
             ignore_sample=self.ignore_sample,
             outer=self.outer,
         )
-        while True:
-            df, immature_exit = converter.iter_df_chunk()
-            yield df, immature_exit
-            if not immature_exit:
-                break
+        for df in master_converter.iter_df_chunk():
+            yield df
 
 
     async def do_step_preparer(self, run_no: int):
@@ -1936,7 +1914,7 @@ class Runner(object):
             return
         await self.log_time_of_func(self.run_preparers, run_no, work=f"{step} step")
 
-    def do_step_mapper(self, df: pl.DataFrame):
+    def do_step_mapper(self, df: pl.DataFrame) -> pl.DataFrame:
         from ... import get_mapper
 
         mapper = get_mapper(self.mapper_name)
@@ -1944,25 +1922,18 @@ class Runner(object):
         return df
 
 
-    def do_step_annotator(self, run_no: int):
-        step = "annotator"
-        self.annotator_ran = False
+    def do_step_annotator(self, df: pl.DataFrame) -> pl.DataFrame:
         self.done_annotators = {}
-        self.populate_secondary_annotators(run_no)
+        self.populate_secondary_annotators()
         for mname, module in self.annotators.items():
-            if self.check_module_output(module, run_no) is not None:
+            if self.check_module_output(module.name):
                 self.done_annotators[mname] = module
         self.annotators_to_run = {
             aname: self.annotators[aname]
             for aname in set(self.annotators) - set(self.done_annotators)
         }
-        if self.should_run_step(step) and (
-            self.mapper_ran or len(self.annotators_to_run) > 0
-        ):
-            await self.log_time_of_func(
-                self.run_annotators, run_no, work=f"{step} step"
-            )
-            self.annotator_ran = True
+        df = self.run_annotators(df)
+        self.annotator_ran = True
 
     async def do_step_aggregator(self, run_no: int):
         step = "aggregator"

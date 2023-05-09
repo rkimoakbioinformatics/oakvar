@@ -94,6 +94,7 @@ class BasePostAggregator(object):
         for colname in self.json_colnames:
             delflag = False
             json_data = output_dict.get(colname, None)
+            shortcolname: Optional[str] = None
             if json_data and "__" in colname:
                 shortcolname = colname.split("__")[1]
                 json_data = output_dict.get(shortcolname, None)
@@ -120,7 +121,7 @@ class BasePostAggregator(object):
             else:
                 out = None
             output_dict[colname] = out
-            if delflag:
+            if delflag and shortcolname:
                 del output_dict[shortcolname]
         return output_dict
 

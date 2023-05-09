@@ -5,7 +5,7 @@ admindb_path = None
 
 
 class MultiuserHandlers:
-    def __init__(self, servermode=None):
+    def __init__(self, servermode: bool=False):
         self.servermode = servermode
         self.routes = []
         self.add_routes()
@@ -227,7 +227,6 @@ class MultiuserHandlers:
         from .serveradmindb import get_serveradmindb
         from .util import get_email_from_request
 
-        assert self.servermode is not None
         if not email:
             email = get_email_from_request(request, self.servermode)
         if not email:

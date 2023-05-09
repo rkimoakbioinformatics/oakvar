@@ -204,7 +204,7 @@ class ReportFilter:
             self.stdout = False
         self.dbpath = dbpath
         if self.dbpath is not None:
-            self.dbpath = str(Path(dbpath).resolve())
+            self.dbpath = str(Path(self.dbpath).resolve())
         self.filterpath = filterpath
         self.cmd = None
         self.level = None
@@ -552,7 +552,7 @@ class ReportFilter:
                 rules.remove(rule)
 
     async def verify_filter_module(self, cursor):
-        if "variant" not in self.filter:
+        if not self.filter or "variant" not in self.filter:
             return []
         wrong_modules = set()
         if "rules" in self.filter["variant"]:
@@ -1076,6 +1076,8 @@ class ReportFilter:
         from os import mkdir
 
         if uid is None or not genes:
+            return
+        if not self.dbpath:
             return
         conn = sqlite3.connect(self.dbpath)
         cursor = conn.cursor()

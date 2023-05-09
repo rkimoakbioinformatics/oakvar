@@ -8,8 +8,8 @@ class StoreHandlers:
         manager=None,
         mu=None,
         local_modules_changed=None,
-        system_worker_state=None,
-        system_queue=None,
+        system_worker_state={},
+        system_queue=[],
         logger=None,
     ):
         self.servermode = servermode
@@ -123,7 +123,6 @@ class StoreHandlers:
         from ..lib.module.remote import make_remote_manifest
 
         content = make_remote_manifest()
-        assert self.system_queue is not None
         for queue_data in self.system_queue:
             module_name: Optional[str] = queue_data.get("module")
             if not module_name:
@@ -180,8 +179,7 @@ class StoreHandlers:
             "module": module_name,
             "version": module_version,
         }
-        if self.system_queue is not None:
-            self.system_queue.append(data)
+        self.system_queue.append(data)
         self.initialize_system_worker_state_for_install(module_name, module_version)
         return Response(status=200)
 
