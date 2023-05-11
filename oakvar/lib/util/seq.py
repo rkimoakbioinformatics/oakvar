@@ -1,8 +1,8 @@
 from typing import Optional
 from typing import Tuple
 from ..base.commonmodule import BaseCommonModule
-from liftover.chain_file import ChainFile
-from liftover.download_file import download_file
+from liftover.chain_file import ChainFile # type: ignore
+from liftover.download_file import download_file # type: ignore
 
 complementary_base = {
     "A": "T",
@@ -275,11 +275,11 @@ def reverse_complement(bases):
     return "".join([complementary_base[base] for base in bases[::-1]])
 
 
-def get_lifter(source_assembly: int) -> Optional[ChainFile]:
+def get_lifter(source_assembly: Optional[int]) -> Optional[ChainFile]:
     """get_lifter.
 
     Args:
-        source_assembly (str): source_assembly
+        source_assembly (Optional[int]): source_assembly
 
     Returns:
         Optional[liftover.ChainFile]:
@@ -289,6 +289,8 @@ def get_lifter(source_assembly: int) -> Optional[ChainFile]:
     from ..system import get_liftover_dir
     from ..consts import SYSTEM_GENOME_ASSEMBLY
 
+    if not source_assembly:
+        return None
     liftover_dir = get_liftover_dir()
     if not liftover_dir:
         return None
@@ -309,7 +311,7 @@ def liftover_one_pos(
     chrom: str,
     pos: int,
     lifter=None,
-    source_assembly: Optional[str] = None,
+    source_assembly: Optional[int] = None,
 ) -> Optional[Tuple[str, int]]:
     """liftover_one_pos.
 
@@ -356,7 +358,7 @@ def liftover(
     alt: Optional[str] = None,
     get_ref: bool = False,
     lifter=None,
-    source_assembly: Optional[str] = None,
+    source_assembly: Optional[int] = None,
     wgs_reader=None,
 ):
     """liftover.
@@ -368,7 +370,7 @@ def liftover(
         alt (Optional[str]): alt
         get_ref (bool): get_ref
         lifter:
-        source_assembly (Optional[str]): source_assembly
+        source_assembly (Optional[int]): source_assembly
         wgs_reader:
     """
     from oakvar.lib.exceptions import LiftoverFailure

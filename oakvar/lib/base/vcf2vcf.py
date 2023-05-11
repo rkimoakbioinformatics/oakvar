@@ -13,7 +13,7 @@ class VCF2VCF:
         output_dir: Optional[str] = None,
         module_options: Optional[str] = None,
         annotator_names: List[str] = [],
-        genome: Optional[str] = None,
+        genome: Optional[int] = None,
         mapper_name: Optional[str] = None,
         serveradmindb=None,
         outer=None,
@@ -23,6 +23,7 @@ class VCF2VCF:
         from pathlib import Path
         from oakvar.lib.exceptions import ModuleLoadingError
 
+        _ = kwargs
         fp = sys.modules[self.__module__].__file__
         if fp is None:
             raise ModuleLoadingError(module_name=self.__module__)
@@ -39,7 +40,7 @@ class VCF2VCF:
         self.unique_excs = []
         self.conf = {}
         self.lifter = None
-        self.genome = genome
+        self.genome: Optional[int] = genome
         self.module_name = "vcf2vcf"
         self.inputs = [Path(v).resolve() for v in inputs]
         self.primary_input_path = self.inputs[0]

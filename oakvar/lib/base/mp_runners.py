@@ -57,37 +57,3 @@ def annot_from_queue(
             if logger:
                 logger.exception(err)
 
-
-def mapper_runner(
-    crv_path,
-    seekpos,
-    chunksize,
-    run_name,
-    output_dir,
-    module_name,
-    pos_no,
-    primary_transcript,
-    serveradmindb,
-):
-    from ..util.module import get_mapper_class
-    from ..module.local import get_local_module_info
-    from .mapper import BaseMapper
-
-    module = get_local_module_info(module_name)
-    if not module:
-        return None
-    if primary_transcript:
-        primary_transcript = primary_transcript.split(";")
-    genemapper_class: Type[BaseMapper] = get_mapper_class(module_name)
-    genemapper = genemapper_class(
-        input_file=crv_path,
-        run_name=run_name,
-        seekpos=seekpos,
-        chunksize=chunksize,
-        postfix=f".{pos_no:010.0f}",
-        primary_transcript=primary_transcript,
-        serveradmindb=serveradmindb,
-        output_dir=output_dir,
-    )
-    output = genemapper.run(pos_no)
-    return output

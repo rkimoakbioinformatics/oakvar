@@ -4,7 +4,7 @@ from typing import List
 from typing import Dict
 from oakvar.lib.base.converter import BaseConverter
 from re import compile
-from liftover import ChainFile
+from liftover import ChainFile # type: ignore
 
 chromdict = {
     "chrx": "chrX",
@@ -504,89 +504,6 @@ class MasterConverter(object):
             if hasattr(converter, "conf") is False:
                 converter.conf = {}
             converter.conf.update(self.conf[converter.name])
-
-    def setup_crv_writer(self):
-        from pathlib import Path
-        from oakvar.lib.util.util import get_crv_def
-        from oakvar.lib.util.inout import FileWriter
-        from oakvar.lib.consts import crv_idx
-        from oakvar.lib.consts import STANDARD_INPUT_FILE_SUFFIX
-
-        if not self.output_dir or not self.output_base_fname:
-            raise
-        crv_def = get_crv_def()
-        self.wpath = Path(self.output_dir) / (
-            self.output_base_fname + STANDARD_INPUT_FILE_SUFFIX
-        )
-        self.crv_writer = FileWriter(self.wpath)
-        self.crv_writer.add_columns(crv_def)
-        self.crv_writer.write_definition()
-        for index_columns in crv_idx:
-            self.crv_writer.add_index(index_columns)
-
-    def setup_crs_writer(self):
-        from pathlib import Path
-        from oakvar.lib.util.util import get_crs_def
-        from oakvar.lib.util.inout import FileWriter
-        from oakvar.lib.consts import crs_idx
-        from oakvar.lib.consts import SAMPLE_FILE_SUFFIX
-
-        if not self.output_dir or not self.output_base_fname:
-            raise
-        crs_def = get_crs_def()
-        self.crs_path = Path(self.output_dir) / (
-            self.output_base_fname + SAMPLE_FILE_SUFFIX
-        )
-        self.crs_writer = FileWriter(self.crs_path)
-        self.crs_writer.add_columns(crs_def)
-        self.crs_writer.add_columns(self.extra_output_columns)
-        self.crs_writer.write_definition()
-        for index_columns in crs_idx:
-            self.crs_writer.add_index(index_columns)
-
-    def setup_crm_writer(self):
-        from pathlib import Path
-        from oakvar.lib.util.util import get_crm_def
-        from oakvar.lib.util.inout import FileWriter
-        from oakvar.lib.consts import crm_idx
-        from oakvar.lib.consts import MAPPING_FILE_SUFFIX
-
-        if not self.output_dir or not self.output_base_fname:
-            raise
-        crm_def = get_crm_def()
-        self.crm_path = Path(self.output_dir) / (
-            self.output_base_fname + MAPPING_FILE_SUFFIX
-        )
-        self.crm_writer = FileWriter(self.crm_path)
-        self.crm_writer.add_columns(crm_def)
-        self.crm_writer.write_definition()
-        for index_columns in crm_idx:
-            self.crm_writer.add_index(index_columns)
-        self.crm_writer.write_input_paths(self.input_path_dict)
-
-    def setup_crl_writer(self):
-        from pathlib import Path
-        from oakvar.lib.util.util import get_crl_def
-        from oakvar.lib.util.inout import FileWriter
-        from oakvar.lib.consts import VARIANT_LEVEL_OUTPUT_SUFFIX
-
-        if not self.output_dir or not self.output_base_fname:
-            raise
-        crl_def = get_crl_def()
-        self.crl_path = (
-            Path(self.output_dir)
-            / f"{self.output_base_fname}.original_input{VARIANT_LEVEL_OUTPUT_SUFFIX}"
-        )
-        self.crl_writer = FileWriter(self.crl_path)
-        self.crl_writer.add_columns(crl_def)
-        self.crl_writer.write_definition()
-        self.crl_writer.write_names("original_input", "Original Input", "")
-
-    #def open_output_files(self):
-    #    self.setup_crv_writer()
-    #    self.setup_crs_writer()
-    #    self.setup_crm_writer()
-    #    self.setup_crl_writer()
 
     def log_input_and_genome_assembly(self, input_path, genome_assembly, converter):
         if not self.logger:

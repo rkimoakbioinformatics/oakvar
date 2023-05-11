@@ -4,7 +4,6 @@ from typing import Tuple
 from typing import List
 from typing import Dict
 import polars as pl
-from pyliftover import LiftOver
 
 
 CHROM = "chrom"
@@ -82,7 +81,7 @@ class BaseConverter(object):
         self.extra_output_columns: List[Dict[str, Any]] = []
         self.total_num_converted_variants = 0
         self.input_formats: List[str] = []
-        self.genome_assemblies: List[str] = []
+        self.genome_assemblies: List[int] = []
         self.df_mode = df_mode
         self.base_re = compile("^[ATGC]+|[-]+$")
         self.chromdict = {
@@ -149,6 +148,7 @@ class BaseConverter(object):
         pass
 
     def get_variants_df(self, input_path, start_line_no, batch_size, num_pool=1):
+        _ = input_path or start_line_no or batch_size or num_pool
         return None, None
 
     def get_variant_lines(
@@ -205,7 +205,7 @@ class BaseConverter(object):
             self.logger.info(f"liftover needed: {self.do_liftover}")
             self.logger.info(f"liftover for chrM needed: {self.do_liftover_chrM}")
 
-    def setup_lifter(self, genome_assembly) -> Optional[LiftOver]:
+    def setup_lifter(self, genome_assembly: Optional[int]):
         from oakvar.lib.util.seq import get_lifter
 
         self.lifter = get_lifter(source_assembly=genome_assembly)
@@ -297,21 +297,31 @@ class BaseConverter(object):
         if self.do_liftover or self.do_liftover_chrM:
             self.setup_lifter(genome_assembly)
 
-    def get_genome_assembly(self) -> str:
+    def get_genome_assembly(self) -> int:
         from oakvar.lib.system.consts import default_assembly_key
         from oakvar.lib.exceptions import NoGenomeException
         from oakvar.lib.system import get_user_conf
 
         if self.given_input_assembly:
-            return self.given_input_assembly
-        input_assembly = getattr(self, "input_assembly", None)
-        if input_assembly:
-            return input_assembly
-        user_conf = get_user_conf() or {}
-        genome_assembly = user_conf.get(default_assembly_key, None)
-        if genome_assembly:
-            return genome_assembly
-        raise NoGenomeException()
+            input_assembly = self.given_input_assembly
+        else:
+            input_assembly = getattr(self, "input_assembly", None)
+        if not input_assembly:
+            user_conf = get_user_conf() or {}
+            input_assembly = user_conf.get(default_assembly_key, None)
+            if not input_assembly:
+                raise NoGenomeException()
+        input_assembly_int_dict = {
+            "hg18": 18,
+            "hg19": 19,
+            "hg38": 38,
+            "GRCh36": 18,
+            "GRCh37": 19,
+            "GRCh38": 38,
+        }
+        if input_assembly not in input_assembly_int_dict:
+            raise NoGenomeException()
+        return input_assembly_int_dict.get(input_assembly, 38)
 
     def handle_chrom(self, variant):
         from oakvar.lib.exceptions import IgnoredVariant
@@ -487,88 +497,6 @@ class BaseConverter(object):
             return
         for col in extra_output_columns:
             self.extra_output_columns.append(col)
-
-    def run(self):
-        from pathlib import Path
-        from multiprocessing.pool import ThreadPool
-        #import time
-        from oakvar.lib.util.run import update_status
-
-        if not self.input_paths or not self.logger:
-            raise
-        update_status(
-            "started converter", logger=self.logger, serveradmindb=self.serveradmindb
-        )
-        self.set_variables_pre_run()
-        batch_size: int = 2500
-        uid = 1
-        num_pool = 4
-        pool = ThreadPool(num_pool)
-        for input_path in self.input_paths:
-            self.input_fname = Path(input_path).name
-            fileno = self.input_path_dict2[input_path]
-            self.setup_file(input_path)
-            self.file_num_valid_variants = 0
-            self.file_error_lines = 0
-            self.num_valid_error_lines = {"valid": 0, "error": 0}
-            start_line_pos: int = 1
-            start_line_no: int = start_line_pos
-            #stime = time.time()
-            while True:
-                #ctime = time.time()
-                lines_data, immature_exit = self.get_variant_lines(input_path, num_pool, start_line_no, batch_size)
-                args = [
-                    (
-                        lines_data,
-                        core_num, 
-                    ) for core_num in range(num_pool)
-                ]
-                results = pool.map(self.gather_variantss_wrapper, args)
-                lines_data = None
-                for result in results:
-                    variants_l, crl_l = result
-                    for i in range(len(variants_l)):
-                        variants = variants_l[i]
-                        crl_data = crl_l[i]
-                        if len(variants) == 0:
-                            continue
-                        for variant in variants:
-                            variant["uid"] = uid + variant["var_no"]
-                            if variant[self.unique_var_key]:
-                                variant["fileno"] = fileno
-                                self.write_extra_info(variant)
-                        for crl in crl_data:
-                            pass
-                        uid += max([v["var_no"] for v in variants]) + 1
-                    variants_l = None
-                    crl_l = None
-                if not immature_exit:
-                    break
-                start_line_no += batch_size * num_pool
-                status = (
-                    f"Running Converter ({self.input_fname}): line {start_line_no - 1}"
-                )
-                update_status(
-                    status, logger=self.logger, serveradmindb=self.serveradmindb
-                )
-            self.logger.info(
-                f"{input_path}: number of valid variants: {self.num_valid_error_lines['valid']}"
-            )
-            self.logger.info(f"{input_path}: number of lines skipped due to errors: {self.num_valid_error_lines['error']}")
-            self.total_num_converted_variants += self.num_valid_error_lines["valid"]
-            self.total_num_valid_variants += self.num_valid_error_lines["valid"]
-            self.total_error_lines += self.num_valid_error_lines["error"]
-        self.flush_err_holder(force=True)
-        self.end()
-        self.log_ending()
-        ret = {
-            "total_lnum": self.total_num_converted_variants,
-            "write_lnum": self.total_num_valid_variants,
-            "error_lnum": self.total_error_lines,
-            "input_format": self.input_formats,
-            "assemblies": self.genome_assemblies,
-        }
-        return ret
 
     def get_df_headers(self):
         df_headers = []

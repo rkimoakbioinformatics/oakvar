@@ -5,12 +5,14 @@ from typing import List
 from typing import Tuple
 from typing import Dict
 import polars as pl
+from .master_converter import MasterConverter
 
 
 class Runner(object):
     def __init__(self, **kwargs):
         from types import SimpleNamespace
         from ..module.local import LocalModule
+        from .mapper import BaseMapper
 
         self.runlevels = {
             "converter": 1,
@@ -52,13 +54,13 @@ class Runner(object):
         self.cleandb = False
         self.excludes = []
         self.preparer_names = []
-        self.mapper_name = None
+        self.mapper_name: Optional[str] = None
         self.annotator_names = []
         self.postaggregator_names = []
         self.reporter_names = []
         self.report_names = []
         self.preparers = {}
-        self.mapper = None
+        self.mapper: Optional[BaseMapper] = None
         self.annotators: Dict[str, LocalModule] = {}
         self.postaggregators = {}
         self.reporters = {}
@@ -276,7 +278,6 @@ class Runner(object):
             print(f"@ converter df={df}")
             if df is not None:
                 df = self.do_step_mapper(df)
-                print(f"@ mapper df={df}")
                 df = self.do_step_annotator(df)
         #await self.do_step_aggregator(run_no)
         #await self.do_step_postaggregator(run_no)
@@ -887,8 +888,8 @@ class Runner(object):
                         self.postaggregators[module_name] = module
 
     def set_mapper(self):
-        from ..module.local import get_local_module_info_by_name
         from ..exceptions import SetupError
+        from ... import get_mapper
 
         if self.args is None or self.conf is None:
             raise SetupError()
@@ -898,7 +899,7 @@ class Runner(object):
         if not self.mapper_name:
             self.mapper_name = self.main_conf.get("genemapper")
         self.check_valid_modules([self.mapper_name])
-        self.mapper = get_local_module_info_by_name(self.mapper_name)
+        self.mapper = get_mapper(self.mapper_name)
 
     def set_annotators(self):
         from ..exceptions import SetupError
@@ -1879,12 +1880,11 @@ class Runner(object):
             and (self.args and step not in self.args.skip)
         )
 
-    def do_step_converter(self, run_no: int):
+    def prep_converter(self, run_no: int) -> Tuple[List[str], MasterConverter]:
         from .master_converter import MasterConverter
 
         if (
-            self.conf is None
-            or not self.args
+            not self.args
             or not self.input_paths
             or not self.run_name
             or not self.output_dir
@@ -1904,6 +1904,9 @@ class Runner(object):
             ignore_sample=self.ignore_sample,
             outer=self.outer,
         )
+        return input_files, master_converter
+
+    def do_step_converter(self, run_no: int):
         for df in master_converter.iter_df_chunk():
             yield df
 
@@ -1915,12 +1918,12 @@ class Runner(object):
         await self.log_time_of_func(self.run_preparers, run_no, work=f"{step} step")
 
     def do_step_mapper(self, df: pl.DataFrame) -> pl.DataFrame:
-        from ... import get_mapper
-
-        mapper = get_mapper(self.mapper_name)
-        df = mapper.run_df(df)
+        if not self.mapper:
+            return df
+        df = self.mapper.run_df(df)
+        print(f"@ after mapper")
+        df.glimpse()
         return df
-
 
     def do_step_annotator(self, df: pl.DataFrame) -> pl.DataFrame:
         self.done_annotators = {}
