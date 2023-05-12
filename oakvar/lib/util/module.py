@@ -2,7 +2,7 @@ from typing import Optional
 from typing import Union
 from typing import Type
 from pathlib import Path
-from ..base.master_converter import MasterConverter
+from ..base.converter_controller import ConverterController
 from ..base.converter import BaseConverter
 from ..base.preparer import BasePreparer
 from ..base.mapper import BaseMapper
@@ -107,7 +107,7 @@ def get_module_class(
     module_name, module_type: str = ""
 ) -> Union[
     Type[BaseConverter],
-    Type[MasterConverter],
+    Type[ConverterController],
     Type[BasePreparer],
     Type[BaseMapper],
     Type[BaseAnnotator],

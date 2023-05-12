@@ -211,10 +211,9 @@ def handle_converted_variants(
             crl_l.append(crl_data)
     return variant_l, crl_l
 
-class MasterConverter(object):
+class ConverterController(object):
     def __init__(
         self,
-        inputs: List[str] = [],
         input_format: Optional[str] = None,
         run_name: Optional[str] = None,
         output_dir: Optional[str] = None,
@@ -224,12 +223,14 @@ class MasterConverter(object):
         module_options: Dict = {},
         input_encoding=None,
         ignore_sample: bool=False,
+        fill_in_missing_ref: bool=False,
         mp: int=1,
         outer=None,
     ):
         from re import compile
         from oakvar import get_wgs_reader
         from oakvar.lib.exceptions import ExpectedException
+        from oakvar.lib.base.commonmodule import BaseCommonModule
 
         self.logger = None
         self.crv_writer = None
@@ -238,10 +239,6 @@ class MasterConverter(object):
         self.crl_writer = None
         self.converters = {}
         self.available_input_formats = []
-        self.input_paths: List[str] = []
-        self.input_dir = None
-        self.input_path_dict = {}
-        self.input_filenos = {}
         self.input_file_encodings: Dict[str, str] = {}
         self.output_base_fname: Optional[str] = None
         self.error_logger = None
@@ -278,15 +275,11 @@ class MasterConverter(object):
             "chr23": "chrX",
             "chr24": "chrY",
         }
-        if not inputs:
-            raise ExpectedException("Input files are not given.")
-        self.inputs = inputs
         self.format = input_format
         self.run_name = run_name
         self.output_dir = output_dir
         self.genome = genome
         self.parse_inputs()
-        self.parse_output_dir()
         self.given_input_assembly = genome
         self.conf: Dict = {}
         self.module_options = module_options
@@ -296,7 +289,9 @@ class MasterConverter(object):
         self.input_encoding = input_encoding
         self.outer = outer
         self.setup_logger()
-        self.wgs_reader = get_wgs_reader(assembly="hg38")
+        self.wgs_reader: Optional[BaseCommonModule] = None
+        if fill_in_missing_ref:
+            self.wgs_reader = get_wgs_reader(assembly="hg38")
         self.time_error_written: float = 0
         self.mp = mp
 
@@ -332,34 +327,6 @@ class MasterConverter(object):
         from oakvar.lib.util.seq import get_lifter
 
         self.lifter = get_lifter(source_assembly=genome_assembly)
-
-    def parse_inputs(self):
-        from pathlib import Path
-
-        self.input_paths = []
-        self.input_paths = [
-            str(Path(x).resolve()) for x in self.inputs if x != "-"
-        ]
-        self.input_dir = str(Path(self.input_paths[0]).parent)
-        for i in range(len(self.input_paths)):
-            self.input_path_dict[i] = self.input_paths[i]
-            self.input_filenos[self.input_paths[i]] = i
-
-    def parse_output_dir(self):
-        from pathlib import Path
-        from os import makedirs
-
-        if not self.output_dir:
-            self.output_dir = self.input_dir
-        if not self.output_dir:
-            raise
-        if not (Path(self.output_dir).exists()):
-            makedirs(self.output_dir)
-        self.output_base_fname: Optional[str] = self.run_name
-        if not self.output_base_fname:
-            if not self.input_paths:
-                raise
-            self.output_base_fname = Path(self.input_paths[0]).name
 
     def get_file_object_for_input_path(self, input_path: str):
         from pathlib import Path
@@ -617,14 +584,13 @@ class MasterConverter(object):
             else:
                 variant[col_name] = variant["pos"] + ref_len - 1
 
-    def iter_df_chunk(self, size: int=10000):
+    def iter_df_chunk(self, input_paths: List[str], size: int=10000):
         from pathlib import Path
 
-        if not self.input_paths or not self.logger:
-            raise
+        input_paths = [str(Path(x).resolve()) for x in input_paths]
         self.setup()
         self.set_variables_pre_run()
-        for input_path in self.input_paths:
+        for input_path in input_paths:
             self.input_fname = Path(input_path).name
             converter = self.setup_file(input_path)
             self.file_num_valid_variants = 0

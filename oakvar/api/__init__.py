@@ -65,6 +65,7 @@ def run(
     input_format: Optional[str] = None,
     input_encoding: Optional[str] = None,
     ignore_sample: bool = False,
+    fill_in_missing_ref: bool = False,
     uid: Optional[str] = None,
     loop=None,
     outer=None,
@@ -182,6 +183,7 @@ def run(
         input_format=input_format,
         input_encoding=input_encoding,
         ignore_sample=ignore_sample,
+        fill_in_missing_ref=fill_in_missing_ref,
         uid=uid,
         outer=outer,
     )

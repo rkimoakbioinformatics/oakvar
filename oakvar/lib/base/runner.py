@@ -5,13 +5,14 @@ from typing import List
 from typing import Tuple
 from typing import Dict
 import polars as pl
-from .master_converter import MasterConverter
+from .converter_controller import ConverterController
 
 
 class Runner(object):
     def __init__(self, **kwargs):
         from types import SimpleNamespace
         from ..module.local import LocalModule
+        from .converter_controller import ConverterController
         from .mapper import BaseMapper
 
         self.runlevels = {
@@ -46,7 +47,7 @@ class Runner(object):
         self.conf_path = None
         self.conf = {}
         self.first_non_url_input = None
-        self.input_paths: List[str] = []
+        self.input_paths: List[List[str]] = []
         self.run_name: Optional[List[str]] = None
         self.output_dir: Optional[List[str]] = None
         self.startlevel = self.runlevels["converter"]
@@ -60,7 +61,7 @@ class Runner(object):
         self.reporter_names = []
         self.report_names = []
         self.preparers = {}
-        self.mapper: Optional[BaseMapper] = None
+        self.mapper: Optional[LocalModule] = None
         self.annotators: Dict[str, LocalModule] = {}
         self.postaggregators = {}
         self.reporters = {}
@@ -70,9 +71,12 @@ class Runner(object):
         self.crv_present = False
         self.crx_present = False
         self.crg_present = False
+        self.ignore_sample = False
+        self.fill_in_missing_ref = False
         self.total_num_converted_variants = None
         self.total_num_valid_variants = None
         self.converter_format: Optional[List[str]] = None
+        self.converter_controller_i: Optional[ConverterController] = None
         self.genemapper = None
         self.append_mode = []
         self.exception = None
@@ -251,15 +255,8 @@ class Runner(object):
         if not self.input_paths or not self.args:
             raise
         if self.logger:
-            if self.args.combine_input:
-                for input_file in self.input_paths:
-                    self.logger.info(f"input file: {input_file}")
-            else:
-                if self.args.combine_input:
-                    for input_file in self.input_paths:
-                        self.logger.info(f"input file: {input_file}")
-                else:
-                    self.logger.info(f"input file: {self.input_paths[run_no]}")
+            for input_file in self.input_paths[run_no]:
+                self.logger.info(f"input file: {input_file}")
 
     def start_log(self, run_no: int):
         from time import asctime, localtime
@@ -293,6 +290,7 @@ class Runner(object):
         if not self.args or not self.run_name:
             raise
         self.sanity_check_run_name_output_dir()
+        self.converter_controller_i = self.prep_converter()
         await self.setup_manager()
         for run_no in range(len(self.run_name)):
             try:
@@ -357,6 +355,11 @@ class Runner(object):
         if self.args is None:
             raise SetupError()
         self.cleandb = self.args.cleandb
+        self.set_self_inputs()  # self.input_paths is list.
+        self.set_run_name()  # self.run_name is list.
+        self.set_job_name()  # self.job_name is list.
+        self.set_append_mode()  # self.append_mode is list.
+        self.set_genome_assemblies()  # self.genome_assemblies is list.
         self.set_preparers()
         self.set_mapper()
         self.set_annotators()
@@ -366,12 +369,7 @@ class Runner(object):
         self.sort_postaggregators()
         self.set_reporters()
         self.set_start_end_levels()
-        self.set_self_inputs()  # self.input_paths is list.
         self.set_and_create_output_dir()  # self.output_dir is list.
-        self.set_run_name()  # self.run_name is list.
-        self.set_job_name()  # self.job_name is list.
-        self.set_append_mode()  # self.append_mode is list.
-        self.set_genome_assemblies()  # self.genome_assemblies is list.
 
     def make_self_args_considering_package_conf(self, args):
         from types import SimpleNamespace
@@ -398,6 +396,7 @@ class Runner(object):
         if args.get("annotators_replace"):
             args["annotators"] = args.get("annotators_replace")
         self.ignore_sample = args.get("ignore_sample", False)
+        self.fill_in_missing_ref = args.get("fill_in_missing_ref", False)
         self.args = SimpleNamespace(**args)
         self.outer = self.args.outer
         if self.args.vcf2vcf and self.args.combine_input:
@@ -461,15 +460,6 @@ class Runner(object):
                 v = toks[1]
                 self.run_conf[module_name][key] = v
 
-    def remove_absent_inputs(self):
-        from pathlib import Path
-
-        if not self.input_paths:
-            return
-        inputs_to_remove = [v for v in self.input_paths if not Path(v).exists() and "*" not in v]
-        for v in inputs_to_remove:
-            self.input_paths.remove(v)
-
     def process_url_and_pipe_inputs(self):
         from pathlib import Path
         from ..util.util import is_url
@@ -478,21 +468,43 @@ class Runner(object):
             raise
         self.first_non_url_input = None
         if self.args.inputs is not None:
-            self.input_paths = [
-                str(Path(x).resolve()) if not is_url(x) else x
-                for x in self.args.inputs
-            ]
+            if self.args.combine_input:
+                self.input_paths = [[
+                    str(Path(x).resolve()) if not is_url(x) else x
+                    for x in self.args.inputs
+                ]]
+            else:
+                self.input_paths = [
+                    [str(Path(x).resolve()) if not is_url(x) else x]
+                    for x in self.args.inputs
+                ]
             if self.input_paths is None:
                 raise
             for input_no in range(len(self.input_paths)):
-                inp = self.input_paths[input_no]
-                if is_url(inp):
-                    fpath = self.download_url_input(inp)
-                    self.input_paths[input_no] = fpath
-                elif not self.first_non_url_input:
-                    self.first_non_url_input = inp
+                inp_l = self.input_paths[input_no]
+                for fileno in range(len(inp_l)):
+                    inp = inp_l[fileno]
+                    if is_url(inp):
+                        fpath = self.download_url_input(inp)
+                        self.input_paths[input_no][fileno] = fpath
+                    elif not self.first_non_url_input:
+                        self.first_non_url_input = inp
         else:
             self.input_paths = []
+
+    def remove_absent_inputs(self):
+        from pathlib import Path
+
+        if not self.input_paths:
+            return
+        old_input_paths = self.input_paths.copy()
+        self.input_paths = []
+        for inp_l in old_input_paths:
+            new_l: List[str] = []
+            for inp in inp_l:
+                if "*" not in inp and Path(inp).exists():
+                    new_l.append(inp)
+            self.input_paths.append(new_l)
 
     def regenerate_from_db(self, run_no: int):
         import sqlite3
@@ -599,12 +611,9 @@ class Runner(object):
             if self.args.combine_input:
                 self.output_dir = [cwd]
             else:
-                if self.args.combine_input:
-                    self.output_dir = [cwd]
-                else:
-                    self.output_dir = [
-                        str(Path(inp).resolve().parent) for inp in self.input_paths
-                    ]
+                self.output_dir = [
+                    str(Path(inp).resolve().parent) for inp in self.input_paths
+                ]
         else:
             if self.args.combine_input:
                 if len(self.args.output_dir) != 1:
@@ -671,17 +680,16 @@ class Runner(object):
         if not self.args or not self.output_dir:
             raise
         if not self.args.run_name:
-            if self.input_paths:
-                if self.args.combine_input:
-                    run_name = Path(self.input_paths[0]).name
-                    if len(self.input_paths) > 1:
-                        run_name = run_name + "_etc"
-                        run_name = self.get_unique_run_name(
-                            self.output_dir[0], run_name
-                        )
-                    self.run_name = [run_name]
-                else:
-                    self.run_name = [Path(v).name for v in self.input_paths]
+            self.run_name = []
+            for inp_l in self.input_paths:
+                p = Path(inp_l[0])
+                run_name = p.name
+                if len(inp_l) > 1:
+                    run_name = run_name + "_etc"
+                    run_name = self.get_unique_run_name(
+                        self.output_dir[0], run_name
+                    )
+                self.run_name.append(run_name)
         else:
             if self.args.combine_input:
                 if len(self.args.run_name) != 1:
@@ -754,6 +762,14 @@ class Runner(object):
                     self.job_name = self.args.job_name
             return
 
+    def input_exists(self):
+        has_input: bool = False
+        for inp_l in self.input_paths:
+            if inp_l:
+                has_input = True
+                break
+        return has_input
+
     def set_self_inputs(self):
         from ..exceptions import NoInput
 
@@ -762,7 +778,7 @@ class Runner(object):
         self.use_inputs_from_run_conf()
         self.process_url_and_pipe_inputs()
         self.remove_absent_inputs()
-        if not self.input_paths:
+        if not self.input_exists():
             raise NoInput()
 
     def use_inputs_from_run_conf(self):
@@ -889,7 +905,7 @@ class Runner(object):
 
     def set_mapper(self):
         from ..exceptions import SetupError
-        from ... import get_mapper
+        from ..module.local import get_local_module_info_by_name
 
         if self.args is None or self.conf is None:
             raise SetupError()
@@ -899,7 +915,7 @@ class Runner(object):
         if not self.mapper_name:
             self.mapper_name = self.main_conf.get("genemapper")
         self.check_valid_modules([self.mapper_name])
-        self.mapper = get_mapper(self.mapper_name)
+        self.mapper = get_local_module_info_by_name(self.mapper_name)
 
     def set_annotators(self):
         from ..exceptions import SetupError
@@ -1880,8 +1896,8 @@ class Runner(object):
             and (self.args and step not in self.args.skip)
         )
 
-    def prep_converter(self, run_no: int) -> Tuple[List[str], MasterConverter]:
-        from .master_converter import MasterConverter
+    def prep_converter(self) -> ConverterController:
+        from .converter_controller import ConverterController
 
         if (
             not self.args
@@ -1890,24 +1906,20 @@ class Runner(object):
             or not self.output_dir
         ):
             raise
-        if self.args.combine_input:
-            input_files = self.input_paths
-        else:
-            input_files = [self.input_paths[run_no]]
-        master_converter = MasterConverter(
-            inputs=input_files,
-            run_name=self.run_name[run_no],
-            output_dir=self.output_dir[run_no],
+        converter_controller = ConverterController(
             genome=self.args.genome,
             input_format=self.args.input_format,
             serveradmindb=self.serveradmindb,
             ignore_sample=self.ignore_sample,
+            fill_in_missing_ref=self.fill_in_missing_ref,
             outer=self.outer,
         )
-        return input_files, master_converter
+        return converter_controller
 
     def do_step_converter(self, run_no: int):
-        for df in master_converter.iter_df_chunk():
+        if not self.converter_controller_i:
+            return
+        for df in self.converter_controller_i.iter_df_chunk(self.input_paths[run_no]):
             yield df
 
 

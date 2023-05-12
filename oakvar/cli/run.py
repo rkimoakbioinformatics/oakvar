@@ -289,4 +289,10 @@ def add_parser_ov_run(subparsers):
         default=False,
         help="Ignore samples",
     )
+    parser_ov_run.add_argument(
+        "--fill-in-missing-ref",
+        action="store_true",
+        default=False,
+        help="Fill in missing reference alleles",
+    )
     parser_ov_run.set_defaults(func=cli_run)
