@@ -321,14 +321,13 @@ class SubmitProcessor:
                 run_args.append(str(Path(job_dir) / fn))
         run_args.extend(["-d", job_dir])
         # Liftover assembly
-        run_args.append("-l")
         assembly = job_options.get("assembly")
         if not assembly:
             assembly = job_options.get("genome")
-        if not assembly:
-            assembly = default_assembly
-        submit_options["assembly"] = assembly
-        run_args.append(assembly)
+        if assembly:
+            run_args.append("-l")
+            run_args.append(assembly)
+            submit_options["assembly"] = assembly
         if self.servermode and self.mu:
             await self.mu.update_user_settings(request, {"lastAssembly": assembly})
         else:
