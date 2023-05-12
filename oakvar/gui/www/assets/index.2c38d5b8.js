@@ -16608,7 +16608,7 @@ function TabSubmit(props) {
     }
   }
   function addAssemblyToSubmitOption() {
-    if (assembly() != "") {
+    if (assembly() != "auto") {
       submitOption["genome"] = assembly();
     }
   }
