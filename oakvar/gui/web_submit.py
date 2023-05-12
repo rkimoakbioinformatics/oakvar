@@ -303,7 +303,6 @@ class SubmitProcessor:
 
     async def get_run_args(self, request, submit_options: dict, job_dir: str):
         from pathlib import Path
-        from ..lib.system.consts import default_assembly
         from ..lib.util.admin_util import set_user_conf_prop
 
         global servermode
