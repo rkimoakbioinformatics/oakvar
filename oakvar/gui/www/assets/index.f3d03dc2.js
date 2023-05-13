@@ -13704,7 +13704,7 @@ function TabHeadSystem() {
 
 const _tmpl$$1k = /*#__PURE__*/template(`<div class="px-2 pb-8"></div>`),
   _tmpl$2$g = /*#__PURE__*/template(`<div class="px-2 text-xs text-gray-600 truncate cursor-default"></div>`),
-  _tmpl$3$9 = /*#__PURE__*/template(`<div></div>`);
+  _tmpl$3$a = /*#__PURE__*/template(`<div></div>`);
 function TabHeadLogging() {
   const {
     logged,
@@ -13748,7 +13748,7 @@ function TabHeadLogging() {
           },
           get fallback() {
             return (() => {
-              const _el$2 = _tmpl$3$9.cloneNode(true);
+              const _el$2 = _tmpl$3$a.cloneNode(true);
               insert(_el$2, createComponent(Show, {
                 get when() {
                   return email();
@@ -15285,7 +15285,7 @@ delegateEvents(["click"]);
 
 const _tmpl$$19 = /*#__PURE__*/template(`<div id="input-upload-list-div" class="w-1/2 flex flex-col justify-center items-center p-2 relative h-full bg-gray-50"><button id="clear_inputfilelist_button" class="text-gray-500 bg-neutral-200 hover:bg-neutral-300 p-1 w-16 rounded-md absolute top-1 left-1">Clear</button><div id="input-upload-list-wrapper" class="flex w-full overflow-auto h-[13rem] absolute bottom-1 bg-gray-50"><div id="input-upload-list" class="h-full overflow-auto"></div></div></div>`),
   _tmpl$2$e = /*#__PURE__*/template(`<label id="input-drop-area" for="input-file" class="flex items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-md cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600 relative"><div id="input-drop-box" class="w-1/2"><div class="flex flex-col items-center justify-center pt-5 pb-6"><p class="mb-2 text-sm text-gray-500 dark:text-gray-400"><span class="font-semibold">Click to upload</span> input files</p><button class="mb-2 text-sm text-gray-500 dark:text-gray-400 bg-neutral-200 hover:bg-neutral-300 p-2 rounded-md absolute top-0 right-0">Manually enter variants instead</button></div><input type="file" class="hidden" name="input-file" id="input-file" multiple></div></label>`),
-  _tmpl$3$8 = /*#__PURE__*/template(`<span class="pl-2 text-sm text-gray-600 hover:text-gray-400 cursor-pointer round-md inline-block w-5/6" title="Click to remove"></span>`);
+  _tmpl$3$9 = /*#__PURE__*/template(`<span class="pl-2 text-sm text-gray-600 hover:text-gray-400 cursor-pointer round-md inline-block w-5/6" title="Click to remove"></span>`);
 function InputDropArea(props) {
   const {
     setShowErrorDialog,
@@ -15341,7 +15341,7 @@ function InputDropArea(props) {
             return props.inputDataDrop;
           },
           children: file => (() => {
-            const _el$11 = _tmpl$3$8.cloneNode(true);
+            const _el$11 = _tmpl$3$9.cloneNode(true);
             _el$11.$$click = removeFile;
             _el$11.$$clickData = file.name;
             insert(_el$11, () => file.name);
@@ -15454,7 +15454,7 @@ delegateEvents(["click"]);
 
 const _tmpl$$14 = /*#__PURE__*/template(`<div class="flex items-center justify-center ml-6"><input id="default-checkbox" type="checkbox" value="" title="If checked, each input files will be processed separately." class="w-4 h-4 text-blue-600 bg-gray-100 rounded border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"><label for="default-checkbox" class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300" title="If checked, each input files will be processed separately.">Separate job per file</label></div>`),
   _tmpl$2$d = /*#__PURE__*/template(`<div class="flex items-center justify-center ml-6"><input id="default-checkbox" type="checkbox" value="" title="If checked, each input line should be a path to an input file in the server." class="w-4 h-4 text-blue-600 bg-gray-100 rounded border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"><label for="default-checkbox" class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300" title="If checked, each input line should be a path to an input file in the server.">Server files</label></div>`),
-  _tmpl$3$7 = /*#__PURE__*/template(`<div id="input-div" class="w-[40rem] items-center flex flex-col" style="height: calc(100vh - 10rem);"><div class="flex"></div><div class="w-full flex items-center justify-center mt-1" ondragenter="onDragEnterInputFiles(event)" ondragover="onDragOverInputFiles(event)" ondragleave="onDragLeaveInputFiles(event)" ondrop="onDropInputFiles(event)"></div></div>`);
+  _tmpl$3$8 = /*#__PURE__*/template(`<div id="input-div" class="w-[40rem] items-center flex flex-col" style="height: calc(100vh - 10rem);"><div class="flex"></div><div class="w-full flex items-center justify-center mt-1" ondragenter="onDragEnterInputFiles(event)" ondragover="onDragOverInputFiles(event)" ondragleave="onDragLeaveInputFiles(event)" ondrop="onDropInputFiles(event)"></div></div>`);
 function InputPanel(props) {
   function changeInputData(mode, data) {
     props.setInputMode(mode);
@@ -15478,7 +15478,7 @@ function InputPanel(props) {
     props.setServerFileMode(!props.serverFileMode);
   }
   return (() => {
-    const _el$ = _tmpl$3$7.cloneNode(true),
+    const _el$ = _tmpl$3$8.cloneNode(true),
       _el$2 = _el$.firstChild,
       _el$7 = _el$2.nextSibling;
     insert(_el$2, createComponent(AssemblySelectPanel, {
@@ -15607,7 +15607,7 @@ delegateEvents(["click"]);
 
 const _tmpl$$13 = /*#__PURE__*/template(`<input class="block w-full text-xs text-gray-900 bg-gray-50 rounded-lg border border-gray-300 cursor-pointer dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" type="file">`),
   _tmpl$2$c = /*#__PURE__*/template(`<select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"></select>`),
-  _tmpl$3$6 = /*#__PURE__*/template(`<div class="flex flex-col mb-4"><span class="mb-2 font-xs"></span></div>`),
+  _tmpl$3$7 = /*#__PURE__*/template(`<div class="flex flex-col mb-4"><span class="mb-2 font-xs"></span></div>`),
   _tmpl$4$5 = /*#__PURE__*/template(`<input type="text">`),
   _tmpl$5$3 = /*#__PURE__*/template(`<option></option>`);
 const {
@@ -15629,7 +15629,7 @@ function ModuleOption(props) {
     setModuleOption(props.moduleName, props.option, value);
   }
   return (() => {
-    const _el$ = _tmpl$3$6.cloneNode(true),
+    const _el$ = _tmpl$3$7.cloneNode(true),
       _el$2 = _el$.firstChild;
     insert(_el$2, () => props.option.title);
     insert(_el$, createComponent(Switch, {
@@ -16494,8 +16494,33 @@ function UploadProgressDialog(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$P = /*#__PURE__*/template(`<div class="tabcontent p-4 snap-y snap-mandatory h-screen overflow-y-auto"><div class="relative container flex gap-8 snap-center max-w-7xl h-[95vh] justify-center items-start"></div></div>`),
-  _tmpl$2$b = /*#__PURE__*/template(`<div>Loading...</div>`);
+const _tmpl$$P = /*#__PURE__*/template(`<div class="relative z-10" aria-labelledby="modal-title" role="dialog" aria-modal="true"><div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div><div class="fixed inset-0 z-10 overflow-y-auto"><div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0"><div class="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6"><div><div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100"><svg class="h-6 w-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path></svg></div><div class="mt-3 text-center sm:mt-5"><h3 class="text-lg font-medium leading-6 text-gray-900"></h3><div class="mt-2"><p class="text-sm text-gray-500"></p></div></div></div><div class="mt-5 sm:mt-6"><button type="button" class="inline-flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:text-sm">Dismiss</button></div></div></div></div></div>`);
+function OkDialog(props) {
+  return (() => {
+    const _el$ = _tmpl$$P.cloneNode(true),
+      _el$2 = _el$.firstChild,
+      _el$3 = _el$2.nextSibling,
+      _el$4 = _el$3.firstChild,
+      _el$5 = _el$4.firstChild,
+      _el$6 = _el$5.firstChild,
+      _el$7 = _el$6.firstChild,
+      _el$8 = _el$7.nextSibling,
+      _el$9 = _el$8.firstChild,
+      _el$10 = _el$9.nextSibling,
+      _el$11 = _el$10.firstChild,
+      _el$12 = _el$6.nextSibling,
+      _el$13 = _el$12.firstChild;
+    insert(_el$9, () => props.title);
+    insert(_el$11, () => props.text);
+    addEventListener(_el$13, "click", props.callback, true);
+    return _el$;
+  })();
+}
+delegateEvents(["click"]);
+
+const _tmpl$$O = /*#__PURE__*/template(`<div class="tabcontent p-4 snap-y snap-mandatory h-screen overflow-y-auto"><div class="relative container flex gap-8 snap-center max-w-7xl h-[95vh] justify-center items-start"></div></div>`),
+  _tmpl$2$b = /*#__PURE__*/template(`<div>Loading...</div>`),
+  _tmpl$3$6 = /*#__PURE__*/template(`<div><span>Analysis submission was successful.</span><br><span>You can find the status of your analysis submission on the Results section.</span><br><span></span></div>`);
 const {
   tabName: tabName$1
 } = gvTabName;
@@ -16532,6 +16557,8 @@ function TabSubmit(props) {
   const [jobNote, setJobNote] = createSignal(null);
   const [uploading, setUploading] = createSignal(false);
   const [uploadState, setUploadState] = createSignal({});
+  const [submissionSuccessful, setSubmissionSuccessful] = createSignal(false);
+  const [submittedJobName, setSubmittedJobName] = createSignal(null);
   const [separateJobPerFile, setSeparateJobPerFile] = createSignal(false);
   const [serverFileMode, setServerFileMode] = createSignal(false);
   let inputFiles = [];
@@ -16654,8 +16681,10 @@ function TabSubmit(props) {
           progress: progress
         });
       }
-    }).then(function (_) {
+    }).then(function (res) {
       setUploading(false);
+      setSubmittedJobName(res.data.job_name);
+      setSubmissionSuccessful(true);
       setTimeout(function () {
         props.setJobsTrigger(!props.jobsTrigger);
       }, 500);
@@ -16734,7 +16763,7 @@ function TabSubmit(props) {
     }
   }
   return (() => {
-    const _el$ = _tmpl$$P.cloneNode(true),
+    const _el$ = _tmpl$$O.cloneNode(true),
       _el$2 = _el$.firstChild;
     insert(_el$2, createComponent(Show, {
       get when() {
@@ -16825,12 +16854,39 @@ function TabSubmit(props) {
         });
       }
     }), null);
+    insert(_el$, createComponent(Show, {
+      get when() {
+        return submissionSuccessful() == true;
+      },
+      get children() {
+        return createComponent(OkDialog, {
+          get title() {
+            return "Success: " + submittedJobName();
+          },
+          get text() {
+            return (() => {
+              const _el$4 = _tmpl$3$6.cloneNode(true),
+                _el$5 = _el$4.firstChild,
+                _el$6 = _el$5.nextSibling,
+                _el$7 = _el$6.nextSibling,
+                _el$8 = _el$7.nextSibling,
+                _el$9 = _el$8.nextSibling;
+              insert(_el$9, () => "Look for the name " + submittedJobName() + ".");
+              return _el$4;
+            })();
+          },
+          callback: function () {
+            setSubmissionSuccessful(false);
+          }
+        });
+      }
+    }), null);
     createRenderEffect(() => _el$.classList.toggle("hidden", !!(tabName$1() != "submit")));
     return _el$;
   })();
 }
 
-const _tmpl$$O = /*#__PURE__*/template(`<a href="#" class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value=""></a>`);
+const _tmpl$$N = /*#__PURE__*/template(`<a href="#" class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value=""></a>`);
 function ActionPanelOption(props) {
   function changeAction() {
     props.setAction(props.optionValue);
@@ -16838,7 +16894,7 @@ function ActionPanelOption(props) {
     props.setShow(false);
   }
   return (() => {
-    const _el$ = _tmpl$$O.cloneNode(true);
+    const _el$ = _tmpl$$N.cloneNode(true);
     _el$.$$click = changeAction;
     insert(_el$, () => props.optionTitle);
     return _el$;
@@ -16846,10 +16902,10 @@ function ActionPanelOption(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$N = /*#__PURE__*/template(`<div class="option-list ease-in absolute right-0 z-10 mt-12 w-24 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu"><div class="py-1" role="none"></div></div>`);
+const _tmpl$$M = /*#__PURE__*/template(`<div class="option-list ease-in absolute right-0 z-10 mt-12 w-24 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu"><div class="py-1" role="none"></div></div>`);
 function ActionPanelSelect(props) {
   return (() => {
-    const _el$ = _tmpl$$N.cloneNode(true),
+    const _el$ = _tmpl$$M.cloneNode(true),
       _el$2 = _el$.firstChild;
     insert(_el$2, createComponent(For, {
       get each() {
@@ -16880,7 +16936,7 @@ function ActionPanelSelect(props) {
   })();
 }
 
-const _tmpl$$M = /*#__PURE__*/template(`<div class="select-div relative inline-flex text-left"><div><button type="button" class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100" id="assembly-select-div" title="Job action">Action</button></div></div>`);
+const _tmpl$$L = /*#__PURE__*/template(`<div class="select-div relative inline-flex text-left"><div><button type="button" class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100" id="assembly-select-div" title="Job action">Action</button></div></div>`);
 function ActionPanel(props) {
   const [show, setShow] = createSignal(false);
   const [action, setAction] = createSignal("");
@@ -16898,7 +16954,7 @@ function ActionPanel(props) {
     setShow(!show());
   }
   return (() => {
-    const _el$ = _tmpl$$M.cloneNode(true),
+    const _el$ = _tmpl$$L.cloneNode(true),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild;
       _el$3.firstChild;
@@ -16920,7 +16976,7 @@ function ActionPanel(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$L = /*#__PURE__*/template(`<div class="flex bg-white pb-2 mt-2"><div class="flex"><nav class="isolate inline-flex rounded-md shadow-sm ml-8" aria-label="Pagination"><a href="#" class="jobs-table-page-nav-btn relative inline-flex items-center rounded-l-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20"></a><span aria-current="page" class="relative z-10 inline-flex items-center border bg-white border-gray-300 text-gray-500 px-4 py-2 text-sm font-medium focus:z-20"></span><a href="#" class="jobs-table-page-nav-btn relative inline-flex items-center rounded-r-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20"></a><span class="relative inline-flex items-center border-gray-300 bg-white ml-4 px-2 py-2 text-sm font-medium text-gray-500">Go to page</span><input type="text" class="relative inline-flex items-center rounded-md w-12 border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500"><a href="#" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20">Go</a><span class="relative inline-flex items-center border-gray-300 bg-white ml-4 px-2 py-2 text-sm font-medium text-gray-500">Show</span><input type="text" class="relative inline-flex items-center rounded-md w-12 border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500"><a href="#" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20">jobs per page</a><a href="#" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20 ml-4"></a></nav></div></div>`);
+const _tmpl$$K = /*#__PURE__*/template(`<div class="flex bg-white pb-2 mt-2"><div class="flex"><nav class="isolate inline-flex rounded-md shadow-sm ml-8" aria-label="Pagination"><a href="#" class="jobs-table-page-nav-btn relative inline-flex items-center rounded-l-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20"></a><span aria-current="page" class="relative z-10 inline-flex items-center border bg-white border-gray-300 text-gray-500 px-4 py-2 text-sm font-medium focus:z-20"></span><a href="#" class="jobs-table-page-nav-btn relative inline-flex items-center rounded-r-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20"></a><span class="relative inline-flex items-center border-gray-300 bg-white ml-4 px-2 py-2 text-sm font-medium text-gray-500">Go to page</span><input type="text" class="relative inline-flex items-center rounded-md w-12 border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500"><a href="#" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20">Go</a><span class="relative inline-flex items-center border-gray-300 bg-white ml-4 px-2 py-2 text-sm font-medium text-gray-500">Show</span><input type="text" class="relative inline-flex items-center rounded-md w-12 border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500"><a href="#" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20">jobs per page</a><a href="#" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20 ml-4"></a></nav></div></div>`);
 function PageNavigation(props) {
   function decreasePageno() {
     let pageno = props.pageno;
@@ -16966,7 +17022,7 @@ function PageNavigation(props) {
     props.setJobsTrigger(!props.jobsTrigger);
   }
   return (() => {
-    const _el$ = _tmpl$$L.cloneNode(true),
+    const _el$ = _tmpl$$K.cloneNode(true),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.firstChild,
@@ -17006,10 +17062,10 @@ function PageNavigation(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$K = /*#__PURE__*/template(`<a></a>`);
+const _tmpl$$J = /*#__PURE__*/template(`<a></a>`);
 function Button(props) {
   return (() => {
-    const _el$ = _tmpl$$K.cloneNode(true);
+    const _el$ = _tmpl$$J.cloneNode(true);
     addEventListener(_el$, "click", props.clickFn, true);
     insert(_el$, () => props.children);
     createRenderEffect(_p$ => {
@@ -17030,7 +17086,7 @@ function Button(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$J = /*#__PURE__*/template(`<div></div>`),
+const _tmpl$$I = /*#__PURE__*/template(`<div></div>`),
   _tmpl$2$a = /*#__PURE__*/template(`<span class="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800"></span>`),
   _tmpl$3$5 = /*#__PURE__*/template(`<span class="inline-flex rounded-full bg-amber-100 px-2 text-xs font-semibold leading-5 text-amber-800"></span>`),
   _tmpl$4$4 = /*#__PURE__*/template(`<span class="inline-flex rounded-full bg-red-100 px-2 text-xs font-semibold leading-5 text-red-800"></span>`),
@@ -17091,7 +17147,7 @@ function JobRow(props) {
         bgHoverColor: "hover:bg-sky-200"
       });
     } else {
-      return _tmpl$$J.cloneNode(true);
+      return _tmpl$$I.cloneNode(true);
     }
   }
   function logComponent() {
@@ -17117,7 +17173,7 @@ function JobRow(props) {
         bgHoverColor: "hover:bg-gray-200"
       });
     } else {
-      return _tmpl$$J.cloneNode(true);
+      return _tmpl$$I.cloneNode(true);
     }
   }
   function statusComponent() {
@@ -17211,7 +17267,7 @@ function JobRow(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$I = /*#__PURE__*/template(`<div class="flex flex-col"><div class="relative shadow ring-1 ring-black ring-opacity-5 md:rounded-lg overflow-auto"><table class="table-fixed divide-y divide-gray-300"><thead class="table-header-group bg-gray-50 block"><tr><th scope="col" class="relative w-12 px-6 sm:w-16 sm:px-8"><input type="checkbox" class="absolute left-4 top-1/2 -mt-2 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 sm:left-6"></th><th scope="col" class="jobs-table-th min-w-[10rem]">Name</th><th scope="col" class="jobs-table-th min-w-[5rem]">State</th><th scope="col" class="jobs-table-th min-w-[5rem]">View</th><th scope="col" class="jobs-table-th min-w-[20rem]">Input</th><th scope="col" class="jobs-table-th min-w-[10rem]">Modules</th><th scope="col" class="jobs-table-th min-w-[8rem]">Submitted</th><th scope="col" class="jobs-table-th min-w-[5rem]">Log</th><th scope="col" class="jobs-table-th min-w-[5rem]">DB</th><th scope="col" class="jobs-table-th w-full">Note</th></tr></thead><tbody class="table-row-group divide-y divide-gray-200 bg-white block overflow-auto h-[36rem]"></tbody></table></div></div>`);
+const _tmpl$$H = /*#__PURE__*/template(`<div class="flex flex-col"><div class="relative shadow ring-1 ring-black ring-opacity-5 md:rounded-lg overflow-auto"><table class="table-fixed divide-y divide-gray-300"><thead class="table-header-group bg-gray-50 block"><tr><th scope="col" class="relative w-12 px-6 sm:w-16 sm:px-8"><input type="checkbox" class="absolute left-4 top-1/2 -mt-2 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 sm:left-6"></th><th scope="col" class="jobs-table-th min-w-[10rem]">Name</th><th scope="col" class="jobs-table-th min-w-[5rem]">State</th><th scope="col" class="jobs-table-th min-w-[5rem]">View</th><th scope="col" class="jobs-table-th min-w-[20rem]">Input</th><th scope="col" class="jobs-table-th min-w-[10rem]">Modules</th><th scope="col" class="jobs-table-th min-w-[8rem]">Submitted</th><th scope="col" class="jobs-table-th min-w-[5rem]">Log</th><th scope="col" class="jobs-table-th min-w-[5rem]">DB</th><th scope="col" class="jobs-table-th w-full">Note</th></tr></thead><tbody class="table-row-group divide-y divide-gray-200 bg-white block overflow-auto h-[36rem]"></tbody></table></div></div>`);
 function JobTable(props) {
   const [allMarksOn, setAllMarksOn] = createSignal(null);
   function toggleAllMarks() {
@@ -17233,7 +17289,7 @@ function JobTable(props) {
     }
   }
   return (() => {
-    const _el$ = _tmpl$$I.cloneNode(true),
+    const _el$ = _tmpl$$H.cloneNode(true),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.firstChild,
@@ -17265,10 +17321,10 @@ function JobTable(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$H = /*#__PURE__*/template(`<div class="relative z-10" aria-labelledby="modal-title" role="dialog" aria-modal="true"><div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div><div class="fixed inset-0 z-10 overflow-y-auto"><div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0"><div class="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6"><div><div class="text-center"><p class="text-sm text-gray-500"></p></div></div></div></div></div></div>`);
+const _tmpl$$G = /*#__PURE__*/template(`<div class="relative z-10" aria-labelledby="modal-title" role="dialog" aria-modal="true"><div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div><div class="fixed inset-0 z-10 overflow-y-auto"><div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0"><div class="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6"><div><div class="text-center"><p class="text-sm text-gray-500"></p></div></div></div></div></div></div>`);
 function MsgDialog(props) {
   return (() => {
-    const _el$ = _tmpl$$H.cloneNode(true),
+    const _el$ = _tmpl$$G.cloneNode(true),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling,
       _el$4 = _el$3.firstChild,
@@ -17282,7 +17338,7 @@ function MsgDialog(props) {
   })();
 }
 
-const _tmpl$$G = /*#__PURE__*/template(`<div id="tab_jobs" class="tabcontent px-6 mb-4"><div></div></div>`);
+const _tmpl$$F = /*#__PURE__*/template(`<div id="tab_jobs" class="tabcontent px-6 mb-4"><div></div></div>`);
 const {
   serverUrl: serverUrl$1,
   withCredentials
@@ -17366,7 +17422,7 @@ function TabJobs(props) {
     }
   }
   return (() => {
-    const _el$ = _tmpl$$G.cloneNode(true),
+    const _el$ = _tmpl$$F.cloneNode(true),
       _el$2 = _el$.firstChild;
     insert(_el$2, createComponent(PageNavigation, {
       get pageno() {
@@ -17621,7 +17677,7 @@ function createGlobalStates$1() {
 }
 const gvDetailCardState = createRoot(createGlobalStates$1);
 
-const _tmpl$$F = /*#__PURE__*/template(`<img class="w-20 rounded-lg">`),
+const _tmpl$$E = /*#__PURE__*/template(`<img class="w-20 rounded-lg">`),
   _tmpl$2$9 = /*#__PURE__*/template(`<p class="text-sm text-gray-500"></p>`),
   _tmpl$3$4 = /*#__PURE__*/template(`<span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Installed</span>`),
   _tmpl$4$3 = /*#__PURE__*/template(`<span class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">New</span>`),
@@ -17718,7 +17774,7 @@ function ModuleCard(props) {
           })();
         },
         get children() {
-          const _el$6 = _tmpl$$F.cloneNode(true);
+          const _el$6 = _tmpl$$E.cloneNode(true);
           createRenderEffect(() => setAttribute(_el$6, "src", `${serverUrl}/store/remotelogo?module=${props.moduleName}&store=${moduleInfo.store}`));
           return _el$6;
         }
@@ -17817,7 +17873,7 @@ function ModuleCard(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$E = /*#__PURE__*/template(`<div class="remote-module-filter-panel w-full mt-4 overflow-auto"><div class="store-filtered-modules"><h1 class="text-4xl font-extrabold dark:text-white">Welcome to Module Store!</h1><p class="mb-6 text-lg font-normal text-gray-500 lg:text-xl dark:text-gray-400">Ultimate store of genomic variant analysis modules</p><div class="mt-4 text-base pr-4"><p><span class="font-bold">All</span> tab lists all available modules. In <span class="font-bold">Tags</span> tab, modules can be searched by the tags provided by the developers of modules. To quickly see all the modules already installed in the system, click <span class="font-bold">Installed</span> tab. When an updated version of any of installed modules is available, <span class="font-bold">Updates available</span> tab will appear.</p><p class="mt-2">To install a module, hover on the module card and click <span class="font-bold">Install</span>. Module installation is queued at the bottom. If you cancel the installation of a module, click the module card in the queue area.</p><p class="mt-2">Below are some of popular modules for you to get started!</p><p class="my-2">For cancer research:</p><p class="mt-4 mb-2">For clinical implications of variants:</p><p class="mt-4 mb-2">For allele frequencies in different populations:</p><p class="mt-4 mb-2">For actionable gene-drug associations:</p><p class="mt-4 mb-2">For the prediction of varinat effect:</p></div><p class="mt-2">Look around and happy annotating!</p></div></div>`);
+const _tmpl$$D = /*#__PURE__*/template(`<div class="remote-module-filter-panel w-full mt-4 overflow-auto"><div class="store-filtered-modules"><h1 class="text-4xl font-extrabold dark:text-white">Welcome to Module Store!</h1><p class="mb-6 text-lg font-normal text-gray-500 lg:text-xl dark:text-gray-400">Ultimate store of genomic variant analysis modules</p><div class="mt-4 text-base pr-4"><p><span class="font-bold">All</span> tab lists all available modules. In <span class="font-bold">Tags</span> tab, modules can be searched by the tags provided by the developers of modules. To quickly see all the modules already installed in the system, click <span class="font-bold">Installed</span> tab. When an updated version of any of installed modules is available, <span class="font-bold">Updates available</span> tab will appear.</p><p class="mt-2">To install a module, hover on the module card and click <span class="font-bold">Install</span>. Module installation is queued at the bottom. If you cancel the installation of a module, click the module card in the queue area.</p><p class="mt-2">Below are some of popular modules for you to get started!</p><p class="my-2">For cancer research:</p><p class="mt-4 mb-2">For clinical implications of variants:</p><p class="mt-4 mb-2">For allele frequencies in different populations:</p><p class="mt-4 mb-2">For actionable gene-drug associations:</p><p class="mt-4 mb-2">For the prediction of varinat effect:</p></div><p class="mt-2">Look around and happy annotating!</p></div></div>`);
 function ModuleFilterPanelHome(props) {
   const {
     installQueue
@@ -17830,7 +17886,7 @@ function ModuleFilterPanelHome(props) {
     }
   }
   return (() => {
-    const _el$ = _tmpl$$E.cloneNode(true),
+    const _el$ = _tmpl$$D.cloneNode(true),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.nextSibling,
@@ -17941,14 +17997,14 @@ function ModuleFilterPanelHome(props) {
   })();
 }
 
-const _tmpl$$D = /*#__PURE__*/template(`<a href="#" class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value=""></a>`);
+const _tmpl$$C = /*#__PURE__*/template(`<a href="#" class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value=""></a>`);
 function SortOption(props) {
   function changeSort() {
     props.setSort(props.value);
     props.setShow(false);
   }
   return (() => {
-    const _el$ = _tmpl$$D.cloneNode(true);
+    const _el$ = _tmpl$$C.cloneNode(true);
     _el$.$$click = changeSort;
     insert(_el$, () => props.title);
     return _el$;
@@ -17956,10 +18012,10 @@ function SortOption(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$C = /*#__PURE__*/template(`<div class="option-list ease-in absolute right-0 z-10 mt-2 w-24 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="menu-button" tabindex="-1"><div class="py-1" role="none"></div></div>`);
+const _tmpl$$B = /*#__PURE__*/template(`<div class="option-list ease-in absolute right-0 z-10 mt-2 w-24 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="menu-button" tabindex="-1"><div class="py-1" role="none"></div></div>`);
 function SortSelect(props) {
   return (() => {
-    const _el$ = _tmpl$$C.cloneNode(true),
+    const _el$ = _tmpl$$B.cloneNode(true),
       _el$2 = _el$.firstChild;
     insert(_el$2, createComponent(SortOption, {
       value: "Name",
@@ -17986,14 +18042,14 @@ function SortSelect(props) {
   })();
 }
 
-const _tmpl$$B = /*#__PURE__*/template(`<div class="select-div relative inline-block text-left" value=""><div class="flex justify-center"><button name="sort" type="button" class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-1 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100"><span class="ml-2">Sort by </span></button></div></div>`);
+const _tmpl$$A = /*#__PURE__*/template(`<div class="select-div relative inline-block text-left" value=""><div class="flex justify-center"><button name="sort" type="button" class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-1 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100"><span class="ml-2">Sort by </span></button></div></div>`);
 function SortPanel(props) {
   const [show, setShow] = createSignal(false);
   function toggleShowSelect(_) {
     setShow(!show());
   }
   return (() => {
-    const _el$ = _tmpl$$B.cloneNode(true),
+    const _el$ = _tmpl$$A.cloneNode(true),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.firstChild;
@@ -18017,7 +18073,7 @@ function SortPanel(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$A = /*#__PURE__*/template(`<button type="button" class="graybutton inline-flex items-center rounded border border-transparent bg-gray-50 px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-300 focus:outline-none drop-shadow-lg"></button>`),
+const _tmpl$$z = /*#__PURE__*/template(`<button type="button" class="graybutton inline-flex items-center rounded border border-transparent bg-gray-50 px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-300 focus:outline-none drop-shadow-lg"></button>`),
   _tmpl$2$8 = /*#__PURE__*/template(`<div class="flex mb-2"><label for="search" class="sr-only">Search</label><input type="text" name="search" class="block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mr-2" placeholder="Search"><div class="relative flex text-xs font-medium text-gray-700 shadow-sm items-center"><div class="flex items-center mr-4"></div></div></div>`);
 function ModuleSearchPanel(props) {
   function updateSearchText(evt) {
@@ -18045,7 +18101,7 @@ function ModuleSearchPanel(props) {
         return props.showUninstalledOnly;
       },
       get children() {
-        const _el$6 = _tmpl$$A.cloneNode(true);
+        const _el$6 = _tmpl$$z.cloneNode(true);
         _el$6.$$click = onChangeUninstalledOnly;
         insert(_el$6, createComponent(Show, {
           get when() {
@@ -18089,7 +18145,7 @@ function ModuleSearchPanel(props) {
 }
 delegateEvents(["keyup", "click"]);
 
-const _tmpl$$z = /*#__PURE__*/template(`<div class="flex items-center justify-center"><p class="text-lg text-gray-700">No module met the criteria.</p></div>`),
+const _tmpl$$y = /*#__PURE__*/template(`<div class="flex items-center justify-center"><p class="text-lg text-gray-700">No module met the criteria.</p></div>`),
   _tmpl$2$7 = /*#__PURE__*/template(`<div></div>`);
 function ModuleDisplayPanel(props) {
   const {
@@ -18103,7 +18159,7 @@ function ModuleDisplayPanel(props) {
     }
   }
   function noModuleSection() {
-    return _tmpl$$z.cloneNode(true);
+    return _tmpl$$y.cloneNode(true);
   }
   return (() => {
     const _el$2 = _tmpl$2$7.cloneNode(true);
@@ -18171,7 +18227,7 @@ function ModuleDisplayPanel(props) {
   })();
 }
 
-const _tmpl$$y = /*#__PURE__*/template(`<div class="remote-module-filter-panel w-full mt-4 overflow-auto"></div>`);
+const _tmpl$$x = /*#__PURE__*/template(`<div class="remote-module-filter-panel w-full mt-4 overflow-auto"></div>`);
 const {
   getFilteredRemoteModules: getFilteredRemoteModules$1
 } = gvRemoteModules;
@@ -18192,7 +18248,7 @@ function ModuleFilterPanelAll(props) {
     }
   });
   return (() => {
-    const _el$ = _tmpl$$y.cloneNode(true);
+    const _el$ = _tmpl$$x.cloneNode(true);
     insert(_el$, createComponent(ModuleSearchPanel, {
       kind: "all",
       side: "remote",
@@ -18223,7 +18279,7 @@ function ModuleFilterPanelAll(props) {
   })();
 }
 
-const _tmpl$$x = /*#__PURE__*/template(`<div class="remote-module-filter-panel w-full mt-4 overflow-auto flex"><div class="store-filtered-modules col-span-1 flex flex-col justify-leading pl-1 overflow-y-auto w-[20rem]"></div><div class="ml-8 w-full"></div></div>`);
+const _tmpl$$w = /*#__PURE__*/template(`<div class="remote-module-filter-panel w-full mt-4 overflow-auto flex"><div class="store-filtered-modules col-span-1 flex flex-col justify-leading pl-1 overflow-y-auto w-[20rem]"></div><div class="ml-8 w-full"></div></div>`);
 const {
   getFilteredRemoteModules,
   remoteTags
@@ -18246,7 +18302,7 @@ function ModuleFilterPanelTags(props) {
     }
   });
   return (() => {
-    const _el$ = _tmpl$$x.cloneNode(true),
+    const _el$ = _tmpl$$w.cloneNode(true),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling;
     insert(_el$2, createComponent(For, {
@@ -18294,7 +18350,7 @@ function ModuleFilterPanelTags(props) {
   })();
 }
 
-const _tmpl$$w = /*#__PURE__*/template(`<div class="remote-module-filter-panel w-full mt-4 overflow-auto"></div>`);
+const _tmpl$$v = /*#__PURE__*/template(`<div class="remote-module-filter-panel w-full mt-4 overflow-auto"></div>`);
 const {
   getInstalledModules: getInstalledModules$1
 } = gvModuleInstallStates;
@@ -18307,7 +18363,7 @@ function ModuleFilterPanelInstalled(props) {
     setModuleNames(getInstalledModules$1(searchText(), selectedTypes(), null, null, sort()));
   });
   return (() => {
-    const _el$ = _tmpl$$w.cloneNode(true);
+    const _el$ = _tmpl$$v.cloneNode(true);
     insert(_el$, createComponent(ModuleSearchPanel, {
       kind: "install",
       side: "remote",
@@ -18333,7 +18389,7 @@ function ModuleFilterPanelInstalled(props) {
   })();
 }
 
-const _tmpl$$v = /*#__PURE__*/template(`<div class="remote-module-filter-panel w-full mt-4 overflow-auto"></div>`);
+const _tmpl$$u = /*#__PURE__*/template(`<div class="remote-module-filter-panel w-full mt-4 overflow-auto"></div>`);
 const {
   getInstalledModules
 } = gvModuleInstallStates;
@@ -18346,7 +18402,7 @@ function ModuleFilterPanelUpdate(props) {
     setModuleNames(getInstalledModules(searchText(), selectedTypes(), null, true, sort()));
   });
   return (() => {
-    const _el$ = _tmpl$$v.cloneNode(true);
+    const _el$ = _tmpl$$u.cloneNode(true);
     insert(_el$, createComponent(ModuleSearchPanel, {
       kind: "update",
       side: "remote",
@@ -18372,7 +18428,7 @@ function ModuleFilterPanelUpdate(props) {
   })();
 }
 
-const _tmpl$$u = /*#__PURE__*/template(`<button type="button" class="ml-4 inline-flex items-center px-5 py-2.5 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Updates available<span class="inline-flex justify-center items-center ml-2 w-4 h-4 text-xs font-semibold text-blue-800 bg-blue-200 rounded-full"></span></button>`),
+const _tmpl$$t = /*#__PURE__*/template(`<button type="button" class="ml-4 inline-flex items-center px-5 py-2.5 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Updates available<span class="inline-flex justify-center items-center ml-2 w-4 h-4 text-xs font-semibold text-blue-800 bg-blue-200 rounded-full"></span></button>`),
   _tmpl$2$6 = /*#__PURE__*/template(`<div class="analysis-module-filter-wrapper col-span-7 grow"><div class="w-full"><div class="inline-flex rounded-md shadow-sm" role="group"></div></div></div>`);
 const {
   updateAvailable,
@@ -18425,7 +18481,7 @@ function RemoteModuleFilterWrapper(props) {
         return updateAvailable() == true;
       },
       get children() {
-        const _el$4 = _tmpl$$u.cloneNode(true),
+        const _el$4 = _tmpl$$t.cloneNode(true),
           _el$5 = _el$4.firstChild,
           _el$6 = _el$5.nextSibling;
         _el$4.$$click = setFilterCategory;
@@ -18479,7 +18535,7 @@ function RemoteModuleFilterWrapper(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$t = /*#__PURE__*/template(`<img class="w-24 rounded-lg">`),
+const _tmpl$$s = /*#__PURE__*/template(`<img class="w-24 rounded-lg">`),
   _tmpl$2$5 = /*#__PURE__*/template(`<div class="group-hover:block absolute z-10 w-[6.5rem] h-[6.5rem]"><div class="install_pie absolute top-[1.25rem] left-[1.25rem]"></div></div>`),
   _tmpl$3$3 = /*#__PURE__*/template(`<div class="relative modulecard items-center rounded-lg border border-gray-300 bg-white shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:border-gray-400 flex items-center group h-[6.5rem] w-[6.5rem] shrink-0"><div class="flex justify-center items-center h-full w-full"></div><div class="group-hover:block hidden bg-gray-900/60 absolute z-20 w-full h-full"></div></div>`),
   _tmpl$4$2 = /*#__PURE__*/template(`<span class="break-all"></span>`);
@@ -18529,7 +18585,7 @@ function InstallQueueModuleCard(props) {
         })();
       },
       get children() {
-        const _el$3 = _tmpl$$t.cloneNode(true);
+        const _el$3 = _tmpl$$s.cloneNode(true);
         createRenderEffect(() => setAttribute(_el$3, "src", `${serverUrl}/store/remotelogo?module=${props.moduleName}&store=${moduleInfo.store}`));
         return _el$3;
       }
@@ -18610,13 +18666,13 @@ function InstallQueuePanel(props) {
   });
 }
 
-const _tmpl$$s = /*#__PURE__*/template(`<div class="flex-inline mr-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>`);
+const _tmpl$$r = /*#__PURE__*/template(`<div class="flex-inline mr-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>`);
 function InlineSpinner(props) {
   let width = props.width || 5;
   let height = props.height || 5;
   let stroke = props.stroke || "currentColor";
   return (() => {
-    const _el$ = _tmpl$$s.cloneNode(true),
+    const _el$ = _tmpl$$r.cloneNode(true),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild;
     setAttribute(_el$2, "class", `hide animate-spin ml-1 h-${width} w-${height} text-white m-auto`);
@@ -18626,10 +18682,10 @@ function InlineSpinner(props) {
   })();
 }
 
-const _tmpl$$r = /*#__PURE__*/template(`<div class="h-64 w-64 m-auto flex"><div class="m-auto flex flex-col"><div class="mb-4">Loading store modules...</div><div class="m-auto"></div></div></div>`);
+const _tmpl$$q = /*#__PURE__*/template(`<div class="h-64 w-64 m-auto flex"><div class="m-auto flex flex-col"><div class="mb-4">Loading store modules...</div><div class="m-auto"></div></div></div>`);
 function LoadingPanel() {
   return (() => {
-    const _el$ = _tmpl$$r.cloneNode(true),
+    const _el$ = _tmpl$$q.cloneNode(true),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.nextSibling;
@@ -18643,11 +18699,11 @@ function LoadingPanel() {
   })();
 }
 
-const _tmpl$$q = /*#__PURE__*/template(`<div role="tooltip" class="absolute inline-block z-10 p-4 text-sm font-medium text-gray-700 bg-gray-200 border border-gray-200 rounded-lg shadow-lg transition-opacity duration-300 tooltip dark:bg-gray-700 opacity-0 w-[24rem] break-word"><div class="tooltip-arrow" data-popper-arrow></div></div>`);
+const _tmpl$$p = /*#__PURE__*/template(`<div role="tooltip" class="absolute inline-block z-10 p-4 text-sm font-medium text-gray-700 bg-gray-200 border border-gray-200 rounded-lg shadow-lg transition-opacity duration-300 tooltip dark:bg-gray-700 opacity-0 w-[24rem] break-word"><div class="tooltip-arrow" data-popper-arrow></div></div>`);
 function Tooltip(props) {
   let tooltip;
   return (() => {
-    const _el$ = _tmpl$$q.cloneNode(true),
+    const _el$ = _tmpl$$p.cloneNode(true),
       _el$2 = _el$.firstChild;
     const _ref$ = tooltip;
     typeof _ref$ === "function" ? use(_ref$, _el$) : tooltip = _el$;
@@ -18672,7 +18728,7 @@ function Tooltip(props) {
   })();
 }
 
-const _tmpl$$p = /*#__PURE__*/template(`<div id="tab-store" class="tabcontent p-4 snap-y snap-mandatory h-screen overflow-y-auto flex flex-col"></div>`);
+const _tmpl$$o = /*#__PURE__*/template(`<div id="tab-store" class="tabcontent p-4 snap-y snap-mandatory h-screen overflow-y-auto flex flex-col"></div>`);
 function TabStore() {
   const {
     remoteModules
@@ -18691,7 +18747,7 @@ function TabStore() {
   const [tooltipTop, setTooltipTop] = createSignal(0);
   const [tooltipLeft, setTooltipLeft] = createSignal(null);
   return (() => {
-    const _el$ = _tmpl$$p.cloneNode(true);
+    const _el$ = _tmpl$$o.cloneNode(true);
     insert(_el$, createComponent(Show, {
       get when() {
         return !objectIsEmpty(moduleInstallStates);
@@ -18806,7 +18862,7 @@ function createGlobalStates() {
 }
 const gvUsers = createRoot(createGlobalStates);
 
-const _tmpl$$o = /*#__PURE__*/template(`<div class="mt-4"><h3 class="text-lg font-semibold">Users</h3><div class="rounded-lg bg-white shadow mt-2"><table class="w-full text-sm text-left text-gray-500 dark:text-gray-400"><thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"><tr><th scope="col" class="py-3 px-6">Email</th><th scope="col" class="py-3 px-6">Role</th></tr></thead><tbody></tbody></table></div></div>`),
+const _tmpl$$n = /*#__PURE__*/template(`<div class="mt-4"><h3 class="text-lg font-semibold">Users</h3><div class="rounded-lg bg-white shadow mt-2"><table class="w-full text-sm text-left text-gray-500 dark:text-gray-400"><thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"><tr><th scope="col" class="py-3 px-6">Email</th><th scope="col" class="py-3 px-6">Role</th></tr></thead><tbody></tbody></table></div></div>`),
   _tmpl$2$3 = /*#__PURE__*/template(`<span class="ml-2 inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Admin</span>`),
   _tmpl$3$2 = /*#__PURE__*/template(`<button type="button" class="invisible inline-flex items-center rounded border border-transparent bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-4 group-hover:visible">Remove admin</button>`),
   _tmpl$4$1 = /*#__PURE__*/template(`<button type="button" class="invisible inline-flex items-center rounded border border-transparent bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-4 group-hover:visible">Remove user</button>`),
@@ -18820,7 +18876,7 @@ function UserManagement() {
     removeUser
   } = gvUsers;
   return (() => {
-    const _el$ = _tmpl$$o.cloneNode(true),
+    const _el$ = _tmpl$$n.cloneNode(true),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling,
       _el$4 = _el$3.firstChild,
@@ -18882,7 +18938,7 @@ function UserManagement() {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$n = /*#__PURE__*/template(`<div class=""><h3 class="text-lg font-semibold mt-8 mb-2">Log</h3><button type="button" class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Download system log</button></div>`);
+const _tmpl$$m = /*#__PURE__*/template(`<div class=""><h3 class="text-lg font-semibold mt-8 mb-2">Log</h3><button type="button" class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Download system log</button></div>`);
 function LogPanel() {
   const {
     serverUrl
@@ -18906,7 +18962,7 @@ function LogPanel() {
     });
   }
   return (() => {
-    const _el$ = _tmpl$$n.cloneNode(true),
+    const _el$ = _tmpl$$m.cloneNode(true),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling;
     _el$3.$$click = getSystemLog;
@@ -18915,7 +18971,7 @@ function LogPanel() {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$m = /*#__PURE__*/template(`<div id="tab_system" class="tabcontent"><div class="p-4"></div></div>`);
+const _tmpl$$l = /*#__PURE__*/template(`<div id="tab_system" class="tabcontent"><div class="p-4"></div></div>`);
 function TabSystem() {
   const {
     tabName
@@ -18924,7 +18980,7 @@ function TabSystem() {
     multiuser
   } = gvMultiuser;
   return (() => {
-    const _el$ = _tmpl$$m.cloneNode(true),
+    const _el$ = _tmpl$$l.cloneNode(true),
       _el$2 = _el$.firstChild;
     insert(_el$2, createComponent(Show, {
       get when() {
@@ -18940,7 +18996,7 @@ function TabSystem() {
   })();
 }
 
-const _tmpl$$l = /*#__PURE__*/template(`<div id="tab_account" class="tabcontent p-4"><p class="text-gray-600"></p><button type="button" class="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-3 py-2 text-sm font-medium leading-4 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 mt-2">Logout</button></div>`);
+const _tmpl$$k = /*#__PURE__*/template(`<div id="tab_account" class="tabcontent p-4"><p class="text-gray-600"></p><button type="button" class="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-3 py-2 text-sm font-medium leading-4 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 mt-2">Logout</button></div>`);
 const {
   tabName
 } = gvTabName;
@@ -18957,7 +19013,7 @@ function TabAccount() {
     });
   }
   return (() => {
-    const _el$ = _tmpl$$l.cloneNode(true),
+    const _el$ = _tmpl$$k.cloneNode(true),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling;
     insert(_el$2, email);
@@ -18968,7 +19024,7 @@ function TabAccount() {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$k = /*#__PURE__*/template(`<main class="h-screen md:pl-36 flex flex-col flex-1"><div></div></main>`);
+const _tmpl$$j = /*#__PURE__*/template(`<main class="h-screen md:pl-36 flex flex-col flex-1"><div></div></main>`);
 function Content() {
   const [jobsTrigger, setJobsTrigger] = createSignal(false);
   const {
@@ -18978,7 +19034,7 @@ function Content() {
     admin
   } = gvLogin;
   return (() => {
-    const _el$ = _tmpl$$k.cloneNode(true),
+    const _el$ = _tmpl$$j.cloneNode(true),
       _el$2 = _el$.firstChild;
     insert(_el$2, createComponent(TabHome, {}), null);
     insert(_el$2, createComponent(TabSubmit, {
@@ -21821,11 +21877,11 @@ marked.parseInline;
 Parser.parse;
 Lexer.lex;
 
-const _tmpl$$j = /*#__PURE__*/template(`<div><table class="w-full text-sm text-left text-gray-500 dark:text-gray-400 mt-4"><thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"><tr><th scope="col" class="py-3 px-6">Name</th><th scope="col" class="py-3 px-6">Type</th><th scope="col" class="py-3 px-6">Description</th></tr></thead><tbody></tbody></table></div>`),
+const _tmpl$$i = /*#__PURE__*/template(`<div><table class="w-full text-sm text-left text-gray-500 dark:text-gray-400 mt-4"><thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"><tr><th scope="col" class="py-3 px-6">Name</th><th scope="col" class="py-3 px-6">Type</th><th scope="col" class="py-3 px-6">Description</th></tr></thead><tbody></tbody></table></div>`),
   _tmpl$2$2 = /*#__PURE__*/template(`<tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700"><th scope="row" class="py-4 px-6 font-medium text-gray-900 whitespace-nowrap dark:text-white"></th><td class="py-4 px-6"></td><td class="py-4 px-6"></td></tr>`);
 function DetailCardOutputTable(props) {
   return (() => {
-    const _el$ = _tmpl$$j.cloneNode(true),
+    const _el$ = _tmpl$$i.cloneNode(true),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.nextSibling;
@@ -21860,10 +21916,10 @@ function DetailCardOutputTable(props) {
   })();
 }
 
-const _tmpl$$i = /*#__PURE__*/template(`<div><h3 class="text-lg font-semibold mt-8">Developer information</h3><div class="overflow-hidden bg-white shadow sm:rounded-lg mt-4"><div class="border-t border-gray-200 px-4 py-5 sm:px-6"><dl class="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2"><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Name</dt><dd class="mt-1 text-sm text-gray-900"></dd></div><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Organization</dt><dd class="mt-1 text-sm text-gray-900"></dd></div><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Email address</dt><dd class="mt-1 text-sm text-gray-900"><a></a></dd></div><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Website</dt><dd class="mt-1 text-sm text-gray-900"><a></a></dd></div><div class="sm:col-span-2"><dt class="text-sm font-medium text-gray-500">Citation</dt><dd class="mt-1 text-sm text-gray-900"></dd></div></dl></div></div> </div>`);
+const _tmpl$$h = /*#__PURE__*/template(`<div><h3 class="text-lg font-semibold mt-8">Developer information</h3><div class="overflow-hidden bg-white shadow sm:rounded-lg mt-4"><div class="border-t border-gray-200 px-4 py-5 sm:px-6"><dl class="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2"><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Name</dt><dd class="mt-1 text-sm text-gray-900"></dd></div><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Organization</dt><dd class="mt-1 text-sm text-gray-900"></dd></div><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Email address</dt><dd class="mt-1 text-sm text-gray-900"><a></a></dd></div><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Website</dt><dd class="mt-1 text-sm text-gray-900"><a></a></dd></div><div class="sm:col-span-2"><dt class="text-sm font-medium text-gray-500">Citation</dt><dd class="mt-1 text-sm text-gray-900"></dd></div></dl></div></div> </div>`);
 function DetailCardDeveloper(props) {
   return (() => {
-    const _el$ = _tmpl$$i.cloneNode(true),
+    const _el$ = _tmpl$$h.cloneNode(true),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling,
       _el$4 = _el$3.firstChild,
@@ -21904,10 +21960,10 @@ function DetailCardDeveloper(props) {
   })();
 }
 
-const _tmpl$$h = /*#__PURE__*/template(`<div><h3 class="text-lg font-semibold mt-8">Data information</h3><div class="overflow-hidden bg-white shadow sm:rounded-lg mt-4"><div class="border-t border-gray-200 px-4 py-5 sm:px-6"><dl class="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2"><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Name</dt><dd class="mt-1 text-sm text-gray-900"></dd></div><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Organization</dt><dd class="mt-1 text-sm text-gray-900"></dd></div><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Email address</dt><dd class="mt-1 text-sm text-gray-900"><a></a></dd></div><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Website</dt><dd class="mt-1 text-sm text-gray-900"><a></a></dd></div><div class="sm:col-span-2"><dt class="text-sm font-medium text-gray-500">Citation</dt><dd class="mt-1 text-sm text-gray-900"></dd></div></dl></div></div> </div>`);
+const _tmpl$$g = /*#__PURE__*/template(`<div><h3 class="text-lg font-semibold mt-8">Data information</h3><div class="overflow-hidden bg-white shadow sm:rounded-lg mt-4"><div class="border-t border-gray-200 px-4 py-5 sm:px-6"><dl class="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2"><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Name</dt><dd class="mt-1 text-sm text-gray-900"></dd></div><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Organization</dt><dd class="mt-1 text-sm text-gray-900"></dd></div><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Email address</dt><dd class="mt-1 text-sm text-gray-900"><a></a></dd></div><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Website</dt><dd class="mt-1 text-sm text-gray-900"><a></a></dd></div><div class="sm:col-span-2"><dt class="text-sm font-medium text-gray-500">Citation</dt><dd class="mt-1 text-sm text-gray-900"></dd></div></dl></div></div> </div>`);
 function DetailCardData(props) {
   return (() => {
-    const _el$ = _tmpl$$h.cloneNode(true),
+    const _el$ = _tmpl$$g.cloneNode(true),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling,
       _el$4 = _el$3.firstChild,
@@ -21948,7 +22004,7 @@ function DetailCardData(props) {
   })();
 }
 
-const _tmpl$$g = /*#__PURE__*/template(`<div class="absolute w-full h-full bg-white opacity-1 top-0 left-0 z-30"><div class="absolute opacity-1 top-[5vh] left-[10vw] w-[80vw] h-[80vh] overflow-auto bg-gray-50 z-30 m-4 p-8"><img class="w-0 top-0 right-0 rounded-lg"><div class="-ml-1 mb-2"><span class="relative inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800"></span><span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800"></span><span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Installed</span><span class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">Update available</span></div><div class="readme opacity-1 list-decimal mb-8"></div><h3 class="text-lg font-semibold">Module output</h3></div><div class="absolute top-0 right-0 cursor-pointer"></div></div>`);
+const _tmpl$$f = /*#__PURE__*/template(`<div class="absolute w-full h-full bg-white opacity-1 top-0 left-0 z-30"><div class="absolute opacity-1 top-[5vh] left-[10vw] w-[80vw] h-[80vh] overflow-auto bg-gray-50 z-30 m-4 p-8"><img class="w-0 top-0 right-0 rounded-lg"><div class="-ml-1 mb-2"><span class="relative inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800"></span><span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800"></span><span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Installed</span><span class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">Update available</span></div><div class="readme opacity-1 list-decimal mb-8"></div><h3 class="text-lg font-semibold">Module output</h3></div><div class="absolute top-0 right-0 cursor-pointer"></div></div>`);
 
 /*var markdownConverter = new showdown.Converter({
   tables: true,
@@ -22009,7 +22065,7 @@ function DetailCard() {
       return createMemo(() => !!showDetailCard())() && markdown() != null;
     },
     get children() {
-      const _el$ = _tmpl$$g.cloneNode(true),
+      const _el$ = _tmpl$$f.cloneNode(true),
         _el$2 = _el$.firstChild,
         _el$3 = _el$2.firstChild,
         _el$4 = _el$3.nextSibling,
@@ -22061,30 +22117,6 @@ function DetailCard() {
       return _el$;
     }
   });
-}
-delegateEvents(["click"]);
-
-const _tmpl$$f = /*#__PURE__*/template(`<div class="relative z-10" aria-labelledby="modal-title" role="dialog" aria-modal="true"><div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div><div class="fixed inset-0 z-10 overflow-y-auto"><div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0"><div class="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6"><div><div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100"><svg class="h-6 w-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path></svg></div><div class="mt-3 text-center sm:mt-5"><h3 class="text-lg font-medium leading-6 text-gray-900"></h3><div class="mt-2"><p class="text-sm text-gray-500"></p></div></div></div><div class="mt-5 sm:mt-6"><button type="button" class="inline-flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:text-sm">Dismiss</button></div></div></div></div></div>`);
-function OkDialog(props) {
-  return (() => {
-    const _el$ = _tmpl$$f.cloneNode(true),
-      _el$2 = _el$.firstChild,
-      _el$3 = _el$2.nextSibling,
-      _el$4 = _el$3.firstChild,
-      _el$5 = _el$4.firstChild,
-      _el$6 = _el$5.firstChild,
-      _el$7 = _el$6.firstChild,
-      _el$8 = _el$7.nextSibling,
-      _el$9 = _el$8.firstChild,
-      _el$10 = _el$9.nextSibling,
-      _el$11 = _el$10.firstChild,
-      _el$12 = _el$6.nextSibling,
-      _el$13 = _el$12.firstChild;
-    insert(_el$9, () => props.title);
-    insert(_el$11, () => props.text);
-    addEventListener(_el$13, "click", props.callback, true);
-    return _el$;
-  })();
 }
 delegateEvents(["click"]);
 
