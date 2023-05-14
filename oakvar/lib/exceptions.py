@@ -17,7 +17,7 @@ class NoGenomeException(ExpectedException):
     halt = True
 
     def __init__(self):
-        super().__init__("genome assembly should be selected.")
+        super().__init__("Genome assembly should be selected.")
 
 
 class InvalidGenomeAssembly(ExpectedException):

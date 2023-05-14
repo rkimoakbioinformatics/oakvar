@@ -54,6 +54,7 @@ class Runner(object):
         self.endlevel = self.runlevels["postaggregator"]
         self.cleandb = False
         self.excludes = []
+        self.converter_name: Optional[str] = ""
         self.preparer_names = []
         self.mapper_name: Optional[str] = None
         self.annotator_names = []
@@ -65,18 +66,13 @@ class Runner(object):
         self.annotators: Dict[str, LocalModule] = {}
         self.postaggregators = {}
         self.reporters = {}
-        self.crvinput = None
-        self.crxinput = None
-        self.crginput = None
-        self.crv_present = False
-        self.crx_present = False
-        self.crg_present = False
         self.ignore_sample = False
         self.fill_in_missing_ref = False
         self.total_num_converted_variants = None
         self.total_num_valid_variants = None
         self.converter_format: Optional[List[str]] = None
         self.converter_controller_i: Optional[ConverterController] = None
+        self.mapper_i: Optional[BaseMapper] = None
         self.genemapper = None
         self.append_mode = []
         self.exception = None
@@ -291,6 +287,7 @@ class Runner(object):
             raise
         self.sanity_check_run_name_output_dir()
         self.converter_controller_i = self.prep_converter()
+        self.prep_mapper()
         await self.setup_manager()
         for run_no in range(len(self.run_name)):
             try:
@@ -356,6 +353,7 @@ class Runner(object):
             raise SetupError()
         self.cleandb = self.args.cleandb
         self.set_self_inputs()  # self.input_paths is list.
+        self.set_and_create_output_dir()  # self.output_dir is list.
         self.set_run_name()  # self.run_name is list.
         self.set_job_name()  # self.job_name is list.
         self.set_append_mode()  # self.append_mode is list.
@@ -369,7 +367,6 @@ class Runner(object):
         self.sort_postaggregators()
         self.set_reporters()
         self.set_start_end_levels()
-        self.set_and_create_output_dir()  # self.output_dir is list.
 
     def make_self_args_considering_package_conf(self, args):
         from types import SimpleNamespace
@@ -566,31 +563,8 @@ class Runner(object):
         db.close()
 
     def set_append_mode(self):
-        import shutil
-        from pathlib import Path
-
-        if not self.input_paths:
-            raise
-        if not self.run_name or not self.output_dir or not self.args:
-            raise
-        self.append_mode = [False] * len(self.run_name)
-        for run_no in range(len(self.run_name)):
-            inp = self.input_paths[run_no]
-            run_name = self.run_name[run_no]
-            output_dir = self.output_dir[run_no]
-            if not Path(inp).suffix == ".sqlite":
-                continue
-            self.append_mode[run_no] = True
-            if run_name.endswith(".sqlite"):
-                self.run_name[run_no] = run_name[:-7]
-            if "converter" not in self.args.skip:
-                self.args.skip.append("converter")
-            if "mapper" not in self.args.skip:
-                self.args.skip.append("mapper")
-            target_name = run_name + ".sqlite"
-            target_path = Path(output_dir) / target_name
-            shutil.copyfile(inp, target_path)
-            self.input_paths[run_no] = str(target_path)
+        self.append_mode = [False] * len(self.input_paths)
+        # TODO: change the below for df workflow.
 
     def set_genome_assemblies(self):
         if self.run_name:
@@ -602,44 +576,19 @@ class Runner(object):
         from pathlib import Path
         from os import getcwd
         from os import mkdir
-        from ..exceptions import ArgumentError
 
         if not self.args or not self.input_paths:
             raise
         cwd = getcwd()
-        if not self.args.output_dir:
-            if self.args.combine_input:
+        if self.args.combine_input:
+            if self.args.output_dir:
+                self.output_dir = [self.args.output_dir]
+            else:
                 self.output_dir = [cwd]
-            else:
-                self.output_dir = [
-                    str(Path(inp).resolve().parent) for inp in self.input_paths
-                ]
         else:
-            if self.args.combine_input:
-                if len(self.args.output_dir) != 1:
-                    raise ArgumentError(
-                        msg="-d should have one value when --combine-input is used."
-                    )
-                self.output_dir = [
-                    str(Path(v).absolute()) for v in self.args.output_dir
-                ]
-            else:
-                if self.args.combine_input:
-                    if len(self.args.output_dir) != 1:
-                        raise ArgumentError(
-                            msg="-d should have one value when --combine-input is used."
-                        )
-                    self.output_dir = [
-                        str(Path(v).resolve()) for v in self.args.output_dir
-                    ]
-                else:
-                    if len(self.args.output_dir) != len(self.input_paths):
-                        raise ArgumentError(
-                            msg="-d should have the same number of values as inputs."
-                        )
-                    self.output_dir = [
-                        str(Path(v).resolve()) for v in self.args.output_dir
-                    ]
+            self.output_dir = [
+                str(Path(inp[0]).resolve().parent) for inp in self.input_paths
+            ]
         for output_dir in self.output_dir:
             if not Path(output_dir).exists():
                 mkdir(output_dir)
@@ -677,6 +626,7 @@ class Runner(object):
         from pathlib import Path
         from ..exceptions import ArgumentError
 
+        print(f"@ args={self.args}")
         if not self.args or not self.output_dir:
             raise
         if not self.args.run_name:
@@ -1514,7 +1464,9 @@ class Runner(object):
         self.info_json["job_name"] = self.args.job_name
         self.info_json["run_name"] = run_name
         self.info_json["db_path"] = str(Path(output_dir) / (run_name + ".sqlite"))
-        self.info_json["orig_input_fname"] = [Path(x).name for x in self.input_paths]
+        self.info_json["orig_input_fname"] = []
+        for inp_l in self.input_paths:
+            self.info_json["orig_input_fname"].extend([Path(x).name for x in inp_l])
         self.info_json["orig_input_path"] = self.input_paths
         self.info_json["submission_time"] = datetime.now().isoformat()
         self.info_json["viewable"] = False
@@ -1899,15 +1851,11 @@ class Runner(object):
     def prep_converter(self) -> ConverterController:
         from .converter_controller import ConverterController
 
-        if (
-            not self.args
-            or not self.input_paths
-            or not self.run_name
-            or not self.output_dir
-        ):
+        if not self.args:
             raise
         converter_controller = ConverterController(
             genome=self.args.genome,
+            converter_name=self.args.converter_name,
             input_format=self.args.input_format,
             serveradmindb=self.serveradmindb,
             ignore_sample=self.ignore_sample,
@@ -1915,6 +1863,13 @@ class Runner(object):
             outer=self.outer,
         )
         return converter_controller
+
+    def prep_mapper(self):
+        from ..util.module import get_mapper
+
+        if not self.mapper:
+            return
+        self.mapper_i = get_mapper(self.mapper.name)
 
     def do_step_converter(self, run_no: int):
         if not self.converter_controller_i:
@@ -1930,9 +1885,9 @@ class Runner(object):
         await self.log_time_of_func(self.run_preparers, run_no, work=f"{step} step")
 
     def do_step_mapper(self, df: pl.DataFrame) -> pl.DataFrame:
-        if not self.mapper:
+        if not self.mapper_i:
             return df
-        df = self.mapper.run_df(df)
+        df = self.mapper_i.run_df(df)
         print(f"@ after mapper")
         df.glimpse()
         return df

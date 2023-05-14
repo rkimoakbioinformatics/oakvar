@@ -236,6 +236,13 @@ def add_parser_ov_run(subparsers):
         "-f", dest="filterpath", default=None, help="Path to a filter file"
     )
     parser_ov_run.add_argument(
+        "--converter",
+        dest="converter_name",
+        nargs="+",
+        default=[],
+        help="Converter module name or converter module directory",
+    )
+    parser_ov_run.add_argument(
         "--pp",
         dest="preparers",
         nargs="+",

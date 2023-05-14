@@ -2,6 +2,7 @@ from typing import Any
 from typing import Optional
 from typing import List
 from typing import Dict
+from typing import Tuple
 from oakvar.lib.base.converter import BaseConverter
 from re import compile
 from liftover import ChainFile # type: ignore
@@ -16,204 +17,10 @@ chromdict = {
 }
 base_re = compile("^[ATGC]+|[-]+$")
 
-def handle_genotype(variant):
-    if "genotype" in variant and "." in variant["genotype"]:
-        variant["genotype"] = variant["genotype"].replace(".", variant["ref_base"])
-
-def flush_err_holder(err_holder: list, error_logger, force: bool=False):
-    if len(err_holder) > 1000 or force:
-        for err_line in err_holder:
-            error_logger.error(err_line)
-        err_holder.clear()
-
-def _log_conversion_error(logger, error_logger, input_path: str, line_no: int, e, unique_excs: dict, err_holder: list):
-    from traceback import format_exc
-    from oakvar.lib.exceptions import ExpectedException
-    from oakvar.lib.exceptions import NoAlternateAllele
-
-    if isinstance(e, NoAlternateAllele):
-        return
-    if isinstance(e, ExpectedException):
-        err_str = str(e)
-    else:
-        err_str = format_exc().rstrip()
-    if err_str not in unique_excs:
-        err_no = len(unique_excs)
-        unique_excs[err_str] = err_no
-        logger.error(f"Error [{err_no}]: {input_path}: {err_str}")
-        err_holder.append(f"{err_no}:{line_no}\t{str(e)}")
-    else:
-        err_no = unique_excs[err_str]
-        err_holder.append(f"{err_no}:{line_no}\t{str(e)}")
-    flush_err_holder(err_holder, error_logger)
-
-def is_chrM(wdict):
-    return wdict["chrom"] == "chrM"
-
-def perform_liftover_if_needed(variant, do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader) -> Optional[Dict[str, Any]]:
-    from copy import copy
-    from oakvar.lib.util.seq import liftover_one_pos
-    from oakvar.lib.util.seq import liftover
-
-    if is_chrM(variant):
-        needed = do_liftover_chrM
-    else:
-        needed = do_liftover
-    if needed:
-        prelift_wdict = copy(variant)
-        crl_data = prelift_wdict
-        (
-            variant["chrom"],
-            variant["pos"],
-            variant["ref_base"],
-            variant["alt_base"],
-        ) = liftover(
-            variant["chrom"],
-            int(variant["pos"]),
-            variant["ref_base"],
-            variant["alt_base"],
-            lifter=lifter,
-            wgs_reader=wgs_reader,
-        )
-        converted_end = liftover_one_pos(
-            variant["chrom"], variant["end_pos"], lifter=lifter
-        )
-        if converted_end is None:
-            end_pos = ""
-        else:
-            end_pos = converted_end[1]
-        variant["end_pos"] = end_pos
-    else:
-        crl_data = None
-    return crl_data
-
-def add_end_pos_if_absent(variant: dict):
-    col_name = "end_pos"
-    if col_name not in variant:
-        ref_base = variant["ref_base"]
-        ref_len = len(ref_base)
-        if ref_len == 1:
-            variant[col_name] = variant["pos"]
-        else:
-            variant[col_name] = variant["pos"] + ref_len - 1
-
-def normalize_variant(variant):
-    from oakvar.lib.util.seq import normalize_variant_left
-
-    p, r, a = (
-        int(variant["pos"]),
-        variant["ref_base"],
-        variant["alt_base"],
-    )
-    (
-        new_pos,
-        new_ref,
-        new_alt,
-    ) = normalize_variant_left("+", p, r, a)
-    variant["pos"] = new_pos
-    variant["ref_base"] = new_ref
-    variant["alt_base"] = new_alt
-
-def check_invalid_base(variant: dict):
-    from oakvar.lib.exceptions import IgnoredVariant
-
-    if not base_re.fullmatch(variant["ref_base"]):
-        raise IgnoredVariant(f"Invalid reference base {variant['ref_base']}")
-    if not base_re.fullmatch(variant["alt_base"]):
-        raise IgnoredVariant(f"Invalid alternate base {variant['alt_base']}")
-
-def handle_ref_base(variant, wgs_reader):
-    from oakvar.lib.exceptions import IgnoredVariant
-
-    if "ref_base" not in variant or variant["ref_base"] in [
-        "",
-        ".",
-    ]:
-        variant["ref_base"] = wgs_reader.get_bases(
-            variant.get("chrom"), int(variant["pos"])
-        ).upper()
-    else:
-        ref_base = variant["ref_base"]
-        if ref_base == "" and variant["alt_base"] not in [
-            "A",
-            "T",
-            "C",
-            "G",
-        ]:
-            raise IgnoredVariant("Reference base required for non SNV")
-        elif ref_base is None or ref_base == "":
-            variant["ref_base"] = wgs_reader.get_bases(
-                variant.get("chrom"), int(variant.get("pos"))
-            )
-
-def handle_chrom(variant):
-    from oakvar.lib.exceptions import IgnoredVariant
-
-    if not variant.get("chrom"):
-        raise IgnoredVariant("No chromosome")
-    if not variant.get("chrom").startswith("chr"):
-        variant["chrom"] = "chr" + variant.get("chrom")
-    variant["chrom"] = chromdict.get(
-        variant.get("chrom"), variant.get("chrom")
-    )
-
-def is_unique_variant(variant: dict, unique_vars: dict) -> bool:
-    return variant["var_no"] not in unique_vars
-
-def handle_variant(
-        variant: dict, unique_vars: dict, do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, line_no: int, num_valid_error_lines: Dict[str, int]
-) -> Optional[Dict[str, Any]]:
-    from oakvar.lib.exceptions import NoVariantError
-
-    if variant["ref_base"] == variant["alt_base"]:
-        raise NoVariantError()
-    tags = variant.get("tags")
-    unique = is_unique_variant(variant, unique_vars)
-    if unique:
-        variant["unique"] = True
-        unique_vars[variant["var_no"]] = True
-        handle_chrom(variant)
-        handle_ref_base(variant, wgs_reader)
-        check_invalid_base(variant)
-        normalize_variant(variant)
-        add_end_pos_if_absent(variant)
-        crl_data = perform_liftover_if_needed(variant, do_liftover, do_liftover_chrM, lifter, wgs_reader)
-        num_valid_error_lines["valid"] += 1
-    else:
-        variant["unique"] = False
-        crl_data = None
-    handle_genotype(variant)
-    if unique:
-        variant["original_line"] = line_no
-        variant["tags"] = tags
-    return crl_data
-
-def handle_converted_variants(
-        variants: List[Dict[str, Any]], do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, logger, error_logger, input_path: str, unique_excs: dict, err_holder: list, line_no: int, num_valid_error_lines: Dict[str, int]
-):
-    from oakvar.lib.exceptions import IgnoredVariant
-
-    if variants is BaseConverter.IGNORE:
-        return None, None
-    if not variants:
-        raise IgnoredVariant("No valid alternate allele was found in any samples.")
-    unique_vars = {}
-    variant_l: List[Dict[str, Any]] = []
-    crl_l: List[Dict[str, Any]] = []
-    for variant in variants:
-        try:
-            crl_data = handle_variant(variant, unique_vars, do_liftover, do_liftover_chrM, lifter, wgs_reader, line_no, num_valid_error_lines)
-        except Exception as e:
-            _log_conversion_error(logger, error_logger, input_path, line_no, e, unique_excs, err_holder)
-            continue
-        variant_l.append(variant)
-        if crl_data:
-            crl_l.append(crl_data)
-    return variant_l, crl_l
-
 class ConverterController(object):
     def __init__(
         self,
+        converter_name: Optional[str] = None,
         input_format: Optional[str] = None,
         run_name: Optional[str] = None,
         output_dir: Optional[str] = None,
@@ -229,16 +36,10 @@ class ConverterController(object):
     ):
         from re import compile
         from oakvar import get_wgs_reader
-        from oakvar.lib.exceptions import ExpectedException
         from oakvar.lib.base.commonmodule import BaseCommonModule
 
         self.logger = None
-        self.crv_writer = None
-        self.crs_writer = None
-        self.crm_writer = None
-        self.crl_writer = None
         self.converters = {}
-        self.available_input_formats = []
         self.input_file_encodings: Dict[str, str] = {}
         self.output_base_fname: Optional[str] = None
         self.error_logger = None
@@ -275,11 +76,11 @@ class ConverterController(object):
             "chr23": "chrX",
             "chr24": "chrY",
         }
-        self.format = input_format
+        self.converter_name: Optional[str] = converter_name
+        self.input_format = input_format
         self.run_name = run_name
         self.output_dir = output_dir
         self.genome = genome
-        self.parse_inputs()
         self.given_input_assembly = genome
         self.conf: Dict = {}
         self.module_options = module_options
@@ -295,127 +96,56 @@ class ConverterController(object):
         self.time_error_written: float = 0
         self.mp = mp
 
-    def get_genome_assembly(self, converter) -> str:
-        from oakvar.lib.system.consts import default_assembly_key
-        from oakvar.lib.exceptions import NoGenomeException
-        from oakvar.lib.system import get_user_conf
-
-        if self.given_input_assembly:
-            return self.given_input_assembly
-        input_assembly = getattr(converter, "input_assembly", None)
-        if input_assembly:
-            return input_assembly
-        user_conf = get_user_conf() or {}
-        genome_assembly = user_conf.get(default_assembly_key, None)
-        if genome_assembly:
-            return genome_assembly
-        raise NoGenomeException()
-
-    def set_do_liftover(self, genome_assembly, converter, input_path):
-        self.do_liftover = genome_assembly != 38
-        if hasattr(converter, "get_do_liftover_chrM"):
-            self.do_liftover_chrM = converter.get_do_liftover_chrM(
-                genome_assembly, input_path, self.do_liftover
-            )
-        else:
-            self.do_liftover_chrM = self.do_liftover
-        if self.logger:
-            self.logger.info(f"liftover needed: {self.do_liftover}")
-            self.logger.info(f"liftover for chrM needed: {self.do_liftover_chrM}")
-
-    def setup_lifter(self, genome_assembly) -> Optional[ChainFile]:
-        from oakvar.lib.util.seq import get_lifter
-
-        self.lifter = get_lifter(source_assembly=genome_assembly)
-
-    def get_file_object_for_input_path(self, input_path: str):
-        from pathlib import Path
-        from oakvar.lib.util.util import detect_encoding
-
-        suffix = Path(input_path).suffix
-        # TODO: Remove the hardcoding.
-        if suffix in [".parquet"]:
-            encoding = ""
-        else:
-            if self.input_encoding:
-                encoding = self.input_encoding
-            else:
-                if self.logger:
-                    self.logger.info(f"detecting encoding of {input_path}")
-                encoding = detect_encoding(input_path)
-        if self.logger:
-            self.logger.info(f"encoding: {input_path} {encoding}")
-        return encoding
-
-    def collect_input_file_encodings(self):
-        if not self.input_paths:
-            raise
-        for input_path in self.input_paths:
-            encoding = self.get_file_object_for_input_path(input_path)
-            self.input_file_encodings[input_path] = encoding
-
-    def setup(self):
-        self.collect_converters()
-        self.collect_input_file_encodings()
-        self.check_input_format()
-        self.collect_converter_by_input()
-        #self.collect_extra_output_columns()
-        #self.open_output_files()
-
     def setup_logger(self):
         from logging import getLogger
 
         self.logger = getLogger("oakvar.converter")
         self.error_logger = getLogger("err.converter")
 
-    def collect_converters(self):
+    def choose_converter(self, input_paths: List[str]) -> Optional[BaseConverter]:
         from oakvar.lib.module.local import get_local_module_infos_of_type
+        from oakvar.lib.module.local import get_local_module_info
+        from oakvar.lib.module.local import LocalModule
         from ..util.module import get_converter_class
+        import traceback
 
-        for module_name, module_info in get_local_module_infos_of_type(
-            "converter"
-        ).items():
+
+        chosen_converter: Optional[BaseConverter] = None
+        module_infos: List[LocalModule] = []
+        if self.converter_name:
+            module_info = get_local_module_info(self.converter_name)
+            if module_info is None:
+                raise Exception(f" {self.converter_name} does not exist. Please check --converter-name option was given correctly, or consider installing {self.converter_name} module with \"ov module install {self.converter_name}\" command, if the module is in the OakVar store.")
+            module_infos.append(module_info)
+        elif self.input_format:
+            module_name = self.input_format + "-converter"
+            module_info = get_local_module_info(module_name)
+            if module_info is None:
+                raise Exception(module_name + f" does not exist. Please check --input-format option was given correctly, or consider installing {module_name} module with \"ov module install {module_name}\" command, if the module is in the OakVar store.")
+            module_infos.append(module_info)
+        else:
+            module_infos = list(get_local_module_infos_of_type("converter").values())
+        for module_info in module_infos:
             try:
-                cls = get_converter_class(module_name)
-                converter = cls(inputs=self.input_paths, code_version=module_info.version)
+                cls = get_converter_class(module_info.name)
+                converter = cls(wgs_reader=self.wgs_reader)
             except Exception as e:
-                import traceback
-
                 if self.logger:
-                    self.logger.error(f"{traceback.format_exc()}\nSkipping {module_name} as it could not be loaded. ({e})")
+                    self.logger.error(f"{traceback.format_exc()}\nSkipping {module_info.name} as it could not be loaded. ({e})")
                 continue
-            # TODO: backward compatibility
-            format_name: str = module_info.conf.get("format_name", "")
-            # end of backward compatibility
-            if format_name:
-                converter.format_name = format_name
-            elif not hasattr(converter, "format_name"):
-                converter.format_name = module_name.split("-")[0]
-            if not converter.format_name:
-                if self.logger:
-                    self.logger.info(
-                        f"Skipping {module_info.name} as it does not "
-                        + "have format_name defined."
-                    )
-                continue
-            if converter.format_name not in self.converters:
-                self.converters[converter.format_name] = converter
-            else:
-                if self.outer:
-                    self.outer.error(
-                        f"{module_info.name} is skipped because "
-                        + f"{converter.format_name} is already handled by "
-                        + f"{self.converters[converter.format_name].name}."
-                    )
-                continue
-        self.available_input_formats = list(self.converters.keys())
-
-    def collect_converter_by_input(self):
-        if not self.input_paths:
-            return
-        for input_path in self.input_paths:
-            converter = self.get_converter_for_input_file(input_path)
-            self.converter_by_input_path[input_path] = converter
+            try:
+                check_success = converter.check_format(input_paths[0])
+            except Exception:
+                if self.error_logger:
+                    self.error_logger.error(traceback.format_exc())
+                check_success = False
+            if check_success:
+                chosen_converter = converter
+                break
+        if chosen_converter:
+            if self.logger:
+                self.logger.info(f"Using {chosen_converter.name} for {' '.join(input_paths)}")
+            return chosen_converter
 
     #def collect_extra_output_columns(self):
     #    for converter in self.converter_by_input_path.values():
@@ -428,178 +158,16 @@ class ConverterController(object):
     #            for col in extra_output_columns:
     #                self.extra_output_columns.append(col)
 
-    def check_input_format(self):
-        from oakvar.lib.exceptions import InvalidInputFormat
-
-        if self.format and self.format not in self.available_input_formats:
-            raise InvalidInputFormat(self.format)
-
-    def get_converter_for_input_file(self, input_path) -> Optional[BaseConverter]:
-        converter: Optional[BaseConverter] = None
-        if self.format:
-            if self.format in self.converters:
-                converter = self.converters[self.format]
-        else:
-            for check_converter in self.converters.values():
-                try:
-                    check_success = check_converter.check_format(input_path)
-                except Exception:
-                    import traceback
-
-                    if self.error_logger:
-                        self.error_logger.error(traceback.format_exc())
-                    check_success = False
-                if check_success:
-                    converter = check_converter
-                    break
-        if converter:
-            if self.logger:
-                self.logger.info(f"Using {converter.name} for {input_path}")
-            return converter
-        return None
-
-    def set_converter_properties(self, converter):
-        from oakvar.lib.exceptions import SetupError
-        from oakvar.lib.module.local import get_module_code_version
-
-        if self.conf is None:
-            raise SetupError()
-        converter.output_dir = self.output_dir
-        converter.run_name = self.output_base_fname
-        converter.version = get_module_code_version(converter.name)
-        if converter.name in self.conf:
-            if hasattr(converter, "conf") is False:
-                converter.conf = {}
-            converter.conf.update(self.conf[converter.name])
-
-    def log_input_and_genome_assembly(self, input_path, genome_assembly, converter):
-        if not self.logger:
-            return
-        self.logger.info(f"input file: {input_path}")
-        self.logger.info("input format: %s" % converter.format_name)
-        self.logger.info(f"genome_assembly: {genome_assembly}")
-
-    def setup_file(self, input_path: str) -> BaseConverter:
-        from logging import getLogger
-        from oakvar.lib.util.util import log_module
-        from oakvar.lib.exceptions import NoConverterFound
-
-        encoding = self.input_file_encodings[input_path]
-        converter = self.converter_by_input_path[input_path]
-        if not converter:
-            raise NoConverterFound(input_path)
-        if not converter.name or not converter.format_name:
-            raise NoConverterFound(input_path)
-        self.input_formats.append(converter.format_name)
-        self.fileno += 1
-        self.set_converter_properties(converter)
-        log_module(converter, self.logger)
-        self.error_logger = getLogger("err." + converter.name)
-        converter.input_path = input_path
-        converter.input_paths = self.input_paths
-        converter.setup(input_path, encoding=encoding)
-        genome_assembly = self.get_genome_assembly(converter)
-        self.genome_assemblies.append(genome_assembly)
-        self.log_input_and_genome_assembly(input_path, genome_assembly, converter)
-        self.set_do_liftover(genome_assembly, converter, input_path)
-        if self.do_liftover or self.do_liftover_chrM:
-            self.setup_lifter(genome_assembly)
-        return converter
-
-    def handle_chrom(self, variant):
-        from oakvar.lib.exceptions import IgnoredVariant
-
-        if not variant.get("chrom"):
-            raise IgnoredVariant("No chromosome")
-        if not variant.get("chrom").startswith("chr"):
-            variant["chrom"] = "chr" + variant.get("chrom")
-        variant["chrom"] = self.chromdict.get(
-            variant.get("chrom"), variant.get("chrom")
-        )
-
-    def handle_ref_base(self, variant):
-        from oakvar.lib.exceptions import IgnoredVariant
-
-        if "ref_base" not in variant or variant["ref_base"] in [
-            "",
-            ".",
-        ]:
-            if not self.wgs_reader:
-                raise
-            variant["ref_base"] = self.wgs_reader.get_bases( # type: ignore
-                variant.get("chrom"), int(variant["pos"])
-            ).upper()
-        else:
-            ref_base = variant["ref_base"]
-            if ref_base == "" and variant["alt_base"] not in [
-                "A",
-                "T",
-                "C",
-                "G",
-            ]:
-                raise IgnoredVariant("Reference base required for non SNV")
-            elif ref_base is None or ref_base == "":
-                if not self.wgs_reader:
-                    raise
-                variant["ref_base"] = self.wgs_reader.get_bases( # type: ignore
-                    variant.get("chrom"), int(variant.get("pos"))
-                )
-
-    def handle_genotype(self, variant):
-        if "genotype" in variant and "." in variant["genotype"]:
-            variant["genotype"] = variant["genotype"].replace(".", variant["ref_base"])
-
-    def check_invalid_base(self, variant: dict):
-        from oakvar.lib.exceptions import IgnoredVariant
-
-        if not self.base_re.fullmatch(variant["ref_base"]):
-            raise IgnoredVariant(f"Invalid reference base {variant['ref_base']}")
-        if not self.base_re.fullmatch(variant["alt_base"]):
-            raise IgnoredVariant(f"Invalid alternate base {variant['alt_base']}")
-
-    def normalize_variant(self, variant):
-        from oakvar.lib.util.seq import normalize_variant_left
-
-        p, r, a = (
-            int(variant["pos"]),
-            variant["ref_base"],
-            variant["alt_base"],
-        )
-        (
-            new_pos,
-            new_ref,
-            new_alt,
-        ) = normalize_variant_left("+", p, r, a)
-        variant["pos"] = new_pos
-        variant["ref_base"] = new_ref
-        variant["alt_base"] = new_alt
-
-    def add_end_pos_if_absent(self, variant: dict):
-        col_name = "end_pos"
-        if col_name not in variant:
-            ref_base = variant["ref_base"]
-            ref_len = len(ref_base)
-            if ref_len == 1:
-                variant[col_name] = variant["pos"]
-            else:
-                variant[col_name] = variant["pos"] + ref_len - 1
-
     def iter_df_chunk(self, input_paths: List[str], size: int=10000):
-        from pathlib import Path
-
-        input_paths = [str(Path(x).resolve()) for x in input_paths]
-        self.setup()
+        converter = self.choose_converter(input_paths)
+        if not converter:
+            if self.logger:
+                self.logger.warn("No converter was found for input files.")
+            return
         self.set_variables_pre_run()
-        for input_path in input_paths:
-            self.input_fname = Path(input_path).name
-            converter = self.setup_file(input_path)
-            self.file_num_valid_variants = 0
-            self.file_error_lines = 0
-            self.num_valid_error_lines = {"valid": 0, "error": 0}
-            for df in converter.iter_df_chunk(size=size, ignore_sample=self.ignore_sample):
-                print(f"@ df from converter={df}")
-                yield df
-        flush_err_holder(self.err_holder, self.error_logger, force=True)
+        for df in converter.iter_df_chunk(input_paths=input_paths, size=size, ignore_sample=self.ignore_sample):
+            print(f"@ df from converter={df}")
+            yield df
         self.log_ending()
         ret = {
             "total_lnum": self.total_num_converted_variants,
@@ -635,48 +203,6 @@ class ConverterController(object):
         self.logger.info("runtime: %s" % runtime)
         status = "finished Converter"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
-
-    def perform_liftover_if_needed(self, variant) -> Optional[Dict[str, Any]]:
-        from copy import copy
-        from oakvar.lib.util.seq import liftover_one_pos
-        from oakvar.lib.util.seq import liftover
-
-        if self.is_chrM(variant):
-            needed = self.do_liftover_chrM
-        else:
-            needed = self.do_liftover
-        if needed:
-            prelift_wdict = copy(variant)
-            #prelift_wdict["uid"] = self.uid
-            #self.crl_writer.write_data(prelift_wdict)
-            crl_data = prelift_wdict
-            (
-                variant["chrom"],
-                variant["pos"],
-                variant["ref_base"],
-                variant["alt_base"],
-            ) = liftover(
-                variant["chrom"],
-                int(variant["pos"]),
-                variant["ref_base"],
-                variant["alt_base"],
-                lifter=self.lifter,
-                wgs_reader=self.wgs_reader,
-            )
-            converted_end = liftover_one_pos(
-                variant["chrom"], variant["end_pos"], lifter=self.lifter
-            )
-            if converted_end is None:
-                end_pos = ""
-            else:
-                end_pos = converted_end[1]
-            variant["end_pos"] = end_pos
-        else:
-            crl_data = None
-        return crl_data
-
-    def is_chrM(self, wdict):
-        return wdict["chrom"] == "chrM"
 
     def end(self):
         pass

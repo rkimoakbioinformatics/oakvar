@@ -4,6 +4,7 @@ from typing import Tuple
 from typing import List
 from typing import Dict
 import polars as pl
+from .commonmodule import BaseCommonModule
 
 
 CHROM = "chrom"
@@ -24,33 +25,27 @@ class BaseConverter(object):
 
     def __init__(
         self,
-        inputs: List[str] = [],
-        input_format: Optional[str] = None,
-        output_dir: Optional[str] = None,
+        format_name: str = "",
         genome: Optional[str] = None,
         serveradmindb=None,
         module_options: Dict = {},
-        input_encoding=None,
+        input_encoding: Optional[str] = None,
         outer=None,
         title: Optional[str] = None,
         conf: Dict[str, Any] = {},
         code_version: Optional[str] = None,
-        run_name: Optional[str] = None,
         ignore_sample: bool=False,
+        wgs_reader: Optional[BaseCommonModule] = None,
         df_mode: bool = False,
-        output_columns: List[Dict[str, Any]] = [],
     ):
         from re import compile
         from pathlib import Path
         import inspect
-        from oakvar import get_wgs_reader
         from oakvar.lib.module.local import get_module_conf
         from oakvar.lib.util.util import get_crv_def
 
         self.logger = None
         self.converters = {}
-        self.available_input_formats: List[str] = []
-        self.input_dir = None
         self.input_path_dict = {}
         self.input_path_dict2 = {}
         self.output_base_fname: Optional[str] = None
@@ -63,6 +58,7 @@ class BaseConverter(object):
         self.crl_path = None
         self.do_liftover = None
         self.do_liftover_chrM = None
+        self.input_assembly: Optional[int] = None
         self.uid: int = 0
         self.read_lnum: int = 0
         self.lifter = None
@@ -80,7 +76,6 @@ class BaseConverter(object):
         self.outer = outer
         self.extra_output_columns: List[Dict[str, Any]] = []
         self.total_num_converted_variants = 0
-        self.input_formats: List[str] = []
         self.genome_assemblies: List[int] = []
         self.df_mode = df_mode
         self.base_re = compile("^[ATGC]+|[-]+$")
@@ -92,38 +87,26 @@ class BaseConverter(object):
             "chr23": "chrX",
             "chr24": "chrY",
         }
-        #if not inputs:
-        #    raise ExpectedException("Input files are not given.")
         self.chrom_colno: int = -1
         self.pos_colno: int = -1
         self.end_pos_colno: int = -1
         self.ref_base_colno: int = -1
         self.alt_base_colno: int = -1
-        self.input_paths = inputs
-        self.format = input_format
         self.script_path = Path(inspect.getfile(self.__class__))
         self.module_type = "converter"
         self.ignore_sample: bool = ignore_sample
         self.header_num_line: int = 0
         self.line_no: int = 0
+        self.wgs_reader = wgs_reader
         self.name: str = self.script_path.stem
-        self.output_dir = output_dir
-        if run_name:
-            self.run_name = run_name
-        else:
-            self.run_name = Path(self.input_paths[0]).name
-        self.parse_inputs()
-        self.parse_output_dir()
         self.conf: Dict[str, Any] = (
             get_module_conf(self.name, module_type="converter") or {}
         )
         if conf:
             self.conf.update(conf.copy())
         self.setup_logger()
-        self.wgs_reader = get_wgs_reader(assembly="hg38")
         self.time_error_written: float = 0
         self.module_type = "converter"
-        self.format_name: str = ""
         self.input_path: str = ""
         self.total_num_converted_variants = 0
         self.title = title
@@ -131,7 +114,7 @@ class BaseConverter(object):
             self.conf["title"] = self.title
         elif "title" in self.conf:
             self.title = self.conf["title"]
-        self.version: str = ""
+        # code_version
         if code_version:
             self.code_version = code_version
         else:
@@ -141,6 +124,12 @@ class BaseConverter(object):
                 self.code_version: str = self.conf["version"]
             else:
                 self.code_version: str = ""
+        # format_name
+        if not format_name:
+            format_name = str(self.conf.get("format_name", ""))
+        if not format_name:
+            format_name = self.name.split("-")[0]
+        self.format_name = format_name
         self.output_columns: List[Dict[str, Any]] = get_crv_def()
         self.collect_extra_output_columns()
 
@@ -210,63 +199,6 @@ class BaseConverter(object):
 
         self.lifter = get_lifter(source_assembly=genome_assembly)
 
-    def parse_inputs(self):
-        from pathlib import Path
-
-        self.input_paths = [str(Path(x).resolve()) for x in self.input_paths if x != "-"]
-        if not self.input_paths:
-            self.input_dir = Path(".").resolve().parent
-        else:
-            self.input_dir = Path(self.input_paths[0]).parent
-        for i in range(len(self.input_paths)):
-            self.input_path_dict[i] = self.input_paths[i]
-            self.input_path_dict2[self.input_paths[i]] = i
-
-    def parse_output_dir(self):
-        from pathlib import Path
-        from os import makedirs
-
-        if not self.output_dir:
-            self.output_dir = self.input_dir
-        if not self.output_dir:
-            raise
-        if not (Path(self.output_dir).exists()):
-            makedirs(self.output_dir)
-        self.output_base_fname: Optional[str] = self.run_name
-        if not self.output_base_fname:
-            #if not self.input_paths:
-            #    raise
-            if not self.input_paths:
-                self.output_base_fname = "oakvar_result"
-            else:
-                self.output_base_fname = Path(self.input_paths[0]).name
-
-    def get_file_object_for_input_path(self, input_path: str):
-        import gzip
-        from pathlib import Path
-        from oakvar.lib.util.util import detect_encoding
-
-        suffix = Path(input_path).suffix
-        # TODO: Remove the hardcoding.
-        if suffix in [".parquet"]:
-            encoding = None
-        else:
-            if self.input_encoding:
-                encoding = self.input_encoding
-            else:
-                if self.logger:
-                    self.logger.info(f"detecting encoding of {input_path}")
-                encoding = detect_encoding(input_path)
-        if self.logger:
-            self.logger.info(f"encoding: {input_path} {encoding}")
-        if input_path.endswith(".gz"):
-            f = gzip.open(input_path, mode="rt", encoding=encoding)
-        elif suffix in [".parquet"]:
-            f = open(input_path, "rb")
-        else:
-            f = open(input_path, encoding=encoding)
-        return f
-
     def setup_logger(self):
         from logging import getLogger
 
@@ -289,6 +221,7 @@ class BaseConverter(object):
 
         log_module(self, self.logger)
         self.input_path = input_path
+        self.detect_encoding_of_input_path(input_path)
         self.setup(input_path)
         genome_assembly = self.get_genome_assembly()
         self.genome_assemblies.append(genome_assembly)
@@ -304,24 +237,26 @@ class BaseConverter(object):
 
         if self.given_input_assembly:
             input_assembly = self.given_input_assembly
+        elif self.input_assembly:
+            input_assembly = self.input_assembly
         else:
-            input_assembly = getattr(self, "input_assembly", None)
-        if not input_assembly:
             user_conf = get_user_conf() or {}
             input_assembly = user_conf.get(default_assembly_key, None)
             if not input_assembly:
                 raise NoGenomeException()
-        input_assembly_int_dict = {
-            "hg18": 18,
-            "hg19": 19,
-            "hg38": 38,
-            "GRCh36": 18,
-            "GRCh37": 19,
-            "GRCh38": 38,
-        }
-        if input_assembly not in input_assembly_int_dict:
-            raise NoGenomeException()
-        return input_assembly_int_dict.get(input_assembly, 38)
+        if not isinstance(input_assembly, int):
+            input_assembly_int_dict = {
+                "hg18": 18,
+                "hg19": 19,
+                "hg38": 38,
+                "GRCh36": 18,
+                "GRCh37": 19,
+                "GRCh38": 38,
+            }
+            if input_assembly not in input_assembly_int_dict:
+                raise NoGenomeException()
+            input_assembly = input_assembly_int_dict.get(input_assembly, 38)
+        return input_assembly
 
     def handle_chrom(self, variant):
         from oakvar.lib.exceptions import IgnoredVariant
@@ -519,7 +454,25 @@ class BaseConverter(object):
             var_ld[header["name"]] = []
         return var_ld
 
-    def iter_df_chunk(self, start: int=0, size: int = 10000, ignore_sample: bool=False):
+    def detect_encoding_of_input_path(self, input_path: str):
+        from pathlib import Path
+        from oakvar.lib.util.util import detect_encoding
+
+        suffix = Path(input_path).suffix
+        if self.input_encoding:
+            return
+        # TODO: Remove the hardcoding.
+        elif suffix in [".parquet"]:
+            encoding = ""
+        else:
+            if self.logger:
+                self.logger.info(f"detecting encoding of {input_path}")
+            encoding = detect_encoding(input_path)
+        if self.logger:
+            self.logger.info(f"encoding: {input_path} {encoding}")
+        self.input_encoding = encoding
+
+    def iter_df_chunk(self, input_paths: List[str], start: int=0, size: int = 10000, ignore_sample: bool=False):
         from pathlib import Path
         from multiprocessing.pool import ThreadPool
         from oakvar.lib.util.run import update_status
@@ -544,9 +497,8 @@ class BaseConverter(object):
         self.alt_base_colno = df_header_names.index("alt_base") + 1 if "alt_base" in df_header_names else -1
         var_ld = self.get_intialized_var_ld(df_headers)
         df: Optional[pl.DataFrame] = None
-        for input_path in self.input_paths:
-            self.input_fname = Path(input_path).name
-            fileno = self.input_path_dict2[input_path]
+        for fileno, input_path in enumerate(input_paths):
+            self.current_input_fname = Path(input_path).name
             self.setup_file(input_path)
             self.file_num_valid_variants = 0
             self.file_error_lines = 0
@@ -615,7 +567,7 @@ class BaseConverter(object):
                 df.glimpse()
                 yield df
                 status = (
-                    f"Running Converter ({self.input_fname}): line {start_line_no - 1}"
+                    f"Running Converter ({self.current_input_fname}): line {start_line_no - 1}"
                 )
                 update_status(
                     status, logger=self.logger, serveradmindb=self.serveradmindb
@@ -636,7 +588,6 @@ class BaseConverter(object):
             "total_lnum": self.total_num_converted_variants,
             "write_lnum": self.total_num_valid_variants,
             "error_lnum": self.total_error_lines,
-            "input_format": self.input_formats,
             "assemblies": self.genome_assemblies,
         }
         return ret
@@ -754,6 +705,9 @@ class BaseConverter(object):
             ]
         )
         return df
+
+    def get_wgs_reader(self):
+        pass
 
     def perform_liftover_if_needed(self, variant, crl_to_variant: bool=False):
         from copy import copy

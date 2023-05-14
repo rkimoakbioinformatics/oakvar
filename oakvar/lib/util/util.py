@@ -58,7 +58,7 @@ def get_ucsc_bins(start, stop=None):
 
 
 def load_class(
-    path: Optional[Path], class_name=None
+    path: Optional[Path], *args, class_name=None, **kwargs
 ) -> Union[
     Type[BaseConverter],
     Type[BasePreparer],
