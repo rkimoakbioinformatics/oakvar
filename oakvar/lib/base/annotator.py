@@ -211,8 +211,7 @@ class BaseAnnotator(object):
                 self.code_version: str = ""
         self.cache = ModuleDataCache(self.module_name, module_type=self.module_type)
         self.var_ld: Dict[str, List[Any]] = {}
-        if self.df_mode:
-            self.setup_df()
+        self.setup_df()
 
     def set_output_columns(self, output_columns: List[Dict[str, Any]]):
         if not self.level:
@@ -457,6 +456,8 @@ class BaseAnnotator(object):
         self.make_json_colnames()
 
     def get_series(self, df: pl.DataFrame) -> List[pl.Series]:
+        print(f"@ col_names={self.col_names}")
+        print(f"@ full_col_names={self.full_col_names}")
         for col_name in self.col_names:
             full_col_name = self.full_col_names[col_name]
             self.var_ld[full_col_name] = []
@@ -482,11 +483,12 @@ class BaseAnnotator(object):
             full_col_name = self.full_col_names[col_name]
             dtype = self.df_dtypes[full_col_name]
             seriess.append(pl.Series(full_col_name, self.var_ld[full_col_name], dtype=dtype))
+        print(f"@ seriess={seriess}")
         return seriess
 
     def run_df(self, df: pl.DataFrame) -> pl.DataFrame:
         seriess = self.get_series(df)
-        df.with_columns(seriess)
+        df = df.with_columns(seriess)
         return df
 
     def get_output_col_def(self, col_name):

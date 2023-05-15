@@ -6,6 +6,7 @@ from typing import Tuple
 from typing import Dict
 import polars as pl
 from .converter_controller import ConverterController
+from ..module.local import LocalModule
 
 
 class Runner(object):
@@ -14,6 +15,7 @@ class Runner(object):
         from ..module.local import LocalModule
         from .converter_controller import ConverterController
         from .mapper import BaseMapper
+        from .annotator import BaseAnnotator
 
         self.runlevels = {
             "converter": 1,
@@ -28,7 +30,7 @@ class Runner(object):
         self.annotator_ran = False
         self.aggregator_ran = False
         self.annotators_to_run = {}
-        self.done_annotators = {}
+        self.done_annotators: List[str] = []
         self.info_json = None
         self.pkg_ver = None
         self.logger = None
@@ -52,7 +54,6 @@ class Runner(object):
         self.output_dir: Optional[List[str]] = None
         self.startlevel = self.runlevels["converter"]
         self.endlevel = self.runlevels["postaggregator"]
-        self.cleandb = False
         self.excludes = []
         self.converter_name: Optional[str] = ""
         self.preparer_names = []
@@ -73,6 +74,7 @@ class Runner(object):
         self.converter_format: Optional[List[str]] = None
         self.converter_controller_i: Optional[ConverterController] = None
         self.mapper_i: Optional[BaseMapper] = None
+        self.annotators_i: List[BaseAnnotator] = []
         self.genemapper = None
         self.append_mode = []
         self.exception = None
@@ -287,7 +289,8 @@ class Runner(object):
             raise
         self.sanity_check_run_name_output_dir()
         self.converter_controller_i = self.prep_converter()
-        self.prep_mapper()
+        self.load_mapper()
+        self.load_annotators()
         await self.setup_manager()
         for run_no in range(len(self.run_name)):
             try:
@@ -351,7 +354,6 @@ class Runner(object):
         self.make_self_args_considering_package_conf(args)
         if self.args is None:
             raise SetupError()
-        self.cleandb = self.args.cleandb
         self.set_self_inputs()  # self.input_paths is list.
         self.set_and_create_output_dir()  # self.output_dir is list.
         self.set_run_name()  # self.run_name is list.
@@ -419,14 +421,11 @@ class Runner(object):
             raise SetupError()
         self.run_conf = args.get("conf", {}).get("run", {})
 
-    def populate_secondary_annotators(self):
-        secondaries = {}
-        for module in self.annotators.values():
-            self._find_secondary_annotators(module, secondaries)
-        self.annotators.update(secondaries)
-        annot_names = [v.name for v in self.annotators.values()]
-        annot_names = list(set(annot_names))
-        annot_names.sort()
+    def get_secondary_annotator_names(self, module_names: List[str]):
+        secondary_modules: List[str] = []
+        for module_name in module_names:
+            self.prepend_secondary_annotator_names(module_name, secondary_modules)
+        return secondary_modules
 
     def process_module_options(self):
         from ..exceptions import SetupError
@@ -563,8 +562,8 @@ class Runner(object):
         db.close()
 
     def set_append_mode(self):
-        self.append_mode = [False] * len(self.input_paths)
         # TODO: change the below for df workflow.
+        self.append_mode = [False] * len(self.input_paths)
 
     def set_genome_assemblies(self):
         if self.run_name:
@@ -899,6 +898,8 @@ class Runner(object):
                     if self.annotator_names and m in self.annotator_names:
                         self.annotator_names.remove(m)
         self.check_valid_modules(self.annotator_names)
+        secondary_module_names = self.get_secondary_annotator_names(self.annotator_names)
+        self.annotator_names[:0] = secondary_module_names
         self.annotators = get_local_module_infos_by_names(self.annotator_names)
 
     def get_package_argument_run_value(self, field: str):
@@ -1030,12 +1031,12 @@ class Runner(object):
             self.check_valid_modules(self.reporter_names)
             self.reporters = get_local_module_infos_by_names(self.reporter_names)
 
-    def _find_secondary_annotators(self, module, ret):
-        sannots = self.get_secondary_modules(module)
-        for sannot in sannots:
-            if sannot is not None:
-                ret[sannot.name] = sannot
-                self._find_secondary_annotators(sannot, ret)
+    def prepend_secondary_annotator_names(self, module_name: str, ret: List[str]):
+        module_names = self.get_secondary_module_names(module_name)
+        for module_name in module_names:
+            if module_name not in ret:
+                ret.insert(0, module_name)
+            self.prepend_secondary_annotator_names(module_name, ret)
 
     def get_module_output_path(self, module, run_no: int):
         import os
@@ -1054,19 +1055,22 @@ class Runner(object):
         path = os.path.join(output_dir, run_name + "." + module.name + postfix)
         return path
 
-    def check_module_output(self, module_name: str) -> bool:
-        # TODO: in the future, use column names to check module done.
-        _ = module_name
-        return False
+    def annotator_columns_missing(self, module: LocalModule, df_cols: List[str]) -> bool:
+        cols_to_check = module.conf.get("output_columns", {}).keys()
+        tf_l = [v in df_cols for v in cols_to_check]
+        return False in tf_l
 
-    def get_secondary_modules(self, primary_module):
+    def get_secondary_module_names(self, primary_module_name: str) -> List[str]:
         from ..module.local import get_local_module_info
 
-        secondary_modules = [
-            get_local_module_info(module_name)
-            for module_name in primary_module.secondary_module_names
+        module:  Optional[LocalModule] = get_local_module_info(primary_module_name)
+        if not module:
+            return []
+        secondary_module_names: List[str] = [
+            module_name
+            for module_name in module.secondary_module_names
         ]
-        return secondary_modules
+        return secondary_module_names
 
     def get_num_workers(self) -> int:
         from ..system import get_max_num_concurrent_modules_per_job
@@ -1515,7 +1519,7 @@ class Runner(object):
             module_ins = module_cls(**kwargs)
             await self.log_time_of_func(module_ins.run, work=module_name)
 
-    async def run_annotators(self, run_no: int):
+    async def run_annotators(self, df: pl.DataFrame):
         import os
         from ..base.mp_runners import init_worker, annot_from_queue
         from multiprocessing import Pool
@@ -1670,8 +1674,6 @@ class Runner(object):
             "run_name": run_name,
             "serveradmindb": self.serveradmindb,
         }
-        if self.cleandb and level == "variant":
-            arg_dict["delete"] = True
         if self.append_mode[run_no]:
             arg_dict["append"] = True
         v_aggregator = Aggregator(**arg_dict)
@@ -1864,12 +1866,30 @@ class Runner(object):
         )
         return converter_controller
 
-    def prep_mapper(self):
+    def load_mapper(self):
         from ..util.module import get_mapper
 
         if not self.mapper:
             return
         self.mapper_i = get_mapper(self.mapper.name)
+
+    def load_annotators(self, df: Optional[pl.DataFrame]=None):
+        from ..util.module import get_annotator
+
+        self.done_annotators = []
+        if df is not None:
+            df_cols = df.columns
+            for mname, module in self.annotators.items():
+                if not self.annotator_columns_missing(module, df_cols):
+                    self.done_annotators.append(mname)
+        self.annotators_to_run = {
+            aname: self.annotators[aname]
+            for aname in set(self.annotators) - set(self.done_annotators)
+        }
+        self.annotators_i = []
+        for module_name, module in self.annotators_to_run.items():
+            module = get_annotator(module_name)
+            self.annotators_i.append(module)
 
     def do_step_converter(self, run_no: int):
         if not self.converter_controller_i:
@@ -1893,17 +1913,10 @@ class Runner(object):
         return df
 
     def do_step_annotator(self, df: pl.DataFrame) -> pl.DataFrame:
-        self.done_annotators = {}
-        self.populate_secondary_annotators()
-        for mname, module in self.annotators.items():
-            if self.check_module_output(module.name):
-                self.done_annotators[mname] = module
-        self.annotators_to_run = {
-            aname: self.annotators[aname]
-            for aname in set(self.annotators) - set(self.done_annotators)
-        }
-        df = self.run_annotators(df)
-        self.annotator_ran = True
+        for module in self.annotators_i:
+            df = module.run_df(df)
+        df.glimpse()
+        return df
 
     async def do_step_aggregator(self, run_no: int):
         step = "aggregator"
