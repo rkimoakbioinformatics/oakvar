@@ -1,0 +1,34 @@
+
+
+<tool id="oakvar_tool" name="Oakvar Variant Annotation" version="1.0.0">
+  <description>Wrapper for OakVar ov run command</description>
+
+  <command>
+    ov run ${input} -a ${annotation_source} -t ${report_format}
+  </command>
+
+  <inputs>
+    <param name="input" type="data" format="text" label="Input file" help="Select the input VCF file"/>
+    <param name="annotation_source" type="select" label="Annotation source">
+      <option value="clinvar">ClinVar</option>
+      <option value="cosmic">Cosmic</option>
+      <option value="gnomad">gnomAD</option>
+      <option value="dbsnp">dbSNP</option>
+
+    </param>
+    <param name="report_format" type="select" label="Report format">
+      <option value="vcf">VCF</option>
+      <option value="xlsx">excel</option>
+      <option value="tsv">TSV</option>
+      <option value="txt">Text</option>
+    </param>
+  </inputs>
+
+  <outputs>
+    <data name="output" format="auto" label="Annotated VCF File" />
+  </outputs>
+
+  <help>
+    This tool runs the 'ov run' command from OakVar with the specified annotation source and report format options.
+  </help>
+</tool>
