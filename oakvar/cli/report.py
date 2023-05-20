@@ -11,32 +11,14 @@ def cli_report(args):
 def report(args, __name__="report"):
     from pathlib import Path
     from ..api import report
+    from ..lib.util.run import get_module_options
+    from ..lib.consts import MODULE_OPTIONS_KEY
 
-    module_options = {}
-    module_options = args.get("module_options")
-    if module_options:
-        for opt_str in module_options:
-            toks = opt_str.split("=")
-            if len(toks) != 2:
-                print(
-                    "Ignoring invalid module option {opt_str}. module-options should be module_name.key=value.",
-                    args,
-                )
-                continue
-            k = toks[0]
-            if k.count(".") != 1:
-                print(
-                    "Ignoring invalid module option {opt_str}. module-options should be module_name.key=value.",
-                    args,
-                )
-                continue
-            [module_name, key] = k.split(".")
-            if module_name not in module_options:
-                module_options[module_name] = {}
-            v = toks[1]
-            module_options[module_name][key] = v
-    args["module_options"] = module_options
-    del args["module_options"]
+    if MODULE_OPTIONS_KEY in args:
+        module_options = get_module_options(args.get(MODULE_OPTIONS_KEY))
+        args["module_options"] = module_options
+    else:
+        args["module_options"] = None
     if args["savepath"]:
         args["savepath"] = Path(args["savepath"])
     if args["output_dir"]:

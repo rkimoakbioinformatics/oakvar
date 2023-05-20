@@ -1008,26 +1008,9 @@ class BaseReporter:
         }
         await self.make_report_sub(level, conn)
 
-    def get_standardized_module_option(self, v):
-        tv = type(v)
-        if tv == str:
-            if ":" in v:
-                v0 = {}
-                for v1 in v.split("."):
-                    if ":" in v1:
-                        v1toks = v1.split(":")
-                        if len(v1toks) == 2:
-                            level = v1toks[0]
-                            v2s = v1toks[1].split(",")
-                            v0[level] = v2s
-                v = v0
-            elif "," in v:
-                v = [val for val in v.split(",") if val != ""]
-        if v == "true":
-            v = True
-        elif v == "false":
-            v = False
-        return v
+    def get_standardized_module_option(self, v: Any):
+        from ..util.run import get_standardized_module_option
+        return get_standardized_module_option(v)
 
     async def set_dbpath(self, dbpath: str=""):
         from os.path import exists

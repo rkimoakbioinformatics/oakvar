@@ -451,7 +451,13 @@ class MasterConverter(object):
         ).items():
             try:
                 cls = load_class(module_info.script_path)
-                converter = cls(ignore_sample=self.ignore_sample)
+                if cls is None:
+                    continue
+                if self.module_options is not None:
+                    module_conf = self.module_options.get(module_name)
+                else:
+                    module_conf = None
+                converter = cls(ignore_sample=self.ignore_sample, module_conf=module_conf)
             except Exception:
                 if self.logger:
                     self.logger.error(f"Skipping {module_name} as it could not be loaded.")
