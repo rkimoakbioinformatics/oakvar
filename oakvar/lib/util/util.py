@@ -455,7 +455,7 @@ def pw_is_valid(pw: Optional[str]) -> bool:
 
     if not pw:
         return False
-    if fullmatch(r"[a-zA-Z0-9!?@*&\-\+]+", pw):
+    if fullmatch(r"[a-zA-Z0-9!?$@*&\-\+]+", pw):
         return True
     else:
         return False
