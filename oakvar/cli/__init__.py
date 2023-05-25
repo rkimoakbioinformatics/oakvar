@@ -29,7 +29,7 @@ def cli_entry(func):
 
 def cli_func(func):
     def run_cli_func(*args, **kwargs):
-        from .__main__ import handle_exception
+        from ..__main__ import handle_exception
 
         args = get_args(*args, **kwargs)
         if "quiet" in args:
@@ -58,7 +58,7 @@ def cli_func(func):
 
 
 def get_parser(parser_name):
-    from .__main__ import get_entry_parser
+    from ..__main__ import get_entry_parser
     from typing import Any
 
     p_entry = get_entry_parser()

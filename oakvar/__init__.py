@@ -1,5 +1,4 @@
 from . import api
-from .cli import __main__ as cli
 from . import lib
 from .lib import consts
 from .lib.base.runner import Runner

@@ -603,13 +603,14 @@ def login_with_email_pw(
 
 
 def total_login(
-    email=None, pw=None, install_mode: str = "", conf: Optional[Dict] = None, outer=None
+        email=None, pw=None, install_mode: str = "", conf: Optional[Dict] = None, outer=None
 ) -> dict:
     from ....system import show_no_user_account_prelude
 
-    ret, logged_email = login_with_token_set(email=email, outer=outer)
-    if ret is True:
-        return {"success": True, "email": logged_email}
+    if not email or not pw:
+        ret, logged_email = login_with_token_set(email=email, outer=outer)
+        if ret is True:
+            return {"success": True, "email": logged_email}
     ret = login_with_email_pw(email=email, pw=pw, conf=conf)
     if ret.get("success"):
         return {"success": True, "email": ret["email"]}
