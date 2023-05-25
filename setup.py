@@ -83,7 +83,7 @@ setup(
     scripts=[],
     entry_points={
         "console_scripts": [
-            "ov=oakvar.cli.__main__:main",
+            "ov=oakvar.__main__:main",
         ]
     },
 )
