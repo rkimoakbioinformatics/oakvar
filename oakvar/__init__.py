@@ -1,5 +1,6 @@
-from . import api
 from . import lib
+from . import api
+from . import cli
 from .lib import consts
 from .lib.base.runner import Runner
 from .lib.base.converter import BaseConverter

@@ -87,7 +87,7 @@ class BaseReporter:
         self.conf = None
         self.module_conf = None
         self.output_basename = None
-        self.extract_columns_multilevel = {}
+        self.extract_columns_multilevel: Dict[str, List[str]] = {}
         self.logger = None
         self.error_logger = None
         self.unique_excs = None
@@ -168,7 +168,7 @@ class BaseReporter:
             for level in ["variant", "gene", "sample", "mapping"]:
                 self.extract_columns_multilevel[level] = self.cols
         else:
-            self.extract_columns_multilevel = self.get_standardized_module_option(
+            self.extract_columns_multilevel = self.get_extract_columns_multilevel_from_option(
                 self.module_options.get("extract_columns", {})
             )
         self.add_summary = not self.no_summary
@@ -461,6 +461,7 @@ class BaseReporter:
         page=None,
         make_filtered_table=True,
     ):
+        import time
         from ..exceptions import SetupError
 
         _ = make_filtered_table
@@ -497,7 +498,7 @@ class BaseReporter:
         await self.cf.get_level_data_iterator(
             level, page=page, pagesize=pagesize, uid=self.ftable_uid, cursor_read=cursor_read, var_added_cols=self.var_added_cols
         )
-        import time; ctime = time.time()
+        ctime = time.time()
         self.retrieved_col_names[level] = [d[0] for d in cursor_read.description]
         self.extracted_col_nos[level] = [self.retrieved_col_names[level].index(col_name) for col_name in self.extracted_col_names[level]]
         self.num_retrieved_cols = len(self.retrieved_col_names[level])
@@ -567,7 +568,7 @@ class BaseReporter:
         if self.dictrow:
             all_map = loads(datarow[col_name])
         else:
-            if not col_name in self.retrieved_col_names[level]:
+            if col_name not in self.retrieved_col_names[level]:
                 return
             idx = self.retrieved_col_names[level].index(col_name)
             all_map = loads(datarow[idx])
@@ -1007,26 +1008,17 @@ class BaseReporter:
         }
         await self.make_report_sub(level, conn)
 
-    def get_standardized_module_option(self, v):
-        tv = type(v)
-        if tv == str:
-            if ":" in v:
-                v0 = {}
-                for v1 in v.split("."):
-                    if ":" in v1:
-                        v1toks = v1.split(":")
-                        if len(v1toks) == 2:
-                            level = v1toks[0]
-                            v2s = v1toks[1].split(",")
-                            v0[level] = v2s
-                v = v0
-            elif "," in v:
-                v = [val for val in v.split(",") if val != ""]
-        if v == "true":
-            v = True
-        elif v == "false":
-            v = False
-        return v
+    def get_extract_columns_multilevel_from_option(self, v: Optional[str]) -> Dict[str, List[str]]:
+        import json
+
+        ret: Dict[str, List[str]] = {}
+        if isinstance(v, str):
+            if v.startswith("{"): # dict
+                v = v.replace("'", "\"")
+                ret = json.loads(v)
+        return ret
+
+
 
     async def set_dbpath(self, dbpath: str=""):
         from os.path import exists

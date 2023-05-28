@@ -435,7 +435,7 @@ def email_is_valid(email: Optional[str]) -> bool:
     if not email:
         return False
     if fullmatch(
-        r"([A-Za-z0-9]+[.-_])*[A-Za-z0-9]+@[A-Za-z0-9-]+(\.[A-Z|a-z]{2,})+", email
+        r"([A-Za-z0-9]+[.\-_])*[A-Za-z0-9]+@[A-Za-z0-9-]+(\.[A-Z|a-z]{2,})+", email
     ):
         return True
     else:
@@ -455,7 +455,7 @@ def pw_is_valid(pw: Optional[str]) -> bool:
 
     if not pw:
         return False
-    if fullmatch(r"[a-zA-Z0-9!?@*&\-\+]+", pw):
+    if fullmatch(r"[a-zA-Z0-9!?$@*&\-\+]+", pw):
         return True
     else:
         return False

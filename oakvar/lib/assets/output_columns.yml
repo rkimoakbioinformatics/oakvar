@@ -50,8 +50,8 @@ crv:
     type: string
     width: 50
     filterable: False
-  - name: note
-    title: Note
+  - name: tags
+    title: Tags
     type: string
     width: 50
 crx:
@@ -87,8 +87,8 @@ crx:
     type: string
     width: 50
     filterable: False
-  - name: note
-    title: Note
+  - name: tags
+    title: Tags
     type: string
     width: 50
   - name: coding

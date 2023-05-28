@@ -445,37 +445,17 @@ class Runner(object):
 
     def process_module_options(self):
         from ..exceptions import SetupError
+        from ..util.run import get_module_options
 
         if self.args is None or self.conf is None:
             raise SetupError()
-        if self.args.module_options is not None:
-            for opt_str in self.args.module_options:
-                toks = opt_str.split("=")
-                if len(toks) != 2:
-                    if self.outer:
-                        self.outer.write(
-                            "Ignoring invalid module option {opt_str}. "
-                            + "module-options should be module_name.key=value.\n",
-                        )
-                    continue
-                k = toks[0]
-                if k.count(".") != 1:
-                    if self.outer:
-                        self.outer.write(
-                            "Ignoring invalid module option {opt_str}. "
-                            + "module-options should be module_name.key=value.\n",
-                        )
-                    continue
-                [module_name, key] = k.split(".")
-                if module_name not in self.run_conf:
-                    self.run_conf[module_name] = {}
-                v = toks[1]
-                self.run_conf[module_name][key] = v
+        module_options = get_module_options(self.args.module_options, outer=self.outer)
+        self.run_conf.update(module_options)
 
     def remove_absent_inputs(self):
         if not self.inputs:
             return
-        inputs_to_remove = [v for v in self.inputs if not v.exists() and not "*" in str(v)]
+        inputs_to_remove = [v for v in self.inputs if not v.exists() and "*" not in str(v)]
         for v in inputs_to_remove:
             self.inputs.remove(v)
 
@@ -1552,6 +1532,8 @@ class Runner(object):
         converter_class = load_class(module.script_path, "MasterConverter")
         if not converter_class:
             converter_class = load_class(module.script_path, "MasterCravatConverter")
+        if converter_class is None:
+            return
         converter = converter_class(
             inputs=input_files,
             name=self.run_name[run_no],
@@ -1560,6 +1542,7 @@ class Runner(object):
             input_format=self.args.input_format,
             serveradmindb=self.serveradmindb,
             ignore_sample=self.ignore_sample,
+            module_options=self.run_conf,
             mp=self.args.mp,
             outer=self.outer,
         )

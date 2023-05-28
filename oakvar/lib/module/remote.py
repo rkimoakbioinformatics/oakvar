@@ -213,7 +213,7 @@ def get_install_deps(
         config = get_conf(module_name=module_name) or {}
     if not config:
         return {}, []
-    req_list = config.get("requires", [])
+    req_list = config.get("requires", []) or []
     deps = {}
     for req_string in req_list:
         req = Requirement.parse(req_string)

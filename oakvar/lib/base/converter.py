@@ -94,3 +94,8 @@ class BaseConverter(object):
         from ..module.local import create_module_files
 
         create_module_files(self, overwrite=overwrite, interactive=interactive)
+
+    def get_standardized_module_option(self, v: Any) -> Any:
+        from ..util.run import get_standardized_module_option
+
+        return get_standardized_module_option(v)

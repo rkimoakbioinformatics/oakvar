@@ -1,6 +1,3 @@
-from typing import Type
-
-
 def init_worker():
     import signal
 
@@ -70,7 +67,6 @@ def mapper_runner(
 ):
     from ..util.util import load_class
     from ..module.local import get_local_module_info
-    from .mapper import BaseMapper
     from ..exceptions import ModuleLoadingError
 
     output = None
