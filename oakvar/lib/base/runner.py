@@ -449,7 +449,10 @@ class Runner(object):
 
         if self.args is None or self.conf is None:
             raise SetupError()
-        module_options = get_module_options(self.args.module_options, outer=self.outer)
+        if isinstance(self.args.module_options, dict):
+            module_options = self.args.module_options
+        else:
+            module_options = get_module_options(self.args.module_options, outer=self.outer)
         self.run_conf.update(module_options)
 
     def remove_absent_inputs(self):

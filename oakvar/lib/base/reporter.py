@@ -1082,5 +1082,9 @@ class BaseReporter:
             ret = True
         return ret
 
+    def get_standardized_module_option(self, v: Any) -> Any:
+        from ..util.run import get_standardized_module_option
+
+        return get_standardized_module_option(v)
 
 CravatReport = BaseReporter

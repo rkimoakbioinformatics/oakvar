@@ -372,7 +372,7 @@ def get_args(parser, inargs, inkwargs) -> dict:
         if action.nargs in ["+", "*"]:
             key = action.dest
             value = inarg_dict[key]
-            if value and type(value) is not list:
+            if value and not isinstance(value, list) and not isinstance(value, dict):
                 inarg_dict[key] = [value]
     return inarg_dict
 
