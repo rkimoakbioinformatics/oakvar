@@ -1018,8 +1018,6 @@ class BaseReporter:
                 ret = json.loads(v)
         return ret
 
-
-
     async def set_dbpath(self, dbpath: str=""):
         from os.path import exists
         from ..exceptions import NoInput
