@@ -809,6 +809,10 @@ def get_df_from_db(
             if conn is None:
                 db_conn.close()
             return None
+        else:
+            c.close()
+            if conn is None:
+                db_conn.close()
     if not sql:
         sql = f"select * from {table_name}"
     ol_pl = platform.platform()
@@ -822,6 +826,4 @@ def get_df_from_db(
         )
     else:
         df = pl.read_sql(sql, conn_url)
-    if conn is not None:
-        conn = get_result_db_conn(db_path_to_use)
     return df
