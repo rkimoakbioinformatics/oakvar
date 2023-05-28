@@ -758,6 +758,7 @@ def get_df_from_db(
     table_name: str = "variant",
     sql: Optional[str] = None,
     num_cores: int = 1,
+    conn = None,
 ) -> Optional[DataFrame]:
     """Gets a Polars DataFrame of a table in an OakVar result database.
 
@@ -792,15 +793,21 @@ def get_df_from_db(
     df = None
     db_path_to_use = str(Path(db_path).absolute())
     partition_on = partition_ons.get(table_name)
-    db_conn = get_result_db_conn(db_path_to_use)
-    if not db_conn:
-        return None
+    if conn is not None:
+        db_conn = conn
+    else:
+        db_conn = get_result_db_conn(db_path_to_use)
+        if not db_conn:
+            return None
     if partition_on and table_name:
         c = db_conn.cursor()
         c.execute(f"select {partition_on} from {table_name} limit 1")
         ret = c.fetchone()
         if not ret:
             sys.stderr.write(f"{partition_on} does not exist in {table_name}")
+            c.close()
+            if conn is None:
+                db_conn.close()
             return None
     if not sql:
         sql = f"select * from {table_name}"
@@ -815,4 +822,6 @@ def get_df_from_db(
         )
     else:
         df = pl.read_sql(sql, conn_url)
+    if conn is not None:
+        conn = get_result_db_conn(db_path_to_use)
     return df

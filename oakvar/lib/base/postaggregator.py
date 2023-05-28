@@ -216,14 +216,14 @@ class BasePostAggregator(object):
                     self.table_headers[col["name"]].append(h["name"])
 
     def get_df(
-        self, level: str = "variant", sql: Optional[str] = None, num_cores: int = 1
+        self, level: str = "variant", sql: Optional[str] = None, num_cores: int = 1, conn = None,
     ):
         from ..util.util import get_df_from_db
 
         if not self.db_path:
             return None
         df = get_df_from_db(
-            self.db_path, table_name=level, sql=sql, num_cores=num_cores
+            self.db_path, table_name=level, sql=sql, num_cores=num_cores, conn=conn,
         )
         return df
 
