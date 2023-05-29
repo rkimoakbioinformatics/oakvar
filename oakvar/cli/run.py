@@ -12,6 +12,9 @@ def cli_run(args):
 def run(args, __name__="run"):
     from ..api import run
 
+    for k in ["viewer"]:
+        if k in args:
+            del args[k]
     ret = run(**args)
     return ret
 

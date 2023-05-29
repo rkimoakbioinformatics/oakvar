@@ -1,4 +1,7 @@
 from typing import Optional
+from typing import List
+from typing import Dict
+from typing import Any
 from pathlib import Path
 import logging
 
@@ -158,3 +161,59 @@ def set_logger_handler(
     logger.addHandler(log_handler)
     error_log_handler.setLevel(level)
     error_logger.addHandler(error_log_handler)
+
+def get_module_options(module_options_sl: Optional[List[str]], outer=None):
+    module_options: Dict[str, Dict[str, Any]] = {}
+    if not module_options_sl:
+        return module_options
+    for opt_str in module_options_sl:
+        toks = opt_str.split("=")
+        if len(toks) != 2:
+            if outer:
+                outer.write(
+                    "Ignoring invalid module option {opt_str}. "
+                    + "module-options should be module_name.key=value.\n",
+                )
+            continue
+        k = toks[0]
+        if k.count(".") != 1:
+            if outer:
+                outer.write(
+                    "Ignoring invalid module option {opt_str}. "
+                    + "module-options should be module_name.key=value.\n",
+                )
+            continue
+        [module_name, key] = k.split(".")
+        if module_name not in module_options:
+            module_options[module_name] = {}
+        v = toks[1]
+        module_options[module_name][key] = v
+    return module_options
+
+def get_standardized_module_option(v: Any):
+    import json
+    if isinstance(v, str):
+        if v.startswith("{"): # dict
+            v = v.replace("'", "\"")
+            v = json.loads(v)
+        elif v.startswith("["):
+            v = v.replace("'", "\"")
+            v = json.loads(v)
+        elif ":" in v:
+            v0 = {}
+            for v1 in v.split("."):
+                if ":" in v1:
+                    v1toks = v1.split(":")
+                    if len(v1toks) == 2:
+                        level = v1toks[0]
+                        v2s = v1toks[1].split(",")
+                        v0[level] = v2s
+            v = v0
+        elif "," in v:
+            v = [val for val in v.split(",") if val != ""]
+    if v == "true":
+        v = True
+    elif v == "false":
+        v = False
+    return v
+

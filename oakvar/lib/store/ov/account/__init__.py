@@ -517,7 +517,7 @@ def get_email_pw_from_settings(
     return email, pw
 
 
-def emailpw_are_valid(email: str = "", pw: str = "", outer=None) -> bool:
+def emailpw_are_valid(email: str = "", pw: str = "") -> bool:
     from ....util.util import email_is_valid
     from ....util.util import pw_is_valid
 
@@ -596,7 +596,7 @@ def login_with_email_pw(
             "msg": "No email or password was provided",
             "email": email,
         }
-    if emailpw_are_valid(email=email, pw=pw, outer=outer):
+    if emailpw_are_valid(email=email, pw=pw):
         announce_on_email_verification_if_needed(email, outer=outer)
         ret = login(email=email, pw=pw, outer=outer)
         return ret
@@ -610,13 +610,14 @@ def login_with_email_pw(
 
 
 def total_login(
-    email=None, pw=None, install_mode: str = "", conf: Optional[Dict] = None, outer=None
+        email=None, pw=None, install_mode: str = "", conf: Optional[Dict] = None, outer=None
 ) -> dict:
     from ....system import show_no_user_account_prelude
 
-    ret, logged_email = login_with_token_set(email=email, outer=outer)
-    if ret is True:
-        return {"success": True, "email": logged_email}
+    if not email or not pw:
+        ret, logged_email = login_with_token_set(email=email, outer=outer)
+        if ret is True:
+            return {"success": True, "email": logged_email}
     ret = login_with_email_pw(email=email, pw=pw, conf=conf, outer=outer)
     if ret.get("success"):
         return {"success": True, "email": ret["email"]}

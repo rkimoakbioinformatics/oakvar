@@ -26,6 +26,7 @@ def run(
     inputs: Union[Union[Path, str], List[Union[Path, str]]],
     annotators: List[str] = [],
     report_types: Union[str, List[str]] = [],
+    reports: Union[str, List[str]] = [],
     annotators_replace: List[str] = [],
     excludes: List[str] = [],
     run_name: List[str] = [],
@@ -139,6 +140,8 @@ def run(
                 input_paths.append(str(el))
             elif isinstance(el, str):
                 input_paths.append(el)
+    if reports and not report_types:
+        report_types = reports
     if isinstance(report_types, str):
         report_types = [report_types]
     module = Runner(

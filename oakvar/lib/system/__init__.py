@@ -44,7 +44,7 @@ def setup_system(
     # set up a user conf file.
     setup_user_conf_file(clean=clean, outer=outer)
     # set up a store account.
-    ret = setup_store_account(conf=conf, email=email, pw=pw, install_mode=install_mode, outer=outer)
+    ret = setup_store_account(conf=conf, email=email, pw=pw, install_mode=install_mode, clean=clean, outer=outer)
     if ret.get("success") is not True:
         if outer:
             msg = ret.get("msg")
@@ -121,11 +121,11 @@ def setup_system_conf(
 
     conf = None
     if setup_file:
-        conf = get_system_conf(sys_conf_path=setup_file, conf=custom_system_conf)
+        conf = get_system_conf(sys_conf_path=setup_file, conf=custom_system_conf, clean=clean)
         if outer:
             outer.write(f"Loaded system configuration from {setup_file}.")
     else:
-        conf = get_system_conf(conf=custom_system_conf)
+        conf = get_system_conf(conf=custom_system_conf, clean=clean)
     # set system conf path if absent in sys conf.
     sys_conf_path = conf.get(sys_conf_path_key)
     if not sys_conf_path:
@@ -164,9 +164,12 @@ def show_email_verify_action_banner(email: str):
     )
 
 
-def setup_store_account(conf=None, email=None, pw=None, install_mode: str = "", outer=None) -> dict:
+def setup_store_account(conf=None, email=None, pw=None, install_mode: str = "", clean: bool=False, outer=None) -> dict:
     from ..store.ov.account import total_login
+    from ..store.ov.account import delete_token_set
 
+    if clean:
+        delete_token_set()
     return total_login(email=email, pw=pw, conf=conf, install_mode=install_mode, outer=outer)
 
 
@@ -462,7 +465,7 @@ def augment_with_sys_conf_temp(conf: dict, conf_template: dict):
                         conf[k_t][kk_t] = vv_t
 
 
-def get_system_conf(sys_conf_path=None, conf=None) -> dict:
+def get_system_conf(sys_conf_path=None, conf=None, clean: bool=False) -> dict:
     from os import environ
     from os.path import exists
     from .consts import sys_conf_path_key
@@ -480,7 +483,7 @@ def get_system_conf(sys_conf_path=None, conf=None) -> dict:
     # sys conf
     if not sys_conf_path:
         sp = get_system_conf_path()
-        if sp and exists(sp):
+        if sp and exists(sp) and not clean:
             sys_conf = load_yml_conf(sp)
             final_conf.update(sys_conf)
             final_conf[sys_conf_path_key] = str(sp)
@@ -659,9 +662,9 @@ def get_default_root_dir(conf=None) -> Path:
     pl = get_platform()
     root_dir = None
     if pl == "windows":
-        root_dir = Path(expandvars("%systemdrive%")) / "\open-cravat"
+        root_dir = Path(expandvars("%systemdrive%")) / "\\open-cravat"
         if not root_dir.exists():
-            root_dir = Path(expandvars("%systemdrive%")) / "\oakvar"
+            root_dir = Path(expandvars("%systemdrive%")) / "\\oakvar"
     elif pl == "linux":
         path = ".oakvar"
         if is_root_user():

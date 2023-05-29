@@ -138,8 +138,9 @@ def info(
         readme = get_local_readme(module_name)
     ret["readme"] = readme
     # Remote
-    remote_info = get_remote_module_info(module_name)
-    remote_available = remote_info is not None
+    if not local:
+        remote_info = get_remote_module_info(module_name)
+        remote_available = remote_info is not None
     # Local
     local_info = get_local_module_info(module_name)
     if local_info:

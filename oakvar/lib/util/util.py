@@ -421,7 +421,7 @@ def get_args(parser, inargs, inkwargs) -> dict:
         if action.nargs in ["+", "*"]:
             key = action.dest
             value = inarg_dict[key]
-            if value and type(value) is not list:
+            if value and not isinstance(value, list) and not isinstance(value, dict):
                 inarg_dict[key] = [value]
     return inarg_dict
 
@@ -504,7 +504,7 @@ def pw_is_valid(pw: Optional[str]) -> bool:
 
     if not pw:
         return False
-    if fullmatch(r"[a-zA-Z0-9!?@*&\-\+]+", pw):
+    if fullmatch(r"[a-zA-Z0-9!?$@*&\-\+]+", pw):
         return True
     else:
         return False
@@ -807,6 +807,7 @@ def get_df_from_db(
     table_name: str = "variant",
     sql: Optional[str] = None,
     num_cores: int = 1,
+    conn = None,
 ) -> Optional[DataFrame]:
     """Gets a Polars DataFrame of a table in an OakVar result database.
 
@@ -841,16 +842,26 @@ def get_df_from_db(
     df = None
     db_path_to_use = str(Path(db_path).resolve())
     partition_on = partition_ons.get(table_name)
-    db_conn = get_result_db_conn(db_path_to_use)
-    if not db_conn:
-        return None
+    if conn is not None:
+        db_conn = conn
+    else:
+        db_conn = get_result_db_conn(db_path_to_use)
+        if not db_conn:
+            return None
     if partition_on and table_name:
         c = db_conn.cursor()
         c.execute(f"select {partition_on} from {table_name} limit 1")
         ret = c.fetchone()
         if not ret:
             sys.stderr.write(f"{partition_on} does not exist in {table_name}")
+            c.close()
+            if conn is None:
+                db_conn.close()
             return None
+        else:
+            c.close()
+            if conn is None:
+                db_conn.close()
     if not sql:
         sql = f"select * from {table_name}"
     ol_pl = platform.platform()

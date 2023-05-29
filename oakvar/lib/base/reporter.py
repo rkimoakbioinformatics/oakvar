@@ -95,7 +95,7 @@ class BaseReporter:
         self.levels_to_write = None
         self.module_conf = None
         self.output_basename = None
-        self.extract_columns_multilevel = {}
+        self.extract_columns_multilevel: Dict[str, List[str]] = {}
         self.logger = None
         self.error_logger = None
         self.unique_excs = None
@@ -203,11 +203,9 @@ class BaseReporter:
             for level in ["variant", "gene", "sample", "mapping"]:
                 self.extract_columns_multilevel[level] = self.cols
         else:
-            extract_columns = self.get_standardized_module_option(
+            self.extract_columns_multilevel = self.get_extract_columns_multilevel_from_option(
                 self.module_options.get("extract_columns", {})
             )
-            if isinstance(extract_columns, dict):
-                self.extract_columns_multilevel = extract_columns
         self.add_summary = not self.no_summary
 
     def should_write_level(self, level):
@@ -1127,26 +1125,15 @@ class BaseReporter:
         }
         await self.make_report_sub(level, conn)
 
-    def get_standardized_module_option(self, v):
-        tv = type(v)
-        if tv == str:
-            if ":" in v:
-                v0 = {}
-                for v1 in v.split("."):
-                    if ":" in v1:
-                        v1toks = v1.split(":")
-                        if len(v1toks) == 2:
-                            level = v1toks[0]
-                            v2s = v1toks[1].split(",")
-                            v0[level] = v2s
-                v = v0
-            elif "," in v:
-                v = [val for val in v.split(",") if val != ""]
-        if v == "true":
-            v = True
-        elif v == "false":
-            v = False
-        return v
+    def get_extract_columns_multilevel_from_option(self, v: Optional[str]) -> Dict[str, List[str]]:
+        import json
+
+        ret: Dict[str, List[str]] = {}
+        if isinstance(v, str):
+            if v.startswith("{"): # dict
+                v = v.replace("'", "\"")
+                ret = json.loads(v)
+        return ret
 
     async def set_dbpath(self, dbpath: str=""):
         from os.path import exists
@@ -1212,5 +1199,9 @@ class BaseReporter:
             ret = True
         return ret
 
+    def get_standardized_module_option(self, v: Any) -> Any:
+        from ..util.run import get_standardized_module_option
+
+        return get_standardized_module_option(v)
 
 CravatReport = BaseReporter

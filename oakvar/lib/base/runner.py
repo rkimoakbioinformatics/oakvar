@@ -429,32 +429,15 @@ class Runner(object):
 
     def process_module_options(self):
         from ..exceptions import SetupError
+        from ..util.run import get_module_options
 
         if self.args is None or self.conf is None:
             raise SetupError()
-        if self.args.module_options is not None:
-            for opt_str in self.args.module_options:
-                toks = opt_str.split("=")
-                if len(toks) != 2:
-                    if self.outer:
-                        self.outer.write(
-                            "Ignoring invalid module option {opt_str}. "
-                            + "module-options should be module_name.key=value.\n",
-                        )
-                    continue
-                k = toks[0]
-                if k.count(".") != 1:
-                    if self.outer:
-                        self.outer.write(
-                            "Ignoring invalid module option {opt_str}. "
-                            + "module-options should be module_name.key=value.\n",
-                        )
-                    continue
-                [module_name, key] = k.split(".")
-                if module_name not in self.run_conf:
-                    self.run_conf[module_name] = {}
-                v = toks[1]
-                self.run_conf[module_name][key] = v
+        if isinstance(self.args.module_options, dict):
+            module_options = self.args.module_options
+        else:
+            module_options = get_module_options(self.args.module_options, outer=self.outer)
+        self.run_conf.update(module_options)
 
     def process_url_and_pipe_inputs(self):
         from pathlib import Path
