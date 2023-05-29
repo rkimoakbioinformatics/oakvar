@@ -517,7 +517,7 @@ def get_email_pw_from_settings(
     return email, pw
 
 
-def emailpw_are_valid(email: str = "", pw: str = "", outer=None) -> bool:
+def emailpw_are_valid(email: str = "", pw: str = "") -> bool:
     from ....util.util import email_is_valid
     from ....util.util import pw_is_valid
 
@@ -596,7 +596,7 @@ def login_with_email_pw(
             "msg": "No email or password was provided",
             "email": email,
         }
-    if emailpw_are_valid(email=email, pw=pw, outer=outer):
+    if emailpw_are_valid(email=email, pw=pw):
         announce_on_email_verification_if_needed(email, outer=outer)
         ret = login(email=email, pw=pw, outer=outer)
         return ret

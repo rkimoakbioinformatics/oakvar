@@ -23,6 +23,7 @@ class VCF2VCF:
         from pathlib import Path
         from oakvar.lib.exceptions import ModuleLoadingError
 
+        _ = kwargs
         fp = sys.modules[self.__module__].__file__
         if fp is None:
             raise ModuleLoadingError(module_name=self.__module__)
