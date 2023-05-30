@@ -485,65 +485,6 @@ class Runner(object):
                     new_l.append(inp)
             self.input_paths.append(new_l)
 
-    def regenerate_from_db(self, run_no: int):
-        import sqlite3
-        from ..util.inout import FileWriter
-        from ..util.util import get_crv_def
-        from ..util.util import get_crx_def
-        from ..util.util import get_crg_def
-
-        if not self.input_paths:
-            raise
-        dbpath = self.input_paths[run_no]
-        db = sqlite3.connect(dbpath)
-        c = db.cursor()
-        crv_def = get_crv_def()
-        crx_def = get_crx_def()
-        crg_def = get_crg_def()
-        # Variant
-        if not self.crv_present:
-            crv = FileWriter(self.crvinput, columns=crv_def)
-            crv.write_definition()
-        else:
-            crv = None
-        if not self.crx_present:
-            crx = FileWriter(self.crxinput, columns=crx_def)
-            crx.write_definition()
-        else:
-            crx = None
-        if crv or crx:
-            colnames = [x["name"] for x in crx_def]
-            sel_cols = ", ".join(["base__" + x for x in colnames])
-            q = f"select {sel_cols} from variant"
-            c.execute(q)
-            for r in c:
-                rd = {x[0]: x[1] for x in zip(colnames, r)}
-                if crv:
-                    crv.write_data(rd)
-                if crx:
-                    crx.write_data(rd)
-            if crv:
-                crv.close()
-            if crx:
-                crx.close()
-            self.crv_present = True
-            self.crx_present = True
-        # Gene
-        if not self.crg_present:
-            crg = FileWriter(self.crginput, columns=crg_def)
-            crg.write_definition()
-            colnames = [x["name"] for x in crg_def]
-            sel_cols = ", ".join(["base__" + x for x in colnames])
-            q = f"select {sel_cols} from gene"
-            c.execute(q)
-            for r in c:
-                rd = {x[0]: x[1] for x in zip(colnames, r)}
-                crg.write_data(rd)
-            crg.close()
-            self.crg_present = True
-        c.close()
-        db.close()
-
     def set_append_mode(self):
         # TODO: change the below for df workflow.
         self.append_mode = [False] * len(self.input_paths)
@@ -773,8 +714,6 @@ class Runner(object):
             self.crg_present = True
         else:
             self.crg_present = False
-        if self.append_mode[run_no]:
-            self.regenerate_from_db(run_no)
         return True
 
     def get_package_conf_run_value(self, key: str):

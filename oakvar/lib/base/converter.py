@@ -563,7 +563,7 @@ class BaseConverter(object):
                             series_to_add.append(series)
                 print(f"@ series_to_add={series_to_add}")
                 if series_to_add:
-                    df = df.with_columns(series_to_add)
+                    df = df.with_columns(series_to_add) # type: ignore
                 df.glimpse()
                 yield df
                 status = (
@@ -697,7 +697,7 @@ class BaseConverter(object):
             df = df.drop([CHROM, POS, END_POS, REF_BASE, ALT_BASE])
         df = df.with_columns(
             [
-                pl.Series(CHROM, chrom_vals, dtype=pl.Utf8),
+                pl.Series(CHROM, chrom_vals, dtype=pl.Utf8), # type: ignore
                 pl.Series(POS, pos_vals, dtype=pl.Int32),
                 pl.Series(END_POS, end_pos_vals, dtype=pl.Int32),
                 pl.Series(REF_BASE, ref_base_vals, dtype=pl.Utf8),

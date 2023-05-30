@@ -230,6 +230,6 @@ class BaseMapper(object):
 
     def run_df(self, df: pl.DataFrame) -> pl.DataFrame:
         seriess = self.get_series(df)
-        df = df.with_columns(seriess)
+        df = df.with_columns(seriess) # type: ignore
         return df
 
