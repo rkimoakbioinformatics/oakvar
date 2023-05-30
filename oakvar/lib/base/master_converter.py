@@ -195,11 +195,11 @@ def handle_variant(
 
 def handle_converted_variants(
         variants: List[Dict[str, Any]], do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, logger, error_logger, input_path: str, unique_excs: dict, err_holder: list, line_no: int, num_valid_error_lines: Dict[str, int]
-):
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     from oakvar.lib.exceptions import IgnoredVariant
 
     if variants is BaseConverter.IGNORE:
-        return None, None
+        return [], []
     if not variants:
         raise IgnoredVariant("No valid alternate allele was found in any samples.")
     unique_vars = {}
@@ -230,15 +230,15 @@ def gather_variantss(
         unique_excs: dict, 
         err_holder: list,
         num_valid_error_lines: Dict[str, int],
-) -> Tuple[List[List[Dict[str, Any]]], List[Dict[str, Any]]]:
-    variants_l = []
-    crl_l = []
+) -> Tuple[List[List[Dict[str, Any]]], List[List[Dict[str, Any]]]]:
+    variants_l: List[List[Dict[str, Any]]] = []
+    crl_l: List[List[Dict[str, Any]]] = []
     line_data = lines_data[core_num]
     for (line_no, line) in line_data:
         try:
             variants = converter.convert_line(line)
             variants_datas, crl_datas = handle_converted_variants(variants, do_liftover, do_liftover_chrM, lifter, wgs_reader, logger, error_logger, input_path, unique_excs, err_holder, line_no, num_valid_error_lines)
-            if variants_datas is None or crl_datas is None:
+            if not variants_datas:
                 continue
             variants_l.append(variants_datas)
             crl_l.append(crl_datas)
@@ -823,15 +823,16 @@ class MasterConverter(object):
                         crl_data = crl_l[i]
                         if len(variants) == 0:
                             continue
-                        for variant in variants:
-                            variant["uid"] = uid + variant["var_no"]
+                        for variant, crl in zip(variants, crl_data):
+                            uid_var = uid + variant["var_no"]
+                            variant["uid"] = uid_var
+                            crl["uid"] = uid_var
                             if variant["unique"]:
                                 self.crv_writer.write_data(variant)
                                 variant["fileno"] = fileno
                                 self.crm_writer.write_data(variant)
                                 converter.write_extra_info(variant)
                             self.crs_writer.write_data(variant)
-                        for crl in crl_data:
                             self.crl_writer.write_data(crl)
                         uid += max([v["var_no"] for v in variants]) + 1
                     variants_l = None
