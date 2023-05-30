@@ -823,17 +823,28 @@ class MasterConverter(object):
                         crl_data = crl_l[i]
                         if len(variants) == 0:
                             continue
-                        for variant, crl in zip(variants, crl_data):
-                            uid_var = uid + variant["var_no"]
-                            variant["uid"] = uid_var
-                            crl["uid"] = uid_var
-                            if variant["unique"]:
-                                self.crv_writer.write_data(variant)
-                                variant["fileno"] = fileno
-                                self.crm_writer.write_data(variant)
-                                converter.write_extra_info(variant)
-                            self.crs_writer.write_data(variant)
-                            self.crl_writer.write_data(crl)
+                        if crl_data:
+                            for variant, crl in zip(variants, crl_data):
+                                uid_var = uid + variant["var_no"]
+                                variant["uid"] = uid_var
+                                crl["uid"] = uid_var
+                                if variant["unique"]:
+                                    self.crv_writer.write_data(variant)
+                                    variant["fileno"] = fileno
+                                    self.crm_writer.write_data(variant)
+                                    converter.write_extra_info(variant)
+                                self.crs_writer.write_data(variant)
+                                self.crl_writer.write_data(crl)
+                        else:
+                            for variant in variants:
+                                uid_var = uid + variant["var_no"]
+                                variant["uid"] = uid_var
+                                if variant["unique"]:
+                                    self.crv_writer.write_data(variant)
+                                    variant["fileno"] = fileno
+                                    self.crm_writer.write_data(variant)
+                                    converter.write_extra_info(variant)
+                                self.crs_writer.write_data(variant)
                         uid += max([v["var_no"] for v in variants]) + 1
                     variants_l = None
                     crl_l = None
