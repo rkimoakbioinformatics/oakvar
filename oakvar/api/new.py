@@ -34,16 +34,15 @@ def module(module_name: str, module_type: str, outer=None) -> Optional[Path]:
     """
     from ..lib.util.admin_util import create_new_module
     from ..lib.module.local import get_local_module_info
+    from ..lib.exceptions import ArgumentError
 
     if not module_name:
-        e = ValueError("module_name should not be empty.")
-        if outer:
-            outer.error(e)
+        e = ArgumentError("module_name should not be empty.")
+        e.traceback = False
         raise e
     if not module_type:
-        e = ValueError("module_type should not be empty.")
-        if outer:
-            outer.error(e)
+        e = ArgumentError("module_type should not be empty.")
+        e.traceback = False
         raise e
     ret = create_new_module(module_name, module_type, outer=outer)
     if not ret:

@@ -251,6 +251,8 @@ def add_parser_ov_module_install(subparsers):
 
 
 def add_parser_ov_module(subparsers):
+    from ..new import cli_new_module
+
     parser_ov_module = subparsers.add_parser(
         "module",
         description="Manages OakVar modules",
@@ -393,3 +395,22 @@ def add_parser_ov_module(subparsers):
         '# Get the list of all available modules of the type "converter"',
         '#roakvar::module.ls(available=TRUE, types="converter")',
     ]
+
+    # create
+    parser_ov_module_create = subparsers.add_parser(
+        "create",
+        epilog="returns information of the queried module",
+        help="shows module information.",
+    )
+    parser_ov_module_create.add_argument("-n", dest="name", help="Module name")
+    parser_ov_module_create.add_argument("-t", dest="type", help="Module type")
+    parser_ov_module_create.add_argument(
+        "--quiet", action="store_true", default=None, help="No print to stdout"
+    )
+    parser_ov_module_create.set_defaults(func=cli_new_module)
+    parser_ov_module_create.r_return = "A string. Location of the new annotator module"  # type: ignore
+    parser_ov_module_create.r_examples = [  # type: ignore
+        "# Create an annotator template at the OakVar modules directory/annotators/annotatortest",
+        '#roakvar::new.annotator(annotator_name="annotatortest")',
+    ]
+
