@@ -365,7 +365,6 @@ class Runner(object):
         q = f"create table {table_name} (name text primary key, level text, json text)"
         self.result_db_cursor.execute(q)
         q = f"insert into {table_name} values (?, ?, ?)"
-        print(f"@ converter output_columns={converter.output_columns}")
         for col in converter.output_columns:
             name = f"base__{col['name']}"
             self.result_db_cursor.execute(q, (name, "variant", dumps(col)))
@@ -417,7 +416,6 @@ class Runner(object):
             raise NoConverterFound(input_paths)
         samples = self.samples or converter.collect_samples(input_paths)
         coldefs = self.collect_output_columns(converter)
-        print(f"@ coldefs={coldefs}")
         table_col_names = self.create_variant_table_in_result_db(coldefs)
         self.create_auxiliary_tables_in_result_db(converter)
         self.do_step_preparer(run_no)

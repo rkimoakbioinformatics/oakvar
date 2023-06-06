@@ -435,7 +435,7 @@ class BaseConverter(object):
             self.extra_output_columns.append(col)
 
     def get_sample_colname(self, sample: str) -> str:
-        return f"in__{sample}"
+        return f"in_sample__{sample}"
 
     def get_df_headers(self) -> List[Dict[str, Any]]:
         df_headers = []
