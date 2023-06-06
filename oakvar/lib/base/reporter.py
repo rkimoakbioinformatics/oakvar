@@ -140,19 +140,19 @@ class BaseReporter:
         self.check_and_setup_args()
         self._setup_logger()
 
-    async def exec_db(self, func, *args, **kwargs):
+    def exec_db(self, func, *args, **kwargs):
         from ..exceptions import DatabaseConnectionError
 
-        conn = await self.get_db_conn()
+        conn = self.get_db_conn()
         if not conn:
             raise DatabaseConnectionError(self.module_name)
-        cursor = await conn.cursor()
+        cursor = conn.cursor()
         try:
-            ret = await func(*args, conn=conn, cursor=cursor, **kwargs)
+            ret = func(*args, conn=conn, cursor=cursor, **kwargs)
         except:
-            await cursor.close()
+            cursor.close()
             raise
-        await cursor.close()
+        cursor.close()
         return ret
 
     def check_and_setup_args(self):
@@ -169,7 +169,6 @@ class BaseReporter:
                 with sqlite3.connect(self.dbpath) as db:
                     db.execute("select count(*) from info")
                     db.execute("select count(*) from variant")
-                    db.execute("select count(*) from gene")
             except Exception:
                 raise WrongInput(msg=f"{self.dbpath} is not an OakVar result database")
         if not self.output_dir:
@@ -217,10 +216,10 @@ class BaseReporter:
         else:
             return False
 
-    async def connect_db(self, dbpath=None):
+    def connect_db(self, dbpath=None):
         _ = dbpath
 
-    async def set_legacy_samples_column_flag(self):
+    def set_legacy_samples_column_flag(self):
         from sqlite3 import connect
 
         if not self.dbpath:
@@ -239,15 +238,15 @@ class BaseReporter:
         cursor.close()
         conn.close()
 
-    async def prep(self, user=None):
+    def prep(self, user=None):
         from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
 
         if user is None:
             user = DEFAULT_SERVER_DEFAULT_USERNAME
-        await self.set_dbpath()
-        await self.connect_db(dbpath=self.dbpath)
-        await self.set_legacy_samples_column_flag()
-        await self.load_filter(user=user)
+        self.set_dbpath()
+        self.connect_db(dbpath=self.dbpath)
+        self.set_legacy_samples_column_flag()
+        self.load_filter(user=user)
 
     def _setup_logger(self):
         import logging
@@ -272,7 +271,7 @@ class BaseReporter:
             self._log_exception(e)
         self.unique_excs = []
 
-    async def get_db_conn(self):
+    def get_db_conn(self):
         from sqlite3 import connect
 
         if self.dbpath is None:
@@ -349,7 +348,7 @@ class BaseReporter:
     def col_is_categorical(self, col):
         return "category" in col and col["category"] in ["single", "multi"]
 
-    async def do_gene_level_summary(self, add_summary=True):
+    def do_gene_level_summary(self, add_summary=True):
         _ = add_summary
         self.gene_summary_datas = {}
         if not self.summarizing_modules:
@@ -379,7 +378,7 @@ class BaseReporter:
                 if colno is not None:
                     columns[colno]["col_cats"] = cats
 
-    async def store_mapper(self, conn=None, cursor=None):
+    def store_mapper(self, conn=None, cursor=None):
         from ..exceptions import DatabaseConnectionError
 
         if conn is None or cursor is None:
@@ -409,7 +408,7 @@ class BaseReporter:
             status = f"started {self.module_conf['title']} ({self.module_name})"
             update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
 
-    async def get_levels_to_run(self, tab: str) -> List[str]:
+    def get_levels_to_run(self, tab: str) -> List[str]:
         if not self.cf:
             return []
         if tab == "all":
@@ -426,7 +425,7 @@ class BaseReporter:
         self.write_data_df(df, columns, savepath)
         self.end()
 
-    async def run(
+    def run(
         self,
         tab="all",
         add_summary=None,
@@ -554,7 +553,7 @@ class BaseReporter:
                 elif self.outer is not None:
                     self.outer.write(msg)
 
-    async def write_data(
+    def write_data(
         self,
         level: str,
         add_summary=True,
@@ -605,7 +604,7 @@ class BaseReporter:
         self.num_retrieved_cols = len(self.retrieved_col_names[level])
         self.colnos_to_display[level] = [self.retrieved_col_names[level].index(c) for c in self.colnames_to_display[level]]
         self.extracted_colnos_in_retrieved = [self.retrieved_col_names[level].index(c) for c in self.extracted_col_names[level]]
-        async for datarow in cursor_read:
+        for datarow in cursor_read:
             if self.dictrow:
                 datarow = dict(datarow)
             else:
@@ -711,7 +710,7 @@ class BaseReporter:
         elif idx is not None:
             datarow[idx] = newcell
 
-    async def add_gene_summary_data_to_gene_level(self, datarow):
+    def add_gene_summary_data_to_gene_level(self, datarow):
         hugo = datarow["base__hugo"]
         for mi, _, _ in self.summarizing_modules:
             module_name = mi.name
@@ -733,7 +732,7 @@ class BaseReporter:
             else:
                 datarow.update({f"{grp_name}__{col['name']}": None for col in cols})
 
-    async def add_gene_level_data_to_variant_level(self, datarow):
+    def add_gene_level_data_to_variant_level(self, datarow):
         if self.nogenelevelonvariantlevel or self.hugo_colno is None or not self.cf:
             return
         generow = self.cf.exec_db(self.cf.get_gene_row, datarow["base__hugo"])
@@ -742,7 +741,7 @@ class BaseReporter:
         else:
             datarow.update({col: generow[col] for col in self.var_added_cols})
 
-    async def get_variant_colinfo(self, add_summary=True):
+    def get_variant_colinfo(self, add_summary=True):
         try:
             self.prep()
             if self.setup() is False:
@@ -803,7 +802,7 @@ class BaseReporter:
         if incl and col_name not in self.colnames_to_display[level]:
             self.colnames_to_display[level].append(col_name)
 
-    async def make_sorted_column_groups(self, level, conn=Any):
+    def make_sorted_column_groups(self, level, conn=Any):
         cursor = conn.cursor()
         self.columngroups[level] = []
         sql = f"select name, displayname from {level}_annotator order by name"
@@ -829,7 +828,7 @@ class BaseReporter:
                     {"name": name, "displayname": displayname, "count": 0}
                 )
 
-    async def make_coldefs(self, level, conn=Any, group_name=None) -> List[ColumnDefinition]:
+    def make_coldefs(self, level, conn=Any, group_name=None) -> List[ColumnDefinition]:
         coldefs: List[ColumnDefinition] = []
         if not conn:
             return coldefs
@@ -872,7 +871,7 @@ class BaseReporter:
                 coldefs.append(coldef)
         return coldefs
 
-    async def gather_col_categories(self, level, coldef, conn):
+    def gather_col_categories(self, level, coldef, conn):
         cursor = conn.cursor()
         if coldef.category not in ["single", "multi"] or len(coldef.categories) > 0:
             return coldef
@@ -883,7 +882,7 @@ class BaseReporter:
             coldef.categories.append(r[0])
         return coldef
 
-    async def make_columns_colnos_colnamestodisplay_columngroup(self, level, coldefs: List[ColumnDefinition]):
+    def make_columns_colnos_colnamestodisplay_columngroup(self, level, coldefs: List[ColumnDefinition]):
         self.columns[level] = []
         self.colnos[level] = {}
         self.colcount[level] = 0
@@ -898,7 +897,7 @@ class BaseReporter:
                 if columngroup["name"] == colgrpname:
                     columngroup["count"] += 1
 
-    async def get_gene_level_modules_to_add_to_variant_level(self, conn):
+    def get_gene_level_modules_to_add_to_variant_level(self, conn):
         cursor = conn.cursor()
         q = "select name from gene_annotator"
         cursor.execute(q)
@@ -906,7 +905,7 @@ class BaseReporter:
         modules_to_add = [m for m in gene_annotators if m != "base"]
         return modules_to_add
 
-    async def add_gene_level_displayname_to_variant_level_columngroups(
+    def add_gene_level_displayname_to_variant_level_columngroups(
         self, module_name, coldefs, conn
     ):
         cursor = conn.cursor()
@@ -918,17 +917,17 @@ class BaseReporter:
             {"name": module_name, "displayname": displayname, "count": len(coldefs)}
         )
 
-    async def add_gene_level_columns_to_variant_level(self, conn):
+    def add_gene_level_columns_to_variant_level(self, conn):
         if not self.exec_db(self.table_exists, "gene"):
             return
-        modules_to_add = await self.get_gene_level_modules_to_add_to_variant_level(conn)
+        modules_to_add = self.get_gene_level_modules_to_add_to_variant_level(conn)
         for module_name in modules_to_add:
-            gene_coldefs = await self.make_coldefs(
+            gene_coldefs = self.make_coldefs(
                 "gene", conn=conn, group_name=module_name
             )
             if not gene_coldefs:
                 continue
-            await self.add_gene_level_displayname_to_variant_level_columngroups(
+            self.add_gene_level_displayname_to_variant_level_columngroups(
                 module_name, gene_coldefs, conn
             )
             for gene_coldef in gene_coldefs:
@@ -939,7 +938,7 @@ class BaseReporter:
                 self.add_to_colnames_to_display("variant", gene_column)
                 self.var_added_cols.append(gene_coldef.name)
 
-    async def add_gene_level_summary_columns(
+    def add_gene_level_summary_columns(
         self, add_summary=True, conn=Any, cursor=Any
     ):
         from os.path import dirname
@@ -955,8 +954,8 @@ class BaseReporter:
         if not add_summary:
             return
         q = "select name from variant_annotator"
-        await cursor.execute(q)
-        done_var_annotators = [v[0] for v in await cursor.fetchall()]
+        cursor.execute(q)
+        done_var_annotators = [v[0] for v in cursor.fetchall()]
         self.summarizing_modules = []
         local_modules = get_local_module_infos_of_type("annotator")
         local_modules.update(get_local_module_infos_of_type("postaggregator"))
@@ -1038,19 +1037,19 @@ class BaseReporter:
     def get_group_name(self, col_name):
         return self.get_group_field_names(col_name)[0]
 
-    async def make_report_sub(self, level, conn):
+    def make_report_sub(self, level, conn):
         from json import loads
         from types import SimpleNamespace
 
         if level not in ["variant", "gene"]:
             return
         reportsubtable = f"{level}_reportsub"
-        if not await self.exec_db(self.table_exists, reportsubtable):
+        if not self.exec_db(self.table_exists, reportsubtable):
             return
-        cursor = await conn.cursor()
+        cursor = conn.cursor()
         q = f"select * from {reportsubtable}"
-        await cursor.execute(q)
-        reportsub = {r[0]: loads(r[1]) for r in await cursor.fetchall()}
+        cursor.execute(q)
+        reportsub = {r[0]: loads(r[1]) for r in cursor.fetchall()}
         self.column_subs[level] = []
         for i, column in enumerate(self.columns[level]):
             module_name, field_name = self.get_group_field_names(column["col_name"])
@@ -1084,11 +1083,11 @@ class BaseReporter:
                 self.colnos_to_display[level].append(colno)
             colno += 1
 
-    async def make_col_infos(self, add_summary=True):
+    def make_col_infos(self, add_summary=True):
         prev_level = self.level
         for level in self.levels:
             self.level = level
-            await self.exec_db(self.make_col_info, level, add_summary=add_summary)
+            self.exec_db(self.make_col_info, level, add_summary=add_summary)
         self.level = prev_level
 
     def add_column_number_stat_to_col_groups(self, level: str):
@@ -1099,22 +1098,22 @@ class BaseReporter:
             columngroup["end_colunm_number"] = new_last_columngroup_pos
             last_columngroup_pos = new_last_columngroup_pos
 
-    async def make_col_info(self, level: str, add_summary=True, conn=Any, cursor=Any):
+    def make_col_info(self, level: str, add_summary=True, conn=Any, cursor=Any):
         _ = cursor
-        if not level or not await self.exec_db(self.table_exists, level):
+        if not level or not self.exec_db(self.table_exists, level):
             return
-        await self.exec_db(self.store_mapper)
+        self.exec_db(self.store_mapper)
         self.colnames_to_display[level] = []
         self.modules_to_add_to_base = [self.mapper_name, "tagsampler"]
-        await self.make_sorted_column_groups(level, conn=conn)
-        coldefs = await self.make_coldefs(level, conn=conn)
+        self.make_sorted_column_groups(level, conn=conn)
+        coldefs = self.make_coldefs(level, conn=conn)
         if not coldefs:
             return
-        await self.make_columns_colnos_colnamestodisplay_columngroup(level, coldefs)
+        self.make_columns_colnos_colnamestodisplay_columngroup(level, coldefs)
         if not self.nogenelevelonvariantlevel and self.level == "variant":
-            await self.add_gene_level_columns_to_variant_level(conn)
+            self.add_gene_level_columns_to_variant_level(conn)
         if self.level == "gene" and level == "gene" and add_summary:
-            await self.exec_db(self.add_gene_level_summary_columns, level)
+            self.exec_db(self.add_gene_level_summary_columns, level)
         self.set_display_select_columns(level)
         self.set_cols_to_display(level)
         self.add_column_number_stat_to_col_groups(level)
@@ -1122,7 +1121,7 @@ class BaseReporter:
             "colgroups": self.columngroups[level],
             "columns": self.columns[level],
         }
-        await self.make_report_sub(level, conn)
+        self.make_report_sub(level, conn)
 
     def get_extract_columns_multilevel_from_option(self, v: Optional[str]) -> Dict[str, List[str]]:
         import json
@@ -1134,7 +1133,7 @@ class BaseReporter:
                 ret = json.loads(v)
         return ret
 
-    async def set_dbpath(self, dbpath: str=""):
+    def set_dbpath(self, dbpath: str=""):
         from os.path import exists
         from ..exceptions import NoInput
         from ..exceptions import WrongInput
@@ -1146,27 +1145,27 @@ class BaseReporter:
         if not exists(self.dbpath):
             raise WrongInput()
 
-    async def close_db(self):
+    def close_db(self):
         import sqlite3
 
         for conn in self.conns:
             if type(conn) == sqlite3.Connection:
                 conn.close()
             else:
-                await conn.close()
+                conn.close()
         self.conns = []
         if self.cf is not None:
-            await self.cf.close_db()
+            self.cf.close_db()
             self.cf = None
 
-    async def load_filter(self, user=None):
+    def load_filter(self, user=None):
         from ... import ReportFilter
         from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
 
         if user is None:
             user = DEFAULT_SERVER_DEFAULT_USERNAME
-        self.cf = await ReportFilter.create(dbpath=self.dbpath, user=user, strict=False)
-        await self.cf.exec_db(
+        self.cf = ReportFilter.create(dbpath=self.dbpath, user=user, strict=False)
+        self.cf.exec_db(
             self.cf.loadfilter,
             filter=self.filter,
             filterpath=self.filterpath,
@@ -1177,7 +1176,7 @@ class BaseReporter:
             excludesample=self.excludesample,
         )
 
-    async def table_exists(self, tablename, conn=None, cursor=None):
+    def table_exists(self, tablename, conn=None, cursor=None):
         if conn is None:
             pass
         if cursor is None:
@@ -1190,8 +1189,8 @@ class BaseReporter:
             + tablename
             + '"'
         )
-        await cursor.execute(sql)
-        row = await cursor.fetchone()
+        cursor.execute(sql)
+        row = cursor.fetchone()
         if row is None:
             ret = False
         else:

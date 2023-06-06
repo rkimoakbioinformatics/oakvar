@@ -149,8 +149,8 @@ class SubmitProcessor:
         info_json = self.make_job_info_json(submit_options, job_dir)
         job.set_info_values(info_json=info_json)
         email = get_email_from_request(request, self.servermode)
-        serveradmindb = await get_serveradmindb()
-        uid = await serveradmindb.add_job_info(email, job)
+        serveradmindb = get_serveradmindb()
+        uid = serveradmindb.add_job_info(email, job)
         submit_options["uid"] = uid
         run_args = await self.get_run_args(request, submit_options, job_dir)
         run_args.extend(["--uid", str(uid)])

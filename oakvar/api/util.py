@@ -330,18 +330,13 @@ def filtersqlite(
         includesample (List[str]): includesample
         excludesample (List[str]): excludesample
     """
-    from ..lib.util.asyn import get_event_loop
-
-    loop = get_event_loop()
-    return loop.run_until_complete(
-        filtersqlite_async(
-            dbpaths=dbpaths,
-            suffix=suffix,
-            filterpath=filterpath,
-            filtersql=filtersql,
-            includesample=includesample,
-            excludesample=excludesample,
-        )
+    return filtersqlite_async(
+        dbpaths=dbpaths,
+        suffix=suffix,
+        filterpath=filterpath,
+        filtersql=filtersql,
+        includesample=includesample,
+        excludesample=excludesample,
     )
 
 
@@ -357,7 +352,7 @@ def filtersqlite_async_drop_copy_table(c, table_name):
     c.execute(f"create table main.{table_name} as select * from old_db.{table_name}")
 
 
-async def filtersqlite_async(
+def filtersqlite_async(
     dbpaths: List[str] = [],
     suffix: str = "filtered",
     filterpath: Optional[str] = None,
@@ -392,14 +387,14 @@ async def filtersqlite_async(
         c = conn.cursor()
         try:
             c.execute("attach database '" + dbpath + "' as old_db")
-            cf = await ReportFilter.create(
+            cf = ReportFilter.create(
                 dbpath=dbpath,
                 filterpath=filterpath,
                 filtersql=filtersql,
                 includesample=includesample,
                 excludesample=excludesample,
             )
-            await cf.exec_db(cf.loadfilter)
+            cf.exec_db(cf.loadfilter)
             if (
                 hasattr(cf, "filter") is False
                 or cf.filter is None
@@ -426,13 +421,13 @@ async def filtersqlite_async(
             # Variant
             print("- variant")
             if hasattr(cf, "make_filtered_uid_table"):
-                await cf.exec_db(getattr(cf, "make_filtered_uid_table"))
+                cf.exec_db(getattr(cf, "make_filtered_uid_table"))
             c.execute(
                 "create table variant as select v.* from old_db.variant as v, old_db.variant_filtered as f where v.base__uid=f.base__uid"
             )
             # Gene
             print("- gene")
-            await cf.exec_db(cf.make_filtered_hugo_table)
+            cf.exec_db(cf.make_filtered_hugo_table)
             c.execute(
                 "create table gene as select g.* from old_db.gene as g, old_db.gene_filtered as f where g.base__hugo=f.base__hugo"
             )
@@ -482,7 +477,7 @@ async def filtersqlite_async(
                 f'update info set colval={n} where colkey="Number of unique input variants"'
             )
             conn.commit()
-            await cf.close_db()
+            cf.close_db()
             c.close()
             conn.close()
             print(f"-> {opath}")

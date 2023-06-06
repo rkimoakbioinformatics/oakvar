@@ -7,7 +7,7 @@ admindb_path = None
 serveradmindb = None
 
 
-async def get_serveradmindb(new_setup: bool = False):
+def get_serveradmindb(new_setup: bool = False):
     from .serveradmindb import ServerAdminDb
 
     global serveradmindb
@@ -17,18 +17,18 @@ async def get_serveradmindb(new_setup: bool = False):
 
 
 def db_func(func):
-    async def outer_func(*args, **kwargs):
-        from aiosqlite import Row
+    def outer_func(*args, **kwargs):
+        from sqlite3 import Row
 
-        admindb = await get_serveradmindb()
-        conn = await admindb.get_db_conn()
+        admindb = get_serveradmindb()
+        conn = admindb.get_db_conn()
         if not conn:
             return
         conn.row_factory = Row
-        cursor = await conn.cursor()
-        ret = await func(*args, conn=conn, cursor=cursor, **kwargs)
-        await cursor.close()
-        await conn.close()
+        cursor = conn.cursor()
+        ret = func(*args, conn=conn, cursor=cursor, **kwargs)
+        cursor.close()
+        conn.close()
         return ret
 
     return outer_func
@@ -205,10 +205,10 @@ class ServerAdminDb:
         cursor.execute(q, (DEFAULT_SERVER_DEFAULT_USERNAME, USER_ROLE))
         conn.commit()
 
-    async def get_db_conn(self):
-        from aiosqlite import connect
+    def get_db_conn(self):
+        from sqlite3 import connect
 
-        conn = await connect(self.admindb_path)
+        conn = connect(self.admindb_path)
         return conn
 
     def get_sync_db_conn(self):
@@ -217,13 +217,13 @@ class ServerAdminDb:
         conn = connect(self.admindb_path)
         return conn
 
-    async def add_job_info(self, username, job):
+    def add_job_info(self, username, job):
         from json import dumps
 
-        conn = await self.get_db_conn()
+        conn = self.get_db_conn()
         if not conn:
             return
-        cursor = await conn.cursor()
+        cursor = conn.cursor()
         annotators = job.info.get("annotators", [])
         postaggregators = job.info.get("postaggregators", [])
         modules = ",".join(annotators + postaggregators)
@@ -233,7 +233,7 @@ class ServerAdminDb:
             + "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         info_json = dumps(job.info["info_json"])
-        await cursor.execute(
+        cursor.execute(
             q,
             (
                 username,
@@ -249,56 +249,56 @@ class ServerAdminDb:
                 "Submitted",
             ),
         )
-        await conn.commit()
+        conn.commit()
         q = "select uid from jobs where username=? and dir=? and name=?"
-        await cursor.execute(q, (username, job.info["dir"], job.info["job_name"]))
-        ret = await cursor.fetchone()
-        await cursor.close()
-        await conn.close()
+        cursor.execute(q, (username, job.info["dir"], job.info["job_name"]))
+        ret = cursor.fetchone()
+        cursor.close()
+        conn.close()
         if ret:
             return ret[0]
         else:
             return None
 
-    async def get_user_role_of_email(self, email, servermode=True):
+    def get_user_role_of_email(self, email, servermode=True):
         from ..lib.system.consts import ADMIN_ROLE
 
         if not servermode:
             return ADMIN_ROLE
-        conn = await self.get_db_conn()
+        conn = self.get_db_conn()
         if not conn:
             return
-        cursor = await conn.cursor()
+        cursor = conn.cursor()
         q = "select role from users where email=?"
-        await cursor.execute(q, (email,))
-        ret = await cursor.fetchone()
+        cursor.execute(q, (email,))
+        ret = cursor.fetchone()
         if ret:
             ret = ret[0]
-        await cursor.close()
-        await conn.close()
+        cursor.close()
+        conn.close()
         return ret
 
-    async def add_user_if_not_exist(
+    def add_user_if_not_exist(
         self, username: str, passwordhash: str, question: str, answerhash: str
     ):
         from json import dumps
 
         if not username:
             return
-        conn = await self.get_db_conn()
+        conn = self.get_db_conn()
         if not conn:
             return
-        cursor = await conn.cursor()
+        cursor = conn.cursor()
         q = "select email from users where email=?"
-        await cursor.execute(q, (username,))
-        ret = await cursor.fetchone()
+        cursor.execute(q, (username,))
+        ret = cursor.fetchone()
         if not ret:
             default_settings = {"lastAssembly": None}
             q = (
                 "insert into users (email, role, passwordhash, question, "
                 + "answerhash, settings) values (?, ?, ?, ?, ?, ?)"
             )
-            await cursor.execute(
+            cursor.execute(
                 q,
                 (
                     username,
@@ -309,22 +309,22 @@ class ServerAdminDb:
                     dumps(default_settings),
                 ),
             )
-        await conn.commit()
-        await cursor.close()
-        await conn.close()
+        conn.commit()
+        cursor.close()
+        conn.close()
 
-    async def get_user_settings(self, username):
+    def get_user_settings(self, username):
         from json import loads
 
-        conn = await self.get_db_conn()
+        conn = self.get_db_conn()
         if not conn:
             return None
-        cursor = await conn.cursor()
+        cursor = conn.cursor()
         q = "select settings from users where email=?"
-        await cursor.execute(q, [username])
-        r = await cursor.fetchone()
-        await cursor.close()
-        await conn.close()
+        cursor.execute(q, [username])
+        r = cursor.fetchone()
+        cursor.close()
+        conn.close()
         if r is None:
             return None
         else:
@@ -334,22 +334,22 @@ class ServerAdminDb:
             else:
                 return loads(settings)
 
-    async def update_user_settings(self, username, d):
+    def update_user_settings(self, username, d):
         from json import dumps
 
-        newsettings = await self.get_user_settings(username)
+        newsettings = self.get_user_settings(username)
         if not newsettings:
             return
         newsettings.update(d)
-        conn = await self.get_db_conn()
+        conn = self.get_db_conn()
         if not conn:
             return
-        cursor = await conn.cursor()
-        await cursor.execute(
+        cursor = conn.cursor()
+        cursor.execute(
             "update users set settings=? where email=?", [dumps(newsettings), username]
         )
-        await cursor.close()
-        await conn.close()
+        cursor.close()
+        conn.close()
 
     def delete_job(self, uid: int):
         conn = self.get_sync_db_conn()
@@ -361,42 +361,42 @@ class ServerAdminDb:
         conn.close()
 
     @db_func
-    async def get_job_status(self, uid=None, conn=Any, cursor=Any):
+    def get_job_status(self, uid=None, conn=Any, cursor=Any):
         if not uid:
             return None
         _ = conn
         q = "select status from jobs where uid=?"
-        await cursor.execute(q, (uid,))
-        ret = await cursor.fetchone()
+        cursor.execute(q, (uid,))
+        ret = cursor.fetchone()
         if not ret:
             return None
         return ret[0]
 
     @db_func
-    async def get_job_dir_by_username_uid(
+    def get_job_dir_by_username_uid(
         self, eud={}, conn=Any, cursor=Any
     ) -> Optional[str]:
         if not eud.get("uid") or not eud.get("username"):
             return None
         _ = conn
         q = "select dir from jobs where username=? and uid=?"
-        await cursor.execute(q, (eud.get("username"), eud.get("uid")))
-        ret = await cursor.fetchone()
+        cursor.execute(q, (eud.get("username"), eud.get("uid")))
+        ret = cursor.fetchone()
         if not ret:
             return None
         else:
             return ret[0]
 
     @db_func
-    async def get_dbpath_by_eud(self, eud={}, conn=Any, cursor=Any) -> Optional[str]:
+    def get_dbpath_by_eud(self, eud={}, conn=Any, cursor=Any) -> Optional[str]:
         from json import loads
 
         if not eud.get("uid") or not eud.get("username"):
             return None
         _ = conn
         q = "select info_json from jobs where username=? and uid=?"
-        await cursor.execute(q, (eud.get("username"), eud.get("uid")))
-        ret = await cursor.fetchone()
+        cursor.execute(q, (eud.get("username"), eud.get("uid")))
+        ret = cursor.fetchone()
         if not ret:
             return None
         info_json = loads(ret[0])
@@ -463,7 +463,7 @@ class ServerAdminDb:
         return pagesize
 
     @db_func
-    async def get_jobs_of_email(
+    def get_jobs_of_email(
         self, email, pageno=None, pagesize=None, search_text=None, conn=Any, cursor=Any
     ):
         from json import loads
@@ -480,13 +480,13 @@ class ServerAdminDb:
             "select uid, name, info_json, status from jobs where username=? "
             + f"order by uid desc limit {limit} offset {offset}"
         )
-        await cursor.execute(q, (email,))
-        ret = await cursor.fetchall()
+        cursor.execute(q, (email,))
+        ret = cursor.fetchall()
         ret = [dict(v) for v in ret]
         if len(ret) == 0:
             q = "select count(*) from jobs where username=?"
-            await cursor.execute(q, (email,))
-            total_ret = await cursor.fetchone()
+            cursor.execute(q, (email,))
+            total_ret = cursor.fetchone()
             total = total_ret[0]
             if offset > total:
                 return None
@@ -498,7 +498,7 @@ class ServerAdminDb:
         return ret
 
     @db_func
-    async def get_run_name(
+    def get_run_name(
         self, username=None, uid=None, conn=Any, cursor=Any
     ) -> Optional[str]:
         from json import loads
@@ -507,57 +507,57 @@ class ServerAdminDb:
         if not username or not uid:
             return None
         q = "select info_json from jobs where username=? and uid=?"
-        await cursor.execute(q, (username, uid))
-        ret = await cursor.fetchone()
+        cursor.execute(q, (username, uid))
+        ret = cursor.fetchone()
         if not ret:
             return None
         info_json = loads(ret[0])
         return info_json.get("run_name")
 
     @db_func
-    async def mark_job_as_aborted(self, username=None, uid=None, conn=Any, cursor=Any):
+    def mark_job_as_aborted(self, username=None, uid=None, conn=Any, cursor=Any):
         if not username or not uid:
             return
         q = "update jobs set status=? where username=? and uid=?"
-        await cursor.execute(q, ("Aborted", username, uid))
-        await conn.commit()
+        cursor.execute(q, ("Aborted", username, uid))
+        conn.commit()
 
     @db_func
-    async def get_users(self, conn=Any, cursor=Any):
+    def get_users(self, conn=Any, cursor=Any):
         _ = conn
         q = "select email, role from users"
-        await cursor.execute(q)
+        cursor.execute(q)
         res = []
-        for row in await cursor.fetchall():
+        for row in cursor.fetchall():
             res.append({"email": row[0], "role": row[1]})
         return res
 
     @db_func
-    async def make_admin(self, email: str, conn=Any, cursor=Any):
+    def make_admin(self, email: str, conn=Any, cursor=Any):
         _ = conn
         q = "update users set role=? where email=?"
-        await cursor.execute(
+        cursor.execute(
             q,
             (
                 "admin",
                 email,
             ),
         )
-        await conn.commit()
+        conn.commit()
 
     @db_func
-    async def remove_admin(self, email: str, conn=Any, cursor=Any):
+    def remove_admin(self, email: str, conn=Any, cursor=Any):
         _ = conn
         q = "update users set role='user' where email=?"
-        await cursor.execute(q, (email,))
-        await conn.commit()
+        cursor.execute(q, (email,))
+        conn.commit()
 
     @db_func
-    async def remove_user(self, email: str, conn=Any, cursor=Any):
+    def remove_user(self, email: str, conn=Any, cursor=Any):
         _ = conn
         q = "delete from users where email=?"
-        await cursor.execute(q, (email,))
-        await conn.commit()
+        cursor.execute(q, (email,))
+        conn.commit()
 
     def retrieve_user_jobs_into_db(self):
         from pathlib import Path

@@ -1,12 +1,12 @@
 import os
-import aiosqlite
 import json
 import sys
 import imp
 from typing import Optional
-from ... import ReportFilter
 from aiohttp import web
 import time
+from sqlite3 import Connection
+from ... import ReportFilter
 
 wu = None
 logger = None
@@ -15,82 +15,82 @@ gui_result_pagesize_key = "gui_result_pagesize"
 servermode = False
 
 
-async def get_nowg_annot_modules(_):
+def get_nowg_annot_modules(_):
     # disabling this until required_annotator is included in the remote manifest.
     return web.json_response({})
 
 
-async def get_filter_save_names(request):
+def get_filter_save_names(request):
     from aiohttp.web import Response
 
     _ = request.rel_url.query
-    dbpath = await get_dbpath(request)
+    dbpath = get_dbpath(request)
     conn = None
     cursor = None
     content = []
     try:
-        conn = await get_db_conn(dbpath)
+        conn = get_db_conn(dbpath)
         if not conn:
             return Response(status=500)
-        cursor = await conn.cursor()
+        cursor = conn.cursor()
         table = "viewersetup"
-        r = await table_exists(cursor, table)
+        r = table_exists(cursor, table)
         if r is False:
             pass
         else:
             q = "select distinct name from " + table + ' where datatype="filter"'
-            await cursor.execute(q)
-            rs = await cursor.fetchall()
+            cursor.execute(q)
+            rs = cursor.fetchall()
             for r in rs:
                 content.append(r[0])
-        await cursor.close()
-        await conn.close()
+        cursor.close()
+        conn.close()
     except:
         if cursor is not None:
-            await cursor.close()
+            cursor.close()
         if conn is not None:
-            await conn.close()
+            conn.close()
         raise
     return web.json_response(content)
 
 
-async def get_layout_save_names(request):
+def get_layout_save_names(request):
     from aiohttp.web import Response
 
     _ = request.rel_url.query
-    dbpath = await get_dbpath(request)
+    dbpath = get_dbpath(request)
     content = []
-    conn = await get_db_conn(dbpath)
+    conn = get_db_conn(dbpath)
     if not conn:
         return Response(status=500)
-    cursor = await conn.cursor()
+    cursor = conn.cursor()
     table = "viewersetup"
-    r = await table_exists(cursor, table)
+    r = table_exists(cursor, table)
     if r:
         q = "select distinct name from " + table + ' where datatype="layout"'
-        await cursor.execute(q)
-        rs = await cursor.fetchall()
+        cursor.execute(q)
+        rs = cursor.fetchall()
         for r in rs:
             content.append(r[0])
-    await cursor.close()
-    await conn.close()
+    cursor.close()
+    conn.close()
     return web.json_response(content)
 
 
-async def rename_layout_setting(request):
+def rename_layout_setting(request):
     from aiohttp.web import Response
 
     queries = request.rel_url.query
-    dbpath = await get_dbpath(request)
+    dbpath = get_dbpath(request)
     content = {}
     name = queries["name"]
     new_name = queries["newname"]
-    conn = await get_db_conn(dbpath)
+    conn = get_db_conn(dbpath)
     if not conn:
         return Response(status=500)
-    cursor = await conn.cursor()
+    cursor = conn.cursor()
     table = "viewersetup"
-    r = await table_exists(cursor, table)
+    r = table_exists(cursor, table)
     if r is True:
         q = (
             "update "
@@ -101,55 +101,57 @@ async def rename_layout_setting(request):
             + name
             + '"'
         )
-        await cursor.execute(q)
-    await conn.commit()
-    await cursor.close()
-    await conn.close()
+        cursor.execute(q)
+    conn.commit()
+    cursor.close()
+    conn.close()
     return web.json_response(content)
 
 
-async def get_db_conn(dbpath):
+def get_db_conn(dbpath) -> Optional[Connection]:
+    from sqlite3 import connect
+
     if dbpath is None:
         return None
-    conn = await aiosqlite.connect(dbpath)
+    conn = connect(dbpath)
     return conn
 
 
-async def delete_layout_setting(request):
+def delete_layout_setting(request):
     from aiohttp.web import Response
 
     queries = request.rel_url.query
-    dbpath = await get_dbpath(request)
+    dbpath = get_dbpath(request)
     name = queries["name"]
     content = {}
-    conn = await get_db_conn(dbpath)
+    conn = get_db_conn(dbpath)
     if not conn:
         return Response(status=500)
-    cursor = await conn.cursor()
+    cursor = conn.cursor()
     table = "viewersetup"
-    r = await table_exists(cursor, table)
+    r = table_exists(cursor, table)
     if r is True:
         q = "DELETE FROM " + table + ' WHERE datatype="layout" and name="' + name + '"'
-        await cursor.execute(q)
-    await conn.commit()
-    await cursor.close()
-    await conn.close()
+        cursor.execute(q)
+    conn.commit()
+    cursor.close()
+    conn.close()
     return web.json_response(content)
 
 
-async def load_layout_setting(request):
+def load_layout_setting(request):
     from aiohttp.web import Response
 
     queries = request.rel_url.query
-    dbpath = await get_dbpath(request)
+    dbpath = get_dbpath(request)
     name = queries["name"]
-    conn = await get_db_conn(dbpath)
+    conn = get_db_conn(dbpath)
     content = {"widgetSettings": {}}
     if not conn:
         return Response(status=500)
-    cursor = await conn.cursor()
+    cursor = conn.cursor()
     table = "viewersetup"
-    r = await table_exists(cursor, table)
+    r = table_exists(cursor, table)
     if r is True:
         q = (
             "select viewersetup from "
@@ -158,31 +160,31 @@ async def load_layout_setting(request):
             + name
             + '"'
         )
-        await cursor.execute(q)
-        r = await cursor.fetchone()
+        cursor.execute(q)
+        r = cursor.fetchone()
         if r is not None:
             data = r[0]
             content = json.loads(data)
         else:
             content = {"widgetSettings": {}}
-    await cursor.close()
-    await conn.close()
+    cursor.close()
+    conn.close()
     return web.json_response(content)
 
 
-async def load_filter_setting(request):
+def load_filter_setting(request):
     from aiohttp.web import Response
 
     queries = request.rel_url.query
-    dbpath = await get_dbpath(request)
+    dbpath = get_dbpath(request)
     name = queries["name"]
-    conn = await get_db_conn(dbpath)
+    conn = get_db_conn(dbpath)
     content = {"filterSet": []}
     if not conn:
         return Response(status=500)
-    cursor = await conn.cursor()
+    cursor = conn.cursor()
     table = "viewersetup"
-    r = await table_exists(cursor, table)
+    r = table_exists(cursor, table)
     if r is True:
         q = (
             "select viewersetup from "
@@ -191,43 +193,43 @@ async def load_filter_setting(request):
             + name
             + '"'
         )
-        await cursor.execute(q)
-        r = await cursor.fetchone()
+        cursor.execute(q)
+        r = cursor.fetchone()
         if r is not None:
             data = r[0]
             content = json.loads(data)
         else:
             content = {"filterSet": []}
-    await cursor.close()
-    await conn.close()
+    cursor.close()
+    conn.close()
     return web.json_response(content)
 
 
-async def save_layout_setting(request):
+def save_layout_setting(request):
     from aiohttp.web import Response
     from urllib.parse import unquote
     from json import loads
 
-    text_data = await request.text()
+    text_data = request.text()
     text_data = unquote(text_data)
     queries = loads(text_data)
-    dbpath = await get_dbpath(request)
+    dbpath = get_dbpath(request)
     name = queries["name"]
     savedata = queries["savedata"]
-    conn = await get_db_conn(dbpath)
+    conn = get_db_conn(dbpath)
     content = "fail"
     if not conn:
         return Response(status=500)
-    cursor = await conn.cursor()
+    cursor = conn.cursor()
     table = "viewersetup"
-    r = await table_exists(cursor, table)
+    r = table_exists(cursor, table)
     if r is False:
         q = (
             "create table "
             + table
             + " (datatype text, name text, viewersetup text, unique (datatype, name))"
         )
-        await cursor.execute(q)
+        cursor.execute(q)
     q = (
         "replace into "
         + table
@@ -237,34 +239,34 @@ async def save_layout_setting(request):
         + savedata
         + "')"
     )
-    await cursor.execute(q)
-    await conn.commit()
-    await cursor.close()
-    await conn.close()
+    cursor.execute(q)
+    conn.commit()
+    cursor.close()
+    conn.close()
     content = "saved"
     return web.json_response(content)
 
 
-async def get_status(request):
+def get_status(request):
     from aiohttp.web import Response
 
     global logger
-    dbpath = await get_dbpath(request)
-    conn = await get_db_conn(dbpath)
+    dbpath = get_dbpath(request)
+    conn = get_db_conn(dbpath)
     if not conn:
         if logger:
             logger.error(f"db connection could not be made for {dbpath}.")
         return Response(status=500)
     content = {}
-    cursor = await conn.cursor()
+    cursor = conn.cursor()
     q = r"select * from info where colkey not like '\_%' escape '\'"
-    await cursor.execute(q)
-    for row in await cursor.fetchall():
+    cursor.execute(q)
+    for row in cursor.fetchall():
         content[row[0]] = row[1]
     if "dbpath" not in content:
         content["dbpath"] = dbpath
-    await cursor.close()
-    await conn.close()
+    cursor.close()
+    conn.close()
     return web.json_response(content)
 
 
@@ -292,27 +294,27 @@ def get_widgetlist(_):
     return web.json_response(content)
 
 
-async def get_count(request):
+def get_count(request):
     from ...lib.exceptions import DatabaseConnectionError
 
     global logger
-    dbpath = await get_dbpath(request)
+    dbpath = get_dbpath(request)
     if dbpath is None:
         raise DatabaseConnectionError("result database")
-    queries = await request.json()
+    queries = request.json()
     tab = queries["tab"]
     if "filter" in queries:
         filterstring = queries["filter"]
     else:
         filterstring = None
-    cf = await ReportFilter.create(dbpath=dbpath, mode="sub", filterstring=filterstring)
+    cf = ReportFilter.create(dbpath=dbpath, mode="sub", filterstring=filterstring)
     dbbasename = os.path.basename(dbpath)
     _ = dbbasename
     if logger:
         logger.info(f"calling count for {dbbasename}. filterstring={filterstring}")
     t = time.time()
-    n = await cf.getcount(level=tab)
-    await cf.close_db()
+    n = cf.getcount(level=tab)
+    cf.close_db()
     if logger:
         t = round(time.time() - t, 3)
         logger.info(f"count obtained from {dbbasename} in {t}s")
@@ -320,12 +322,12 @@ async def get_count(request):
     return web.json_response(content)
 
 
-async def get_result(request):
+def get_result(request):
     from ...lib.exceptions import DatabaseConnectionError
 
     global logger
-    queries = await request.json()
-    dbpath = await get_dbpath(request)
+    queries = request.json()
+    dbpath = get_dbpath(request)
     if dbpath is None:
         raise DatabaseConnectionError("result database")
     dbname = os.path.basename(dbpath)
@@ -336,7 +338,7 @@ async def get_result(request):
         page = 1
     else:
         page = int(page)
-    pagesize = await get_pagesize(request, valueonly=True)
+    pagesize = get_pagesize(request, valueonly=True)
     if logger is not None:
         logger.info("(Getting result of [{}]:[{}]...)".format(dbname, tab))
     start_time = time.time()
@@ -378,14 +380,14 @@ async def get_result(request):
         report_types=["text"],
         no_summary=no_summary
     )
-    data = await reporter.run(
+    data = reporter.run(
         tab=tab,
         pagesize=pagesize,
         page=page,
         add_summary=add_summary,
         make_filtered_table=make_filtered_table,
     )
-    data["modules_info"] = await get_modules_info(request)
+    data["modules_info"] = get_modules_info(request)
     content = {}
     content["stat"] = {
         "rowsreturned": True,
@@ -407,14 +409,14 @@ async def get_result(request):
     return web.json_response(content)
 
 
-async def get_pagesize(request, valueonly=False):
+def get_pagesize(request, valueonly=False):
     from ...lib.system import get_user_conf
     from ...lib.system import get_system_conf
 
     user_conf = get_user_conf()
     sys_conf = get_system_conf()
     try:
-        queries = await request.json()
+        queries = request.json()
     except Exception:
         queries = {}
     gui_result_pagesize = queries.get(
@@ -433,7 +435,7 @@ async def get_pagesize(request, valueonly=False):
         return web.json_response(content)
 
 
-async def get_num_var_limit_for_summary_widget(_):
+def get_num_var_limit_for_summary_widget(_):
     from ...lib.system import get_system_conf
     from ..consts import DEFAULT_RESULT_VIEWER_NUM_VAR_LIMIT_FOR_SUMMARY_WIDGET
     from ..consts import result_viewer_num_var_limit_for_summary_widget_key
@@ -447,7 +449,7 @@ async def get_num_var_limit_for_summary_widget(_):
     return web.json_response({"num_var_limit": num_var_limit})
 
 
-async def get_result_levels(request):
+def get_result_levels(request):
     from aiohttp.web import Response
     from ...lib.system import get_system_conf
 
@@ -456,21 +458,21 @@ async def get_result_levels(request):
         "gui_result_pagesize", default_gui_result_pagesize
     )
     content = {"gui_result_pagesize": gui_result_pagesize}
-    dbpath = await get_dbpath(request)
+    dbpath = get_dbpath(request)
     content = {}
     if not dbpath:
         content["levels"] = ["NODB"]
     else:
-        conn = await get_db_conn(dbpath)
+        conn = get_db_conn(dbpath)
         if not conn:
             return Response(status=500)
-        cursor = await conn.cursor()
+        cursor = conn.cursor()
         sql = (
             'select name from sqlite_master where type="table" and '
             + 'name like "%_header"'
         )
-        await cursor.execute(sql)
-        ret = await cursor.fetchall()
+        cursor.execute(sql)
+        ret = cursor.fetchall()
         if len(ret) > 0:  # type: ignore
             levels = [v[0].split("_")[0] for v in ret]
             levels.insert(0, "info")
@@ -480,12 +482,12 @@ async def get_result_levels(request):
         levels.remove("sample")
         levels.remove("mapping")
         content["levels"] = levels
-        await cursor.close()
-        await conn.close()
+        cursor.close()
+        conn.close()
     return web.json_response(content)
 
 
-async def get_dbpath(request) -> Optional[str]:
+def get_dbpath(request) -> Optional[str]:
     from ..util import get_email_from_request
     from ..serveradmindb import get_serveradmindb
 
@@ -496,7 +498,7 @@ async def get_dbpath(request) -> Optional[str]:
     if method == "GET":
         queries = request.rel_url.query
     elif method == "POST":
-        queries = await request.json()
+        queries = request.json()
     if not queries:
         return None
     dbpath = queries.get("dbpath")
@@ -505,16 +507,16 @@ async def get_dbpath(request) -> Optional[str]:
     username = get_email_from_request(request, servermode)
     uid = queries.get("uid")
     if uid and username:
-        serveradmindb = await get_serveradmindb()
-        dbpath = await serveradmindb.get_dbpath_by_eud(
+        serveradmindb = get_serveradmindb()
+        dbpath = serveradmindb.get_dbpath_by_eud(
             eud={"uid": uid, "username": username}
         )
     return dbpath
 
 
-async def get_variant_cols(request):
+def get_variant_cols(request):
     queries = request.rel_url.query
-    dbpath = await get_dbpath(request)
+    dbpath = get_dbpath(request)
     confpath = queries.get("confpath")
     filterstring = queries.get("filter")
     add_summary = queries.get("add_summary", True)
@@ -522,7 +524,7 @@ async def get_variant_cols(request):
     data["data"] = {}
     data["stat"] = {}
     data["status"] = {}
-    colinfo = await get_colinfo(
+    colinfo = get_colinfo(
         dbpath, confpath=confpath, filterstring=filterstring, add_summary=add_summary
     )
     data["columns"] = {}
@@ -634,7 +636,7 @@ def get_colmodel(tab, colinfo):
     return colModel
 
 
-async def get_colinfo(dbpath, confpath=None, filterstring=None, add_summary=True):
+def get_colinfo(dbpath, confpath=None, filterstring=None, add_summary=True):
     reporter_name = "jsonreporter"
     f, fn, d = imp.find_module(
         reporter_name,
@@ -652,31 +654,31 @@ async def get_colinfo(dbpath, confpath=None, filterstring=None, add_summary=True
         filterstring=filterstring,
         report_types=["text"]
     )
-    await reporter.prep()
-    # reporter_levels = await reporter.get_levels_to_run("all")
+    reporter.prep()
+    # reporter_levels = reporter.get_levels_to_run("all")
     # reporter.levels = reporter_levels
     try:
-        colinfo = await reporter.get_variant_colinfo(add_summary=add_summary)
-        await reporter.close_db()
+        colinfo = reporter.get_variant_colinfo(add_summary=add_summary)
+        reporter.close_db()
         if reporter.cf is not None:
-            await reporter.cf.close_db()
+            reporter.cf.close_db()
     except:
-        await reporter.close_db()
+        reporter.close_db()
         if reporter.cf is not None:
-            await reporter.cf.close_db()
+            reporter.cf.close_db()
         raise
     return colinfo
 
 
-async def table_exists(cursor, table):
+def table_exists(cursor, table):
     q = (
         'select name from sqlite_master where type="table" and '
         + 'name="'
         + table
         + '"'
     )
-    await cursor.execute(q)
-    r = await cursor.fetchone()
+    cursor.execute(q)
+    r = cursor.fetchone()
     if r is None:
         return False
     else:
@@ -702,7 +704,7 @@ def serve_widgetfile(request):
         return response
 
 
-async def serve_runwidget(request):
+def serve_runwidget(request):
     from aiohttp.web import Response
     from ...lib.system import get_modules_dir
 
@@ -711,7 +713,7 @@ async def serve_runwidget(request):
         return Response(status=404)
     path = "wg" + request.match_info["module"]
     queries = request.rel_url.query
-    dbpath = await get_dbpath(request)
+    dbpath = get_dbpath(request)
     if ("dbpath" not in queries or queries["dbpath"] == "") and dbpath is not None:
         new_queries = {}
         new_queries["dbpath"] = dbpath
@@ -723,17 +725,17 @@ async def serve_runwidget(request):
         path, [os.path.join(modules_dir, "webviewerwidgets", path)]
     )
     m = imp.load_module(path, f, fn, d)  # type: ignore
-    cf = await ReportFilter.create(dbpath=dbpath, mode="sub")
-    filterstring = await cf.exec_db(
+    cf = ReportFilter.create(dbpath=dbpath, mode="sub")
+    filterstring = cf.exec_db(
         cf.get_report_filter_string, uid=queries.get("ftable_uid")
     )
     queries_dict = queries.copy()
     queries_dict["filterstring"] = filterstring
-    content = await m.get_data(queries_dict)
+    content = m.get_data(queries_dict)
     return web.json_response(content)
 
 
-async def serve_webapp_runwidget(request):
+def serve_webapp_runwidget(request):
     from aiohttp.web import Response
     from ...lib.system import get_modules_dir
 
@@ -756,11 +758,11 @@ async def serve_webapp_runwidget(request):
         ],
     )
     m = imp.load_module(widget_name, f, fn, d)  # type: ignore
-    content = await m.get_data(queries)
+    content = m.get_data(queries)
     return web.json_response(content)
 
 
-async def serve_runwidget_post(request):
+def serve_runwidget_post(request):
     from aiohttp.web import Response
     from ...lib.system import get_modules_dir
 
@@ -768,8 +770,8 @@ async def serve_runwidget_post(request):
     if not modules_dir:
         return Response(status=404)
     path = "wg" + request.match_info["module"]
-    dbpath = await get_dbpath(request)
-    queries = await request.json()
+    dbpath = get_dbpath(request)
+    queries = request.json()
     new_queries = {}
     for k in queries:
         val = queries[k]
@@ -797,29 +799,29 @@ async def serve_runwidget_post(request):
         path, [os.path.join(modules_dir, "webviewerwidgets", path)]
     )
     m = imp.load_module(path, f, fn, d)  # type: ignore
-    content = await m.get_data(queries)
+    content = m.get_data(queries)
     return web.json_response(content)
 
 
-async def get_modules_info(request):
+def get_modules_info(request):
     from aiohttp.web import Response
     from json import loads
 
     _ = request.rel_url.query
-    dbpath = await get_dbpath(request)
-    conn = await get_db_conn(dbpath)
+    dbpath = get_dbpath(request)
+    conn = get_db_conn(dbpath)
     content = {}
     if not conn:
         return Response(status=500)
-    cursor = await conn.cursor()
+    cursor = conn.cursor()
     q = 'select colval from info where colkey="annotator_descs"'
-    await cursor.execute(q)
-    r = await cursor.fetchone()
+    cursor.execute(q)
+    r = cursor.fetchone()
     if r is None or r[0] == "{}":
         # TODO: backward-compatibility. Remove after a while. 11/22/2022.
         q = 'select colval from info where colkey="_annotator_desc"'
-        await cursor.execute(q)
-        r = await cursor.fetchone()
+        cursor.execute(q)
+        r = cursor.fetchone()
     if not r or r[0] == "{}":
         content = {}
     else:
@@ -836,75 +838,75 @@ async def get_modules_info(request):
                 v = t2[1].strip().strip("'").replace("'", "'")
                 d[k] = v
             content = d
-    await cursor.close()
-    await conn.close()
+    cursor.close()
+    conn.close()
     return content
 
 
-async def get_samples(request):
+def get_samples(request):
     from aiohttp.web import Response
 
-    dbpath = await get_dbpath(request)
-    conn = await get_db_conn(dbpath)
+    dbpath = get_dbpath(request)
+    conn = get_db_conn(dbpath)
     samples = []
     if not conn:
         return Response(status=500)
-    cursor = await conn.cursor()
+    cursor = conn.cursor()
     sample_table = "sample"
-    if await table_exists(cursor, sample_table):
+    if table_exists(cursor, sample_table):
         q = f"select distinct base__sample_id from {sample_table};"
-        await cursor.execute(q)
-        rows = await cursor.fetchall()
+        cursor.execute(q)
+        rows = cursor.fetchall()
         samples = [r[0] for r in rows]
-    await cursor.close()
-    await conn.close()
+    cursor.close()
+    conn.close()
     return web.json_response(samples)
 
 
-async def get_variants_for_hugo(request):
+def get_variants_for_hugo(request):
     from aiohttp.web import Response
     from ...lib.exceptions import DatabaseConnectionError
 
     hugo = request.match_info["hugo"]
-    dbpath = await get_dbpath(request)
+    dbpath = get_dbpath(request)
     if dbpath is None:
         raise DatabaseConnectionError("result database")
-    conn = await get_db_conn(dbpath)
+    conn = get_db_conn(dbpath)
     if not conn:
         return Response(status=500)
-    cursor = await conn.cursor()
+    cursor = conn.cursor()
     q = "select * from variant where base__hugo=?"
-    await cursor.execute(q, (hugo,))
-    rows = await cursor.fetchall()
+    cursor.execute(q, (hugo,))
+    rows = cursor.fetchall()
     out = []
     for row in rows:
         out.append(list(row))
-    await cursor.close()
-    await conn.close()
+    cursor.close()
+    conn.close()
     return web.json_response(out)
 
 
-async def get_variantdbcols(request):
+def get_variantdbcols(request):
     from aiohttp.web import Response
     from ...lib.exceptions import DatabaseConnectionError
 
-    dbpath = await get_dbpath(request)
+    dbpath = get_dbpath(request)
     if dbpath is None:
         raise DatabaseConnectionError("result database")
-    conn = await get_db_conn(dbpath)
+    conn = get_db_conn(dbpath)
     if not conn:
         return Response(status=500)
-    cursor = await conn.cursor()
+    cursor = conn.cursor()
     q = "select sql from sqlite_master where name='variant'"
-    await cursor.execute(q)
-    row = await cursor.fetchone()
+    cursor.execute(q)
+    row = cursor.fetchone()
     if not row:
         return
     out = {}
     coldef = row[0].split("(")[1].split(")")[0]
     for el in coldef.split(", "):
         out[el.split(" ")[0]] = len(out)
-    await conn.close()
+    conn.close()
     return web.json_response(out)
 
 

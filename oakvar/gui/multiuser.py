@@ -36,8 +36,8 @@ class MultiuserHandlers:
         email = queries.get("email")
         if not email:
             return Response(status=400)
-        admindb = await get_serveradmindb()
-        await admindb.remove_admin(email)
+        admindb = get_serveradmindb()
+        admindb.remove_admin(email)
         return Response(status=200)
 
     async def remove_user(self, request):
@@ -52,8 +52,8 @@ class MultiuserHandlers:
         email = queries.get("email")
         if not email:
             return Response(status=400)
-        admindb = await get_serveradmindb()
-        await admindb.remove_user(email)
+        admindb = get_serveradmindb()
+        admindb.remove_user(email)
         return Response(status=200)
 
     async def make_admin(self, request):
@@ -68,8 +68,8 @@ class MultiuserHandlers:
         email = queries.get("email")
         if not email:
             return Response(status=400)
-        admindb = await get_serveradmindb()
-        await admindb.make_admin(email)
+        admindb = get_serveradmindb()
+        admindb.make_admin(email)
         return Response(status=200)
 
     async def get_users(self, request):
@@ -81,8 +81,8 @@ class MultiuserHandlers:
             return Response(status=403)
         if not await self.is_admin_loggedin(request):
             return Response(status=403)
-        admindb = await get_serveradmindb()
-        users = await admindb.get_users()
+        admindb = get_serveradmindb()
+        users = admindb.get_users()
         return json_response(users)
 
     async def signup(self, request):
@@ -105,12 +105,12 @@ class MultiuserHandlers:
         if new_setup:
             serveradmindb = setup_serveradmindb()
         else:
-            serveradmindb = await get_serveradmindb(new_setup=new_setup)
+            serveradmindb = get_serveradmindb(new_setup=new_setup)
         ret = create(email=email, pw=password)
         msg = ret.get("msg")
         if not ret.get("success"):
             return json_response({"code": msg}, status=ret.get("status_code", 500))
-        await serveradmindb.add_user_if_not_exist(email, "", "", "")
+        serveradmindb.add_user_if_not_exist(email, "", "", "")
         oakvar_token = jwt.encode(
             {"email": email}, DEFAULT_PRIVATE_KEY, algorithm="HS256"
         )
@@ -156,11 +156,11 @@ class MultiuserHandlers:
         from .serveradmindb import get_serveradmindb
         from .util import get_email_from_request
 
-        admindb = await get_serveradmindb()
+        admindb = get_serveradmindb()
         if not admindb:
             return json_response({})
         email = get_email_from_request(request, self.servermode)
-        response = await admindb.get_user_settings(email)
+        response = admindb.get_user_settings(email)
         return json_response(response)
 
     async def logout(self, _):
@@ -214,8 +214,8 @@ class MultiuserHandlers:
         #    return HTTPNotFound()
         admin = await self.is_admin_loggedin(request, email=email)
         response = json_response({"status": "logged", "email": email, "admin": admin})
-        admindb = await get_serveradmindb()
-        await admindb.add_user_if_not_exist(email, "", "", "")
+        admindb = get_serveradmindb()
+        admindb.add_user_if_not_exist(email, "", "", "")
         oakvar_token = jwt.encode(
             {"email": email}, DEFAULT_PRIVATE_KEY, algorithm="HS256"
         )
@@ -231,14 +231,14 @@ class MultiuserHandlers:
             email = get_email_from_request(request, self.servermode)
         if not email:
             return False
-        admindb = await get_serveradmindb()
-        role = await admindb.get_user_role_of_email(email, servermode=self.servermode)
+        admindb = get_serveradmindb()
+        role = admindb.get_user_role_of_email(email, servermode=self.servermode)
         return role == ADMIN_ROLE
 
     async def update_user_settings(self, request, d):
         from .serveradmindb import get_serveradmindb
         from .util import get_email_from_request
 
-        admindb = await get_serveradmindb()
+        admindb = get_serveradmindb()
         email = get_email_from_request(request, self.servermode)
-        return await admindb.update_user_settings(email, d)
+        return admindb.update_user_settings(email, d)

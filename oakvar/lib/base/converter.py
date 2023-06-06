@@ -2,6 +2,7 @@ from typing import Optional
 from typing import Any
 from typing import Tuple
 from typing import List
+from typing import Set
 from typing import Dict
 import polars as pl
 from .commonmodule import BaseCommonModule
@@ -156,7 +157,6 @@ class BaseConverter(object):
         immature_exit: bool = False
         line_no: int = start_line_no
         end_line_no = line_no + mp * batch_size - 1
-        print(f"@ end_line_no={end_line_no}")
         lines: Dict[int, List[Tuple[int, Any]]] = {i: [] for i in range(mp)}
         chunk_no: int = 0
         chunk_size: int = 0
@@ -434,6 +434,9 @@ class BaseConverter(object):
         for col in extra_output_columns:
             self.extra_output_columns.append(col)
 
+    def get_sample_colname(self, sample: str) -> str:
+        return f"in__{sample}"
+
     def get_df_headers(self) -> List[Dict[str, Any]]:
         df_headers = []
         for col in self.output_columns:
@@ -444,6 +447,8 @@ class BaseConverter(object):
                 ty = pl.Int64
             elif ty == "float":
                 ty = pl.Float64
+            elif ty == "bool":
+                ty = pl.Boolean
             else:
                 ty = None
             df_headers.append({"name": col.get("name"), "type": ty})
@@ -473,7 +478,7 @@ class BaseConverter(object):
             self.logger.info(f"encoding: {input_path} {encoding}")
         self.input_encoding = encoding
 
-    def iter_df_chunk(self, input_paths: List[str], size: int = 10000):
+    def iter_df_chunk(self, input_paths: List[str], size: int = 10000, samples: List[str] = []):
         from pathlib import Path
         from multiprocessing.pool import ThreadPool
         from oakvar.lib.util.run import update_status
@@ -508,7 +513,6 @@ class BaseConverter(object):
             start_line_no: int = start_line_pos
             #stime = time.time()
             while True:
-                #ctime = time.time()
                 df, immature_exit = self.get_variants_df(input_path, start_line_no, size)
                 if immature_exit is not None:
                     start_line_no += size
@@ -777,3 +781,35 @@ class BaseConverter(object):
         from ..util.run import get_standardized_module_option
 
         return get_standardized_module_option(v)
+
+    def get_samples_from_line(self, l: str) -> Set[str]:
+        _ = l
+        samples_line: Set[str] = set()
+        return samples_line
+
+    def collect_samples_from_file(self, input_path: str) -> Set[str]:
+        import gzip
+        from pathlib import Path
+
+        samples: Set[str] = set()
+        p = Path(input_path)
+        if p.suffix == ".gz":
+            f = gzip.open(p, "rt")
+        else:
+            f = open(p)
+        for line in f:
+            samples_line = self.get_samples_from_line(line)
+            samples = samples.union(samples_line)
+        return samples
+
+    def collect_samples(self, input_paths: List[str]) -> List[str]:
+        samples: Set[str] = set()
+        for input_path in input_paths:
+            samples_file = self.collect_samples_from_file(input_path)
+            samples = samples.union(samples_file)
+        samples_list = sorted(list(samples))
+        for sample in samples_list:
+            coldef = {"name": self.get_sample_colname(sample), "title": f"Present in {sample}", "type": "bool"}
+            self.output_columns.append(coldef)
+        return samples_list
+

@@ -44,7 +44,7 @@ DEFAULT_MAX_NUM_CONCURRENT_JOBS = 1
 default_gui_port = 8080
 default_gui_port_ssl = 8443
 default_assembly = "hg38"
-default_postaggregator_names = ["tagsampler", "vcfinfo"]
+default_postaggregator_names = []
 DEFAULT_REPORT_FILTER_MAX_NUM_CACHE_PER_USER = 20
 
 #

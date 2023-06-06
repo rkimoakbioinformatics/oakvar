@@ -10,7 +10,7 @@ def unpack_eud(eud={}):
     return email, uid, dbpath
 
 
-async def get_job_dir_from_eud(_, eud={}) -> Optional[str]:
+def get_job_dir_from_eud(_, eud={}) -> Optional[str]:
     from pathlib import Path
     from .serveradmindb import ServerAdminDb
 
@@ -22,12 +22,12 @@ async def get_job_dir_from_eud(_, eud={}) -> Optional[str]:
             return None
     if eud.get("username") and eud.get("uid"):
         serveradmindb = ServerAdminDb()
-        job_dir = await serveradmindb.get_job_dir_by_username_uid(eud=eud)
+        job_dir = serveradmindb.get_job_dir_by_username_uid(eud=eud)
         return job_dir
     return None
 
 
-async def get_user_job_run_name(_, eud={}) -> Optional[str]:
+def get_user_job_run_name(_, eud={}) -> Optional[str]:
     from pathlib import Path
     from .serveradmindb import get_serveradmindb
 
@@ -35,32 +35,32 @@ async def get_user_job_run_name(_, eud={}) -> Optional[str]:
     if dbpath:
         return Path(dbpath).stem
     if username and uid:
-        serveradmindb = await get_serveradmindb()
-        run_name = await serveradmindb.get_run_name(username=username, uid=uid)
+        serveradmindb = get_serveradmindb()
+        run_name = serveradmindb.get_run_name(username=username, uid=uid)
         return run_name
     return None
 
 
-async def get_user_job_run_path(request, eud={}) -> Optional[str]:
+def get_user_job_run_path(request, eud={}) -> Optional[str]:
     from pathlib import Path
 
-    job_dir = await get_job_dir_from_eud(request, eud=eud)
+    job_dir = get_job_dir_from_eud(request, eud=eud)
     if job_dir is None:
         return None
-    run_name = await get_user_job_run_name(request, eud=eud)
+    run_name = get_user_job_run_name(request, eud=eud)
     if not run_name:
         return None
     run_path = Path(job_dir) / run_name
     return str(run_path)
 
 
-async def get_user_job_report_paths(
+def get_user_job_report_paths(
     request, report_type: str, eud={}
 ) -> Optional[list]:
     from pathlib import Path
     from ..lib.module.local import get_local_module_info_by_name
 
-    run_path = await get_user_job_run_path(request, eud=eud)
+    run_path = get_user_job_run_path(request, eud=eud)
     if not run_path:
         return None
     run_name = Path(run_path).name
@@ -76,22 +76,22 @@ async def get_user_job_report_paths(
     return report_paths
 
 
-async def get_user_job_dbpath(request, eud={}) -> Optional[str]:
+def get_user_job_dbpath(request, eud={}) -> Optional[str]:
     from ..lib.consts import result_db_suffix
 
     if eud.get("dbpath"):
         return eud.get("dbpath")
-    run_path = await get_user_job_run_path(request, eud=eud)
+    run_path = get_user_job_run_path(request, eud=eud)
     if not run_path:
         return None
     dbpath = f"{run_path}{result_db_suffix}"
     return dbpath
 
 
-async def get_user_job_log_path(request, eud={}) -> Optional[str]:
+def get_user_job_log_path(request, eud={}) -> Optional[str]:
     from ..lib.consts import LOG_SUFFIX
 
-    run_path = await get_user_job_run_path(request, eud=eud)
+    run_path = get_user_job_run_path(request, eud=eud)
     if not run_path:
         return None
     log_path = run_path + LOG_SUFFIX

@@ -69,6 +69,7 @@ class Runner(object):
         self.annotators: Dict[str, LocalModule] = {}
         self.postaggregators = {}
         self.reporters = {}
+        self.samples: List[str] = []
         self.ignore_sample = False
         self.fill_in_missing_ref = False
         self.total_num_converted_variants = None
@@ -97,7 +98,7 @@ class Runner(object):
             if not module_exists_local(module_name):
                 raise ModuleNotExist(module_name)
 
-    async def setup_manager(self):
+    def setup_manager(self):
         from multiprocessing.managers import SyncManager
 
         self.manager = SyncManager()
@@ -238,7 +239,7 @@ class Runner(object):
         for _, module in self.reporters.items():
             log_module(module, self.logger)
 
-    async def process_clean(self, run_no: int):
+    def process_clean(self, run_no: int):
         if not self.args or not self.args.clean:
             return
         msg = f"deleting previous output files for {self.run_name[run_no]}..."
@@ -286,6 +287,12 @@ class Runner(object):
         q: str = "drop table if exists variant"
         self.result_db_cursor.execute(q)
         self.result_db_conn.commit()
+
+    def close_result_database(self):
+        if not self.result_db_conn or not self.result_db_cursor:
+            return
+        self.result_db_cursor.close()
+        self.result_db_conn.close()
 
     def collect_output_columns(self, converter: BaseConverter):
         from ..consts import VARIANT_LEVEL_PRIMARY_KEY
@@ -361,7 +368,6 @@ class Runner(object):
         print(f"@ converter output_columns={converter.output_columns}")
         for col in converter.output_columns:
             name = f"base__{col['name']}"
-            print(f"@ name={name}. json={col}")
             self.result_db_cursor.execute(q, (name, "variant", dumps(col)))
         mapper = self.mapper_i[0]
         for col in mapper.output_columns:
@@ -409,37 +415,41 @@ class Runner(object):
         converter = self.choose_converter(input_paths)
         if converter is None:
             raise NoConverterFound(input_paths)
+        samples = self.samples or converter.collect_samples(input_paths)
         coldefs = self.collect_output_columns(converter)
+        print(f"@ coldefs={coldefs}")
         table_col_names = self.create_variant_table_in_result_db(coldefs)
         self.create_auxiliary_tables_in_result_db(converter)
-        for df in converter.iter_df_chunk(input_paths):
+        self.do_step_preparer(run_no)
+        for df in converter.iter_df_chunk(input_paths, samples=samples):
             if df is not None:
                 df = self.do_step_mapper(df)
                 df = self.do_step_annotator(df)
-                print(f"@ df={df}")
                 self.write_df_to_db(df, table_col_names)
         self.write_info_table(run_no, converter)
+        self.close_result_database()
+        exit()
         self.do_step_postaggregator(run_no)
         self.do_step_reporter(run_no)
 
-    async def main(self) -> Optional[Dict[str, Any]]:
+    def main(self) -> Optional[Dict[str, Any]]:
         from time import time, asctime, localtime
         from ..util.run import update_status
         from ..consts import JOB_STATUS_FINISHED
         from ..consts import JOB_STATUS_ERROR
 
-        await self.process_arguments(self.inkwargs)
+        self.process_arguments(self.inkwargs)
         if not self.args:
             raise
         self.sanity_check_run_name_output_dir()
         self.load_wgs_reader()
         self.load_mapper()
         self.load_annotators()
-        await self.setup_manager()
+        self.setup_manager()
         for run_no in range(len(self.run_name)):
             try:
                 self.start_log(run_no)
-                await self.process_clean(run_no)
+                self.process_clean(run_no)
                 self.connect_admindb_if_needed(run_no)
                 self.start_time = time()
                 update_status(
@@ -452,7 +462,7 @@ class Runner(object):
                 self.set_and_check_input_files(run_no)
                 self.log_versions()
                 if self.args and self.args.vcf2vcf:
-                    await self.run_vcf2vcf(run_no)
+                    self.run_vcf2vcf(run_no)
                 else:
                     self.process_file(run_no)
                 end_time = time()
@@ -466,7 +476,7 @@ class Runner(object):
                     serveradmindb=self.serveradmindb,
                 )
                 if self.args and self.args.writeadmindb:
-                    await self.write_admin_db_final_info(runtime, run_no)
+                    self.write_admin_db_final_info(runtime, run_no)
             except Exception as e:
                 self.exception = e
             finally:
@@ -491,7 +501,7 @@ class Runner(object):
                     raise self.exception
         return self.report_response
 
-    async def process_arguments(self, args):
+    def process_arguments(self, args):
         from ..exceptions import SetupError
 
         self.set_package_conf(args)
@@ -539,6 +549,7 @@ class Runner(object):
         if args.get("annotators_replace"):
             args["annotators"] = args.get("annotators_replace")
         self.ignore_sample = args.get("ignore_sample", False)
+        self.samples = args.get("samples", [])
         self.fill_in_missing_ref = args.get("fill_in_missing_ref", False)
         self.args = SimpleNamespace(**args)
         self.outer = self.args.outer
@@ -1229,31 +1240,6 @@ class Runner(object):
         else:
             return True
 
-    async def get_mapper_info_from_crx(
-        self, run_no: int
-    ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-        from pathlib import Path
-        from ..consts import VARIANT_LEVEL_MAPPED_FILE_SUFFIX
-
-        run_name, output_dir = self.get_run_name_output_dir_by_run_no(run_no)
-        title = None
-        version = None
-        modulename = None
-        fn = Path(output_dir) / (run_name + VARIANT_LEVEL_MAPPED_FILE_SUFFIX)
-        if fn.exists():
-            f = open(fn)
-            for line in f:
-                if line.startswith("#title="):
-                    title = line.strip().split("=")[1]
-                elif line.startswith("#version="):
-                    version = line.strip().split("=")[1]
-                elif line.startswith("#modulename="):
-                    modulename = line.strip().split("=")[1]
-                elif line.startswith("#") is False:
-                    break
-            f.close()
-        return title, version, modulename
-
     def get_run_name_output_dir_by_run_no(self, run_no: int) -> Tuple[str, str]:
         run_name = self.run_name[run_no]
         output_dir = self.output_dir[run_no]
@@ -1387,8 +1373,8 @@ class Runner(object):
                 except Exception:
                     pass
 
-    async def write_admin_db_final_info(self, runtime: float, run_no: int):
-        import aiosqlite
+    def write_admin_db_final_info(self, runtime: float, run_no: int):
+        import sqlite3
         from json import dumps
         from ...gui.serveradmindb import get_admindb_path
 
@@ -1410,10 +1396,10 @@ class Runner(object):
             if self.logger:
                 self.logger.exception(e)
             info_json_s = ""
-        db = await aiosqlite.connect(str(admindb_path))
-        cursor = await db.cursor()
+        db = sqlite3.connect(str(admindb_path))
+        cursor = db.cursor()
         q = "update jobs set runtime=?, numinput=?, info_json=? where dir=? and name=?"
-        await cursor.execute(
+        cursor.execute(
             q,
             (
                 runtime,
@@ -1423,9 +1409,9 @@ class Runner(object):
                 self.args.job_name[run_no],
             ),
         )
-        await db.commit()
-        await cursor.close()
-        await db.close()
+        db.commit()
+        cursor.close()
+        db.close()
 
     def write_initial_info_json(self, run_no: int):
         from datetime import datetime
@@ -1461,12 +1447,12 @@ class Runner(object):
         postagg_names = [
             v
             for v in list(self.postaggregators.keys())
-            if v not in ["tagsampler", "vcfinfo"]
+            if v not in ["vcfinfo"]
         ]
         postagg_names.sort()
         self.info_json["postaggregators"] = postagg_names
 
-    async def run_preparers(self, run_no: int):
+    def run_preparers(self, run_no: int):
         from ..util.util import load_class
         from ..consts import MODULE_OPTIONS_KEY
         from ..exceptions import ModuleLoadingError
@@ -1490,48 +1476,7 @@ class Runner(object):
             if not issubclass(module_cls, BasePreparer):
                 raise ModuleLoadingError(module_name=module.name)
             module_ins = module_cls(**kwargs)
-            await self.log_time_of_func(module_ins.run, work=module_name)
-
-    async def run_aggregator(self, run_no: int):
-        db_path = await self.run_aggregator_level("variant", run_no)
-        await self.run_aggregator_level("gene", run_no)
-        await self.run_aggregator_level("sample", run_no)
-        await self.run_aggregator_level("mapping", run_no)
-        return db_path
-
-    async def run_aggregator_level(self, level, run_no: int):
-        from time import time
-        from ..base.aggregator import Aggregator
-        from ..util.run import update_status
-
-        if self.append_mode[run_no] and level not in ["variant", "gene"]:
-            return
-        run_name = self.run_name[run_no]
-        output_dir = self.output_dir[run_no]
-        update_status(
-            f"running Aggregator ({level})",
-            logger=self.logger,
-            serveradmindb=self.serveradmindb,
-        )
-        stime = time()
-        arg_dict = {
-            "input_dir": output_dir,
-            "output_dir": output_dir,
-            "level": level,
-            "run_name": run_name,
-            "serveradmindb": self.serveradmindb,
-        }
-        if self.append_mode[run_no]:
-            arg_dict["append"] = True
-        v_aggregator = Aggregator(**arg_dict)
-        v_aggregator.run()
-        rtime = time() - stime
-        update_status(
-            f"Aggregator {level} finished in {rtime:.3f}s",
-            logger=self.logger,
-            serveradmindb=self.serveradmindb,
-        )
-        return v_aggregator.db_path
+            self.log_time_of_func(module_ins.run, work=module_name)
 
     def run_postaggregators(self, run_no: int):
         from time import time
@@ -1574,7 +1519,7 @@ class Runner(object):
                 serveradmindb=self.serveradmindb,
             )
 
-    async def run_vcf2vcf(self, run_no: int):
+    def run_vcf2vcf(self, run_no: int):
         from time import time
         from os.path import abspath
         from types import SimpleNamespace
@@ -1626,7 +1571,7 @@ class Runner(object):
         )
         self.report_response = response
 
-    async def run_reporter(self, run_no: int):
+    def run_reporter(self, run_no: int):
         from pathlib import Path
         from ..module.local import get_local_module_info
         from ..util.module import get_reporter_class
@@ -1670,7 +1615,7 @@ class Runner(object):
             if not issubclass(Reporter, BaseReporter):
                 raise ModuleLoadingError(module_name=module.name)
             reporter = Reporter(**arg_dict)
-            response_t = await self.log_time_of_func(reporter.run, work=module_name)
+            response_t = self.log_time_of_func(reporter.run, work=module_name)
             output_fns = None
             response_type = type(response_t)
             if response_type == list:
@@ -1768,11 +1713,11 @@ class Runner(object):
             module = get_annotator(module_name)
             self.annotators_i.append(module)
 
-    async def do_step_preparer(self, run_no: int):
+    def do_step_preparer(self, run_no: int):
         step = "preparer"
         if not self.should_run_step(step):
             return
-        await self.log_time_of_func(self.run_preparers, run_no, work=f"{step} step")
+        self.log_time_of_func(self.run_preparers, run_no, work=f"{step} step")
 
     def do_step_mapper(self, df: pl.DataFrame) -> pl.DataFrame:
         for module in self.mapper_i:
@@ -1783,19 +1728,6 @@ class Runner(object):
         for module in self.annotators_i:
             df = module.run_df(df)
         return df
-
-    async def do_step_aggregator(self, run_no: int):
-        step = "aggregator"
-        self.aggregator_ran = False
-        if self.should_run_step(step) and (
-            self.mapper_ran
-            or self.annotator_ran
-            or self.startlevel == self.runlevels["aggregator"]
-        ):
-            self.result_path = await self.log_time_of_func(
-                self.run_aggregator, run_no, work=f"{step} step"
-            )
-            self.aggregator_ran = True
 
     def do_step_postaggregator(self, run_no: int):
         step = "postaggregator"

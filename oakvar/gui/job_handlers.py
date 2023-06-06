@@ -59,7 +59,7 @@ class JobHandlers:
         self.routes.append(["GET", "/submit/jobdb", self.download_db])
         self.routes.append(["GET", "/submit/reporttypes", self.get_report_types])
 
-    async def get_tags_of_annotators_and_postaggregators(self, _):
+    def get_tags_of_annotators_and_postaggregators(self, _):
         from aiohttp.web import json_response
         from ..lib.module.local import get_local_module_infos_of_type
 
@@ -95,27 +95,27 @@ class JobHandlers:
             )
         return json_response(out)
 
-    async def download_db(self, request):
+    def download_db(self, request):
         from aiohttp.web import Response
         from aiohttp.web import FileResponse
         from pathlib import Path
         from .userjob import get_user_job_dbpath
 
-        eud = await self.get_eud_from_request(request)
+        eud = self.get_eud_from_request(request)
         dbpath = eud.get("dbpath")
         if not dbpath:
-            dbpath = await get_user_job_dbpath(request, eud=eud)
+            dbpath = get_user_job_dbpath(request, eud=eud)
         if not dbpath:
             return Response(status=404)
         db_fname = Path(dbpath).name
         headers = {"Content-Disposition": "attachment; filename=" + db_fname}
         return FileResponse(dbpath, headers=headers)
 
-    async def get_eud_from_request(self, request):
+    def get_eud_from_request(self, request):
         from .util import get_email_from_request
 
         email = get_email_from_request(request, self.servermode)
-        uid, dbpath = await self.get_uid_dbpath_from_request(request)
+        uid, dbpath = self.get_uid_dbpath_from_request(request)
         return {"username": email, "uid": uid, "dbpath": dbpath}
 
     async def generate_report(self, request):
@@ -127,13 +127,13 @@ class JobHandlers:
 
         global job_queue
         username = get_email_from_request(request, self.servermode)
-        uid, dbpath = await self.get_uid_dbpath_from_request(request)
+        uid, dbpath = self.get_uid_dbpath_from_request(request)
         if (not username or not uid) and not dbpath:
             return Response(status=404)
         report_type = request.match_info["report_type"]
         eud = {"username": username, "uid": uid, "dbpath": dbpath}
         if not dbpath:
-            dbpath = await get_user_job_dbpath(request, eud)
+            dbpath = get_user_job_dbpath(request, eud)
         if not dbpath:
             return Response(status=404)
         key = uid or dbpath
@@ -184,37 +184,37 @@ class JobHandlers:
     def get_report_generation_key_str(self, key, report_type):
         return f"{key}__{report_type}"
 
-    async def get_job_log(self, request):
+    def get_job_log(self, request):
         from aiohttp.web import Response
         from .userjob import get_user_job_log_path
         from pathlib import Path
 
-        eud = await self.get_eud_from_request(request)
-        log_path = await get_user_job_log_path(request, eud=eud)
+        eud = self.get_eud_from_request(request)
+        log_path = get_user_job_log_path(request, eud=eud)
         if not log_path or not Path(log_path).exists():
             return Response(status=404)
         with open(log_path) as f:
             return Response(text=f.read())
 
-    async def download_report(self, request):
+    def download_report(self, request):
         from aiohttp.web import HTTPNotFound
         from aiohttp.web import FileResponse
         from os.path import exists
         from os.path import basename
         from .util import get_email_from_request
 
-        uid, dbpath = await self.get_uid_dbpath_from_request(request)
+        uid, dbpath = self.get_uid_dbpath_from_request(request)
         username = get_email_from_request(request, self.servermode)
         if not uid and not dbpath:
             return HTTPNotFound
         eud = {"uid": uid, "dbpath": dbpath, "username": username}
         report_type = request.match_info["report_type"]
-        report_paths = await self.get_report_paths(request, report_type, eud=eud)
+        report_paths = self.get_report_paths(request, report_type, eud=eud)
         if not report_paths:
             raise HTTPNotFound
         report_path = report_paths[0]
         if not exists(report_path):
-            await self.generate_report(request)
+            self.generate_report(request)
         if exists(report_path):
             report_filename = basename(report_path)
             headers = {"Content-Disposition": "attachment; filename=" + report_filename}
@@ -223,23 +223,23 @@ class JobHandlers:
         else:
             raise HTTPNotFound
 
-    async def get_report_paths(self, request, report_type, eud={}):
+    def get_report_paths(self, request, report_type, eud={}):
         from .userjob import get_job_dir_from_eud
         from .userjob import get_user_job_report_paths
         from pathlib import Path
 
-        report_filenames = await get_user_job_report_paths(
+        report_filenames = get_user_job_report_paths(
             request, report_type, eud=eud
         )
         if report_filenames is None:
             return None
-        job_dir = await get_job_dir_from_eud(request, eud=eud)
+        job_dir = get_job_dir_from_eud(request, eud=eud)
         if not job_dir:
             return None
         report_paths = [str(Path(job_dir) / v) for v in report_filenames]
         return report_paths
 
-    async def get_report_types(self, _):
+    def get_report_types(self, _):
         from aiohttp.web import json_response
 
         valid_types = self.get_valid_report_types()
@@ -259,20 +259,20 @@ class JobHandlers:
         ]
         return self.valid_report_types
 
-    async def get_available_report_types(self, request):
+    def get_available_report_types(self, request):
         from pathlib import Path
         from aiohttp.web import json_response
         from .userjob import get_job_dir_from_eud
         from .userjob import get_user_job_report_paths
 
-        eud = await self.get_eud_from_request(request)
-        job_dir = await get_job_dir_from_eud(request, eud=eud)
+        eud = self.get_eud_from_request(request)
+        job_dir = get_job_dir_from_eud(request, eud=eud)
         if not job_dir:
             return json_response([])
         job_dir = Path(job_dir)
         existing_reports = []
         for report_type in self.get_valid_report_types():
-            report_paths = await get_user_job_report_paths(
+            report_paths = get_user_job_report_paths(
                 request, report_type, eud=eud
             )
             if report_paths:
@@ -295,7 +295,7 @@ class JobHandlers:
         global job_queue
         if self.job_queue is None:
             return Response(status=500)
-        data = await request.json()
+        data = request.json()
         uids = data.get("uids")
         abort_only = data.get("abort_only", False)
         if not uids:
@@ -310,7 +310,7 @@ class JobHandlers:
         self.job_queue.put(queue_item)
         job_dir_ps = []
         for uid in uids:
-            p = await get_job_dir_from_eud(request, {"username": username, "uid": uid})
+            p = get_job_dir_from_eud(request, {"username": username, "uid": uid})
             if p:
                 job_dir_ps.append(Path(p))
         while True:
@@ -325,7 +325,7 @@ class JobHandlers:
                 await sleep(1)
         return Response()
 
-    async def get_job_status(self, request):
+    def get_job_status(self, request):
         from aiohttp.web import Response
         from .serveradmindb import ServerAdminDb
 
@@ -334,12 +334,12 @@ class JobHandlers:
         if not uid:
             return Response(status=404)
         serveradmindb = ServerAdminDb()
-        status = await serveradmindb.get_job_status(uid)
+        status = serveradmindb.get_job_status(uid)
         if not status:
             return Response(status=404)
         return Response(body=status)
 
-    async def submit(self, request):
+    def submit(self, request):
         from .web_submit import SubmitProcessor
         from .util import get_email_from_request
 
@@ -356,24 +356,24 @@ class JobHandlers:
             info_of_running_jobs=self.info_of_running_jobs,
             email=email,
         )
-        ret = await submit_processor.run(request)
+        ret = submit_processor.run(request)
         return ret
 
-    async def get_jobs(self, request):
+    def get_jobs(self, request):
         from aiohttp.web import json_response
         from aiohttp.web import Response
         from .serveradmindb import get_serveradmindb
         from .util import get_email_from_request
         from .util import is_loggedin
 
-        if self.mu and not await is_loggedin(request, self.servermode):
+        if self.mu and not is_loggedin(request, self.servermode):
             return Response(status=401)
-        data = await request.json()
+        data = request.json()
         pageno = data.get("pageno")
         pagesize = data.get("pagesize")
-        admindb = await get_serveradmindb()
+        admindb = get_serveradmindb()
         email = get_email_from_request(request, self.servermode)
-        jobs = await admindb.get_jobs_of_email(email, pageno=pageno, pagesize=pagesize)
+        jobs = admindb.get_jobs_of_email(email, pageno=pageno, pagesize=pagesize)
         if jobs is None:
             return Response(status=404)
         for job in jobs:
@@ -391,16 +391,16 @@ class JobHandlers:
     def mark_job_as_aborted(self, job):
         job["status"] = self.ABORTED
 
-    async def get_uid_dbpath_from_request(
+    def get_uid_dbpath_from_request(
         self, request
     ) -> Tuple[Optional[str], Optional[str]]:
         # from urllib.parse import unquote
         try:
-            json_data = await request.json()
+            json_data = request.json()
         except Exception:
             json_data = None
         try:
-            post_data = await request.post()  # post with form
+            post_data = request.post()  # post with form
         except Exception:
             post_data = None
         queries = request.rel_url.query  # get
@@ -560,7 +560,7 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
                         p = Popen(run_args)
                         self.processes_of_running_jobs[uid] = p
 
-        async def delete_jobs(self, queue_item):
+        def delete_jobs(self, queue_item):
             from os.path import exists
             from shutil import rmtree
             from logging import getLogger
@@ -575,20 +575,20 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
                 if uid in self.processes_of_running_jobs:
                     msg = "\nKilling job {}".format(uid)
                     logger.info(msg)
-                    await self.cancel_job(uid)
+                    self.cancel_job(uid)
                 if abort_only:
-                    serveradmindb = await get_serveradmindb()
-                    await serveradmindb.mark_job_as_aborted(username=username, uid=uid)
+                    serveradmindb = get_serveradmindb()
+                    serveradmindb.mark_job_as_aborted(username=username, uid=uid)
                     continue
-                job_dir = await get_job_dir_from_eud(
+                job_dir = get_job_dir_from_eud(
                     None, eud={"uid": uid, "username": username}
                 )
-                serveradmindb = await get_serveradmindb()
+                serveradmindb = get_serveradmindb()
                 serveradmindb.delete_job(uid)
                 if job_dir and exists(job_dir):
                     rmtree(job_dir)
 
-        async def make_report(self, queue_item):
+        def make_report(self, queue_item):
             from pathlib import Path
             import subprocess
             from os import remove
@@ -658,9 +658,9 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
                 if cmd == "submit":
                     job_tracker.add_job(queue_item)
                 elif cmd == "delete":
-                    await job_tracker.delete_jobs(queue_item)
+                    job_tracker.delete_jobs(queue_item)
                 elif cmd == "report":
-                    await job_tracker.make_report(queue_item)
+                    job_tracker.make_report(queue_item)
                 elif cmd == "set_max_num_concurrent_jobs":
                     job_tracker.set_max_num_concurrent_jobs(queue_item)
             except Empty:
