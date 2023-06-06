@@ -1,6 +1,3 @@
-from typing import Type
-
-
 def init_worker():
     import signal
 

@@ -1,4 +1,5 @@
 from typing import Optional
+from typing import List
 
 
 class ExpectedException(Exception):
@@ -112,8 +113,8 @@ class NoConverterFound(ExpectedException):
     traceback = False
     halt = True
 
-    def __init__(self, input_file):
-        super().__init__(f"No converter was found for {input_file}.")
+    def __init__(self, input_file: List[str]):
+        super().__init__(f"No converter was found for {','.join(input_file)}.")
 
 
 class NoVariantError(ExpectedException):

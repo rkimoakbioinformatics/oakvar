@@ -1,7 +1,9 @@
+from typing import Optional
 from typing import Any
 from typing import List
 from typing import Dict
 import polars as pl
+from .commonmodule import BaseCommonModule
 
 
 class BaseMapper(object):
@@ -12,12 +14,14 @@ class BaseMapper(object):
         serveradmindb=None,
         module_options: Dict = {},
         output_columns: List[Dict[str, Any]] = [],
+        wgs_reader: Optional[BaseCommonModule] = None,
     ):
         from time import time
         from pathlib import Path
         import sys
         from ..module.local import get_module_conf
 
+        self.wgs_reader = wgs_reader
         self.module_options: Dict = module_options
         self.primary_transcript_paths: List[str] = [v for v in primary_transcript if v]
         self.primary_transcript = primary_transcript
@@ -172,7 +176,6 @@ class BaseMapper(object):
         return d
 
     def setup_df(self):
-        print(f"@ col_names={self.col_names}")
         self.full_col_names = {
             col_name: f"{col_name}" for col_name in self.col_names if col_name != "uid"
         }
@@ -198,16 +201,11 @@ class BaseMapper(object):
         for full_col_name in self.full_col_names:
             self.var_ld[full_col_name] = []
         for input_data in df.iter_rows(named=True):
-            print(f"@ input_data={input_data}")
             if input_data["alt_base"] in ["*", ".", ""]:
                 output_dict = {}
             else:
                 output_dict = self.map(input_data)
-            print(f"@ output_dict={output_dict}")
-            print(f"@ val_ld={self.var_ld}")
-            print(f"@ full_col_names={self.full_col_names}")
             for col_name in self.col_names:
-                print(f"@ col_name={col_name}")
                 if not output_dict:
                     self.var_ld[self.full_col_names[col_name]].append(None)
                 else:

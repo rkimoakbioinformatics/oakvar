@@ -1,6 +1,7 @@
 from typing import Optional
 from typing import Tuple
 from ..base.commonmodule import BaseCommonModule
+from ..consts import SYSTEM_GENOME_ASSEMBLY
 from liftover.chain_file import ChainFile # type: ignore
 from liftover.download_file import download_file # type: ignore
 
@@ -450,7 +451,7 @@ def liftover(
     return [newchrom, newpos, newref, newalt]
 
 
-def get_wgs_reader(assembly="hg38") -> BaseCommonModule:
+def get_wgs_reader(assembly=SYSTEM_GENOME_ASSEMBLY) -> BaseCommonModule:
     """get_wgs_reader.
 
     Args:

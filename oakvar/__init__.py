@@ -4,7 +4,6 @@ from . import cli
 from .lib import consts
 from .lib.base.runner import Runner
 from .lib.base.converter import BaseConverter
-from .lib.base.converter_controller import ConverterController
 from .lib.base.preparer import BasePreparer
 from .lib.base.mapper import BaseMapper
 from .lib.base.annotator import BaseAnnotator
@@ -81,7 +80,6 @@ _ = BadFormatError or InvalidData
 _ = admin_util or inout
 _ = (
     BaseConverter
-    or ConverterController
     or BasePreparer
     or BaseAnnotator
     or BaseMapper

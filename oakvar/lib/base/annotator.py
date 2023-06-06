@@ -210,10 +210,12 @@ class BaseAnnotator(object):
             else:
                 self.code_version: str = ""
         self.cache = ModuleDataCache(self.module_name, module_type=self.module_type)
-        self.var_ld: Dict[str, List[Any]] = {}
         self.setup_df()
 
     def set_output_columns(self, output_columns: List[Dict[str, Any]]):
+        from ..consts import VARIANT_LEVEL_PRIMARY_KEY
+        from ..consts import GENE_LEVEL_PRIMARY_KEY
+
         if not self.level:
             return
         key_col_name: str = self.id_col_defs[self.level].get("name", "")
@@ -230,7 +232,7 @@ class BaseAnnotator(object):
         if not self.conf:
             self.conf = {}
         self.conf["output_columns"] = output_columns
-        self.col_names = [v.get("name", "") for v in output_columns if v.get("name") != "uid"]
+        self.col_names = [v.get("name", "") for v in output_columns if v.get("name") != VARIANT_LEVEL_PRIMARY_KEY and v.get("name") != GENE_LEVEL_PRIMARY_KEY]
 
     def set_ref_colname(self):
         """set_ref_colname.
@@ -436,11 +438,14 @@ class BaseAnnotator(object):
         raise NotImplementedError("annotate_df method should be implemented.")
 
     def setup_df(self):
+        from ..consts import VARIANT_LEVEL_PRIMARY_KEY
+        from ..consts import GENE_LEVEL_PRIMARY_KEY
+
         self.full_col_names = {col_name: f"{self.module_name}__{col_name}" for col_name in self.col_names if col_name != "uid"}
         self.df_dtypes = {}
         for col_def in self.output_columns:
             col_name = col_def.get("name")
-            if not col_name or col_name == "uid":
+            if not col_name or col_name == VARIANT_LEVEL_PRIMARY_KEY or col_name == GENE_LEVEL_PRIMARY_KEY:
                 continue
             ty = col_def.get("type")
             if ty == "string":
@@ -456,11 +461,9 @@ class BaseAnnotator(object):
         self.make_json_colnames()
 
     def get_series(self, df: pl.DataFrame) -> List[pl.Series]:
-        print(f"@ col_names={self.col_names}")
-        print(f"@ full_col_names={self.full_col_names}")
+        var_ld: Dict[str, List[Any]] = {}
         for col_name in self.col_names:
-            full_col_name = self.full_col_names[col_name]
-            self.var_ld[full_col_name] = []
+            var_ld[col_name] = []
         for row in df.iter_rows(named=True):
             input_data: Dict[str, Dict[str, Any]] = {}
             for k, v in row.items():
@@ -477,13 +480,12 @@ class BaseAnnotator(object):
                     val = None
                 else:
                     val = output_dict.get(col_name)
-                self.var_ld[self.full_col_names[col_name]].append(val)
+                var_ld[col_name].append(val)
         seriess: List[pl.Series] = []
         for col_name in self.col_names:
             full_col_name = self.full_col_names[col_name]
             dtype = self.df_dtypes[full_col_name]
-            seriess.append(pl.Series(full_col_name, self.var_ld[full_col_name], dtype=dtype))
-        print(f"@ seriess={seriess}")
+            seriess.append(pl.Series(full_col_name, var_ld[col_name], dtype=dtype))
         return seriess
 
     def run_df(self, df: pl.DataFrame) -> pl.DataFrame:

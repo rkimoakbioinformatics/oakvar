@@ -1,4 +1,6 @@
 from typing import Union
+from typing import Any
+from typing import Dict
 from typing import Optional
 from pathlib import Path
 
@@ -584,7 +586,7 @@ class ColumnDefinition(object):
 
         return dumps(self.__dict__)
 
-    def get_colinfo(self):
+    def get_colinfo(self) -> Dict[str, Any]:
         return {
             "col_name": self.name,
             "col_title": self.title,

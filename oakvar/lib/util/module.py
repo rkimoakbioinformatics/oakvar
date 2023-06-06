@@ -2,7 +2,6 @@ from typing import Optional
 from typing import Union
 from typing import Type
 from pathlib import Path
-from ..base.converter_controller import ConverterController
 from ..base.converter import BaseConverter
 from ..base.preparer import BasePreparer
 from ..base.mapper import BaseMapper
@@ -65,7 +64,6 @@ def get_mapper(module_name, *args, **kwargs) -> BaseMapper:
     if not issubclass(ModuleClass, BaseMapper):
         raise ValueError(f"{ModuleClass} is not a mapper class.")
     module = ModuleClass(*args, **kwargs)
-    module.setup()
     return module
 
 
@@ -107,7 +105,6 @@ def get_module_class(
     module_name, module_type: str = ""
 ) -> Union[
     Type[BaseConverter],
-    Type[ConverterController],
     Type[BasePreparer],
     Type[BaseMapper],
     Type[BaseAnnotator],
@@ -122,7 +119,6 @@ def get_module_class(
     module_info = get_local_module_info(module_name, module_type=module_type)
     if module_info is None:
         raise ValueError(f"{module_name} does not exist.")
-    print(f"@ script_path={module_info.script_path}")
     ModuleClass = load_class(module_info.script_path)
     return ModuleClass
 

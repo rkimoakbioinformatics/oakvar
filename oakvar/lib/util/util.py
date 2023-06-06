@@ -5,7 +5,7 @@ from typing import Dict
 from typing import Optional
 from typing import Type
 from pathlib import Path
-from polars import DataFrame
+import polars as pl
 from ..base.converter import BaseConverter
 from ..base.preparer import BasePreparer
 from ..base.mapper import BaseMapper
@@ -808,7 +808,7 @@ def get_df_from_db(
     sql: Optional[str] = None,
     num_cores: int = 1,
     conn = None,
-) -> Optional[DataFrame]:
+) -> Optional[pl.DataFrame]:
     """Gets a Polars DataFrame of a table in an OakVar result database.
 
     Args:
@@ -831,8 +831,6 @@ def get_df_from_db(
     import platform
 
     environ["RUST_LOG"] = "connectorx=warn,connectorx_python=warn"
-    import polars as pl
-
     partition_ons = {
         "variant": "base__uid",
         "gene": "base__hugo",
@@ -870,9 +868,9 @@ def get_df_from_db(
     else:
         conn_url = f"sqlite://{db_path_to_use}"
     if partition_on and num_cores > 1:
-        df = pl.read_sql(
+        df = pl.read_database(
             sql, conn_url, partition_on=partition_on, partition_num=num_cores
         )
     else:
-        df = pl.read_sql(sql, conn_url)
+        df = pl.read_database(sql, conn_url)
     return df

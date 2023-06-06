@@ -67,7 +67,7 @@ setup(
         "rich",
         "aiohttp-cors",
         "pyjwt",
-        "polars",
+        "polars>=0.18.0",
         "connectorx",
         "pyarrow",
         "multiprocess",

@@ -22,6 +22,14 @@ ORIG_ALT_BASE = "ori_alt_base"
 class BaseConverter(object):
     IGNORE = "converter_ignore"
     unique_var_key = "_unique"
+    input_assembly_int_dict = {
+        "hg18": 18,
+        "hg19": 19,
+        "hg38": 38,
+        "GRCh36": 18,
+        "GRCh37": 19,
+        "GRCh38": 38,
+    }
 
     def __init__(
         self,
@@ -148,6 +156,7 @@ class BaseConverter(object):
         immature_exit: bool = False
         line_no: int = start_line_no
         end_line_no = line_no + mp * batch_size - 1
+        print(f"@ end_line_no={end_line_no}")
         lines: Dict[int, List[Tuple[int, Any]]] = {i: [] for i in range(mp)}
         chunk_no: int = 0
         chunk_size: int = 0
@@ -245,17 +254,9 @@ class BaseConverter(object):
             if not input_assembly:
                 raise NoGenomeException()
         if not isinstance(input_assembly, int):
-            input_assembly_int_dict = {
-                "hg18": 18,
-                "hg19": 19,
-                "hg38": 38,
-                "GRCh36": 18,
-                "GRCh37": 19,
-                "GRCh38": 38,
-            }
-            if input_assembly not in input_assembly_int_dict:
+            if input_assembly not in self.input_assembly_int_dict:
                 raise NoGenomeException()
-            input_assembly = input_assembly_int_dict.get(input_assembly, 38)
+            input_assembly = self.input_assembly_int_dict.get(input_assembly, 38)
         return input_assembly
 
     def handle_chrom(self, variant):
@@ -433,7 +434,7 @@ class BaseConverter(object):
         for col in extra_output_columns:
             self.extra_output_columns.append(col)
 
-    def get_df_headers(self):
+    def get_df_headers(self) -> List[Dict[str, Any]]:
         df_headers = []
         for col in self.output_columns:
             ty = col.get("type")
@@ -472,7 +473,7 @@ class BaseConverter(object):
             self.logger.info(f"encoding: {input_path} {encoding}")
         self.input_encoding = encoding
 
-    def iter_df_chunk(self, input_paths: List[str], start: int=0, size: int = 10000, ignore_sample: bool=False):
+    def iter_df_chunk(self, input_paths: List[str], size: int = 10000):
         from pathlib import Path
         from multiprocessing.pool import ThreadPool
         from oakvar.lib.util.run import update_status
@@ -509,12 +510,10 @@ class BaseConverter(object):
             while True:
                 #ctime = time.time()
                 df, immature_exit = self.get_variants_df(input_path, start_line_no, size)
-                print(f"@ 1st df={df}. immature_exit={immature_exit}")
                 if immature_exit is not None:
                     start_line_no += size
                 else:
                     lines_data, immature_exit = self.get_variant_lines(input_path, num_pool, start_line_no, size)
-                    print(f"@ lines_data={lines_data}. immature_exit={immature_exit}")
                     args = [
                         (
                             lines_data,
@@ -561,10 +560,8 @@ class BaseConverter(object):
                         if data:
                             series = pl.Series(header_name, data, dtype=header_type)
                             series_to_add.append(series)
-                print(f"@ series_to_add={series_to_add}")
                 if series_to_add:
                     df = df.with_columns(series_to_add) # type: ignore
-                df.glimpse()
                 yield df
                 status = (
                     f"Running Converter ({self.current_input_fname}): line {start_line_no - 1}"
@@ -584,13 +581,6 @@ class BaseConverter(object):
         self.flush_err_holder(force=True)
         self.end()
         self.log_ending()
-        ret = {
-            "total_lnum": self.total_num_converted_variants,
-            "write_lnum": self.total_num_valid_variants,
-            "error_lnum": self.total_error_lines,
-            "assemblies": self.genome_assemblies,
-        }
-        return ret
 
     def initialize_var_ld(self, var_ld):
         var_ld["base__uid"] = []
@@ -652,7 +642,6 @@ class BaseConverter(object):
             end_pos: int = row[self.pos_colno]
             ref_base: str = row[self.ref_base_colno]
             alt_base: str = row[self.alt_base_colno]
-            print(f"@ chrom={chrom}. pos={pos}. ref_base={ref_base}. alt_base={alt_base}")
             if self.is_chrM(chrom):
                 needed = self.do_liftover_chrM
             else:

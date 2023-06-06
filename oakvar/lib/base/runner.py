@@ -5,15 +5,17 @@ from typing import List
 from typing import Tuple
 from typing import Dict
 import polars as pl
-from .converter_controller import ConverterController
+from .converter import BaseConverter
 from ..module.local import LocalModule
 
 
 class Runner(object):
     def __init__(self, **kwargs):
         from types import SimpleNamespace
+        from sqlite3 import Connection
+        from sqlite3 import Cursor
         from ..module.local import LocalModule
-        from .converter_controller import ConverterController
+        from .converter import BaseConverter
         from .mapper import BaseMapper
         from .annotator import BaseAnnotator
 
@@ -50,8 +52,8 @@ class Runner(object):
         self.conf = {}
         self.first_non_url_input = None
         self.input_paths: List[List[str]] = []
-        self.run_name: Optional[List[str]] = None
-        self.output_dir: Optional[List[str]] = None
+        self.run_name: List[str] = []
+        self.output_dir: List[str] = []
         self.startlevel = self.runlevels["converter"]
         self.endlevel = self.runlevels["postaggregator"]
         self.excludes = []
@@ -72,8 +74,8 @@ class Runner(object):
         self.total_num_converted_variants = None
         self.total_num_valid_variants = None
         self.converter_format: Optional[List[str]] = None
-        self.converter_controller_i: Optional[ConverterController] = None
-        self.mapper_i: Optional[BaseMapper] = None
+        self.converter_i: Optional[BaseConverter] = None
+        self.mapper_i: List[BaseMapper] = []
         self.annotators_i: List[BaseAnnotator] = []
         self.genemapper = None
         self.append_mode = []
@@ -84,6 +86,8 @@ class Runner(object):
         self.report_response = None
         self.outer = None
         self.error = None
+        self.result_db_conn: Optional[Connection] = None
+        self.result_db_cursor: Optional[Cursor] = None
 
     def check_valid_modules(self, module_names):
         from ..exceptions import ModuleNotExist
@@ -121,8 +125,6 @@ class Runner(object):
         logging.shutdown()
 
     def sanity_check_run_name_output_dir(self):
-        if not self.run_name or not self.output_dir:
-            raise
         if len(self.run_name) != len(self.output_dir):
             raise
 
@@ -133,8 +135,6 @@ class Runner(object):
         from ..consts import LOG_SUFFIX
         from ..consts import ERROR_LOG_SUFFIX
 
-        if not self.run_name or not self.output_dir:
-            return
         run_name = self.run_name[run_no]
         output_dir = self.output_dir[run_no]
         pattern = escape_glob_pattern(run_name) + ".*"
@@ -157,8 +157,6 @@ class Runner(object):
         from ..util.util import humanize_bytes
         from ..util.run import update_status
 
-        if not self.input_paths:
-            raise
         if " " in ip:
             print(f"Space is not allowed in input file paths ({ip})")
             exit()
@@ -202,7 +200,7 @@ class Runner(object):
         from pathlib import Path
         from ..util.run import set_logger_handler
 
-        if self.args is None or self.run_name is None or self.output_dir is None:
+        if self.args is None:
             raise
         output_dir = Path(self.output_dir[run_no])
         run_name = self.run_name[run_no]
@@ -241,7 +239,7 @@ class Runner(object):
             log_module(module, self.logger)
 
     async def process_clean(self, run_no: int):
-        if not self.args or not self.args.clean or not self.run_name:
+        if not self.args or not self.args.clean:
             return
         msg = f"deleting previous output files for {self.run_name[run_no]}..."
         if self.logger:
@@ -250,7 +248,7 @@ class Runner(object):
 
     def log_input(self, run_no: int):
 
-        if not self.input_paths or not self.args:
+        if not self.args:
             raise
         if self.logger:
             for input_file in self.input_paths[run_no]:
@@ -268,15 +266,161 @@ class Runner(object):
         if self.conf_path != "":
             self.logger.info("conf file: {}".format(self.conf_path))
 
-    async def process_file(self, run_no: int):
-        for df in self.do_step_converter(run_no):
-            print(f"@ converter df={df}")
+    def open_result_database(self, run_no: int):
+        from pathlib import Path
+        import sqlite3
+        from ..consts import result_db_suffix
+
+        run_name = self.run_name[run_no]
+        output_fn = f"{run_name}{result_db_suffix}"
+        output_dir = self.output_dir[run_no]
+        output_path = Path(output_dir) / output_fn
+        self.result_db_conn = sqlite3.connect(output_path)
+        self.result_db_cursor = self.result_db_conn.cursor()
+        self.result_db_cursor.execute('pragma journal_mode="wal"')
+        self.result_db_cursor.execute("pragma synchronous=0;")
+        self.result_db_cursor.execute("pragma journal_mode=off;")
+        self.result_db_cursor.execute("pragma cache_size=1000000;")
+        self.result_db_cursor.execute("pragma locking_mode=EXCLUSIVE;")
+        self.result_db_cursor.execute("pragma temp_store=MEMORY;")
+        q: str = "drop table if exists variant"
+        self.result_db_cursor.execute(q)
+        self.result_db_conn.commit()
+
+    def collect_output_columns(self, converter: BaseConverter):
+        from ..consts import VARIANT_LEVEL_PRIMARY_KEY
+        from ..consts import GENE_LEVEL_PRIMARY_KEY
+
+        coldefs = []
+        for coldef in converter.output_columns:
+            coldefs.append(coldef.copy())
+        for module in self.mapper_i:
+            for coldef in module.output_columns:
+                if coldef["name"] == VARIANT_LEVEL_PRIMARY_KEY:
+                    continue
+                coldef_fullname = coldef.copy()
+                coldefs.append(coldef_fullname)
+        for module in self.annotators_i:
+            module_level: str = module.conf.get("level", "variant")
+            for coldef in module.output_columns:
+                if coldef["name"] == VARIANT_LEVEL_PRIMARY_KEY:
+                    continue
+                if module_level == "gene" and coldef["name"] == GENE_LEVEL_PRIMARY_KEY:
+                    continue
+                coldef_fullname = coldef.copy()
+                coldef_fullname["name"] = f"{module.module_name}__{coldef_fullname['name']}"
+                coldefs.append(coldef_fullname)
+        return coldefs
+
+    def create_variant_table_in_result_db(self, coldefs: List[Dict[str, Any]]) -> List[str]:
+        if self.result_db_conn is None:
+            return []
+        if self.result_db_cursor is None:
+            return []
+        table_col_defs: List[str] = []
+        table_col_names: List[str] = []
+        for coldef in coldefs:
+            table_col_def = f"{coldef['name']} {coldef['type']}"
+            table_col_defs.append(table_col_def)
+            table_col_names.append(coldef["name"])
+        table_col_def_str = ", ".join(table_col_defs)
+        q = f"create table variant ({table_col_def_str})"
+        self.result_db_cursor.execute(q)
+        self.result_db_conn.commit()
+        return table_col_names
+
+    def create_info_modules_table_in_result_db(self):
+        if not self.result_db_conn or not self.result_db_cursor:
+            return
+        table_name = "info_modules"
+        q = f"drop table if exists {table_name}"
+        self.result_db_cursor.execute(q)
+        q = f"create table {table_name} (name text primary key, displayname text, version text, description text)"
+        self.result_db_cursor.execute(q)
+        q = f"insert into {table_name} values (?, ?, ?, ?)"
+        self.result_db_cursor.execute(q, ("base", "Normalized Input", "", ""))
+        mapper = self.mapper_i[0]
+        q = f"insert into {table_name} values (?, ?, ?, ?)"
+        self.result_db_cursor.execute(q, (mapper.module_name, mapper.conf.get("title", mapper.module_name), mapper.conf.get("version", ""), mapper.conf.get("description", "")))
+        for module_name, module in self.annotators.items():
+            q = f"insert into {table_name} values (?, ?, ?, ?)"
+            self.result_db_cursor.execute(q, (module_name, module.conf.get("title", module_name), module.conf.get("version", ""), module.conf.get("description", "")))
+        self.result_db_conn.commit()
+
+    def create_info_headers_table_in_result_db(self, converter: BaseConverter):
+        from json import dumps
+
+        if not self.result_db_conn or not self.result_db_cursor:
+            return
+        table_name = "info_headers"
+        q = f"drop table if exists {table_name}"
+        self.result_db_cursor.execute(q)
+        q = f"create table {table_name} (name text primary key, level text, json text)"
+        self.result_db_cursor.execute(q)
+        q = f"insert into {table_name} values (?, ?, ?)"
+        print(f"@ converter output_columns={converter.output_columns}")
+        for col in converter.output_columns:
+            name = f"base__{col['name']}"
+            print(f"@ name={name}. json={col}")
+            self.result_db_cursor.execute(q, (name, "variant", dumps(col)))
+        mapper = self.mapper_i[0]
+        for col in mapper.output_columns:
+            name = f"base__{col['name']}"
+            self.result_db_cursor.execute(q, (name, "variant", dumps(col)))
+        for module in self.annotators_i:
+            for col in module.output_columns:
+                name = f"{module.module_name}__{col['name']}"
+                self.result_db_cursor.execute(q, (name, "variant", dumps(col)))
+        self.result_db_conn.commit()
+
+    def create_info_table_in_result_db(self):
+        if not self.result_db_conn or not self.result_db_cursor:
+            return
+        q = "drop table if exists info"
+        self.result_db_cursor.execute(q)
+        q = "create table info (colkey text primary key, colval text)"
+        self.result_db_cursor.execute(q)
+        self.result_db_conn.commit()
+
+    def create_auxiliary_tables_in_result_db(self, converter: BaseConverter):
+        if not self.result_db_conn or not self.result_db_cursor:
+            return
+        self.create_info_table_in_result_db()
+        self.create_info_modules_table_in_result_db()
+        self.create_info_headers_table_in_result_db(converter)
+
+    def write_df_to_db(self, df: pl.DataFrame, table_col_names: List[str]):
+        if self.result_db_conn is None:
+            return
+        if self.result_db_cursor is None:
+            return
+        table_col_names_str = ", ".join(table_col_names)
+        values_str = ", ".join(["?"] * len(table_col_names))
+        q = f"insert into variant ({table_col_names_str}) values ({values_str})"
+        for row in df.iter_rows():
+            self.result_db_cursor.execute(q, row)
+        self.result_db_conn.commit()
+
+    def process_file(self, run_no: int):
+        from ..exceptions import NoConverterFound
+
+        self.open_result_database(run_no)
+        input_paths = self.input_paths[run_no]
+        converter = self.choose_converter(input_paths)
+        if converter is None:
+            raise NoConverterFound(input_paths)
+        coldefs = self.collect_output_columns(converter)
+        table_col_names = self.create_variant_table_in_result_db(coldefs)
+        self.create_auxiliary_tables_in_result_db(converter)
+        for df in converter.iter_df_chunk(input_paths):
             if df is not None:
                 df = self.do_step_mapper(df)
                 df = self.do_step_annotator(df)
-        #await self.do_step_aggregator(run_no)
-        #await self.do_step_postaggregator(run_no)
-        #await self.do_step_reporter(run_no)
+                print(f"@ df={df}")
+                self.write_df_to_db(df, table_col_names)
+        self.write_info_table(run_no, converter)
+        self.do_step_postaggregator(run_no)
+        self.do_step_reporter(run_no)
 
     async def main(self) -> Optional[Dict[str, Any]]:
         from time import time, asctime, localtime
@@ -285,10 +429,10 @@ class Runner(object):
         from ..consts import JOB_STATUS_ERROR
 
         await self.process_arguments(self.inkwargs)
-        if not self.args or not self.run_name:
+        if not self.args:
             raise
         self.sanity_check_run_name_output_dir()
-        self.converter_controller_i = self.prep_converter()
+        self.load_wgs_reader()
         self.load_mapper()
         self.load_annotators()
         await self.setup_manager()
@@ -310,14 +454,14 @@ class Runner(object):
                 if self.args and self.args.vcf2vcf:
                     await self.run_vcf2vcf(run_no)
                 else:
-                    await self.process_file(run_no)
+                    self.process_file(run_no)
                 end_time = time()
                 runtime = end_time - self.start_time
                 display_time = asctime(localtime(end_time))
                 if self.logger:
                     self.logger.info(f"finished: {display_time}")
                 update_status(
-                    "finished normally. Runtime: {0:0.3f}s".format(runtime),
+                    f"finished normally. Runtime: {runtime:0.3f}s",
                     logger=self.logger,
                     serveradmindb=self.serveradmindb,
                 )
@@ -457,8 +601,6 @@ class Runner(object):
                     [str(Path(x).resolve()) if not is_url(x) else x]
                     for x in self.args.inputs
                 ]
-            if self.input_paths is None:
-                raise
             for input_no in range(len(self.input_paths)):
                 inp_l = self.input_paths[input_no]
                 for fileno in range(len(inp_l)):
@@ -474,8 +616,6 @@ class Runner(object):
     def remove_absent_inputs(self):
         from pathlib import Path
 
-        if not self.input_paths:
-            return
         old_input_paths = self.input_paths.copy()
         self.input_paths = []
         for inp_l in old_input_paths:
@@ -500,7 +640,7 @@ class Runner(object):
         from os import getcwd
         from os import mkdir
 
-        if not self.args or not self.input_paths:
+        if not self.args:
             raise
         cwd = getcwd()
         if self.args.combine_input:
@@ -549,7 +689,6 @@ class Runner(object):
         from pathlib import Path
         from ..exceptions import ArgumentError
 
-        print(f"@ args={self.args}")
         if not self.args or not self.output_dir:
             raise
         if not self.args.run_name:
@@ -573,27 +712,21 @@ class Runner(object):
                 self.run_name = self.args.run_name
             else:
                 if len(self.args.run_name) == 1:
-                    if self.input_paths:
-                        if self.output_dir and len(self.output_dir) != len(
-                            set(self.output_dir)
-                        ):
-                            raise ArgumentError(
-                                msg="-n should have a unique value for each "
-                                + "input when -d has duplicate directories."
-                            )
-                        self.run_name = self.args.run_name * len(self.input_paths)
-                    else:
-                        raise
+                    if self.output_dir and len(self.output_dir) != len(
+                        set(self.output_dir)
+                    ):
+                        raise ArgumentError(
+                            msg="-n should have a unique value for each "
+                            + "input when -d has duplicate directories."
+                        )
+                    self.run_name = self.args.run_name * len(self.input_paths)
                 else:
-                    if self.input_paths:
-                        if len(self.input_paths) != len(self.args.run_name):
-                            raise ArgumentError(
-                                msg="Just one or the same number of -n option "
-                                + "values as input files should be given."
-                            )
-                        self.run_name = self.args.run_name
-                    else:
-                        raise
+                    if len(self.input_paths) != len(self.args.run_name):
+                        raise ArgumentError(
+                            msg="Just one or the same number of -n option "
+                            + "values as input files should be given."
+                        )
+                    self.run_name = self.args.run_name
 
     def set_job_name(self):
         from pathlib import Path
@@ -615,24 +748,20 @@ class Runner(object):
             self.job_name = self.args.job_name
         else:
             if len(self.args.job_name) == 1:
-                if self.input_paths:
-                    if len(self.output_dir) != len(set(self.output_dir)):
-                        raise ArgumentError(
-                            msg="-j should have a unique value for each input "
-                            + "when -d has duplicate directories. Or, give "
-                            + "--combine-input to combine input files into one job."
-                        )
-                    self.job_name = self.args.job_name * len(self.input_paths)
-                else:
-                    raise
+                if len(self.output_dir) != len(set(self.output_dir)):
+                    raise ArgumentError(
+                        msg="-j should have a unique value for each input "
+                        + "when -d has duplicate directories. Or, give "
+                        + "--combine-input to combine input files into one job."
+                    )
+                self.job_name = self.args.job_name * len(self.input_paths)
             else:
-                if self.input_paths:
-                    if len(self.input_paths) != len(self.args.job_name):
-                        raise ArgumentError(
-                            msg="Just one or the same number of -j option values "
-                            + "as input files should be given."
-                        )
-                    self.job_name = self.args.job_name
+                if len(self.input_paths) != len(self.args.job_name):
+                    raise ArgumentError(
+                        msg="Just one or the same number of -j option values "
+                        + "as input files should be given."
+                    )
+                self.job_name = self.args.job_name
             return
 
     def input_exists(self):
@@ -687,10 +816,6 @@ class Runner(object):
         from ..consts import VARIANT_LEVEL_MAPPED_FILE_SUFFIX
         from ..consts import GENE_LEVEL_MAPPED_FILE_SUFFIX
 
-        if not self.run_name or not self.output_dir:
-            raise
-        if not self.input_paths:
-            raise
         if not self.append_mode:
             raise
         run_name = self.run_name[run_no]
@@ -965,8 +1090,6 @@ class Runner(object):
         from ..consts import VARIANT_LEVEL_OUTPUT_SUFFIX
         from ..consts import GENE_LEVEL_OUTPUT_SUFFIX
 
-        if not self.run_name or not self.output_dir:
-            raise
         run_name, output_dir = self.get_run_name_output_dir_by_run_no(run_no)
         if module.level == "variant":
             postfix = VARIANT_LEVEL_OUTPUT_SUFFIX
@@ -1132,8 +1255,6 @@ class Runner(object):
         return title, version, modulename
 
     def get_run_name_output_dir_by_run_no(self, run_no: int) -> Tuple[str, str]:
-        if not self.output_dir or not self.run_name:
-            raise
         run_name = self.run_name[run_no]
         output_dir = self.output_dir[run_no]
         return run_name, output_dir
@@ -1145,13 +1266,15 @@ class Runner(object):
         dbpath = str(Path(output_dir) / (run_name + ".sqlite"))
         return dbpath
 
-    async def write_info_row(self, key: str, value: Any, cursor):
+    def write_info_row(self, key: str, value: Any):
         import json
 
+        if not self.result_db_cursor:
+            return
         q = "insert into info values (?, ?)"
         if isinstance(value, list) or isinstance(value, dict):
             value = json.dumps(value)
-        await cursor.execute(q, (key, value))
+        self.result_db_cursor.execute(q, (key, value))
 
     def get_input_paths_from_mapping_file(self, run_no: int) -> Optional[dict]:
         from pathlib import Path
@@ -1166,128 +1289,58 @@ class Runner(object):
                 input_paths = json.loads(new_line)
                 return input_paths
 
-    async def create_info_table_if_needed(self, run_no: int, cursor):
-        if not self.append_mode[run_no]:
-            q = "drop table if exists info"
-            await cursor.execute(q)
-            q = "create table info (colkey text primary key, colval text)"
-            await cursor.execute(q)
-
-    async def refresh_info_table_modified_time(self, cursor):
+    def refresh_info_table_modified_time(self):
         from datetime import datetime
 
+        if self.result_db_conn is None or self.result_db_cursor is None:
+            return
         modified = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         q = "insert or replace into info values ('modified_at', ?)"
-        await cursor.execute(q, (modified,))
+        self.result_db_cursor.execute(q, (modified,))
+        self.result_db_conn.commit()
 
-    async def write_info_table_create_data_if_needed(self, run_no: int, cursor):
+    def write_info_table_create_data_if_needed(self, run_no: int, converter: BaseConverter):
         from datetime import datetime
         import json
         from ..exceptions import DatabaseError
 
-        if self.append_mode[run_no]:
+        if self.result_db_conn is None or self.result_db_cursor is None:
             return
-        if not self.input_paths or not self.job_name or not self.args:
+        if not self.job_name or not self.args:
             raise
-        if self.args.combine_input:
-            inputs = self.input_paths
-        else:
-            inputs = [self.input_paths[run_no]]
+        inputs = self.input_paths[run_no]
         job_name = self.job_name[run_no]
-        genome_assemblies = (
-            list(set(self.genome_assemblies[run_no])) if self.genome_assemblies else []
-        )
         created = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        await self.write_info_row("created_at", created, cursor)
-        await self.write_info_row("inputs", json.dumps(inputs), cursor)
-        await self.write_info_row(
-            "genome_assemblies", json.dumps(genome_assemblies), cursor
-        )
+        self.write_info_row("created_at", created)
+        self.write_info_row("inputs", inputs)
+        self.write_info_row("genome_assemblies", converter.genome_assemblies)
         q = "select count(*) from variant"
-        await cursor.execute(q)
-        r = await cursor.fetchone()
+        self.result_db_cursor.execute(q)
+        r = self.result_db_cursor.fetchone()
         if r is None:
             raise DatabaseError(msg="table variant does not exist.")
         no_input = str(r[0])
-        await self.write_info_row("num_variants", no_input, cursor)
-        await self.write_info_row("oakvar", self.pkg_ver, cursor)
-        (
-            mapper_title,
-            mapper_version,
-            _,
-        ) = await self.get_mapper_info_from_crx(run_no)
+        self.write_info_row("num_variants", no_input)
+        self.write_info_row("oakvar", self.pkg_ver)
+        mapper_conf = self.mapper_i[0].conf
+        mapper_title = mapper_conf.get("title")
+        mapper_version = mapper_conf.get("version", mapper_conf.get("code_version"))
         gene_mapper_str = f"{mapper_title}=={mapper_version}"
-        await self.write_info_row("mapper", gene_mapper_str, cursor)
-        input_paths = self.get_input_paths_from_mapping_file(run_no)
-        if input_paths:
-            await self.write_info_row("input_paths", json.dumps(input_paths), cursor)
-        await self.write_info_row(
-            "primary_transcript", ",".join(self.args.primary_transcript), cursor
+        self.write_info_row("mapper", gene_mapper_str)
+        input_paths = self.input_paths[run_no]
+        self.write_info_row("input_paths", input_paths)
+        self.write_info_row(
+            "primary_transcript", ",".join(self.args.primary_transcript)
         )
-        await self.write_info_row("job_name", job_name, cursor)
-        await self.write_info_row(
-            "converter_format", json.dumps(self.converter_format), cursor
-        )
+        self.write_info_row("job_name", job_name)
+        self.write_info_row("converter_format", converter.format_name)
+        self.result_db_conn.commit()
 
-    async def write_info_table_annotator_info(self, cursor):
-        import json
-        from ..module.local import get_local_module_info
-
-        q = 'select colval from info where colkey="annotators_desc"'
-        await cursor.execute(q)
-        r = await cursor.fetchone()
-        if r is None:
-            annotator_descs = {}
-        else:
-            annotator_descs = json.loads(r[0])
-        q = "select name, displayname, version from variant_annotator"
-        await cursor.execute(q)
-        rows = list(await cursor.fetchall())
-        q = "select name, displayname, version from gene_annotator"
-        await cursor.execute(q)
-        tmp_rows = list(await cursor.fetchall())
-        if tmp_rows is not None:
-            rows.extend(tmp_rows)
-        annotator_titles = []
-        annotators = []
-        for row in rows:
-            (name, displayname, version) = row
-            if name in ["base", "tagsampler", "hg19", "hg18"]:
-                continue
-            if version is not None and version != "":
-                annotators.append("{}=={}".format(name, version))
-            else:
-                annotators.append("{}==?".format(name))
-            annotator_titles.append(displayname)
-            module_info = get_local_module_info(name)
-            if module_info is not None and module_info.conf is not None:
-                annotator_descs[name] = module_info.conf.get("description", "")
-        await self.write_info_row(
-            "annotator_descs", json.dumps(annotator_descs), cursor
-        )
-        await self.write_info_row(
-            "annotator_titles", json.dumps(annotator_titles), cursor
-        )
-        await self.write_info_row("annotators", json.dumps(annotators), cursor)
-
-    async def write_info_table(self, run_no):
-        import aiosqlite
-
-        dbpath = self.get_dbpath(run_no)
-        conn = await aiosqlite.connect(dbpath)
-        cursor = await conn.cursor()
-        try:
-            await self.create_info_table_if_needed(run_no, cursor)
-            await self.refresh_info_table_modified_time(cursor)
-            await self.write_info_table_create_data_if_needed(run_no, cursor)
-            await self.write_info_table_annotator_info(cursor)
-            await conn.commit()
-            await cursor.close()
-            await conn.close()
-        except:
-            await cursor.close()
-            await conn.close()
-            raise
+    def write_info_table(self, run_no: int, converter: BaseConverter):
+        if not self.result_db_conn:
+            return
+        self.refresh_info_table_modified_time()
+        self.write_info_table_create_data_if_needed(run_no, converter)
 
     def clean_up_at_end(self, run_no: int):
         from os import listdir
@@ -1311,8 +1364,6 @@ class Runner(object):
             or not self.aggregator_ran
         ):
             return
-        if not self.output_dir or not self.run_name:
-            raise
         run_name = self.run_name[run_no]
         output_dir = self.output_dir[run_no]
         fns = listdir(output_dir)
@@ -1381,7 +1432,7 @@ class Runner(object):
         from pathlib import Path
         from ..util.admin_util import oakvar_version
 
-        if not self.run_name or not self.input_paths or not self.args or not self.output_dir:
+        if not self.args:
             raise
         run_name = self.run_name[run_no]
         output_dir = self.output_dir[run_no]
@@ -1421,7 +1472,7 @@ class Runner(object):
         from ..exceptions import ModuleLoadingError
         from .preparer import BasePreparer
 
-        if self.conf is None or not self.run_name or not self.output_dir:
+        if self.conf is None:
             raise
         run_name = self.run_name[run_no]
         output_dir = self.output_dir[run_no]
@@ -1441,130 +1492,6 @@ class Runner(object):
             module_ins = module_cls(**kwargs)
             await self.log_time_of_func(module_ins.run, work=module_name)
 
-    async def run_annotators(self, df: pl.DataFrame):
-        import os
-        from ..base.mp_runners import init_worker, annot_from_queue
-        from multiprocessing import Pool
-        from ..system import get_max_num_concurrent_modules_per_job
-        from ..consts import INPUT_LEVEL_KEY
-        from ..consts import VARIANT_LEVEL_KEY
-
-        for module in self.annotators_to_run.values():
-            module.get_series(df)
-
-        if (
-            not self.args
-            or not self.manager
-            or not self.run_name
-            or not self.output_dir
-        ):
-            raise
-        run_name = self.run_name[run_no]
-        output_dir = self.output_dir[run_no]
-        num_workers = get_max_num_concurrent_modules_per_job()
-        if self.args.mp is not None:
-            try:
-                self.args.mp = int(self.args.mp)
-                if self.args.mp >= 1:
-                    num_workers = self.args.mp
-            except Exception:
-                if self.logger:
-                    self.logger.exception("error handling mp argument:")
-        if self.logger:
-            self.logger.info("num_workers: {}".format(num_workers))
-        run_args = {}
-        for module in self.annotators_to_run.values():
-            inputpath = None
-            if module.level == "variant":
-                if module.conf.get("input_format"):
-                    input_format = module.conf["input_format"]
-                    if input_format == INPUT_LEVEL_KEY:
-                        inputpath = self.crvinput
-                    elif input_format == VARIANT_LEVEL_KEY:
-                        inputpath = self.crxinput
-                    else:
-                        raise Exception("Incorrect input_format value")
-                else:
-                    inputpath = self.crxinput
-            elif module.level == "gene":
-                inputpath = self.crginput
-            secondary_inputs = []
-            if "secondary_inputs" in module.conf:
-                secondary_module_names = module.conf["secondary_inputs"]
-                for secondary_module_name in secondary_module_names:
-                    secondary_module = self.annotators[secondary_module_name]
-                    secondary_output_path = self.get_module_output_path(
-                        secondary_module, run_no
-                    )
-                    if secondary_output_path is None:
-                        if self.logger:
-                            self.logger.warning(
-                                "secondary output file does not exist for "
-                                + f"{secondary_module_name}"
-                            )
-                    else:
-                        secondary_inputs.append(
-                            secondary_module.name.replace("=", r"\=")
-                            + "="
-                            + os.path.join(output_dir, secondary_output_path).replace(
-                                "=", r"\="
-                            )
-                        )
-            kwargs = {
-                "input_file": inputpath,
-                "secondary_inputs": secondary_inputs,
-                "module_options": self.run_conf.get(module.name, {}),
-            }
-            kwargs["run_name"] = run_name
-            kwargs["output_dir"] = output_dir
-            run_args[module.name] = (module, kwargs)
-        start_queue = self.manager.Queue()
-        end_queue = self.manager.Queue()
-        all_mnames = set(self.annotators_to_run)
-        assigned_mnames = set()
-        done_mnames = set(self.done_annotators)
-        queue_populated = self.manager.Value("c_bool", False)
-        pool_args = [
-            [
-                start_queue,
-                end_queue,
-                queue_populated,
-                self.serveradmindb,
-                self.args.logtofile,
-                self.log_path
-            ]
-        ] * num_workers
-        with Pool(num_workers, init_worker) as pool:
-            _ = pool.starmap_async(
-                annot_from_queue,
-                pool_args,
-                error_callback=lambda _, mp_pool=pool: mp_pool.terminate(),
-            )
-            pool.close()
-            for mname, module in self.annotators_to_run.items():
-                if (
-                    mname not in assigned_mnames
-                    and set(module.secondary_module_names) <= done_mnames
-                ):
-                    start_queue.put(run_args[mname])
-                    assigned_mnames.add(mname)
-            while (
-                assigned_mnames != all_mnames
-            ):  # TODO not handling case where parent module errors out
-                finished_module = end_queue.get()
-                done_mnames.add(finished_module)
-                for mname, module in self.annotators_to_run.items():
-                    if (
-                        mname not in assigned_mnames
-                        and set(module.secondary_module_names) <= done_mnames
-                    ):
-                        start_queue.put(run_args[mname])
-                        assigned_mnames.add(mname)
-            queue_populated = True
-            pool.join()
-        if len(self.annotators_to_run) > 0:
-            self.annotator_ran = True
-
     async def run_aggregator(self, run_no: int):
         db_path = await self.run_aggregator_level("variant", run_no)
         await self.run_aggregator_level("gene", run_no)
@@ -1579,8 +1506,6 @@ class Runner(object):
 
         if self.append_mode[run_no] and level not in ["variant", "gene"]:
             return
-        if not self.run_name or not self.output_dir:
-            raise
         run_name = self.run_name[run_no]
         output_dir = self.output_dir[run_no]
         update_status(
@@ -1608,7 +1533,7 @@ class Runner(object):
         )
         return v_aggregator.db_path
 
-    async def run_postaggregators(self, run_no: int):
+    def run_postaggregators(self, run_no: int):
         from time import time
         from ..util.run import announce_module
         from ..exceptions import SetupError
@@ -1621,8 +1546,6 @@ class Runner(object):
 
         if self.conf is None:
             raise SetupError()
-        if not self.run_name or not self.output_dir:
-            raise
         run_name = self.run_name[run_no]
         output_dir = self.output_dir[run_no]
         for module_name, module in self.postaggregators.items():
@@ -1668,8 +1591,6 @@ class Runner(object):
             or not self.output_dir
             or not self.run_name
         ):
-            raise
-        if not self.input_paths:
             raise
         response = {}
         module = {
@@ -1772,28 +1693,62 @@ class Runner(object):
             and (self.args and step not in self.args.skip)
         )
 
-    def prep_converter(self) -> ConverterController:
-        from .converter_controller import ConverterController
+    def choose_converter(self, input_paths: List[str]) -> Optional[BaseConverter]:
+        from ..module.local import get_local_module_infos_of_type
+        from ..module.local import get_local_module_info
+        from ..module.local import LocalModule
+        from ..util.module import get_converter_class
+        import traceback
 
-        if not self.args:
-            raise
-        converter_controller = ConverterController(
-            genome=self.args.genome,
-            converter_name=self.args.converter_name,
-            input_format=self.args.input_format,
-            serveradmindb=self.serveradmindb,
-            ignore_sample=self.ignore_sample,
-            fill_in_missing_ref=self.fill_in_missing_ref,
-            outer=self.outer,
-        )
-        return converter_controller
+
+        chosen_converter: Optional[BaseConverter] = None
+        module_infos: List[LocalModule] = []
+        if self.converter_name:
+            module_info = get_local_module_info(self.converter_name)
+            if module_info is None:
+                raise Exception(f" {self.converter_name} does not exist. Please check --converter-name option was given correctly, or consider installing {self.converter_name} module with \"ov module install {self.converter_name}\" command, if the module is in the OakVar store.")
+            module_infos.append(module_info)
+        elif self.args.input_format:
+            module_name = self.args.input_format + "-converter"
+            module_info = get_local_module_info(module_name)
+            if module_info is None:
+                raise Exception(module_name + f" does not exist. Please check --input-format option was given correctly, or consider installing {module_name} module with \"ov module install {module_name}\" command, if the module is in the OakVar store.")
+            module_infos.append(module_info)
+        else:
+            module_infos = list(get_local_module_infos_of_type("converter").values())
+        for module_info in module_infos:
+            try:
+                cls = get_converter_class(module_info.name)
+                converter = cls(wgs_reader=self.wgs_reader, ignore_sample=self.ignore_sample, module_options=self.run_conf.get(module_info.name, {}))
+            except Exception as e:
+                if self.logger:
+                    self.logger.error(f"{traceback.format_exc()}\nSkipping {module_info.name} as it could not be loaded. ({e})")
+                continue
+            try:
+                check_success = converter.check_format(input_paths[0])
+            except Exception:
+                if self.error_logger:
+                    self.error_logger.error(traceback.format_exc())
+                check_success = False
+            if check_success:
+                chosen_converter = converter
+                break
+        if chosen_converter:
+            if self.logger:
+                self.logger.info(f"Using {chosen_converter.name} for {' '.join(input_paths)}")
+            return chosen_converter
+
+    def load_wgs_reader(self):
+        from ..util.seq import get_wgs_reader
+
+        self.wgs_reader = get_wgs_reader()
 
     def load_mapper(self):
         from ..util.module import get_mapper
 
         if not self.mapper:
             return
-        self.mapper_i = get_mapper(self.mapper.name)
+        self.mapper_i = [get_mapper(self.mapper.name, wgs_reader=self.wgs_reader)]
 
     def load_annotators(self, df: Optional[pl.DataFrame]=None):
         from ..util.module import get_annotator
@@ -1813,13 +1768,6 @@ class Runner(object):
             module = get_annotator(module_name)
             self.annotators_i.append(module)
 
-    def do_step_converter(self, run_no: int):
-        if not self.converter_controller_i:
-            return
-        for df in self.converter_controller_i.iter_df_chunk(self.input_paths[run_no]):
-            yield df
-
-
     async def do_step_preparer(self, run_no: int):
         step = "preparer"
         if not self.should_run_step(step):
@@ -1827,17 +1775,13 @@ class Runner(object):
         await self.log_time_of_func(self.run_preparers, run_no, work=f"{step} step")
 
     def do_step_mapper(self, df: pl.DataFrame) -> pl.DataFrame:
-        if not self.mapper_i:
-            return df
-        df = self.mapper_i.run_df(df)
-        print(f"@ after mapper")
-        df.glimpse()
+        for module in self.mapper_i:
+            df = module.run_df(df)
         return df
 
     def do_step_annotator(self, df: pl.DataFrame) -> pl.DataFrame:
         for module in self.annotators_i:
             df = module.run_df(df)
-        df.glimpse()
         return df
 
     async def do_step_aggregator(self, run_no: int):
@@ -1851,24 +1795,23 @@ class Runner(object):
             self.result_path = await self.log_time_of_func(
                 self.run_aggregator, run_no, work=f"{step} step"
             )
-            await self.write_info_table(run_no)
             self.aggregator_ran = True
 
-    async def do_step_postaggregator(self, run_no: int):
+    def do_step_postaggregator(self, run_no: int):
         step = "postaggregator"
         if self.should_run_step(step):
-            await self.log_time_of_func(
+            self.log_time_of_func(
                 self.run_postaggregators, run_no, work=f"{step} step"
             )
 
-    async def do_step_reporter(self, run_no: int):
+    def do_step_reporter(self, run_no: int):
         step = "reporter"
         if self.should_run_step(step) and self.reporters:
-            self.report_response = await self.log_time_of_func(
+            self.report_response = self.log_time_of_func(
                 self.run_reporter, run_no, work=f"{step} step"
             )
 
-    async def log_time_of_func(self, func, *args, work="", **kwargs):
+    def log_time_of_func(self, func, *args, work="", **kwargs):
         from time import time
         from ..util.run import update_status
 
@@ -1878,7 +1821,7 @@ class Runner(object):
             logger=self.logger,
             serveradmindb=self.serveradmindb,
         )
-        ret = await func(*args, **kwargs)
+        ret = func(*args, **kwargs)
         rtime = time() - stime
         update_status(
             f"{work} finished in {rtime:.3f}s",
