@@ -1,19 +1,21 @@
 from typing import Any
 from typing import Optional
-from typing import Type
+from typing import Union
 from typing import List
 from typing import Tuple
 from typing import Dict
 import polars as pl
+from pathlib import Path
 from .converter import BaseConverter
 from ..module.local import LocalModule
+from ..consts import DEFAULT_DF_SIZE
 
 
 class Runner(object):
     def __init__(self, **kwargs):
         from types import SimpleNamespace
-        from sqlite3 import Connection
-        from sqlite3 import Cursor
+        import sqlite3
+        import duckdb
         from ..module.local import LocalModule
         from .converter import BaseConverter
         from .mapper import BaseMapper
@@ -87,8 +89,7 @@ class Runner(object):
         self.report_response = None
         self.outer = None
         self.error = None
-        self.result_db_conn: Optional[Connection] = None
-        self.result_db_cursor: Optional[Cursor] = None
+        self.result_db_conn: Optional[Union[sqlite3.Connection, duckdb.DuckDBPyConnection]] = None
 
     def check_valid_modules(self, module_names):
         from ..exceptions import ModuleNotExist
@@ -267,31 +268,46 @@ class Runner(object):
         if self.conf_path != "":
             self.logger.info("conf file: {}".format(self.conf_path))
 
-    def open_result_database(self, run_no: int):
-        from pathlib import Path
-        import sqlite3
-        from ..consts import result_db_suffix
+    def get_result_database_path(self, run_no: int) -> Path:
+        from ..consts import RESULT_DB_SUFFIX_SQLITE
+        from ..consts import RESULT_DB_SUFFIX_DUCKDB
 
+        if self.args.use_duckdb:
+            suffix = RESULT_DB_SUFFIX_DUCKDB
+        else:
+            suffix = RESULT_DB_SUFFIX_SQLITE
         run_name = self.run_name[run_no]
-        output_fn = f"{run_name}{result_db_suffix}"
+        db_fn = f"{run_name}{suffix}"
         output_dir = self.output_dir[run_no]
-        output_path = Path(output_dir) / output_fn
-        self.result_db_conn = sqlite3.connect(output_path)
-        self.result_db_cursor = self.result_db_conn.cursor()
-        self.result_db_cursor.execute('pragma journal_mode="wal"')
-        self.result_db_cursor.execute("pragma synchronous=0;")
-        self.result_db_cursor.execute("pragma journal_mode=off;")
-        self.result_db_cursor.execute("pragma cache_size=1000000;")
-        self.result_db_cursor.execute("pragma locking_mode=EXCLUSIVE;")
-        self.result_db_cursor.execute("pragma temp_store=MEMORY;")
-        q: str = "drop table if exists variant"
-        self.result_db_cursor.execute(q)
-        self.result_db_conn.commit()
+        dbpath = Path(output_dir) / db_fn
+        return dbpath
 
-    def close_result_database(self):
-        if not self.result_db_conn or not self.result_db_cursor:
+    def open_result_database(self, run_no: int):
+        import sqlite3
+        import duckdb
+
+        dbpath = self.get_result_database_path(run_no)
+        if self.args.use_duckdb:
+            self.result_db_conn = duckdb.connect(str(dbpath))
+        else:
+            self.result_db_conn = sqlite3.connect(dbpath)
+            self.result_db_conn.execute('pragma journal_mode="wal"')
+            self.result_db_conn.execute("pragma synchronous=0;")
+            self.result_db_conn.execute("pragma journal_mode=off;")
+            self.result_db_conn.execute("pragma cache_size=1000000;")
+            self.result_db_conn.execute("pragma locking_mode=EXCLUSIVE;")
+            self.result_db_conn.execute("pragma temp_store=MEMORY;")
+
+    def drop_result_variant_table(self):
+        if not self.result_db_conn:
             return
-        self.result_db_cursor.close()
+        q: str = "drop table if exists variant"
+        self.result_db_conn.execute(q)
+        self.result_db_conn.commit()
+    def close_result_database(self):
+        if not self.result_db_conn:
+            return
+        self.result_db_conn.close()
         self.result_db_conn.close()
 
     def collect_output_columns(self, converter: BaseConverter):
@@ -322,8 +338,6 @@ class Runner(object):
     def create_variant_table_in_result_db(self, coldefs: List[Dict[str, Any]]) -> List[str]:
         if self.result_db_conn is None:
             return []
-        if self.result_db_cursor is None:
-            return []
         table_col_defs: List[str] = []
         table_col_names: List[str] = []
         for coldef in coldefs:
@@ -332,84 +346,91 @@ class Runner(object):
             table_col_names.append(coldef["name"])
         table_col_def_str = ", ".join(table_col_defs)
         q = f"create table variant ({table_col_def_str})"
-        self.result_db_cursor.execute(q)
+        self.result_db_conn.execute(q)
         self.result_db_conn.commit()
         return table_col_names
 
     def create_info_modules_table_in_result_db(self):
-        if not self.result_db_conn or not self.result_db_cursor:
+        if not self.result_db_conn:
             return
         table_name = "info_modules"
         q = f"drop table if exists {table_name}"
-        self.result_db_cursor.execute(q)
+        self.result_db_conn.execute(q)
         q = f"create table {table_name} (name text primary key, displayname text, version text, description text)"
-        self.result_db_cursor.execute(q)
+        self.result_db_conn.execute(q)
         q = f"insert into {table_name} values (?, ?, ?, ?)"
-        self.result_db_cursor.execute(q, ("base", "Normalized Input", "", ""))
+        self.result_db_conn.execute(q, ("base", "Normalized Input", "", ""))
         mapper = self.mapper_i[0]
         q = f"insert into {table_name} values (?, ?, ?, ?)"
-        self.result_db_cursor.execute(q, (mapper.module_name, mapper.conf.get("title", mapper.module_name), mapper.conf.get("version", ""), mapper.conf.get("description", "")))
+        self.result_db_conn.execute(q, (mapper.module_name, mapper.conf.get("title", mapper.module_name), mapper.conf.get("version", ""), mapper.conf.get("description", "")))
         for module_name, module in self.annotators.items():
             q = f"insert into {table_name} values (?, ?, ?, ?)"
-            self.result_db_cursor.execute(q, (module_name, module.conf.get("title", module_name), module.conf.get("version", ""), module.conf.get("description", "")))
+            self.result_db_conn.execute(q, (module_name, module.conf.get("title", module_name), module.conf.get("version", ""), module.conf.get("description", "")))
         self.result_db_conn.commit()
 
     def create_info_headers_table_in_result_db(self, converter: BaseConverter):
         from json import dumps
 
-        if not self.result_db_conn or not self.result_db_cursor:
+        if not self.result_db_conn:
             return
         table_name = "info_headers"
         q = f"drop table if exists {table_name}"
-        self.result_db_cursor.execute(q)
+        self.result_db_conn.execute(q)
         q = f"create table {table_name} (name text primary key, level text, json text)"
-        self.result_db_cursor.execute(q)
+        self.result_db_conn.execute(q)
         q = f"insert into {table_name} values (?, ?, ?)"
         for col in converter.output_columns:
             name = f"base__{col['name']}"
-            self.result_db_cursor.execute(q, (name, "variant", dumps(col)))
+            self.result_db_conn.execute(q, (name, "variant", dumps(col)))
         mapper = self.mapper_i[0]
         for col in mapper.output_columns:
             name = f"base__{col['name']}"
-            self.result_db_cursor.execute(q, (name, "variant", dumps(col)))
+            self.result_db_conn.execute(q, (name, "variant", dumps(col)))
         for module in self.annotators_i:
             for col in module.output_columns:
                 name = f"{module.module_name}__{col['name']}"
-                self.result_db_cursor.execute(q, (name, "variant", dumps(col)))
+                self.result_db_conn.execute(q, (name, "variant", dumps(col)))
         self.result_db_conn.commit()
 
     def create_info_table_in_result_db(self):
-        if not self.result_db_conn or not self.result_db_cursor:
+        if not self.result_db_conn:
             return
         q = "drop table if exists info"
-        self.result_db_cursor.execute(q)
+        self.result_db_conn.execute(q)
         q = "create table info (colkey text primary key, colval text)"
-        self.result_db_cursor.execute(q)
+        self.result_db_conn.execute(q)
         self.result_db_conn.commit()
 
     def create_auxiliary_tables_in_result_db(self, converter: BaseConverter):
-        if not self.result_db_conn or not self.result_db_cursor:
+        if not self.result_db_conn:
             return
         self.create_info_table_in_result_db()
         self.create_info_modules_table_in_result_db()
         self.create_info_headers_table_in_result_db(converter)
 
-    def write_df_to_db(self, df: pl.DataFrame, table_col_names: List[str]):
+    def save_df(self, df: pl.DataFrame, table_col_names: List[str]):
+    #def save_df(self, df: pl.DataFrame, run_no: int):
         if self.result_db_conn is None:
-            return
-        if self.result_db_cursor is None:
             return
         table_col_names_str = ", ".join(table_col_names)
         values_str = ", ".join(["?"] * len(table_col_names))
         q = f"insert into variant ({table_col_names_str}) values ({values_str})"
         for row in df.iter_rows():
-            self.result_db_cursor.execute(q, row)
+            self.result_db_conn.execute(q, row)
         self.result_db_conn.commit()
+        # Parquet save
+        #run_name = self.run_name[run_no]
+        #output_fn = f"{run_name}.{partition_no}.parquet"
+        #output_dir = self.output_dir[run_no]
+        #output_path = Path(output_dir) / output_fn
+        #df.write_parquet(output_path)
 
-    def process_file(self, run_no: int):
+    def process_file(self, run_no: int, save_size: int=DEFAULT_DF_SIZE):
         from ..exceptions import NoConverterFound
+        from ..consts import DEFAULT_CONVERTER_READ_SIZE
 
         self.open_result_database(run_no)
+        self.drop_result_variant_table()
         input_paths = self.input_paths[run_no]
         converter = self.choose_converter(input_paths)
         if converter is None:
@@ -419,14 +440,30 @@ class Runner(object):
         table_col_names = self.create_variant_table_in_result_db(coldefs)
         self.create_auxiliary_tables_in_result_db(converter)
         self.do_step_preparer(run_no)
-        for df in converter.iter_df_chunk(input_paths, samples=samples):
-            if df is not None:
-                df = self.do_step_mapper(df)
-                df = self.do_step_annotator(df)
-                self.write_df_to_db(df, table_col_names)
+        df: Optional[pl.DataFrame] = None
+        #partition_no: int = 0
+        if save_size < DEFAULT_CONVERTER_READ_SIZE:
+            converter_read_size = save_size
+        else:
+            converter_read_size = DEFAULT_CONVERTER_READ_SIZE
+        for df_frag in converter.iter_df_chunk(input_paths, samples=samples, size=converter_read_size):
+            if df_frag is not None:
+                df_frag = self.do_step_mapper(df_frag)
+                df_frag = self.do_step_annotator(df_frag)
+                if df is None:
+                    df = df_frag
+                else:
+                    df.vstack(df_frag, in_place=True)
+                if df.height >= save_size:
+                    self.save_df(df, table_col_names=table_col_names)
+                    df = None
+                    #partition_no += 1
+        if df is not None:
+            self.save_df(df, table_col_names=table_col_names)
+            df = None
+            #partition_no += 1
         self.write_info_table(run_no, converter)
         self.close_result_database()
-        exit()
         self.do_step_postaggregator(run_no)
         self.do_step_reporter(run_no)
 
@@ -462,7 +499,7 @@ class Runner(object):
                 if self.args and self.args.vcf2vcf:
                     self.run_vcf2vcf(run_no)
                 else:
-                    self.process_file(run_no)
+                    self.process_file(run_no, save_size=100)
                 end_time = time()
                 runtime = end_time - self.start_time
                 display_time = asctime(localtime(end_time))
@@ -659,7 +696,7 @@ class Runner(object):
                 self.output_dir = [cwd]
         else:
             self.output_dir = [
-                str(Path(inp[0]).resolve().parent) for inp in self.input_paths
+                str(Path(inp[0] + ".ov").resolve()) for inp in self.input_paths
             ]
         for output_dir in self.output_dir:
             if not Path(output_dir).exists():
@@ -681,16 +718,21 @@ class Runner(object):
 
     def get_unique_run_name(self, output_dir: str, run_name: str):
         from pathlib import Path
-        from ..consts import result_db_suffix
+        from ..consts import RESULT_DB_SUFFIX_DUCKDB
+        from ..consts import RESULT_DB_SUFFIX_SQLITE
 
         if not self.output_dir:
             return run_name
-        dbpath_p = Path(output_dir) / f"{run_name}{result_db_suffix}"
+        if self.args.use_duckdb:
+            suffix = RESULT_DB_SUFFIX_DUCKDB
+        else:
+            suffix = RESULT_DB_SUFFIX_SQLITE
+        dbpath_p = Path(output_dir) / f"{run_name}{suffix}"
         if not dbpath_p.exists():
             return run_name
         count = 0
         while dbpath_p.exists():
-            dbpath_p = Path(output_dir) / f"{run_name}_{count}{result_db_suffix}"
+            dbpath_p = Path(output_dir) / f"{run_name}_{count}{suffix}"
             count += 1
         return f"{run_name}_{count}"
 
@@ -1094,21 +1136,6 @@ class Runner(object):
                 ret.insert(0, module_name)
             self.prepend_secondary_annotator_names(module_name, ret)
 
-    def get_module_output_path(self, module, run_no: int):
-        import os
-        from ..consts import VARIANT_LEVEL_OUTPUT_SUFFIX
-        from ..consts import GENE_LEVEL_OUTPUT_SUFFIX
-
-        run_name, output_dir = self.get_run_name_output_dir_by_run_no(run_no)
-        if module.level == "variant":
-            postfix = VARIANT_LEVEL_OUTPUT_SUFFIX
-        elif module.level == "gene":
-            postfix = GENE_LEVEL_OUTPUT_SUFFIX
-        else:
-            return None
-        path = os.path.join(output_dir, run_name + "." + module.name + postfix)
-        return path
-
     def annotator_columns_missing(self, module: LocalModule, df_cols: List[str]) -> bool:
         cols_to_check = module.conf.get("output_columns", {}).keys()
         tf_l = [v in df_cols for v in cols_to_check]
@@ -1253,12 +1280,12 @@ class Runner(object):
     def write_info_row(self, key: str, value: Any):
         import json
 
-        if not self.result_db_cursor:
+        if not self.result_db_conn:
             return
         q = "insert into info values (?, ?)"
         if isinstance(value, list) or isinstance(value, dict):
             value = json.dumps(value)
-        self.result_db_cursor.execute(q, (key, value))
+        self.result_db_conn.execute(q, (key, value))
 
     def get_input_paths_from_mapping_file(self, run_no: int) -> Optional[dict]:
         from pathlib import Path
@@ -1276,19 +1303,29 @@ class Runner(object):
     def refresh_info_table_modified_time(self):
         from datetime import datetime
 
-        if self.result_db_conn is None or self.result_db_cursor is None:
+        if self.result_db_conn is None:
             return
         modified = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        q = "insert or replace into info values ('modified_at', ?)"
-        self.result_db_cursor.execute(q, (modified,))
+        q = "INSERT OR REPLACE into info values ('modified_at', ?)"
+        self.result_db_conn.execute(q, (modified,))
         self.result_db_conn.commit()
+
+    def result_database_table_exists(self, table_name):
+        if self.result_db_conn is None:
+            return
+        cursor = self.result_db_conn.cursor()
+        if self.args.use_duckdb:
+            cursor.execute("pragma show_tables")
+        else:
+            cursor.execute("select name from sqlite_master where type='table'")
+        r = cursor.fetchall()
+        table_names = [v[0] for v in r]
+        return table_name in table_names
 
     def write_info_table_create_data_if_needed(self, run_no: int, converter: BaseConverter):
         from datetime import datetime
-        import json
-        from ..exceptions import DatabaseError
 
-        if self.result_db_conn is None or self.result_db_cursor is None:
+        if self.result_db_conn is None:
             return
         if not self.job_name or not self.args:
             raise
@@ -1298,13 +1335,12 @@ class Runner(object):
         self.write_info_row("created_at", created)
         self.write_info_row("inputs", inputs)
         self.write_info_row("genome_assemblies", converter.genome_assemblies)
-        q = "select count(*) from variant"
-        self.result_db_cursor.execute(q)
-        r = self.result_db_cursor.fetchone()
-        if r is None:
-            raise DatabaseError(msg="table variant does not exist.")
-        no_input = str(r[0])
-        self.write_info_row("num_variants", no_input)
+        cursor = self.result_db_conn.cursor()
+        q = f"select count(*) from variant"
+        cursor.execute(q)
+        r = cursor.fetchall()
+        num_input = str(r[0][0]) # type: ignore
+        self.write_info_row("num_variants", num_input)
         self.write_info_row("oakvar", self.pkg_ver)
         mapper_conf = self.mapper_i[0].conf
         mapper_title = mapper_conf.get("title")
@@ -1484,7 +1520,6 @@ class Runner(object):
         from ..util.util import load_class
         from ..util.run import update_status
         from ..system.consts import default_postaggregator_names
-        from ..consts import MODULE_OPTIONS_KEY
         from ..base.postaggregator import BasePostAggregator
 
         if self.conf is None:
@@ -1494,19 +1529,11 @@ class Runner(object):
         for module_name, module in self.postaggregators.items():
             if self.append_mode[run_no] and module_name in default_postaggregator_names:
                 continue
-            arg_dict = {
-                "module_name": module_name,
-                "run_name": run_name,
-                "output_dir": output_dir,
-                "serveradmindb": self.serveradmindb,
-            }
             postagg_conf = self.run_conf.get(module_name, {})
-            if postagg_conf:
-                arg_dict[MODULE_OPTIONS_KEY] = postagg_conf
             post_agg_cls = load_class(module.script_path)
             if not issubclass(post_agg_cls, BasePostAggregator):
                 raise ModuleLoadingError(module_name=module.name)
-            post_agg = post_agg_cls(**arg_dict)
+            post_agg = post_agg_cls(module_name=module_name, run_name=run_name, output_dir=output_dir, serveradmindb=self.serveradmindb, module_options=postagg_conf)
             announce_module(module, serveradmindb=self.serveradmindb)
             stime = time()
             post_agg.run()
@@ -1572,13 +1599,10 @@ class Runner(object):
     def run_reporter(self, run_no: int):
         from pathlib import Path
         from ..module.local import get_local_module_info
-        from ..util.module import get_reporter_class
+        from ..util.module import get_reporter
         from ..util.run import update_status
         from ..exceptions import ModuleNotExist
-        from ..exceptions import ModuleLoadingError
         from ..util.run import announce_module
-        from ..consts import MODULE_OPTIONS_KEY
-        from .reporter import BaseReporter
 
         if (
             not self.run_name
@@ -1603,16 +1627,12 @@ class Runner(object):
             announce_module(module, serveradmindb=self.serveradmindb)
             if module is None:
                 raise ModuleNotExist(module_name)
-            arg_dict = {}  # dict(vars(self.args))
-            arg_dict["dbpath"] = output_dir / (run_name + ".sqlite")
-            arg_dict["savepath"] = output_dir / run_name
-            arg_dict["output_dir"] = output_dir
-            arg_dict["run_name"] = run_name
-            arg_dict[MODULE_OPTIONS_KEY] = self.run_conf.get(module_name, {})
-            Reporter: Type[BaseReporter] = get_reporter_class(module_name)
-            if not issubclass(Reporter, BaseReporter):
-                raise ModuleLoadingError(module_name=module.name)
-            reporter = Reporter(**arg_dict)
+            dbpath: Path = self.get_result_database_path(run_no)
+            savepath: Path = output_dir / run_name
+            output_dir: Path = output_dir
+            run_name: str = run_name
+            module_options = self.run_conf.get(module_name, {})
+            reporter = get_reporter(module_name, dbpath=str(dbpath), savepath=savepath, output_dir=str(output_dir), run_name=run_name, module_options=module_options, use_duckdb=self.args.use_duckdb)
             response_t = self.log_time_of_func(reporter.run, work=module_name)
             output_fns = None
             response_type = type(response_t)
@@ -1640,7 +1660,7 @@ class Runner(object):
         from ..module.local import get_local_module_infos_of_type
         from ..module.local import get_local_module_info
         from ..module.local import LocalModule
-        from ..util.module import get_converter_class
+        from ..util.module import get_converter
         import traceback
 
 
@@ -1661,8 +1681,7 @@ class Runner(object):
             module_infos = list(get_local_module_infos_of_type("converter").values())
         for module_info in module_infos:
             try:
-                cls = get_converter_class(module_info.name)
-                converter = cls(wgs_reader=self.wgs_reader, ignore_sample=self.ignore_sample, module_options=self.run_conf.get(module_info.name, {}))
+                converter = get_converter(module_info.name, wgs_reader=self.wgs_reader, ignore_sample=self.ignore_sample, module_options=self.run_conf.get(module_info.name, {}))
             except Exception as e:
                 if self.logger:
                     self.logger.error(f"{traceback.format_exc()}\nSkipping {module_info.name} as it could not be loaded. ({e})")

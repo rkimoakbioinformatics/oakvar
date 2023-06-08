@@ -77,13 +77,6 @@ def get_parser_fn_report():
         help="Use this option to prevent gene level result from being added to variant level result.",
     )
     parser_ov_report.add_argument(
-        "--inputfiles",
-        nargs="+",
-        dest="inputfiles",
-        default=None,
-        help="Original input file path",
-    )
-    parser_ov_report.add_argument(
         "--separatesample",
         dest="separatesample",
         action="store_true",

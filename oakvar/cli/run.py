@@ -305,4 +305,10 @@ def add_parser_ov_run(subparsers):
         default=False,
         help="Fill in missing reference alleles",
     )
+    parser_ov_run.add_argument(
+        "--use-duckdb",
+        action="store_true",
+        default=False,
+        help="Use DuckDB instead of SQLite3. DuckDB is unstable until it reaches v1.0.0 and re-populating the database may be needed when DuckDB version increases. See https://duckdb.org/internals/storage for details.",
+    )
     parser_ov_run.set_defaults(func=cli_run)

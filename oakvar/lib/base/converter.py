@@ -6,6 +6,7 @@ from typing import Set
 from typing import Dict
 import polars as pl
 from .commonmodule import BaseCommonModule
+from ..consts import DEFAULT_CONVERTER_READ_SIZE
 
 
 CHROM = "chrom"
@@ -478,7 +479,7 @@ class BaseConverter(object):
             self.logger.info(f"encoding: {input_path} {encoding}")
         self.input_encoding = encoding
 
-    def iter_df_chunk(self, input_paths: List[str], size: int = 10000, samples: List[str] = []):
+    def iter_df_chunk(self, input_paths: List[str], size: int = DEFAULT_CONVERTER_READ_SIZE, samples: List[str] = []):
         from pathlib import Path
         from multiprocessing.pool import ThreadPool
         from oakvar.lib.util.run import update_status
@@ -503,6 +504,7 @@ class BaseConverter(object):
         self.alt_base_colno = df_header_names.index("alt_base") + 1 if "alt_base" in df_header_names else -1
         var_ld = self.get_intialized_var_ld(df_headers)
         df: Optional[pl.DataFrame] = None
+        read_size: int = int(size / num_pool)
         for fileno, input_path in enumerate(input_paths):
             self.current_input_fname = Path(input_path).name
             self.setup_file(input_path)
@@ -517,7 +519,7 @@ class BaseConverter(object):
                 if immature_exit is not None:
                     start_line_no += size
                 else:
-                    lines_data, immature_exit = self.get_variant_lines(input_path, num_pool, start_line_no, size)
+                    lines_data, immature_exit = self.get_variant_lines(input_path, num_pool, start_line_no, read_size)
                     args = [
                         (
                             lines_data,
@@ -542,7 +544,7 @@ class BaseConverter(object):
                             uid += max([v["var_no"] for v in variants]) + 1
                     df = self.get_df_from_var_ld(var_ld, df_headers)
                     var_ld = self.get_intialized_var_ld(df_headers)
-                    start_line_no += size * num_pool
+                    start_line_no += read_size * num_pool
                 if df is None:
                     continue
                 if self.do_liftover:

@@ -22,7 +22,6 @@ class BaseReporter:
         confpath: Optional[str] = None,
         name: Optional[str] = None,
         nogenelevelonvariantlevel: bool = False,
-        inputfiles: Optional[List[str]] = None,
         separatesample: bool = False,
         output_dir: Optional[str] = None,
         run_name: str = "",
@@ -37,6 +36,7 @@ class BaseReporter:
         no_summary: bool = False,
         logtofile: bool = False,
         df_mode: bool = False,
+        use_duckdb: bool = False,
         serveradmindb=None,
         outer=None,
     ):
@@ -59,7 +59,6 @@ class BaseReporter:
         self.confpath = confpath
         self.module_name = name
         self.nogenelevelonvariantlevel = nogenelevelonvariantlevel
-        self.inputfiles = inputfiles
         self.separatesample = separatesample
         self.output_dir = output_dir
         self.run_name = run_name
@@ -69,6 +68,9 @@ class BaseReporter:
         self.package = package
         self.cols = cols
         self.level = level
+        self.use_duckdb = use_duckdb
+        if dbpath.endswith(".duckdb"):
+            self.use_duckdb = True
         if user:
             self.user = user
         else:
@@ -109,13 +111,13 @@ class BaseReporter:
         self.dictrow: bool = True
         if self.__module__ == "__main__":
             fp = None
-            self.main_fpath = None
+            main_fpath = None
         else:
             fp = sys.modules[self.__module__].__file__
             if not fp:
                 raise ModuleLoadingError(module_name=self.__module__)
-            self.main_fpath = Path(fp).resolve()
-        if not self.main_fpath:
+            main_fpath = Path(fp).resolve()
+        if not main_fpath:
             if name:
                 self.module_name = name
                 self.module_dir = Path(os.getcwd()).resolve()
@@ -123,8 +125,8 @@ class BaseReporter:
                 raise ModuleLoadingError(msg="name argument should be given.")
             self.conf = module_conf.copy()
         else:
-            self.module_name = self.main_fpath.stem
-            self.module_dir = self.main_fpath.parent
+            self.module_name = main_fpath.stem
+            self.module_dir = main_fpath.parent
             self.conf = get_module_conf(
                 self.module_name,
                 module_type=self.module_type,
@@ -157,7 +159,7 @@ class BaseReporter:
 
     def check_and_setup_args(self):
         import sqlite3
-        import json
+        import duckdb
         from pathlib import Path
         from ..module.local import get_module_conf
         from ..exceptions import WrongInput
@@ -166,9 +168,14 @@ class BaseReporter:
             raise WrongInput(msg=self.dbpath)
         if not self.df_mode:
             try:
-                with sqlite3.connect(self.dbpath) as db:
-                    db.execute("select count(*) from info")
-                    db.execute("select count(*) from variant")
+                if self.use_duckdb:
+                    with duckdb.connect(self.dbpath) as db:
+                        db.execute("select count(*) from info")
+                        db.execute("select count(*) from variant")
+                else:
+                    with sqlite3.connect(self.dbpath) as db:
+                        db.execute("select count(*) from info")
+                        db.execute("select count(*) from variant")
             except Exception:
                 raise WrongInput(msg=f"{self.dbpath} is not an OakVar result database")
         if not self.output_dir:
@@ -180,24 +187,6 @@ class BaseReporter:
         self.module_conf = get_module_conf(self.module_name, module_type="reporter")
         self.confs = self.module_options  # TODO: backward compatibility. Delete later.
         self.output_basename = Path(self.dbpath).name[:-7]
-        if not self.df_mode and not self.inputfiles and self.dbpath:
-            db = sqlite3.connect(self.dbpath)
-            c = db.cursor()
-            q = 'select colval from info where colkey="_input_paths"'
-            c.execute(q)
-            r = c.fetchone()
-            if r is not None:
-                self.inputfiles = []
-                s = r[0]
-                if " " in s:
-                    s = s.replace("'", '"')
-                s = s.replace("\\", "\\\\\\\\")
-                s = json.loads(s)
-                for k in s:
-                    input_path = s[k]
-                    self.inputfiles.append(input_path)
-            c.close()
-            db.close()
         if self.cols:
             self.extract_columns_multilevel = {}
             for level in ["variant", "gene", "sample", "mapping"]:
@@ -220,11 +209,15 @@ class BaseReporter:
         _ = dbpath
 
     def set_legacy_samples_column_flag(self):
-        from sqlite3 import connect
+        import sqlite3
+        import duckdb
 
         if not self.dbpath:
             raise
-        conn = connect(self.dbpath)
+        if self.use_duckdb:
+            conn = duckdb.connect(self.dbpath)
+        else:
+            conn = sqlite3.connect(self.dbpath)
         cursor = conn.cursor()
         q = "pragma table_info(variant)"
         cursor.execute(q)
@@ -272,12 +265,16 @@ class BaseReporter:
         self.unique_excs = []
 
     def get_db_conn(self):
-        from sqlite3 import connect
+        import sqlite3
+        import duckdb
 
         if self.dbpath is None:
             return None
         if not self.conn:
-            self.conn = connect(self.dbpath)
+            if self.use_duckdb:
+                self.conn = duckdb.connect(self.dbpath)
+            else:
+                self.conn = sqlite3.connect(self.dbpath)
             self.conns.append(self.conn)
         return self.conn
 
@@ -424,6 +421,70 @@ class BaseReporter:
     def run_df(self, df: pl.DataFrame, columns: List[Dict[str, Any]], savepath: str = ""):
         self.write_data_df(df, columns, savepath)
         self.end()
+
+    def run_3(
+        self,
+        tab="all",
+        add_summary=None,
+        pagesize=None,
+        page=None,
+        make_filtered_table=True,
+        user=None,
+    ):
+        from ..exceptions import SetupError
+        from time import time
+        from time import asctime
+        from time import localtime
+        from ..util.run import update_status
+        from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
+
+        if user is None:
+            user = DEFAULT_SERVER_DEFAULT_USERNAME
+        try:
+            # TODO: disabling gene level summary for now. Enable later.
+            add_summary = False
+            if add_summary is None:
+                add_summary = self.add_summary
+            self.prep()
+            if not self.cf:
+                raise SetupError(self.module_name)
+            self.start_time = time()
+            ret = None
+            tab = tab or self.level or "all"
+            self.log_run_start()
+            if self.setup() is False:
+                self.close_db()
+                raise SetupError(self.module_name)
+            self.ftable_uid = self.cf.make_ftables_and_ftable_uid(
+                make_filtered_table=make_filtered_table
+            )
+            self.levels = self.get_levels_to_run(tab)
+            for level in self.levels:
+                self.level = level
+                self.make_col_infos(add_summary=add_summary)
+                self.write_data(
+                    level,
+                    pagesize=pagesize,
+                    page=page,
+                    make_filtered_table=make_filtered_table,
+                    add_summary=add_summary,
+                )
+            self.close_db()
+            if self.module_conf:
+                status = f"finished {self.module_conf['title']} ({self.module_name})"
+                update_status(
+                    status, logger=self.logger, serveradmindb=self.serveradmindb
+                )
+            end_time = time()
+            if not (hasattr(self, "no_log") and self.no_log) and self.logger:
+                self.logger.info("finished: {0}".format(asctime(localtime(end_time))))
+                run_time = end_time - self.start_time
+                self.logger.info("runtime: {0:0.3f}".format(run_time))
+            ret = self.end()
+            return ret
+        except Exception as e:
+            self.close_db()
+            import traceback
 
     def run(
         self,
@@ -947,8 +1008,8 @@ class BaseReporter:
         from ..module.local import get_local_module_infos_of_type
         from ..module.local import get_local_module_info
         from ..util.inout import ColumnDefinition
-        from ..util.module import get_annotator_class
-        from ..util.module import get_mapper_class
+        from ..util.module import get_annotator
+        from ..util.module import get_mapper
 
         _ = conn
         if not add_summary:
@@ -992,19 +1053,17 @@ class BaseReporter:
             mi = local_modules[module_name]
             if not mi:
                 continue
-            sys.path = sys.path + [dirname(mi.script_path)]
-            annot_cls = None
-            if mi.name in done_var_annotators:
-                annot_cls = get_annotator_class(module_name)
-            elif mi.name == self.mapper_name:
-                annot_cls = get_mapper_class(module_name)
-            else:
-                continue
             cmd = {
                 "output_dir": self.output_dir,
                 "serveradmindb": self.serveradmindb,
             }
-            annot = annot_cls(**cmd)
+            sys.path = sys.path + [dirname(mi.script_path)]
+            if mi.name in done_var_annotators:
+                annot = get_annotator(module_name, **cmd)
+            elif mi.name == self.mapper_name:
+                annot = get_mapper(module_name, **cmd)
+            else:
+                continue
             cols = mi.conf["gene_summary_output_columns"]
             columngroup = {
                 "name": mi.name,
@@ -1146,13 +1205,8 @@ class BaseReporter:
             raise WrongInput()
 
     def close_db(self):
-        import sqlite3
-
         for conn in self.conns:
-            if type(conn) == sqlite3.Connection:
-                conn.close()
-            else:
-                conn.close()
+            conn.close()
         self.conns = []
         if self.cf is not None:
             self.cf.close_db()

@@ -12,41 +12,6 @@ from ..base.commonmodule import BaseCommonModule
 from ..base.vcf2vcf import VCF2VCF
 
 
-def get_converter_class(module_name: str) -> Type[BaseConverter]:
-    cls = get_module_class(module_name, module_type="converter")
-    if not issubclass(cls, BaseConverter):
-        raise ValueError(f"{module_name} is not a converter class.")
-    return cls
-
-
-def get_preparer_class(module_name: str) -> Type[BasePreparer]:
-    cls = get_module_class(module_name, module_type="converter")
-    if not issubclass(cls, BasePreparer):
-        raise ValueError(f"{module_name} is not a converter class.")
-    return cls
-
-
-def get_mapper_class(module_name: str) -> Type[BaseMapper]:
-    cls = get_module_class(module_name, module_type="mapper")
-    if not issubclass(cls, BaseMapper):
-        raise ValueError(f"{module_name} is not a mapper class.")
-    return cls
-
-
-def get_annotator_class(module_name: str) -> Type[BaseAnnotator]:
-    cls = get_module_class(module_name, module_type="mapper")
-    if not issubclass(cls, BaseAnnotator):
-        raise ValueError(f"{module_name} is not a mapper class.")
-    return cls
-
-
-def get_reporter_class(module_name: str) -> Type[BaseReporter]:
-    cls = get_module_class(module_name, module_type="mapper")
-    if not issubclass(cls, BaseReporter):
-        raise ValueError(f"{module_name} is not a mapper class.")
-    return cls
-
-
 def get_converter(module_name, *args, **kwargs) -> BaseConverter:
     ModuleClass = get_module_class(module_name, module_type="converter")
     if not ModuleClass:

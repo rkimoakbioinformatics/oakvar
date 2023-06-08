@@ -69,6 +69,7 @@ def run(
     ignore_sample: bool = False,
     fill_in_missing_ref: bool = False,
     uid: Optional[str] = None,
+    use_duckdb: bool = False,
     loop=None,
     outer=None,
 ) -> Optional[Dict[str, Any]]:
@@ -115,6 +116,7 @@ def run(
         excludesample (Optional[List[str]]): excludesample
         filter (Optional[str]): filter
         filterpath (Optional[str]): filterpath
+        use_duckdb (bool): True to use DuckDB instead of SQLite3.
         loglevel (str): loglevel
         uid (Optional[str]): uid
         loop:
@@ -189,6 +191,7 @@ def run(
         input_encoding=input_encoding,
         ignore_sample=ignore_sample,
         fill_in_missing_ref=fill_in_missing_ref,
+        use_duckdb=use_duckdb,
         uid=uid,
         outer=outer,
     )
@@ -215,7 +218,6 @@ def report(
     savepath: Optional[Path] = None,
     confpath: Optional[str] = None,
     nogenelevelonvariantlevel: bool = False,
-    inputfiles: Optional[List[str]] = None,
     separatesample: bool = False,
     output_dir: Optional[Path] = None,
     run_name: str = "",
@@ -230,7 +232,6 @@ def report(
     module_options: Dict[str, Dict] = {},
     logtofile: bool = False,
     outer=None,
-    loop=None,
 ) -> Dict[str, Any]:
     """Generates OakVar report files based on an OakVar result database file.
 
@@ -251,7 +252,6 @@ def report(
         savepath (Optional[Path]): savepath
         confpath (Optional[str]): confpath
         nogenelevelonvariantlevel (bool): nogenelevelonvariantlevel
-        inputfiles (Optional[List[str]]): inputfiles
         separatesample (bool): separatesample
         package (Optional[str]): package
         modules_dir (Optional[str]): modules_dir
@@ -267,14 +267,12 @@ def report(
     """
     import logging
     from pathlib import Path
-    from ..lib.util.asyn import get_event_loop
     from ..lib.util.util import is_compatible_version
-    from importlib.util import spec_from_file_location
-    from importlib.util import module_from_spec
     from ..lib.exceptions import IncompatibleResult
     from ..lib.module.local import get_local_module_info
     from ..lib.module.local import LocalModule
     from ..lib.util.run import set_logger_handler
+    from ..lib.util.module import get_reporter
     from . import handle_exception
 
     if not report_types:
@@ -338,17 +336,9 @@ def report(
                 logger.info(f"Generating {module_name} report...")
             elif outer:
                 outer.write(f"Generating {module_name} report...")
-            spec = spec_from_file_location(  # type: ignore
-                module_name, module_info.script_path  # type: ignore
-            )
-            if not spec:
-                continue
-            module = module_from_spec(spec)  # type: ignore
-            if not module or not spec.loader:
-                continue
-            spec.loader.exec_module(module)
             reporter_module_options = module_options.get(module_name, {})
-            reporter = module.Reporter(
+            reporter = get_reporter(
+                module_name,
                 dbpath=dbpath,
                 report_types=report_types,
                 filterpath=filterpath,
@@ -358,9 +348,8 @@ def report(
                 filterstring=filterstring,
                 savepath=savepath,
                 confpath=confpath,
-                module_name=module_name,
+                name=module_name,
                 nogenelevelonvariantlevel=nogenelevelonvariantlevel,
-                inputfiles=inputfiles,
                 separatesample=separatesample,
                 output_dir=output_dir,
                 run_name=run_name,
@@ -376,17 +365,7 @@ def report(
                 logtofile=logtofile,
                 outer=outer,
             )
-            response_t = None
-            # uvloop cannot be patched.
-            # nest_asyncio patch is necessary for use in Jupyter notebook.
-            # old_loop = loop
-            # new_loop = asyncio.new_event_loop()
-            # asyncio.set_event_loop(new_loop)
-            # nest_asyncio.apply(new_loop)
-            if not loop:
-                loop = get_event_loop()
-            response_t = loop.run_until_complete(reporter.run())
-            # asyncio.set_event_loop(old_loop)
+            response_t = reporter.run()
             output_fns = None
             if type(response_t) == list:
                 output_fns = " ".join(response_t)

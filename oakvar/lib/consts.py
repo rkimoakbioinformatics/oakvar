@@ -58,7 +58,8 @@ for g in ["hg18", "hg19"]:
     liftover_chain_paths[g] = join(
         dirname(__file__), "liftover", g + "ToHg38.over.chain"
     )
-result_db_suffix = ".sqlite"
+RESULT_DB_SUFFIX_SQLITE = ".sqlite"
+RESULT_DB_SUFFIX_DUCKDB = ".duckdb"
 LOG_SUFFIX = ".log"
 ERROR_LOG_SUFFIX = ".err"
 
@@ -71,3 +72,5 @@ SYSTEM_GENOME_ASSEMBLY = "hg38"
 
 VARIANT_LEVEL_PRIMARY_KEY = "uid"
 GENE_LEVEL_PRIMARY_KEY = "hugo"
+DEFAULT_DF_SIZE = 1_000_000
+DEFAULT_CONVERTER_READ_SIZE = 10_000
