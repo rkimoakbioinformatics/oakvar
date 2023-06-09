@@ -761,6 +761,7 @@ class MasterConverter(object):
     def run(self):
         from pathlib import Path
         from multiprocessing.pool import ThreadPool
+        from sys import platform as sysplatform
         #import time
         from oakvar.lib.util.run import update_status
 
@@ -779,9 +780,13 @@ class MasterConverter(object):
             raise ValueError("No crm_writer")
         if not self.crl_writer:
             raise ValueError("No crl_writer")
-        batch_size: int = 2500
+        if sysplatform == "win32": # TODO: Remove after releasing Rust-based vcf-converter.
+            batch_size: int = 10000
+            num_pool = 1
+        else:
+            batch_size: int = 2500
+            num_pool = 4
         uid = 1
-        num_pool = 4
         pool = ThreadPool(num_pool)
         for input_path in self.input_paths:
             self.input_fname = Path(input_path).name
