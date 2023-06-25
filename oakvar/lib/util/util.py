@@ -15,7 +15,7 @@ from ..base.reporter import BaseReporter
 from ..base.vcf2vcf import VCF2VCF
 from ..base.commonmodule import BaseCommonModule
 
-ov_system_output_columns: Optional[Dict[str, List[Dict[str, Any]]]] = None
+ov_system_output_columns: Optional[Dict[str, Dict[str, Any]]] = None
 
 
 def get_ucsc_bins(start, stop=None):
@@ -238,16 +238,18 @@ def get_job_version(dbpath, platform_name):
         platform_name:
     """
     from packaging.version import Version
-    import sqlite3
+    from .run import get_db_conn
 
-    db = sqlite3.connect(dbpath)
-    c = db.cursor()
-    sql = f'select colval from info where colkey="{platform_name}"'
-    c.execute(sql)
-    r = c.fetchone()
+    conn = get_db_conn(dbpath)
+    cursor = conn.cursor()
+    q = f"select colval from info where colkey='{platform_name}'"
+    cursor.execute(q)
+    r = cursor.fetchone()
     db_version = None
     if r is not None:
         db_version = Version(r[0])
+    cursor.close()
+    conn.close()
     return db_version
 
 
@@ -609,9 +611,14 @@ def get_result_dbpath(output_dir: str, run_name: str):
         run_name (str): run_name
     """
     from pathlib import Path
-    from ..consts import result_db_suffix
+    from ..consts import RESULT_DB_SUFFIX_DUCKDB
+    from ..consts import RESULT_DB_SUFFIX_SQLITE
 
-    return str(Path(output_dir) / (run_name + result_db_suffix))
+    dbpath: Path = Path(output_dir) / (run_name + RESULT_DB_SUFFIX_DUCKDB)
+    if dbpath.exists():
+        return str(dbpath)
+    dbpath: Path = Path(output_dir) / (run_name + RESULT_DB_SUFFIX_SQLITE)
+    return str(dbpath)
 
 
 def get_unique_path(path: str):
@@ -680,7 +687,7 @@ def log_module(module, logger):
         logger.info(f"module: {module.name}=={code_version} {module.script_path}")
 
 
-def get_ov_system_output_columns() -> Dict[str, List[Dict[str, Any]]]:
+def get_ov_system_output_columns() -> Dict[str, Dict[str, Any]]:
     """get_ov_system_output_columns.
 
     Args:
@@ -690,100 +697,17 @@ def get_ov_system_output_columns() -> Dict[str, List[Dict[str, Any]]]:
     """
     from pathlib import Path
     from oyaml import safe_load
+    from copy import deepcopy
 
     global ov_system_output_columns
     if ov_system_output_columns:
-        return ov_system_output_columns
+        return deepcopy(ov_system_output_columns)
     fp = Path(__file__).parent.parent / "assets" / "output_columns.yml"
     with open(fp) as f:
         ov_system_output_columns = safe_load(f)
     if not ov_system_output_columns:
         return {}
-    return ov_system_output_columns
-
-
-def get_crv_def() -> List[Dict[str, Any]]:
-    """get_crv_def.
-
-    Args:
-
-    Returns:
-        List[Dict[str, Any]]:
-    """
-    from ..consts import INPUT_LEVEL_KEY
-
-    output_columns = get_ov_system_output_columns()
-    return output_columns[INPUT_LEVEL_KEY]
-
-
-def get_crx_def() -> List[Dict[str, Any]]:
-    """get_crx_def.
-
-    Args:
-
-    Returns:
-        List[Dict[str, Any]]:
-    """
-    from ..consts import VARIANT_LEVEL_KEY
-
-    output_columns: dict = get_ov_system_output_columns()
-    return output_columns[VARIANT_LEVEL_KEY]
-
-
-def get_crg_def() -> List[Dict[str, Any]]:
-    """get_crg_def.
-
-    Args:
-
-    Returns:
-        List[Dict[str, Any]]:
-    """
-    from ..consts import GENE_LEVEL_KEY
-
-    output_columns: dict = get_ov_system_output_columns()
-    return output_columns[GENE_LEVEL_KEY]
-
-
-def get_crs_def() -> List[Dict[str, Any]]:
-    """get_crs_def.
-
-    Args:
-
-    Returns:
-        List[Dict[str, Any]]:
-    """
-    from ..consts import SAMPLE_LEVEL_KEY
-
-    output_columns: dict = get_ov_system_output_columns()
-    return output_columns[SAMPLE_LEVEL_KEY]
-
-
-def get_crm_def() -> List[Dict[str, Any]]:
-    """get_crm_def.
-
-    Args:
-
-    Returns:
-        List[Dict[str, Any]]:
-    """
-    from ..consts import MAPPING_LEVEL_KEY
-
-    output_columns: dict = get_ov_system_output_columns()
-    return output_columns[MAPPING_LEVEL_KEY]
-
-
-def get_crl_def() -> List[Dict[str, Any]]:
-    """get_crl_def.
-
-    Args:
-
-    Returns:
-        List[Dict[str, Any]]:
-    """
-    from ..consts import LIFTOVER_LEVEL_KEY
-
-    output_columns: dict = get_ov_system_output_columns()
-    return output_columns[LIFTOVER_LEVEL_KEY]
+    return deepcopy(ov_system_output_columns)
 
 
 def get_result_db_conn(db_path: str):

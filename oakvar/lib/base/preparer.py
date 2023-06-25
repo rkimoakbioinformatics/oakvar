@@ -105,10 +105,10 @@ class BasePreparer(object):
 
         if self.output_base_fname is None or self.output_dir is None:
             raise SetupError()
-        from ..util.util import get_crv_def
+        from ..util.util import get_ov_system_output_columns
         from ..consts import crv_idx
 
-        self.writer.add_columns(get_crv_def())
+        self.writer.add_columns(get_ov_system_output_columns())
         self.writer.write_definition()
         for index_columns in crv_idx:
             self.writer.add_index(index_columns)

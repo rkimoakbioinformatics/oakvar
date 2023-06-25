@@ -2,8 +2,11 @@ from typing import Optional
 from typing import List
 from typing import Dict
 from typing import Any
+from typing import Union
 from pathlib import Path
 import logging
+import sqlite3
+import duckdb
 
 
 def update_status(status: str, logger=None, serveradmindb=None):
@@ -216,4 +219,31 @@ def get_standardized_module_option(v: Any):
     elif v == "false":
         v = False
     return v
+
+def get_db_conn(dbpath: Union[str, Path]) -> Union[sqlite3.Connection, duckdb.DuckDBPyConnection]:
+    from ..consts import RESULT_DB_SUFFIX_DUCKDB
+
+    if isinstance(dbpath, Path):
+        dbpath = str(dbpath)
+    if dbpath.endswith(RESULT_DB_SUFFIX_DUCKDB):
+        conn = duckdb.connect(dbpath)
+    else:
+        conn = sqlite3.connect(dbpath)
+    return conn
+
+def open_result_database(dbpath: Path, use_duckdb: bool):
+    import sqlite3
+    import duckdb
+
+    if use_duckdb:
+        conn = duckdb.connect(str(dbpath))
+    else:
+        conn = sqlite3.connect(dbpath)
+        conn.execute('pragma journal_mode="wal"')
+        conn.execute("pragma synchronous=0;")
+        conn.execute("pragma journal_mode=off;")
+        conn.execute("pragma cache_size=1000000;")
+        conn.execute("pragma locking_mode=EXCLUSIVE;")
+        conn.execute("pragma temp_store=MEMORY;")
+    return conn
 

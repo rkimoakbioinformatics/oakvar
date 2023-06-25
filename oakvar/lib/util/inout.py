@@ -512,7 +512,7 @@ class ColumnDefinition(object):
 
     def __init__(self, d):
         self.index = None
-        self.name = None
+        self.name: str = ""
         self.title = None
         self.type = None
         self.categories = None

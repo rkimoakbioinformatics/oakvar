@@ -236,7 +236,7 @@ def report(
     """Generates OakVar report files based on an OakVar result database file.
 
     Args:
-        dbpath (str): Path to an OakVar result database file
+        dbpath (Union[pathlib.Path, str]): Path to an OakVar result database file
         report_types (Optional[Union[str, List[str]]]): Report types. For example, if `vcfreporter` module is installed, `"vcf"` will invoke the reporter.
         module_paths (Union[str, List[Path]]): Paths to report modules can be directly given. This option will override report_types. For example, if `customreporter` module is installed at `/home/user/ov_dev/customreporter`, this value can be given.
         output_dir (Optional[str]): Directory to store reports
@@ -339,7 +339,7 @@ def report(
             reporter_module_options = module_options.get(module_name, {})
             reporter = get_reporter(
                 module_name,
-                dbpath=dbpath,
+                dbpath=str(dbpath),
                 report_types=report_types,
                 filterpath=filterpath,
                 filter=filter,

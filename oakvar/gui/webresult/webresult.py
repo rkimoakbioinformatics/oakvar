@@ -2,10 +2,9 @@ import os
 import json
 import sys
 import imp
-from typing import Optional
 from aiohttp import web
 import time
-from sqlite3 import Connection
+import duckdb
 from ... import ReportFilter
 
 wu = None
@@ -15,16 +14,17 @@ gui_result_pagesize_key = "gui_result_pagesize"
 servermode = False
 
 
-def get_nowg_annot_modules(_):
+async def get_nowg_annot_modules(_):
     # disabling this until required_annotator is included in the remote manifest.
     return web.json_response({})
 
 
-def get_filter_save_names(request):
+async def get_filter_save_names(request):
     from aiohttp.web import Response
+    from ...lib.util.run import get_db_conn
 
     _ = request.rel_url.query
-    dbpath = get_dbpath(request)
+    dbpath = await get_dbpath(request)
     conn = None
     cursor = None
     content = []
@@ -54,11 +54,12 @@ def get_filter_save_names(request):
     return web.json_response(content)
 
 
-def get_layout_save_names(request):
+async def get_layout_save_names(request):
     from aiohttp.web import Response
+    from ...lib.util.run import get_db_conn
 
     _ = request.rel_url.query
-    dbpath = get_dbpath(request)
+    dbpath = await get_dbpath(request)
     content = []
     conn = get_db_conn(dbpath)
     if not conn:
@@ -77,11 +78,12 @@ def get_layout_save_names(request):
     return web.json_response(content)
 
 
-def rename_layout_setting(request):
+async def rename_layout_setting(request):
     from aiohttp.web import Response
+    from ...lib.util.run import get_db_conn
 
     queries = request.rel_url.query
-    dbpath = get_dbpath(request)
+    dbpath = await get_dbpath(request)
     content = {}
     name = queries["name"]
     new_name = queries["newname"]
@@ -108,20 +110,12 @@ def rename_layout_setting(request):
     return web.json_response(content)
 
 
-def get_db_conn(dbpath) -> Optional[Connection]:
-    from sqlite3 import connect
-
-    if dbpath is None:
-        return None
-    conn = connect(dbpath)
-    return conn
-
-
-def delete_layout_setting(request):
+async def delete_layout_setting(request):
     from aiohttp.web import Response
+    from ...lib.util.run import get_db_conn
 
     queries = request.rel_url.query
-    dbpath = get_dbpath(request)
+    dbpath = await get_dbpath(request)
     name = queries["name"]
     content = {}
     conn = get_db_conn(dbpath)
@@ -139,11 +133,12 @@ def delete_layout_setting(request):
     return web.json_response(content)
 
 
-def load_layout_setting(request):
+async def load_layout_setting(request):
     from aiohttp.web import Response
+    from ...lib.util.run import get_db_conn
 
     queries = request.rel_url.query
-    dbpath = get_dbpath(request)
+    dbpath = await get_dbpath(request)
     name = queries["name"]
     conn = get_db_conn(dbpath)
     content = {"widgetSettings": {}}
@@ -172,11 +167,12 @@ def load_layout_setting(request):
     return web.json_response(content)
 
 
-def load_filter_setting(request):
+async def load_filter_setting(request):
     from aiohttp.web import Response
+    from ...lib.util.run import get_db_conn
 
     queries = request.rel_url.query
-    dbpath = get_dbpath(request)
+    dbpath = await get_dbpath(request)
     name = queries["name"]
     conn = get_db_conn(dbpath)
     content = {"filterSet": []}
@@ -205,15 +201,16 @@ def load_filter_setting(request):
     return web.json_response(content)
 
 
-def save_layout_setting(request):
+async def save_layout_setting(request):
     from aiohttp.web import Response
     from urllib.parse import unquote
     from json import loads
+    from ...lib.util.run import get_db_conn
 
-    text_data = request.text()
+    text_data = await request.text()
     text_data = unquote(text_data)
     queries = loads(text_data)
-    dbpath = get_dbpath(request)
+    dbpath = await get_dbpath(request)
     name = queries["name"]
     savedata = queries["savedata"]
     conn = get_db_conn(dbpath)
@@ -247,11 +244,12 @@ def save_layout_setting(request):
     return web.json_response(content)
 
 
-def get_status(request):
+async def get_status(request):
     from aiohttp.web import Response
+    from ...lib.util.run import get_db_conn
 
     global logger
-    dbpath = get_dbpath(request)
+    dbpath = await get_dbpath(request)
     conn = get_db_conn(dbpath)
     if not conn:
         if logger:
@@ -270,7 +268,7 @@ def get_status(request):
     return web.json_response(content)
 
 
-def get_widgetlist(_):
+async def get_widgetlist(_):
     from ...lib.module.local import get_local_module_infos_of_type
 
     content = []
@@ -294,14 +292,14 @@ def get_widgetlist(_):
     return web.json_response(content)
 
 
-def get_count(request):
+async def get_count(request):
     from ...lib.exceptions import DatabaseConnectionError
 
     global logger
-    dbpath = get_dbpath(request)
+    dbpath = await get_dbpath(request)
     if dbpath is None:
         raise DatabaseConnectionError("result database")
-    queries = request.json()
+    queries = await request.json()
     tab = queries["tab"]
     if "filter" in queries:
         filterstring = queries["filter"]
@@ -322,12 +320,12 @@ def get_count(request):
     return web.json_response(content)
 
 
-def get_result(request):
+async def get_result(request):
     from ...lib.exceptions import DatabaseConnectionError
 
     global logger
-    queries = request.json()
-    dbpath = get_dbpath(request)
+    queries = await request.json()
+    dbpath = await get_dbpath(request)
     if dbpath is None:
         raise DatabaseConnectionError("result database")
     dbname = os.path.basename(dbpath)
@@ -338,7 +336,7 @@ def get_result(request):
         page = 1
     else:
         page = int(page)
-    pagesize = get_pagesize(request, valueonly=True)
+    pagesize = await get_pagesize(request, valueonly=True)
     if logger is not None:
         logger.info("(Getting result of [{}]:[{}]...)".format(dbname, tab))
     start_time = time.time()
@@ -372,7 +370,7 @@ def get_result(request):
     add_summary = not no_summary
     reporter = m.Reporter(
         dbpath=dbpath,
-        module_name=reporter_name,
+        name=reporter_name,
         nogenelevelonvariantlevel=True,
         confpath=confpath,
         filterstring=filterstring,
@@ -387,7 +385,7 @@ def get_result(request):
         add_summary=add_summary,
         make_filtered_table=make_filtered_table,
     )
-    data["modules_info"] = get_modules_info(request)
+    data["modules_info"] = await get_modules_info(request)
     content = {}
     content["stat"] = {
         "rowsreturned": True,
@@ -409,14 +407,14 @@ def get_result(request):
     return web.json_response(content)
 
 
-def get_pagesize(request, valueonly=False):
+async def get_pagesize(request, valueonly=False):
     from ...lib.system import get_user_conf
     from ...lib.system import get_system_conf
 
     user_conf = get_user_conf()
     sys_conf = get_system_conf()
     try:
-        queries = request.json()
+        queries = await request.json()
     except Exception:
         queries = {}
     gui_result_pagesize = queries.get(
@@ -449,16 +447,17 @@ def get_num_var_limit_for_summary_widget(_):
     return web.json_response({"num_var_limit": num_var_limit})
 
 
-def get_result_levels(request):
+async def get_result_levels(request):
     from aiohttp.web import Response
     from ...lib.system import get_system_conf
+    from ...lib.util.run import get_db_conn
 
     sys_conf = get_system_conf()
     gui_result_pagesize = sys_conf.get(
         "gui_result_pagesize", default_gui_result_pagesize
     )
     content = {"gui_result_pagesize": gui_result_pagesize}
-    dbpath = get_dbpath(request)
+    dbpath = await get_dbpath(request)
     content = {}
     if not dbpath:
         content["levels"] = ["NODB"]
@@ -467,27 +466,32 @@ def get_result_levels(request):
         if not conn:
             return Response(status=500)
         cursor = conn.cursor()
-        sql = (
-            'select name from sqlite_master where type="table" and '
-            + 'name like "%_header"'
-        )
-        cursor.execute(sql)
-        ret = cursor.fetchall()
-        if len(ret) > 0:  # type: ignore
-            levels = [v[0].split("_")[0] for v in ret]
-            levels.insert(0, "info")
-            levels.insert(1, "filter")
+        if isinstance(cursor, duckdb.DuckDBPyConnection):
+            levels = ["variant"]
         else:
-            levels = []
-        levels.remove("sample")
-        levels.remove("mapping")
+            sql = (
+                'select name from sqlite_master where type="table" and '
+                + 'name like "%_header"'
+            )
+            cursor.execute(sql)
+            ret = cursor.fetchall()
+            if len(ret) > 0:
+                levels = [v[0].split("_")[0] for v in ret]
+                levels.insert(0, "info")
+                levels.insert(1, "filter")
+            else:
+                levels = []
+            if "sample" in levels:
+                levels.remove("sample")
+            if "mapping" in levels:
+                levels.remove("mapping")
         content["levels"] = levels
         cursor.close()
         conn.close()
     return web.json_response(content)
 
 
-def get_dbpath(request) -> Optional[str]:
+async def get_dbpath(request) -> str:
     from ..util import get_email_from_request
     from ..serveradmindb import get_serveradmindb
 
@@ -498,10 +502,10 @@ def get_dbpath(request) -> Optional[str]:
     if method == "GET":
         queries = request.rel_url.query
     elif method == "POST":
-        queries = request.json()
+        queries = await request.json()
     if not queries:
-        return None
-    dbpath = queries.get("dbpath")
+        return ""
+    dbpath = queries.get("dbpath", "")
     if dbpath:
         return dbpath
     username = get_email_from_request(request, servermode)
@@ -514,12 +518,13 @@ def get_dbpath(request) -> Optional[str]:
     return dbpath
 
 
-def get_variant_cols(request):
+async def get_variant_cols(request):
     queries = request.rel_url.query
-    dbpath = get_dbpath(request)
+    dbpath = await get_dbpath(request)
     confpath = queries.get("confpath")
     filterstring = queries.get("filter")
-    add_summary = queries.get("add_summary", True)
+    #add_summary = queries.get("add_summary", False)
+    add_summary = False # TODO: disabling it for now
     data = {}
     data["data"] = {}
     data["stat"] = {}
@@ -636,7 +641,7 @@ def get_colmodel(tab, colinfo):
     return colModel
 
 
-def get_colinfo(dbpath, confpath=None, filterstring=None, add_summary=True):
+def get_colinfo(dbpath, confpath=None, filterstring=None, add_summary=False):
     reporter_name = "jsonreporter"
     f, fn, d = imp.find_module(
         reporter_name,
@@ -649,12 +654,11 @@ def get_colinfo(dbpath, confpath=None, filterstring=None, add_summary=True):
     m = imp.load_module(reporter_name, f, fn, d)  # type: ignore
     reporter = m.Reporter(
         dbpath,
-        module_name=reporter_name,
+        name=reporter_name,
         confpath=confpath,
         filterstring=filterstring,
         report_types=["text"]
     )
-    reporter.prep()
     # reporter_levels = reporter.get_levels_to_run("all")
     # reporter.levels = reporter_levels
     try:
@@ -685,7 +689,7 @@ def table_exists(cursor, table):
         return True
 
 
-def serve_widgetfile(request):
+async def serve_widgetfile(request):
     from aiohttp.web import Response
     from ...lib.system import get_modules_dir
 
@@ -704,7 +708,7 @@ def serve_widgetfile(request):
         return response
 
 
-def serve_runwidget(request):
+async def serve_runwidget(request):
     from aiohttp.web import Response
     from ...lib.system import get_modules_dir
 
@@ -713,7 +717,7 @@ def serve_runwidget(request):
         return Response(status=404)
     path = "wg" + request.match_info["module"]
     queries = request.rel_url.query
-    dbpath = get_dbpath(request)
+    dbpath = await get_dbpath(request)
     if ("dbpath" not in queries or queries["dbpath"] == "") and dbpath is not None:
         new_queries = {}
         new_queries["dbpath"] = dbpath
@@ -725,17 +729,17 @@ def serve_runwidget(request):
         path, [os.path.join(modules_dir, "webviewerwidgets", path)]
     )
     m = imp.load_module(path, f, fn, d)  # type: ignore
+    if dbpath is None:
+        return web.json_response({})
     cf = ReportFilter.create(dbpath=dbpath, mode="sub")
-    filterstring = cf.exec_db(
-        cf.get_report_filter_string, uid=queries.get("ftable_uid")
-    )
+    filterstring = cf.get_report_filter_string(uid=queries.get("ftable_uid"))
     queries_dict = queries.copy()
     queries_dict["filterstring"] = filterstring
     content = m.get_data(queries_dict)
     return web.json_response(content)
 
 
-def serve_webapp_runwidget(request):
+async def serve_webapp_runwidget(request):
     from aiohttp.web import Response
     from ...lib.system import get_modules_dir
 
@@ -762,7 +766,7 @@ def serve_webapp_runwidget(request):
     return web.json_response(content)
 
 
-def serve_runwidget_post(request):
+async def serve_runwidget_post(request):
     from aiohttp.web import Response
     from ...lib.system import get_modules_dir
 
@@ -770,8 +774,8 @@ def serve_runwidget_post(request):
     if not modules_dir:
         return Response(status=404)
     path = "wg" + request.match_info["module"]
-    dbpath = get_dbpath(request)
-    queries = request.json()
+    dbpath = await get_dbpath(request)
+    queries = await request.json()
     new_queries = {}
     for k in queries:
         val = queries[k]
@@ -803,12 +807,13 @@ def serve_runwidget_post(request):
     return web.json_response(content)
 
 
-def get_modules_info(request):
+async def get_modules_info(request):
     from aiohttp.web import Response
     from json import loads
+    from ...lib.util.run import get_db_conn
 
     _ = request.rel_url.query
-    dbpath = get_dbpath(request)
+    dbpath = await get_dbpath(request)
     conn = get_db_conn(dbpath)
     content = {}
     if not conn:
@@ -843,10 +848,11 @@ def get_modules_info(request):
     return content
 
 
-def get_samples(request):
+async def get_samples(request):
     from aiohttp.web import Response
+    from ...lib.util.run import get_db_conn
 
-    dbpath = get_dbpath(request)
+    dbpath = await get_dbpath(request)
     conn = get_db_conn(dbpath)
     samples = []
     if not conn:
@@ -863,12 +869,13 @@ def get_samples(request):
     return web.json_response(samples)
 
 
-def get_variants_for_hugo(request):
+async def get_variants_for_hugo(request):
     from aiohttp.web import Response
     from ...lib.exceptions import DatabaseConnectionError
+    from ...lib.util.run import get_db_conn
 
     hugo = request.match_info["hugo"]
-    dbpath = get_dbpath(request)
+    dbpath = await get_dbpath(request)
     if dbpath is None:
         raise DatabaseConnectionError("result database")
     conn = get_db_conn(dbpath)
@@ -886,11 +893,12 @@ def get_variants_for_hugo(request):
     return web.json_response(out)
 
 
-def get_variantdbcols(request):
+async def get_variantdbcols(request):
     from aiohttp.web import Response
     from ...lib.exceptions import DatabaseConnectionError
+    from ...lib.util.run import get_db_conn
 
-    dbpath = get_dbpath(request)
+    dbpath = await get_dbpath(request)
     if dbpath is None:
         raise DatabaseConnectionError("result database")
     conn = get_db_conn(dbpath)

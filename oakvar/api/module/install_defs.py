@@ -1,5 +1,7 @@
 from typing import Optional
+from typing import Any
 from typing import List
+from typing import Dict
 
 
 def get_modules_to_install(
@@ -7,7 +9,7 @@ def get_modules_to_install(
     urls: Optional[str] = None,
     skip_dependencies: bool = False,
     outer=None,
-) -> dict:
+) -> Dict[str, Dict[str, Any]]:
     from ...lib.util.download import is_url
     from ...lib.util.download import is_zip_path
     from ...lib.module.remote import get_install_deps
@@ -22,9 +24,11 @@ def get_modules_to_install(
                 "same number of arguments should be given to the module_name argument and --url option."
             )
     mn_vs = collect_module_name_and_versions(module_names, outer=outer)
-    module_install_data = {}
+    module_install_data: Dict[str, Dict[str, Any]] = {}
     for i, data in enumerate(mn_vs):
         module_name = data.get("module_name")
+        if module_name is None:
+            continue
         version = data.get("version")
         url = None
         if urls:
@@ -48,7 +52,7 @@ def get_modules_to_install(
                             f"{module_name}=={version} is not compatible with current OakVar version ({pkg_ver}). Please upgrade OakVar to at least {min_pkg_ver}."
                         )
                     continue
-        module_install_data[module_name] = {"type": ty, "version": version, "url": url}
+        module_install_data[module_name] = {"type": ty, "version": version, "url": url, "size": data.get("size")}
     # dependency
     deps_install = {}
     if not skip_dependencies:
@@ -64,8 +68,10 @@ def get_modules_to_install(
     return to_install
 
 
-def collect_module_name_and_versions(modules, outer=None) -> list:
-    mn_vs = []
+def collect_module_name_and_versions(modules: List[str], outer=None) -> List[Dict[str, Any]]:
+    from ...lib.module.remote import get_remote_module_info_ls
+
+    mn_vs: List[Dict[str, Any]] = []
     if isinstance(modules, str):
         modules = [modules]
     for mv in modules:
@@ -75,20 +81,28 @@ def collect_module_name_and_versions(modules, outer=None) -> list:
             else:
                 module_name = mv
                 version = None
-            mn_vs.append({"module_name": module_name, "version": version})
+            info_ls = get_remote_module_info_ls(module_name, version)
+            if info_ls is None:
+                if outer:
+                    outer.write(f"Module does not exist: {module_name}")
+                continue
+            mn_vs.append({"module_name": module_name, "version": version, "size": info_ls.size})
         except Exception:
             if outer:
-                outer.write(f"Wrong module name==version format: {mv}")
+                outer.write(f"Wrong module_name==version format: {mv}")
     return mn_vs
 
 
-def show_modules_to_install(to_install, outer):
+def show_modules_to_install(to_install: Dict[str, Dict[str, Any]], outer):
+    from ...lib.util.util import humanize_bytes
+
     if not outer:
         return
     outer.write("The following modules will be installed:")
     for name, data in to_install.items():
         version = data.get("version")
+        sz = humanize_bytes(int(data.get("size") or "0"))
         if version:
-            outer.write(f"- {name}=={version}")
+            outer.write(f"- {name}=={version} (size: {sz} bytes)")
         else:
-            outer.write(f"- {name}")
+            outer.write(f"- {name} (size: {sz} bytes)")

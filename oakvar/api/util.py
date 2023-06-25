@@ -394,7 +394,7 @@ def filtersqlite_async(
                 includesample=includesample,
                 excludesample=excludesample,
             )
-            cf.exec_db(cf.loadfilter)
+            cf.loadfilter()
             if (
                 hasattr(cf, "filter") is False
                 or cf.filter is None
@@ -421,13 +421,13 @@ def filtersqlite_async(
             # Variant
             print("- variant")
             if hasattr(cf, "make_filtered_uid_table"):
-                cf.exec_db(getattr(cf, "make_filtered_uid_table"))
+                getattr(cf, "make_filtered_uid_table")()
             c.execute(
                 "create table variant as select v.* from old_db.variant as v, old_db.variant_filtered as f where v.base__uid=f.base__uid"
             )
             # Gene
             print("- gene")
-            cf.exec_db(cf.make_filtered_hugo_table)
+            cf.make_filtered_hugo_table()
             c.execute(
                 "create table gene as select g.* from old_db.gene as g, old_db.gene_filtered as f where g.base__hugo=f.base__hugo"
             )

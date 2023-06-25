@@ -77,14 +77,19 @@ def get_user_job_report_paths(
 
 
 def get_user_job_dbpath(request, eud={}) -> Optional[str]:
-    from ..lib.consts import result_db_suffix
+    from pathlib import Path
+    from ..lib.consts import RESULT_DB_SUFFIX_DUCKDB
+    from ..lib.consts import RESULT_DB_SUFFIX_SQLITE
 
     if eud.get("dbpath"):
         return eud.get("dbpath")
     run_path = get_user_job_run_path(request, eud=eud)
     if not run_path:
         return None
-    dbpath = f"{run_path}{result_db_suffix}"
+    dbpath = f"{run_path}{RESULT_DB_SUFFIX_DUCKDB}"
+    if Path(dbpath).exists():
+        return dbpath
+    dbpath = f"{run_path}{RESULT_DB_SUFFIX_SQLITE}"
     return dbpath
 
 

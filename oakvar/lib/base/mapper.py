@@ -2,6 +2,7 @@ from typing import Optional
 from typing import Any
 from typing import List
 from typing import Dict
+from typing import Union
 import polars as pl
 from .commonmodule import BaseCommonModule
 
@@ -13,13 +14,14 @@ class BaseMapper(object):
         primary_transcript: List[str] = ["mane"],
         serveradmindb=None,
         module_options: Dict = {},
-        output_columns: List[Dict[str, Any]] = [],
+        output: Union[List[Dict[str, Any]], Dict[str, Dict[str, Any]]] = [],
         wgs_reader: Optional[BaseCommonModule] = None,
     ):
         from time import time
         from pathlib import Path
         import sys
         from ..module.local import get_module_conf
+        from ..consts import VARIANT_LEVEL
 
         self.wgs_reader = wgs_reader
         self.module_options: Dict = module_options
@@ -28,9 +30,10 @@ class BaseMapper(object):
         self.serveradmindb = serveradmindb
         self.logger = None
         self.error_logger = None
-        self.col_names: List[str] = []
-        self.full_col_names: Dict[str, str] = {}
+        self.col_names: Dict[str, List[str]] = {}
         self.unique_excs = []
+        self.output: Dict[str, Dict[str, Any]] = {}
+        self.level = VARIANT_LEVEL
         self.t = time()
         self.script_path = Path(sys.modules[self.__class__.__module__].__file__ or "")
         if name:
@@ -44,37 +47,40 @@ class BaseMapper(object):
         self.conf: Dict[str, Any] = (
             get_module_conf(self.module_name, module_type="mapper") or {}
         )
-        self.set_output_columns(output_columns)
-        self.var_ld: Dict[str, List[Any]] = {}
-        self.df_dtypes: Dict[str, Any] = {}
+        self.set_output(output)
+        self.df_dtypes: Dict[str, Dict[str, Any]] = {}
         self.setup()
-        self.extra_setup()
         self.setup_df()
 
-    def set_output_columns(self, output_columns: List[Dict[str, Any]] = []):
-        from ..util.util import get_crv_def
-        from ..util.util import get_crx_def
+    def set_output(self, output: Union[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]):
+        from ..consts import VARIANT_LEVEL
+        from ..consts import OUTPUT_COLS_KEY
 
-        if output_columns:
-            self.output_columns = output_columns.copy()
-            self.conf["output_columns"] = self.output_columns.copy()
-        elif "output_columns" in self.conf:
-            self.output_columns = self.conf["output_columns"].copy()
+        if not output:
+            output = self.conf.get("output", self.conf.get(OUTPUT_COLS_KEY, [])).copy()
+        if isinstance(output, dict):
+            self.output = output.copy()
         else:
-            self.output_columns = get_crx_def().copy()
-            self.conf["output_columns"] = self.output_columns.copy()
-        crv_col_names = [col_def.get("name") for col_def in get_crv_def()]
-        self.col_names = [
-            v.get("name", "")
-            for v in self.output_columns
-            if v.get("name") not in crv_col_names
-        ]
+            self.output[VARIANT_LEVEL] = {
+                "level": VARIANT_LEVEL,
+                OUTPUT_COLS_KEY: []
+            }
+            for coldef in output:
+                if coldef.get("table") is True:
+                    table_name = f"{self.module_name}__{coldef['name']}"
+                    self.output[table_name] = {
+                        "level": self.level,
+                        OUTPUT_COLS_KEY: []
+                    }
+                    for table_coldef in coldef.get("table_headers", []):
+                        self.output[table_name][OUTPUT_COLS_KEY].append(table_coldef.copy())
+                else:
+                    self.output[VARIANT_LEVEL][OUTPUT_COLS_KEY].append(coldef.copy())
+        self.conf["output"] = self.output.copy()
+        self.col_names = {table_name: [coldef["name"] for coldef in self.output[table_name].get(OUTPUT_COLS_KEY, [])] for table_name in self.output.keys()}
 
     def setup(self):
         raise NotImplementedError("Mapper must have a setup() method.")
-
-    def extra_setup(self):
-        pass
 
     def end(self):
         pass
@@ -85,8 +91,9 @@ class BaseMapper(object):
         self.logger = getLogger("oakvar.mapper")
         self.error_logger = getLogger("err." + self.module_name)
 
-    def map(self, crv_data: dict):
+    def map(self, crv_data: dict) -> Dict[str, List[Dict[str, Any]]]:
         _ = crv_data
+        return {}
 
     def add_crx_to_gene_info(self, crx_data):
         from ..util.inout import AllMappingsParser
@@ -115,15 +122,17 @@ class BaseMapper(object):
             self.error_logger.error(f"{fn}:{ln}\t{str(e)}")
 
     async def get_gene_summary_data(self, cf):
-        from ..util.util import get_crx_def
         from json import loads
         from ...gui.consts import result_viewer_num_var_limit_for_gene_summary_key
         from ...gui.consts import DEFAULT_RESULT_VIEWER_NUM_VAR_LIMIT_FOR_GENE_SUMMARY
         from ..system import get_system_conf
+        from ..util.util import get_ov_system_output_columns
+        from ..consts import VARIANT_LEVEL
+        from ..consts import OUTPUT_COLS_KEY
 
         cols = [
             "base__" + coldef["name"]
-            for coldef in get_crx_def()
+            for coldef in get_ov_system_output_columns().get(VARIANT_LEVEL, {}).get(OUTPUT_COLS_KEY, [])
             if coldef["name"] not in ["cchange", "exonno"]
         ]
         cols.extend(["tagsampler__numsample"])
@@ -176,58 +185,75 @@ class BaseMapper(object):
         return d
 
     def setup_df(self):
-        self.full_col_names = {
-            col_name: f"{col_name}" for col_name in self.col_names if col_name != "uid"
-        }
-        self.df_dtypes = {}
-        for col_def in self.output_columns:
-            col_name = col_def.get("name")
-            if not col_name or col_name not in self.col_names:
-                continue
-            if col_name == "uid":
-                continue
-            ty = col_def.get("type")
-            if ty == "string":
-                dtype = pl.Utf8
-            elif ty == "int":
-                dtype = pl.Int64
-            elif ty == "float":
-                dtype = pl.Float64
-            else:
-                dtype = pl.Utf8
-            self.df_dtypes[self.full_col_names[col_name]] = dtype
+        from ..consts import OUTPUT_COLS_KEY
 
-    def get_series(self, df: pl.DataFrame) -> List[pl.Series]:
-        for full_col_name in self.full_col_names:
-            self.var_ld[full_col_name] = []
+        self.df_dtypes = {}
+        for table_name, table_output in self.output.items():
+            self.df_dtypes[table_name] = {}
+            coldefs = table_output.get(OUTPUT_COLS_KEY, [])
+            for col_def in coldefs:
+                col_name: str = col_def["name"]
+                ty = col_def.get("type")
+                if ty == "string":
+                    dtype = pl.Utf8
+                elif ty == "int":
+                    dtype = pl.Int64
+                elif ty == "float":
+                    dtype = pl.Float64
+                else:
+                    dtype = pl.Utf8
+                self.df_dtypes[table_name][col_name] = dtype
+
+    def get_series(self, df: pl.DataFrame) -> Dict[str, List[pl.Series]]:
+        var_ld = {}
+        counts: Dict[str, int] = {}
+        max_counts: Dict[str, int] = {}
+        for table_name, col_names in self.col_names.items():
+            counts[table_name] = 0
+            max_counts[table_name] = df.height
+            var_ld[table_name] = {}
+            for col_name in col_names:
+                var_ld[table_name][col_name] = [None] * max_counts[table_name]
         for input_data in df.iter_rows(named=True):
+            output_dict: Dict[str, List[Dict[str, Any]]]
             if input_data["alt_base"] in ["*", ".", ""]:
                 output_dict = {}
             else:
                 output_dict = self.map(input_data)
-            for col_name in self.col_names:
-                if not output_dict:
-                    self.var_ld[self.full_col_names[col_name]].append(None)
-                else:
-                    if col_name in self.var_ld:
-                        self.var_ld[self.full_col_names[col_name]].append(
-                            output_dict.get(col_name)
-                        )
-                    else:
-                        self.var_ld[self.full_col_names[col_name]].append(None)
-        seriess = []
-        for full_col_name in self.full_col_names:
-            seriess.append(
-                pl.Series(
-                    full_col_name,
-                    self.var_ld[full_col_name],
-                    dtype=self.df_dtypes[full_col_name],
-                ),
-            )
+            for table_name, table_data in output_dict.items():
+                table_ld = var_ld[table_name]
+                table_count = counts[table_name]
+                table_max_count = max_counts[table_name]
+                for table_row in table_data:
+                    for col_name, value in table_row.items():
+                        table_ld[col_name][table_count] = value
+                if table_name == self.level:
+                    counts[table_name] += 1
+                elif table_data:
+                    counts[table_name] += 1
+                if counts[table_name] == table_max_count:
+                    for col_name, table_col_ld in table_ld.items():
+                        table_col_ld.extend([None] * df.height)
+                    max_counts[table_name] += df.height
+        for table_name, table_ld in var_ld.items():
+            for col_name in table_ld.keys():
+                var_ld[table_name][col_name] = var_ld[table_name][col_name][:counts[table_name]]
+        seriess: Dict[str, List[pl.Series]] = {}
+        for table_name, table_ld in var_ld.items():
+            seriess[table_name] = []
+            for col_name in self.col_names[table_name]:
+                series = pl.Series(col_name, var_ld[table_name][col_name], dtype=self.df_dtypes[table_name][col_name])
+                seriess[table_name].append(series)
         return seriess
 
-    def run_df(self, df: pl.DataFrame) -> pl.DataFrame:
-        seriess = self.get_series(df)
-        df = df.with_columns(seriess) # type: ignore
-        return df
+    def run_df(self, dfs: Dict[str, pl.DataFrame]) -> Dict[str, pl.DataFrame]:
+        from ..consts import VARIANT_LEVEL
+
+        seriess = self.get_series(dfs[VARIANT_LEVEL])
+        for table_name, table_seriess in seriess.items():
+            if table_name in dfs:
+                dfs[table_name] = dfs[table_name].with_columns(table_seriess)
+            else:
+                dfs[table_name] = pl.DataFrame(table_seriess)
+        return dfs
 

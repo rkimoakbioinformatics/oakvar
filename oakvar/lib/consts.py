@@ -1,17 +1,18 @@
 from os.path import join
 from os.path import dirname
+from typing import Dict
 
-INPUT_LEVEL_KEY = "crv"
-VARIANT_LEVEL_KEY = "crx"
-GENE_LEVEL_KEY = "crg"
-SAMPLE_LEVEL_KEY = "crs"
-MAPPING_LEVEL_KEY = "crm"
-LIFTOVER_LEVEL_KEY = "crl"
+OLD_INPUT_LEVEL_KEY = "crv"
+OLD_VARIANT_LEVEL_KEY = "crx"
+OLD_GENE_LEVEL_KEY = "crg"
+INPUT_LEVEL_KEY = "variant"
+VARIANT_LEVEL_KEY = "variant"
+GENE_LEVEL_KEY = "gene"
+SAMPLE_LEVEL_KEY = "sample"
 STANDARD_INPUT_FILE_SUFFIX = "." + INPUT_LEVEL_KEY
 VARIANT_LEVEL_MAPPED_FILE_SUFFIX = "." + VARIANT_LEVEL_KEY
 GENE_LEVEL_MAPPED_FILE_SUFFIX = "." + GENE_LEVEL_KEY
 SAMPLE_FILE_SUFFIX = "." + SAMPLE_LEVEL_KEY
-MAPPING_FILE_SUFFIX = "." + MAPPING_LEVEL_KEY
 VARIANT_LEVEL_OUTPUT_SUFFIX = ".var"
 GENE_LEVEL_OUTPUT_SUFFIX = ".gen"
 crm_idx = [["uid"], ["tags"]]
@@ -28,6 +29,8 @@ GENE = 1
 LEVELS = {"variant": VARIANT, "gene": GENE}
 VARIANT_LEVEL = "variant"
 GENE_LEVEL = "gene"
+SAMPLE_LEVEL = "sample"
+ERR_LEVEL = "err"
 
 module_tag_desc = {
     "allele frequency": "modules for studying allele frequency across populations",
@@ -74,3 +77,9 @@ VARIANT_LEVEL_PRIMARY_KEY = "uid"
 GENE_LEVEL_PRIMARY_KEY = "hugo"
 DEFAULT_DF_SIZE = 1_000_000
 DEFAULT_CONVERTER_READ_SIZE = 10_000
+OAKVAR_VERSION_KEY = "oakvar"
+VARIANT_LEVEL_PRIMARY_KEY_COLDEF: Dict[str, str] = {"name": "uid", "type": "int", "level": VARIANT_LEVEL, "title": "Variant ID", "desc": "Variant ID"}
+GENE_LEVEL_PRIMARY_KEY_COLDEF: Dict[str, str] = {"name": "hugo", "type": "string", "level": GENE_LEVEL, "title": "HUGO Symbol", "desc": "HUGO Symbol of gene"}
+LINE_NO_KEY = "lineno"
+OUTPUT_COLS_KEY = "output_columns"
+OUTPUT_KEY = "output"

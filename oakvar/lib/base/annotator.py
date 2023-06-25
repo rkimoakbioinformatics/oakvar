@@ -2,6 +2,7 @@ from typing import Optional
 from typing import Any
 from typing import List
 from typing import Dict
+from typing import Union
 import polars as pl
 
 
@@ -23,12 +24,11 @@ class BaseAnnotator(object):
         name: Optional[str] = None,
         title: Optional[str] = None,
         level: Optional[str] = None,
-        input_format: Optional[str] = None,
-        input_columns: List[str] = [],
-        output_columns: List[Dict[str, Any]] = [],
+        output: Union[List[Dict[str, Any]], Dict[str, Dict[str, Any]]] = [],
         module_conf: Dict[str, Any] = {},
         code_version: Optional[str] = None,
-        df_mode: bool = False,
+        input_level: Optional[str] = None,
+        df_mode: Optional[bool] = None,
     ):
         """__init__.
 
@@ -44,40 +44,29 @@ class BaseAnnotator(object):
             name (Optional[str]): name
             title (Optional[str]): title
             level (Optional[str]): level
-            input_format (Optional[str]): input_format
-            input_columns (List[str]): input_columns
-            output_columns (List[Dict]): output_columns
+            output(Union[Dict[str, Dict[str, Any]], List[Dict]]): output
             module_conf (dict): module_conf
             code_version (Optional[str]): code_version
         """
         import os
         import sys
         from pathlib import Path
+        from multiprocessing.pool import ThreadPool
         from ..consts import cannonical_chroms
-        from ..consts import VARIANT_LEVEL
-        from ..consts import GENE_LEVEL
-        from ..consts import INPUT_LEVEL_KEY
-        from ..consts import GENE_LEVEL_KEY
         from ..module.local import get_module_conf
         from ..module.data_cache import ModuleDataCache
         from ..exceptions import ModuleLoadingError
         from ..exceptions import LoggerError
-        from ..util.util import get_crv_def
-        from ..util.util import get_crx_def
-        from ..util.util import get_crg_def
-        from ..consts import INPUT_LEVEL_KEY
-        from ..consts import VARIANT_LEVEL_KEY
-        from ..consts import GENE_LEVEL_KEY
+        from ..consts import VARIANT_LEVEL_PRIMARY_KEY_COLDEF
+        from ..consts import GENE_LEVEL_PRIMARY_KEY_COLDEF
+        from ..consts import OLD_INPUT_LEVEL_KEY
+        from ..consts import OLD_VARIANT_LEVEL_KEY
+        from ..consts import OLD_GENE_LEVEL_KEY
+        from ..consts import VARIANT_LEVEL
+        from ..consts import GENE_LEVEL
 
         self.valid_levels = ["variant", "gene"]
-        self.valid_input_formats = [INPUT_LEVEL_KEY, VARIANT_LEVEL_KEY, GENE_LEVEL_KEY]
-        self.id_col_defs = {"variant": get_crv_def()[0], "gene": get_crg_def()[0]}
-        self.default_input_columns: Dict[str, List[Any]] = {
-            INPUT_LEVEL_KEY: [x["name"] for x in get_crv_def()],
-            VARIANT_LEVEL_KEY: [x["name"] for x in get_crx_def()],
-            GENE_LEVEL_KEY: [x["name"] for x in get_crg_def()],
-        }
-        self.required_conf_keys = ["level", "output_columns"]
+        self.id_col_defs = {"variant": VARIANT_LEVEL_PRIMARY_KEY_COLDEF, "gene": GENE_LEVEL_PRIMARY_KEY_COLDEF}
         self.script_path: str = ""
         self.module_options = module_options
         if input_file:
@@ -108,21 +97,22 @@ class BaseAnnotator(object):
         self.primary_input_reader = None
         self.output_path = None
         self.last_status_update_time = None
-        self.output_columns: List[Dict[str, Any]] = []
         self.secondary_readers = {}
         self.output_writer = None
         self.log_path = None
         self.unique_excs = []
         self.log_handler = None
+        self.pool: Optional[ThreadPool] = None
         self.parse_cmd_args()
         self.serveradmindb = serveradmindb
         self.supported_chroms = set(cannonical_chroms)
         self.module_type = "annotator"
         self.conf = {}
-        self.col_names: List[str] = []
-        self.full_col_names: Dict[str, str] = {}
+        self.col_names: Dict[str, List[str]] = {}
+        self.full_col_names: Dict[str, Dict[str, str]] = {}
         self.df_dtypes: Dict[str, Any] = {}
-        self.df_mode: bool = df_mode
+        self.df_mode: bool
+        self.output: Dict[str, Dict[str, Any]] = {}
         if not self.main_fpath:
             if name:
                 self.module_name = name
@@ -140,56 +130,31 @@ class BaseAnnotator(object):
             )
             if not self.conf:
                 self.conf = {}
-        self.level = level
-        if not self.level and "level" in self.conf:
-            self.level = self.conf.get("level")
-        if not self.level:
+        if not level and "level" in self.conf:
+            level = self.conf.get("level")
+        if not level:
             raise ModuleLoadingError(
                 msg="level or module_conf with level should be given."
             )
+        self.level: str = level
         if "level" not in self.conf:
             self.conf["level"] = self.level
-        if not input_format:
-            input_format = self.conf.get("input_format")
-            if not input_format:
-                if self.level == VARIANT_LEVEL:
-                    input_format = INPUT_LEVEL_KEY
-                elif self.level == GENE_LEVEL:
-                    input_format = GENE_LEVEL_KEY
-                else:
-                    input_format = INPUT_LEVEL_KEY
-        self.input_format = input_format
-        if not input_columns:
-            if input_format in self.default_input_columns:
-                input_columns = self.default_input_columns[input_format]
-            else:
-                valid_formats = ", ".join(self.default_input_columns.keys())
-                raise ModuleLoadingError(
-                    msg=f"{self.module_name}: input_format "
-                    + "({input_format}) is invalid. It should be one of "
-                    + f"{valid_formats}."
-                )
-        self.input_columns = input_columns.copy()
-        if self.input_columns is not None:
-            self.conf["input_columns"] = self.input_columns
-        elif not self.input_columns and "input_columns" in self.conf:
-            self.input_columns = self.conf["input_columns"]
-        if output_columns:
-            self.set_output_columns(output_columns.copy())
-        elif "output_columns" in self.conf:
-            self.set_output_columns(self.conf["output_columns"].copy())
+        self.set_output(output)
         self.title = title
         if self.title:
             self.conf["title"] = self.title
         elif "title" in self.conf:
             self.title = self.conf["title"]
+        if df_mode is not None:
+            self.df_mode: bool = df_mode
+        else:
+            self.df_mode = self.conf.get("df_mode", False)
         self.annotator_name = self.module_name
         self.data_dir = self.module_dir / "data"
         self._setup_logger()
         if not self.conf:
             raise ModuleLoadingError(module_name=self.module_name)
         self.set_ref_colname()
-        self._verify_conf()
         if self.logger is None:
             raise LoggerError(module_name=self.module_name)
         if "logging_level" in self.conf:
@@ -209,30 +174,60 @@ class BaseAnnotator(object):
                 self.code_version: str = self.conf["version"]
             else:
                 self.code_version: str = ""
+        if input_level is None:
+            input_level = self.conf.get("input_level")
+            if not input_level:
+                input_format = self.conf.get("input_format")
+                if input_format:
+                    if input_format == OLD_INPUT_LEVEL_KEY:
+                        self.input_level = VARIANT_LEVEL
+                    elif input_format == OLD_VARIANT_LEVEL_KEY:
+                        self.input_level = VARIANT_LEVEL
+                    elif input_format == OLD_GENE_LEVEL_KEY:
+                        self.input_level = GENE_LEVEL
+                    else:
+                        raise
+                else:
+                    self.input_level = VARIANT_LEVEL
+            else:
+                if input_level not in [VARIANT_LEVEL, GENE_LEVEL]:
+                    raise
+                self.input_level = input_level
+        else:
+            if input_level not in [VARIANT_LEVEL, GENE_LEVEL]:
+                raise
+            self.input_level = input_level
         self.cache = ModuleDataCache(self.module_name, module_type=self.module_type)
         self.setup_df()
 
-    def set_output_columns(self, output_columns: List[Dict[str, Any]]):
-        from ..consts import VARIANT_LEVEL_PRIMARY_KEY
-        from ..consts import GENE_LEVEL_PRIMARY_KEY
+    def set_output(self, output: Union[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]):
+        from ..consts import OUTPUT_COLS_KEY
+        from ..consts import OUTPUT_KEY
 
-        if not self.level:
-            return
-        key_col_name: str = self.id_col_defs[self.level].get("name", "")
-        if not key_col_name:
-            return
-        key_col_found = False
-        for col_def in output_columns:
-            if col_def.get("name") == key_col_name:
-                key_col_found = True
-                break
-        if not key_col_found:
-            output_columns = [self.id_col_defs[self.level]] + output_columns
-        self.output_columns = output_columns
-        if not self.conf:
-            self.conf = {}
-        self.conf["output_columns"] = output_columns
-        self.col_names = [v.get("name", "") for v in output_columns if v.get("name") != VARIANT_LEVEL_PRIMARY_KEY and v.get("name") != GENE_LEVEL_PRIMARY_KEY]
+        if not output:
+            output = self.conf.get(OUTPUT_KEY, self.conf.get(OUTPUT_COLS_KEY, [])).copy()
+        if isinstance(output, dict):
+            self.output = output
+        else:
+            self.output[self.level] = {
+                "level": self.level,
+                OUTPUT_COLS_KEY: []
+            }
+            coldefs: List[Dict[str, Any]] = []
+            for coldef in output:
+                if coldef.get("table") is True:
+                    table_name = f"{self.module_name}__{coldef['name']}"
+                    self.output[table_name] = {
+                        "level": coldef.get("level", self.level),
+                        OUTPUT_COLS_KEY: []
+                    }
+                    for table_coldef in coldef.get("table_headers", []):
+                        self.output[table_name][OUTPUT_COLS_KEY].append(table_coldef.copy())
+                else:
+                    coldefs.append(coldef.copy())
+            self.output[self.level][OUTPUT_COLS_KEY] = coldefs
+        self.conf["output"] = self.output.copy()
+        self.col_names = {table_name: [coldef["name"] for coldef in self.output[table_name][OUTPUT_COLS_KEY]] for table_name in self.output.keys()}
 
     def set_ref_colname(self):
         """set_ref_colname.
@@ -276,54 +271,6 @@ class BaseAnnotator(object):
         else:
             return True
 
-    def _verify_conf(self):
-        """_verify_conf.
-        """
-        from ..consts import VARIANT_LEVEL_KEY
-        from ..consts import GENE_LEVEL_KEY
-
-        if self.conf is None:
-            from ..exceptions import SetupError
-
-            raise SetupError(self.module_name)
-        from ..exceptions import ConfigurationError
-
-        for k in self.required_conf_keys:
-            if k not in self.conf:
-                err_msg = 'Required key "%s" not found in configuration' % k
-                raise ConfigurationError(err_msg)
-        if self.conf["level"] in self.valid_levels and self.level:
-            if self.id_col_defs[self.level]["name"] not in [c["name"] for c in self.conf["output_columns"]]:
-                self.conf["output_columns"] = [self.id_col_defs[self.level]] + self.conf[
-                    "output_columns"
-                ]
-        else:
-            err_msg = "%s is not a valid level. Valid levels are %s" % (
-                self.conf["level"],
-                ", ".join(self.valid_levels),
-            )
-            raise ConfigurationError(err_msg)
-        if "input_format" in self.conf:
-            if self.conf["input_format"] not in self.valid_input_formats:
-                err_msg = "Invalid input_format %s, select from %s" % (
-                    self.conf["input_format"],
-                    ", ".join(self.valid_input_formats),
-                )
-                raise ConfigurationError(err_msg)
-        else:
-            if self.conf["level"] == "variant":
-                self.conf["input_format"] = VARIANT_LEVEL_KEY
-            elif self.conf["level"] == "gene":
-                self.conf["input_format"] = GENE_LEVEL_KEY
-        if "input_columns" in self.conf:
-            id_col_name = self.id_col_defs[self.conf["level"]]["name"]
-            if id_col_name not in self.conf["input_columns"]:
-                self.conf["input_columns"].append(id_col_name)
-        else:
-            self.conf["input_columns"] = self.default_input_columns[
-                self.conf["input_format"]
-            ]
-
     def parse_cmd_args(self):
         """parse_cmd_args.
         """
@@ -342,23 +289,6 @@ class BaseAnnotator(object):
             self.output_basename = self.primary_input_path.name
             if Path(self.output_basename).suffix in [".crv", ".crg", ".crx"]:
                 self.output_basename = self.output_basename[:-4]
-
-    def handle_jsondata(self, output_dict):
-        """handle_jsondata.
-
-        Args:
-            output_dict:
-        """
-        import json
-
-        if self.json_colnames is None:
-            return
-        for colname in self.json_colnames:
-            json_data = output_dict.get(colname, None)
-            if json_data is not None:
-                json_data = json.dumps(json_data)
-            output_dict[colname] = json_data
-        return output_dict
 
     def log_progress(self, lnum):
         """log_progress.
@@ -404,244 +334,139 @@ class BaseAnnotator(object):
             and input_data.get("chrom") not in self.supported_chroms
         )
 
-    def fill_empty_output(self, output_dict):
-        """fill_empty_output.
-
-        Args:
-            output_dict:
-        """
-        if self.conf is None:
-            return
-        for output_col in self.conf["output_columns"]:
-            col_name = output_col["name"]
-            if col_name not in output_dict:
-                output_dict[col_name] = None
-        return output_dict
-
-    def make_json_colnames(self):
-        """make_json_colnames.
-        """
-        if self.output_columns is None:
-            return
-        self.json_colnames = []
-        for col in self.output_columns:
-            if "table" in col and col["table"] is True:
-                self.json_colnames.append(col["name"])
-
-    def annotate_df(self, df):
+    def annotate_df(self, dfs: Dict[str, pl.DataFrame]) -> Dict[str, pl.DataFrame]:
         """annotate_df.
 
         Args:
-            df:
+            dfs:
         """
-        _ = df
+        _ = dfs
         raise NotImplementedError("annotate_df method should be implemented.")
 
     def setup_df(self):
-        from ..consts import VARIANT_LEVEL_PRIMARY_KEY
-        from ..consts import GENE_LEVEL_PRIMARY_KEY
+        from ..consts import OUTPUT_COLS_KEY
 
-        self.full_col_names = {col_name: f"{self.module_name}__{col_name}" for col_name in self.col_names if col_name != "uid"}
+        self.full_col_names = {table_name: {col_name: f"{self.module_name}__{col_name}" for col_name in self.col_names[table_name]} for table_name in self.col_names.keys()}
         self.df_dtypes = {}
-        for col_def in self.output_columns:
-            col_name = col_def.get("name")
-            if not col_name or col_name == VARIANT_LEVEL_PRIMARY_KEY or col_name == GENE_LEVEL_PRIMARY_KEY:
-                continue
-            ty = col_def.get("type")
-            if ty == "string":
-                dtype = pl.Utf8
-            elif ty == "int":
-                dtype = pl.Int64
-            elif ty == "float":
-                dtype = pl.Float64
-            else:
-                dtype = pl.Utf8
-            self.df_dtypes[self.full_col_names[col_name]] = dtype
-        self.base_setup(mode="df")
-        self.make_json_colnames()
+        for table_name, table_output in self.output.items():
+            self.df_dtypes[table_name] = {}
+            coldefs = table_output.get(OUTPUT_COLS_KEY, [])
+            for col_def in coldefs:
+                col_name: str = col_def["name"]
+                ty = col_def.get("type")
+                if ty == "string":
+                    dtype = pl.Utf8
+                elif ty == "int":
+                    dtype = pl.Int64
+                elif ty == "float":
+                    dtype = pl.Float64
+                else:
+                    dtype = pl.Utf8
+                self.df_dtypes[table_name][col_name] = dtype
+        self.base_setup()
 
-    def get_series(self, df: pl.DataFrame) -> List[pl.Series]:
-        var_ld: Dict[str, List[Any]] = {}
-        for col_name in self.col_names:
-            var_ld[col_name] = []
+    def get_series(self, dfs: Dict[str, pl.DataFrame]) -> Dict[str, List[pl.Series]]:
+        from ..consts import VARIANT_LEVEL
+        from ..consts import GENE_LEVEL
+
+        if self.input_level == GENE_LEVEL:
+            df = dfs.get(GENE_LEVEL)
+        else:
+            df = dfs.get(VARIANT_LEVEL)
+        if df is None:
+            raise
+        var_ld: Dict[str, Dict[str, List[Any]]] = {}
+        counts: Dict[str, int] = {}
+        max_counts: Dict[str, int] = {}
+        for table_name, col_names in self.col_names.items():
+            counts[table_name] = 0
+            if table_name in dfs:
+                max_counts[table_name] = dfs[table_name].height
+            else:
+                max_counts[table_name] = dfs[self.level].height
+            var_ld[table_name] = {}
+            for col_name in col_names:
+                var_ld[table_name][col_name] = [None] * max_counts[table_name]
         for row in df.iter_rows(named=True):
-            input_data: Dict[str, Dict[str, Any]] = {}
-            for k, v in row.items():
-                if "__" in k:
-                    module_name, col_name = k.split("__")
-                    if module_name not in input_data:
-                        input_data[module_name] = {}
-                    input_data[module_name][col_name] = v
+            output_dict = self.annotate(row)
+            if output_dict is not None:
+                if self.level in output_dict:
+                    for table_name, table_data in output_dict.items():
+                        table_ld = var_ld[table_name]
+                        table_count = counts[table_name]
+                        table_max_count = max_counts[table_name]
+                        for table_row in table_data:
+                            for col_name, value in table_row.items():
+                                table_ld[col_name][table_count] = value
+                        if table_name == self.level:
+                            counts[table_name] += 1
+                        elif table_data:
+                            counts[table_name] += 1
+                        if counts[table_name] == table_max_count:
+                            for col_name, table_col_ld in table_ld.items():
+                                table_col_ld.extend([None] * df.height)
+                            max_counts[table_name] += df.height
                 else:
-                    input_data[k] = v
-            output_dict = self.annotate(input_data)
-            for col_name in self.col_names:
-                if not output_dict:
-                    val = None
-                else:
-                    val = output_dict.get(col_name)
-                var_ld[col_name].append(val)
-        seriess: List[pl.Series] = []
-        for col_name in self.col_names:
-            full_col_name = self.full_col_names[col_name]
-            dtype = self.df_dtypes[full_col_name]
-            seriess.append(pl.Series(full_col_name, var_ld[col_name], dtype=dtype))
+                    table_name = self.level
+                    table_ld = var_ld[table_name]
+                    table_count = counts[table_name]
+                    table_max_count = max_counts[table_name]
+                    for col_name, value in output_dict.items():
+                        table_ld[col_name][table_count] = value
+                    counts[table_name] += 1
+                    if counts[table_name] == table_max_count:
+                        for col_name, table_col_ld in table_ld.items():
+                            table_col_ld.extend([None] * df.height)
+                        max_counts[table_name] += df.height
+            else:
+                counts[self.level] += 1
+        for table_name, table_ld in var_ld.items():
+            for col_name in table_ld.keys():
+                var_ld[table_name][col_name] = var_ld[table_name][col_name][:counts[table_name]]
+        seriess: Dict[str, List[pl.Series]] = {}
+        for table_name, table_ld in var_ld.items():
+            seriess[table_name] = []
+            for col_name in self.col_names[table_name]:
+                series = pl.Series(self.full_col_names[table_name][col_name], var_ld[table_name][col_name], dtype=self.df_dtypes[table_name][col_name])
+                seriess[table_name].append(series)
         return seriess
 
-    def run_df(self, df: pl.DataFrame) -> pl.DataFrame:
-        seriess = self.get_series(df)
-        df = df.with_columns(seriess) # type: ignore
-        return df
+    def run_df(self, dfs: Dict[str, pl.DataFrame]) -> Dict[str, pl.DataFrame]:
+        if self.df_mode:
+            dfs = self.annotate_df(dfs)
+        else:
+            seriess = self.get_series(dfs)
+            for table_name, table_seriess in seriess.items():
+                if table_name in dfs:
+                    dfs[table_name] = dfs[table_name].with_columns(table_seriess)
+                else:
+                    dfs[table_name] = pl.DataFrame(table_seriess)
+        return dfs
 
-    def get_output_col_def(self, col_name):
-        for col_def in self.output_columns:
-            if col_def.get("name") == col_name:
-                return col_def
-        return None
-
-    def run(self, df=None):
+    def run(self, dfs: Optional[Dict[str, pl.DataFrame]] = None):
         """run.
 
         Args:
             df:
         """
-        if self.conf is None:
-            return
-        if self.logger is None:
-            return
-        from time import time, asctime, localtime
-        from ..util.run import update_status
-        from ..exceptions import ModuleLoadingError
+        if dfs is not None:
+            return self.run_df(dfs)
 
-        if df is not None:
-            return self.run_df(df)
-        if not self.module_name:
-            raise ModuleLoadingError(
-                msg="module_name should be given at initializing Annotator to run."
-            )
-        if self.conf:
-            if "title" not in self.conf:
-                raise ModuleLoadingError(
-                    msg="title should be given at initializing Annotator or in "
-                    + "the module yml file to run."
-                )
-            if "level" not in self.conf:
-                raise ModuleLoadingError(
-                    msg="level should be given at initializing Annotator or in "
-                    + "the module yml file to run."
-                )
-            if "output_columns" not in self.conf:
-                raise ModuleLoadingError(
-                    msg="output_columns should be given at initializing Annotator "
-                    + "or in the module yml file to run."
-                )
-            if not self.primary_input_path:
-                raise ModuleLoadingError(
-                    msg="input_file should be given at initializing Annotator to run."
-                )
-        else:
-            raise ModuleLoadingError(msg="module conf should exist to run.")
-        status = f"started {self.conf['title']} ({self.module_name})"
-        update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
-        try:
-            start_time = time()
-            update_status(
-                "started: %s" % asctime(localtime(start_time)),
-                logger=self.logger,
-                serveradmindb=self.serveradmindb,
-            )
-            self.base_setup()
-            self.last_status_update_time = time()
-            if not self.output_columns:
-                self.output_columns = self.conf["output_columns"]
-            self.make_json_colnames()
-            self.process_file()
-            self.postprocess()
-            self.base_cleanup()
-            status = f"started {self.conf['title']} ({self.module_name})"
-            update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
-            end_time = time()
-            update_status(
-                f"{self.module_name}: finished at {asctime(localtime(end_time))}",
-                logger=self.logger,
-                serveradmindb=self.serveradmindb,
-            )
-            run_time = end_time - start_time
-            update_status(
-                f"{self.module_name}: runtime {run_time:0.3f}s",
-                logger=self.logger,
-                serveradmindb=self.serveradmindb,
-            )
-        except Exception as e:
-            self._log_exception(e)
-        if hasattr(self, "log_handler") and self.log_handler:
-            self.log_handler.close()
-
-    def process_file(self):
-        """process_file.
-        """
-        assert self._id_col_name, "_id_col_name should not be None."
-        for lnum, line, input_data, secondary_data in self._get_input():
-            try:
-                self.log_progress(lnum)
-                # * allele and undefined non-canonical chroms are skipped.
-                if self.is_star_allele(input_data) or self.should_skip_chrom(
-                    input_data
-                ):
-                    continue
-                output_dict = None
-                if secondary_data == {}:
-                    output_dict = self.annotate(input_data)
-                else:
-                    output_dict = self.annotate(
-                        input_data, secondary_data=secondary_data
-                    )
-                # This enables summarizing without writing for now.
-                if output_dict is None:
-                    continue
-                # Handles empty table-format column data.
-                output_dict = self.handle_jsondata(output_dict)
-                # Preserves the first column
-                if output_dict:
-                    output_dict[self._id_col_name] = input_data[self._id_col_name]
-                # Fill absent columns with empty strings
-                output_dict = self.fill_empty_output(output_dict)
-                # Writes output.
-                if self.output_writer:
-                    self.output_writer.write_data(output_dict)
-            except Exception as e:
-                self._log_runtime_exception(
-                    lnum,
-                    line,
-                    input_data,
-                    e,
-                    fn=self.primary_input_reader.path
-                    if self.primary_input_reader
-                    else "?",
-                )
-
-    def postprocess(self):
-        """postprocess.
-        """
-        pass
-
-    async def get_gene_summary_data(self, cf):
+    def get_gene_summary_data(self, cf):
         """get_gene_summary_data.
 
         Args:
             cf:
         """
-        hugos = await cf.exec_db(cf.get_filtered_hugo_list)
-        output_columns = await cf.exec_db(
-            cf.get_stored_output_columns, self.module_name
-        )
+        hugos = cf.get_filtered_hugo_list()
+        output_columns = cf.get_stored_output_columns(self.module_name)
         cols = [
             self.module_name + "__" + coldef["name"]
             for coldef in output_columns
             if coldef["name"] != "uid"
         ]
         data = {}
-        rows = await cf.exec_db(cf.get_variant_data_for_cols, cols)
+        rows = cf.get_variant_data_for_cols(cols)
         rows_by_hugo = {}
         for row in rows:
             hugo = row[-1]
@@ -685,144 +510,14 @@ class BaseAnnotator(object):
         else:
             print(err_logger_s)
 
-    def base_setup(self, mode: str="old"):
+    def base_setup(self):
         """base_setup.
         """
-        if mode == "old":
-            self._setup_primary_input()
-            self._setup_secondary_inputs()
-            self._setup_outputs()
         self.connect_db()
         self.setup()
         if not hasattr(self, "supported_chroms"):
             self.supported_chroms = set(
                 ["chr" + str(n) for n in range(1, 23)] + ["chrX", "chrY"]
-            )
-
-    def _setup_primary_input(self):
-        """_setup_primary_input.
-        """
-        if self.conf is None:
-            from ..exceptions import SetupError
-
-            raise SetupError(module_name=self.module_name)
-        from ..exceptions import ConfigurationError
-        from ..util.inout import FileReader
-
-        self.primary_input_reader = FileReader(str(self.primary_input_path))
-        requested_input_columns = self.conf["input_columns"]
-        defined_columns = self.primary_input_reader.get_column_names()
-        missing_columns = set(requested_input_columns) - set(defined_columns)
-        if missing_columns:
-            if len(defined_columns) > 0:
-                err_msg = "Columns not defined in input: %s" % ", ".join(
-                    missing_columns
-                )
-                raise ConfigurationError(err_msg)
-            else:
-                default_columns = self.default_input_columns[self.conf["input_format"]]
-                for col_name in requested_input_columns:
-                    try:
-                        col_index = default_columns.index(col_name)
-                    except ValueError:
-                        err_msg = "Column %s not defined for %s format input" % (
-                            col_name,
-                            self.conf["input_format"],
-                        )
-                        raise ConfigurationError(err_msg)
-                    if col_name == "pos":
-                        data_type = "int"
-                    else:
-                        data_type = "string"
-                    self.primary_input_reader.override_column(
-                        col_index, col_name, data_type=data_type
-                    )
-
-    def _setup_secondary_inputs(self):
-        """_setup_secondary_inputs.
-        """
-        from ..exceptions import SetupError
-
-        if self.conf is None:
-            raise SetupError(module_name=self.module_name)
-        self.secondary_readers = {}
-        try:
-            num_expected = len(self.conf["secondary_inputs"])
-        except KeyError:
-            num_expected = 0
-        num_provided = len(self.secondary_paths)
-        if num_expected > num_provided:
-            raise Exception(
-                f"Too few secondary inputs. {num_expected} expected, "
-                + f"{num_provided} provided"
-            )
-        elif num_expected < num_provided:
-            raise Exception(
-                "Too many secondary inputs. %d expected, %d provided"
-                % (num_expected, num_provided)
-            )
-        for sec_name, sec_input_path in self.secondary_paths.items():
-            key_col = (
-                self.conf["secondary_inputs"][sec_name]
-                .get("match_columns", {})
-                .get("secondary", "uid")
-            )
-            use_columns = self.conf["secondary_inputs"][sec_name].get("use_columns", [])
-            fetcher = SecondaryInputFetcher(
-                sec_input_path, key_col, fetch_cols=use_columns
-            )
-            self.secondary_readers[sec_name] = fetcher
-
-    def _setup_outputs(self):
-        """_setup_outputs.
-        """
-        from os import makedirs
-        from pathlib import Path
-        from ..util.inout import FileWriter
-        from ..exceptions import SetupError
-        from ..consts import VARIANT_LEVEL_OUTPUT_SUFFIX
-        from ..consts import GENE_LEVEL_OUTPUT_SUFFIX
-
-        if self.conf is None or self.output_dir is None or self.output_basename is None:
-            raise SetupError(module_name=self.module_name)
-        level = self.conf["level"]
-        if level == "variant":
-            output_suffix = VARIANT_LEVEL_OUTPUT_SUFFIX
-        elif level == "gene":
-            output_suffix = GENE_LEVEL_OUTPUT_SUFFIX
-        elif level == "summary":
-            output_suffix = ".sum"
-        else:
-            output_suffix = ".out"
-        if not (Path(self.output_dir).exists):
-            makedirs(self.output_dir)
-        self.output_path = (
-            Path(self.output_dir)
-            / f"{self.output_basename}.{self.module_name}{output_suffix}"
-        )
-        if self.plain_output:
-            self.output_writer = FileWriter(
-                self.output_path,
-                include_definition=False,
-                include_titles=True,
-                titles_prefix="",
-            )
-        else:
-            self.output_writer = FileWriter(self.output_path)
-            self.output_writer.write_meta_line("name", self.module_name)
-            self.output_writer.write_meta_line(
-                "displayname", self.annotator_display_name
-            )
-            self.output_writer.write_meta_line("version", self.code_version)
-        skip_aggregation = []
-        for col_def in self.conf["output_columns"]:
-            self.output_writer.add_column(col_def)
-            if not (col_def.get("aggregate", True)):
-                skip_aggregation.append(col_def["name"])
-        if not (self.plain_output):
-            self.output_writer.write_definition(self.conf)
-            self.output_writer.write_meta_line(
-                "no_aggregate", ",".join(skip_aggregation)
             )
 
     def connect_db(self):
@@ -909,7 +604,7 @@ class BaseAnnotator(object):
                 )
                 continue
 
-    def annotate(self, input_data, secondary_data=None):
+    def annotate(self, input_data, secondary_data=None) -> Dict[str, Any]:
         """annotate.
 
         Args:

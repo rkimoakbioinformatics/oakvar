@@ -388,17 +388,17 @@ class ServerAdminDb:
             return ret[0]
 
     @db_func
-    def get_dbpath_by_eud(self, eud={}, conn=Any, cursor=Any) -> Optional[str]:
+    def get_dbpath_by_eud(self, eud={}, conn=Any, cursor=Any) -> str:
         from json import loads
 
         if not eud.get("uid") or not eud.get("username"):
-            return None
+            return ""
         _ = conn
         q = "select info_json from jobs where username=? and uid=?"
         cursor.execute(q, (eud.get("username"), eud.get("uid")))
         ret = cursor.fetchone()
         if not ret:
-            return None
+            return ""
         info_json = loads(ret[0])
         return info_json.get("db_path")
 

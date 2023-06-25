@@ -270,7 +270,7 @@ def install(
     for module_name, data in sorted(to_install.items()):
         module_version = data.get("version")
         install_type = data.get("type")
-        url = data.get("url")
+        url: str = data.get("url") or ""
         try:
             if install_type == "url":
                 if not install_module_from_url(

@@ -52,7 +52,6 @@ class Aggregator(object):
 
         if not self.output_dir:
             self.output_dir = self.input_dir
-        self.set_input_base_fname()
         if self.input_base_fname is None:
             raise
         self.set_output_base_fname()
@@ -248,32 +247,6 @@ class Aggregator(object):
             return
         self.cursor.close()
         self.dbconn.close()
-
-    def set_input_base_fname(self):
-        from os import listdir
-        from ..consts import STANDARD_INPUT_FILE_SUFFIX
-        from ..consts import VARIANT_LEVEL_MAPPED_FILE_SUFFIX
-        from ..consts import GENE_LEVEL_MAPPED_FILE_SUFFIX
-        from ..consts import SAMPLE_FILE_SUFFIX
-        from ..consts import MAPPING_FILE_SUFFIX
-
-        crv_fname = self.run_name + STANDARD_INPUT_FILE_SUFFIX
-        crx_fname = self.run_name + VARIANT_LEVEL_MAPPED_FILE_SUFFIX
-        crg_fname = self.run_name + GENE_LEVEL_MAPPED_FILE_SUFFIX
-        crs_fname = self.run_name + SAMPLE_FILE_SUFFIX
-        crm_fname = self.run_name + MAPPING_FILE_SUFFIX
-        for fname in listdir(self.input_dir):
-            if self.level == "variant":
-                if fname == crx_fname:
-                    self.input_base_fname = fname
-                elif fname == crv_fname and not self.input_base_fname:
-                    self.input_base_fname = fname
-            elif self.level == "gene" and fname == crg_fname:
-                self.input_base_fname = fname
-            elif self.level == "sample" and fname == crs_fname:
-                self.input_base_fname = fname
-            elif self.level == "mapping" and fname == crm_fname:
-                self.input_base_fname = fname
 
     def set_output_base_fname(self):
         self.output_base_fname = self.run_name

@@ -95,13 +95,13 @@ class JobHandlers:
             )
         return json_response(out)
 
-    def download_db(self, request):
+    async def download_db(self, request):
         from aiohttp.web import Response
         from aiohttp.web import FileResponse
         from pathlib import Path
         from .userjob import get_user_job_dbpath
 
-        eud = self.get_eud_from_request(request)
+        eud = await self.get_eud_from_request(request)
         dbpath = eud.get("dbpath")
         if not dbpath:
             dbpath = get_user_job_dbpath(request, eud=eud)
@@ -111,11 +111,11 @@ class JobHandlers:
         headers = {"Content-Disposition": "attachment; filename=" + db_fname}
         return FileResponse(dbpath, headers=headers)
 
-    def get_eud_from_request(self, request):
+    async def get_eud_from_request(self, request):
         from .util import get_email_from_request
 
         email = get_email_from_request(request, self.servermode)
-        uid, dbpath = self.get_uid_dbpath_from_request(request)
+        uid, dbpath = await self.get_uid_dbpath_from_request(request)
         return {"username": email, "uid": uid, "dbpath": dbpath}
 
     async def generate_report(self, request):
@@ -127,7 +127,7 @@ class JobHandlers:
 
         global job_queue
         username = get_email_from_request(request, self.servermode)
-        uid, dbpath = self.get_uid_dbpath_from_request(request)
+        uid, dbpath = await self.get_uid_dbpath_from_request(request)
         if (not username or not uid) and not dbpath:
             return Response(status=404)
         report_type = request.match_info["report_type"]
@@ -184,26 +184,26 @@ class JobHandlers:
     def get_report_generation_key_str(self, key, report_type):
         return f"{key}__{report_type}"
 
-    def get_job_log(self, request):
+    async def get_job_log(self, request):
         from aiohttp.web import Response
         from .userjob import get_user_job_log_path
         from pathlib import Path
 
-        eud = self.get_eud_from_request(request)
+        eud = await self.get_eud_from_request(request)
         log_path = get_user_job_log_path(request, eud=eud)
         if not log_path or not Path(log_path).exists():
             return Response(status=404)
         with open(log_path) as f:
             return Response(text=f.read())
 
-    def download_report(self, request):
+    async def download_report(self, request):
         from aiohttp.web import HTTPNotFound
         from aiohttp.web import FileResponse
         from os.path import exists
         from os.path import basename
         from .util import get_email_from_request
 
-        uid, dbpath = self.get_uid_dbpath_from_request(request)
+        uid, dbpath = await self.get_uid_dbpath_from_request(request)
         username = get_email_from_request(request, self.servermode)
         if not uid and not dbpath:
             return HTTPNotFound
@@ -259,13 +259,13 @@ class JobHandlers:
         ]
         return self.valid_report_types
 
-    def get_available_report_types(self, request):
+    async def get_available_report_types(self, request):
         from pathlib import Path
         from aiohttp.web import json_response
         from .userjob import get_job_dir_from_eud
         from .userjob import get_user_job_report_paths
 
-        eud = self.get_eud_from_request(request)
+        eud = await self.get_eud_from_request(request)
         job_dir = get_job_dir_from_eud(request, eud=eud)
         if not job_dir:
             return json_response([])
@@ -391,16 +391,16 @@ class JobHandlers:
     def mark_job_as_aborted(self, job):
         job["status"] = self.ABORTED
 
-    def get_uid_dbpath_from_request(
+    async def get_uid_dbpath_from_request(
         self, request
     ) -> Tuple[Optional[str], Optional[str]]:
         # from urllib.parse import unquote
         try:
-            json_data = request.json()
+            json_data = await request.json()
         except Exception:
             json_data = None
         try:
-            post_data = request.post()  # post with form
+            post_data = await request.post()  # post with form
         except Exception:
             post_data = None
         queries = request.rel_url.query  # get

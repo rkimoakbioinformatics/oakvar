@@ -7,7 +7,8 @@ from typing import Dict
 import polars as pl
 from pathlib import Path
 from .converter import BaseConverter
-from ..module.local import LocalModule
+from .mapper import BaseMapper
+from .annotator import BaseAnnotator
 from ..consts import DEFAULT_DF_SIZE
 
 
@@ -90,6 +91,9 @@ class Runner(object):
         self.outer = None
         self.error = None
         self.result_db_conn: Optional[Union[sqlite3.Connection, duckdb.DuckDBPyConnection]] = None
+        self.df_mode: bool = False
+        self.pool = []
+        self.table_names_by_level: Dict[str, List[str]] = {}
 
     def check_valid_modules(self, module_names):
         from ..exceptions import ModuleNotExist
@@ -282,73 +286,88 @@ class Runner(object):
         dbpath = Path(output_dir) / db_fn
         return dbpath
 
-    def open_result_database(self, run_no: int):
-        import sqlite3
-        import duckdb
+    def open_result_database(self, dbpath: Path):
+        from ..util.run import open_result_database
 
-        dbpath = self.get_result_database_path(run_no)
-        if self.args.use_duckdb:
-            self.result_db_conn = duckdb.connect(str(dbpath))
-        else:
-            self.result_db_conn = sqlite3.connect(dbpath)
-            self.result_db_conn.execute('pragma journal_mode="wal"')
-            self.result_db_conn.execute("pragma synchronous=0;")
-            self.result_db_conn.execute("pragma journal_mode=off;")
-            self.result_db_conn.execute("pragma cache_size=1000000;")
-            self.result_db_conn.execute("pragma locking_mode=EXCLUSIVE;")
-            self.result_db_conn.execute("pragma temp_store=MEMORY;")
+        self.result_db_conn = open_result_database(dbpath, self.args.use_duckdb)
 
-    def drop_result_variant_table(self):
-        if not self.result_db_conn:
-            return
-        q: str = "drop table if exists variant"
-        self.result_db_conn.execute(q)
-        self.result_db_conn.commit()
     def close_result_database(self):
         if not self.result_db_conn:
             return
         self.result_db_conn.close()
-        self.result_db_conn.close()
 
-    def collect_output_columns(self, converter: BaseConverter):
-        from ..consts import VARIANT_LEVEL_PRIMARY_KEY
+    def add_coldefs(self, module_level: Optional[str], module_name: str, coldefs: Dict[str, List[Dict[str, Any]]], output: Dict[str, Dict[str, Any]], result_table_names: List[str], include_key_col: bool=False, add_module_name_to_col_name: bool=False):
+        from ..consts import VARIANT_LEVEL
+        from ..consts import GENE_LEVEL
+        from ..consts import VARIANT_LEVEL_PRIMARY_KEY_COLDEF
+        from ..consts import GENE_LEVEL_PRIMARY_KEY_COLDEF
+        from ..consts import OUTPUT_COLS_KEY
+
+        for table_name, table_output in output.items():
+            if table_name not in coldefs:
+                coldefs[table_name] = []
+                result_table_names.append(table_name)
+            table_coldefs: List[Dict[str, Any]] = []
+            table_level: str = table_output.get("level", module_level) or module_level or table_name
+            table_output_columns: List[Dict[str, Any]] = table_output.get(OUTPUT_COLS_KEY, [])
+            for coldef in table_output_columns:
+                colname = coldef["name"]
+                if add_module_name_to_col_name and table_name in [VARIANT_LEVEL, GENE_LEVEL] and module_name != "base" and "__" not in colname:
+                    coldef["name"] = f"{module_name}__{colname}"
+                coldef["level"] = table_level
+                coldef["module_name"] = module_name
+                coldef_copy = coldef.copy()
+                table_coldefs.append(coldef_copy)
+            if include_key_col:
+                if table_level == VARIANT_LEVEL:
+                    table_coldefs.insert(0, VARIANT_LEVEL_PRIMARY_KEY_COLDEF)
+                elif table_level == GENE_LEVEL:
+                    table_coldefs.insert(0, GENE_LEVEL_PRIMARY_KEY_COLDEF)
+                else:
+                    raise
+            coldefs[table_name].extend(table_coldefs)
+            if table_level not in self.table_names_by_level:
+                self.table_names_by_level[table_level] = []
+            if table_name not in self.table_names_by_level[table_level]:
+                self.table_names_by_level[table_level].append(table_name)
+
+    def collect_output_coldefs(self, converter: BaseConverter) -> Tuple[Dict[str, List[Dict[str, Any]]], List[str]]:
+        from ..consts import VARIANT_LEVEL
+
+        coldefs: Dict[str, List[Dict[str, Any]]] = {}
+        result_table_names: List[str] = []
+        self.table_names_by_level = {}
+        self.add_coldefs(None, "base", coldefs, converter.output, result_table_names, include_key_col=False)
+        for module in self.mapper_i:
+            self.add_coldefs(VARIANT_LEVEL, module.module_name, coldefs, module.output, result_table_names)
+            break
+        for m in self.annotators_i:
+            module_level: str = m.conf.get("level", VARIANT_LEVEL)
+            self.add_coldefs(module_level, m.module_name, coldefs, m.output, result_table_names, add_module_name_to_col_name=True)
+        return coldefs, result_table_names
+
+    def create_tables_in_result_db(self, coldefs: Dict[str, List[Dict[str, Any]]], result_table_names: List[str]):
+        from ..consts import GENE_LEVEL
         from ..consts import GENE_LEVEL_PRIMARY_KEY
 
-        coldefs = []
-        for coldef in converter.output_columns:
-            coldefs.append(coldef.copy())
-        for module in self.mapper_i:
-            for coldef in module.output_columns:
-                if coldef["name"] == VARIANT_LEVEL_PRIMARY_KEY:
-                    continue
-                coldef_fullname = coldef.copy()
-                coldefs.append(coldef_fullname)
-        for module in self.annotators_i:
-            module_level: str = module.conf.get("level", "variant")
-            for coldef in module.output_columns:
-                if coldef["name"] == VARIANT_LEVEL_PRIMARY_KEY:
-                    continue
-                if module_level == "gene" and coldef["name"] == GENE_LEVEL_PRIMARY_KEY:
-                    continue
-                coldef_fullname = coldef.copy()
-                coldef_fullname["name"] = f"{module.module_name}__{coldef_fullname['name']}"
-                coldefs.append(coldef_fullname)
-        return coldefs
-
-    def create_variant_table_in_result_db(self, coldefs: List[Dict[str, Any]]) -> List[str]:
+        table_col_names: Dict[str, List[str]] = {level: [] for level in result_table_names}
         if self.result_db_conn is None:
-            return []
-        table_col_defs: List[str] = []
-        table_col_names: List[str] = []
-        for coldef in coldefs:
-            table_col_def = f"{coldef['name']} {coldef['type']}"
-            table_col_defs.append(table_col_def)
-            table_col_names.append(coldef["name"])
-        table_col_def_str = ", ".join(table_col_defs)
-        q = f"create table variant ({table_col_def_str})"
-        self.result_db_conn.execute(q)
+            return
+        for table_name in result_table_names:
+            q = f"drop table if exists {table_name}"
+            self.result_db_conn.execute(q)
+            table_col_defs = []
+            for coldef in coldefs[table_name]:
+                table_col_def = f"{coldef['name']} {coldef['type']}"
+                table_col_defs.append(table_col_def)
+                table_col_names[table_name].append(coldef["name"])
+            table_col_def_str = ", ".join(table_col_defs)
+            q = f"create table {table_name} ({table_col_def_str})"
+            self.result_db_conn.execute(q)
+            if table_name == GENE_LEVEL:
+                q = f"create unique index {GENE_LEVEL}_uidx on {GENE_LEVEL} ({GENE_LEVEL_PRIMARY_KEY})"
+                self.result_db_conn.execute(q)
         self.result_db_conn.commit()
-        return table_col_names
 
     def create_info_modules_table_in_result_db(self):
         if not self.result_db_conn:
@@ -356,40 +375,50 @@ class Runner(object):
         table_name = "info_modules"
         q = f"drop table if exists {table_name}"
         self.result_db_conn.execute(q)
-        q = f"create table {table_name} (name text primary key, displayname text, version text, description text)"
+        q = f"create table {table_name} (name text primary key, displayname text, level text, version text, description text)"
         self.result_db_conn.execute(q)
-        q = f"insert into {table_name} values (?, ?, ?, ?)"
-        self.result_db_conn.execute(q, ("base", "Normalized Input", "", ""))
+        q = f"insert into {table_name} values (?, ?, ?, ?, ?)"
+        self.result_db_conn.execute(q, ("base", "Normalized Input", "", "", "Normalized input"))
         mapper = self.mapper_i[0]
-        q = f"insert into {table_name} values (?, ?, ?, ?)"
-        self.result_db_conn.execute(q, (mapper.module_name, mapper.conf.get("title", mapper.module_name), mapper.conf.get("version", ""), mapper.conf.get("description", "")))
+        q = f"insert into {table_name} values (?, ?, ?, ?, ?)"
+        self.result_db_conn.execute(q, (mapper.module_name, mapper.conf.get("title", mapper.module_name), mapper.conf.get("level", "variant"), mapper.conf.get("version", ""), mapper.conf.get("description", "")))
         for module_name, module in self.annotators.items():
-            q = f"insert into {table_name} values (?, ?, ?, ?)"
-            self.result_db_conn.execute(q, (module_name, module.conf.get("title", module_name), module.conf.get("version", ""), module.conf.get("description", "")))
+            q = f"insert into {table_name} values (?, ?, ?, ?, ?)"
+            self.result_db_conn.execute(q, (module_name, module.conf.get("title", module_name), module.conf.get("level", "variant"), module.conf.get("version", ""), module.conf.get("description", "")))
         self.result_db_conn.commit()
 
     def create_info_headers_table_in_result_db(self, converter: BaseConverter):
         from json import dumps
+        from ..consts import OUTPUT_COLS_KEY
 
         if not self.result_db_conn:
             return
         table_name = "info_headers"
         q = f"drop table if exists {table_name}"
         self.result_db_conn.execute(q)
-        q = f"create table {table_name} (name text primary key, level text, json text)"
+        q = f"create table {table_name} (name text, level text, json text)"
         self.result_db_conn.execute(q)
         q = f"insert into {table_name} values (?, ?, ?)"
-        for col in converter.output_columns:
-            name = f"base__{col['name']}"
-            self.result_db_conn.execute(q, (name, "variant", dumps(col)))
+        for table_name in converter.output:
+            for col in converter.output[table_name].get(OUTPUT_COLS_KEY, []):
+                col_name = col["name"]
+                if "__" in col_name:
+                    name = col_name
+                else:
+                    name = f"base__{col_name}"
+                self.result_db_conn.execute(q, (name, table_name, dumps(col)))
         mapper = self.mapper_i[0]
-        for col in mapper.output_columns:
-            name = f"base__{col['name']}"
-            self.result_db_conn.execute(q, (name, "variant", dumps(col)))
-        for module in self.annotators_i:
-            for col in module.output_columns:
-                name = f"{module.module_name}__{col['name']}"
-                self.result_db_conn.execute(q, (name, "variant", dumps(col)))
+        for table_name, table_output in mapper.output.items():
+            coldefs = table_output.get(OUTPUT_COLS_KEY, [])
+            for col in coldefs:
+                name = f"base__{col['name']}"
+                self.result_db_conn.execute(q, (name, table_name, dumps(col)))
+        for m in self.annotators_i:
+            for table_name, table_output in m.output.items():
+                coldefs = table_output.get(OUTPUT_COLS_KEY, [])
+                for col in coldefs:
+                    name = f"{table_name}__{col['name']}"
+                    self.result_db_conn.execute(q, (name, table_name, dumps(col)))
         self.result_db_conn.commit()
 
     def create_info_table_in_result_db(self):
@@ -401,20 +430,30 @@ class Runner(object):
         self.result_db_conn.execute(q)
         self.result_db_conn.commit()
 
+    def create_err_table_in_result_db(self):
+        if not self.result_db_conn:
+            return
+        q = f"drop table if exists err"
+        self.result_db_conn.execute(q)
+        q = f"create table err (fileno int, lineno int, uid int, err text)"
+        self.result_db_conn.execute(q)
+        self.result_db_conn.commit()
+
     def create_auxiliary_tables_in_result_db(self, converter: BaseConverter):
         if not self.result_db_conn:
             return
         self.create_info_table_in_result_db()
         self.create_info_modules_table_in_result_db()
         self.create_info_headers_table_in_result_db(converter)
+        self.create_err_table_in_result_db()
 
-    def save_df(self, df: pl.DataFrame, table_col_names: List[str]):
+    def save_df(self, level: str, df: pl.DataFrame, table_col_names: Dict[str, List[str]]):
     #def save_df(self, df: pl.DataFrame, run_no: int):
         if self.result_db_conn is None:
             return
-        table_col_names_str = ", ".join(table_col_names)
-        values_str = ", ".join(["?"] * len(table_col_names))
-        q = f"insert into variant ({table_col_names_str}) values ({values_str})"
+        table_col_names_str = ", ".join(table_col_names[level])
+        values_str = ", ".join(["?"] * len(table_col_names[level]))
+        q = f"insert into {level} ({table_col_names_str}) values ({values_str})"
         for row in df.iter_rows():
             self.result_db_conn.execute(q, row)
         self.result_db_conn.commit()
@@ -425,47 +464,144 @@ class Runner(object):
         #output_path = Path(output_dir) / output_fn
         #df.write_parquet(output_path)
 
+    def rename_base_columns_in_result_database(self, table_col_names: List[str]):
+        if self.result_db_conn is None:
+            return
+        for col_name in table_col_names:
+            if "__" not in col_name:
+                new_col_name = f"base__{col_name}"
+                self.result_db_conn.execute(f"alter table variant rename {col_name} to {new_col_name}")
+        self.result_db_conn.commit()
+
+    def create_result_database(self, dbpath: Path, converter: BaseConverter):
+        coldefs, result_table_names = self.collect_output_coldefs(converter)
+        self.open_result_database(dbpath)
+        self.create_tables_in_result_db(coldefs, result_table_names)
+        self.create_auxiliary_tables_in_result_db(converter)
+        self.close_result_database()
+
     def process_file(self, run_no: int, save_size: int=DEFAULT_DF_SIZE):
+        import ray
         from ..exceptions import NoConverterFound
         from ..consts import DEFAULT_CONVERTER_READ_SIZE
+        from .pool_worker import OakVarRunner
+        from ..util.run import update_status
+        from .converter import VALID
+        from .converter import ERROR
+        from .converter import NO_ALLELE
 
-        self.open_result_database(run_no)
-        self.drop_result_variant_table()
+        if self.mapper_name is None:
+            return
+        self.load_mapper()
+        self.load_annotators()
         input_paths = self.input_paths[run_no]
         converter = self.choose_converter(input_paths)
         if converter is None:
             raise NoConverterFound(input_paths)
-        samples = self.samples or converter.collect_samples(input_paths)
-        coldefs = self.collect_output_columns(converter)
-        table_col_names = self.create_variant_table_in_result_db(coldefs)
-        self.create_auxiliary_tables_in_result_db(converter)
+        dbpath = self.get_dbpath(run_no)
+        self.create_result_database(dbpath, converter)
         self.do_step_preparer(run_no)
-        df: Optional[pl.DataFrame] = None
-        #partition_no: int = 0
         if save_size < DEFAULT_CONVERTER_READ_SIZE:
             converter_read_size = save_size
         else:
             converter_read_size = DEFAULT_CONVERTER_READ_SIZE
-        for df_frag in converter.iter_df_chunk(input_paths, samples=samples, size=converter_read_size):
-            if df_frag is not None:
-                df_frag = self.do_step_mapper(df_frag)
-                df_frag = self.do_step_annotator(df_frag)
-                if df is None:
-                    df = df_frag
-                else:
-                    df.vstack(df_frag, in_place=True)
-                if df.height >= save_size:
-                    self.save_df(df, table_col_names=table_col_names)
-                    df = None
-                    #partition_no += 1
-        if df is not None:
-            self.save_df(df, table_col_names=table_col_names)
-            df = None
-            #partition_no += 1
-        self.write_info_table(run_no, converter)
-        self.close_result_database()
-        self.do_step_postaggregator(run_no)
+        if self.num_core > 1:
+            self.make_pool(converter.name)
+            for actor_num, runner in enumerate(self.pool):
+                runner.setup_df.remote(input_paths, samples=converter.samples)
+            uid_offset: int = 0
+            for fileno, input_path in enumerate(input_paths):
+                update_status(
+                    f"Starting to process: {input_path}",
+                    logger=self.logger,
+                    serveradmindb=self.serveradmindb,
+                )
+                for actor_num, runner in enumerate(self.pool):
+                    runner.setup_df_file.remote(input_path, fileno)
+                start_line_no: int = 1
+                while True:
+                    update_status(
+                        f"Processing: {input_path} line {start_line_no}",
+                        logger=self.logger,
+                        serveradmindb=self.serveradmindb,
+                    )
+                    lines_data, has_more_data, start_line_no = converter.get_variant_lines(input_path, self.num_core, start_line_no, converter_read_size)
+                    lines_data_ref = ray.put(lines_data)
+                    rets = []
+                    for actor_num, runner in enumerate(self.pool):
+                        r = runner.run_df.remote(actor_num, lines_data_ref, 1, fileno)
+                        rets.append(r)
+                    for actor_num, (r1, runner) in enumerate(zip(rets, self.pool)):
+                        ray.get(r1)
+                        uid_offset = ray.get(runner.renumber_uid.remote(uid_offset)) # type: ignore
+                        ray.get(runner.save_df.remote(dbpath, use_duckdb=self.args.use_duckdb))
+                    if has_more_data is False:
+                        break
+                conversion_stats: Optional[Dict[str, int]] = None
+                for actor_num, runner in enumerate(self.pool):
+                    r: Dict[str, int] = ray.get(runner.get_conversion_stats.remote()) # type: ignore
+                    if conversion_stats is None:
+                        conversion_stats = r
+                    else:
+                        conversion_stats[VALID] += r[VALID]
+                        conversion_stats[ERROR] += r[ERROR]
+                        conversion_stats[NO_ALLELE] += r[NO_ALLELE]
+                converter.log_conversion_stats(conversion_stats=conversion_stats)
+                update_status(
+                    f"Made {dbpath}",
+                    logger=self.logger,
+                    serveradmindb=self.serveradmindb,
+                )
+            self.delete_pool()
+        else:
+            runner = OakVarRunner(converter, self.mapper_i[0], self.annotators_i)
+            runner.setup_df(input_paths)
+            uid_offset: int = 0
+            for fileno, input_path in enumerate(input_paths):
+                update_status(
+                    f"Starting to process: {input_path}",
+                    logger=self.logger,
+                    serveradmindb=self.serveradmindb,
+                )
+                runner.setup_df_file(input_path, fileno)
+                start_line_no: int = 1
+                while True:
+                    update_status(
+                        f"Processing: {input_path} line {start_line_no}",
+                        logger=self.logger,
+                        serveradmindb=self.serveradmindb,
+                    )
+                    lines_data, has_more_data, start_line_no = converter.get_variant_lines(input_path, 1, start_line_no, converter_read_size)
+                    runner.run_df(lines_data[0], 1, fileno)
+                    uid_offset = runner.renumber_uid(uid_offset)
+                    runner.save_df(dbpath, use_duckdb=self.args.use_duckdb)
+                    if has_more_data is False:
+                        break
+                converter.log_conversion_stats()
+                update_status(
+                    f"Made {dbpath}",
+                    logger=self.logger,
+                    serveradmindb=self.serveradmindb,
+                )
+                self.do_step_postaggregator(run_no)
+        self.write_info_table(run_no, dbpath, converter)
+        return
+        self.rename_base_columns_in_result_database(table_col_names)
         self.do_step_reporter(run_no)
+
+    def make_pool(self, converter_name: str):
+        from .pool_worker import MultiRunner
+
+        if not self.mapper_name:
+            return
+        self.pool = []
+        for _ in range(self.num_core):
+            self.pool.append(MultiRunner.remote(converter_name, self.mapper_name, self.annotator_names, self.ignore_sample, self.run_conf))
+
+    def delete_pool(self):
+        import ray
+
+        ray.shutdown()
 
     def main(self) -> Optional[Dict[str, Any]]:
         from time import time, asctime, localtime
@@ -477,10 +613,8 @@ class Runner(object):
         if not self.args:
             raise
         self.sanity_check_run_name_output_dir()
-        self.load_wgs_reader()
-        self.load_mapper()
-        self.load_annotators()
-        self.setup_manager()
+        self.make_annotators_to_run()
+        #self.setup_manager()
         for run_no in range(len(self.run_name)):
             try:
                 self.start_log(run_no)
@@ -593,6 +727,7 @@ class Runner(object):
                 self.outer.write("--vcf2vcf is used. --combine-input is disabled.")
             self.args.combine_input = False
         self.process_module_options()
+        self.num_core = self.get_num_workers()
 
     def connect_admindb_if_needed(self, run_no: int):
         from ...gui.serveradmindb import ServerAdminDb
@@ -696,7 +831,7 @@ class Runner(object):
                 self.output_dir = [cwd]
         else:
             self.output_dir = [
-                str(Path(inp[0] + ".ov").resolve()) for inp in self.input_paths
+                str(Path(inp[0]).parent.resolve()) for inp in self.input_paths
             ]
         for output_dir in self.output_dir:
             if not Path(output_dir).exists():
@@ -716,18 +851,38 @@ class Runner(object):
         else:
             self.package_conf = {}
 
-    def get_unique_run_name(self, output_dir: str, run_name: str):
+    def get_dbpath(self, run_no: int) -> Path:
+        output_dir: str = self.output_dir[run_no]
+        run_name: str = self.run_name[run_no]
+        if self.args.use_duckdb:
+            return self.get_duckdb_dbpath(output_dir, run_name)
+        else:
+            return self.get_sqlite_dbpath(output_dir, run_name)
+
+    def get_duckdb_dbpath(self, output_dir: str, run_name: str):
+        from ..consts import RESULT_DB_SUFFIX_DUCKDB
+
+        dbpath_p = Path(output_dir) / f"{run_name}{RESULT_DB_SUFFIX_DUCKDB}"
+        return dbpath_p
+
+    def get_sqlite_dbpath(self, output_dir: str, run_name: str):
+        from ..consts import RESULT_DB_SUFFIX_SQLITE
+
+        dbpath_p = Path(output_dir) / f"{run_name}{RESULT_DB_SUFFIX_SQLITE}"
+        return dbpath_p
+
+    def get_unique_run_name(self, run_no: int):
         from pathlib import Path
         from ..consts import RESULT_DB_SUFFIX_DUCKDB
         from ..consts import RESULT_DB_SUFFIX_SQLITE
 
-        if not self.output_dir:
-            return run_name
         if self.args.use_duckdb:
             suffix = RESULT_DB_SUFFIX_DUCKDB
         else:
             suffix = RESULT_DB_SUFFIX_SQLITE
-        dbpath_p = Path(output_dir) / f"{run_name}{suffix}"
+        dbpath_p = self.get_dbpath(run_no)
+        output_dir: str = self.output_dir[run_no]
+        run_name: str = self.run_name[run_no]
         if not dbpath_p.exists():
             return run_name
         count = 0
@@ -749,9 +904,7 @@ class Runner(object):
                 run_name = p.name
                 if len(inp_l) > 1:
                     run_name = run_name + "_etc"
-                    run_name = self.get_unique_run_name(
-                        self.output_dir[0], run_name
-                    )
+                    run_name = self.get_unique_run_name(0)
                 self.run_name.append(run_name)
         else:
             if self.args.combine_input:
@@ -1136,13 +1289,9 @@ class Runner(object):
                 ret.insert(0, module_name)
             self.prepend_secondary_annotator_names(module_name, ret)
 
-    def annotator_columns_missing(self, module: LocalModule, df_cols: List[str]) -> bool:
-        cols_to_check = module.conf.get("output_columns", {}).keys()
-        tf_l = [v in df_cols for v in cols_to_check]
-        return False in tf_l
-
     def get_secondary_module_names(self, primary_module_name: str) -> List[str]:
         from ..module.local import get_local_module_info
+        from ..module.local import LocalModule
 
         module:  Optional[LocalModule] = get_local_module_info(primary_module_name)
         if not module:
@@ -1158,7 +1307,7 @@ class Runner(object):
         from psutil import cpu_count
 
         num_workers = get_max_num_concurrent_modules_per_job()
-        if self.args and self.args.mp:
+        if self.args.mp:
             try:
                 self.args.mp = int(self.args.mp)
                 if self.args.mp >= 1:
@@ -1166,7 +1315,7 @@ class Runner(object):
             except Exception:
                 if self.logger:
                     self.logger.exception(
-                        f"error handling --mp argument: {self.args.mp}"
+                        f"Invalid --mp argument: {self.args.mp}"
                     )
         if not num_workers:
             num_workers = cpu_count()
@@ -1270,13 +1419,6 @@ class Runner(object):
         output_dir = self.output_dir[run_no]
         return run_name, output_dir
 
-    def get_dbpath(self, run_no: int):
-        from pathlib import Path
-
-        run_name, output_dir = self.get_run_name_output_dir_by_run_no(run_no)
-        dbpath = str(Path(output_dir) / (run_name + ".sqlite"))
-        return dbpath
-
     def write_info_row(self, key: str, value: Any):
         import json
 
@@ -1286,19 +1428,6 @@ class Runner(object):
         if isinstance(value, list) or isinstance(value, dict):
             value = json.dumps(value)
         self.result_db_conn.execute(q, (key, value))
-
-    def get_input_paths_from_mapping_file(self, run_no: int) -> Optional[dict]:
-        from pathlib import Path
-        import json
-        from ..consts import MAPPING_FILE_SUFFIX
-
-        run_name, output_dir = self.get_run_name_output_dir_by_run_no(run_no)
-        f = open(Path(output_dir) / (run_name + MAPPING_FILE_SUFFIX))
-        for line in f:
-            if line.startswith("#input_paths="):
-                new_line = "=".join(line.strip().split("=")[1:])
-                input_paths = json.loads(new_line)
-                return input_paths
 
     def refresh_info_table_modified_time(self):
         from datetime import datetime
@@ -1327,8 +1456,6 @@ class Runner(object):
 
         if self.result_db_conn is None:
             return
-        if not self.job_name or not self.args:
-            raise
         inputs = self.input_paths[run_no]
         job_name = self.job_name[run_no]
         created = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1343,10 +1470,8 @@ class Runner(object):
         self.write_info_row("num_variants", num_input)
         self.write_info_row("oakvar", self.pkg_ver)
         mapper_conf = self.mapper_i[0].conf
-        mapper_title = mapper_conf.get("title")
         mapper_version = mapper_conf.get("version", mapper_conf.get("code_version"))
-        gene_mapper_str = f"{mapper_title}=={mapper_version}"
-        self.write_info_row("mapper", gene_mapper_str)
+        self.write_info_row("mapper", [f"{self.mapper_name}=={mapper_version}"])
         input_paths = self.input_paths[run_no]
         self.write_info_row("input_paths", input_paths)
         self.write_info_row(
@@ -1354,13 +1479,14 @@ class Runner(object):
         )
         self.write_info_row("job_name", job_name)
         self.write_info_row("converter_format", converter.format_name)
+        self.write_info_row("annotators", [f"{m.module_name}=={m.conf['version']}" for m in self.annotators_i])
         self.result_db_conn.commit()
 
-    def write_info_table(self, run_no: int, converter: BaseConverter):
-        if not self.result_db_conn:
-            return
+    def write_info_table(self, run_no: int, dbpath: Path, converter: BaseConverter):
+        self.open_result_database(dbpath)
         self.refresh_info_table_modified_time()
         self.write_info_table_create_data_if_needed(run_no, converter)
+        self.close_result_database()
 
     def clean_up_at_end(self, run_no: int):
         from os import listdir
@@ -1374,7 +1500,6 @@ class Runner(object):
         from ..consts import VARIANT_LEVEL_MAPPED_FILE_SUFFIX
         from ..consts import GENE_LEVEL_MAPPED_FILE_SUFFIX
         from ..consts import SAMPLE_FILE_SUFFIX
-        from ..consts import MAPPING_FILE_SUFFIX
         from ..consts import ERROR_LOG_SUFFIX
 
         if (
@@ -1388,7 +1513,7 @@ class Runner(object):
         output_dir = self.output_dir[run_no]
         fns = listdir(output_dir)
         pattern = compile(
-            f"{run_name}(\\..*({VARIANT_LEVEL_OUTPUT_SUFFIX}|{GENE_LEVEL_OUTPUT_SUFFIX})|({STANDARD_INPUT_FILE_SUFFIX}|{VARIANT_LEVEL_MAPPED_FILE_SUFFIX}|{GENE_LEVEL_MAPPED_FILE_SUFFIX}|{SAMPLE_FILE_SUFFIX}|{MAPPING_FILE_SUFFIX}))"
+            f"{run_name}(\\..*({VARIANT_LEVEL_OUTPUT_SUFFIX}|{GENE_LEVEL_OUTPUT_SUFFIX})|({STANDARD_INPUT_FILE_SUFFIX}|{VARIANT_LEVEL_MAPPED_FILE_SUFFIX}|{GENE_LEVEL_MAPPED_FILE_SUFFIX}|{SAMPLE_FILE_SUFFIX}))"
         )
         error_logger_pattern = compile(f"{run_name}{ERROR_LOG_SUFFIX}")
         for fn in fns:
@@ -1681,7 +1806,7 @@ class Runner(object):
             module_infos = list(get_local_module_infos_of_type("converter").values())
         for module_info in module_infos:
             try:
-                converter = get_converter(module_info.name, wgs_reader=self.wgs_reader, ignore_sample=self.ignore_sample, module_options=self.run_conf.get(module_info.name, {}))
+                converter = get_converter(module_info.name, ignore_sample=self.ignore_sample, module_options=self.run_conf.get(module_info.name, {}))
             except Exception as e:
                 if self.logger:
                     self.logger.error(f"{traceback.format_exc()}\nSkipping {module_info.name} as it could not be loaded. ({e})")
@@ -1697,38 +1822,39 @@ class Runner(object):
                 break
         if chosen_converter:
             if self.logger:
+                self.logger.info(f"module: {chosen_converter.name}=={chosen_converter.code_version}")
                 self.logger.info(f"Using {chosen_converter.name} for {' '.join(input_paths)}")
+            self.samples = self.samples or chosen_converter.collect_samples(input_paths)
+            chosen_converter.make_sample_output_columns(self.samples)
             return chosen_converter
 
-    def load_wgs_reader(self):
-        from ..util.seq import get_wgs_reader
-
-        self.wgs_reader = get_wgs_reader()
-
-    def load_mapper(self):
-        from ..util.module import get_mapper
-
-        if not self.mapper:
-            return
-        self.mapper_i = [get_mapper(self.mapper.name, wgs_reader=self.wgs_reader)]
-
-    def load_annotators(self, df: Optional[pl.DataFrame]=None):
-        from ..util.module import get_annotator
-
+    def make_annotators_to_run(self):
         self.done_annotators = []
-        if df is not None:
-            df_cols = df.columns
-            for mname, module in self.annotators.items():
-                if not self.annotator_columns_missing(module, df_cols):
-                    self.done_annotators.append(mname)
         self.annotators_to_run = {
             aname: self.annotators[aname]
             for aname in set(self.annotators) - set(self.done_annotators)
         }
-        self.annotators_i = []
-        for module_name, module in self.annotators_to_run.items():
-            module = get_annotator(module_name)
-            self.annotators_i.append(module)
+
+    def mapper_run_df_wrapper(self, args: Tuple[BaseMapper, Dict[str, pl.DataFrame]]):
+        fn, dfs = args
+        return fn.run_df(dfs)
+
+    def annotator_run_df_wrapper(self, args: Tuple[BaseAnnotator, Dict[str, pl.DataFrame]]):
+        fn, dfs = args
+        return fn.run_df(dfs)
+
+    def load_mapper(self):
+        from ..util.module import get_mapper
+
+        self.mapper_i = [get_mapper(self.mapper_name)]
+
+    def load_annotators(self):
+        from ..util.module import get_annotator
+        from .annotator import BaseAnnotator
+
+        self.annotators_i: List[BaseAnnotator] = []
+        for module_name in self.annotator_names:
+            self.annotators_i.append(get_annotator(module_name))
 
     def do_step_preparer(self, run_no: int):
         step = "preparer"
@@ -1736,15 +1862,14 @@ class Runner(object):
             return
         self.log_time_of_func(self.run_preparers, run_no, work=f"{step} step")
 
-    def do_step_mapper(self, df: pl.DataFrame) -> pl.DataFrame:
-        for module in self.mapper_i:
-            df = module.run_df(df)
-        return df
+    def do_step_mapper(self, dfs: Dict[str, pl.DataFrame]) -> Dict[str, pl.DataFrame]:
+        dfs = self.mapper_i[0].run_df(dfs)
+        return dfs
 
-    def do_step_annotator(self, df: pl.DataFrame) -> pl.DataFrame:
+    def do_step_annotator(self, dfs: Dict[str, pl.DataFrame]) -> Dict[str, pl.DataFrame]:
         for module in self.annotators_i:
-            df = module.run_df(df)
-        return df
+            dfs = module.run_df(dfs)
+        return dfs
 
     def do_step_postaggregator(self, run_no: int):
         step = "postaggregator"
