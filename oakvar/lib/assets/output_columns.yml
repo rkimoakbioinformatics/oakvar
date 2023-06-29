@@ -34,6 +34,18 @@ variant:
       title: Tags
       type: string
       width: 50
+    - name: ori_pos
+      title: Original input position
+      type: int
+    - name: ori_end_pos
+      title: Original input end position
+      type: int
+    - name: ori_ref_base
+      title: Original input reference bases
+      type: string
+    - name: ori_alt_base
+      title: Original input alternate bases
+      type: string
     - name: fileno
       title: Input file number
       type: int
@@ -45,7 +57,7 @@ sample:
   output_columns:
     - name: uid
       title: Variant ID
-      type: string
+      type: int
 err:
   level: variant
   output_columns:
@@ -58,6 +70,9 @@ err:
     - name: uid
       title: Variant ID
       type: int
+    - name: errno
+      title: Error no
+      type: int64
     - name: err
       title: Error message
       type: string

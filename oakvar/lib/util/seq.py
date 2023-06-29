@@ -361,7 +361,7 @@ def liftover(
     lifter=None,
     source_assembly: Optional[int] = None,
     wgs_reader=None,
-):
+) -> Tuple[str, int, Optional[str], Optional[str]]:
     """liftover.
 
     Args:
@@ -383,10 +383,10 @@ def liftover(
         lifter = get_lifter(source_assembly)
     if not lifter:
         raise ValueError(f"LiftOver not found for {source_assembly}")
-    if ref is None:
+    if ref is None or alt is None:
         converted = liftover_one_pos(chrom, pos, lifter=lifter)
         if converted is None:
-            raise LiftoverFailure("Liftover failure")
+            raise LiftoverFailure(f"Liftover failure")
         newchrom = converted[0]
         newpos = converted[1]
         if get_ref:
@@ -397,44 +397,53 @@ def liftover(
                         "No wgs_reader was given. Use oakvar.get_wgs_reader to get one."
                     )
             ref = wgs_reader.get_bases(newchrom, newpos).upper()  # type: ignore
-        return [newchrom, newpos, ref, alt]
+        return newchrom, newpos, ref, alt
     reflen = len(ref)
-    altlen = len(alt) if alt else 1
-    if reflen == 1 and altlen == 1:
-        converted = liftover_one_pos(chrom, pos, lifter=lifter)
-        if converted is None:
-            raise LiftoverFailure("Liftover failure")
-        newchrom = converted[0]
-        newpos = converted[1]
-    elif reflen >= 1 and altlen == 0:  # del
+    altlen = len(alt)
+    refempty = (ref == "-")
+    altempty = (alt == "-")
+    if not refempty and not altempty:
+        if reflen == 1 and altlen == 1:
+            converted = liftover_one_pos(chrom, pos, lifter=lifter)
+            if converted is None:
+                raise LiftoverFailure(f"Liftover failure")
+            newchrom = converted[0]
+            newpos = converted[1]
+        else:
+            pos1 = pos
+            pos2 = pos + reflen - 1
+            converted1 = liftover_one_pos(chrom, pos1, lifter=lifter)
+            converted2 = liftover_one_pos(chrom, pos2, lifter=lifter)
+            if converted1 is None:
+                raise LiftoverFailure(f"Liftover failure")
+            elif converted2 is None:
+                raise LiftoverFailure(f"Liftover failure")
+            newchrom1 = converted1[0]
+            newpos1 = converted1[1]
+            newpos2 = converted2[1]
+            newchrom = newchrom1
+            newpos = min(newpos1, newpos2)
+    elif not refempty and altempty:  # del
         pos1 = pos
         pos2 = pos + reflen - 1
         converted1 = liftover_one_pos(chrom, pos1, lifter=lifter)
         converted2 = liftover_one_pos(chrom, pos2, lifter=lifter)
-        if converted1 is None or converted2 is None:
-            raise LiftoverFailure("Liftover failure")
+        if converted1 is None:
+            raise LiftoverFailure(f"Liftover failure")
+        elif converted2 is None:
+            raise LiftoverFailure(f"Liftover failure")
         newchrom = converted1[0]
         newpos1 = converted1[1]
         newpos2 = converted2[1]
         newpos = min(newpos1, newpos2)
-    elif reflen == 0 and altlen >= 1:  # ins
+    elif refempty and not altempty:  # ins
         converted = liftover_one_pos(chrom, pos, lifter=lifter)
         if converted is None:
-            raise LiftoverFailure("Liftover failure")
+            raise LiftoverFailure(f"Liftover failure")
         newchrom = converted[0]
         newpos = converted[1]
     else:
-        pos1 = pos
-        pos2 = pos + reflen - 1
-        converted1 = liftover_one_pos(chrom, pos1, lifter=lifter)
-        converted2 = liftover_one_pos(chrom, pos2, lifter=lifter)
-        if converted1 is None or converted2 is None:
-            raise LiftoverFailure("Liftover failure")
-        newchrom1 = converted1[0]
-        newpos1 = converted1[1]
-        newpos2 = converted2[1]
-        newchrom = newchrom1
-        newpos = min(newpos1, newpos2)
+        raise
     if not wgs_reader:
         wgs_reader = get_wgs_reader()
         if not wgs_reader:
@@ -448,7 +457,7 @@ def liftover(
     else:  # same strand
         newref = ref
         newalt = alt
-    return [newchrom, newpos, newref, newalt]
+    return newchrom, newpos, newref, newalt
 
 
 def get_wgs_reader(assembly=SYSTEM_GENOME_ASSEMBLY) -> BaseCommonModule:

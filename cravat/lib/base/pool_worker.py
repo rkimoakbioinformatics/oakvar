@@ -1,1 +1,1 @@
-from oakvar.lib.base.pool_worker import *
+from oakvar.lib.base.worker import *

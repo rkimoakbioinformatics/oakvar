@@ -2,9 +2,10 @@ from typing import Optional
 from typing import Any
 from typing import Tuple
 from typing import List
-from typing import Set
 from typing import Dict
+from typing import Set
 import polars as pl
+
 from .commonmodule import BaseCommonModule
 
 
@@ -55,11 +56,10 @@ class BaseConverter(object):
         from multiprocessing.pool import ThreadPool
         from oakvar.lib.module.local import get_module_conf
         from oakvar.lib.util.util import get_ov_system_output_columns
+        from ..consts import DEFAULT_CONVERTER_READ_SIZE
 
         self.logger = None
         self.converters = {}
-        self.input_path_dict = {}
-        self.input_path_dict2 = {}
         self.output_base_fname: Optional[str] = None
         self.error_logger = None
         self.unique_excs: Dict[str, int] = {}
@@ -68,19 +68,18 @@ class BaseConverter(object):
         self.crm_path = None
         self.crs_path = None
         self.crl_path = None
-        self.do_liftover = None
-        self.do_liftover_chrM = None
-        self.input_assembly: Optional[int] = None
+        self.do_liftover: bool = False
+        self.do_liftover_chrM: bool = False
         self.uid: int = 0
         self.read_lnum: int = 0
         self.lifter = None
         self.module_options = None
+        self.input_assembly: Optional[int] = None
         self.given_input_assembly: Optional[str] = genome
         self.converter_by_input_path: Dict[str, Optional[BaseConverter]] = {}
-        self.file_num_valid_variants: Dict[int, int] = {}
-        self.file_error_lines: Dict[int, int] = {}
         self.num_valid_error_lines: Dict[str, int] = {}
         self.fileno = 0
+        self.batch_size: int = DEFAULT_CONVERTER_READ_SIZE
         self.module_options = module_options
         self.serveradmindb = serveradmindb
         self.input_encoding = input_encoding
@@ -96,16 +95,13 @@ class BaseConverter(object):
             "chr23": "chrX",
             "chr24": "chrY",
         }
-        self.chrom_colno: int = -1
-        self.pos_colno: int = -1
-        self.end_pos_colno: int = -1
-        self.ref_base_colno: int = -1
-        self.alt_base_colno: int = -1
         self.script_path = Path(inspect.getfile(self.__class__))
         self.module_type = "converter"
         self.ignore_sample: bool = ignore_sample
         self.header_num_line: int = 0
         self.line_no: int = 0
+        self.samples: List[str] = []
+        self.start_line_no: int = 1
         self.wgs_reader = wgs_reader
         self.name: str = self.script_path.stem
         self.conf: Dict[str, Any] = (
@@ -120,9 +116,11 @@ class BaseConverter(object):
         self.setup_logger()
         self.time_error_written: float = 0
         self.module_type = "converter"
+        self.input_paths: List[str] = []
         self.input_path: str = ""
+        self.input_fname: str = ""
         self.pool: Optional[ThreadPool] = None
-        self.df_headers: Dict[str, List[Dict[str, Any]]] = {}
+        self.df_headers: Dict[str, Dict[str, pl.PolarsDataType]] = {}
         self.c: int = 0
         self.title = title
         if self.title:
@@ -151,34 +149,43 @@ class BaseConverter(object):
         pass
 
     def get_variant_lines(
-        self, input_path: str, mp: int, start_line_no: int, batch_size: int
-    ) -> Tuple[Dict[int, List[Tuple[str, int]]], bool, int]:
+        self, input_path: str = "", num_core: int = 1, start_line_no: Optional[int] = None, batch_size: Optional[int] = None
+    ) -> Tuple[Dict[int, List[Tuple[str, int]]], bool]:
         import linecache
 
-        immature_exit: bool = False
-        line_no: int = start_line_no
-        end_line_no = line_no + mp * batch_size - 1
-        lines: Dict[int, List[Tuple[str, int]]] = {i: [] for i in range(mp)}
+        if input_path:
+            self.input_path = input_path
+        if batch_size:
+            self.batch_size = batch_size
+        has_more_data: bool = False
+        line_no: int
+        if start_line_no is not None:
+            line_no = start_line_no
+        else:
+            line_no = self.start_line_no
+        end_line_no = line_no + num_core * self.batch_size - 1
+        lines: Dict[int, List[Tuple[str, int]]] = {i: [] for i in range(num_core)}
         chunk_no: int = 0
         chunk_size: int = 0
         while True:
-            line = linecache.getline(input_path, line_no)
+            line = linecache.getline(self.input_path, line_no)
             if not line:
-                immature_exit = False
+                has_more_data = False
                 break
             line = line[:-1]
             lines[chunk_no].append((line, line_no))
             chunk_size += 1
             if line_no >= end_line_no:
-                immature_exit = True
+                has_more_data = True
                 line_no += 1
                 break
             else:
-                if chunk_size >= batch_size:
+                if chunk_size >= self.batch_size:
                     chunk_no += 1
                     chunk_size = 0
                 line_no += 1
-        return lines, immature_exit, line_no
+        self.start_line_no = line_no
+        return lines, has_more_data
 
     def write_extra_info(self, _: dict):
         pass
@@ -195,12 +202,12 @@ class BaseConverter(object):
 
         create_module_files(self, overwrite=overwrite, interactive=interactive)
 
-    def get_do_liftover_chrM(self, genome_assembly, input_path: str, do_liftover):
+    def get_do_liftover_chrM(self, genome_assembly, input_path: str, do_liftover: bool):
         _ = genome_assembly or input_path 
         return do_liftover
 
     def set_do_liftover(self, genome_assembly, input_path: str):
-        self.do_liftover = genome_assembly != 38
+        self.do_liftover: bool = (genome_assembly != 38)
         self.do_liftover_chrM = self.get_do_liftover_chrM(
             genome_assembly, input_path, self.do_liftover
         )
@@ -226,15 +233,31 @@ class BaseConverter(object):
         self.logger.info(f"input format: {self.format_name}")
         self.logger.info(f"genome_assembly: {genome_assembly}")
 
-    def setup(self, input_path: str, encoding="utf-8"):
-        _ = input_path or encoding
-        pass
+    def setup_df(self, input_paths: List[str], samples: Optional[List[str]] = None, batch_size: Optional[int] = None):
+        from ..util.run import get_df_headers
 
-    def setup_file(self, input_path: str):
+        self.input_paths = input_paths
+        if batch_size:
+            self.batch_size = batch_size
+        if samples is None:
+            if len(self.samples) == 0 and not self.ignore_sample:
+                self.collect_samples(input_paths)
+                self.make_sample_output_columns()
+        else:
+            self.samples = sorted(samples)
+            self.make_sample_output_columns()
+        self.set_variables_pre_run()
+        self.df_headers = get_df_headers(self.output)
+
+    def setup_file(self, input_path: str, fileno: int = 0):
+        from pathlib import Path
         from oakvar.lib.util.util import log_module
 
-        log_module(self, self.logger)
         self.input_path = input_path
+        self.input_fname = Path(input_path).name
+        self.fileno = fileno
+        self.num_valid_error_lines = {VALID: 0, ERROR: 0, NO_ALLELE: 0}
+        log_module(self, self.logger)
         self.detect_encoding_of_input_path(input_path)
         self.setup(input_path)
         genome_assembly = self.get_genome_assembly()
@@ -244,8 +267,12 @@ class BaseConverter(object):
         if self.do_liftover or self.do_liftover_chrM:
             self.setup_lifter(genome_assembly)
 
+    def setup(self, input_path: str, encoding="utf-8"):
+        _ = input_path or encoding
+        pass
+
     def get_genome_assembly(self) -> int:
-        from oakvar.lib.system.consts import default_assembly_key
+        from oakvar.lib.system.consts import DEFAULT_ASSEMBLY_KEY
         from oakvar.lib.exceptions import NoGenomeException
         from oakvar.lib.system import get_user_conf
 
@@ -255,7 +282,7 @@ class BaseConverter(object):
             input_assembly = self.input_assembly
         else:
             user_conf = get_user_conf() or {}
-            input_assembly = user_conf.get(default_assembly_key, None)
+            input_assembly = user_conf.get(DEFAULT_ASSEMBLY_KEY, None)
             if not input_assembly:
                 raise NoGenomeException()
         if not isinstance(input_assembly, int):
@@ -328,9 +355,10 @@ class BaseConverter(object):
             new_ref,
             new_alt,
         ) = normalize_variant_left("+", p, r, a)
-        variant["pos"] = new_pos
-        variant["ref_base"] = new_ref
-        variant["alt_base"] = new_alt
+        variant[POS] = new_pos
+        variant[REF_BASE] = new_ref
+        variant[ALT_BASE] = new_alt
+        variant[END_POS] = new_pos + len(new_ref) - 1
 
     def add_unique_variant(self, variant: dict, unique_variants: set):
         var_str = (
@@ -352,15 +380,15 @@ class BaseConverter(object):
             else:
                 variant[col_name] = variant["pos"] + ref_len - 1
 
-    def get_dfs(self, fileno: int, lines_data: List[Tuple[str, int]], uid_start: int) -> Dict[str, pl.DataFrame]:
-        converted_data, max_idx = self.collect_converted_datas(fileno, lines_data)
-        dfs = self.make_dfs_from_converted_datas(converted_data, max_idx, uid_start, fileno)
+    def get_dfs(self, lines_data: List[Tuple[str, int]]) -> Dict[str, pl.DataFrame]:
+        converted_data, max_idx = self.collect_converted_datas(lines_data)
+        dfs = self.make_dfs_from_converted_datas(converted_data, max_idx)
         return dfs
 
-    def collect_converted_datas(self, fileno: int, lines_data: List[Tuple[str, int]]) -> Tuple[Dict[str, Dict[str, List[Any]]], int]:
+    def collect_converted_datas(self, lines_data: List[Tuple[str, int]]) -> Tuple[Dict[str, Dict[str, List[Any]]], int]:
         from oakvar.lib.consts import VARIANT_LEVEL
         from oakvar.lib.consts import ERR_LEVEL
-        from oakvar.lib.consts import LINE_NO_KEY
+        from oakvar.lib.consts import LINENO_KEY
 
         COLLECT_MARGIN: float = 1.2
         size: int = int(len(lines_data) * COLLECT_MARGIN)
@@ -372,9 +400,9 @@ class BaseConverter(object):
                     converted_data = self.convert_line(line)
                     if not converted_data:
                         continue
-                    self.process_converted_data(converted_data, series_data, fileno, line_no)
+                    self.process_converted_data(converted_data, series_data, line_no)
                 except Exception as e:
-                    self.log_conversion_error(e, series_data[ERR_LEVEL], fileno=fileno, lineno=line_no)
+                    self.log_error(e, series_data[ERR_LEVEL], lineno=line_no)
                     self.num_valid_error_lines[ERROR] += 1
                     continue
                 if len(converted_data[VARIANT_LEVEL]) == 0:
@@ -385,26 +413,25 @@ class BaseConverter(object):
                         for d in table_data: 
                             for col_name, col_value in d.items():
                                 series_data[table_name][col_name][c] = col_value
-                    series_data[VARIANT_LEVEL][LINE_NO_KEY][c] = line_no
+                    series_data[VARIANT_LEVEL][LINENO_KEY][c] = line_no
                 else:
                     for table_name, table_data in converted_data.items():
                         for d in table_data: 
                             for col_name, col_value in d.items():
                                 series_data[table_name][col_name].append(col_value)
-                    series_data[VARIANT_LEVEL][LINE_NO_KEY].append(line_no)
+                    series_data[VARIANT_LEVEL][LINENO_KEY].append(line_no)
                 self.num_valid_error_lines[VALID] += 1
                 c += 1
             except KeyboardInterrupt:
                 raise
             except Exception as e:
-                self.log_conversion_error(e, series_data[ERR_LEVEL], fileno=fileno, lineno=line_no)
+                self.log_error(e, series_data[ERR_LEVEL], lineno=line_no)
                 self.num_valid_error_lines[ERROR] += 1
         return series_data, c
 
     def process_converted_data(self,
             converted_data: Dict[str, List[Dict[str, Any]]],
             series_data: Dict[str, Dict[str, List[Any]]],
-            fileno: int,
             lineno: int
     ):
         from ..consts import VARIANT_LEVEL
@@ -418,16 +445,17 @@ class BaseConverter(object):
         while c < max_c:
             d_var = ld_var[c]
             try:
-                self.handle_variant(d_var)
+                self.process_variant(d_var)
                 c += 1
             except Exception as e:
                 del ld_var[c]
                 del ld_spl[c]
                 max_c = max_c - 1
-                self.log_conversion_error(e, series_data[ERR_LEVEL], fileno=fileno, lineno=lineno)
+                self.num_valid_error_lines[ERROR] += 1
+                self.log_error(e, series_data[ERR_LEVEL], lineno=lineno)
                 continue
 
-    def handle_variant(
+    def process_variant(
         self,
         d_var: Dict[str, Any]
     ):
@@ -435,40 +463,20 @@ class BaseConverter(object):
 
         if d_var["ref_base"] == d_var["alt_base"]:
             raise NoVariantError()
-        tags = d_var.get("tags")
         self.handle_chrom(d_var)
         self.handle_ref_base(d_var)
         self.check_invalid_base(d_var)
-        self.normalize_variant(d_var)
         self.add_end_pos_if_absent(d_var)
-        self.perform_liftover_if_needed(d_var)
+        d_var[ORIG_POS] = d_var[POS]
+        d_var[ORIG_END_POS] = d_var[END_POS]
+        d_var[ORIG_REF_BASE] = d_var[REF_BASE]
+        d_var[ORIG_ALT_BASE] = d_var[ALT_BASE]
+        self.normalize_variant(d_var)
         self.handle_genotype(d_var)
-        d_var["tags"] = tags
+        self.perform_liftover_if_needed(d_var)
 
     def get_sample_colname(self, sample: str) -> str:
         return f"in__{sample}"
-
-    def get_df_headers(self) -> Dict[str, List[Dict[str, Any]]]:
-        from ..consts import OUTPUT_COLS_KEY
-
-        self.df_headers: Dict[str, List[Dict[str, Any]]] = {}
-        for table_name, table_output in self.output.items():
-            self.df_headers[table_name] = []
-            coldefs = table_output.get(OUTPUT_COLS_KEY, [])
-            for col in coldefs:
-                ty = col.get("type")
-                if ty in ["str", "string"]:
-                    ty = pl.Utf8
-                elif ty == "int":
-                    ty = pl.Int64
-                elif ty == "float":
-                    ty = pl.Float64
-                elif ty == "bool":
-                    ty = pl.Boolean
-                else:
-                    ty = None
-                self.df_headers[table_name].append({"name": col.get("name"), "type": ty})
-        return self.df_headers
 
     def get_intialized_series_data(self, size: int) -> Dict[str, Dict[str, List[Any]]]:
         from ..consts import ERR_LEVEL
@@ -477,11 +485,11 @@ class BaseConverter(object):
         for table_name, headers in self.df_headers.items():
             series_data[table_name] = {}
             if table_name == ERR_LEVEL:
-                for header in headers:
-                    series_data[table_name][header["name"]] = []
+                for name, _ in headers.items():
+                    series_data[table_name][name] = []
             else:
-                for header in headers:
-                    series_data[table_name][header["name"]] = [None] * size
+                for name, _ in headers.items():
+                    series_data[table_name][name] = [None] * size
         return series_data
 
     def detect_encoding_of_input_path(self, input_path: str):
@@ -502,16 +510,20 @@ class BaseConverter(object):
             self.logger.info(f"encoding: {input_path} {encoding}")
         self.input_encoding = encoding
 
-    def make_dfs_from_converted_datas(self, converted_data: Dict[str, Dict[str, List[Any]]], max_idx: int, uid_start: int, fileno: int) -> Dict[str, pl.DataFrame]:
+    def make_dfs_from_converted_datas(self, converted_data: Dict[str, Dict[str, List[Any]]], max_idx: int) -> Dict[str, pl.DataFrame]:
         from oakvar.lib.consts import VARIANT_LEVEL
+        from oakvar.lib.consts import VARIANT_LEVEL_PRIMARY_KEY
+        from oakvar.lib.consts import FILENO_KEY
+        from oakvar.lib.consts import SAMPLE_LEVEL
 
         series_data: Dict[str, Dict[str, List[Any]]] = {}
         for table_name, table_data in converted_data.items():
             series_data[table_name] = {}
             for col_name, col_data in table_data.items():
                 series_data[table_name][col_name] = col_data[:max_idx]
-        series_data[VARIANT_LEVEL]["uid"] = [uid_start + i for i in range(max_idx)]
-        series_data[VARIANT_LEVEL]["fileno"] = [fileno for _ in range(max_idx)]
+        series_data[VARIANT_LEVEL][VARIANT_LEVEL_PRIMARY_KEY] = [i for i in range(max_idx)]
+        series_data[VARIANT_LEVEL][FILENO_KEY] = [self.fileno for _ in range(max_idx)]
+        series_data[SAMPLE_LEVEL][VARIANT_LEVEL_PRIMARY_KEY] = [i for i in range(max_idx)]
         dfs = self.get_dfs_from_series_data(series_data, self.df_headers)
         return dfs
 
@@ -530,45 +542,11 @@ class BaseConverter(object):
         status: str = f"Lines with no conversion result: {conversion_stats[NO_ALLELE]}"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
 
-    def setup_df(self, input_paths: List[str] = [], samples: Optional[List[str]] = None):
-        from oakvar.lib.consts import VARIANT_LEVEL
-
-        if samples is None:
-            if not self.samples and not self.ignore_sample:
-                samples = self.collect_samples(input_paths)
-                self.make_sample_output_columns(samples)
-        else:
-            self.make_sample_output_columns(samples)
-        self.set_variables_pre_run()
-        df_headers: Dict[str, List[Dict[str, Any]]] = self.get_df_headers()
-        df_variant_header_names: List[str] = [header["name"] for header in df_headers[VARIANT_LEVEL]]
-        self.chrom_colno = df_variant_header_names.index("chrom") + 1 if "chrom" in df_variant_header_names else -1
-        self.pos_colno = df_variant_header_names.index("pos") + 1 if "pos" in df_variant_header_names else -1
-        self.end_pos_colno = df_variant_header_names.index("pos") + 1 if "pos" in df_variant_header_names else -1
-        self.ref_base_colno = df_variant_header_names.index("ref_base") + 1 if "ref_base" in df_variant_header_names else -1
-        self.alt_base_colno = df_variant_header_names.index("alt_base") + 1 if "alt_base" in df_variant_header_names else -1
-
-    def setup_df_file(self, input_path: str, fileno: int):
-        from pathlib import Path
-
-        self.current_input_fname = Path(input_path).name
-        self.setup_file(input_path)
-        self.file_num_valid_variants[fileno] = 0
-        self.file_error_lines[fileno] = 0
-        self.num_valid_error_lines = {VALID: 0, ERROR: 0, NO_ALLELE: 0}
-
-    def initialize_series_data(self, series_data):
-        series_data["base__uid"] = []
-        series_data["base__chrom"] = []
-        series_data["base__pos"] = []
-        series_data["base__ref_base"] = []
-        series_data["base__alt_base"] = []
-
-    def get_dfs_from_series_data(self, series_data: Dict[str, Dict[str, List[Any]]], headers: Dict[str, List[Dict[str, Any]]]) -> Dict[str, pl.DataFrame]:
+    def get_dfs_from_series_data(self, series_data: Dict[str, Dict[str, List[Any]]], headers: Dict[str, Dict[str, pl.PolarsDataType]]) -> Dict[str, pl.DataFrame]:
         dfs: Dict[str, pl.DataFrame] = {}
         for table_name, table_data in series_data.items():
             df: pl.DataFrame = pl.DataFrame(
-                [pl.Series(header["name"], table_data[header["name"]], dtype=header["type"]) for header in headers[table_name]]
+                [pl.Series(name, table_data[name], dtype=ty) for name, ty in headers[table_name].items()]
             )
             dfs[table_name] = df
         return dfs
@@ -593,145 +571,71 @@ class BaseConverter(object):
         status = "finished Converter"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
 
-    def perform_liftover_if_needed_df(self, df: pl.DataFrame):
+    def perform_liftover_if_needed(self, d_var):
         from oakvar.lib.util.seq import liftover_one_pos
         from oakvar.lib.util.seq import liftover
         from oakvar.lib.exceptions import LiftoverFailure
 
-        columns = df.columns
-        if self.chrom_colno == -1 or self.pos_colno == -1 or self.ref_base_colno == -1 or self.alt_base_colno == -1:
-            return df
-        df_len = df.shape[0]
-        chrom_vals: List[str] = [""] * df_len
-        pos_vals: List[int] = [0] * df_len
-        end_pos_vals: List[int] = [0] * df_len
-        ref_base_vals: List[str] = [""] * df_len
-        alt_base_vals: List[str] = [""] * df_len
-        row_no: int = 0
-        for row in df.iter_rows():
-            chrom: str = row[self.chrom_colno]
-            pos: int = row[self.pos_colno]
-            end_pos: int = row[self.pos_colno]
-            ref_base: str = row[self.ref_base_colno]
-            alt_base: str = row[self.alt_base_colno]
-            if self.is_chrM(chrom):
-                needed = self.do_liftover_chrM
-            else:
-                needed = self.do_liftover
-            if needed:
-                try:
-                    (
-                        chrom,
-                        pos,
-                        ref_base,
-                        alt_base,
-                    ) = liftover(
-                        chrom,
-                        pos,
-                        ref_base,
-                        alt_base,
-                        lifter=self.lifter,
-                        wgs_reader=self.wgs_reader,
-                    )
-                    converted_end = liftover_one_pos(
-                        chrom, end_pos, lifter=self.lifter
-                    )
-                    if converted_end is None:
-                        end_pos = pos
-                    else:
-                        end_pos = converted_end[1]
-                except LiftoverFailure:
-                    chrom = ""
-                    pos = 0
-                    end_pos = 0
-                    ref_base = ""
-                    alt_base = ""
-            chrom_vals[row_no] = chrom
-            pos_vals[row_no] = pos
-            end_pos_vals[row_no] = end_pos
-            ref_base_vals[row_no] = ref_base
-            alt_base_vals[row_no] = alt_base
-            row_no += 1
-        if ORIG_POS not in columns:
-            df.rename({CHROM: ORIG_CHROM, POS: ORIG_POS, REF_BASE: ORIG_REF_BASE, ALT_BASE: ORIG_ALT_BASE})
-        else:
-            df = df.drop([CHROM, POS, END_POS, REF_BASE, ALT_BASE])
-        df = df.with_columns(
-            [
-                pl.Series(CHROM, chrom_vals, dtype=pl.Utf8), # type: ignore
-                pl.Series(POS, pos_vals, dtype=pl.Int32),
-                pl.Series(END_POS, end_pos_vals, dtype=pl.Int32),
-                pl.Series(REF_BASE, ref_base_vals, dtype=pl.Utf8),
-                pl.Series(ALT_BASE, alt_base_vals, dtype=pl.Utf8),
-            ]
-        )
-        return df
-
-    def get_wgs_reader(self):
-        pass
-
-    def perform_liftover_if_needed(self, variant):
-        from oakvar.lib.util.seq import liftover_one_pos
-        from oakvar.lib.util.seq import liftover
-
-        if self.is_chrM(variant):
+        if self.is_chrM(d_var):
             needed = self.do_liftover_chrM
         else:
             needed = self.do_liftover
         if needed:
-            variant["original_chrom"] = variant["chrom"]
-            variant["original_pos"] = variant["pos"]
             (
-                variant["chrom"],
-                variant["pos"],
-                variant["ref_base"],
-                variant["alt_base"],
+                d_var["chrom"],
+                d_var["pos"],
+                d_var["ref_base"],
+                d_var["alt_base"],
             ) = liftover(
-                variant["chrom"],
-                int(variant["pos"]),
-                variant["ref_base"],
-                variant["alt_base"],
+                d_var["chrom"],
+                int(d_var["pos"]),
+                d_var["ref_base"],
+                d_var["alt_base"],
                 lifter=self.lifter,
                 wgs_reader=self.wgs_reader,
             )
             converted_end = liftover_one_pos(
-                variant["chrom"], variant["end_pos"], lifter=self.lifter
+                d_var["chrom"], d_var["end_pos"], lifter=self.lifter
             )
             if converted_end is None:
-                end_pos = ""
-            else:
-                end_pos = converted_end[1]
-            variant["end_pos"] = end_pos
+                raise LiftoverFailure(msg=f"liftover failure for {d_var}")
+            d_var["end_pos"] = converted_end[1]
+
+    def get_wgs_reader(self):
+        pass
 
     def is_chrM(self, chrom: str):
         return chrom == "chrM"
 
-    def add_to_err_series(self, err_series: Dict[str, List[Any]], fileno: Optional[int] = None, lineno: Optional[int] = None, uid: Optional[int] = None, err: Optional[str] = None):
-        err_series["fileno"].append(fileno)
-        err_series["lineno"].append(lineno)
-        err_series["uid"].append(uid)
-        err_series["err"].append(err)
-
-    def log_conversion_error(self, e, err_series: Dict[str, List[Any]], fileno: Optional[int]=None, lineno: Optional[int]=None):
+    def log_error(self, e, err_series: Optional[Dict[str, List[Any]]] = None, lineno: Optional[int]=None, uid: Optional[int] = None, dfs: Optional[Dict[str, pl.DataFrame]] = None):
         from traceback import format_exc
+        from zlib import crc32
         from oakvar.lib.exceptions import ExpectedException
         from oakvar.lib.exceptions import NoAlternateAllele
+        from oakvar.lib.consts import ERR_LEVEL
+        from ..util.run import add_to_err_series
 
         if isinstance(e, NoAlternateAllele):
-            self.add_to_err_series(err_series, fileno=fileno, lineno=lineno, err=str(e))
+            if err_series is not None:
+                add_to_err_series(err_series, lineno=lineno, uid=uid, err=str(e))
+            if dfs is not None:
+                dfs[ERR_LEVEL].vstack
             return
         if isinstance(e, ExpectedException):
             err_str = str(e)
         else:
             err_str = format_exc().rstrip()
-        self.add_to_err_series(err_series, fileno=fileno, lineno=lineno, err=err_str)
         if err_str not in self.unique_excs:
-            err_no = len(self.unique_excs)
-            self.unique_excs[err_str] = err_no
+            errno = crc32(bytes(err_str, "utf-8"))
+            self.unique_excs[err_str] = errno
             if self.logger:
-                self.logger.error(f"Error [{err_no}]: {self.input_path}: {err_str}")
+                self.logger.error(f"Error [{errno}]: {self.input_fname}: {err_str}")
+            if err_series is not None:
+                add_to_err_series(err_series, fileno=self.fileno, lineno=lineno, errno=errno, err=err_str)
         else:
-            err_no = self.unique_excs[err_str]
+            errno = self.unique_excs[err_str]
+            if err_series is not None:
+                add_to_err_series(err_series, fileno=self.fileno, lineno=lineno, errno=errno, err=None)
 
     def end(self):
         pass
@@ -761,7 +665,7 @@ class BaseConverter(object):
             samples = samples.union(samples_line)
         return samples
 
-    def collect_samples(self, input_paths: List[str]) -> List[str]:
+    def collect_samples(self, input_paths: List[str]):
         samples: Set[str] = set()
         if self.logger:
             self.logger.info("Detecting samples...")
@@ -772,18 +676,24 @@ class BaseConverter(object):
         self.samples = samples_list
         if self.logger:
             self.logger.info(f"{len(self.samples)} samples detected.")
-        return self.samples
 
-    def make_sample_output_columns(self, samples: List[str]):
+    def make_sample_output_columns(self):
         from ..consts import SAMPLE_LEVEL
         from ..consts import OUTPUT_COLS_KEY
         from ..util.util import get_ov_system_output_columns
 
         sample_output_columns: List[Dict[str, Any]] = self.output[SAMPLE_LEVEL][OUTPUT_COLS_KEY]
-        self.samples = sorted(samples)
         sample_output_columns = get_ov_system_output_columns().copy()[SAMPLE_LEVEL][OUTPUT_COLS_KEY]
         for sample in self.samples:
             coldef = {"name": self.get_sample_colname(sample), "title": f"Variant present in {sample}", "type": "bool"}
             sample_output_columns.append(coldef)
         self.output[SAMPLE_LEVEL][OUTPUT_COLS_KEY] = sample_output_columns
+
+    def get_samples_and_make_sample_output_columns(self, input_paths: List[str], samples: Optional[List[str]] = None):
+        if samples is not None:
+            self.samples = samples
+        else:
+            self.collect_samples(input_paths)
+        self.samples = sorted(self.samples)
+        self.make_sample_output_columns()
 

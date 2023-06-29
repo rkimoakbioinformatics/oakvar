@@ -7,6 +7,7 @@ from pathlib import Path
 import logging
 import sqlite3
 import duckdb
+import polars as pl
 
 
 def update_status(status: str, logger=None, serveradmindb=None):
@@ -119,6 +120,24 @@ def get_new_job_name(jobs_dir: Path) -> str:
     return job_name
 
 
+def get_log_formatter():
+    import logging
+
+    return logging.Formatter(
+        "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
+    )
+
+def setup_ray_logger():
+    import logging
+    import sys
+
+    #logging.getLogger().setLevel(logging.WARN)
+    logger = logging.getLogger("ray")
+    log_formatter = get_log_formatter()
+    log_handler = logging.StreamHandler(stream=sys.stdout)
+    log_handler.setFormatter(log_formatter)
+    logger.addHandler(log_handler)
+
 def set_logger_handler(
     logger,
     error_logger,
@@ -137,33 +156,33 @@ def set_logger_handler(
 
     # logging.basicConfig(level=logging.INFO, force=True)
     # logging.getLogger().propagate = False
-    logging.getLogger().setLevel(logging.WARN)
-    log_formatter = logging.Formatter(
-        "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
-    )
-    err_formatter = logging.Formatter("%(name)s\t%(message)s")
-    if logtofile and output_dir:
-        log_path = Path(output_dir) / (run_name + LOG_SUFFIX)
-        if (newlog or clean) and log_path.exists():
-            remove(log_path)
-        log_handler = logging.FileHandler(log_path, mode=mode)
-    else:
-        log_handler = logging.StreamHandler(stream=stdout)
-    log_handler.setFormatter(log_formatter)
-    if logtofile and output_dir:
-        error_log_path = Path(output_dir) / (run_name + ".err")
-        if error_log_path.exists():
-            remove(error_log_path)
-        error_log_handler = logging.FileHandler(error_log_path, mode=mode)
-    else:
-        error_log_handler = logging.StreamHandler(stream=stderr)
-    error_log_handler.setFormatter(err_formatter)
-    logger.setLevel(level)
-    error_logger.setLevel(level)
-    log_handler.setLevel(level)
-    logger.addHandler(log_handler)
-    error_log_handler.setLevel(level)
-    error_logger.addHandler(error_log_handler)
+    #logging.getLogger().setLevel(logging.WARN)
+    if logger:
+        log_formatter = get_log_formatter()
+        if logtofile and output_dir:
+            log_path = Path(output_dir) / (run_name + LOG_SUFFIX)
+            if (newlog or clean) and log_path.exists():
+                remove(log_path)
+            log_handler = logging.FileHandler(log_path, mode=mode)
+        else:
+            log_handler = logging.StreamHandler(stream=stdout)
+        log_handler.setFormatter(log_formatter)
+        logger.setLevel(level)
+        log_handler.setLevel(level)
+        logger.addHandler(log_handler)
+    if error_logger:
+        err_formatter = logging.Formatter("%(name)s\t%(message)s")
+        if logtofile and output_dir:
+            error_log_path = Path(output_dir) / (run_name + ".err")
+            if error_log_path.exists():
+                remove(error_log_path)
+            error_log_handler = logging.FileHandler(error_log_path, mode=mode)
+        else:
+            error_log_handler = logging.StreamHandler(stream=stderr)
+        error_log_handler.setFormatter(err_formatter)
+        error_logger.setLevel(level)
+        error_log_handler.setLevel(level)
+        error_logger.addHandler(error_log_handler)
 
 def get_module_options(module_options_sl: Optional[List[str]], outer=None):
     module_options: Dict[str, Dict[str, Any]] = {}
@@ -246,4 +265,48 @@ def open_result_database(dbpath: Path, use_duckdb: bool):
         conn.execute("pragma locking_mode=EXCLUSIVE;")
         conn.execute("pragma temp_store=MEMORY;")
     return conn
+
+def initialize_err_series_data():
+    err_series_data: Dict[str, List[Any]] = {}
+    err_series_data["fileno"] = []
+    err_series_data["lineno"] = []
+    err_series_data["uid"] = []
+    err_series_data["err"] = []
+    return err_series_data
+
+def add_to_err_series(err_series: Dict[str, List[Any]], fileno: Optional[int] = None, lineno: Optional[int] = None, uid: Optional[int] = None, errno: Optional[int] = None, err: Optional[str] = None):
+    from ..consts import FILENO_KEY
+    from ..consts import LINENO_KEY
+    from ..consts import VARIANT_LEVEL_PRIMARY_KEY
+    from ..consts import ERRNO_KEY
+    from ..consts import ERR_KEY
+
+    err_series[FILENO_KEY].append(fileno)
+    err_series[LINENO_KEY].append(lineno)
+    err_series[VARIANT_LEVEL_PRIMARY_KEY].append(uid)
+    err_series[ERRNO_KEY].append(errno)
+    err_series[ERR_KEY].append(err)
+
+def get_df_headers(output: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, pl.PolarsDataType]]:
+    import polars as pl
+    from ..consts import OUTPUT_COLS_KEY
+
+    df_headers: Dict[str, Dict[str, pl.PolarsDataType]] = {}
+    for table_name, table_output in output.items():
+        df_headers[table_name] = {}
+        coldefs = table_output.get(OUTPUT_COLS_KEY, [])
+        for col in coldefs:
+            ty = col.get("type")
+            if ty in ["str", "string"]:
+                ty = pl.Utf8
+            elif ty in ["int", "int64"]:
+                ty = pl.Int64
+            elif ty == "float":
+                ty = pl.Float64
+            elif ty == "bool":
+                ty = pl.Boolean
+            else:
+                ty = pl.Utf8
+            df_headers[table_name][col.get("name")] = ty
+    return df_headers
 

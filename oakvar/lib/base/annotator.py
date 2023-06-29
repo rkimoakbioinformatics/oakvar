@@ -14,7 +14,6 @@ class BaseAnnotator(object):
     def __init__(
         self,
         input_file: Optional[str] = None,
-        secondary_inputs=None,
         run_name: Optional[str] = None,
         output_dir: Optional[str] = None,
         plainoutput: bool = False,
@@ -34,7 +33,6 @@ class BaseAnnotator(object):
 
         Args:
             input_file (Optional[str]): input_file
-            secondary_inputs:
             run_name (Optional[str]): run_name
             output_dir (Optional[str]): output_dir
             plainoutput (bool): plainoutput
@@ -73,7 +71,6 @@ class BaseAnnotator(object):
             self.primary_input_path = Path(input_file).resolve()
         else:
             self.primary_input_path = None
-        self.secondary_inputs = secondary_inputs
         self.run_name = run_name
         self.output_dir = output_dir
         self.plain_output = plainoutput
@@ -86,7 +83,6 @@ class BaseAnnotator(object):
             if not fp:
                 raise ModuleLoadingError(module_name=self.__module__)
             self.main_fpath = Path(fp).resolve()
-        self.secondary_paths = {}
         self.output_basename = None
         self.logger = None
         self.error_logger = None
@@ -97,7 +93,6 @@ class BaseAnnotator(object):
         self.primary_input_reader = None
         self.output_path = None
         self.last_status_update_time = None
-        self.secondary_readers = {}
         self.output_writer = None
         self.log_path = None
         self.unique_excs = []
@@ -197,6 +192,9 @@ class BaseAnnotator(object):
             if input_level not in [VARIANT_LEVEL, GENE_LEVEL]:
                 raise
             self.input_level = input_level
+        self.secondary_data_required: bool = False
+        if self.conf.get("secondary_inputs"):
+            self.secondary_data_required = True
         self.cache = ModuleDataCache(self.module_name, module_type=self.module_type)
         self.setup_df()
 
@@ -277,10 +275,6 @@ class BaseAnnotator(object):
         import re
         from pathlib import Path
 
-        if self.secondary_inputs:
-            for secondary_def in self.secondary_inputs:
-                sec_name, sec_path = re.split(r"(?<!\\)=", secondary_def)
-                self.secondary_paths[sec_name] = str(Path(sec_path).resolve())
         if not self.output_dir and self.primary_input_path:
             self.output_dir = str(self.primary_input_path.parent)
         if self.run_name is not None:
@@ -367,12 +361,17 @@ class BaseAnnotator(object):
 
     def get_series(self, dfs: Dict[str, pl.DataFrame]) -> Dict[str, List[pl.Series]]:
         from ..consts import VARIANT_LEVEL
+        from ..consts import VARIANT_LEVEL_PRIMARY_KEY
         from ..consts import GENE_LEVEL
+        from ..consts import GENE_LEVEL_PRIMARY_KEY
 
+        keycol: str
         if self.input_level == GENE_LEVEL:
             df = dfs.get(GENE_LEVEL)
+            keycol = GENE_LEVEL_PRIMARY_KEY
         else:
             df = dfs.get(VARIANT_LEVEL)
+            keycol = VARIANT_LEVEL_PRIMARY_KEY
         if df is None:
             raise
         var_ld: Dict[str, Dict[str, List[Any]]] = {}
@@ -388,7 +387,17 @@ class BaseAnnotator(object):
             for col_name in col_names:
                 var_ld[table_name][col_name] = [None] * max_counts[table_name]
         for row in df.iter_rows(named=True):
-            output_dict = self.annotate(row)
+            if self.secondary_data_required:
+                keyval: Any = row[keycol]
+                secondary_dfs: Dict[str, pl.DataFrame] = {}
+                for table_name, s_df in dfs.items():
+                    if table_name == self.level:
+                        continue
+                    if keycol in s_df.columns:
+                        secondary_dfs[table_name] = s_df.filter(pl.col(keycol) == keyval)
+                output_dict = self.annotate(row, secondary_data=secondary_dfs)
+            else:
+                output_dict = self.annotate(row)
             if output_dict is not None:
                 if self.level in output_dict:
                     for table_name, table_data in output_dict.items():
@@ -569,42 +578,7 @@ class BaseAnnotator(object):
         self.logger = getLogger("oakvar." + self.module_name)
         self.error_logger = getLogger("err." + self.module_name)
 
-    def _get_input(self):
-        """_get_input.
-        """
-        from ..util.inout import AllMappingsParser
-        from ..consts import all_mappings_col_name
-        from ..consts import mapping_parser_name
-        from ..exceptions import SetupError
-
-        if self.conf is None or self.primary_input_reader is None:
-            raise SetupError(self.module_name)
-        for lnum, line, reader_data in self.primary_input_reader.loop_data():
-            try:
-                input_data = {}
-                for col_name in self.conf["input_columns"]:
-                    input_data[col_name] = reader_data[col_name]
-                if all_mappings_col_name in input_data:
-                    input_data[mapping_parser_name] = AllMappingsParser(
-                        input_data[all_mappings_col_name]
-                    )
-                secondary_data = {}
-                for module_name, fetcher in self.secondary_readers.items():
-                    input_key_col = (
-                        self.conf["secondary_inputs"][module_name]
-                        .get("match_columns", {})
-                        .get("primary", "uid")
-                    )
-                    input_key_data = input_data[input_key_col]
-                    secondary_data[module_name] = fetcher.get(input_key_data)
-                yield lnum, line, input_data, secondary_data
-            except Exception as e:
-                self._log_runtime_exception(
-                    lnum, line, reader_data, e, fn=self.primary_input_reader.path
-                )
-                continue
-
-    def annotate(self, input_data, secondary_data=None) -> Dict[str, Any]:
+    def annotate(self, input_data, secondary_data: Dict[str, pl.DataFrame] = {}) -> Dict[str, Any]:
         """annotate.
 
         Args:
@@ -666,65 +640,3 @@ class BaseAnnotator(object):
         create_module_files(self, overwrite=overwrite, interactive=interactive)
 
 
-class SecondaryInputFetcher:
-    """SecondaryInputFetcher.
-    """
-
-    def __init__(self, input_path, key_col, fetch_cols=[]):
-        """__init__.
-
-        Args:
-            input_path:
-            key_col:
-            fetch_cols:
-        """
-        from ..util.inout import FileReader
-        from ..exceptions import ConfigurationError
-
-        self.key_col = key_col
-        self.input_path = input_path
-        self.input_reader = FileReader(self.input_path)
-        valid_cols = self.input_reader.get_column_names()
-        if key_col not in valid_cols:
-            err_msg = "Key column %s not present in secondary input %s" % (
-                key_col,
-                self.input_path,
-            )
-            raise ConfigurationError(err_msg)
-        if fetch_cols:
-            unmatched_cols = list(set(fetch_cols) - set(valid_cols))
-            if unmatched_cols:
-                err_msg = "Column(s) %s not present in secondary input %s" % (
-                    ", ".join(unmatched_cols),
-                    self.input_path,
-                )
-                raise ConfigurationError(err_msg)
-            self.fetch_cols = fetch_cols
-        else:
-            self.fetch_cols = valid_cols
-        self.data = {}
-        self.load_input()
-
-    def load_input(self):
-        """load_input.
-        """
-        for _, _, all_col_data in self.input_reader.loop_data():
-            key_data = all_col_data.get(self.key_col)
-            if key_data not in self.data:
-                self.data[key_data] = []
-            fetch_col_data = {}
-            for col in self.fetch_cols:
-                val = all_col_data.get(col)
-                fetch_col_data[col] = val
-            self.data[key_data].append(fetch_col_data)
-
-    def get(self, key_data):
-        """get.
-
-        Args:
-            key_data:
-        """
-        if key_data in self.data:
-            return self.data[key_data]
-        else:
-            return None

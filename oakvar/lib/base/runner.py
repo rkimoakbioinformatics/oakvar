@@ -296,7 +296,7 @@ class Runner(object):
             return
         self.result_db_conn.close()
 
-    def add_coldefs(self, module_level: Optional[str], module_name: str, coldefs: Dict[str, List[Dict[str, Any]]], output: Dict[str, Dict[str, Any]], result_table_names: List[str], include_key_col: bool=False, add_module_name_to_col_name: bool=False):
+    def add_coldefs(self, module_level: Optional[str], module_name: str, coldefs: Dict[str, List[Dict[str, Any]]], output: Dict[str, Dict[str, Any]], result_table_names: List[str], include_key_col: bool=False, add_module_name_to_col_name: bool=False, ignore_tables: List[str] = []):
         from ..consts import VARIANT_LEVEL
         from ..consts import GENE_LEVEL
         from ..consts import VARIANT_LEVEL_PRIMARY_KEY_COLDEF
@@ -304,6 +304,8 @@ class Runner(object):
         from ..consts import OUTPUT_COLS_KEY
 
         for table_name, table_output in output.items():
+            if table_name in ignore_tables:
+                continue
             if table_name not in coldefs:
                 coldefs[table_name] = []
                 result_table_names.append(table_name)
@@ -333,17 +335,18 @@ class Runner(object):
 
     def collect_output_coldefs(self, converter: BaseConverter) -> Tuple[Dict[str, List[Dict[str, Any]]], List[str]]:
         from ..consts import VARIANT_LEVEL
+        from ..consts import ERR_LEVEL
 
         coldefs: Dict[str, List[Dict[str, Any]]] = {}
         result_table_names: List[str] = []
         self.table_names_by_level = {}
         self.add_coldefs(None, "base", coldefs, converter.output, result_table_names, include_key_col=False)
         for module in self.mapper_i:
-            self.add_coldefs(VARIANT_LEVEL, module.module_name, coldefs, module.output, result_table_names)
+            self.add_coldefs(VARIANT_LEVEL, module.module_name, coldefs, module.output, result_table_names, ignore_tables=[ERR_LEVEL])
             break
         for m in self.annotators_i:
             module_level: str = m.conf.get("level", VARIANT_LEVEL)
-            self.add_coldefs(module_level, m.module_name, coldefs, m.output, result_table_names, add_module_name_to_col_name=True)
+            self.add_coldefs(module_level, m.module_name, coldefs, m.output, result_table_names, add_module_name_to_col_name=True, ignore_tables=[ERR_LEVEL])
         return coldefs, result_table_names
 
     def create_tables_in_result_db(self, coldefs: Dict[str, List[Dict[str, Any]]], result_table_names: List[str]):
@@ -430,39 +433,12 @@ class Runner(object):
         self.result_db_conn.execute(q)
         self.result_db_conn.commit()
 
-    def create_err_table_in_result_db(self):
-        if not self.result_db_conn:
-            return
-        q = f"drop table if exists err"
-        self.result_db_conn.execute(q)
-        q = f"create table err (fileno int, lineno int, uid int, err text)"
-        self.result_db_conn.execute(q)
-        self.result_db_conn.commit()
-
     def create_auxiliary_tables_in_result_db(self, converter: BaseConverter):
         if not self.result_db_conn:
             return
         self.create_info_table_in_result_db()
         self.create_info_modules_table_in_result_db()
         self.create_info_headers_table_in_result_db(converter)
-        self.create_err_table_in_result_db()
-
-    def save_df(self, level: str, df: pl.DataFrame, table_col_names: Dict[str, List[str]]):
-    #def save_df(self, df: pl.DataFrame, run_no: int):
-        if self.result_db_conn is None:
-            return
-        table_col_names_str = ", ".join(table_col_names[level])
-        values_str = ", ".join(["?"] * len(table_col_names[level]))
-        q = f"insert into {level} ({table_col_names_str}) values ({values_str})"
-        for row in df.iter_rows():
-            self.result_db_conn.execute(q, row)
-        self.result_db_conn.commit()
-        # Parquet save
-        #run_name = self.run_name[run_no]
-        #output_fn = f"{run_name}.{partition_no}.parquet"
-        #output_dir = self.output_dir[run_no]
-        #output_path = Path(output_dir) / output_fn
-        #df.write_parquet(output_path)
 
     def rename_base_columns_in_result_database(self, table_col_names: List[str]):
         if self.result_db_conn is None:
@@ -481,10 +457,11 @@ class Runner(object):
         self.close_result_database()
 
     def process_file(self, run_no: int, save_size: int=DEFAULT_DF_SIZE):
-        import ray
         from ..exceptions import NoConverterFound
         from ..consts import DEFAULT_CONVERTER_READ_SIZE
-        from .pool_worker import OakVarRunner
+        from ..consts import VARIANT_LEVEL
+        from ..consts import ERR_LEVEL
+        from .worker import Worker
         from ..util.run import update_status
         from .converter import VALID
         from .converter import ERROR
@@ -498,6 +475,7 @@ class Runner(object):
         converter = self.choose_converter(input_paths)
         if converter is None:
             raise NoConverterFound(input_paths)
+        converter.setup_df(input_paths)
         dbpath = self.get_dbpath(run_no)
         self.create_result_database(dbpath, converter)
         self.do_step_preparer(run_no)
@@ -506,97 +484,118 @@ class Runner(object):
         else:
             converter_read_size = DEFAULT_CONVERTER_READ_SIZE
         if self.num_core > 1:
+            import ray
+            import logging
+            import os
+
+            os.environ["GRPC_ENABLE_FORK_SUPPORT"] = "false"
+            logger = logging.getLogger("ray")
+            fmt = logging.Formatter(
+                "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
+            )
+            log_handler = logging.StreamHandler()
+            log_handler.setFormatter(fmt)
+            logger.addHandler(log_handler)
+            #ray.init(ignore_reinit_error=True)
+            #setup_ray_logger()
+            #ray.init(runtime_env={"worker_setup_hook": setup_ray_logger})
             self.make_pool(converter.name)
-            for actor_num, runner in enumerate(self.pool):
-                runner.setup_df.remote(input_paths, samples=converter.samples)
-            uid_offset: int = 0
+            ret = []
+            for actor_num, worker in enumerate(self.pool):
+                ret.append(worker.setup.remote(input_paths, samples=converter.samples, batch_size = converter_read_size))
+            for r in ret:
+                ray.get(r)
+            offset: int = 0
+            offset_levels: List[str] = [VARIANT_LEVEL, ERR_LEVEL]
             for fileno, input_path in enumerate(input_paths):
                 update_status(
                     f"Starting to process: {input_path}",
                     logger=self.logger,
                     serveradmindb=self.serveradmindb,
                 )
-                for actor_num, runner in enumerate(self.pool):
-                    runner.setup_df_file.remote(input_path, fileno)
-                start_line_no: int = 1
+                ret = []
+                for actor_num, worker in enumerate(self.pool):
+                    ret.append(worker.setup_file.remote(input_path, fileno=fileno))
+                for r in ret:
+                    ray.get(r)
                 while True:
                     update_status(
-                        f"Processing: {input_path} line {start_line_no}",
+                        f"Processing: {input_path} line {converter.start_line_no}",
                         logger=self.logger,
                         serveradmindb=self.serveradmindb,
                     )
-                    lines_data, has_more_data, start_line_no = converter.get_variant_lines(input_path, self.num_core, start_line_no, converter_read_size)
+                    lines_data, has_more_data = converter.get_variant_lines(input_path, num_core = self.num_core, batch_size = converter_read_size)
                     lines_data_ref = ray.put(lines_data)
-                    rets = []
-                    for actor_num, runner in enumerate(self.pool):
-                        r = runner.run_df.remote(actor_num, lines_data_ref, 1, fileno)
-                        rets.append(r)
-                    for actor_num, (r1, runner) in enumerate(zip(rets, self.pool)):
-                        ray.get(r1)
-                        uid_offset = ray.get(runner.renumber_uid.remote(uid_offset)) # type: ignore
-                        ray.get(runner.save_df.remote(dbpath, use_duckdb=self.args.use_duckdb))
+                    ret = []
+                    for actor_num, worker in enumerate(self.pool):
+                        ret.append(worker.run_df.remote(actor_num, lines_data_ref))
+                    for r in ret:
+                        ray.get(r)
+                    for worker in self.pool:
+                        last_val: int = ray.get(worker.renumber_uid.remote(offset, offset_levels)) # type: ignore
+                        offset = last_val + 1
+                        ray.get(worker.save_df.remote(dbpath, use_duckdb=self.args.use_duckdb))
                     if has_more_data is False:
                         break
                 conversion_stats: Optional[Dict[str, int]] = None
-                for actor_num, runner in enumerate(self.pool):
-                    r: Dict[str, int] = ray.get(runner.get_conversion_stats.remote()) # type: ignore
+                for worker in self.pool:
+                    cs: Dict[str, int] = ray.get(worker.get_conversion_stats.remote()) # type: ignore
                     if conversion_stats is None:
-                        conversion_stats = r
+                        conversion_stats = cs
                     else:
-                        conversion_stats[VALID] += r[VALID]
-                        conversion_stats[ERROR] += r[ERROR]
-                        conversion_stats[NO_ALLELE] += r[NO_ALLELE]
+                        conversion_stats[VALID] += cs[VALID]
+                        conversion_stats[ERROR] += cs[ERROR]
+                        conversion_stats[NO_ALLELE] += cs[NO_ALLELE]
                 converter.log_conversion_stats(conversion_stats=conversion_stats)
-                update_status(
-                    f"Made {dbpath}",
-                    logger=self.logger,
-                    serveradmindb=self.serveradmindb,
-                )
+            update_status(
+                f"Created result database: {dbpath}",
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
             self.delete_pool()
         else:
-            runner = OakVarRunner(converter, self.mapper_i[0], self.annotators_i)
-            runner.setup_df(input_paths)
-            uid_offset: int = 0
+            worker = Worker(converter=converter, mapper=self.mapper_i[0], annotators=self.annotators_i)
+            worker.setup(input_paths, samples=converter.samples, batch_size = converter_read_size)
             for fileno, input_path in enumerate(input_paths):
                 update_status(
                     f"Starting to process: {input_path}",
                     logger=self.logger,
                     serveradmindb=self.serveradmindb,
                 )
-                runner.setup_df_file(input_path, fileno)
-                start_line_no: int = 1
+                worker.setup_file(input_path, fileno=fileno)
                 while True:
                     update_status(
-                        f"Processing: {input_path} line {start_line_no}",
+                        f"Processing: {input_path} line {converter.start_line_no}",
                         logger=self.logger,
                         serveradmindb=self.serveradmindb,
                     )
-                    lines_data, has_more_data, start_line_no = converter.get_variant_lines(input_path, 1, start_line_no, converter_read_size)
-                    runner.run_df(lines_data[0], 1, fileno)
-                    uid_offset = runner.renumber_uid(uid_offset)
-                    runner.save_df(dbpath, use_duckdb=self.args.use_duckdb)
+                    has_more_data = worker.run_df()
+                    worker.save_df(dbpath, use_duckdb=self.args.use_duckdb)
                     if has_more_data is False:
                         break
                 converter.log_conversion_stats()
-                update_status(
-                    f"Made {dbpath}",
-                    logger=self.logger,
-                    serveradmindb=self.serveradmindb,
-                )
-                self.do_step_postaggregator(run_no)
+            update_status(
+                f"Created result database: {dbpath}",
+                logger=self.logger,
+                serveradmindb=self.serveradmindb,
+            )
+            self.do_step_postaggregator(run_no)
         self.write_info_table(run_no, dbpath, converter)
         return
-        self.rename_base_columns_in_result_database(table_col_names)
-        self.do_step_reporter(run_no)
+        #self.rename_base_columns_in_result_database(table_col_names)
+        #self.do_step_reporter(run_no)
 
     def make_pool(self, converter_name: str):
-        from .pool_worker import MultiRunner
+        import ray
+        from .worker import ParallelWorker
 
         if not self.mapper_name:
             return
         self.pool = []
         for _ in range(self.num_core):
-            self.pool.append(MultiRunner.remote(converter_name, self.mapper_name, self.annotator_names, self.ignore_sample, self.run_conf))
+            self.pool.append(ParallelWorker.remote(converter_name=converter_name, mapper_name=self.mapper_name, annotator_names=self.annotator_names, ignore_sample=self.ignore_sample, run_conf=self.run_conf, genome=self.args.genome)) # type: ignore
+        for runner in self.pool:
+            ray.get(runner.set_ray_logger.remote())
 
     def delete_pool(self):
         import ray
@@ -1323,84 +1322,6 @@ class Runner(object):
             self.logger.info("num_workers: {}".format(num_workers))
         return num_workers
 
-    def collect_crxs(self, run_no: int):
-        from ..util.util import escape_glob_pattern
-        from os import remove
-        from pathlib import Path
-
-        run_name, output_dir = self.get_run_name_output_dir_by_run_no(run_no)
-        if not output_dir:
-            return
-        crx_path = Path(output_dir) / f"{run_name}.crx"
-        wf = open(str(crx_path), "w")
-        fns = sorted(
-            [
-                str(v)
-                for v in Path(output_dir).glob(escape_glob_pattern(run_name) + ".crx.*")
-            ]
-        )
-        fn = fns[0]
-        f = open(fn)
-        for line in f:
-            wf.write(line)
-        f.close()
-        remove(fn)
-        for fn in fns[1:]:
-            f = open(fn)
-            for line in f:
-                if line[0] != "#":
-                    wf.write(line)
-            f.close()
-            remove(fn)
-        wf.close()
-
-    def collect_crgs(self, run_no: int):
-        from os import remove
-        from pathlib import Path
-        from ..util.util import escape_glob_pattern
-        from ..consts import GENE_LEVEL_MAPPED_FILE_SUFFIX
-
-        run_name, output_dir = self.get_run_name_output_dir_by_run_no(run_no)
-        if not output_dir:
-            return
-        crg_path = Path(output_dir) / f"{run_name}{GENE_LEVEL_MAPPED_FILE_SUFFIX}"
-        wf = open(str(crg_path), "w")
-        unique_hugos = {}
-        fns = sorted(
-            [
-                str(v)
-                for v in crg_path.parent.glob(escape_glob_pattern(crg_path.name) + ".*")
-            ]
-        )
-        fn = fns[0]
-        f = open(fn)
-        for line in f:
-            if line[0] != "#":
-                hugo = line.split()[0]
-                if hugo not in unique_hugos:
-                    unique_hugos[hugo] = line
-            else:
-                wf.write(line)
-        f.close()
-        remove(fn)
-        for fn in fns[1:]:
-            f = open(fn)
-            for line in f:
-                if line[0] != "#":
-                    hugo = line.split()[0]
-                    if hugo not in unique_hugos:
-                        # wf.write(line)
-                        unique_hugos[hugo] = line
-            f.close()
-            remove(fn)
-        hugos = list(unique_hugos.keys())
-        hugos.sort()
-        for hugo in hugos:
-            wf.write(unique_hugos[hugo])
-        wf.close()
-        del unique_hugos
-        del hugos
-
     def table_exists(self, cursor, table):
         sql = (
             'select name from sqlite_master where type="table" and '
@@ -1631,7 +1552,7 @@ class Runner(object):
                 MODULE_OPTIONS_KEY: module_conf,
                 "serveradmindb": self.serveradmindb,
             }
-            module_cls = load_class(module.script_path, "Preparer")
+            module_cls = load_class(module.script_path, class_name="Preparer")
             if not issubclass(module_cls, BasePreparer):
                 raise ModuleLoadingError(module_name=module.name)
             module_ins = module_cls(**kwargs)
@@ -1701,7 +1622,7 @@ class Runner(object):
         arg_dict["mapper_name"] = self.mapper_name
         arg_dict["annotator_names"] = self.annotator_names
         arg_dict["run_name"] = self.run_name[run_no]
-        Module = load_class(module.script_path, "VCF2VCF")
+        Module = load_class(module.script_path, class_name="VCF2VCF")
         if not issubclass(Module, VCF2VCF):
             raise ModuleLoadingError(msg="VCF2VCF class could not be loaded.")
         m = Module(**arg_dict)
@@ -1788,7 +1709,6 @@ class Runner(object):
         from ..util.module import get_converter
         import traceback
 
-
         chosen_converter: Optional[BaseConverter] = None
         module_infos: List[LocalModule] = []
         if self.converter_name:
@@ -1806,7 +1726,7 @@ class Runner(object):
             module_infos = list(get_local_module_infos_of_type("converter").values())
         for module_info in module_infos:
             try:
-                converter = get_converter(module_info.name, ignore_sample=self.ignore_sample, module_options=self.run_conf.get(module_info.name, {}))
+                converter = get_converter(module_info.name, ignore_sample=self.ignore_sample, module_options=self.run_conf.get(module_info.name, {}), genome=self.args.genome)
             except Exception as e:
                 if self.logger:
                     self.logger.error(f"{traceback.format_exc()}\nSkipping {module_info.name} as it could not be loaded. ({e})")
@@ -1824,8 +1744,6 @@ class Runner(object):
             if self.logger:
                 self.logger.info(f"module: {chosen_converter.name}=={chosen_converter.code_version}")
                 self.logger.info(f"Using {chosen_converter.name} for {' '.join(input_paths)}")
-            self.samples = self.samples or chosen_converter.collect_samples(input_paths)
-            chosen_converter.make_sample_output_columns(self.samples)
             return chosen_converter
 
     def make_annotators_to_run(self):

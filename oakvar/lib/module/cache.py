@@ -82,30 +82,38 @@ class ModuleCache(object):
         if not self._modules_dir.exists():
             return None
         for mg in self._modules_dir.iterdir():
-            basename = mg.name
-            if basename == install_tempdir_name:
-                continue
-            mg_path = self._modules_dir / mg
-            if (
-                not mg_path.is_dir()
-                or basename.startswith(".")
-                or basename.startswith("_")
-            ):
-                continue
-            for path in mg_path.iterdir():
-                module_name = path.name
-                if module_name == "hgvs":  # deprecate hgvs
+            try:
+                basename = mg.name
+                if basename == install_tempdir_name:
                     continue
-                module_dir = mg_path / module_name
-                yml_path = module_dir / (module_name + ".yml")
+                mg_path = self._modules_dir / mg
                 if (
-                    module_name.startswith(".") is False
-                    and module_dir.is_dir()
-                    and not module_name.startswith(".")
-                    and not module_name.startswith("_")
-                    and yml_path.exists()
+                    not mg_path.is_dir()
+                    or basename.startswith(".")
+                    or basename.startswith("_")
                 ):
-                    self.local[path.name] = LocalModule(Path(module_dir))
+                    continue
+                for path in mg_path.iterdir():
+                    module_name = path.name
+                    module_dir = mg_path / module_name
+                    yml_path = module_dir / (module_name + ".yml")
+                    if (
+                        module_name.startswith(".") is False
+                        and module_dir.is_dir()
+                        and not module_name.startswith(".")
+                        and not module_name.startswith("_")
+                        and yml_path.exists()
+                    ):
+                        try:
+                            self.local[path.name] = LocalModule(Path(module_dir))
+                        except Exception:
+                            import traceback
+                            traceback.print_exc()
+                            continue
+            except Exception:
+                import traceback
+                traceback.print_exc()
+                continue
 
     def get_remote_readme(self, module_name, version=None):
         from .remote import get_readme

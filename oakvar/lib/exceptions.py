@@ -10,7 +10,7 @@ class ExpectedException(Exception):
 
     def __init__(self, msg=""):
         self.msg = msg
-        super().__init__(f"{msg}")
+        super().__init__(msg)
 
 
 class NoGenomeException(ExpectedException):

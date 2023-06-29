@@ -3,6 +3,7 @@ from typing import Any
 from typing import List
 from typing import Dict
 from typing import Union
+from typing import Tuple
 import polars as pl
 from .commonmodule import BaseCommonModule
 
@@ -31,7 +32,7 @@ class BaseMapper(object):
         self.logger = None
         self.error_logger = None
         self.col_names: Dict[str, List[str]] = {}
-        self.unique_excs = []
+        self.unique_excs: Dict[str, int] = {}
         self.output: Dict[str, Dict[str, Any]] = {}
         self.level = VARIANT_LEVEL
         self.t = time()
@@ -48,16 +49,19 @@ class BaseMapper(object):
             get_module_conf(self.module_name, module_type="mapper") or {}
         )
         self.set_output(output)
-        self.df_dtypes: Dict[str, Dict[str, Any]] = {}
+        self.df_headers: Dict[str, Dict[str, Any]] = {}
         self.setup()
         self.setup_df()
 
     def set_output(self, output: Union[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]):
         from ..consts import VARIANT_LEVEL
+        from ..consts import OUTPUT_KEY
         from ..consts import OUTPUT_COLS_KEY
+        from ..consts import ERR_LEVEL
+        from ..util.util import get_ov_system_output_columns
 
         if not output:
-            output = self.conf.get("output", self.conf.get(OUTPUT_COLS_KEY, [])).copy()
+            output = self.conf.get(OUTPUT_KEY, self.conf.get(OUTPUT_COLS_KEY, [])).copy()
         if isinstance(output, dict):
             self.output = output.copy()
         else:
@@ -76,7 +80,9 @@ class BaseMapper(object):
                         self.output[table_name][OUTPUT_COLS_KEY].append(table_coldef.copy())
                 else:
                     self.output[VARIANT_LEVEL][OUTPUT_COLS_KEY].append(coldef.copy())
-        self.conf["output"] = self.output.copy()
+        if ERR_LEVEL not in self.output:
+            self.output[ERR_LEVEL] = get_ov_system_output_columns()[ERR_LEVEL]
+        self.conf[OUTPUT_KEY] = self.output.copy()
         self.col_names = {table_name: [coldef["name"] for coldef in self.output[table_name].get(OUTPUT_COLS_KEY, [])] for table_name in self.output.keys()}
 
     def setup(self):
@@ -106,20 +112,28 @@ class BaseMapper(object):
         for hugo in tmap_parser.get_genes():
             self.gene_info[hugo] = True
 
-    def log_runtime_error(self, ln, line, e, fn=None):
-        import traceback
+    def log_error(self, e, input_data: Dict[str, Any]) -> Tuple[Optional[str], int]:
+        from traceback import format_exc
+        from zlib import crc32
+        from oakvar.lib.exceptions import ExpectedException
+        from ..consts import FILENO_KEY
+        from ..consts import LINENO_KEY
 
-        _ = line
-        err_str = traceback.format_exc().rstrip()
-        if (
-            self.logger is not None
-            and self.unique_excs is not None
-            and err_str not in self.unique_excs
-        ):
-            self.unique_excs.append(err_str)
-            self.logger.error(err_str)
-        if self.error_logger is not None:
-            self.error_logger.error(f"{fn}:{ln}\t{str(e)}")
+        if isinstance(e, ExpectedException):
+            err_str = str(e)
+        else:
+            err_str = format_exc().rstrip()
+        fileno: int = input_data[FILENO_KEY]
+        lineno: int = input_data[LINENO_KEY]
+        if err_str not in self.unique_excs:
+            err_no = crc32(bytes(err_str, "utf-8"))
+            self.unique_excs[err_str] = err_no
+            if self.logger:
+                self.logger.error(f"Error [{err_no}]: {fileno}:{lineno} {err_str}")
+            return err_str, err_no
+        else:
+            err_no = self.unique_excs[err_str]
+            return None, err_no
 
     async def get_gene_summary_data(self, cf):
         from json import loads
@@ -185,27 +199,22 @@ class BaseMapper(object):
         return d
 
     def setup_df(self):
-        from ..consts import OUTPUT_COLS_KEY
+        from ..util.run import get_df_headers
 
-        self.df_dtypes = {}
-        for table_name, table_output in self.output.items():
-            self.df_dtypes[table_name] = {}
-            coldefs = table_output.get(OUTPUT_COLS_KEY, [])
-            for col_def in coldefs:
-                col_name: str = col_def["name"]
-                ty = col_def.get("type")
-                if ty == "string":
-                    dtype = pl.Utf8
-                elif ty == "int":
-                    dtype = pl.Int64
-                elif ty == "float":
-                    dtype = pl.Float64
-                else:
-                    dtype = pl.Utf8
-                self.df_dtypes[table_name][col_name] = dtype
+        self.df_headers = get_df_headers(self.output)
 
     def get_series(self, df: pl.DataFrame) -> Dict[str, List[pl.Series]]:
+        from ..consts import VARIANT_LEVEL
+        from ..consts import VARIANT_LEVEL_PRIMARY_KEY
+        from ..consts import ERR_LEVEL
+        from ..consts import FILENO_KEY
+        from ..consts import LINENO_KEY
+        from ..consts import ERRNO_KEY
+        from ..consts import ERR_KEY
+        from ..util.run import initialize_err_series_data
+
         var_ld = {}
+        var_ld[ERR_LEVEL] = initialize_err_series_data()
         counts: Dict[str, int] = {}
         max_counts: Dict[str, int] = {}
         for table_name, col_names in self.col_names.items():
@@ -219,7 +228,16 @@ class BaseMapper(object):
             if input_data["alt_base"] in ["*", ".", ""]:
                 output_dict = {}
             else:
-                output_dict = self.map(input_data)
+                try:
+                    output_dict = self.map(input_data)
+                except Exception as e:
+                    err, errno = self.log_error(e, input_data)
+                    output_dict = {
+                        VARIANT_LEVEL: [],
+                        ERR_LEVEL: [
+                            {FILENO_KEY: input_data[FILENO_KEY], LINENO_KEY: input_data[LINENO_KEY], VARIANT_LEVEL_PRIMARY_KEY: input_data[VARIANT_LEVEL_PRIMARY_KEY], ERRNO_KEY: errno, ERR_KEY: err}
+                        ]
+                    }
             for table_name, table_data in output_dict.items():
                 table_ld = var_ld[table_name]
                 table_count = counts[table_name]
@@ -242,17 +260,21 @@ class BaseMapper(object):
         for table_name, table_ld in var_ld.items():
             seriess[table_name] = []
             for col_name in self.col_names[table_name]:
-                series = pl.Series(col_name, var_ld[table_name][col_name], dtype=self.df_dtypes[table_name][col_name])
+                series = pl.Series(col_name, var_ld[table_name][col_name], dtype=self.df_headers[table_name][col_name])
                 seriess[table_name].append(series)
         return seriess
 
     def run_df(self, dfs: Dict[str, pl.DataFrame]) -> Dict[str, pl.DataFrame]:
         from ..consts import VARIANT_LEVEL
+        from ..consts import ERR_LEVEL
 
         seriess = self.get_series(dfs[VARIANT_LEVEL])
         for table_name, table_seriess in seriess.items():
             if table_name in dfs:
-                dfs[table_name] = dfs[table_name].with_columns(table_seriess)
+                if table_name == ERR_LEVEL:
+                    dfs[table_name].vstack(pl.DataFrame(table_seriess), in_place=True)
+                else:
+                    dfs[table_name] = dfs[table_name].with_columns(table_seriess)
             else:
                 dfs[table_name] = pl.DataFrame(table_seriess)
         return dfs

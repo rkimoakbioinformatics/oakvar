@@ -1,5 +1,6 @@
 from typing import Optional
 from typing import List
+from typing import Tuple
 
 
 class VCF2VCF:
@@ -136,23 +137,23 @@ class VCF2VCF:
             v = v.replace(" ", "%20")
         return v
 
-    def trim_variant(self, pos, ref, alt):
+    def trim_variant(self, pos: int, ref: str, alt: str) -> Tuple[int, str, str]:
         if alt is None:
             return pos, ref, alt
         if len(ref) == 1 and len(alt) == 1:
             return pos, ref, alt
-        ref = list(ref)
-        alt = list(alt)
+        ref_l: List[str] = list(ref)
+        alt_l: List[str] = list(alt)
         adj = 0
-        while ref and alt and ref[0] == alt[0]:
+        while ref_l and alt_l and ref_l[0] == alt_l[0]:
             adj += 1
-            ref.pop(0)
-            alt.pop(0)
-        while ref and alt and ref[-1] == alt[-1]:
-            ref.pop()
-            alt.pop()
-        ref = "".join(ref) if ref else "-"
-        alt = "".join(alt) if alt else "-"
+            ref_l.pop(0)
+            alt_l.pop(0)
+        while ref_l and alt_l and ref_l[-1] == alt_l[-1]:
+            ref_l.pop()
+            alt_l.pop()
+        ref = "".join(ref_l) if ref_l else "-"
+        alt = "".join(alt_l) if alt_l else "-"
         return pos + adj, ref, alt
 
     def _log_exception(self, e, halt=True):
@@ -234,9 +235,9 @@ class VCF2VCF:
                     chrom = vcf_toks[0]
                     if not chrom.startswith("chr"):
                         chrom = "chr" + chrom
-                    pos = int(vcf_toks[1])
-                    ref = vcf_toks[3]
-                    alts = vcf_toks[4].split(",")
+                    pos: int = int(vcf_toks[1])
+                    ref: str = vcf_toks[3]
+                    alts: List[str] = vcf_toks[4].split(",")
                     if read_lnum % 10000 == 0:
                         if self.logger:
                             self.logger.info(
@@ -248,12 +249,16 @@ class VCF2VCF:
                             continue
                         pos, ref, alt = self.trim_variant(pos, ref, alt)
                         if self.do_liftover:
-                            _, pos, ref, alt = liftover(
-                                chrom, pos, ref, alt, lifter=self.lifter
-                            )
+                            _, pos_a, ref_a, alt_a = liftover(chrom, pos, ref, alt, lifter=self.lifter)
+                        else:
+                            pos_a, ref_a, alt_a = pos, ref, alt
                         uid += 1
                         variant = {"uid": uid}
-                        if ref == alt:
+                        if ref_a is None:
+                            pass
+                        elif alt_a is None:
+                            pass
+                        elif ref == alt:
                             pass
                         elif alt == "*":
                             pass
@@ -271,10 +276,10 @@ class VCF2VCF:
                                 variant = {
                                     "uid": uid,
                                     "chrom": chrom,
-                                    "pos": pos,
+                                    "pos": pos_a,
                                     "strand": "+",
-                                    "ref_base": ref,
-                                    "alt_base": alt,
+                                    "ref_base": ref_a,
+                                    "alt_base": alt_a,
                                 }
                                 variant = normalize_variant_dict_left(variant)
                                 res = mapper.map(variant)

@@ -34,7 +34,7 @@ LIFTOVER_DIR_KEY = "liftover_dir"
 base_modules_key = "base_modules"
 max_num_concurrent_annotators_per_job_key = "max_num_concurrent_annotators_per_job"
 max_num_concurrent_modules_per_job_key = "max_num_concurrent_modules_per_job"
-default_assembly_key = "default_assembly"
+DEFAULT_ASSEMBLY_KEY = "default_assembly"
 report_filter_max_num_cache_per_user_key = "report_filter_max_num_cache_per_user"
 
 #
