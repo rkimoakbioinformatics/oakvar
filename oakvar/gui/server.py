@@ -412,8 +412,9 @@ class TCPSitePatched(web_runner.BaseSite):
     @property
     def name(self, args={}):
         from yarl import URL
+        from .consts import SSL_ENABELD_KEY
 
-        scheme = "https" if args.get("ssl_enabled", False) else "http"
+        scheme = "https" if args.get(SSL_ENABELD_KEY, False) else "http"
         return str(URL.build(scheme=scheme, host=self._host, port=self._port))
 
     async def start(self):

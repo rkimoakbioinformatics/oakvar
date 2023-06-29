@@ -21,6 +21,7 @@ def get_server_settings(args={}) -> Tuple[str, int]:
     from .consts import SYSCONF_SSL_PORT_KEY
     from .consts import PORT_KEY
     from .consts import default_gui_port_ssl
+    from .consts import SSL_ENABELD_KEY
 
     sysconf = get_system_conf()
     if not sysconf:
@@ -37,7 +38,7 @@ def get_server_settings(args={}) -> Tuple[str, int]:
         def_host = "0.0.0.0"
     else:
         def_host = "localhost"
-    if args.get("ssl_enabled", False):
+    if args.get(SSL_ENABELD_KEY, False):
         if SYSCONF_SSL_HOST_KEY in sysconf:
             host = sysconf[SYSCONF_SSL_HOST_KEY]
         elif SYSCONF_HOST_KEY in sysconf:
@@ -63,6 +64,7 @@ def get_server_settings(args={}) -> Tuple[str, int]:
             port = sysconf[SYSCONF_PORT_KEY]
         else:
             port = DEFAULT_GUI_PORT
+    port = int(port)
     return host, port
 
 
