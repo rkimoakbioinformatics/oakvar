@@ -1,4 +1,4 @@
-default_gui_port = 8080
+DEFAULT_GUI_PORT = 8080
 default_gui_port_ssl = 8443
 DEFAULT_JOB_TABLE_PAGESIZE = 10
 job_table_pagesize_key = "job_table_pagesize"
@@ -23,3 +23,9 @@ SYSTEM_MESSAGE_DB_FNAME = "system_messages.sqlite"
 SYSTEM_MESSAGE_TABLE = "system_messages"
 SYSTEM_ERROR_TABLE = "system_errors"
 INSTALL_KILL_SIGNAL = "kill_signal"
+PORT_KEY = "port"
+SYSCONF_PORT_KEY = "gui_port"
+SYSCONF_SSL_PORT_KEY = "gui_port_ssl"
+SYSCONF_HOST_KEY = "gui_host"
+SYSCONF_SSL_HOST_KEY = "gui_host_ssl"
+SSL_ENABELD_KEY = "ssl_enabled"

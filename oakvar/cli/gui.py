@@ -17,9 +17,11 @@ def inject_module_variables(args={}):
 
 
 def get_protocol(args={}):
+    from ..gui.consts import SSL_ENABELD_KEY
+
     global protocol
     if not protocol:
-        if args.get("ssl_enabled"):
+        if args.get(SSL_ENABELD_KEY):
             protocol = "https://"
         else:
             protocol = "http://"
@@ -28,6 +30,7 @@ def get_protocol(args={}):
 
 def setup(args={}):
     from os.path import abspath
+    from ..gui.consts import SSL_ENABELD_KEY
 
     # from ..gui.websubmit import multiuser as mu
     # from ..util.asyn import get_event_loop
@@ -40,7 +43,7 @@ def setup(args={}):
     inject_module_variables(args=args)
     # loop = get_event_loop()
     # loop.run_until_complete(mu.get_serveradmindb())
-    args["ssl_enabled"] = False
+    args[SSL_ENABELD_KEY] = False
 
 
 def is_port_occupied(args={}):
@@ -89,6 +92,7 @@ def main(url=None, args={}):
     from ..gui.server import WebServer
     from ..gui.util import get_host_port
     from ..lib.util.asyn import get_event_loop
+    from ..gui.consts import SSL_ENABELD_KEY
 
     outer = args.get("outer")
     logger = args.get("logger")
@@ -111,7 +115,7 @@ def main(url=None, args={}):
         print(msg)
     print("(To quit: Press Ctrl-C or Ctrl-Break)")
     loop = get_event_loop()
-    if args["ssl_enabled"]:
+    if args[SSL_ENABELD_KEY]:
         args["ssl_context"] = get_ssl_context(args=args)
     _ = WebServer(loop=loop, url=url, args=args)
     loop.run_forever()

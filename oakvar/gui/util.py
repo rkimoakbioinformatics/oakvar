@@ -14,8 +14,14 @@ def get_server_settings(args={}) -> Tuple[str, int]:
     from ..lib.system import get_system_conf
     import platform
     from ..lib.exceptions import SetupError
-    from .consts import default_gui_port
+    from .consts import DEFAULT_GUI_PORT
+    from .consts import SYSCONF_HOST_KEY
+    from .consts import SYSCONF_SSL_HOST_KEY
+    from .consts import SYSCONF_PORT_KEY
+    from .consts import SYSCONF_SSL_PORT_KEY
+    from .consts import PORT_KEY
     from .consts import default_gui_port_ssl
+    from .consts import SSL_ENABELD_KEY
 
     sysconf = get_system_conf()
     if not sysconf:
@@ -32,22 +38,33 @@ def get_server_settings(args={}) -> Tuple[str, int]:
         def_host = "0.0.0.0"
     else:
         def_host = "localhost"
-    if args.get("ssl_enabled", False):
-        if "gui_host_ssl" in sysconf:
-            host = sysconf["gui_host_ssl"]
-        elif "gui_host" in sysconf:
-            host = sysconf["gui_host"]
+    if args.get(SSL_ENABELD_KEY, False):
+        if SYSCONF_SSL_HOST_KEY in sysconf:
+            host = sysconf[SYSCONF_SSL_HOST_KEY]
+        elif SYSCONF_HOST_KEY in sysconf:
+            host = sysconf[SYSCONF_HOST_KEY]
         else:
             host = def_host
-        if "gui_port_ssl" in sysconf:
-            port = sysconf["gui_port_ssl"]
-        elif "gui_port" in sysconf:
-            port = sysconf["gui_port"]
+        if PORT_KEY in args:
+            port = args[PORT_KEY]
+        elif SYSCONF_SSL_PORT_KEY in sysconf:
+            port = sysconf[SYSCONF_SSL_PORT_KEY]
+        elif SYSCONF_PORT_KEY in sysconf:
+            port = sysconf[SYSCONF_PORT_KEY]
         else:
             port = default_gui_port_ssl
     else:
-        host = get_system_conf().get("gui_host", def_host)
-        port = get_system_conf().get("gui_port", default_gui_port)
+        if SYSCONF_HOST_KEY in sysconf:
+            host = sysconf[SYSCONF_HOST_KEY]
+        else:
+            host = def_host
+        if PORT_KEY in args:
+            port = args[PORT_KEY]
+        elif SYSCONF_PORT_KEY in sysconf:
+            port = sysconf[SYSCONF_PORT_KEY]
+        else:
+            port = DEFAULT_GUI_PORT
+    port = int(port)
     return host, port
 
 
