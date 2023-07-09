@@ -54,9 +54,7 @@ def get_user_job_run_path(request, eud={}) -> Optional[str]:
     return str(run_path)
 
 
-def get_user_job_report_paths(
-    request, report_type: str, eud={}
-) -> Optional[list]:
+def get_user_job_report_paths(request, report_type: str, eud={}) -> Optional[list]:
     from pathlib import Path
     from ..lib.module.local import get_local_module_info_by_name
 

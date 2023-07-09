@@ -218,14 +218,22 @@ class BasePostAggregator(object):
                     self.table_headers[col["name"]].append(h["name"])
 
     def get_df(
-        self, level: str = "variant", sql: Optional[str] = None, num_cores: int = 1, conn = None,
+        self,
+        level: str = "variant",
+        sql: Optional[str] = None,
+        num_cores: int = 1,
+        conn=None,
     ):
         from ..util.util import get_df_from_db
 
         if not self.db_path:
             return None
         df = get_df_from_db(
-            self.db_path, table_name=level, sql=sql, num_cores=num_cores, conn=conn,
+            self.db_path,
+            table_name=level,
+            sql=sql,
+            num_cores=num_cores,
+            conn=conn,
         )
         return df
 
@@ -510,7 +518,7 @@ class BasePostAggregator(object):
             q = "insert or replace into {} values (?, ?)".format(header_table_name)
             self.cursor_w.execute(q, [colname, col_def.get_json()])
         self.cursor_w.execute("commit")
-        #self.dbconn.commit()
+        # self.dbconn.commit()
 
     # Placeholder, intended to be overridded in derived class
     def setup(self):
@@ -677,4 +685,3 @@ class BasePostAggregator(object):
 
     def annotate(self, __input_data__):
         raise NotImplementedError()
-

@@ -7,9 +7,7 @@ import polars as pl
 
 
 class BaseAnnotator(object):
-    """BaseAnnotator.
-    """
-
+    """BaseAnnotator."""
 
     def __init__(
         self,
@@ -64,7 +62,10 @@ class BaseAnnotator(object):
         from ..consts import GENE_LEVEL
 
         self.valid_levels = ["variant", "gene"]
-        self.id_col_defs = {"variant": VARIANT_LEVEL_PRIMARY_KEY_COLDEF, "gene": GENE_LEVEL_PRIMARY_KEY_COLDEF}
+        self.id_col_defs = {
+            "variant": VARIANT_LEVEL_PRIMARY_KEY_COLDEF,
+            "gene": GENE_LEVEL_PRIMARY_KEY_COLDEF,
+        }
         self.script_path: str = ""
         self.module_options = module_options
         if input_file:
@@ -198,38 +199,45 @@ class BaseAnnotator(object):
         self.cache = ModuleDataCache(self.module_name, module_type=self.module_type)
         self.setup_df()
 
-    def set_output(self, output: Union[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]):
+    def set_output(
+        self, output: Union[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]
+    ):
         from ..consts import OUTPUT_COLS_KEY
         from ..consts import OUTPUT_KEY
 
         if not output:
-            output = self.conf.get(OUTPUT_KEY, self.conf.get(OUTPUT_COLS_KEY, [])).copy()
+            output = self.conf.get(
+                OUTPUT_KEY, self.conf.get(OUTPUT_COLS_KEY, [])
+            ).copy()
         if isinstance(output, dict):
             self.output = output
         else:
-            self.output[self.level] = {
-                "level": self.level,
-                OUTPUT_COLS_KEY: []
-            }
+            self.output[self.level] = {"level": self.level, OUTPUT_COLS_KEY: []}
             coldefs: List[Dict[str, Any]] = []
             for coldef in output:
                 if coldef.get("table") is True:
                     table_name = f"{self.module_name}__{coldef['name']}"
                     self.output[table_name] = {
                         "level": coldef.get("level", self.level),
-                        OUTPUT_COLS_KEY: []
+                        OUTPUT_COLS_KEY: [],
                     }
                     for table_coldef in coldef.get("table_headers", []):
-                        self.output[table_name][OUTPUT_COLS_KEY].append(table_coldef.copy())
+                        self.output[table_name][OUTPUT_COLS_KEY].append(
+                            table_coldef.copy()
+                        )
                 else:
                     coldefs.append(coldef.copy())
             self.output[self.level][OUTPUT_COLS_KEY] = coldefs
         self.conf["output"] = self.output.copy()
-        self.col_names = {table_name: [coldef["name"] for coldef in self.output[table_name][OUTPUT_COLS_KEY]] for table_name in self.output.keys()}
+        self.col_names = {
+            table_name: [
+                coldef["name"] for coldef in self.output[table_name][OUTPUT_COLS_KEY]
+            ]
+            for table_name in self.output.keys()
+        }
 
     def set_ref_colname(self):
-        """set_ref_colname.
-        """
+        """set_ref_colname."""
         ref_colnames = {
             "variant": "uid",
             "gene": "hugo",
@@ -270,9 +278,7 @@ class BaseAnnotator(object):
             return True
 
     def parse_cmd_args(self):
-        """parse_cmd_args.
-        """
-        import re
+        """parse_cmd_args."""
         from pathlib import Path
 
         if not self.output_dir and self.primary_input_path:
@@ -339,24 +345,22 @@ class BaseAnnotator(object):
 
     def setup_df(self):
         from ..consts import OUTPUT_COLS_KEY
+        from ..util.run import get_pl_dtype
 
-        self.full_col_names = {table_name: {col_name: f"{self.module_name}__{col_name}" for col_name in self.col_names[table_name]} for table_name in self.col_names.keys()}
+        self.full_col_names = {
+            table_name: {
+                col_name: f"{self.module_name}__{col_name}"
+                for col_name in self.col_names[table_name]
+            }
+            for table_name in self.col_names.keys()
+        }
         self.df_dtypes = {}
         for table_name, table_output in self.output.items():
             self.df_dtypes[table_name] = {}
             coldefs = table_output.get(OUTPUT_COLS_KEY, [])
-            for col_def in coldefs:
-                col_name: str = col_def["name"]
-                ty = col_def.get("type")
-                if ty == "string":
-                    dtype = pl.Utf8
-                elif ty == "int":
-                    dtype = pl.Int64
-                elif ty == "float":
-                    dtype = pl.Float64
-                else:
-                    dtype = pl.Utf8
-                self.df_dtypes[table_name][col_name] = dtype
+            for col in coldefs:
+                ty = get_pl_dtype(col)
+                self.df_dtypes[table_name][col] = ty
         self.base_setup()
 
     def get_series(self, dfs: Dict[str, pl.DataFrame]) -> Dict[str, List[pl.Series]]:
@@ -394,7 +398,9 @@ class BaseAnnotator(object):
                     if table_name == self.level:
                         continue
                     if keycol in s_df.columns:
-                        secondary_dfs[table_name] = s_df.filter(pl.col(keycol) == keyval)
+                        secondary_dfs[table_name] = s_df.filter(
+                            pl.col(keycol) == keyval
+                        )
                 output_dict = self.annotate(row, secondary_data=secondary_dfs)
             else:
                 output_dict = self.annotate(row)
@@ -431,12 +437,18 @@ class BaseAnnotator(object):
                 counts[self.level] += 1
         for table_name, table_ld in var_ld.items():
             for col_name in table_ld.keys():
-                var_ld[table_name][col_name] = var_ld[table_name][col_name][:counts[table_name]]
+                var_ld[table_name][col_name] = var_ld[table_name][col_name][
+                    : counts[table_name]
+                ]
         seriess: Dict[str, List[pl.Series]] = {}
         for table_name, table_ld in var_ld.items():
             seriess[table_name] = []
             for col_name in self.col_names[table_name]:
-                series = pl.Series(self.full_col_names[table_name][col_name], var_ld[table_name][col_name], dtype=self.df_dtypes[table_name][col_name])
+                series = pl.Series(
+                    self.full_col_names[table_name][col_name],
+                    var_ld[table_name][col_name],
+                    dtype=self.df_dtypes[table_name][col_name],
+                )
                 seriess[table_name].append(series)
         return seriess
 
@@ -520,8 +532,7 @@ class BaseAnnotator(object):
             print(err_logger_s)
 
     def base_setup(self):
-        """base_setup.
-        """
+        """base_setup."""
         self.connect_db()
         self.setup()
         if not hasattr(self, "supported_chroms"):
@@ -530,8 +541,7 @@ class BaseAnnotator(object):
             )
 
     def connect_db(self):
-        """connect_db.
-        """
+        """connect_db."""
         from pathlib import Path
         import sqlite3
 
@@ -541,8 +551,7 @@ class BaseAnnotator(object):
             self.cursor = self.dbconn.cursor()
 
     def close_db_connection(self):
-        """close_db_connection.
-        """
+        """close_db_connection."""
         if self.cursor is not None:
             self.cursor.close()
         if self.dbconn is not None:
@@ -550,13 +559,11 @@ class BaseAnnotator(object):
 
     # Placeholder, intended to be overridded in derived class
     def setup(self):
-        """setup.
-        """
+        """setup."""
         pass
 
     def base_cleanup(self):
-        """base_cleanup.
-        """
+        """base_cleanup."""
         if self.output_writer:
             self.output_writer.close()
         # self.invalid_file.close()
@@ -566,19 +573,19 @@ class BaseAnnotator(object):
 
     # Placeholder, intended to be overridden in derived class
     def cleanup(self):
-        """cleanup.
-        """
+        """cleanup."""
         pass
 
     def _setup_logger(self):
-        """_setup_logger.
-        """
+        """_setup_logger."""
         from logging import getLogger
 
         self.logger = getLogger("oakvar." + self.module_name)
         self.error_logger = getLogger("err." + self.module_name)
 
-    def annotate(self, input_data, secondary_data: Dict[str, pl.DataFrame] = {}) -> Dict[str, Any]:
+    def annotate(
+        self, input_data, secondary_data: Dict[str, pl.DataFrame] = {}
+    ) -> Dict[str, Any]:
         """annotate.
 
         Args:
@@ -638,5 +645,3 @@ class BaseAnnotator(object):
         from ..module.local import create_module_files
 
         create_module_files(self, overwrite=overwrite, interactive=interactive)
-
-

@@ -506,4 +506,3 @@ class Aggregator(object):
             # )
         else:
             self.logger.error(err_str)
-

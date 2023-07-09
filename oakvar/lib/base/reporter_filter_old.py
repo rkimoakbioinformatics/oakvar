@@ -163,7 +163,7 @@ class ReportFilter:
         includesample=None,
         excludesample=None,
         strict=True,
-        user: str=DEFAULT_SERVER_DEFAULT_USERNAME,
+        user: str = DEFAULT_SERVER_DEFAULT_USERNAME,
         uid=None,
         use_duckdb: bool = False,
     ):
@@ -236,8 +236,12 @@ class ReportFilter:
         if not use_duckdb:
             if self.dbpath.endswith(".duckdb"):
                 self.use_duckdb = True
-        self.conn_read: Optional[Union[sqlite3.Connection, duckdb.DuckDBPyConnection]] = None
-        self.conn_write: Optional[Union[sqlite3.Connection, duckdb.DuckDBPyConnection]] = None
+        self.conn_read: Optional[
+            Union[sqlite3.Connection, duckdb.DuckDBPyConnection]
+        ] = None
+        self.conn_write: Optional[
+            Union[sqlite3.Connection, duckdb.DuckDBPyConnection]
+        ] = None
         if self.mode == "sub":
             self.loadfilter()
 
@@ -382,10 +386,19 @@ class ReportFilter:
         cursor.close()
         self.create_report_filter_registry_table_if_not_exists(conn)
 
-    def get_db_conns(self) -> Union[Tuple[sqlite3.Connection, sqlite3.Connection], Tuple[duckdb.DuckDBPyConnection, duckdb.DuckDBPyConnection]]:
-        if isinstance(self.conn_read, sqlite3.Connection) and isinstance(self.conn_write, sqlite3.Connection):
+    def get_db_conns(
+        self,
+    ) -> Union[
+        Tuple[sqlite3.Connection, sqlite3.Connection],
+        Tuple[duckdb.DuckDBPyConnection, duckdb.DuckDBPyConnection],
+    ]:
+        if isinstance(self.conn_read, sqlite3.Connection) and isinstance(
+            self.conn_write, sqlite3.Connection
+        ):
             return self.conn_read, self.conn_write
-        if isinstance(self.conn_read, duckdb.DuckDBPyConnection) and isinstance(self.conn_write, duckdb.DuckDBPyConnection):
+        if isinstance(self.conn_read, duckdb.DuckDBPyConnection) and isinstance(
+            self.conn_write, duckdb.DuckDBPyConnection
+        ):
             return self.conn_read, self.conn_write
         if self.use_duckdb:
             self.conn_read = duckdb.connect(self.dbpath)
@@ -641,7 +654,9 @@ class ReportFilter:
         [uid, status] = ret
         return {"uid": uid, "status": status}
 
-    def get_report_filter_count(self, cursor: Union[sqlite3.Cursor, duckdb.DuckDBPyConnection]):
+    def get_report_filter_count(
+        self, cursor: Union[sqlite3.Cursor, duckdb.DuckDBPyConnection]
+    ):
         tablename = self.get_registry_table_name()
         q = f"select count(*) from {tablename}"
         cursor.execute(q)
@@ -649,7 +664,9 @@ class ReportFilter:
         count = ret[0][0]
         return count
 
-    def get_max_report_filter_uid(self, cursor: Union[sqlite3.Cursor, duckdb.DuckDBPyConnection], where=None):
+    def get_max_report_filter_uid(
+        self, cursor: Union[sqlite3.Cursor, duckdb.DuckDBPyConnection], where=None
+    ):
         tablename = self.get_registry_table_name()
         q = f"select max(uid) from {tablename}"
         if where:
@@ -659,7 +676,9 @@ class ReportFilter:
         n = ret[0][0]
         return n
 
-    def get_min_report_filter_uid(self, cursor: Union[sqlite3.Cursor, duckdb.DuckDBPyConnection], where=None):
+    def get_min_report_filter_uid(
+        self, cursor: Union[sqlite3.Cursor, duckdb.DuckDBPyConnection], where=None
+    ):
         tablename = self.get_registry_table_name()
         q = f"select min(uid) from {tablename}"
         if where:
@@ -919,7 +938,11 @@ class ReportFilter:
                 gene_to_filter=gene_to_filter,
             )
             self.make_fgene(uid=uid)
-            self.remove_temporary_tables(uid=uid, gene_to_filter=gene_to_filter, sample_to_filter=sample_to_filter)
+            self.remove_temporary_tables(
+                uid=uid,
+                gene_to_filter=gene_to_filter,
+                sample_to_filter=sample_to_filter,
+            )
             self.set_registry_status(uid=uid, status=REPORT_FILTER_READY)
             return {"uid": uid, "status": REPORT_FILTER_READY}
         except Exception as e:
@@ -957,7 +980,9 @@ class ReportFilter:
         ret = cursor_read.fetchall()
         return ret[0][0]
 
-    def get_level_data_iterator(self, level, page=None, pagesize=None, uid=None, var_added_cols=[], cursor=None):
+    def get_level_data_iterator(
+        self, level, page=None, pagesize=None, uid=None, var_added_cols=[], cursor=None
+    ):
         if not level:
             return None
         if not cursor:
@@ -1004,9 +1029,7 @@ class ReportFilter:
             return None
         return f"{REPORT_FILTER_DB_NAME}.{GENE_TO_FILTER_TABLE_NAME}_{uid}"
 
-    def make_gene_to_filter_table(
-        self, uid=None, genes=None
-    ):
+    def make_gene_to_filter_table(self, uid=None, genes=None):
         if uid is None or not genes:
             return
         if not self.dbpath:

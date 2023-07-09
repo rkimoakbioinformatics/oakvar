@@ -78,8 +78,20 @@ GENE_LEVEL_PRIMARY_KEY = "hugo"
 DEFAULT_DF_SIZE = 1_000_000
 DEFAULT_CONVERTER_READ_SIZE = 10_000
 OAKVAR_VERSION_KEY = "oakvar"
-VARIANT_LEVEL_PRIMARY_KEY_COLDEF: Dict[str, str] = {"name": "uid", "type": "int", "level": VARIANT_LEVEL, "title": "Variant ID", "desc": "Variant ID"}
-GENE_LEVEL_PRIMARY_KEY_COLDEF: Dict[str, str] = {"name": "hugo", "type": "string", "level": GENE_LEVEL, "title": "HUGO Symbol", "desc": "HUGO Symbol of gene"}
+VARIANT_LEVEL_PRIMARY_KEY_COLDEF: Dict[str, str] = {
+    "name": "uid",
+    "type": "int",
+    "level": VARIANT_LEVEL,
+    "title": "Variant ID",
+    "desc": "Variant ID",
+}
+GENE_LEVEL_PRIMARY_KEY_COLDEF: Dict[str, str] = {
+    "name": "hugo",
+    "type": "string",
+    "level": GENE_LEVEL,
+    "title": "HUGO Symbol",
+    "desc": "HUGO Symbol of gene",
+}
 FILENO_KEY = "fileno"
 LINENO_KEY = "lineno"
 ERRNO_KEY = "errno"

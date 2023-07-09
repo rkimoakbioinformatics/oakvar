@@ -1,9 +1,10 @@
 from typing import Optional
 from typing import Tuple
+from pathlib import Path
 from ..base.commonmodule import BaseCommonModule
 from ..consts import SYSTEM_GENOME_ASSEMBLY
-from liftover.chain_file import ChainFile # type: ignore
-from liftover.download_file import download_file # type: ignore
+from liftover.chain_file import ChainFile  # type: ignore
+from liftover.download_file import download_file  # type: ignore
 
 complementary_base = {
     "A": "T",
@@ -276,6 +277,33 @@ def reverse_complement(bases):
     return "".join([complementary_base[base] for base in bases[::-1]])
 
 
+def get_source_assembly_name(source_assembly: int):
+    return f"hg{source_assembly}"
+
+
+def get_chainfile_path(source_assembly: int) -> Optional[Path]:
+    from os import makedirs
+    from pathlib import Path
+    from ..system import get_liftover_dir
+    from ..consts import SYSTEM_GENOME_ASSEMBLY
+
+    liftover_dir = get_liftover_dir()
+    if not liftover_dir:
+        return None
+    if not liftover_dir.exists():
+        makedirs(liftover_dir, exist_ok=True)
+    source_assembly_name = get_source_assembly_name(source_assembly)
+    target_assembly_name = SYSTEM_GENOME_ASSEMBLY.capitalize()
+    chain_file_basename = (
+        f"{source_assembly_name}To{target_assembly_name}.over.chain.gz"
+    )
+    chain_file_path: Path = liftover_dir / chain_file_basename
+    if not chain_file_path.exists():
+        url = f"https://hgdownload.cse.ucsc.edu/goldenPath/{source_assembly_name}/liftOver/{chain_file_basename}"
+        download_file(url, chain_file_path)
+    return chain_file_path
+
+
 def get_lifter(source_assembly: Optional[int]) -> Optional[ChainFile]:
     """get_lifter.
 
@@ -285,26 +313,15 @@ def get_lifter(source_assembly: Optional[int]) -> Optional[ChainFile]:
     Returns:
         Optional[liftover.ChainFile]:
     """
-    from os import makedirs
-    from pathlib import Path
-    from ..system import get_liftover_dir
     from ..consts import SYSTEM_GENOME_ASSEMBLY
 
     if not source_assembly:
         return None
-    liftover_dir = get_liftover_dir()
-    if not liftover_dir:
-        return None
-    if not liftover_dir.exists():
-        makedirs(liftover_dir, exist_ok=True)
-    source_assembly_name = f"hg{source_assembly}"
-    target_assembly_name = SYSTEM_GENOME_ASSEMBLY.capitalize()
-    chain_file_basename = f"{source_assembly_name}To{target_assembly_name}.over.chain.gz"
-    chain_file_path: Path = liftover_dir / chain_file_basename
-    if not chain_file_path.exists():
-        url = f"https://hgdownload.cse.ucsc.edu/goldenPath/{source_assembly_name}/liftOver/{chain_file_basename}"
-        download_file(url, chain_file_path)
-    lifter = ChainFile(str(chain_file_path), SYSTEM_GENOME_ASSEMBLY, source_assembly_name)
+    source_assembly_name = get_source_assembly_name(source_assembly)
+    chainfile_path: Optional[Path] = get_chainfile_path(source_assembly)
+    lifter = ChainFile(
+        str(chainfile_path), SYSTEM_GENOME_ASSEMBLY, source_assembly_name
+    )
     return lifter
 
 
@@ -400,8 +417,8 @@ def liftover(
         return newchrom, newpos, ref, alt
     reflen = len(ref)
     altlen = len(alt)
-    refempty = (ref == "-")
-    altempty = (alt == "-")
+    refempty = ref == "-"
+    altempty = alt == "-"
     if not refempty and not altempty:
         if reflen == 1 and altlen == 1:
             converted = liftover_one_pos(chrom, pos, lifter=lifter)

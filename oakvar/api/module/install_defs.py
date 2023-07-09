@@ -52,7 +52,12 @@ def get_modules_to_install(
                             f"{module_name}=={version} is not compatible with current OakVar version ({pkg_ver}). Please upgrade OakVar to at least {min_pkg_ver}."
                         )
                     continue
-        module_install_data[module_name] = {"type": ty, "version": version, "url": url, "size": data.get("size")}
+        module_install_data[module_name] = {
+            "type": ty,
+            "version": version,
+            "url": url,
+            "size": data.get("size"),
+        }
     # dependency
     deps_install = {}
     if not skip_dependencies:
@@ -68,7 +73,9 @@ def get_modules_to_install(
     return to_install
 
 
-def collect_module_name_and_versions(modules: List[str], outer=None) -> List[Dict[str, Any]]:
+def collect_module_name_and_versions(
+    modules: List[str], outer=None
+) -> List[Dict[str, Any]]:
     from ...lib.module.remote import get_remote_module_info_ls
 
     mn_vs: List[Dict[str, Any]] = []
@@ -86,7 +93,9 @@ def collect_module_name_and_versions(modules: List[str], outer=None) -> List[Dic
                 if outer:
                     outer.write(f"Module does not exist: {module_name}")
                 continue
-            mn_vs.append({"module_name": module_name, "version": version, "size": info_ls.size})
+            mn_vs.append(
+                {"module_name": module_name, "version": version, "size": info_ls.size}
+            )
         except Exception:
             if outer:
                 outer.write(f"Wrong module_name==version format: {mv}")

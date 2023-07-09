@@ -376,7 +376,7 @@ async def get_result(request):
         filterstring=filterstring,
         separatesample=separatesample,
         report_types=["text"],
-        no_summary=no_summary
+        no_summary=no_summary,
     )
     data = reporter.run(
         tab=tab,
@@ -512,9 +512,7 @@ async def get_dbpath(request) -> str:
     uid = queries.get("uid")
     if uid and username:
         serveradmindb = get_serveradmindb()
-        dbpath = serveradmindb.get_dbpath_by_eud(
-            eud={"uid": uid, "username": username}
-        )
+        dbpath = serveradmindb.get_dbpath_by_eud(eud={"uid": uid, "username": username})
     return dbpath
 
 
@@ -523,8 +521,8 @@ async def get_variant_cols(request):
     dbpath = await get_dbpath(request)
     confpath = queries.get("confpath")
     filterstring = queries.get("filter")
-    #add_summary = queries.get("add_summary", False)
-    add_summary = False # TODO: disabling it for now
+    # add_summary = queries.get("add_summary", False)
+    add_summary = False  # TODO: disabling it for now
     data = {}
     data["data"] = {}
     data["stat"] = {}
@@ -657,7 +655,7 @@ def get_colinfo(dbpath, confpath=None, filterstring=None, add_summary=False):
         name=reporter_name,
         confpath=confpath,
         filterstring=filterstring,
-        report_types=["text"]
+        report_types=["text"],
     )
     # reporter_levels = reporter.get_levels_to_run("all")
     # reporter.levels = reporter_levels

@@ -131,7 +131,7 @@ class LocalModule(object):
 
 
 def get_local_module_info(
-        module_name: Union[str, Path], module_type: str="", fresh=False
+    module_name: Union[str, Path], module_type: str = "", fresh=False
 ) -> Optional[LocalModule]:
     from .cache import get_module_cache
 
@@ -187,7 +187,9 @@ def get_local_module_info_by_name(module_name) -> Optional[LocalModule]:
     return get_local_module_info(module_name)
 
 
-def get_local_module_infos_of_type(module_type: str, update=False) -> Dict[str, LocalModule]:
+def get_local_module_infos_of_type(
+    module_type: str, update=False
+) -> Dict[str, LocalModule]:
     from .cache import get_module_cache
     from .cache import LocalModuleCache
 
@@ -661,6 +663,7 @@ def get_module_names_for_module_type(module_type: str) -> List[str]:
             module_names.append(item.name)
     return module_names
 
+
 def load_modules(annotators: list = [], mapper: Optional[str] = None, input_file=None):
     from ... import get_mapper
     from ... import get_annotator
@@ -911,4 +914,9 @@ def create_module_files(instance, overwrite: bool = False, interactive: bool = F
     cwd = Path(getcwd())
     data_dir = cwd / "data"
     if data_dir.exists():
-        copytree(data_dir, module_dir / "data", ignore=ignore_patterns(".ipynb_checkpoints"), dirs_exist_ok=True)
+        copytree(
+            data_dir,
+            module_dir / "data",
+            ignore=ignore_patterns(".ipynb_checkpoints"),
+            dirs_exist_ok=True,
+        )

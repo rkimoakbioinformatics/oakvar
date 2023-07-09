@@ -11,71 +11,85 @@ from ..util.inout import ColumnDefinition
 class BaseReporter:
     def __init__(
         self,
-        dbpath: Union[Path, str] = "",
+        dbpath: str = "",
         report_types: List[str] = [],
-        filter_path: Optional[str] = None,
+        filterpath: Optional[str] = None,
         filter=None,
-        filter_sql: Optional[str] = None,
-        output_path: Optional[Path] = None,
+        filtersql: Optional[str] = None,
+        filtername: Optional[str] = None,
+        filterstring: Optional[str] = None,
+        savepath: Optional[Path] = None,
+        confpath: Optional[str] = None,
         name: Optional[str] = None,
-        skip_gene_summary: bool = False,
-        row_per_sample: bool = False,
-        output_dir: str = ".",
+        nogenelevelonvariantlevel: bool = False,
+        separatesample: bool = False,
+        output_dir: Optional[str] = None,
         run_name: str = "",
         module_options: Dict = {},
-        tables_to_include: List[str] = [],
-        samples_to_include: Optional[List[str]] = [],
-        samples_to_exclude: Optional[List[str]] = None,
+        includesample: Optional[List[str]] = [],
+        excludesample: Optional[List[str]] = None,
         package: Optional[str] = None,
-        columns_to_include: Optional[Dict[str, List[str]]] = None,
+        cols: Optional[List[str]] = None,
+        level: Optional[str] = None,
         user: str = "",
         module_conf: Dict[str, Any] = {},
-        add_summary: bool = False,
+        no_summary: bool = False,
         logtofile: bool = False,
+        df_mode: bool = False,
+        use_duckdb: Optional[bool] = None,
         serveradmindb=None,
         outer=None,
     ):
-        from pathlib import Path
-        from .db_filter import DbFilter
-        from ..consts import VARIANT_LEVEL
+        import sys
+        import os
+        from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
+        from ..exceptions import ModuleLoadingError
+        from ..module.local import get_module_conf
 
-        self.module_type: str = "reporter"
-        self.report_types: List[str] = report_types
-        self.filter_path: Optional[str] = filter_path
-        self.filter: Optional[Dict[str, Any]] = filter
-        self.filter_sql: Optional[str] = filter_sql
-        self.output_path: Optional[Path] = None
-        self.module_name: Optional[str] = name
-        self.skip_gene_summary: bool = skip_gene_summary
-        self.row_per_sample: bool = row_per_sample
-        self.output_dir: Path
-        self.run_name: str = run_name
-        self.module_options: Dict[str, Any] = module_options
-        self.tables_to_include: List[str]
-        if tables_to_include:
-            self.tables_to_report = tables_to_include
-        else:
-            self.tables_to_report = [VARIANT_LEVEL]
-        self.samples_to_include: Optional[List[str]] = samples_to_include
-        self.samples_to_exclude: Optional[List[str]] = samples_to_exclude
-        self.package_name: Optional[str] = package
-        self.columns_to_include: Optional[Dict[str, List[str]]] = columns_to_include
-        self.add_summary: bool = add_summary
-        self.serveradmindb: Any = serveradmindb
-        self.outer: Any = outer
-        self.rf: Optional[DbFilter] = None
+        self.module_type = "reporter"
+        self.script_path: str = ""
+        self.report_types = report_types
+        self.filterpath = filterpath
+        self.filter = filter
+        self.filtersql = filtersql
+        self.filtername = filtername
+        self.filterstring = filterstring
+        self.savepath = savepath
+        self.confpath = confpath
+        self.module_name = name
+        self.nogenelevelonvariantlevel = nogenelevelonvariantlevel
+        self.separatesample = separatesample
+        self.output_dir = output_dir
+        self.run_name = run_name
+        self.module_options = module_options
+        self.includesample = includesample
+        self.excludesample = excludesample
+        self.package = package
+        self.cols = cols
+        self.level = level
+        self.no_summary = no_summary
+        self.serveradmindb = serveradmindb
+        self.outer = outer
+        self.cf = None
         self.colinfo = {}
         self.colnos = {}
-        self.column_groups = {}
+        self.var_added_cols = []
+        self.summarizing_modules = []
+        self.columngroups = {}
+        self.column_subs = {}
+        self.warning_msgs = []
         self.colnames_to_display: Dict[str, List[str]] = {}
         self.cols_to_display = {}
         self.colnos_to_display: Dict[str, List[int]] = {}
+        self.display_select_columns = {}
         self.extracted_cols: Dict[str, Any] = {}
         self.extracted_col_names: Dict[str, List[str]] = {}
         self.extracted_col_nos: Dict[str, List[int]] = {}
         self.retrieved_col_names: Dict[str, List[str]] = {}
         self.conn = None
-        self.module_conf: Dict[str, Any] = {}
+        self.levels_to_write = None
+        self.module_conf = None
+        self.output_basename = None
         self.extract_columns_multilevel: Dict[str, List[str]] = {}
         self.logger = None
         self.error_logger = None
@@ -88,49 +102,18 @@ class BaseReporter:
         self.dictrow: bool = True
         self.gene_summary_datas = {}
         self.total_norows: Optional[int] = None
+        self.legacy_samples_col: bool
         self.modules_to_add_to_base = []
-        self.use_duckdb: bool = False
-        self.dbpath: Path = Path("")
-        self.use_new_db_schema: bool = True
-        self.user: str = ""
+        self.use_duckdb: bool
+        self.dbpath: str
+        self.use_new_db_schema: bool
         self.set_dbpath(dbpath)
-        self.set_db_kind()
-        self.set_user(user)
-        self.set_module_name_and_conf(name, module_conf)
-        self.set_output_dir(output_dir)
-        self.check_db_is_oakvar()
-        self.set_output_path(output_path)
-        self.set_columns_to_include(columns_to_include)
-        self.setup_logger()
-        self.load_filter()
-
-    def set_output_path(self, output_path: Optional[Path]):
-        from ..exceptions import NoInput
-        from ..exceptions import ArgumentError
-
-        if not self.dbpath.name:
-            raise NoInput()
-        if not output_path or not output_path.name:
-            raise ArgumentError(msg="output_path should be given.")
-        self.output_path = output_path
-        if self.output_path.parent == "":
-            self.output_path = self.output_dir / self.output_path.name
-
-    def set_output_dir(self, output_dir: str):
-        if not output_dir:
-            self.output_dir = Path(self.dbpath).parent
-        if not self.output_dir:
-            self.output_dir = Path(".").resolve()
-
-    def set_module_name_and_conf(self, name: Optional[str], module_conf: Dict[str, Any]):
-        import sys
-        import os
-        from copy import deepcopy
-        from ..exceptions import ModuleLoadingError
-        from ..module.local import get_module_conf
-
-        if module_conf:
-            self.module_conf = deepcopy(module_conf)
+        self.set_db_kind(use_duckdb)
+        self.user: str
+        if user:
+            self.user = user
+        else:
+            self.user = DEFAULT_SERVER_DEFAULT_USERNAME
         if self.__module__ == "__main__":
             fp = None
             main_fpath = None
@@ -145,23 +128,22 @@ class BaseReporter:
                 self.module_dir = Path(os.getcwd()).resolve()
             else:
                 raise ModuleLoadingError(msg="name argument should be given.")
+            self.conf = module_conf.copy()
         else:
             self.module_name = main_fpath.stem
             self.module_dir = main_fpath.parent
-            if not self.module_conf:
-                self.module_conf = get_module_conf(
-                    self.module_name,
-                    module_type=self.module_type,
-                    module_dir=self.module_dir,
-                )
-
-    def set_user(self, user: str):
-        from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
-
-        if user:
-            self.user = user
-        else:
-            self.user = DEFAULT_SERVER_DEFAULT_USERNAME
+            self.conf = get_module_conf(
+                self.module_name,
+                module_type=self.module_type,
+                module_dir=self.module_dir,
+            )
+            if not self.conf:
+                self.conf = {}
+        self.df_mode = df_mode
+        self.check_and_setup_args()
+        self.setup_logger()
+        self.set_legacy_samples_column_flag()
+        self.load_filter()
 
     def get_db_conn(self):
         import sqlite3
@@ -169,76 +151,90 @@ class BaseReporter:
 
         if not self.conn:
             if self.use_duckdb:
-                self.conn = duckdb.connect(str(self.dbpath))
+                self.conn = duckdb.connect(self.dbpath)
             else:
                 self.conn = sqlite3.connect(self.dbpath)
         return self.conn
 
-    def set_db_kind(self):
+    def set_db_kind(self, use_duckdb: Optional[bool]):
         from packaging.version import Version
         from ..consts import OAKVAR_VERSION_KEY
         from ..consts import RESULT_DB_SUFFIX_DUCKDB
 
-        if self.dbpath.suffix == RESULT_DB_SUFFIX_DUCKDB:
-            self.use_duckdb = True
+        if use_duckdb is not None:
+            self.use_duckdb = use_duckdb
         else:
-            self.use_duckdb = False
+            if self.dbpath.endswith(RESULT_DB_SUFFIX_DUCKDB):
+                self.use_duckdb = True
+            else:
+                self.use_duckdb = False
+        conn = self.get_db_conn()
+        cursor = conn.cursor()
+        q = "select colval from info where colkey=?"
+        cursor.execute(q, (OAKVAR_VERSION_KEY,))
+        rows = cursor.fetchall()
+        ov_version: str = rows[0][0]
         if self.use_duckdb:
             self.use_new_db_schema = True
         else:
-            conn = self.get_db_conn()
-            cursor = conn.cursor()
-            q = "select colval from info where colkey=?"
-            cursor.execute(q, (OAKVAR_VERSION_KEY,))
-            rows = cursor.fetchall()
-            ov_version: str = rows[0][0]
             if Version(ov_version) >= Version("3.0.0"):
                 self.use_new_db_schema = True
             else:
                 self.use_new_db_schema = False
 
-    def check_db_is_oakvar(self):
+    def check_and_setup_args(self):
+        from pathlib import Path
+        from ..module.local import get_module_conf
         from ..exceptions import WrongInput
 
-        try:
-            conn = self.get_db_conn()
-            cursor = conn.cursor()
-            cursor.execute("select colval from info where colkey='oakvar'")
-            rows = cursor.fetchall()
-            if len(rows) == 0:
-                raise WrongInput(
-                    msg=f"{self.dbpath} is not an OakVar result database"
+        if self.dbpath.endswith(".duckdb"):
+            self.use_duckdb = True
+        if not self.df_mode and not Path(self.dbpath).exists():
+            raise WrongInput(msg=self.dbpath)
+        if not self.df_mode:
+            try:
+                conn = self.get_db_conn()
+                cursor = conn.cursor()
+                cursor.execute("select colval from info where colkey='oakvar'")
+                rows = cursor.fetchall()
+                if len(rows) == 0:
+                    raise WrongInput(
+                        msg=f"{self.dbpath} is not an OakVar result database"
+                    )
+            except Exception:
+                raise WrongInput(msg=f"{self.dbpath} is not an OakVar result database")
+        if not self.output_dir:
+            self.output_dir = str(Path(self.dbpath).parent)
+        if not self.output_dir:
+            self.output_dir = Path(".").resolve()
+        if self.savepath and self.savepath.parent == "":
+            self.savepath = self.output_dir / self.savepath
+        self.module_conf = get_module_conf(self.module_name, module_type="reporter")
+        self.confs = self.module_options  # TODO: backward compatibility. Delete later.
+        if self.cols:
+            self.extract_columns_multilevel = {}
+            for level in ["variant", "gene", "sample", "mapping"]:
+                self.extract_columns_multilevel[level] = self.cols
+        else:
+            self.extract_columns_multilevel = (
+                self.get_extract_columns_multilevel_from_option(
+                    self.module_options.get("extract_columns", {})
                 )
-        except Exception:
-            raise WrongInput(msg=f"{self.dbpath} is not an OakVar result database")
-
-    def set_columns_to_include(self, columns_to_include: Optional[Dict[str, List[str]]]):
-        import json
-        from copy import deepcopy
-
-        if self.columns_to_include is not None:
-            self.columns_to_include = deepcopy(columns_to_include)
-        elif "columns_to_include" in self.module_options:
-            v = self.module_options["columns_to_include"]
-            if isinstance(v, str):
-                if v.startswith("{"):  # dict
-                    v = v.replace("'", '"')
-                    j = json.loads(v)
-                    if isinstance(j, dict):
-                        self.columns_to_include = j
-            elif isinstance(v, dict):
-                self.columns_to_include = v
+            )
+        self.add_summary = not self.no_summary
 
     def load_filter(self):
-        from .db_filter import DbFilter
+        from ... import ReportFilter
 
-        self.rf = DbFilter.create(dbpath=self.dbpath, user=self.user, strict=False)
-        self.rf.loadfilter(
+        self.cf = ReportFilter.create(dbpath=self.dbpath, user=self.user, strict=False)
+        self.cf.loadfilter(
             filter=self.filter,
-            filterpath=self.filter_path,
-            filtersql=self.filter_sql,
-            includesample=self.samples_to_include,
-            excludesample=self.samples_to_exclude,
+            filterpath=self.filterpath,
+            filtername=self.filtername,
+            filterstring=self.filterstring,
+            filtersql=self.filtersql,
+            includesample=self.includesample,
+            excludesample=self.excludesample,
         )
 
     def should_write_level(self, level):
@@ -249,18 +245,40 @@ class BaseReporter:
         else:
             return False
 
+    def set_legacy_samples_column_flag(self):
+        if not self.dbpath:
+            raise
+        if self.use_duckdb:
+            return
+        if self.use_new_db_schema:
+            return
+        conn = self.get_db_conn()
+        cursor = conn.cursor()
+        q = "pragma table_info(variant)"
+        cursor.execute(q)
+        header_cols = [row[1] for row in cursor.fetchall()]
+        if "tagsampler__samples" in header_cols:
+            self.legacy_samples_col = False
+        elif "base__samples" in header_cols:
+            self.legacy_samples_col = True
+        else:
+            raise
+        cursor.close()
+
     def setup_logger(self):
         import logging
         from ..util.run import set_logger_handler
 
-        if self.no_log:
+        if self.module_name is None or self.output_dir is None or self.savepath is None:
             return
-        if self.module_name is None or self.output_dir is None or self.output_path is None:
+        if getattr(self, "no_log", False):
             return
         try:
             self.logger = logging.getLogger(self.module_name)
+            self.error_logger = logging.getLogger("err." + self.module_name)
             set_logger_handler(
                 self.logger,
+                self.error_logger,
                 output_dir=Path(self.output_dir),
                 run_name=self.run_name,
                 mode="a",
@@ -275,6 +293,50 @@ class BaseReporter:
             raise e
         elif self.logger:
             self.logger.exception(e)
+
+    def substitute_val(self, level, row):
+        from json import loads
+        from json import dumps
+
+        idx: int = -1
+        for sub in self.column_subs.get(level, []):
+            col_name = f"{sub.module}__{sub.col}"
+            if self.dictrow:
+                value = row[col_name]
+            else:
+                if col_name not in self.retrieved_col_names[level]:
+                    continue
+                idx = self.retrieved_col_names[level].index(col_name)
+                value = row[idx]
+            if value is None or value == "" or value == "{}":
+                continue
+            if (
+                level == "variant"
+                and sub.module == "base"
+                and sub.col == "all_mappings"
+            ):
+                mappings = loads(value)
+                for gene in mappings:
+                    for i in range(len(mappings[gene])):
+                        sos = mappings[gene][i][2].split(",")
+                        sos = [sub.subs.get(so, so) for so in sos]
+                        mappings[gene][i][2] = ",".join(sos)
+                value = dumps(mappings)
+            elif level == "gene" and sub.module == "base" and sub.col == "all_so":
+                vals = []
+                for i, so_count in enumerate(value.split(",")):
+                    so = so_count[:3]
+                    so = sub.subs.get(so, so)
+                    so_count = so + so_count[3:]
+                    vals.append(so_count)
+                value = ",".join(vals)
+            else:
+                value = sub.subs.get(value, value)
+            if self.dictrow:
+                row[col_name] = value
+            else:
+                row[idx] = value
+        return row
 
     def get_extracted_header_columns(self, level):
         cols = []
@@ -299,7 +361,7 @@ class BaseReporter:
         if not self.summarizing_modules:
             return self.gene_summary_datas
         for mi, module_instance, summary_cols in self.summarizing_modules:
-            gene_summary_data = module_instance.get_gene_summary_data(self.rf)
+            gene_summary_data = module_instance.get_gene_summary_data(self.cf)
             self.gene_summary_datas[mi.name] = [gene_summary_data, summary_cols]
             columns = self.colinfo["gene"]["columns"]
             for col in summary_cols:
@@ -345,17 +407,17 @@ class BaseReporter:
         from ..util.run import update_status
 
         self.write_log("started: %s" % asctime(localtime(self.start_time)))
-        if self.rf and self.rf.filter:
+        if self.cf and self.cf.filter:
             self.write_log(f"filter:\n{yaml.dump(self.filter)}")
         if self.module_conf:
             status = f"started {self.module_conf['title']} ({self.module_name})"
             update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
 
     def get_levels_to_run(self, tab: str) -> List[str]:
-        if not self.rf:
+        if not self.cf:
             return []
         if tab == "all":
-            levels = self.rf.get_result_levels()
+            levels = self.cf.get_result_levels()
         else:
             levels = [tab]
         if type(levels) is not list:
@@ -365,17 +427,47 @@ class BaseReporter:
         return levels
 
     def run_df(
-        self, df: pl.DataFrame, columns: List[Dict[str, Any]], output_path: str = ""
+        self, df: pl.DataFrame, columns: List[Dict[str, Any]], savepath: str = ""
     ):
-        self.write_data_df(df, columns, output_path)
+        self.write_data_df(df, columns, savepath)
         self.end()
 
     def run(
         self,
-        add_summary: Optional[bool] = None,
-        pagesize: Optional[int] = None,
-        page: Optional[int] = None,
-        make_filtered_table: bool = True,
+        tab="all",
+        add_summary=None,
+        pagesize=None,
+        page=None,
+        make_filtered_table=True,
+        user=None,
+    ):
+        if self.use_new_db_schema:
+            ret = self.run_new(
+                tab=tab,
+                add_summary=add_summary,
+                pagesize=pagesize,
+                page=page,
+                make_filtered_table=make_filtered_table,
+                user=user,
+            )
+        else:
+            ret = self.run_old(
+                tab=tab,
+                add_summary=add_summary,
+                pagesize=pagesize,
+                page=page,
+                make_filtered_table=make_filtered_table,
+                user=user,
+            )
+        return ret
+
+    def run_new(
+        self,
+        tab="all",
+        add_summary=None,
+        pagesize=None,
+        page=None,
+        make_filtered_table=True,
         user=None,
     ):
         from ..exceptions import SetupError
@@ -390,17 +482,22 @@ class BaseReporter:
         try:
             if add_summary is None:
                 add_summary = self.add_summary
-            if not self.rf:
+            # TODO: disabling gene level summary for now. Enable later.
+            add_summary = False
+            if not self.cf:
                 raise SetupError(self.module_name)
             self.start_time = time()
+            ret = None
+            tab = tab or self.level or "all"
             self.log_run_start()
             if self.setup() is False:
                 self.close_db()
                 raise SetupError(self.module_name)
-            self.ftable_uid = self.rf.make_ftables_and_ftable_uid(
+            self.ftable_uid = self.cf.make_ftables_and_ftable_uid(
                 make_filtered_table=make_filtered_table
             )
-            for level in self.tables_to_report:
+            self.levels = self.get_levels_to_run(tab)
+            for level in self.levels:
                 self.level = level
                 self.make_col_infos_new(add_summary=add_summary)
                 self.write_data_new(
@@ -421,9 +518,76 @@ class BaseReporter:
                 self.logger.info("finished: {0}".format(asctime(localtime(end_time))))
                 run_time = end_time - self.start_time
                 self.logger.info("runtime: {0:0.3f}".format(run_time))
-            return self.end()
+            ret = self.end()
+            return ret
         except Exception:
             self.close_db()
+
+    def run_old(
+        self,
+        tab="all",
+        add_summary=None,
+        pagesize=None,
+        page=None,
+        make_filtered_table=True,
+        user=None,
+    ):
+        from ..exceptions import SetupError
+        from time import time
+        from time import asctime
+        from time import localtime
+        from ..util.run import update_status
+        from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
+
+        if user is None:
+            user = DEFAULT_SERVER_DEFAULT_USERNAME
+        try:
+            # TODO: disabling gene level summary for now. Enable later.
+            add_summary = False
+            if add_summary is None:
+                add_summary = self.add_summary
+            if not self.cf:
+                raise SetupError(self.module_name)
+            self.start_time = time()
+            ret = None
+            tab = tab or self.level or "all"
+            self.log_run_start()
+            if self.setup() is False:
+                self.close_db()
+                raise SetupError(self.module_name)
+            self.ftable_uid = self.cf.make_ftables_and_ftable_uid(
+                make_filtered_table=make_filtered_table
+            )
+            self.levels = self.get_levels_to_run(tab)
+            for level in self.levels:
+                self.level = level
+                self.make_col_infos(add_summary=add_summary)
+                self.write_data(
+                    level,
+                    pagesize=pagesize,
+                    page=page,
+                    make_filtered_table=make_filtered_table,
+                    add_summary=add_summary,
+                )
+            self.close_db()
+            if self.module_conf:
+                status = f"finished {self.module_conf['title']} ({self.module_name})"
+                update_status(
+                    status, logger=self.logger, serveradmindb=self.serveradmindb
+                )
+            end_time = time()
+            if not (hasattr(self, "no_log") and self.no_log) and self.logger:
+                self.logger.info("finished: {0}".format(asctime(localtime(end_time))))
+                run_time = end_time - self.start_time
+                self.logger.info("runtime: {0:0.3f}".format(run_time))
+            ret = self.end()
+            return ret
+        except Exception as e:
+            self.close_db()
+            import traceback
+
+            traceback.print_exc()
+            raise e
 
     def write_preface_df(self, df, columns):
         _ = df or columns
@@ -431,12 +595,12 @@ class BaseReporter:
     def write_header_df(self, columns):
         _ = columns
 
-    def write_data_df(self, df, columns, output_path):
+    def write_data_df(self, df, columns, savepath):
         import time
         import copy
 
         colnos = {columns[i]["name"]: i for i in range(len(columns))}
-        self.write_preface_df(df, output_path)
+        self.write_preface_df(df, savepath)
         self.write_header_df(columns)
         row_count = 0
         ctime = time.time()
@@ -473,7 +637,7 @@ class BaseReporter:
             return
         if not self.table_exists(level):
             return
-        if not self.rf:
+        if not self.cf:
             raise SetupError(self.module_name)
         if add_summary and self.level == "gene":
             self.do_gene_level_summary(add_summary=add_summary)
@@ -484,20 +648,20 @@ class BaseReporter:
         ]
         self.write_header(level)
         self.hugo_colno = self.colnos[level].get("base__hugo", None)
-        datacols = self.rf.get_variant_data_cols()
-        self.total_norows = self.rf.get_ftable_num_rows(level=level, uid=self.ftable_uid, ftype=level)  # type: ignore
+        datacols = self.cf.get_variant_data_cols()
+        self.total_norows = self.cf.get_ftable_num_rows(level=level, uid=self.ftable_uid, ftype=level)  # type: ignore
         if datacols is None or self.total_norows is None:
             return
-        if level == "variant" and self.row_per_sample:
+        if level == "variant" and self.separatesample:
             self.write_variant_sample_separately = True
         else:
             self.write_variant_sample_separately = False
         row_count = 0
-        conn_read, conn_write = self.rf.get_db_conns()
+        conn_read, conn_write = self.cf.get_db_conns()
         if conn_read is None or conn_write is None:
             return None
         cursor_read = conn_read.cursor()
-        self.rf.get_level_data_iterator(
+        self.cf.get_level_data_iterator(
             level,
             page=page,
             pagesize=pagesize,
@@ -573,7 +737,7 @@ class BaseReporter:
             return
         if not self.table_exists(level):
             return
-        if not self.rf:
+        if not self.cf:
             raise SetupError(self.module_name)
         if add_summary and self.level == "gene":
             self.do_gene_level_summary(add_summary=add_summary)
@@ -584,20 +748,20 @@ class BaseReporter:
         ]
         self.write_header(level)
         self.hugo_colno = self.colnos[level].get("base__hugo", None)
-        datacols = self.rf.get_variant_data_cols()
-        self.total_norows = self.rf.get_ftable_num_rows(level=level, uid=self.ftable_uid, ftype=level)  # type: ignore
+        datacols = self.cf.get_variant_data_cols()
+        self.total_norows = self.cf.get_ftable_num_rows(level=level, uid=self.ftable_uid, ftype=level)  # type: ignore
         if datacols is None or self.total_norows is None:
             return
-        if level == "variant" and self.row_per_sample:
+        if level == "variant" and self.separatesample:
             self.write_variant_sample_separately = True
         else:
             self.write_variant_sample_separately = False
         row_count = 0
-        conn_read, conn_write = self.rf.get_db_conns()
+        conn_read, conn_write = self.cf.get_db_conns()
         if conn_read is None or conn_write is None:
             return None
         cursor_read = conn_read.cursor()
-        self.rf.get_level_data_iterator(
+        self.cf.get_level_data_iterator(
             level,
             page=page,
             pagesize=pagesize,
@@ -666,7 +830,10 @@ class BaseReporter:
         self.write_table_row_df(datarow, columns)
 
     def write_row_with_samples_separate_or_not(self, datarow):
-        col_name = "tagsampler__samples"
+        if self.legacy_samples_col:
+            col_name = "base__samples"
+        else:
+            col_name = "tagsampler__samples"
         if self.write_variant_sample_separately:
             samples = datarow[col_name]
             if samples:
@@ -760,9 +927,9 @@ class BaseReporter:
                 datarow.update({f"{grp_name}__{col['name']}": None for col in cols})
 
     def add_gene_level_data_to_variant_level(self, datarow):
-        if self.skip_gene_summary or self.hugo_colno is None or not self.rf:
+        if self.nogenelevelonvariantlevel or self.hugo_colno is None or not self.cf:
             return
-        generow = self.rf.get_gene_row(datarow["base__hugo"])
+        generow = self.cf.get_gene_row(datarow["base__hugo"])
         if generow is None:
             datarow.update({col: None for col in self.var_added_cols})
         else:
@@ -831,7 +998,7 @@ class BaseReporter:
     def make_sorted_column_groups(self, level):
         conn = self.get_db_conn()
         cursor = conn.cursor()
-        self.column_groups[level] = []
+        self.columngroups[level] = []
         if self.use_new_db_schema:
             sql = "select name, displayname from info_modules"
         else:
@@ -841,20 +1008,20 @@ class BaseReporter:
         for row in rows:
             (name, displayname) = row
             if name == "base":
-                self.column_groups[level].append(
+                self.columngroups[level].append(
                     {"name": name, "displayname": displayname, "count": 0}
                 )
                 break
         for row in rows:
             (name, displayname) = row
             if name in self.modules_to_add_to_base:
-                self.column_groups[level].append(
+                self.columngroups[level].append(
                     {"name": name, "displayname": displayname, "count": 0}
                 )
         for row in rows:
             (name, displayname) = row
             if name != "base" and name not in self.modules_to_add_to_base:
-                self.column_groups[level].append(
+                self.columngroups[level].append(
                     {"name": name, "displayname": displayname, "count": 0}
                 )
 
@@ -882,7 +1049,7 @@ class BaseReporter:
                     + f"col_name like '{group_name}__%'"
                 )
             else:
-                group_names = [d.get("name") for d in self.column_groups[level]]
+                group_names = [d.get("name") for d in self.columngroups[level]]
             for group_name in group_names:
                 sql = (
                     f"select col_def from {header_table} where col_name "
@@ -947,7 +1114,7 @@ class BaseReporter:
             column = coldef.get_colinfo()
             self.columns[level].append(column)
             self.add_to_colnames_to_display(level, column)
-            for columngroup in self.column_groups[level]:
+            for columngroup in self.columngroups[level]:
                 if columngroup["name"] == colgrpname:
                     columngroup["count"] += 1
 
@@ -969,7 +1136,7 @@ class BaseReporter:
         cursor.execute(q, (module_name,))
         r = cursor.fetchall()
         displayname = r[0][0]
-        self.column_groups["variant"].append(
+        self.columngroups["variant"].append(
             {"name": module_name, "displayname": displayname, "count": len(coldefs)}
         )
 
@@ -1062,7 +1229,7 @@ class BaseReporter:
                 "count": len(cols),
             }
             level = "gene"
-            self.column_groups[level].append(columngroup)
+            self.columngroups[level].append(columngroup)
             for col in cols:
                 coldef = ColumnDefinition(col)
                 if self.should_be_in_base(mi.name):
@@ -1086,6 +1253,42 @@ class BaseReporter:
 
     def get_group_name(self, col_name):
         return self.get_group_field_names(col_name)[0]
+
+    def make_report_sub(self, level):
+        from json import loads
+        from types import SimpleNamespace
+
+        if level not in ["variant", "gene"]:
+            return
+        reportsubtable = f"{level}_reportsub"
+        if not self.table_exists(reportsubtable):
+            return
+        conn = self.get_db_conn()
+        cursor = conn.cursor()
+        q = f"select * from {reportsubtable}"
+        cursor.execute(q)
+        reportsub = {r[0]: loads(r[1]) for r in cursor.fetchall()}
+        self.column_subs[level] = []
+        for i, column in enumerate(self.columns[level]):
+            module_name, field_name = self.get_group_field_names(column["col_name"])
+            if module_name == self.mapper_name:
+                module_name = "base"
+            if module_name in reportsub and field_name in reportsub[module_name]:
+                self.column_subs[level].append(
+                    SimpleNamespace(
+                        module=module_name,
+                        col=field_name,
+                        index=i,
+                        subs=reportsub[module_name][field_name],
+                    )
+                )
+                self.columns[level][i]["reportsub"] = reportsub[module_name][field_name]
+
+    def set_display_select_columns(self, level):
+        if self.extract_columns_multilevel.get(level, {}):
+            self.display_select_columns[level] = True
+        else:
+            self.display_select_columns[level] = False
 
     def set_cols_to_display(self, level):
         self.cols_to_display[level] = []
@@ -1114,7 +1317,7 @@ class BaseReporter:
 
     def add_column_number_stat_to_col_groups(self, level: str):
         last_columngroup_pos = 0
-        for columngroup in self.column_groups.get(level, []):
+        for columngroup in self.columngroups.get(level, []):
             columngroup["start_column_number"] = last_columngroup_pos
             new_last_columngroup_pos = last_columngroup_pos + columngroup["count"]
             columngroup["end_colunm_number"] = new_last_columngroup_pos
@@ -1131,7 +1334,7 @@ class BaseReporter:
         if not coldefs:
             return
         self.make_columns_colnos_colnamestodisplay_columngroup(level, coldefs)
-        if not self.skip_gene_summary and self.level == "variant":
+        if not self.nogenelevelonvariantlevel and self.level == "variant":
             self.add_gene_level_columns_to_variant_level()
         if self.level == "gene" and level == "gene" and add_summary:
             self.add_gene_level_summary_columns()
@@ -1139,7 +1342,7 @@ class BaseReporter:
         self.set_cols_to_display(level)
         self.add_column_number_stat_to_col_groups(level)
         self.colinfo[level] = {
-            "colgroups": self.column_groups[level],
+            "colgroups": self.columngroups[level],
             "columns": self.columns[level],
         }
         self.make_report_sub(level)
@@ -1155,7 +1358,7 @@ class BaseReporter:
         if not coldefs:
             return
         self.make_columns_colnos_colnamestodisplay_columngroup(level, coldefs)
-        if not self.skip_gene_summary and self.level == "variant":
+        if not self.nogenelevelonvariantlevel and self.level == "variant":
             self.add_gene_level_columns_to_variant_level()
         if self.level == "gene" and level == "gene" and add_summary:
             self.add_gene_level_summary_columns()
@@ -1163,30 +1366,41 @@ class BaseReporter:
         self.set_cols_to_display(level)
         self.add_column_number_stat_to_col_groups(level)
         self.colinfo[level] = {
-            "colgroups": self.column_groups[level],
+            "colgroups": self.columngroups[level],
             "columns": self.columns[level],
         }
         self.make_report_sub(level)
 
-    def set_dbpath(self, dbpath: Union[Path, str] = ""):
+    def get_extract_columns_multilevel_from_option(
+        self, v: Optional[str]
+    ) -> Dict[str, List[str]]:
+        import json
+
+        ret: Dict[str, List[str]] = {}
+        if isinstance(v, str):
+            if v.startswith("{"):  # dict
+                v = v.replace("'", '"')
+                ret = json.loads(v)
+        return ret
+
+    def set_dbpath(self, dbpath: str = ""):
         from os.path import exists
         from ..exceptions import NoInput
         from ..exceptions import WrongInput
 
-        if isinstance(dbpath, str):
-            dbpath = Path(dbpath)
-        self.dbpath = dbpath
-        if not self.dbpath.name:
+        if dbpath:
+            self.dbpath = dbpath
+        if not self.dbpath:
             raise NoInput()
         if not exists(self.dbpath):
-            raise WrongInput("dbpath does not exist.")
+            raise WrongInput()
 
     def close_db(self):
         if self.conn is not None:
             self.conn.close()
-        if self.rf is not None:
-            self.rf.close_db()
-            self.rf = None
+        if self.cf is not None:
+            self.cf.close_db()
+            self.cf = None
 
     def table_exists(self, table_name) -> bool:
         import duckdb

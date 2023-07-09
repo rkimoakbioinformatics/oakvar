@@ -41,9 +41,7 @@ class Runner(object):
         self.logger = None
         self.logmode = "w"
         self.log_path = None
-        self.error_logger = None
         self.log_handler = None
-        self.error_log_handler = None
         self.start_time = None
         self.manager = None
         self.result_path = None
@@ -90,7 +88,9 @@ class Runner(object):
         self.report_response = None
         self.outer = None
         self.error = None
-        self.result_db_conn: Optional[Union[sqlite3.Connection, duckdb.DuckDBPyConnection]] = None
+        self.result_db_conn: Optional[
+            Union[sqlite3.Connection, duckdb.DuckDBPyConnection]
+        ] = None
         self.df_mode: bool = False
         self.pool = []
         self.table_names_by_level: Dict[str, List[str]] = {}
@@ -114,16 +114,6 @@ class Runner(object):
             self.log_handler.close()
             if self.logger is not None:
                 self.logger.removeHandler(self.log_handler)
-        if self.error_log_handler:
-            self.error_log_handler.close()
-            if self.error_logger:
-                self.error_logger.removeHandler(self.error_log_handler)
-
-    def close_error_logger(self):
-        if self.error_log_handler:
-            self.error_log_handler.close()
-            if self.error_logger:
-                self.error_logger.removeHandler(self.error_log_handler)
 
     def shutdown_logging(self):
         import logging
@@ -215,8 +205,16 @@ class Runner(object):
         else:
             self.logmode = "a"
         self.logger = logging.getLogger("oakvar")
-        self.error_logger = logging.getLogger("err")
-        set_logger_handler(self.logger, self.error_logger, output_dir=output_dir, run_name=run_name, mode=self.logmode, level=self.args.loglevel, logtofile=self.args.logtofile, clean=self.args.clean, newlog=self.args.newlog)
+        set_logger_handler(
+            self.logger,
+            output_dir=output_dir,
+            run_name=run_name,
+            mode=self.logmode,
+            level=self.args.loglevel,
+            logtofile=self.args.logtofile,
+            clean=self.args.clean,
+            newlog=self.args.newlog,
+        )
 
     def log_versions(self):
         from ..util import admin_util as au
@@ -286,17 +284,27 @@ class Runner(object):
         dbpath = Path(output_dir) / db_fn
         return dbpath
 
-    def open_result_database(self, dbpath: Path):
+    def open_result_database(self, dbpath: Path, clean: bool = False):
         from ..util.run import open_result_database
 
-        self.result_db_conn = open_result_database(dbpath, self.args.use_duckdb)
+        self.result_db_conn = open_result_database(dbpath, self.args.use_duckdb, clean=clean)
 
     def close_result_database(self):
         if not self.result_db_conn:
             return
         self.result_db_conn.close()
 
-    def add_coldefs(self, module_level: Optional[str], module_name: str, coldefs: Dict[str, List[Dict[str, Any]]], output: Dict[str, Dict[str, Any]], result_table_names: List[str], include_key_col: bool=False, add_module_name_to_col_name: bool=False, ignore_tables: List[str] = []):
+    def add_coldefs(
+        self,
+        module_level: Optional[str],
+        module_name: str,
+        coldefs: Dict[str, List[Dict[str, Any]]],
+        output: Dict[str, Dict[str, Any]],
+        result_table_names: List[str],
+        include_key_col: bool = False,
+        add_module_name_to_col_name: bool = False,
+        ignore_tables: List[str] = [],
+    ):
         from ..consts import VARIANT_LEVEL
         from ..consts import GENE_LEVEL
         from ..consts import VARIANT_LEVEL_PRIMARY_KEY_COLDEF
@@ -310,11 +318,20 @@ class Runner(object):
                 coldefs[table_name] = []
                 result_table_names.append(table_name)
             table_coldefs: List[Dict[str, Any]] = []
-            table_level: str = table_output.get("level", module_level) or module_level or table_name
-            table_output_columns: List[Dict[str, Any]] = table_output.get(OUTPUT_COLS_KEY, [])
+            table_level: str = (
+                table_output.get("level", module_level) or module_level or table_name
+            )
+            table_output_columns: List[Dict[str, Any]] = table_output.get(
+                OUTPUT_COLS_KEY, []
+            )
             for coldef in table_output_columns:
                 colname = coldef["name"]
-                if add_module_name_to_col_name and table_name in [VARIANT_LEVEL, GENE_LEVEL] and module_name != "base" and "__" not in colname:
+                if (
+                    add_module_name_to_col_name
+                    and table_name in [VARIANT_LEVEL, GENE_LEVEL]
+                    and module_name != "base"
+                    and "__" not in colname
+                ):
                     coldef["name"] = f"{module_name}__{colname}"
                 coldef["level"] = table_level
                 coldef["module_name"] = module_name
@@ -333,27 +350,55 @@ class Runner(object):
             if table_name not in self.table_names_by_level[table_level]:
                 self.table_names_by_level[table_level].append(table_name)
 
-    def collect_output_coldefs(self, converter: BaseConverter) -> Tuple[Dict[str, List[Dict[str, Any]]], List[str]]:
+    def collect_output_coldefs(
+        self, converter: BaseConverter
+    ) -> Tuple[Dict[str, List[Dict[str, Any]]], List[str]]:
         from ..consts import VARIANT_LEVEL
         from ..consts import ERR_LEVEL
 
         coldefs: Dict[str, List[Dict[str, Any]]] = {}
         result_table_names: List[str] = []
         self.table_names_by_level = {}
-        self.add_coldefs(None, "base", coldefs, converter.output, result_table_names, include_key_col=False)
+        self.add_coldefs(
+            None,
+            "base",
+            coldefs,
+            converter.output,
+            result_table_names,
+            include_key_col=False,
+        )
         for module in self.mapper_i:
-            self.add_coldefs(VARIANT_LEVEL, module.module_name, coldefs, module.output, result_table_names, ignore_tables=[ERR_LEVEL])
+            self.add_coldefs(
+                VARIANT_LEVEL,
+                module.module_name,
+                coldefs,
+                module.output,
+                result_table_names,
+                ignore_tables=[ERR_LEVEL],
+            )
             break
         for m in self.annotators_i:
             module_level: str = m.conf.get("level", VARIANT_LEVEL)
-            self.add_coldefs(module_level, m.module_name, coldefs, m.output, result_table_names, add_module_name_to_col_name=True, ignore_tables=[ERR_LEVEL])
+            self.add_coldefs(
+                module_level,
+                m.module_name,
+                coldefs,
+                m.output,
+                result_table_names,
+                add_module_name_to_col_name=True,
+                ignore_tables=[ERR_LEVEL],
+            )
         return coldefs, result_table_names
 
-    def create_tables_in_result_db(self, coldefs: Dict[str, List[Dict[str, Any]]], result_table_names: List[str]):
+    def create_tables_in_result_db(
+        self, coldefs: Dict[str, List[Dict[str, Any]]], result_table_names: List[str]
+    ):
         from ..consts import GENE_LEVEL
         from ..consts import GENE_LEVEL_PRIMARY_KEY
 
-        table_col_names: Dict[str, List[str]] = {level: [] for level in result_table_names}
+        table_col_names: Dict[str, List[str]] = {
+            level: [] for level in result_table_names
+        }
         if self.result_db_conn is None:
             return
         for table_name in result_table_names:
@@ -362,14 +407,19 @@ class Runner(object):
             table_col_defs = []
             for coldef in coldefs[table_name]:
                 table_col_def = f"{coldef['name']} {coldef['type']}"
+                if (
+                    coldef["name"] == GENE_LEVEL_PRIMARY_KEY
+                    and table_name == GENE_LEVEL
+                ):
+                    table_col_def += " PRIMARY KEY"
                 table_col_defs.append(table_col_def)
                 table_col_names[table_name].append(coldef["name"])
             table_col_def_str = ", ".join(table_col_defs)
             q = f"create table {table_name} ({table_col_def_str})"
             self.result_db_conn.execute(q)
-            if table_name == GENE_LEVEL:
-                q = f"create unique index {GENE_LEVEL}_uidx on {GENE_LEVEL} ({GENE_LEVEL_PRIMARY_KEY})"
-                self.result_db_conn.execute(q)
+            # if table_name == GENE_LEVEL:
+            #    q = f"create unique index {GENE_LEVEL}_uidx on {GENE_LEVEL} ({GENE_LEVEL_PRIMARY_KEY})"
+            #    self.result_db_conn.execute(q)
         self.result_db_conn.commit()
 
     def create_info_modules_table_in_result_db(self):
@@ -381,14 +431,56 @@ class Runner(object):
         q = f"create table {table_name} (name text primary key, displayname text, level text, version text, description text)"
         self.result_db_conn.execute(q)
         q = f"insert into {table_name} values (?, ?, ?, ?, ?)"
-        self.result_db_conn.execute(q, ("base", "Normalized Input", "", "", "Normalized input"))
+        self.result_db_conn.execute(
+            q, ("base", "Normalized Input", "", "", "Normalized input")
+        )
         mapper = self.mapper_i[0]
         q = f"insert into {table_name} values (?, ?, ?, ?, ?)"
-        self.result_db_conn.execute(q, (mapper.module_name, mapper.conf.get("title", mapper.module_name), mapper.conf.get("level", "variant"), mapper.conf.get("version", ""), mapper.conf.get("description", "")))
+        self.result_db_conn.execute(
+            q,
+            (
+                mapper.module_name,
+                mapper.conf.get("title", mapper.module_name),
+                mapper.conf.get("level", "variant"),
+                mapper.conf.get("version", ""),
+                mapper.conf.get("description", ""),
+            ),
+        )
         for module_name, module in self.annotators.items():
             q = f"insert into {table_name} values (?, ?, ?, ?, ?)"
-            self.result_db_conn.execute(q, (module_name, module.conf.get("title", module_name), module.conf.get("level", "variant"), module.conf.get("version", ""), module.conf.get("description", "")))
+            self.result_db_conn.execute(
+                q,
+                (
+                    module_name,
+                    module.conf.get("title", module_name),
+                    module.conf.get("level", "variant"),
+                    module.conf.get("version", ""),
+                    module.conf.get("description", ""),
+                ),
+            )
         self.result_db_conn.commit()
+
+    def get_offset_levels(self) -> List[str]:
+        from ..consts import VARIANT_LEVEL
+        from ..consts import ERR_LEVEL
+        from ..consts import SAMPLE_LEVEL
+
+        offset_levels: List[str] = [VARIANT_LEVEL, ERR_LEVEL, SAMPLE_LEVEL]
+        mapper = self.mapper_i[0]
+        for table_name, table_output in mapper.output.items():
+            if (
+                table_output.get("level", VARIANT_LEVEL) == VARIANT_LEVEL
+                and table_name not in offset_levels
+            ):
+                offset_levels.append(table_name)
+        for m in self.annotators_i:
+            for table_name, table_output in m.output.items():
+                if (
+                    table_output.get("level", m.level) == VARIANT_LEVEL
+                    and table_name not in offset_levels
+                ):
+                    offset_levels.append(table_name)
+        return offset_levels
 
     def create_info_headers_table_in_result_db(self, converter: BaseConverter):
         from json import dumps
@@ -435,7 +527,7 @@ class Runner(object):
 
     def create_auxiliary_tables_in_result_db(self, converter: BaseConverter):
         if not self.result_db_conn:
-            return
+            return []
         self.create_info_table_in_result_db()
         self.create_info_modules_table_in_result_db()
         self.create_info_headers_table_in_result_db(converter)
@@ -446,21 +538,21 @@ class Runner(object):
         for col_name in table_col_names:
             if "__" not in col_name:
                 new_col_name = f"base__{col_name}"
-                self.result_db_conn.execute(f"alter table variant rename {col_name} to {new_col_name}")
+                self.result_db_conn.execute(
+                    f"alter table variant rename {col_name} to {new_col_name}"
+                )
         self.result_db_conn.commit()
 
-    def create_result_database(self, dbpath: Path, converter: BaseConverter):
+    def create_result_database(self, dbpath: Path, converter: BaseConverter, clean: bool = False):
         coldefs, result_table_names = self.collect_output_coldefs(converter)
-        self.open_result_database(dbpath)
+        self.open_result_database(dbpath, clean=clean)
         self.create_tables_in_result_db(coldefs, result_table_names)
         self.create_auxiliary_tables_in_result_db(converter)
         self.close_result_database()
 
-    def process_file(self, run_no: int, save_size: int=DEFAULT_DF_SIZE):
+    def process_file(self, run_no: int, batch_size: int = DEFAULT_DF_SIZE, clean: bool = True):
         from ..exceptions import NoConverterFound
         from ..consts import DEFAULT_CONVERTER_READ_SIZE
-        from ..consts import VARIANT_LEVEL
-        from ..consts import ERR_LEVEL
         from .worker import Worker
         from ..util.run import update_status
         from .converter import VALID
@@ -475,12 +567,13 @@ class Runner(object):
         converter = self.choose_converter(input_paths)
         if converter is None:
             raise NoConverterFound(input_paths)
-        converter.setup_df(input_paths)
+        converter.setup_df(input_paths, batch_size=batch_size)
         dbpath = self.get_dbpath(run_no)
-        self.create_result_database(dbpath, converter)
+        offset_levels: List[str] = self.get_offset_levels()
+        self.create_result_database(dbpath, converter, clean=clean)
         self.do_step_preparer(run_no)
-        if save_size < DEFAULT_CONVERTER_READ_SIZE:
-            converter_read_size = save_size
+        if batch_size < DEFAULT_CONVERTER_READ_SIZE:
+            converter_read_size = batch_size
         else:
             converter_read_size = DEFAULT_CONVERTER_READ_SIZE
         if self.num_core > 1:
@@ -496,17 +589,9 @@ class Runner(object):
             log_handler = logging.StreamHandler()
             log_handler.setFormatter(fmt)
             logger.addHandler(log_handler)
-            #ray.init(ignore_reinit_error=True)
-            #setup_ray_logger()
-            #ray.init(runtime_env={"worker_setup_hook": setup_ray_logger})
-            self.make_pool(converter.name)
+            self.make_pool(run_no, converter, converter_read_size, offset_levels)
             ret = []
-            for actor_num, worker in enumerate(self.pool):
-                ret.append(worker.setup.remote(input_paths, samples=converter.samples, batch_size = converter_read_size))
-            for r in ret:
-                ray.get(r)
             offset: int = 0
-            offset_levels: List[str] = [VARIANT_LEVEL, ERR_LEVEL]
             for fileno, input_path in enumerate(input_paths):
                 update_status(
                     f"Starting to process: {input_path}",
@@ -524,7 +609,11 @@ class Runner(object):
                         logger=self.logger,
                         serveradmindb=self.serveradmindb,
                     )
-                    lines_data, has_more_data = converter.get_variant_lines(input_path, num_core = self.num_core, batch_size = converter_read_size)
+                    lines_data, has_more_data = converter.get_variant_lines(
+                        input_path,
+                        num_core=self.num_core,
+                        batch_size=converter_read_size,
+                    )
                     lines_data_ref = ray.put(lines_data)
                     ret = []
                     for actor_num, worker in enumerate(self.pool):
@@ -532,14 +621,14 @@ class Runner(object):
                     for r in ret:
                         ray.get(r)
                     for worker in self.pool:
-                        last_val: int = ray.get(worker.renumber_uid.remote(offset, offset_levels)) # type: ignore
+                        last_val: int = ray.get(worker.renumber_uid.remote(offset))  # type: ignore
                         offset = last_val + 1
-                        ray.get(worker.save_df.remote(dbpath, use_duckdb=self.args.use_duckdb))
+                        ray.get(worker.save_df.remote(dbpath))
                     if has_more_data is False:
                         break
                 conversion_stats: Optional[Dict[str, int]] = None
                 for worker in self.pool:
-                    cs: Dict[str, int] = ray.get(worker.get_conversion_stats.remote()) # type: ignore
+                    cs: Dict[str, int] = ray.get(worker.get_conversion_stats.remote())  # type: ignore
                     if conversion_stats is None:
                         conversion_stats = cs
                     else:
@@ -554,8 +643,18 @@ class Runner(object):
             )
             self.delete_pool()
         else:
-            worker = Worker(converter=converter, mapper=self.mapper_i[0], annotators=self.annotators_i)
-            worker.setup(input_paths, samples=converter.samples, batch_size = converter_read_size)
+            worker = Worker(
+                input_paths=input_paths,
+                converter=converter,
+                mapper=self.mapper_i[0],
+                annotators=self.annotators_i,
+                ignore_sample=self.ignore_sample,
+                run_conf=self.run_conf,
+                genome=self.args.genome,
+                batch_size=converter_read_size,
+                offset_levels=offset_levels,
+                use_duckdb=self.args.use_duckdb,
+            )
             for fileno, input_path in enumerate(input_paths):
                 update_status(
                     f"Starting to process: {input_path}",
@@ -570,7 +669,7 @@ class Runner(object):
                         serveradmindb=self.serveradmindb,
                     )
                     has_more_data = worker.run_df()
-                    worker.save_df(dbpath, use_duckdb=self.args.use_duckdb)
+                    worker.save_df(dbpath)
                     if has_more_data is False:
                         break
                 converter.log_conversion_stats()
@@ -582,20 +681,24 @@ class Runner(object):
             self.do_step_postaggregator(run_no)
         self.write_info_table(run_no, dbpath, converter)
         return
-        #self.rename_base_columns_in_result_database(table_col_names)
-        #self.do_step_reporter(run_no)
+        # self.rename_base_columns_in_result_database(table_col_names)
+        # self.do_step_reporter(run_no)
 
-    def make_pool(self, converter_name: str):
-        import ray
+    def make_pool(
+        self,
+        run_no: int,
+        converter: BaseConverter,
+        batch_size: int,
+        offset_levels: List[str],
+    ):
         from .worker import ParallelWorker
 
         if not self.mapper_name:
             return
         self.pool = []
         for _ in range(self.num_core):
-            self.pool.append(ParallelWorker.remote(converter_name=converter_name, mapper_name=self.mapper_name, annotator_names=self.annotator_names, ignore_sample=self.ignore_sample, run_conf=self.run_conf, genome=self.args.genome)) # type: ignore
-        for runner in self.pool:
-            ray.get(runner.set_ray_logger.remote())
+            w = ParallelWorker.remote(input_paths=self.input_paths[run_no], converter_name=converter.name, mapper_name=self.mapper_name, annotator_names=self.annotator_names, ignore_sample=self.ignore_sample, run_conf=self.run_conf, genome=self.args.genome, batch_size=batch_size, output=converter.output, df_headers=converter.df_headers, offset_levels=offset_levels, use_duckdb=self.args.use_duckdb)  # type: ignore
+            self.pool.append(w)
 
     def delete_pool(self):
         import ray
@@ -613,7 +716,7 @@ class Runner(object):
             raise
         self.sanity_check_run_name_output_dir()
         self.make_annotators_to_run()
-        #self.setup_manager()
+        # self.setup_manager()
         for run_no in range(len(self.run_name)):
             try:
                 self.start_log(run_no)
@@ -632,7 +735,7 @@ class Runner(object):
                 if self.args and self.args.vcf2vcf:
                     self.run_vcf2vcf(run_no)
                 else:
-                    self.process_file(run_no, save_size=100)
+                    self.process_file(run_no, batch_size=1000, clean = True)
                 end_time = time()
                 runtime = end_time - self.start_time
                 display_time = asctime(localtime(end_time))
@@ -661,7 +764,6 @@ class Runner(object):
                     )
                     if self.logger:
                         self.logger.exception(self.exception)
-                self.close_error_logger()
                 self.clean_up_at_end(run_no)
                 self.close_logger()
                 self.shutdown_logging()
@@ -760,7 +862,9 @@ class Runner(object):
         if isinstance(self.args.module_options, dict):
             module_options = self.args.module_options
         else:
-            module_options = get_module_options(self.args.module_options, outer=self.outer)
+            module_options = get_module_options(
+                self.args.module_options, outer=self.outer
+            )
         self.run_conf.update(module_options)
 
     def process_url_and_pipe_inputs(self):
@@ -772,10 +876,12 @@ class Runner(object):
         self.first_non_url_input = None
         if self.args.inputs is not None:
             if self.args.combine_input:
-                self.input_paths = [[
-                    str(Path(x).resolve()) if not is_url(x) else x
-                    for x in self.args.inputs
-                ]]
+                self.input_paths = [
+                    [
+                        str(Path(x).resolve()) if not is_url(x) else x
+                        for x in self.args.inputs
+                    ]
+                ]
             else:
                 self.input_paths = [
                     [str(Path(x).resolve()) if not is_url(x) else x]
@@ -1148,7 +1254,9 @@ class Runner(object):
                     if self.annotator_names and m in self.annotator_names:
                         self.annotator_names.remove(m)
         self.check_valid_modules(self.annotator_names)
-        secondary_module_names = self.get_secondary_annotator_names(self.annotator_names)
+        secondary_module_names = self.get_secondary_annotator_names(
+            self.annotator_names
+        )
         self.annotator_names[:0] = secondary_module_names
         self.annotators = get_local_module_infos_by_names(self.annotator_names)
 
@@ -1292,12 +1400,11 @@ class Runner(object):
         from ..module.local import get_local_module_info
         from ..module.local import LocalModule
 
-        module:  Optional[LocalModule] = get_local_module_info(primary_module_name)
+        module: Optional[LocalModule] = get_local_module_info(primary_module_name)
         if not module:
             return []
         secondary_module_names: List[str] = [
-            module_name
-            for module_name in module.secondary_module_names
+            module_name for module_name in module.secondary_module_names
         ]
         return secondary_module_names
 
@@ -1313,9 +1420,7 @@ class Runner(object):
                     num_workers = self.args.mp
             except Exception:
                 if self.logger:
-                    self.logger.exception(
-                        f"Invalid --mp argument: {self.args.mp}"
-                    )
+                    self.logger.exception(f"Invalid --mp argument: {self.args.mp}")
         if not num_workers:
             num_workers = cpu_count()
         if self.logger:
@@ -1372,7 +1477,9 @@ class Runner(object):
         table_names = [v[0] for v in r]
         return table_name in table_names
 
-    def write_info_table_create_data_if_needed(self, run_no: int, converter: BaseConverter):
+    def write_info_table_create_data_if_needed(
+        self, run_no: int, converter: BaseConverter
+    ):
         from datetime import datetime
 
         if self.result_db_conn is None:
@@ -1387,7 +1494,7 @@ class Runner(object):
         q = f"select count(*) from variant"
         cursor.execute(q)
         r = cursor.fetchall()
-        num_input = str(r[0][0]) # type: ignore
+        num_input = str(r[0][0])  # type: ignore
         self.write_info_row("num_variants", num_input)
         self.write_info_row("oakvar", self.pkg_ver)
         mapper_conf = self.mapper_i[0].conf
@@ -1400,7 +1507,11 @@ class Runner(object):
         )
         self.write_info_row("job_name", job_name)
         self.write_info_row("converter_format", converter.format_name)
-        self.write_info_row("annotators", [f"{m.module_name}=={m.conf['version']}" for m in self.annotators_i])
+        self.write_info_row(
+            "annotators",
+            [f"{m.module_name}=={m.conf['version']}" for m in self.annotators_i],
+        )
+        self.write_info_row("samples", self.samples)
         self.result_db_conn.commit()
 
     def write_info_table(self, run_no: int, dbpath: Path, converter: BaseConverter):
@@ -1525,9 +1636,7 @@ class Runner(object):
         annot_names.sort()
         self.info_json["annotators"] = annot_names
         postagg_names = [
-            v
-            for v in list(self.postaggregators.keys())
-            if v not in ["vcfinfo"]
+            v for v in list(self.postaggregators.keys()) if v not in ["vcfinfo"]
         ]
         postagg_names.sort()
         self.info_json["postaggregators"] = postagg_names
@@ -1579,7 +1688,13 @@ class Runner(object):
             post_agg_cls = load_class(module.script_path)
             if not issubclass(post_agg_cls, BasePostAggregator):
                 raise ModuleLoadingError(module_name=module.name)
-            post_agg = post_agg_cls(module_name=module_name, run_name=run_name, output_dir=output_dir, serveradmindb=self.serveradmindb, module_options=postagg_conf)
+            post_agg = post_agg_cls(
+                module_name=module_name,
+                run_name=run_name,
+                output_dir=output_dir,
+                serveradmindb=self.serveradmindb,
+                module_options=postagg_conf,
+            )
             announce_module(module, serveradmindb=self.serveradmindb)
             stime = time()
             post_agg.run()
@@ -1678,7 +1793,15 @@ class Runner(object):
             output_dir: Path = output_dir
             run_name: str = run_name
             module_options = self.run_conf.get(module_name, {})
-            reporter = get_reporter(module_name, dbpath=str(dbpath), savepath=savepath, output_dir=str(output_dir), run_name=run_name, module_options=module_options, use_duckdb=self.args.use_duckdb)
+            reporter = get_reporter(
+                module_name,
+                dbpath=str(dbpath),
+                savepath=savepath,
+                output_dir=str(output_dir),
+                run_name=run_name,
+                module_options=module_options,
+                use_duckdb=self.args.use_duckdb,
+            )
             response_t = self.log_time_of_func(reporter.run, work=module_name)
             output_fns = None
             response_type = type(response_t)
@@ -1714,36 +1837,51 @@ class Runner(object):
         if self.converter_name:
             module_info = get_local_module_info(self.converter_name)
             if module_info is None:
-                raise Exception(f" {self.converter_name} does not exist. Please check --converter-name option was given correctly, or consider installing {self.converter_name} module with \"ov module install {self.converter_name}\" command, if the module is in the OakVar store.")
+                raise Exception(
+                    f' {self.converter_name} does not exist. Please check --converter-name option was given correctly, or consider installing {self.converter_name} module with "ov module install {self.converter_name}" command, if the module is in the OakVar store.'
+                )
             module_infos.append(module_info)
         elif self.args.input_format:
             module_name = self.args.input_format + "-converter"
             module_info = get_local_module_info(module_name)
             if module_info is None:
-                raise Exception(module_name + f" does not exist. Please check --input-format option was given correctly, or consider installing {module_name} module with \"ov module install {module_name}\" command, if the module is in the OakVar store.")
+                raise Exception(
+                    module_name
+                    + f' does not exist. Please check --input-format option was given correctly, or consider installing {module_name} module with "ov module install {module_name}" command, if the module is in the OakVar store.'
+                )
             module_infos.append(module_info)
         else:
             module_infos = list(get_local_module_infos_of_type("converter").values())
         for module_info in module_infos:
             try:
-                converter = get_converter(module_info.name, ignore_sample=self.ignore_sample, module_options=self.run_conf.get(module_info.name, {}), genome=self.args.genome)
+                converter = get_converter(
+                    module_info.name,
+                    ignore_sample=self.ignore_sample,
+                    module_options=self.run_conf.get(module_info.name, {}),
+                    genome=self.args.genome,
+                )
             except Exception as e:
                 if self.logger:
-                    self.logger.error(f"{traceback.format_exc()}\nSkipping {module_info.name} as it could not be loaded. ({e})")
+                    self.logger.error(
+                        f"{traceback.format_exc()}\nSkipping {module_info.name} as it could not be loaded. ({e})"
+                    )
                 continue
             try:
                 check_success = converter.check_format(input_paths[0])
             except Exception:
-                if self.error_logger:
-                    self.error_logger.error(traceback.format_exc())
+                traceback.print_exc()
                 check_success = False
             if check_success:
                 chosen_converter = converter
                 break
         if chosen_converter:
             if self.logger:
-                self.logger.info(f"module: {chosen_converter.name}=={chosen_converter.code_version}")
-                self.logger.info(f"Using {chosen_converter.name} for {' '.join(input_paths)}")
+                self.logger.info(
+                    f"module: {chosen_converter.name}=={chosen_converter.code_version}"
+                )
+                self.logger.info(
+                    f"Using {chosen_converter.name} for {' '.join(input_paths)}"
+                )
             return chosen_converter
 
     def make_annotators_to_run(self):
@@ -1757,14 +1895,16 @@ class Runner(object):
         fn, dfs = args
         return fn.run_df(dfs)
 
-    def annotator_run_df_wrapper(self, args: Tuple[BaseAnnotator, Dict[str, pl.DataFrame]]):
+    def annotator_run_df_wrapper(
+        self, args: Tuple[BaseAnnotator, Dict[str, pl.DataFrame]]
+    ):
         fn, dfs = args
         return fn.run_df(dfs)
 
     def load_mapper(self):
         from ..util.module import get_mapper
 
-        self.mapper_i = [get_mapper(self.mapper_name)]
+        self.mapper_i = [get_mapper(self.mapper_name, use_duckdb=self.args.use_duckdb)]
 
     def load_annotators(self):
         from ..util.module import get_annotator
@@ -1784,7 +1924,9 @@ class Runner(object):
         dfs = self.mapper_i[0].run_df(dfs)
         return dfs
 
-    def do_step_annotator(self, dfs: Dict[str, pl.DataFrame]) -> Dict[str, pl.DataFrame]:
+    def do_step_annotator(
+        self, dfs: Dict[str, pl.DataFrame]
+    ) -> Dict[str, pl.DataFrame]:
         for module in self.annotators_i:
             dfs = module.run_df(dfs)
         return dfs
@@ -1792,9 +1934,7 @@ class Runner(object):
     def do_step_postaggregator(self, run_no: int):
         step = "postaggregator"
         if self.should_run_step(step):
-            self.log_time_of_func(
-                self.run_postaggregators, run_no, work=f"{step} step"
-            )
+            self.log_time_of_func(self.run_postaggregators, run_no, work=f"{step} step")
 
     def do_step_reporter(self, run_no: int):
         step = "reporter"

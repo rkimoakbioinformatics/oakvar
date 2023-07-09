@@ -108,10 +108,12 @@ class ModuleCache(object):
                             self.local[path.name] = LocalModule(Path(module_dir))
                         except Exception:
                             import traceback
+
                             traceback.print_exc()
                             continue
             except Exception:
                 import traceback
+
                 traceback.print_exc()
                 continue
 

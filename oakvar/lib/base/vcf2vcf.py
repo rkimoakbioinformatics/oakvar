@@ -249,7 +249,9 @@ class VCF2VCF:
                             continue
                         pos, ref, alt = self.trim_variant(pos, ref, alt)
                         if self.do_liftover:
-                            _, pos_a, ref_a, alt_a = liftover(chrom, pos, ref, alt, lifter=self.lifter)
+                            _, pos_a, ref_a, alt_a = liftover(
+                                chrom, pos, ref, alt, lifter=self.lifter
+                            )
                         else:
                             pos_a, ref_a, alt_a = pos, ref, alt
                         uid += 1

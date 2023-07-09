@@ -17,6 +17,7 @@ class BaseMapper(object):
         module_options: Dict = {},
         output: Union[List[Dict[str, Any]], Dict[str, Dict[str, Any]]] = [],
         wgs_reader: Optional[BaseCommonModule] = None,
+        use_duckdb: bool = False,
     ):
         from time import time
         from pathlib import Path
@@ -24,6 +25,7 @@ class BaseMapper(object):
         from ..module.local import get_module_conf
         from ..consts import VARIANT_LEVEL
 
+        self.use_duckdb = use_duckdb
         self.wgs_reader = wgs_reader
         self.module_options: Dict = module_options
         self.primary_transcript_paths: List[str] = [v for v in primary_transcript if v]
@@ -49,11 +51,13 @@ class BaseMapper(object):
             get_module_conf(self.module_name, module_type="mapper") or {}
         )
         self.set_output(output)
-        self.df_headers: Dict[str, Dict[str, Any]] = {}
+        self.df_headers: Dict[str, Dict[str, pl.PolarsDataType]] = {}
         self.setup()
         self.setup_df()
 
-    def set_output(self, output: Union[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]):
+    def set_output(
+        self, output: Union[List[Dict[str, Any]], Dict[str, Dict[str, Any]]]
+    ):
         from ..consts import VARIANT_LEVEL
         from ..consts import OUTPUT_KEY
         from ..consts import OUTPUT_COLS_KEY
@@ -61,29 +65,36 @@ class BaseMapper(object):
         from ..util.util import get_ov_system_output_columns
 
         if not output:
-            output = self.conf.get(OUTPUT_KEY, self.conf.get(OUTPUT_COLS_KEY, [])).copy()
+            output = self.conf.get(
+                OUTPUT_KEY, self.conf.get(OUTPUT_COLS_KEY, [])
+            ).copy()
         if isinstance(output, dict):
             self.output = output.copy()
         else:
-            self.output[VARIANT_LEVEL] = {
-                "level": VARIANT_LEVEL,
-                OUTPUT_COLS_KEY: []
-            }
+            self.output[VARIANT_LEVEL] = {"level": VARIANT_LEVEL, OUTPUT_COLS_KEY: []}
             for coldef in output:
                 if coldef.get("table") is True:
                     table_name = f"{self.module_name}__{coldef['name']}"
-                    self.output[table_name] = {
-                        "level": self.level,
-                        OUTPUT_COLS_KEY: []
-                    }
+                    self.output[table_name] = {"level": self.level, OUTPUT_COLS_KEY: []}
                     for table_coldef in coldef.get("table_headers", []):
-                        self.output[table_name][OUTPUT_COLS_KEY].append(table_coldef.copy())
+                        if not self.use_duckdb:
+                            if "[]" in table_coldef["type"]:
+                                table_coldef["type"] = "string"
+                        self.output[table_name][OUTPUT_COLS_KEY].append(
+                            table_coldef.copy()
+                        )
                 else:
                     self.output[VARIANT_LEVEL][OUTPUT_COLS_KEY].append(coldef.copy())
         if ERR_LEVEL not in self.output:
             self.output[ERR_LEVEL] = get_ov_system_output_columns()[ERR_LEVEL]
         self.conf[OUTPUT_KEY] = self.output.copy()
-        self.col_names = {table_name: [coldef["name"] for coldef in self.output[table_name].get(OUTPUT_COLS_KEY, [])] for table_name in self.output.keys()}
+        self.col_names = {
+            table_name: [
+                coldef["name"]
+                for coldef in self.output[table_name].get(OUTPUT_COLS_KEY, [])
+            ]
+            for table_name in self.output.keys()
+        }
 
     def setup(self):
         raise NotImplementedError("Mapper must have a setup() method.")
@@ -146,7 +157,9 @@ class BaseMapper(object):
 
         cols = [
             "base__" + coldef["name"]
-            for coldef in get_ov_system_output_columns().get(VARIANT_LEVEL, {}).get(OUTPUT_COLS_KEY, [])
+            for coldef in get_ov_system_output_columns()
+            .get(VARIANT_LEVEL, {})
+            .get(OUTPUT_COLS_KEY, [])
             if coldef["name"] not in ["cchange", "exonno"]
         ]
         cols.extend(["tagsampler__numsample"])
@@ -206,6 +219,8 @@ class BaseMapper(object):
     def get_series(self, df: pl.DataFrame) -> Dict[str, List[pl.Series]]:
         from ..consts import VARIANT_LEVEL
         from ..consts import VARIANT_LEVEL_PRIMARY_KEY
+        from ..consts import GENE_LEVEL
+        from ..consts import GENE_LEVEL_PRIMARY_KEY
         from ..consts import ERR_LEVEL
         from ..consts import FILENO_KEY
         from ..consts import LINENO_KEY
@@ -235,32 +250,70 @@ class BaseMapper(object):
                     output_dict = {
                         VARIANT_LEVEL: [],
                         ERR_LEVEL: [
-                            {FILENO_KEY: input_data[FILENO_KEY], LINENO_KEY: input_data[LINENO_KEY], VARIANT_LEVEL_PRIMARY_KEY: input_data[VARIANT_LEVEL_PRIMARY_KEY], ERRNO_KEY: errno, ERR_KEY: err}
-                        ]
+                            {
+                                FILENO_KEY: input_data[FILENO_KEY],
+                                LINENO_KEY: input_data[LINENO_KEY],
+                                VARIANT_LEVEL_PRIMARY_KEY: input_data[
+                                    VARIANT_LEVEL_PRIMARY_KEY
+                                ],
+                                ERRNO_KEY: errno,
+                                ERR_KEY: err,
+                            }
+                        ],
                     }
             for table_name, table_data in output_dict.items():
                 table_ld = var_ld[table_name]
                 table_count = counts[table_name]
-                table_max_count = max_counts[table_name]
-                for table_row in table_data:
-                    for col_name, value in table_row.items():
-                        table_ld[col_name][table_count] = value
-                if table_name == self.level:
-                    counts[table_name] += 1
-                elif table_data:
-                    counts[table_name] += 1
-                if counts[table_name] == table_max_count:
-                    for col_name, table_col_ld in table_ld.items():
-                        table_col_ld.extend([None] * df.height)
-                    max_counts[table_name] += df.height
+                table_max_count: int = max_counts[table_name]
+                if table_name == GENE_LEVEL:
+                    for table_row in table_data:
+                        key_val = table_row.get(GENE_LEVEL_PRIMARY_KEY)
+                        if key_val is None:
+                            continue
+                        if (
+                            table_count == 0
+                            or key_val not in table_ld[GENE_LEVEL_PRIMARY_KEY]
+                        ):
+                            for col_name, value in table_row.items():
+                                table_ld[col_name][table_count] = value
+                            counts[table_name] += 1
+                            table_count = counts[table_name]
+                        if counts[table_name] == table_max_count:
+                            for col_name, table_col_ld in table_ld.items():
+                                table_col_ld.extend([None] * df.height)
+                            max_counts[table_name] += df.height
+                            table_max_count = max_counts[table_name]
+                else:
+                    for table_row in table_data:
+                        for col_name, value in table_row.items():
+                            if not self.use_duckdb and isinstance(value, list):
+                                value = str(value)
+                            table_ld[col_name][table_count] = value
+                        if table_name == self.level:
+                            counts[table_name] += 1
+                            table_count = counts[table_name]
+                        elif table_row:
+                            counts[table_name] += 1
+                            table_count = counts[table_name]
+                        if counts[table_name] == table_max_count:
+                            for col_name, table_col_ld in table_ld.items():
+                                table_col_ld.extend([None] * df.height)
+                            max_counts[table_name] += df.height
+                            table_max_count = max_counts[table_name]
         for table_name, table_ld in var_ld.items():
             for col_name in table_ld.keys():
-                var_ld[table_name][col_name] = var_ld[table_name][col_name][:counts[table_name]]
+                var_ld[table_name][col_name] = var_ld[table_name][col_name][
+                    : counts[table_name]
+                ]
         seriess: Dict[str, List[pl.Series]] = {}
         for table_name, table_ld in var_ld.items():
             seriess[table_name] = []
             for col_name in self.col_names[table_name]:
-                series = pl.Series(col_name, var_ld[table_name][col_name], dtype=self.df_headers[table_name][col_name])
+                dtype = self.df_headers[table_name][col_name]
+                if not self.use_duckdb:
+                    if isinstance(dtype, pl.List):
+                        dtype = pl.Utf8
+                series = pl.Series(col_name, var_ld[table_name][col_name], dtype=dtype)
                 seriess[table_name].append(series)
         return seriess
 
@@ -278,4 +331,3 @@ class BaseMapper(object):
             else:
                 dfs[table_name] = pl.DataFrame(table_seriess)
         return dfs
-

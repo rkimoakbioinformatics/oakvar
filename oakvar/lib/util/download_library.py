@@ -305,7 +305,7 @@ def _fetch_file(
             outer=outer,
         )
         # check md5sum
-        #if hash_ is not None:
+        # if hash_ is not None:
         #    if verbose and outer:
         #        tqdm.write("Verifying download hash.", file=sys.stdout)
         #    md5 = md5sum(temp_file_name)
@@ -487,7 +487,7 @@ def _get_http(
                 )
 
 
-#def md5sum(fname, block_size=1048576):  # 2 ** 20
+# def md5sum(fname, block_size=1048576):  # 2 ** 20
 #    """Calculate the md5sum for a file.
 #
 #    Parameters

@@ -123,24 +123,23 @@ def get_new_job_name(jobs_dir: Path) -> str:
 def get_log_formatter():
     import logging
 
-    return logging.Formatter(
-        "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
-    )
+    return logging.Formatter("%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S")
+
 
 def setup_ray_logger():
     import logging
     import sys
 
-    #logging.getLogger().setLevel(logging.WARN)
+    # logging.getLogger().setLevel(logging.WARN)
     logger = logging.getLogger("ray")
     log_formatter = get_log_formatter()
     log_handler = logging.StreamHandler(stream=sys.stdout)
     log_handler.setFormatter(log_formatter)
     logger.addHandler(log_handler)
 
+
 def set_logger_handler(
     logger,
-    error_logger,
     output_dir: Optional[Path] = None,
     run_name: str = "",
     mode: str = "w",
@@ -151,12 +150,11 @@ def set_logger_handler(
 ):
     from os import remove
     from sys import stdout
-    from sys import stderr
     from ..consts import LOG_SUFFIX
 
     # logging.basicConfig(level=logging.INFO, force=True)
     # logging.getLogger().propagate = False
-    #logging.getLogger().setLevel(logging.WARN)
+    # logging.getLogger().setLevel(logging.WARN)
     if logger:
         log_formatter = get_log_formatter()
         if logtofile and output_dir:
@@ -170,19 +168,7 @@ def set_logger_handler(
         logger.setLevel(level)
         log_handler.setLevel(level)
         logger.addHandler(log_handler)
-    if error_logger:
-        err_formatter = logging.Formatter("%(name)s\t%(message)s")
-        if logtofile and output_dir:
-            error_log_path = Path(output_dir) / (run_name + ".err")
-            if error_log_path.exists():
-                remove(error_log_path)
-            error_log_handler = logging.FileHandler(error_log_path, mode=mode)
-        else:
-            error_log_handler = logging.StreamHandler(stream=stderr)
-        error_log_handler.setFormatter(err_formatter)
-        error_logger.setLevel(level)
-        error_log_handler.setLevel(level)
-        error_logger.addHandler(error_log_handler)
+
 
 def get_module_options(module_options_sl: Optional[List[str]], outer=None):
     module_options: Dict[str, Dict[str, Any]] = {}
@@ -212,14 +198,16 @@ def get_module_options(module_options_sl: Optional[List[str]], outer=None):
         module_options[module_name][key] = v
     return module_options
 
+
 def get_standardized_module_option(v: Any):
     import json
+
     if isinstance(v, str):
-        if v.startswith("{"): # dict
-            v = v.replace("'", "\"")
+        if v.startswith("{"):  # dict
+            v = v.replace("'", '"')
             v = json.loads(v)
         elif v.startswith("["):
-            v = v.replace("'", "\"")
+            v = v.replace("'", '"')
             v = json.loads(v)
         elif ":" in v:
             v0 = {}
@@ -239,7 +227,10 @@ def get_standardized_module_option(v: Any):
         v = False
     return v
 
-def get_db_conn(dbpath: Union[str, Path]) -> Union[sqlite3.Connection, duckdb.DuckDBPyConnection]:
+
+def get_db_conn(
+    dbpath: Union[str, Path]
+) -> Union[sqlite3.Connection, duckdb.DuckDBPyConnection]:
     from ..consts import RESULT_DB_SUFFIX_DUCKDB
 
     if isinstance(dbpath, Path):
@@ -250,10 +241,14 @@ def get_db_conn(dbpath: Union[str, Path]) -> Union[sqlite3.Connection, duckdb.Du
         conn = sqlite3.connect(dbpath)
     return conn
 
-def open_result_database(dbpath: Path, use_duckdb: bool):
+
+def open_result_database(dbpath: Path, use_duckdb: bool, clean: bool = False):
     import sqlite3
     import duckdb
+    from os import remove
 
+    if clean and dbpath.exists():
+        remove(dbpath)
     if use_duckdb:
         conn = duckdb.connect(str(dbpath))
     else:
@@ -266,6 +261,7 @@ def open_result_database(dbpath: Path, use_duckdb: bool):
         conn.execute("pragma temp_store=MEMORY;")
     return conn
 
+
 def initialize_err_series_data():
     err_series_data: Dict[str, List[Any]] = {}
     err_series_data["fileno"] = []
@@ -274,7 +270,15 @@ def initialize_err_series_data():
     err_series_data["err"] = []
     return err_series_data
 
-def add_to_err_series(err_series: Dict[str, List[Any]], fileno: Optional[int] = None, lineno: Optional[int] = None, uid: Optional[int] = None, errno: Optional[int] = None, err: Optional[str] = None):
+
+def add_to_err_series(
+    err_series: Dict[str, List[Any]],
+    fileno: Optional[int] = None,
+    lineno: Optional[int] = None,
+    uid: Optional[int] = None,
+    errno: Optional[int] = None,
+    err: Optional[str] = None,
+):
     from ..consts import FILENO_KEY
     from ..consts import LINENO_KEY
     from ..consts import VARIANT_LEVEL_PRIMARY_KEY
@@ -287,7 +291,36 @@ def add_to_err_series(err_series: Dict[str, List[Any]], fileno: Optional[int] = 
     err_series[ERRNO_KEY].append(errno)
     err_series[ERR_KEY].append(err)
 
-def get_df_headers(output: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, pl.PolarsDataType]]:
+
+def get_pl_dtype(col: Dict[str, Any]) -> pl.PolarsDataType:
+    ty: str = col.get("type", "")
+    dtype: pl.PolarsDataType
+    if ty in ["str", "string"]:
+        dtype = pl.Utf8
+    elif ty == "int":
+        dtype = pl.Int32
+    elif ty == "int64":
+        dtype = pl.Int64
+    elif ty == "float":
+        dtype = pl.Float32
+    elif ty == "bool":
+        dtype = pl.Boolean
+    elif "string[]" in ty:
+        dtype = pl.List(pl.Utf8)
+    elif "int[]" in ty:
+        dtype = pl.List(pl.Int32)
+    elif "int64[]" in ty:
+        dtype = pl.List(pl.Int64)
+    elif "float[]" in ty:
+        dtype = pl.List(pl.Float32)
+    else:
+        dtype = pl.Utf8
+    return dtype
+
+
+def get_df_headers(
+    output: Dict[str, Dict[str, Any]]
+) -> Dict[str, Dict[str, pl.PolarsDataType]]:
     import polars as pl
     from ..consts import OUTPUT_COLS_KEY
 
@@ -296,17 +329,6 @@ def get_df_headers(output: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, pl.
         df_headers[table_name] = {}
         coldefs = table_output.get(OUTPUT_COLS_KEY, [])
         for col in coldefs:
-            ty = col.get("type")
-            if ty in ["str", "string"]:
-                ty = pl.Utf8
-            elif ty in ["int", "int64"]:
-                ty = pl.Int64
-            elif ty == "float":
-                ty = pl.Float64
-            elif ty == "bool":
-                ty = pl.Boolean
-            else:
-                ty = pl.Utf8
+            ty = get_pl_dtype(col)
             df_headers[table_name][col.get("name")] = ty
     return df_headers
-

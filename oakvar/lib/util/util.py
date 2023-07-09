@@ -731,7 +731,7 @@ def get_df_from_db(
     table_name: str = "variant",
     sql: Optional[str] = None,
     num_cores: int = 1,
-    conn = None,
+    conn=None,
 ) -> Optional[pl.DataFrame]:
     """Gets a Polars DataFrame of a table in an OakVar result database.
 

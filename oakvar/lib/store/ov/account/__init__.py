@@ -244,7 +244,12 @@ def login(
         else:
             if outer:
                 outer.write(f"fail. {r.text}")
-            d = {"success": False, "status_code": status_code, "mgs": "Login failed.", "email": email}
+            d = {
+                "success": False,
+                "status_code": status_code,
+                "mgs": "Login failed.",
+                "email": email,
+            }
             return d
     except Exception:
         import traceback
@@ -610,7 +615,7 @@ def login_with_email_pw(
 
 
 def total_login(
-        email=None, pw=None, install_mode: str = "", conf: Optional[Dict] = None, outer=None
+    email=None, pw=None, install_mode: str = "", conf: Optional[Dict] = None, outer=None
 ) -> dict:
     from ....system import show_no_user_account_prelude
 
@@ -631,7 +636,9 @@ def total_login(
         if yn.lower() in ["y", "n", ""]:
             break
     if yn == "y":
-        email, pw = get_email_pw_interactively(email=email, pw=pw, pwconfirm=False, outer=outer)
+        email, pw = get_email_pw_interactively(
+            email=email, pw=pw, pwconfirm=False, outer=outer
+        )
         ret = login_with_email_pw(email=email, pw=pw, conf=conf)
         return ret
     else:

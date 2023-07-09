@@ -5,7 +5,7 @@ admindb_path = None
 
 
 class MultiuserHandlers:
-    def __init__(self, servermode: bool=False):
+    def __init__(self, servermode: bool = False):
         self.servermode = servermode
         self.routes = []
         self.add_routes()

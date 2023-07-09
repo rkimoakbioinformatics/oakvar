@@ -228,9 +228,7 @@ class JobHandlers:
         from .userjob import get_user_job_report_paths
         from pathlib import Path
 
-        report_filenames = get_user_job_report_paths(
-            request, report_type, eud=eud
-        )
+        report_filenames = get_user_job_report_paths(request, report_type, eud=eud)
         if report_filenames is None:
             return None
         job_dir = get_job_dir_from_eud(request, eud=eud)
@@ -272,9 +270,7 @@ class JobHandlers:
         job_dir = Path(job_dir)
         existing_reports = []
         for report_type in self.get_valid_report_types():
-            report_paths = get_user_job_report_paths(
-                request, report_type, eud=eud
-            )
+            report_paths = get_user_job_report_paths(request, report_type, eud=eud)
             if report_paths:
                 report_exist = True
                 for p in report_paths:

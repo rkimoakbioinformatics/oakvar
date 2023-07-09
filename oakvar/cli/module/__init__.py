@@ -413,4 +413,3 @@ def add_parser_ov_module(subparsers):
         "# Create an annotator template at the OakVar modules directory/annotators/annotatortest",
         '#roakvar::new.annotator(annotator_name="annotatortest")',
     ]
-

@@ -33,7 +33,9 @@ class BaseFile(object):
 
 
 class FileReader(BaseFile):
-    def __init__(self, path, seekpos: int=0, chunksize: Optional[int]=None, logger=None):
+    def __init__(
+        self, path, seekpos: int = 0, chunksize: Optional[int] = None, logger=None
+    ):
         from .util import detect_encoding
 
         super().__init__(path)
