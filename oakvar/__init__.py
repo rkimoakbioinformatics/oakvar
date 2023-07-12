@@ -8,7 +8,7 @@ from .lib.base.preparer import BasePreparer
 from .lib.base.mapper import BaseMapper
 from .lib.base.annotator import BaseAnnotator
 from .lib.base.postaggregator import BasePostAggregator
-from .lib.base.report_filter import ReportFilter
+from .lib.base.db_filter import DbFilter
 from .lib.base.reporter import BaseReporter
 from .lib.base.commonmodule import BaseCommonModule
 from .lib.base.vcf2vcf import VCF2VCF
@@ -38,7 +38,7 @@ from .lib.exceptions import InvalidData
 Cravat = Runner
 CravatReport = BaseReporter
 BaseReport = BaseReporter
-CravatFilter = ReportFilter
+CravatFilter = DbFilter
 constants = consts
 
 stdouter = CliOuter()
@@ -89,7 +89,7 @@ _ = (
     or BaseCommonModule
     or VCF2VCF
     or CravatReport
-    or ReportFilter
+    or DbFilter
     or Runner
     or FileReader
     or FileWriter

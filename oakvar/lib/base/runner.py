@@ -576,6 +576,7 @@ class Runner(object):
             converter_read_size = batch_size
         else:
             converter_read_size = DEFAULT_CONVERTER_READ_SIZE
+        print(f"@ converter_read_size={converter_read_size}")
         if self.num_core > 1:
             import ray
             import logging
@@ -735,7 +736,7 @@ class Runner(object):
                 if self.args and self.args.vcf2vcf:
                     self.run_vcf2vcf(run_no)
                 else:
-                    self.process_file(run_no, batch_size=1000, clean = True)
+                    self.process_file(run_no, batch_size=100, clean = True)
                 end_time = time()
                 runtime = end_time - self.start_time
                 display_time = asctime(localtime(end_time))

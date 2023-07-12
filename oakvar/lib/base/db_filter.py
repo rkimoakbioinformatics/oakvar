@@ -126,9 +126,6 @@ class FilterGroup(object):
                 self.rules.append(FilterGroup(rule))
             else:
                 self.rules.append(FilterColumn(rule, self.operator))
-        # Backwards compatability, may remove later
-        self.rules += [FilterGroup(x) for x in d.get("groups", [])]
-        self.rules += [FilterColumn(x, self.operator) for x in d.get("columns", [])]
 
     def get_sql(self):
         clauses = []
@@ -154,8 +151,7 @@ class DbFilter:
     def create(
         cls,
         dbpath: Union[Path, str] = "",
-        filterpath: Optional[str] = None,
-        filtername: Optional[str] = None,
+        filter_path: Optional[str] = None,
         filterstring: Optional[str] = None,
         filter=None,
         mode="sub",
@@ -169,8 +165,7 @@ class DbFilter:
     ):
         self = DbFilter(
             dbpath=dbpath,
-            filterpath=filterpath,
-            filtername=filtername,
+            filterpath=filter_path,
             filterstring=filterstring,
             filter=filter,
             mode=mode,
@@ -189,7 +184,6 @@ class DbFilter:
         self,
         dbpath: Union[Path, str] = "",
         filterpath=None,
-        filtername=None,
         filterstring=None,
         filter=None,
         filtersql=None,
@@ -228,15 +222,13 @@ class DbFilter:
         else:
             if filterstring is not None:
                 self.filterstring = filterstring
-            elif filtername is not None:
-                self.filtername = filtername
             elif filterpath is not None:
                 self.filterpath = filterpath
         self.uid = uid
         self.user = self.escape_user(user)
         self.use_duckdb = use_duckdb
         if not use_duckdb:
-            if self.dbpath.endswith(".duckdb"):
+            if self.dbpath.name.endswith(".duckdb"):
                 self.use_duckdb = True
         self.conn_read: Optional[
             Union[sqlite3.Connection, duckdb.DuckDBPyConnection]
@@ -389,7 +381,7 @@ class DbFilter:
         ):
             return self.conn_read, self.conn_write
         if self.use_duckdb:
-            self.conn_read = duckdb.connect(self.dbpath)
+            self.conn_read = duckdb.connect(str(self.dbpath))
             self.create_and_attach_filter_database(self.conn_read)
             self.conn_write = self.conn_read
             return self.conn_read, self.conn_write

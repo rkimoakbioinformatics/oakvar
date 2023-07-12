@@ -224,7 +224,7 @@ class BaseReporter:
         self.add_summary = not self.no_summary
 
     def load_filter(self):
-        from ... import ReportFilter
+        from .reporter_filter_old import ReportFilter
 
         self.cf = ReportFilter.create(dbpath=self.dbpath, user=self.user, strict=False)
         self.cf.loadfilter(
@@ -278,7 +278,6 @@ class BaseReporter:
             self.error_logger = logging.getLogger("err." + self.module_name)
             set_logger_handler(
                 self.logger,
-                self.error_logger,
                 output_dir=Path(self.output_dir),
                 run_name=self.run_name,
                 mode="a",
