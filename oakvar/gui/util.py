@@ -64,6 +64,8 @@ def get_server_settings(args={}) -> Tuple[str, int]:
             port = sysconf[SYSCONF_PORT_KEY]
         else:
             port = DEFAULT_GUI_PORT
+    if not port:
+        port = DEFAULT_GUI_PORT
     port = int(port)
     return host, port
 
