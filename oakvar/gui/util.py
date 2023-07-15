@@ -39,30 +39,34 @@ def get_server_settings(args={}) -> Tuple[str, int]:
     else:
         def_host = "localhost"
     if args.get(SSL_ENABELD_KEY, False):
+        host = None
         if SYSCONF_SSL_HOST_KEY in sysconf:
             host = sysconf[SYSCONF_SSL_HOST_KEY]
-        elif SYSCONF_HOST_KEY in sysconf:
+        if not host and SYSCONF_HOST_KEY in sysconf:
             host = sysconf[SYSCONF_HOST_KEY]
-        else:
+        if not host:
             host = def_host
+        port = None
         if PORT_KEY in args:
             port = args[PORT_KEY]
-        elif SYSCONF_SSL_PORT_KEY in sysconf:
+        if not port and SYSCONF_SSL_PORT_KEY in sysconf:
             port = sysconf[SYSCONF_SSL_PORT_KEY]
-        elif SYSCONF_PORT_KEY in sysconf:
+        if not port and SYSCONF_PORT_KEY in sysconf:
             port = sysconf[SYSCONF_PORT_KEY]
-        else:
+        if not port:
             port = default_gui_port_ssl
     else:
+        host = None
         if SYSCONF_HOST_KEY in sysconf:
             host = sysconf[SYSCONF_HOST_KEY]
-        else:
+        if not host:
             host = def_host
+        port = None
         if PORT_KEY in args:
             port = args[PORT_KEY]
-        elif SYSCONF_PORT_KEY in sysconf:
+        if not port and SYSCONF_PORT_KEY in sysconf:
             port = sysconf[SYSCONF_PORT_KEY]
-        else:
+        if not port:
             port = DEFAULT_GUI_PORT
     if not port:
         port = DEFAULT_GUI_PORT
