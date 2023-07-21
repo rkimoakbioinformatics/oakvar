@@ -18,6 +18,7 @@ class BaseReporter:
         filterstring: Optional[str] = None,
         savepath: Optional[Path] = None,
         confpath: Optional[str] = None,
+        conf: Dict[str, Any] = {},
         module_name: Optional[str] = None,
         nogenelevelonvariantlevel: bool = False,
         inputfiles: Optional[List[str]] = None,
@@ -84,7 +85,7 @@ class BaseReporter:
         self.retrieved_col_names: Dict[str, List[str]] = {}
         self.conn = None
         self.levels_to_write = None
-        self.conf = None
+        self.conf = conf
         self.module_conf = None
         self.output_basename = None
         self.extract_columns_multilevel: Dict[str, List[str]] = {}
@@ -143,7 +144,6 @@ class BaseReporter:
         if self.savepath and self.savepath.parent == "":
             self.savepath = Path(self.output_dir) / self.savepath
         self.module_conf = get_module_conf(self.module_name, module_type="reporter")
-        self.confs = self.module_options  # TODO: backward compatibility. Delete later.
         self.output_basename = Path(self.dbpath).name[:-7]
         if not self.inputfiles and self.dbpath:
             db = sqlite3.connect(self.dbpath)

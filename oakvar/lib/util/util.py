@@ -275,10 +275,6 @@ def get_args_conf(args: dict) -> Dict:
     """
     if args is None:
         return {}
-    old_to_new_keys = {
-        "reports": "report_types",
-        "temp_files": "keep_temp",
-    }
     # fill with run_conf dict
     run_conf = args.get("run_conf")
     if run_conf and type(run_conf) is dict:
@@ -293,11 +289,7 @@ def get_args_conf(args: dict) -> Dict:
         if conf:
             for k, v in conf.items():
                 if k not in args or not args[k]:
-                    if k in old_to_new_keys:
-                        key = old_to_new_keys[k]
-                    else:
-                        key = k
-                    args[key] = v
+                    args[k] = v
     return args
 
 
