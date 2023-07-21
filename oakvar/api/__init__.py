@@ -217,6 +217,7 @@ def report(
     filterstring: Optional[str] = None,
     savepath: Optional[Path] = None,
     confpath: Optional[str] = None,
+    conf: Dict[str, Any] = {},
     nogenelevelonvariantlevel: bool = False,
     separatesample: bool = False,
     output_dir: Optional[Path] = None,

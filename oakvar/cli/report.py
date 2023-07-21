@@ -18,7 +18,7 @@ def report(args, __name__="report"):
         module_options = get_module_options(args.get(MODULE_OPTIONS_KEY))
         args["module_options"] = module_options
     else:
-        args["module_options"] = None
+        args["module_options"] = {}
     if args["savepath"]:
         args["savepath"] = Path(args["savepath"])
     if args["output_dir"]:
