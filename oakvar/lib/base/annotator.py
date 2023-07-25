@@ -212,11 +212,11 @@ class BaseAnnotator(object):
         if isinstance(output, dict):
             self.output = output
         else:
-            self.output[self.level] = {"level": self.level, OUTPUT_COLS_KEY: []}
+            self.output[self.module_name] = {"level": self.level, OUTPUT_COLS_KEY: []}
             coldefs: List[Dict[str, Any]] = []
             for coldef in output:
                 if coldef.get("table") is True:
-                    table_name = f"{self.module_name}__{coldef['name']}"
+                    table_name = coldef['name']
                     self.output[table_name] = {
                         "level": coldef.get("level", self.level),
                         OUTPUT_COLS_KEY: [],
@@ -227,7 +227,7 @@ class BaseAnnotator(object):
                         )
                 else:
                     coldefs.append(coldef.copy())
-            self.output[self.level][OUTPUT_COLS_KEY] = coldefs
+            self.output[self.module_name][OUTPUT_COLS_KEY] = coldefs
         self.conf["output"] = self.output.copy()
         self.col_names = {
             table_name: [
@@ -356,11 +356,13 @@ class BaseAnnotator(object):
         }
         self.df_dtypes = {}
         for table_name, table_output in self.output.items():
+            print(f"@@@ annot. {table_name}: {table_output}")
             self.df_dtypes[table_name] = {}
-            coldefs = table_output.get(OUTPUT_COLS_KEY, [])
+            coldefs: List[Dict[str, Any]] = table_output.get(OUTPUT_COLS_KEY, [])
             for col in coldefs:
+                col_name = col.get("name")
                 ty = get_pl_dtype(col)
-                self.df_dtypes[table_name][col] = ty
+                self.df_dtypes[table_name][col_name] = ty
         self.base_setup()
 
     def get_series(self, dfs: Dict[str, pl.DataFrame]) -> Dict[str, List[pl.Series]]:
@@ -434,7 +436,7 @@ class BaseAnnotator(object):
                             table_col_ld.extend([None] * df.height)
                         max_counts[table_name] += df.height
             else:
-                counts[self.level] += 1
+                counts[self.module_name] += 1
         for table_name, table_ld in var_ld.items():
             for col_name in table_ld.keys():
                 var_ld[table_name][col_name] = var_ld[table_name][col_name][
@@ -482,7 +484,7 @@ class BaseAnnotator(object):
         hugos = cf.get_filtered_hugo_list()
         output_columns = cf.get_stored_output_columns(self.module_name)
         cols = [
-            self.module_name + "__" + coldef["name"]
+            coldef["name"]
             for coldef in output_columns
             if coldef["name"] != "uid"
         ]

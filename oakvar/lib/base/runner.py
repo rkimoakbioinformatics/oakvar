@@ -396,6 +396,7 @@ class Runner(object):
         from ..consts import GENE_LEVEL
         from ..consts import GENE_LEVEL_PRIMARY_KEY
 
+        print(f"@ coldefs={coldefs}")
         table_col_names: Dict[str, List[str]] = {
             level: [] for level in result_table_names
         }
@@ -412,10 +413,11 @@ class Runner(object):
                     and table_name == GENE_LEVEL
                 ):
                     table_col_def += " PRIMARY KEY"
-                table_col_defs.append(table_col_def)
+                table_col_defs.append(f"{table_col_def}")
                 table_col_names[table_name].append(coldef["name"])
             table_col_def_str = ", ".join(table_col_defs)
             q = f"create table {table_name} ({table_col_def_str})"
+            print(f"@ q={q}")
             self.result_db_conn.execute(q)
             # if table_name == GENE_LEVEL:
             #    q = f"create unique index {GENE_LEVEL}_uidx on {GENE_LEVEL} ({GENE_LEVEL_PRIMARY_KEY})"
@@ -463,9 +465,8 @@ class Runner(object):
     def get_offset_levels(self) -> List[str]:
         from ..consts import VARIANT_LEVEL
         from ..consts import ERR_LEVEL
-        from ..consts import SAMPLE_LEVEL
 
-        offset_levels: List[str] = [VARIANT_LEVEL, ERR_LEVEL, SAMPLE_LEVEL]
+        offset_levels: List[str] = [VARIANT_LEVEL, ERR_LEVEL]
         mapper = self.mapper_i[0]
         for table_name, table_output in mapper.output.items():
             if (
@@ -564,10 +565,13 @@ class Runner(object):
         self.load_mapper()
         self.load_annotators()
         input_paths = self.input_paths[run_no]
+        print(f"@ here 1")
         converter = self.choose_converter(input_paths)
         if converter is None:
             raise NoConverterFound(input_paths)
+        print(f"@ here setting up")
         converter.setup_df(input_paths, batch_size=batch_size)
+        print(f"@ here 2")
         dbpath = self.get_dbpath(run_no)
         offset_levels: List[str] = self.get_offset_levels()
         self.create_result_database(dbpath, converter, clean=clean)
@@ -576,7 +580,6 @@ class Runner(object):
             converter_read_size = batch_size
         else:
             converter_read_size = DEFAULT_CONVERTER_READ_SIZE
-        print(f"@ converter_read_size={converter_read_size}")
         if self.num_core > 1:
             import ray
             import logging
@@ -657,12 +660,15 @@ class Runner(object):
                 use_duckdb=self.args.use_duckdb,
             )
             for fileno, input_path in enumerate(input_paths):
+                print(f"@ fileno={fileno}")
                 update_status(
                     f"Starting to process: {input_path}",
                     logger=self.logger,
                     serveradmindb=self.serveradmindb,
                 )
+                print(f"@ setting file")
                 worker.setup_file(input_path, fileno=fileno)
+                print(f"@ done setup file")
                 while True:
                     update_status(
                         f"Processing: {input_path} line {converter.start_line_no}",
@@ -736,7 +742,7 @@ class Runner(object):
                 if self.args and self.args.vcf2vcf:
                     self.run_vcf2vcf(run_no)
                 else:
-                    self.process_file(run_no, batch_size=100, clean = True)
+                    self.process_file(run_no, clean = True)
                 end_time = time()
                 runtime = end_time - self.start_time
                 display_time = asctime(localtime(end_time))
@@ -957,9 +963,10 @@ class Runner(object):
         else:
             self.package_conf = {}
 
-    def get_dbpath(self, run_no: int) -> Path:
+    def get_dbpath(self, run_no: int, run_name: str="") -> Path:
         output_dir: str = self.output_dir[run_no]
-        run_name: str = self.run_name[run_no]
+        if not run_name:
+            run_name = self.run_name[run_no]
         if self.args.use_duckdb:
             return self.get_duckdb_dbpath(output_dir, run_name)
         else:
@@ -977,7 +984,7 @@ class Runner(object):
         dbpath_p = Path(output_dir) / f"{run_name}{RESULT_DB_SUFFIX_SQLITE}"
         return dbpath_p
 
-    def get_unique_run_name(self, run_no: int):
+    def get_unique_run_name(self, run_no: int, run_name: str):
         from pathlib import Path
         from ..consts import RESULT_DB_SUFFIX_DUCKDB
         from ..consts import RESULT_DB_SUFFIX_SQLITE
@@ -986,9 +993,8 @@ class Runner(object):
             suffix = RESULT_DB_SUFFIX_DUCKDB
         else:
             suffix = RESULT_DB_SUFFIX_SQLITE
-        dbpath_p = self.get_dbpath(run_no)
+        dbpath_p = self.get_dbpath(run_no, run_name=run_name)
         output_dir: str = self.output_dir[run_no]
-        run_name: str = self.run_name[run_no]
         if not dbpath_p.exists():
             return run_name
         count = 0
@@ -1010,7 +1016,7 @@ class Runner(object):
                 run_name = p.name
                 if len(inp_l) > 1:
                     run_name = run_name + "_etc"
-                    run_name = self.get_unique_run_name(0)
+                    run_name = self.get_unique_run_name(0, run_name)
                 self.run_name.append(run_name)
         else:
             if self.args.combine_input:

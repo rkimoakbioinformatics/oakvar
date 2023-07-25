@@ -273,26 +273,31 @@ class BaseConverter(object):
         if input_paths is None:
             return
         self.input_paths = input_paths
+        print(f"@@ here")
         if not output or not df_headers:
             self.handle_headers(input_paths)
         else:
             self.output = deepcopy(output)
             self.df_headers = deepcopy(df_headers)
+        print(f"@@ here")
         if samples is None:
             if len(self.samples) == 0 and not self.ignore_sample:
                 self.collect_samples(input_paths)
         else:
             self.samples = sorted(samples)
+        print(f"@@ here")
         if output is not None:
             self.output = deepcopy(output)
         else:
             if not self.output:
                 self.make_sample_output_columns()
+        print(f"@@ here")
         if df_headers is not None:
             self.df_headers = deepcopy(df_headers)
         else:
             if not self.df_headers:
                 self.df_headers = get_df_headers(self.output)
+        print(f"@@ here")
         self.set_run_variables()
         self.setup_done = True
 

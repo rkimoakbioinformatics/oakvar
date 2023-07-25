@@ -99,8 +99,6 @@ class Worker:
         lines_data, has_more_data = self.converter.get_variant_lines(
             self.converter.input_path, num_core=1
         )
-        #if self.converter.start_line_no < 3800:
-        #    return True
         self._run_df(lines_data[0])
         last_val: int = self.renumber_uid(self.offset)
         self.offset = last_val + 1
@@ -112,6 +110,7 @@ class Worker:
 
     def _run_df(self, lines_data: List[Tuple[str, int]]):
         dfs = self.converter.get_dfs(lines_data)
+        print(f"@ dfs={dfs}")
         if not dfs:
             return
         try:
@@ -128,21 +127,21 @@ class Worker:
     def renumber_uid(self, offset: int) -> int:
         from ..consts import VARIANT_LEVEL
         from ..consts import VARIANT_LEVEL_PRIMARY_KEY
+        from ..consts import SAMPLE_LEVEL
 
         last_val: int = 0
-        for level in self.offset_levels:
-            if level not in self.dfs:
-                continue
-            if self.dfs[level].height == 0:
-                if level == VARIANT_LEVEL:
-                    last_val = 0
-            else:
-                self.dfs[level].replace(
-                    VARIANT_LEVEL_PRIMARY_KEY,
-                    self.dfs[level][VARIANT_LEVEL_PRIMARY_KEY] + offset,
-                )
-                if level == VARIANT_LEVEL:
-                    last_val = self.dfs[level][VARIANT_LEVEL_PRIMARY_KEY][-1]
+        for table_name, df in self.dfs.items():
+            if table_name in self.offset_levels or table_name.startswith(SAMPLE_LEVEL):
+                if df.height == 0:
+                    if table_name == VARIANT_LEVEL:
+                        last_val = 0
+                else:
+                    df.replace(
+                        VARIANT_LEVEL_PRIMARY_KEY,
+                        df[VARIANT_LEVEL_PRIMARY_KEY] + offset,
+                    )
+                    if table_name == VARIANT_LEVEL:
+                        last_val = df[VARIANT_LEVEL_PRIMARY_KEY][-1]
         return last_val
 
     def save_df(self, dbpath: Path):
@@ -152,14 +151,16 @@ class Worker:
 
         conn = open_result_database(dbpath, self.use_duckdb)
         for table_name, df in self.dfs.items():
-            table_col_names_str = ", ".join(df.columns)
+            table_col_names_str = ", ".join([f"{v}" for v in df.columns])
             values_str = ", ".join(["?"] * len(df.columns))
             if isinstance(conn, sqlite3.Connection):
                 if table_name == GENE_LEVEL:
                     q = f"insert or ignore into {table_name} ({table_col_names_str}) values ({values_str})"
                 else:
                     q = f"insert into {table_name} ({table_col_names_str}) values ({values_str})"
+                print(f"@ q={q}")
                 for row in df.iter_rows():
+                    print(f"@ row={row}")
                     conn.execute(q, row)
             else:
                 if table_name == GENE_LEVEL:

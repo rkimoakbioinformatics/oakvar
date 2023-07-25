@@ -72,6 +72,7 @@ setup(
         "pyarrow",
         "multiprocess",
         "pandas>=1.5.0",
+        "ray",
         # below are module-specific. move them to module's yml.
         "mpmath",
         "twobitreader",
