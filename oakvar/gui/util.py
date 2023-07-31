@@ -30,7 +30,7 @@ def get_server_settings(args={}) -> Tuple[str, int]:
     if pl.startswith("Windows"):
         def_host = "localhost"
     elif pl.startswith("Linux"):
-        if "Microsoft" in pl:
+        if "Microsoft" in pl or "microsoft" in pl:
             def_host = "localhost"
         else:
             def_host = "0.0.0.0"
