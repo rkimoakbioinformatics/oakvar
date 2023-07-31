@@ -263,10 +263,12 @@ def open_result_database(dbpath: Path, use_duckdb: bool, clean: bool = False):
 
 
 def initialize_err_series_data():
+    from ..consts import VARIANT_LEVEL_PRIMARY_KEY
+
     err_series_data: Dict[str, List[Any]] = {}
     err_series_data["fileno"] = []
     err_series_data["lineno"] = []
-    err_series_data["uid"] = []
+    err_series_data[VARIANT_LEVEL_PRIMARY_KEY] = []
     err_series_data["err"] = []
     return err_series_data
 
@@ -323,7 +325,9 @@ def get_df_headers(
 ) -> Dict[str, Dict[str, pl.PolarsDataType]]:
     import polars as pl
     from ..consts import OUTPUT_COLS_KEY
+    from ..consts import SAMPLE_LEVEL_KEY
 
+    print(f"@@@@ output={output}")
     df_headers: Dict[str, Dict[str, pl.PolarsDataType]] = {}
     for table_name, table_output in output.items():
         df_headers[table_name] = {}
@@ -331,4 +335,7 @@ def get_df_headers(
         for col in coldefs:
             ty = get_pl_dtype(col)
             df_headers[table_name][col.get("name")] = ty
+    #for sample in self.samples:
+    #    table_name = f"{SAMPLE_LEVEL_KEY}__{sample}"
+    #    df_headers[table_name] = {}
     return df_headers

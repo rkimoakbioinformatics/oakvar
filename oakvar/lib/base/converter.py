@@ -5,7 +5,7 @@ from typing import List
 from typing import Dict
 from typing import Set
 import polars as pl
-
+from .variant import Variant
 from .commonmodule import BaseCommonModule
 
 
@@ -14,11 +14,11 @@ POS = "pos"
 END_POS = "end_pos"
 REF_BASE = "ref_base"
 ALT_BASE = "alt_base"
-ORIG_CHROM = "ori_chrom"
-ORIG_POS = "ori_pos"
-ORIG_END_POS = "ori_end_pos"
-ORIG_REF_BASE = "ori_ref_base"
-ORIG_ALT_BASE = "ori_alt_base"
+ORI_CHROM = "ori_chrom"
+ORI_POS = "ori_pos"
+ORI_END_POS = "ori_end_pos"
+ORI_REF_BASE = "ori_ref_base"
+ORI_ALT_BASE = "ori_alt_base"
 VALID = "valid"
 ERROR = "error"
 NO_ALLELE = "noallele"
@@ -156,6 +156,7 @@ class BaseConverter(object):
                 str, Dict[str, Any]
             ] = get_ov_system_output_columns().copy()
         self.setup_done: bool = False
+        self.series_data: Dict[str, Dict[str, List[Any]]] = {}
 
     def check_format(self, *__args__, **__kwargs__):
         pass
@@ -208,9 +209,9 @@ class BaseConverter(object):
 
     def convert_line(
         self, l: str, *__args__, **__kwargs__
-    ) -> Dict[str, List[Dict[str, Any]]]:
+    ) -> List[Variant]:
         _ = l
-        return {}
+        return []
 
     def addl_operation_for_unique_variant(self, __wdict__, __wdict_no__):
         pass
@@ -254,6 +255,34 @@ class BaseConverter(object):
     def handle_headers(self, input_paths: List[str]):
         _ = input_paths
 
+    def setup_samples(self, samples: Optional[List[str]], input_paths: List[str]):
+        from copy import deepcopy
+
+        if samples:
+            self.samples = deepcopy(samples)
+        if self.ignore_sample:
+            return
+        if self.samples:
+            return
+        self.collect_samples(input_paths)
+
+    def setup_output(self, output: Optional[Dict[str, Dict[str, Any]]]):
+        from copy import deepcopy
+
+        if output:
+            self.output = deepcopy(output)
+        else:
+            self.make_sample_output_columns()
+
+    def setup_df_headers(self, df_headers: Optional[Dict[str, Dict[str, pl.PolarsDataType]]]):
+        from copy import deepcopy
+        from ..util.run import get_df_headers
+
+        if df_headers:
+            self.df_headers = deepcopy(df_headers)
+        else:
+            self.df_headers = get_df_headers(self.output)
+
     def setup_df(
         self,
         input_paths: Optional[List[str]],
@@ -263,9 +292,6 @@ class BaseConverter(object):
         df_headers: Optional[Dict[str, Dict[str, pl.PolarsDataType]]] = None,
         override: bool = False,
     ):
-        from copy import deepcopy
-        from ..util.run import get_df_headers
-
         if self.setup_done and not override:
             return
         if batch_size:
@@ -273,31 +299,10 @@ class BaseConverter(object):
         if input_paths is None:
             return
         self.input_paths = input_paths
-        print(f"@@ here")
-        if not output or not df_headers:
-            self.handle_headers(input_paths)
-        else:
-            self.output = deepcopy(output)
-            self.df_headers = deepcopy(df_headers)
-        print(f"@@ here")
-        if samples is None:
-            if len(self.samples) == 0 and not self.ignore_sample:
-                self.collect_samples(input_paths)
-        else:
-            self.samples = sorted(samples)
-        print(f"@@ here")
-        if output is not None:
-            self.output = deepcopy(output)
-        else:
-            if not self.output:
-                self.make_sample_output_columns()
-        print(f"@@ here")
-        if df_headers is not None:
-            self.df_headers = deepcopy(df_headers)
-        else:
-            if not self.df_headers:
-                self.df_headers = get_df_headers(self.output)
-        print(f"@@ here")
+        self.handle_headers(input_paths)
+        self.setup_samples(samples, input_paths)
+        self.setup_output(output)
+        self.setup_df_headers(df_headers)
         self.set_run_variables()
         self.setup_done = True
 
@@ -382,35 +387,31 @@ class BaseConverter(object):
                     variant.get("chrom"), int(variant.get("pos"))
                 )
 
-    def handle_genotype(self, variant):
-        if "genotype" in variant and "." in variant["genotype"]:
-            variant["genotype"] = variant["genotype"].replace(".", variant["ref_base"])
-
-    def check_invalid_base(self, variant: dict):
+    def check_invalid_base(self, variant: Variant):
         from oakvar.lib.exceptions import IgnoredVariant
 
-        if not self.base_re.fullmatch(variant["ref_base"]):
+        if not self.base_re.fullmatch(variant.ref_base):
             raise IgnoredVariant("Invalid reference base")
-        if not self.base_re.fullmatch(variant["alt_base"]):
+        if not self.base_re.fullmatch(variant.alt_base):
             raise IgnoredVariant("Invalid alternate base")
 
-    def normalize_variant(self, variant):
+    def normalize_variant(self, variant: Variant):
         from oakvar.lib.util.seq import normalize_variant_left
 
         p, r, a = (
-            int(variant["pos"]),
-            variant["ref_base"],
-            variant["alt_base"],
+            variant.pos,
+            variant.ref_base,
+            variant.alt_base,
         )
         (
             new_pos,
             new_ref,
             new_alt,
         ) = normalize_variant_left("+", p, r, a)
-        variant[POS] = new_pos
-        variant[REF_BASE] = new_ref
-        variant[ALT_BASE] = new_alt
-        variant[END_POS] = new_pos + len(new_ref) - 1
+        variant.pos = new_pos
+        variant.ref_base = new_ref
+        variant.alt_base = new_alt
+        variant.end_pos = new_pos + len(new_ref) - 1
 
     def add_unique_variant(self, variant: dict, unique_variants: set):
         var_str = (
@@ -422,16 +423,6 @@ class BaseConverter(object):
             unique_variants.add(var_str)
         return is_unique
 
-    def add_end_pos_if_absent(self, variant: dict):
-        col_name = "end_pos"
-        if col_name not in variant:
-            ref_base = variant["ref_base"]
-            ref_len = len(ref_base)
-            if ref_len == 1:
-                variant[col_name] = variant["pos"]
-            else:
-                variant[col_name] = variant["pos"] + ref_len - 1
-
     def get_dfs(self, lines_data: List[Tuple[str, int]]) -> Dict[str, pl.DataFrame]:
         converted_data, max_idx = self.collect_converted_datas(lines_data)
         dfs = self.make_dfs_from_converted_datas(converted_data, max_idx)
@@ -442,103 +433,112 @@ class BaseConverter(object):
     ) -> Tuple[Dict[str, Dict[str, List[Any]]], int]:
         from oakvar.lib.consts import VARIANT_LEVEL
         from oakvar.lib.consts import ERR_LEVEL
+        from oakvar.lib.consts import FILENO_KEY
         from oakvar.lib.consts import LINENO_KEY
 
         COLLECT_MARGIN: float = 1.2
         size: int = int(len(lines_data) * COLLECT_MARGIN)
-        series_data: Dict[str, Dict[str, List[Any]]] = self.get_intialized_series_data(
+        self.series_data = self.get_intialized_series_data(
             size
         )
         c: int = 0
-        for line, line_no in lines_data:
+        for line, lineno in lines_data:
             try:
                 try:
                     converted_data = self.convert_line(line)
                     if not converted_data:
                         continue
-                    self.process_converted_data(converted_data, series_data, line_no)
+                    self.process_converted_data(converted_data, lineno)
                 except Exception as e:
-                    self.log_error(e, series_data[ERR_LEVEL], lineno=line_no)
+                    self.log_error(e, self.series_data[ERR_LEVEL], lineno=lineno)
                     self.num_valid_error_lines[ERROR] += 1
                     continue
-                if len(converted_data[VARIANT_LEVEL]) == 0:
+                if len(converted_data) == 0:
                     self.num_valid_error_lines[NO_ALLELE] += 1
                     continue
-                if c < size:
-                    for table_name, table_data in converted_data.items():
-                        for d in table_data:
-                            for col_name, col_value in d.items():
-                                series_data[table_name][col_name][c] = col_value
-                    series_data[VARIANT_LEVEL][LINENO_KEY][c] = line_no
-                else:
-                    for table_name, table_data in converted_data.items():
-                        for d in table_data:
-                            for col_name, col_value in d.items():
-                                series_data[table_name][col_name].append(col_value)
-                    series_data[VARIANT_LEVEL][LINENO_KEY].append(line_no)
+                    variant_data = self.series_data[VARIANT_LEVEL]
+                    for variant in converted_data:
+                        if c < size:
+                            variant_data[CHROM][c] = variant.chrom
+                            variant_data[POS][c] = variant.pos
+                            variant_data[END_POS][c] = variant.pos
+                            variant_data[REF_BASE][c] = variant.ref_base
+                            variant_data[ALT_BASE][c] = variant.alt_base
+                            variant_data[ORI_POS][c] = variant.pos
+                            variant_data[ORI_END_POS][c] = variant.pos
+                            variant_data[ORI_REF_BASE][c] = variant.ref_base
+                            variant_data[ORI_ALT_BASE][c] = variant.alt_base
+                            variant_data[FILENO_KEY][c] = self.fileno
+                            variant_data[LINENO_KEY][c] = lineno
+                        else:
+                            variant_data[CHROM].append(variant.chrom)
+                            variant_data[POS].append(variant.pos)
+                            variant_data[END_POS].append(variant.pos)
+                            variant_data[REF_BASE][c] = variant.ref_base
+                            variant_data[ALT_BASE][c] = variant.alt_base
+                            variant_data[ORI_POS][c] = variant.pos
+                            variant_data[ORI_END_POS][c] = variant.pos
+                            variant_data[ORI_REF_BASE][c] = variant.ref_base
+                            variant_data[ORI_ALT_BASE][c] = variant.alt_base
+                            variant_data[FILENO_KEY][c] = self.fileno
+                            variant_data[LINENO_KEY][c] = lineno
+                    series_data[VARIANT_LEVEL][LINENO_KEY].append(lineno)
                 self.num_valid_error_lines[VALID] += 1
                 c += 1
             except KeyboardInterrupt:
                 raise
             except Exception as e:
-                self.log_error(e, series_data[ERR_LEVEL], lineno=line_no)
+                self.log_error(e, series_data[ERR_LEVEL], lineno=lineno)
                 self.num_valid_error_lines[ERROR] += 1
         return series_data, c
 
     def process_converted_data(
         self,
-        converted_data: Dict[str, List[Dict[str, Any]]],
-        series_data: Dict[str, Dict[str, List[Any]]],
+        converted_data: List[Variant],
         lineno: int,
     ):
         from ..consts import VARIANT_LEVEL
-        from ..consts import SAMPLE_LEVEL
         from ..consts import ERR_LEVEL
 
-        ld_var = converted_data[VARIANT_LEVEL]
-        ld_spl = converted_data[SAMPLE_LEVEL]
         c: int = 0
-        max_c: int = len(ld_var)
+        max_c: int = len(converted_data)
         while c < max_c:
-            d_var = ld_var[c]
+            d_var = converted_data[c]
             try:
                 self.process_variant(d_var)
                 c += 1
             except Exception as e:
+                import traceback; traceback.print_exc()
                 del ld_var[c]
-                del ld_spl[c]
+                for _, table_rows in converted_data.items():
+                    del table_rows[c]
                 max_c = max_c - 1
                 self.num_valid_error_lines[ERROR] += 1
                 self.log_error(e, series_data[ERR_LEVEL], lineno=lineno)
                 continue
 
-    def process_variant(self, d_var: Dict[str, Any]):
+    def process_variant(self, d_var: Variant):
         from oakvar.lib.exceptions import NoVariantError
 
-        if d_var["ref_base"] == d_var["alt_base"]:
+        if d_var.ref_base == d_var.alt_base:
             raise NoVariantError()
         self.handle_chrom(d_var)
         self.handle_ref_base(d_var)
         self.check_invalid_base(d_var)
-        self.add_end_pos_if_absent(d_var)
-        d_var[ORIG_POS] = d_var[POS]
-        d_var[ORIG_END_POS] = d_var[END_POS]
-        d_var[ORIG_REF_BASE] = d_var[REF_BASE]
-        d_var[ORIG_ALT_BASE] = d_var[ALT_BASE]
         self.normalize_variant(d_var)
-        self.handle_genotype(d_var)
         self.perform_liftover_if_needed(d_var)
 
-    def get_sample_colname(self, sample: str) -> str:
-        return f"in__{sample}"
+    def get_sample_table_name(self, sample: str) -> str:
+        return f"sample__{sample}"
 
     def get_intialized_series_data(self, size: int) -> Dict[str, Dict[str, List[Any]]]:
         from ..consts import ERR_LEVEL
+        from ..consts import SAMPLE_LEVEL_KEY
 
         series_data: Dict[str, Dict[str, List[Any]]] = {}
         for table_name, headers in self.df_headers.items():
             series_data[table_name] = {}
-            if table_name == ERR_LEVEL:
+            if table_name.startswith(SAMPLE_LEVEL_KEY) or table_name == ERR_LEVEL:
                 for name, _ in headers.items():
                     series_data[table_name][name] = []
             else:
@@ -570,7 +570,6 @@ class BaseConverter(object):
         from oakvar.lib.consts import VARIANT_LEVEL
         from oakvar.lib.consts import VARIANT_LEVEL_PRIMARY_KEY
         from oakvar.lib.consts import FILENO_KEY
-        from oakvar.lib.consts import SAMPLE_LEVEL
 
         series_data: Dict[str, Dict[str, List[Any]]] = {}
         for table_name, table_data in converted_data.items():
@@ -581,9 +580,10 @@ class BaseConverter(object):
             i for i in range(max_idx)
         ]
         series_data[VARIANT_LEVEL][FILENO_KEY] = [self.fileno for _ in range(max_idx)]
-        series_data[SAMPLE_LEVEL][VARIANT_LEVEL_PRIMARY_KEY] = [
-            i for i in range(max_idx)
-        ]
+        for sample in self.samples:
+            series_data[self.get_sample_table_name(sample)][VARIANT_LEVEL_PRIMARY_KEY] = [
+                i for i in range(max_idx)
+            ]
         dfs = self.get_dfs_from_series_data(series_data, self.df_headers)
         return dfs
 
@@ -638,26 +638,26 @@ class BaseConverter(object):
         status = "finished Converter"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
 
-    def perform_liftover_if_needed(self, d_var):
+    def perform_liftover_if_needed(self, d_var: Variant):
         from oakvar.lib.util.seq import liftover_one_pos
         from oakvar.lib.util.seq import liftover
         from oakvar.lib.exceptions import LiftoverFailure
 
-        if self.is_chrM(d_var):
+        if self.is_chrM(d_var.chrom):
             needed = self.do_liftover_chrM
         else:
             needed = self.do_liftover
         if needed:
             (
-                d_var["chrom"],
-                d_var["pos"],
-                d_var["ref_base"],
-                d_var["alt_base"],
+                d_var.chrom,
+                d_var.pos,
+                d_var.ref_base,
+                d_var.alt_base,
             ) = liftover(
-                d_var["chrom"],
-                int(d_var["pos"]),
-                d_var["ref_base"],
-                d_var["alt_base"],
+                d_var.chrom,
+                d_var.pos,
+                d_var.ref_base,
+                d_var.alt_base,
                 lifter=self.lifter,
                 wgs_reader=self.wgs_reader,
             )
@@ -756,30 +756,30 @@ class BaseConverter(object):
         for input_path in input_paths:
             samples_file = self.collect_samples_from_file(input_path)
             samples = samples.union(samples_file)
-        samples_list = sorted(list(samples))
+        samples_list = list(samples)
         self.samples = samples_list
         if self.logger:
             self.logger.info(f"{len(self.samples)} samples detected.")
 
     def make_sample_output_columns(self):
-        from ..consts import SAMPLE_LEVEL
+        from ..consts import LEVEL
+        from ..consts import VARIANT_LEVEL
         from ..consts import OUTPUT_COLS_KEY
-        from ..util.util import get_ov_system_output_columns
+        from ..consts import SAMPLE_HAS
 
-        sample_output_columns: List[Dict[str, Any]] = self.output[SAMPLE_LEVEL][
-            OUTPUT_COLS_KEY
-        ]
-        sample_output_columns = get_ov_system_output_columns().copy()[SAMPLE_LEVEL][
-            OUTPUT_COLS_KEY
-        ]
+        print(f"@ samples={self.samples}")
         for sample in self.samples:
+            table_name = self.get_sample_table_name(sample)
+            if table_name in self.output:
+                continue
             coldef = {
-                "name": self.get_sample_colname(sample),
+                "name": SAMPLE_HAS,
                 "title": f"Variant present in {sample}",
                 "type": "bool",
             }
-            sample_output_columns.append(coldef)
-        self.output[SAMPLE_LEVEL][OUTPUT_COLS_KEY] = sample_output_columns
+            output_columns = [coldef]
+            self.output[table_name] = {LEVEL: VARIANT_LEVEL}
+            self.output[table_name][OUTPUT_COLS_KEY] = output_columns
 
     def get_samples_and_make_sample_output_columns(
         self, input_paths: List[str], samples: Optional[List[str]] = None

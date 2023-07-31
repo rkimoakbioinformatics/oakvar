@@ -11,6 +11,7 @@ from . import config
 from . import module
 from . import system
 from . import util
+from ..lib.consts import DEFAULT_CONVERTER_READ_SIZE
 
 _ = do_test or config or module or new or store or system or util
 
@@ -70,6 +71,7 @@ def run(
     fill_in_missing_ref: bool = False,
     uid: Optional[str] = None,
     use_duckdb: bool = False,
+    batch_size: int = DEFAULT_CONVERTER_READ_SIZE,
     loop=None,
     outer=None,
 ) -> Optional[Dict[str, Any]]:
@@ -192,6 +194,7 @@ def run(
         ignore_sample=ignore_sample,
         fill_in_missing_ref=fill_in_missing_ref,
         use_duckdb=use_duckdb,
+        batch_size=batch_size,
         uid=uid,
         outer=outer,
     )

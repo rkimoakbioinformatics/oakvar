@@ -5,7 +5,7 @@ import imp
 from aiohttp import web
 import time
 import duckdb
-from ... import ReportFilter
+from ...lib.base.db_filter import DbFilter
 
 wu = None
 logger = None
@@ -305,7 +305,7 @@ async def get_count(request):
         filterstring = queries["filter"]
     else:
         filterstring = None
-    cf = ReportFilter.create(dbpath=dbpath, mode="sub", filterstring=filterstring)
+    cf = DbFilter.create(dbpath=dbpath, mode="sub", filterstring=filterstring)
     dbbasename = os.path.basename(dbpath)
     _ = dbbasename
     if logger:
@@ -494,6 +494,7 @@ async def get_result_levels(request):
 async def get_dbpath(request) -> str:
     from ..util import get_email_from_request
     from ..serveradmindb import get_serveradmindb
+    from ...lib.consts import VARIANT_LEVEL_PRIMARY_KEY
 
     global servermode
     global wu
@@ -509,10 +510,10 @@ async def get_dbpath(request) -> str:
     if dbpath:
         return dbpath
     username = get_email_from_request(request, servermode)
-    uid = queries.get("uid")
+    uid = queries.get(VARIANT_LEVEL_PRIMARY_KEY)
     if uid and username:
         serveradmindb = get_serveradmindb()
-        dbpath = serveradmindb.get_dbpath_by_eud(eud={"uid": uid, "username": username})
+        dbpath = serveradmindb.get_dbpath_by_eud(eud={VARIANT_LEVEL_PRIMARY_KEY: uid, "username": username})
     return dbpath
 
 
@@ -729,7 +730,7 @@ async def serve_runwidget(request):
     m = imp.load_module(path, f, fn, d)  # type: ignore
     if dbpath is None:
         return web.json_response({})
-    cf = ReportFilter.create(dbpath=dbpath, mode="sub")
+    cf = DbFilter.create(dbpath=dbpath, mode="sub")
     filterstring = cf.get_report_filter_string(uid=queries.get("ftable_uid"))
     queries_dict = queries.copy()
     queries_dict["filterstring"] = filterstring

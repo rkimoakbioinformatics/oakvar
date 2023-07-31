@@ -242,6 +242,7 @@ class BaseMapper(object):
             output_dict: Dict[str, List[Dict[str, Any]]]
             if input_data["alt_base"] in ["*", ".", ""]:
                 output_dict = {}
+                counts[VARIANT_LEVEL] += 1
             else:
                 try:
                     output_dict = self.map(input_data)
@@ -263,7 +264,6 @@ class BaseMapper(object):
                     }
             for table_name, table_data in output_dict.items():
                 table_ld = var_ld[table_name]
-                table_count = counts[table_name]
                 table_max_count: int = max_counts[table_name]
                 if table_name == GENE_LEVEL:
                     for table_row in table_data:
@@ -271,13 +271,12 @@ class BaseMapper(object):
                         if key_val is None:
                             continue
                         if (
-                            table_count == 0
+                            counts[table_name] == 0
                             or key_val not in table_ld[GENE_LEVEL_PRIMARY_KEY]
                         ):
                             for col_name, value in table_row.items():
-                                table_ld[col_name][table_count] = value
+                                table_ld[col_name][counts[table_name]] = value
                             counts[table_name] += 1
-                            table_count = counts[table_name]
                         if counts[table_name] == table_max_count:
                             for col_name, table_col_ld in table_ld.items():
                                 table_col_ld.extend([None] * df.height)
@@ -288,13 +287,11 @@ class BaseMapper(object):
                         for col_name, value in table_row.items():
                             if not self.use_duckdb and isinstance(value, list):
                                 value = str(value)
-                            table_ld[col_name][table_count] = value
-                        if table_name == self.level:
+                            table_ld[col_name][counts[table_name]] = value
+                        if table_name == VARIANT_LEVEL:
                             counts[table_name] += 1
-                            table_count = counts[table_name]
                         elif table_row:
                             counts[table_name] += 1
-                            table_count = counts[table_name]
                         if counts[table_name] == table_max_count:
                             for col_name, table_col_ld in table_ld.items():
                                 table_col_ld.extend([None] * df.height)

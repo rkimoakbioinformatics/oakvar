@@ -58,6 +58,7 @@ class SubmitProcessor:
         from ..lib.system import get_user_jobs_dir
         from aiohttp.web import Response
         from aiohttp.web import json_response
+        from ..lib.consts import VARIANT_LEVEL_PRIMARY_KEY
 
         assert self.job_queue is not None
         self.request = request
@@ -70,7 +71,7 @@ class SubmitProcessor:
         job_dir = self.create_new_job_dir(jobs_dir)
         queue_item, job = await self.get_queue_item_and_job(self.request, job_dir)
         self.job_queue.put(queue_item)
-        uid: Optional[int] = queue_item.get("submit_options", {}).get("uid")
+        uid: Optional[int] = queue_item.get("submit_options", {}).get(VARIANT_LEVEL_PRIMARY_KEY)
         if not uid:
             if self.logger:
                 self.logger.error(
@@ -141,6 +142,7 @@ class SubmitProcessor:
     async def get_queue_item_and_job(self, request, job_dir) -> Tuple[dict, Job]:
         from .serveradmindb import get_serveradmindb
         from .util import get_email_from_request
+        from ..lib.consts import VARIANT_LEVEL_PRIMARY_KEY
 
         assert self.mu is not None
         submit_options = await self.save_job_input_files(request, job_dir)
@@ -151,7 +153,7 @@ class SubmitProcessor:
         email = get_email_from_request(request, self.servermode)
         serveradmindb = get_serveradmindb()
         uid = serveradmindb.add_job_info(email, job)
-        submit_options["uid"] = uid
+        submit_options[VARIANT_LEVEL_PRIMARY_KEY] = uid
         run_args = await self.get_run_args(request, submit_options, job_dir)
         run_args.extend(["--uid", str(uid)])
         submit_options["run_args"] = run_args

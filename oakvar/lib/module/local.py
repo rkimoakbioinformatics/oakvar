@@ -782,6 +782,7 @@ def create_module_files(instance, overwrite: bool = False, interactive: bool = F
     from ..exceptions import IncompleteModuleError
     from ..exceptions import SystemMissingException
     from ..system import get_modules_dir
+    from ..consts import VARIANT_LEVEL_PRIMARY_KEY
 
     cls = instance.__class__
     if not cls:
@@ -899,7 +900,7 @@ def create_module_files(instance, overwrite: bool = False, interactive: bool = F
         if "output_columns" in yml:
             del_idx = None
             for i, col in enumerate(yml["output_columns"]):
-                if module_level == "variant" and col.get("name") == "uid":
+                if module_level == "variant" and col.get("name") == VARIANT_LEVEL_PRIMARY_KEY:
                     del_idx = i
                     break
                 elif module_level == "gene" and col.get("name") == "hugo":

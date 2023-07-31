@@ -204,6 +204,7 @@ class BaseAnnotator(object):
     ):
         from ..consts import OUTPUT_COLS_KEY
         from ..consts import OUTPUT_KEY
+        from ..consts import VARIANT_LEVEL_PRIMARY_KEY_COLDEF
 
         if not output:
             output = self.conf.get(
@@ -213,7 +214,7 @@ class BaseAnnotator(object):
             self.output = output
         else:
             self.output[self.module_name] = {"level": self.level, OUTPUT_COLS_KEY: []}
-            coldefs: List[Dict[str, Any]] = []
+            coldefs: List[Dict[str, Any]] = [VARIANT_LEVEL_PRIMARY_KEY_COLDEF]
             for coldef in output:
                 if coldef.get("table") is True:
                     table_name = coldef['name']
@@ -237,12 +238,14 @@ class BaseAnnotator(object):
         }
 
     def set_ref_colname(self):
+        from ..consts import VARIANT_LEVEL_PRIMARY_KEY
+
         """set_ref_colname."""
         ref_colnames = {
-            "variant": "uid",
+            "variant": VARIANT_LEVEL_PRIMARY_KEY,
             "gene": "hugo",
-            "sample": "uid",
-            "mapping": "uid",
+            "sample": VARIANT_LEVEL_PRIMARY_KEY,
+            "mapping": VARIANT_LEVEL_PRIMARY_KEY,
         }
         if self.level:
             self._id_col_name = ref_colnames.get(self.level)
@@ -349,14 +352,13 @@ class BaseAnnotator(object):
 
         self.full_col_names = {
             table_name: {
-                col_name: f"{self.module_name}__{col_name}"
+                col_name: col_name
                 for col_name in self.col_names[table_name]
             }
             for table_name in self.col_names.keys()
         }
         self.df_dtypes = {}
         for table_name, table_output in self.output.items():
-            print(f"@@@ annot. {table_name}: {table_output}")
             self.df_dtypes[table_name] = {}
             coldefs: List[Dict[str, Any]] = table_output.get(OUTPUT_COLS_KEY, [])
             for col in coldefs:
@@ -424,7 +426,7 @@ class BaseAnnotator(object):
                                 table_col_ld.extend([None] * df.height)
                             max_counts[table_name] += df.height
                 else:
-                    table_name = self.level
+                    table_name = self.module_name
                     table_ld = var_ld[table_name]
                     table_count = counts[table_name]
                     table_max_count = max_counts[table_name]
@@ -435,8 +437,6 @@ class BaseAnnotator(object):
                         for col_name, table_col_ld in table_ld.items():
                             table_col_ld.extend([None] * df.height)
                         max_counts[table_name] += df.height
-            else:
-                counts[self.module_name] += 1
         for table_name, table_ld in var_ld.items():
             for col_name in table_ld.keys():
                 var_ld[table_name][col_name] = var_ld[table_name][col_name][
@@ -481,12 +481,14 @@ class BaseAnnotator(object):
         Args:
             cf:
         """
+        from ..consts import VARIANT_LEVEL_PRIMARY_KEY
+
         hugos = cf.get_filtered_hugo_list()
         output_columns = cf.get_stored_output_columns(self.module_name)
         cols = [
             coldef["name"]
             for coldef in output_columns
-            if coldef["name"] != "uid"
+            if coldef["name"] != VARIANT_LEVEL_PRIMARY_KEY
         ]
         data = {}
         rows = cf.get_variant_data_for_cols(cols)
@@ -500,7 +502,7 @@ class BaseAnnotator(object):
             rows = rows_by_hugo[hugo]
             input_data = {}
             for i in range(len(cols)):
-                input_data[cols[i].split("__")[1]] = [row[i] for row in rows]
+                input_data[cols[i]] = [row[i] for row in rows]
             out = self.summarize_by_gene(hugo, input_data)
             data[hugo] = out
         return data

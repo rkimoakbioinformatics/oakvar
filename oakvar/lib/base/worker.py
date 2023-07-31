@@ -97,7 +97,7 @@ class Worker:
         if not self.converter.input_path:
             self.setup_file(self.input_paths[0], fileno=0)
         lines_data, has_more_data = self.converter.get_variant_lines(
-            self.converter.input_path, num_core=1
+            self.converter.input_path, num_core=1, batch_size=self.batch_size
         )
         self._run_df(lines_data[0])
         last_val: int = self.renumber_uid(self.offset)
@@ -110,7 +110,6 @@ class Worker:
 
     def _run_df(self, lines_data: List[Tuple[str, int]]):
         dfs = self.converter.get_dfs(lines_data)
-        print(f"@ dfs={dfs}")
         if not dfs:
             return
         try:
@@ -127,11 +126,11 @@ class Worker:
     def renumber_uid(self, offset: int) -> int:
         from ..consts import VARIANT_LEVEL
         from ..consts import VARIANT_LEVEL_PRIMARY_KEY
-        from ..consts import SAMPLE_LEVEL
+        from ..consts import SAMPLE_LEVEL_KEY
 
         last_val: int = 0
         for table_name, df in self.dfs.items():
-            if table_name in self.offset_levels or table_name.startswith(SAMPLE_LEVEL):
+            if table_name in self.offset_levels or table_name.startswith(SAMPLE_LEVEL_KEY):
                 if df.height == 0:
                     if table_name == VARIANT_LEVEL:
                         last_val = 0
@@ -158,9 +157,7 @@ class Worker:
                     q = f"insert or ignore into {table_name} ({table_col_names_str}) values ({values_str})"
                 else:
                     q = f"insert into {table_name} ({table_col_names_str}) values ({values_str})"
-                print(f"@ q={q}")
                 for row in df.iter_rows():
-                    print(f"@ row={row}")
                     conn.execute(q, row)
             else:
                 if table_name == GENE_LEVEL:

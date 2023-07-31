@@ -52,12 +52,6 @@ variant:
     - name: lineno
       title: Input line number
       type: int
-sample:
-  level: variant
-  output_columns:
-    - name: uid
-      title: Variant ID
-      type: int
 err:
   level: variant
   output_columns:

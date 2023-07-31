@@ -714,6 +714,7 @@ class Tester:
     # level (variant, gene, etc) and specified module's columns
     def verify_level(self, level, module_name):
         from ..lib.exceptions import ModuleLoadingError
+        from ..lib.consts import VARIANT_LEVEL_PRIMARY_KEY
 
         if self.module is None:
             raise ModuleLoadingError(module_name=self.module_name)
@@ -741,7 +742,7 @@ class Tester:
                     # just check the columns from the module we are testing
                     if (
                         (self.getModule(header) not in module_name)
-                        or "uid" in header
+                        or VARIANT_LEVEL_PRIMARY_KEY in header
                         or "UID" in header
                     ):
                         continue

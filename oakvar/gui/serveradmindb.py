@@ -133,6 +133,8 @@ class ServerAdminDb:
         conn.commit()
 
     def add_uid_column(self, columns, column_types, conn, cursor) -> bool:
+        from ..lib.consts import VARIANT_LEVEL_PRIMARY_KEY
+
         if "jobid" in columns:
             idx = columns.index("jobid")
             ctype = column_types[idx]
@@ -149,7 +151,7 @@ class ServerAdminDb:
                 q = f"select {','.join(ex_cols)} from jobs"
                 cursor.execute(q)
                 rows = cursor.fetchall()
-                new_cols = ["uid"] + ex_cols
+                new_cols = [VARIANT_LEVEL_PRIMARY_KEY] + ex_cols
                 new_ctypes = ["integer primary key autoincrement"] + ex_ctypes
                 cols_def = ",".join(
                     [f"{v[0]} {v[1]}" for v in list(zip(new_cols, new_ctypes))]
@@ -170,6 +172,8 @@ class ServerAdminDb:
         return False
 
     def do_backward_compatibility(self, conn, cursor) -> bool:
+        from ..lib.consts import VARIANT_LEVEL_PRIMARY_KEY
+
         need_clean_start = False
         q = "select name, type, pk from pragma_table_info('jobs') as tblinfo"
         cursor.execute(q)
@@ -182,7 +186,7 @@ class ServerAdminDb:
             return True
         if "status" not in columns:
             self.add_status_column(conn, cursor)
-        if "uid" not in columns:
+        if VARIANT_LEVEL_PRIMARY_KEY not in columns:
             need_clean_start = self.add_uid_column(columns, column_types, conn, cursor)
         if "statusjson" in columns:  # statusjson Ok here.
             self.change_statusjson_to_info_json_column(conn, cursor)
@@ -376,11 +380,13 @@ class ServerAdminDb:
     def get_job_dir_by_username_uid(
         self, eud={}, conn=Any, cursor=Any
     ) -> Optional[str]:
-        if not eud.get("uid") or not eud.get("username"):
+        from ..lib.consts import VARIANT_LEVEL_PRIMARY_KEY
+
+        if not eud.get(VARIANT_LEVEL_PRIMARY_KEY) or not eud.get("username"):
             return None
         _ = conn
         q = "select dir from jobs where username=? and uid=?"
-        cursor.execute(q, (eud.get("username"), eud.get("uid")))
+        cursor.execute(q, (eud.get("username"), eud.get(VARIANT_LEVEL_PRIMARY_KEY)))
         ret = cursor.fetchone()
         if not ret:
             return None
@@ -390,12 +396,13 @@ class ServerAdminDb:
     @db_func
     def get_dbpath_by_eud(self, eud={}, conn=Any, cursor=Any) -> str:
         from json import loads
+        from ..lib.consts import VARIANT_LEVEL_PRIMARY_KEY
 
-        if not eud.get("uid") or not eud.get("username"):
+        if not eud.get(VARIANT_LEVEL_PRIMARY_KEY) or not eud.get("username"):
             return ""
         _ = conn
         q = "select info_json from jobs where username=? and uid=?"
-        cursor.execute(q, (eud.get("username"), eud.get("uid")))
+        cursor.execute(q, (eud.get("username"), eud.get(VARIANT_LEVEL_PRIMARY_KEY)))
         ret = cursor.fetchone()
         if not ret:
             return ""

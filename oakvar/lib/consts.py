@@ -2,6 +2,9 @@ from os.path import join
 from os.path import dirname
 from typing import Dict
 
+LEVEL = "level"
+VARIANT_LEVEL_PRIMARY_KEY = "uid"
+GENE_LEVEL_PRIMARY_KEY = "hugo"
 OLD_INPUT_LEVEL_KEY = "crv"
 OLD_VARIANT_LEVEL_KEY = "crx"
 OLD_GENE_LEVEL_KEY = "crg"
@@ -15,10 +18,10 @@ GENE_LEVEL_MAPPED_FILE_SUFFIX = "." + GENE_LEVEL_KEY
 SAMPLE_FILE_SUFFIX = "." + SAMPLE_LEVEL_KEY
 VARIANT_LEVEL_OUTPUT_SUFFIX = ".var"
 GENE_LEVEL_OUTPUT_SUFFIX = ".gen"
-crm_idx = [["uid"], ["tags"]]
-crs_idx = [["uid"], ["sample_id"], ["sample_id", "uid"]]
-crv_idx = [["uid"]]
-crx_idx = [["uid"]]
+crm_idx = [[VARIANT_LEVEL_PRIMARY_KEY], ["tags"]]
+crs_idx = [[VARIANT_LEVEL_PRIMARY_KEY], ["sample_id"], ["sample_id", VARIANT_LEVEL_PRIMARY_KEY]]
+crv_idx = [[VARIANT_LEVEL_PRIMARY_KEY]]
+crx_idx = [[VARIANT_LEVEL_PRIMARY_KEY]]
 crg_idx = [["hugo"]]
 
 all_mappings_col_name = "all_mappings"
@@ -29,7 +32,6 @@ GENE = 1
 LEVELS = {"variant": VARIANT, "gene": GENE}
 VARIANT_LEVEL = "variant"
 GENE_LEVEL = "gene"
-SAMPLE_LEVEL = "sample"
 ERR_LEVEL = "err"
 
 module_tag_desc = {
@@ -73,22 +75,19 @@ JOB_STATUS_ERROR = "Error"
 MODULE_OPTIONS_KEY = "module_options"
 SYSTEM_GENOME_ASSEMBLY = "hg38"
 
-VARIANT_LEVEL_PRIMARY_KEY = "uid"
-GENE_LEVEL_PRIMARY_KEY = "hugo"
-DEFAULT_DF_SIZE = 1_000_000
 DEFAULT_CONVERTER_READ_SIZE = 10_000
 OAKVAR_VERSION_KEY = "oakvar"
 VARIANT_LEVEL_PRIMARY_KEY_COLDEF: Dict[str, str] = {
-    "name": "uid",
+    "name": VARIANT_LEVEL_PRIMARY_KEY,
     "type": "int",
-    "level": VARIANT_LEVEL,
+    LEVEL: VARIANT_LEVEL,
     "title": "Variant ID",
     "desc": "Variant ID",
 }
 GENE_LEVEL_PRIMARY_KEY_COLDEF: Dict[str, str] = {
     "name": "hugo",
     "type": "string",
-    "level": GENE_LEVEL,
+    LEVEL: GENE_LEVEL,
     "title": "HUGO Symbol",
     "desc": "HUGO Symbol of gene",
 }
@@ -99,3 +98,4 @@ OUTPUT_COLS_KEY = "output_columns"
 OUTPUT_KEY = "output"
 ERR_KEY = "err"
 MAPPER_TABLE_NAME = "mapper"
+SAMPLE_HAS = "has"

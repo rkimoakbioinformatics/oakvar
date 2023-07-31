@@ -117,6 +117,7 @@ class BasePreparer(object):
         from time import time, asctime, localtime
         from ..exceptions import SetupError
         from ..util.run import update_status
+        from ..consts import VARIANT_LEVEL_PRIMARY_KEY
 
         self.run_setups()
         start_time = time()
@@ -144,7 +145,7 @@ class BasePreparer(object):
                         status, logger=self.logger, serveradmindb=self.serveradmindb
                     )
                     last_status_update_time = cur_time
-                uid = crv_data.get("uid")
+                uid = crv_data.get(VARIANT_LEVEL_PRIMARY_KEY)
                 if not uid:
                     continue
                 if uid > self.uid:

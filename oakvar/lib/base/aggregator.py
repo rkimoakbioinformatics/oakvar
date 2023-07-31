@@ -252,6 +252,8 @@ class Aggregator(object):
         self.output_base_fname = self.run_name
 
     def setup(self):
+        from ..consts import VARIANT_LEVEL_PRIMARY_KEY
+
         if self.level is None:
             return
         if self.run_name is None:
@@ -266,7 +268,7 @@ class Aggregator(object):
         from os import listdir
 
         if self.level == "variant":
-            self.key_name = "uid"
+            self.key_name = VARIANT_LEVEL_PRIMARY_KEY
         elif self.level == "gene":
             self.key_name = "hugo"
         elif self.level == "sample":

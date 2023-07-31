@@ -80,8 +80,10 @@ class VCF2VCF:
         return col_infos
 
     def get_all_col_names(self, col_infos, mapper: str):
+        from ..consts import VARIANT_LEVEL_PRIMARY_KEY
+
         all_col_names = [
-            "uid",
+            VARIANT_LEVEL_PRIMARY_KEY,
             "chrom",
             "pos",
             "strand",
@@ -185,6 +187,8 @@ class VCF2VCF:
         from oakvar.lib.module.local import load_modules
         from oakvar.lib.util.run import log_variant_exception
         from oakvar.lib.exceptions import IgnoredVariant
+        from ..consts import VARIANT_LEVEL_PRIMARY_KEY
+
 
         if not self.mapper_name or not self.inputs:
             return False
@@ -255,7 +259,7 @@ class VCF2VCF:
                         else:
                             pos_a, ref_a, alt_a = pos, ref, alt
                         uid += 1
-                        variant = {"uid": uid}
+                        variant = {VARIANT_LEVEL_PRIMARY_KEY: uid}
                         if ref_a is None:
                             pass
                         elif alt_a is None:
@@ -276,7 +280,7 @@ class VCF2VCF:
                                 )
                             else:
                                 variant = {
-                                    "uid": uid,
+                                    VARIANT_LEVEL_PRIMARY_KEY: uid,
                                     "chrom": chrom,
                                     "pos": pos_a,
                                     "strand": "+",

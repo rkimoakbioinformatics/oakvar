@@ -615,6 +615,7 @@ class DbFilter:
 
     def get_existing_report_filter_status(self):
         from json import dumps
+        from ..consts import VARIANT_LEVEL_PRIMARY_KEY
 
         conn_read, conn_write = self.get_db_conns()
         _ = conn_write
@@ -632,7 +633,7 @@ class DbFilter:
         if not ret:
             return None
         [uid, status] = ret
-        return {"uid": uid, "status": status}
+        return {VARIANT_LEVEL_PRIMARY_KEY: uid, "status": status}
 
     def get_report_filter_count(
         self, cursor: Union[sqlite3.Cursor, duckdb.DuckDBPyConnection]
@@ -884,13 +885,15 @@ class DbFilter:
         conn_write.commit()
 
     def make_ftables(self):
+        from ..consts import VARIANT_LEVEL_PRIMARY_KEY
+
         if self.should_bypass_filter():
             return None
         if not self.filter:
-            return {"uid": None, "status": REPORT_FILTER_NOT_NEEDED}
+            return {VARIANT_LEVEL_PRIMARY_KEY: None, "status": REPORT_FILTER_NOT_NEEDED}
         ret = self.get_existing_report_filter_status()
         if ret:
-            self.uid = ret["uid"]
+            self.uid = ret[VARIANT_LEVEL_PRIMARY_KEY]
             return ret
         ret = self.get_new_report_filter_uid()
         if not ret:
@@ -924,7 +927,7 @@ class DbFilter:
                 sample_to_filter=sample_to_filter,
             )
             self.set_registry_status(uid=uid, status=REPORT_FILTER_READY)
-            return {"uid": uid, "status": REPORT_FILTER_READY}
+            return {VARIANT_LEVEL_PRIMARY_KEY: uid, "status": REPORT_FILTER_READY}
         except Exception as e:
             self.remove_ftables(uid)
             raise e
@@ -963,6 +966,8 @@ class DbFilter:
     def get_level_data_iterator(
         self, level, page=None, pagesize=None, uid=None, var_added_cols=[], cursor=None
     ):
+        from ..consts import VARIANT_LEVEL_PRIMARY_KEY
+
         if not level:
             return None
         if not cursor:
@@ -973,7 +978,7 @@ class DbFilter:
         if uid is not None:
             filter_uid_status = self.get_existing_report_filter_status()
             if filter_uid_status:
-                uid = filter_uid_status.get("uid")
+                uid = filter_uid_status.get(VARIANT_LEVEL_PRIMARY_KEY)
         if level == "variant" and var_added_cols:
             gene_level_cols = [f"g.{col}" for col in var_added_cols]
             q = f"select d.*, {','.join(gene_level_cols)} from main.{level} as d left join main.gene as g on d.base__hugo=g.base__hugo"
@@ -1124,11 +1129,13 @@ class DbFilter:
         return output_columns
 
     def make_ftables_and_ftable_uid(self, make_filtered_table=True):
+        from ..consts import VARIANT_LEVEL_PRIMARY_KEY
+
         self.ftable_uid = None
         if not self.should_bypass_filter() or make_filtered_table:
             ret = self.make_ftables()
             if ret:
-                ftable_uid = ret["uid"]
+                ftable_uid = ret[VARIANT_LEVEL_PRIMARY_KEY]
                 return ftable_uid
 
     def getcount(self, level="variant", uid=None):

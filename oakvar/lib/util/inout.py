@@ -614,6 +614,7 @@ class ColumnDefinition(object):
 
 def read_crv(fpath):
     import polars as pl
+    from ..consts import VARIANT_LEVEL_PRIMARY_KEY
 
     f = open(fpath)
     c = 0
@@ -624,7 +625,7 @@ def read_crv(fpath):
     df = pl.read_csv(
         f,
         skip_rows=c,
-        new_columns=["uid", "chrom", "pos", "end_pos", "ref_base", "alt_base"],
+        new_columns=[VARIANT_LEVEL_PRIMARY_KEY, "chrom", "pos", "end_pos", "ref_base", "alt_base"],
     )
     return df
 

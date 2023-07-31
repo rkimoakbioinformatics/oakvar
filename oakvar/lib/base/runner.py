@@ -9,7 +9,6 @@ from pathlib import Path
 from .converter import BaseConverter
 from .mapper import BaseMapper
 from .annotator import BaseAnnotator
-from ..consts import DEFAULT_DF_SIZE
 
 
 class Runner(object):
@@ -21,6 +20,7 @@ class Runner(object):
         from .converter import BaseConverter
         from .mapper import BaseMapper
         from .annotator import BaseAnnotator
+        from ..consts import DEFAULT_CONVERTER_READ_SIZE
 
         self.runlevels = {
             "converter": 1,
@@ -94,6 +94,7 @@ class Runner(object):
         self.df_mode: bool = False
         self.pool = []
         self.table_names_by_level: Dict[str, List[str]] = {}
+        self.batch_size: int = DEFAULT_CONVERTER_READ_SIZE
 
     def check_valid_modules(self, module_names):
         from ..exceptions import ModuleNotExist
@@ -302,7 +303,6 @@ class Runner(object):
         output: Dict[str, Dict[str, Any]],
         result_table_names: List[str],
         include_key_col: bool = False,
-        add_module_name_to_col_name: bool = False,
         ignore_tables: List[str] = [],
     ):
         from ..consts import VARIANT_LEVEL
@@ -325,14 +325,6 @@ class Runner(object):
                 OUTPUT_COLS_KEY, []
             )
             for coldef in table_output_columns:
-                colname = coldef["name"]
-                if (
-                    add_module_name_to_col_name
-                    and table_name in [VARIANT_LEVEL, GENE_LEVEL]
-                    and module_name != "base"
-                    and "__" not in colname
-                ):
-                    coldef["name"] = f"{module_name}__{colname}"
                 coldef["level"] = table_level
                 coldef["module_name"] = module_name
                 coldef_copy = coldef.copy()
@@ -385,7 +377,6 @@ class Runner(object):
                 coldefs,
                 m.output,
                 result_table_names,
-                add_module_name_to_col_name=True,
                 ignore_tables=[ERR_LEVEL],
             )
         return coldefs, result_table_names
@@ -396,7 +387,6 @@ class Runner(object):
         from ..consts import GENE_LEVEL
         from ..consts import GENE_LEVEL_PRIMARY_KEY
 
-        print(f"@ coldefs={coldefs}")
         table_col_names: Dict[str, List[str]] = {
             level: [] for level in result_table_names
         }
@@ -417,7 +407,6 @@ class Runner(object):
                 table_col_names[table_name].append(coldef["name"])
             table_col_def_str = ", ".join(table_col_defs)
             q = f"create table {table_name} ({table_col_def_str})"
-            print(f"@ q={q}")
             self.result_db_conn.execute(q)
             # if table_name == GENE_LEVEL:
             #    q = f"create unique index {GENE_LEVEL}_uidx on {GENE_LEVEL} ({GENE_LEVEL_PRIMARY_KEY})"
@@ -462,11 +451,16 @@ class Runner(object):
             )
         self.result_db_conn.commit()
 
-    def get_offset_levels(self) -> List[str]:
+    def get_offset_levels(self, converter: BaseConverter) -> List[str]:
         from ..consts import VARIANT_LEVEL
-        from ..consts import ERR_LEVEL
 
-        offset_levels: List[str] = [VARIANT_LEVEL, ERR_LEVEL]
+        offset_levels: List[str] = []
+        for table_name, table_output in converter.output.items():
+            if (
+                table_output.get("level", VARIANT_LEVEL) == VARIANT_LEVEL 
+                and table_name not in offset_levels
+            ):
+                offset_levels.append(table_name)
         mapper = self.mapper_i[0]
         for table_name, table_output in mapper.output.items():
             if (
@@ -498,11 +492,7 @@ class Runner(object):
         for table_name in converter.output:
             for col in converter.output[table_name].get(OUTPUT_COLS_KEY, []):
                 col_name = col["name"]
-                if "__" in col_name:
-                    name = col_name
-                else:
-                    name = f"base__{col_name}"
-                self.result_db_conn.execute(q, (name, table_name, dumps(col)))
+                self.result_db_conn.execute(q, (col_name, table_name, dumps(col)))
         mapper = self.mapper_i[0]
         for table_name, table_output in mapper.output.items():
             coldefs = table_output.get(OUTPUT_COLS_KEY, [])
@@ -533,17 +523,6 @@ class Runner(object):
         self.create_info_modules_table_in_result_db()
         self.create_info_headers_table_in_result_db(converter)
 
-    def rename_base_columns_in_result_database(self, table_col_names: List[str]):
-        if self.result_db_conn is None:
-            return
-        for col_name in table_col_names:
-            if "__" not in col_name:
-                new_col_name = f"base__{col_name}"
-                self.result_db_conn.execute(
-                    f"alter table variant rename {col_name} to {new_col_name}"
-                )
-        self.result_db_conn.commit()
-
     def create_result_database(self, dbpath: Path, converter: BaseConverter, clean: bool = False):
         coldefs, result_table_names = self.collect_output_coldefs(converter)
         self.open_result_database(dbpath, clean=clean)
@@ -551,9 +530,8 @@ class Runner(object):
         self.create_auxiliary_tables_in_result_db(converter)
         self.close_result_database()
 
-    def process_file(self, run_no: int, batch_size: int = DEFAULT_DF_SIZE, clean: bool = True):
+    def process_file(self, run_no: int, clean: bool = True):
         from ..exceptions import NoConverterFound
-        from ..consts import DEFAULT_CONVERTER_READ_SIZE
         from .worker import Worker
         from ..util.run import update_status
         from .converter import VALID
@@ -570,16 +548,12 @@ class Runner(object):
         if converter is None:
             raise NoConverterFound(input_paths)
         print(f"@ here setting up")
-        converter.setup_df(input_paths, batch_size=batch_size)
+        converter.setup_df(input_paths, batch_size=self.batch_size)
         print(f"@ here 2")
         dbpath = self.get_dbpath(run_no)
-        offset_levels: List[str] = self.get_offset_levels()
+        offset_levels: List[str] = self.get_offset_levels(converter)
         self.create_result_database(dbpath, converter, clean=clean)
         self.do_step_preparer(run_no)
-        if batch_size < DEFAULT_CONVERTER_READ_SIZE:
-            converter_read_size = batch_size
-        else:
-            converter_read_size = DEFAULT_CONVERTER_READ_SIZE
         if self.num_core > 1:
             import ray
             import logging
@@ -593,7 +567,7 @@ class Runner(object):
             log_handler = logging.StreamHandler()
             log_handler.setFormatter(fmt)
             logger.addHandler(log_handler)
-            self.make_pool(run_no, converter, converter_read_size, offset_levels)
+            self.make_pool(run_no, converter, offset_levels)
             ret = []
             offset: int = 0
             for fileno, input_path in enumerate(input_paths):
@@ -616,7 +590,7 @@ class Runner(object):
                     lines_data, has_more_data = converter.get_variant_lines(
                         input_path,
                         num_core=self.num_core,
-                        batch_size=converter_read_size,
+                        batch_size=self.batch_size,
                     )
                     lines_data_ref = ray.put(lines_data)
                     ret = []
@@ -655,7 +629,7 @@ class Runner(object):
                 ignore_sample=self.ignore_sample,
                 run_conf=self.run_conf,
                 genome=self.args.genome,
-                batch_size=converter_read_size,
+                batch_size=self.batch_size,
                 offset_levels=offset_levels,
                 use_duckdb=self.args.use_duckdb,
             )
@@ -688,14 +662,12 @@ class Runner(object):
             self.do_step_postaggregator(run_no)
         self.write_info_table(run_no, dbpath, converter)
         return
-        # self.rename_base_columns_in_result_database(table_col_names)
         # self.do_step_reporter(run_no)
 
     def make_pool(
         self,
         run_no: int,
         converter: BaseConverter,
-        batch_size: int,
         offset_levels: List[str],
     ):
         from .worker import ParallelWorker
@@ -704,7 +676,7 @@ class Runner(object):
             return
         self.pool = []
         for _ in range(self.num_core):
-            w = ParallelWorker.remote(input_paths=self.input_paths[run_no], converter_name=converter.name, mapper_name=self.mapper_name, annotator_names=self.annotator_names, ignore_sample=self.ignore_sample, run_conf=self.run_conf, genome=self.args.genome, batch_size=batch_size, output=converter.output, df_headers=converter.df_headers, offset_levels=offset_levels, use_duckdb=self.args.use_duckdb)  # type: ignore
+            w = ParallelWorker.remote(input_paths=self.input_paths[run_no], converter_name=converter.name, mapper_name=self.mapper_name, annotator_names=self.annotator_names, ignore_sample=self.ignore_sample, run_conf=self.run_conf, genome=self.args.genome, batch_size=self.batch_size, output=converter.output, df_headers=converter.df_headers, offset_levels=offset_levels, use_duckdb=self.args.use_duckdb)  # type: ignore
             self.pool.append(w)
 
     def delete_pool(self):
@@ -800,6 +772,11 @@ class Runner(object):
         self.sort_postaggregators()
         self.set_reporters()
         self.set_start_end_levels()
+        self.set_misc_variables()
+
+    def set_misc_variables(self):
+        if self.args.batch_size:
+            self.batch_size = self.args.batch_size
 
     def make_self_args_considering_package_conf(self, args):
         from types import SimpleNamespace

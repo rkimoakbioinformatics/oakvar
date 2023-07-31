@@ -4,8 +4,10 @@ servermode = None
 
 
 def unpack_eud(eud={}):
+    from ..lib.consts import VARIANT_LEVEL_PRIMARY_KEY
+
     email = eud.get("username")
-    uid = eud.get("uid")
+    uid = eud.get(VARIANT_LEVEL_PRIMARY_KEY)
     dbpath = eud.get("dbpath")
     return email, uid, dbpath
 
@@ -13,6 +15,7 @@ def unpack_eud(eud={}):
 def get_job_dir_from_eud(_, eud={}) -> Optional[str]:
     from pathlib import Path
     from .serveradmindb import ServerAdminDb
+    from ..lib.consts import VARIANT_LEVEL_PRIMARY_KEY
 
     if eud.get("dbpath"):
         job_dir = Path(eud.get("dbpath")).parent
@@ -20,7 +23,7 @@ def get_job_dir_from_eud(_, eud={}) -> Optional[str]:
             return str(job_dir)
         else:
             return None
-    if eud.get("username") and eud.get("uid"):
+    if eud.get("username") and eud.get(VARIANT_LEVEL_PRIMARY_KEY):
         serveradmindb = ServerAdminDb()
         job_dir = serveradmindb.get_job_dir_by_username_uid(eud=eud)
         return job_dir

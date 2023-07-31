@@ -113,10 +113,11 @@ class JobHandlers:
 
     async def get_eud_from_request(self, request):
         from .util import get_email_from_request
+        from ..lib.consts import VARIANT_LEVEL_PRIMARY_KEY
 
         email = get_email_from_request(request, self.servermode)
         uid, dbpath = await self.get_uid_dbpath_from_request(request)
-        return {"username": email, "uid": uid, "dbpath": dbpath}
+        return {"username": email, VARIANT_LEVEL_PRIMARY_KEY: uid, "dbpath": dbpath}
 
     async def generate_report(self, request):
         from aiohttp.web import json_response
@@ -124,6 +125,7 @@ class JobHandlers:
         import asyncio
         from .userjob import get_user_job_dbpath
         from .util import get_email_from_request
+        from ..lib.consts import VARIANT_LEVEL_PRIMARY_KEY
 
         global job_queue
         username = get_email_from_request(request, self.servermode)
@@ -131,7 +133,7 @@ class JobHandlers:
         if (not username or not uid) and not dbpath:
             return Response(status=404)
         report_type = request.match_info["report_type"]
-        eud = {"username": username, "uid": uid, "dbpath": dbpath}
+        eud = {"username": username, VARIANT_LEVEL_PRIMARY_KEY: uid, "dbpath": dbpath}
         if not dbpath:
             dbpath = get_user_job_dbpath(request, eud)
         if not dbpath:
@@ -143,7 +145,7 @@ class JobHandlers:
             "cmd": "report",
             "run_args": run_args,
             "dbpath": dbpath,
-            "uid": uid,
+            VARIANT_LEVEL_PRIMARY_KEY: uid,
             "report_type": report_type,
         }
         if self.job_queue is None:
@@ -202,12 +204,13 @@ class JobHandlers:
         from os.path import exists
         from os.path import basename
         from .util import get_email_from_request
+        from ..lib.consts import VARIANT_LEVEL_PRIMARY_KEY
 
         uid, dbpath = await self.get_uid_dbpath_from_request(request)
         username = get_email_from_request(request, self.servermode)
         if not uid and not dbpath:
             return HTTPNotFound
-        eud = {"uid": uid, "dbpath": dbpath, "username": username}
+        eud = {VARIANT_LEVEL_PRIMARY_KEY: uid, "dbpath": dbpath, "username": username}
         report_type = request.match_info["report_type"]
         report_paths = self.get_report_paths(request, report_type, eud=eud)
         if not report_paths:
@@ -287,6 +290,7 @@ class JobHandlers:
         from asyncio import sleep
         from .userjob import get_job_dir_from_eud
         from .util import get_email_from_request
+        from ..lib.consts import VARIANT_LEVEL_PRIMARY_KEY
 
         global job_queue
         if self.job_queue is None:
@@ -306,7 +310,7 @@ class JobHandlers:
         self.job_queue.put(queue_item)
         job_dir_ps = []
         for uid in uids:
-            p = get_job_dir_from_eud(request, {"username": username, "uid": uid})
+            p = get_job_dir_from_eud(request, {"username": username, VARIANT_LEVEL_PRIMARY_KEY: uid})
             if p:
                 job_dir_ps.append(Path(p))
         while True:
@@ -324,9 +328,10 @@ class JobHandlers:
     def get_job_status(self, request):
         from aiohttp.web import Response
         from .serveradmindb import ServerAdminDb
+        from ..lib.consts import VARIANT_LEVEL_PRIMARY_KEY
 
         queries = request.rel_url.query
-        uid = queries.get("uid")
+        uid = queries.get(VARIANT_LEVEL_PRIMARY_KEY)
         if not uid:
             return Response(status=404)
         serveradmindb = ServerAdminDb()
@@ -379,7 +384,9 @@ class JobHandlers:
         return json_response(jobs)
 
     def job_not_running(self, job):
-        return job.get("uid") not in self.info_of_running_jobs
+        from ..lib.consts import VARIANT_LEVEL_PRIMARY_KEY
+
+        return job.get(VARIANT_LEVEL_PRIMARY_KEY) not in self.info_of_running_jobs
 
     def job_not_finished(self, job):
         return job.get("status") not in [self.FINISHED, self.ERROR, self.ABORTED]
@@ -390,6 +397,8 @@ class JobHandlers:
     async def get_uid_dbpath_from_request(
         self, request
     ) -> Tuple[Optional[str], Optional[str]]:
+        from ..lib.consts import VARIANT_LEVEL_PRIMARY_KEY
+
         # from urllib.parse import unquote
         try:
             json_data = await request.json()
@@ -401,13 +410,13 @@ class JobHandlers:
             post_data = None
         queries = request.rel_url.query  # get
         if json_data:
-            uid = json_data.get("uid", None)
+            uid = json_data.get(VARIANT_LEVEL_PRIMARY_KEY, None)
             dbpath = json_data.get("dbpath", None)
         elif post_data:
-            uid = post_data.get("uid", None)
+            uid = post_data.get(VARIANT_LEVEL_PRIMARY_KEY, None)
             dbpath = post_data.get("dbpath", None)
         elif queries:
-            uid = queries.get("uid", None)
+            uid = queries.get(VARIANT_LEVEL_PRIMARY_KEY, None)
             dbpath = queries.get("dbpath", None)
         else:
             return None, None
@@ -438,8 +447,10 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
             self.loop = main_loop
 
         def add_job(self, queue_item):
+            from ..lib.consts import VARIANT_LEVEL_PRIMARY_KEY
+
             submit_options = queue_item.get("submit_options")
-            uid = submit_options.get("uid")
+            uid = submit_options.get(VARIANT_LEVEL_PRIMARY_KEY)
             if not uid:
                 print("No job UID from {submit_options}")
                 return
@@ -562,6 +573,7 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
             from logging import getLogger
             from .userjob import get_job_dir_from_eud
             from .serveradmindb import get_serveradmindb
+            from ..lib.consts import VARIANT_LEVEL_PRIMARY_KEY
 
             logger = getLogger()
             uids = queue_item.get("uids")
@@ -577,7 +589,7 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
                     serveradmindb.mark_job_as_aborted(username=username, uid=uid)
                     continue
                 job_dir = get_job_dir_from_eud(
-                    None, eud={"uid": uid, "username": username}
+                    None, eud={VARIANT_LEVEL_PRIMARY_KEY: uid, "username": username}
                 )
                 serveradmindb = get_serveradmindb()
                 serveradmindb.delete_job(uid)
@@ -589,9 +601,10 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
             import subprocess
             from os import remove
             from logging import getLogger
+            from ..lib.consts import VARIANT_LEVEL_PRIMARY_KEY
 
             dbpath = queue_item.get("dbpath")
-            uid = queue_item.get("uid")
+            uid = queue_item.get(VARIANT_LEVEL_PRIMARY_KEY)
             run_args = queue_item.get("run_args")
             report_type = queue_item.get("report_type")
             key = uid or dbpath
