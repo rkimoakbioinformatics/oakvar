@@ -188,39 +188,25 @@ class Aggregator(object):
             return
         if self.dbconn is None or self.cursor is None:
             return
-        from packaging.version import Version
         from ..util.inout import ColumnDefinition
-        from ..util.admin_util import get_current_package_version
 
         header_table = self.level + "_header"
         coldefs = []
-        if Version(get_current_package_version()) >= Version("1.5.0"):
-            sql = f"select col_def from {header_table}"
-            self.cursor.execute(sql)
-            for row in self.cursor:
-                coljson = row[0]
-                coldef = ColumnDefinition({})
-                coldef.from_json(coljson)
-                coldefs.append(coldef)
-        else:
-            sql = f'pragma table_info("{header_table}")'
-            self.cursor.execute(sql)
-            header_cols = [row[1] for row in self.cursor.fetchall()]
-            select_order = [
-                cname for cname in ColumnDefinition.db_order if cname in header_cols
-            ]
-            sql = "select {} from {}".format(", ".join(select_order), header_table)
-            self.cursor.execute(sql)
-            column_headers = self.cursor.fetchall()
-            for column_header in column_headers:
-                coldef = ColumnDefinition({})
-                coldef.from_row(column_header, order=select_order)
-                coldefs.append(coldef)
+        sql = f"select col_def from {header_table}"
+        self.cursor.execute(sql)
+        for row in self.cursor:
+            coljson = row[0]
+            print(f"@ coljson={coljson}")
+            coldef = ColumnDefinition({})
+            coldef.from_json(coljson)
+            coldefs.append(coldef)
         for coldef in coldefs:
+            print(f"@ coldef={coldef}")
             col_cats = coldef.categories
             if coldef.category in ["single", "multi"]:
                 if col_cats is not None and len(col_cats) == 0:
                     q = f"select distinct {coldef.name} from {self.level}"
+                    print(f"@ q={q}")
                     self.cursor.execute(q)
                     col_set = set([])
                     for r in self.cursor:
@@ -448,6 +434,7 @@ class Aggregator(object):
             cdefs[cdef.name] = cdef
         insert_template = f"insert into {self.header_table_name} values (?, ?)"
         for cdef in cdefs.values():
+            print(f"@ cdef={cdef.d}")
             self.cursor.execute(insert_template, [cdef.name, cdef.get_json()])
         # report substitution table
         if self.level in ["variant", "gene"]:
