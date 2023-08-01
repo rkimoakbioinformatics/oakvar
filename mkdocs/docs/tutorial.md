@@ -74,21 +74,28 @@ OakVar comes with a couple of embedded web applications, for graphical user inte
 
 This will launch an interactive result viewer for the analysis job done in the previous section.
 
-![interactive result viewer summary tab](images/ov_gui_viewer.png)
+![interactive result viewer summary tab](images/ov_summary_exampleinputsqlite.png)
 
-Click the tabs and look around the tables with annotated variants and the widgets in each tab. *Filter* tab has a customizable filter section.
+Click the sidebar and look around the tables with annotated variants and the widgets in each option. *Filter* option on the sidebar has a customizable filter section.
 
-![interactive result viewer filter tab](images/filter.png)
+![interactive result viewer filter tab](images/ov_filter_example.png)
 
-Click the brown `+` button at the bottom left corner to add and set up filter criteria, and click `Apply Filter` button to load filtered variants.
+Click the brown `+` button at the left corner to add and set up filter criteria, and click `Apply` button to load filtered variants.
 
 `ov gui` will launch a graphical user interface for managing analysis jobs and modules. 
 
-![job submission page](images/ov_gui.png)
+![job submission page](images/ov_results.png)
 
-Click `VCF` button to use an example input and click `Annotate` button to run an annotation job. The new job will show on the job table.
+Click `Manually enter variant instead` button followed by `Try an example` to use an example input and click `Annotate` button to run an annotation job. Optional reporters such as `VCF Reporter`,`Text Reporter` and `Excel Reporter` can be run by selecting the respective option on the right side. Additionally, modules can be selected below. The new job will show on the results option. 
+
+![example analysis page](images/ov_analyze_example.png)
+
+As seen below, `ClinVar` and `Gene Ontonogy` modules are available to run on the example job. 
+
+![example analysis page](images/ov_analyze_module.png)
+
 
 Installing and uninstalling modules can be managed on `Store` tab.
 
-![web store](images/ov_store.png)
+![web store](images/ov_gui_store.png)
 
