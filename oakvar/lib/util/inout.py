@@ -630,14 +630,14 @@ class ColumnDefinition(object):
 def read_crv(fpath):
     import polars as pl
 
-    f = open(fpath)
-    c = 0
-    for line in f:
-        if not line.startswith("#"):
-            break
-        c += 1
+    with open(fpath) as f:
+        c = 0
+        with open(fpath) as f:
+            for line in f:
+                if line.startswith("#"):
+                    c += 1
     df = pl.read_csv(
-        f,
+        fpath,
         skip_rows=c,
         new_columns=["uid", "chrom", "pos", "pos_end", "ref_base", "alt_base"],
     )
