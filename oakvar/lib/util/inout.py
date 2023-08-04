@@ -513,6 +513,8 @@ class ColumnDefinition(object):
     }
 
     def __init__(self, d):
+        from copy import deepcopy
+
         self.index = None
         self.name: str = ""
         self.title = None
@@ -528,9 +530,25 @@ class ColumnDefinition(object):
         self.genesummary = None
         self.table = None
         self.level = None
+        self.d = deepcopy(d)
         self._load_dict(d)
 
     def _load_dict(self, d):
+        self.d["index"] = d.get("index", None)
+        self.d["name"] = d.get("name", None)
+        self.d["title"] = d.get("title")
+        self.d["type"] = d.get("type")
+        self.d["categories"] = d.get("categories", [])
+        self.d["width"] = d.get("width", None)
+        self.d["desc"] = d.get("desc")
+        self.d["hidden"] = bool(d.get("hidden", "False"))
+        self.d["category"] = d.get("category")
+        self.d["filterable"] = bool(d.get("filterable", "True"))
+        self.d["hide_from_gui_filter"] = bool(d.get("hide_from_gui_filter", "False"))
+        self.d["link_format"] = d.get("link_format")
+        self.d["genesummary"] = bool(d.get("genesummary", "False"))
+        self.d["table"] = bool(d.get("table", "False"))
+        self.d["level"] = d.get("level")
         self.index = d.get("index")
         self.name = d.get("name")
         self.title = d.get("title")
@@ -546,6 +564,7 @@ class ColumnDefinition(object):
         self.genesummary = d.get("genesummary", False)
         self.table = d.get("table", False)
         self.level = d.get("level")
+        self.fhir = d.get("fhir")
 
     def from_row(self, row, order=None):
         from json import loads
@@ -580,13 +599,16 @@ class ColumnDefinition(object):
 
     def from_json(self, sjson):
         from json import loads
+        from copy import deepcopy
 
-        self._load_dict(loads(sjson))
+        d = loads(sjson)
+        self.d = deepcopy(d)
+        self._load_dict(d)
 
     def get_json(self):
         from json import dumps
 
-        return dumps(self.__dict__)
+        return dumps(self.d)
 
     def get_colinfo(self) -> Dict[str, Any]:
         return {
@@ -605,6 +627,7 @@ class ColumnDefinition(object):
             "col_index": self.index,
             "table": self.table,
             "level": self.level,
+            "fhir": self.d.get("fhir"),
         }
 
     def __iter__(self):  # Allows casting to dict
@@ -616,14 +639,14 @@ def read_crv(fpath):
     import polars as pl
     from ..consts import VARIANT_LEVEL_PRIMARY_KEY
 
-    f = open(fpath)
-    c = 0
-    for line in f:
-        if not line.startswith("#"):
-            break
-        c += 1
+    with open(fpath) as f:
+        c = 0
+        with open(fpath) as f:
+            for line in f:
+                if line.startswith("#"):
+                    c += 1
     df = pl.read_csv(
-        f,
+        fpath,
         skip_rows=c,
         new_columns=[VARIANT_LEVEL_PRIMARY_KEY, "chrom", "pos", "end_pos", "ref_base", "alt_base"],
     )

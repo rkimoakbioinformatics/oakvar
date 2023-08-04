@@ -64,9 +64,16 @@ Individual Sponsors
    :alt: RegenCenter
    :target: https://github.com/RegenCenter
 
+OakVar is in CodeX
+******************
+
+.. image:: https://confluence.hl7.org/download/attachments/58657090/CodeX-logo-simple.png?version=1&modificationDate=1635792171094&api=v2
+  :width: 400
+  :alt: CodeX logo
+
 License
 *******
 
-OakVar is licensed under dual licensing: 1) APGL v3 or higher and 2) paid subscription for commercial use. For full license information, see `LICENSE`_.
+OakVar is licensed under dual licensing: 1) APGL v3 or higher and 2) paid subscription for commercial or closed-source use. For full license information, see `LICENSE`_.
 
 .. _LICENSE: https://github.com/rkimoakbioinformatics/oakvar/blob/master/LICENSE
