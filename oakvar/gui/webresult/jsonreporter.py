@@ -26,6 +26,5 @@ class Reporter(BaseReporter):
         info["norows"] = norows
         self.data["info"] = info
         self.data["colinfo"] = self.colinfo
-        self.data["warning_msgs"] = self.warning_msgs
         self.data["total_norows"] = self.total_norows
         return self.data

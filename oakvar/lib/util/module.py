@@ -61,6 +61,7 @@ def get_reporter(module_name, *args, **kwargs) -> BaseReporter:
         raise ValueError(f"{module_name} was not found.")
     if not issubclass(ModuleClass, BaseReporter):
         raise ValueError(f"{ModuleClass} is not an annotator class.")
+    print(f"@ args={args}, kwargs={kwargs}")
     module = ModuleClass(*args, **kwargs)
     module.setup()
     return module

@@ -144,9 +144,6 @@ class Aggregator(object):
                 except Exception as e:
                     self._log_runtime_error(lnum, line, e, fn=reader.path)
             self.dbconn.commit()
-        self.fill_categories()
-        # self.cursor.execute("pragma synchronous=2;")
-        # self.cursor.execute("pragma journal_mode=delete;")
         end_time = time()
         if self.logger is not None:
             self.logger.info("finished: %s" % asctime(localtime(end_time)))
@@ -181,46 +178,6 @@ class Aggregator(object):
                 for i, _ in enumerate(col_cats):
                     col_cats[i] = col_cats[i].replace(k, v)
         return col_cats
-
-    def fill_categories(self):
-        if self.level is None:
-            return
-        if self.dbconn is None or self.cursor is None:
-            return
-        from ..util.inout import ColumnDefinition
-
-        header_table = self.level + "_header"
-        coldefs = []
-        sql = f"select col_def from {header_table}"
-        self.cursor.execute(sql)
-        for row in self.cursor:
-            coljson = row[0]
-            print(f"@ coljson={coljson}")
-            coldef = ColumnDefinition({})
-            coldef.from_json(coljson)
-            coldefs.append(coldef)
-        for coldef in coldefs:
-            print(f"@ coldef={coldef}")
-            col_cats = coldef.categories
-            if coldef.category in ["single", "multi"]:
-                if col_cats is not None and len(col_cats) == 0:
-                    q = f"select distinct {coldef.name} from {self.level}"
-                    print(f"@ q={q}")
-                    self.cursor.execute(q)
-                    col_set = set([])
-                    for r in self.cursor:
-                        if r[0] is None:
-                            continue
-                        col_set.update(r[0].split(";"))
-                    col_cats = list(col_set)
-                    col_cats = self.do_reportsub_col_cats(coldef.name, col_cats)
-                else:
-                    col_cats = self.do_reportsub_col_cats(coldef.name, col_cats)
-                if col_cats is not None:
-                    col_cats.sort()
-                coldef.categories = col_cats
-                self.update_col_def(coldef)
-        self.dbconn.commit()
 
     def update_col_def(self, col_def):
         if self.cursor is None:

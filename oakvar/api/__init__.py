@@ -51,11 +51,11 @@ def run(
     module_options: Dict = {},
     system_option: Dict = {},
     package: Optional[str] = None,
-    filtersql: Optional[str] = None,
+    filter_sql: Optional[str] = None,
     includesample: Optional[List[str]] = None,
     excludesample: Optional[List[str]] = None,
     filter: Optional[str] = None,
-    filterpath: Optional[str] = None,
+    filter_path: Optional[str] = None,
     modules_dir: Optional[str] = None,
     converter_name: Optional[str] = None,
     preparers: List[str] = [],
@@ -113,11 +113,11 @@ def run(
         module_options (Dict): module_options
         system_option (Dict): system_option
         package (Optional[str]): package
-        filtersql (Optional[str]): filtersql
+        filter_sql (Optional[str]): filter_sql
         includesample (Optional[List[str]]): includesample
         excludesample (Optional[List[str]]): excludesample
         filter (Optional[str]): filter
-        filterpath (Optional[str]): filterpath
+        filter_path (Optional[str]): filter_path
         use_duckdb (bool): True to use DuckDB instead of SQLite3.
         loglevel (str): loglevel
         uid (Optional[str]): uid
@@ -175,11 +175,11 @@ def run(
         module_options=module_options,
         system_option=system_option,
         package=package,
-        filtersql=filtersql,
+        filter_sql=filter_sql,
         includesample=includesample,
         excludesample=excludesample,
         filter=filter,
-        filterpath=filterpath,
+        filter_path=filter_path,
         modules_dir=modules_dir,
         converter_name=converter_name,
         preparers=preparers,
@@ -213,14 +213,11 @@ def report(
     dbpath: Union[Path, str],
     report_types: Optional[Union[str, List[str]]] = None,
     module_paths: Optional[List[Union[str, Path]]] = None,
-    filterpath: Optional[str] = None,
+    filter_path: Optional[str] = None,
     filter: Optional[dict] = None,
-    filtersql: Optional[str] = None,
-    filtername: Optional[str] = None,
-    filterstring: Optional[str] = None,
-    savepath: Optional[Path] = None,
+    filter_sql: Optional[str] = None,
+    output_path: Optional[Path] = None,
     confpath: Optional[str] = None,
-    conf: Dict[str, Any] = {},
     nogenelevelonvariantlevel: bool = False,
     separatesample: bool = False,
     output_dir: Optional[Path] = None,
@@ -248,12 +245,11 @@ def report(
         cols (Optional[List[str]]): Result columns to include. By default, all result columns are included in reports. For example, `["base__uid", "base__chrom", "base__pos", "base__ref_base", "base__alt_base", "clinvar__sig"]` will include only the variants and ClinVar significances.
         includesample (Optional[List[str]]): Samples to include in filtered reports
         excludesample (Optional[List[str]]): Samples to exclude from filtered reports
-        filterpath (Optional[str]): filterpath
+        filter_path (Optional[str]): filter_path
         filter (Optional[dict]): filter as dict
-        filtersql (Optional[str]): filter sql
-        filtername (Optional[str]): filter file
-        filterstring (Optional[str]): filter dict as str
-        savepath (Optional[Path]): savepath
+        filter_sql (Optional[str]): filter sql
+        filter_sql (Optional[str]): filter dict as str
+        output_path (Optional[Path]): output_path
         confpath (Optional[str]): confpath
         nogenelevelonvariantlevel (bool): nogenelevelonvariantlevel
         separatesample (bool): separatesample
@@ -295,12 +291,12 @@ def report(
     dbpath = Path(dbpath)
     if not output_dir:
         output_dir = dbpath.parent
-    if not savepath:
+    if not output_path:
         run_name = dbpath.name.rstrip("sqlite").rstrip(".")
-        savepath = output_dir / run_name
+        output_path = output_dir / run_name
     else:
-        run_name = savepath.name
-        savedir = savepath.parent
+        run_name = output_path.name
+        savedir = output_path.parent
         if savedir != "":
             output_dir = savedir
     response: Dict[str, Any] = {}
@@ -325,10 +321,8 @@ def report(
     else:
         return response
     logger = logging.getLogger("oakvar")
-    error_logger = logging.getLogger("err")
     set_logger_handler(
         logger,
-        error_logger,
         output_dir=output_dir,
         run_name=run_name,
         mode="a",
@@ -345,12 +339,10 @@ def report(
                 module_name,
                 dbpath=str(dbpath),
                 report_types=report_types,
-                filterpath=filterpath,
+                filter_path=filter_path,
                 filter=filter,
-                filtersql=filtersql,
-                filtername=filtername,
-                filterstring=filterstring,
-                savepath=savepath,
+                filter_sql=filter_sql,
+                output_path=output_path,
                 confpath=confpath,
                 name=module_name,
                 nogenelevelonvariantlevel=nogenelevelonvariantlevel,

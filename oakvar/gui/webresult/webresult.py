@@ -305,7 +305,7 @@ async def get_count(request):
         filterstring = queries["filter"]
     else:
         filterstring = None
-    cf = DbFilter.create(dbpath=dbpath, mode="sub", filterstring=filterstring)
+    cf = DbFilter.create(dbpath=dbpath, mode="sub", filter_string=filterstring)
     dbbasename = os.path.basename(dbpath)
     _ = dbbasename
     if logger:

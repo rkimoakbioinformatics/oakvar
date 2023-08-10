@@ -5,6 +5,8 @@ from typing import List
 from typing import Dict
 from typing import Set
 import polars as pl
+import numpy as np
+import numpy.typing
 from .variant import Variant
 from .commonmodule import BaseCommonModule
 
@@ -21,7 +23,7 @@ ORI_REF_BASE = "ori_ref_base"
 ORI_ALT_BASE = "ori_alt_base"
 VALID = "valid"
 ERROR = "error"
-NO_ALLELE = "noallele"
+NO_ALT_ALLELE = "noallele"
 
 
 class BaseConverter(object):
@@ -167,8 +169,10 @@ class BaseConverter(object):
         num_core: int = 1,
         start_line_no: Optional[int] = None,
         batch_size: Optional[int] = None,
-    ) -> Tuple[Dict[int, List[Tuple[str, int]]], bool]:
+    #) -> Tuple[Dict[int, List[Tuple[str, int]]], bool]:
+    ) -> Tuple[numpy.typing.NDArray[Any], numpy.typing.NDArray[np.int32], int, bool]:
         import linecache
+        import numpy as np
 
         if input_path:
             self.input_path = input_path
@@ -181,16 +185,22 @@ class BaseConverter(object):
         else:
             line_no = self.start_line_no
         end_line_no = line_no + num_core * self.batch_size - 1
-        lines: Dict[int, List[Tuple[str, int]]] = {i: [] for i in range(num_core)}
+        num_row = end_line_no - line_no + 1
+        #lines: Dict[int, List[Tuple[str, int]]] = {i: [] for i in range(num_core)}
+        lines = np.zeros(num_row, dtype=object)
+        line_nos = np.zeros(num_row, dtype=np.int32)
         chunk_no: int = 0
         chunk_size: int = 0
+        row_no: int = 0
         while True:
             line = linecache.getline(self.input_path, line_no)
             if not line:
                 has_more_data = False
                 break
             line = line[:-1]
-            lines[chunk_no].append((line, line_no))
+            #lines[chunk_no].append((line, line_no))
+            lines[row_no] = line
+            line_nos[row_no] = line_no
             chunk_size += 1
             if line_no >= end_line_no:
                 has_more_data = True
@@ -201,8 +211,9 @@ class BaseConverter(object):
                     chunk_no += 1
                     chunk_size = 0
                 line_no += 1
+                row_no += 1
         self.start_line_no = line_no
-        return lines, has_more_data
+        return lines, line_nos, row_no, has_more_data
 
     def write_extra_info(self, _: dict):
         pass
@@ -313,7 +324,7 @@ class BaseConverter(object):
         self.input_path = input_path
         self.input_fname = Path(input_path).name
         self.fileno = fileno
-        self.num_valid_error_lines = {VALID: 0, ERROR: 0, NO_ALLELE: 0}
+        self.num_valid_error_lines = {VALID: 0, ERROR: 0, NO_ALT_ALLELE: 0}
         log_module(self, self.logger)
         self.detect_encoding_of_input_path(input_path)
         self.setup(input_path)
@@ -348,32 +359,29 @@ class BaseConverter(object):
             input_assembly = self.input_assembly_int_dict.get(input_assembly, 38)
         return input_assembly
 
-    def handle_chrom(self, variant):
+    def handle_chrom(self, variant: Variant):
         from oakvar.lib.exceptions import IgnoredVariant
 
-        if not variant.get("chrom"):
+        if not variant.chrom:
             raise IgnoredVariant("No chromosome")
-        if not variant.get("chrom").startswith("chr"):
-            variant["chrom"] = "chr" + variant.get("chrom")
-        variant["chrom"] = self.chromdict.get(
-            variant.get("chrom"), variant.get("chrom")
+        if not variant.chrom.startswith("chr"):
+            variant.chrom = "chr" + variant.chrom
+        variant.chrom = self.chromdict.get(
+            variant.chrom, variant.chrom
         )
 
-    def handle_ref_base(self, variant):
+    def handle_ref_base(self, variant: Variant):
         from oakvar.lib.exceptions import IgnoredVariant
 
-        if "ref_base" not in variant or variant["ref_base"] in [
-            "",
-            ".",
-        ]:
+        if not variant.ref_base or variant.ref_base == ".":
             if not self.wgs_reader:
                 raise
-            variant["ref_base"] = self.wgs_reader.get_bases(  # type: ignore
-                variant.get("chrom"), int(variant["pos"])
+            variant.ref_base: str = self.wgs_reader.get_bases(  # type: ignore
+                variant.chrom, variant.pos
             ).upper()
         else:
-            ref_base = variant["ref_base"]
-            if ref_base == "" and variant["alt_base"] not in [
+            ref_base = variant.ref_base
+            if ref_base == "" and variant.alt_base not in [
                 "A",
                 "T",
                 "C",
@@ -383,16 +391,16 @@ class BaseConverter(object):
             elif ref_base is None or ref_base == "":
                 if not self.wgs_reader:
                     raise
-                variant["ref_base"] = self.wgs_reader.get_bases(  # type: ignore
-                    variant.get("chrom"), int(variant.get("pos"))
+                variant.ref_base = self.wgs_reader.get_bases(  # type: ignore
+                    variant.chrom, variant.pos
                 )
 
     def check_invalid_base(self, variant: Variant):
         from oakvar.lib.exceptions import IgnoredVariant
 
-        if not self.base_re.fullmatch(variant.ref_base):
+        if not variant.ref_base or not self.base_re.fullmatch(variant.ref_base):
             raise IgnoredVariant("Invalid reference base")
-        if not self.base_re.fullmatch(variant.alt_base):
+        if not variant.alt_base or not self.base_re.fullmatch(variant.alt_base):
             raise IgnoredVariant("Invalid alternate base")
 
     def normalize_variant(self, variant: Variant):
@@ -423,110 +431,119 @@ class BaseConverter(object):
             unique_variants.add(var_str)
         return is_unique
 
-    def get_dfs(self, lines_data: List[Tuple[str, int]]) -> Dict[str, pl.DataFrame]:
-        converted_data, max_idx = self.collect_converted_datas(lines_data)
+    def get_dfs(self, lines: numpy.typing.NDArray[Any], line_nos: numpy.typing.NDArray[np.int32], num_lines: int):
+        converted_data, max_idx = self.collect_converted_datas(lines, line_nos, num_lines)
         dfs = self.make_dfs_from_converted_datas(converted_data, max_idx)
         return dfs
 
     def collect_converted_datas(
-        self, lines_data: List[Tuple[str, int]]
+        self, lines: numpy.typing.NDArray[Any], line_nos: numpy.typing.NDArray[np.int32], num_lines: int
     ) -> Tuple[Dict[str, Dict[str, List[Any]]], int]:
         from oakvar.lib.consts import VARIANT_LEVEL
         from oakvar.lib.consts import ERR_LEVEL
         from oakvar.lib.consts import FILENO_KEY
         from oakvar.lib.consts import LINENO_KEY
+        from oakvar.lib.exceptions import NoVariant
 
         COLLECT_MARGIN: float = 1.2
-        size: int = int(len(lines_data) * COLLECT_MARGIN)
+        len_lines: int = len(lines)
+        size: int = int(len_lines * COLLECT_MARGIN)
         self.series_data = self.get_intialized_series_data(
             size
         )
-        c: int = 0
-        for line, lineno in lines_data:
+        c: int = -1
+        row_no: int = 0
+        while True:
+            c += 1
+            if c >= num_lines:
+                break
+            line: str = lines[c]
+            line_no: int = line_nos[c]
             try:
                 try:
                     converted_data = self.convert_line(line)
                     if not converted_data:
                         continue
-                    self.process_converted_data(converted_data, lineno)
+                    self.process_converted_data(converted_data, line_no)
+                except NoVariant as e:
+                    self.log_error(e, self.series_data[ERR_LEVEL], lineno=line_no)
+                    self.num_valid_error_lines[NO_ALT_ALLELE] += 1
+                    continue
                 except Exception as e:
-                    self.log_error(e, self.series_data[ERR_LEVEL], lineno=lineno)
+                    self.log_error(e, self.series_data[ERR_LEVEL], lineno=line_no)
                     self.num_valid_error_lines[ERROR] += 1
                     continue
-                if len(converted_data) == 0:
-                    self.num_valid_error_lines[NO_ALLELE] += 1
-                    continue
-                    variant_data = self.series_data[VARIANT_LEVEL]
-                    for variant in converted_data:
-                        if c < size:
-                            variant_data[CHROM][c] = variant.chrom
-                            variant_data[POS][c] = variant.pos
-                            variant_data[END_POS][c] = variant.pos
-                            variant_data[REF_BASE][c] = variant.ref_base
-                            variant_data[ALT_BASE][c] = variant.alt_base
-                            variant_data[ORI_POS][c] = variant.pos
-                            variant_data[ORI_END_POS][c] = variant.pos
-                            variant_data[ORI_REF_BASE][c] = variant.ref_base
-                            variant_data[ORI_ALT_BASE][c] = variant.alt_base
-                            variant_data[FILENO_KEY][c] = self.fileno
-                            variant_data[LINENO_KEY][c] = lineno
-                        else:
-                            variant_data[CHROM].append(variant.chrom)
-                            variant_data[POS].append(variant.pos)
-                            variant_data[END_POS].append(variant.pos)
-                            variant_data[REF_BASE][c] = variant.ref_base
-                            variant_data[ALT_BASE][c] = variant.alt_base
-                            variant_data[ORI_POS][c] = variant.pos
-                            variant_data[ORI_END_POS][c] = variant.pos
-                            variant_data[ORI_REF_BASE][c] = variant.ref_base
-                            variant_data[ORI_ALT_BASE][c] = variant.alt_base
-                            variant_data[FILENO_KEY][c] = self.fileno
-                            variant_data[LINENO_KEY][c] = lineno
-                    series_data[VARIANT_LEVEL][LINENO_KEY].append(lineno)
+                variant_data = self.series_data[VARIANT_LEVEL]
+                for variant in converted_data:
+                    if row_no < size:
+                        variant_data[CHROM][row_no] = variant.chrom
+                        variant_data[POS][row_no] = variant.pos
+                        variant_data[END_POS][row_no] = variant.pos
+                        variant_data[REF_BASE][row_no] = variant.ref_base
+                        variant_data[ALT_BASE][row_no] = variant.alt_base
+                        variant_data[ORI_POS][row_no] = variant.pos
+                        variant_data[ORI_END_POS][row_no] = variant.pos
+                        variant_data[ORI_REF_BASE][row_no] = variant.ref_base
+                        variant_data[ORI_ALT_BASE][row_no] = variant.alt_base
+                        variant_data[FILENO_KEY][row_no] = self.fileno
+                        variant_data[LINENO_KEY][row_no] = line_no
+                    else:
+                        variant_data[CHROM].append(variant.chrom)
+                        variant_data[POS].append(variant.pos)
+                        variant_data[END_POS].append(variant.pos)
+                        variant_data[REF_BASE].append(variant.ref_base)
+                        variant_data[ALT_BASE].append(variant.alt_base)
+                        variant_data[ORI_POS].append(variant.pos)
+                        variant_data[ORI_END_POS].append(variant.pos)
+                        variant_data[ORI_REF_BASE].append(variant.ref_base)
+                        variant_data[ORI_ALT_BASE].append(variant.alt_base)
+                        variant_data[FILENO_KEY].append(self.fileno)
+                        variant_data[LINENO_KEY].append(line_no)
+                    row_no += 1
                 self.num_valid_error_lines[VALID] += 1
-                c += 1
             except KeyboardInterrupt:
                 raise
             except Exception as e:
-                self.log_error(e, series_data[ERR_LEVEL], lineno=lineno)
+                self.log_error(e, self.series_data[ERR_LEVEL], lineno=line_no)
                 self.num_valid_error_lines[ERROR] += 1
-        return series_data, c
+        return self.series_data, row_no
 
     def process_converted_data(
         self,
         converted_data: List[Variant],
-        lineno: int,
+        line_no: int,
     ):
-        from ..consts import VARIANT_LEVEL
         from ..consts import ERR_LEVEL
+        from ..exceptions import NoVariant
 
         c: int = 0
         max_c: int = len(converted_data)
         while c < max_c:
-            d_var = converted_data[c]
+            variant = converted_data[c]
             try:
-                self.process_variant(d_var)
+                self.process_variant(variant)
                 c += 1
-            except Exception as e:
-                import traceback; traceback.print_exc()
-                del ld_var[c]
-                for _, table_rows in converted_data.items():
-                    del table_rows[c]
+            except NoVariant as e:
+                del converted_data[c]
                 max_c = max_c - 1
+                self.log_error(e, self.series_data[ERR_LEVEL], lineno=line_no)
+                self.num_valid_error_lines[NO_ALT_ALLELE] += 1
+            except Exception as e:
+                del converted_data[c]
+                max_c = max_c - 1
+                self.log_error(e, self.series_data[ERR_LEVEL], lineno=line_no)
                 self.num_valid_error_lines[ERROR] += 1
-                self.log_error(e, series_data[ERR_LEVEL], lineno=lineno)
-                continue
 
-    def process_variant(self, d_var: Variant):
-        from oakvar.lib.exceptions import NoVariantError
+    def process_variant(self, variant: Variant):
+        from oakvar.lib.exceptions import NoVariant
 
-        if d_var.ref_base == d_var.alt_base:
-            raise NoVariantError()
-        self.handle_chrom(d_var)
-        self.handle_ref_base(d_var)
-        self.check_invalid_base(d_var)
-        self.normalize_variant(d_var)
-        self.perform_liftover_if_needed(d_var)
+        if variant.ref_base == variant.alt_base:
+            raise NoVariant()
+        self.handle_chrom(variant)
+        self.handle_ref_base(variant)
+        self.check_invalid_base(variant)
+        self.normalize_variant(variant)
+        self.perform_liftover_if_needed(variant)
 
     def get_sample_table_name(self, sample: str) -> str:
         return f"sample__{sample}"
@@ -599,7 +616,7 @@ class BaseConverter(object):
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
         status: str = f"Lines with conversion error: {conversion_stats[ERROR]}"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
-        status: str = f"Lines with no conversion result: {conversion_stats[NO_ALLELE]}"
+        status: str = f"Lines with no conversion result: {conversion_stats[NO_ALT_ALLELE]}"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
 
     def get_dfs_from_series_data(
@@ -638,35 +655,35 @@ class BaseConverter(object):
         status = "finished Converter"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
 
-    def perform_liftover_if_needed(self, d_var: Variant):
+    def perform_liftover_if_needed(self, variant: Variant):
         from oakvar.lib.util.seq import liftover_one_pos
         from oakvar.lib.util.seq import liftover
         from oakvar.lib.exceptions import LiftoverFailure
 
-        if self.is_chrM(d_var.chrom):
+        if self.is_chrM(variant.chrom):
             needed = self.do_liftover_chrM
         else:
             needed = self.do_liftover
         if needed:
             (
-                d_var.chrom,
-                d_var.pos,
-                d_var.ref_base,
-                d_var.alt_base,
+                variant.chrom,
+                variant.pos,
+                variant.ref_base,
+                variant.alt_base,
             ) = liftover(
-                d_var.chrom,
-                d_var.pos,
-                d_var.ref_base,
-                d_var.alt_base,
+                variant.chrom,
+                variant.pos,
+                variant.ref_base,
+                variant.alt_base,
                 lifter=self.lifter,
                 wgs_reader=self.wgs_reader,
             )
             converted_end = liftover_one_pos(
-                d_var["chrom"], d_var["end_pos"], lifter=self.lifter
+                variant.chrom, variant.end_pos, lifter=self.lifter
             )
             if converted_end is None:
-                raise LiftoverFailure(msg=f"liftover failure for {d_var}")
-            d_var["end_pos"] = converted_end[1]
+                raise LiftoverFailure(msg=f"liftover failure for {variant}")
+            variant.end_pos = converted_end[1]
 
     def get_wgs_reader(self):
         pass
@@ -685,16 +702,14 @@ class BaseConverter(object):
         from traceback import format_exc
         from zlib import crc32
         from oakvar.lib.exceptions import ExpectedException
-        from oakvar.lib.exceptions import NoAlternateAllele
+        from oakvar.lib.exceptions import NoVariant
         from oakvar.lib.consts import ERR_LEVEL
         from ..util.run import add_to_err_series
 
-        if isinstance(e, NoAlternateAllele):
-            if err_series is not None:
-                add_to_err_series(err_series, lineno=lineno, uid=uid, err=str(e))
-            if dfs is not None:
-                dfs[ERR_LEVEL].vstack
-            return
+        #if isinstance(e, NoVariant):
+        #    if err_series is not None:
+        #        add_to_err_series(err_series, lineno=lineno, uid=uid, err=str(e))
+        #    return
         if isinstance(e, ExpectedException):
             err_str = str(e)
         else:
@@ -767,7 +782,6 @@ class BaseConverter(object):
         from ..consts import OUTPUT_COLS_KEY
         from ..consts import SAMPLE_HAS
 
-        print(f"@ samples={self.samples}")
         for sample in self.samples:
             table_name = self.get_sample_table_name(sample)
             if table_name in self.output:

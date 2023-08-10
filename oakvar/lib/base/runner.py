@@ -316,7 +316,7 @@ class Runner(object):
                 continue
             if table_name not in coldefs:
                 coldefs[table_name] = []
-                result_table_names.append(table_name)
+                result_table_names.append(table_name.replace("-", "_"))
             table_coldefs: List[Dict[str, Any]] = []
             table_level: str = (
                 table_output.get("level", module_level) or module_level or table_name
@@ -397,7 +397,7 @@ class Runner(object):
             self.result_db_conn.execute(q)
             table_col_defs = []
             for coldef in coldefs[table_name]:
-                table_col_def = f"{coldef['name']} {coldef['type']}"
+                table_col_def = f"\"{coldef['name']}\" {coldef['type']}"
                 if (
                     coldef["name"] == GENE_LEVEL_PRIMARY_KEY
                     and table_name == GENE_LEVEL
@@ -536,20 +536,17 @@ class Runner(object):
         from ..util.run import update_status
         from .converter import VALID
         from .converter import ERROR
-        from .converter import NO_ALLELE
+        from .converter import NO_ALT_ALLELE
 
         if self.mapper_name is None:
             return
         self.load_mapper()
         self.load_annotators()
         input_paths = self.input_paths[run_no]
-        print(f"@ here 1")
         converter = self.choose_converter(input_paths)
         if converter is None:
             raise NoConverterFound(input_paths)
-        print(f"@ here setting up")
         converter.setup_df(input_paths, batch_size=self.batch_size)
-        print(f"@ here 2")
         dbpath = self.get_dbpath(run_no)
         offset_levels: List[str] = self.get_offset_levels(converter)
         self.create_result_database(dbpath, converter, clean=clean)
@@ -568,6 +565,7 @@ class Runner(object):
             log_handler.setFormatter(fmt)
             logger.addHandler(log_handler)
             self.make_pool(run_no, converter, offset_levels)
+            num_actors: int = len(self.pool)
             ret = []
             offset: int = 0
             for fileno, input_path in enumerate(input_paths):
@@ -587,17 +585,17 @@ class Runner(object):
                         logger=self.logger,
                         serveradmindb=self.serveradmindb,
                     )
-                    lines_data, has_more_data = converter.get_variant_lines(
+                    lines, line_nos, num_lines, has_more_data = converter.get_variant_lines(
                         input_path,
                         num_core=self.num_core,
                         batch_size=self.batch_size,
                     )
-                    lines_data_ref = ray.put(lines_data)
+                    lines_ref = ray.put(lines)
+                    line_nos_ref = ray.put(line_nos)
                     ret = []
                     for actor_num, worker in enumerate(self.pool):
-                        ret.append(worker.run_df.remote(actor_num, lines_data_ref))
-                    for r in ret:
-                        ray.get(r)
+                        ret.append(worker.run_df.remote(actor_num, num_actors, num_lines, lines_ref, line_nos_ref))
+                    ray.get(ret)
                     for worker in self.pool:
                         last_val: int = ray.get(worker.renumber_uid.remote(offset))  # type: ignore
                         offset = last_val + 1
@@ -612,7 +610,7 @@ class Runner(object):
                     else:
                         conversion_stats[VALID] += cs[VALID]
                         conversion_stats[ERROR] += cs[ERROR]
-                        conversion_stats[NO_ALLELE] += cs[NO_ALLELE]
+                        conversion_stats[NO_ALT_ALLELE] += cs[NO_ALT_ALLELE]
                 converter.log_conversion_stats(conversion_stats=conversion_stats)
             update_status(
                 f"Created result database: {dbpath}",
@@ -634,15 +632,12 @@ class Runner(object):
                 use_duckdb=self.args.use_duckdb,
             )
             for fileno, input_path in enumerate(input_paths):
-                print(f"@ fileno={fileno}")
                 update_status(
                     f"Starting to process: {input_path}",
                     logger=self.logger,
                     serveradmindb=self.serveradmindb,
                 )
-                print(f"@ setting file")
                 worker.setup_file(input_path, fileno=fileno)
-                print(f"@ done setup file")
                 while True:
                     update_status(
                         f"Processing: {input_path} line {converter.start_line_no}",
@@ -653,6 +648,7 @@ class Runner(object):
                     worker.save_df(dbpath)
                     if has_more_data is False:
                         break
+                worker.close_db()
                 converter.log_conversion_stats()
             update_status(
                 f"Created result database: {dbpath}",
@@ -661,8 +657,8 @@ class Runner(object):
             )
             self.do_step_postaggregator(run_no)
         self.write_info_table(run_no, dbpath, converter)
+        self.do_step_reporter(run_no)
         return
-        # self.do_step_reporter(run_no)
 
     def make_pool(
         self,
@@ -1773,14 +1769,14 @@ class Runner(object):
             if module is None:
                 raise ModuleNotExist(module_name)
             dbpath: Path = self.get_result_database_path(run_no)
-            savepath: Path = output_dir / run_name
+            output_path: Path = output_dir / run_name
             output_dir: Path = output_dir
             run_name: str = run_name
             module_options = self.run_conf.get(module_name, {})
             reporter = get_reporter(
                 module_name,
                 dbpath=str(dbpath),
-                savepath=savepath,
+                output_path=output_path,
                 output_dir=str(output_dir),
                 run_name=run_name,
                 module_options=module_options,

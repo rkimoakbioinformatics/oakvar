@@ -19,8 +19,8 @@ def report(args, __name__="report"):
         args["module_options"] = module_options
     else:
         args["module_options"] = {}
-    if args["savepath"]:
-        args["savepath"] = Path(args["savepath"])
+    if args["output_path"]:
+        args["output_path"] = Path(args["output_path"])
     if args["output_dir"]:
         args["output_dir"] = Path(args["output_dir"])
     ret = report(**args)
@@ -45,21 +45,21 @@ def get_parser_fn_report():
         help="report types",
     )
     parser_ov_report.add_argument(
-        "-f", dest="filterpath", default=None, help="Path to filter file"
+        "-f", dest="filter_path", default=None, help="Path to filter file"
     )
     parser_ov_report.add_argument("--filter", default=None, help=SUPPRESS)
     parser_ov_report.add_argument("--filtersql", default=None, help="Filter SQL")
     parser_ov_report.add_argument(
         "-F",
-        dest="filtername",
+        dest="filter_name",
         default=None,
         help="Name of filter (stored in aggregator output)",
     )
     parser_ov_report.add_argument(
-        "--filterstring", dest="filterstring", default=None, help=SUPPRESS
+        "--filter_sql", dest="filterstring", default=None, help=SUPPRESS
     )
     parser_ov_report.add_argument(
-        "-s", dest="savepath", default=None, help="Path to save file"
+        "-s", dest="output_path", default=None, help="Path to save file"
     )
     parser_ov_report.add_argument("-c", dest="confpath", help="path to a conf file")
     parser_ov_report.add_argument(

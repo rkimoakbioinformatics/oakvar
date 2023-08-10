@@ -257,7 +257,6 @@ def open_result_database(dbpath: Path, use_duckdb: bool, clean: bool = False):
         conn.execute("pragma synchronous=0;")
         conn.execute("pragma journal_mode=off;")
         conn.execute("pragma cache_size=1000000;")
-        conn.execute("pragma locking_mode=EXCLUSIVE;")
         conn.execute("pragma temp_store=MEMORY;")
     return conn
 
@@ -325,9 +324,7 @@ def get_df_headers(
 ) -> Dict[str, Dict[str, pl.PolarsDataType]]:
     import polars as pl
     from ..consts import OUTPUT_COLS_KEY
-    from ..consts import SAMPLE_LEVEL_KEY
 
-    print(f"@@@@ output={output}")
     df_headers: Dict[str, Dict[str, pl.PolarsDataType]] = {}
     for table_name, table_output in output.items():
         df_headers[table_name] = {}

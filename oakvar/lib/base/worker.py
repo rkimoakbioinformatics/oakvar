@@ -3,8 +3,11 @@ from typing import Any
 from typing import List
 from typing import Dict
 from typing import Tuple
+from typing import Union
 import polars as pl
 import ray
+import numpy as np
+import numpy.typing
 from pathlib import Path
 from .converter import BaseConverter
 from ..consts import DEFAULT_CONVERTER_READ_SIZE
@@ -33,6 +36,8 @@ class Worker:
         offset_levels: List[str] = [],
         use_duckdb: bool = False,
     ):
+        import duckdb
+        import sqlite3
         from oakvar.lib.base.converter import BaseConverter
         from oakvar.lib.base.mapper import BaseMapper
         from oakvar.lib.base.annotator import BaseAnnotator
@@ -86,6 +91,7 @@ class Worker:
         else:
             self.annotators = []
         self.uid_offset = 1
+        self.conn: Optional[Union[duckdb.DuckDBPyConnection, sqlite3.Connection]] = None
 
     def setup_file(self, input_path: str, fileno: int = 0):
         self.fileno = fileno
@@ -96,10 +102,10 @@ class Worker:
             return False
         if not self.converter.input_path:
             self.setup_file(self.input_paths[0], fileno=0)
-        lines_data, has_more_data = self.converter.get_variant_lines(
+        lines, line_nos, num_lines, has_more_data = self.converter.get_variant_lines(
             self.converter.input_path, num_core=1, batch_size=self.batch_size
         )
-        self._run_df(lines_data[0])
+        self._run_df(lines, line_nos, num_lines)
         last_val: int = self.renumber_uid(self.offset)
         self.offset = last_val + 1
         if not has_more_data:
@@ -108,8 +114,8 @@ class Worker:
                 self.setup_file(self.input_paths[self.fileno])
         return has_more_data
 
-    def _run_df(self, lines_data: List[Tuple[str, int]]):
-        dfs = self.converter.get_dfs(lines_data)
+    def _run_df(self, lines: numpy.typing.NDArray[Any], line_nos: numpy.typing.NDArray[np.int32], num_lines: int):
+        dfs = self.converter.get_dfs(lines, line_nos, num_lines)
         if not dfs:
             return
         try:
@@ -148,27 +154,31 @@ class Worker:
         from ..util.run import open_result_database
         from ..consts import GENE_LEVEL
 
-        conn = open_result_database(dbpath, self.use_duckdb)
+        if not self.conn:
+            self.conn = open_result_database(dbpath, self.use_duckdb)
         for table_name, df in self.dfs.items():
-            table_col_names_str = ", ".join([f"{v}" for v in df.columns])
+            table_col_names_str = ", ".join([f"\"{v}\"" for v in df.columns])
             values_str = ", ".join(["?"] * len(df.columns))
-            if isinstance(conn, sqlite3.Connection):
+            if isinstance(self.conn, sqlite3.Connection):
                 if table_name == GENE_LEVEL:
                     q = f"insert or ignore into {table_name} ({table_col_names_str}) values ({values_str})"
                 else:
                     q = f"insert into {table_name} ({table_col_names_str}) values ({values_str})"
                 for row in df.iter_rows():
-                    conn.execute(q, row)
+                    self.conn.execute(q, row)
             else:
                 if table_name == GENE_LEVEL:
-                    conn.sql(
+                    self.conn.sql(
                         f"insert into {table_name} select * from df on conflict do nothing"
                     )
                 else:
-                    conn.sql(f"insert into {table_name} select * from df")
-            conn.commit()
-        conn.close()
+                    self.conn.sql(f"insert into {table_name} select * from df")
+            self.conn.commit()
         self.dfs = {}
+
+    def close_db(self):
+        if self.conn:
+            self.conn.close()
 
     def get_conversion_stats(self):
         return self.converter.get_conversion_stats()
@@ -176,6 +186,10 @@ class Worker:
 
 @ray.remote
 class ParallelWorker(Worker):
-    def run_df(self, actor_num: int, lines_datas: Dict[int, List[Tuple[str, int]]]):
-        lines_data: List[Tuple[str, int]] = lines_datas[actor_num]
-        return self._run_df(lines_data)
+    def run_df(self, actor_num: int, num_actors: int, num_lines: int, lines: numpy.typing.NDArray[Any], line_nos: numpy.typing.NDArray[np.int32]):
+        import math
+
+        batch_size: int = math.ceil(num_lines / num_actors)
+        start_line_no: int = actor_num * batch_size
+        end_line_no: int = min((actor_num + 1) * batch_size, num_lines)
+        return self._run_df(lines[start_line_no:end_line_no], line_nos[start_line_no:end_line_no], num_lines)

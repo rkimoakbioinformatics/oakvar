@@ -217,7 +217,7 @@ class JobHandlers:
             raise HTTPNotFound
         report_path = report_paths[0]
         if not exists(report_path):
-            self.generate_report(request)
+            await self.generate_report(request)
         if exists(report_path):
             report_filename = basename(report_path)
             headers = {"Content-Disposition": "attachment; filename=" + report_filename}
@@ -567,7 +567,7 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
                         p = Popen(run_args)
                         self.processes_of_running_jobs[uid] = p
 
-        def delete_jobs(self, queue_item):
+        async def delete_jobs(self, queue_item):
             from os.path import exists
             from shutil import rmtree
             from logging import getLogger
@@ -583,7 +583,7 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
                 if uid in self.processes_of_running_jobs:
                     msg = "\nKilling job {}".format(uid)
                     logger.info(msg)
-                    self.cancel_job(uid)
+                    await self.cancel_job(uid)
                 if abort_only:
                     serveradmindb = get_serveradmindb()
                     serveradmindb.mark_job_as_aborted(username=username, uid=uid)
@@ -667,7 +667,7 @@ def fetch_job_queue(job_queue, info_of_running_jobs, report_generation_ps):
                 if cmd == "submit":
                     job_tracker.add_job(queue_item)
                 elif cmd == "delete":
-                    job_tracker.delete_jobs(queue_item)
+                    await job_tracker.delete_jobs(queue_item)
                 elif cmd == "report":
                     job_tracker.make_report(queue_item)
                 elif cmd == "set_max_num_concurrent_jobs":

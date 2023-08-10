@@ -37,10 +37,11 @@ def add_parser_ov_run(subparsers):
         "inputs",
         nargs="*",
         default=[],
-        help="Input file(s). One or more variant files in a supported format like VCF.  "
-        + "See the -i/--input-format flag for supported formats. In the special case "
+        help="Input file(s). "
+        + "In the special case "
         + "where you want to add annotations to an existing OakVar analysis, "
-        + "provide the output sqlite database from the previous run as input instead of a variant input file.",
+        + "provide the output sqlite database from the previous run as input "
+        + "instead of a variant input file.",
     )
     parser_ov_run.add_argument(
         "-a",
@@ -161,13 +162,6 @@ def add_parser_ov_run(subparsers):
         help="Force input format",
     )
     parser_ov_run.add_argument(
-        "--temp-files",
-        dest="keep_temp",
-        action="store_true",
-        default=False,
-        help="Leave temporary files after run is complete.",
-    )
-    parser_ov_run.add_argument(
         "--keep-temp",
         dest="keep_temp",
         action="store_true",
@@ -227,7 +221,7 @@ def add_parser_ov_run(subparsers):
     parser_ov_run.add_argument(
         "--package", dest="package", default=None, help="Use package"
     )
-    parser_ov_run.add_argument("--filtersql", default=None, help="Filter SQL")
+    parser_ov_run.add_argument("--filter-sql", default=None, help="Filter SQL")
     parser_ov_run.add_argument(
         "--includesample", nargs="+", default=None, help="Sample IDs to include"
     )
@@ -236,7 +230,7 @@ def add_parser_ov_run(subparsers):
     )
     parser_ov_run.add_argument("--filter", default=None)
     parser_ov_run.add_argument(
-        "-f", dest="filterpath", default=None, help="Path to a filter file"
+        "-f", dest="filter_path", default=None, help="Path to a filter file"
     )
     parser_ov_run.add_argument(
         "--converter",

@@ -45,13 +45,6 @@ class IgnoredVariant(InvalidData):
     traceback = False
 
 
-class NoAlternateAllele(ExpectedException):
-    traceback = False
-
-    def __init__(self):
-        super().__init__(msg="No alternate allele")
-
-
 class LiftoverFailure(InvalidData):
     traceback = False
     pass
@@ -117,7 +110,7 @@ class NoConverterFound(ExpectedException):
         super().__init__(f"No converter was found for {','.join(input_file)}.")
 
 
-class NoVariantError(ExpectedException):
+class NoVariant(ExpectedException):
     traceback = False
 
     def __init__(self):

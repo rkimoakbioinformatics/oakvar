@@ -245,7 +245,7 @@ def normalize_variant_dict_left(wdict):
     Args:
         wdict:
     """
-    from ..exceptions import NoVariantError
+    from ..exceptions import NoVariant
 
     chrom = wdict["chrom"]
     if not chrom.startswith("chr"):
@@ -264,7 +264,7 @@ def normalize_variant_dict_left(wdict):
     wdict["ref_base"] = new_ref
     wdict["alt_base"] = new_alt
     if wdict["ref_base"] == wdict["alt_base"]:
-        raise NoVariantError()
+        raise NoVariant()
     return wdict
 
 

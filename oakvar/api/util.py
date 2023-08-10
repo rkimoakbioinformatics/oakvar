@@ -335,8 +335,8 @@ def filtersqlite(
         suffix=suffix,
         filterpath=filterpath,
         filtersql=filtersql,
-        includesample=includesample,
-        excludesample=excludesample,
+        include_sample=includesample,
+        exclude_sample=excludesample,
     )
 
 
@@ -357,8 +357,8 @@ def filtersqlite_async(
     suffix: str = "filtered",
     filterpath: Optional[str] = None,
     filtersql: Optional[str] = None,
-    includesample: List[str] = [],
-    excludesample: List[str] = [],
+    include_sample: List[str] = [],
+    exclude_sample: List[str] = [],
 ):
     """filtersqlite_async.
 
@@ -373,7 +373,7 @@ def filtersqlite_async(
     import sqlite3
     from os import remove
     from os.path import exists
-    from .. import ReportFilter
+    from ..lib.base.db_filter import DbFilter
 
     for dbpath in dbpaths:
         if not dbpath.endswith(".sqlite"):
@@ -387,12 +387,12 @@ def filtersqlite_async(
         c = conn.cursor()
         try:
             c.execute("attach database '" + dbpath + "' as old_db")
-            cf = ReportFilter.create(
+            cf = DbFilter.create(
                 dbpath=dbpath,
-                filterpath=filterpath,
-                filtersql=filtersql,
-                includesample=includesample,
-                excludesample=excludesample,
+                filter_path=filterpath,
+                filter_sql=filtersql,
+                include_sample=include_sample,
+                exclude_sample=exclude_sample,
             )
             cf.loadfilter()
             if (

@@ -34,6 +34,7 @@ class BaseReporter:
         logtofile: bool = False,
         serveradmindb=None,
         outer=None,
+        use_duckdb: bool=False,
     ):
         from pathlib import Path
         from .db_filter import DbFilter
