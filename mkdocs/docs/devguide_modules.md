@@ -1,5 +1,3 @@
-- ##### [Check out a guide on interactive annotation module development](https://medium.com/@ryanggukkim/interactively-make-variant-annotation-modules-with-oakvar-7719e2c8bf49).
-
 OakVar's functionalities are mostly performed by Python modules. OakVar orchestrates their execution as well as their management.
 
 To understand OakVar's modules, let's first see which modules are already installed in the system.
@@ -81,6 +79,10 @@ Below is `stdoutreporter.py`.
 `stdoutreporter.py` does not have all the codes to filter and fetch annotated variants from an OakVar annotation database file. OakVar connects to `stdoutreporter.py` and calls functions `setup`, `write_preface`, `write_header`, and `write_table_row`. By defining these functions, different reporter modules can be made. More on these functions are explained in *Workflow* section.
 
 #### Annotator
+
+Check out a guide on interactive annotation module development [here](https://medium.com/@ryanggukkim/interactively-make-variant-annotation-modules-with-oakvar-7719e2c8bf49).
+
+Watch a webinar on making OakVar annotation modules [here](https://www.youtube.com/watch?v=9fIxez6s7Ag).
 
 The essential function for *annotator* modules is `annotator`. Below is `target.py` of `target` annotation module.
 
