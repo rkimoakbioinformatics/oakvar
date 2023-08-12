@@ -900,7 +900,10 @@ def create_module_files(instance, overwrite: bool = False, interactive: bool = F
         if "output_columns" in yml:
             del_idx = None
             for i, col in enumerate(yml["output_columns"]):
-                if module_level == "variant" and col.get("name") == VARIANT_LEVEL_PRIMARY_KEY:
+                if (
+                    module_level == "variant"
+                    and col.get("name") == VARIANT_LEVEL_PRIMARY_KEY
+                ):
                     del_idx = i
                     break
                 elif module_level == "gene" and col.get("name") == "hugo":

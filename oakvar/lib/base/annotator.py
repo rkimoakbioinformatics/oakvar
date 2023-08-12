@@ -217,7 +217,7 @@ class BaseAnnotator(object):
             coldefs: List[Dict[str, Any]] = [VARIANT_LEVEL_PRIMARY_KEY_COLDEF]
             for coldef in output:
                 if coldef.get("table") is True:
-                    table_name = coldef['name']
+                    table_name = coldef["name"]
                     self.output[table_name] = {
                         "level": coldef.get("level", self.level),
                         OUTPUT_COLS_KEY: [],
@@ -351,10 +351,7 @@ class BaseAnnotator(object):
         from ..util.run import get_pl_dtype
 
         self.full_col_names = {
-            table_name: {
-                col_name: col_name
-                for col_name in self.col_names[table_name]
-            }
+            table_name: {col_name: col_name for col_name in self.col_names[table_name]}
             for table_name in self.col_names.keys()
         }
         self.df_dtypes = {}
@@ -395,8 +392,8 @@ class BaseAnnotator(object):
             for col_name in col_names:
                 var_ld[table_name][col_name] = [None] * max_counts[table_name]
         for row in df.iter_rows(named=True):
+            keyval: Any = row[keycol]
             if self.secondary_data_required:
-                keyval: Any = row[keycol]
                 secondary_dfs: Dict[str, pl.DataFrame] = {}
                 for table_name, s_df in dfs.items():
                     if table_name == self.level:
@@ -417,6 +414,8 @@ class BaseAnnotator(object):
                         for table_row in table_data:
                             for col_name, value in table_row.items():
                                 table_ld[col_name][table_count] = value
+                            if keycol not in table_row:
+                                table_ld[keycol] = keyval
                         if table_name == self.level:
                             counts[table_name] += 1
                         elif table_data:
@@ -432,6 +431,8 @@ class BaseAnnotator(object):
                     table_max_count = max_counts[table_name]
                     for col_name, value in output_dict.items():
                         table_ld[col_name][table_count] = value
+                    if keycol not in output_dict:
+                        table_ld[keycol][table_count] = keyval
                     counts[table_name] += 1
                     if counts[table_name] == table_max_count:
                         for col_name, table_col_ld in table_ld.items():

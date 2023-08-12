@@ -288,7 +288,9 @@ class Runner(object):
     def open_result_database(self, dbpath: Path, clean: bool = False):
         from ..util.run import open_result_database
 
-        self.result_db_conn = open_result_database(dbpath, self.args.use_duckdb, clean=clean)
+        self.result_db_conn = open_result_database(
+            dbpath, self.args.use_duckdb, clean=clean
+        )
 
     def close_result_database(self):
         if not self.result_db_conn:
@@ -457,7 +459,7 @@ class Runner(object):
         offset_levels: List[str] = []
         for table_name, table_output in converter.output.items():
             if (
-                table_output.get("level", VARIANT_LEVEL) == VARIANT_LEVEL 
+                table_output.get("level", VARIANT_LEVEL) == VARIANT_LEVEL
                 and table_name not in offset_levels
             ):
                 offset_levels.append(table_name)
@@ -523,7 +525,9 @@ class Runner(object):
         self.create_info_modules_table_in_result_db()
         self.create_info_headers_table_in_result_db(converter)
 
-    def create_result_database(self, dbpath: Path, converter: BaseConverter, clean: bool = False):
+    def create_result_database(
+        self, dbpath: Path, converter: BaseConverter, clean: bool = False
+    ):
         coldefs, result_table_names = self.collect_output_coldefs(converter)
         self.open_result_database(dbpath, clean=clean)
         self.create_tables_in_result_db(coldefs, result_table_names)
@@ -585,7 +589,14 @@ class Runner(object):
                         logger=self.logger,
                         serveradmindb=self.serveradmindb,
                     )
-                    lines, line_nos, num_lines, has_more_data = converter.get_variant_lines(
+                    (
+                        lines,
+                        line_nos,
+                        num_lines,
+                        num_lines_by_batch,
+                        num_alts_by_batch,
+                        has_more_data,
+                    ) = converter.get_variant_lines(
                         input_path,
                         num_core=self.num_core,
                         batch_size=self.batch_size,
@@ -594,11 +605,23 @@ class Runner(object):
                     line_nos_ref = ray.put(line_nos)
                     ret = []
                     for actor_num, worker in enumerate(self.pool):
-                        ret.append(worker.run_df.remote(actor_num, num_actors, num_lines, lines_ref, line_nos_ref))
+                        r = worker.run_df.remote(
+                            actor_num,
+                            num_actors,
+                            num_lines,
+                            num_lines_by_batch,
+                            num_alts_by_batch,
+                            lines_ref,
+                            line_nos_ref,
+                        )
+                        ret.append(r)
                     ray.get(ret)
+                    print(f"@@@ saving df")
                     for worker in self.pool:
+                        import pdb; pdb.set_trace()
                         last_val: int = ray.get(worker.renumber_uid.remote(offset))  # type: ignore
                         offset = last_val + 1
+                        print(f"@ => last_val={last_val}, offset={offset}")
                         ray.get(worker.save_df.remote(dbpath))
                     if has_more_data is False:
                         break
@@ -710,7 +733,7 @@ class Runner(object):
                 if self.args and self.args.vcf2vcf:
                     self.run_vcf2vcf(run_no)
                 else:
-                    self.process_file(run_no, clean = True)
+                    self.process_file(run_no, clean=True)
                 end_time = time()
                 runtime = end_time - self.start_time
                 display_time = asctime(localtime(end_time))
@@ -909,15 +932,15 @@ class Runner(object):
         if not self.args:
             raise
         cwd = getcwd()
-        if self.args.combine_input:
-            if self.args.output_dir:
-                self.output_dir = [self.args.output_dir]
-            else:
-                self.output_dir = [cwd]
+        if self.args.output_dir:
+            self.output_dir = [str(Path(v).resolve()) for v in self.args.output_dir]
         else:
-            self.output_dir = [
-                str(Path(inp[0]).parent.resolve()) for inp in self.input_paths
-            ]
+            if self.args.combine_input:
+                self.output_dir = [cwd]
+            else:
+                self.output_dir = [
+                    str(Path(inp[0]).parent.resolve()) for inp in self.input_paths
+                ]
         for output_dir in self.output_dir:
             if not Path(output_dir).exists():
                 mkdir(output_dir)
@@ -936,7 +959,7 @@ class Runner(object):
         else:
             self.package_conf = {}
 
-    def get_dbpath(self, run_no: int, run_name: str="") -> Path:
+    def get_dbpath(self, run_no: int, run_name: str = "") -> Path:
         output_dir: str = self.output_dir[run_no]
         if not run_name:
             run_name = self.run_name[run_no]

@@ -34,7 +34,7 @@ class BaseReporter:
         logtofile: bool = False,
         serveradmindb=None,
         outer=None,
-        use_duckdb: bool=False,
+        use_duckdb: bool = False,
     ):
         from pathlib import Path
         from .db_filter import DbFilter
@@ -123,7 +123,9 @@ class BaseReporter:
         if not self.output_dir:
             self.output_dir = Path(".").resolve()
 
-    def set_module_name_and_conf(self, name: Optional[str], module_conf: Dict[str, Any]):
+    def set_module_name_and_conf(
+        self, name: Optional[str], module_conf: Dict[str, Any]
+    ):
         import sys
         import os
         from copy import deepcopy
@@ -207,13 +209,13 @@ class BaseReporter:
             cursor.execute("select colval from info where colkey='oakvar'")
             rows = cursor.fetchall()
             if len(rows) == 0:
-                raise WrongInput(
-                    msg=f"{self.dbpath} is not an OakVar result database"
-                )
+                raise WrongInput(msg=f"{self.dbpath} is not an OakVar result database")
         except Exception:
             raise WrongInput(msg=f"{self.dbpath} is not an OakVar result database")
 
-    def set_columns_to_include(self, columns_to_include: Optional[Dict[str, List[str]]]):
+    def set_columns_to_include(
+        self, columns_to_include: Optional[Dict[str, List[str]]]
+    ):
         import json
         from copy import deepcopy
 
@@ -256,7 +258,11 @@ class BaseReporter:
 
         if self.no_log:
             return
-        if self.module_name is None or self.output_dir is None or self.output_path is None:
+        if (
+            self.module_name is None
+            or self.output_dir is None
+            or self.output_path is None
+        ):
             return
         try:
             self.logger = logging.getLogger(self.module_name)

@@ -71,7 +71,9 @@ class SubmitProcessor:
         job_dir = self.create_new_job_dir(jobs_dir)
         queue_item, job = await self.get_queue_item_and_job(self.request, job_dir)
         self.job_queue.put(queue_item)
-        uid: Optional[int] = queue_item.get("submit_options", {}).get(VARIANT_LEVEL_PRIMARY_KEY)
+        uid: Optional[int] = queue_item.get("submit_options", {}).get(
+            VARIANT_LEVEL_PRIMARY_KEY
+        )
         if not uid:
             if self.logger:
                 self.logger.error(

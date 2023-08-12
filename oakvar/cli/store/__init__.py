@@ -188,7 +188,10 @@ def add_parser_fn_store_delete(subparsers):
         "module_name", help="Name of the module to delete"
     )
     parser_cli_store_delete.add_argument(
-        "--version", dest="code_version", default=None, help="Version of the module to delete"
+        "--version",
+        dest="code_version",
+        default=None,
+        help="Version of the module to delete",
     )
     parser_cli_store_delete.add_argument(
         "--all",

@@ -332,7 +332,4 @@ def get_df_headers(
         for col in coldefs:
             ty = get_pl_dtype(col)
             df_headers[table_name][col.get("name")] = ty
-    #for sample in self.samples:
-    #    table_name = f"{SAMPLE_LEVEL_KEY}__{sample}"
-    #    df_headers[table_name] = {}
     return df_headers

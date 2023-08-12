@@ -513,7 +513,9 @@ async def get_dbpath(request) -> str:
     uid = queries.get(VARIANT_LEVEL_PRIMARY_KEY)
     if uid and username:
         serveradmindb = get_serveradmindb()
-        dbpath = serveradmindb.get_dbpath_by_eud(eud={VARIANT_LEVEL_PRIMARY_KEY: uid, "username": username})
+        dbpath = serveradmindb.get_dbpath_by_eud(
+            eud={VARIANT_LEVEL_PRIMARY_KEY: uid, "username": username}
+        )
     return dbpath
 
 

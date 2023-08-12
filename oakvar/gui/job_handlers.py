@@ -310,7 +310,9 @@ class JobHandlers:
         self.job_queue.put(queue_item)
         job_dir_ps = []
         for uid in uids:
-            p = get_job_dir_from_eud(request, {"username": username, VARIANT_LEVEL_PRIMARY_KEY: uid})
+            p = get_job_dir_from_eud(
+                request, {"username": username, VARIANT_LEVEL_PRIMARY_KEY: uid}
+            )
             if p:
                 job_dir_ps.append(Path(p))
         while True:

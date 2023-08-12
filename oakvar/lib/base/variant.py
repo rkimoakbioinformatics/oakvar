@@ -2,8 +2,19 @@ from typing import Any
 from typing import Optional
 from typing import Dict
 
+
 class Variant:
-    def __init__(self, chrom: str, pos: int, end_pos: int, ref_base: Optional[str], alt_base: Optional[str], tags: str, fileno: int, lineno: int):
+    def __init__(
+        self,
+        chrom: str,
+        pos: int,
+        end_pos: int,
+        ref_base: Optional[str],
+        alt_base: Optional[str],
+        tags: str,
+        fileno: int,
+        lineno: int,
+    ):
         self.chrom: str = chrom
         self.pos: int = pos
         self.end_pos: int = end_pos
@@ -24,4 +35,3 @@ class Variant:
 
     def add_other_data(self, table_name: str, d: Dict[str, Any]):
         self.other_data[table_name] = d
-

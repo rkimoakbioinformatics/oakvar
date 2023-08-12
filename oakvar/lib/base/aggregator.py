@@ -366,7 +366,6 @@ class Aggregator(object):
             cdefs[cdef.name] = cdef
         insert_template = f"insert into {self.header_table_name} values (?, ?)"
         for cdef in cdefs.values():
-            print(f"@ cdef={cdef.d}")
             self.cursor.execute(insert_template, [cdef.name, cdef.get_json()])
         # report substitution table
         if self.level in ["variant", "gene"]:

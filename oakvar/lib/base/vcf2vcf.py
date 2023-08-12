@@ -189,7 +189,6 @@ class VCF2VCF:
         from oakvar.lib.exceptions import IgnoredVariant
         from ..consts import VARIANT_LEVEL_PRIMARY_KEY
 
-
         if not self.mapper_name or not self.inputs:
             return False
         base_re = compile("^[*]|[ATGC]+|[-]+$")

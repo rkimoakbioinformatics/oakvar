@@ -648,7 +648,14 @@ def read_crv(fpath):
     df = pl.read_csv(
         fpath,
         skip_rows=c,
-        new_columns=[VARIANT_LEVEL_PRIMARY_KEY, "chrom", "pos", "end_pos", "ref_base", "alt_base"],
+        new_columns=[
+            VARIANT_LEVEL_PRIMARY_KEY,
+            "chrom",
+            "pos",
+            "end_pos",
+            "ref_base",
+            "alt_base",
+        ],
     )
     return df
 

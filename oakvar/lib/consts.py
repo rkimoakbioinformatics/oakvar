@@ -19,7 +19,11 @@ SAMPLE_FILE_SUFFIX = "." + SAMPLE_LEVEL_KEY
 VARIANT_LEVEL_OUTPUT_SUFFIX = ".var"
 GENE_LEVEL_OUTPUT_SUFFIX = ".gen"
 crm_idx = [[VARIANT_LEVEL_PRIMARY_KEY], ["tags"]]
-crs_idx = [[VARIANT_LEVEL_PRIMARY_KEY], ["sample_id"], ["sample_id", VARIANT_LEVEL_PRIMARY_KEY]]
+crs_idx = [
+    [VARIANT_LEVEL_PRIMARY_KEY],
+    ["sample_id"],
+    ["sample_id", VARIANT_LEVEL_PRIMARY_KEY],
+]
 crv_idx = [[VARIANT_LEVEL_PRIMARY_KEY]]
 crx_idx = [[VARIANT_LEVEL_PRIMARY_KEY]]
 crg_idx = [["hugo"]]
