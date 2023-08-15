@@ -51,7 +51,7 @@ setup(
         "requests-toolbelt",
         "liftover",
         "markdown",
-        "aiohttp",
+        "aiohttp<4.0.0",
         "chardet>=3.0.4",
         "aiosqlite",
         "oyaml",
