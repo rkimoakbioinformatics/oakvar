@@ -637,26 +637,18 @@ class ColumnDefinition(object):
 
 def read_crv(fpath):
     import polars as pl
-    from ..consts import VARIANT_LEVEL_PRIMARY_KEY
 
-    with open(fpath) as f:
-        c = 0
-        with open(fpath) as f:
-            for line in f:
-                if line.startswith("#"):
-                    c += 1
+    # Read the CSV using the comment character
     df = pl.read_csv(
         fpath,
-        skip_rows=c,
-        new_columns=[
-            VARIANT_LEVEL_PRIMARY_KEY,
-            "chrom",
-            "pos",
-            "end_pos",
-            "ref_base",
-            "alt_base",
-        ],
+        comment_char='#',
+        has_header=False,
+        new_columns=["uid", "chrom", "pos", "pos_end", "ref_base", "alt_base"]
     )
+    
+    # Select only the first 6 columns to return
+    df = df.select(["uid", "chrom", "pos", "pos_end", "ref_base", "alt_base"])
+
     return df
 
 
