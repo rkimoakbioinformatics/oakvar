@@ -106,18 +106,18 @@ class Worker:
             lines,
             line_nos,
             num_lines,
-            total_num_alts,
+            num_lines_by_batch,
+            num_alts_by_batch,
             has_more_data,
         ) = self.converter.get_variant_lines(
             self.converter.input_path, num_core=1, batch_size=self.batch_size
         )
-        if not lines:
+        if len(lines) == 0:
             return has_more_data
-        print(f"@ num_lines={num_lines}, total_num_alts={total_num_alts}, len lines={len(lines)}")
-        if not total_num_alts:
-            total_num_alts = [num_lines]
+        if not num_alts_by_batch:
+            num_alts_by_batch = [num_lines]
         print(f"@ running _run_df")
-        self._run_df(lines, line_nos, num_lines, total_num_alts[0])
+        self._run_df(lines, line_nos, num_lines, num_alts_by_batch[0])
         print(f"@ renumbering")
         last_val: int = self.renumber_uid(self.offset)
         print(f"@ setup_file...")
@@ -199,7 +199,6 @@ class Worker:
                     q = f"insert into {table_name} ({table_col_names_str}) values ({values_str})"
                 print(f"@ q={q}")
                 for row in df.iter_rows():
-                    print(f"@ row={row}")
                     self.conn.execute(q, row)
             else:
                 if table_name == GENE_LEVEL:

@@ -1856,6 +1856,7 @@ class Runner(object):
         else:
             module_infos = list(get_local_module_infos_of_type("converter").values())
         for module_info in module_infos:
+            if module_info.name == "cravat-converter": continue
             try:
                 converter = get_converter(
                     module_info.name,

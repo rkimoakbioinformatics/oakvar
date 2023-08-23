@@ -185,13 +185,6 @@ def add_parser_ov_run(subparsers):
         help="Job ID for server version",
     )
     parser_ov_run.add_argument(
-        "--separatesample",
-        dest="separatesample",
-        action="store_true",
-        default=False,
-        help="Separate variant results by sample",
-    )
-    parser_ov_run.add_argument(
         "--primary-transcript",
         dest="primary_transcript",
         nargs="+",
@@ -223,10 +216,10 @@ def add_parser_ov_run(subparsers):
     )
     parser_ov_run.add_argument("--filter-sql", default=None, help="Filter SQL")
     parser_ov_run.add_argument(
-        "--includesample", nargs="+", default=None, help="Sample IDs to include"
+        "--include-sample", nargs="+", default=None, help="Sample IDs to include"
     )
     parser_ov_run.add_argument(
-        "--excludesample", nargs="+", default=None, help="Sample IDs to exclude"
+        "--exclude-sample", nargs="+", default=None, help="Sample IDs to exclude"
     )
     parser_ov_run.add_argument("--filter", default=None)
     parser_ov_run.add_argument(

@@ -45,15 +45,14 @@ def run(
     keep_temp: bool = False,
     writeadmindb: bool = False,
     job_name: Optional[List[str]] = None,
-    separatesample: bool = False,
     primary_transcript: List[str] = ["mane"],
     clean: bool = False,
     module_options: Dict = {},
     system_option: Dict = {},
     package: Optional[str] = None,
     filter_sql: Optional[str] = None,
-    includesample: Optional[List[str]] = None,
-    excludesample: Optional[List[str]] = None,
+    samples_to_include: Optional[List[str]] = None,
+    samples_to_exclude: Optional[List[str]] = None,
     filter: Optional[str] = None,
     filter_path: Optional[str] = None,
     modules_dir: Optional[str] = None,
@@ -109,13 +108,12 @@ def run(
         keep_temp (bool): keep_temp
         writeadmindb (bool): writeadmindb
         job_name (Optional[List[str]]): job_name
-        separatesample (bool): separatesample
         module_options (Dict): module_options
         system_option (Dict): system_option
         package (Optional[str]): package
         filter_sql (Optional[str]): filter_sql
-        includesample (Optional[List[str]]): includesample
-        excludesample (Optional[List[str]]): excludesample
+        samples_to_include (Optional[List[str]]): samples_to_include
+        samples_to_exclude (Optional[List[str]]): samples_to_exclude
         filter (Optional[str]): filter
         filter_path (Optional[str]): filter_path
         use_duckdb (bool): True to use DuckDB instead of SQLite3.
@@ -169,15 +167,14 @@ def run(
         keep_temp=keep_temp,
         writeadmindb=writeadmindb,
         job_name=job_name,
-        separatesample=separatesample,
         primary_transcript=primary_transcript,
         clean=clean,
         module_options=module_options,
         system_option=system_option,
         package=package,
         filter_sql=filter_sql,
-        includesample=includesample,
-        excludesample=excludesample,
+        samples_to_include=samples_to_include,
+        samples_to_exclude=samples_to_exclude,
         filter=filter,
         filter_path=filter_path,
         modules_dir=modules_dir,
@@ -217,15 +214,12 @@ def report(
     filter: Optional[dict] = None,
     filter_sql: Optional[str] = None,
     output_path: Optional[Path] = None,
-    confpath: Optional[str] = None,
-    nogenelevelonvariantlevel: bool = False,
-    separatesample: bool = False,
     output_dir: Optional[Path] = None,
     run_name: str = "",
-    includesample: Optional[List[str]] = [],
-    excludesample: Optional[List[str]] = None,
+    samples_to_include: Optional[List[str]] = [],
+    samples_to_exclude: Optional[List[str]] = None,
     package: Optional[str] = None,
-    cols: Optional[List[str]] = None,
+    columns_to_include: Optional[List[str]] = None,
     level: Optional[str] = None,
     user: Optional[str] = None,
     no_summary: bool = False,
@@ -242,17 +236,14 @@ def report(
         module_paths (Union[str, List[Path]]): Paths to report modules can be directly given. This option will override report_types. For example, if `customreporter` module is installed at `/home/user/ov_dev/customreporter`, this value can be given.
         output_dir (Optional[str]): Directory to store reports
         module_options (Dict[str, Dict]): Reporter module-specific options. For example, to tell `vcfreporter` to combine all OakVar result fields under one field, `{"vcfreporter": {"type": "combined"}}` can be used.
-        cols (Optional[List[str]]): Result columns to include. By default, all result columns are included in reports. For example, `["base__uid", "base__chrom", "base__pos", "base__ref_base", "base__alt_base", "clinvar__sig"]` will include only the variants and ClinVar significances.
-        includesample (Optional[List[str]]): Samples to include in filtered reports
-        excludesample (Optional[List[str]]): Samples to exclude from filtered reports
+        columns_to_include (Optional[List[str]]): Result columns to include. By default, all result columns are included in reports. For example, `["base__uid", "base__chrom", "base__pos", "base__ref_base", "base__alt_base", "clinvar__sig"]` will include only the variants and ClinVar significances.
+        samples_to_include (Optional[List[str]]): Samples to include in filtered reports
+        samples_to_exclude (Optional[List[str]]): Samples to exclude from filtered reports
         filter_path (Optional[str]): filter_path
         filter (Optional[dict]): filter as dict
         filter_sql (Optional[str]): filter sql
         filter_sql (Optional[str]): filter dict as str
         output_path (Optional[Path]): output_path
-        confpath (Optional[str]): confpath
-        nogenelevelonvariantlevel (bool): nogenelevelonvariantlevel
-        separatesample (bool): separatesample
         package (Optional[str]): package
         modules_dir (Optional[str]): modules_dir
         level (Optional[str]): level
@@ -343,16 +334,13 @@ def report(
                 filter=filter,
                 filter_sql=filter_sql,
                 output_path=output_path,
-                confpath=confpath,
                 name=module_name,
-                nogenelevelonvariantlevel=nogenelevelonvariantlevel,
-                separatesample=separatesample,
                 output_dir=output_dir,
                 run_name=run_name,
-                includesample=includesample,
-                excludesample=excludesample,
+                samples_to_include=samples_to_include,
+                samples_to_exclude=samples_to_exclude,
                 package=package,
-                cols=cols,
+                columns_to_include=columns_to_include,
                 level=level,
                 user=user,
                 no_summary=no_summary,

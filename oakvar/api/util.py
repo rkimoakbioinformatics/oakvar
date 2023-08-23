@@ -440,10 +440,10 @@ def filtersqlite_async(
                     req = cf.filter["sample"]["require"]
                 if "reject" in cf.filter["sample"]:
                     rej = cf.filter["sample"]["reject"]
-            if cf.includesample is not None:
-                req = cf.includesample
-            if cf.excludesample is not None:
-                rej = cf.excludesample
+            if cf.include_sample is not None:
+                req = cf.include_sample
+            if cf.exclude_sample is not None:
+                rej = cf.exclude_sample
             if len(req) > 0 or len(rej) > 0:
                 q = "create table sample as select s.* from old_db.sample as s, old_db.variant_filtered as v where s.base__uid=v.base__uid"
                 if req:

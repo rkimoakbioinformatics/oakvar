@@ -170,8 +170,8 @@ class DbFilter:
             filter=filter,
             mode=mode,
             filtersql=filter_sql,
-            includesample=include_sample,
-            excludesample=exclude_sample,
+            include_sample=include_sample,
+            exclude_sample=exclude_sample,
             strict=strict,
             user=user,
             uid=uid,
@@ -187,8 +187,8 @@ class DbFilter:
         filterstring=None,
         filter=None,
         filtersql=None,
-        includesample=None,
-        excludesample=None,
+        include_sample=None,
+        exclude_sample=None,
         mode="sub",
         strict=True,
         user=DEFAULT_SERVER_DEFAULT_USERNAME,
@@ -214,8 +214,8 @@ class DbFilter:
         self.filtername = None
         self.filterstring = filterstring
         self.filtersql = filtersql
-        self.includesample = includesample
-        self.excludesample = excludesample
+        self.include_sample = include_sample
+        self.exclude_sample = exclude_sample
         self.strict = strict
         if filter is not None:
             self.filter = filter
@@ -242,67 +242,6 @@ class DbFilter:
     def second_init(self):
         if self.mode == "sub":
             self.loadfilter()
-
-    def parse_args(self, args):
-        from argparse import ArgumentParser
-        from os.path import abspath
-
-        parser = ArgumentParser()
-        parser.add_argument(
-            "-d",
-            dest="dbpath",
-            required=True,
-            help="Path of a result database file (.sqlite)",
-        )
-        parser.add_argument(
-            "-f", dest="filterpath", help="Path of a filtering criteria file"
-        )
-        parser.add_argument(
-            "-F",
-            dest="filtername",
-            help="Name of the filter to apply (saved in the database)",
-        )
-        parser.add_argument(
-            "--filterstring", dest="filterstring", default=None, help="Filter in JSON"
-        )
-        parser.add_argument(
-            "-l",
-            dest="level",
-            default=None,
-            choices=["variant", "gene"],
-            help="Analysis level to filter",
-        )
-        parser.add_argument(
-            "--filtersql", dest="filtersql", default=None, help="Filter SQL"
-        )
-        parser.add_argument(
-            "--includesample",
-            dest="includesample",
-            nargs="+",
-            default=None,
-            help="Sample IDs to include",
-        )
-        parser.add_argument(
-            "--excludesample",
-            dest="excludesample",
-            nargs="+",
-            default=None,
-            help="Sample IDs to exclude",
-        )
-        if self.mode == "main":
-            parser.add_argument(
-                "command",
-                choices=["uidpipe", "count", "rows", "pipe", "save", "list"],
-                help="Command",
-            )
-
-        parsed_args = parser.parse_args(args)
-        self.dbpath = abspath(parsed_args.dbpath)
-        self.filterpath = parsed_args.filterpath
-        self.level = parsed_args.level
-        self.filtername = parsed_args.filtername
-        self.filterstring = parsed_args.filterstring
-        self.filtersql = parsed_args.filtersql
 
     def get_report_filter_db_dir(self) -> Path:
         from ..system import get_conf_dir
@@ -405,8 +344,8 @@ class DbFilter:
         filterstring=None,
         filtersql=None,
         filter=None,
-        includesample=None,
-        excludesample=None,
+        include_sample=None,
+        exclude_sample=None,
         strict=None,
     ):
         from os.path import exists
@@ -425,10 +364,10 @@ class DbFilter:
             self.filtersql = filtersql
         if filter is not None:
             self.filter = filter
-        if includesample is not None:
-            self.includesample = includesample
-        if excludesample is not None:
-            self.excludesample = excludesample
+        if include_sample is not None:
+            self.include_sample = include_sample
+        if exclude_sample is not None:
+            self.exclude_sample = exclude_sample
         if self.filter:
             pass
         elif self.filtersql is not None:
@@ -552,10 +491,10 @@ class DbFilter:
                 req = self.filter["sample"]["require"]
             if "reject" in self.filter["sample"]:
                 rej = self.filter["sample"]["reject"]
-        if self.includesample:
-            req = self.includesample
-        if self.excludesample:
-            rej = self.excludesample
+        if self.include_sample:
+            req = self.include_sample
+        if self.exclude_sample:
+            rej = self.exclude_sample
         if len(req) == 0 and len(rej) == 0:
             return None
         return [req, rej]
@@ -758,8 +697,8 @@ class DbFilter:
         return (
             not self.filter
             and not self.filtersql
-            and not self.includesample
-            and not self.excludesample
+            and not self.include_sample
+            and not self.exclude_sample
         )
 
     def get_ftable_name(self, uid=None, ftype=None):
@@ -1045,8 +984,8 @@ class DbFilter:
         bypassfilter = (
             not self.filter
             and not self.filtersql
-            and not self.includesample
-            and not self.excludesample
+            and not self.include_sample
+            and not self.exclude_sample
         )
         if bypassfilter is False:
             gftable = "gene_filtered"

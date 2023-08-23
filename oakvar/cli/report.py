@@ -48,40 +48,16 @@ def get_parser_fn_report():
         "-f", dest="filter_path", default=None, help="Path to filter file"
     )
     parser_ov_report.add_argument("--filter", default=None, help=SUPPRESS)
-    parser_ov_report.add_argument("--filtersql", default=None, help="Filter SQL")
-    parser_ov_report.add_argument(
-        "-F",
-        dest="filter_name",
-        default=None,
-        help="Name of filter (stored in aggregator output)",
-    )
-    parser_ov_report.add_argument(
-        "--filter_sql", dest="filterstring", default=None, help=SUPPRESS
-    )
+    parser_ov_report.add_argument("--filter-sql", default=None, help="Filter SQL")
     parser_ov_report.add_argument(
         "-s", dest="output_path", default=None, help="Path to save file"
     )
-    parser_ov_report.add_argument("-c", dest="confpath", help="path to a conf file")
     parser_ov_report.add_argument(
         "--module-paths",
         dest="module_paths",
         nargs="*",
         default=None,
         help="report module name",
-    )
-    parser_ov_report.add_argument(
-        "--nogenelevelonvariantlevel",
-        dest="nogenelevelonvariantlevel",
-        action="store_true",
-        default=False,
-        help="Use this option to prevent gene level result from being added to variant level result.",
-    )
-    parser_ov_report.add_argument(
-        "--separatesample",
-        dest="separatesample",
-        action="store_true",
-        default=False,
-        help="Write each variant-sample pair on a separate line",
     )
     parser_ov_report.add_argument(
         "-d", dest="output_dir", default=None, help="directory for output files"
@@ -99,15 +75,13 @@ def get_parser_fn_report():
         help="Module-specific option in module_name.key=value syntax. For example, --module-options vcfreporter.type=separate",
     )
     parser_ov_report.add_argument(
-        "--includesample",
-        dest="includesample",
+        "--samples-to-include",
         nargs="+",
         default=None,
         help="Sample IDs to include",
     )
     parser_ov_report.add_argument(
-        "--excludesample",
-        dest="excludesample",
+        "--samples-to-exclude",
         nargs="+",
         default=None,
         help="Sample IDs to exclude",
@@ -116,8 +90,7 @@ def get_parser_fn_report():
         "--package", help="Use filters and report types in a package"
     )
     parser_ov_report.add_argument(
-        "--cols",
-        dest="cols",
+        "--columns-to-include",
         nargs="+",
         default=None,
         help="columns to include in reports",

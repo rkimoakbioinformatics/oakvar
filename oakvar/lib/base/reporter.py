@@ -240,8 +240,8 @@ class BaseReporter:
             filter=self.filter,
             filterpath=self.filter_path,
             filtersql=self.filter_sql,
-            includesample=self.samples_to_include,
-            excludesample=self.samples_to_exclude,
+            include_sample=self.samples_to_include,
+            exclude_sample=self.samples_to_exclude,
         )
 
     def should_write_level(self, level):

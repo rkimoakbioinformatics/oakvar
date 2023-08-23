@@ -1,3 +1,4 @@
+chrom	pos	strand	ref_base	alt_base	samples
 chr10	121593817	-	A	T	s0
 chr10	2987654	+	T	A	s1
 chr10	43077259	+	A	T	s2
