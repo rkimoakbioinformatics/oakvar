@@ -813,9 +813,9 @@ def get_df_from_db(
     else:
         conn_url = f"sqlite://{db_path_to_use}"
     if partition_on and num_cores > 1:
-        df = pl.read_sql(
+        df = pl.read_database(
             sql, conn_url, partition_on=partition_on, partition_num=num_cores
         )
     else:
-        df = pl.read_sql(sql, conn_url)
+        df = pl.read_database(sql, conn_url)
     return df
