@@ -67,6 +67,7 @@ def run(
     input_encoding: Optional[str] = None,
     ignore_sample: bool = False,
     uid: Optional[str] = None,
+    skip_variant_deduplication: bool=False,
     loop=None,
     outer=None,
 ) -> Optional[Dict[str, Any]]:
@@ -115,6 +116,7 @@ def run(
         filterpath (Optional[str]): filterpath
         loglevel (str): loglevel
         uid (Optional[str]): uid
+        skip_variant_deduplication (bool): Skip de-duplication of variants.
         loop:
         outer:
 
@@ -185,6 +187,7 @@ def run(
         input_format=input_format,
         input_encoding=input_encoding,
         ignore_sample=ignore_sample,
+        skip_variant_deduplication=skip_variant_deduplication,
         uid=uid,
         outer=outer,
     )

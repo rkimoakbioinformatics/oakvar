@@ -67,8 +67,7 @@ class Runner(object):
         self.crv_present = False
         self.crx_present = False
         self.crg_present = False
-        self.total_num_converted_variants = None
-        self.total_num_valid_variants = None
+        self.total_num_unique_variants: int = 0
         self.converter_format: Optional[List[str]] = None
         self.genemapper = None
         self.append_mode = []
@@ -1436,7 +1435,7 @@ class Runner(object):
 
         if self.args is None or not self.output_dir:
             raise
-        if runtime is None or self.total_num_converted_variants is None:
+        if runtime is None or not self.total_num_unique_variants:
             return
         admindb_path = get_admindb_path()
         if not admindb_path or admindb_path.exists() is False:
@@ -1459,7 +1458,7 @@ class Runner(object):
             q,
             (
                 runtime,
-                self.total_num_converted_variants,
+                self.total_num_unique_variants,
                 info_json_s,
                 self.output_dir[run_no],
                 self.args.job_name[run_no],
@@ -1546,12 +1545,12 @@ class Runner(object):
             serveradmindb=self.serveradmindb,
             ignore_sample=self.ignore_sample,
             module_options=self.run_conf,
+            skip_variant_deduplication=self.args.skip_variant_deduplication,
             mp=self.args.mp,
             outer=self.outer,
         )
         ret = converter.run()
-        self.total_num_converted_variants = ret.get("total_lnum")
-        self.total_num_valid_variants = ret.get("write_lnum")
+        self.total_num_unique_variants = ret.get("num_unique_variants", 0)
         self.converter_format = ret.get("input_formats") or []
         genome_assembly: List[str] = ret.get("assemblies") or []
         self.genome_assemblies[run_no] = genome_assembly
@@ -1981,7 +1980,7 @@ class Runner(object):
         if not self.should_run_step("converter"):
             return
         await self.log_time_of_func(self.run_converter, run_no, work=f"{step} step")
-        if self.total_num_converted_variants == 0:
+        if self.total_num_unique_variants == 0:
             msg = "No variant found in input"
             update_status(msg, logger=self.logger, serveradmindb=self.serveradmindb)
             if self.logger:

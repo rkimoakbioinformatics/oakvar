@@ -162,59 +162,45 @@ def handle_chrom(variant):
         variant.get("chrom"), variant.get("chrom")
     )
 
-def is_unique_variant(variant: dict, unique_vars: dict) -> bool:
-    return variant["var_no"] not in unique_vars
-
 def handle_variant(
-        variant: dict, unique_vars: dict, do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, line_no: int, num_valid_error_lines: Dict[str, int]
-) -> Optional[Dict[str, Any]]:
+        variant: dict, do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, line_no: int
+):
     from oakvar.lib.exceptions import NoVariantError
 
     if variant["ref_base"] == variant["alt_base"]:
         raise NoVariantError()
     tags = variant.get("tags")
-    unique = is_unique_variant(variant, unique_vars)
-    if unique:
-        variant["unique"] = True
-        unique_vars[variant["var_no"]] = True
-        handle_chrom(variant)
-        handle_ref_base(variant, wgs_reader)
-        check_invalid_base(variant)
-        normalize_variant(variant)
-        add_end_pos_if_absent(variant)
-        crl_data = perform_liftover_if_needed(variant, do_liftover, do_liftover_chrM, lifter, wgs_reader)
-        num_valid_error_lines["valid"] += 1
-    else:
-        variant["unique"] = False
-        crl_data = None
+    handle_chrom(variant)
+    handle_ref_base(variant, wgs_reader)
+    check_invalid_base(variant)
+    normalize_variant(variant)
+    add_end_pos_if_absent(variant)
+    crl_data = perform_liftover_if_needed(variant, do_liftover, do_liftover_chrM, lifter, wgs_reader)
     handle_genotype(variant)
-    if unique:
-        variant["original_line"] = line_no
-        variant["tags"] = tags
-    return crl_data
+    variant["original_line"] = line_no
+    variant["tags"] = tags
+    variant["crl"] = crl_data
 
 def handle_converted_variants(
-        variants: List[Dict[str, Any]], do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, logger, error_logger, input_path: str, unique_excs: dict, err_holder: list, line_no: int, num_valid_error_lines: Dict[str, int]
-) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        variants: List[Dict[str, Any]], do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, logger, error_logger, input_path: str, unique_excs: dict, err_holder: list, line_no: int
+) -> Tuple[List[Dict[str, Any]], bool]:
     from oakvar.lib.exceptions import IgnoredVariant
 
     if variants is BaseConverter.IGNORE:
-        return [], []
+        return [], False
     if not variants:
         raise IgnoredVariant("No valid alternate allele was found in any samples.")
-    unique_vars = {}
     variant_l: List[Dict[str, Any]] = []
-    crl_l: List[Dict[str, Any]] = []
+    error_occurred: bool = False
     for variant in variants:
         try:
-            crl_data = handle_variant(variant, unique_vars, do_liftover, do_liftover_chrM, lifter, wgs_reader, line_no, num_valid_error_lines)
+            handle_variant(variant, do_liftover, do_liftover_chrM, lifter, wgs_reader, line_no)
+            variant_l.append(variant)
         except Exception as e:
             _log_conversion_error(logger, error_logger, input_path, line_no, e, unique_excs, err_holder)
+            error_occurred = True
             continue
-        variant_l.append(variant)
-        if crl_data:
-            crl_l.append(crl_data)
-    return variant_l, crl_l
+    return variant_l, error_occurred
 
 def gather_variantss(
         converter: BaseConverter, 
@@ -230,24 +216,26 @@ def gather_variantss(
         unique_excs: dict, 
         err_holder: list,
         num_valid_error_lines: Dict[str, int],
-) -> Tuple[List[List[Dict[str, Any]]], List[List[Dict[str, Any]]]]:
+) -> List[List[Dict[str, Any]]]:
     variants_l: List[List[Dict[str, Any]]] = []
-    crl_l: List[List[Dict[str, Any]]] = []
     line_data = lines_data[core_num]
     for (line_no, line) in line_data:
         try:
             variants = converter.convert_line(line)
-            variants_datas, crl_datas = handle_converted_variants(variants, do_liftover, do_liftover_chrM, lifter, wgs_reader, logger, error_logger, input_path, unique_excs, err_holder, line_no, num_valid_error_lines)
+            variants_datas, error_occurred = handle_converted_variants(variants, do_liftover, do_liftover_chrM, lifter, wgs_reader, logger, error_logger, input_path, unique_excs, err_holder, line_no)
+            if error_occurred:
+                num_valid_error_lines["error"] += 1
+            else:
+                num_valid_error_lines["valid"] += 1
             if not variants_datas:
                 continue
             variants_l.append(variants_datas)
-            crl_l.append(crl_datas)
         except KeyboardInterrupt:
             raise
         except Exception as e:
             _log_conversion_error(logger, error_logger, input_path, line_no, e, unique_excs, err_holder)
             num_valid_error_lines["error"] += 1
-    return variants_l, crl_l
+    return variants_l
 
 def gather_variantss_wrapper(args):
     return gather_variantss(*args)
@@ -265,6 +253,7 @@ class MasterConverter(object):
         module_options: Dict = {},
         input_encoding=None,
         ignore_sample: bool=False,
+        skip_variant_deduplication: bool=False,
         mp: int=1,
         outer=None,
     ):
@@ -299,18 +288,22 @@ class MasterConverter(object):
         self.given_input_assembly: Optional[str] = None
         self.converter_by_input_path: Dict[str, Optional[BaseConverter]] = {}
         self.extra_output_columns = []
-        self.file_num_valid_variants = 0
-        self.file_error_lines = 0
-        self.total_num_valid_variants = 0
-        self.total_error_lines = 0
-        self.fileno = 0
+        self.file_num_unique_variants: int = 0
+        self.file_num_dup_variants: int = 0
+        self.file_error_lines: int = 0
+        self.total_num_valid_lines: int = 0
+        self.total_num_error_lines: int = 0
+        self.total_unique_variants: int = 0
+        self.total_duplicate_variants: int = 0
+        self.fileno: int = 0
         self.ignore_sample = ignore_sample
-        self.total_num_converted_variants = 0
+        self.total_num_unique_variants: int = 0
+        self.total_num_duplicate_variants: int = 0
+        self.skip_variant_deduplication: bool = skip_variant_deduplication
         self.input_formats: List[str] = []
         self.genome_assemblies: List[str] = []
         self.base_re = compile("^[ATGC]+|[-]+$")
         self.last_var: str = ""
-        self.unique_vars: dict = {}
         self.chromdict = {
             "chrx": "chrX",
             "chry": "chrY",
@@ -788,11 +781,13 @@ class MasterConverter(object):
             num_pool = 4
         uid = 1
         pool = ThreadPool(num_pool)
+        unique_variants: Dict[int, List[Dict[str, Any]]] = {}
         for input_path in self.input_paths:
             self.input_fname = Path(input_path).name
             fileno = self.input_path_dict2[input_path]
             converter = self.setup_file(input_path)
-            self.file_num_valid_variants = 0
+            self.file_num_unique_variants = 0
+            self.file_num_dup_variants: int = 0
             self.file_error_lines = 0
             self.num_valid_error_lines = {"valid": 0, "error": 0}
             start_line_pos: int = 1
@@ -822,37 +817,54 @@ class MasterConverter(object):
                 results = pool.map(gather_variantss_wrapper, args)
                 lines_data = None
                 for result in results:
-                    variants_l, crl_l = result
+                    variants_l = result
                     for i in range(len(variants_l)):
                         variants = variants_l[i]
-                        crl_data = crl_l[i]
                         if len(variants) == 0:
                             continue
-                        if crl_data:
-                            for variant, crl in zip(variants, crl_data):
-                                uid_var = uid + variant["var_no"]
-                                variant["uid"] = uid_var
-                                crl["uid"] = uid_var
-                                if variant["unique"]:
-                                    self.crv_writer.write_data(variant)
-                                    variant["fileno"] = fileno
-                                    self.crm_writer.write_data(variant)
-                                    converter.write_extra_info(variant)
+                        for variant in variants:
+                            uid_var = uid + variant["var_no"]
+                            variant["uid"] = uid_var
+                            variant["fileno"] = fileno
+                            if self.skip_variant_deduplication:
+                                self.crv_writer.write_data(variant)
+                                self.crm_writer.write_data(variant)
+                                converter.write_extra_info(variant)
                                 self.crs_writer.write_data(variant)
-                                self.crl_writer.write_data(crl)
-                        else:
-                            for variant in variants:
-                                uid_var = uid + variant["var_no"]
-                                variant["uid"] = uid_var
-                                if variant["unique"]:
-                                    self.crv_writer.write_data(variant)
-                                    variant["fileno"] = fileno
-                                    self.crm_writer.write_data(variant)
-                                    converter.write_extra_info(variant)
-                                self.crs_writer.write_data(variant)
-                        uid += max([v["var_no"] for v in variants]) + 1
+                                crl = variant.get("crl")
+                                if crl:
+                                    crl["uid"] = variant["uid"]
+                                    self.crl_writer.write_data(crl)
+                                self.file_num_unique_variants += 1
+                                uid += max([v["var_no"] for v in variants]) + 1
+                            else:
+                                dup_found: bool = False
+                                pos: int = variant.get("pos", 0)
+                                if pos not in unique_variants:
+                                    unique_variants[pos] = []
+                                for comp_var in unique_variants.get(pos, []):
+                                    if variant.get("chrom") == comp_var.get("chrom") and variant.get("ref_base") == comp_var.get("ref_base") and variant.get("alt_base") == comp_var.get("alt_base"):
+                                        sample_id = variant.get("sample_id")
+                                        comp_sample_id = comp_var.get("sample_id")
+                                        if sample_id:
+                                            if comp_sample_id:
+                                                sample_ids = sample_id.split(",")
+                                                comp_sample_ids = comp_sample_id.split(",")
+                                                for sid in sample_ids:
+                                                    if sid not in comp_sample_ids:
+                                                        comp_sample_id += f",{sid}"
+                                                comp_var["sample_id"] = comp_sample_id
+                                            else:
+                                                comp_sample_id = sample_id
+                                        dup_found = True
+                                        break
+                                if not dup_found:
+                                    self.file_num_unique_variants += 1
+                                    unique_variants[pos].append(variant)
+                                    uid += max([v["var_no"] for v in variants]) + 1
+                                else:
+                                    self.file_num_dup_variants += 1
                     variants_l = None
-                    crl_l = None
                 if not immature_exit:
                     break
                 start_line_no += batch_size * num_pool
@@ -863,21 +875,37 @@ class MasterConverter(object):
                 update_status(
                     status, logger=self.logger, serveradmindb=self.serveradmindb
                 )
+            if not self.skip_variant_deduplication:
+                for variants in unique_variants.values():
+                    for variant in variants:
+                        self.crv_writer.write_data(variant)
+                        self.crm_writer.write_data(variant)
+                        converter.write_extra_info(variant)
+                        self.crs_writer.write_data(variant)
+                        crl = variant.get("crl")
+                        if crl:
+                            crl["uid"] = variant["uid"]
+                            self.crl_writer.write_data(crl)
+                unique_variants.clear()
             self.logger.info(
-                f"{input_path}: number of valid variants: {self.num_valid_error_lines['valid']}"
+                f"{input_path}: number of lines successfully processed: {self.num_valid_error_lines['valid']}"
             )
             self.logger.info(f"{input_path}: number of lines skipped due to errors: {self.num_valid_error_lines['error']}")
-            self.total_num_converted_variants += self.num_valid_error_lines["valid"]
-            self.total_num_valid_variants += self.num_valid_error_lines["valid"]
-            self.total_error_lines += self.num_valid_error_lines["error"]
+            self.logger.info(f"{input_path}: number of unique variants: {self.file_num_unique_variants}")
+            self.logger.info(f"{input_path}: number of duplicate variants: {self.file_num_dup_variants}")
+            self.total_num_unique_variants += self.file_num_unique_variants
+            self.total_num_duplicate_variants += self.file_num_dup_variants
+            self.total_num_valid_lines += self.num_valid_error_lines["valid"]
+            self.total_num_error_lines += self.num_valid_error_lines["error"]
         flush_err_holder(self.err_holder, self.error_logger, force=True)
         self.close_output_files()
         self.end()
         self.log_ending()
         ret = {
-            "total_lnum": self.total_num_converted_variants,
-            "write_lnum": self.total_num_valid_variants,
-            "error_lnum": self.total_error_lines,
+            "num_unique_variants": self.total_num_unique_variants,
+            "num_duplicate_variants": self.total_duplicate_variants,
+            "num_valid_lines": self.total_num_valid_lines,
+            "num_error_lines": self.total_num_error_lines,
             "input_formats": self.input_formats,
             "assemblies": self.genome_assemblies,
         }
@@ -887,7 +915,10 @@ class MasterConverter(object):
         from time import time
 
         self.start_time = time()
-        self.total_num_converted_variants = 0
+        self.total_num_unique_variants = 0
+        self.total_num_duplicate_variants = 0
+        self.total_num_valid_lines = 0
+        self.total_num_error_lines = 0
         self.uid = 0
 
     def log_ending(self):
@@ -896,12 +927,10 @@ class MasterConverter(object):
 
         if not self.logger:
             raise
-        self.logger.info(
-            "total number of valid variants: {}".format(
-                self.total_num_converted_variants
-            )
-        )
-        self.logger.info("total number of lines skipped due to errors: %d" % self.total_error_lines)
+        self.logger.info(f"total number of unique variants: {self.total_num_unique_variants}")
+        self.logger.info(f"total number of duplicate variants: {self.total_num_duplicate_variants}")
+        self.logger.info(f"total number of valid lines: {self.total_num_valid_lines}")
+        self.logger.info(f"total number of error lines: {self.total_num_error_lines}")
         end_time = time()
         self.logger.info("finished: %s" % asctime(localtime(end_time)))
         runtime = round(end_time - self.start_time, 3)

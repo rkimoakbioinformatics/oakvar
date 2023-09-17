@@ -335,7 +335,7 @@ class FileWriter(BaseFile):
         if not data:
             return
         self.prep_for_write()
-        wtoks = [data.get(col.name, "") for col in self.columns.values()]
+        wtoks = [data.get(col.name, None) for col in self.columns.values()]
         if self.csvfmt:
             if self.csvwriter is not None:
                 try:
