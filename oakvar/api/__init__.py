@@ -71,6 +71,7 @@ def run(
     uid: Optional[str] = None,
     use_duckdb: bool = False,
     batch_size: int = DEFAULT_CONVERTER_READ_SIZE,
+    skip_variant_deduplication: bool=False,
     loop=None,
     outer=None,
 ) -> Optional[Dict[str, Any]]:
@@ -119,6 +120,7 @@ def run(
         use_duckdb (bool): True to use DuckDB instead of SQLite3.
         loglevel (str): loglevel
         uid (Optional[str]): uid
+        skip_variant_deduplication (bool): Skip de-duplication of variants.
         loop:
         outer:
 
@@ -192,6 +194,7 @@ def run(
         fill_in_missing_ref=fill_in_missing_ref,
         use_duckdb=use_duckdb,
         batch_size=batch_size,
+        skip_variant_deduplication=skip_variant_deduplication,
         uid=uid,
         outer=outer,
     )

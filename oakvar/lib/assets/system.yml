@@ -1,11 +1,9 @@
 publish_url: https://store.oakvar.com
 store_url: https://store.oakvar.com
-  #store_url: http://127.0.0.1:8934
 base_modules:
-- cravat-converter
 - csv-converter
+- maf-converter
 - vcf-converter
-- oldcravat-converter
 - textreporter
 - excelreporter
 - vcfreporter

@@ -303,4 +303,10 @@ def add_parser_ov_run(subparsers):
         type=int,
         help="Batch size",
     )
+    parser_ov_run.add_argument(
+        "--skip-variant-deduplication",
+        action="store_true",
+        default=False,
+        help="Skip de-duplication of variants"
+    )
     parser_ov_run.set_defaults(func=cli_run)

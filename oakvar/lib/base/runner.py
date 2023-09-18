@@ -75,6 +75,7 @@ class Runner(object):
         self.fill_in_missing_ref = False
         self.total_num_converted_variants = None
         self.total_num_valid_variants = None
+        self.total_num_unique_variants: int = 0
         self.converter_format: Optional[List[str]] = None
         self.converter_i: Optional[BaseConverter] = None
         self.mapper_i: List[BaseMapper] = []
@@ -1574,7 +1575,7 @@ class Runner(object):
 
         if self.args is None or not self.output_dir:
             raise
-        if runtime is None or self.total_num_converted_variants is None:
+        if runtime is None or not self.total_num_unique_variants:
             return
         admindb_path = get_admindb_path()
         if not admindb_path or admindb_path.exists() is False:
@@ -1597,7 +1598,7 @@ class Runner(object):
             q,
             (
                 runtime,
-                self.total_num_converted_variants,
+                self.total_num_unique_variants,
                 info_json_s,
                 self.output_dir[run_no],
                 self.args.job_name[run_no],
