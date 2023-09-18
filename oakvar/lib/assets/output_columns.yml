@@ -16,13 +16,13 @@ crm:
     type: int
     width: 90
     filterable: False
-    hidden: True
+    hidden: true
 crv:
   - name: uid
     title: UID
     type: int
     width: 60
-    hidden: True
+    hidden: true
     filterable: False
   - name: chrom
     title: Chrom
@@ -59,7 +59,7 @@ crx:
     title: UID
     type: int
     width: 60
-    hidden: True
+    hidden: true
     filterable: False
   - name: chrom
     title: Chrom
@@ -106,7 +106,6 @@ crx:
     title: Transcript
     type: string
     width: 135
-    hidden: False
     filterable: False
   - name: so
     title: Sequence Ontology
@@ -132,7 +131,7 @@ crx:
     title: All Mappings
     type: string
     width: 100
-    hidden: True
+    hidden: true
     filterable: False
 crs:
   - name: uid

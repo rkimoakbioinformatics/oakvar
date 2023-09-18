@@ -371,7 +371,7 @@ class SubmitProcessor:
         job_name = submit_options.get("job_name")
         if job_name:
             run_args.extend(["--jobname", f"{job_name}"])
-        run_args.append("--temp-files")
+        run_args.append("--keep-temp")
         # module options
         module_option_args = self.get_module_option_args(job_options)
         if module_option_args:

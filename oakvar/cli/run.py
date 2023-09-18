@@ -161,13 +161,6 @@ def add_parser_ov_run(subparsers):
         help="Force input format",
     )
     parser_ov_run.add_argument(
-        "--temp-files",
-        dest="keep_temp",
-        action="store_true",
-        default=False,
-        help="Leave temporary files after run is complete.",
-    )
-    parser_ov_run.add_argument(
         "--keep-temp",
         dest="keep_temp",
         action="store_true",

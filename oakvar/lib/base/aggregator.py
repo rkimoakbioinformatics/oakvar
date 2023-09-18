@@ -1,4 +1,5 @@
 from typing import Optional
+from typing import List
 
 
 class Aggregator(object):
@@ -145,7 +146,7 @@ class Aggregator(object):
                 except Exception as e:
                     self._log_runtime_error(lnum, line, e, fn=reader.path)
             self.dbconn.commit()
-        #self.fill_categories()
+        self.fill_categories()
         # self.cursor.execute("pragma synchronous=2;")
         # self.cursor.execute("pragma journal_mode=delete;")
         end_time = time()
@@ -183,42 +184,43 @@ class Aggregator(object):
                     col_cats[i] = col_cats[i].replace(k, v)
         return col_cats
 
-#    def fill_categories(self):
-#        if self.level is None:
-#            return
-#        if self.dbconn is None or self.cursor is None:
-#            return
-#        from ..util.inout import ColumnDefinition
-#
-#        header_table = self.level + "_header"
-#        coldefs = []
-#        sql = f"select col_def from {header_table}"
-#        self.cursor.execute(sql)
-#        for row in self.cursor:
-#            coljson = row[0]
-#            coldef = ColumnDefinition({})
-#            coldef.from_json(coljson)
-#            coldefs.append(coldef)
-#        for coldef in coldefs:
-#            col_cats = coldef.categories
-#            if coldef.category in ["single", "multi"]:
-#                if col_cats is not None and len(col_cats) == 0:
-#                    q = f"select distinct {coldef.name} from {self.level}"
-#                    self.cursor.execute(q)
-#                    col_set = set([])
-#                    for r in self.cursor:
-#                        if r[0] is None:
-#                            continue
-#                        col_set.update(r[0].split(";"))
-#                    col_cats = list(col_set)
-#                    col_cats = self.do_reportsub_col_cats(coldef.name, col_cats)
-#                else:
-#                    col_cats = self.do_reportsub_col_cats(coldef.name, col_cats)
-#                if col_cats is not None:
-#                    col_cats.sort()
-#                coldef.categories = col_cats
-#                self.update_col_def(coldef)
-#        self.dbconn.commit()
+    def fill_categories(self):
+        if self.level is None:
+            return
+        if self.dbconn is None or self.cursor is None:
+            return
+        from ..util.inout import ColumnDefinition
+
+        header_table = self.level + "_header"
+        coldefs: List[ColumnDefinition] = []
+        sql = f"select col_def from {header_table}"
+        self.cursor.execute(sql)
+        for row in self.cursor:
+            coljson = row[0]
+            coldef = ColumnDefinition({})
+            coldef.from_json(coljson)
+            coldefs.append(coldef)
+        for coldef in coldefs:
+            col_cats = coldef.categories
+            if coldef.category in ["single", "multi"]:
+                name: str = coldef.name or ""
+                if col_cats is not None and len(col_cats) == 0:
+                    q = f"select distinct {name} from {self.level}"
+                    self.cursor.execute(q)
+                    col_set = set([])
+                    for r in self.cursor:
+                        if r[0] is None:
+                            continue
+                        col_set.update(r[0].split(";"))
+                    col_cats = list(col_set)
+                    col_cats = self.do_reportsub_col_cats(name, col_cats)
+                else:
+                    col_cats = self.do_reportsub_col_cats(name, col_cats)
+                if col_cats is not None:
+                    col_cats.sort()
+                coldef.categories = col_cats
+                self.update_col_def(coldef)
+        self.dbconn.commit()
 
     def update_col_def(self, col_def):
         if self.cursor is None:
@@ -337,7 +339,7 @@ class Aggregator(object):
             self.cursor.execute(q)
         for _, col_def in self.base_reader.get_all_col_defs().items():
             col_name = self.base_prefix + "__" + col_def.name
-            col_def.name = col_name
+            col_def.change_name(col_name)
             columns.append(col_def)
             unique_names.add(col_name)
         for annot_name in self.annotators:
@@ -359,7 +361,7 @@ class Aggregator(object):
                 reader_col_name = col_def.name
                 if reader_col_name == self.key_name:
                     continue
-                col_def.name = "%s__%s" % (annot_name, reader_col_name)
+                col_def.change_name(f"{annot_name}__{reader_col_name}")
                 if col_def.name in unique_names and not self.append:
                     err_msg = "Duplicate column name %s found in %s. " % (
                         col_def.name,
@@ -421,7 +423,7 @@ class Aggregator(object):
             self.cursor.execute(q)
         q = f"select col_name, col_def from {self.header_table_name}"
         self.cursor.execute(q)
-        cdefs = OrderedDict()
+        cdefs: OrderedDict[str, ColumnDefinition] = OrderedDict()
         for cname, cjson in self.cursor:
             annot_name = cname.split("__")[0]
             cdefs[cname] = ColumnDefinition(loads(cjson))
