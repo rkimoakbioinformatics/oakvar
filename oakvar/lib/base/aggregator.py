@@ -272,7 +272,7 @@ class Aggregator(object):
             self.cursor.execute(q)
         for _, col_def in self.base_reader.get_all_col_defs().items():
             col_name = self.base_prefix + "__" + col_def.name
-            col_def.name = col_name
+            col_def.change_name(col_name)
             columns.append(col_def)
             unique_names.add(col_name)
         for annot_name in self.annotators:
@@ -294,7 +294,7 @@ class Aggregator(object):
                 reader_col_name = col_def.name
                 if reader_col_name == self.key_name:
                     continue
-                col_def.name = "%s__%s" % (annot_name, reader_col_name)
+                col_def.change_name(f"{annot_name}__{reader_col_name}")
                 if col_def.name in unique_names and not self.append:
                     err_msg = "Duplicate column name %s found in %s. " % (
                         col_def.name,
@@ -356,7 +356,7 @@ class Aggregator(object):
             self.cursor.execute(q)
         q = f"select col_name, col_def from {self.header_table_name}"
         self.cursor.execute(q)
-        cdefs = OrderedDict()
+        cdefs: OrderedDict[str, ColumnDefinition] = OrderedDict()
         for cname, cjson in self.cursor:
             annot_name = cname.split("__")[0]
             cdefs[cname] = ColumnDefinition(loads(cjson))

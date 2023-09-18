@@ -2,6 +2,8 @@ from typing import Union
 from typing import Any
 from typing import Dict
 from typing import Optional
+from typing import Dict
+from typing import Any
 from pathlib import Path
 
 
@@ -15,7 +17,7 @@ class BaseFile(object):
             self.path = abspath(path)
         else:
             self.path = path
-        self.columns = {}
+        self.columns: Dict[int, ColumnDefinition] = {}
 
     def _validate_col_type(self, col_type):
         if col_type not in self.valid_types:
@@ -515,14 +517,14 @@ class ColumnDefinition(object):
     def __init__(self, d):
         from copy import deepcopy
 
-        self.index = None
+        self.index: int = 0
         self.name: str = ""
         self.title = None
         self.type = None
         self.categories = None
         self.width = None
         self.desc = None
-        self.hidden = None
+        self.hidden = False
         self.category = None
         self.filterable = None
         self.hide_from_gui_filter = None
@@ -530,7 +532,7 @@ class ColumnDefinition(object):
         self.genesummary = None
         self.table = None
         self.level = None
-        self.d = deepcopy(d)
+        self.d: Dict[str, Any] = deepcopy(d)
         self._load_dict(d)
 
     def _load_dict(self, d):
@@ -541,10 +543,10 @@ class ColumnDefinition(object):
         self.d["categories"] = d.get("categories", [])
         self.d["width"] = d.get("width", None)
         self.d["desc"] = d.get("desc")
-        self.d["hidden"] = bool(d.get("hidden", "False"))
+        self.d["hidden"] = d.get("hidden", False)
         self.d["category"] = d.get("category")
         self.d["filterable"] = bool(d.get("filterable", "True"))
-        self.d["hide_from_gui_filter"] = bool(d.get("hide_from_gui_filter", "False"))
+        self.d["hide_from_gui_filter"] = d.get("hide_from_gui_filter", False)
         self.d["link_format"] = d.get("link_format")
         self.d["genesummary"] = bool(d.get("genesummary", "False"))
         self.d["table"] = bool(d.get("table", "False"))
@@ -556,15 +558,19 @@ class ColumnDefinition(object):
         self.categories = d.get("categories", [])
         self.width = d.get("width")
         self.desc = d.get("desc")
-        self.hidden = bool(d.get("hidden", False))
+        self.hidden = d.get("hidden")
         self.category = d.get("category")
         self.filterable = bool(d.get("filterable", True))
-        self.hide_from_gui_filter = bool(d.get("hide_from_gui_filter", False))
+        self.hide_from_gui_filter = d.get("hide_from_gui_filter")
         self.link_format = d.get("link_format")
         self.genesummary = d.get("genesummary", False)
         self.table = d.get("table", False)
         self.level = d.get("level")
         self.fhir = d.get("fhir")
+
+    def change_name(self, name: str):
+        self.name = name
+        self.d["name"] = name
 
     def from_row(self, row, order=None):
         from json import loads

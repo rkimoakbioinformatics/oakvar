@@ -1809,7 +1809,7 @@ class Runner(object):
             response_t = self.log_time_of_func(reporter.run, work=module_name)
             output_fns = None
             response_type = type(response_t)
-            if response_type == list:
+            if response_type == list and response_t:
                 output_fns = " ".join(response_t)
             elif response_type == str:
                 output_fns = response_t

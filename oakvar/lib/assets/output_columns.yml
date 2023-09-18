@@ -9,17 +9,17 @@ variant:
       type: string
       width: 50
       category: single
-      filterable: True
+      filterable: true
     - name: pos
       title: Position
       type: int
       width: 80
-      filterable: True
+      filterable: true
     - name: end_pos
       title: End Position
       type: int
       width: 80
-      filterable: True
+      filterable: true
     - name: ref_base
       title: Ref Base
       type: string
