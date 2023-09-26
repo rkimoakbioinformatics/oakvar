@@ -487,6 +487,8 @@ class MasterConverter(object):
                         + f"{self.converters[converter.format_name].name}."
                     )
                 continue
+        if "csv" in self.converters and "cravat" in self.converters:
+            del self.converters["cravat"]
         self.available_input_formats = list(self.converters.keys())
 
     def collect_converter_by_input(self):

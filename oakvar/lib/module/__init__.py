@@ -687,7 +687,7 @@ def install_module(
     from ..store import get_module_urls
     from ..store.db import remote_module_data_version
     from ..store.db import summary_col_value
-    from .cache import get_module_cache
+    from .cache import get_module_cache # type: ignore
     from .remote import get_conf
     from .local import get_module_data_version as local_module_data_version
     from ..system import get_modules_dir

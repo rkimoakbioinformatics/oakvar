@@ -1,31 +1,39 @@
+from typing import Dict
+from typing import Union
+from pathlib import Path
 from collections.abc import MutableMapping
+from .local import LocalModule
 
 
 class LocalModuleCache(MutableMapping):
     def __init__(self, *args, **kwargs):
         self.version = None
-        self.store = dict()
+        self.store: Dict[str, LocalModule] = dict()
         self.update(dict(*args, **kwargs))  # use the free update to set keys
 
-    def __getitem__(self, key):
-        from pathlib import Path
-        from .local import LocalModule
-
+    def __getitem__(self, key: Union[str, Path]):
+        if isinstance(key, Path):
+            key = str(key)
         if key not in self.store:
             raise KeyError(key)
-        if not isinstance(self.store[key], LocalModule):
-            self.store[key] = LocalModule(Path(self.store[key]))
         return self.store[key]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: Union[str, Path], value: Union[str, Path, LocalModule]):
         from os.path import isdir
+        from pathlib import Path
         from .local import LocalModule
 
         if not (isinstance(value, LocalModule) or isdir(value)):
             raise ValueError(value)
+        if isinstance(key, Path):
+            key = str(key)
+        if isinstance(value, str):
+            value = LocalModule(Path(value))
+        elif isinstance(value, Path):
+            value = LocalModule(value)
         self.store[key] = value
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str):
         del self.store[key]
 
     def __iter__(self):
@@ -112,7 +120,7 @@ class ModuleCache(object):
         return readme
 
 
-def get_module_cache(fresh=False):
+def get_module_cache(fresh=False) -> ModuleCache:
     global module_cache
     if not module_cache or fresh:
         module_cache = ModuleCache()

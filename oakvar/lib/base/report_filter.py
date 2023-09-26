@@ -150,7 +150,7 @@ class ReportFilter:
     @classmethod
     async def create(
         cls,
-        dbpath: Optional[str] = None,
+        dbpath: str = "",
         filterpath: Optional[str] = None,
         filtername: Optional[str] = None,
         filterstring: Optional[str] = None,
@@ -182,7 +182,7 @@ class ReportFilter:
 
     def __init__(
         self,
-        dbpath=None,
+        dbpath="",
         filterpath=None,
         filtername=None,
         filterstring=None,
@@ -553,6 +553,8 @@ class ReportFilter:
                 rules.remove(rule)
 
     async def verify_filter_module(self, cursor):
+        if not self.filter:
+            return []
         if "variant" not in self.filter:
             return []
         wrong_modules = set()

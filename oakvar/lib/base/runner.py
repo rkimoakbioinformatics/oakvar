@@ -479,7 +479,8 @@ class Runner(object):
                 inp = self.inputs[input_no]
                 if is_url(str(inp)):
                     fpath = self.download_url_input(inp)
-                    self.inputs[input_no] = fpath
+                    if fpath:
+                        self.inputs[input_no] = Path(fpath)
                 elif not self.first_non_url_input:
                     self.first_non_url_input = inp
         else:
@@ -1574,6 +1575,10 @@ class Runner(object):
                 "serveradmindb": self.serveradmindb,
             }
             module_cls = load_class(module.script_path, "Preparer")
+            if not module_cls:
+                if self.error_logger:
+                    self.error_logger.error(f"{module_name} does not exist. Skipping the module.")
+                continue
             module_ins = module_cls(kwargs)
             await self.log_time_of_func(module_ins.run, work=module_name)
 
@@ -1838,6 +1843,10 @@ class Runner(object):
             post_agg_cls = load_class(module.script_path, "PostAggregator")
             if not post_agg_cls:
                 post_agg_cls = load_class(module.script_path, "CravatPostAggregator")
+            if not post_agg_cls:
+                if self.error_logger:
+                    self.error_logger.error(f"{module_name} does not exist. Skipping the module.")
+                continue
             post_agg = post_agg_cls(**arg_dict)
             announce_module(module, serveradmindb=self.serveradmindb)
             stime = time()
@@ -1856,6 +1865,7 @@ class Runner(object):
         from ..util.util import load_class
         from ..util.run import update_status
         from ..base import vcf2vcf
+        from ..exceptions import ModuleNotExist
 
         if (
             self.conf is None
@@ -1881,6 +1891,8 @@ class Runner(object):
         arg_dict["annotator_names"] = self.annotator_names
         arg_dict["run_name"] = self.run_name[run_no]
         Module = load_class(module.script_path, "VCF2VCF")
+        if not Module:
+            raise ModuleNotExist("vcf2vcf", "VCF2VCF module does not exist.")
         m = Module(**arg_dict)
         stime = time()
         response_t = m.run()
@@ -1946,7 +1958,7 @@ class Runner(object):
             arg_dict["run_name"] = run_name
             arg_dict["module_name"] = module_name
             arg_dict[MODULE_OPTIONS_KEY] = self.run_conf.get(module_name, {})
-            Reporter: Type[BaseReporter] = load_class(module.script_path, "Reporter")
+            Reporter: Type[BaseReporter] = load_class(module.script_path, "Reporter") # type: ignore
             reporter = Reporter(**arg_dict)
             response_t = await self.log_time_of_func(reporter.run, work=module_name)
             output_fns = None

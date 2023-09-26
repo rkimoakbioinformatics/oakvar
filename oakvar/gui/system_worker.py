@@ -107,14 +107,14 @@ class InstallProgressMpDict(InstallProgressHandler):
         from time import time
         from .consts import SYSTEM_STATE_INSTALL_KEY
 
-        module_data = self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][
+        module_data = self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][ # type: ignore
             self.module_name
         ]
         module_data["cur_size"] = 0
         module_data["total_size"] = 0
         if update_time:
             module_data["update_time"] = time()
-        self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][
+        self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][ # type: ignore
             self.module_name
         ] = module_data
 
@@ -149,14 +149,14 @@ class InstallProgressMpDict(InstallProgressHandler):
 
         self.cur_stage = stage
         msg = self._stage_msg(self.cur_stage)
-        if self.module_name not in self.system_worker_state[SYSTEM_STATE_INSTALL_KEY]:
+        if self.module_name not in self.system_worker_state[SYSTEM_STATE_INSTALL_KEY]: # type: ignore
             return
-        module_data = self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][
+        module_data = self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][ # type: ignore
             self.module_name
         ]
         module_data["stage"] = [self.cur_stage]
         module_data["kill_signal"] = False
-        self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][
+        self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][ # type: ignore
             self.module_name
         ] = module_data
         self._reset_progress(update_time=True)

@@ -13,6 +13,7 @@ from .lib.base.report_filter import ReportFilter
 from .lib.base.reporter import BaseReporter
 from .lib.base.commonmodule import BaseCommonModule
 from .lib.base.vcf2vcf import VCF2VCF
+from .lib.base.app import BaseApp
 from .lib.util.inout import FileReader
 from .lib.util.inout import FileWriter
 from .lib.util import inout
@@ -116,10 +117,10 @@ def get_module(module_name, module_type: str = ""):
     if module_info is not None:
         script_path = module_info.script_path
         ModuleClass = load_class(script_path)
-        ModuleClass.script_path = script_path
-        ModuleClass.module_name = module_name
-        ModuleClass.module_dir = dirname(script_path)
-        ModuleClass.conf = module_conf
+        ModuleClass.script_path = script_path # type: ignore
+        ModuleClass.module_name = module_name # type: ignore
+        ModuleClass.module_dir = dirname(script_path) # type: ignore
+        ModuleClass.conf = module_conf # type: ignore
     return ModuleClass
 
 
@@ -141,6 +142,7 @@ _ = (
     or Runner
     or FileReader
     or FileWriter
+    or BaseApp
 )
 _ = CravatFilter or Cravat
 _ = cli or wgs

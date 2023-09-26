@@ -97,6 +97,8 @@ class BasePostAggregator(object):
                 shortcolname = colname.split("__")[1]
                 json_data = output_dict.get(shortcolname, None)
                 delflag = json_data is not None
+            else:
+                shortcolname = colname
             if json_data:
                 if type(json_data) is list:
                     for rowidx in range(len(json_data)):

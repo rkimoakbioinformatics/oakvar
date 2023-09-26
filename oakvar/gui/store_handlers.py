@@ -8,7 +8,7 @@ class StoreHandlers:
         manager=None,
         mu=None,
         local_modules_changed=None,
-        system_worker_state=None,
+        system_worker_state={},
         system_queue=None,
         logger=None,
     ):
@@ -280,12 +280,12 @@ class StoreHandlers:
         from .consts import SYSTEM_STATE_INSTALL_QUEUE_KEY
 
         to_del = None
-        for i in range(len(self.system_queue)):
-            if self.system_queue[i].get("module") == module_name:
+        for i in range(len(self.system_queue)): # type: ignore
+            if self.system_queue[i].get("module") == module_name: # type: ignore
                 to_del = i
                 break
         if to_del is not None:
-            self.system_queue.pop(to_del)
+            self.system_queue.pop(to_del) # type: ignore
         if module_name in self.system_worker_state[SYSTEM_STATE_INSTALL_QUEUE_KEY]:
             self.system_worker_state[SYSTEM_STATE_INSTALL_QUEUE_KEY].remove(module_name)
         if module_name in self.system_worker_state[SYSTEM_STATE_INSTALL_KEY]:
