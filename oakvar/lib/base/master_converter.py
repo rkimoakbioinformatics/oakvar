@@ -245,6 +245,7 @@ class MasterConverter(object):
         self,
         inputs: List[str] = [],
         input_format: Optional[str] = None,
+        converter_module: Optional[str] = None,
         name: Optional[str] = None,
         output_dir: Optional[str] = None,
         genome: Optional[str] = None,
@@ -301,6 +302,7 @@ class MasterConverter(object):
         self.total_num_duplicate_variants: int = 0
         self.skip_variant_deduplication: bool = skip_variant_deduplication
         self.input_formats: List[str] = []
+        self.converter_module: Optional[str] = converter_module
         self.genome_assemblies: List[str] = []
         self.base_re = compile("^[ATGC]+|[-]+$")
         self.last_var: str = ""
@@ -436,57 +438,79 @@ class MasterConverter(object):
         self.error_logger = getLogger("err.converter")
 
     def collect_converters(self):
+        from pathlib import Path
         from oakvar.lib.module.local import get_local_module_infos_of_type
         from oakvar.lib.util.util import load_class
+        from oakvar.lib.exceptions import ModuleLoadingError
 
-        for module_name, module_info in get_local_module_infos_of_type(
-            "converter"
-        ).items():
-            try:
-                cls = load_class(module_info.script_path)
-                if cls is None:
-                    continue
-                if self.module_options is not None:
-                    module_conf = self.module_options.get(module_name)
-                else:
-                    module_conf = None
-                converter = cls(ignore_sample=self.ignore_sample, module_conf=module_conf)
-            except Exception:
-                if self.logger:
-                    self.logger.error(f"Skipping {module_name} as it could not be loaded.")
-                continue
-            # TODO: backward compatibility
-            converter.output_dir = None
-            converter.run_name = None
-            converter.module_name = module_name
-            converter.name = module_info.name
-            converter.version = module_info.version
-            converter.conf = module_info.conf
-            converter.script_path = module_info.script_path
-            format_name = module_info.conf.get("format_name")
-            # end of backward compatibility
-            if format_name:
-                converter.format_name = format_name
-            elif not hasattr(converter, "format_name"):
-                converter.format_name = module_name.split("-")[0]
-            if not converter.format_name:
-                if self.logger:
-                    self.logger.info(
-                        f"Skipping {module_info.name} as it does not "
-                        + "have format_name defined."
-                    )
-                continue
-            converter.module_name = module_info.name
-            if converter.format_name not in self.converters:
-                self.converters[converter.format_name] = converter
+        if self.converter_module:
+            module_path: Path = Path(self.converter_module)
+            module_name = module_path.name
+            script_path: str = str(module_path / f"{module_name}.py")
+            cls = load_class(script_path)
+            if cls is None:
+                raise ModuleLoadingError(module_name=module_name)
+            if self.module_options is not None:
+                module_conf = self.module_options.get(module_name)
             else:
-                if self.outer:
-                    self.outer.write(
-                        f"{module_info.name} is skipped because "
-                        + f"{converter.format_name} is already handled by "
-                        + f"{self.converters[converter.format_name].name}."
-                    )
-                continue
+                module_conf = None
+            converter = cls(ignore_sample=self.ignore_sample, module_conf=module_conf)
+            converter.module_name = module_name
+            converter.format_name = module_name.split("-")[0]
+            converter.name = module_name
+            #converter.version = module_info.version
+            #converter.conf = module_info.conf
+            converter.script_path = script_path
+            self.converters[module_name] = converter
+        else:
+            for module_name, module_info in get_local_module_infos_of_type(
+                "converter"
+            ).items():
+                try:
+                    cls = load_class(module_info.script_path)
+                    if cls is None:
+                        continue
+                    if self.module_options is not None:
+                        module_conf = self.module_options.get(module_name)
+                    else:
+                        module_conf = None
+                    converter = cls(ignore_sample=self.ignore_sample, module_conf=module_conf)
+                except Exception:
+                    if self.logger:
+                        self.logger.error(f"Skipping {module_name} as it could not be loaded.")
+                    continue
+                # TODO: backward compatibility
+                converter.output_dir = None
+                converter.run_name = None
+                converter.module_name = module_name
+                converter.name = module_info.name
+                converter.version = module_info.version
+                converter.conf = module_info.conf
+                converter.script_path = module_info.script_path
+                format_name = module_info.conf.get("format_name")
+                # end of backward compatibility
+                if format_name:
+                    converter.format_name = format_name
+                elif not hasattr(converter, "format_name"):
+                    converter.format_name = module_name.split("-")[0]
+                if not converter.format_name:
+                    if self.logger:
+                        self.logger.info(
+                            f"Skipping {module_info.name} as it does not "
+                            + "have format_name defined."
+                        )
+                    continue
+                converter.module_name = module_info.name
+                if converter.format_name not in self.converters:
+                    self.converters[converter.format_name] = converter
+                else:
+                    if self.outer:
+                        self.outer.write(
+                            f"{module_info.name} is skipped because "
+                            + f"{converter.format_name} is already handled by "
+                            + f"{self.converters[converter.format_name].name}."
+                        )
+                    continue
         if "csv" in self.converters and "cravat" in self.converters:
             del self.converters["cravat"]
         self.available_input_formats = list(self.converters.keys())
@@ -516,8 +540,13 @@ class MasterConverter(object):
             raise InvalidInputFormat(self.format)
 
     def get_converter_for_input_file(self, input_path) -> Optional[BaseConverter]:
+        from pathlib import Path
+
         converter: Optional[BaseConverter] = None
-        if self.format:
+        if self.converter_module:
+            module_name: str = Path(self.converter_module).name
+            converter = self.converters[module_name]
+        elif self.format:
             if self.format in self.converters:
                 converter = self.converters[self.format]
         else:

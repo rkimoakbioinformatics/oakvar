@@ -64,6 +64,7 @@ def run(
     loglevel: str = "INFO",
     combine_input: bool = False,
     input_format: Optional[str] = None,
+    converter_module: Optional[str] = None,
     input_encoding: Optional[str] = None,
     ignore_sample: bool = False,
     uid: Optional[str] = None,
@@ -91,6 +92,7 @@ def run(
         skip (List[str]): Skip the specified steps. Options are `converter`, `mapper`, `annotator`, `aggregator`, `postaggregator`, and `reporter`.
         genome (Optional[str]): Genome assembly of all input files. If not given, genome assembly will be figured out or default to what is defined in lib/system/consts.py:default_assembly.
         input_encoding (Optional[str]): input_encoding
+        converter_module (Optional[str]): converter module folder path
         mp (Optional[int]): Number of cores to use. Default value can be changed by `ov config system max_num_concurrent_annotators_per_job <value>`.
         primary_transcript (List[str]): primary_transcript
         modules_dir (Optional[str]): modules_dir
@@ -185,6 +187,7 @@ def run(
         loglevel=loglevel,
         combine_input=combine_input,
         input_format=input_format,
+        converter_module=converter_module,
         input_encoding=input_encoding,
         ignore_sample=ignore_sample,
         skip_variant_deduplication=skip_variant_deduplication,

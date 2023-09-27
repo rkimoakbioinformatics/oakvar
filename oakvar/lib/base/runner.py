@@ -1543,6 +1543,7 @@ class Runner(object):
             output_dir=self.output_dir[run_no],
             genome=self.args.genome,
             input_format=self.args.input_format,
+            converter_module=self.args.converter_module,
             serveradmindb=self.serveradmindb,
             ignore_sample=self.ignore_sample,
             module_options=self.run_conf,
