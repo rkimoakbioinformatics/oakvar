@@ -718,7 +718,7 @@ async def serve_runwidget(request):
         return Response(status=404)
     path = "wg" + request.match_info["module"]
     queries = request.rel_url.query
-    dbpath = await get_dbpath(request)
+    dbpath = await get_dbpath(request) or ""
     if ("dbpath" not in queries or queries["dbpath"] == "") and dbpath is not None:
         new_queries = {}
         new_queries["dbpath"] = dbpath

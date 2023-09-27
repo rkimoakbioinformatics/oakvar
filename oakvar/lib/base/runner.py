@@ -897,7 +897,8 @@ class Runner(object):
                     inp = inp_l[fileno]
                     if is_url(inp):
                         fpath = self.download_url_input(inp)
-                        self.input_paths[input_no][fileno] = fpath
+                        if fpath:
+                            self.input_paths[input_no][fileno] = fpath
                     elif not self.first_non_url_input:
                         self.first_non_url_input = inp
         else:

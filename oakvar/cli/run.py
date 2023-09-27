@@ -93,7 +93,8 @@ def add_parser_ov_run(subparsers):
             "preparer",
             "mapper",
             "annotator",
-            "aggregator" "postaggregator",
+            "aggregator",
+            "postaggregator",
             "reporter",
         ],
         default=None,
@@ -160,6 +161,11 @@ def add_parser_ov_run(subparsers):
         "--input-format",
         default=None,
         help="Force input format",
+    )
+    parser_ov_run.add_argument(
+        "--converter-module",
+        default=None,
+        help="Converter module",
     )
     parser_ov_run.add_argument(
         "--keep-temp",

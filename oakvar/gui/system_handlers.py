@@ -85,7 +85,7 @@ class SystemHandlers:
         data = {}
         data["work_type"] = SYSTEM_STATE_SETUP_KEY
         data["args"] = args
-        self.system_queue.append(data)
+        self.system_queue.append(data) # type: ignore
         return Response(status=200)
 
     async def get_modules_dir(self, _):

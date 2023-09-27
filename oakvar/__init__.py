@@ -15,6 +15,7 @@ from .lib.base.vcf2vcf import VCF2VCF
 from .lib.base.worker import Worker
 from .lib.base.worker import ParallelWorker
 from .lib.base.variant import Variant
+from .lib.base.app import BaseApp
 from .lib.util.inout import FileReader
 from .lib.util.inout import FileWriter
 from .lib.util import inout
@@ -97,6 +98,7 @@ _ = (
     or Worker
     or ParallelWorker
     or Variant
+    or BaseApp
 )
 _ = CravatFilter or Cravat
 _ = cli or wgs
