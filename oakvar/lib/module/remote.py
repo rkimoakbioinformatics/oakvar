@@ -202,14 +202,17 @@ def get_install_deps(
     from ..util.util import get_latest_version
     from . import get_pypi_dependency_from_conf
 
+    import pdb; pdb.set_trace()
     config = None
     if not module_name and not conf_path:
         return {}, []
+    if not version:
+        version = remote_module_latest_version(module_name)
+    if not version:
+        raise Exception(f"{module_name} latest version cannot be found.")
     if conf_path:
         config = get_conf(conf_path=conf_path)
     elif module_name:
-        if not version:
-            version = remote_module_latest_version(module_name)
         config = get_conf(module_name=module_name) or {}
     if not config:
         return {}, []

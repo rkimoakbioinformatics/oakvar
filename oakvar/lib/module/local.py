@@ -172,8 +172,8 @@ def get_local_module_infos(types=[], names=[]):
     return return_infos
 
 
-def get_local_module_infos_by_names(module_names: List[str]):
-    modules = {}
+def get_local_module_infos_by_names(module_names: List[str]) -> Dict[str, LocalModule]:
+    modules: Dict[str, LocalModule] = {}
     if not module_names:
         return modules
     for module_name in module_names:
