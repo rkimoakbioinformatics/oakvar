@@ -99,3 +99,7 @@ class BaseConverter(object):
         from ..util.run import get_standardized_module_option
 
         return get_standardized_module_option(v)
+
+    def addl_operation_for_unique_variant(self, *args, **kwargs):
+        _ = args
+        _ = kwargs

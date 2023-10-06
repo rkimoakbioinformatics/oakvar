@@ -22,7 +22,8 @@ class LinesData:
         self.lines_data = lines_data
 
 def handle_genotype(variant):
-    if "genotype" in variant and "." in variant["genotype"]:
+    genotype = variant.get("genotype")
+    if genotype and "." in genotype:
         variant["genotype"] = variant["genotype"].replace(".", variant["ref_base"])
 
 def flush_err_holder(err_holder: list, error_logger, force: bool=False):
@@ -817,6 +818,7 @@ class MasterConverter(object):
             self.input_fname = Path(input_path).name
             fileno = self.input_path_dict2[input_path]
             converter = self.setup_file(input_path)
+            converter_has_addl_writer: bool = hasattr(converter, "addl_operation_for_unique_variant")
             self.file_num_unique_variants = 0
             self.file_num_dup_variants: int = 0
             self.file_error_lines = 0
@@ -824,9 +826,7 @@ class MasterConverter(object):
             start_line_pos: int = 1
             start_line_no: int = start_line_pos
             round_no: int = 0
-            #stime = time.time()
             while True:
-                #ctime = time.time()
                 lines_data, immature_exit = converter.get_variant_lines(input_path, num_pool, start_line_no, batch_size)
                 args = [
                     (
