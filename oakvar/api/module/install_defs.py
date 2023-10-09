@@ -51,20 +51,16 @@ def get_modules_to_install(
         module_install_data[module_name] = {"type": ty, "version": version, "url": url}
     # dependency
     deps_install = {}
-    print(f"@ skip_dependencies={skip_dependencies}, module_install_data={module_install_data}")
     if not skip_dependencies:
         for module_name, install_data in module_install_data.items():
-            print(f"@ {module_name}: {is_url(module_name)}, {is_zip_path(module_name)}")
             if not is_url(module_name) and not is_zip_path(module_name):
                 deps, _ = get_install_deps(
                     module_name=module_name, version=install_data.get("version")
                 )
-                print(f"@ module_name={module_name}, deps={deps}")
                 deps_install.update(deps)
     to_install = module_install_data
     for module_name, version in deps_install.items():
         to_install[module_name] = {"type": "store", "version": version, "url": None}
-    print(f"@ to_install={to_install}, deps_install={deps_install}")
     return to_install
 
 

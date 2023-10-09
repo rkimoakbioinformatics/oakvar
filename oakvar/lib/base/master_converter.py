@@ -811,14 +811,14 @@ class MasterConverter(object):
         else:
             batch_size: int = 2500
             num_pool = 4
-        uid = 1
         pool = ThreadPool(num_pool)
-        unique_variants: Dict[int, List[Dict[str, Any]]] = {}
+        unique_var_dict: Dict[int, Dict[str, int]] = {}
+        unique_vars: List[Dict[str, Any]] = []
+        uid_var: int = 0
         for input_path in self.input_paths:
             self.input_fname = Path(input_path).name
             fileno = self.input_path_dict2[input_path]
             converter = self.setup_file(input_path)
-            converter_has_addl_writer: bool = hasattr(converter, "addl_operation_for_unique_variant")
             self.file_num_unique_variants = 0
             self.file_num_dup_variants: int = 0
             self.file_error_lines = 0
@@ -854,47 +854,76 @@ class MasterConverter(object):
                         if len(variants) == 0:
                             continue
                         for variant in variants:
-                            uid_var = uid + variant["var_no"]
-                            variant["uid"] = uid_var
                             variant["fileno"] = fileno
                             if self.skip_variant_deduplication:
+                                uid_var += 1
+                                variant["uid"] = uid_var
+                                if "sample" in variant:
+                                    variant["sample"]["uid"] = variant["uid"]
+                                if "extra_info" in variant:
+                                    variant["extra_info"]["uid"] = variant["uid"]
                                 self.crv_writer.write_data(variant)
                                 self.crm_writer.write_data(variant)
-                                converter.write_extra_info(variant)
-                                self.crs_writer.write_data(variant)
+                                if "sample" in variant:
+                                    variant["sample"]["uid"] = variant["uid"]
+                                    self.crs_writer.write_data(variant["sample"])
+                                else:
+                                    self.crs_writer.write_data(variant)
+                                if "extra_info" in variant:
+                                    variant["extra_info"]["uid"] = variant["uid"]
+                                    converter.write_extra_info(variant["extra_info"])
+                                else:
+                                    converter.write_extra_info(variant)
                                 crl = variant.get("crl")
                                 if crl:
                                     crl["uid"] = variant["uid"]
                                     self.crl_writer.write_data(crl)
                                 self.file_num_unique_variants += 1
-                                uid += max([v["var_no"] for v in variants]) + 1
                             else:
                                 dup_found: bool = False
                                 pos: int = variant.get("pos", 0)
-                                if pos not in unique_variants:
-                                    unique_variants[pos] = []
-                                for comp_var in unique_variants.get(pos, []):
-                                    if variant.get("chrom") == comp_var.get("chrom") and variant.get("ref_base") == comp_var.get("ref_base") and variant.get("alt_base") == comp_var.get("alt_base"):
-                                        sample_id = variant.get("sample_id")
-                                        comp_sample_id = comp_var.get("sample_id")
-                                        if sample_id:
-                                            if comp_sample_id:
-                                                sample_ids = sample_id.split(",")
-                                                comp_sample_ids = comp_sample_id.split(",")
-                                                for sid in sample_ids:
-                                                    if sid not in comp_sample_ids:
-                                                        comp_sample_id += f",{sid}"
-                                                comp_var["sample_id"] = comp_sample_id
-                                            else:
-                                                comp_sample_id = sample_id
+                                var_str: str = f'{variant["chrom"]}:{variant["pos"]}:{variant["ref_base"]}:{variant["alt_base"]}'
+                                if pos not in unique_var_dict:
+                                    unique_var_dict[pos] = {}
+                                for comp_var_str in unique_var_dict.get(pos, {}).keys():
+                                    if var_str == comp_var_str:
+                                        # crs: uid, sample_id, genotype, zygosity, tot_reads, alt_reads, af
+                                        comp_var: Dict[str, Any] = unique_vars[unique_var_dict[pos][comp_var_str]]
+                                        comp_sample: Dict[str, Any]
+                                        if "sample" in variant:
+                                            sample = variant["sample"]
+                                            comp_sample = comp_var["sample"] or {}
+                                        else:
+                                            sample = variant
+                                            comp_sample = comp_var or {}
+                                        for k in ["sample_id", "genotype", "zygosity", "tot_reads", "alt_reads", "af"]:
+                                            s = str(sample.get(k, "") or "").split(",")
+                                            cv = comp_sample.get(k, "")
+                                            if not cv:
+                                                cv = ""
+                                            c = str(cv).split(",")
+                                            c.extend(s)
+                                        variant["sample"]["uid"] = comp_var["uid"]
+                                        unique_vars.append(variant)
+                                        unique_var_dict[pos][var_str] = len(unique_vars) - 1
                                         dup_found = True
                                         break
                                 if not dup_found:
+                                    uid_var += 1
+                                    variant["uid"] = uid_var
+                                    if "sample" in variant:
+                                        variant["sample"]["uid"] = variant["uid"]
+                                    if "extra_info" in variant:
+                                        variant["extra_info"]["uid"] = variant["uid"]
                                     self.file_num_unique_variants += 1
-                                    unique_variants[pos].append(variant)
-                                    uid += max([v["var_no"] for v in variants]) + 1
+                                    unique_vars.append(variant)
+                                    unique_var_dict[pos][var_str] = len(unique_vars) - 1
                                 else:
                                     self.file_num_dup_variants += 1
+                                if "sample" in variant:
+                                    self.crs_writer.write_data(variant["sample"])
+                                else:
+                                    self.crs_writer.write_data(variant)
                     variants_l = None
                 if not immature_exit:
                     break
@@ -907,17 +936,18 @@ class MasterConverter(object):
                     status, logger=self.logger, serveradmindb=self.serveradmindb
                 )
             if not self.skip_variant_deduplication:
-                for variants in unique_variants.values():
-                    for variant in variants:
-                        self.crv_writer.write_data(variant)
-                        self.crm_writer.write_data(variant)
+                for variant in unique_vars:
+                    self.crv_writer.write_data(variant)
+                    self.crm_writer.write_data(variant)
+                    if "extra_info" in variant:
+                        variant["extra_info"]["uid"] = variant["uid"]
+                        converter.write_extra_info(variant["extra_info"])
+                    else:
                         converter.write_extra_info(variant)
-                        self.crs_writer.write_data(variant)
-                        crl = variant.get("crl")
-                        if crl:
-                            crl["uid"] = variant["uid"]
-                            self.crl_writer.write_data(crl)
-                unique_variants.clear()
+                    crl = variant.get("crl")
+                    if crl:
+                        crl["uid"] = variant["uid"]
+                        self.crl_writer.write_data(crl)
             self.logger.info(
                 f"{input_path}: number of lines successfully processed: {self.num_valid_error_lines['valid']}"
             )
