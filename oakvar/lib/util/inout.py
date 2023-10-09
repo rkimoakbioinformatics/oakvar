@@ -245,6 +245,8 @@ class FileWriter(BaseFile):
         mode="w",
         fmt="csv",
     ):
+        from sys import platform
+
         super().__init__(path)
         self.csvfmt: bool = False
         if fmt == "csv":
@@ -254,7 +256,11 @@ class FileWriter(BaseFile):
             self.wf = open(self.path, mode, newline="", encoding="utf-8")
             from csv import writer
 
-            self.csvwriter = writer(self.wf)
+            if platform == "win32":
+                lineterminator = "\r\n"
+            else:
+                lineterminator: str = "\n"
+            self.csvwriter = writer(self.wf, lineterminator=lineterminator)
             if mode == "w":
                 self.wf.write("#fmt=csv\n")
         else:
