@@ -1,4 +1,6 @@
+from typing import Any
 from typing import Optional
+from typing import Dict
 from typing import Tuple
 from typing import List
 from pathlib import Path
@@ -137,12 +139,12 @@ class RemoteModule(object):
         self.has_logo = logo_path and exists(logo_path) and getsize(logo_path) > 0
 
 
-def get_conf(module_name=None, conf_path: Optional[Path] = None) -> Optional[dict]:
+def get_conf(module_name: Optional[str]=None, conf_path: Optional[Path] = None) -> Optional[dict]:
     from ..system import get_cache_dir
     from json import load
     from oyaml import safe_load
 
-    fpath = None
+    fpath: Optional[Path] = None
     if not module_name and not conf_path:
         return fpath
     if conf_path and conf_path.exists():
@@ -152,17 +154,19 @@ def get_conf(module_name=None, conf_path: Optional[Path] = None) -> Optional[dic
         return None
     if not fpath and module_name:
         for store in ["ov", "oc"]:
-            tmp_fpath = cache_dir / store / (module_name + ".json")
+            tmp_fpath: Path = cache_dir / store / (module_name + ".json")
             if tmp_fpath.exists():
                 fpath = tmp_fpath
                 break
     if fpath and fpath.exists():
         with open(fpath) as f:
-            conf = None
+            conf: Optional[Dict[str, Any]] = None
             if fpath.suffix == ".yml":
                 conf = safe_load(f)
             elif fpath.suffix == ".json":
                 conf = load(f)
+            if conf:
+                conf["name"] = fpath.stem
             return conf
     return None
 
@@ -205,14 +209,22 @@ def get_install_deps(
     config = None
     if not module_name and not conf_path:
         return {}, []
+    if not version:
+        version = remote_module_latest_version(module_name)
     if conf_path:
         config = get_conf(conf_path=conf_path)
     elif module_name:
-        if not version:
-            version = remote_module_latest_version(module_name)
         config = get_conf(module_name=module_name) or {}
     if not config:
         return {}, []
+    if not module_name:
+        module_name = config.get("name")
+    if not version:
+        version = config.get("version")
+    if not module_name:
+        raise Exception(f"{module_name} cannot be found.")
+    if not version:
+        raise Exception(f"latest version of {module_name} cannot be found.")
     req_list = config.get("requires", []) or []
     deps = {}
     for req_string in req_list:

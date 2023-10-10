@@ -787,10 +787,11 @@ class Runner(object):
         self.set_mapper()
         self.set_annotators()
         self.set_postaggregators()
+        self.set_reporters()
+        self.add_required_modules_for_reporters()
         self.add_required_modules_for_postaggregators()
         self.sort_annotators()
         self.sort_postaggregators()
-        self.set_reporters()
         self.set_start_end_levels()
         self.set_misc_variables()
 
@@ -1187,6 +1188,31 @@ class Runner(object):
             module_name in self.annotator_names
             or module_name in self.postaggregator_names
         )
+
+    def add_required_modules_for_reporters(self):
+        from ..module.local import get_local_module_info_by_name
+        from ..exceptions import ModuleNotExist
+
+        for reporter in self.reporters.values():
+            required_module_names = reporter.conf.get("requires", [])
+            for module_name in required_module_names:
+                if not self.is_in_annotators_or_postaggregators(module_name):
+                    module = get_local_module_info_by_name(module_name)
+                    if not module:
+                        msg = (
+                            f"{module_name} is required by {reporter.name}"
+                            + ", but does not exist."
+                        )
+                        raise ModuleNotExist(module_name, msg=msg)
+                    if module.type == "annotator" and self.annotator_names is not None:
+                        self.annotator_names.append(module_name)
+                        self.annotators[module_name] = module
+                    elif (
+                        module.type == "postaggregator"
+                        and self.postaggregator_names is not None
+                    ):
+                        self.postaggregator_names.append(module_name)
+                        self.postaggregators[module_name] = module
 
     def add_required_modules_for_postaggregators(self):
         from ..module.local import get_local_module_info_by_name
