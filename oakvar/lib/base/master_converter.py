@@ -26,20 +26,25 @@ def handle_genotype(variant):
     if genotype and "." in genotype:
         variant["genotype"] = variant["genotype"].replace(".", variant["ref_base"])
 
-def flush_err_holder(err_holder: list, error_logger, force: bool=False):
+def flush_err_holder(err_holders: List[List[str]], core_num: int, error_logger, force: bool=False):
+    err_holder: List[str] = err_holders[core_num]
     if len(err_holder) > 1000 or force:
         for err_line in err_holder:
             error_logger.error(err_line)
         err_holder.clear()
 
-def _log_conversion_error(logger, error_logger, input_path: str, line_no: int, e, unique_excs: dict, err_holder: list):
+def _log_conversion_error(logger, error_logger, input_path: str, line_no: int, e, unique_excs: dict, err_holders: List[List[str]], core_num=None):
     from traceback import format_exc
     from oakvar.lib.exceptions import ExpectedException
     from oakvar.lib.exceptions import NoAlternateAllele
 
+    if core_num is None:
+        raise Exception(f"core_num is None.")
     if isinstance(e, NoAlternateAllele):
         err_str = str(e)
     if isinstance(e, ExpectedException):
+        err_str = str(e)
+    if getattr(e, "traceback", False) is not True:
         err_str = str(e)
     else:
         err_str = format_exc().rstrip()
@@ -47,11 +52,11 @@ def _log_conversion_error(logger, error_logger, input_path: str, line_no: int, e
         err_no = len(unique_excs)
         unique_excs[err_str] = err_no
         logger.error(f"Error [{err_no}]: {input_path}: {err_str}")
-        err_holder.append(f"{err_no}:{line_no}\t{str(e)}")
+        err_holders[core_num].append(f"{err_no}:{line_no}\t{str(e)}")
     else:
         err_no = unique_excs[err_str]
-        err_holder.append(f"{err_no}:{line_no}\t{str(e)}")
-    flush_err_holder(err_holder, error_logger)
+        err_holders[core_num].append(f"{err_no}:{line_no}\t{str(e)}")
+    flush_err_holder(err_holders, core_num, error_logger)
 
 def is_chrM(wdict):
     return wdict["chrom"] == "chrM"
@@ -183,14 +188,12 @@ def handle_variant(
     variant["crl"] = crl_data
 
 def handle_converted_variants(
-        variants: List[Dict[str, Any]], do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, logger, error_logger, input_path: str, unique_excs: dict, err_holder: list, line_no: int
+        variants: List[Dict[str, Any]], do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, logger, error_logger, input_path: str, unique_excs: dict, err_holders: List[List[str]], line_no: int, core_num: int
 ) -> Tuple[List[Dict[str, Any]], bool]:
-    from oakvar.lib.exceptions import IgnoredVariant
-
     if variants is BaseConverter.IGNORE:
         return [], False
     if not variants:
-        raise IgnoredVariant("No valid alternate allele was found in any samples.")
+        return [], False
     variant_l: List[Dict[str, Any]] = []
     error_occurred: bool = False
     for variant in variants:
@@ -198,7 +201,7 @@ def handle_converted_variants(
             handle_variant(variant, do_liftover, do_liftover_chrM, lifter, wgs_reader, line_no)
             variant_l.append(variant)
         except Exception as e:
-            _log_conversion_error(logger, error_logger, input_path, line_no, e, unique_excs, err_holder)
+            _log_conversion_error(logger, error_logger, input_path, line_no, e, unique_excs, err_holders, core_num=core_num)
             error_occurred = True
             continue
     return variant_l, error_occurred
@@ -215,7 +218,7 @@ def gather_variantss(
         error_logger, 
         input_path: str, 
         unique_excs: dict, 
-        err_holder: list,
+        err_holders: List[List[str]],
         num_valid_error_lines: Dict[str, int],
 ) -> List[List[Dict[str, Any]]]:
     variants_l: List[List[Dict[str, Any]]] = []
@@ -223,7 +226,7 @@ def gather_variantss(
     for (line_no, line) in line_data:
         try:
             variants = converter.convert_line(line)
-            variants_datas, error_occurred = handle_converted_variants(variants, do_liftover, do_liftover_chrM, lifter, wgs_reader, logger, error_logger, input_path, unique_excs, err_holder, line_no)
+            variants_datas, error_occurred = handle_converted_variants(variants, do_liftover, do_liftover_chrM, lifter, wgs_reader, logger, error_logger, input_path, unique_excs, err_holders, line_no, core_num)
             if error_occurred:
                 num_valid_error_lines["error"] += 1
             else:
@@ -234,7 +237,7 @@ def gather_variantss(
         except KeyboardInterrupt:
             raise
         except Exception as e:
-            _log_conversion_error(logger, error_logger, input_path, line_no, e, unique_excs, err_holder)
+            _log_conversion_error(logger, error_logger, input_path, line_no, e, unique_excs, err_holders, core_num=core_num)
             num_valid_error_lines["error"] += 1
     return variants_l
 
@@ -242,6 +245,8 @@ def gather_variantss_wrapper(args):
     return gather_variantss(*args)
 
 class MasterConverter(object):
+    DEFAULT_MP: int = 4
+
     def __init__(
         self,
         inputs: List[str] = [],
@@ -256,7 +261,7 @@ class MasterConverter(object):
         input_encoding=None,
         ignore_sample: bool=False,
         skip_variant_deduplication: bool=False,
-        mp: int=1,
+        mp: int=DEFAULT_MP,
         outer=None,
     ):
         from re import compile
@@ -268,8 +273,7 @@ class MasterConverter(object):
         self.crs_writer = None
         self.crm_writer = None
         self.crl_writer = None
-        self.converters = {}
-        self.available_input_formats = []
+        self.converter_paths: Dict[str, str] = {}
         self.input_paths = None
         self.input_dir = None
         self.input_path_dict = {}
@@ -278,7 +282,7 @@ class MasterConverter(object):
         self.output_base_fname: Optional[str] = None
         self.error_logger = None
         self.unique_excs: Dict[str, int] = {}
-        self.err_holder = []
+        self.err_holders: List[List[str]] = []
         self.wpath = None
         self.crm_path = None
         self.crs_path = None
@@ -288,7 +292,7 @@ class MasterConverter(object):
         self.lifter = None
         self.module_options = None
         self.given_input_assembly: Optional[str] = None
-        self.converter_by_input_path: Dict[str, Optional[BaseConverter]] = {}
+        self.converter_name_by_input_path: Dict[str, str] = {}
         self.extra_output_columns = []
         self.file_num_unique_variants: int = 0
         self.file_num_dup_variants: int = 0
@@ -335,7 +339,7 @@ class MasterConverter(object):
         self.setup_logger()
         self.wgs_reader = get_wgs_reader(assembly="hg38")
         self.time_error_written: float = 0
-        self.mp = mp
+        self.mp = mp or self.DEFAULT_MP
 
     def get_genome_assembly(self, converter) -> str:
         from oakvar.lib.system.consts import default_assembly_key
@@ -425,10 +429,9 @@ class MasterConverter(object):
             self.input_file_handles[input_path] = encoding
 
     def setup(self):
-        self.collect_converters()
+        self.collect_converter_paths()
         self.collect_input_file_handles()
-        self.check_input_format()
-        self.collect_converter_by_input()
+        self.collect_converter_name_by_input()
         self.collect_extra_output_columns()
         self.open_output_files()
 
@@ -438,16 +441,13 @@ class MasterConverter(object):
         self.logger = getLogger("oakvar.converter")
         self.error_logger = getLogger("err.converter")
 
-    def collect_converters(self):
-        from pathlib import Path
-        from oakvar.lib.module.local import get_local_module_infos_of_type
+    def get_converter(self, module_name: str) -> Optional[BaseConverter]:
         from oakvar.lib.util.util import load_class
+        from oakvar.lib.module.local import get_local_module_info
         from oakvar.lib.exceptions import ModuleLoadingError
 
-        if self.converter_module:
-            module_path: Path = Path(self.converter_module)
-            module_name = module_path.name
-            script_path: str = str(module_path / f"{module_name}.py")
+        try:
+            script_path: str = self.converter_paths[module_name]
             cls = load_class(script_path)
             if cls is None:
                 raise ModuleLoadingError(module_name=module_name)
@@ -455,76 +455,72 @@ class MasterConverter(object):
                 module_conf = self.module_options.get(module_name)
             else:
                 module_conf = None
+            module_info = get_local_module_info(script_path)
+            if not module_info:
+                if self.logger:
+                    self.logger.error(f"{module_name} yml file is missing or bad.")
+                return None
             converter = cls(ignore_sample=self.ignore_sample, module_conf=module_conf)
+            # TODO: backward compatibility
+            converter.output_dir = None
+            converter.run_name = None
             converter.module_name = module_name
-            converter.format_name = module_name.split("-")[0]
-            converter.name = module_name
-            #converter.version = module_info.version
-            #converter.conf = module_info.conf
+            converter.name = module_info.name
+            converter.version = module_info.version
+            converter.conf = module_info.conf
+            # end of backward compatibility
+            if not hasattr(converter, "format_name"):
+                format_name = module_info.conf.get("format_name")
+                if format_name:
+                    converter.format_name = format_name
+                else:
+                    converter.format_name = module_name.split("-")[0]
+            if not converter.format_name:
+                if self.logger:
+                    self.logger.error(f"{module_name} does not format_name.")
+                return None
             converter.script_path = script_path
-            self.converters[module_name] = converter
+            return converter
+        except Exception:
+            if self.logger:
+                self.logger.error(f"{module_name} could not be loaded.")
+            return None
+
+    def collect_converter_paths(self):
+        from pathlib import Path
+        from oakvar.lib.module.local import get_local_module_infos_of_type
+
+        if self.converter_module:
+            module_path: Path = Path(self.converter_module)
+            module_name = module_path.stem
+            if module_name in ["cravat-converter", "oldcravat-converter"]:
+                if self.logger:
+                    self.logger.warn(f"{module_name} is deprecated. Please install and use csv-converter module.")
+            script_path: str = str(module_path / f"{module_name}.py")
+            self.converter_paths[module_name] = script_path
         else:
             for module_name, module_info in get_local_module_infos_of_type(
                 "converter"
             ).items():
-                try:
-                    cls = load_class(module_info.script_path)
-                    if cls is None:
-                        continue
-                    if self.module_options is not None:
-                        module_conf = self.module_options.get(module_name)
-                    else:
-                        module_conf = None
-                    converter = cls(ignore_sample=self.ignore_sample, module_conf=module_conf)
-                except Exception:
+                module_name = module_info.name
+                if module_name in ["cravat-converter", "oldcravat-converter"]:
                     if self.logger:
-                        self.logger.error(f"Skipping {module_name} as it could not be loaded.")
+                        self.logger.warn(f"{module_name} is deprecated. Please install and use csv-converter module.")
                     continue
-                # TODO: backward compatibility
-                converter.output_dir = None
-                converter.run_name = None
-                converter.module_name = module_name
-                converter.name = module_info.name
-                converter.version = module_info.version
-                converter.conf = module_info.conf
-                converter.script_path = module_info.script_path
-                format_name = module_info.conf.get("format_name")
-                # end of backward compatibility
-                if format_name:
-                    converter.format_name = format_name
-                elif not hasattr(converter, "format_name"):
-                    converter.format_name = module_name.split("-")[0]
-                if not converter.format_name:
-                    if self.logger:
-                        self.logger.info(
-                            f"Skipping {module_info.name} as it does not "
-                            + "have format_name defined."
-                        )
-                    continue
-                converter.module_name = module_info.name
-                if converter.format_name not in self.converters:
-                    self.converters[converter.format_name] = converter
-                else:
-                    if self.outer:
-                        self.outer.write(
-                            f"{module_info.name} is skipped because "
-                            + f"{converter.format_name} is already handled by "
-                            + f"{self.converters[converter.format_name].name}."
-                        )
-                    continue
-        if "csv" in self.converters and "cravat" in self.converters:
-            del self.converters["cravat"]
-        self.available_input_formats = list(self.converters.keys())
+                self.converter_paths[module_name] = module_info.script_path
 
-    def collect_converter_by_input(self):
+    def collect_converter_name_by_input(self):
         if not self.input_paths:
             return
         for input_path in self.input_paths:
-            converter = self.get_converter_for_input_file(input_path)
-            self.converter_by_input_path[input_path] = converter
+            converter_name = self.get_converter_name_for_input_file(input_path)
+            self.converter_name_by_input_path[input_path] = converter_name
 
     def collect_extra_output_columns(self):
-        for converter in self.converter_by_input_path.values():
+        for converter_name in self.converter_name_by_input_path.values():
+            if not converter_name:
+                continue
+            converter = self.get_converter(converter_name)
             if not converter:
                 continue
             if converter.conf:
@@ -534,40 +530,37 @@ class MasterConverter(object):
                 for col in extra_output_columns:
                     self.extra_output_columns.append(col)
 
-    def check_input_format(self):
-        from oakvar.lib.exceptions import InvalidInputFormat
-
-        if self.format and self.format not in self.available_input_formats:
-            raise InvalidInputFormat(self.format)
-
-    def get_converter_for_input_file(self, input_path) -> Optional[BaseConverter]:
+    def get_converter_name_for_input_file(self, input_path) -> str:
         from pathlib import Path
 
-        converter: Optional[BaseConverter] = None
+        converter_name: str = ""
         if self.converter_module:
             module_name: str = Path(self.converter_module).name
-            converter = self.converters[module_name]
+            converter_name = self.converter_paths[module_name]
         elif self.format:
-            if self.format in self.converters:
-                converter = self.converters[self.format]
+            converter_name = f"{self.format}-converter"
         else:
-            for check_converter in self.converters.values():
+            for module_name in self.converter_paths.keys():
                 try:
-                    check_success = check_converter.check_format(input_path)
+                    converter = self.get_converter(module_name)
+                    if not converter:
+                        if self.logger:
+                            self.logger.error(f"{module_name} could not be loaded.")
+                        continue
+                    check_success = converter.check_format(input_path)
                 except Exception:
                     import traceback
 
-                    if self.error_logger:
-                        self.error_logger.error(traceback.format_exc())
+                    if self.logger:
+                        self.logger.error(traceback.format_exc())
                     check_success = False
                 if check_success:
-                    converter = check_converter
+                    converter_name = module_name
                     break
-        if converter:
+        if converter_name:
             if self.logger:
-                self.logger.info(f"Using {converter.module_name} for {input_path}")
-            return converter
-        return None
+                self.logger.info(f"Using {converter_name} for {input_path}")
+        return converter_name
 
     def set_converter_properties(self, converter):
         from oakvar.lib.exceptions import SetupError
@@ -678,32 +671,39 @@ class MasterConverter(object):
         self.logger.info("input format: %s" % converter.format_name)
         self.logger.info(f"genome_assembly: {genome_assembly}")
 
-    def setup_file(self, input_path: str) -> BaseConverter:
+    def setup_file(self, input_path: str) -> List[BaseConverter]:
         from logging import getLogger
         from oakvar.lib.util.util import log_module
         from oakvar.lib.exceptions import NoConverterFound
 
         encoding = self.input_file_handles[input_path]
-        converter = self.converter_by_input_path[input_path]
-        if not converter:
+        converter_name = self.converter_name_by_input_path[input_path]
+        if not converter_name:
             raise NoConverterFound(input_path)
-        if not converter.module_name or not converter.format_name:
-            raise NoConverterFound(input_path)
-        self.input_formats.append(converter.format_name)
-        self.fileno += 1
-        self.set_converter_properties(converter)
-        log_module(converter, self.logger)
-        self.error_logger = getLogger("err." + converter.module_name)
-        converter.input_path = input_path
-        converter.input_paths = self.input_paths
-        converter.setup(input_path, encoding=encoding)
-        genome_assembly = self.get_genome_assembly(converter)
-        self.genome_assemblies.append(genome_assembly)
-        self.log_input_and_genome_assembly(input_path, genome_assembly, converter)
-        self.set_do_liftover(genome_assembly, converter, input_path)
-        if self.do_liftover or self.do_liftover_chrM:
-            self.setup_lifter(genome_assembly)
-        return converter
+        converters: List[BaseConverter] = []
+        for _ in range(self.mp):
+            converter = self.get_converter(converter_name)
+            if not converter:
+                raise NoConverterFound(input_path)
+            if not converter.module_name or not converter.format_name:
+                raise NoConverterFound(input_path)
+            if converter.format_name not in self.input_formats:
+                self.input_formats.append(converter.format_name)
+            self.fileno += 1
+            self.set_converter_properties(converter)
+            log_module(converter, self.logger)
+            self.error_logger = getLogger("err." + converter.module_name) # type: ignore
+            converter.input_path = input_path
+            converter.input_paths = self.input_paths
+            converter.setup(input_path, encoding=encoding)
+            genome_assembly = self.get_genome_assembly(converter)
+            self.genome_assemblies.append(genome_assembly)
+            self.log_input_and_genome_assembly(input_path, genome_assembly, converter)
+            self.set_do_liftover(genome_assembly, converter, input_path)
+            if self.do_liftover or self.do_liftover_chrM:
+                self.setup_lifter(genome_assembly)
+            converters.append(converter)
+        return converters
 
     def handle_chrom(self, variant):
         from oakvar.lib.exceptions import IgnoredVariant
@@ -787,7 +787,6 @@ class MasterConverter(object):
         from pathlib import Path
         from multiprocessing.pool import ThreadPool
         from sys import platform as sysplatform
-        #import time
         from oakvar.lib.util.run import update_status
 
         if not self.input_paths or not self.logger:
@@ -810,14 +809,18 @@ class MasterConverter(object):
             num_pool = 1
         else:
             batch_size: int = 2500
-            num_pool = 4
+            num_pool = self.mp
+        self.err_holders: List[List[str]] = []
+        for _ in range(num_pool):
+            self.err_holders.append([])
         pool = ThreadPool(num_pool)
         unique_var_dict: Dict[int, Dict[str, int]] = {}
         uid_var: int = 0
         for input_path in self.input_paths:
             self.input_fname = Path(input_path).name
             fileno = self.input_path_dict2[input_path]
-            converter = self.setup_file(input_path)
+            converters = self.setup_file(input_path)
+            main_converter = converters[0]
             self.file_num_unique_variants = 0
             self.file_num_dup_variants: int = 0
             self.file_error_lines = 0
@@ -826,10 +829,10 @@ class MasterConverter(object):
             start_line_no: int = start_line_pos
             round_no: int = 0
             while True:
-                lines_data, immature_exit = converter.get_variant_lines(input_path, num_pool, start_line_no, batch_size)
+                lines_data, immature_exit = main_converter.get_variant_lines(input_path, num_pool, start_line_no, batch_size)
                 args = [
                     (
-                        converter, 
+                        converters[core_num], 
                         lines_data,
                         core_num, 
                         self.do_liftover, 
@@ -840,11 +843,13 @@ class MasterConverter(object):
                         self.error_logger, 
                         input_path, 
                         self.unique_excs, 
-                        self.err_holder,
+                        self.err_holders,
                         self.num_valid_error_lines,
                     ) for core_num in range(num_pool)
                 ]
                 results = pool.map(gather_variantss_wrapper, args)
+                for core_num in range(num_pool):
+                    flush_err_holder(self.err_holders, core_num, self.error_logger, force=True)
                 lines_data = None
                 for result in results:
                     variants_l = result
@@ -871,7 +876,7 @@ class MasterConverter(object):
                                 self.crv_writer.write_data(variant)
                                 self.crm_writer.write_data(variant)
                                 self.crs_writer.write_data(sample)
-                                converter.write_extra_info(extra_info)
+                                main_converter.write_extra_info(extra_info)
                                 if crl:
                                     crl["uid"] = variant["uid"]
                                     self.crl_writer.write_data(crl)
@@ -904,7 +909,7 @@ class MasterConverter(object):
                                     self.file_num_dup_variants += 1
                                 self.crs_writer.write_data(sample)
                                 self.crm_writer.write_data(variant)
-                                converter.write_extra_info(extra_info)
+                                main_converter.write_extra_info(extra_info)
                                 if crl:
                                     self.crl_writer.write_data(crl)
                     variants_l = None
@@ -928,7 +933,8 @@ class MasterConverter(object):
             self.total_num_duplicate_variants += self.file_num_dup_variants
             self.total_num_valid_lines += self.num_valid_error_lines["valid"]
             self.total_num_error_lines += self.num_valid_error_lines["error"]
-        flush_err_holder(self.err_holder, self.error_logger, force=True)
+        for core_num in range(num_pool):
+            flush_err_holder(self.err_holders, core_num, self.error_logger, force=True)
         self.close_output_files()
         self.end()
         self.log_ending()
