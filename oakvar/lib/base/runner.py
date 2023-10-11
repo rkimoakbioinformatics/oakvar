@@ -1266,7 +1266,7 @@ class Runner(object):
     async def write_info_row(self, key: str, value: Any, cursor):
         import json
 
-        q = "insert into info values (?, ?)"
+        q = "insert or replace into info values (?, ?)"
         if isinstance(value, list) or isinstance(value, dict):
             value = json.dumps(value)
         await cursor.execute(q, (key, value))

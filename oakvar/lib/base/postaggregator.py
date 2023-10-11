@@ -50,7 +50,6 @@ class BasePostAggregator(object):
         self.q_v: Optional[str] = None
         self.q_g: Optional[str] = None
         self.outer = outer
-        self._open_db_connection()
         self.should_run_annotate = self.check()
 
     def make_conf_and_level(self):
@@ -301,6 +300,7 @@ class BasePostAggregator(object):
         if not self.dbconn or not self.cursor_w:
             return
         lnum = 0
+        self._open_db_connection()
         self.cursor_w.execute("begin")
         for input_data in self._get_input():
             try:
@@ -322,6 +322,7 @@ class BasePostAggregator(object):
             except Exception as e:
                 self._log_runtime_exception(input_data, e)
         self.cursor_w.execute("commit")
+        self._close_db_connection()
 
     def postprocess(self):
         pass
@@ -335,6 +336,7 @@ class BasePostAggregator(object):
             raise ConfigurationError()
         if not self.cursor or not self.cursor_w:
             raise SetupError()
+        self._open_db_connection()
         self.cursor_w.execute("begin")
         for col_d in self.conf["output_columns"]:
             col_def = ColumnDefinition(col_d)
@@ -354,6 +356,7 @@ class BasePostAggregator(object):
             q = "update {}_header set col_def=? where col_name=?".format(self.level)
             self.cursor_w.execute(q, [col_def.get_json(), col_def.name])
         self.cursor_w.execute("commit")
+        self._open_db_connection()
 
     def write_output(
         self, output_dict, input_data=None, base__uid=None, base__hugo=None
