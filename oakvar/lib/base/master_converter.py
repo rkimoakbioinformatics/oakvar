@@ -1,6 +1,7 @@
 from typing import Any
 from typing import Optional
 from typing import List
+from typing import Set
 from typing import Dict
 from typing import Tuple
 from re import compile
@@ -598,14 +599,25 @@ class MasterConverter(object):
 
     def setup_crs_writer(self):
         from pathlib import Path
+        from copy import deepcopy
         from oakvar.lib.util.util import get_crs_def
         from oakvar.lib.util.inout import FileWriter
         from oakvar.lib.consts import crs_idx
         from oakvar.lib.consts import SAMPLE_FILE_SUFFIX
 
-        if not self.output_dir or not self.output_base_fname:
+        if not self.output_dir or not self.output_base_fname or not self.input_paths:
             raise
-        crs_def = get_crs_def()
+        crs_def = deepcopy(get_crs_def())
+        added_module_names: Set[str] = set()
+        for input_path in self.input_paths:
+            module_name = self.converter_name_by_input_path[input_path]
+            if module_name in added_module_names:
+                continue
+            converter = self.get_converter(module_name)
+            if converter:
+                extra_output_columns = converter.get_extra_output_columns()
+                crs_def.extend(extra_output_columns)
+                added_module_names.add(module_name)
         self.crs_path = Path(self.output_dir) / (
             self.output_base_fname + SAMPLE_FILE_SUFFIX
         )
@@ -1028,3 +1040,4 @@ class MasterConverter(object):
 
     def end(self):
         pass
+

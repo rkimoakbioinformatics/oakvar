@@ -103,3 +103,7 @@ class BaseConverter(object):
     def addl_operation_for_unique_variant(self, *args, **kwargs):
         _ = args
         _ = kwargs
+
+    def get_extra_output_columns(self) -> List[Dict[str, Any]]:
+        return []
+
