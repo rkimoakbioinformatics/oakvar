@@ -464,17 +464,26 @@ class BasePostAggregator(object):
 
     def _close_db_connection(self):
         if self.cursor is not None:
-            self.cursor.close()
+            try:
+                self.cursor.close()
+            except Exception:
+                pass
             self.cursor = None
         if self.cursor_w is not None:
             try:
                 self.cursor_w.execute("commit")
             except Exception:
                 pass
-            self.cursor_w.close()
+            try:
+                self.cursor_w.close()
+            except Exception:
+                pass
             self.cursor_w = None
         if self.dbconn is not None:
-            self.dbconn.close()
+            try:
+                self.dbconn.close()
+            except Exception:
+                pass
             self.dbconn = None
 
     def _alter_tables(self):
@@ -529,8 +538,7 @@ class BasePostAggregator(object):
 
     def base_cleanup(self):
         self.cleanup()
-        if self.dbconn is not None:
-            self._close_db_connection()
+        self._close_db_connection()
 
     def cleanup(self):
         pass
