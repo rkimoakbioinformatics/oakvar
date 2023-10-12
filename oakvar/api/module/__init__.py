@@ -456,6 +456,12 @@ def installbase(
         )
     sys_conf = get_system_conf(conf=conf)
     base_modules: List[str] = sys_conf.get(base_modules_key, [])
+    if "cravat-converter" in base_modules:
+        base_modules.remove("cravat-converter")
+        print(f"cravat-converter has been deprecated. Please remove it with \"ov module uninstall cravat-converter\".")
+    if "oldcravat-converter" in base_modules:
+        base_modules.remove("oldcravat-converter")
+        print(f"oldcravat-converter has been deprecated. Please remove it with \"ov module uninstall cravat-converter\".")
     ret = install(
         module_names=base_modules,
         modules_dir=modules_dir,

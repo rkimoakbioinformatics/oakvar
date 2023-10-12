@@ -42,11 +42,6 @@ true&&(function polyfill() {
     }
 }());
 
-const sharedConfig = {};
-function setHydrateContext(context) {
-  sharedConfig.context = context;
-}
-
 const equalFn = (a, b) => a === b;
 const $PROXY = Symbol("solid-proxy");
 const $TRACK = Symbol("solid-track");
@@ -71,15 +66,18 @@ let Effects = null;
 let ExecCount = 0;
 function createRoot(fn, detachedOwner) {
   const listener = Listener,
-        owner = Owner,
-        unowned = fn.length === 0,
-        root = unowned && !false ? UNOWNED : {
-    owned: null,
-    cleanups: null,
-    context: null,
-    owner: detachedOwner || owner
-  },
-        updateFn = unowned ? fn : () => fn(() => untrack(() => cleanNode(root)));
+    owner = Owner,
+    unowned = fn.length === 0,
+    current = detachedOwner === undefined ? owner : detachedOwner,
+    root = unowned
+      ? UNOWNED
+      : {
+          owned: null,
+          cleanups: null,
+          context: current ? current.context : null,
+          owner: current
+        },
+    updateFn = unowned ? fn : () => fn(() => untrack(() => cleanNode(root)));
   Owner = root;
   Listener = null;
   try {
@@ -116,7 +114,7 @@ function createRenderEffect(fn, value, options) {
 function createEffect(fn, value, options) {
   runEffects = runUserEffects;
   const c = createComputation(fn, value, false, STALE);
-  c.user = true;
+  if (!options || !options.render) c.user = true;
   Effects ? Effects.push(c) : updateComputation(c);
 }
 function createMemo(fn, value, options) {
@@ -128,11 +126,14 @@ function createMemo(fn, value, options) {
   updateComputation(c);
   return readSignal.bind(c);
 }
+function isPromise(v) {
+  return v && typeof v === "object" && "then" in v;
+}
 function createResource(pSource, pFetcher, pOptions) {
   let source;
   let fetcher;
   let options;
-  if (arguments.length === 2 && typeof pFetcher === "object" || arguments.length === 1) {
+  if ((arguments.length === 2 && typeof pFetcher === "object") || arguments.length === 1) {
     source = true;
     fetcher = pSource;
     options = pFetcher || {};
@@ -142,30 +143,27 @@ function createResource(pSource, pFetcher, pOptions) {
     options = pOptions || {};
   }
   let pr = null,
-      initP = NO_INIT,
-      id = null,
-      scheduled = false,
-      resolved = ("initialValue" in options),
-      dynamic = typeof source === "function" && createMemo(source);
+    initP = NO_INIT,
+    scheduled = false,
+    resolved = "initialValue" in options,
+    dynamic = typeof source === "function" && createMemo(source);
   const contexts = new Set(),
-        [value, setValue] = (options.storage || createSignal)(options.initialValue),
-        [error, setError] = createSignal(undefined),
-        [track, trigger] = createSignal(undefined, {
-    equals: false
-  }),
-        [state, setState] = createSignal(resolved ? "ready" : "unresolved");
-  if (sharedConfig.context) {
-    id = `${sharedConfig.context.id}${sharedConfig.context.count++}`;
-    let v;
-    if (options.ssrLoadFrom === "initial") initP = options.initialValue;else if (sharedConfig.load && (v = sharedConfig.load(id))) initP = v[0];
-  }
+    [value, setValue] = (options.storage || createSignal)(options.initialValue),
+    [error, setError] = createSignal(undefined),
+    [track, trigger] = createSignal(undefined, {
+      equals: false
+    }),
+    [state, setState] = createSignal(resolved ? "ready" : "unresolved");
   function loadEnd(p, v, error, key) {
     if (pr === p) {
       pr = null;
-      resolved = true;
-      if ((p === initP || v === initP) && options.onHydrated) queueMicrotask(() => options.onHydrated(key, {
-        value: v
-      }));
+      key !== undefined && (resolved = true);
+      if ((p === initP || v === initP) && options.onHydrated)
+        queueMicrotask(() =>
+          options.onHydrated(key, {
+            value: v
+          })
+        );
       initP = NO_INIT;
       completeLoad(v, error);
     }
@@ -173,8 +171,8 @@ function createResource(pSource, pFetcher, pOptions) {
   }
   function completeLoad(v, err) {
     runUpdates(() => {
-      if (!err) setValue(() => v);
-      setState(err ? "errored" : "ready");
+      if (err === undefined) setValue(() => v);
+      setState(err !== undefined ? "errored" : resolved ? "ready" : "unresolved");
       setError(err);
       for (const c of contexts.keys()) c.decrement();
       contexts.clear();
@@ -182,14 +180,15 @@ function createResource(pSource, pFetcher, pOptions) {
   }
   function read() {
     const c = SuspenseContext ,
-          v = value(),
-          err = error();
-    if (err && !pr) throw err;
+      v = value(),
+      err = error();
+    if (err !== undefined && !pr) throw err;
     if (Listener && !Listener.user && c) {
       createComputed(() => {
         track();
         if (pr) {
-          if (c.resolved  ) ;else if (!contexts.has(c)) {
+          if (c.resolved  ) ;
+          else if (!contexts.has(c)) {
             c.increment();
             contexts.add(c);
           }
@@ -206,22 +205,30 @@ function createResource(pSource, pFetcher, pOptions) {
       loadEnd(pr, untrack(value));
       return;
     }
-    const p = initP !== NO_INIT ? initP : untrack(() => fetcher(lookup, {
-      value: value(),
-      refetching
-    }));
-    if (typeof p !== "object" || !(p && "then" in p)) {
-      loadEnd(pr, p);
+    const p =
+      initP !== NO_INIT
+        ? initP
+        : untrack(() =>
+            fetcher(lookup, {
+              value: value(),
+              refetching
+            })
+          );
+    if (!isPromise(p)) {
+      loadEnd(pr, p, undefined, lookup);
       return p;
     }
     pr = p;
     scheduled = true;
-    queueMicrotask(() => scheduled = false);
+    queueMicrotask(() => (scheduled = false));
     runUpdates(() => {
       setState(resolved ? "refreshing" : "pending");
       trigger();
     }, false);
-    return p.then(v => loadEnd(p, v, undefined, lookup), e => loadEnd(p, undefined, castError(e)));
+    return p.then(
+      v => loadEnd(p, v, undefined, lookup),
+      e => loadEnd(p, undefined, castError(e), lookup)
+    );
   }
   Object.defineProperties(read, {
     state: {
@@ -245,16 +252,21 @@ function createResource(pSource, pFetcher, pOptions) {
       }
     }
   });
-  if (dynamic) createComputed(() => load(false));else load(false);
-  return [read, {
-    refetch: load,
-    mutate: setValue
-  }];
+  if (dynamic) createComputed(() => load(false));
+  else load(false);
+  return [
+    read,
+    {
+      refetch: load,
+      mutate: setValue
+    }
+  ];
 }
 function batch(fn) {
   return runUpdates(fn, false);
 }
 function untrack(fn) {
+  if (Listener === null) return fn();
   const listener = Listener;
   Listener = null;
   try {
@@ -264,7 +276,9 @@ function untrack(fn) {
   }
 }
 function onCleanup(fn) {
-  if (Owner === null) ;else if (Owner.cleanups === null) Owner.cleanups = [fn];else Owner.cleanups.push(fn);
+  if (Owner === null);
+  else if (Owner.cleanups === null) Owner.cleanups = [fn];
+  else Owner.cleanups.push(fn);
   return fn;
 }
 function getListener() {
@@ -281,9 +295,9 @@ function children(fn) {
 }
 let SuspenseContext;
 function readSignal() {
-  const runningTransition = Transition ;
-  if (this.sources && (this.state || runningTransition )) {
-    if (this.state === STALE || runningTransition ) updateComputation(this);else {
+  if (this.sources && (this.state)) {
+    if ((this.state) === STALE) updateComputation(this);
+    else {
       const updates = Updates;
       Updates = null;
       runUpdates(() => lookUpstream(this), false);
@@ -310,7 +324,8 @@ function readSignal() {
   return this.value;
 }
 function writeSignal(node, value, isComp) {
-  let current = node.value;
+  let current =
+    node.value;
   if (!node.comparator || !node.comparator(current, value)) {
     node.value = value;
     if (node.observers && node.observers.length) {
@@ -319,15 +334,16 @@ function writeSignal(node, value, isComp) {
           const o = node.observers[i];
           const TransitionRunning = Transition && Transition.running;
           if (TransitionRunning && Transition.disposed.has(o)) ;
-          if (TransitionRunning && !o.tState || !TransitionRunning && !o.state) {
-            if (o.pure) Updates.push(o);else Effects.push(o);
+          if (TransitionRunning ? !o.tState : !o.state) {
+            if (o.pure) Updates.push(o);
+            else Effects.push(o);
             if (o.observers) markDownstream(o);
           }
-          if (TransitionRunning) ;else o.state = STALE;
+          if (!TransitionRunning) o.state = STALE;
         }
         if (Updates.length > 10e5) {
           Updates = [];
-          if (false) ;
+          if (false);
           throw new Error();
         }
       }, false);
@@ -339,10 +355,14 @@ function updateComputation(node) {
   if (!node.fn) return;
   cleanNode(node);
   const owner = Owner,
-        listener = Listener,
-        time = ExecCount;
+    listener = Listener,
+    time = ExecCount;
   Listener = Owner = node;
-  runComputation(node, node.value, time);
+  runComputation(
+    node,
+    node.value,
+    time
+  );
   Listener = listener;
   Owner = owner;
 }
@@ -351,8 +371,15 @@ function runComputation(node, value, time) {
   try {
     nextValue = node.fn(value);
   } catch (err) {
-    if (node.pure) node.state = STALE;
-    handleError$1(err);
+    if (node.pure) {
+      {
+        node.state = STALE;
+        node.owned && node.owned.forEach(cleanNode);
+        node.owned = null;
+      }
+    }
+    node.updatedAt = time + 1;
+    return handleError$1(err);
   }
   if (!node.updatedAt || node.updatedAt <= time) {
     if (node.updatedAt != null && "observers" in node) {
@@ -372,30 +399,31 @@ function createComputation(fn, init, pure, state = STALE, options) {
     cleanups: null,
     value: init,
     owner: Owner,
-    context: null,
+    context: Owner ? Owner.context : null,
     pure
   };
-  if (Owner === null) ;else if (Owner !== UNOWNED) {
+  if (Owner === null);
+  else if (Owner !== UNOWNED) {
     {
-      if (!Owner.owned) Owner.owned = [c];else Owner.owned.push(c);
+      if (!Owner.owned) Owner.owned = [c];
+      else Owner.owned.push(c);
     }
   }
   return c;
 }
 function runTop(node) {
-  const runningTransition = Transition ;
-  if (node.state === 0 || runningTransition ) return;
-  if (node.state === PENDING || runningTransition ) return lookUpstream(node);
+  if ((node.state) === 0) return;
+  if ((node.state) === PENDING) return lookUpstream(node);
   if (node.suspense && untrack(node.suspense.inFallback)) return node.suspense.effects.push(node);
   const ancestors = [node];
   while ((node = node.owner) && (!node.updatedAt || node.updatedAt < ExecCount)) {
-    if (node.state || runningTransition ) ancestors.push(node);
+    if (node.state) ancestors.push(node);
   }
   for (let i = ancestors.length - 1; i >= 0; i--) {
     node = ancestors[i];
-    if (node.state === STALE || runningTransition ) {
+    if ((node.state) === STALE) {
       updateComputation(node);
-    } else if (node.state === PENDING || runningTransition ) {
+    } else if ((node.state) === PENDING) {
       const updates = Updates;
       Updates = null;
       runUpdates(() => lookUpstream(node, ancestors[0]), false);
@@ -407,14 +435,16 @@ function runUpdates(fn, init) {
   if (Updates) return fn();
   let wait = false;
   if (!init) Updates = [];
-  if (Effects) wait = true;else Effects = [];
+  if (Effects) wait = true;
+  else Effects = [];
   ExecCount++;
   try {
     const res = fn();
     completeUpdates(wait);
     return res;
   } catch (err) {
-    if (!Updates) Effects = null;
+    if (!wait) Effects = null;
+    Updates = null;
     handleError$1(err);
   }
 }
@@ -433,33 +463,34 @@ function runQueue(queue) {
 }
 function runUserEffects(queue) {
   let i,
-      userLength = 0;
+    userLength = 0;
   for (i = 0; i < queue.length; i++) {
     const e = queue[i];
-    if (!e.user) runTop(e);else queue[userLength++] = e;
+    if (!e.user) runTop(e);
+    else queue[userLength++] = e;
   }
-  if (sharedConfig.context) setHydrateContext();
   for (i = 0; i < userLength; i++) runTop(queue[i]);
 }
 function lookUpstream(node, ignore) {
-  const runningTransition = Transition ;
   node.state = 0;
   for (let i = 0; i < node.sources.length; i += 1) {
     const source = node.sources[i];
     if (source.sources) {
-      if (source.state === STALE || runningTransition ) {
-        if (source !== ignore) runTop(source);
-      } else if (source.state === PENDING || runningTransition ) lookUpstream(source, ignore);
+      const state = source.state;
+      if (state === STALE) {
+        if (source !== ignore && (!source.updatedAt || source.updatedAt < ExecCount))
+          runTop(source);
+      } else if (state === PENDING) lookUpstream(source, ignore);
     }
   }
 }
 function markDownstream(node) {
-  const runningTransition = Transition ;
   for (let i = 0; i < node.observers.length; i += 1) {
     const o = node.observers[i];
-    if (!o.state || runningTransition ) {
+    if (!o.state) {
       o.state = PENDING;
-      if (o.pure) Updates.push(o);else Effects.push(o);
+      if (o.pure) Updates.push(o);
+      else Effects.push(o);
       o.observers && markDownstream(o);
     }
   }
@@ -469,11 +500,11 @@ function cleanNode(node) {
   if (node.sources) {
     while (node.sources.length) {
       const source = node.sources.pop(),
-            index = node.sourceSlots.pop(),
-            obs = source.observers;
+        index = node.sourceSlots.pop(),
+        obs = source.observers;
       if (obs && obs.length) {
         const n = obs.pop(),
-              s = source.observerSlots.pop();
+          s = source.observerSlots.pop();
         if (index < obs.length) {
           n.sourceSlots[s] = index;
           obs[index] = n;
@@ -483,23 +514,24 @@ function cleanNode(node) {
     }
   }
   if (node.owned) {
-    for (i = 0; i < node.owned.length; i++) cleanNode(node.owned[i]);
+    for (i = node.owned.length - 1; i >= 0; i--) cleanNode(node.owned[i]);
     node.owned = null;
   }
   if (node.cleanups) {
-    for (i = 0; i < node.cleanups.length; i++) node.cleanups[i]();
+    for (i = node.cleanups.length - 1; i >= 0; i--) node.cleanups[i]();
     node.cleanups = null;
   }
   node.state = 0;
-  node.context = null;
 }
 function castError(err) {
-  if (err instanceof Error || typeof err === "string") return err;
-  return new Error("Unknown error");
+  if (err instanceof Error) return err;
+  return new Error(typeof err === "string" ? err : "Unknown error", {
+    cause: err
+  });
 }
-function handleError$1(err) {
-  err = castError(err);
-  throw err;
+function handleError$1(err, owner = Owner) {
+  const error = castError(err);
+  throw error;
 }
 function resolveChildren(children) {
   if (typeof children === "function" && !children.length) return resolveChildren(children());
@@ -520,27 +552,27 @@ function dispose(d) {
 }
 function mapArray(list, mapFn, options = {}) {
   let items = [],
-      mapped = [],
-      disposers = [],
-      len = 0,
-      indexes = mapFn.length > 1 ? [] : null;
+    mapped = [],
+    disposers = [],
+    len = 0,
+    indexes = mapFn.length > 1 ? [] : null;
   onCleanup(() => dispose(disposers));
   return () => {
     let newItems = list() || [],
-        i,
-        j;
+      i,
+      j;
     newItems[$TRACK];
     return untrack(() => {
       let newLen = newItems.length,
-          newIndices,
-          newIndicesNext,
-          temp,
-          tempdisposers,
-          tempIndexes,
-          start,
-          end,
-          newEnd,
-          item;
+        newIndices,
+        newIndicesNext,
+        temp,
+        tempdisposers,
+        tempIndexes,
+        start,
+        end,
+        newEnd,
+        item;
       if (newLen === 0) {
         if (len !== 0) {
           dispose(disposers);
@@ -558,8 +590,7 @@ function mapArray(list, mapFn, options = {}) {
           });
           len = 1;
         }
-      }
-      else if (len === 0) {
+      } else if (len === 0) {
         mapped = new Array(newLen);
         for (j = 0; j < newLen; j++) {
           items[j] = newItems[j];
@@ -570,8 +601,16 @@ function mapArray(list, mapFn, options = {}) {
         temp = new Array(newLen);
         tempdisposers = new Array(newLen);
         indexes && (tempIndexes = new Array(newLen));
-        for (start = 0, end = Math.min(len, newLen); start < end && items[start] === newItems[start]; start++);
-        for (end = len - 1, newEnd = newLen - 1; end >= start && newEnd >= start && items[end] === newItems[newEnd]; end--, newEnd--) {
+        for (
+          start = 0, end = Math.min(len, newLen);
+          start < end && items[start] === newItems[start];
+          start++
+        );
+        for (
+          end = len - 1, newEnd = newLen - 1;
+          end >= start && newEnd >= start && items[end] === newItems[newEnd];
+          end--, newEnd--
+        ) {
           temp[newEnd] = mapped[end];
           tempdisposers[newEnd] = disposers[end];
           indexes && (tempIndexes[newEnd] = indexes[end]);
@@ -605,7 +644,7 @@ function mapArray(list, mapFn, options = {}) {
             }
           } else mapped[j] = createRoot(mapper);
         }
-        mapped = mapped.slice(0, len = newLen);
+        mapped = mapped.slice(0, (len = newLen));
         items = newItems.slice(0);
       }
       return mapped;
@@ -633,6 +672,7 @@ const propTraps = {
     return _.get(property);
   },
   has(_, property) {
+    if (property === $PROXY) return true;
     return _.has(property);
   },
   set: trueFn,
@@ -655,119 +695,330 @@ const propTraps = {
 function resolveSource(s) {
   return !(s = typeof s === "function" ? s() : s) ? {} : s;
 }
+function resolveSources() {
+  for (let i = 0, length = this.length; i < length; ++i) {
+    const v = this[i]();
+    if (v !== undefined) return v;
+  }
+}
 function mergeProps(...sources) {
-  if (sources.some(s => s && ($PROXY in s || typeof s === "function"))) {
-    return new Proxy({
-      get(property) {
-        for (let i = sources.length - 1; i >= 0; i--) {
-          const v = resolveSource(sources[i])[property];
-          if (v !== undefined) return v;
+  let proxy = false;
+  for (let i = 0; i < sources.length; i++) {
+    const s = sources[i];
+    proxy = proxy || (!!s && $PROXY in s);
+    sources[i] = typeof s === "function" ? ((proxy = true), createMemo(s)) : s;
+  }
+  if (proxy) {
+    return new Proxy(
+      {
+        get(property) {
+          for (let i = sources.length - 1; i >= 0; i--) {
+            const v = resolveSource(sources[i])[property];
+            if (v !== undefined) return v;
+          }
+        },
+        has(property) {
+          for (let i = sources.length - 1; i >= 0; i--) {
+            if (property in resolveSource(sources[i])) return true;
+          }
+          return false;
+        },
+        keys() {
+          const keys = [];
+          for (let i = 0; i < sources.length; i++)
+            keys.push(...Object.keys(resolveSource(sources[i])));
+          return [...new Set(keys)];
         }
       },
-      has(property) {
-        for (let i = sources.length - 1; i >= 0; i--) {
-          if (property in resolveSource(sources[i])) return true;
-        }
-        return false;
-      },
-      keys() {
-        const keys = [];
-        for (let i = 0; i < sources.length; i++) keys.push(...Object.keys(resolveSource(sources[i])));
-        return [...new Set(keys)];
-      }
-    }, propTraps);
+      propTraps
+    );
   }
   const target = {};
+  const sourcesMap = {};
+  const defined = new Set();
   for (let i = sources.length - 1; i >= 0; i--) {
-    if (sources[i]) {
-      const descriptors = Object.getOwnPropertyDescriptors(sources[i]);
-      for (const key in descriptors) {
-        if (key in target) continue;
-        Object.defineProperty(target, key, {
-          enumerable: true,
-          get() {
-            for (let i = sources.length - 1; i >= 0; i--) {
-              const v = (sources[i] || {})[key];
-              if (v !== undefined) return v;
-            }
+    const source = sources[i];
+    if (!source) continue;
+    const sourceKeys = Object.getOwnPropertyNames(source);
+    for (let i = 0, length = sourceKeys.length; i < length; i++) {
+      const key = sourceKeys[i];
+      if (key === "__proto__" || key === "constructor") continue;
+      const desc = Object.getOwnPropertyDescriptor(source, key);
+      if (!defined.has(key)) {
+        if (desc.get) {
+          defined.add(key);
+          Object.defineProperty(target, key, {
+            enumerable: true,
+            configurable: true,
+            get: resolveSources.bind((sourcesMap[key] = [desc.get.bind(source)]))
+          });
+        } else {
+          if (desc.value !== undefined) defined.add(key);
+          target[key] = desc.value;
+        }
+      } else {
+        const sources = sourcesMap[key];
+        if (sources) {
+          if (desc.get) {
+            sources.push(desc.get.bind(source));
+          } else if (desc.value !== undefined) {
+            sources.push(() => desc.value);
           }
-        });
+        } else if (target[key] === undefined) target[key] = desc.value;
       }
     }
   }
   return target;
 }
+function splitProps(props, ...keys) {
+  if ($PROXY in props) {
+    const blocked = new Set(keys.length > 1 ? keys.flat() : keys[0]);
+    const res = keys.map(k => {
+      return new Proxy(
+        {
+          get(property) {
+            return k.includes(property) ? props[property] : undefined;
+          },
+          has(property) {
+            return k.includes(property) && property in props;
+          },
+          keys() {
+            return k.filter(property => property in props);
+          }
+        },
+        propTraps
+      );
+    });
+    res.push(
+      new Proxy(
+        {
+          get(property) {
+            return blocked.has(property) ? undefined : props[property];
+          },
+          has(property) {
+            return blocked.has(property) ? false : property in props;
+          },
+          keys() {
+            return Object.keys(props).filter(k => !blocked.has(k));
+          }
+        },
+        propTraps
+      )
+    );
+    return res;
+  }
+  const otherObject = {};
+  const objects = keys.map(() => ({}));
+  for (const propName of Object.getOwnPropertyNames(props)) {
+    const desc = Object.getOwnPropertyDescriptor(props, propName);
+    const isDefaultDesc =
+      !desc.get && !desc.set && desc.enumerable && desc.writable && desc.configurable;
+    let blocked = false;
+    let objectIndex = 0;
+    for (const k of keys) {
+      if (k.includes(propName)) {
+        blocked = true;
+        isDefaultDesc
+          ? (objects[objectIndex][propName] = desc.value)
+          : Object.defineProperty(objects[objectIndex], propName, desc);
+      }
+      ++objectIndex;
+    }
+    if (!blocked) {
+      isDefaultDesc
+        ? (otherObject[propName] = desc.value)
+        : Object.defineProperty(otherObject, propName, desc);
+    }
+  }
+  return [...objects, otherObject];
+}
 
+const narrowedError = name => `Stale read from <${name}>.`;
 function For(props) {
   const fallback = "fallback" in props && {
     fallback: () => props.fallback
   };
-  return createMemo(mapArray(() => props.each, props.children, fallback ? fallback : undefined));
+  return createMemo(mapArray(() => props.each, props.children, fallback || undefined));
 }
 function Show(props) {
-  let strictEqual = false;
   const keyed = props.keyed;
   const condition = createMemo(() => props.when, undefined, {
-    equals: (a, b) => strictEqual ? a === b : !a === !b
+    equals: (a, b) => (keyed ? a === b : !a === !b)
   });
-  return createMemo(() => {
-    const c = condition();
-    if (c) {
-      const child = props.children;
-      const fn = typeof child === "function" && child.length > 0;
-      strictEqual = keyed || fn;
-      return fn ? untrack(() => child(c)) : child;
-    }
-    return props.fallback;
-  });
+  return createMemo(
+    () => {
+      const c = condition();
+      if (c) {
+        const child = props.children;
+        const fn = typeof child === "function" && child.length > 0;
+        return fn
+          ? untrack(() =>
+              child(
+                keyed
+                  ? c
+                  : () => {
+                      if (!untrack(condition)) throw narrowedError("Show");
+                      return props.when;
+                    }
+              )
+            )
+          : child;
+      }
+      return props.fallback;
+    },
+    undefined,
+    undefined
+  );
 }
 function Switch(props) {
-  let strictEqual = false;
   let keyed = false;
+  const equals = (a, b) =>
+    a[0] === b[0] && (keyed ? a[1] === b[1] : !a[1] === !b[1]) && a[2] === b[2];
   const conditions = children(() => props.children),
-        evalConditions = createMemo(() => {
-    let conds = conditions();
-    if (!Array.isArray(conds)) conds = [conds];
-    for (let i = 0; i < conds.length; i++) {
-      const c = conds[i].when;
-      if (c) {
-        keyed = !!conds[i].keyed;
-        return [i, c, conds[i]];
+    evalConditions = createMemo(
+      () => {
+        let conds = conditions();
+        if (!Array.isArray(conds)) conds = [conds];
+        for (let i = 0; i < conds.length; i++) {
+          const c = conds[i].when;
+          if (c) {
+            keyed = !!conds[i].keyed;
+            return [i, c, conds[i]];
+          }
+        }
+        return [-1];
+      },
+      undefined,
+      {
+        equals
       }
-    }
-    return [-1];
-  }, undefined, {
-    equals: (a, b) => a[0] === b[0] && (strictEqual ? a[1] === b[1] : !a[1] === !b[1]) && a[2] === b[2]
-  });
-  return createMemo(() => {
-    const [index, when, cond] = evalConditions();
-    if (index < 0) return props.fallback;
-    const c = cond.children;
-    const fn = typeof c === "function" && c.length > 0;
-    strictEqual = keyed || fn;
-    return fn ? untrack(() => c(when)) : c;
-  });
+    );
+  return createMemo(
+    () => {
+      const [index, when, cond] = evalConditions();
+      if (index < 0) return props.fallback;
+      const c = cond.children;
+      const fn = typeof c === "function" && c.length > 0;
+      return fn
+        ? untrack(() =>
+            c(
+              keyed
+                ? when
+                : () => {
+                    if (untrack(evalConditions)[0] !== index) throw narrowedError("Match");
+                    return cond.when;
+                  }
+            )
+          )
+        : c;
+    },
+    undefined,
+    undefined
+  );
 }
 function Match(props) {
   return props;
 }
 
-const booleans = ["allowfullscreen", "async", "autofocus", "autoplay", "checked", "controls", "default", "disabled", "formnovalidate", "hidden", "indeterminate", "ismap", "loop", "multiple", "muted", "nomodule", "novalidate", "open", "playsinline", "readonly", "required", "reversed", "seamless", "selected"];
-const Properties = /*#__PURE__*/new Set(["className", "value", "readOnly", "formNoValidate", "isMap", "noModule", "playsInline", ...booleans]);
-const ChildProperties = /*#__PURE__*/new Set(["innerHTML", "textContent", "innerText", "children"]);
-const Aliases = /*#__PURE__*/Object.assign(Object.create(null), {
+const booleans = [
+  "allowfullscreen",
+  "async",
+  "autofocus",
+  "autoplay",
+  "checked",
+  "controls",
+  "default",
+  "disabled",
+  "formnovalidate",
+  "hidden",
+  "indeterminate",
+  "ismap",
+  "loop",
+  "multiple",
+  "muted",
+  "nomodule",
+  "novalidate",
+  "open",
+  "playsinline",
+  "readonly",
+  "required",
+  "reversed",
+  "seamless",
+  "selected"
+];
+const Properties = /*#__PURE__*/ new Set([
+  "className",
+  "value",
+  "readOnly",
+  "formNoValidate",
+  "isMap",
+  "noModule",
+  "playsInline",
+  ...booleans
+]);
+const ChildProperties = /*#__PURE__*/ new Set([
+  "innerHTML",
+  "textContent",
+  "innerText",
+  "children"
+]);
+const Aliases = /*#__PURE__*/ Object.assign(Object.create(null), {
   className: "class",
   htmlFor: "for"
 });
-const PropAliases = /*#__PURE__*/Object.assign(Object.create(null), {
+const PropAliases = /*#__PURE__*/ Object.assign(Object.create(null), {
   class: "className",
-  formnovalidate: "formNoValidate",
-  ismap: "isMap",
-  nomodule: "noModule",
-  playsinline: "playsInline",
-  readonly: "readOnly"
+  formnovalidate: {
+    $: "formNoValidate",
+    BUTTON: 1,
+    INPUT: 1
+  },
+  ismap: {
+    $: "isMap",
+    IMG: 1
+  },
+  nomodule: {
+    $: "noModule",
+    SCRIPT: 1
+  },
+  playsinline: {
+    $: "playsInline",
+    VIDEO: 1
+  },
+  readonly: {
+    $: "readOnly",
+    INPUT: 1,
+    TEXTAREA: 1
+  }
 });
-const DelegatedEvents = /*#__PURE__*/new Set(["beforeinput", "click", "dblclick", "contextmenu", "focusin", "focusout", "input", "keydown", "keyup", "mousedown", "mousemove", "mouseout", "mouseover", "mouseup", "pointerdown", "pointermove", "pointerout", "pointerover", "pointerup", "touchend", "touchmove", "touchstart"]);
+function getPropAlias(prop, tagName) {
+  const a = PropAliases[prop];
+  return typeof a === "object" ? (a[tagName] ? a["$"] : undefined) : a;
+}
+const DelegatedEvents = /*#__PURE__*/ new Set([
+  "beforeinput",
+  "click",
+  "dblclick",
+  "contextmenu",
+  "focusin",
+  "focusout",
+  "input",
+  "keydown",
+  "keyup",
+  "mousedown",
+  "mousemove",
+  "mouseout",
+  "mouseover",
+  "mouseup",
+  "pointerdown",
+  "pointermove",
+  "pointerout",
+  "pointerover",
+  "pointerup",
+  "touchend",
+  "touchmove",
+  "touchstart"
+]);
 const SVGNamespace = {
   xlink: "http://www.w3.org/1999/xlink",
   xml: "http://www.w3.org/XML/1998/namespace"
@@ -775,12 +1026,12 @@ const SVGNamespace = {
 
 function reconcileArrays(parentNode, a, b) {
   let bLength = b.length,
-      aEnd = a.length,
-      bEnd = bLength,
-      aStart = 0,
-      bStart = 0,
-      after = a[aEnd - 1].nextSibling,
-      map = null;
+    aEnd = a.length,
+    bEnd = bLength,
+    aStart = 0,
+    bStart = 0,
+    after = a[aEnd - 1].nextSibling,
+    map = null;
   while (aStart < aEnd || bStart < bEnd) {
     if (a[aStart] === b[bStart]) {
       aStart++;
@@ -792,7 +1043,7 @@ function reconcileArrays(parentNode, a, b) {
       bEnd--;
     }
     if (aEnd === aStart) {
-      const node = bEnd < bLength ? bStart ? b[bStart - 1].nextSibling : b[bEnd - bStart] : after;
+      const node = bEnd < bLength ? (bStart ? b[bStart - 1].nextSibling : b[bEnd - bStart]) : after;
       while (bStart < bEnd) parentNode.insertBefore(b[bStart++], node);
     } else if (bEnd === bStart) {
       while (aStart < aEnd) {
@@ -814,8 +1065,8 @@ function reconcileArrays(parentNode, a, b) {
       if (index != null) {
         if (bStart < index && index < bEnd) {
           let i = aStart,
-              sequence = 1,
-              t;
+            sequence = 1,
+            t;
           while (++i < aEnd && i < bEnd) {
             if ((t = map.get(a[i])) == null || t !== index + sequence) break;
             sequence++;
@@ -835,19 +1086,27 @@ function render(code, element, init, options = {}) {
   let disposer;
   createRoot(dispose => {
     disposer = dispose;
-    element === document ? code() : insert(element, code(), element.firstChild ? null : undefined, init);
+    element === document
+      ? code()
+      : insert(element, code(), element.firstChild ? null : undefined, init);
   }, options.owner);
   return () => {
     disposer();
     element.textContent = "";
   };
 }
-function template(html, check, isSVG) {
-  const t = document.createElement("template");
-  t.innerHTML = html;
-  let node = t.content.firstChild;
-  if (isSVG) node = node.firstChild;
-  return node;
+function template(html, isCE, isSVG) {
+  let node;
+  const create = () => {
+    const t = document.createElement("template");
+    t.innerHTML = html;
+    return isSVG ? t.content.firstChild.firstChild : t.content.firstChild;
+  };
+  const fn = isCE
+    ? () => untrack(() => document.importNode(node || (node = create()), true))
+    : () => (node || (node = create())).cloneNode(true);
+  fn.cloneNode = fn;
+  return fn;
 }
 function delegateEvents(eventNames, document = window.document) {
   const e = document[$$EVENTS] || (document[$$EVENTS] = new Set());
@@ -860,13 +1119,16 @@ function delegateEvents(eventNames, document = window.document) {
   }
 }
 function setAttribute(node, name, value) {
-  if (value == null) node.removeAttribute(name);else node.setAttribute(name, value);
+  if (value == null) node.removeAttribute(name);
+  else node.setAttribute(name, value);
 }
 function setAttributeNS(node, namespace, name, value) {
-  if (value == null) node.removeAttributeNS(namespace, name);else node.setAttributeNS(namespace, name, value);
+  if (value == null) node.removeAttributeNS(namespace, name);
+  else node.setAttributeNS(namespace, name, value);
 }
 function className(node, value) {
-  if (value == null) node.removeAttribute("class");else node.className = value;
+  if (value == null) node.removeAttribute("class");
+  else node.className = value;
 }
 function addEventListener(node, name, handler, delegate) {
   if (delegate) {
@@ -876,12 +1138,12 @@ function addEventListener(node, name, handler, delegate) {
     } else node[`$$${name}`] = handler;
   } else if (Array.isArray(handler)) {
     const handlerFn = handler[0];
-    node.addEventListener(name, handler[0] = e => handlerFn.call(node, handler[1], e));
+    node.addEventListener(name, (handler[0] = e => handlerFn.call(node, handler[1], e)));
   } else node.addEventListener(name, handler);
 }
 function classList(node, value, prev = {}) {
   const classKeys = Object.keys(value || {}),
-        prevKeys = Object.keys(prev);
+    prevKeys = Object.keys(prev);
   let i, len;
   for (i = 0, len = prevKeys.length; i < len; i++) {
     const key = prevKeys[i];
@@ -891,7 +1153,7 @@ function classList(node, value, prev = {}) {
   }
   for (i = 0, len = classKeys.length; i < len; i++) {
     const key = classKeys[i],
-          classValue = !!value[key];
+      classValue = !!value[key];
     if (!key || key === "undefined" || prev[key] === classValue || !classValue) continue;
     toggleClassKey(node, key, true);
     prev[key] = classValue;
@@ -901,7 +1163,7 @@ function classList(node, value, prev = {}) {
 function style(node, value, prev) {
   if (!value) return prev ? setAttribute(node, "style") : value;
   const nodeStyle = node.style;
-  if (typeof value === "string") return nodeStyle.cssText = value;
+  if (typeof value === "string") return (nodeStyle.cssText = value);
   typeof prev === "string" && (nodeStyle.cssText = prev = undefined);
   prev || (prev = {});
   value || (value = {});
@@ -922,7 +1184,9 @@ function style(node, value, prev) {
 function spread$1(node, props = {}, isSVG, skipChildren) {
   const prevProps = {};
   if (!skipChildren) {
-    createRenderEffect(() => prevProps.children = insertExpression(node, props.children, prevProps.children));
+    createRenderEffect(
+      () => (prevProps.children = insertExpression(node, props.children, prevProps.children))
+    );
   }
   createRenderEffect(() => props.ref && props.ref(node));
   createRenderEffect(() => assign(node, props, isSVG, true, prevProps, true));
@@ -958,10 +1222,11 @@ function toPropertyName(name) {
 }
 function toggleClassKey(node, key, value) {
   const classNames = key.trim().split(/\s+/);
-  for (let i = 0, nameLen = classNames.length; i < nameLen; i++) node.classList.toggle(classNames[i], value);
+  for (let i = 0, nameLen = classNames.length; i < nameLen; i++)
+    node.classList.toggle(classNames[i], value);
 }
 function assignProp(node, prop, value, prev, isSVG, skipRef) {
-  let isCE, isProp, isChildProp;
+  let isCE, isProp, isChildProp, propAlias, forceProp;
   if (prop === "style") return style(node, value, prev);
   if (prop === "classList") return classList(node, value, prev);
   if (value === prev) return prev;
@@ -986,17 +1251,32 @@ function assignProp(node, prop, value, prev, isSVG, skipRef) {
       addEventListener(node, name, value, delegate);
       delegate && delegateEvents([name]);
     }
-  } else if ((isChildProp = ChildProperties.has(prop)) || !isSVG && (PropAliases[prop] || (isProp = Properties.has(prop))) || (isCE = node.nodeName.includes("-"))) {
-    if (prop === "class" || prop === "className") className(node, value);else if (isCE && !isProp && !isChildProp) node[toPropertyName(prop)] = value;else node[PropAliases[prop] || prop] = value;
+  } else if (prop.slice(0, 5) === "attr:") {
+    setAttribute(node, prop.slice(5), value);
+  } else if (
+    (forceProp = prop.slice(0, 5) === "prop:") ||
+    (isChildProp = ChildProperties.has(prop)) ||
+    (!isSVG &&
+      ((propAlias = getPropAlias(prop, node.tagName)) || (isProp = Properties.has(prop)))) ||
+    (isCE = node.nodeName.includes("-"))
+  ) {
+    if (forceProp) {
+      prop = prop.slice(5);
+      isProp = true;
+    }
+    if (prop === "class" || prop === "className") className(node, value);
+    else if (isCE && !isProp && !isChildProp) node[toPropertyName(prop)] = value;
+    else node[propAlias || prop] = value;
   } else {
     const ns = isSVG && prop.indexOf(":") > -1 && SVGNamespace[prop.split(":")[0]];
-    if (ns) setAttributeNS(node, ns, prop, value);else setAttribute(node, Aliases[prop] || prop, value);
+    if (ns) setAttributeNS(node, ns, prop, value);
+    else setAttribute(node, Aliases[prop] || prop, value);
   }
   return value;
 }
 function eventHandler(e) {
   const key = `$$${e.type}`;
-  let node = e.composedPath && e.composedPath()[0] || e.target;
+  let node = (e.composedPath && e.composedPath()[0]) || e.target;
   if (e.target !== node) {
     Object.defineProperty(e, "target", {
       configurable: true,
@@ -1009,29 +1289,23 @@ function eventHandler(e) {
       return node || document;
     }
   });
-  if (sharedConfig.registry && !sharedConfig.done) {
-    sharedConfig.done = true;
-    document.querySelectorAll("[id^=pl-]").forEach(elem => elem.remove());
-  }
-  while (node !== null) {
+  while (node) {
     const handler = node[key];
     if (handler && !node.disabled) {
       const data = node[`${key}Data`];
       data !== undefined ? handler.call(node, data, e) : handler.call(node, e);
       if (e.cancelBubble) return;
     }
-    node = node.host && node.host !== node && node.host instanceof Node ? node.host : node.parentNode;
+    node = node._$host || node.parentNode || node.host;
   }
 }
 function insertExpression(parent, value, current, marker, unwrapArray) {
-  if (sharedConfig.context && !current) current = [...parent.childNodes];
   while (typeof current === "function") current = current();
   if (value === current) return current;
   const t = typeof value,
-        multi = marker !== undefined;
-  parent = multi && current[0] && current[0].parentNode || parent;
+    multi = marker !== undefined;
+  parent = (multi && current[0] && current[0].parentNode) || parent;
   if (t === "string" || t === "number") {
-    if (sharedConfig.context) return current;
     if (t === "number") value = value.toString();
     if (multi) {
       let node = current[0];
@@ -1045,7 +1319,6 @@ function insertExpression(parent, value, current, marker, unwrapArray) {
       } else current = parent.textContent = value;
     }
   } else if (value == null || t === "boolean") {
-    if (sharedConfig.context) return current;
     current = cleanChildren(parent, current, marker);
   } else if (t === "function") {
     createRenderEffect(() => {
@@ -1058,14 +1331,8 @@ function insertExpression(parent, value, current, marker, unwrapArray) {
     const array = [];
     const currentArray = current && Array.isArray(current);
     if (normalizeIncomingArray(array, value, current, unwrapArray)) {
-      createRenderEffect(() => current = insertExpression(parent, array, current, marker, true));
+      createRenderEffect(() => (current = insertExpression(parent, array, current, marker, true)));
       return () => current;
-    }
-    if (sharedConfig.context) {
-      if (!array.length) return current;
-      for (let i = 0; i < array.length; i++) {
-        if (array[i].parentNode) return current = array;
-      }
     }
     if (array.length === 0) {
       current = cleanChildren(parent, current, marker);
@@ -1079,40 +1346,45 @@ function insertExpression(parent, value, current, marker, unwrapArray) {
       appendNodes(parent, array);
     }
     current = array;
-  } else if (value instanceof Node) {
-    if (sharedConfig.context && value.parentNode) return current = multi ? [value] : value;
+  } else if (value.nodeType) {
     if (Array.isArray(current)) {
-      if (multi) return current = cleanChildren(parent, current, marker, value);
+      if (multi) return (current = cleanChildren(parent, current, marker, value));
       cleanChildren(parent, current, null, value);
     } else if (current == null || current === "" || !parent.firstChild) {
       parent.appendChild(value);
     } else parent.replaceChild(value, parent.firstChild);
     current = value;
-  } else ;
+  } else;
   return current;
 }
 function normalizeIncomingArray(normalized, array, current, unwrap) {
   let dynamic = false;
   for (let i = 0, len = array.length; i < len; i++) {
     let item = array[i],
-        prev = current && current[i];
-    if (item instanceof Node) {
+      prev = current && current[i],
+      t;
+    if (item == null || item === true || item === false);
+    else if ((t = typeof item) === "object" && item.nodeType) {
       normalized.push(item);
-    } else if (item == null || item === true || item === false) ; else if (Array.isArray(item)) {
+    } else if (Array.isArray(item)) {
       dynamic = normalizeIncomingArray(normalized, item, prev) || dynamic;
-    } else if ((typeof item) === "function") {
+    } else if (t === "function") {
       if (unwrap) {
         while (typeof item === "function") item = item();
-        dynamic = normalizeIncomingArray(normalized, Array.isArray(item) ? item : [item], Array.isArray(prev) ? prev : [prev]) || dynamic;
+        dynamic =
+          normalizeIncomingArray(
+            normalized,
+            Array.isArray(item) ? item : [item],
+            Array.isArray(prev) ? prev : [prev]
+          ) || dynamic;
       } else {
         normalized.push(item);
         dynamic = true;
       }
     } else {
       const value = String(item);
-      if (prev && prev.nodeType === 3 && prev.data === value) {
-        normalized.push(prev);
-      } else normalized.push(document.createTextNode(value));
+      if (prev && prev.nodeType === 3 && prev.data === value) normalized.push(prev);
+      else normalized.push(document.createTextNode(value));
     }
   }
   return dynamic;
@@ -1121,7 +1393,7 @@ function appendNodes(parent, array, marker = null) {
   for (let i = 0, len = array.length; i < len; i++) parent.insertBefore(array[i], marker);
 }
 function cleanChildren(parent, current, marker, replacement) {
-  if (marker === undefined) return parent.textContent = "";
+  if (marker === undefined) return (parent.textContent = "");
   const node = replacement || document.createTextNode("");
   if (current.length) {
     let inserted = false;
@@ -1129,7 +1401,9 @@ function cleanChildren(parent, current, marker, replacement) {
       const el = current[i];
       if (node !== el) {
         const isParent = el.parentNode === parent;
-        if (!inserted && !i) isParent ? parent.replaceChild(node, el) : parent.insertBefore(node, marker);else isParent && el.remove();
+        if (!inserted && !i)
+          isParent ? parent.replaceChild(node, el) : parent.insertBefore(node, marker);
+        else isParent && el.remove();
       } else inserted = true;
     }
   } else parent.insertBefore(node, marker);
@@ -1332,12 +1606,16 @@ const isStream = (val) => isObject$1(val) && isFunction(val.pipe);
  * @returns {boolean} True if value is an FormData, otherwise false
  */
 const isFormData = (thing) => {
-  const pattern = '[object FormData]';
+  let kind;
   return thing && (
-    (typeof FormData === 'function' && thing instanceof FormData) ||
-    toString.call(thing) === pattern ||
-    (isFunction(thing.toString) && thing.toString() === pattern)
-  );
+    (typeof FormData === 'function' && thing instanceof FormData) || (
+      isFunction(thing.append) && (
+        (kind = kindOf(thing)) === 'formdata' ||
+        // detect form-data instance
+        (kind === 'object' && isFunction(thing.toString) && thing.toString() === '[object FormData]')
+      )
+    )
+  )
 };
 
 /**
@@ -1372,7 +1650,7 @@ const trim = (str) => str.trim ?
  * @param {Function} fn The callback to invoke for each item
  *
  * @param {Boolean} [allOwnKeys = false]
- * @returns {void}
+ * @returns {any}
  */
 function forEach(obj, fn, {allOwnKeys = false} = {}) {
   // Don't bother if no value provided
@@ -1407,6 +1685,28 @@ function forEach(obj, fn, {allOwnKeys = false} = {}) {
   }
 }
 
+function findKey(obj, key) {
+  key = key.toLowerCase();
+  const keys = Object.keys(obj);
+  let i = keys.length;
+  let _key;
+  while (i-- > 0) {
+    _key = keys[i];
+    if (key === _key.toLowerCase()) {
+      return _key;
+    }
+  }
+  return null;
+}
+
+const _global = (() => {
+  /*eslint no-undef:0*/
+  if (typeof globalThis !== "undefined") return globalThis;
+  return typeof self !== "undefined" ? self : (typeof window !== 'undefined' ? window : global)
+})();
+
+const isContextDefined = (context) => !isUndefined(context) && context !== _global;
+
 /**
  * Accepts varargs expecting each argument to be an object, then
  * immutably merges the properties of each object and returns result.
@@ -1425,17 +1725,19 @@ function forEach(obj, fn, {allOwnKeys = false} = {}) {
  *
  * @returns {Object} Result of all merge properties
  */
-function merge$1(/* obj1, obj2, obj3, ... */) {
+function merge(/* obj1, obj2, obj3, ... */) {
+  const {caseless} = isContextDefined(this) && this || {};
   const result = {};
   const assignValue = (val, key) => {
-    if (isPlainObject(result[key]) && isPlainObject(val)) {
-      result[key] = merge$1(result[key], val);
+    const targetKey = caseless && findKey(result, key) || key;
+    if (isPlainObject(result[targetKey]) && isPlainObject(val)) {
+      result[targetKey] = merge(result[targetKey], val);
     } else if (isPlainObject(val)) {
-      result[key] = merge$1({}, val);
+      result[targetKey] = merge({}, val);
     } else if (isArray(val)) {
-      result[key] = val.slice();
+      result[targetKey] = val.slice();
     } else {
-      result[key] = val;
+      result[targetKey] = val;
     }
   };
 
@@ -1632,7 +1934,7 @@ const matchAll = (regExp, str) => {
 const isHTMLForm = kindOfTest('HTMLFormElement');
 
 const toCamelCase = str => {
-  return str.toLowerCase().replace(/[_-\s]([a-z\d])(\w*)/g,
+  return str.toLowerCase().replace(/[-_\s]([a-z\d])(\w*)/g,
     function replacer(m, p1, p2) {
       return p1.toUpperCase() + p2;
     }
@@ -1656,8 +1958,9 @@ const reduceDescriptors = (obj, reducer) => {
   const reducedDescriptors = {};
 
   forEach(descriptors, (descriptor, name) => {
-    if (reducer(descriptor, name, obj) !== false) {
-      reducedDescriptors[name] = descriptor;
+    let ret;
+    if ((ret = reducer(descriptor, name, obj)) !== false) {
+      reducedDescriptors[name] = ret || descriptor;
     }
   });
 
@@ -1671,6 +1974,11 @@ const reduceDescriptors = (obj, reducer) => {
 
 const freezeMethods = (obj) => {
   reduceDescriptors(obj, (descriptor, name) => {
+    // skip restricted props in strict mode
+    if (isFunction(obj) && ['arguments', 'caller', 'callee'].indexOf(name) !== -1) {
+      return false;
+    }
+
     const value = obj[name];
 
     if (!isFunction(value)) return;
@@ -1684,7 +1992,7 @@ const freezeMethods = (obj) => {
 
     if (!descriptor.set) {
       descriptor.set = () => {
-        throw Error('Can not read-only method \'' + name + '\'');
+        throw Error('Can not rewrite read-only method \'' + name + '\'');
       };
     }
   });
@@ -1711,6 +2019,73 @@ const toFiniteNumber = (value, defaultValue) => {
   return Number.isFinite(value) ? value : defaultValue;
 };
 
+const ALPHA = 'abcdefghijklmnopqrstuvwxyz';
+
+const DIGIT = '0123456789';
+
+const ALPHABET = {
+  DIGIT,
+  ALPHA,
+  ALPHA_DIGIT: ALPHA + ALPHA.toUpperCase() + DIGIT
+};
+
+const generateString = (size = 16, alphabet = ALPHABET.ALPHA_DIGIT) => {
+  let str = '';
+  const {length} = alphabet;
+  while (size--) {
+    str += alphabet[Math.random() * length|0];
+  }
+
+  return str;
+};
+
+/**
+ * If the thing is a FormData object, return true, otherwise return false.
+ *
+ * @param {unknown} thing - The thing to check.
+ *
+ * @returns {boolean}
+ */
+function isSpecCompliantForm(thing) {
+  return !!(thing && isFunction(thing.append) && thing[Symbol.toStringTag] === 'FormData' && thing[Symbol.iterator]);
+}
+
+const toJSONObject = (obj) => {
+  const stack = new Array(10);
+
+  const visit = (source, i) => {
+
+    if (isObject$1(source)) {
+      if (stack.indexOf(source) >= 0) {
+        return;
+      }
+
+      if(!('toJSON' in source)) {
+        stack[i] = source;
+        const target = isArray(source) ? [] : {};
+
+        forEach(source, (value, key) => {
+          const reducedValue = visit(value, i + 1);
+          !isUndefined(reducedValue) && (target[key] = reducedValue);
+        });
+
+        stack[i] = undefined;
+
+        return target;
+      }
+    }
+
+    return source;
+  };
+
+  return visit(obj, 0);
+};
+
+const isAsyncFn = kindOfTest('AsyncFunction');
+
+const isThenable = (thing) =>
+  thing && (isObject$1(thing) || isFunction(thing)) && isFunction(thing.then) && isFunction(thing.catch);
+
 const utils = {
   isArray,
   isArrayBuffer,
@@ -1733,7 +2108,7 @@ const utils = {
   isTypedArray,
   isFileList,
   forEach,
-  merge: merge$1,
+  merge,
   extend,
   trim,
   stripBOM,
@@ -1753,7 +2128,16 @@ const utils = {
   toObjectSet,
   toCamelCase,
   noop: noop$1,
-  toFiniteNumber
+  toFiniteNumber,
+  findKey,
+  global: _global,
+  isContextDefined,
+  ALPHABET,
+  generateString,
+  isSpecCompliantForm,
+  toJSONObject,
+  isAsyncFn,
+  isThenable
 };
 
 /**
@@ -1799,7 +2183,7 @@ utils.inherits(AxiosError, Error, {
       columnNumber: this.columnNumber,
       stack: this.stack,
       // Axios
-      config: this.config,
+      config: utils.toJSONObject(this.config),
       code: this.code,
       status: this.response && this.response.status ? this.response.status : null
     };
@@ -1851,9 +2235,8 @@ AxiosError.from = (error, code, config, request, response, customProps) => {
   return axiosError;
 };
 
-/* eslint-env browser */
-
-var browser$1 = typeof self == 'object' ? self.FormData : window.FormData;
+// eslint-disable-next-line strict
+const httpAdapter = null;
 
 /**
  * Determines if the given thing is a array or js object.
@@ -1911,17 +2294,6 @@ const predicates = utils.toFlatObject(utils, {}, null, function filter(prop) {
 });
 
 /**
- * If the thing is a FormData object, return true, otherwise return false.
- *
- * @param {unknown} thing - The thing to check.
- *
- * @returns {boolean}
- */
-function isSpecCompliant(thing) {
-  return thing && utils.isFunction(thing.append) && thing[Symbol.toStringTag] === 'FormData' && thing[Symbol.iterator];
-}
-
-/**
  * Convert a data object to FormData
  *
  * @param {Object} obj
@@ -1950,7 +2322,7 @@ function toFormData(obj, formData, options) {
   }
 
   // eslint-disable-next-line no-param-reassign
-  formData = formData || new (browser$1 || FormData)();
+  formData = formData || new (FormData)();
 
   // eslint-disable-next-line no-param-reassign
   options = utils.toFlatObject(options, {
@@ -1968,7 +2340,7 @@ function toFormData(obj, formData, options) {
   const dots = options.dots;
   const indexes = options.indexes;
   const _Blob = options.Blob || typeof Blob !== 'undefined' && Blob;
-  const useBlob = _Blob && isSpecCompliant(formData);
+  const useBlob = _Blob && utils.isSpecCompliantForm(formData);
 
   if (!utils.isFunction(visitor)) {
     throw new TypeError('visitor must be a function');
@@ -2013,7 +2385,7 @@ function toFormData(obj, formData, options) {
         value = JSON.stringify(value);
       } else if (
         (utils.isArray(value) && isFlatArray(value)) ||
-        (utils.isFileList(value) || utils.endsWith(key, '[]') && (arr = utils.toArray(value))
+        ((utils.isFileList(value) || utils.endsWith(key, '[]')) && (arr = utils.toArray(value))
         )) {
         // eslint-disable-next-line no-param-reassign
         key = removeBrackets(key);
@@ -2255,6 +2627,8 @@ class InterceptorManager {
   }
 }
 
+const InterceptorManager$1 = InterceptorManager;
+
 const transitionalDefaults = {
   silentJSONParsing: true,
   forcedJSONParsing: true,
@@ -2263,7 +2637,9 @@ const transitionalDefaults = {
 
 const URLSearchParams$1 = typeof URLSearchParams !== 'undefined' ? URLSearchParams : AxiosURLSearchParams;
 
-const FormData$1 = FormData;
+const FormData$1 = typeof FormData !== 'undefined' ? FormData : null;
+
+const Blob$1 = typeof Blob !== 'undefined' ? Blob : null;
 
 /**
  * Determine if we're running in a standard browser environment
@@ -2295,14 +2671,34 @@ const isStandardBrowserEnv = (() => {
   return typeof window !== 'undefined' && typeof document !== 'undefined';
 })();
 
+/**
+ * Determine if we're running in a standard browser webWorker environment
+ *
+ * Although the `isStandardBrowserEnv` method indicates that
+ * `allows axios to run in a web worker`, the WebWorker will still be
+ * filtered out due to its judgment standard
+ * `typeof window !== 'undefined' && typeof document !== 'undefined'`.
+ * This leads to a problem when axios post `FormData` in webWorker
+ */
+ const isStandardBrowserWebWorkerEnv = (() => {
+  return (
+    typeof WorkerGlobalScope !== 'undefined' &&
+    // eslint-disable-next-line no-undef
+    self instanceof WorkerGlobalScope &&
+    typeof self.importScripts === 'function'
+  );
+})();
+
+
 const platform = {
   isBrowser: true,
   classes: {
     URLSearchParams: URLSearchParams$1,
     FormData: FormData$1,
-    Blob
+    Blob: Blob$1
   },
   isStandardBrowserEnv,
+  isStandardBrowserWebWorkerEnv,
   protocols: ['http', 'https', 'file', 'blob', 'url', 'data']
 };
 
@@ -2405,6 +2801,548 @@ function formDataToJSON(formData) {
 
   return null;
 }
+
+/**
+ * It takes a string, tries to parse it, and if it fails, it returns the stringified version
+ * of the input
+ *
+ * @param {any} rawValue - The value to be stringified.
+ * @param {Function} parser - A function that parses a string into a JavaScript object.
+ * @param {Function} encoder - A function that takes a value and returns a string.
+ *
+ * @returns {string} A stringified version of the rawValue.
+ */
+function stringifySafely(rawValue, parser, encoder) {
+  if (utils.isString(rawValue)) {
+    try {
+      (parser || JSON.parse)(rawValue);
+      return utils.trim(rawValue);
+    } catch (e) {
+      if (e.name !== 'SyntaxError') {
+        throw e;
+      }
+    }
+  }
+
+  return (encoder || JSON.stringify)(rawValue);
+}
+
+const defaults$1 = {
+
+  transitional: transitionalDefaults,
+
+  adapter: ['xhr', 'http'],
+
+  transformRequest: [function transformRequest(data, headers) {
+    const contentType = headers.getContentType() || '';
+    const hasJSONContentType = contentType.indexOf('application/json') > -1;
+    const isObjectPayload = utils.isObject(data);
+
+    if (isObjectPayload && utils.isHTMLForm(data)) {
+      data = new FormData(data);
+    }
+
+    const isFormData = utils.isFormData(data);
+
+    if (isFormData) {
+      if (!hasJSONContentType) {
+        return data;
+      }
+      return hasJSONContentType ? JSON.stringify(formDataToJSON(data)) : data;
+    }
+
+    if (utils.isArrayBuffer(data) ||
+      utils.isBuffer(data) ||
+      utils.isStream(data) ||
+      utils.isFile(data) ||
+      utils.isBlob(data)
+    ) {
+      return data;
+    }
+    if (utils.isArrayBufferView(data)) {
+      return data.buffer;
+    }
+    if (utils.isURLSearchParams(data)) {
+      headers.setContentType('application/x-www-form-urlencoded;charset=utf-8', false);
+      return data.toString();
+    }
+
+    let isFileList;
+
+    if (isObjectPayload) {
+      if (contentType.indexOf('application/x-www-form-urlencoded') > -1) {
+        return toURLEncodedForm(data, this.formSerializer).toString();
+      }
+
+      if ((isFileList = utils.isFileList(data)) || contentType.indexOf('multipart/form-data') > -1) {
+        const _FormData = this.env && this.env.FormData;
+
+        return toFormData(
+          isFileList ? {'files[]': data} : data,
+          _FormData && new _FormData(),
+          this.formSerializer
+        );
+      }
+    }
+
+    if (isObjectPayload || hasJSONContentType ) {
+      headers.setContentType('application/json', false);
+      return stringifySafely(data);
+    }
+
+    return data;
+  }],
+
+  transformResponse: [function transformResponse(data) {
+    const transitional = this.transitional || defaults$1.transitional;
+    const forcedJSONParsing = transitional && transitional.forcedJSONParsing;
+    const JSONRequested = this.responseType === 'json';
+
+    if (data && utils.isString(data) && ((forcedJSONParsing && !this.responseType) || JSONRequested)) {
+      const silentJSONParsing = transitional && transitional.silentJSONParsing;
+      const strictJSONParsing = !silentJSONParsing && JSONRequested;
+
+      try {
+        return JSON.parse(data);
+      } catch (e) {
+        if (strictJSONParsing) {
+          if (e.name === 'SyntaxError') {
+            throw AxiosError.from(e, AxiosError.ERR_BAD_RESPONSE, this, null, this.response);
+          }
+          throw e;
+        }
+      }
+    }
+
+    return data;
+  }],
+
+  /**
+   * A timeout in milliseconds to abort a request. If set to 0 (default) a
+   * timeout is not created.
+   */
+  timeout: 0,
+
+  xsrfCookieName: 'XSRF-TOKEN',
+  xsrfHeaderName: 'X-XSRF-TOKEN',
+
+  maxContentLength: -1,
+  maxBodyLength: -1,
+
+  env: {
+    FormData: platform.classes.FormData,
+    Blob: platform.classes.Blob
+  },
+
+  validateStatus: function validateStatus(status) {
+    return status >= 200 && status < 300;
+  },
+
+  headers: {
+    common: {
+      'Accept': 'application/json, text/plain, */*',
+      'Content-Type': undefined
+    }
+  }
+};
+
+utils.forEach(['delete', 'get', 'head', 'post', 'put', 'patch'], (method) => {
+  defaults$1.headers[method] = {};
+});
+
+const defaults$2 = defaults$1;
+
+// RawAxiosHeaders whose duplicates are ignored by node
+// c.f. https://nodejs.org/api/http.html#http_message_headers
+const ignoreDuplicateOf = utils.toObjectSet([
+  'age', 'authorization', 'content-length', 'content-type', 'etag',
+  'expires', 'from', 'host', 'if-modified-since', 'if-unmodified-since',
+  'last-modified', 'location', 'max-forwards', 'proxy-authorization',
+  'referer', 'retry-after', 'user-agent'
+]);
+
+/**
+ * Parse headers into an object
+ *
+ * ```
+ * Date: Wed, 27 Aug 2014 08:58:49 GMT
+ * Content-Type: application/json
+ * Connection: keep-alive
+ * Transfer-Encoding: chunked
+ * ```
+ *
+ * @param {String} rawHeaders Headers needing to be parsed
+ *
+ * @returns {Object} Headers parsed into an object
+ */
+const parseHeaders = rawHeaders => {
+  const parsed = {};
+  let key;
+  let val;
+  let i;
+
+  rawHeaders && rawHeaders.split('\n').forEach(function parser(line) {
+    i = line.indexOf(':');
+    key = line.substring(0, i).trim().toLowerCase();
+    val = line.substring(i + 1).trim();
+
+    if (!key || (parsed[key] && ignoreDuplicateOf[key])) {
+      return;
+    }
+
+    if (key === 'set-cookie') {
+      if (parsed[key]) {
+        parsed[key].push(val);
+      } else {
+        parsed[key] = [val];
+      }
+    } else {
+      parsed[key] = parsed[key] ? parsed[key] + ', ' + val : val;
+    }
+  });
+
+  return parsed;
+};
+
+const $internals = Symbol('internals');
+
+function normalizeHeader(header) {
+  return header && String(header).trim().toLowerCase();
+}
+
+function normalizeValue(value) {
+  if (value === false || value == null) {
+    return value;
+  }
+
+  return utils.isArray(value) ? value.map(normalizeValue) : String(value);
+}
+
+function parseTokens(str) {
+  const tokens = Object.create(null);
+  const tokensRE = /([^\s,;=]+)\s*(?:=\s*([^,;]+))?/g;
+  let match;
+
+  while ((match = tokensRE.exec(str))) {
+    tokens[match[1]] = match[2];
+  }
+
+  return tokens;
+}
+
+const isValidHeaderName = (str) => /^[-_a-zA-Z0-9^`|~,!#$%&'*+.]+$/.test(str.trim());
+
+function matchHeaderValue(context, value, header, filter, isHeaderNameFilter) {
+  if (utils.isFunction(filter)) {
+    return filter.call(this, value, header);
+  }
+
+  if (isHeaderNameFilter) {
+    value = header;
+  }
+
+  if (!utils.isString(value)) return;
+
+  if (utils.isString(filter)) {
+    return value.indexOf(filter) !== -1;
+  }
+
+  if (utils.isRegExp(filter)) {
+    return filter.test(value);
+  }
+}
+
+function formatHeader(header) {
+  return header.trim()
+    .toLowerCase().replace(/([a-z\d])(\w*)/g, (w, char, str) => {
+      return char.toUpperCase() + str;
+    });
+}
+
+function buildAccessors(obj, header) {
+  const accessorName = utils.toCamelCase(' ' + header);
+
+  ['get', 'set', 'has'].forEach(methodName => {
+    Object.defineProperty(obj, methodName + accessorName, {
+      value: function(arg1, arg2, arg3) {
+        return this[methodName].call(this, header, arg1, arg2, arg3);
+      },
+      configurable: true
+    });
+  });
+}
+
+class AxiosHeaders {
+  constructor(headers) {
+    headers && this.set(headers);
+  }
+
+  set(header, valueOrRewrite, rewrite) {
+    const self = this;
+
+    function setHeader(_value, _header, _rewrite) {
+      const lHeader = normalizeHeader(_header);
+
+      if (!lHeader) {
+        throw new Error('header name must be a non-empty string');
+      }
+
+      const key = utils.findKey(self, lHeader);
+
+      if(!key || self[key] === undefined || _rewrite === true || (_rewrite === undefined && self[key] !== false)) {
+        self[key || _header] = normalizeValue(_value);
+      }
+    }
+
+    const setHeaders = (headers, _rewrite) =>
+      utils.forEach(headers, (_value, _header) => setHeader(_value, _header, _rewrite));
+
+    if (utils.isPlainObject(header) || header instanceof this.constructor) {
+      setHeaders(header, valueOrRewrite);
+    } else if(utils.isString(header) && (header = header.trim()) && !isValidHeaderName(header)) {
+      setHeaders(parseHeaders(header), valueOrRewrite);
+    } else {
+      header != null && setHeader(valueOrRewrite, header, rewrite);
+    }
+
+    return this;
+  }
+
+  get(header, parser) {
+    header = normalizeHeader(header);
+
+    if (header) {
+      const key = utils.findKey(this, header);
+
+      if (key) {
+        const value = this[key];
+
+        if (!parser) {
+          return value;
+        }
+
+        if (parser === true) {
+          return parseTokens(value);
+        }
+
+        if (utils.isFunction(parser)) {
+          return parser.call(this, value, key);
+        }
+
+        if (utils.isRegExp(parser)) {
+          return parser.exec(value);
+        }
+
+        throw new TypeError('parser must be boolean|regexp|function');
+      }
+    }
+  }
+
+  has(header, matcher) {
+    header = normalizeHeader(header);
+
+    if (header) {
+      const key = utils.findKey(this, header);
+
+      return !!(key && this[key] !== undefined && (!matcher || matchHeaderValue(this, this[key], key, matcher)));
+    }
+
+    return false;
+  }
+
+  delete(header, matcher) {
+    const self = this;
+    let deleted = false;
+
+    function deleteHeader(_header) {
+      _header = normalizeHeader(_header);
+
+      if (_header) {
+        const key = utils.findKey(self, _header);
+
+        if (key && (!matcher || matchHeaderValue(self, self[key], key, matcher))) {
+          delete self[key];
+
+          deleted = true;
+        }
+      }
+    }
+
+    if (utils.isArray(header)) {
+      header.forEach(deleteHeader);
+    } else {
+      deleteHeader(header);
+    }
+
+    return deleted;
+  }
+
+  clear(matcher) {
+    const keys = Object.keys(this);
+    let i = keys.length;
+    let deleted = false;
+
+    while (i--) {
+      const key = keys[i];
+      if(!matcher || matchHeaderValue(this, this[key], key, matcher, true)) {
+        delete this[key];
+        deleted = true;
+      }
+    }
+
+    return deleted;
+  }
+
+  normalize(format) {
+    const self = this;
+    const headers = {};
+
+    utils.forEach(this, (value, header) => {
+      const key = utils.findKey(headers, header);
+
+      if (key) {
+        self[key] = normalizeValue(value);
+        delete self[header];
+        return;
+      }
+
+      const normalized = format ? formatHeader(header) : String(header).trim();
+
+      if (normalized !== header) {
+        delete self[header];
+      }
+
+      self[normalized] = normalizeValue(value);
+
+      headers[normalized] = true;
+    });
+
+    return this;
+  }
+
+  concat(...targets) {
+    return this.constructor.concat(this, ...targets);
+  }
+
+  toJSON(asStrings) {
+    const obj = Object.create(null);
+
+    utils.forEach(this, (value, header) => {
+      value != null && value !== false && (obj[header] = asStrings && utils.isArray(value) ? value.join(', ') : value);
+    });
+
+    return obj;
+  }
+
+  [Symbol.iterator]() {
+    return Object.entries(this.toJSON())[Symbol.iterator]();
+  }
+
+  toString() {
+    return Object.entries(this.toJSON()).map(([header, value]) => header + ': ' + value).join('\n');
+  }
+
+  get [Symbol.toStringTag]() {
+    return 'AxiosHeaders';
+  }
+
+  static from(thing) {
+    return thing instanceof this ? thing : new this(thing);
+  }
+
+  static concat(first, ...targets) {
+    const computed = new this(first);
+
+    targets.forEach((target) => computed.set(target));
+
+    return computed;
+  }
+
+  static accessor(header) {
+    const internals = this[$internals] = (this[$internals] = {
+      accessors: {}
+    });
+
+    const accessors = internals.accessors;
+    const prototype = this.prototype;
+
+    function defineAccessor(_header) {
+      const lHeader = normalizeHeader(_header);
+
+      if (!accessors[lHeader]) {
+        buildAccessors(prototype, _header);
+        accessors[lHeader] = true;
+      }
+    }
+
+    utils.isArray(header) ? header.forEach(defineAccessor) : defineAccessor(header);
+
+    return this;
+  }
+}
+
+AxiosHeaders.accessor(['Content-Type', 'Content-Length', 'Accept', 'Accept-Encoding', 'User-Agent', 'Authorization']);
+
+// reserved names hotfix
+utils.reduceDescriptors(AxiosHeaders.prototype, ({value}, key) => {
+  let mapped = key[0].toUpperCase() + key.slice(1); // map `set` => `Set`
+  return {
+    get: () => value,
+    set(headerValue) {
+      this[mapped] = headerValue;
+    }
+  }
+});
+
+utils.freezeMethods(AxiosHeaders);
+
+const AxiosHeaders$1 = AxiosHeaders;
+
+/**
+ * Transform the data for a request or a response
+ *
+ * @param {Array|Function} fns A single function or Array of functions
+ * @param {?Object} response The response object
+ *
+ * @returns {*} The resulting transformed data
+ */
+function transformData(fns, response) {
+  const config = this || defaults$2;
+  const context = response || config;
+  const headers = AxiosHeaders$1.from(context.headers);
+  let data = context.data;
+
+  utils.forEach(fns, function transform(fn) {
+    data = fn.call(config, data, headers.normalize(), response ? response.status : undefined);
+  });
+
+  headers.normalize();
+
+  return data;
+}
+
+function isCancel(value) {
+  return !!(value && value.__CANCEL__);
+}
+
+/**
+ * A `CanceledError` is an object that is thrown when an operation is canceled.
+ *
+ * @param {string=} message The message.
+ * @param {Object=} config The config.
+ * @param {Object=} request The request.
+ *
+ * @returns {CanceledError} The created error.
+ */
+function CanceledError(message, config, request) {
+  // eslint-disable-next-line no-eq-null,eqeqeq
+  AxiosError.call(this, message == null ? 'canceled' : message, AxiosError.ERR_CANCELED, config, request);
+  this.name = 'CanceledError';
+}
+
+utils.inherits(CanceledError, AxiosError, {
+  __CANCEL__: true
+});
 
 /**
  * Resolve or reject a Promise based on response status.
@@ -2586,343 +3524,10 @@ const isURLSameOrigin = platform.isStandardBrowserEnv ?
     };
   })();
 
-/**
- * A `CanceledError` is an object that is thrown when an operation is canceled.
- *
- * @param {string=} message The message.
- * @param {Object=} config The config.
- * @param {Object=} request The request.
- *
- * @returns {CanceledError} The created error.
- */
-function CanceledError(message, config, request) {
-  // eslint-disable-next-line no-eq-null,eqeqeq
-  AxiosError.call(this, message == null ? 'canceled' : message, AxiosError.ERR_CANCELED, config, request);
-  this.name = 'CanceledError';
-}
-
-utils.inherits(CanceledError, AxiosError, {
-  __CANCEL__: true
-});
-
 function parseProtocol(url) {
   const match = /^([-+\w]{1,25})(:?\/\/|:)/.exec(url);
   return match && match[1] || '';
 }
-
-// RawAxiosHeaders whose duplicates are ignored by node
-// c.f. https://nodejs.org/api/http.html#http_message_headers
-const ignoreDuplicateOf = utils.toObjectSet([
-  'age', 'authorization', 'content-length', 'content-type', 'etag',
-  'expires', 'from', 'host', 'if-modified-since', 'if-unmodified-since',
-  'last-modified', 'location', 'max-forwards', 'proxy-authorization',
-  'referer', 'retry-after', 'user-agent'
-]);
-
-/**
- * Parse headers into an object
- *
- * ```
- * Date: Wed, 27 Aug 2014 08:58:49 GMT
- * Content-Type: application/json
- * Connection: keep-alive
- * Transfer-Encoding: chunked
- * ```
- *
- * @param {String} rawHeaders Headers needing to be parsed
- *
- * @returns {Object} Headers parsed into an object
- */
-const parseHeaders = rawHeaders => {
-  const parsed = {};
-  let key;
-  let val;
-  let i;
-
-  rawHeaders && rawHeaders.split('\n').forEach(function parser(line) {
-    i = line.indexOf(':');
-    key = line.substring(0, i).trim().toLowerCase();
-    val = line.substring(i + 1).trim();
-
-    if (!key || (parsed[key] && ignoreDuplicateOf[key])) {
-      return;
-    }
-
-    if (key === 'set-cookie') {
-      if (parsed[key]) {
-        parsed[key].push(val);
-      } else {
-        parsed[key] = [val];
-      }
-    } else {
-      parsed[key] = parsed[key] ? parsed[key] + ', ' + val : val;
-    }
-  });
-
-  return parsed;
-};
-
-const $internals = Symbol('internals');
-const $defaults = Symbol('defaults');
-
-function normalizeHeader(header) {
-  return header && String(header).trim().toLowerCase();
-}
-
-function normalizeValue(value) {
-  if (value === false || value == null) {
-    return value;
-  }
-
-  return utils.isArray(value) ? value.map(normalizeValue) : String(value);
-}
-
-function parseTokens(str) {
-  const tokens = Object.create(null);
-  const tokensRE = /([^\s,;=]+)\s*(?:=\s*([^,;]+))?/g;
-  let match;
-
-  while ((match = tokensRE.exec(str))) {
-    tokens[match[1]] = match[2];
-  }
-
-  return tokens;
-}
-
-function matchHeaderValue(context, value, header, filter) {
-  if (utils.isFunction(filter)) {
-    return filter.call(this, value, header);
-  }
-
-  if (!utils.isString(value)) return;
-
-  if (utils.isString(filter)) {
-    return value.indexOf(filter) !== -1;
-  }
-
-  if (utils.isRegExp(filter)) {
-    return filter.test(value);
-  }
-}
-
-function formatHeader(header) {
-  return header.trim()
-    .toLowerCase().replace(/([a-z\d])(\w*)/g, (w, char, str) => {
-      return char.toUpperCase() + str;
-    });
-}
-
-function buildAccessors(obj, header) {
-  const accessorName = utils.toCamelCase(' ' + header);
-
-  ['get', 'set', 'has'].forEach(methodName => {
-    Object.defineProperty(obj, methodName + accessorName, {
-      value: function(arg1, arg2, arg3) {
-        return this[methodName].call(this, header, arg1, arg2, arg3);
-      },
-      configurable: true
-    });
-  });
-}
-
-function findKey(obj, key) {
-  key = key.toLowerCase();
-  const keys = Object.keys(obj);
-  let i = keys.length;
-  let _key;
-  while (i-- > 0) {
-    _key = keys[i];
-    if (key === _key.toLowerCase()) {
-      return _key;
-    }
-  }
-  return null;
-}
-
-function AxiosHeaders(headers, defaults) {
-  headers && this.set(headers);
-  this[$defaults] = defaults || null;
-}
-
-Object.assign(AxiosHeaders.prototype, {
-  set: function(header, valueOrRewrite, rewrite) {
-    const self = this;
-
-    function setHeader(_value, _header, _rewrite) {
-      const lHeader = normalizeHeader(_header);
-
-      if (!lHeader) {
-        throw new Error('header name must be a non-empty string');
-      }
-
-      const key = findKey(self, lHeader);
-
-      if (key && _rewrite !== true && (self[key] === false || _rewrite === false)) {
-        return;
-      }
-
-      self[key || _header] = normalizeValue(_value);
-    }
-
-    if (utils.isPlainObject(header)) {
-      utils.forEach(header, (_value, _header) => {
-        setHeader(_value, _header, valueOrRewrite);
-      });
-    } else {
-      setHeader(valueOrRewrite, header, rewrite);
-    }
-
-    return this;
-  },
-
-  get: function(header, parser) {
-    header = normalizeHeader(header);
-
-    if (!header) return undefined;
-
-    const key = findKey(this, header);
-
-    if (key) {
-      const value = this[key];
-
-      if (!parser) {
-        return value;
-      }
-
-      if (parser === true) {
-        return parseTokens(value);
-      }
-
-      if (utils.isFunction(parser)) {
-        return parser.call(this, value, key);
-      }
-
-      if (utils.isRegExp(parser)) {
-        return parser.exec(value);
-      }
-
-      throw new TypeError('parser must be boolean|regexp|function');
-    }
-  },
-
-  has: function(header, matcher) {
-    header = normalizeHeader(header);
-
-    if (header) {
-      const key = findKey(this, header);
-
-      return !!(key && (!matcher || matchHeaderValue(this, this[key], key, matcher)));
-    }
-
-    return false;
-  },
-
-  delete: function(header, matcher) {
-    const self = this;
-    let deleted = false;
-
-    function deleteHeader(_header) {
-      _header = normalizeHeader(_header);
-
-      if (_header) {
-        const key = findKey(self, _header);
-
-        if (key && (!matcher || matchHeaderValue(self, self[key], key, matcher))) {
-          delete self[key];
-
-          deleted = true;
-        }
-      }
-    }
-
-    if (utils.isArray(header)) {
-      header.forEach(deleteHeader);
-    } else {
-      deleteHeader(header);
-    }
-
-    return deleted;
-  },
-
-  clear: function() {
-    return Object.keys(this).forEach(this.delete.bind(this));
-  },
-
-  normalize: function(format) {
-    const self = this;
-    const headers = {};
-
-    utils.forEach(this, (value, header) => {
-      const key = findKey(headers, header);
-
-      if (key) {
-        self[key] = normalizeValue(value);
-        delete self[header];
-        return;
-      }
-
-      const normalized = format ? formatHeader(header) : String(header).trim();
-
-      if (normalized !== header) {
-        delete self[header];
-      }
-
-      self[normalized] = normalizeValue(value);
-
-      headers[normalized] = true;
-    });
-
-    return this;
-  },
-
-  toJSON: function(asStrings) {
-    const obj = Object.create(null);
-
-    utils.forEach(Object.assign({}, this[$defaults] || null, this),
-      (value, header) => {
-        if (value == null || value === false) return;
-        obj[header] = asStrings && utils.isArray(value) ? value.join(', ') : value;
-      });
-
-    return obj;
-  }
-});
-
-Object.assign(AxiosHeaders, {
-  from: function(thing) {
-    if (utils.isString(thing)) {
-      return new this(parseHeaders(thing));
-    }
-    return thing instanceof this ? thing : new this(thing);
-  },
-
-  accessor: function(header) {
-    const internals = this[$internals] = (this[$internals] = {
-      accessors: {}
-    });
-
-    const accessors = internals.accessors;
-    const prototype = this.prototype;
-
-    function defineAccessor(_header) {
-      const lHeader = normalizeHeader(_header);
-
-      if (!accessors[lHeader]) {
-        buildAccessors(prototype, _header);
-        accessors[lHeader] = true;
-      }
-    }
-
-    utils.isArray(header) ? header.forEach(defineAccessor) : defineAccessor(header);
-
-    return this;
-  }
-});
-
-AxiosHeaders.accessor(['Content-Type', 'Content-Length', 'Accept', 'Accept-Encoding', 'User-Agent']);
-
-utils.freezeMethods(AxiosHeaders.prototype);
-utils.freezeMethods(AxiosHeaders);
 
 /**
  * Calculate data maxRate
@@ -2972,7 +3577,7 @@ function speedometer(samplesCount, min) {
 
     const passed = startedAt && now - startedAt;
 
-    return  passed ? Math.round(bytesCount * 1000 / passed) : undefined;
+    return passed ? Math.round(bytesCount * 1000 / passed) : undefined;
   };
 }
 
@@ -2995,7 +3600,8 @@ function progressEventReducer(listener, isDownloadStream) {
       progress: total ? (loaded / total) : undefined,
       bytes: progressBytes,
       rate: rate ? rate : undefined,
-      estimated: rate && total && inRange ? (total - loaded) / rate : undefined
+      estimated: rate && total && inRange ? (total - loaded) / rate : undefined,
+      event: e
     };
 
     data[isDownloadStream ? 'download' : 'upload'] = true;
@@ -3004,10 +3610,12 @@ function progressEventReducer(listener, isDownloadStream) {
   };
 }
 
-function xhrAdapter(config) {
+const isXHRAdapterSupported = typeof XMLHttpRequest !== 'undefined';
+
+const xhrAdapter = isXHRAdapterSupported && function (config) {
   return new Promise(function dispatchXhrRequest(resolve, reject) {
     let requestData = config.data;
-    const requestHeaders = AxiosHeaders.from(config.headers).normalize();
+    const requestHeaders = AxiosHeaders$1.from(config.headers).normalize();
     const responseType = config.responseType;
     let onCanceled;
     function done() {
@@ -3020,8 +3628,17 @@ function xhrAdapter(config) {
       }
     }
 
-    if (utils.isFormData(requestData) && platform.isStandardBrowserEnv) {
-      requestHeaders.setContentType(false); // Let the browser set it
+    let contentType;
+
+    if (utils.isFormData(requestData)) {
+      if (platform.isStandardBrowserEnv || platform.isStandardBrowserWebWorkerEnv) {
+        requestHeaders.setContentType(false); // Let the browser set it
+      } else if(!requestHeaders.getContentType(/^\s*multipart\/form-data/)){
+        requestHeaders.setContentType('multipart/form-data'); // mobile/desktop app frameworks
+      } else if(utils.isString(contentType = requestHeaders.getContentType())){
+        // fix semicolon duplication issue for ReactNative FormData implementation
+        requestHeaders.setContentType(contentType.replace(/^\s*(multipart\/form-data);+/, '$1'));
+      }
     }
 
     let request = new XMLHttpRequest();
@@ -3045,10 +3662,10 @@ function xhrAdapter(config) {
         return;
       }
       // Prepare the response
-      const responseHeaders = AxiosHeaders.from(
+      const responseHeaders = AxiosHeaders$1.from(
         'getAllResponseHeaders' in request && request.getAllResponseHeaders()
       );
-      const responseData = !responseType || responseType === 'text' ||  responseType === 'json' ?
+      const responseData = !responseType || responseType === 'text' || responseType === 'json' ?
         request.responseText : request.response;
       const response = {
         data: responseData,
@@ -3205,237 +3822,80 @@ function xhrAdapter(config) {
     // Send the request
     request.send(requestData || null);
   });
-}
+};
 
-const adapters = {
-  http: xhrAdapter,
+const knownAdapters = {
+  http: httpAdapter,
   xhr: xhrAdapter
 };
 
-const adapters$1 = {
-  getAdapter: (nameOrAdapter) => {
-    if(utils.isString(nameOrAdapter)){
-      const adapter = adapters[nameOrAdapter];
-
-      if (!nameOrAdapter) {
-        throw Error(
-          utils.hasOwnProp(nameOrAdapter) ?
-            `Adapter '${nameOrAdapter}' is not available in the build` :
-            `Can not resolve adapter '${nameOrAdapter}'`
-        );
-      }
-
-      return adapter
-    }
-
-    if (!utils.isFunction(nameOrAdapter)) {
-      throw new TypeError('adapter is not a function');
-    }
-
-    return nameOrAdapter;
-  },
-  adapters
-};
-
-const DEFAULT_CONTENT_TYPE = {
-  'Content-Type': 'application/x-www-form-urlencoded'
-};
-
-/**
- * If the browser has an XMLHttpRequest object, use the XHR adapter, otherwise use the HTTP
- * adapter
- *
- * @returns {Function}
- */
-function getDefaultAdapter() {
-  let adapter;
-  if (typeof XMLHttpRequest !== 'undefined') {
-    // For browsers use XHR adapter
-    adapter = adapters$1.getAdapter('xhr');
-  } else if (typeof process !== 'undefined' && utils.kindOf(process) === 'process') {
-    // For node use HTTP adapter
-    adapter = adapters$1.getAdapter('http');
-  }
-  return adapter;
-}
-
-/**
- * It takes a string, tries to parse it, and if it fails, it returns the stringified version
- * of the input
- *
- * @param {any} rawValue - The value to be stringified.
- * @param {Function} parser - A function that parses a string into a JavaScript object.
- * @param {Function} encoder - A function that takes a value and returns a string.
- *
- * @returns {string} A stringified version of the rawValue.
- */
-function stringifySafely(rawValue, parser, encoder) {
-  if (utils.isString(rawValue)) {
+utils.forEach(knownAdapters, (fn, value) => {
+  if (fn) {
     try {
-      (parser || JSON.parse)(rawValue);
-      return utils.trim(rawValue);
+      Object.defineProperty(fn, 'name', {value});
     } catch (e) {
-      if (e.name !== 'SyntaxError') {
-        throw e;
-      }
+      // eslint-disable-next-line no-empty
     }
+    Object.defineProperty(fn, 'adapterName', {value});
   }
+});
 
-  return (encoder || JSON.stringify)(rawValue);
-}
+const renderReason = (reason) => `- ${reason}`;
 
-const defaults$1 = {
+const isResolvedHandle = (adapter) => utils.isFunction(adapter) || adapter === null || adapter === false;
 
-  transitional: transitionalDefaults,
+const adapters = {
+  getAdapter: (adapters) => {
+    adapters = utils.isArray(adapters) ? adapters : [adapters];
 
-  adapter: getDefaultAdapter(),
+    const {length} = adapters;
+    let nameOrAdapter;
+    let adapter;
 
-  transformRequest: [function transformRequest(data, headers) {
-    const contentType = headers.getContentType() || '';
-    const hasJSONContentType = contentType.indexOf('application/json') > -1;
-    const isObjectPayload = utils.isObject(data);
+    const rejectedReasons = {};
 
-    if (isObjectPayload && utils.isHTMLForm(data)) {
-      data = new FormData(data);
-    }
+    for (let i = 0; i < length; i++) {
+      nameOrAdapter = adapters[i];
+      let id;
 
-    const isFormData = utils.isFormData(data);
+      adapter = nameOrAdapter;
 
-    if (isFormData) {
-      if (!hasJSONContentType) {
-        return data;
-      }
-      return hasJSONContentType ? JSON.stringify(formDataToJSON(data)) : data;
-    }
+      if (!isResolvedHandle(nameOrAdapter)) {
+        adapter = knownAdapters[(id = String(nameOrAdapter)).toLowerCase()];
 
-    if (utils.isArrayBuffer(data) ||
-      utils.isBuffer(data) ||
-      utils.isStream(data) ||
-      utils.isFile(data) ||
-      utils.isBlob(data)
-    ) {
-      return data;
-    }
-    if (utils.isArrayBufferView(data)) {
-      return data.buffer;
-    }
-    if (utils.isURLSearchParams(data)) {
-      headers.setContentType('application/x-www-form-urlencoded;charset=utf-8', false);
-      return data.toString();
-    }
-
-    let isFileList;
-
-    if (isObjectPayload) {
-      if (contentType.indexOf('application/x-www-form-urlencoded') > -1) {
-        return toURLEncodedForm(data, this.formSerializer).toString();
-      }
-
-      if ((isFileList = utils.isFileList(data)) || contentType.indexOf('multipart/form-data') > -1) {
-        const _FormData = this.env && this.env.FormData;
-
-        return toFormData(
-          isFileList ? {'files[]': data} : data,
-          _FormData && new _FormData(),
-          this.formSerializer
-        );
-      }
-    }
-
-    if (isObjectPayload || hasJSONContentType ) {
-      headers.setContentType('application/json', false);
-      return stringifySafely(data);
-    }
-
-    return data;
-  }],
-
-  transformResponse: [function transformResponse(data) {
-    const transitional = this.transitional || defaults$1.transitional;
-    const forcedJSONParsing = transitional && transitional.forcedJSONParsing;
-    const JSONRequested = this.responseType === 'json';
-
-    if (data && utils.isString(data) && ((forcedJSONParsing && !this.responseType) || JSONRequested)) {
-      const silentJSONParsing = transitional && transitional.silentJSONParsing;
-      const strictJSONParsing = !silentJSONParsing && JSONRequested;
-
-      try {
-        return JSON.parse(data);
-      } catch (e) {
-        if (strictJSONParsing) {
-          if (e.name === 'SyntaxError') {
-            throw AxiosError.from(e, AxiosError.ERR_BAD_RESPONSE, this, null, this.response);
-          }
-          throw e;
+        if (adapter === undefined) {
+          throw new AxiosError(`Unknown adapter '${id}'`);
         }
       }
+
+      if (adapter) {
+        break;
+      }
+
+      rejectedReasons[id || '#' + i] = adapter;
     }
 
-    return data;
-  }],
+    if (!adapter) {
 
-  /**
-   * A timeout in milliseconds to abort a request. If set to 0 (default) a
-   * timeout is not created.
-   */
-  timeout: 0,
+      const reasons = Object.entries(rejectedReasons)
+        .map(([id, state]) => `adapter ${id} ` +
+          (state === false ? 'is not supported by the environment' : 'is not available in the build')
+        );
 
-  xsrfCookieName: 'XSRF-TOKEN',
-  xsrfHeaderName: 'X-XSRF-TOKEN',
+      let s = length ?
+        (reasons.length > 1 ? 'since :\n' + reasons.map(renderReason).join('\n') : ' ' + renderReason(reasons[0])) :
+        'as no adapter specified';
 
-  maxContentLength: -1,
-  maxBodyLength: -1,
-
-  env: {
-    FormData: platform.classes.FormData,
-    Blob: platform.classes.Blob
-  },
-
-  validateStatus: function validateStatus(status) {
-    return status >= 200 && status < 300;
-  },
-
-  headers: {
-    common: {
-      'Accept': 'application/json, text/plain, */*'
+      throw new AxiosError(
+        `There is no suitable adapter to dispatch the request ` + s,
+        'ERR_NOT_SUPPORT'
+      );
     }
-  }
+
+    return adapter;
+  },
+  adapters: knownAdapters
 };
-
-utils.forEach(['delete', 'get', 'head'], function forEachMethodNoData(method) {
-  defaults$1.headers[method] = {};
-});
-
-utils.forEach(['post', 'put', 'patch'], function forEachMethodWithData(method) {
-  defaults$1.headers[method] = utils.merge(DEFAULT_CONTENT_TYPE);
-});
-
-/**
- * Transform the data for a request or a response
- *
- * @param {Array|Function} fns A single function or Array of functions
- * @param {?Object} response The response object
- *
- * @returns {*} The resulting transformed data
- */
-function transformData(fns, response) {
-  const config = this || defaults$1;
-  const context = response || config;
-  const headers = AxiosHeaders.from(context.headers);
-  let data = context.data;
-
-  utils.forEach(fns, function transform(fn) {
-    data = fn.call(config, data, headers.normalize(), response ? response.status : undefined);
-  });
-
-  headers.normalize();
-
-  return data;
-}
-
-function isCancel(value) {
-  return !!(value && value.__CANCEL__);
-}
 
 /**
  * Throws a `CanceledError` if cancellation has been requested.
@@ -3450,7 +3910,7 @@ function throwIfCancellationRequested(config) {
   }
 
   if (config.signal && config.signal.aborted) {
-    throw new CanceledError();
+    throw new CanceledError(null, config);
   }
 }
 
@@ -3464,7 +3924,7 @@ function throwIfCancellationRequested(config) {
 function dispatchRequest(config) {
   throwIfCancellationRequested(config);
 
-  config.headers = AxiosHeaders.from(config.headers);
+  config.headers = AxiosHeaders$1.from(config.headers);
 
   // Transform request data
   config.data = transformData.call(
@@ -3472,7 +3932,11 @@ function dispatchRequest(config) {
     config.transformRequest
   );
 
-  const adapter = config.adapter || defaults$1.adapter;
+  if (['post', 'put', 'patch'].indexOf(config.method) !== -1) {
+    config.headers.setContentType('application/x-www-form-urlencoded', false);
+  }
+
+  const adapter = adapters.getAdapter(config.adapter || defaults$2.adapter);
 
   return adapter(config).then(function onAdapterResolution(response) {
     throwIfCancellationRequested(config);
@@ -3484,7 +3948,7 @@ function dispatchRequest(config) {
       response
     );
 
-    response.headers = AxiosHeaders.from(response.headers);
+    response.headers = AxiosHeaders$1.from(response.headers);
 
     return response;
   }, function onAdapterRejection(reason) {
@@ -3498,13 +3962,15 @@ function dispatchRequest(config) {
           config.transformResponse,
           reason.response
         );
-        reason.response.headers = AxiosHeaders.from(reason.response.headers);
+        reason.response.headers = AxiosHeaders$1.from(reason.response.headers);
       }
     }
 
     return Promise.reject(reason);
   });
 }
+
+const headersToObject = (thing) => thing instanceof AxiosHeaders$1 ? thing.toJSON() : thing;
 
 /**
  * Config-specific merge-function which creates a new config-object
@@ -3520,9 +3986,9 @@ function mergeConfig(config1, config2) {
   config2 = config2 || {};
   const config = {};
 
-  function getMergedValue(target, source) {
+  function getMergedValue(target, source, caseless) {
     if (utils.isPlainObject(target) && utils.isPlainObject(source)) {
-      return utils.merge(target, source);
+      return utils.merge.call({caseless}, target, source);
     } else if (utils.isPlainObject(source)) {
       return utils.merge({}, source);
     } else if (utils.isArray(source)) {
@@ -3532,79 +3998,80 @@ function mergeConfig(config1, config2) {
   }
 
   // eslint-disable-next-line consistent-return
-  function mergeDeepProperties(prop) {
-    if (!utils.isUndefined(config2[prop])) {
-      return getMergedValue(config1[prop], config2[prop]);
-    } else if (!utils.isUndefined(config1[prop])) {
-      return getMergedValue(undefined, config1[prop]);
+  function mergeDeepProperties(a, b, caseless) {
+    if (!utils.isUndefined(b)) {
+      return getMergedValue(a, b, caseless);
+    } else if (!utils.isUndefined(a)) {
+      return getMergedValue(undefined, a, caseless);
     }
   }
 
   // eslint-disable-next-line consistent-return
-  function valueFromConfig2(prop) {
-    if (!utils.isUndefined(config2[prop])) {
-      return getMergedValue(undefined, config2[prop]);
+  function valueFromConfig2(a, b) {
+    if (!utils.isUndefined(b)) {
+      return getMergedValue(undefined, b);
     }
   }
 
   // eslint-disable-next-line consistent-return
-  function defaultToConfig2(prop) {
-    if (!utils.isUndefined(config2[prop])) {
-      return getMergedValue(undefined, config2[prop]);
-    } else if (!utils.isUndefined(config1[prop])) {
-      return getMergedValue(undefined, config1[prop]);
+  function defaultToConfig2(a, b) {
+    if (!utils.isUndefined(b)) {
+      return getMergedValue(undefined, b);
+    } else if (!utils.isUndefined(a)) {
+      return getMergedValue(undefined, a);
     }
   }
 
   // eslint-disable-next-line consistent-return
-  function mergeDirectKeys(prop) {
+  function mergeDirectKeys(a, b, prop) {
     if (prop in config2) {
-      return getMergedValue(config1[prop], config2[prop]);
+      return getMergedValue(a, b);
     } else if (prop in config1) {
-      return getMergedValue(undefined, config1[prop]);
+      return getMergedValue(undefined, a);
     }
   }
 
   const mergeMap = {
-    'url': valueFromConfig2,
-    'method': valueFromConfig2,
-    'data': valueFromConfig2,
-    'baseURL': defaultToConfig2,
-    'transformRequest': defaultToConfig2,
-    'transformResponse': defaultToConfig2,
-    'paramsSerializer': defaultToConfig2,
-    'timeout': defaultToConfig2,
-    'timeoutMessage': defaultToConfig2,
-    'withCredentials': defaultToConfig2,
-    'adapter': defaultToConfig2,
-    'responseType': defaultToConfig2,
-    'xsrfCookieName': defaultToConfig2,
-    'xsrfHeaderName': defaultToConfig2,
-    'onUploadProgress': defaultToConfig2,
-    'onDownloadProgress': defaultToConfig2,
-    'decompress': defaultToConfig2,
-    'maxContentLength': defaultToConfig2,
-    'maxBodyLength': defaultToConfig2,
-    'beforeRedirect': defaultToConfig2,
-    'transport': defaultToConfig2,
-    'httpAgent': defaultToConfig2,
-    'httpsAgent': defaultToConfig2,
-    'cancelToken': defaultToConfig2,
-    'socketPath': defaultToConfig2,
-    'responseEncoding': defaultToConfig2,
-    'validateStatus': mergeDirectKeys
+    url: valueFromConfig2,
+    method: valueFromConfig2,
+    data: valueFromConfig2,
+    baseURL: defaultToConfig2,
+    transformRequest: defaultToConfig2,
+    transformResponse: defaultToConfig2,
+    paramsSerializer: defaultToConfig2,
+    timeout: defaultToConfig2,
+    timeoutMessage: defaultToConfig2,
+    withCredentials: defaultToConfig2,
+    adapter: defaultToConfig2,
+    responseType: defaultToConfig2,
+    xsrfCookieName: defaultToConfig2,
+    xsrfHeaderName: defaultToConfig2,
+    onUploadProgress: defaultToConfig2,
+    onDownloadProgress: defaultToConfig2,
+    decompress: defaultToConfig2,
+    maxContentLength: defaultToConfig2,
+    maxBodyLength: defaultToConfig2,
+    beforeRedirect: defaultToConfig2,
+    transport: defaultToConfig2,
+    httpAgent: defaultToConfig2,
+    httpsAgent: defaultToConfig2,
+    cancelToken: defaultToConfig2,
+    socketPath: defaultToConfig2,
+    responseEncoding: defaultToConfig2,
+    validateStatus: mergeDirectKeys,
+    headers: (a, b) => mergeDeepProperties(headersToObject(a), headersToObject(b), true)
   };
 
-  utils.forEach(Object.keys(config1).concat(Object.keys(config2)), function computeConfigValue(prop) {
+  utils.forEach(Object.keys(Object.assign({}, config1, config2)), function computeConfigValue(prop) {
     const merge = mergeMap[prop] || mergeDeepProperties;
-    const configValue = merge(prop);
+    const configValue = merge(config1[prop], config2[prop], prop);
     (utils.isUndefined(configValue) && merge !== mergeDirectKeys) || (config[prop] = configValue);
   });
 
   return config;
 }
 
-const VERSION = "1.1.3";
+const VERSION = "1.5.1";
 
 const validators$1 = {};
 
@@ -3706,8 +4173,8 @@ class Axios {
   constructor(instanceConfig) {
     this.defaults = instanceConfig;
     this.interceptors = {
-      request: new InterceptorManager(),
-      response: new InterceptorManager()
+      request: new InterceptorManager$1(),
+      response: new InterceptorManager$1()
     };
   }
 
@@ -3731,7 +4198,7 @@ class Axios {
 
     config = mergeConfig(this.defaults, config);
 
-    const {transitional, paramsSerializer} = config;
+    const {transitional, paramsSerializer, headers} = config;
 
     if (transitional !== undefined) {
       validator.assertOptions(transitional, {
@@ -3741,30 +4208,36 @@ class Axios {
       }, false);
     }
 
-    if (paramsSerializer !== undefined) {
-      validator.assertOptions(paramsSerializer, {
-        encode: validators.function,
-        serialize: validators.function
-      }, true);
+    if (paramsSerializer != null) {
+      if (utils.isFunction(paramsSerializer)) {
+        config.paramsSerializer = {
+          serialize: paramsSerializer
+        };
+      } else {
+        validator.assertOptions(paramsSerializer, {
+          encode: validators.function,
+          serialize: validators.function
+        }, true);
+      }
     }
 
     // Set config.method
     config.method = (config.method || this.defaults.method || 'get').toLowerCase();
 
     // Flatten headers
-    const defaultHeaders = config.headers && utils.merge(
-      config.headers.common,
-      config.headers[config.method]
+    let contextHeaders = headers && utils.merge(
+      headers.common,
+      headers[config.method]
     );
 
-    defaultHeaders && utils.forEach(
+    headers && utils.forEach(
       ['delete', 'get', 'head', 'post', 'put', 'patch', 'common'],
-      function cleanHeaderConfig(method) {
-        delete config.headers[method];
+      (method) => {
+        delete headers[method];
       }
     );
 
-    config.headers = new AxiosHeaders(config.headers, defaultHeaders);
+    config.headers = AxiosHeaders$1.concat(contextHeaders, headers);
 
     // filter out skipped interceptors
     const requestInterceptorChain = [];
@@ -3875,6 +4348,8 @@ utils.forEach(['post', 'put', 'patch'], function forEachMethodWithData(method) {
 
   Axios.prototype[method + 'Form'] = generateHTTPMethod(true);
 });
+
+const Axios$1 = Axios;
 
 /**
  * A `CancelToken` is an object that can be used to request cancellation of an operation.
@@ -3992,6 +4467,8 @@ class CancelToken {
   }
 }
 
+const CancelToken$1 = CancelToken;
+
 /**
  * Syntactic sugar for invoking a function and expanding an array for arguments.
  *
@@ -4030,6 +4507,78 @@ function isAxiosError(payload) {
   return utils.isObject(payload) && (payload.isAxiosError === true);
 }
 
+const HttpStatusCode = {
+  Continue: 100,
+  SwitchingProtocols: 101,
+  Processing: 102,
+  EarlyHints: 103,
+  Ok: 200,
+  Created: 201,
+  Accepted: 202,
+  NonAuthoritativeInformation: 203,
+  NoContent: 204,
+  ResetContent: 205,
+  PartialContent: 206,
+  MultiStatus: 207,
+  AlreadyReported: 208,
+  ImUsed: 226,
+  MultipleChoices: 300,
+  MovedPermanently: 301,
+  Found: 302,
+  SeeOther: 303,
+  NotModified: 304,
+  UseProxy: 305,
+  Unused: 306,
+  TemporaryRedirect: 307,
+  PermanentRedirect: 308,
+  BadRequest: 400,
+  Unauthorized: 401,
+  PaymentRequired: 402,
+  Forbidden: 403,
+  NotFound: 404,
+  MethodNotAllowed: 405,
+  NotAcceptable: 406,
+  ProxyAuthenticationRequired: 407,
+  RequestTimeout: 408,
+  Conflict: 409,
+  Gone: 410,
+  LengthRequired: 411,
+  PreconditionFailed: 412,
+  PayloadTooLarge: 413,
+  UriTooLong: 414,
+  UnsupportedMediaType: 415,
+  RangeNotSatisfiable: 416,
+  ExpectationFailed: 417,
+  ImATeapot: 418,
+  MisdirectedRequest: 421,
+  UnprocessableEntity: 422,
+  Locked: 423,
+  FailedDependency: 424,
+  TooEarly: 425,
+  UpgradeRequired: 426,
+  PreconditionRequired: 428,
+  TooManyRequests: 429,
+  RequestHeaderFieldsTooLarge: 431,
+  UnavailableForLegalReasons: 451,
+  InternalServerError: 500,
+  NotImplemented: 501,
+  BadGateway: 502,
+  ServiceUnavailable: 503,
+  GatewayTimeout: 504,
+  HttpVersionNotSupported: 505,
+  VariantAlsoNegotiates: 506,
+  InsufficientStorage: 507,
+  LoopDetected: 508,
+  NotExtended: 510,
+  NetworkAuthenticationRequired: 511,
+};
+
+Object.entries(HttpStatusCode).forEach(([key, value]) => {
+  HttpStatusCode[value] = key;
+});
+
+const HttpStatusCode$1 = HttpStatusCode;
+
 /**
  * Create an instance of Axios
  *
@@ -4038,11 +4587,11 @@ function isAxiosError(payload) {
  * @returns {Axios} A new instance of Axios
  */
 function createInstance(defaultConfig) {
-  const context = new Axios(defaultConfig);
-  const instance = bind(Axios.prototype.request, context);
+  const context = new Axios$1(defaultConfig);
+  const instance = bind(Axios$1.prototype.request, context);
 
   // Copy axios.prototype to instance
-  utils.extend(instance, Axios.prototype, context, {allOwnKeys: true});
+  utils.extend(instance, Axios$1.prototype, context, {allOwnKeys: true});
 
   // Copy context to instance
   utils.extend(instance, context, null, {allOwnKeys: true});
@@ -4056,14 +4605,14 @@ function createInstance(defaultConfig) {
 }
 
 // Create the default instance to be exported
-const axios = createInstance(defaults$1);
+const axios = createInstance(defaults$2);
 
 // Expose Axios class to allow class inheritance
-axios.Axios = Axios;
+axios.Axios = Axios$1;
 
 // Expose Cancel & CancelToken
 axios.CanceledError = CanceledError;
-axios.CancelToken = CancelToken;
+axios.CancelToken = CancelToken$1;
 axios.isCancel = isCancel;
 axios.VERSION = VERSION;
 axios.toFormData = toFormData;
@@ -4084,9 +4633,21 @@ axios.spread = spread;
 // Expose isAxiosError
 axios.isAxiosError = isAxiosError;
 
-axios.formToJSON = thing => {
-  return formDataToJSON(utils.isHTMLForm(thing) ? new FormData(thing) : thing);
-};
+// Expose mergeConfig
+axios.mergeConfig = mergeConfig;
+
+axios.AxiosHeaders = AxiosHeaders$1;
+
+axios.formToJSON = thing => formDataToJSON(utils.isHTMLForm(thing) ? new FormData(thing) : thing);
+
+axios.getAdapter = adapters.getAdapter;
+
+axios.HttpStatusCode = HttpStatusCode$1;
+
+axios.default = axios;
+
+// this module should only have a default export
+const axios$1 = axios;
 
 const devFrontendUrl = "http://0.0.0.0:3000";
 const devBackendUrl = "http://0.0.0.0:8080";
@@ -4179,7 +4740,7 @@ function createGlobalStates$g() {
 }
 const gvEmail = createRoot(createGlobalStates$g);
 
-const _tmpl$$1o = /*#__PURE__*/template(`<div><span></span><br></div>`);
+const _tmpl$$1o = /*#__PURE__*/template(`<div><span></span><br>`);
 function createGlobalStates$f() {
   const [showErrorDialog, setShowErrorDialog] = createSignal(false);
   const [errorDialogTitle, setErrorDialogTitle] = createSignal("");
@@ -4190,7 +4751,7 @@ function createGlobalStates$f() {
     return createComponent(For, {
       each: lines,
       children: line => (() => {
-        const _el$ = _tmpl$$1o.cloneNode(true),
+        const _el$ = _tmpl$$1o(),
           _el$2 = _el$.firstChild;
         insert(_el$2, line);
         return _el$;
@@ -4504,7 +5065,7 @@ const base64 = {
             const byte4 = haveByte4 ? charToByteMap[input.charAt(i)] : 64;
             ++i;
             if (byte1 == null || byte2 == null || byte3 == null || byte4 == null) {
-                throw Error();
+                throw new DecodeBase64StringError();
             }
             const outByte1 = (byte1 << 2) | (byte2 >> 4);
             output.push(outByte1);
@@ -4546,6 +5107,15 @@ const base64 = {
     }
 };
 /**
+ * An error encountered while decoding base64 string.
+ */
+class DecodeBase64StringError extends Error {
+    constructor() {
+        super(...arguments);
+        this.name = 'DecodeBase64StringError';
+    }
+}
+/**
  * URL-safe base64 encoding
  */
 const base64Encode = function (str) {
@@ -4581,7 +5151,7 @@ const base64Decode = function (str) {
 
 /**
  * @license
- * Copyright 2017 Google LLC
+ * Copyright 2022 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -4596,97 +5166,9 @@ const base64Decode = function (str) {
  * limitations under the License.
  */
 /**
- * Returns navigator.userAgent string or '' if it's not defined.
- * @return user agent string
- */
-function getUA() {
-    if (typeof navigator !== 'undefined' &&
-        typeof navigator['userAgent'] === 'string') {
-        return navigator['userAgent'];
-    }
-    else {
-        return '';
-    }
-}
-/**
- * Detect Cordova / PhoneGap / Ionic frameworks on a mobile device.
- *
- * Deliberately does not rely on checking `file://` URLs (as this fails PhoneGap
- * in the Ripple emulator) nor Cordova `onDeviceReady`, which would normally
- * wait for a callback.
- */
-function isMobileCordova() {
-    return (typeof window !== 'undefined' &&
-        // @ts-ignore Setting up an broadly applicable index signature for Window
-        // just to deal with this case would probably be a bad idea.
-        !!(window['cordova'] || window['phonegap'] || window['PhoneGap']) &&
-        /ios|iphone|ipod|ipad|android|blackberry|iemobile/i.test(getUA()));
-}
-function isBrowserExtension() {
-    const runtime = typeof chrome === 'object'
-        ? chrome.runtime
-        : typeof browser === 'object'
-            ? browser.runtime
-            : undefined;
-    return typeof runtime === 'object' && runtime.id !== undefined;
-}
-/**
- * Detect React Native.
- *
- * @return true if ReactNative environment is detected.
- */
-function isReactNative() {
-    return (typeof navigator === 'object' && navigator['product'] === 'ReactNative');
-}
-/** Detects Internet Explorer. */
-function isIE() {
-    const ua = getUA();
-    return ua.indexOf('MSIE ') >= 0 || ua.indexOf('Trident/') >= 0;
-}
-/**
- * This method checks if indexedDB is supported by current browser/service worker context
- * @return true if indexedDB is supported by current browser/service worker context
- */
-function isIndexedDBAvailable() {
-    return typeof indexedDB === 'object';
-}
-/**
- * This method validates browser/sw context for indexedDB by opening a dummy indexedDB database and reject
- * if errors occur during the database open operation.
- *
- * @throws exception if current browser/sw context can't run idb.open (ex: Safari iframe, Firefox
- * private browsing)
- */
-function validateIndexedDBOpenable() {
-    return new Promise((resolve, reject) => {
-        try {
-            let preExist = true;
-            const DB_CHECK_NAME = 'validate-browser-context-for-indexeddb-analytics-module';
-            const request = self.indexedDB.open(DB_CHECK_NAME);
-            request.onsuccess = () => {
-                request.result.close();
-                // delete database only when it doesn't pre-exist
-                if (!preExist) {
-                    self.indexedDB.deleteDatabase(DB_CHECK_NAME);
-                }
-                resolve(true);
-            };
-            request.onupgradeneeded = () => {
-                preExist = false;
-            };
-            request.onerror = () => {
-                var _a;
-                reject(((_a = request.error) === null || _a === void 0 ? void 0 : _a.message) || '');
-            };
-        }
-        catch (error) {
-            reject(error);
-        }
-    });
-}
-/**
  * Polyfill for `globalThis` object.
  * @returns the `globalThis` object for the given environment.
+ * @public
  */
 function getGlobal() {
     if (typeof self !== 'undefined') {
@@ -4720,14 +5202,17 @@ function getGlobal() {
 const getDefaultsFromGlobal = () => getGlobal().__FIREBASE_DEFAULTS__;
 /**
  * Attempt to read defaults from a JSON string provided to
- * process.env.__FIREBASE_DEFAULTS__ or a JSON file whose path is in
- * process.env.__FIREBASE_DEFAULTS_PATH__
+ * process(.)env(.)__FIREBASE_DEFAULTS__ or a JSON file whose path is in
+ * process(.)env(.)__FIREBASE_DEFAULTS_PATH__
+ * The dots are in parens because certain compilers (Vite?) cannot
+ * handle seeing that variable in comments.
+ * See https://github.com/firebase/firebase-js-sdk/issues/6838
  */
 const getDefaultsFromEnvVariable = () => {
     if (typeof process === 'undefined' || typeof process.env === 'undefined') {
         return;
     }
-    const defaultsJsonString = process.env.__FIREBASE_DEFAULTS__;
+    const defaultsJsonString = ({}).__FIREBASE_DEFAULTS__;
     if (defaultsJsonString) {
         return JSON.parse(defaultsJsonString);
     }
@@ -4753,6 +5238,7 @@ const getDefaultsFromCookie = () => {
  * (1) if such an object exists as a property of `globalThis`
  * (2) if such an object was provided on a shell environment variable
  * (3) if such an object exists in a cookie
+ * @public
  */
 const getDefaults$1 = () => {
     try {
@@ -4843,6 +5329,117 @@ class Deferred {
             }
         };
     }
+}
+
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * Returns navigator.userAgent string or '' if it's not defined.
+ * @return user agent string
+ */
+function getUA() {
+    if (typeof navigator !== 'undefined' &&
+        typeof navigator['userAgent'] === 'string') {
+        return navigator['userAgent'];
+    }
+    else {
+        return '';
+    }
+}
+/**
+ * Detect Cordova / PhoneGap / Ionic frameworks on a mobile device.
+ *
+ * Deliberately does not rely on checking `file://` URLs (as this fails PhoneGap
+ * in the Ripple emulator) nor Cordova `onDeviceReady`, which would normally
+ * wait for a callback.
+ */
+function isMobileCordova() {
+    return (typeof window !== 'undefined' &&
+        // @ts-ignore Setting up an broadly applicable index signature for Window
+        // just to deal with this case would probably be a bad idea.
+        !!(window['cordova'] || window['phonegap'] || window['PhoneGap']) &&
+        /ios|iphone|ipod|ipad|android|blackberry|iemobile/i.test(getUA()));
+}
+function isBrowserExtension() {
+    const runtime = typeof chrome === 'object'
+        ? chrome.runtime
+        : typeof browser === 'object'
+            ? browser.runtime
+            : undefined;
+    return typeof runtime === 'object' && runtime.id !== undefined;
+}
+/**
+ * Detect React Native.
+ *
+ * @return true if ReactNative environment is detected.
+ */
+function isReactNative() {
+    return (typeof navigator === 'object' && navigator['product'] === 'ReactNative');
+}
+/** Detects Internet Explorer. */
+function isIE() {
+    const ua = getUA();
+    return ua.indexOf('MSIE ') >= 0 || ua.indexOf('Trident/') >= 0;
+}
+/**
+ * This method checks if indexedDB is supported by current browser/service worker context
+ * @return true if indexedDB is supported by current browser/service worker context
+ */
+function isIndexedDBAvailable() {
+    try {
+        return typeof indexedDB === 'object';
+    }
+    catch (e) {
+        return false;
+    }
+}
+/**
+ * This method validates browser/sw context for indexedDB by opening a dummy indexedDB database and reject
+ * if errors occur during the database open operation.
+ *
+ * @throws exception if current browser/sw context can't run idb.open (ex: Safari iframe, Firefox
+ * private browsing)
+ */
+function validateIndexedDBOpenable() {
+    return new Promise((resolve, reject) => {
+        try {
+            let preExist = true;
+            const DB_CHECK_NAME = 'validate-browser-context-for-indexeddb-analytics-module';
+            const request = self.indexedDB.open(DB_CHECK_NAME);
+            request.onsuccess = () => {
+                request.result.close();
+                // delete database only when it doesn't pre-exist
+                if (!preExist) {
+                    self.indexedDB.deleteDatabase(DB_CHECK_NAME);
+                }
+                resolve(true);
+            };
+            request.onupgradeneeded = () => {
+                preExist = false;
+            };
+            request.onerror = () => {
+                var _a;
+                reject(((_a = request.error) === null || _a === void 0 ? void 0 : _a.message) || '');
+            };
+        }
+        catch (error) {
+            reject(error);
+        }
+    });
 }
 
 /**
@@ -5296,7 +5893,7 @@ class Component {
          * Properties to be added to the service namespace
          */
         this.serviceProps = {};
-        this.instantiationMode = "LAZY" /* LAZY */;
+        this.instantiationMode = "LAZY" /* InstantiationMode.LAZY */;
         this.onInstanceCreated = null;
     }
     setInstantiationMode(mode) {
@@ -5602,7 +6199,7 @@ class Provider {
     }
     shouldAutoInitialize() {
         return (!!this.component &&
-            this.component.instantiationMode !== "EXPLICIT" /* EXPLICIT */);
+            this.component.instantiationMode !== "EXPLICIT" /* InstantiationMode.EXPLICIT */);
     }
 }
 // undefined should be passed to the service factory for the default instance
@@ -5610,7 +6207,7 @@ function normalizeIdentifierForFactory(identifier) {
     return identifier === DEFAULT_ENTRY_NAME$1 ? undefined : identifier;
 }
 function isComponentEager(component) {
-    return component.instantiationMode === "EAGER" /* EAGER */;
+    return component.instantiationMode === "EAGER" /* InstantiationMode.EAGER */;
 }
 
 /**
@@ -6034,17 +6631,21 @@ function openDB(name, version, { blocked, upgrade, blocking, terminated } = {}) 
     const openPromise = wrap(request);
     if (upgrade) {
         request.addEventListener('upgradeneeded', (event) => {
-            upgrade(wrap(request.result), event.oldVersion, event.newVersion, wrap(request.transaction));
+            upgrade(wrap(request.result), event.oldVersion, event.newVersion, wrap(request.transaction), event);
         });
     }
-    if (blocked)
-        request.addEventListener('blocked', () => blocked());
+    if (blocked) {
+        request.addEventListener('blocked', (event) => blocked(
+        // Casting due to https://github.com/microsoft/TypeScript-DOM-lib-generator/pull/1405
+        event.oldVersion, event.newVersion, event));
+    }
     openPromise
         .then((db) => {
         if (terminated)
             db.addEventListener('close', () => terminated());
-        if (blocking)
-            db.addEventListener('versionchange', () => blocking());
+        if (blocking) {
+            db.addEventListener('versionchange', (event) => blocking(event.oldVersion, event.newVersion, event));
+        }
     })
         .catch(() => { });
     return openPromise;
@@ -6145,11 +6746,11 @@ class PlatformLoggerServiceImpl {
  */
 function isVersionServiceProvider(provider) {
     const component = provider.getComponent();
-    return (component === null || component === void 0 ? void 0 : component.type) === "VERSION" /* VERSION */;
+    return (component === null || component === void 0 ? void 0 : component.type) === "VERSION" /* ComponentType.VERSION */;
 }
 
 const name$o = "@firebase/app";
-const version$1$1 = "0.8.4";
+const version$1$1 = "0.9.13";
 
 /**
  * @license
@@ -6216,7 +6817,7 @@ const name$2 = "@firebase/firestore";
 const name$1$1 = "@firebase/firestore-compat";
 
 const name$p = "firebase";
-const version$2 = "9.14.0";
+const version$2 = "9.23.0";
 
 /**
  * @license
@@ -6365,19 +6966,19 @@ function _getProvider(app, name) {
  * limitations under the License.
  */
 const ERRORS = {
-    ["no-app" /* NO_APP */]: "No Firebase App '{$appName}' has been created - " +
-        'call Firebase App.initializeApp()',
-    ["bad-app-name" /* BAD_APP_NAME */]: "Illegal App name: '{$appName}",
-    ["duplicate-app" /* DUPLICATE_APP */]: "Firebase App named '{$appName}' already exists with different options or config",
-    ["app-deleted" /* APP_DELETED */]: "Firebase App named '{$appName}' already deleted",
-    ["no-options" /* NO_OPTIONS */]: 'Need to provide options, when not being deployed to hosting via source.',
-    ["invalid-app-argument" /* INVALID_APP_ARGUMENT */]: 'firebase.{$appName}() takes either no argument or a ' +
+    ["no-app" /* AppError.NO_APP */]: "No Firebase App '{$appName}' has been created - " +
+        'call initializeApp() first',
+    ["bad-app-name" /* AppError.BAD_APP_NAME */]: "Illegal App name: '{$appName}",
+    ["duplicate-app" /* AppError.DUPLICATE_APP */]: "Firebase App named '{$appName}' already exists with different options or config",
+    ["app-deleted" /* AppError.APP_DELETED */]: "Firebase App named '{$appName}' already deleted",
+    ["no-options" /* AppError.NO_OPTIONS */]: 'Need to provide options, when not being deployed to hosting via source.',
+    ["invalid-app-argument" /* AppError.INVALID_APP_ARGUMENT */]: 'firebase.{$appName}() takes either no argument or a ' +
         'Firebase App instance.',
-    ["invalid-log-argument" /* INVALID_LOG_ARGUMENT */]: 'First argument to `onLog` must be null or a function.',
-    ["idb-open" /* IDB_OPEN */]: 'Error thrown when opening IndexedDB. Original error: {$originalErrorMessage}.',
-    ["idb-get" /* IDB_GET */]: 'Error thrown when reading from IndexedDB. Original error: {$originalErrorMessage}.',
-    ["idb-set" /* IDB_WRITE */]: 'Error thrown when writing to IndexedDB. Original error: {$originalErrorMessage}.',
-    ["idb-delete" /* IDB_DELETE */]: 'Error thrown when deleting from IndexedDB. Original error: {$originalErrorMessage}.'
+    ["invalid-log-argument" /* AppError.INVALID_LOG_ARGUMENT */]: 'First argument to `onLog` must be null or a function.',
+    ["idb-open" /* AppError.IDB_OPEN */]: 'Error thrown when opening IndexedDB. Original error: {$originalErrorMessage}.',
+    ["idb-get" /* AppError.IDB_GET */]: 'Error thrown when reading from IndexedDB. Original error: {$originalErrorMessage}.',
+    ["idb-set" /* AppError.IDB_WRITE */]: 'Error thrown when writing to IndexedDB. Original error: {$originalErrorMessage}.',
+    ["idb-delete" /* AppError.IDB_DELETE */]: 'Error thrown when deleting from IndexedDB. Original error: {$originalErrorMessage}.'
 };
 const ERROR_FACTORY = new ErrorFactory('app', 'Firebase', ERRORS);
 
@@ -6406,7 +7007,7 @@ class FirebaseAppImpl {
         this._automaticDataCollectionEnabled =
             config.automaticDataCollectionEnabled;
         this._container = container;
-        this.container.addComponent(new Component('app', () => this, "PUBLIC" /* PUBLIC */));
+        this.container.addComponent(new Component('app', () => this, "PUBLIC" /* ComponentType.PUBLIC */));
     }
     get automaticDataCollectionEnabled() {
         this.checkDestroyed();
@@ -6443,7 +7044,7 @@ class FirebaseAppImpl {
      */
     checkDestroyed() {
         if (this.isDeleted) {
-            throw ERROR_FACTORY.create("app-deleted" /* APP_DELETED */, { appName: this._name });
+            throw ERROR_FACTORY.create("app-deleted" /* AppError.APP_DELETED */, { appName: this._name });
         }
     }
 }
@@ -6479,13 +7080,13 @@ function initializeApp(_options, rawConfig = {}) {
     const config = Object.assign({ name: DEFAULT_ENTRY_NAME, automaticDataCollectionEnabled: false }, rawConfig);
     const name = config.name;
     if (typeof name !== 'string' || !name) {
-        throw ERROR_FACTORY.create("bad-app-name" /* BAD_APP_NAME */, {
+        throw ERROR_FACTORY.create("bad-app-name" /* AppError.BAD_APP_NAME */, {
             appName: String(name)
         });
     }
     options || (options = getDefaultAppConfig());
     if (!options) {
-        throw ERROR_FACTORY.create("no-options" /* NO_OPTIONS */);
+        throw ERROR_FACTORY.create("no-options" /* AppError.NO_OPTIONS */);
     }
     const existingApp = _apps.get(name);
     if (existingApp) {
@@ -6495,7 +7096,7 @@ function initializeApp(_options, rawConfig = {}) {
             return existingApp;
         }
         else {
-            throw ERROR_FACTORY.create("duplicate-app" /* DUPLICATE_APP */, { appName: name });
+            throw ERROR_FACTORY.create("duplicate-app" /* AppError.DUPLICATE_APP */, { appName: name });
         }
     }
     const container = new ComponentContainer(name);
@@ -6537,11 +7138,11 @@ function initializeApp(_options, rawConfig = {}) {
  */
 function getApp(name = DEFAULT_ENTRY_NAME) {
     const app = _apps.get(name);
-    if (!app && name === DEFAULT_ENTRY_NAME) {
+    if (!app && name === DEFAULT_ENTRY_NAME && getDefaultAppConfig()) {
         return initializeApp();
     }
     if (!app) {
-        throw ERROR_FACTORY.create("no-app" /* NO_APP */, { appName: name });
+        throw ERROR_FACTORY.create("no-app" /* AppError.NO_APP */, { appName: name });
     }
     return app;
 }
@@ -6579,7 +7180,7 @@ function registerVersion(libraryKeyOrName, version, variant) {
         logger.warn(warning.join(' '));
         return;
     }
-    _registerComponent(new Component(`${library}-version`, () => ({ library, version }), "VERSION" /* VERSION */));
+    _registerComponent(new Component(`${library}-version`, () => ({ library, version }), "VERSION" /* ComponentType.VERSION */));
 }
 
 /**
@@ -6617,7 +7218,7 @@ function getDbPromise() {
                 }
             }
         }).catch(e => {
-            throw ERROR_FACTORY.create("idb-open" /* IDB_OPEN */, {
+            throw ERROR_FACTORY.create("idb-open" /* AppError.IDB_OPEN */, {
                 originalErrorMessage: e.message
             });
         });
@@ -6625,42 +7226,41 @@ function getDbPromise() {
     return dbPromise;
 }
 async function readHeartbeatsFromIndexedDB(app) {
-    var _a;
     try {
         const db = await getDbPromise();
-        return db
+        const result = await db
             .transaction(STORE_NAME)
             .objectStore(STORE_NAME)
             .get(computeKey(app));
+        return result;
     }
     catch (e) {
         if (e instanceof FirebaseError) {
             logger.warn(e.message);
         }
         else {
-            const idbGetError = ERROR_FACTORY.create("idb-get" /* IDB_GET */, {
-                originalErrorMessage: (_a = e) === null || _a === void 0 ? void 0 : _a.message
+            const idbGetError = ERROR_FACTORY.create("idb-get" /* AppError.IDB_GET */, {
+                originalErrorMessage: e === null || e === void 0 ? void 0 : e.message
             });
             logger.warn(idbGetError.message);
         }
     }
 }
 async function writeHeartbeatsToIndexedDB(app, heartbeatObject) {
-    var _a;
     try {
         const db = await getDbPromise();
         const tx = db.transaction(STORE_NAME, 'readwrite');
         const objectStore = tx.objectStore(STORE_NAME);
         await objectStore.put(heartbeatObject, computeKey(app));
-        return tx.done;
+        await tx.done;
     }
     catch (e) {
         if (e instanceof FirebaseError) {
             logger.warn(e.message);
         }
         else {
-            const idbGetError = ERROR_FACTORY.create("idb-set" /* IDB_WRITE */, {
-                originalErrorMessage: (_a = e) === null || _a === void 0 ? void 0 : _a.message
+            const idbGetError = ERROR_FACTORY.create("idb-set" /* AppError.IDB_WRITE */, {
+                originalErrorMessage: e === null || e === void 0 ? void 0 : e.message
             });
             logger.warn(idbGetError.message);
         }
@@ -6919,8 +7519,8 @@ function countBytes(heartbeatsCache) {
  * limitations under the License.
  */
 function registerCoreComponents(variant) {
-    _registerComponent(new Component('platform-logger', container => new PlatformLoggerServiceImpl(container), "PRIVATE" /* PRIVATE */));
-    _registerComponent(new Component('heartbeat', container => new HeartbeatServiceImpl(container), "PRIVATE" /* PRIVATE */));
+    _registerComponent(new Component('platform-logger', container => new PlatformLoggerServiceImpl(container), "PRIVATE" /* ComponentType.PRIVATE */));
+    _registerComponent(new Component('heartbeat', container => new HeartbeatServiceImpl(container), "PRIVATE" /* ComponentType.PRIVATE */));
     // Register `app` package.
     registerVersion(name$o, version$1$1, variant);
     // BUILD_TARGET will be replaced by values like esm5, esm2017, cjs5, etc during the compilation
@@ -6964,12 +7564,17 @@ function __rest(s, e) {
     return t;
 }
 
+typeof SuppressedError === "function" ? SuppressedError : function (error, suppressed, message) {
+    var e = new Error(message);
+    return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
+};
+
 function _prodErrorMap() {
     // We will include this one message in the prod error map since by the very
     // nature of this error, developers will never be able to see the message
     // using the debugErrorMap (which is installed during auth initialization).
     return {
-        ["dependent-sdk-initialized-before-auth" /* DEPENDENT_SDK_INIT_BEFORE_AUTH */]: 'Another Firebase SDK was initialized and is trying to use Auth before Auth is ' +
+        ["dependent-sdk-initialized-before-auth" /* AuthErrorCode.DEPENDENT_SDK_INIT_BEFORE_AUTH */]: 'Another Firebase SDK was initialized and is trying to use Auth before Auth is ' +
             'initialized. Please be sure to call `initializeAuth` or `getAuth` before ' +
             'starting any other Firebase SDK.'
     };
@@ -7001,6 +7606,11 @@ const _DEFAULT_AUTH_ERROR_FACTORY = new ErrorFactory('auth', 'Firebase', _prodEr
  * limitations under the License.
  */
 const logClient = new Logger('@firebase/auth');
+function _logWarn(msg, ...args) {
+    if (logClient.logLevel <= LogLevel.WARN) {
+        logClient.warn(`Auth (${SDK_VERSION}): ${msg}`, ...args);
+    }
+}
 function _logError(msg, ...args) {
     if (logClient.logLevel <= LogLevel.ERROR) {
         logClient.error(`Auth (${SDK_VERSION}): ${msg}`, ...args);
@@ -7079,103 +7689,6 @@ function debugAssert(assertion, message) {
     if (!assertion) {
         debugFail(message);
     }
-}
-
-/**
- * @license
- * Copyright 2020 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-const instanceCache = new Map();
-function _getInstance(cls) {
-    debugAssert(cls instanceof Function, 'Expected a class definition');
-    let instance = instanceCache.get(cls);
-    if (instance) {
-        debugAssert(instance instanceof cls, 'Instance stored in cache mismatched with class');
-        return instance;
-    }
-    instance = new cls();
-    instanceCache.set(cls, instance);
-    return instance;
-}
-
-/**
- * @license
- * Copyright 2020 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/**
- * Initializes an {@link Auth} instance with fine-grained control over
- * {@link Dependencies}.
- *
- * @remarks
- *
- * This function allows more control over the {@link Auth} instance than
- * {@link getAuth}. `getAuth` uses platform-specific defaults to supply
- * the {@link Dependencies}. In general, `getAuth` is the easiest way to
- * initialize Auth and works for most use cases. Use `initializeAuth` if you
- * need control over which persistence layer is used, or to minimize bundle
- * size if you're not using either `signInWithPopup` or `signInWithRedirect`.
- *
- * For example, if your app only uses anonymous accounts and you only want
- * accounts saved for the current session, initialize `Auth` with:
- *
- * ```js
- * const auth = initializeAuth(app, {
- *   persistence: browserSessionPersistence,
- *   popupRedirectResolver: undefined,
- * });
- * ```
- *
- * @public
- */
-function initializeAuth(app, deps) {
-    const provider = _getProvider(app, 'auth');
-    if (provider.isInitialized()) {
-        const auth = provider.getImmediate();
-        const initialOptions = provider.getOptions();
-        if (deepEqual(initialOptions, deps !== null && deps !== void 0 ? deps : {})) {
-            return auth;
-        }
-        else {
-            _fail(auth, "already-initialized" /* ALREADY_INITIALIZED */);
-        }
-    }
-    const auth = provider.initialize({ options: deps });
-    return auth;
-}
-function _initializeAuthInstance(auth, deps) {
-    const persistence = (deps === null || deps === void 0 ? void 0 : deps.persistence) || [];
-    const hierarchy = (Array.isArray(persistence) ? persistence : [persistence]).map(_getInstance);
-    if (deps === null || deps === void 0 ? void 0 : deps.errorMap) {
-        auth._updateErrorMap(deps.errorMap);
-    }
-    // This promise is intended to float; auth initialization happens in the
-    // background, meanwhile the auth object may be used by the app.
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    auth._initializeWithPersistence(hierarchy, deps === null || deps === void 0 ? void 0 : deps.popupRedirectResolver);
 }
 
 /**
@@ -7288,7 +7801,7 @@ class Delay {
     get() {
         if (!_isOnline()) {
             // Pick the shorter timeout.
-            return Math.min(5000 /* OFFLINE */, this.shortDelay);
+            return Math.min(5000 /* DelayMin.OFFLINE */, this.shortDelay);
         }
         // If running in a mobile environment, return the long delay, otherwise
         // return the short delay.
@@ -7399,64 +7912,73 @@ class FetchProvider {
  */
 const SERVER_ERROR_MAP = {
     // Custom token errors.
-    ["CREDENTIAL_MISMATCH" /* CREDENTIAL_MISMATCH */]: "custom-token-mismatch" /* CREDENTIAL_MISMATCH */,
+    ["CREDENTIAL_MISMATCH" /* ServerError.CREDENTIAL_MISMATCH */]: "custom-token-mismatch" /* AuthErrorCode.CREDENTIAL_MISMATCH */,
     // This can only happen if the SDK sends a bad request.
-    ["MISSING_CUSTOM_TOKEN" /* MISSING_CUSTOM_TOKEN */]: "internal-error" /* INTERNAL_ERROR */,
+    ["MISSING_CUSTOM_TOKEN" /* ServerError.MISSING_CUSTOM_TOKEN */]: "internal-error" /* AuthErrorCode.INTERNAL_ERROR */,
     // Create Auth URI errors.
-    ["INVALID_IDENTIFIER" /* INVALID_IDENTIFIER */]: "invalid-email" /* INVALID_EMAIL */,
+    ["INVALID_IDENTIFIER" /* ServerError.INVALID_IDENTIFIER */]: "invalid-email" /* AuthErrorCode.INVALID_EMAIL */,
     // This can only happen if the SDK sends a bad request.
-    ["MISSING_CONTINUE_URI" /* MISSING_CONTINUE_URI */]: "internal-error" /* INTERNAL_ERROR */,
+    ["MISSING_CONTINUE_URI" /* ServerError.MISSING_CONTINUE_URI */]: "internal-error" /* AuthErrorCode.INTERNAL_ERROR */,
     // Sign in with email and password errors (some apply to sign up too).
-    ["INVALID_PASSWORD" /* INVALID_PASSWORD */]: "wrong-password" /* INVALID_PASSWORD */,
+    ["INVALID_PASSWORD" /* ServerError.INVALID_PASSWORD */]: "wrong-password" /* AuthErrorCode.INVALID_PASSWORD */,
     // This can only happen if the SDK sends a bad request.
-    ["MISSING_PASSWORD" /* MISSING_PASSWORD */]: "internal-error" /* INTERNAL_ERROR */,
+    ["MISSING_PASSWORD" /* ServerError.MISSING_PASSWORD */]: "missing-password" /* AuthErrorCode.MISSING_PASSWORD */,
     // Sign up with email and password errors.
-    ["EMAIL_EXISTS" /* EMAIL_EXISTS */]: "email-already-in-use" /* EMAIL_EXISTS */,
-    ["PASSWORD_LOGIN_DISABLED" /* PASSWORD_LOGIN_DISABLED */]: "operation-not-allowed" /* OPERATION_NOT_ALLOWED */,
+    ["EMAIL_EXISTS" /* ServerError.EMAIL_EXISTS */]: "email-already-in-use" /* AuthErrorCode.EMAIL_EXISTS */,
+    ["PASSWORD_LOGIN_DISABLED" /* ServerError.PASSWORD_LOGIN_DISABLED */]: "operation-not-allowed" /* AuthErrorCode.OPERATION_NOT_ALLOWED */,
     // Verify assertion for sign in with credential errors:
-    ["INVALID_IDP_RESPONSE" /* INVALID_IDP_RESPONSE */]: "invalid-credential" /* INVALID_IDP_RESPONSE */,
-    ["INVALID_PENDING_TOKEN" /* INVALID_PENDING_TOKEN */]: "invalid-credential" /* INVALID_IDP_RESPONSE */,
-    ["FEDERATED_USER_ID_ALREADY_LINKED" /* FEDERATED_USER_ID_ALREADY_LINKED */]: "credential-already-in-use" /* CREDENTIAL_ALREADY_IN_USE */,
+    ["INVALID_IDP_RESPONSE" /* ServerError.INVALID_IDP_RESPONSE */]: "invalid-credential" /* AuthErrorCode.INVALID_IDP_RESPONSE */,
+    ["INVALID_PENDING_TOKEN" /* ServerError.INVALID_PENDING_TOKEN */]: "invalid-credential" /* AuthErrorCode.INVALID_IDP_RESPONSE */,
+    ["FEDERATED_USER_ID_ALREADY_LINKED" /* ServerError.FEDERATED_USER_ID_ALREADY_LINKED */]: "credential-already-in-use" /* AuthErrorCode.CREDENTIAL_ALREADY_IN_USE */,
     // This can only happen if the SDK sends a bad request.
-    ["MISSING_REQ_TYPE" /* MISSING_REQ_TYPE */]: "internal-error" /* INTERNAL_ERROR */,
+    ["MISSING_REQ_TYPE" /* ServerError.MISSING_REQ_TYPE */]: "internal-error" /* AuthErrorCode.INTERNAL_ERROR */,
     // Send Password reset email errors:
-    ["EMAIL_NOT_FOUND" /* EMAIL_NOT_FOUND */]: "user-not-found" /* USER_DELETED */,
-    ["RESET_PASSWORD_EXCEED_LIMIT" /* RESET_PASSWORD_EXCEED_LIMIT */]: "too-many-requests" /* TOO_MANY_ATTEMPTS_TRY_LATER */,
-    ["EXPIRED_OOB_CODE" /* EXPIRED_OOB_CODE */]: "expired-action-code" /* EXPIRED_OOB_CODE */,
-    ["INVALID_OOB_CODE" /* INVALID_OOB_CODE */]: "invalid-action-code" /* INVALID_OOB_CODE */,
+    ["EMAIL_NOT_FOUND" /* ServerError.EMAIL_NOT_FOUND */]: "user-not-found" /* AuthErrorCode.USER_DELETED */,
+    ["RESET_PASSWORD_EXCEED_LIMIT" /* ServerError.RESET_PASSWORD_EXCEED_LIMIT */]: "too-many-requests" /* AuthErrorCode.TOO_MANY_ATTEMPTS_TRY_LATER */,
+    ["EXPIRED_OOB_CODE" /* ServerError.EXPIRED_OOB_CODE */]: "expired-action-code" /* AuthErrorCode.EXPIRED_OOB_CODE */,
+    ["INVALID_OOB_CODE" /* ServerError.INVALID_OOB_CODE */]: "invalid-action-code" /* AuthErrorCode.INVALID_OOB_CODE */,
     // This can only happen if the SDK sends a bad request.
-    ["MISSING_OOB_CODE" /* MISSING_OOB_CODE */]: "internal-error" /* INTERNAL_ERROR */,
+    ["MISSING_OOB_CODE" /* ServerError.MISSING_OOB_CODE */]: "internal-error" /* AuthErrorCode.INTERNAL_ERROR */,
     // Operations that require ID token in request:
-    ["CREDENTIAL_TOO_OLD_LOGIN_AGAIN" /* CREDENTIAL_TOO_OLD_LOGIN_AGAIN */]: "requires-recent-login" /* CREDENTIAL_TOO_OLD_LOGIN_AGAIN */,
-    ["INVALID_ID_TOKEN" /* INVALID_ID_TOKEN */]: "invalid-user-token" /* INVALID_AUTH */,
-    ["TOKEN_EXPIRED" /* TOKEN_EXPIRED */]: "user-token-expired" /* TOKEN_EXPIRED */,
-    ["USER_NOT_FOUND" /* USER_NOT_FOUND */]: "user-token-expired" /* TOKEN_EXPIRED */,
+    ["CREDENTIAL_TOO_OLD_LOGIN_AGAIN" /* ServerError.CREDENTIAL_TOO_OLD_LOGIN_AGAIN */]: "requires-recent-login" /* AuthErrorCode.CREDENTIAL_TOO_OLD_LOGIN_AGAIN */,
+    ["INVALID_ID_TOKEN" /* ServerError.INVALID_ID_TOKEN */]: "invalid-user-token" /* AuthErrorCode.INVALID_AUTH */,
+    ["TOKEN_EXPIRED" /* ServerError.TOKEN_EXPIRED */]: "user-token-expired" /* AuthErrorCode.TOKEN_EXPIRED */,
+    ["USER_NOT_FOUND" /* ServerError.USER_NOT_FOUND */]: "user-token-expired" /* AuthErrorCode.TOKEN_EXPIRED */,
     // Other errors.
-    ["TOO_MANY_ATTEMPTS_TRY_LATER" /* TOO_MANY_ATTEMPTS_TRY_LATER */]: "too-many-requests" /* TOO_MANY_ATTEMPTS_TRY_LATER */,
+    ["TOO_MANY_ATTEMPTS_TRY_LATER" /* ServerError.TOO_MANY_ATTEMPTS_TRY_LATER */]: "too-many-requests" /* AuthErrorCode.TOO_MANY_ATTEMPTS_TRY_LATER */,
     // Phone Auth related errors.
-    ["INVALID_CODE" /* INVALID_CODE */]: "invalid-verification-code" /* INVALID_CODE */,
-    ["INVALID_SESSION_INFO" /* INVALID_SESSION_INFO */]: "invalid-verification-id" /* INVALID_SESSION_INFO */,
-    ["INVALID_TEMPORARY_PROOF" /* INVALID_TEMPORARY_PROOF */]: "invalid-credential" /* INVALID_IDP_RESPONSE */,
-    ["MISSING_SESSION_INFO" /* MISSING_SESSION_INFO */]: "missing-verification-id" /* MISSING_SESSION_INFO */,
-    ["SESSION_EXPIRED" /* SESSION_EXPIRED */]: "code-expired" /* CODE_EXPIRED */,
+    ["INVALID_CODE" /* ServerError.INVALID_CODE */]: "invalid-verification-code" /* AuthErrorCode.INVALID_CODE */,
+    ["INVALID_SESSION_INFO" /* ServerError.INVALID_SESSION_INFO */]: "invalid-verification-id" /* AuthErrorCode.INVALID_SESSION_INFO */,
+    ["INVALID_TEMPORARY_PROOF" /* ServerError.INVALID_TEMPORARY_PROOF */]: "invalid-credential" /* AuthErrorCode.INVALID_IDP_RESPONSE */,
+    ["MISSING_SESSION_INFO" /* ServerError.MISSING_SESSION_INFO */]: "missing-verification-id" /* AuthErrorCode.MISSING_SESSION_INFO */,
+    ["SESSION_EXPIRED" /* ServerError.SESSION_EXPIRED */]: "code-expired" /* AuthErrorCode.CODE_EXPIRED */,
     // Other action code errors when additional settings passed.
     // MISSING_CONTINUE_URI is getting mapped to INTERNAL_ERROR above.
     // This is OK as this error will be caught by client side validation.
-    ["MISSING_ANDROID_PACKAGE_NAME" /* MISSING_ANDROID_PACKAGE_NAME */]: "missing-android-pkg-name" /* MISSING_ANDROID_PACKAGE_NAME */,
-    ["UNAUTHORIZED_DOMAIN" /* UNAUTHORIZED_DOMAIN */]: "unauthorized-continue-uri" /* UNAUTHORIZED_DOMAIN */,
+    ["MISSING_ANDROID_PACKAGE_NAME" /* ServerError.MISSING_ANDROID_PACKAGE_NAME */]: "missing-android-pkg-name" /* AuthErrorCode.MISSING_ANDROID_PACKAGE_NAME */,
+    ["UNAUTHORIZED_DOMAIN" /* ServerError.UNAUTHORIZED_DOMAIN */]: "unauthorized-continue-uri" /* AuthErrorCode.UNAUTHORIZED_DOMAIN */,
     // getProjectConfig errors when clientId is passed.
-    ["INVALID_OAUTH_CLIENT_ID" /* INVALID_OAUTH_CLIENT_ID */]: "invalid-oauth-client-id" /* INVALID_OAUTH_CLIENT_ID */,
+    ["INVALID_OAUTH_CLIENT_ID" /* ServerError.INVALID_OAUTH_CLIENT_ID */]: "invalid-oauth-client-id" /* AuthErrorCode.INVALID_OAUTH_CLIENT_ID */,
     // User actions (sign-up or deletion) disabled errors.
-    ["ADMIN_ONLY_OPERATION" /* ADMIN_ONLY_OPERATION */]: "admin-restricted-operation" /* ADMIN_ONLY_OPERATION */,
+    ["ADMIN_ONLY_OPERATION" /* ServerError.ADMIN_ONLY_OPERATION */]: "admin-restricted-operation" /* AuthErrorCode.ADMIN_ONLY_OPERATION */,
     // Multi factor related errors.
-    ["INVALID_MFA_PENDING_CREDENTIAL" /* INVALID_MFA_PENDING_CREDENTIAL */]: "invalid-multi-factor-session" /* INVALID_MFA_SESSION */,
-    ["MFA_ENROLLMENT_NOT_FOUND" /* MFA_ENROLLMENT_NOT_FOUND */]: "multi-factor-info-not-found" /* MFA_INFO_NOT_FOUND */,
-    ["MISSING_MFA_ENROLLMENT_ID" /* MISSING_MFA_ENROLLMENT_ID */]: "missing-multi-factor-info" /* MISSING_MFA_INFO */,
-    ["MISSING_MFA_PENDING_CREDENTIAL" /* MISSING_MFA_PENDING_CREDENTIAL */]: "missing-multi-factor-session" /* MISSING_MFA_SESSION */,
-    ["SECOND_FACTOR_EXISTS" /* SECOND_FACTOR_EXISTS */]: "second-factor-already-in-use" /* SECOND_FACTOR_ALREADY_ENROLLED */,
-    ["SECOND_FACTOR_LIMIT_EXCEEDED" /* SECOND_FACTOR_LIMIT_EXCEEDED */]: "maximum-second-factor-count-exceeded" /* SECOND_FACTOR_LIMIT_EXCEEDED */,
+    ["INVALID_MFA_PENDING_CREDENTIAL" /* ServerError.INVALID_MFA_PENDING_CREDENTIAL */]: "invalid-multi-factor-session" /* AuthErrorCode.INVALID_MFA_SESSION */,
+    ["MFA_ENROLLMENT_NOT_FOUND" /* ServerError.MFA_ENROLLMENT_NOT_FOUND */]: "multi-factor-info-not-found" /* AuthErrorCode.MFA_INFO_NOT_FOUND */,
+    ["MISSING_MFA_ENROLLMENT_ID" /* ServerError.MISSING_MFA_ENROLLMENT_ID */]: "missing-multi-factor-info" /* AuthErrorCode.MISSING_MFA_INFO */,
+    ["MISSING_MFA_PENDING_CREDENTIAL" /* ServerError.MISSING_MFA_PENDING_CREDENTIAL */]: "missing-multi-factor-session" /* AuthErrorCode.MISSING_MFA_SESSION */,
+    ["SECOND_FACTOR_EXISTS" /* ServerError.SECOND_FACTOR_EXISTS */]: "second-factor-already-in-use" /* AuthErrorCode.SECOND_FACTOR_ALREADY_ENROLLED */,
+    ["SECOND_FACTOR_LIMIT_EXCEEDED" /* ServerError.SECOND_FACTOR_LIMIT_EXCEEDED */]: "maximum-second-factor-count-exceeded" /* AuthErrorCode.SECOND_FACTOR_LIMIT_EXCEEDED */,
     // Blocking functions related errors.
-    ["BLOCKING_FUNCTION_ERROR_RESPONSE" /* BLOCKING_FUNCTION_ERROR_RESPONSE */]: "internal-error" /* INTERNAL_ERROR */
+    ["BLOCKING_FUNCTION_ERROR_RESPONSE" /* ServerError.BLOCKING_FUNCTION_ERROR_RESPONSE */]: "internal-error" /* AuthErrorCode.INTERNAL_ERROR */,
+    // Recaptcha related errors.
+    ["RECAPTCHA_NOT_ENABLED" /* ServerError.RECAPTCHA_NOT_ENABLED */]: "recaptcha-not-enabled" /* AuthErrorCode.RECAPTCHA_NOT_ENABLED */,
+    ["MISSING_RECAPTCHA_TOKEN" /* ServerError.MISSING_RECAPTCHA_TOKEN */]: "missing-recaptcha-token" /* AuthErrorCode.MISSING_RECAPTCHA_TOKEN */,
+    ["INVALID_RECAPTCHA_TOKEN" /* ServerError.INVALID_RECAPTCHA_TOKEN */]: "invalid-recaptcha-token" /* AuthErrorCode.INVALID_RECAPTCHA_TOKEN */,
+    ["INVALID_RECAPTCHA_ACTION" /* ServerError.INVALID_RECAPTCHA_ACTION */]: "invalid-recaptcha-action" /* AuthErrorCode.INVALID_RECAPTCHA_ACTION */,
+    ["MISSING_CLIENT_TYPE" /* ServerError.MISSING_CLIENT_TYPE */]: "missing-client-type" /* AuthErrorCode.MISSING_CLIENT_TYPE */,
+    ["MISSING_RECAPTCHA_VERSION" /* ServerError.MISSING_RECAPTCHA_VERSION */]: "missing-recaptcha-version" /* AuthErrorCode.MISSING_RECAPTCHA_VERSION */,
+    ["INVALID_RECAPTCHA_VERSION" /* ServerError.INVALID_RECAPTCHA_VERSION */]: "invalid-recaptcha-version" /* AuthErrorCode.INVALID_RECAPTCHA_VERSION */,
+    ["INVALID_REQ_TYPE" /* ServerError.INVALID_REQ_TYPE */]: "invalid-req-type" /* AuthErrorCode.INVALID_REQ_TYPE */
 };
 
 /**
@@ -7487,7 +8009,7 @@ async function _performApiRequest(auth, method, path, request, customErrorMap = 
         let body = {};
         let params = {};
         if (request) {
-            if (method === "GET" /* GET */) {
+            if (method === "GET" /* HttpMethod.GET */) {
                 params = request;
             }
             else {
@@ -7498,9 +8020,9 @@ async function _performApiRequest(auth, method, path, request, customErrorMap = 
         }
         const query = querystring(Object.assign({ key: auth.config.apiKey }, params)).slice(1);
         const headers = await auth._getAdditionalHeaders();
-        headers["Content-Type" /* CONTENT_TYPE */] = 'application/json';
+        headers["Content-Type" /* HttpHeader.CONTENT_TYPE */] = 'application/json';
         if (auth.languageCode) {
-            headers["X-Firebase-Locale" /* X_FIREBASE_LOCALE */] = auth.languageCode;
+            headers["X-Firebase-Locale" /* HttpHeader.X_FIREBASE_LOCALE */] = auth.languageCode;
         }
         return FetchProvider.fetch()(_getFinalTarget(auth, auth.config.apiHost, path, query), Object.assign({ method,
             headers, referrerPolicy: 'no-referrer' }, body));
@@ -7520,7 +8042,7 @@ async function _performFetchWithErrorHandling(auth, customErrorMap, fetchFn) {
         networkTimeout.clearNetworkTimeout();
         const json = await response.json();
         if ('needConfirmation' in json) {
-            throw _makeTaggedError(auth, "account-exists-with-different-credential" /* NEED_CONFIRMATION */, json);
+            throw _makeTaggedError(auth, "account-exists-with-different-credential" /* AuthErrorCode.NEED_CONFIRMATION */, json);
         }
         if (response.ok && !('errorMessage' in json)) {
             return json;
@@ -7528,14 +8050,14 @@ async function _performFetchWithErrorHandling(auth, customErrorMap, fetchFn) {
         else {
             const errorMessage = response.ok ? json.errorMessage : json.error.message;
             const [serverErrorCode, serverErrorMessage] = errorMessage.split(' : ');
-            if (serverErrorCode === "FEDERATED_USER_ID_ALREADY_LINKED" /* FEDERATED_USER_ID_ALREADY_LINKED */) {
-                throw _makeTaggedError(auth, "credential-already-in-use" /* CREDENTIAL_ALREADY_IN_USE */, json);
+            if (serverErrorCode === "FEDERATED_USER_ID_ALREADY_LINKED" /* ServerError.FEDERATED_USER_ID_ALREADY_LINKED */) {
+                throw _makeTaggedError(auth, "credential-already-in-use" /* AuthErrorCode.CREDENTIAL_ALREADY_IN_USE */, json);
             }
-            else if (serverErrorCode === "EMAIL_EXISTS" /* EMAIL_EXISTS */) {
-                throw _makeTaggedError(auth, "email-already-in-use" /* EMAIL_EXISTS */, json);
+            else if (serverErrorCode === "EMAIL_EXISTS" /* ServerError.EMAIL_EXISTS */) {
+                throw _makeTaggedError(auth, "email-already-in-use" /* AuthErrorCode.EMAIL_EXISTS */, json);
             }
-            else if (serverErrorCode === "USER_DISABLED" /* USER_DISABLED */) {
-                throw _makeTaggedError(auth, "user-disabled" /* USER_DISABLED */, json);
+            else if (serverErrorCode === "USER_DISABLED" /* ServerError.USER_DISABLED */) {
+                throw _makeTaggedError(auth, "user-disabled" /* AuthErrorCode.USER_DISABLED */, json);
             }
             const authError = errorMap[serverErrorCode] ||
                 serverErrorCode
@@ -7553,13 +8075,16 @@ async function _performFetchWithErrorHandling(auth, customErrorMap, fetchFn) {
         if (e instanceof FirebaseError) {
             throw e;
         }
-        _fail(auth, "network-request-failed" /* NETWORK_REQUEST_FAILED */);
+        // Changing this to a different error code will log user out when there is a network error
+        // because we treat any error other than NETWORK_REQUEST_FAILED as token is invalid.
+        // https://github.com/firebase/firebase-js-sdk/blob/4fbc73610d70be4e0852e7de63a39cb7897e8546/packages/auth/src/core/auth/auth_impl.ts#L309-L316
+        _fail(auth, "network-request-failed" /* AuthErrorCode.NETWORK_REQUEST_FAILED */, { 'message': String(e) });
     }
 }
 async function _performSignInRequest(auth, method, path, request, customErrorMap = {}) {
     const serverResponse = (await _performApiRequest(auth, method, path, request, customErrorMap));
     if ('mfaPendingCredential' in serverResponse) {
-        _fail(auth, "multi-factor-auth-required" /* MFA_REQUIRED */, {
+        _fail(auth, "multi-factor-auth-required" /* AuthErrorCode.MFA_REQUIRED */, {
             _serverResponse: serverResponse
         });
     }
@@ -7581,7 +8106,7 @@ class NetworkTimeout {
         this.timer = null;
         this.promise = new Promise((_, reject) => {
             this.timer = setTimeout(() => {
-                return reject(_createError(this.auth, "network-request-failed" /* NETWORK_REQUEST_FAILED */));
+                return reject(_createError(this.auth, "network-request-failed" /* AuthErrorCode.NETWORK_REQUEST_FAILED */));
             }, DEFAULT_API_TIMEOUT_MS.get());
         });
     }
@@ -7622,10 +8147,10 @@ function _makeTaggedError(auth, code, response) {
  * limitations under the License.
  */
 async function deleteAccount(auth, request) {
-    return _performApiRequest(auth, "POST" /* POST */, "/v1/accounts:delete" /* DELETE_ACCOUNT */, request);
+    return _performApiRequest(auth, "POST" /* HttpMethod.POST */, "/v1/accounts:delete" /* Endpoint.DELETE_ACCOUNT */, request);
 }
 async function getAccountInfo(auth, request) {
-    return _performApiRequest(auth, "POST" /* POST */, "/v1/accounts:lookup" /* GET_ACCOUNT_INFO */, request);
+    return _performApiRequest(auth, "POST" /* HttpMethod.POST */, "/v1/accounts:lookup" /* Endpoint.GET_ACCOUNT_INFO */, request);
 }
 
 /**
@@ -7663,7 +8188,7 @@ function utcTimestampToDateString(utcTimestamp) {
     return undefined;
 }
 /**
- * Returns a deserialized JSON Web Token (JWT) used to identitfy the user to a Firebase service.
+ * Returns a deserialized JSON Web Token (JWT) used to identify the user to a Firebase service.
  *
  * @remarks
  * Returns the current token if it has not expired or if it will not expire in the next five
@@ -7678,7 +8203,7 @@ async function getIdTokenResult(user, forceRefresh = false) {
     const userInternal = getModularInstance(user);
     const token = await userInternal.getIdToken(forceRefresh);
     const claims = _parseToken(token);
-    _assert(claims && claims.exp && claims.auth_time && claims.iat, userInternal.auth, "internal-error" /* INTERNAL_ERROR */);
+    _assert(claims && claims.exp && claims.auth_time && claims.iat, userInternal.auth, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
     const firebase = typeof claims.firebase === 'object' ? claims.firebase : undefined;
     const signInProvider = firebase === null || firebase === void 0 ? void 0 : firebase['sign_in_provider'];
     return {
@@ -7695,7 +8220,6 @@ function secondsStringToMilliseconds(seconds) {
     return Number(seconds) * 1000;
 }
 function _parseToken(token) {
-    var _a;
     const [algorithm, payload, signature] = token.split('.');
     if (algorithm === undefined ||
         payload === undefined ||
@@ -7712,7 +8236,7 @@ function _parseToken(token) {
         return JSON.parse(decoded);
     }
     catch (e) {
-        _logError('Caught error parsing JWT payload as JSON', (_a = e) === null || _a === void 0 ? void 0 : _a.toString());
+        _logError('Caught error parsing JWT payload as JSON', e === null || e === void 0 ? void 0 : e.toString());
         return null;
     }
 }
@@ -7721,9 +8245,9 @@ function _parseToken(token) {
  */
 function _tokenExpiresIn(token) {
     const parsedToken = _parseToken(token);
-    _assert(parsedToken, "internal-error" /* INTERNAL_ERROR */);
-    _assert(typeof parsedToken.exp !== 'undefined', "internal-error" /* INTERNAL_ERROR */);
-    _assert(typeof parsedToken.iat !== 'undefined', "internal-error" /* INTERNAL_ERROR */);
+    _assert(parsedToken, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
+    _assert(typeof parsedToken.exp !== 'undefined', "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
+    _assert(typeof parsedToken.iat !== 'undefined', "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
     return Number(parsedToken.exp) - Number(parsedToken.iat);
 }
 
@@ -7760,8 +8284,8 @@ async function _logoutIfInvalidated(user, promise, bypassAuthState = false) {
     }
 }
 function isUserInvalidated({ code }) {
-    return (code === `auth/${"user-disabled" /* USER_DISABLED */}` ||
-        code === `auth/${"user-token-expired" /* TOKEN_EXPIRED */}`);
+    return (code === `auth/${"user-disabled" /* AuthErrorCode.USER_DISABLED */}` ||
+        code === `auth/${"user-token-expired" /* AuthErrorCode.TOKEN_EXPIRED */}`);
 }
 
 /**
@@ -7789,7 +8313,7 @@ class ProactiveRefresh {
         // we can't cast properly in both environments.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.timerId = null;
-        this.errorBackoff = 30000 /* RETRY_BACKOFF_MIN */;
+        this.errorBackoff = 30000 /* Duration.RETRY_BACKOFF_MIN */;
     }
     _start() {
         if (this.isRunning) {
@@ -7811,14 +8335,14 @@ class ProactiveRefresh {
         var _a;
         if (wasError) {
             const interval = this.errorBackoff;
-            this.errorBackoff = Math.min(this.errorBackoff * 2, 960000 /* RETRY_BACKOFF_MAX */);
+            this.errorBackoff = Math.min(this.errorBackoff * 2, 960000 /* Duration.RETRY_BACKOFF_MAX */);
             return interval;
         }
         else {
             // Reset the error backoff
-            this.errorBackoff = 30000 /* RETRY_BACKOFF_MIN */;
+            this.errorBackoff = 30000 /* Duration.RETRY_BACKOFF_MIN */;
             const expTime = (_a = this.user.stsTokenManager.expirationTime) !== null && _a !== void 0 ? _a : 0;
-            const interval = expTime - Date.now() - 300000 /* OFFSET */;
+            const interval = expTime - Date.now() - 300000 /* Duration.OFFSET */;
             return Math.max(0, interval);
         }
     }
@@ -7833,14 +8357,13 @@ class ProactiveRefresh {
         }, interval);
     }
     async iteration() {
-        var _a;
         try {
             await this.user.getIdToken(true);
         }
         catch (e) {
             // Only retry on network errors
-            if (((_a = e) === null || _a === void 0 ? void 0 : _a.code) ===
-                `auth/${"network-request-failed" /* NETWORK_REQUEST_FAILED */}`) {
+            if ((e === null || e === void 0 ? void 0 : e.code) ===
+                `auth/${"network-request-failed" /* AuthErrorCode.NETWORK_REQUEST_FAILED */}`) {
                 this.schedule(/* wasError */ true);
             }
             return;
@@ -7909,7 +8432,7 @@ async function _reloadWithoutSaving(user) {
     const auth = user.auth;
     const idToken = await user.getIdToken();
     const response = await _logoutIfInvalidated(user, getAccountInfo(auth, { idToken }));
-    _assert(response === null || response === void 0 ? void 0 : response.users.length, auth, "internal-error" /* INTERNAL_ERROR */);
+    _assert(response === null || response === void 0 ? void 0 : response.users.length, auth, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
     const coreAccount = response.users[0];
     user._notifyReloadListener(coreAccount);
     const newProviderData = ((_a = coreAccount.providerUserInfo) === null || _a === void 0 ? void 0 : _a.length)
@@ -7995,11 +8518,11 @@ async function requestStsToken(auth, refreshToken) {
             'refresh_token': refreshToken
         }).slice(1);
         const { tokenApiHost, apiKey } = auth.config;
-        const url = _getFinalTarget(auth, tokenApiHost, "/v1/token" /* TOKEN */, `key=${apiKey}`);
+        const url = _getFinalTarget(auth, tokenApiHost, "/v1/token" /* Endpoint.TOKEN */, `key=${apiKey}`);
         const headers = await auth._getAdditionalHeaders();
-        headers["Content-Type" /* CONTENT_TYPE */] = 'application/x-www-form-urlencoded';
+        headers["Content-Type" /* HttpHeader.CONTENT_TYPE */] = 'application/x-www-form-urlencoded';
         return FetchProvider.fetch()(url, {
-            method: "POST" /* POST */,
+            method: "POST" /* HttpMethod.POST */,
             headers,
             body
         });
@@ -8042,19 +8565,19 @@ class StsTokenManager {
     }
     get isExpired() {
         return (!this.expirationTime ||
-            Date.now() > this.expirationTime - 30000 /* TOKEN_REFRESH */);
+            Date.now() > this.expirationTime - 30000 /* Buffer.TOKEN_REFRESH */);
     }
     updateFromServerResponse(response) {
-        _assert(response.idToken, "internal-error" /* INTERNAL_ERROR */);
-        _assert(typeof response.idToken !== 'undefined', "internal-error" /* INTERNAL_ERROR */);
-        _assert(typeof response.refreshToken !== 'undefined', "internal-error" /* INTERNAL_ERROR */);
+        _assert(response.idToken, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
+        _assert(typeof response.idToken !== 'undefined', "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
+        _assert(typeof response.refreshToken !== 'undefined', "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
         const expiresIn = 'expiresIn' in response && typeof response.expiresIn !== 'undefined'
             ? Number(response.expiresIn)
             : _tokenExpiresIn(response.idToken);
         this.updateTokensAndExpiration(response.idToken, response.refreshToken, expiresIn);
     }
     async getToken(auth, forceRefresh = false) {
-        _assert(!this.accessToken || this.refreshToken, auth, "user-token-expired" /* TOKEN_EXPIRED */);
+        _assert(!this.accessToken || this.refreshToken, auth, "user-token-expired" /* AuthErrorCode.TOKEN_EXPIRED */);
         if (!forceRefresh && this.accessToken && !this.isExpired) {
             return this.accessToken;
         }
@@ -8080,19 +8603,19 @@ class StsTokenManager {
         const { refreshToken, accessToken, expirationTime } = object;
         const manager = new StsTokenManager();
         if (refreshToken) {
-            _assert(typeof refreshToken === 'string', "internal-error" /* INTERNAL_ERROR */, {
+            _assert(typeof refreshToken === 'string', "internal-error" /* AuthErrorCode.INTERNAL_ERROR */, {
                 appName
             });
             manager.refreshToken = refreshToken;
         }
         if (accessToken) {
-            _assert(typeof accessToken === 'string', "internal-error" /* INTERNAL_ERROR */, {
+            _assert(typeof accessToken === 'string', "internal-error" /* AuthErrorCode.INTERNAL_ERROR */, {
                 appName
             });
             manager.accessToken = accessToken;
         }
         if (expirationTime) {
-            _assert(typeof expirationTime === 'number', "internal-error" /* INTERNAL_ERROR */, {
+            _assert(typeof expirationTime === 'number', "internal-error" /* AuthErrorCode.INTERNAL_ERROR */, {
                 appName
             });
             manager.expirationTime = expirationTime;
@@ -8136,13 +8659,13 @@ class StsTokenManager {
  * limitations under the License.
  */
 function assertStringOrUndefined(assertion, appName) {
-    _assert(typeof assertion === 'string' || typeof assertion === 'undefined', "internal-error" /* INTERNAL_ERROR */, { appName });
+    _assert(typeof assertion === 'string' || typeof assertion === 'undefined', "internal-error" /* AuthErrorCode.INTERNAL_ERROR */, { appName });
 }
 class UserImpl {
     constructor(_a) {
         var { uid, auth, stsTokenManager } = _a, opt = __rest(_a, ["uid", "auth", "stsTokenManager"]);
         // For the user object, provider is always Firebase.
-        this.providerId = "firebase" /* FIREBASE */;
+        this.providerId = "firebase" /* ProviderId.FIREBASE */;
         this.proactiveRefresh = new ProactiveRefresh(this);
         this.reloadUserInfo = null;
         this.reloadListener = null;
@@ -8162,7 +8685,7 @@ class UserImpl {
     }
     async getIdToken(forceRefresh) {
         const accessToken = await _logoutIfInvalidated(this, this.stsTokenManager.getToken(this.auth, forceRefresh));
-        _assert(accessToken, this.auth, "internal-error" /* INTERNAL_ERROR */);
+        _assert(accessToken, this.auth, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
         if (this.accessToken !== accessToken) {
             this.accessToken = accessToken;
             await this.auth._persistUserIfCurrent(this);
@@ -8180,7 +8703,7 @@ class UserImpl {
         if (this === user) {
             return;
         }
-        _assert(this.uid === user.uid, this.auth, "internal-error" /* INTERNAL_ERROR */);
+        _assert(this.uid === user.uid, this.auth, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
         this.displayName = user.displayName;
         this.photoURL = user.photoURL;
         this.email = user.email;
@@ -8193,11 +8716,13 @@ class UserImpl {
         this.stsTokenManager._assign(user.stsTokenManager);
     }
     _clone(auth) {
-        return new UserImpl(Object.assign(Object.assign({}, this), { auth, stsTokenManager: this.stsTokenManager._clone() }));
+        const newUser = new UserImpl(Object.assign(Object.assign({}, this), { auth, stsTokenManager: this.stsTokenManager._clone() }));
+        newUser.metadata._copy(this.metadata);
+        return newUser;
     }
     _onReload(callback) {
         // There should only ever be one listener, and that is a single instance of MultiFactorUser
-        _assert(!this.reloadListener, this.auth, "internal-error" /* INTERNAL_ERROR */);
+        _assert(!this.reloadListener, this.auth, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
         this.reloadListener = callback;
         if (this.reloadUserInfo) {
             this._notifyReloadListener(this.reloadUserInfo);
@@ -8264,13 +8789,13 @@ class UserImpl {
         const createdAt = (_g = object.createdAt) !== null && _g !== void 0 ? _g : undefined;
         const lastLoginAt = (_h = object.lastLoginAt) !== null && _h !== void 0 ? _h : undefined;
         const { uid, emailVerified, isAnonymous, providerData, stsTokenManager: plainObjectTokenManager } = object;
-        _assert(uid && plainObjectTokenManager, auth, "internal-error" /* INTERNAL_ERROR */);
+        _assert(uid && plainObjectTokenManager, auth, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
         const stsTokenManager = StsTokenManager.fromJSON(this.name, plainObjectTokenManager);
-        _assert(typeof uid === 'string', auth, "internal-error" /* INTERNAL_ERROR */);
+        _assert(typeof uid === 'string', auth, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
         assertStringOrUndefined(displayName, auth.name);
         assertStringOrUndefined(email, auth.name);
-        _assert(typeof emailVerified === 'boolean', auth, "internal-error" /* INTERNAL_ERROR */);
-        _assert(typeof isAnonymous === 'boolean', auth, "internal-error" /* INTERNAL_ERROR */);
+        _assert(typeof emailVerified === 'boolean', auth, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
+        _assert(typeof isAnonymous === 'boolean', auth, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
         assertStringOrUndefined(phoneNumber, auth.name);
         assertStringOrUndefined(photoURL, auth.name);
         assertStringOrUndefined(tenantId, auth.name);
@@ -8322,6 +8847,35 @@ class UserImpl {
 
 /**
  * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+const instanceCache = new Map();
+function _getInstance(cls) {
+    debugAssert(cls instanceof Function, 'Expected a class definition');
+    let instance = instanceCache.get(cls);
+    if (instance) {
+        debugAssert(instance instanceof cls, 'Instance stored in cache mismatched with class');
+        return instance;
+    }
+    instance = new cls();
+    instanceCache.set(cls, instance);
+    return instance;
+}
+
+/**
+ * @license
  * Copyright 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -8338,7 +8892,7 @@ class UserImpl {
  */
 class InMemoryPersistence {
     constructor() {
-        this.type = "NONE" /* NONE */;
+        this.type = "NONE" /* PersistenceType.NONE */;
         this.storage = {};
     }
     async _isAvailable() {
@@ -8388,7 +8942,7 @@ const inMemoryPersistence = InMemoryPersistence;
  * limitations under the License.
  */
 function _persistenceKeyName(key, apiKey, appName) {
-    return `${"firebase" /* PERSISTENCE */}:${key}:${apiKey}:${appName}`;
+    return `${"firebase" /* Namespace.PERSISTENCE */}:${key}:${apiKey}:${appName}`;
 }
 class PersistenceUserManager {
     constructor(persistence, auth, userKey) {
@@ -8397,7 +8951,7 @@ class PersistenceUserManager {
         this.userKey = userKey;
         const { config, name } = this.auth;
         this.fullUserKey = _persistenceKeyName(this.userKey, config.apiKey, name);
-        this.fullPersistenceKey = _persistenceKeyName("persistence" /* PERSISTENCE_USER */, config.apiKey, name);
+        this.fullPersistenceKey = _persistenceKeyName("persistence" /* KeyName.PERSISTENCE_USER */, config.apiKey, name);
         this.boundEventHandler = auth._onStorageEvent.bind(auth);
         this.persistence._addListener(this.fullUserKey, this.boundEventHandler);
     }
@@ -8428,7 +8982,7 @@ class PersistenceUserManager {
     delete() {
         this.persistence._removeListener(this.fullUserKey, this.boundEventHandler);
     }
-    static async create(auth, persistenceHierarchy, userKey = "authUser" /* AUTH_USER */) {
+    static async create(auth, persistenceHierarchy, userKey = "authUser" /* KeyName.AUTH_USER */) {
         if (!persistenceHierarchy.length) {
             return new PersistenceUserManager(_getInstance(inMemoryPersistence), auth, userKey);
         }
@@ -8513,42 +9067,42 @@ class PersistenceUserManager {
 function _getBrowserName(userAgent) {
     const ua = userAgent.toLowerCase();
     if (ua.includes('opera/') || ua.includes('opr/') || ua.includes('opios/')) {
-        return "Opera" /* OPERA */;
+        return "Opera" /* BrowserName.OPERA */;
     }
     else if (_isIEMobile(ua)) {
         // Windows phone IEMobile browser.
-        return "IEMobile" /* IEMOBILE */;
+        return "IEMobile" /* BrowserName.IEMOBILE */;
     }
     else if (ua.includes('msie') || ua.includes('trident/')) {
-        return "IE" /* IE */;
+        return "IE" /* BrowserName.IE */;
     }
     else if (ua.includes('edge/')) {
-        return "Edge" /* EDGE */;
+        return "Edge" /* BrowserName.EDGE */;
     }
     else if (_isFirefox(ua)) {
-        return "Firefox" /* FIREFOX */;
+        return "Firefox" /* BrowserName.FIREFOX */;
     }
     else if (ua.includes('silk/')) {
-        return "Silk" /* SILK */;
+        return "Silk" /* BrowserName.SILK */;
     }
     else if (_isBlackBerry(ua)) {
         // Blackberry browser.
-        return "Blackberry" /* BLACKBERRY */;
+        return "Blackberry" /* BrowserName.BLACKBERRY */;
     }
     else if (_isWebOS(ua)) {
         // WebOS default browser.
-        return "Webos" /* WEBOS */;
+        return "Webos" /* BrowserName.WEBOS */;
     }
     else if (_isSafari(ua)) {
-        return "Safari" /* SAFARI */;
+        return "Safari" /* BrowserName.SAFARI */;
     }
     else if ((ua.includes('chrome/') || _isChromeIOS(ua)) &&
         !ua.includes('edge/')) {
-        return "Chrome" /* CHROME */;
+        return "Chrome" /* BrowserName.CHROME */;
     }
     else if (_isAndroid(ua)) {
         // Android stock browser.
-        return "Android" /* ANDROID */;
+        return "Android" /* BrowserName.ANDROID */;
     }
     else {
         // Most modern browsers have name/version at end of user agent string.
@@ -8558,7 +9112,7 @@ function _getBrowserName(userAgent) {
             return matches[1];
         }
     }
-    return "Other" /* OTHER */;
+    return "Other" /* BrowserName.OTHER */;
 }
 function _isFirefox(ua = getUA()) {
     return /firefox\//i.test(ua);
@@ -8638,11 +9192,11 @@ function _isIframe() {
 function _getClientVersion(clientPlatform, frameworks = []) {
     let reportedPlatform;
     switch (clientPlatform) {
-        case "Browser" /* BROWSER */:
+        case "Browser" /* ClientPlatform.BROWSER */:
             // In a browser environment, report the browser name.
             reportedPlatform = _getBrowserName(getUA());
             break;
-        case "Worker" /* WORKER */:
+        case "Worker" /* ClientPlatform.WORKER */:
             // Technically a worker runs from a browser but we need to differentiate a
             // worker from a browser.
             // For example: Chrome-Worker/JsCore/4.9.1/FirebaseCore-web.
@@ -8654,7 +9208,198 @@ function _getClientVersion(clientPlatform, frameworks = []) {
     const reportedFrameworks = frameworks.length
         ? frameworks.join(',')
         : 'FirebaseCore-web'; /* default value if no other framework is used */
-    return `${reportedPlatform}/${"JsCore" /* CORE */}/${SDK_VERSION}/${reportedFrameworks}`;
+    return `${reportedPlatform}/${"JsCore" /* ClientImplementation.CORE */}/${SDK_VERSION}/${reportedFrameworks}`;
+}
+async function getRecaptchaConfig(auth, request) {
+    return _performApiRequest(auth, "GET" /* HttpMethod.GET */, "/v2/recaptchaConfig" /* Endpoint.GET_RECAPTCHA_CONFIG */, _addTidIfNecessary(auth, request));
+}
+function isEnterprise(grecaptcha) {
+    return (grecaptcha !== undefined &&
+        grecaptcha.enterprise !== undefined);
+}
+class RecaptchaConfig {
+    constructor(response) {
+        /**
+         * The reCAPTCHA site key.
+         */
+        this.siteKey = '';
+        /**
+         * The reCAPTCHA enablement status of the {@link EmailAuthProvider} for the current tenant.
+         */
+        this.emailPasswordEnabled = false;
+        if (response.recaptchaKey === undefined) {
+            throw new Error('recaptchaKey undefined');
+        }
+        // Example response.recaptchaKey: "projects/proj123/keys/sitekey123"
+        this.siteKey = response.recaptchaKey.split('/')[3];
+        this.emailPasswordEnabled = response.recaptchaEnforcementState.some(enforcementState => enforcementState.provider === 'EMAIL_PASSWORD_PROVIDER' &&
+            enforcementState.enforcementState !== 'OFF');
+    }
+}
+
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+function getScriptParentElement() {
+    var _a, _b;
+    return (_b = (_a = document.getElementsByTagName('head')) === null || _a === void 0 ? void 0 : _a[0]) !== null && _b !== void 0 ? _b : document;
+}
+function _loadJS(url) {
+    // TODO: consider adding timeout support & cancellation
+    return new Promise((resolve, reject) => {
+        const el = document.createElement('script');
+        el.setAttribute('src', url);
+        el.onload = resolve;
+        el.onerror = e => {
+            const error = _createError("internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
+            error.customData = e;
+            reject(error);
+        };
+        el.type = 'text/javascript';
+        el.charset = 'UTF-8';
+        getScriptParentElement().appendChild(el);
+    });
+}
+function _generateCallbackName(prefix) {
+    return `__${prefix}${Math.floor(Math.random() * 1000000)}`;
+}
+
+/* eslint-disable @typescript-eslint/no-require-imports */
+const RECAPTCHA_ENTERPRISE_URL = 'https://www.google.com/recaptcha/enterprise.js?render=';
+const RECAPTCHA_ENTERPRISE_VERIFIER_TYPE = 'recaptcha-enterprise';
+const FAKE_TOKEN = 'NO_RECAPTCHA';
+class RecaptchaEnterpriseVerifier {
+    /**
+     *
+     * @param authExtern - The corresponding Firebase {@link Auth} instance.
+     *
+     */
+    constructor(authExtern) {
+        /**
+         * Identifies the type of application verifier (e.g. "recaptcha-enterprise").
+         */
+        this.type = RECAPTCHA_ENTERPRISE_VERIFIER_TYPE;
+        this.auth = _castAuth(authExtern);
+    }
+    /**
+     * Executes the verification process.
+     *
+     * @returns A Promise for a token that can be used to assert the validity of a request.
+     */
+    async verify(action = 'verify', forceRefresh = false) {
+        async function retrieveSiteKey(auth) {
+            if (!forceRefresh) {
+                if (auth.tenantId == null && auth._agentRecaptchaConfig != null) {
+                    return auth._agentRecaptchaConfig.siteKey;
+                }
+                if (auth.tenantId != null &&
+                    auth._tenantRecaptchaConfigs[auth.tenantId] !== undefined) {
+                    return auth._tenantRecaptchaConfigs[auth.tenantId].siteKey;
+                }
+            }
+            return new Promise(async (resolve, reject) => {
+                getRecaptchaConfig(auth, {
+                    clientType: "CLIENT_TYPE_WEB" /* RecaptchaClientType.WEB */,
+                    version: "RECAPTCHA_ENTERPRISE" /* RecaptchaVersion.ENTERPRISE */
+                })
+                    .then(response => {
+                    if (response.recaptchaKey === undefined) {
+                        reject(new Error('recaptcha Enterprise site key undefined'));
+                    }
+                    else {
+                        const config = new RecaptchaConfig(response);
+                        if (auth.tenantId == null) {
+                            auth._agentRecaptchaConfig = config;
+                        }
+                        else {
+                            auth._tenantRecaptchaConfigs[auth.tenantId] = config;
+                        }
+                        return resolve(config.siteKey);
+                    }
+                })
+                    .catch(error => {
+                    reject(error);
+                });
+            });
+        }
+        function retrieveRecaptchaToken(siteKey, resolve, reject) {
+            const grecaptcha = window.grecaptcha;
+            if (isEnterprise(grecaptcha)) {
+                grecaptcha.enterprise.ready(() => {
+                    grecaptcha.enterprise
+                        .execute(siteKey, { action })
+                        .then(token => {
+                        resolve(token);
+                    })
+                        .catch(() => {
+                        resolve(FAKE_TOKEN);
+                    });
+                });
+            }
+            else {
+                reject(Error('No reCAPTCHA enterprise script loaded.'));
+            }
+        }
+        return new Promise((resolve, reject) => {
+            retrieveSiteKey(this.auth)
+                .then(siteKey => {
+                if (!forceRefresh && isEnterprise(window.grecaptcha)) {
+                    retrieveRecaptchaToken(siteKey, resolve, reject);
+                }
+                else {
+                    if (typeof window === 'undefined') {
+                        reject(new Error('RecaptchaVerifier is only supported in browser'));
+                        return;
+                    }
+                    _loadJS(RECAPTCHA_ENTERPRISE_URL + siteKey)
+                        .then(() => {
+                        retrieveRecaptchaToken(siteKey, resolve, reject);
+                    })
+                        .catch(error => {
+                        reject(error);
+                    });
+                }
+            })
+                .catch(error => {
+                reject(error);
+            });
+        });
+    }
+}
+async function injectRecaptchaFields(auth, request, action, captchaResp = false) {
+    const verifier = new RecaptchaEnterpriseVerifier(auth);
+    let captchaResponse;
+    try {
+        captchaResponse = await verifier.verify(action);
+    }
+    catch (error) {
+        captchaResponse = await verifier.verify(action, true);
+    }
+    const newRequest = Object.assign({}, request);
+    if (!captchaResp) {
+        Object.assign(newRequest, { captchaResponse });
+    }
+    else {
+        Object.assign(newRequest, { 'captchaResp': captchaResponse });
+    }
+    Object.assign(newRequest, { 'clientType': "CLIENT_TYPE_WEB" /* RecaptchaClientType.WEB */ });
+    Object.assign(newRequest, {
+        'recaptchaVersion': "RECAPTCHA_ENTERPRISE" /* RecaptchaVersion.ENTERPRISE */
+    });
+    return newRequest;
 }
 
 /**
@@ -8704,7 +9449,6 @@ class AuthMiddlewareQueue {
         };
     }
     async runMiddleware(nextUser) {
-        var _a;
         if (this.auth.currentUser === nextUser) {
             return;
         }
@@ -8732,8 +9476,8 @@ class AuthMiddlewareQueue {
                     /* swallow error */
                 }
             }
-            throw this.auth._errorFactory.create("login-blocked" /* LOGIN_BLOCKED */, {
-                originalMessage: (_a = e) === null || _a === void 0 ? void 0 : _a.message
+            throw this.auth._errorFactory.create("login-blocked" /* AuthErrorCode.LOGIN_BLOCKED */, {
+                originalMessage: e === null || e === void 0 ? void 0 : e.message
             });
         }
     }
@@ -8756,9 +9500,10 @@ class AuthMiddlewareQueue {
  * limitations under the License.
  */
 class AuthImpl {
-    constructor(app, heartbeatServiceProvider, config) {
+    constructor(app, heartbeatServiceProvider, appCheckServiceProvider, config) {
         this.app = app;
         this.heartbeatServiceProvider = heartbeatServiceProvider;
+        this.appCheckServiceProvider = appCheckServiceProvider;
         this.config = config;
         this.currentUser = null;
         this.emulatorConfig = null;
@@ -8776,6 +9521,8 @@ class AuthImpl {
         this._initializationPromise = null;
         this._popupRedirectResolver = null;
         this._errorFactory = _DEFAULT_AUTH_ERROR_FACTORY;
+        this._agentRecaptchaConfig = null;
+        this._tenantRecaptchaConfigs = {};
         // Tracks the last notified UID for state change listeners to prevent
         // repeated calls to the callbacks. Undefined means it's never been
         // called, whereas null means it's been called with a signed out user
@@ -8893,7 +9640,7 @@ class AuthImpl {
                 return this.directlySetCurrentUser(null);
             }
         }
-        _assert(this._popupRedirectResolver, this, "argument-error" /* ARGUMENT_ERROR */);
+        _assert(this._popupRedirectResolver, this, "argument-error" /* AuthErrorCode.ARGUMENT_ERROR */);
         await this.getOrInitRedirectPersistenceManager();
         // If the redirect user's event ID matches the current user's event ID,
         // DO NOT reload the current user, otherwise they'll be cleared from storage.
@@ -8934,13 +9681,12 @@ class AuthImpl {
         return result;
     }
     async reloadAndSetCurrentUserOrClear(user) {
-        var _a;
         try {
             await _reloadWithoutSaving(user);
         }
         catch (e) {
-            if (((_a = e) === null || _a === void 0 ? void 0 : _a.code) !==
-                `auth/${"network-request-failed" /* NETWORK_REQUEST_FAILED */}`) {
+            if ((e === null || e === void 0 ? void 0 : e.code) !==
+                `auth/${"network-request-failed" /* AuthErrorCode.NETWORK_REQUEST_FAILED */}`) {
                 // Something's wrong with the user's token. Log them out and remove
                 // them from storage
                 return this.directlySetCurrentUser(null);
@@ -8961,7 +9707,7 @@ class AuthImpl {
             ? getModularInstance(userExtern)
             : null;
         if (user) {
-            _assert(user.auth.config.apiKey === this.config.apiKey, this, "invalid-user-token" /* INVALID_AUTH */);
+            _assert(user.auth.config.apiKey === this.config.apiKey, this, "invalid-user-token" /* AuthErrorCode.INVALID_AUTH */);
         }
         return this._updateCurrentUser(user && user._clone(this));
     }
@@ -8970,7 +9716,7 @@ class AuthImpl {
             return;
         }
         if (user) {
-            _assert(this.tenantId === user.tenantId, this, "tenant-id-mismatch" /* TENANT_ID_MISMATCH */);
+            _assert(this.tenantId === user.tenantId, this, "tenant-id-mismatch" /* AuthErrorCode.TENANT_ID_MISMATCH */);
         }
         if (!skipBeforeStateCallbacks) {
             await this.beforeStateQueue.runMiddleware(user);
@@ -8995,6 +9741,31 @@ class AuthImpl {
         return this.queue(async () => {
             await this.assertedPersistence.setPersistence(_getInstance(persistence));
         });
+    }
+    async initializeRecaptchaConfig() {
+        const response = await getRecaptchaConfig(this, {
+            clientType: "CLIENT_TYPE_WEB" /* RecaptchaClientType.WEB */,
+            version: "RECAPTCHA_ENTERPRISE" /* RecaptchaVersion.ENTERPRISE */
+        });
+        const config = new RecaptchaConfig(response);
+        if (this.tenantId == null) {
+            this._agentRecaptchaConfig = config;
+        }
+        else {
+            this._tenantRecaptchaConfigs[this.tenantId] = config;
+        }
+        if (config.emailPasswordEnabled) {
+            const verifier = new RecaptchaEnterpriseVerifier(this);
+            void verifier.verify();
+        }
+    }
+    _getRecaptchaConfig() {
+        if (this.tenantId == null) {
+            return this._agentRecaptchaConfig;
+        }
+        else {
+            return this._tenantRecaptchaConfigs[this.tenantId];
+        }
     }
     _getPersistence() {
         return this.assertedPersistence.persistence.type;
@@ -9030,8 +9801,8 @@ class AuthImpl {
         if (!this.redirectPersistenceManager) {
             const resolver = (popupRedirectResolver && _getInstance(popupRedirectResolver)) ||
                 this._popupRedirectResolver;
-            _assert(resolver, this, "argument-error" /* ARGUMENT_ERROR */);
-            this.redirectPersistenceManager = await PersistenceUserManager.create(this, [_getInstance(resolver._redirectPersistence)], "redirectUser" /* REDIRECT_USER */);
+            _assert(resolver, this, "argument-error" /* AuthErrorCode.ARGUMENT_ERROR */);
+            this.redirectPersistenceManager = await PersistenceUserManager.create(this, [_getInstance(resolver._redirectPersistence)], "redirectUser" /* KeyName.REDIRECT_USER */);
             this.redirectUser =
                 await this.redirectPersistenceManager.getCurrentUser();
         }
@@ -9104,7 +9875,7 @@ class AuthImpl {
         const promise = this._isInitialized
             ? Promise.resolve()
             : this._initializationPromise;
-        _assert(promise, this, "internal-error" /* INTERNAL_ERROR */);
+        _assert(promise, this, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
         // The callback needs to be called asynchronously per the spec.
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         promise.then(() => cb(this.currentUser));
@@ -9142,7 +9913,7 @@ class AuthImpl {
         return this.operations;
     }
     get assertedPersistence() {
-        _assert(this.persistenceManager, this, "internal-error" /* INTERNAL_ERROR */);
+        _assert(this.persistenceManager, this, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
         return this.persistenceManager;
     }
     _logFramework(framework) {
@@ -9162,10 +9933,10 @@ class AuthImpl {
         var _a;
         // Additional headers on every request
         const headers = {
-            ["X-Client-Version" /* X_CLIENT_VERSION */]: this.clientVersion
+            ["X-Client-Version" /* HttpHeader.X_CLIENT_VERSION */]: this.clientVersion
         };
         if (this.app.options.appId) {
-            headers["X-Firebase-gmpid" /* X_FIREBASE_GMPID */] = this.app.options.appId;
+            headers["X-Firebase-gmpid" /* HttpHeader.X_FIREBASE_GMPID */] = this.app.options.appId;
         }
         // If the heartbeat service exists, add the heartbeat string
         const heartbeatsHeader = await ((_a = this.heartbeatServiceProvider
@@ -9173,9 +9944,27 @@ class AuthImpl {
             optional: true
         })) === null || _a === void 0 ? void 0 : _a.getHeartbeatsHeader());
         if (heartbeatsHeader) {
-            headers["X-Firebase-Client" /* X_FIREBASE_CLIENT */] = heartbeatsHeader;
+            headers["X-Firebase-Client" /* HttpHeader.X_FIREBASE_CLIENT */] = heartbeatsHeader;
+        }
+        // If the App Check service exists, add the App Check token in the headers
+        const appCheckToken = await this._getAppCheckToken();
+        if (appCheckToken) {
+            headers["X-Firebase-AppCheck" /* HttpHeader.X_FIREBASE_APP_CHECK */] = appCheckToken;
         }
         return headers;
+    }
+    async _getAppCheckToken() {
+        var _a;
+        const appCheckTokenResult = await ((_a = this.appCheckServiceProvider
+            .getImmediate({ optional: true })) === null || _a === void 0 ? void 0 : _a.getToken());
+        if (appCheckTokenResult === null || appCheckTokenResult === void 0 ? void 0 : appCheckTokenResult.error) {
+            // Context: appCheck.getToken() will never throw even if an error happened.
+            // In the error case, a dummy token will be returned along with an error field describing
+            // the error. In general, we shouldn't care about the error condition and just use
+            // the token (actual or dummy) to send requests.
+            _logWarn(`Error while retrieving App Check token: ${appCheckTokenResult.error}`);
+        }
+        return appCheckTokenResult === null || appCheckTokenResult === void 0 ? void 0 : appCheckTokenResult.token;
     }
 }
 /**
@@ -9195,9 +9984,77 @@ class Subscription {
         this.addObserver = createSubscribe(observer => (this.observer = observer));
     }
     get next() {
-        _assert(this.observer, this.auth, "internal-error" /* INTERNAL_ERROR */);
+        _assert(this.observer, this.auth, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
         return this.observer.next.bind(this.observer);
     }
+}
+
+/**
+ * @license
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * Initializes an {@link Auth} instance with fine-grained control over
+ * {@link Dependencies}.
+ *
+ * @remarks
+ *
+ * This function allows more control over the {@link Auth} instance than
+ * {@link getAuth}. `getAuth` uses platform-specific defaults to supply
+ * the {@link Dependencies}. In general, `getAuth` is the easiest way to
+ * initialize Auth and works for most use cases. Use `initializeAuth` if you
+ * need control over which persistence layer is used, or to minimize bundle
+ * size if you're not using either `signInWithPopup` or `signInWithRedirect`.
+ *
+ * For example, if your app only uses anonymous accounts and you only want
+ * accounts saved for the current session, initialize `Auth` with:
+ *
+ * ```js
+ * const auth = initializeAuth(app, {
+ *   persistence: browserSessionPersistence,
+ *   popupRedirectResolver: undefined,
+ * });
+ * ```
+ *
+ * @public
+ */
+function initializeAuth(app, deps) {
+    const provider = _getProvider(app, 'auth');
+    if (provider.isInitialized()) {
+        const auth = provider.getImmediate();
+        const initialOptions = provider.getOptions();
+        if (deepEqual(initialOptions, deps !== null && deps !== void 0 ? deps : {})) {
+            return auth;
+        }
+        else {
+            _fail(auth, "already-initialized" /* AuthErrorCode.ALREADY_INITIALIZED */);
+        }
+    }
+    const auth = provider.initialize({ options: deps });
+    return auth;
+}
+function _initializeAuthInstance(auth, deps) {
+    const persistence = (deps === null || deps === void 0 ? void 0 : deps.persistence) || [];
+    const hierarchy = (Array.isArray(persistence) ? persistence : [persistence]).map(_getInstance);
+    if (deps === null || deps === void 0 ? void 0 : deps.errorMap) {
+        auth._updateErrorMap(deps.errorMap);
+    }
+    // This promise is intended to float; auth initialization happens in the
+    // background, meanwhile the auth object may be used by the app.
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    auth._initializeWithPersistence(hierarchy, deps === null || deps === void 0 ? void 0 : deps.popupRedirectResolver);
 }
 
 /**
@@ -9224,8 +10081,8 @@ class Subscription {
  */
 function connectAuthEmulator(auth, url, options) {
     const authInternal = _castAuth(auth);
-    _assert(authInternal._canInitEmulator, authInternal, "emulator-config-failed" /* EMULATOR_CONFIG_FAILED */);
-    _assert(/^https?:\/\//.test(url), authInternal, "invalid-emulator-scheme" /* INVALID_EMULATOR_SCHEME */);
+    _assert(authInternal._canInitEmulator, authInternal, "emulator-config-failed" /* AuthErrorCode.EMULATOR_CONFIG_FAILED */);
+    _assert(/^https?:\/\//.test(url), authInternal, "invalid-emulator-scheme" /* AuthErrorCode.INVALID_EMULATOR_SCHEME */);
     const disableWarnings = !!(options === null || options === void 0 ? void 0 : options.disableWarnings);
     const protocol = extractProtocol(url);
     const { host, port } = extractHostAndPort(url);
@@ -9376,7 +10233,7 @@ class AuthCredential {
     }
 }
 async function updateEmailPassword(auth, request) {
-    return _performApiRequest(auth, "POST" /* POST */, "/v1/accounts:update" /* SET_ACCOUNT_INFO */, request);
+    return _performApiRequest(auth, "POST" /* HttpMethod.POST */, "/v1/accounts:update" /* Endpoint.SET_ACCOUNT_INFO */, request);
 }
 
 /**
@@ -9396,10 +10253,10 @@ async function updateEmailPassword(auth, request) {
  * limitations under the License.
  */
 async function signInWithPassword(auth, request) {
-    return _performSignInRequest(auth, "POST" /* POST */, "/v1/accounts:signInWithPassword" /* SIGN_IN_WITH_PASSWORD */, _addTidIfNecessary(auth, request));
+    return _performSignInRequest(auth, "POST" /* HttpMethod.POST */, "/v1/accounts:signInWithPassword" /* Endpoint.SIGN_IN_WITH_PASSWORD */, _addTidIfNecessary(auth, request));
 }
 async function sendOobCode(auth, request) {
-    return _performApiRequest(auth, "POST" /* POST */, "/v1/accounts:sendOobCode" /* SEND_OOB_CODE */, _addTidIfNecessary(auth, request));
+    return _performApiRequest(auth, "POST" /* HttpMethod.POST */, "/v1/accounts:sendOobCode" /* Endpoint.SEND_OOB_CODE */, _addTidIfNecessary(auth, request));
 }
 async function sendPasswordResetEmail$1(auth, request) {
     return sendOobCode(auth, request);
@@ -9425,10 +10282,10 @@ async function sendSignInLinkToEmail$1(auth, request) {
  * limitations under the License.
  */
 async function signInWithEmailLink$1(auth, request) {
-    return _performSignInRequest(auth, "POST" /* POST */, "/v1/accounts:signInWithEmailLink" /* SIGN_IN_WITH_EMAIL_LINK */, _addTidIfNecessary(auth, request));
+    return _performSignInRequest(auth, "POST" /* HttpMethod.POST */, "/v1/accounts:signInWithEmailLink" /* Endpoint.SIGN_IN_WITH_EMAIL_LINK */, _addTidIfNecessary(auth, request));
 }
 async function signInWithEmailLinkForLinking(auth, request) {
-    return _performSignInRequest(auth, "POST" /* POST */, "/v1/accounts:signInWithEmailLink" /* SIGN_IN_WITH_EMAIL_LINK */, _addTidIfNecessary(auth, request));
+    return _performSignInRequest(auth, "POST" /* HttpMethod.POST */, "/v1/accounts:signInWithEmailLink" /* Endpoint.SIGN_IN_WITH_EMAIL_LINK */, _addTidIfNecessary(auth, request));
 }
 
 /**
@@ -9466,18 +10323,18 @@ class EmailAuthCredential extends AuthCredential {
     _password, signInMethod, 
     /** @internal */
     _tenantId = null) {
-        super("password" /* PASSWORD */, signInMethod);
+        super("password" /* ProviderId.PASSWORD */, signInMethod);
         this._email = _email;
         this._password = _password;
         this._tenantId = _tenantId;
     }
     /** @internal */
     static _fromEmailAndPassword(email, password) {
-        return new EmailAuthCredential(email, password, "password" /* EMAIL_PASSWORD */);
+        return new EmailAuthCredential(email, password, "password" /* SignInMethod.EMAIL_PASSWORD */);
     }
     /** @internal */
     static _fromEmailAndCode(email, oobCode, tenantId = null) {
-        return new EmailAuthCredential(email, oobCode, "emailLink" /* EMAIL_LINK */, tenantId);
+        return new EmailAuthCredential(email, oobCode, "emailLink" /* SignInMethod.EMAIL_LINK */, tenantId);
     }
     /** {@inheritdoc AuthCredential.toJSON} */
     toJSON() {
@@ -9499,10 +10356,10 @@ class EmailAuthCredential extends AuthCredential {
     static fromJSON(json) {
         const obj = typeof json === 'string' ? JSON.parse(json) : json;
         if ((obj === null || obj === void 0 ? void 0 : obj.email) && (obj === null || obj === void 0 ? void 0 : obj.password)) {
-            if (obj.signInMethod === "password" /* EMAIL_PASSWORD */) {
+            if (obj.signInMethod === "password" /* SignInMethod.EMAIL_PASSWORD */) {
                 return this._fromEmailAndPassword(obj.email, obj.password);
             }
-            else if (obj.signInMethod === "emailLink" /* EMAIL_LINK */) {
+            else if (obj.signInMethod === "emailLink" /* SignInMethod.EMAIL_LINK */) {
                 return this._fromEmailAndCode(obj.email, obj.password, obj.tenantId);
             }
         }
@@ -9510,40 +10367,58 @@ class EmailAuthCredential extends AuthCredential {
     }
     /** @internal */
     async _getIdTokenResponse(auth) {
+        var _a;
         switch (this.signInMethod) {
-            case "password" /* EMAIL_PASSWORD */:
-                return signInWithPassword(auth, {
+            case "password" /* SignInMethod.EMAIL_PASSWORD */:
+                const request = {
                     returnSecureToken: true,
                     email: this._email,
-                    password: this._password
-                });
-            case "emailLink" /* EMAIL_LINK */:
+                    password: this._password,
+                    clientType: "CLIENT_TYPE_WEB" /* RecaptchaClientType.WEB */
+                };
+                if ((_a = auth._getRecaptchaConfig()) === null || _a === void 0 ? void 0 : _a.emailPasswordEnabled) {
+                    const requestWithRecaptcha = await injectRecaptchaFields(auth, request, "signInWithPassword" /* RecaptchaActionName.SIGN_IN_WITH_PASSWORD */);
+                    return signInWithPassword(auth, requestWithRecaptcha);
+                }
+                else {
+                    return signInWithPassword(auth, request).catch(async (error) => {
+                        if (error.code === `auth/${"missing-recaptcha-token" /* AuthErrorCode.MISSING_RECAPTCHA_TOKEN */}`) {
+                            console.log('Sign-in with email address and password is protected by reCAPTCHA for this project. Automatically triggering the reCAPTCHA flow and restarting the sign-in flow.');
+                            const requestWithRecaptcha = await injectRecaptchaFields(auth, request, "signInWithPassword" /* RecaptchaActionName.SIGN_IN_WITH_PASSWORD */);
+                            return signInWithPassword(auth, requestWithRecaptcha);
+                        }
+                        else {
+                            return Promise.reject(error);
+                        }
+                    });
+                }
+            case "emailLink" /* SignInMethod.EMAIL_LINK */:
                 return signInWithEmailLink$1(auth, {
                     email: this._email,
                     oobCode: this._password
                 });
             default:
-                _fail(auth, "internal-error" /* INTERNAL_ERROR */);
+                _fail(auth, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
         }
     }
     /** @internal */
     async _linkToIdToken(auth, idToken) {
         switch (this.signInMethod) {
-            case "password" /* EMAIL_PASSWORD */:
+            case "password" /* SignInMethod.EMAIL_PASSWORD */:
                 return updateEmailPassword(auth, {
                     idToken,
                     returnSecureToken: true,
                     email: this._email,
                     password: this._password
                 });
-            case "emailLink" /* EMAIL_LINK */:
+            case "emailLink" /* SignInMethod.EMAIL_LINK */:
                 return signInWithEmailLinkForLinking(auth, {
                     idToken,
                     email: this._email,
                     oobCode: this._password
                 });
             default:
-                _fail(auth, "internal-error" /* INTERNAL_ERROR */);
+                _fail(auth, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
         }
     }
     /** @internal */
@@ -9569,7 +10444,7 @@ class EmailAuthCredential extends AuthCredential {
  * limitations under the License.
  */
 async function signInWithIdp(auth, request) {
-    return _performSignInRequest(auth, "POST" /* POST */, "/v1/accounts:signInWithIdp" /* SIGN_IN_WITH_IDP */, _addTidIfNecessary(auth, request));
+    return _performSignInRequest(auth, "POST" /* HttpMethod.POST */, "/v1/accounts:signInWithIdp" /* Endpoint.SIGN_IN_WITH_IDP */, _addTidIfNecessary(auth, request));
 }
 
 /**
@@ -9627,7 +10502,7 @@ class OAuthCredential extends AuthCredential {
             cred.secret = params.oauthTokenSecret;
         }
         else {
-            _fail("argument-error" /* ARGUMENT_ERROR */);
+            _fail("argument-error" /* AuthErrorCode.ARGUMENT_ERROR */);
         }
         return cred;
     }
@@ -9736,17 +10611,17 @@ class OAuthCredential extends AuthCredential {
 function parseMode(mode) {
     switch (mode) {
         case 'recoverEmail':
-            return "RECOVER_EMAIL" /* RECOVER_EMAIL */;
+            return "RECOVER_EMAIL" /* ActionCodeOperation.RECOVER_EMAIL */;
         case 'resetPassword':
-            return "PASSWORD_RESET" /* PASSWORD_RESET */;
+            return "PASSWORD_RESET" /* ActionCodeOperation.PASSWORD_RESET */;
         case 'signIn':
-            return "EMAIL_SIGNIN" /* EMAIL_SIGNIN */;
+            return "EMAIL_SIGNIN" /* ActionCodeOperation.EMAIL_SIGNIN */;
         case 'verifyEmail':
-            return "VERIFY_EMAIL" /* VERIFY_EMAIL */;
+            return "VERIFY_EMAIL" /* ActionCodeOperation.VERIFY_EMAIL */;
         case 'verifyAndChangeEmail':
-            return "VERIFY_AND_CHANGE_EMAIL" /* VERIFY_AND_CHANGE_EMAIL */;
+            return "VERIFY_AND_CHANGE_EMAIL" /* ActionCodeOperation.VERIFY_AND_CHANGE_EMAIL */;
         case 'revertSecondFactorAddition':
-            return "REVERT_SECOND_FACTOR_ADDITION" /* REVERT_SECOND_FACTOR_ADDITION */;
+            return "REVERT_SECOND_FACTOR_ADDITION" /* ActionCodeOperation.REVERT_SECOND_FACTOR_ADDITION */;
         default:
             return null;
     }
@@ -9785,17 +10660,17 @@ class ActionCodeURL {
     constructor(actionLink) {
         var _a, _b, _c, _d, _e, _f;
         const searchParams = querystringDecode(extractQuerystring(actionLink));
-        const apiKey = (_a = searchParams["apiKey" /* API_KEY */]) !== null && _a !== void 0 ? _a : null;
-        const code = (_b = searchParams["oobCode" /* CODE */]) !== null && _b !== void 0 ? _b : null;
-        const operation = parseMode((_c = searchParams["mode" /* MODE */]) !== null && _c !== void 0 ? _c : null);
+        const apiKey = (_a = searchParams["apiKey" /* QueryField.API_KEY */]) !== null && _a !== void 0 ? _a : null;
+        const code = (_b = searchParams["oobCode" /* QueryField.CODE */]) !== null && _b !== void 0 ? _b : null;
+        const operation = parseMode((_c = searchParams["mode" /* QueryField.MODE */]) !== null && _c !== void 0 ? _c : null);
         // Validate API key, code and mode.
-        _assert(apiKey && code && operation, "argument-error" /* ARGUMENT_ERROR */);
+        _assert(apiKey && code && operation, "argument-error" /* AuthErrorCode.ARGUMENT_ERROR */);
         this.apiKey = apiKey;
         this.operation = operation;
         this.code = code;
-        this.continueUrl = (_d = searchParams["continueUrl" /* CONTINUE_URL */]) !== null && _d !== void 0 ? _d : null;
-        this.languageCode = (_e = searchParams["languageCode" /* LANGUAGE_CODE */]) !== null && _e !== void 0 ? _e : null;
-        this.tenantId = (_f = searchParams["tenantId" /* TENANT_ID */]) !== null && _f !== void 0 ? _f : null;
+        this.continueUrl = (_d = searchParams["continueUrl" /* QueryField.CONTINUE_URL */]) !== null && _d !== void 0 ? _d : null;
+        this.languageCode = (_e = searchParams["languageCode" /* QueryField.LANGUAGE_CODE */]) !== null && _e !== void 0 ? _e : null;
+        this.tenantId = (_f = searchParams["tenantId" /* QueryField.TENANT_ID */]) !== null && _f !== void 0 ? _f : null;
     }
     /**
      * Parses the email action link string and returns an {@link ActionCodeURL} if the link is valid,
@@ -9890,22 +10765,22 @@ class EmailAuthProvider {
      */
     static credentialWithLink(email, emailLink) {
         const actionCodeUrl = ActionCodeURL.parseLink(emailLink);
-        _assert(actionCodeUrl, "argument-error" /* ARGUMENT_ERROR */);
+        _assert(actionCodeUrl, "argument-error" /* AuthErrorCode.ARGUMENT_ERROR */);
         return EmailAuthCredential._fromEmailAndCode(email, actionCodeUrl.code, actionCodeUrl.tenantId);
     }
 }
 /**
  * Always set to {@link ProviderId}.PASSWORD, even for email link.
  */
-EmailAuthProvider.PROVIDER_ID = "password" /* PASSWORD */;
+EmailAuthProvider.PROVIDER_ID = "password" /* ProviderId.PASSWORD */;
 /**
  * Always set to {@link SignInMethod}.EMAIL_PASSWORD.
  */
-EmailAuthProvider.EMAIL_PASSWORD_SIGN_IN_METHOD = "password" /* EMAIL_PASSWORD */;
+EmailAuthProvider.EMAIL_PASSWORD_SIGN_IN_METHOD = "password" /* SignInMethod.EMAIL_PASSWORD */;
 /**
  * Always set to {@link SignInMethod}.EMAIL_LINK.
  */
-EmailAuthProvider.EMAIL_LINK_SIGN_IN_METHOD = "emailLink" /* EMAIL_LINK */;
+EmailAuthProvider.EMAIL_LINK_SIGN_IN_METHOD = "emailLink" /* SignInMethod.EMAIL_LINK */;
 
 /**
  * @license
@@ -10078,7 +10953,7 @@ class BaseOAuthProvider extends FederatedAuthProvider {
  */
 class FacebookAuthProvider extends BaseOAuthProvider {
     constructor() {
-        super("facebook.com" /* FACEBOOK */);
+        super("facebook.com" /* ProviderId.FACEBOOK */);
     }
     /**
      * Creates a credential for Facebook.
@@ -10132,9 +11007,9 @@ class FacebookAuthProvider extends BaseOAuthProvider {
     }
 }
 /** Always set to {@link SignInMethod}.FACEBOOK. */
-FacebookAuthProvider.FACEBOOK_SIGN_IN_METHOD = "facebook.com" /* FACEBOOK */;
+FacebookAuthProvider.FACEBOOK_SIGN_IN_METHOD = "facebook.com" /* SignInMethod.FACEBOOK */;
 /** Always set to {@link ProviderId}.FACEBOOK. */
-FacebookAuthProvider.PROVIDER_ID = "facebook.com" /* FACEBOOK */;
+FacebookAuthProvider.PROVIDER_ID = "facebook.com" /* ProviderId.FACEBOOK */;
 
 /**
  * @license
@@ -10195,7 +11070,7 @@ FacebookAuthProvider.PROVIDER_ID = "facebook.com" /* FACEBOOK */;
  */
 class GoogleAuthProvider extends BaseOAuthProvider {
     constructor() {
-        super("google.com" /* GOOGLE */);
+        super("google.com" /* ProviderId.GOOGLE */);
         this.addScope('profile');
     }
     /**
@@ -10254,9 +11129,9 @@ class GoogleAuthProvider extends BaseOAuthProvider {
     }
 }
 /** Always set to {@link SignInMethod}.GOOGLE. */
-GoogleAuthProvider.GOOGLE_SIGN_IN_METHOD = "google.com" /* GOOGLE */;
+GoogleAuthProvider.GOOGLE_SIGN_IN_METHOD = "google.com" /* SignInMethod.GOOGLE */;
 /** Always set to {@link ProviderId}.GOOGLE. */
-GoogleAuthProvider.PROVIDER_ID = "google.com" /* GOOGLE */;
+GoogleAuthProvider.PROVIDER_ID = "google.com" /* ProviderId.GOOGLE */;
 
 /**
  * @license
@@ -10318,7 +11193,7 @@ GoogleAuthProvider.PROVIDER_ID = "google.com" /* GOOGLE */;
  */
 class GithubAuthProvider extends BaseOAuthProvider {
     constructor() {
-        super("github.com" /* GITHUB */);
+        super("github.com" /* ProviderId.GITHUB */);
     }
     /**
      * Creates a credential for Github.
@@ -10365,9 +11240,9 @@ class GithubAuthProvider extends BaseOAuthProvider {
     }
 }
 /** Always set to {@link SignInMethod}.GITHUB. */
-GithubAuthProvider.GITHUB_SIGN_IN_METHOD = "github.com" /* GITHUB */;
+GithubAuthProvider.GITHUB_SIGN_IN_METHOD = "github.com" /* SignInMethod.GITHUB */;
 /** Always set to {@link ProviderId}.GITHUB. */
-GithubAuthProvider.PROVIDER_ID = "github.com" /* GITHUB */;
+GithubAuthProvider.PROVIDER_ID = "github.com" /* ProviderId.GITHUB */;
 
 /**
  * @license
@@ -10426,7 +11301,7 @@ GithubAuthProvider.PROVIDER_ID = "github.com" /* GITHUB */;
  */
 class TwitterAuthProvider extends BaseOAuthProvider {
     constructor() {
-        super("twitter.com" /* TWITTER */);
+        super("twitter.com" /* ProviderId.TWITTER */);
     }
     /**
      * Creates a credential for Twitter.
@@ -10476,9 +11351,9 @@ class TwitterAuthProvider extends BaseOAuthProvider {
     }
 }
 /** Always set to {@link SignInMethod}.TWITTER. */
-TwitterAuthProvider.TWITTER_SIGN_IN_METHOD = "twitter.com" /* TWITTER */;
+TwitterAuthProvider.TWITTER_SIGN_IN_METHOD = "twitter.com" /* SignInMethod.TWITTER */;
 /** Always set to {@link ProviderId}.TWITTER. */
-TwitterAuthProvider.PROVIDER_ID = "twitter.com" /* TWITTER */;
+TwitterAuthProvider.PROVIDER_ID = "twitter.com" /* ProviderId.TWITTER */;
 
 /**
  * @license
@@ -10530,7 +11405,7 @@ function providerIdForResponse(response) {
         return response.providerId;
     }
     if ('phoneNumber' in response) {
-        return "phone" /* PHONE */;
+        return "phone" /* ProviderId.PHONE */;
     }
     return null;
 }
@@ -10571,11 +11446,11 @@ class MultiFactorError extends FirebaseError {
     }
 }
 function _processCredentialSavingMfaContextIfNecessary(auth, operationType, credential, user) {
-    const idTokenProvider = operationType === "reauthenticate" /* REAUTHENTICATE */
+    const idTokenProvider = operationType === "reauthenticate" /* OperationType.REAUTHENTICATE */
         ? credential._getReauthenticationResolver(auth)
         : credential._getIdTokenResponse(auth);
     return idTokenProvider.catch(error => {
-        if (error.code === `auth/${"multi-factor-auth-required" /* MFA_REQUIRED */}`) {
+        if (error.code === `auth/${"multi-factor-auth-required" /* AuthErrorCode.MFA_REQUIRED */}`) {
             throw MultiFactorError._fromErrorAndOperation(auth, error, operationType, user);
         }
         throw error;
@@ -10583,7 +11458,7 @@ function _processCredentialSavingMfaContextIfNecessary(auth, operationType, cred
 }
 async function _link$1(user, credential, bypassAuthState = false) {
     const response = await _logoutIfInvalidated(user, credential._linkToIdToken(user.auth, await user.getIdToken()), bypassAuthState);
-    return UserCredentialImpl._forOperation(user, "link" /* LINK */, response);
+    return UserCredentialImpl._forOperation(user, "link" /* OperationType.LINK */, response);
 }
 
 /**
@@ -10603,22 +11478,21 @@ async function _link$1(user, credential, bypassAuthState = false) {
  * limitations under the License.
  */
 async function _reauthenticate(user, credential, bypassAuthState = false) {
-    var _a;
     const { auth } = user;
-    const operationType = "reauthenticate" /* REAUTHENTICATE */;
+    const operationType = "reauthenticate" /* OperationType.REAUTHENTICATE */;
     try {
         const response = await _logoutIfInvalidated(user, _processCredentialSavingMfaContextIfNecessary(auth, operationType, credential, user), bypassAuthState);
-        _assert(response.idToken, auth, "internal-error" /* INTERNAL_ERROR */);
+        _assert(response.idToken, auth, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
         const parsed = _parseToken(response.idToken);
-        _assert(parsed, auth, "internal-error" /* INTERNAL_ERROR */);
+        _assert(parsed, auth, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
         const { sub: localId } = parsed;
-        _assert(user.uid === localId, auth, "user-mismatch" /* USER_MISMATCH */);
+        _assert(user.uid === localId, auth, "user-mismatch" /* AuthErrorCode.USER_MISMATCH */);
         return UserCredentialImpl._forOperation(user, operationType, response);
     }
     catch (e) {
         // Convert user deleted error into user mismatch
-        if (((_a = e) === null || _a === void 0 ? void 0 : _a.code) === `auth/${"user-not-found" /* USER_DELETED */}`) {
-            _fail(auth, "user-mismatch" /* USER_MISMATCH */);
+        if ((e === null || e === void 0 ? void 0 : e.code) === `auth/${"user-not-found" /* AuthErrorCode.USER_DELETED */}`) {
+            _fail(auth, "user-mismatch" /* AuthErrorCode.USER_MISMATCH */);
         }
         throw e;
     }
@@ -10641,7 +11515,7 @@ async function _reauthenticate(user, credential, bypassAuthState = false) {
  * limitations under the License.
  */
 async function _signInWithCredential(auth, credential, bypassAuthState = false) {
-    const operationType = "signIn" /* SIGN_IN */;
+    const operationType = "signIn" /* OperationType.SIGN_IN */;
     const response = await _processCredentialSavingMfaContextIfNecessary(auth, operationType, credential);
     const userCredential = await UserCredentialImpl._fromIdTokenResponse(auth, operationType, response);
     if (!bypassAuthState) {
@@ -10682,18 +11556,18 @@ async function signInWithCredential(auth, credential) {
  */
 function _setActionCodeSettingsOnRequest(auth, request, actionCodeSettings) {
     var _a;
-    _assert(((_a = actionCodeSettings.url) === null || _a === void 0 ? void 0 : _a.length) > 0, auth, "invalid-continue-uri" /* INVALID_CONTINUE_URI */);
+    _assert(((_a = actionCodeSettings.url) === null || _a === void 0 ? void 0 : _a.length) > 0, auth, "invalid-continue-uri" /* AuthErrorCode.INVALID_CONTINUE_URI */);
     _assert(typeof actionCodeSettings.dynamicLinkDomain === 'undefined' ||
-        actionCodeSettings.dynamicLinkDomain.length > 0, auth, "invalid-dynamic-link-domain" /* INVALID_DYNAMIC_LINK_DOMAIN */);
+        actionCodeSettings.dynamicLinkDomain.length > 0, auth, "invalid-dynamic-link-domain" /* AuthErrorCode.INVALID_DYNAMIC_LINK_DOMAIN */);
     request.continueUrl = actionCodeSettings.url;
     request.dynamicLinkDomain = actionCodeSettings.dynamicLinkDomain;
     request.canHandleCodeInApp = actionCodeSettings.handleCodeInApp;
     if (actionCodeSettings.iOS) {
-        _assert(actionCodeSettings.iOS.bundleId.length > 0, auth, "missing-ios-bundle-id" /* MISSING_IOS_BUNDLE_ID */);
+        _assert(actionCodeSettings.iOS.bundleId.length > 0, auth, "missing-ios-bundle-id" /* AuthErrorCode.MISSING_IOS_BUNDLE_ID */);
         request.iOSBundleId = actionCodeSettings.iOS.bundleId;
     }
     if (actionCodeSettings.android) {
-        _assert(actionCodeSettings.android.packageName.length > 0, auth, "missing-android-pkg-name" /* MISSING_ANDROID_PACKAGE_NAME */);
+        _assert(actionCodeSettings.android.packageName.length > 0, auth, "missing-android-pkg-name" /* AuthErrorCode.MISSING_ANDROID_PACKAGE_NAME */);
         request.androidInstallApp = actionCodeSettings.android.installApp;
         request.androidMinimumVersionCode =
             actionCodeSettings.android.minimumVersion;
@@ -10750,15 +11624,39 @@ function _setActionCodeSettingsOnRequest(auth, request, actionCodeSettings) {
  * @public
  */
 async function sendPasswordResetEmail(auth, email, actionCodeSettings) {
-    const authModular = getModularInstance(auth);
+    var _a;
+    const authInternal = _castAuth(auth);
     const request = {
-        requestType: "PASSWORD_RESET" /* PASSWORD_RESET */,
-        email
+        requestType: "PASSWORD_RESET" /* ActionCodeOperation.PASSWORD_RESET */,
+        email,
+        clientType: "CLIENT_TYPE_WEB" /* RecaptchaClientType.WEB */
     };
-    if (actionCodeSettings) {
-        _setActionCodeSettingsOnRequest(authModular, request, actionCodeSettings);
+    if ((_a = authInternal._getRecaptchaConfig()) === null || _a === void 0 ? void 0 : _a.emailPasswordEnabled) {
+        const requestWithRecaptcha = await injectRecaptchaFields(authInternal, request, "getOobCode" /* RecaptchaActionName.GET_OOB_CODE */, true);
+        if (actionCodeSettings) {
+            _setActionCodeSettingsOnRequest(authInternal, requestWithRecaptcha, actionCodeSettings);
+        }
+        await sendPasswordResetEmail$1(authInternal, requestWithRecaptcha);
     }
-    await sendPasswordResetEmail$1(authModular, request);
+    else {
+        if (actionCodeSettings) {
+            _setActionCodeSettingsOnRequest(authInternal, request, actionCodeSettings);
+        }
+        await sendPasswordResetEmail$1(authInternal, request)
+            .catch(async (error) => {
+            if (error.code === `auth/${"missing-recaptcha-token" /* AuthErrorCode.MISSING_RECAPTCHA_TOKEN */}`) {
+                console.log('Password resets are protected by reCAPTCHA for this project. Automatically triggering the reCAPTCHA flow and restarting the password reset flow.');
+                const requestWithRecaptcha = await injectRecaptchaFields(authInternal, request, "getOobCode" /* RecaptchaActionName.GET_OOB_CODE */, true);
+                if (actionCodeSettings) {
+                    _setActionCodeSettingsOnRequest(authInternal, requestWithRecaptcha, actionCodeSettings);
+                }
+                await sendPasswordResetEmail$1(authInternal, requestWithRecaptcha);
+            }
+            else {
+                return Promise.reject(error);
+            }
+        });
+    }
 }
 /**
  * Asynchronously signs in using an email and password.
@@ -10835,22 +11733,46 @@ function signInWithEmailAndPassword(auth, email, password) {
  * @public
  */
 async function sendSignInLinkToEmail(auth, email, actionCodeSettings) {
-    const authModular = getModularInstance(auth);
+    var _a;
+    const authInternal = _castAuth(auth);
     const request = {
-        requestType: "EMAIL_SIGNIN" /* EMAIL_SIGNIN */,
-        email
+        requestType: "EMAIL_SIGNIN" /* ActionCodeOperation.EMAIL_SIGNIN */,
+        email,
+        clientType: "CLIENT_TYPE_WEB" /* RecaptchaClientType.WEB */
     };
-    _assert(actionCodeSettings.handleCodeInApp, authModular, "argument-error" /* ARGUMENT_ERROR */);
-    if (actionCodeSettings) {
-        _setActionCodeSettingsOnRequest(authModular, request, actionCodeSettings);
+    function setActionCodeSettings(request, actionCodeSettings) {
+        _assert(actionCodeSettings.handleCodeInApp, authInternal, "argument-error" /* AuthErrorCode.ARGUMENT_ERROR */);
+        if (actionCodeSettings) {
+            _setActionCodeSettingsOnRequest(authInternal, request, actionCodeSettings);
+        }
     }
-    await sendSignInLinkToEmail$1(authModular, request);
+    if ((_a = authInternal._getRecaptchaConfig()) === null || _a === void 0 ? void 0 : _a.emailPasswordEnabled) {
+        const requestWithRecaptcha = await injectRecaptchaFields(authInternal, request, "getOobCode" /* RecaptchaActionName.GET_OOB_CODE */, true);
+        setActionCodeSettings(requestWithRecaptcha, actionCodeSettings);
+        await sendSignInLinkToEmail$1(authInternal, requestWithRecaptcha);
+    }
+    else {
+        setActionCodeSettings(request, actionCodeSettings);
+        await sendSignInLinkToEmail$1(authInternal, request)
+            .catch(async (error) => {
+            if (error.code === `auth/${"missing-recaptcha-token" /* AuthErrorCode.MISSING_RECAPTCHA_TOKEN */}`) {
+                console.log('Email link sign-in is protected by reCAPTCHA for this project. Automatically triggering the reCAPTCHA flow and restarting the sign-in flow.');
+                const requestWithRecaptcha = await injectRecaptchaFields(authInternal, request, "getOobCode" /* RecaptchaActionName.GET_OOB_CODE */, true);
+                setActionCodeSettings(requestWithRecaptcha, actionCodeSettings);
+                await sendSignInLinkToEmail$1(authInternal, requestWithRecaptcha);
+            }
+            else {
+                return Promise.reject(error);
+            }
+        });
+    }
 }
 /**
  * Adds an observer for changes to the signed-in user's ID token.
  *
  * @remarks
  * This includes sign-in, sign-out, and token refresh events.
+ * This will not be triggered automatically upon ID token expiration. Use {@link User.getIdToken} to refresh the ID token.
  *
  * @param auth - The {@link Auth} instance.
  * @param nextOrObserver - callback triggered on change.
@@ -10988,7 +11910,7 @@ const _POLLING_INTERVAL_MS$1 = 1000;
 const IE10_LOCAL_STORAGE_SYNC_DELAY = 10;
 class BrowserLocalPersistence extends BrowserPersistenceClass {
     constructor() {
-        super(() => window.localStorage, "LOCAL" /* LOCAL */);
+        super(() => window.localStorage, "LOCAL" /* PersistenceType.LOCAL */);
         this.boundEventHandler = (event, poll) => this.onStorageEvent(event, poll);
         this.listeners = {};
         this.localCache = {};
@@ -11189,7 +12111,7 @@ const browserLocalPersistence = BrowserLocalPersistence;
  */
 class BrowserSessionPersistence extends BrowserPersistenceClass {
     constructor() {
-        super(() => window.sessionStorage, "SESSION" /* SESSION */);
+        super(() => window.sessionStorage, "SESSION" /* PersistenceType.SESSION */);
     }
     _addListener(_key, _listener) {
         // Listeners are not supported for session storage since it cannot be shared across windows
@@ -11313,14 +12235,14 @@ class Receiver {
             return;
         }
         messageEvent.ports[0].postMessage({
-            status: "ack" /* ACK */,
+            status: "ack" /* _Status.ACK */,
             eventId,
             eventType
         });
         const promises = Array.from(handlers).map(async (handler) => handler(messageEvent.origin, data));
         const response = await _allSettled(promises);
         messageEvent.ports[0].postMessage({
-            status: "done" /* DONE */,
+            status: "done" /* _Status.DONE */,
             eventId,
             eventType,
             response
@@ -11437,10 +12359,10 @@ class Sender {
      *
      * @returns An array of settled promises from all the handlers that were listening on the receiver.
      */
-    async _send(eventType, data, timeout = 50 /* ACK */) {
+    async _send(eventType, data, timeout = 50 /* _TimeoutDuration.ACK */) {
         const messageChannel = typeof MessageChannel !== 'undefined' ? new MessageChannel() : null;
         if (!messageChannel) {
-            throw new Error("connection_unavailable" /* CONNECTION_UNAVAILABLE */);
+            throw new Error("connection_unavailable" /* _MessageError.CONNECTION_UNAVAILABLE */);
         }
         // Node timers and browser timers return fundamentally different types.
         // We don't actually care what the value is but TS won't accept unknown and
@@ -11452,7 +12374,7 @@ class Sender {
             const eventId = _generateEventId('', 20);
             messageChannel.port1.start();
             const ackTimer = setTimeout(() => {
-                reject(new Error("unsupported_event" /* UNSUPPORTED_EVENT */));
+                reject(new Error("unsupported_event" /* _MessageError.UNSUPPORTED_EVENT */));
             }, timeout);
             handler = {
                 messageChannel,
@@ -11462,14 +12384,14 @@ class Sender {
                         return;
                     }
                     switch (messageEvent.data.status) {
-                        case "ack" /* ACK */:
+                        case "ack" /* _Status.ACK */:
                             // The receiver should ACK first.
                             clearTimeout(ackTimer);
                             completionTimer = setTimeout(() => {
-                                reject(new Error("timeout" /* TIMEOUT */));
-                            }, 3000 /* COMPLETION */);
+                                reject(new Error("timeout" /* _MessageError.TIMEOUT */));
+                            }, 3000 /* _TimeoutDuration.COMPLETION */);
                             break;
-                        case "done" /* DONE */:
+                        case "done" /* _Status.DONE */:
                             // Once the receiver's handlers are finished we will get the results.
                             clearTimeout(completionTimer);
                             resolve(messageEvent.data.response);
@@ -11477,7 +12399,7 @@ class Sender {
                         default:
                             clearTimeout(ackTimer);
                             clearTimeout(completionTimer);
-                            reject(new Error("invalid_response" /* INVALID_RESPONSE */));
+                            reject(new Error("invalid_response" /* _MessageError.INVALID_RESPONSE */));
                             break;
                     }
                 }
@@ -11667,7 +12589,7 @@ const _POLLING_INTERVAL_MS = 800;
 const _TRANSACTION_RETRY_COUNT = 3;
 class IndexedDBLocalPersistence {
     constructor() {
-        this.type = "LOCAL" /* LOCAL */;
+        this.type = "LOCAL" /* PersistenceType.LOCAL */;
         this._shouldAllowMigration = true;
         this.listeners = {};
         this.localCache = {};
@@ -11722,15 +12644,15 @@ class IndexedDBLocalPersistence {
     async initializeReceiver() {
         this.receiver = Receiver._getInstance(_getWorkerGlobalScope());
         // Refresh from persistence if we receive a KeyChanged message.
-        this.receiver._subscribe("keyChanged" /* KEY_CHANGED */, async (_origin, data) => {
+        this.receiver._subscribe("keyChanged" /* _EventType.KEY_CHANGED */, async (_origin, data) => {
             const keys = await this._poll();
             return {
                 keyProcessed: keys.includes(data.key)
             };
         });
         // Let the sender know that we are listening so they give us more timeout.
-        this.receiver._subscribe("ping" /* PING */, async (_origin, _data) => {
-            return ["keyChanged" /* KEY_CHANGED */];
+        this.receiver._subscribe("ping" /* _EventType.PING */, async (_origin, _data) => {
+            return ["keyChanged" /* _EventType.KEY_CHANGED */];
         });
     }
     /**
@@ -11749,12 +12671,12 @@ class IndexedDBLocalPersistence {
         }
         this.sender = new Sender(this.activeServiceWorker);
         // Ping the service worker to check what events they can handle.
-        const results = await this.sender._send("ping" /* PING */, {}, 800 /* LONG_ACK */);
+        const results = await this.sender._send("ping" /* _EventType.PING */, {}, 800 /* _TimeoutDuration.LONG_ACK */);
         if (!results) {
             return;
         }
         if (((_a = results[0]) === null || _a === void 0 ? void 0 : _a.fulfilled) &&
-            ((_b = results[0]) === null || _b === void 0 ? void 0 : _b.value.includes("keyChanged" /* KEY_CHANGED */))) {
+            ((_b = results[0]) === null || _b === void 0 ? void 0 : _b.value.includes("keyChanged" /* _EventType.KEY_CHANGED */))) {
             this.serviceWorkerReceiverAvailable = true;
         }
     }
@@ -11774,11 +12696,11 @@ class IndexedDBLocalPersistence {
             return;
         }
         try {
-            await this.sender._send("keyChanged" /* KEY_CHANGED */, { key }, 
+            await this.sender._send("keyChanged" /* _EventType.KEY_CHANGED */, { key }, 
             // Use long timeout if receiver has previously responded to a ping from us.
             this.serviceWorkerReceiverAvailable
-                ? 800 /* LONG_ACK */
-                : 50 /* ACK */);
+                ? 800 /* _TimeoutDuration.LONG_ACK */
+                : 50 /* _TimeoutDuration.ACK */);
         }
         catch (_a) {
             // This is a best effort approach. Ignore errors.
@@ -11906,46 +12828,6 @@ IndexedDBLocalPersistence.type = 'LOCAL';
  * @public
  */
 const indexedDBLocalPersistence = IndexedDBLocalPersistence;
-
-/**
- * @license
- * Copyright 2020 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-function getScriptParentElement() {
-    var _a, _b;
-    return (_b = (_a = document.getElementsByTagName('head')) === null || _a === void 0 ? void 0 : _a[0]) !== null && _b !== void 0 ? _b : document;
-}
-function _loadJS(url) {
-    // TODO: consider adding timeout support & cancellation
-    return new Promise((resolve, reject) => {
-        const el = document.createElement('script');
-        el.setAttribute('src', url);
-        el.onload = resolve;
-        el.onerror = e => {
-            const error = _createError("internal-error" /* INTERNAL_ERROR */);
-            error.customData = e;
-            reject(error);
-        };
-        el.type = 'text/javascript';
-        el.charset = 'UTF-8';
-        getScriptParentElement().appendChild(el);
-    });
-}
-function _generateCallbackName(prefix) {
-    return `__${prefix}${Math.floor(Math.random() * 1000000)}`;
-}
 new Delay(30000, 60000);
 
 /**
@@ -11973,7 +12855,7 @@ function _withDefaultResolver(auth, resolverOverride) {
     if (resolverOverride) {
         return _getInstance(resolverOverride);
     }
-    _assert(auth._popupRedirectResolver, auth, "argument-error" /* ARGUMENT_ERROR */);
+    _assert(auth._popupRedirectResolver, auth, "argument-error" /* AuthErrorCode.ARGUMENT_ERROR */);
     return auth._popupRedirectResolver;
 }
 
@@ -11995,7 +12877,7 @@ function _withDefaultResolver(auth, resolverOverride) {
  */
 class IdpCredential extends AuthCredential {
     constructor(params) {
-        super("custom" /* CUSTOM */, "custom" /* CUSTOM */);
+        super("custom" /* ProviderId.CUSTOM */, "custom" /* ProviderId.CUSTOM */);
         this.params = params;
     }
     _getIdTokenResponse(auth) {
@@ -12028,12 +12910,12 @@ function _signIn(params) {
 }
 function _reauth(params) {
     const { auth, user } = params;
-    _assert(user, auth, "internal-error" /* INTERNAL_ERROR */);
+    _assert(user, auth, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
     return _reauthenticate(user, new IdpCredential(params), params.bypassAuthState);
 }
 async function _link(params) {
     const { auth, user } = params;
-    _assert(user, auth, "internal-error" /* INTERNAL_ERROR */);
+    _assert(user, auth, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
     return _link$1(user, new IdpCredential(params), params.bypassAuthState);
 }
 
@@ -12107,17 +12989,17 @@ class AbstractPopupRedirectOperation {
     }
     getIdpTask(type) {
         switch (type) {
-            case "signInViaPopup" /* SIGN_IN_VIA_POPUP */:
-            case "signInViaRedirect" /* SIGN_IN_VIA_REDIRECT */:
+            case "signInViaPopup" /* AuthEventType.SIGN_IN_VIA_POPUP */:
+            case "signInViaRedirect" /* AuthEventType.SIGN_IN_VIA_REDIRECT */:
                 return _signIn;
-            case "linkViaPopup" /* LINK_VIA_POPUP */:
-            case "linkViaRedirect" /* LINK_VIA_REDIRECT */:
+            case "linkViaPopup" /* AuthEventType.LINK_VIA_POPUP */:
+            case "linkViaRedirect" /* AuthEventType.LINK_VIA_REDIRECT */:
                 return _link;
-            case "reauthViaPopup" /* REAUTH_VIA_POPUP */:
-            case "reauthViaRedirect" /* REAUTH_VIA_REDIRECT */:
+            case "reauthViaPopup" /* AuthEventType.REAUTH_VIA_POPUP */:
+            case "reauthViaRedirect" /* AuthEventType.REAUTH_VIA_REDIRECT */:
                 return _reauth;
             default:
-                _fail(this.auth, "internal-error" /* INTERNAL_ERROR */);
+                _fail(this.auth, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
         }
     }
     resolve(cred) {
@@ -12174,7 +13056,7 @@ class PopupOperation extends AbstractPopupRedirectOperation {
     }
     async executeNotNull() {
         const result = await this.execute();
-        _assert(result, this.auth, "internal-error" /* INTERNAL_ERROR */);
+        _assert(result, this.auth, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
         return result;
     }
     async onExecution() {
@@ -12195,7 +13077,7 @@ class PopupOperation extends AbstractPopupRedirectOperation {
         });
         this.resolver._isIframeWebStorageSupported(this.auth, isSupported => {
             if (!isSupported) {
-                this.reject(_createError(this.auth, "web-storage-unsupported" /* WEB_STORAGE_UNSUPPORTED */));
+                this.reject(_createError(this.auth, "web-storage-unsupported" /* AuthErrorCode.WEB_STORAGE_UNSUPPORTED */));
             }
         });
         // Handle user closure. Notice this does *not* use await
@@ -12206,7 +13088,7 @@ class PopupOperation extends AbstractPopupRedirectOperation {
         return ((_a = this.authWindow) === null || _a === void 0 ? void 0 : _a.associatedEvent) || null;
     }
     cancel() {
-        this.reject(_createError(this.auth, "cancelled-popup-request" /* EXPIRED_POPUP_REQUEST */));
+        this.reject(_createError(this.auth, "cancelled-popup-request" /* AuthErrorCode.EXPIRED_POPUP_REQUEST */));
     }
     cleanUp() {
         if (this.authWindow) {
@@ -12225,11 +13107,13 @@ class PopupOperation extends AbstractPopupRedirectOperation {
             if ((_b = (_a = this.authWindow) === null || _a === void 0 ? void 0 : _a.window) === null || _b === void 0 ? void 0 : _b.closed) {
                 // Make sure that there is sufficient time for whatever action to
                 // complete. The window could have closed but the sign in network
-                // call could still be in flight.
+                // call could still be in flight. This is specifically true for
+                // Firefox or if the opener is in an iframe, in which case the oauth
+                // helper closes the popup.
                 this.pollId = window.setTimeout(() => {
                     this.pollId = null;
-                    this.reject(_createError(this.auth, "popup-closed-by-user" /* POPUP_CLOSED_BY_USER */));
-                }, 2000 /* AUTH_EVENT */);
+                    this.reject(_createError(this.auth, "popup-closed-by-user" /* AuthErrorCode.POPUP_CLOSED_BY_USER */));
+                }, 8000 /* _Timeout.AUTH_EVENT */);
                 return;
             }
             this.pollId = window.setTimeout(poll, _POLL_WINDOW_CLOSE_TIMEOUT.get());
@@ -12264,10 +13148,10 @@ const redirectOutcomeMap = new Map();
 class RedirectAction extends AbstractPopupRedirectOperation {
     constructor(auth, resolver, bypassAuthState = false) {
         super(auth, [
-            "signInViaRedirect" /* SIGN_IN_VIA_REDIRECT */,
-            "linkViaRedirect" /* LINK_VIA_REDIRECT */,
-            "reauthViaRedirect" /* REAUTH_VIA_REDIRECT */,
-            "unknown" /* UNKNOWN */
+            "signInViaRedirect" /* AuthEventType.SIGN_IN_VIA_REDIRECT */,
+            "linkViaRedirect" /* AuthEventType.LINK_VIA_REDIRECT */,
+            "reauthViaRedirect" /* AuthEventType.REAUTH_VIA_REDIRECT */,
+            "unknown" /* AuthEventType.UNKNOWN */
         ], resolver, undefined, bypassAuthState);
         this.eventId = null;
     }
@@ -12296,10 +13180,10 @@ class RedirectAction extends AbstractPopupRedirectOperation {
         return readyOutcome();
     }
     async onAuthEvent(event) {
-        if (event.type === "signInViaRedirect" /* SIGN_IN_VIA_REDIRECT */) {
+        if (event.type === "signInViaRedirect" /* AuthEventType.SIGN_IN_VIA_REDIRECT */) {
             return super.onAuthEvent(event);
         }
-        else if (event.type === "unknown" /* UNKNOWN */) {
+        else if (event.type === "unknown" /* AuthEventType.UNKNOWN */) {
             // This is a sentinel value indicating there's no pending redirect
             this.resolve(null);
             return;
@@ -12420,7 +13304,7 @@ class AuthEventManager {
         var _a;
         if (event.error && !isNullRedirectEvent(event)) {
             const code = ((_a = event.error.code) === null || _a === void 0 ? void 0 : _a.split('auth/')[1]) ||
-                "internal-error" /* INTERNAL_ERROR */;
+                "internal-error" /* AuthErrorCode.INTERNAL_ERROR */;
             consumer.onError(_createError(this.auth, code));
         }
         else {
@@ -12448,16 +13332,16 @@ function eventUid(e) {
     return [e.type, e.eventId, e.sessionId, e.tenantId].filter(v => v).join('-');
 }
 function isNullRedirectEvent({ type, error }) {
-    return (type === "unknown" /* UNKNOWN */ &&
-        (error === null || error === void 0 ? void 0 : error.code) === `auth/${"no-auth-event" /* NO_AUTH_EVENT */}`);
+    return (type === "unknown" /* AuthEventType.UNKNOWN */ &&
+        (error === null || error === void 0 ? void 0 : error.code) === `auth/${"no-auth-event" /* AuthErrorCode.NO_AUTH_EVENT */}`);
 }
 function isRedirectEvent(event) {
     switch (event.type) {
-        case "signInViaRedirect" /* SIGN_IN_VIA_REDIRECT */:
-        case "linkViaRedirect" /* LINK_VIA_REDIRECT */:
-        case "reauthViaRedirect" /* REAUTH_VIA_REDIRECT */:
+        case "signInViaRedirect" /* AuthEventType.SIGN_IN_VIA_REDIRECT */:
+        case "linkViaRedirect" /* AuthEventType.LINK_VIA_REDIRECT */:
+        case "reauthViaRedirect" /* AuthEventType.REAUTH_VIA_REDIRECT */:
             return true;
-        case "unknown" /* UNKNOWN */:
+        case "unknown" /* AuthEventType.UNKNOWN */:
             return isNullRedirectEvent(event);
         default:
             return false;
@@ -12481,7 +13365,7 @@ function isRedirectEvent(event) {
  * limitations under the License.
  */
 async function _getProjectConfig(auth, request = {}) {
-    return _performApiRequest(auth, "GET" /* GET */, "/v1/projects" /* GET_PROJECT_CONFIG */, request);
+    return _performApiRequest(auth, "GET" /* HttpMethod.GET */, "/v1/projects" /* Endpoint.GET_PROJECT_CONFIG */, request);
 }
 
 /**
@@ -12519,7 +13403,7 @@ async function _validateOrigin(auth) {
         }
     }
     // In the old SDK, this error also provides helpful messages.
-    _fail(auth, "unauthorized-domain" /* INVALID_ORIGIN */);
+    _fail(auth, "unauthorized-domain" /* AuthErrorCode.INVALID_ORIGIN */);
 }
 function matchDomain(expected) {
     const currentUrl = _getCurrentUrl();
@@ -12616,7 +13500,7 @@ function loadGapi(auth) {
                     // failed attempt.
                     // Timeout when gapi.iframes.Iframe not loaded.
                     resetUnloadedGapiModules();
-                    reject(_createError(auth, "network-request-failed" /* NETWORK_REQUEST_FAILED */));
+                    reject(_createError(auth, "network-request-failed" /* AuthErrorCode.NETWORK_REQUEST_FAILED */));
                 },
                 timeout: NETWORK_TIMEOUT.get()
             });
@@ -12644,7 +13528,7 @@ function loadGapi(auth) {
                 }
                 else {
                     // Gapi loader failed, throw error.
-                    reject(_createError(auth, "network-request-failed" /* NETWORK_REQUEST_FAILED */));
+                    reject(_createError(auth, "network-request-failed" /* AuthErrorCode.NETWORK_REQUEST_FAILED */));
                 }
             };
             // Load GApi loader.
@@ -12695,13 +13579,13 @@ const IFRAME_ATTRIBUTES = {
 // Map from apiHost to endpoint ID for passing into iframe. In current SDK, apiHost can be set to
 // anything (not from a list of endpoints with IDs as in legacy), so this is the closest we can get.
 const EID_FROM_APIHOST = new Map([
-    ["identitytoolkit.googleapis.com" /* API_HOST */, 'p'],
+    ["identitytoolkit.googleapis.com" /* DefaultConfig.API_HOST */, 'p'],
     ['staging-identitytoolkit.sandbox.googleapis.com', 's'],
     ['test-identitytoolkit.sandbox.googleapis.com', 't'] // test
 ]);
 function getIframeUrl(auth) {
     const config = auth.config;
-    _assert(config.authDomain, auth, "auth-domain-config-required" /* MISSING_AUTH_DOMAIN */);
+    _assert(config.authDomain, auth, "auth-domain-config-required" /* AuthErrorCode.MISSING_AUTH_DOMAIN */);
     const url = config.emulator
         ? _emulatorUrl(config, EMULATED_IFRAME_PATH)
         : `https://${auth.config.authDomain}/${IFRAME_PATH}`;
@@ -12723,7 +13607,7 @@ function getIframeUrl(auth) {
 async function _openIframe(auth) {
     const context = await _loadGapi(auth);
     const gapi = _window().gapi;
-    _assert(gapi, auth, "internal-error" /* INTERNAL_ERROR */);
+    _assert(gapi, auth, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
     return context.open({
         where: document.body,
         url: getIframeUrl(auth),
@@ -12735,7 +13619,7 @@ async function _openIframe(auth) {
             // Prevent iframe from closing on mouse out.
             setHideOnLeave: false
         });
-        const networkError = _createError(auth, "network-request-failed" /* NETWORK_REQUEST_FAILED */);
+        const networkError = _createError(auth, "network-request-failed" /* AuthErrorCode.NETWORK_REQUEST_FAILED */);
         // Confirm iframe is correctly loaded.
         // To fallback on failure, set a timeout.
         const networkErrorTimer = _window().setTimeout(() => {
@@ -12821,7 +13705,7 @@ function _open(auth, url, name, width = DEFAULT_WIDTH, height = DEFAULT_HEIGHT) 
     // about:blank getting sanitized causing browsers like IE/Edge to display
     // brief error message before redirecting to handler.
     const newWin = window.open(url || '', target, optionsString);
-    _assert(newWin, auth, "popup-blocked" /* POPUP_BLOCKED */);
+    _assert(newWin, auth, "popup-blocked" /* AuthErrorCode.POPUP_BLOCKED */);
     // Flaky on IE edge, encapsulate with a try and catch.
     try {
         newWin.focus();
@@ -12866,9 +13750,15 @@ const WIDGET_PATH = '__/auth/handler';
  * @internal
  */
 const EMULATOR_WIDGET_PATH = 'emulator/auth/handler';
-function _getRedirectUrl(auth, provider, authType, redirectUrl, eventId, additionalParams) {
-    _assert(auth.config.authDomain, auth, "auth-domain-config-required" /* MISSING_AUTH_DOMAIN */);
-    _assert(auth.config.apiKey, auth, "invalid-api-key" /* INVALID_API_KEY */);
+/**
+ * Fragment name for the App Check token that gets passed to the widget
+ *
+ * @internal
+ */
+const FIREBASE_APP_CHECK_FRAGMENT_ID = encodeURIComponent('fac');
+async function _getRedirectUrl(auth, provider, authType, redirectUrl, eventId, additionalParams) {
+    _assert(auth.config.authDomain, auth, "auth-domain-config-required" /* AuthErrorCode.MISSING_AUTH_DOMAIN */);
+    _assert(auth.config.apiKey, auth, "invalid-api-key" /* AuthErrorCode.INVALID_API_KEY */);
     const params = {
         apiKey: auth.config.apiKey,
         appName: auth.name,
@@ -12905,7 +13795,13 @@ function _getRedirectUrl(auth, provider, authType, redirectUrl, eventId, additio
             delete paramsDict[key];
         }
     }
-    return `${getHandlerBase(auth)}?${querystring(paramsDict).slice(1)}`;
+    // Sets the App Check token to pass to the widget
+    const appCheckToken = await auth._getAppCheckToken();
+    const appCheckTokenFragment = appCheckToken
+        ? `#${FIREBASE_APP_CHECK_FRAGMENT_ID}=${encodeURIComponent(appCheckToken)}`
+        : '';
+    // Start at index 1 to skip the leading '&' in the query string
+    return `${getHandlerBase(auth)}?${querystring(paramsDict).slice(1)}${appCheckTokenFragment}`;
 }
 function getHandlerBase({ config }) {
     if (!config.emulator) {
@@ -12949,12 +13845,13 @@ class BrowserPopupRedirectResolver {
     async _openPopup(auth, provider, authType, eventId) {
         var _a;
         debugAssert((_a = this.eventManagers[auth._key()]) === null || _a === void 0 ? void 0 : _a.manager, '_initialize() not called before _openPopup()');
-        const url = _getRedirectUrl(auth, provider, authType, _getCurrentUrl(), eventId);
+        const url = await _getRedirectUrl(auth, provider, authType, _getCurrentUrl(), eventId);
         return _open(auth, url, _generateEventId());
     }
     async _openRedirect(auth, provider, authType, eventId) {
         await this._originValidation(auth);
-        _setWindowLocation(_getRedirectUrl(auth, provider, authType, _getCurrentUrl(), eventId));
+        const url = await _getRedirectUrl(auth, provider, authType, _getCurrentUrl(), eventId);
+        _setWindowLocation(url);
         return new Promise(() => { });
     }
     _initialize(auth) {
@@ -12982,10 +13879,10 @@ class BrowserPopupRedirectResolver {
         const iframe = await _openIframe(auth);
         const manager = new AuthEventManager(auth);
         iframe.register('authEvent', (iframeEvent) => {
-            _assert(iframeEvent === null || iframeEvent === void 0 ? void 0 : iframeEvent.authEvent, auth, "invalid-auth-event" /* INVALID_AUTH_EVENT */);
+            _assert(iframeEvent === null || iframeEvent === void 0 ? void 0 : iframeEvent.authEvent, auth, "invalid-auth-event" /* AuthErrorCode.INVALID_AUTH_EVENT */);
             // TODO: Consider splitting redirect and popup events earlier on
             const handled = manager.onEvent(iframeEvent.authEvent);
-            return { status: handled ? "ACK" /* ACK */ : "ERROR" /* ERROR */ };
+            return { status: handled ? "ACK" /* GapiOutcome.ACK */ : "ERROR" /* GapiOutcome.ERROR */ };
         }, gapi.iframes.CROSS_ORIGIN_IFRAMES_FILTER);
         this.eventManagers[auth._key()] = { manager };
         this.iframes[auth._key()] = iframe;
@@ -12999,7 +13896,7 @@ class BrowserPopupRedirectResolver {
             if (isSupported !== undefined) {
                 cb(!!isSupported);
             }
-            _fail(auth, "internal-error" /* INTERNAL_ERROR */);
+            _fail(auth, "internal-error" /* AuthErrorCode.INTERNAL_ERROR */);
         }, gapi.iframes.CROSS_ORIGIN_IFRAMES_FILTER);
     }
     _originValidation(auth) {
@@ -13023,7 +13920,7 @@ class BrowserPopupRedirectResolver {
 const browserPopupRedirectResolver = BrowserPopupRedirectResolver;
 
 var name$1 = "@firebase/auth";
-var version$1 = "0.20.11";
+var version$1 = "0.23.2";
 
 /**
  * @license
@@ -13066,8 +13963,7 @@ class AuthInterop {
             return;
         }
         const unsubscribe = this.auth.onIdTokenChanged(user => {
-            var _a;
-            listener(((_a = user) === null || _a === void 0 ? void 0 : _a.stsTokenManager.accessToken) || null);
+            listener((user === null || user === void 0 ? void 0 : user.stsTokenManager.accessToken) || null);
         });
         this.internalListeners.set(listener, unsubscribe);
         this.updateProactiveRefresh();
@@ -13083,7 +13979,7 @@ class AuthInterop {
         this.updateProactiveRefresh();
     }
     assertAuthConfigured() {
-        _assert(this.auth._initializationPromise, "dependent-sdk-initialized-before-auth" /* DEPENDENT_SDK_INIT_BEFORE_AUTH */);
+        _assert(this.auth._initializationPromise, "dependent-sdk-initialized-before-auth" /* AuthErrorCode.DEPENDENT_SDK_INIT_BEFORE_AUTH */);
     }
     updateProactiveRefresh() {
         if (this.internalListeners.size > 0) {
@@ -13113,13 +14009,13 @@ class AuthInterop {
  */
 function getVersionForPlatform(clientPlatform) {
     switch (clientPlatform) {
-        case "Node" /* NODE */:
+        case "Node" /* ClientPlatform.NODE */:
             return 'node';
-        case "ReactNative" /* REACT_NATIVE */:
+        case "ReactNative" /* ClientPlatform.REACT_NATIVE */:
             return 'rn';
-        case "Worker" /* WORKER */:
+        case "Worker" /* ClientPlatform.WORKER */:
             return 'webworker';
-        case "Cordova" /* CORDOVA */:
+        case "Cordova" /* ClientPlatform.CORDOVA */:
             return 'cordova';
         default:
             return undefined;
@@ -13127,47 +14023,42 @@ function getVersionForPlatform(clientPlatform) {
 }
 /** @internal */
 function registerAuth(clientPlatform) {
-    _registerComponent(new Component("auth" /* AUTH */, (container, { options: deps }) => {
+    _registerComponent(new Component("auth" /* _ComponentName.AUTH */, (container, { options: deps }) => {
         const app = container.getProvider('app').getImmediate();
         const heartbeatServiceProvider = container.getProvider('heartbeat');
+        const appCheckServiceProvider = container.getProvider('app-check-internal');
         const { apiKey, authDomain } = app.options;
-        return ((app, heartbeatServiceProvider) => {
-            _assert(apiKey && !apiKey.includes(':'), "invalid-api-key" /* INVALID_API_KEY */, { appName: app.name });
-            // Auth domain is optional if IdP sign in isn't being used
-            _assert(!(authDomain === null || authDomain === void 0 ? void 0 : authDomain.includes(':')), "argument-error" /* ARGUMENT_ERROR */, {
-                appName: app.name
-            });
-            const config = {
-                apiKey,
-                authDomain,
-                clientPlatform,
-                apiHost: "identitytoolkit.googleapis.com" /* API_HOST */,
-                tokenApiHost: "securetoken.googleapis.com" /* TOKEN_API_HOST */,
-                apiScheme: "https" /* API_SCHEME */,
-                sdkClientVersion: _getClientVersion(clientPlatform)
-            };
-            const authInstance = new AuthImpl(app, heartbeatServiceProvider, config);
-            _initializeAuthInstance(authInstance, deps);
-            return authInstance;
-        })(app, heartbeatServiceProvider);
-    }, "PUBLIC" /* PUBLIC */)
+        _assert(apiKey && !apiKey.includes(':'), "invalid-api-key" /* AuthErrorCode.INVALID_API_KEY */, { appName: app.name });
+        const config = {
+            apiKey,
+            authDomain,
+            clientPlatform,
+            apiHost: "identitytoolkit.googleapis.com" /* DefaultConfig.API_HOST */,
+            tokenApiHost: "securetoken.googleapis.com" /* DefaultConfig.TOKEN_API_HOST */,
+            apiScheme: "https" /* DefaultConfig.API_SCHEME */,
+            sdkClientVersion: _getClientVersion(clientPlatform)
+        };
+        const authInstance = new AuthImpl(app, heartbeatServiceProvider, appCheckServiceProvider, config);
+        _initializeAuthInstance(authInstance, deps);
+        return authInstance;
+    }, "PUBLIC" /* ComponentType.PUBLIC */)
         /**
          * Auth can only be initialized by explicitly calling getAuth() or initializeAuth()
          * For why we do this, See go/firebase-next-auth-init
          */
-        .setInstantiationMode("EXPLICIT" /* EXPLICIT */)
+        .setInstantiationMode("EXPLICIT" /* InstantiationMode.EXPLICIT */)
         /**
          * Because all firebase products that depend on auth depend on auth-internal directly,
          * we need to initialize auth-internal after auth is initialized to make it available to other firebase products.
          */
         .setInstanceCreatedCallback((container, _instanceIdentifier, _instance) => {
-        const authInternalProvider = container.getProvider("auth-internal" /* AUTH_INTERNAL */);
+        const authInternalProvider = container.getProvider("auth-internal" /* _ComponentName.AUTH_INTERNAL */);
         authInternalProvider.initialize();
     }));
-    _registerComponent(new Component("auth-internal" /* AUTH_INTERNAL */, container => {
-        const auth = _castAuth(container.getProvider("auth" /* AUTH */).getImmediate());
+    _registerComponent(new Component("auth-internal" /* _ComponentName.AUTH_INTERNAL */, container => {
+        const auth = _castAuth(container.getProvider("auth" /* _ComponentName.AUTH */).getImmediate());
         return (auth => new AuthInterop(auth))(auth);
-    }, "PRIVATE" /* PRIVATE */).setInstantiationMode("EXPLICIT" /* EXPLICIT */));
+    }, "PRIVATE" /* ComponentType.PRIVATE */).setInstantiationMode("EXPLICIT" /* InstantiationMode.EXPLICIT */));
     registerVersion(name$1, version$1, getVersionForPlatform(clientPlatform));
     // BUILD_TARGET will be replaced by values like esm5, esm2017, cjs5, etc during the compilation
     registerVersion(name$1, version$1, 'esm2017');
@@ -13247,10 +14138,10 @@ function getAuth(app = getApp()) {
     }
     return auth;
 }
-registerAuth("Browser" /* BROWSER */);
+registerAuth("Browser" /* ClientPlatform.BROWSER */);
 
 var name = "firebase";
-var version = "9.14.0";
+var version = "9.23.0";
 
 /**
  * @license
@@ -13364,7 +14255,7 @@ function createGlobalStates$a() {
       });
       return;
     }
-    axios.post(serverUrl + "/server/loginsuccess", {
+    axios$1.post(serverUrl + "/server/loginsuccess", {
       email: email
     }, {
       withCredentials: withCredentials
@@ -13381,7 +14272,7 @@ function createGlobalStates$a() {
     signOut(auth()).catch(function (err) {
       handleError(err);
     });
-    axios.get(serverUrl + "/server/logout", {
+    axios$1.get(serverUrl + "/server/logout", {
       withCredentials: withCredentials
     }).then(function (res) {
       if (res.status == 200) {
@@ -13419,14 +14310,14 @@ function createGlobalStates$9() {
 }
 const gvAppLoading = createRoot(createGlobalStates$9);
 
-const _tmpl$$1n = /*#__PURE__*/template(`<a id="tabhead_{props.tabName}" href="#" class="tabhead"></a>`);
+const _tmpl$$1n = /*#__PURE__*/template(`<a id=tabhead_{props.tabName} href=# class=tabhead>`);
 function TabHead(props) {
   const {
     tabName,
     setTabName
   } = gvTabName;
   return (() => {
-    const _el$ = _tmpl$$1n.cloneNode(true);
+    const _el$ = _tmpl$$1n();
     _el$.$$click = function (evt) {
       if (props.callback) {
         props.callback(evt);
@@ -13457,121 +14348,118 @@ function TabHead(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$1m = /*#__PURE__*/template(`<svg fill="currentColor" stroke-width="0" xmlns="http://www.w3.org/2000/svg"></svg>`),
-      _tmpl$2$h = /*#__PURE__*/template(`<title></title>`);
+const _tmpl$$1m = /*#__PURE__*/template(`<svg stroke-width="0"></svg>`, 2),
+  _tmpl$2$h = /*#__PURE__*/template(`<title></title>`, 2);
 function IconTemplate(iconSrc, props) {
   const mergedProps = mergeProps(iconSrc.a, props);
+  const [_, svgProps] = splitProps(mergedProps, ["src"]);
   return (() => {
     const _el$ = _tmpl$$1m.cloneNode(true);
-
-    spread$1(_el$, mergedProps, true, true);
-
+    spread$1(_el$, mergeProps({
+      get stroke() {
+        return iconSrc.a.stroke;
+      },
+      get color() {
+        return props.color || "currentColor";
+      },
+      get fill() {
+        return props.color || "currentColor";
+      },
+      get style() {
+        return {
+          ...props.style,
+          overflow: "visible"
+        };
+      }
+    }, svgProps, {
+      get height() {
+        return props.size || "1em";
+      },
+      get width() {
+        return props.size || "1em";
+      },
+      get innerHTML() {
+        return iconSrc.c;
+      },
+      "xmlns": "http://www.w3.org/2000/svg"
+    }), true, true);
     insert(_el$, () => isServer , null);
-
     insert(_el$, (() => {
-      const _c$ = createMemo(() => !!props.title, true);
-
+      const _c$ = createMemo(() => !!props.title);
       return () => _c$() && (() => {
         const _el$2 = _tmpl$2$h.cloneNode(true);
-
         insert(_el$2, () => props.title);
-
         return _el$2;
       })();
     })(), null);
-
-    createRenderEffect(_p$ => {
-      const _v$ = iconSrc.a.stroke,
-            _v$2 = { ...props.style,
-        overflow: "visible",
-        color: props.color || "currentColor"
-      },
-            _v$3 = props.size || "1em",
-            _v$4 = props.size || "1em",
-            _v$5 = iconSrc.c;
-
-      _v$ !== _p$._v$ && setAttribute(_el$, "stroke", _p$._v$ = _v$);
-      _p$._v$2 = style(_el$, _v$2, _p$._v$2);
-      _v$3 !== _p$._v$3 && setAttribute(_el$, "height", _p$._v$3 = _v$3);
-      _v$4 !== _p$._v$4 && setAttribute(_el$, "width", _p$._v$4 = _v$4);
-      _v$5 !== _p$._v$5 && (_el$.innerHTML = _p$._v$5 = _v$5);
-      return _p$;
-    }, {
-      _v$: undefined,
-      _v$2: undefined,
-      _v$3: undefined,
-      _v$4: undefined,
-      _v$5: undefined
-    });
-
     return _el$;
   })();
 }
 
-function HiOutlineArrowDown (props) {
+function HiOutlineArrowDown(props) {
       return IconTemplate({
         a: {"fill":"none","stroke":"currentColor","viewBox":"0 0 24 24"},
-        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>'
+        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3"/>'
       }, props)
   }
-  function HiOutlineArrowRight (props) {
+  function HiOutlineArrowPath(props) {
       return IconTemplate({
         a: {"fill":"none","stroke":"currentColor","viewBox":"0 0 24 24"},
-        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>'
+        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>'
       }, props)
   }
-  function HiOutlineArrowUp (props) {
+  function HiOutlineArrowRight(props) {
       return IconTemplate({
         a: {"fill":"none","stroke":"currentColor","viewBox":"0 0 24 24"},
-        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>'
+        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/>'
       }, props)
   }
-  function HiOutlineChevronDown (props) {
+  function HiOutlineArrowUp(props) {
       return IconTemplate({
         a: {"fill":"none","stroke":"currentColor","viewBox":"0 0 24 24"},
-        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>'
+        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18"/>'
       }, props)
   }
-  function HiOutlineChevronLeft (props) {
+  function HiOutlineChevronDown(props) {
       return IconTemplate({
         a: {"fill":"none","stroke":"currentColor","viewBox":"0 0 24 24"},
-        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>'
+        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>'
       }, props)
   }
-  function HiOutlineChevronRight (props) {
+  function HiOutlineChevronLeft(props) {
       return IconTemplate({
         a: {"fill":"none","stroke":"currentColor","viewBox":"0 0 24 24"},
-        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>'
+        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 19.5 8.25 12l7.5-7.5"/>'
       }, props)
   }
-  function HiOutlineHome (props) {
+  function HiOutlineChevronRight(props) {
       return IconTemplate({
         a: {"fill":"none","stroke":"currentColor","viewBox":"0 0 24 24"},
-        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>'
+        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m8.25 4.5 7.5 7.5-7.5 7.5"/>'
       }, props)
   }
-  function HiOutlineMinus (props) {
+  function HiOutlineHome(props) {
       return IconTemplate({
         a: {"fill":"none","stroke":"currentColor","viewBox":"0 0 24 24"},
-        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>'
+        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/>'
       }, props)
   }
-  function HiOutlineRefresh (props) {
+  function HiOutlineMinus(props) {
       return IconTemplate({
         a: {"fill":"none","stroke":"currentColor","viewBox":"0 0 24 24"},
-        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>'
+        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 12h-15"/>'
       }, props)
   }
-  function HiOutlineXCircle (props) {
+  function HiOutlineXCircle(props) {
       return IconTemplate({
         a: {"fill":"none","stroke":"currentColor","viewBox":"0 0 24 24"},
-        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>'
+        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>'
       }, props)
   }
-  function HiOutlineX (props) {
+  function HiOutlineXMark(props) {
       return IconTemplate({
         a: {"fill":"none","stroke":"currentColor","viewBox":"0 0 24 24"},
-        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>'
+        c: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18 18 6M6 6l12 12"/>'
       }, props)
   }
 
@@ -13587,22 +14475,22 @@ function TabHeadHome() {
   });
 }
 
-function TbArrowBackUp (props) {
+function TbArrowBackUp(props) {
       return IconTemplate({
-        a: {"fill":"none","stroke":"currentColor","stroke-linecap":"round","stroke-linejoin":"round","stroke-width":"2","viewBox":"0 0 24 24"},
-        c: '<path stroke="none" d="M0 0h24v24H0z"/><path d="M9 13L5 9l4-4M5 9h11a4 4 0 010 8h-1"/>'
+        a: {"xmlns":"http://www.w3.org/2000/svg","class":"icon icon-tabler icon-tabler-arrow-back-up","width":"24","height":"24","viewBox":"0 0 24 24","stroke-width":"2","stroke":"currentColor","fill":"none","stroke-linecap":"round","stroke-linejoin":"round"},
+        c: '<path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 14l-4 -4l4 -4"/><path d="M5 10h11a4 4 0 1 1 0 8h-1"/>'
       }, props)
   }
-  function TbFileUpload (props) {
+  function TbFileUpload(props) {
       return IconTemplate({
-        a: {"fill":"none","stroke":"currentColor","stroke-linecap":"round","stroke-linejoin":"round","stroke-width":"2","viewBox":"0 0 24 24"},
-        c: '<path stroke="none" d="M0 0h24v24H0z"/><path d="M14 3v4a1 1 0 001 1h4"/><path d="M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2zM12 11v6"/><path d="M9.5 13.5L12 11l2.5 2.5"/>'
+        a: {"xmlns":"http://www.w3.org/2000/svg","class":"icon icon-tabler icon-tabler-file-upload","width":"24","height":"24","viewBox":"0 0 24 24","stroke-width":"2","stroke":"currentColor","fill":"none","stroke-linecap":"round","stroke-linejoin":"round"},
+        c: '<path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z"/><path d="M12 11v6"/><path d="M9.5 13.5l2.5 -2.5l2.5 2.5"/>'
       }, props)
   }
-  function TbServerOff (props) {
+  function TbServerOff(props) {
       return IconTemplate({
-        a: {"fill":"none","stroke":"currentColor","stroke-linecap":"round","stroke-linejoin":"round","stroke-width":"2","viewBox":"0 0 24 24"},
-        c: '<path stroke="none" d="M0 0h24v24H0z"/><path d="M12 12H6a3 3 0 01-3-3V7c0-1.083.574-2.033 1.435-2.56M8 4h10a3 3 0 013 3v2a3 3 0 01-3 3h-2M16 12h2a3 3 0 013 3v2m-1.448 2.568A2.986 2.986 0 0118 20H6a3 3 0 01-3-3v-2a3 3 0 013-3h6M7 8v.01M7 16v.01M3 3l18 18"/>'
+        a: {"xmlns":"http://www.w3.org/2000/svg","class":"icon icon-tabler icon-tabler-server-off","width":"24","height":"24","viewBox":"0 0 24 24","stroke-width":"2","stroke":"currentColor","fill":"none","stroke-linecap":"round","stroke-linejoin":"round"},
+        c: '<path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 12h-6a3 3 0 0 1 -3 -3v-2c0 -1.083 .574 -2.033 1.435 -2.56m3.565 -.44h10a3 3 0 0 1 3 3v2a3 3 0 0 1 -3 3h-2"/><path d="M16 12h2a3 3 0 0 1 3 3v2m-1.448 2.568a2.986 2.986 0 0 1 -1.552 .432h-12a3 3 0 0 1 -3 -3v-2a3 3 0 0 1 3 -3h6"/><path d="M7 8v.01"/><path d="M7 16v.01"/><path d="M3 3l18 18"/>'
       }, props)
   }
 
@@ -13627,16 +14515,16 @@ function TabHeadSubmit() {
   });
 }
 
-function AiOutlineCloudUpload (props) {
+function AiOutlineCloudUpload(props) {
       return IconTemplate({
         a: {"viewBox":"0 0 1024 1024"},
-        c: '<path d="M518.3 459a8 8 0 00-12.6 0l-112 141.7a7.98 7.98 0 006.3 12.9h73.9V856c0 4.4 3.6 8 8 8h60c4.4 0 8-3.6 8-8V613.7H624c6.7 0 10.4-7.7 6.3-12.9L518.3 459z"/><path d="M811.4 366.7C765.6 245.9 648.9 160 512.2 160S258.8 245.8 213 366.6C127.3 389.1 64 467.2 64 560c0 110.5 89.5 200 199.9 200H304c4.4 0 8-3.6 8-8v-60c0-4.4-3.6-8-8-8h-40.1c-33.7 0-65.4-13.4-89-37.7-23.5-24.2-36-56.8-34.9-90.6.9-26.4 9.9-51.2 26.2-72.1 16.7-21.3 40.1-36.8 66.1-43.7l37.9-9.9 13.9-36.6c8.6-22.8 20.6-44.1 35.7-63.4a245.6 245.6 0 0152.4-49.9c41.1-28.9 89.5-44.2 140-44.2s98.9 15.3 140 44.2c19.9 14 37.5 30.8 52.4 49.9 15.1 19.3 27.1 40.7 35.7 63.4l13.8 36.5 37.8 10C846.1 454.5 884 503.8 884 560c0 33.1-12.9 64.3-36.3 87.7a123.07 123.07 0 01-87.6 36.3H720c-4.4 0-8 3.6-8 8v60c0 4.4 3.6 8 8 8h40.1C870.5 760 960 670.5 960 560c0-92.7-63.1-170.7-148.6-193.3z"/>'
+        c: '<path d="M518.3 459a8 8 0 0 0-12.6 0l-112 141.7a7.98 7.98 0 0 0 6.3 12.9h73.9V856c0 4.4 3.6 8 8 8h60c4.4 0 8-3.6 8-8V613.7H624c6.7 0 10.4-7.7 6.3-12.9L518.3 459z"/><path d="M811.4 366.7C765.6 245.9 648.9 160 512.2 160S258.8 245.8 213 366.6C127.3 389.1 64 467.2 64 560c0 110.5 89.5 200 199.9 200H304c4.4 0 8-3.6 8-8v-60c0-4.4-3.6-8-8-8h-40.1c-33.7 0-65.4-13.4-89-37.7-23.5-24.2-36-56.8-34.9-90.6.9-26.4 9.9-51.2 26.2-72.1 16.7-21.3 40.1-36.8 66.1-43.7l37.9-9.9 13.9-36.6c8.6-22.8 20.6-44.1 35.7-63.4a245.6 245.6 0 0 1 52.4-49.9c41.1-28.9 89.5-44.2 140-44.2s98.9 15.3 140 44.2c19.9 14 37.5 30.8 52.4 49.9 15.1 19.3 27.1 40.7 35.7 63.4l13.8 36.5 37.8 10C846.1 454.5 884 503.8 884 560c0 33.1-12.9 64.3-36.3 87.7a123.07 123.07 0 0 1-87.6 36.3H720c-4.4 0-8 3.6-8 8v60c0 4.4 3.6 8 8 8h40.1C870.5 760 960 670.5 960 560c0-92.7-63.1-170.7-148.6-193.3z"/>'
       }, props)
   }
-  function AiOutlineOrderedList (props) {
+  function AiOutlineOrderedList(props) {
       return IconTemplate({
         a: {"viewBox":"0 0 1024 1024"},
-        c: '<path d="M920 760H336c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h584c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0-568H336c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h584c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 284H336c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h584c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM216 712H100c-2.2 0-4 1.8-4 4v34c0 2.2 1.8 4 4 4h72.4v20.5h-35.7c-2.2 0-4 1.8-4 4v34c0 2.2 1.8 4 4 4h35.7V838H100c-2.2 0-4 1.8-4 4v34c0 2.2 1.8 4 4 4h116c2.2 0 4-1.8 4-4V716c0-2.2-1.8-4-4-4zM100 188h38v120c0 2.2 1.8 4 4 4h40c2.2 0 4-1.8 4-4V152c0-4.4-3.6-8-8-8h-78c-2.2 0-4 1.8-4 4v36c0 2.2 1.8 4 4 4zm116 240H100c-2.2 0-4 1.8-4 4v36c0 2.2 1.8 4 4 4h68.4l-70.3 77.7a8.3 8.3 0 00-2.1 5.4V592c0 2.2 1.8 4 4 4h116c2.2 0 4-1.8 4-4v-36c0-2.2-1.8-4-4-4h-68.4l70.3-77.7a8.3 8.3 0 002.1-5.4V432c0-2.2-1.8-4-4-4z"/>'
+        c: '<path d="M920 760H336c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h584c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0-568H336c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h584c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 284H336c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h584c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM216 712H100c-2.2 0-4 1.8-4 4v34c0 2.2 1.8 4 4 4h72.4v20.5h-35.7c-2.2 0-4 1.8-4 4v34c0 2.2 1.8 4 4 4h35.7V838H100c-2.2 0-4 1.8-4 4v34c0 2.2 1.8 4 4 4h116c2.2 0 4-1.8 4-4V716c0-2.2-1.8-4-4-4zM100 188h38v120c0 2.2 1.8 4 4 4h40c2.2 0 4-1.8 4-4V152c0-4.4-3.6-8-8-8h-78c-2.2 0-4 1.8-4 4v36c0 2.2 1.8 4 4 4zm116 240H100c-2.2 0-4 1.8-4 4v36c0 2.2 1.8 4 4 4h68.4l-70.3 77.7a8.3 8.3 0 0 0-2.1 5.4V592c0 2.2 1.8 4 4 4h116c2.2 0 4-1.8 4-4v-36c0-2.2-1.8-4-4-4h-68.4l70.3-77.7a8.3 8.3 0 0 0 2.1-5.4V432c0-2.2-1.8-4-4-4z"/>'
       }, props)
   }
 
@@ -13661,22 +14549,22 @@ function TabHeadJobs() {
   });
 }
 
-function RiBuildingsStore2Line (props) {
+function RiBuildingsStore2Line(props) {
       return IconTemplate({
         a: {"viewBox":"0 0 24 24"},
-        c: '<path fill="none" d="M0 0h24v24H0z"/><path d="M21 13.242V20h1v2H2v-2h1v-6.758A4.496 4.496 0 011 9.5c0-.827.224-1.624.633-2.303L4.345 2.5a1 1 0 01.866-.5H18.79a1 1 0 01.866.5l2.702 4.682A4.496 4.496 0 0121 13.242zm-2 .73a4.496 4.496 0 01-3.75-1.36A4.496 4.496 0 0112 14.001a4.496 4.496 0 01-3.25-1.387A4.496 4.496 0 015 13.973V20h14v-6.027zM5.789 4L3.356 8.213a2.5 2.5 0 004.466 2.216c.335-.837 1.52-.837 1.856 0a2.5 2.5 0 004.644 0c.335-.837 1.52-.837 1.856 0a2.5 2.5 0 104.457-2.232L18.21 4H5.79z"/>'
+        c: '<path fill="currentColor" d="M21 13.242V20h1v2H2v-2h1v-6.758A4.496 4.496 0 0 1 1 9.5c0-.827.224-1.624.633-2.303L4.345 2.5a1 1 0 0 1 .866-.5H18.79a1 1 0 0 1 .866.5l2.703 4.682c.418.694.642 1.49.642 2.318 0 1.56-.794 2.935-2 3.742Zm-2 .73a4.496 4.496 0 0 1-3.75-1.36A4.496 4.496 0 0 1 12 14.001a4.496 4.496 0 0 1-3.25-1.387A4.496 4.496 0 0 1 5 13.973V20h14v-6.027ZM5.789 4 3.356 8.213a2.5 2.5 0 1 0 4.466 2.216c.335-.837 1.52-.837 1.856 0a2.5 2.5 0 0 0 4.644 0c.335-.837 1.52-.837 1.856 0a2.5 2.5 0 1 0 4.457-2.232L18.21 4H5.79Z"/>'
       }, props)
   }
-  function RiSystemLoginCircleLine (props) {
+  function RiSystemLoginCircleLine(props) {
       return IconTemplate({
         a: {"viewBox":"0 0 24 24"},
-        c: '<path fill="none" d="M0 0h24v24H0z"/><path d="M10 11V8l5 4-5 4v-3H1v-2h9zm-7.542 4h2.124A8.003 8.003 0 0020 12 8 8 0 004.582 9H2.458C3.732 4.943 7.522 2 12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10c-4.478 0-8.268-2.943-9.542-7z"/>'
+        c: '<path fill="currentColor" d="M10 11V8l5 4-5 4v-3H1v-2h9Zm-7.542 4h2.124A8.003 8.003 0 0 0 20 12 8 8 0 0 0 4.582 9H2.458C3.732 4.943 7.522 2 12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10c-4.478 0-8.268-2.943-9.542-7Z"/>'
       }, props)
   }
-  function RiSystemLogoutCircleRLine (props) {
+  function RiSystemLogoutCircleRLine(props) {
       return IconTemplate({
         a: {"viewBox":"0 0 24 24"},
-        c: '<path fill="none" d="M0 0h24v24H0z"/><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2a9.985 9.985 0 018 4h-2.71a8 8 0 10.001 12h2.71A9.985 9.985 0 0112 22zm7-6v-3h-8v-2h8V8l5 4-5 4z"/>'
+        c: '<path fill="currentColor" d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2a9.985 9.985 0 0 1 8 4h-2.71a8 8 0 1 0 .001 12h2.71A9.985 9.985 0 0 1 12 22Zm7-6v-3h-8v-2h8V8l5 4-5 4Z"/>'
       }, props)
   }
 
@@ -13692,9 +14580,9 @@ function TabHeadStore() {
   });
 }
 
-const _tmpl$$1l = /*#__PURE__*/template(`<svg class="tabheadicon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"></path></svg>`);
+const _tmpl$$1l = /*#__PURE__*/template(`<svg class=tabheadicon xmlns=http://www.w3.org/2000/svg fill=none viewBox="0 0 24 24"stroke-width=2 stroke=currentColor><path stroke-linecap=round stroke-linejoin=round d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75">`);
 function TabHeadSystem() {
-  const svg = _tmpl$$1l.cloneNode(true);
+  const svg = _tmpl$$1l();
   return createComponent(TabHead, {
     tabName: "system",
     title: "System",
@@ -13702,9 +14590,9 @@ function TabHeadSystem() {
   });
 }
 
-const _tmpl$$1k = /*#__PURE__*/template(`<div class="px-2 pb-8"></div>`),
-  _tmpl$2$g = /*#__PURE__*/template(`<div class="px-2 text-xs text-gray-600 truncate cursor-default"></div>`),
-  _tmpl$3$a = /*#__PURE__*/template(`<div></div>`);
+const _tmpl$$1k = /*#__PURE__*/template(`<div class="px-2 pb-8">`),
+  _tmpl$2$g = /*#__PURE__*/template(`<div class="px-2 text-xs text-gray-600 truncate cursor-default">`),
+  _tmpl$3$a = /*#__PURE__*/template(`<div>`);
 function TabHeadLogging() {
   const {
     logged,
@@ -13736,7 +14624,7 @@ function TabHeadLogging() {
     afterLogout();
   }
   return (() => {
-    const _el$ = _tmpl$$1k.cloneNode(true);
+    const _el$ = _tmpl$$1k();
     insert(_el$, createComponent(Show, {
       get when() {
         return multiuser();
@@ -13748,13 +14636,13 @@ function TabHeadLogging() {
           },
           get fallback() {
             return (() => {
-              const _el$2 = _tmpl$3$a.cloneNode(true);
+              const _el$2 = _tmpl$3$a();
               insert(_el$2, createComponent(Show, {
                 get when() {
                   return email();
                 },
                 get children() {
-                  const _el$3 = _tmpl$2$g.cloneNode(true);
+                  const _el$3 = _tmpl$2$g();
                   insert(_el$3, email);
                   createRenderEffect(() => setAttribute(_el$3, "title", email()));
                   return _el$3;
@@ -13784,7 +14672,7 @@ function TabHeadLogging() {
   })();
 }
 
-const _tmpl$$1j = /*#__PURE__*/template(`<div id="verdiv" class="text-xs absolute left-4 bottom-2 text-gray-400"><span class="text-xs">OakVar </span><span class="curverspan text-xs"></span></div>`);
+const _tmpl$$1j = /*#__PURE__*/template(`<div id=verdiv class="text-xs absolute left-4 bottom-2 text-gray-400"><span class=text-xs>OakVar </span><span class="curverspan text-xs">`);
 const {
   serverUrl: serverUrl$5
 } = gvServer;
@@ -13795,7 +14683,7 @@ function VersionSlot() {
       return null;
     }
     try {
-      const res = await axios.get(serverUrl$5 + "/submit/pkgver");
+      const res = await axios$1.get(serverUrl$5 + "/submit/pkgver");
       return res.data.pkg_ver;
     } catch (err) {
       console.error(err);
@@ -13807,7 +14695,7 @@ function VersionSlot() {
       return pkg_ver() != null;
     },
     get children() {
-      const _el$ = _tmpl$$1j.cloneNode(true),
+      const _el$ = _tmpl$$1j(),
         _el$2 = _el$.firstChild;
         _el$2.firstChild;
       insert(_el$2, pkg_ver, null);
@@ -13817,24 +14705,24 @@ function VersionSlot() {
 }
 
 const $RAW = Symbol("store-raw"),
-      $NODE = Symbol("store-node"),
-      $NAME = Symbol("store-name");
-function wrap$1(value, name) {
+  $NODE = Symbol("store-node"),
+  $HAS = Symbol("store-has"),
+  $SELF = Symbol("store-self");
+function wrap$1(value) {
   let p = value[$PROXY];
   if (!p) {
     Object.defineProperty(value, $PROXY, {
-      value: p = new Proxy(value, proxyTraps$1)
+      value: (p = new Proxy(value, proxyTraps$1))
     });
     if (!Array.isArray(value)) {
       const keys = Object.keys(value),
-            desc = Object.getOwnPropertyDescriptors(value);
+        desc = Object.getOwnPropertyDescriptors(value);
       for (let i = 0, l = keys.length; i < l; i++) {
         const prop = keys[i];
         if (desc[prop].get) {
-          const get = desc[prop].get.bind(p);
           Object.defineProperty(value, prop, {
             enumerable: desc[prop].enumerable,
-            get
+            get: desc[prop].get.bind(p)
           });
         }
       }
@@ -13844,22 +14732,31 @@ function wrap$1(value, name) {
 }
 function isWrappable(obj) {
   let proto;
-  return obj != null && typeof obj === "object" && (obj[$PROXY] || !(proto = Object.getPrototypeOf(obj)) || proto === Object.prototype || Array.isArray(obj));
+  return (
+    obj != null &&
+    typeof obj === "object" &&
+    (obj[$PROXY] ||
+      !(proto = Object.getPrototypeOf(obj)) ||
+      proto === Object.prototype ||
+      Array.isArray(obj))
+  );
 }
 function unwrap(item, set = new Set()) {
   let result, unwrapped, v, prop;
-  if (result = item != null && item[$RAW]) return result;
+  if ((result = item != null && item[$RAW])) return result;
   if (!isWrappable(item) || set.has(item)) return item;
   if (Array.isArray(item)) {
-    if (Object.isFrozen(item)) item = item.slice(0);else set.add(item);
+    if (Object.isFrozen(item)) item = item.slice(0);
+    else set.add(item);
     for (let i = 0, l = item.length; i < l; i++) {
       v = item[i];
       if ((unwrapped = unwrap(v, set)) !== v) item[i] = unwrapped;
     }
   } else {
-    if (Object.isFrozen(item)) item = Object.assign({}, item);else set.add(item);
+    if (Object.isFrozen(item)) item = Object.assign({}, item);
+    else set.add(item);
     const keys = Object.keys(item),
-          desc = Object.getOwnPropertyDescriptors(item);
+      desc = Object.getOwnPropertyDescriptors(item);
     for (let i = 0, l = keys.length; i < l; i++) {
       prop = keys[i];
       if (desc[prop].get) continue;
@@ -13869,41 +14766,38 @@ function unwrap(item, set = new Set()) {
   }
   return item;
 }
-function getDataNodes(target) {
-  let nodes = target[$NODE];
-  if (!nodes) Object.defineProperty(target, $NODE, {
-    value: nodes = {}
-  });
+function getNodes(target, symbol) {
+  let nodes = target[symbol];
+  if (!nodes)
+    Object.defineProperty(target, symbol, {
+      value: (nodes = Object.create(null))
+    });
   return nodes;
 }
-function getDataNode(nodes, property, value) {
-  return nodes[property] || (nodes[property] = createDataNode(value));
+function getNode(nodes, property, value) {
+  if (nodes[property]) return nodes[property];
+  const [s, set] = createSignal(value, {
+    equals: false,
+    internal: true
+  });
+  s.$ = set;
+  return (nodes[property] = s);
 }
 function proxyDescriptor$1(target, property) {
   const desc = Reflect.getOwnPropertyDescriptor(target, property);
-  if (!desc || desc.get || !desc.configurable || property === $PROXY || property === $NODE || property === $NAME) return desc;
+  if (!desc || desc.get || !desc.configurable || property === $PROXY || property === $NODE)
+    return desc;
   delete desc.value;
   delete desc.writable;
   desc.get = () => target[$PROXY][property];
   return desc;
 }
 function trackSelf(target) {
-  if (getListener()) {
-    const nodes = getDataNodes(target);
-    (nodes._ || (nodes._ = createDataNode()))();
-  }
+  getListener() && getNode(getNodes(target, $NODE), $SELF)();
 }
 function ownKeys(target) {
   trackSelf(target);
   return Reflect.ownKeys(target);
-}
-function createDataNode(value) {
-  const [s, set] = createSignal(value, {
-    equals: false,
-    internal: true
-  });
-  s.$ = set;
-  return s;
 }
 const proxyTraps$1 = {
   get(target, property, receiver) {
@@ -13913,19 +14807,32 @@ const proxyTraps$1 = {
       trackSelf(target);
       return receiver;
     }
-    const nodes = getDataNodes(target);
-    const tracked = nodes.hasOwnProperty(property);
-    let value = tracked ? nodes[property]() : target[property];
-    if (property === $NODE || property === "__proto__") return value;
+    const nodes = getNodes(target, $NODE);
+    const tracked = nodes[property];
+    let value = tracked ? tracked() : target[property];
+    if (property === $NODE || property === $HAS || property === "__proto__") return value;
     if (!tracked) {
       const desc = Object.getOwnPropertyDescriptor(target, property);
-      if (getListener() && (typeof value !== "function" || target.hasOwnProperty(property)) && !(desc && desc.get)) value = getDataNode(nodes, property, value)();
+      if (
+        getListener() &&
+        (typeof value !== "function" || target.hasOwnProperty(property)) &&
+        !(desc && desc.get)
+      )
+        value = getNode(nodes, property, value)();
     }
     return isWrappable(value) ? wrap$1(value) : value;
   },
   has(target, property) {
-    if (property === $RAW || property === $PROXY || property === $TRACK || property === $NODE || property === "__proto__") return true;
-    this.get(target, property, target);
+    if (
+      property === $RAW ||
+      property === $PROXY ||
+      property === $TRACK ||
+      property === $NODE ||
+      property === $HAS ||
+      property === "__proto__"
+    )
+      return true;
+    getListener() && getNode(getNodes(target, $HAS), property)();
     return property in target;
   },
   set() {
@@ -13940,13 +14847,22 @@ const proxyTraps$1 = {
 function setProperty(state, property, value, deleting = false) {
   if (!deleting && state[property] === value) return;
   const prev = state[property],
-        len = state.length;
-  if (value === undefined) delete state[property];else state[property] = value;
-  let nodes = getDataNodes(state),
-      node;
-  if (node = getDataNode(nodes, property, prev)) node.$(() => value);
-  if (Array.isArray(state) && state.length !== len) (node = getDataNode(nodes, "length", len)) && node.$(state.length);
-  (node = nodes._) && node.$();
+    len = state.length;
+  if (value === undefined) {
+    delete state[property];
+    if (state[$HAS] && state[$HAS][property] && prev !== undefined) state[$HAS][property].$();
+  } else {
+    state[property] = value;
+    if (state[$HAS] && state[$HAS][property] && prev === undefined) state[$HAS][property].$();
+  }
+  let nodes = getNodes(state, $NODE),
+    node;
+  if ((node = getNode(nodes, property, prev))) node.$(() => value);
+  if (Array.isArray(state) && state.length !== len) {
+    for (let i = state.length; i < len; i++) (node = nodes[i]) && node.$();
+    (node = getNode(nodes, "length", len)) && node.$(state.length);
+  }
+  (node = nodes[$SELF]) && node.$();
 }
 function mergeStoreNode(state, value) {
   const keys = Object.keys(value);
@@ -13961,7 +14877,7 @@ function updateArray(current, next) {
   if (Array.isArray(next)) {
     if (current === next) return;
     let i = 0,
-        len = next.length;
+      len = next.length;
     for (; i < len; i++) {
       const value = next[i];
       if (current[i] !== value) setProperty(current, i, value);
@@ -13971,11 +14887,11 @@ function updateArray(current, next) {
 }
 function updatePath(current, path, traversed = []) {
   let part,
-      prev = current;
+    prev = current;
   if (path.length > 1) {
     part = path.shift();
     const partType = typeof part,
-          isArray = Array.isArray(current);
+      isArray = Array.isArray(current);
     if (Array.isArray(part)) {
       for (let i = 0; i < part.length; i++) {
         updatePath(current, [part[i]].concat(path), traversed);
@@ -13987,11 +14903,7 @@ function updatePath(current, path, traversed = []) {
       }
       return;
     } else if (isArray && partType === "object") {
-      const {
-        from = 0,
-        to = current.length - 1,
-        by = 1
-      } = part;
+      const { from = 0, to = current.length - 1, by = 1 } = part;
       for (let i = from; i <= to; i += by) {
         updatePath(current, [i].concat(path), traversed);
       }
@@ -14010,7 +14922,7 @@ function updatePath(current, path, traversed = []) {
   }
   if (part === undefined && value == undefined) return;
   value = unwrap(value);
-  if (part === undefined || isWrappable(prev) && isWrappable(value) && !Array.isArray(value)) {
+  if (part === undefined || (isWrappable(prev) && isWrappable(value) && !Array.isArray(value))) {
     mergeStoreNode(prev, value);
   } else setProperty(current, part, value);
 }
@@ -14020,7 +14932,9 @@ function createStore(...[store, options]) {
   const wrappedStore = wrap$1(unwrappedStore);
   function setStore(...args) {
     batch(() => {
-      isArray && args.length === 1 ? updateArray(unwrappedStore, args[0]) : updatePath(unwrappedStore, args);
+      isArray && args.length === 1
+        ? updateArray(unwrappedStore, args[0])
+        : updatePath(unwrappedStore, args);
     });
   }
   return [wrappedStore, setStore];
@@ -14030,22 +14944,39 @@ const $ROOT = Symbol("store-root");
 function applyState(target, parent, property, merge, key) {
   const previous = parent[property];
   if (target === previous) return;
-  if (!isWrappable(target) || !isWrappable(previous) || key && target[key] !== previous[key]) {
-    if (target !== previous) {
-      if (property === $ROOT) return target;
-      setProperty(parent, property, target);
-    }
+  if (
+    property !== $ROOT &&
+    (!isWrappable(target) || !isWrappable(previous) || (key && target[key] !== previous[key]))
+  ) {
+    setProperty(parent, property, target);
     return;
   }
   if (Array.isArray(target)) {
-    if (target.length && previous.length && (!merge || key && target[0][key] != null)) {
+    if (
+      target.length &&
+      previous.length &&
+      (!merge || (key && target[0] && target[0][key] != null))
+    ) {
       let i, j, start, end, newEnd, item, newIndicesNext, keyVal;
-      for (start = 0, end = Math.min(previous.length, target.length); start < end && (previous[start] === target[start] || key && previous[start][key] === target[start][key]); start++) {
+      for (
+        start = 0, end = Math.min(previous.length, target.length);
+        start < end &&
+        (previous[start] === target[start] ||
+          (key && previous[start] && target[start] && previous[start][key] === target[start][key]));
+        start++
+      ) {
         applyState(target[start], previous, start, merge, key);
       }
       const temp = new Array(target.length),
-            newIndices = new Map();
-      for (end = previous.length - 1, newEnd = target.length - 1; end >= start && newEnd >= start && (previous[end] === target[newEnd] || key && previous[end][key] === target[newEnd][key]); end--, newEnd--) {
+        newIndices = new Map();
+      for (
+        end = previous.length - 1, newEnd = target.length - 1;
+        end >= start &&
+        newEnd >= start &&
+        (previous[end] === target[newEnd] ||
+          (key && previous[start] && target[start] && previous[end][key] === target[newEnd][key]));
+        end--, newEnd--
+      ) {
         temp[newEnd] = previous[end];
       }
       if (start > newEnd || start > end) {
@@ -14060,14 +14991,14 @@ function applyState(target, parent, property, merge, key) {
       newIndicesNext = new Array(newEnd + 1);
       for (j = newEnd; j >= start; j--) {
         item = target[j];
-        keyVal = key ? item[key] : item;
+        keyVal = key && item ? item[key] : item;
         i = newIndices.get(keyVal);
         newIndicesNext[j] = i === undefined ? -1 : i;
         newIndices.set(keyVal, j);
       }
       for (i = start; i <= end; i++) {
         item = previous[i];
-        keyVal = key ? item[key] : item;
+        keyVal = key && item ? item[key] : item;
         j = newIndices.get(keyVal);
         if (j !== undefined && j !== -1) {
           temp[j] = previous[i];
@@ -14099,16 +15030,19 @@ function applyState(target, parent, property, merge, key) {
   }
 }
 function reconcile(value, options = {}) {
-  const {
-    merge,
-    key = "id"
-  } = options,
-        v = unwrap(value);
+  const { merge, key = "id" } = options,
+    v = unwrap(value);
   return state => {
     if (!isWrappable(state) || !isWrappable(v)) return v;
-    const res = applyState(v, {
-      [$ROOT]: state
-    }, $ROOT, merge, key);
+    const res = applyState(
+      v,
+      {
+        [$ROOT]: state
+      },
+      $ROOT,
+      merge,
+      key
+    );
     return res === undefined ? state : res;
   };
 }
@@ -14145,7 +15079,7 @@ function createGlobalStates$8() {
       return;
     }
     remoteBeingQueried = true;
-    axios.get(serverUrl + "/store/remote").then(function (res) {
+    axios$1.get(serverUrl + "/store/remote").then(function (res) {
       let rms = res.data.data;
       let tagdesc = res.data.tagdesc;
       delete rms["aggregator"];
@@ -14238,34 +15172,34 @@ function createGlobalStates$8() {
 }
 const gvRemoteModules = createRoot(createGlobalStates$8);
 
-function BsArrowLeft (props) {
+function BsArrowLeft(props) {
       return IconTemplate({
         a: {"fill":"currentColor","viewBox":"0 0 16 16"},
-        c: '<path fill-rule="evenodd" d="M15 8a.5.5 0 00-.5-.5H2.707l3.147-3.146a.5.5 0 10-.708-.708l-4 4a.5.5 0 000 .708l4 4a.5.5 0 00.708-.708L2.707 8.5H14.5A.5.5 0 0015 8z"/>'
+        c: '<path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>'
       }, props)
   }
-  function BsBoxFill (props) {
+  function BsBoxFill(props) {
       return IconTemplate({
         a: {"fill":"currentColor","viewBox":"0 0 16 16"},
-        c: '<path fill-rule="evenodd" d="M15.528 2.973a.75.75 0 01.472.696v8.662a.75.75 0 01-.472.696l-7.25 2.9a.75.75 0 01-.557 0l-7.25-2.9A.75.75 0 010 12.331V3.669a.75.75 0 01.471-.696L7.443.184l.004-.001.274-.11a.75.75 0 01.558 0l.274.11.004.001 6.971 2.789zm-1.374.527L8 5.962 1.846 3.5 1 3.839v.4l6.5 2.6v7.922l.5.2.5-.2V6.84l6.5-2.6v-.4l-.846-.339z"/>'
+        c: '<path fill-rule="evenodd" d="M15.528 2.973a.75.75 0 0 1 .472.696v8.662a.75.75 0 0 1-.472.696l-7.25 2.9a.75.75 0 0 1-.557 0l-7.25-2.9A.75.75 0 0 1 0 12.331V3.669a.75.75 0 0 1 .471-.696L7.443.184l.004-.001.274-.11a.75.75 0 0 1 .558 0l.274.11.004.001 6.971 2.789Zm-1.374.527L8 5.962 1.846 3.5 1 3.839v.4l6.5 2.6v7.922l.5.2.5-.2V6.84l6.5-2.6v-.4l-.846-.339Z"/>'
       }, props)
   }
-  function BsBox (props) {
+  function BsBox(props) {
       return IconTemplate({
         a: {"fill":"currentColor","viewBox":"0 0 16 16"},
-        c: '<path d="M8.186 1.113a.5.5 0 00-.372 0L1.846 3.5 8 5.961 14.154 3.5 8.186 1.113zM15 4.239l-6.5 2.6v7.922l6.5-2.6V4.24zM7.5 14.762V6.838L1 4.239v7.923l6.5 2.6zM7.443.184a1.5 1.5 0 011.114 0l7.129 2.852A.5.5 0 0116 3.5v8.662a1 1 0 01-.629.928l-7.185 2.874a.5.5 0 01-.372 0L.63 13.09a1 1 0 01-.63-.928V3.5a.5.5 0 01.314-.464L7.443.184z"/>'
+        c: '<path d="M8.186 1.113a.5.5 0 0 0-.372 0L1.846 3.5 8 5.961 14.154 3.5 8.186 1.113zM15 4.239l-6.5 2.6v7.922l6.5-2.6V4.24zM7.5 14.762V6.838L1 4.239v7.923l6.5 2.6zM7.443.184a1.5 1.5 0 0 1 1.114 0l7.129 2.852A.5.5 0 0 1 16 3.5v8.662a1 1 0 0 1-.629.928l-7.185 2.874a.5.5 0 0 1-.372 0L.63 13.09a1 1 0 0 1-.63-.928V3.5a.5.5 0 0 1 .314-.464L7.443.184z"/>'
       }, props)
   }
-  function BsDiscord (props) {
+  function BsDiscord(props) {
       return IconTemplate({
         a: {"fill":"currentColor","viewBox":"0 0 16 16"},
-        c: '<path d="M13.545 2.907a13.227 13.227 0 00-3.257-1.011.05.05 0 00-.052.025c-.141.25-.297.577-.406.833a12.19 12.19 0 00-3.658 0 8.258 8.258 0 00-.412-.833.051.051 0 00-.052-.025c-1.125.194-2.22.534-3.257 1.011a.041.041 0 00-.021.018C.356 6.024-.213 9.047.066 12.032c.001.014.01.028.021.037a13.276 13.276 0 003.995 2.02.05.05 0 00.056-.019c.308-.42.582-.863.818-1.329a.05.05 0 00-.01-.059.051.051 0 00-.018-.011 8.875 8.875 0 01-1.248-.595.05.05 0 01-.02-.066.051.051 0 01.015-.019c.084-.063.168-.129.248-.195a.05.05 0 01.051-.007c2.619 1.196 5.454 1.196 8.041 0a.052.052 0 01.053.007c.08.066.164.132.248.195a.051.051 0 01-.004.085 8.254 8.254 0 01-1.249.594.05.05 0 00-.03.03.052.052 0 00.003.041c.24.465.515.909.817 1.329a.05.05 0 00.056.019 13.235 13.235 0 004.001-2.02.049.049 0 00.021-.037c.334-3.451-.559-6.449-2.366-9.106a.034.034 0 00-.02-.019zm-8.198 7.307c-.789 0-1.438-.724-1.438-1.612 0-.889.637-1.613 1.438-1.613.807 0 1.45.73 1.438 1.613 0 .888-.637 1.612-1.438 1.612zm5.316 0c-.788 0-1.438-.724-1.438-1.612 0-.889.637-1.613 1.438-1.613.807 0 1.451.73 1.438 1.613 0 .888-.631 1.612-1.438 1.612z"/>'
+        c: '<path d="M13.545 2.907a13.227 13.227 0 0 0-3.257-1.011.05.05 0 0 0-.052.025c-.141.25-.297.577-.406.833a12.19 12.19 0 0 0-3.658 0 8.258 8.258 0 0 0-.412-.833.051.051 0 0 0-.052-.025c-1.125.194-2.22.534-3.257 1.011a.041.041 0 0 0-.021.018C.356 6.024-.213 9.047.066 12.032c.001.014.01.028.021.037a13.276 13.276 0 0 0 3.995 2.02.05.05 0 0 0 .056-.019c.308-.42.582-.863.818-1.329a.05.05 0 0 0-.01-.059.051.051 0 0 0-.018-.011 8.875 8.875 0 0 1-1.248-.595.05.05 0 0 1-.02-.066.051.051 0 0 1 .015-.019c.084-.063.168-.129.248-.195a.05.05 0 0 1 .051-.007c2.619 1.196 5.454 1.196 8.041 0a.052.052 0 0 1 .053.007c.08.066.164.132.248.195a.051.051 0 0 1-.004.085 8.254 8.254 0 0 1-1.249.594.05.05 0 0 0-.03.03.052.052 0 0 0 .003.041c.24.465.515.909.817 1.329a.05.05 0 0 0 .056.019 13.235 13.235 0 0 0 4.001-2.02.049.049 0 0 0 .021-.037c.334-3.451-.559-6.449-2.366-9.106a.034.034 0 0 0-.02-.019Zm-8.198 7.307c-.789 0-1.438-.724-1.438-1.612 0-.889.637-1.613 1.438-1.613.807 0 1.45.73 1.438 1.613 0 .888-.637 1.612-1.438 1.612Zm5.316 0c-.788 0-1.438-.724-1.438-1.612 0-.889.637-1.613 1.438-1.613.807 0 1.451.73 1.438 1.613 0 .888-.631 1.612-1.438 1.612Z"/>'
       }, props)
   }
-  function BsNut (props) {
+  function BsNut(props) {
       return IconTemplate({
         a: {"fill":"currentColor","viewBox":"0 0 16 16"},
-        c: '<path d="M11.42 2l3.428 6-3.428 6H4.58L1.152 8 4.58 2h6.84zM4.58 1a1 1 0 00-.868.504l-3.428 6a1 1 0 000 .992l3.428 6A1 1 0 004.58 15h6.84a1 1 0 00.868-.504l3.429-6a1 1 0 000-.992l-3.429-6A1 1 0 0011.42 1H4.58z"/><path d="M6.848 5.933a2.5 2.5 0 102.5 4.33 2.5 2.5 0 00-2.5-4.33zm-1.78 3.915a3.5 3.5 0 116.061-3.5 3.5 3.5 0 01-6.062 3.5z"/>'
+        c: '<path d="m11.42 2 3.428 6-3.428 6H4.58L1.152 8 4.58 2h6.84zM4.58 1a1 1 0 0 0-.868.504l-3.428 6a1 1 0 0 0 0 .992l3.428 6A1 1 0 0 0 4.58 15h6.84a1 1 0 0 0 .868-.504l3.429-6a1 1 0 0 0 0-.992l-3.429-6A1 1 0 0 0 11.42 1H4.58z"/><path d="M6.848 5.933a2.5 2.5 0 1 0 2.5 4.33 2.5 2.5 0 0 0-2.5-4.33zm-1.78 3.915a3.5 3.5 0 1 1 6.061-3.5 3.5 3.5 0 0 1-6.062 3.5z"/>'
       }, props)
   }
 
@@ -14313,7 +15247,7 @@ function createGlobalStates$7() {
     setLocalModules(d);
   }
   function loadAllLocalModules() {
-    axios.get(serverUrl + "/store/local").then(function (res) {
+    axios$1.get(serverUrl + "/store/local").then(function (res) {
       setLocalModules(reconcile(res.data));
     }).catch(function (err) {
       //console.error(err);
@@ -14342,7 +15276,7 @@ function createGlobalStates$7() {
     const moduleInfo = d[moduleName];
     let module_options = moduleInfo.module_options;
     if (module_options == undefined) {
-      module_options = {};
+      setLocalModules(moduleName, "module_options", {});
     }
     if (option.type == "int") {
       value = parseInt(value);
@@ -14354,8 +15288,7 @@ function createGlobalStates$7() {
       method: option.method,
       type: option.type
     };
-    module_options[option.name] = vd;
-    setLocalModules(moduleName, "module_options", module_options);
+    setLocalModules(moduleName, "module_options", option.name, vd);
   }
   function getModuleOptions(modules, formData) {
     let moduleOptions = {};
@@ -14428,7 +15361,7 @@ function createGlobalStates$6() {
     const {
       serverUrl
     } = gvServer;
-    axios.get(serverUrl + "/store/getqueue").then(function (res) {
+    axios$1.get(serverUrl + "/store/getqueue").then(function (res) {
       setInstallQueue(reconcile(res.data));
       let d = {
         ...installState
@@ -14446,7 +15379,7 @@ function createGlobalStates$6() {
     const {
       serverUrl
     } = gvServer;
-    axios.get(serverUrl + "/store/getinstallstate").then(function (res) {
+    axios$1.get(serverUrl + "/store/getinstallstate").then(function (res) {
       let d = {
         ...res.data
       };
@@ -14479,7 +15412,7 @@ function createGlobalStates$6() {
     if (moduleInfo == null) {
       return;
     }
-    axios.get(serverUrl$4 + "/store/queueinstall", {
+    axios$1.get(serverUrl$4 + "/store/queueinstall", {
       params: {
         module: moduleName,
         version: moduleInfo.latest_version
@@ -14505,7 +15438,7 @@ function createGlobalStates$6() {
     setInstallState(reconcile(d));
   }
   function removeFromInstallQueue(moduleName) {
-    axios.get(serverUrl$4 + "/store/unqueue", {
+    axios$1.get(serverUrl$4 + "/store/unqueue", {
       params: {
         module_name: moduleName
       },
@@ -14525,7 +15458,7 @@ function createGlobalStates$6() {
     }
   }
   function uninstallModule(moduleName) {
-    axios.get(serverUrl$4 + "/store/uninstall", {
+    axios$1.get(serverUrl$4 + "/store/uninstall", {
       params: {
         moduleName: moduleName
       },
@@ -14790,7 +15723,7 @@ function NoServerConnectionPanel() {
   });
 }
 
-const _tmpl$$1i = /*#__PURE__*/template(`<div id="sidebar_static" class="md:flex md:w-36 md:flex-col md:fixed md:inset-y-0"><div class="flex-1 flex flex-col min-h-0 border-r border-gray-200"><div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto"><div class="flex items-center flex-shrink-0 px-4"><img class="h-16 w-auto" alt="Logo"></div><nav class="mt-5 flex-1 px-2 space-y-1"></nav></div></div></div>`);
+const _tmpl$$1i = /*#__PURE__*/template(`<div id=sidebar_static class="md:flex md:w-36 md:flex-col md:fixed md:inset-y-0"><div class="flex-1 flex flex-col min-h-0 border-r border-gray-200"><div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto"><div class="flex items-center flex-shrink-0 px-4"><img class="h-16 w-auto"alt=Logo></div><nav class="mt-5 flex-1 px-2 space-y-1">`);
 function SideBar() {
   const {
     serverUrl
@@ -14805,7 +15738,7 @@ function SideBar() {
     admin
   } = gvLogin;
   return (() => {
-    const _el$ = _tmpl$$1i.cloneNode(true),
+    const _el$ = _tmpl$$1i(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.firstChild,
@@ -14831,10 +15764,10 @@ function SideBar() {
   })();
 }
 
-const _tmpl$$1h = /*#__PURE__*/template(`<a target="_blank"><button class="relative inline-flex items-center justify-center p-0.5 mb-2 mr-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-cyan-500 to-blue-500 group-hover:from-cyan-500 group-hover:to-blue-500 hover:text-white dark:text-white focus:ring-4 focus:outline-none focus:ring-cyan-200 dark:focus:ring-cyan-800"><span class="relative px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0"></span></button></a>`);
+const _tmpl$$1h = /*#__PURE__*/template(`<a target=_blank><button class="relative inline-flex items-center justify-center p-0.5 mb-2 mr-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-cyan-500 to-blue-500 group-hover:from-cyan-500 group-hover:to-blue-500 hover:text-white dark:text-white focus:ring-4 focus:outline-none focus:ring-cyan-200 dark:focus:ring-cyan-800"><span class="relative px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">`);
 function LinkButton(props) {
   return (() => {
-    const _el$ = _tmpl$$1h.cloneNode(true),
+    const _el$ = _tmpl$$1h(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild;
     insert(_el$3, () => props.icon, null);
@@ -14844,65 +15777,65 @@ function LinkButton(props) {
   })();
 }
 
-function FaBrandsGithub (props) {
+function FaBrandsGithub(props) {
       return IconTemplate({
         a: {"viewBox":"0 0 496 512"},
         c: '<path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/>'
       }, props)
   }
 
-function FiBookOpen (props) {
+function FiBookOpen(props) {
       return IconTemplate({
         a: {"fill":"none","stroke":"currentColor","stroke-linecap":"round","stroke-linejoin":"round","stroke-width":"2","viewBox":"0 0 24 24"},
-        c: '<path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2zM22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>'
+        c: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>'
       }, props)
   }
-  function FiMinusCircle (props) {
+  function FiMinusCircle(props) {
       return IconTemplate({
         a: {"fill":"none","stroke":"currentColor","stroke-linecap":"round","stroke-linejoin":"round","stroke-width":"2","viewBox":"0 0 24 24"},
-        c: '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/>'
+        c: '<path d="M12 2A10 10 0 1 0 12 22 10 10 0 1 0 12 2z"/><path d="M8 12 16 12"/>'
       }, props)
   }
-  function FiPlusCircle (props) {
+  function FiPlusCircle(props) {
       return IconTemplate({
         a: {"fill":"none","stroke":"currentColor","stroke-linecap":"round","stroke-linejoin":"round","stroke-width":"2","viewBox":"0 0 24 24"},
-        c: '<circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/>'
+        c: '<path d="M12 2A10 10 0 1 0 12 22 10 10 0 1 0 12 2z"/><path d="M12 8 12 16"/><path d="M8 12 16 12"/>'
       }, props)
   }
 
-function IoLogoMedium (props) {
+function IoLogoMedium(props) {
       return IconTemplate({
-        a: {"viewBox":"0 0 512 512"},
-        c: '<path d="M28 28v456h456V28H28zm378.83 108.04l-24.46 23.45a7.162 7.162 0 00-2.72 6.86v172.28c-.44 2.61.61 5.26 2.72 6.86l23.88 23.45v5.15H286.13v-5.15l24.74-24.02c2.43-2.43 2.43-3.15 2.43-6.86V198.81l-68.79 174.71h-9.3l-80.09-174.71v117.1c-.67 4.92.97 9.88 4.43 13.44l32.18 39.03v5.15h-91.24v-5.15l32.18-39.03c3.44-3.57 4.98-8.56 4.15-13.44V180.5c.38-3.76-1.05-7.48-3.86-10.01l-28.6-34.46v-5.15h88.81l68.65 150.55 60.35-150.55h84.66v5.16z"/>'
+        a: {"xml:space":"preserve","x":"0","y":"0","enable-background":"new 0 0 512 512","viewBox":"0 0 512 512"},
+        c: '<path id="icons" d="M28 28v456h456V28H28zm378.83 108.04-24.46 23.45a7.162 7.162 0 0 0-2.72 6.86v172.28c-.44 2.61.61 5.26 2.72 6.86l23.88 23.45v5.15H286.13v-5.15l24.74-24.02c2.43-2.43 2.43-3.15 2.43-6.86V198.81l-68.79 174.71h-9.3l-80.09-174.71v117.1c-.67 4.92.97 9.88 4.43 13.44l32.18 39.03v5.15h-91.24v-5.15l32.18-39.03c3.44-3.57 4.98-8.56 4.15-13.44V180.5c.38-3.76-1.05-7.48-3.86-10.01l-28.6-34.46v-5.15h88.81l68.65 150.55 60.35-150.55h84.66v5.16z"/>'
       }, props)
   }
-  function IoLogoReddit (props) {
+  function IoLogoReddit(props) {
       return IconTemplate({
         a: {"viewBox":"0 0 512 512"},
-        c: '<path d="M324 256a36 36 0 1036 36 36 36 0 00-36-36z"/><circle cx="188" cy="292" r="36" transform="rotate(-22.5 187.997 291.992)"/><path d="M496 253.77c0-31.19-25.14-56.56-56-56.56a55.72 55.72 0 00-35.61 12.86c-35-23.77-80.78-38.32-129.65-41.27l22-79 66.41 13.2c1.9 26.48 24 47.49 50.65 47.49 28 0 50.78-23 50.78-51.21S441 48 413 48c-19.53 0-36.31 11.19-44.85 28.77l-90-17.89-31.1 109.52-4.63.13c-50.63 2.21-98.34 16.93-134.77 41.53A55.38 55.38 0 0072 197.21c-30.89 0-56 25.37-56 56.56a56.43 56.43 0 0028.11 49.06 98.65 98.65 0 00-.89 13.34c.11 39.74 22.49 77 63 105C146.36 448.77 199.51 464 256 464s109.76-15.23 149.83-42.89c40.53-28 62.85-65.27 62.85-105.06a109.32 109.32 0 00-.84-13.3A56.32 56.32 0 00496 253.77zM414 75a24 24 0 11-24 24 24 24 0 0124-24zM42.72 253.77a29.6 29.6 0 0129.42-29.71 29 29 0 0113.62 3.43c-15.5 14.41-26.93 30.41-34.07 47.68a30.23 30.23 0 01-8.97-21.4zM390.82 399c-35.74 24.59-83.6 38.14-134.77 38.14S157 423.61 121.29 399c-33-22.79-51.24-52.26-51.24-83A78.5 78.5 0 0175 288.72c5.68-15.74 16.16-30.48 31.15-43.79a155.17 155.17 0 0114.76-11.53l.3-.21.24-.17c35.72-24.52 83.52-38 134.61-38s98.9 13.51 134.62 38l.23.17.34.25A156.57 156.57 0 01406 244.92c15 13.32 25.48 28.05 31.16 43.81a85.44 85.44 0 014.31 17.67 77.29 77.29 0 01.6 9.65c-.01 30.72-18.21 60.19-51.25 82.95zm69.6-123.92c-7.13-17.28-18.56-33.29-34.07-47.72A29.09 29.09 0 01440 224a29.59 29.59 0 0129.41 29.71 30.07 30.07 0 01-8.99 21.39z"/><path d="M323.23 362.22c-.25.25-25.56 26.07-67.15 26.27-42-.2-66.28-25.23-67.31-26.27a4.14 4.14 0 00-5.83 0l-13.7 13.47a4.15 4.15 0 000 5.89c3.4 3.4 34.7 34.23 86.78 34.45 51.94-.22 83.38-31.05 86.78-34.45a4.16 4.16 0 000-5.9l-13.71-13.47a4.13 4.13 0 00-5.81 0z"/>'
+        c: '<path d="M324 256a36 36 0 1 0 36 36 36 36 0 0 0-36-36Z"/><path d="M188 256A36 36 0 1 0 188 328 36 36 0 1 0 188 256z" transform="rotate(-22.5 187.997 291.992)"/><path d="M496 253.77c0-31.19-25.14-56.56-56-56.56a55.72 55.72 0 0 0-35.61 12.86c-35-23.77-80.78-38.32-129.65-41.27l22-79 66.41 13.2c1.9 26.48 24 47.49 50.65 47.49 28 0 50.78-23 50.78-51.21S441 48 413 48c-19.53 0-36.31 11.19-44.85 28.77l-90-17.89-31.1 109.52-4.63.13c-50.63 2.21-98.34 16.93-134.77 41.53A55.38 55.38 0 0 0 72 197.21c-30.89 0-56 25.37-56 56.56a56.43 56.43 0 0 0 28.11 49.06 98.65 98.65 0 0 0-.89 13.34c.11 39.74 22.49 77 63 105C146.36 448.77 199.51 464 256 464s109.76-15.23 149.83-42.89c40.53-28 62.85-65.27 62.85-105.06a109.32 109.32 0 0 0-.84-13.3A56.32 56.32 0 0 0 496 253.77ZM414 75a24 24 0 1 1-24 24 24 24 0 0 1 24-24ZM42.72 253.77a29.6 29.6 0 0 1 29.42-29.71 29 29 0 0 1 13.62 3.43c-15.5 14.41-26.93 30.41-34.07 47.68a30.23 30.23 0 0 1-8.97-21.4ZM390.82 399c-35.74 24.59-83.6 38.14-134.77 38.14S157 423.61 121.29 399c-33-22.79-51.24-52.26-51.24-83A78.5 78.5 0 0 1 75 288.72c5.68-15.74 16.16-30.48 31.15-43.79a155.17 155.17 0 0 1 14.76-11.53l.3-.21.24-.17c35.72-24.52 83.52-38 134.61-38s98.9 13.51 134.62 38l.23.17.34.25A156.57 156.57 0 0 1 406 244.92c15 13.32 25.48 28.05 31.16 43.81a85.44 85.44 0 0 1 4.31 17.67 77.29 77.29 0 0 1 .6 9.65c-.01 30.72-18.21 60.19-51.25 82.95Zm69.6-123.92c-7.13-17.28-18.56-33.29-34.07-47.72A29.09 29.09 0 0 1 440 224a29.59 29.59 0 0 1 29.41 29.71 30.07 30.07 0 0 1-8.99 21.39Z"/><path d="M323.23 362.22c-.25.25-25.56 26.07-67.15 26.27-42-.2-66.28-25.23-67.31-26.27a4.14 4.14 0 0 0-5.83 0l-13.7 13.47a4.15 4.15 0 0 0 0 5.89c3.4 3.4 34.7 34.23 86.78 34.45 51.94-.22 83.38-31.05 86.78-34.45a4.16 4.16 0 0 0 0-5.9l-13.71-13.47a4.13 4.13 0 0 0-5.81 0Z"/>'
       }, props)
   }
-  function IoMailOutline (props) {
+  function IoMailOutline(props) {
       return IconTemplate({
         a: {"viewBox":"0 0 512 512"},
-        c: '<rect width="416" height="320" x="48" y="96" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" rx="40" ry="40"/><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" d="M112 160l144 112 144-112"/>'
+        c: '<rect width="416" height="320" x="48" y="96" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" rx="40" ry="40"/><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" d="M112 160 256 272 400 160"/>'
       }, props)
   }
-  function IoWarningOutline (props) {
+  function IoWarningOutline(props) {
       return IconTemplate({
         a: {"viewBox":"0 0 512 512"},
-        c: '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" d="M85.57 446.25h340.86a32 32 0 0028.17-47.17L284.18 82.58c-12.09-22.44-44.27-22.44-56.36 0L57.4 399.08a32 32 0 0028.17 47.17z"/><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" d="M250.26 195.39l5.74 122 5.73-121.95a5.74 5.74 0 00-5.79-6h0a5.74 5.74 0 00-5.68 5.95z"/><path d="M256 397.25a20 20 0 1120-20 20 20 0 01-20 20z"/>'
+        c: '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" d="M85.57 446.25h340.86a32 32 0 0 0 28.17-47.17L284.18 82.58c-12.09-22.44-44.27-22.44-56.36 0L57.4 399.08a32 32 0 0 0 28.17 47.17Z"/><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" d="m250.26 195.39 5.74 122 5.73-121.95a5.74 5.74 0 0 0-5.79-6h0a5.74 5.74 0 0 0-5.68 5.95Z"/><path d="M256 397.25a20 20 0 1 1 20-20 20 20 0 0 1-20 20Z"/>'
       }, props)
   }
 
-const _tmpl$$1g = /*#__PURE__*/template(`<span class="font-semibold"></span>`),
-  _tmpl$2$f = /*#__PURE__*/template(`<div id="tab_home" class="tabcontent px-6 my-6 text-gray-700"><h1 class="text-4xl font-extrabold dark:text-white">OakVar</h1><p class="mb-6 text-lg font-normal text-gray-500 lg:text-xl dark:text-gray-400">Genomic variant analysis platform</p><div class="mt-4 text-base w-[64rem]"><p>OakVar is a platform for analyzing and exploring genomic variants.</p><p class="my-2">Use <!> tab to submit analysis jobs. Use <!> tab to monitor your past and current jobs. <!> shows analysis and reporting modules available through OakVar. In <!> tab, you can perform system admin tasks. </p><div class="my-2"><h3 class="mb-2 font-semibold dark:text-white">Benefits:</h3><ul class="space-y-1 list-disc list-inside"><li> genomic variants with diverse annotation sources.</li><li>Make <!> of annotated variants.</li><li>Query annotated variants with <!> sets.</li><li>Make <!> in diverse formats.</li><li> annotated variants with graphical user interface.</li><li>Works via <!> and <!>.</li><li>Easily develop, run, and distribute CLI and GUI <!>. OakVar acts as an operating system for genomics apps.</li><li>Connect genomic data to AI/ML models.</li></ul></div><div><h3 class="mb-2 font-semibold dark:text-white">Resources:</h3></div><div><h3 class="mb-2 font-semibold dark:text-white">Follow us:</h3></div><div><h3 class="mb-2 font-semibold dark:text-white">Help and support:</h3></div></div></div>`);
+const _tmpl$$1g = /*#__PURE__*/template(`<span class=font-semibold>`),
+  _tmpl$2$f = /*#__PURE__*/template(`<div id=tab_home class="tabcontent px-6 my-6 text-gray-700"><h1 class="text-4xl font-extrabold dark:text-white">OakVar</h1><p class="mb-6 text-lg font-normal text-gray-500 lg:text-xl dark:text-gray-400">Genomic variant analysis platform</p><div class="mt-4 text-base w-[64rem]"><p>OakVar is a platform for analyzing and exploring genomic variants.</p><p class=my-2>Use <!> tab to submit analysis jobs. Use <!> tab to monitor your past and current jobs. <!> shows analysis and reporting modules available through OakVar. In <!> tab, you can perform system admin tasks. </p><div class=my-2><h3 class="mb-2 font-semibold dark:text-white">Benefits:</h3><ul class="space-y-1 list-disc list-inside"><li> genomic variants with diverse annotation sources.</li><li>Make <!> of annotated variants.</li><li>Query annotated variants with <!> sets.</li><li>Make <!> in diverse formats.</li><li> annotated variants with graphical user interface.</li><li>Works via <!> and <!>.</li><li>Easily develop, run, and distribute CLI and GUI <!>. OakVar acts as an operating system for genomics apps.</li><li>Connect genomic data to AI/ML models.</li></ul></div><div><h3 class="mb-2 font-semibold dark:text-white">Resources:</h3></div><div><h3 class="mb-2 font-semibold dark:text-white">Follow us:</h3></div><div><h3 class="mb-2 font-semibold dark:text-white">Help and support:`);
 const {
   multiuser: multiuser$3
 } = gvMultiuser;
 function bold(s) {
   return (() => {
-    const _el$ = _tmpl$$1g.cloneNode(true);
+    const _el$ = _tmpl$$1g();
     insert(_el$, s);
     return _el$;
   })();
@@ -14912,7 +15845,7 @@ function TabHome() {
     tabName
   } = gvTabName;
   return (() => {
-    const _el$2 = _tmpl$2$f.cloneNode(true),
+    const _el$2 = _tmpl$2$f(),
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.nextSibling,
       _el$5 = _el$4.nextSibling,
@@ -15055,14 +15988,14 @@ function TabHome() {
   })();
 }
 
-const _tmpl$$1f = /*#__PURE__*/template(`<a href="#" class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value=""></a>`);
+const _tmpl$$1f = /*#__PURE__*/template(`<a href=# class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900"role=menuitem tabindex=-1 value="">`);
 function AssemblySelectPanelOption(props) {
   function changeAssembly() {
     props.setAssembly(props.value);
     props.setShow(false);
   }
   return (() => {
-    const _el$ = _tmpl$$1f.cloneNode(true);
+    const _el$ = _tmpl$$1f();
     _el$.$$click = changeAssembly;
     insert(_el$, () => props.title);
     return _el$;
@@ -15070,10 +16003,10 @@ function AssemblySelectPanelOption(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$1e = /*#__PURE__*/template(`<div id="assembly-select" class="option-list ease-in absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="menu-button" tabindex="-1"><div class="py-1" role="none"></div></div>`);
+const _tmpl$$1e = /*#__PURE__*/template(`<div id=assembly-select class="option-list ease-in absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"role=menu aria-orientation=vertical aria-labelledby=menu-button tabindex=-1><div class=py-1 role=none>`);
 function AssemblySelectPanelSelect(props) {
   return (() => {
-    const _el$ = _tmpl$$1e.cloneNode(true),
+    const _el$ = _tmpl$$1e(),
       _el$2 = _el$.firstChild;
     insert(_el$2, createComponent(AssemblySelectPanelOption, {
       value: "auto",
@@ -15120,7 +16053,7 @@ function AssemblySelectPanelSelect(props) {
   })();
 }
 
-const _tmpl$$1d = /*#__PURE__*/template(`<div id="assembly-select-panel" class="select-div relative inline-block text-left" value=""><div><button type="button" class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100" id="assembly-select-div" title="Genome assembly">Genome assembly: </button></div></div>`);
+const _tmpl$$1d = /*#__PURE__*/template(`<div id=assembly-select-panel class="select-div relative inline-block text-left"value=""><div><button type=button class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100"id=assembly-select-div title="Genome assembly">Genome assembly: `);
 function AssemblySelectPanel(props) {
   const [show, setShow] = createSignal(false);
   const assemblies = {
@@ -15133,7 +16066,7 @@ function AssemblySelectPanel(props) {
     setShow(!show());
   }
   return (() => {
-    const _el$ = _tmpl$$1d.cloneNode(true),
+    const _el$ = _tmpl$$1d(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild;
       _el$3.firstChild;
@@ -15156,14 +16089,14 @@ function AssemblySelectPanel(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$1c = /*#__PURE__*/template(`<a href="#" class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value=""></a>`);
+const _tmpl$$1c = /*#__PURE__*/template(`<a href=# class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900"role=menuitem tabindex=-1 value="">`);
 function InputFormatSelectPanelOption(props) {
   function changeInputFormat() {
     props.setInputFormat(props.value);
     props.setShow(false);
   }
   return (() => {
-    const _el$ = _tmpl$$1c.cloneNode(true);
+    const _el$ = _tmpl$$1c();
     _el$.$$click = changeInputFormat;
     insert(_el$, () => props.title);
     return _el$;
@@ -15171,10 +16104,10 @@ function InputFormatSelectPanelOption(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$1b = /*#__PURE__*/template(`<div id="input-format-select" class="option-list ease-in absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="menu-button" tabindex="-1"><div class="py-1" role="none"></div></div>`);
+const _tmpl$$1b = /*#__PURE__*/template(`<div id=input-format-select class="option-list ease-in absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"role=menu aria-orientation=vertical aria-labelledby=menu-button tabindex=-1><div class=py-1 role=none>`);
 function InputFormatSelectPanelSelect(props) {
   return (() => {
-    const _el$ = _tmpl$$1b.cloneNode(true),
+    const _el$ = _tmpl$$1b(),
       _el$2 = _el$.firstChild;
     insert(_el$2, createComponent(InputFormatSelectPanelOption, {
       value: "",
@@ -15212,7 +16145,7 @@ function InputFormatSelectPanelSelect(props) {
   })();
 }
 
-const _tmpl$$1a = /*#__PURE__*/template(`<div id="input-format-select-panel" class="select-div relative inline-block text-left ml-6" value=""><div><button type="button" class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100" id="input-format-select-div" title="Format">Format: </button></div></div>`);
+const _tmpl$$1a = /*#__PURE__*/template(`<div id=input-format-select-panel class="select-div relative inline-block text-left ml-6"value=""><div><button type=button class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100"id=input-format-select-div title=Format>Format: `);
 const {
   multiuser: multiuser$2
 } = gvMultiuser;
@@ -15225,7 +16158,7 @@ const {
 async function fetchInputFormat() {
   if (multiuser$2() == false || logged$2() == true) {
     try {
-      const res = await axios.get(serverUrl$3 + "/submit/converters");
+      const res = await axios$1.get(serverUrl$3 + "/submit/converters");
       const cs = await res.data;
       return cs;
     } catch (err) {
@@ -15256,7 +16189,7 @@ function InputFormatSelectPanel(props) {
     setShow(!show());
   }
   return (() => {
-    const _el$ = _tmpl$$1a.cloneNode(true),
+    const _el$ = _tmpl$$1a(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild;
       _el$3.firstChild;
@@ -15283,9 +16216,9 @@ function InputFormatSelectPanel(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$19 = /*#__PURE__*/template(`<div id="input-upload-list-div" class="w-1/2 flex flex-col justify-center items-center p-2 relative h-full bg-gray-50"><button id="clear_inputfilelist_button" class="text-gray-500 bg-neutral-200 hover:bg-neutral-300 p-1 w-16 rounded-md absolute top-1 left-1">Clear</button><div id="input-upload-list-wrapper" class="flex w-full overflow-auto h-[13rem] absolute bottom-1 bg-gray-50"><div id="input-upload-list" class="h-full overflow-auto"></div></div></div>`),
-  _tmpl$2$e = /*#__PURE__*/template(`<label id="input-drop-area" for="input-file" class="flex items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-md cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600 relative"><div id="input-drop-box" class="w-1/2"><div class="flex flex-col items-center justify-center pt-5 pb-6"><p class="mb-2 text-sm text-gray-500 dark:text-gray-400"><span class="font-semibold">Click to upload</span> input files</p><button class="mb-2 text-sm text-gray-500 dark:text-gray-400 bg-neutral-200 hover:bg-neutral-300 p-2 rounded-md absolute top-0 right-0">Manually enter variants instead</button></div><input type="file" class="hidden" name="input-file" id="input-file" multiple></div></label>`),
-  _tmpl$3$9 = /*#__PURE__*/template(`<span class="pl-2 text-sm text-gray-600 hover:text-gray-400 cursor-pointer round-md inline-block w-5/6" title="Click to remove"></span>`);
+const _tmpl$$19 = /*#__PURE__*/template(`<div id=input-upload-list-div class="w-1/2 flex flex-col justify-center items-center p-2 relative h-full bg-gray-50"><button id=clear_inputfilelist_button class="text-gray-500 bg-neutral-200 hover:bg-neutral-300 p-1 w-16 rounded-md absolute top-1 left-1">Clear</button><div id=input-upload-list-wrapper class="flex w-full overflow-auto h-[13rem] absolute bottom-1 bg-gray-50"><div id=input-upload-list class="h-full overflow-auto">`),
+  _tmpl$2$e = /*#__PURE__*/template(`<label id=input-drop-area for=input-file class="flex items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-md cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600 relative"><div id=input-drop-box class=w-1/2><div class="flex flex-col items-center justify-center pt-5 pb-6"><p class="mb-2 text-sm text-gray-500 dark:text-gray-400"><span class=font-semibold>Click to upload</span> input files</p><button class="mb-2 text-sm text-gray-500 dark:text-gray-400 bg-neutral-200 hover:bg-neutral-300 p-2 rounded-md absolute top-0 right-0">Manually enter variants instead</button></div><input type=file class=hidden name=input-file id=input-file multiple>`),
+  _tmpl$3$9 = /*#__PURE__*/template(`<span class="pl-2 text-sm text-gray-600 hover:text-gray-400 cursor-pointer round-md inline-block w-5/6"title="Click to remove">`);
 function InputDropArea(props) {
   const {
     setShowErrorDialog,
@@ -15320,7 +16253,7 @@ function InputDropArea(props) {
     props.setInputDataDrop([]);
   }
   return (() => {
-    const _el$ = _tmpl$2$e.cloneNode(true),
+    const _el$ = _tmpl$2$e(),
       _el$6 = _el$.firstChild,
       _el$7 = _el$6.firstChild,
       _el$8 = _el$7.firstChild,
@@ -15331,7 +16264,7 @@ function InputDropArea(props) {
         return props.inputDataDrop.length > 0;
       },
       get children() {
-        const _el$2 = _tmpl$$19.cloneNode(true),
+        const _el$2 = _tmpl$$19(),
           _el$3 = _el$2.firstChild,
           _el$4 = _el$3.nextSibling,
           _el$5 = _el$4.firstChild;
@@ -15341,7 +16274,7 @@ function InputDropArea(props) {
             return props.inputDataDrop;
           },
           children: file => (() => {
-            const _el$11 = _tmpl$3$9.cloneNode(true);
+            const _el$11 = _tmpl$3$9();
             _el$11.$$click = removeFile;
             _el$11.$$clickData = file.name;
             insert(_el$11, () => file.name);
@@ -15363,7 +16296,7 @@ function InputDropArea(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$18 = /*#__PURE__*/template(`<div id="input-paste-area" class="relative w-full h-[20rem] border-2 border-gray-300 border-dashed rounded-md"><textarea id="input-text" class="font-mono border-0 bg-gray-50 text-gray-600 p-4 resize-none w-full h-full" placeholder="Copy and paste or type input variants. VCF is supported. A quick and simple format is space-delimited one:
+const _tmpl$$18 = /*#__PURE__*/template(`<div id=input-paste-area class="relative w-full h-[20rem] border-2 border-gray-300 border-dashed rounded-md"><textarea id=input-text class="font-mono border-0 bg-gray-50 text-gray-600 p-4 resize-none w-full h-full"placeholder="Copy and paste or type input variants. VCF is supported. A quick and simple format is space-delimited one:
 
 chr1 9384934 + A T
 
@@ -15372,17 +16305,21 @@ which is chromosome, position, strand, a reference allele, and an alternate alle
 Alternatively, if 'Server files' box is checked, paths to input files in the server can be used as well. For example,
 
 /mnt/oakvar/input/sample/sample_1.vcf
-"></textarea><div class="top-2 right-3 absolute cursor-pointer" title="Click to go back"></div><div class="absolute bottom-1 right-1 text-gray-400 text-sm"><button value="cravat" class="p-1 text-gray-500 bg-neutral-200 hover:bg-neutral-300">Try an example</button></div></div>`);
+"></textarea><div class="top-2 right-3 absolute cursor-pointer"title="Click to go back"></div><div class="absolute bottom-1 right-1 text-gray-400 text-sm"><button value=cravat class="p-1 text-gray-500 bg-neutral-200 hover:bg-neutral-300">Try an example`);
 function InputPasteArea(props) {
   function setInputExample() {
     const {
-      serverUrl
+      serverUrl,
+      withCredentials
     } = gvServer;
     props.setAssembly("hg38");
     props.setInputFormat("vcf");
-    fetch(`${serverUrl}/submit/input-examples/${props.inputFormat}.${props.assembly}.txt`).then(res => {
-      return res.text();
-    }).then(data => {
+    axios$1({
+      method: "get",
+      url: `${serverUrl}/submit/inputexamples/${props.inputFormat}.${props.assembly}.txt`,
+      withCredentials: withCredentials
+    }).then(function (res) {
+      let data = res.data;
       props.changeInputData("paste", data);
     });
   }
@@ -15390,7 +16327,7 @@ function InputPasteArea(props) {
     props.changeInputData("paste", evt.target.value);
   }
   return (() => {
-    const _el$ = _tmpl$$18.cloneNode(true),
+    const _el$ = _tmpl$$18(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling,
       _el$4 = _el$3.nextSibling,
@@ -15408,13 +16345,13 @@ function InputPasteArea(props) {
 }
 delegateEvents(["keyup", "click"]);
 
-const _tmpl$$17 = /*#__PURE__*/template(`<div id="job-name-div" class="mt-4 w-full"><textarea id="job-name" class="font-mono text-sm border-0 bg-gray-100 text-gray-600 p-4 resize-none rounded-md w-full " placeholder="(Optional) job name"></textarea></div>`);
+const _tmpl$$17 = /*#__PURE__*/template(`<div id=job-name-div class="mt-4 w-full"><textarea id=job-name class="font-mono text-sm border-0 bg-gray-100 text-gray-600 p-4 resize-none rounded-md w-full "placeholder="(Optional) job name">`);
 function JobNameInput(props) {
   function changeJobName(evt) {
     props.setJobName(evt.target.value);
   }
   return (() => {
-    const _el$ = _tmpl$$17.cloneNode(true),
+    const _el$ = _tmpl$$17(),
       _el$2 = _el$.firstChild;
     _el$2.$$keyup = changeJobName;
     createRenderEffect(() => _el$.classList.toggle("hidden", !props.inputExists));
@@ -15424,13 +16361,13 @@ function JobNameInput(props) {
 }
 delegateEvents(["keyup"]);
 
-const _tmpl$$16 = /*#__PURE__*/template(`<div id="submit-note-div" class="mt-4 w-full"><textarea id="submit-note" class="font-mono text-sm border-0 bg-gray-100 text-gray-600 p-4 resize-none rounded-md w-full" placeholder="(Optional) note for this job"></textarea></div>`);
+const _tmpl$$16 = /*#__PURE__*/template(`<div id=submit-note-div class="mt-4 w-full"><textarea id=submit-note class="font-mono text-sm border-0 bg-gray-100 text-gray-600 p-4 resize-none rounded-md w-full"placeholder="(Optional) note for this job">`);
 function JobNoteInput(props) {
   function changeJobNote(evt) {
     props.setJobNote(evt.target.value);
   }
   return (() => {
-    const _el$ = _tmpl$$16.cloneNode(true),
+    const _el$ = _tmpl$$16(),
       _el$2 = _el$.firstChild;
     _el$2.$$keyup = changeJobNote;
     createRenderEffect(() => _el$.classList.toggle("hidden", !props.inputExists));
@@ -15440,10 +16377,10 @@ function JobNoteInput(props) {
 }
 delegateEvents(["keyup"]);
 
-const _tmpl$$15 = /*#__PURE__*/template(`<div id="submit-job-button-div" class="mt-4"><button id="submit-job-button" type="button" class="inline-flex items-center h-12 rounded-md border border-transparent bg-indigo-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Annotate</button></div>`);
+const _tmpl$$15 = /*#__PURE__*/template(`<div id=submit-job-button-div class=mt-4><button id=submit-job-button type=button class="inline-flex items-center h-12 rounded-md border border-transparent bg-indigo-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Annotate`);
 function JobSubmitButton(props) {
   return (() => {
-    const _el$ = _tmpl$$15.cloneNode(true),
+    const _el$ = _tmpl$$15(),
       _el$2 = _el$.firstChild;
     addEventListener(_el$2, "click", props.submitFn, true);
     createRenderEffect(() => _el$.classList.toggle("hidden", !props.inputExists));
@@ -15452,9 +16389,9 @@ function JobSubmitButton(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$14 = /*#__PURE__*/template(`<div class="flex items-center justify-center ml-6"><input id="default-checkbox" type="checkbox" value="" title="If checked, each input files will be processed separately." class="w-4 h-4 text-blue-600 bg-gray-100 rounded border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"><label for="default-checkbox" class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300" title="If checked, each input files will be processed separately.">Separate job per file</label></div>`),
-  _tmpl$2$d = /*#__PURE__*/template(`<div class="flex items-center justify-center ml-6"><input id="default-checkbox" type="checkbox" value="" title="If checked, each input line should be a path to an input file in the server." class="w-4 h-4 text-blue-600 bg-gray-100 rounded border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"><label for="default-checkbox" class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300" title="If checked, each input line should be a path to an input file in the server.">Server files</label></div>`),
-  _tmpl$3$8 = /*#__PURE__*/template(`<div id="input-div" class="w-[40rem] items-center flex flex-col" style="height: calc(100vh - 10rem);"><div class="flex"></div><div class="w-full flex items-center justify-center mt-1" ondragenter="onDragEnterInputFiles(event)" ondragover="onDragOverInputFiles(event)" ondragleave="onDragLeaveInputFiles(event)" ondrop="onDropInputFiles(event)"></div></div>`);
+const _tmpl$$14 = /*#__PURE__*/template(`<div class="flex items-center justify-center ml-6"><input id=default-checkbox type=checkbox value=""title="If checked, each input files will be processed separately."class="w-4 h-4 text-blue-600 bg-gray-100 rounded border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"><label for=default-checkbox class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300"title="If checked, each input files will be processed separately.">Separate job per file`),
+  _tmpl$2$d = /*#__PURE__*/template(`<div class="flex items-center justify-center ml-6"><input id=default-checkbox type=checkbox title="If checked, each input line should be a path to an input file in the server."class="w-4 h-4 text-blue-600 bg-gray-100 checked:bg-gray-500 rounded border-gray-300 focus:ring-0 focus:ring-offset-0 dark:bg-gray-700 dark:border-gray-600"><label for=default-checkbox class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300"title="If checked, each input line should be a path to an input file in the server.">Server files`),
+  _tmpl$3$8 = /*#__PURE__*/template(`<div id=input-div class="w-[40rem] items-center flex flex-col"style="height:calc(100vh - 10rem);"><div class=flex></div><div class="w-full flex items-center justify-center mt-1"ondragenter=onDragEnterInputFiles(event) ondragover=onDragOverInputFiles(event) ondragleave=onDragLeaveInputFiles(event) ondrop=onDropInputFiles(event)>`);
 function InputPanel(props) {
   function changeInputData(mode, data) {
     props.setInputMode(mode);
@@ -15475,10 +16412,10 @@ function InputPanel(props) {
     props.setSeparateJobPerFile(!props.separateJobPerFile);
   }
   function onChangeServerFileMode(_) {
-    props.setServerFileMode(!props.serverFileMode);
+    props.setServerFileMode(!props.serverFileMode());
   }
   return (() => {
-    const _el$ = _tmpl$3$8.cloneNode(true),
+    const _el$ = _tmpl$3$8(),
       _el$2 = _el$.firstChild,
       _el$7 = _el$2.nextSibling;
     insert(_el$2, createComponent(AssemblySelectPanel, {
@@ -15502,7 +16439,7 @@ function InputPanel(props) {
         return props.inputMode == "drop";
       },
       get children() {
-        const _el$3 = _tmpl$$14.cloneNode(true),
+        const _el$3 = _tmpl$$14(),
           _el$4 = _el$3.firstChild;
         _el$4.$$click = onChangeSeparateJobPerFile;
         createRenderEffect(() => _el$4.checked = props.separateJobPerFile);
@@ -15514,10 +16451,9 @@ function InputPanel(props) {
         return props.inputMode == "paste";
       },
       get children() {
-        const _el$5 = _tmpl$2$d.cloneNode(true),
+        const _el$5 = _tmpl$2$d(),
           _el$6 = _el$5.firstChild;
         _el$6.$$click = onChangeServerFileMode;
-        createRenderEffect(() => _el$6.checked = props.serverFileMode);
         return _el$5;
       }
     }), null);
@@ -15605,11 +16541,11 @@ function InputPanel(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$13 = /*#__PURE__*/template(`<input class="block w-full text-xs text-gray-900 bg-gray-50 rounded-lg border border-gray-300 cursor-pointer dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" type="file">`),
-  _tmpl$2$c = /*#__PURE__*/template(`<select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"></select>`),
-  _tmpl$3$7 = /*#__PURE__*/template(`<div class="flex flex-col mb-4"><span class="mb-2 font-xs"></span></div>`),
-  _tmpl$4$5 = /*#__PURE__*/template(`<input type="text">`),
-  _tmpl$5$3 = /*#__PURE__*/template(`<option></option>`);
+const _tmpl$$13 = /*#__PURE__*/template(`<input class="block w-full text-xs text-gray-900 bg-gray-50 rounded-lg border border-gray-300 cursor-pointer dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"type=file>`),
+  _tmpl$2$c = /*#__PURE__*/template(`<select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">`),
+  _tmpl$3$7 = /*#__PURE__*/template(`<div class="flex flex-col mb-4"><span class="mb-2 font-xs">`),
+  _tmpl$4$5 = /*#__PURE__*/template(`<input type=text>`),
+  _tmpl$5$3 = /*#__PURE__*/template(`<option>`);
 const {
   setModuleOption,
   getModuleOptions: getModuleOptions$1,
@@ -15629,13 +16565,13 @@ function ModuleOption(props) {
     setModuleOption(props.moduleName, props.option, value);
   }
   return (() => {
-    const _el$ = _tmpl$3$7.cloneNode(true),
+    const _el$ = _tmpl$3$7(),
       _el$2 = _el$.firstChild;
     insert(_el$2, () => props.option.title);
     insert(_el$, createComponent(Switch, {
       get fallback() {
         return (() => {
-          const _el$5 = _tmpl$4$5.cloneNode(true);
+          const _el$5 = _tmpl$4$5();
           _el$5.$$keyup = onChange;
           createRenderEffect(() => _el$5.value = optionValue());
           return _el$5;
@@ -15647,7 +16583,7 @@ function ModuleOption(props) {
             return props.option.method == "file";
           },
           get children() {
-            const _el$3 = _tmpl$$13.cloneNode(true);
+            const _el$3 = _tmpl$$13();
             _el$3.addEventListener("change", onChange);
             return _el$3;
           }
@@ -15656,7 +16592,7 @@ function ModuleOption(props) {
             return props.option.method == "select";
           },
           get children() {
-            const _el$4 = _tmpl$2$c.cloneNode(true);
+            const _el$4 = _tmpl$2$c();
             _el$4.addEventListener("change", onChange);
             _el$4.$$click = function (evt) {
               evt.stopPropagation();
@@ -15666,7 +16602,7 @@ function ModuleOption(props) {
                 return props.option.options;
               },
               children: option => (() => {
-                const _el$6 = _tmpl$5$3.cloneNode(true);
+                const _el$6 = _tmpl$5$3();
                 _el$6.value = option;
                 insert(_el$6, option);
                 return _el$6;
@@ -15871,7 +16807,7 @@ function addModuleDownNewList(mn) {
   }
 }
 
-const _tmpl$$12 = /*#__PURE__*/template(`<div class="relative modulecard relative items-center space-x-3 rounded-lg border border-gray-300 px-6 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:border-gray-400 p-2 z-0 mb-2"><div class="absolute left-0 bottom-0 w-full p-2 cursor-default" style="background-color: rgba(68, 64, 60, 0.3);"><a class="relative remove-up text-sm h-8 inline-flex items-center rounded-md border border-gray-300 px-2 py-2 text-sm font-medium text-gray-500 cursor-pointer focus:z-20 bg-white hover:bg-gray-100" title="Remove this module and any module depending on this module from analysis"></a><a class="ml-2 relative remove-up-down text-sm h-8 inline-flex items-center rounded-md border border-gray-300 px-2 py-2 text-sm font-medium text-gray-500 cursor-pointer focus:z-20 bg-white hover:bg-gray-100" title="Remove this module and all modules required by this module from analysis"></a></div><div><div class="float-left w-24 h-24 mr-2 flex justify-center items-center"><img class="w-20 rounded-lg"></div><div class="min-w-0 flex-1" style="min-height: 6rem;"><a class="focus:online-none"><p class="text-md font-semibold text-gray-700"></p><p class="text-sm text-gray-500"></p></a></div></div><div class="w-full"></div></div>`);
+const _tmpl$$12 = /*#__PURE__*/template(`<div class="relative modulecard relative items-center space-x-3 rounded-lg border border-gray-300 px-6 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:border-gray-400 p-2 z-0 mb-2"><div class="absolute left-0 bottom-0 w-full p-2 cursor-default"style="background-color:rgba(68, 64, 60, 0.3);"><a class="relative remove-up text-sm h-8 inline-flex items-center rounded-md border border-gray-300 px-2 py-2 text-sm font-medium text-gray-500 cursor-pointer focus:z-20 bg-white hover:bg-gray-100"title="Remove this module and any module depending on this module from analysis"></a><a class="ml-2 relative remove-up-down text-sm h-8 inline-flex items-center rounded-md border border-gray-300 px-2 py-2 text-sm font-medium text-gray-500 cursor-pointer focus:z-20 bg-white hover:bg-gray-100"title="Remove this module and all modules required by this module from analysis"></a></div><div><div class="float-left w-24 h-24 mr-2 flex justify-center items-center"><img class="w-20 rounded-lg"></div><div class="min-w-0 flex-1"style=min-height:6rem;><a class=focus:online-none><p class="text-md font-semibold text-gray-700"></p><p class="text-sm text-gray-500"></p></a></div></div><div class=w-full>`);
 function ModuleCard$1(props) {
   const {
     serverUrl
@@ -15924,7 +16860,7 @@ function ModuleCard$1(props) {
     }
   }
   return (() => {
-    const _el$ = _tmpl$$12.cloneNode(true),
+    const _el$ = _tmpl$$12(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.nextSibling,
@@ -15940,7 +16876,7 @@ function ModuleCard$1(props) {
     _el$.addEventListener("mouseleave", e => setShowX(false, e));
     _el$.addEventListener("mouseenter", e => setShowX(true, e));
     insert(_el$3, createComponent(HiOutlineMinus, {}));
-    insert(_el$4, createComponent(HiOutlineX, {}));
+    insert(_el$4, createComponent(HiOutlineXMark, {}));
     insert(_el$10, () => moduleInfo && moduleInfo.title);
     insert(_el$11, () => moduleInfo && moduleInfo.conf.description);
     insert(_el$12, createComponent(Show, {
@@ -15994,7 +16930,7 @@ function ModuleCard$1(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$11 = /*#__PURE__*/template(`<div id="report-choice-div" class="w-[36rem] flex flex-col justify-center items-center"><div class="text-md text-gray-600">(Optional) reporters to run</div><div id="report-choice-items" class="w-96 grid gap-2 justify-center overflow-y-auto bg-gray-100 py-4 rounded-md" style="height: calc(100vh - 10rem);"></div></div>`);
+const _tmpl$$11 = /*#__PURE__*/template(`<div id=report-choice-div class="w-[36rem] flex flex-col justify-center items-center"><div class="text-md text-gray-600">(Optional) reporters to run</div><div id=report-choice-items class="w-96 grid gap-2 justify-center overflow-y-auto bg-gray-100 py-4 rounded-md"style="height:calc(100vh - 10rem);">`);
 const fetchReportTypes = async () => {
   const {
     serverUrl
@@ -16006,7 +16942,7 @@ const fetchReportTypes = async () => {
 function ReportChoicePanel() {
   const [reportTypes] = createResource(fetchReportTypes);
   return (() => {
-    const _el$ = _tmpl$$11.cloneNode(true),
+    const _el$ = _tmpl$$11(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling;
     insert(_el$3, createComponent(For, {
@@ -16022,7 +16958,7 @@ function ReportChoicePanel() {
   })();
 }
 
-const _tmpl$$10 = /*#__PURE__*/template(`<div id="cta-analysis-module-choice" class="absolute inset-x-0 bottom-0 cursor-pointer"><div class="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8"><div class="rounded-lg bg-indigo-50 p-2 shadow-md sm:p-3"><div class="flex flex-wrap items-center justify-between"><div class="flex w-0 flex-1 items-center"><p class="ml-3 truncate font-medium text-gray-500 text-center"><span>Click to select analysis modules</span></p></div></div></div></div></div>`);
+const _tmpl$$10 = /*#__PURE__*/template(`<div id=cta-analysis-module-choice class="absolute inset-x-0 bottom-0 cursor-pointer"><div class="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8"><div class="rounded-lg bg-indigo-50 p-2 shadow-md sm:p-3"><div class="flex flex-wrap items-center justify-between"><div class="flex w-0 flex-1 items-center"><p class="ml-3 truncate font-medium text-gray-500 text-center"><span>Click to select analysis modules`);
 function CtaScrollDownToAnalysisModule(props) {
   function scrollToAnalysisModuleChoice() {
     const div = document.querySelector("#analysis-module-choice-div");
@@ -16031,7 +16967,7 @@ function CtaScrollDownToAnalysisModule(props) {
     });
   }
   return (() => {
-    const _el$ = _tmpl$$10.cloneNode(true),
+    const _el$ = _tmpl$$10(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.firstChild,
@@ -16046,13 +16982,13 @@ function CtaScrollDownToAnalysisModule(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$$ = /*#__PURE__*/template(`<button type="button" class="filter-category"></button>`);
+const _tmpl$$$ = /*#__PURE__*/template(`<button type=button class=filter-category>`);
 function ModuleFilterCategoryButton(props) {
   function onChangeFilterCategoryRadio(_) {
     props.setFilterCategory(props.value);
   }
   return (() => {
-    const _el$ = _tmpl$$$.cloneNode(true);
+    const _el$ = _tmpl$$$();
     _el$.$$click = onChangeFilterCategoryRadio;
     insert(_el$, () => props.title);
     createRenderEffect(_p$ => {
@@ -16139,7 +17075,7 @@ function getSizeString(size) {
   return sizeS;
 }
 
-const _tmpl$$_ = /*#__PURE__*/template(`<div class="flex mb-2"><label for="search" class="sr-only">Search</label><input type="text" name="search" class="block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mr-2 w-48" placeholder="Search"><button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Add all</button><button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-2">Remove all</button></div>`);
+const _tmpl$$_ = /*#__PURE__*/template(`<div class="flex mb-2"><label for=search class=sr-only>Search</label><input type=text name=search class="block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mr-2 w-48"placeholder=Search><button type=button class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Add all</button><button type=button class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-2">Remove all`);
 function ModuleSearchPanel$1(props) {
   function updateSearchText(evt) {
     props.setSearchText(evt.target.value);
@@ -16158,7 +17094,7 @@ function ModuleSearchPanel$1(props) {
     }
   }
   return (() => {
-    const _el$ = _tmpl$$_.cloneNode(true),
+    const _el$ = _tmpl$$_(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling,
       _el$4 = _el$3.nextSibling,
@@ -16172,10 +17108,10 @@ function ModuleSearchPanel$1(props) {
 }
 delegateEvents(["keyup", "click"]);
 
-const _tmpl$$Z = /*#__PURE__*/template(`<div class="filtered-modules-div overflow-auto pr-2" style="height: calc(95vh - 10rem);"></div>`);
+const _tmpl$$Z = /*#__PURE__*/template(`<div class="filtered-modules-div overflow-auto pr-2"style="height:calc(95vh - 10rem);">`);
 function ModuleDisplayPanel$1(props) {
   return (() => {
-    const _el$ = _tmpl$$Z.cloneNode(true);
+    const _el$ = _tmpl$$Z();
     insert(_el$, createComponent(For, {
       get each() {
         return getAnnotatorsAndPostaggregators(props.searchText, props.selectedTag);
@@ -16201,12 +17137,12 @@ function ModuleDisplayPanel$1(props) {
   })();
 }
 
-const _tmpl$$Y = /*#__PURE__*/template(`<div id="analysis-module-filter-panel-all" class="analysis-module-filter-panel w-full mt-4 overflow-auto"></div>`);
+const _tmpl$$Y = /*#__PURE__*/template(`<div id=analysis-module-filter-panel-all class="analysis-module-filter-panel w-full mt-4 overflow-auto">`);
 function AnalysisModuleFilterPanelAll(props) {
   const [searchText, setSearchText] = createSignal(null);
   const [selectedTag, setSelectedTag] = createSignal(null);
   return (() => {
-    const _el$ = _tmpl$$Y.cloneNode(true);
+    const _el$ = _tmpl$$Y();
     insert(_el$, createComponent(ModuleSearchPanel$1, {
       kind: "all",
       get searchText() {
@@ -16230,7 +17166,7 @@ function AnalysisModuleFilterPanelAll(props) {
   })();
 }
 
-const _tmpl$$X = /*#__PURE__*/template(`<div class="relative flex items-start mb-2"><div class="flex items-center"><input type="radio" name="module-tag" class="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500"><label class="ml-3 block text-sm font-medium text-gray-600"></label></div></div>`);
+const _tmpl$$X = /*#__PURE__*/template(`<div class="relative flex items-start mb-2"><div class="flex items-center"><input type=radio name=module-tag class="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500"><label class="ml-3 block text-sm font-medium text-gray-600">`);
 function escapeTag(s) {
   return s.replace(" ", "_");
 }
@@ -16242,7 +17178,7 @@ function titleCase(s) {
 function AnalysisModuleFilterPanelTagItem(props) {
   const uid = `module-tag-radio-${escapeTag(props.value)}`;
   return (() => {
-    const _el$ = _tmpl$$X.cloneNode(true),
+    const _el$ = _tmpl$$X(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.nextSibling;
@@ -16259,7 +17195,7 @@ function AnalysisModuleFilterPanelTagItem(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$W = /*#__PURE__*/template(`<div id="analysis-module-filter-panel-tags" class="analysis-module-filter-panel w-full mt-4 overflow-auto grid grid-cols-3"><div id="analysis-module-filter-items-tags" class="col-span-1 flex flex-col justify-leading pl-1 overflow-y-auto" style="height: calc(95vh - 8rem);"></div><div class="col-span-2"></div></div>`);
+const _tmpl$$W = /*#__PURE__*/template(`<div id=analysis-module-filter-panel-tags class="analysis-module-filter-panel w-full mt-4 overflow-auto grid grid-cols-3"><div id=analysis-module-filter-items-tags class="col-span-1 flex flex-col justify-leading pl-1 overflow-y-auto"style="height:calc(95vh - 8rem);"></div><div class=col-span-2>`);
 const fetchTags = async () => {
   const {
     serverUrl
@@ -16273,7 +17209,7 @@ function AnalysisModuleFilterPanelTags(props) {
   const [searchText, setSearchText] = createSignal(null);
   const [selectedTag, setSelectedTag] = createSignal(null);
   return (() => {
-    const _el$ = _tmpl$$W.cloneNode(true),
+    const _el$ = _tmpl$$W(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling;
     insert(_el$2, createComponent(For, {
@@ -16310,11 +17246,11 @@ function AnalysisModuleFilterPanelTags(props) {
   })();
 }
 
-const _tmpl$$V = /*#__PURE__*/template(`<div class="analysis-module-filter-wrapper col-span-7"><div id="analysis-module-filter-kinds" class="w-full"><div class="inline-flex rounded-md shadow-sm" role="group"></div></div></div>`);
+const _tmpl$$V = /*#__PURE__*/template(`<div class="analysis-module-filter-wrapper col-span-7"><div id=analysis-module-filter-kinds class=w-full><div class="inline-flex rounded-md shadow-sm"role=group>`);
 function AnalysisModuleFilterWrapper(props) {
   const [filterCategory, setFilterCategory] = createSignal("all");
   return (() => {
-    const _el$ = _tmpl$$V.cloneNode(true),
+    const _el$ = _tmpl$$V(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild;
     insert(_el$3, createComponent(ModuleFilterCategoryButton, {
@@ -16355,7 +17291,7 @@ function AnalysisModuleFilterWrapper(props) {
   })();
 }
 
-const _tmpl$$U = /*#__PURE__*/template(`<div class="col-span-4"><div class="text-gray-600 bg-gray-100 rounded-md border border-transparent font-medium px-3 py-1.5 h-[34px]">Selected analysis modules</div><div class="flex mb-2 mt-4"><button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 h-[38px]">Clear</button></div><div class="relative filtered-modules-div overflow-auto pr-2"></div></div>`);
+const _tmpl$$U = /*#__PURE__*/template(`<div class=col-span-4><div class="text-gray-600 bg-gray-100 rounded-md border border-transparent font-medium px-3 py-1.5 h-[34px]">Selected analysis modules</div><div class="flex mb-2 mt-4"><button type=button class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 h-[38px]">Clear</button></div><div class="relative filtered-modules-div overflow-auto pr-2">`);
 function SelectedAnalysisModules() {
   const {
     annotators,
@@ -16379,7 +17315,7 @@ function SelectedAnalysisModules() {
     setPostaggregators({});
   }
   return (() => {
-    const _el$ = _tmpl$$U.cloneNode(true),
+    const _el$ = _tmpl$$U(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling,
       _el$4 = _el$3.firstChild,
@@ -16402,7 +17338,7 @@ function SelectedAnalysisModules() {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$T = /*#__PURE__*/template(`<div id="cta-input" class="absolute inset-x-0 top-0 cursor-pointer"><div class="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8"><div class="rounded-lg bg-indigo-50 p-2 shadow-md sm:p-3"><div class="flex flex-wrap items-center justify-between"><div class="flex w-0 flex-1 items-center"><p class="ml-3 truncate font-medium text-gray-500 text-center"><span>Go back to the input panel</span></p></div></div></div></div></div>`);
+const _tmpl$$T = /*#__PURE__*/template(`<div id=cta-input class="absolute inset-x-0 top-0 cursor-pointer"><div class="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8"><div class="rounded-lg bg-indigo-50 p-2 shadow-md sm:p-3"><div class="flex flex-wrap items-center justify-between"><div class="flex w-0 flex-1 items-center"><p class="ml-3 truncate font-medium text-gray-500 text-center"><span>Go back to the input panel`);
 function CtaScrollUpToInput(props) {
   function scrollToInput() {
     const div = document.querySelector("#input-div");
@@ -16411,7 +17347,7 @@ function CtaScrollUpToInput(props) {
     });
   }
   return (() => {
-    const _el$ = _tmpl$$T.cloneNode(true),
+    const _el$ = _tmpl$$T(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.firstChild,
@@ -16426,10 +17362,10 @@ function CtaScrollUpToInput(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$S = /*#__PURE__*/template(`<div id="analysis-module-choice-div" class="relative container mt-6 mb-4 snap-center flex justify-center max-w-7xl max-w-7xl"><div id="analysis-module-filter-div" class="bg-white p-4 rounded-md ml-4 mt-4 overflow-auto flex flex-col gap-8 text-gray-600 h-[95vh] w-full"><div id="analysis-module-div" class="grid grid-cols-12 gap-2 mt-8" style="height: calc(95vh - 20rem);"><div class="col-span-1 flex flex-col justify-center content-center items-center"></div></div></div></div>`);
+const _tmpl$$S = /*#__PURE__*/template(`<div id=analysis-module-choice-div class="relative container mt-6 mb-4 snap-center flex justify-center max-w-7xl max-w-7xl"><div id=analysis-module-filter-div class="bg-white p-4 rounded-md ml-4 mt-4 overflow-auto flex flex-col gap-8 text-gray-600 h-[95vh] w-full"><div id=analysis-module-div class="grid grid-cols-12 gap-2 mt-8"style="height:calc(95vh - 20rem);"><div class="col-span-1 flex flex-col justify-center content-center items-center">`);
 function AnalysisModuleChoice(props) {
   return (() => {
-    const _el$ = _tmpl$$S.cloneNode(true),
+    const _el$ = _tmpl$$S(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.firstChild;
@@ -16446,10 +17382,10 @@ function AnalysisModuleChoice(props) {
   })();
 }
 
-const _tmpl$$R = /*#__PURE__*/template(`<li><a href="#" class="block hover:bg-gray-50"><div class="py-4"><div class="flex items-center justify-between"><p class="truncate text-sm font-medium text-indigo-600"></p></div><div class="mt-2 sm:flex sm:justify-between"><div class="mt-2 w-full flex items-center text-sm text-gray-500 sm:mt-0"><div class="w-full bg-gray-200 rounded-full dark:bg-gray-700"><div class="bg-blue-600 text-xs font-medium text-blue-100 text-center p-0.5 leading-none rounded-full">%</div></div></div></div></div></a></li>`);
+const _tmpl$$R = /*#__PURE__*/template(`<li><a href=# class="block hover:bg-gray-50"><div class=py-4><div class="flex items-center justify-between"><p class="truncate text-sm font-medium text-indigo-600"></p></div><div class="mt-2 sm:flex sm:justify-between"><div class="mt-2 w-full flex items-center text-sm text-gray-500 sm:mt-0"><div class="w-full bg-gray-200 rounded-full dark:bg-gray-700"><div class="bg-blue-600 text-xs font-medium text-blue-100 text-center p-0.5 leading-none rounded-full">%`);
 function UploadProgressFile(props) {
   return (() => {
-    const _el$ = _tmpl$$R.cloneNode(true),
+    const _el$ = _tmpl$$R(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.firstChild,
@@ -16461,18 +17397,18 @@ function UploadProgressFile(props) {
       _el$10 = _el$9.firstChild;
     insert(_el$5, () => props.fileName);
     insert(_el$9, () => props.progress, _el$10);
-    createRenderEffect(() => _el$9.style.setProperty("width", props.progress + "%"));
+    createRenderEffect(() => props.progress + "%" != null ? _el$9.style.setProperty("width", props.progress + "%") : _el$9.style.removeProperty("width"));
     return _el$;
   })();
 }
 
-const _tmpl$$Q = /*#__PURE__*/template(`<div class="relative z-10" aria-labelledby="modal-title" role="dialog" aria-modal="true"><div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div><div class="fixed inset-0 z-10 overflow-y-auto"><div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0"><div class="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:p-6"><div><div class="mt-3 text-center sm:mt-5"><ul role="list" class="divide-y divide-gray-200"></ul></div></div><div class="mt-5 sm:mt-6"><button type="button" class="inline-flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:text-sm">Cancel</button></div></div></div></div></div>`);
+const _tmpl$$Q = /*#__PURE__*/template(`<div class="relative z-10"aria-labelledby=modal-title role=dialog aria-modal=true><div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div><div class="fixed inset-0 z-10 overflow-y-auto"><div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0"><div class="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:p-6"><div><div class="mt-3 text-center sm:mt-5"><ul role=list class="divide-y divide-gray-200"></ul></div></div><div class="mt-5 sm:mt-6"><button type=button class="inline-flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:text-sm">Cancel`);
 function UploadProgressDialog(props) {
   function abort() {
     props.controller.abort();
   }
   return (() => {
-    const _el$ = _tmpl$$Q.cloneNode(true),
+    const _el$ = _tmpl$$Q(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling,
       _el$4 = _el$3.firstChild,
@@ -16494,10 +17430,10 @@ function UploadProgressDialog(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$P = /*#__PURE__*/template(`<div class="relative z-10" aria-labelledby="modal-title" role="dialog" aria-modal="true"><div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div><div class="fixed inset-0 z-10 overflow-y-auto"><div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0"><div class="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6"><div><div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100"><svg class="h-6 w-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path></svg></div><div class="mt-3 text-center sm:mt-5"><h3 class="text-lg font-medium leading-6 text-gray-900"></h3><div class="mt-2"><p class="text-sm text-gray-500"></p></div></div></div><div class="mt-5 sm:mt-6"><button type="button" class="inline-flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:text-sm">Dismiss</button></div></div></div></div></div>`);
+const _tmpl$$P = /*#__PURE__*/template(`<div class="relative z-10"aria-labelledby=modal-title role=dialog aria-modal=true><div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div><div class="fixed inset-0 z-10 overflow-y-auto"><div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0"><div class="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6"><div><div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100"><svg class="h-6 w-6 text-green-600"xmlns=http://www.w3.org/2000/svg fill=none viewBox="0 0 24 24"stroke-width=1.5 stroke=currentColor aria-hidden=true><path stroke-linecap=round stroke-linejoin=round d="M4.5 12.75l6 6 9-13.5"></path></svg></div><div class="mt-3 text-center sm:mt-5"><h3 class="text-lg font-medium leading-6 text-gray-900"></h3><div class=mt-2><p class="text-sm text-gray-500"></p></div></div></div><div class="mt-5 sm:mt-6"><button type=button class="inline-flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:text-sm">Dismiss`);
 function OkDialog(props) {
   return (() => {
-    const _el$ = _tmpl$$P.cloneNode(true),
+    const _el$ = _tmpl$$P(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling,
       _el$4 = _el$3.firstChild,
@@ -16518,9 +17454,9 @@ function OkDialog(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$O = /*#__PURE__*/template(`<div class="tabcontent p-4 snap-y snap-mandatory h-screen overflow-y-auto"><div class="relative container flex gap-8 snap-center max-w-7xl h-[95vh] justify-center items-start"></div></div>`),
-  _tmpl$2$b = /*#__PURE__*/template(`<div>Loading...</div>`),
-  _tmpl$3$6 = /*#__PURE__*/template(`<div><span>Analysis submission was successful.</span><br><span>You can find the status of your analysis submission on the Results section.</span><br><span></span></div>`);
+const _tmpl$$O = /*#__PURE__*/template(`<div class="tabcontent p-4 snap-y snap-mandatory h-screen overflow-y-auto"><div class="relative container flex gap-8 snap-center max-w-7xl h-[95vh] justify-center items-start">`),
+  _tmpl$2$b = /*#__PURE__*/template(`<div>Loading...`),
+  _tmpl$3$6 = /*#__PURE__*/template(`<div><span>Analysis submission was successful.</span><br><span>You can find the status of your analysis submission on the Results section.</span><br><span>`);
 const {
   tabName: tabName$1
 } = gvTabName;
@@ -16586,12 +17522,12 @@ function TabSubmit(props) {
     setUploadState({});
   }
   function isServerFileList() {
-    return inputDataPaste().startsWith("#serverfile");
+    return serverFileMode();
   }
   function processInputServerFiles() {
     let inputServerFiles = [];
     let words = inputDataPaste().split("\n");
-    for (var i = 1; i < words.length; i++) {
+    for (var i = 0; i < words.length; i++) {
       let word = words[i];
       if (word == "" || word.startsWith("#")) {
         continue;
@@ -16668,7 +17604,7 @@ function TabSubmit(props) {
     setUploadState({
       progress: 0
     });
-    axios({
+    axios$1({
       method: "post",
       url: serverUrl$2 + "/submit/submit?" + Math.random(),
       data: formData,
@@ -16722,7 +17658,6 @@ function TabSubmit(props) {
   }
   function makeFormData(inputNo) {
     initializeFormData();
-    submitOption = {};
     if (separateJobPerFile() != true) {
       addAllInputFilesToFormData();
     } else {
@@ -16744,11 +17679,13 @@ function TabSubmit(props) {
     formData.append("options", JSON.stringify(submitOption));
   }
   function processCombineInputSubmit() {
+    submitOption = {};
     makeInputFiles();
     makeFormData();
     commitSubmit();
   }
   function processSeparateInputSubmit() {
+    submitOption = {};
     makeInputFiles();
     for (let inputNo = 0; inputNo < inputFiles.length; inputNo++) {
       makeFormData(inputNo);
@@ -16763,7 +17700,7 @@ function TabSubmit(props) {
     }
   }
   return (() => {
-    const _el$ = _tmpl$$O.cloneNode(true),
+    const _el$ = _tmpl$$O(),
       _el$2 = _el$.firstChild;
     insert(_el$2, createComponent(Show, {
       get when() {
@@ -16808,9 +17745,7 @@ function TabSubmit(props) {
             return separateJobPerFile();
           },
           setSeparateJobPerFile: setSeparateJobPerFile,
-          get serverFileMode() {
-            return serverFileMode();
-          },
+          serverFileMode: serverFileMode,
           setServerFileMode: setServerFileMode
         });
       }
@@ -16825,7 +17760,7 @@ function TabSubmit(props) {
             return !objectIsEmpty(localModules);
           },
           get fallback() {
-            return _tmpl$2$b.cloneNode(true);
+            return _tmpl$2$b();
           },
           get children() {
             return createComponent(ReportChoicePanel, {});
@@ -16865,7 +17800,7 @@ function TabSubmit(props) {
           },
           get text() {
             return (() => {
-              const _el$4 = _tmpl$3$6.cloneNode(true),
+              const _el$4 = _tmpl$3$6(),
                 _el$5 = _el$4.firstChild,
                 _el$6 = _el$5.nextSibling,
                 _el$7 = _el$6.nextSibling,
@@ -16886,7 +17821,7 @@ function TabSubmit(props) {
   })();
 }
 
-const _tmpl$$N = /*#__PURE__*/template(`<a href="#" class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value=""></a>`);
+const _tmpl$$N = /*#__PURE__*/template(`<a href=# class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900"role=menuitem tabindex=-1 value="">`);
 function ActionPanelOption(props) {
   function changeAction() {
     props.setAction(props.optionValue);
@@ -16894,7 +17829,7 @@ function ActionPanelOption(props) {
     props.setShow(false);
   }
   return (() => {
-    const _el$ = _tmpl$$N.cloneNode(true);
+    const _el$ = _tmpl$$N();
     _el$.$$click = changeAction;
     insert(_el$, () => props.optionTitle);
     return _el$;
@@ -16902,10 +17837,10 @@ function ActionPanelOption(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$M = /*#__PURE__*/template(`<div class="option-list ease-in absolute right-0 z-10 mt-12 w-24 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu"><div class="py-1" role="none"></div></div>`);
+const _tmpl$$M = /*#__PURE__*/template(`<div class="option-list ease-in absolute right-0 z-10 mt-12 w-24 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"role=menu><div class=py-1 role=none>`);
 function ActionPanelSelect(props) {
   return (() => {
-    const _el$ = _tmpl$$M.cloneNode(true),
+    const _el$ = _tmpl$$M(),
       _el$2 = _el$.firstChild;
     insert(_el$2, createComponent(For, {
       get each() {
@@ -16936,7 +17871,7 @@ function ActionPanelSelect(props) {
   })();
 }
 
-const _tmpl$$L = /*#__PURE__*/template(`<div class="select-div relative inline-flex text-left"><div><button type="button" class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100" id="assembly-select-div" title="Job action">Action</button></div></div>`);
+const _tmpl$$L = /*#__PURE__*/template(`<div class="select-div relative inline-flex text-left"><div><button type=button class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100"id=assembly-select-div title="Job action">Action`);
 function ActionPanel(props) {
   const [show, setShow] = createSignal(false);
   const [action, setAction] = createSignal("");
@@ -16954,7 +17889,7 @@ function ActionPanel(props) {
     setShow(!show());
   }
   return (() => {
-    const _el$ = _tmpl$$L.cloneNode(true),
+    const _el$ = _tmpl$$L(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild;
       _el$3.firstChild;
@@ -16976,7 +17911,7 @@ function ActionPanel(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$K = /*#__PURE__*/template(`<div class="flex bg-white pb-2 mt-2"><div class="flex"><nav class="isolate inline-flex rounded-md shadow-sm ml-8" aria-label="Pagination"><a href="#" class="jobs-table-page-nav-btn relative inline-flex items-center rounded-l-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20"></a><span aria-current="page" class="relative z-10 inline-flex items-center border bg-white border-gray-300 text-gray-500 px-4 py-2 text-sm font-medium focus:z-20"></span><a href="#" class="jobs-table-page-nav-btn relative inline-flex items-center rounded-r-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20"></a><span class="relative inline-flex items-center border-gray-300 bg-white ml-4 px-2 py-2 text-sm font-medium text-gray-500">Go to page</span><input type="text" class="relative inline-flex items-center rounded-md w-12 border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500"><a href="#" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20">Go</a><span class="relative inline-flex items-center border-gray-300 bg-white ml-4 px-2 py-2 text-sm font-medium text-gray-500">Show</span><input type="text" class="relative inline-flex items-center rounded-md w-12 border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500"><a href="#" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20">jobs per page</a><a href="#" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20 ml-4"></a></nav></div></div>`);
+const _tmpl$$K = /*#__PURE__*/template(`<div class="flex bg-white pb-2 mt-2"><div class=flex><nav class="isolate inline-flex rounded-md shadow-sm ml-8"aria-label=Pagination><a href=# class="jobs-table-page-nav-btn relative inline-flex items-center rounded-l-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20"></a><span aria-current=page class="relative z-10 inline-flex items-center border bg-white border-gray-300 text-gray-500 px-4 py-2 text-sm font-medium focus:z-20"></span><a href=# class="jobs-table-page-nav-btn relative inline-flex items-center rounded-r-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20"></a><span class="relative inline-flex items-center border-gray-300 bg-white ml-4 px-2 py-2 text-sm font-medium text-gray-500">Go to page</span><input type=text class="relative inline-flex items-center rounded-md w-12 border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500"><a href=# class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20">Go</a><span class="relative inline-flex items-center border-gray-300 bg-white ml-4 px-2 py-2 text-sm font-medium text-gray-500">Show</span><input type=text class="relative inline-flex items-center rounded-md w-12 border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500"><a href=# class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20">jobs per page</a><a href=# class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20 ml-4">`);
 function PageNavigation(props) {
   function decreasePageno() {
     let pageno = props.pageno;
@@ -17022,7 +17957,7 @@ function PageNavigation(props) {
     props.setJobsTrigger(!props.jobsTrigger);
   }
   return (() => {
-    const _el$ = _tmpl$$K.cloneNode(true),
+    const _el$ = _tmpl$$K(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.firstChild,
@@ -17052,7 +17987,7 @@ function PageNavigation(props) {
     _el$8.addEventListener("change", changePageno);
     _el$11.addEventListener("change", changePagesize);
     _el$13.$$click = reload;
-    insert(_el$13, createComponent(HiOutlineRefresh, {
+    insert(_el$13, createComponent(HiOutlineArrowPath, {
       "class": "w-5 h-5"
     }));
     createRenderEffect(() => _el$8.value = props.pageno);
@@ -17062,10 +17997,10 @@ function PageNavigation(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$J = /*#__PURE__*/template(`<a></a>`);
+const _tmpl$$J = /*#__PURE__*/template(`<a>`);
 function Button(props) {
   return (() => {
-    const _el$ = _tmpl$$J.cloneNode(true);
+    const _el$ = _tmpl$$J();
     addEventListener(_el$, "click", props.clickFn, true);
     insert(_el$, () => props.children);
     createRenderEffect(_p$ => {
@@ -17086,12 +18021,12 @@ function Button(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$I = /*#__PURE__*/template(`<div></div>`),
-  _tmpl$2$a = /*#__PURE__*/template(`<span class="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800"></span>`),
-  _tmpl$3$5 = /*#__PURE__*/template(`<span class="inline-flex rounded-full bg-amber-100 px-2 text-xs font-semibold leading-5 text-amber-800"></span>`),
-  _tmpl$4$4 = /*#__PURE__*/template(`<span class="inline-flex rounded-full bg-red-100 px-2 text-xs font-semibold leading-5 text-red-800"></span>`),
-  _tmpl$5$2 = /*#__PURE__*/template(`<span class="inline-flex text-xs"></span>`),
-  _tmpl$6$2 = /*#__PURE__*/template(`<tr class="text-sm h-16"><td scope="col" class="relative w-12 px-6 sm:w-16 sm:px-8 bg-gray-50"><input type="checkbox" class="absolute left-4 top-1/2 -mt-2 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 sm:left-6"></td><td class="jobs-table-td"></td><td class="jobs-table-td bg-gray-50"></td><td class="jobs-table-td"></td><td class="jobs-table-td bg-gray-50"></td><td class="jobs-table-td"></td><td class="jobs-table-td bg-gray-50 text-xs"></td><td class="jobs-table-td"></td><td class="jobs-table-td bg-gray-50"></td><td class="jobs-table-td"></td></tr>`);
+const _tmpl$$I = /*#__PURE__*/template(`<div>`),
+  _tmpl$2$a = /*#__PURE__*/template(`<span class="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800">`),
+  _tmpl$3$5 = /*#__PURE__*/template(`<span class="inline-flex rounded-full bg-amber-100 px-2 text-xs font-semibold leading-5 text-amber-800">`),
+  _tmpl$4$4 = /*#__PURE__*/template(`<span class="inline-flex rounded-full bg-red-100 px-2 text-xs font-semibold leading-5 text-red-800">`),
+  _tmpl$5$2 = /*#__PURE__*/template(`<span class="inline-flex text-xs">`),
+  _tmpl$6$2 = /*#__PURE__*/template(`<tr class="text-sm h-16"><td scope=col class="relative w-12 px-6 sm:w-16 sm:px-8 bg-gray-50"><input type=checkbox class="absolute left-4 top-1/2 -mt-2 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 sm:left-6"></td><td class=jobs-table-td></td><td class="jobs-table-td bg-gray-50"></td><td class=jobs-table-td></td><td class="jobs-table-td bg-gray-50"></td><td class=jobs-table-td></td><td class="jobs-table-td bg-gray-50 text-xs"></td><td class=jobs-table-td></td><td class="jobs-table-td bg-gray-50"></td><td class=jobs-table-td>`);
 function noStatusFetchNeeded(status) {
   return status == "Finished" || status == "Error" || status == "Aborted";
 }
@@ -17108,7 +18043,7 @@ function JobRow(props) {
     props.setAllMarksOn(null);
   }
   function fetchStatus() {
-    axios.get(serverUrl + "/submit/jobstatus", {
+    axios$1.get(serverUrl + "/submit/jobstatus", {
       params: {
         uid: props.job.uid
       },
@@ -17147,7 +18082,7 @@ function JobRow(props) {
         bgHoverColor: "hover:bg-sky-200"
       });
     } else {
-      return _tmpl$$I.cloneNode(true);
+      return _tmpl$$I();
     }
   }
   function logComponent() {
@@ -17173,32 +18108,32 @@ function JobRow(props) {
         bgHoverColor: "hover:bg-gray-200"
       });
     } else {
-      return _tmpl$$I.cloneNode(true);
+      return _tmpl$$I();
     }
   }
   function statusComponent() {
     const status = props.job.status;
     if (status == "Finished") {
       return (() => {
-        const _el$3 = _tmpl$2$a.cloneNode(true);
+        const _el$3 = _tmpl$2$a();
         insert(_el$3, () => props.job.status);
         return _el$3;
       })();
     } else if (status == "Aborted") {
       return (() => {
-        const _el$4 = _tmpl$3$5.cloneNode(true);
+        const _el$4 = _tmpl$3$5();
         insert(_el$4, () => props.job.status);
         return _el$4;
       })();
     } else if (status == "Error") {
       return (() => {
-        const _el$5 = _tmpl$4$4.cloneNode(true);
+        const _el$5 = _tmpl$4$4();
         insert(_el$5, () => props.job.status);
         return _el$5;
       })();
     } else {
       return (() => {
-        const _el$6 = _tmpl$5$2.cloneNode(true);
+        const _el$6 = _tmpl$5$2();
         insert(_el$6, () => props.job.status);
         return _el$6;
       })();
@@ -17239,7 +18174,7 @@ function JobRow(props) {
   }
   checkNeedToFetchStatus();
   return (() => {
-    const _el$7 = _tmpl$6$2.cloneNode(true),
+    const _el$7 = _tmpl$6$2(),
       _el$8 = _el$7.firstChild,
       _el$9 = _el$8.firstChild,
       _el$10 = _el$8.nextSibling,
@@ -17267,7 +18202,7 @@ function JobRow(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$H = /*#__PURE__*/template(`<div class="flex flex-col"><div class="relative shadow ring-1 ring-black ring-opacity-5 md:rounded-lg overflow-auto"><table class="table-fixed divide-y divide-gray-300"><thead class="table-header-group bg-gray-50 block"><tr><th scope="col" class="relative w-12 px-6 sm:w-16 sm:px-8"><input type="checkbox" class="absolute left-4 top-1/2 -mt-2 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 sm:left-6"></th><th scope="col" class="jobs-table-th min-w-[10rem]">Name</th><th scope="col" class="jobs-table-th min-w-[5rem]">State</th><th scope="col" class="jobs-table-th min-w-[5rem]">View</th><th scope="col" class="jobs-table-th min-w-[20rem]">Input</th><th scope="col" class="jobs-table-th min-w-[10rem]">Modules</th><th scope="col" class="jobs-table-th min-w-[8rem]">Submitted</th><th scope="col" class="jobs-table-th min-w-[5rem]">Log</th><th scope="col" class="jobs-table-th min-w-[5rem]">DB</th><th scope="col" class="jobs-table-th w-full">Note</th></tr></thead><tbody class="table-row-group divide-y divide-gray-200 bg-white block overflow-auto h-[36rem]"></tbody></table></div></div>`);
+const _tmpl$$H = /*#__PURE__*/template(`<div class="flex flex-col"><div class="relative shadow ring-1 ring-black ring-opacity-5 md:rounded-lg overflow-auto"><table class="table-fixed divide-y divide-gray-300"><thead class="table-header-group bg-gray-50 block"><tr><th scope=col class="relative w-12 px-6 sm:w-16 sm:px-8"><input type=checkbox class="absolute left-4 top-1/2 -mt-2 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 sm:left-6"></th><th scope=col class="jobs-table-th min-w-[10rem]">Name</th><th scope=col class="jobs-table-th min-w-[5rem]">State</th><th scope=col class="jobs-table-th min-w-[5rem]">View</th><th scope=col class="jobs-table-th min-w-[20rem]">Input</th><th scope=col class="jobs-table-th min-w-[10rem]">Modules</th><th scope=col class="jobs-table-th min-w-[8rem]">Submitted</th><th scope=col class="jobs-table-th min-w-[5rem]">Log</th><th scope=col class="jobs-table-th min-w-[5rem]">DB</th><th scope=col class="jobs-table-th w-full">Note</th></tr></thead><tbody class="table-row-group divide-y divide-gray-200 bg-white block overflow-auto h-[36rem]">`);
 function JobTable(props) {
   const [allMarksOn, setAllMarksOn] = createSignal(null);
   function toggleAllMarks() {
@@ -17289,7 +18224,7 @@ function JobTable(props) {
     }
   }
   return (() => {
-    const _el$ = _tmpl$$H.cloneNode(true),
+    const _el$ = _tmpl$$H(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.firstChild,
@@ -17321,10 +18256,10 @@ function JobTable(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$G = /*#__PURE__*/template(`<div class="relative z-10" aria-labelledby="modal-title" role="dialog" aria-modal="true"><div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div><div class="fixed inset-0 z-10 overflow-y-auto"><div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0"><div class="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6"><div><div class="text-center"><p class="text-sm text-gray-500"></p></div></div></div></div></div></div>`);
+const _tmpl$$G = /*#__PURE__*/template(`<div class="relative z-10"aria-labelledby=modal-title role=dialog aria-modal=true><div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div><div class="fixed inset-0 z-10 overflow-y-auto"><div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0"><div class="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6"><div><div class=text-center><p class="text-sm text-gray-500">`);
 function MsgDialog(props) {
   return (() => {
-    const _el$ = _tmpl$$G.cloneNode(true),
+    const _el$ = _tmpl$$G(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling,
       _el$4 = _el$3.firstChild,
@@ -17338,7 +18273,7 @@ function MsgDialog(props) {
   })();
 }
 
-const _tmpl$$F = /*#__PURE__*/template(`<div id="tab_jobs" class="tabcontent px-6 mb-4"><div></div></div>`);
+const _tmpl$$F = /*#__PURE__*/template(`<div id=tab_jobs class="tabcontent px-6 mb-4"><div>`);
 const {
   serverUrl: serverUrl$1,
   withCredentials
@@ -17377,7 +18312,7 @@ function TabJobs(props) {
     }
   }
   function getJobs() {
-    axios.post(serverUrl$1 + "/submit/jobs", {
+    axios$1.post(serverUrl$1 + "/submit/jobs", {
       pageno: pageno(),
       pagesize: pagesize()
     }, {
@@ -17398,7 +18333,7 @@ function TabJobs(props) {
   }
   function deleteJobs(checkedJobs, abortOnly) {
     const uids = checkedJobs.map(v => v.uid);
-    axios.post(serverUrl$1 + "/submit/delete_jobs", {
+    axios$1.post(serverUrl$1 + "/submit/delete_jobs", {
       uids: uids,
       abort_only: abortOnly
     }, {
@@ -17422,7 +18357,7 @@ function TabJobs(props) {
     }
   }
   return (() => {
-    const _el$ = _tmpl$$F.cloneNode(true),
+    const _el$ = _tmpl$$F(),
       _el$2 = _el$.firstChild;
     insert(_el$2, createComponent(PageNavigation, {
       get pageno() {
@@ -17678,13 +18613,13 @@ function createGlobalStates$1() {
 const gvDetailCardState = createRoot(createGlobalStates$1);
 
 const _tmpl$$E = /*#__PURE__*/template(`<img class="w-20 rounded-lg">`),
-  _tmpl$2$9 = /*#__PURE__*/template(`<p class="text-sm text-gray-500"></p>`),
-  _tmpl$3$4 = /*#__PURE__*/template(`<span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Installed</span>`),
-  _tmpl$4$3 = /*#__PURE__*/template(`<span class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">New</span>`),
-  _tmpl$5$1 = /*#__PURE__*/template(`<span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">Installed </span>`),
-  _tmpl$6$1 = /*#__PURE__*/template(`<div class="absolute top-1 right-1"></div>`),
-  _tmpl$7 = /*#__PURE__*/template(`<div class="group relative modulecard relative items-center space-x-3 rounded-lg border border-gray-300 bg-white px-6 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:border-gray-400 p-2 z-0 mb-2"><div class="absolute left-0 bottom-0 w-full p-2 cursor-default" style="background-color: rgba(68, 64, 60, 0.3);"><a class="relative remove-button text-sm h-8 inline-flex items-center rounded-md border border-gray-300 px-2 py-2 text-sm font-medium text-gray-500 cursor-pointer focus:z-20 bg-white hover:bg-gray-100">Remove</a></div><div class="flex"><div class="w-24 h-24 mr-2 flex justify-center items-center cursor-help"></div><div class="min-w-0 flex-1" style="min-height: 6rem;"><p><span class="text-md font-semibold text-gray-700"></span><span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800"></span></p><p><span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800"></span><span class="ml-2 inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800"></span></p><p></p></div></div></div>`),
-  _tmpl$8 = /*#__PURE__*/template(`<span class="break-all"></span>`);
+  _tmpl$2$9 = /*#__PURE__*/template(`<p class="text-sm text-gray-500">`),
+  _tmpl$3$4 = /*#__PURE__*/template(`<span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Installed`),
+  _tmpl$4$3 = /*#__PURE__*/template(`<span class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">New`),
+  _tmpl$5$1 = /*#__PURE__*/template(`<span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">Installed `),
+  _tmpl$6$1 = /*#__PURE__*/template(`<div class="absolute top-1 right-1">`),
+  _tmpl$7 = /*#__PURE__*/template(`<div class="group relative modulecard relative items-center space-x-3 rounded-lg border border-gray-300 bg-white px-6 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:border-gray-400 p-2 z-0 mb-2"><div class="absolute left-0 bottom-0 w-full p-2 cursor-default"style="background-color:rgba(68, 64, 60, 0.3);"><a class="relative remove-button text-sm h-8 inline-flex items-center rounded-md border border-gray-300 px-2 py-2 text-sm font-medium text-gray-500 cursor-pointer focus:z-20 bg-white hover:bg-gray-100">Remove</a></div><div class=flex><div class="w-24 h-24 mr-2 flex justify-center items-center cursor-help"></div><div class="min-w-0 flex-1"style=min-height:6rem;><p><span class="text-md font-semibold text-gray-700"></span><span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800"></span></p><p><span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800"></span><span class="ml-2 inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800"></span></p><p>`),
+  _tmpl$8 = /*#__PURE__*/template(`<span class=break-all>`);
 function ModuleCard(props) {
   const [showX, setShowX] = createSignal(false);
   const {
@@ -17735,7 +18670,7 @@ function ModuleCard(props) {
   return createComponent(Show, {
     when: moduleInfo != undefined,
     get children() {
-      const _el$ = _tmpl$7.cloneNode(true),
+      const _el$ = _tmpl$7(),
         _el$2 = _el$.firstChild,
         _el$3 = _el$2.firstChild,
         _el$4 = _el$2.nextSibling,
@@ -17768,13 +18703,13 @@ function ModuleCard(props) {
         },
         get fallback() {
           return (() => {
-            const _el$21 = _tmpl$8.cloneNode(true);
+            const _el$21 = _tmpl$8();
             insert(_el$21, () => moduleInfo.title);
             return _el$21;
           })();
         },
         get children() {
-          const _el$6 = _tmpl$$E.cloneNode(true);
+          const _el$6 = _tmpl$$E();
           createRenderEffect(() => setAttribute(_el$6, "src", `${serverUrl}/store/remotelogo?module=${props.moduleName}&store=${moduleInfo.store}`));
           return _el$6;
         }
@@ -17786,7 +18721,7 @@ function ModuleCard(props) {
           return moduleInfo.conf;
         },
         get children() {
-          const _el$11 = _tmpl$2$9.cloneNode(true);
+          const _el$11 = _tmpl$2$9();
           insert(_el$11, () => moduleInfo.conf.description);
           return _el$11;
         }
@@ -17798,7 +18733,7 @@ function ModuleCard(props) {
           return moduleInstalled();
         },
         get children() {
-          return _tmpl$3$4.cloneNode(true);
+          return _tmpl$3$4();
         }
       }), null);
       insert(_el$15, createComponent(Show, {
@@ -17806,8 +18741,8 @@ function ModuleCard(props) {
           return updateAvailableForModule(props.moduleName);
         },
         get children() {
-          return [_tmpl$4$3.cloneNode(true), (() => {
-            const _el$18 = _tmpl$5$1.cloneNode(true);
+          return [_tmpl$4$3(), (() => {
+            const _el$18 = _tmpl$5$1();
               _el$18.firstChild;
             insert(_el$18, () => localModule.version, null);
             return _el$18;
@@ -17819,7 +18754,7 @@ function ModuleCard(props) {
           return multiuser() == false || admin() == true;
         },
         get children() {
-          const _el$20 = _tmpl$6$1.cloneNode(true);
+          const _el$20 = _tmpl$6$1();
           insert(_el$20, createComponent(Show, {
             get when() {
               return createMemo(() => !!(!moduleInstalled() || updateAvailableForModule(props.moduleName)))() && !inQueue(props.moduleName);
@@ -17873,7 +18808,7 @@ function ModuleCard(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$D = /*#__PURE__*/template(`<div class="remote-module-filter-panel w-full mt-4 overflow-auto"><div class="store-filtered-modules"><h1 class="text-4xl font-extrabold dark:text-white">Welcome to Module Store!</h1><p class="mb-6 text-lg font-normal text-gray-500 lg:text-xl dark:text-gray-400">Ultimate store of genomic variant analysis modules</p><div class="mt-4 text-base pr-4"><p><span class="font-bold">All</span> tab lists all available modules. In <span class="font-bold">Tags</span> tab, modules can be searched by the tags provided by the developers of modules. To quickly see all the modules already installed in the system, click <span class="font-bold">Installed</span> tab. When an updated version of any of installed modules is available, <span class="font-bold">Updates available</span> tab will appear.</p><p class="mt-2">To install a module, hover on the module card and click <span class="font-bold">Install</span>. Module installation is queued at the bottom. If you cancel the installation of a module, click the module card in the queue area.</p><p class="mt-2">Below are some of popular modules for you to get started!</p><p class="my-2">For cancer research:</p><p class="mt-4 mb-2">For clinical implications of variants:</p><p class="mt-4 mb-2">For allele frequencies in different populations:</p><p class="mt-4 mb-2">For actionable gene-drug associations:</p><p class="mt-4 mb-2">For the prediction of varinat effect:</p></div><p class="mt-2">Look around and happy annotating!</p></div></div>`);
+const _tmpl$$D = /*#__PURE__*/template(`<div class="remote-module-filter-panel w-full mt-4 overflow-auto"><div class=store-filtered-modules><h1 class="text-4xl font-extrabold dark:text-white">Welcome to Module Store!</h1><p class="mb-6 text-lg font-normal text-gray-500 lg:text-xl dark:text-gray-400">Ultimate store of genomic variant analysis modules</p><div class="mt-4 text-base pr-4"><p><span class=font-bold>All</span> tab lists all available modules. In <span class=font-bold>Tags</span> tab, modules can be searched by the tags provided by the developers of modules. To quickly see all the modules already installed in the system, click <span class=font-bold>Installed</span> tab. When an updated version of any of installed modules is available, <span class=font-bold>Updates available</span> tab will appear.</p><p class=mt-2>To install a module, hover on the module card and click <span class=font-bold>Install</span>. Module installation is queued at the bottom. If you cancel the installation of a module, click the module card in the queue area.</p><p class=mt-2>Below are some of popular modules for you to get started!</p><p class=my-2>For cancer research:</p><p class="mt-4 mb-2">For clinical implications of variants:</p><p class="mt-4 mb-2">For allele frequencies in different populations:</p><p class="mt-4 mb-2">For actionable gene-drug associations:</p><p class="mt-4 mb-2">For the prediction of varinat effect:</p></div><p class=mt-2>Look around and happy annotating!`);
 function ModuleFilterPanelHome(props) {
   const {
     installQueue
@@ -17886,7 +18821,7 @@ function ModuleFilterPanelHome(props) {
     }
   }
   return (() => {
-    const _el$ = _tmpl$$D.cloneNode(true),
+    const _el$ = _tmpl$$D(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.nextSibling,
@@ -17987,7 +18922,7 @@ function ModuleFilterPanelHome(props) {
       const _v$ = !!(props.filterCategory != "home"),
         _v$2 = getHeight();
       _v$ !== _p$._v$ && _el$.classList.toggle("hidden", _p$._v$ = _v$);
-      _v$2 !== _p$._v$2 && _el$.style.setProperty("height", _p$._v$2 = _v$2);
+      _v$2 !== _p$._v$2 && ((_p$._v$2 = _v$2) != null ? _el$.style.setProperty("height", _v$2) : _el$.style.removeProperty("height"));
       return _p$;
     }, {
       _v$: undefined,
@@ -17997,14 +18932,14 @@ function ModuleFilterPanelHome(props) {
   })();
 }
 
-const _tmpl$$C = /*#__PURE__*/template(`<a href="#" class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1" value=""></a>`);
+const _tmpl$$C = /*#__PURE__*/template(`<a href=# class="text-gray-600 block px-4 py-2 text-sm text-right hover:bg-gray-100 hover:text-gray-900"role=menuitem tabindex=-1 value="">`);
 function SortOption(props) {
   function changeSort() {
     props.setSort(props.value);
     props.setShow(false);
   }
   return (() => {
-    const _el$ = _tmpl$$C.cloneNode(true);
+    const _el$ = _tmpl$$C();
     _el$.$$click = changeSort;
     insert(_el$, () => props.title);
     return _el$;
@@ -18012,10 +18947,10 @@ function SortOption(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$B = /*#__PURE__*/template(`<div class="option-list ease-in absolute right-0 z-10 mt-2 w-24 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="menu-button" tabindex="-1"><div class="py-1" role="none"></div></div>`);
+const _tmpl$$B = /*#__PURE__*/template(`<div class="option-list ease-in absolute right-0 z-10 mt-2 w-24 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"role=menu aria-orientation=vertical aria-labelledby=menu-button tabindex=-1><div class=py-1 role=none>`);
 function SortSelect(props) {
   return (() => {
-    const _el$ = _tmpl$$B.cloneNode(true),
+    const _el$ = _tmpl$$B(),
       _el$2 = _el$.firstChild;
     insert(_el$2, createComponent(SortOption, {
       value: "Name",
@@ -18042,14 +18977,14 @@ function SortSelect(props) {
   })();
 }
 
-const _tmpl$$A = /*#__PURE__*/template(`<div class="select-div relative inline-block text-left" value=""><div class="flex justify-center"><button name="sort" type="button" class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-1 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100"><span class="ml-2">Sort by </span></button></div></div>`);
+const _tmpl$$A = /*#__PURE__*/template(`<div class="select-div relative inline-block text-left"value=""><div class="flex justify-center"><button name=sort type=button class="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-1 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100"><span class=ml-2>Sort by `);
 function SortPanel(props) {
   const [show, setShow] = createSignal(false);
   function toggleShowSelect(_) {
     setShow(!show());
   }
   return (() => {
-    const _el$ = _tmpl$$A.cloneNode(true),
+    const _el$ = _tmpl$$A(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.firstChild;
@@ -18073,8 +19008,8 @@ function SortPanel(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$z = /*#__PURE__*/template(`<button type="button" class="graybutton inline-flex items-center rounded border border-transparent bg-gray-50 px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-300 focus:outline-none drop-shadow-lg"></button>`),
-  _tmpl$2$8 = /*#__PURE__*/template(`<div class="flex mb-2"><label for="search" class="sr-only">Search</label><input type="text" name="search" class="block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mr-2" placeholder="Search"><div class="relative flex text-xs font-medium text-gray-700 shadow-sm items-center"><div class="flex items-center mr-4"></div></div></div>`);
+const _tmpl$$z = /*#__PURE__*/template(`<button type=button class="graybutton inline-flex items-center rounded border border-transparent bg-gray-50 px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-300 focus:outline-none drop-shadow-lg">`),
+  _tmpl$2$8 = /*#__PURE__*/template(`<div class="flex mb-2"><label for=search class=sr-only>Search</label><input type=text name=search class="block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mr-2"placeholder=Search><div class="relative flex text-xs font-medium text-gray-700 shadow-sm items-center"><div class="flex items-center mr-4">`);
 function ModuleSearchPanel(props) {
   function updateSearchText(evt) {
     props.setSearchText(evt.target.value);
@@ -18090,7 +19025,7 @@ function ModuleSearchPanel(props) {
     }
   }
   return (() => {
-    const _el$ = _tmpl$2$8.cloneNode(true),
+    const _el$ = _tmpl$2$8(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling,
       _el$4 = _el$3.nextSibling,
@@ -18101,7 +19036,7 @@ function ModuleSearchPanel(props) {
         return props.showUninstalledOnly;
       },
       get children() {
-        const _el$6 = _tmpl$$z.cloneNode(true);
+        const _el$6 = _tmpl$$z();
         _el$6.$$click = onChangeUninstalledOnly;
         insert(_el$6, createComponent(Show, {
           get when() {
@@ -18145,8 +19080,8 @@ function ModuleSearchPanel(props) {
 }
 delegateEvents(["keyup", "click"]);
 
-const _tmpl$$y = /*#__PURE__*/template(`<div class="flex items-center justify-center"><p class="text-lg text-gray-700">No module met the criteria.</p></div>`),
-  _tmpl$2$7 = /*#__PURE__*/template(`<div></div>`);
+const _tmpl$$y = /*#__PURE__*/template(`<div class="flex items-center justify-center"><p class="text-lg text-gray-700">No module met the criteria.`),
+  _tmpl$2$7 = /*#__PURE__*/template(`<div>`);
 function ModuleDisplayPanel(props) {
   const {
     installQueue
@@ -18159,10 +19094,10 @@ function ModuleDisplayPanel(props) {
     }
   }
   function noModuleSection() {
-    return _tmpl$$y.cloneNode(true);
+    return _tmpl$$y();
   }
   return (() => {
-    const _el$2 = _tmpl$2$7.cloneNode(true);
+    const _el$2 = _tmpl$2$7();
     insert(_el$2, createComponent(Show, {
       get when() {
         return props.moduleNames && props.moduleNames.length > 0;
@@ -18217,7 +19152,7 @@ function ModuleDisplayPanel(props) {
       const _v$ = `store-filtered-modules pr-4 overflow-auto grid grid-cols-${props.noCols}`,
         _v$2 = getHeight();
       _v$ !== _p$._v$ && className(_el$2, _p$._v$ = _v$);
-      _v$2 !== _p$._v$2 && _el$2.style.setProperty("height", _p$._v$2 = _v$2);
+      _v$2 !== _p$._v$2 && ((_p$._v$2 = _v$2) != null ? _el$2.style.setProperty("height", _v$2) : _el$2.style.removeProperty("height"));
       return _p$;
     }, {
       _v$: undefined,
@@ -18227,7 +19162,7 @@ function ModuleDisplayPanel(props) {
   })();
 }
 
-const _tmpl$$x = /*#__PURE__*/template(`<div class="remote-module-filter-panel w-full mt-4 overflow-auto"></div>`);
+const _tmpl$$x = /*#__PURE__*/template(`<div class="remote-module-filter-panel w-full mt-4 overflow-auto">`);
 const {
   getFilteredRemoteModules: getFilteredRemoteModules$1
 } = gvRemoteModules;
@@ -18248,7 +19183,7 @@ function ModuleFilterPanelAll(props) {
     }
   });
   return (() => {
-    const _el$ = _tmpl$$x.cloneNode(true);
+    const _el$ = _tmpl$$x();
     insert(_el$, createComponent(ModuleSearchPanel, {
       kind: "all",
       side: "remote",
@@ -18279,7 +19214,7 @@ function ModuleFilterPanelAll(props) {
   })();
 }
 
-const _tmpl$$w = /*#__PURE__*/template(`<div class="remote-module-filter-panel w-full mt-4 overflow-auto flex"><div class="store-filtered-modules col-span-1 flex flex-col justify-leading pl-1 overflow-y-auto w-[20rem]"></div><div class="ml-8 w-full"></div></div>`);
+const _tmpl$$w = /*#__PURE__*/template(`<div class="remote-module-filter-panel w-full mt-4 overflow-auto flex"><div class="store-filtered-modules col-span-1 flex flex-col justify-leading pl-1 overflow-y-auto w-[20rem]"></div><div class="ml-8 w-full">`);
 const {
   getFilteredRemoteModules,
   remoteTags
@@ -18302,7 +19237,7 @@ function ModuleFilterPanelTags(props) {
     }
   });
   return (() => {
-    const _el$ = _tmpl$$w.cloneNode(true),
+    const _el$ = _tmpl$$w(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling;
     insert(_el$2, createComponent(For, {
@@ -18350,7 +19285,7 @@ function ModuleFilterPanelTags(props) {
   })();
 }
 
-const _tmpl$$v = /*#__PURE__*/template(`<div class="remote-module-filter-panel w-full mt-4 overflow-auto"></div>`);
+const _tmpl$$v = /*#__PURE__*/template(`<div class="remote-module-filter-panel w-full mt-4 overflow-auto">`);
 const {
   getInstalledModules: getInstalledModules$1
 } = gvModuleInstallStates;
@@ -18363,7 +19298,7 @@ function ModuleFilterPanelInstalled(props) {
     setModuleNames(getInstalledModules$1(searchText(), selectedTypes(), null, null, sort()));
   });
   return (() => {
-    const _el$ = _tmpl$$v.cloneNode(true);
+    const _el$ = _tmpl$$v();
     insert(_el$, createComponent(ModuleSearchPanel, {
       kind: "install",
       side: "remote",
@@ -18389,7 +19324,7 @@ function ModuleFilterPanelInstalled(props) {
   })();
 }
 
-const _tmpl$$u = /*#__PURE__*/template(`<div class="remote-module-filter-panel w-full mt-4 overflow-auto"></div>`);
+const _tmpl$$u = /*#__PURE__*/template(`<div class="remote-module-filter-panel w-full mt-4 overflow-auto">`);
 const {
   getInstalledModules
 } = gvModuleInstallStates;
@@ -18402,7 +19337,7 @@ function ModuleFilterPanelUpdate(props) {
     setModuleNames(getInstalledModules(searchText(), selectedTypes(), null, true, sort()));
   });
   return (() => {
-    const _el$ = _tmpl$$u.cloneNode(true);
+    const _el$ = _tmpl$$u();
     insert(_el$, createComponent(ModuleSearchPanel, {
       kind: "update",
       side: "remote",
@@ -18428,8 +19363,8 @@ function ModuleFilterPanelUpdate(props) {
   })();
 }
 
-const _tmpl$$t = /*#__PURE__*/template(`<button type="button" class="ml-4 inline-flex items-center px-5 py-2.5 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Updates available<span class="inline-flex justify-center items-center ml-2 w-4 h-4 text-xs font-semibold text-blue-800 bg-blue-200 rounded-full"></span></button>`),
-  _tmpl$2$6 = /*#__PURE__*/template(`<div class="analysis-module-filter-wrapper col-span-7 grow"><div class="w-full"><div class="inline-flex rounded-md shadow-sm" role="group"></div></div></div>`);
+const _tmpl$$t = /*#__PURE__*/template(`<button type=button class="ml-4 inline-flex items-center px-5 py-2.5 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Updates available<span class="inline-flex justify-center items-center ml-2 w-4 h-4 text-xs font-semibold text-blue-800 bg-blue-200 rounded-full">`),
+  _tmpl$2$6 = /*#__PURE__*/template(`<div class="analysis-module-filter-wrapper col-span-7 grow"><div class=w-full><div class="inline-flex rounded-md shadow-sm"role=group>`);
 const {
   updateAvailable,
   numUpdateAvailable
@@ -18437,7 +19372,7 @@ const {
 function RemoteModuleFilterWrapper(props) {
   const [filterCategory, setFilterCategory] = createSignal("home");
   return (() => {
-    const _el$ = _tmpl$2$6.cloneNode(true),
+    const _el$ = _tmpl$2$6(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild;
     insert(_el$3, createComponent(ModuleFilterCategoryButton, {
@@ -18481,7 +19416,7 @@ function RemoteModuleFilterWrapper(props) {
         return updateAvailable() == true;
       },
       get children() {
-        const _el$4 = _tmpl$$t.cloneNode(true),
+        const _el$4 = _tmpl$$t(),
           _el$5 = _el$4.firstChild,
           _el$6 = _el$5.nextSibling;
         _el$4.$$click = setFilterCategory;
@@ -18536,9 +19471,9 @@ function RemoteModuleFilterWrapper(props) {
 delegateEvents(["click"]);
 
 const _tmpl$$s = /*#__PURE__*/template(`<img class="w-24 rounded-lg">`),
-  _tmpl$2$5 = /*#__PURE__*/template(`<div class="group-hover:block absolute z-10 w-[6.5rem] h-[6.5rem]"><div class="install_pie absolute top-[1.25rem] left-[1.25rem]"></div></div>`),
-  _tmpl$3$3 = /*#__PURE__*/template(`<div class="relative modulecard items-center rounded-lg border border-gray-300 bg-white shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:border-gray-400 flex items-center group h-[6.5rem] w-[6.5rem] shrink-0"><div class="flex justify-center items-center h-full w-full"></div><div class="group-hover:block hidden bg-gray-900/60 absolute z-20 w-full h-full"></div></div>`),
-  _tmpl$4$2 = /*#__PURE__*/template(`<span class="break-all"></span>`);
+  _tmpl$2$5 = /*#__PURE__*/template(`<div class="group-hover:block absolute z-10 w-[6.5rem] h-[6.5rem]"><div class="install_pie absolute top-[1.25rem] left-[1.25rem]">`),
+  _tmpl$3$3 = /*#__PURE__*/template(`<div class="relative modulecard items-center rounded-lg border border-gray-300 bg-white shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:border-gray-400 flex items-center group h-[6.5rem] w-[6.5rem] shrink-0"><div class="flex justify-center items-center h-full w-full"></div><div class="group-hover:block hidden bg-gray-900/60 absolute z-20 w-full h-full">`),
+  _tmpl$4$2 = /*#__PURE__*/template(`<span class=break-all>`);
 const {
   serverUrl
 } = gvServer;
@@ -18570,7 +19505,7 @@ function InstallQueueModuleCard(props) {
     props.setTooltipShow(false);
   }
   return (() => {
-    const _el$ = _tmpl$3$3.cloneNode(true),
+    const _el$ = _tmpl$3$3(),
       _el$2 = _el$.firstChild,
       _el$4 = _el$2.nextSibling;
     insert(_el$2, createComponent(Show, {
@@ -18579,13 +19514,13 @@ function InstallQueueModuleCard(props) {
       },
       get fallback() {
         return (() => {
-          const _el$7 = _tmpl$4$2.cloneNode(true);
+          const _el$7 = _tmpl$4$2();
           insert(_el$7, () => moduleInfo.title);
           return _el$7;
         })();
       },
       get children() {
-        const _el$3 = _tmpl$$s.cloneNode(true);
+        const _el$3 = _tmpl$$s();
         createRenderEffect(() => setAttribute(_el$3, "src", `${serverUrl}/store/remotelogo?module=${props.moduleName}&store=${moduleInfo.store}`));
         return _el$3;
       }
@@ -18604,11 +19539,11 @@ function InstallQueueModuleCard(props) {
         return props.state && props.state.progress > 0;
       },
       get children() {
-        const _el$5 = _tmpl$2$5.cloneNode(true),
+        const _el$5 = _tmpl$2$5(),
           _el$6 = _el$5.firstChild;
         _el$6.style.setProperty("--b", "10px");
         _el$6.style.setProperty("--c", "rgb(3 105 161)");
-        createRenderEffect(() => _el$6.style.setProperty("--p", props.state.progress));
+        createRenderEffect(() => props.state.progress != null ? _el$6.style.setProperty("--p", props.state.progress) : _el$6.style.removeProperty("--p"));
         return _el$5;
       }
     }), null);
@@ -18626,7 +19561,7 @@ function InstallQueueModuleCard(props) {
   })();
 }
 
-const _tmpl$2$4 = /*#__PURE__*/template(`<div class="h-[8rem] px-2 flex items-center rounded-lg border border-gray-300 bg-white shadow-sm"><div class="flex overflow-auto w-full"></div></div>`);
+const _tmpl$2$4 = /*#__PURE__*/template(`<div class="h-[8rem] px-2 flex items-center rounded-lg border border-gray-300 bg-white shadow-sm"><div class="flex overflow-auto w-full">`);
 const {
   installQueue,
   installState
@@ -18637,7 +19572,7 @@ function InstallQueuePanel(props) {
       return installQueue.length > 0;
     },
     get children() {
-      const _el$2 = _tmpl$2$4.cloneNode(true),
+      const _el$2 = _tmpl$2$4(),
         _el$3 = _el$2.firstChild;
       insert(_el$3, createComponent(For, {
         each: installQueue,
@@ -18666,13 +19601,13 @@ function InstallQueuePanel(props) {
   });
 }
 
-const _tmpl$$r = /*#__PURE__*/template(`<div class="flex-inline mr-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>`);
+const _tmpl$$r = /*#__PURE__*/template(`<div class="flex-inline mr-2"><svg xmlns=http://www.w3.org/2000/svg fill=none viewBox="0 0 24 24"><circle class=opacity-25 cx=12 cy=12 r=10 stroke-width=4></circle><path class=opacity-75 fill=currentColor d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">`);
 function InlineSpinner(props) {
   let width = props.width || 5;
   let height = props.height || 5;
   let stroke = props.stroke || "currentColor";
   return (() => {
-    const _el$ = _tmpl$$r.cloneNode(true),
+    const _el$ = _tmpl$$r(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild;
     setAttribute(_el$2, "class", `hide animate-spin ml-1 h-${width} w-${height} text-white m-auto`);
@@ -18682,10 +19617,10 @@ function InlineSpinner(props) {
   })();
 }
 
-const _tmpl$$q = /*#__PURE__*/template(`<div class="h-64 w-64 m-auto flex"><div class="m-auto flex flex-col"><div class="mb-4">Loading store modules...</div><div class="m-auto"></div></div></div>`);
+const _tmpl$$q = /*#__PURE__*/template(`<div class="h-64 w-64 m-auto flex"><div class="m-auto flex flex-col"><div class=mb-4>Loading store modules...</div><div class=m-auto>`);
 function LoadingPanel() {
   return (() => {
-    const _el$ = _tmpl$$q.cloneNode(true),
+    const _el$ = _tmpl$$q(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.nextSibling;
@@ -18699,11 +19634,11 @@ function LoadingPanel() {
   })();
 }
 
-const _tmpl$$p = /*#__PURE__*/template(`<div role="tooltip" class="absolute inline-block z-10 p-4 text-sm font-medium text-gray-700 bg-gray-200 border border-gray-200 rounded-lg shadow-lg transition-opacity duration-300 tooltip dark:bg-gray-700 opacity-0 w-[24rem] break-word"><div class="tooltip-arrow" data-popper-arrow></div></div>`);
+const _tmpl$$p = /*#__PURE__*/template(`<div role=tooltip class="absolute inline-block z-10 p-4 text-sm font-medium text-gray-700 bg-gray-200 border border-gray-200 rounded-lg shadow-lg transition-opacity duration-300 tooltip dark:bg-gray-700 opacity-0 w-[24rem] break-word"><div class=tooltip-arrow data-popper-arrow>`);
 function Tooltip(props) {
   let tooltip;
   return (() => {
-    const _el$ = _tmpl$$p.cloneNode(true),
+    const _el$ = _tmpl$$p(),
       _el$2 = _el$.firstChild;
     const _ref$ = tooltip;
     typeof _ref$ === "function" ? use(_ref$, _el$) : tooltip = _el$;
@@ -18715,8 +19650,8 @@ function Tooltip(props) {
         _v$4 = props.tooltipLeft + "px";
       _v$ !== _p$._v$ && _el$.classList.toggle("opacity-100", _p$._v$ = _v$);
       _v$2 !== _p$._v$2 && _el$.classList.toggle("visible", _p$._v$2 = _v$2);
-      _v$3 !== _p$._v$3 && _el$.style.setProperty("top", _p$._v$3 = _v$3);
-      _v$4 !== _p$._v$4 && _el$.style.setProperty("left", _p$._v$4 = _v$4);
+      _v$3 !== _p$._v$3 && ((_p$._v$3 = _v$3) != null ? _el$.style.setProperty("top", _v$3) : _el$.style.removeProperty("top"));
+      _v$4 !== _p$._v$4 && ((_p$._v$4 = _v$4) != null ? _el$.style.setProperty("left", _v$4) : _el$.style.removeProperty("left"));
       return _p$;
     }, {
       _v$: undefined,
@@ -18728,7 +19663,7 @@ function Tooltip(props) {
   })();
 }
 
-const _tmpl$$o = /*#__PURE__*/template(`<div id="tab-store" class="tabcontent p-4 snap-y snap-mandatory h-screen overflow-y-auto flex flex-col"></div>`);
+const _tmpl$$o = /*#__PURE__*/template(`<div id=tab-store class="tabcontent p-4 snap-y snap-mandatory h-screen overflow-y-auto flex flex-col">`);
 function TabStore() {
   const {
     remoteModules
@@ -18747,7 +19682,7 @@ function TabStore() {
   const [tooltipTop, setTooltipTop] = createSignal(0);
   const [tooltipLeft, setTooltipLeft] = createSignal(null);
   return (() => {
-    const _el$ = _tmpl$$o.cloneNode(true);
+    const _el$ = _tmpl$$o();
     insert(_el$, createComponent(Show, {
       get when() {
         return !objectIsEmpty(moduleInstallStates);
@@ -18800,7 +19735,7 @@ function createGlobalStates() {
     }
   });
   function loadAllUsers() {
-    axios.get(serverUrl + "/server/users", {
+    axios$1.get(serverUrl + "/server/users", {
       withCredentials: withCredentials
     }).then(function (res) {
       const l = [];
@@ -18816,7 +19751,7 @@ function createGlobalStates() {
     });
   }
   function makeAdmin(email) {
-    axios.get(serverUrl + "/server/makeadmin", {
+    axios$1.get(serverUrl + "/server/makeadmin", {
       params: {
         email: email
       },
@@ -18828,7 +19763,7 @@ function createGlobalStates() {
     });
   }
   function removeAdmin(email) {
-    axios.get(serverUrl + "/server/removeadmin", {
+    axios$1.get(serverUrl + "/server/removeadmin", {
       params: {
         email: email
       },
@@ -18840,7 +19775,7 @@ function createGlobalStates() {
     });
   }
   function removeUser(email) {
-    axios.get(serverUrl + "/server/removeuser", {
+    axios$1.get(serverUrl + "/server/removeuser", {
       params: {
         email: email
       },
@@ -18862,12 +19797,12 @@ function createGlobalStates() {
 }
 const gvUsers = createRoot(createGlobalStates);
 
-const _tmpl$$n = /*#__PURE__*/template(`<div class="mt-4"><h3 class="text-lg font-semibold">Users</h3><div class="rounded-lg bg-white shadow mt-2"><table class="w-full text-sm text-left text-gray-500 dark:text-gray-400"><thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"><tr><th scope="col" class="py-3 px-6">Email</th><th scope="col" class="py-3 px-6">Role</th></tr></thead><tbody></tbody></table></div></div>`),
-  _tmpl$2$3 = /*#__PURE__*/template(`<span class="ml-2 inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Admin</span>`),
-  _tmpl$3$2 = /*#__PURE__*/template(`<button type="button" class="invisible inline-flex items-center rounded border border-transparent bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-4 group-hover:visible">Remove admin</button>`),
-  _tmpl$4$1 = /*#__PURE__*/template(`<button type="button" class="invisible inline-flex items-center rounded border border-transparent bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-4 group-hover:visible">Remove user</button>`),
-  _tmpl$5 = /*#__PURE__*/template(`<tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 group"><td scope="row" class="py-4 px-6 font-medium text-gray-900 whitespace-nowrap dark:text-white"></td><td class="py-4 px-6"></td></tr>`),
-  _tmpl$6 = /*#__PURE__*/template(`<button type="button" class="invisible inline-flex items-center rounded border border-transparent bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-4 group-hover:visible">Make admin</button>`);
+const _tmpl$$n = /*#__PURE__*/template(`<div class=mt-4><h3 class="text-lg font-semibold">Users</h3><div class="rounded-lg bg-white shadow mt-2"><table class="w-full text-sm text-left text-gray-500 dark:text-gray-400"><thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"><tr><th scope=col class="py-3 px-6">Email</th><th scope=col class="py-3 px-6">Role</th></tr></thead><tbody>`),
+  _tmpl$2$3 = /*#__PURE__*/template(`<span class="ml-2 inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Admin`),
+  _tmpl$3$2 = /*#__PURE__*/template(`<button type=button class="invisible inline-flex items-center rounded border border-transparent bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-4 group-hover:visible">Remove admin`),
+  _tmpl$4$1 = /*#__PURE__*/template(`<button type=button class="invisible inline-flex items-center rounded border border-transparent bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-4 group-hover:visible">Remove user`),
+  _tmpl$5 = /*#__PURE__*/template(`<tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 group"><td scope=row class="py-4 px-6 font-medium text-gray-900 whitespace-nowrap dark:text-white"></td><td class="py-4 px-6">`),
+  _tmpl$6 = /*#__PURE__*/template(`<button type=button class="invisible inline-flex items-center rounded border border-transparent bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-4 group-hover:visible">Make admin`);
 function UserManagement() {
   const {
     users,
@@ -18876,7 +19811,7 @@ function UserManagement() {
     removeUser
   } = gvUsers;
   return (() => {
-    const _el$ = _tmpl$$n.cloneNode(true),
+    const _el$ = _tmpl$$n(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling,
       _el$4 = _el$3.firstChild,
@@ -18887,7 +19822,7 @@ function UserManagement() {
         return users();
       },
       children: user => (() => {
-        const _el$7 = _tmpl$5.cloneNode(true),
+        const _el$7 = _tmpl$5(),
           _el$8 = _el$7.firstChild,
           _el$10 = _el$8.nextSibling;
         insert(_el$8, () => user.email, null);
@@ -18896,7 +19831,7 @@ function UserManagement() {
             return user.role == "admin";
           },
           get children() {
-            return _tmpl$2$3.cloneNode(true);
+            return _tmpl$2$3();
           }
         }), null);
         insert(_el$10, () => user.role, null);
@@ -18906,14 +19841,14 @@ function UserManagement() {
           },
           get fallback() {
             return (() => {
-              const _el$13 = _tmpl$6.cloneNode(true);
+              const _el$13 = _tmpl$6();
               _el$13.$$click = makeAdmin;
               _el$13.$$clickData = user.email;
               return _el$13;
             })();
           },
           get children() {
-            const _el$11 = _tmpl$3$2.cloneNode(true);
+            const _el$11 = _tmpl$3$2();
             _el$11.$$click = removeAdmin;
             _el$11.$$clickData = user.email;
             return _el$11;
@@ -18924,7 +19859,7 @@ function UserManagement() {
             return user.role != "admin";
           },
           get children() {
-            const _el$12 = _tmpl$4$1.cloneNode(true);
+            const _el$12 = _tmpl$4$1();
             _el$12.$$click = removeUser;
             _el$12.$$clickData = user.email;
             return _el$12;
@@ -18938,13 +19873,13 @@ function UserManagement() {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$m = /*#__PURE__*/template(`<div class=""><h3 class="text-lg font-semibold mt-8 mb-2">Log</h3><button type="button" class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Download system log</button></div>`);
+const _tmpl$$m = /*#__PURE__*/template(`<div class=""><h3 class="text-lg font-semibold mt-8 mb-2">Log</h3><button type=button class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Download system log`);
 function LogPanel() {
   const {
     serverUrl
   } = gvServer;
   function getSystemLog() {
-    axios({
+    axios$1({
       url: serverUrl + "/submit/systemlog",
       method: "GET",
       responseType: "blob"
@@ -18962,7 +19897,7 @@ function LogPanel() {
     });
   }
   return (() => {
-    const _el$ = _tmpl$$m.cloneNode(true),
+    const _el$ = _tmpl$$m(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling;
     _el$3.$$click = getSystemLog;
@@ -18971,7 +19906,7 @@ function LogPanel() {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$l = /*#__PURE__*/template(`<div id="tab_system" class="tabcontent"><div class="p-4"></div></div>`);
+const _tmpl$$l = /*#__PURE__*/template(`<div id=tab_system class=tabcontent><div class=p-4>`);
 function TabSystem() {
   const {
     tabName
@@ -18980,7 +19915,7 @@ function TabSystem() {
     multiuser
   } = gvMultiuser;
   return (() => {
-    const _el$ = _tmpl$$l.cloneNode(true),
+    const _el$ = _tmpl$$l(),
       _el$2 = _el$.firstChild;
     insert(_el$2, createComponent(Show, {
       get when() {
@@ -18996,7 +19931,7 @@ function TabSystem() {
   })();
 }
 
-const _tmpl$$k = /*#__PURE__*/template(`<div id="tab_account" class="tabcontent p-4"><p class="text-gray-600"></p><button type="button" class="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-3 py-2 text-sm font-medium leading-4 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 mt-2">Logout</button></div>`);
+const _tmpl$$k = /*#__PURE__*/template(`<div id=tab_account class="tabcontent p-4"><p class=text-gray-600></p><button type=button class="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-3 py-2 text-sm font-medium leading-4 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 mt-2">Logout`);
 const {
   tabName
 } = gvTabName;
@@ -19013,7 +19948,7 @@ function TabAccount() {
     });
   }
   return (() => {
-    const _el$ = _tmpl$$k.cloneNode(true),
+    const _el$ = _tmpl$$k(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling;
     insert(_el$2, email);
@@ -19024,7 +19959,7 @@ function TabAccount() {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$j = /*#__PURE__*/template(`<main class="h-screen md:pl-36 flex flex-col flex-1"><div></div></main>`);
+const _tmpl$$j = /*#__PURE__*/template(`<main class="h-screen md:pl-36 flex flex-col flex-1"><div>`);
 function Content() {
   const [jobsTrigger, setJobsTrigger] = createSignal(false);
   const {
@@ -19034,7 +19969,7 @@ function Content() {
     admin
   } = gvLogin;
   return (() => {
-    const _el$ = _tmpl$$j.cloneNode(true),
+    const _el$ = _tmpl$$j(),
       _el$2 = _el$.firstChild;
     insert(_el$2, createComponent(TabHome, {}), null);
     insert(_el$2, createComponent(TabSubmit, {
@@ -19071,8 +20006,8 @@ function Content() {
 }
 
 /**
- * marked - a markdown parser
- * Copyright (c) 2011-2022, Christopher Jeffrey. (MIT Licensed)
+ * marked v4.3.0 - a markdown parser
+ * Copyright (c) 2011-2023, Christopher Jeffrey. (MIT Licensed)
  * https://github.com/markedjs/marked
  */
 
@@ -19091,6 +20026,7 @@ function getDefaults() {
     headerIds: true,
     headerPrefix: '',
     highlight: null,
+    hooks: null,
     langPrefix: 'language-',
     mangle: true,
     pedantic: false,
@@ -19254,23 +20190,6 @@ function resolveUrl(base, href) {
 }
 
 const noopTest = { exec: function noopTest() {} };
-
-function merge(obj) {
-  let i = 1,
-    target,
-    key;
-
-  for (; i < arguments.length; i++) {
-    target = arguments[i];
-    for (key in target) {
-      if (Object.prototype.hasOwnProperty.call(target, key)) {
-        obj[key] = target[key];
-      }
-    }
-  }
-
-  return obj;
-}
 
 function splitCells(tableRow, count) {
   // ensure that every cell-delimiting pipe has a space
@@ -19531,11 +20450,14 @@ class Tokenizer {
     const cap = this.rules.block.blockquote.exec(src);
     if (cap) {
       const text = cap[0].replace(/^ *>[ \t]?/gm, '');
-
+      const top = this.lexer.state.top;
+      this.lexer.state.top = true;
+      const tokens = this.lexer.blockTokens(text);
+      this.lexer.state.top = top;
       return {
         type: 'blockquote',
         raw: cap[0],
-        tokens: this.lexer.blockTokens(text, []),
+        tokens,
         text
       };
     }
@@ -19582,7 +20504,7 @@ class Tokenizer {
         raw = cap[0];
         src = src.substring(raw.length);
 
-        line = cap[2].split('\n', 1)[0];
+        line = cap[2].split('\n', 1)[0].replace(/^\t+/, (t) => ' '.repeat(3 * t.length));
         nextLine = src.split('\n', 1)[0];
 
         if (this.options.pedantic) {
@@ -19604,7 +20526,7 @@ class Tokenizer {
         }
 
         if (!endEarly) {
-          const nextBulletRegex = new RegExp(`^ {0,${Math.min(3, indent - 1)}}(?:[*+-]|\\d{1,9}[.)])((?: [^\\n]*)?(?:\\n|$))`);
+          const nextBulletRegex = new RegExp(`^ {0,${Math.min(3, indent - 1)}}(?:[*+-]|\\d{1,9}[.)])((?:[ \t][^\\n]*)?(?:\\n|$))`);
           const hrRegex = new RegExp(`^ {0,${Math.min(3, indent - 1)}}((?:- *){3,}|(?:_ *){3,}|(?:\\* *){3,})(?:\\n+|$)`);
           const fencesBeginRegex = new RegExp(`^ {0,${Math.min(3, indent - 1)}}(?:\`\`\`|~~~)`);
           const headingBeginRegex = new RegExp(`^ {0,${Math.min(3, indent - 1)}}#`);
@@ -19612,25 +20534,25 @@ class Tokenizer {
           // Check if following lines should be included in List Item
           while (src) {
             rawLine = src.split('\n', 1)[0];
-            line = rawLine;
+            nextLine = rawLine;
 
             // Re-align to follow commonmark nesting rules
             if (this.options.pedantic) {
-              line = line.replace(/^ {1,4}(?=( {4})*[^ ])/g, '  ');
+              nextLine = nextLine.replace(/^ {1,4}(?=( {4})*[^ ])/g, '  ');
             }
 
             // End list item if found code fences
-            if (fencesBeginRegex.test(line)) {
+            if (fencesBeginRegex.test(nextLine)) {
               break;
             }
 
             // End list item if found start of new heading
-            if (headingBeginRegex.test(line)) {
+            if (headingBeginRegex.test(nextLine)) {
               break;
             }
 
             // End list item if found start of new bullet
-            if (nextBulletRegex.test(line)) {
+            if (nextBulletRegex.test(nextLine)) {
               break;
             }
 
@@ -19639,20 +20561,38 @@ class Tokenizer {
               break;
             }
 
-            if (line.search(/[^ ]/) >= indent || !line.trim()) { // Dedent if possible
-              itemContents += '\n' + line.slice(indent);
-            } else if (!blankLine) { // Until blank line, item doesn't need indentation
-              itemContents += '\n' + line;
-            } else { // Otherwise, improper indentation ends this item
-              break;
+            if (nextLine.search(/[^ ]/) >= indent || !nextLine.trim()) { // Dedent if possible
+              itemContents += '\n' + nextLine.slice(indent);
+            } else {
+              // not enough indentation
+              if (blankLine) {
+                break;
+              }
+
+              // paragraph continuation unless last line was a different block level element
+              if (line.search(/[^ ]/) >= 4) { // indented code block
+                break;
+              }
+              if (fencesBeginRegex.test(line)) {
+                break;
+              }
+              if (headingBeginRegex.test(line)) {
+                break;
+              }
+              if (hrRegex.test(line)) {
+                break;
+              }
+
+              itemContents += '\n' + nextLine;
             }
 
-            if (!blankLine && !line.trim()) { // Check if current line is blank
+            if (!blankLine && !nextLine.trim()) { // Check if current line is blank
               blankLine = true;
             }
 
             raw += rawLine + '\n';
             src = src.substring(rawLine.length + 1);
+            line = nextLine.slice(indent);
           }
         }
 
@@ -19697,25 +20637,19 @@ class Tokenizer {
       for (i = 0; i < l; i++) {
         this.lexer.state.top = false;
         list.items[i].tokens = this.lexer.blockTokens(list.items[i].text, []);
-        const spacers = list.items[i].tokens.filter(t => t.type === 'space');
-        const hasMultipleLineBreaks = spacers.every(t => {
-          const chars = t.raw.split('');
-          let lineBreaks = 0;
-          for (const char of chars) {
-            if (char === '\n') {
-              lineBreaks += 1;
-            }
-            if (lineBreaks > 1) {
-              return true;
-            }
-          }
 
-          return false;
-        });
+        if (!list.loose) {
+          // Check if list should be loose
+          const spacers = list.items[i].tokens.filter(t => t.type === 'space');
+          const hasMultipleLineBreaks = spacers.length > 0 && spacers.some(t => /\n.*\n/.test(t.raw));
 
-        if (!list.loose && spacers.length && hasMultipleLineBreaks) {
-          // Having a single line break doesn't mean a list is loose. A single line break is terminating the last list item
-          list.loose = true;
+          list.loose = hasMultipleLineBreaks;
+        }
+      }
+
+      // Set all items to loose if list is loose
+      if (list.loose) {
+        for (i = 0; i < l; i++) {
           list.items[i].loose = true;
         }
       }
@@ -20121,9 +21055,9 @@ class Tokenizer {
         } while (prevCapZero !== cap[0]);
         text = escape(cap[0]);
         if (cap[1] === 'www.') {
-          href = 'http://' + text;
+          href = 'http://' + cap[0];
         } else {
-          href = text;
+          href = cap[0];
         }
       }
       return {
@@ -20166,7 +21100,7 @@ class Tokenizer {
 const block = {
   newline: /^(?: *(?:\n|$))+/,
   code: /^( {4}[^\n]+(?:\n(?: *(?:\n|$))*)?)+/,
-  fences: /^ {0,3}(`{3,}(?=[^`\n]*\n)|~{3,})([^\n]*)\n(?:|([\s\S]*?)\n)(?: {0,3}\1[~`]* *(?=\n|$)|$)/,
+  fences: /^ {0,3}(`{3,}(?=[^`\n]*(?:\n|$))|~{3,})([^\n]*)(?:\n|$)(?:|([\s\S]*?)(?:\n|$))(?: {0,3}\1[~`]* *(?=\n|$)|$)/,
   hr: /^ {0,3}((?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)/,
   heading: /^ {0,3}(#{1,6})(?=\s|$)(.*)(?:\n+|$)/,
   blockquote: /^( {0,3}> ?(paragraph|[^\n]*)(?:\n|$))+/,
@@ -20241,17 +21175,18 @@ block.blockquote = edit(block.blockquote)
  * Normal Block Grammar
  */
 
-block.normal = merge({}, block);
+block.normal = { ...block };
 
 /**
  * GFM Block Grammar
  */
 
-block.gfm = merge({}, block.normal, {
+block.gfm = {
+  ...block.normal,
   table: '^ *([^\\n ].*\\|.*)\\n' // Header
     + ' {0,3}(?:\\| *)?(:?-+:? *(?:\\| *:?-+:? *)*)(?:\\| *)?' // Align
     + '(?:\\n((?:(?! *\\n|hr|heading|blockquote|code|fences|list|html).*(?:\\n|$))*)\\n*|$)' // Cells
-});
+};
 
 block.gfm.table = edit(block.gfm.table)
   .replace('hr', block.hr)
@@ -20279,7 +21214,8 @@ block.gfm.paragraph = edit(block._paragraph)
  * Pedantic grammar (original John Gruber's loose markdown specification)
  */
 
-block.pedantic = merge({}, block.normal, {
+block.pedantic = {
+  ...block.normal,
   html: edit(
     '^ *(?:comment *(?:\\n|\\s*$)'
     + '|<(tag)[\\s\\S]+?</\\1> *(?:\\n{2,}|\\s*$)' // closed tag
@@ -20303,7 +21239,7 @@ block.pedantic = merge({}, block.normal, {
     .replace('|list', '')
     .replace('|html', '')
     .getRegex()
-});
+};
 
 /**
  * Inline-Level Grammar
@@ -20405,13 +21341,14 @@ inline.reflinkSearch = edit(inline.reflinkSearch, 'g')
  * Normal Inline Grammar
  */
 
-inline.normal = merge({}, inline);
+inline.normal = { ...inline };
 
 /**
  * Pedantic Inline Grammar
  */
 
-inline.pedantic = merge({}, inline.normal, {
+inline.pedantic = {
+  ...inline.normal,
   strong: {
     start: /^__|\*\*/,
     middle: /^__(?=\S)([\s\S]*?\S)__(?!_)|^\*\*(?=\S)([\s\S]*?\S)\*\*(?!\*)/,
@@ -20430,20 +21367,21 @@ inline.pedantic = merge({}, inline.normal, {
   reflink: edit(/^!?\[(label)\]\s*\[([^\]]*)\]/)
     .replace('label', inline._label)
     .getRegex()
-});
+};
 
 /**
  * GFM Inline Grammar
  */
 
-inline.gfm = merge({}, inline.normal, {
+inline.gfm = {
+  ...inline.normal,
   escape: edit(inline.escape).replace('])', '~|])').getRegex(),
   _extended_email: /[A-Za-z0-9._+-]+(@)[a-zA-Z0-9-_]+(?:\.[a-zA-Z0-9-_]*[a-zA-Z0-9])+(?![-_])/,
   url: /^((?:ftp|https?):\/\/|www\.)(?:[a-zA-Z0-9\-]+\.?)+[^\s<]*|^email/,
-  _backpedal: /(?:[^?!.,:;*_~()&]+|\([^)]*\)|&(?![a-zA-Z0-9]+;$)|[?!.,:;*_~)]+(?!$))+/,
+  _backpedal: /(?:[^?!.,:;*_'"~()&]+|\([^)]*\)|&(?![a-zA-Z0-9]+;$)|[?!.,:;*_'"~)]+(?!$))+/,
   del: /^(~~?)(?=[^\s~])([\s\S]*?[^\s~])\1(?=[^~]|$)/,
   text: /^([`~]+|[^`~])(?:(?= {2,}\n)|(?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@)|[\s\S]*?(?:(?=[\\<!\[`*~_]|\b_|https?:\/\/|ftp:\/\/|www\.|$)|[^ ](?= {2,}\n)|[^a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-](?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@)))/
-});
+};
 
 inline.gfm.url = edit(inline.gfm.url, 'i')
   .replace('email', inline.gfm._extended_email)
@@ -20452,13 +21390,14 @@ inline.gfm.url = edit(inline.gfm.url, 'i')
  * GFM + Line Breaks Inline Grammar
  */
 
-inline.breaks = merge({}, inline.gfm, {
+inline.breaks = {
+  ...inline.gfm,
   br: edit(inline.br).replace('{2,}', '*').getRegex(),
   text: edit(inline.gfm.text)
     .replace('\\b_', '\\b_| {2,}\\n')
     .replace(/\{2,\}/g, '*')
     .getRegex()
-});
+};
 
 /**
  * smartypants text replacement
@@ -21535,122 +22474,194 @@ class Parser {
   }
 }
 
+class Hooks {
+  constructor(options) {
+    this.options = options || defaults;
+  }
+
+  static passThroughHooks = new Set([
+    'preprocess',
+    'postprocess'
+  ]);
+
+  /**
+   * Process markdown before marked
+   */
+  preprocess(markdown) {
+    return markdown;
+  }
+
+  /**
+   * Process HTML after marked is finished
+   */
+  postprocess(html) {
+    return html;
+  }
+}
+
+function onError(silent, async, callback) {
+  return (e) => {
+    e.message += '\nPlease report this to https://github.com/markedjs/marked.';
+
+    if (silent) {
+      const msg = '<p>An error occurred:</p><pre>'
+        + escape(e.message + '', true)
+        + '</pre>';
+      if (async) {
+        return Promise.resolve(msg);
+      }
+      if (callback) {
+        callback(null, msg);
+        return;
+      }
+      return msg;
+    }
+
+    if (async) {
+      return Promise.reject(e);
+    }
+    if (callback) {
+      callback(e);
+      return;
+    }
+    throw e;
+  };
+}
+
+function parseMarkdown(lexer, parser) {
+  return (src, opt, callback) => {
+    if (typeof opt === 'function') {
+      callback = opt;
+      opt = null;
+    }
+
+    const origOpt = { ...opt };
+    opt = { ...marked.defaults, ...origOpt };
+    const throwError = onError(opt.silent, opt.async, callback);
+
+    // throw error in case of non string input
+    if (typeof src === 'undefined' || src === null) {
+      return throwError(new Error('marked(): input parameter is undefined or null'));
+    }
+    if (typeof src !== 'string') {
+      return throwError(new Error('marked(): input parameter is of type '
+        + Object.prototype.toString.call(src) + ', string expected'));
+    }
+
+    checkSanitizeDeprecation(opt);
+
+    if (opt.hooks) {
+      opt.hooks.options = opt;
+    }
+
+    if (callback) {
+      const highlight = opt.highlight;
+      let tokens;
+
+      try {
+        if (opt.hooks) {
+          src = opt.hooks.preprocess(src);
+        }
+        tokens = lexer(src, opt);
+      } catch (e) {
+        return throwError(e);
+      }
+
+      const done = function(err) {
+        let out;
+
+        if (!err) {
+          try {
+            if (opt.walkTokens) {
+              marked.walkTokens(tokens, opt.walkTokens);
+            }
+            out = parser(tokens, opt);
+            if (opt.hooks) {
+              out = opt.hooks.postprocess(out);
+            }
+          } catch (e) {
+            err = e;
+          }
+        }
+
+        opt.highlight = highlight;
+
+        return err
+          ? throwError(err)
+          : callback(null, out);
+      };
+
+      if (!highlight || highlight.length < 3) {
+        return done();
+      }
+
+      delete opt.highlight;
+
+      if (!tokens.length) return done();
+
+      let pending = 0;
+      marked.walkTokens(tokens, function(token) {
+        if (token.type === 'code') {
+          pending++;
+          setTimeout(() => {
+            highlight(token.text, token.lang, function(err, code) {
+              if (err) {
+                return done(err);
+              }
+              if (code != null && code !== token.text) {
+                token.text = code;
+                token.escaped = true;
+              }
+
+              pending--;
+              if (pending === 0) {
+                done();
+              }
+            });
+          }, 0);
+        }
+      });
+
+      if (pending === 0) {
+        done();
+      }
+
+      return;
+    }
+
+    if (opt.async) {
+      return Promise.resolve(opt.hooks ? opt.hooks.preprocess(src) : src)
+        .then(src => lexer(src, opt))
+        .then(tokens => opt.walkTokens ? Promise.all(marked.walkTokens(tokens, opt.walkTokens)).then(() => tokens) : tokens)
+        .then(tokens => parser(tokens, opt))
+        .then(html => opt.hooks ? opt.hooks.postprocess(html) : html)
+        .catch(throwError);
+    }
+
+    try {
+      if (opt.hooks) {
+        src = opt.hooks.preprocess(src);
+      }
+      const tokens = lexer(src, opt);
+      if (opt.walkTokens) {
+        marked.walkTokens(tokens, opt.walkTokens);
+      }
+      let html = parser(tokens, opt);
+      if (opt.hooks) {
+        html = opt.hooks.postprocess(html);
+      }
+      return html;
+    } catch (e) {
+      return throwError(e);
+    }
+  };
+}
+
 /**
  * Marked
  */
 function marked(src, opt, callback) {
-  // throw error in case of non string input
-  if (typeof src === 'undefined' || src === null) {
-    throw new Error('marked(): input parameter is undefined or null');
-  }
-  if (typeof src !== 'string') {
-    throw new Error('marked(): input parameter is of type '
-      + Object.prototype.toString.call(src) + ', string expected');
-  }
-
-  if (typeof opt === 'function') {
-    callback = opt;
-    opt = null;
-  }
-
-  opt = merge({}, marked.defaults, opt || {});
-  checkSanitizeDeprecation(opt);
-
-  if (callback) {
-    const highlight = opt.highlight;
-    let tokens;
-
-    try {
-      tokens = Lexer.lex(src, opt);
-    } catch (e) {
-      return callback(e);
-    }
-
-    const done = function(err) {
-      let out;
-
-      if (!err) {
-        try {
-          if (opt.walkTokens) {
-            marked.walkTokens(tokens, opt.walkTokens);
-          }
-          out = Parser.parse(tokens, opt);
-        } catch (e) {
-          err = e;
-        }
-      }
-
-      opt.highlight = highlight;
-
-      return err
-        ? callback(err)
-        : callback(null, out);
-    };
-
-    if (!highlight || highlight.length < 3) {
-      return done();
-    }
-
-    delete opt.highlight;
-
-    if (!tokens.length) return done();
-
-    let pending = 0;
-    marked.walkTokens(tokens, function(token) {
-      if (token.type === 'code') {
-        pending++;
-        setTimeout(() => {
-          highlight(token.text, token.lang, function(err, code) {
-            if (err) {
-              return done(err);
-            }
-            if (code != null && code !== token.text) {
-              token.text = code;
-              token.escaped = true;
-            }
-
-            pending--;
-            if (pending === 0) {
-              done();
-            }
-          });
-        }, 0);
-      }
-    });
-
-    if (pending === 0) {
-      done();
-    }
-
-    return;
-  }
-
-  function onError(e) {
-    e.message += '\nPlease report this to https://github.com/markedjs/marked.';
-    if (opt.silent) {
-      return '<p>An error occurred:</p><pre>'
-        + escape(e.message + '', true)
-        + '</pre>';
-    }
-    throw e;
-  }
-
-  try {
-    const tokens = Lexer.lex(src, opt);
-    if (opt.walkTokens) {
-      if (opt.async) {
-        return Promise.all(marked.walkTokens(tokens, opt.walkTokens))
-          .then(() => {
-            return Parser.parse(tokens, opt);
-          })
-          .catch(onError);
-      }
-      marked.walkTokens(tokens, opt.walkTokens);
-    }
-    return Parser.parse(tokens, opt);
-  } catch (e) {
-    onError(e);
-  }
+  return parseMarkdown(Lexer.lex, Parser.parse)(src, opt, callback);
 }
 
 /**
@@ -21659,7 +22670,7 @@ function marked(src, opt, callback) {
 
 marked.options =
 marked.setOptions = function(opt) {
-  merge(marked.defaults, opt);
+  marked.defaults = { ...marked.defaults, ...opt };
   changeDefaults(marked.defaults);
   return marked;
 };
@@ -21677,10 +22688,10 @@ marked.use = function(...args) {
 
   args.forEach((pack) => {
     // copy options to new object
-    const opts = merge({}, pack);
+    const opts = { ...pack };
 
     // set async to true if it was set to true before
-    opts.async = marked.defaults.async || opts.async;
+    opts.async = marked.defaults.async || opts.async || false;
 
     // ==-- Parse "addon" extensions --== //
     if (pack.extensions) {
@@ -21767,6 +22778,35 @@ marked.use = function(...args) {
       opts.tokenizer = tokenizer;
     }
 
+    // ==-- Parse Hooks extensions --== //
+    if (pack.hooks) {
+      const hooks = marked.defaults.hooks || new Hooks();
+      for (const prop in pack.hooks) {
+        const prevHook = hooks[prop];
+        if (Hooks.passThroughHooks.has(prop)) {
+          hooks[prop] = (arg) => {
+            if (marked.defaults.async) {
+              return Promise.resolve(pack.hooks[prop].call(hooks, arg)).then(ret => {
+                return prevHook.call(hooks, ret);
+              });
+            }
+
+            const ret = pack.hooks[prop].call(hooks, arg);
+            return prevHook.call(hooks, ret);
+          };
+        } else {
+          hooks[prop] = (...args) => {
+            let ret = pack.hooks[prop].apply(hooks, args);
+            if (ret === false) {
+              ret = prevHook.apply(hooks, args);
+            }
+            return ret;
+          };
+        }
+      }
+      opts.hooks = hooks;
+    }
+
     // ==-- Parse WalkTokens extensions --== //
     if (pack.walkTokens) {
       const walkTokens = marked.defaults.walkTokens;
@@ -21826,35 +22866,7 @@ marked.walkTokens = function(tokens, callback) {
  * Parse Inline
  * @param {string} src
  */
-marked.parseInline = function(src, opt) {
-  // throw error in case of non string input
-  if (typeof src === 'undefined' || src === null) {
-    throw new Error('marked.parseInline(): input parameter is undefined or null');
-  }
-  if (typeof src !== 'string') {
-    throw new Error('marked.parseInline(): input parameter is of type '
-      + Object.prototype.toString.call(src) + ', string expected');
-  }
-
-  opt = merge({}, marked.defaults, opt || {});
-  checkSanitizeDeprecation(opt);
-
-  try {
-    const tokens = Lexer.lexInline(src, opt);
-    if (opt.walkTokens) {
-      marked.walkTokens(tokens, opt.walkTokens);
-    }
-    return Parser.parseInline(tokens, opt);
-  } catch (e) {
-    e.message += '\nPlease report this to https://github.com/markedjs/marked.';
-    if (opt.silent) {
-      return '<p>An error occurred:</p><pre>'
-        + escape(e.message + '', true)
-        + '</pre>';
-    }
-    throw e;
-  }
-};
+marked.parseInline = parseMarkdown(Lexer.lexInline, Parser.parseInline);
 
 /**
  * Expose
@@ -21867,6 +22879,7 @@ marked.Lexer = Lexer;
 marked.lexer = Lexer.lex;
 marked.Tokenizer = Tokenizer;
 marked.Slugger = Slugger;
+marked.Hooks = Hooks;
 marked.parse = marked;
 
 marked.options;
@@ -21877,11 +22890,11 @@ marked.parseInline;
 Parser.parse;
 Lexer.lex;
 
-const _tmpl$$i = /*#__PURE__*/template(`<div><table class="w-full text-sm text-left text-gray-500 dark:text-gray-400 mt-4"><thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"><tr><th scope="col" class="py-3 px-6">Name</th><th scope="col" class="py-3 px-6">Type</th><th scope="col" class="py-3 px-6">Description</th></tr></thead><tbody></tbody></table></div>`),
-  _tmpl$2$2 = /*#__PURE__*/template(`<tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700"><th scope="row" class="py-4 px-6 font-medium text-gray-900 whitespace-nowrap dark:text-white"></th><td class="py-4 px-6"></td><td class="py-4 px-6"></td></tr>`);
+const _tmpl$$i = /*#__PURE__*/template(`<div><table class="w-full text-sm text-left text-gray-500 dark:text-gray-400 mt-4"><thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"><tr><th scope=col class="py-3 px-6">Name</th><th scope=col class="py-3 px-6">Type</th><th scope=col class="py-3 px-6">Description</th></tr></thead><tbody>`),
+  _tmpl$2$2 = /*#__PURE__*/template(`<tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700"><th scope=row class="py-4 px-6 font-medium text-gray-900 whitespace-nowrap dark:text-white"></th><td class="py-4 px-6"></td><td class="py-4 px-6">`);
 function DetailCardOutputTable(props) {
   return (() => {
-    const _el$ = _tmpl$$i.cloneNode(true),
+    const _el$ = _tmpl$$i(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.nextSibling;
@@ -21890,7 +22903,7 @@ function DetailCardOutputTable(props) {
         return props.outputColumns;
       },
       children: col => (() => {
-        const _el$5 = _tmpl$2$2.cloneNode(true),
+        const _el$5 = _tmpl$2$2(),
           _el$6 = _el$5.firstChild,
           _el$7 = _el$6.nextSibling,
           _el$8 = _el$7.nextSibling;
@@ -21916,10 +22929,10 @@ function DetailCardOutputTable(props) {
   })();
 }
 
-const _tmpl$$h = /*#__PURE__*/template(`<div><h3 class="text-lg font-semibold mt-8">Developer information</h3><div class="overflow-hidden bg-white shadow sm:rounded-lg mt-4"><div class="border-t border-gray-200 px-4 py-5 sm:px-6"><dl class="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2"><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Name</dt><dd class="mt-1 text-sm text-gray-900"></dd></div><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Organization</dt><dd class="mt-1 text-sm text-gray-900"></dd></div><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Email address</dt><dd class="mt-1 text-sm text-gray-900"><a></a></dd></div><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Website</dt><dd class="mt-1 text-sm text-gray-900"><a></a></dd></div><div class="sm:col-span-2"><dt class="text-sm font-medium text-gray-500">Citation</dt><dd class="mt-1 text-sm text-gray-900"></dd></div></dl></div></div> </div>`);
+const _tmpl$$h = /*#__PURE__*/template(`<div><h3 class="text-lg font-semibold mt-8">Developer information</h3><div class="overflow-hidden bg-white shadow sm:rounded-lg mt-4"><div class="border-t border-gray-200 px-4 py-5 sm:px-6"><dl class="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2"><div class=sm:col-span-1><dt class="text-sm font-medium text-gray-500">Name</dt><dd class="mt-1 text-sm text-gray-900"></dd></div><div class=sm:col-span-1><dt class="text-sm font-medium text-gray-500">Organization</dt><dd class="mt-1 text-sm text-gray-900"></dd></div><div class=sm:col-span-1><dt class="text-sm font-medium text-gray-500">Email address</dt><dd class="mt-1 text-sm text-gray-900"><a></a></dd></div><div class=sm:col-span-1><dt class="text-sm font-medium text-gray-500">Website</dt><dd class="mt-1 text-sm text-gray-900"><a></a></dd></div><div class=sm:col-span-2><dt class="text-sm font-medium text-gray-500">Citation</dt><dd class="mt-1 text-sm text-gray-900"></dd></div></dl></div></div> `);
 function DetailCardDeveloper(props) {
   return (() => {
-    const _el$ = _tmpl$$h.cloneNode(true),
+    const _el$ = _tmpl$$h(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling,
       _el$4 = _el$3.firstChild,
@@ -21960,10 +22973,10 @@ function DetailCardDeveloper(props) {
   })();
 }
 
-const _tmpl$$g = /*#__PURE__*/template(`<div><h3 class="text-lg font-semibold mt-8">Data information</h3><div class="overflow-hidden bg-white shadow sm:rounded-lg mt-4"><div class="border-t border-gray-200 px-4 py-5 sm:px-6"><dl class="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2"><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Name</dt><dd class="mt-1 text-sm text-gray-900"></dd></div><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Organization</dt><dd class="mt-1 text-sm text-gray-900"></dd></div><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Email address</dt><dd class="mt-1 text-sm text-gray-900"><a></a></dd></div><div class="sm:col-span-1"><dt class="text-sm font-medium text-gray-500">Website</dt><dd class="mt-1 text-sm text-gray-900"><a></a></dd></div><div class="sm:col-span-2"><dt class="text-sm font-medium text-gray-500">Citation</dt><dd class="mt-1 text-sm text-gray-900"></dd></div></dl></div></div> </div>`);
+const _tmpl$$g = /*#__PURE__*/template(`<div><h3 class="text-lg font-semibold mt-8">Data information</h3><div class="overflow-hidden bg-white shadow sm:rounded-lg mt-4"><div class="border-t border-gray-200 px-4 py-5 sm:px-6"><dl class="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2"><div class=sm:col-span-1><dt class="text-sm font-medium text-gray-500">Name</dt><dd class="mt-1 text-sm text-gray-900"></dd></div><div class=sm:col-span-1><dt class="text-sm font-medium text-gray-500">Organization</dt><dd class="mt-1 text-sm text-gray-900"></dd></div><div class=sm:col-span-1><dt class="text-sm font-medium text-gray-500">Email address</dt><dd class="mt-1 text-sm text-gray-900"><a></a></dd></div><div class=sm:col-span-1><dt class="text-sm font-medium text-gray-500">Website</dt><dd class="mt-1 text-sm text-gray-900"><a></a></dd></div><div class=sm:col-span-2><dt class="text-sm font-medium text-gray-500">Citation</dt><dd class="mt-1 text-sm text-gray-900"></dd></div></dl></div></div> `);
 function DetailCardData(props) {
   return (() => {
-    const _el$ = _tmpl$$g.cloneNode(true),
+    const _el$ = _tmpl$$g(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling,
       _el$4 = _el$3.firstChild,
@@ -22004,7 +23017,7 @@ function DetailCardData(props) {
   })();
 }
 
-const _tmpl$$f = /*#__PURE__*/template(`<div class="absolute w-full h-full bg-white opacity-1 top-0 left-0 z-30"><div class="absolute opacity-1 top-[5vh] left-[10vw] w-[80vw] h-[80vh] overflow-auto bg-gray-50 z-30 m-4 p-8"><img class="w-0 top-0 right-0 rounded-lg"><div class="-ml-1 mb-2"><span class="relative inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800"></span><span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800"></span><span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Installed</span><span class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">Update available</span></div><div class="readme opacity-1 list-decimal mb-8"></div><h3 class="text-lg font-semibold">Module output</h3></div><div class="absolute top-0 right-0 cursor-pointer"></div></div>`);
+const _tmpl$$f = /*#__PURE__*/template(`<div class="absolute w-full h-full bg-white opacity-1 top-0 left-0 z-30"><div class="absolute opacity-1 top-[5vh] left-[10vw] w-[80vw] h-[80vh] overflow-auto bg-gray-50 z-30 m-4 p-8"><img class="w-0 top-0 right-0 rounded-lg"><div class="-ml-1 mb-2"><span class="relative inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800"></span><span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800"></span><span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Installed</span><span class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">Update available</span></div><div class="readme opacity-1 list-decimal mb-8"></div><h3 class="text-lg font-semibold">Module output</h3></div><div class="absolute top-0 right-0 cursor-pointer">`);
 
 /*var markdownConverter = new showdown.Converter({
   tables: true,
@@ -22041,7 +23054,7 @@ function DetailCard() {
   });
   async function fetchReadme(moduleName) {
     try {
-      const res = await axios.get(serverUrl + "/store/getreadme", {
+      const res = await axios$1.get(serverUrl + "/store/getreadme", {
         params: {
           module_name: moduleName
         }
@@ -22065,7 +23078,7 @@ function DetailCard() {
       return createMemo(() => !!showDetailCard())() && markdown() != null;
     },
     get children() {
-      const _el$ = _tmpl$$f.cloneNode(true),
+      const _el$ = _tmpl$$f(),
         _el$2 = _el$.firstChild,
         _el$3 = _el$2.firstChild,
         _el$4 = _el$3.nextSibling,
@@ -22094,7 +23107,7 @@ function DetailCard() {
         }
       }), null);
       _el$11.$$click = onClickX;
-      insert(_el$11, createComponent(HiOutlineX, {
+      insert(_el$11, createComponent(HiOutlineXMark, {
         color: "rgb(107 114 128)",
         size: 64
       }));
@@ -22120,7 +23133,7 @@ function DetailCard() {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$e = /*#__PURE__*/template(`<div id="error-dialog" class="relative z-10" aria-labelledby="modal-title" role="dialog" aria-modal="true"><div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div><div class="fixed inset-0 z-10 overflow-y-auto"><div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0"><div><div><div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100"><svg class="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10.5v3.75m-9.303 3.376C1.83 19.126 2.914 21 4.645 21h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 4.88c-.866-1.501-3.032-1.501-3.898 0L2.697 17.626zM12 17.25h.007v.008H12v-.008z"></path></svg></div><div class="mt-3 text-center sm:mt-5"><h3 class="text-lg font-medium leading-6 text-gray-900"></h3><div class="mt-2"><p class="text-sm text-gray-500"></p></div></div></div><div class="mt-5 sm:mt-6"><button type="button" class="inline-flex w-full justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:text-sm">Dismiss</button></div></div></div></div></div>`);
+const _tmpl$$e = /*#__PURE__*/template(`<div id=error-dialog class="relative z-10"aria-labelledby=modal-title role=dialog aria-modal=true><div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div><div class="fixed inset-0 z-10 overflow-y-auto"><div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0"><div><div><div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100"><svg class="h-6 w-6 text-red-600"xmlns=http://www.w3.org/2000/svg fill=none viewBox="0 0 24 24"stroke-width=1.5 stroke=currentColor aria-hidden=true><path stroke-linecap=round stroke-linejoin=round d="M12 10.5v3.75m-9.303 3.376C1.83 19.126 2.914 21 4.645 21h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 4.88c-.866-1.501-3.032-1.501-3.898 0L2.697 17.626zM12 17.25h.007v.008H12v-.008z"></path></svg></div><div class="mt-3 text-center sm:mt-5"><h3 class="text-lg font-medium leading-6 text-gray-900"></h3><div class=mt-2><p class="text-sm text-gray-500"></p></div></div></div><div class="mt-5 sm:mt-6"><button type=button class="inline-flex w-full justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:text-sm">Dismiss`);
 function ErrorDialog(props) {
   const {
     showErrorDialog,
@@ -22139,7 +23152,7 @@ function ErrorDialog(props) {
       return showErrorDialog();
     },
     get children() {
-      const _el$ = _tmpl$$e.cloneNode(true),
+      const _el$ = _tmpl$$e(),
         _el$2 = _el$.firstChild,
         _el$3 = _el$2.nextSibling,
         _el$4 = _el$3.firstChild,
@@ -22175,7 +23188,7 @@ function ErrorDialog(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$d = /*#__PURE__*/template(`<div><div class="mt-4"><label for="email" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Email</label><input type="email" name="email" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" placeholder="name@company.com" required></div><div><span class="text-orange-500"></span></div><div class="mt-4"><label for="password" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Password</label><input type="password" name="password" placeholder="••••••••" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" required></div><div><span class="text-orange-500"></span></div></div>`);
+const _tmpl$$d = /*#__PURE__*/template(`<div><div class=mt-4><label for=email class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Email</label><input type=email name=email class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white"placeholder=name@company.com required></div><div><span class=text-orange-500></span></div><div class=mt-4><label for=password class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Password</label><input type=password name=password placeholder=•••••••• class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white"required></div><div><span class=text-orange-500>`);
 //import { ImGoogle } from "solid-icons/im";
 //import { BsGithub } from "solid-icons/bs";
 
@@ -22209,7 +23222,7 @@ function EmailPassword(props) {
     }
   }
   return (() => {
-    const _el$ = _tmpl$$d.cloneNode(true),
+    const _el$ = _tmpl$$d(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.nextSibling,
@@ -22267,7 +23280,7 @@ function EmailPassword(props) {
 }
 delegateEvents(["keyup"]);
 
-const _tmpl$$c = /*#__PURE__*/template(`<div class="flex"><div><a href="#">Forgot password?</a><button type="submit" class="flex justify-center w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 mt-4"><div class="flex"><p>Sign in</p></div></button></div></div>`);
+const _tmpl$$c = /*#__PURE__*/template(`<div class=flex><div><a href=#>Forgot password?</a><button type=submit class="flex justify-center w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 mt-4"><div class=flex><p>Sign in`);
 function SignIn(props) {
   const [loggingIn, setLogginIn] = createSignal(false);
   const [showOkDialog, setShowOkDialog] = createSignal(false);
@@ -22347,7 +23360,7 @@ function SignIn(props) {
     }
   }
   return (() => {
-    const _el$ = _tmpl$$c.cloneNode(true),
+    const _el$ = _tmpl$$c(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.nextSibling,
@@ -22401,7 +23414,7 @@ function SignIn(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$b = /*#__PURE__*/template(`<div class="flex"><div><div><button id="signup_btn" type="submit" class="flex justify-center mt-4 flex w-full justify-center rounded-md border border-transparent py-2 px-4 text-sm font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"><div class="flex"><p>Sign up</p></div></button></div></div></div>`);
+const _tmpl$$b = /*#__PURE__*/template(`<div class=flex><div><div><button id=signup_btn type=submit class="flex justify-center mt-4 flex w-full justify-center rounded-md border border-transparent py-2 px-4 text-sm font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"><div class=flex><p>Sign up`);
 function SignUp(props) {
   const [signingIn, setSigningIn] = createSignal(false);
   const [showOkDialog, setShowOkDialog] = createSignal(false);
@@ -22467,7 +23480,7 @@ function SignUp(props) {
   }
   function signup() {
     setSigningIn(true);
-    axios.post(serverUrl + "/server/signup", {
+    axios$1.post(serverUrl + "/server/signup", {
       email: email(),
       password: password(),
       newSetup: props.newSetup
@@ -22492,7 +23505,7 @@ function SignUp(props) {
     });
   }
   return (() => {
-    const _el$ = _tmpl$$b.cloneNode(true),
+    const _el$ = _tmpl$$b(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.firstChild,
@@ -22548,7 +23561,7 @@ function SignUp(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$a = /*#__PURE__*/template(`<div class="h-screen w-screen grid place-items-center fixed z-10 top-0 left-0 bg-white opacity-97"><div class="absolute top-0 right-0 cursor-pointer"></div><div><div><div class="flex justify-center text-sm mt-4 underline"><a href="#">Sign up</a></div></div><div><div class="flex justify-center text-sm mt-4 underline"><a href="#">Sign in</a></div></div></div></div>`);
+const _tmpl$$a = /*#__PURE__*/template(`<div class="h-screen w-screen grid place-items-center fixed z-10 top-0 left-0 bg-white opacity-97"><div class="absolute top-0 right-0 cursor-pointer"></div><div><div><div class="flex justify-center text-sm mt-4 underline"><a href=#>Sign up</a></div></div><div><div class="flex justify-center text-sm mt-4 underline"><a href=#>Sign in`);
 let unsubscribe = null;
 function LoginEmbed(_) {
   const [mode, setMode] = createSignal("signin");
@@ -22601,7 +23614,7 @@ function LoginEmbed(_) {
     setShowAuth(false);
   }
   return (() => {
-    const _el$ = _tmpl$$a.cloneNode(true),
+    const _el$ = _tmpl$$a(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.nextSibling,
       _el$4 = _el$3.firstChild,
@@ -22611,7 +23624,7 @@ function LoginEmbed(_) {
       _el$8 = _el$7.firstChild,
       _el$9 = _el$8.firstChild;
     _el$2.$$click = onClickX;
-    insert(_el$2, createComponent(HiOutlineX, {
+    insert(_el$2, createComponent(HiOutlineXMark, {
       color: "rgb(107 114 128)",
       size: 64
     }));
@@ -22641,13 +23654,13 @@ function LoginEmbed(_) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$9 = /*#__PURE__*/template(`<div class="h-screen"></div>`);
+const _tmpl$$9 = /*#__PURE__*/template(`<div class=h-screen>`);
 function Main() {
   const {
     appLoading
   } = gvAppLoading;
   return (() => {
-    const _el$ = _tmpl$$9.cloneNode(true);
+    const _el$ = _tmpl$$9();
     insert(_el$, createComponent(SideBar, {}), null);
     insert(_el$, createComponent(Content, {}), null);
     insert(_el$, createComponent(DetailCard, {}), null);
@@ -22657,7 +23670,7 @@ function Main() {
   })();
 }
 
-const _tmpl$$8 = /*#__PURE__*/template(`<div class="h-screen w-screen grid place-items-center"><img class="h-96 animate-pulse"></div>`);
+const _tmpl$$8 = /*#__PURE__*/template(`<div class="h-screen w-screen grid place-items-center"><img class="h-96 animate-pulse">`);
 function AppLoadingScreen() {
   const {
     serverUrl
@@ -22666,7 +23679,7 @@ function AppLoadingScreen() {
     appLoading
   } = gvAppLoading;
   return (() => {
-    const _el$ = _tmpl$$8.cloneNode(true),
+    const _el$ = _tmpl$$8(),
       _el$2 = _el$.firstChild;
     setAttribute(_el$2, "src", serverUrl + "/submit/images/logo_transparent.png");
     createRenderEffect(() => _el$.classList.toggle("hidden", !appLoading()));
@@ -22674,7 +23687,7 @@ function AppLoadingScreen() {
   })();
 }
 
-const _tmpl$$7 = /*#__PURE__*/template(`<div tabindex="-1" class="fixed top-0 left-0 right-0 z-0 w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-modal md:h-full flex items-center justify-center"><div class="relative w-[48rem]"><div class="relative bg-white rounded-lg shadow dark:bg-gray-700 text-gray-700 text-sm"><div class="px-6 py-6 lg:px-8"><img class="h-28"><p class="mt-8">Welcome to OakVar!</p><p class="mt-4">Get ready to explore the world of genomics like never before with OakVar!</p><p class="mt-4">With our platform, you can effortlessly analyze your own genome or dive into exciting new research with genome data.</p><p class="mt-4">Say goodbye to complicated processes and hello to a new world of discovery.</p><p class="mt-4">- Oak Bioinformatics, LLC</p><button type="submit" class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 mt-4">Start</button></div></div></div></div>`);
+const _tmpl$$7 = /*#__PURE__*/template(`<div tabindex=-1 class="fixed top-0 left-0 right-0 z-0 w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-modal md:h-full flex items-center justify-center"><div class="relative w-[48rem]"><div class="relative bg-white rounded-lg shadow dark:bg-gray-700 text-gray-700 text-sm"><div class="px-6 py-6 lg:px-8"><img class=h-28><p class=mt-8>Welcome to OakVar!</p><p class=mt-4>Get ready to explore the world of genomics like never before with OakVar!</p><p class=mt-4>With our platform, you can effortlessly analyze your own genome or dive into exciting new research with genome data.</p><p class=mt-4>Say goodbye to complicated processes and hello to a new world of discovery.</p><p class=mt-4>- Oak Bioinformatics, LLC</p><button type=submit class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 mt-4">Start`);
 function SystemSetupWelcome(props) {
   const {
     serverUrl
@@ -22683,7 +23696,7 @@ function SystemSetupWelcome(props) {
     props.setPageNo(2);
   }
   return (() => {
-    const _el$ = _tmpl$$7.cloneNode(true),
+    const _el$ = _tmpl$$7(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.firstChild,
@@ -22702,7 +23715,7 @@ function SystemSetupWelcome(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$6 = /*#__PURE__*/template(`<div tabindex="-1" class="fixed top-0 left-0 right-0 z-0 w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-modal md:h-full flex items-center justify-center"><div class="relative w-[48rem]"><div class="relative bg-white rounded-lg shadow dark:bg-gray-700 text-gray-700 text-sm"><div class="px-6 py-6 lg:px-8"><img class="h-28"><div class="flex flex-col mt-4">Do you already have an OakVar account?<button class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 mt-4">Yes</button><button class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 mt-4">No</button></div></div></div></div></div>`);
+const _tmpl$$6 = /*#__PURE__*/template(`<div tabindex=-1 class="fixed top-0 left-0 right-0 z-0 w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-modal md:h-full flex items-center justify-center"><div class="relative w-[48rem]"><div class="relative bg-white rounded-lg shadow dark:bg-gray-700 text-gray-700 text-sm"><div class="px-6 py-6 lg:px-8"><img class=h-28><div class="flex flex-col mt-4">Do you already have an OakVar account?<button class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 mt-4">Yes</button><button class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 mt-4">No`);
 function SystemSetupAccountQuestion(props) {
   const {
     serverUrl,
@@ -22718,7 +23731,7 @@ function SystemSetupAccountQuestion(props) {
     props.setPageNo(3);
   }
   return (() => {
-    const _el$ = _tmpl$$6.cloneNode(true),
+    const _el$ = _tmpl$$6(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.firstChild,
@@ -22744,7 +23757,7 @@ function SystemSetupAccountQuestion(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$5 = /*#__PURE__*/template(`<div tabindex="-1" class="fixed top-0 left-0 right-0 z-0 w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-modal md:h-full flex items-center justify-center"><div class="relative w-[48rem]"><div class="relative bg-white rounded-lg shadow dark:bg-gray-700 text-gray-700 text-sm"><div class="px-6 py-6 lg:px-8"><img class="h-28"><p class="mt-4">Welcome back! We're so glad to see you again. Please go ahead and sign in. We've been waiting for you!</p></div></div></div></div>`);
+const _tmpl$$5 = /*#__PURE__*/template(`<div tabindex=-1 class="fixed top-0 left-0 right-0 z-0 w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-modal md:h-full flex items-center justify-center"><div class="relative w-[48rem]"><div class="relative bg-white rounded-lg shadow dark:bg-gray-700 text-gray-700 text-sm"><div class="px-6 py-6 lg:px-8"><img class=h-28><p class=mt-4>Welcome back! We're so glad to see you again. Please go ahead and sign in. We've been waiting for you!`);
 function SystemSetupSignIn(props) {
   const curPageNo = 4;
   const {
@@ -22755,7 +23768,7 @@ function SystemSetupSignIn(props) {
     props.setPageNo(5);
   }
   return (() => {
-    const _el$ = _tmpl$$5.cloneNode(true),
+    const _el$ = _tmpl$$5(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.firstChild,
@@ -22778,7 +23791,7 @@ function SystemSetupSignIn(props) {
   })();
 }
 
-const _tmpl$$4 = /*#__PURE__*/template(`<div tabindex="-1" class="fixed top-0 left-0 right-0 z-0 w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-modal md:h-full flex items-center justify-center"><div class="relative w-[48rem]"><div class="relative bg-white rounded-lg shadow dark:bg-gray-700 text-gray-700 text-sm"><div class="px-6 py-6 lg:px-8"><img class="h-28"><p class="mt-4">In order to use our platform, you'll need to create an OakVar store account.</p><p class="mt-4">Simply enter your email and choose a password to get started.</p><p class="mt-4">Rest assured, your information is safe with us and will only be used for your OakVar experience and communication between us.</p></div></div></div></div>`);
+const _tmpl$$4 = /*#__PURE__*/template(`<div tabindex=-1 class="fixed top-0 left-0 right-0 z-0 w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-modal md:h-full flex items-center justify-center"><div class="relative w-[48rem]"><div class="relative bg-white rounded-lg shadow dark:bg-gray-700 text-gray-700 text-sm"><div class="px-6 py-6 lg:px-8"><img class=h-28><p class=mt-4>In order to use our platform, you'll need to create an OakVar store account.</p><p class=mt-4>Simply enter your email and choose a password to get started.</p><p class=mt-4>Rest assured, your information is safe with us and will only be used for your OakVar experience and communication between us.`);
 function SystemSetupSignup(props) {
   const curPageNo = 3;
   const {
@@ -22788,7 +23801,7 @@ function SystemSetupSignup(props) {
     props.setPageNo(5);
   }
   return (() => {
-    const _el$ = _tmpl$$4.cloneNode(true),
+    const _el$ = _tmpl$$4(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.firstChild,
@@ -22814,9 +23827,9 @@ function SystemSetupSignup(props) {
   })();
 }
 
-const _tmpl$$3 = /*#__PURE__*/template(`<span>Change</span>`),
-  _tmpl$2$1 = /*#__PURE__*/template(`<div><div class="mt-4"><label class="block text-sm font-semibold text-gray-700 underline decoration-dotted cursor-help"></label><div class="mt-1 flex rounded-md shadow-sm"><div class="relative flex flex-grow items-stretch focus-within:z-10"><input class="block w-full rounded-none rounded-l-md border-gray-300 pl-10 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></div><button type="button" class="relative -ml-px inline-flex items-center space-x-2 rounded-r-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"></button></div><p class="mt-2 text-sm text-blue-400"></p></div></div>`),
-  _tmpl$3$1 = /*#__PURE__*/template(`<span>Set</span>`);
+const _tmpl$$3 = /*#__PURE__*/template(`<span>Change`),
+  _tmpl$2$1 = /*#__PURE__*/template(`<div><div class=mt-4><label class="block text-sm font-semibold text-gray-700 underline decoration-dotted cursor-help"></label><div class="mt-1 flex rounded-md shadow-sm"><div class="relative flex flex-grow items-stretch focus-within:z-10"><input class="block w-full rounded-none rounded-l-md border-gray-300 pl-10 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></div><button type=button class="relative -ml-px inline-flex items-center space-x-2 rounded-r-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"></button></div><p class="mt-2 text-sm text-blue-400">`),
+  _tmpl$3$1 = /*#__PURE__*/template(`<span>Set`);
 function DirectoryPicker(props) {
   const {
     serverUrl
@@ -22834,7 +23847,7 @@ function DirectoryPicker(props) {
     if (serverDir == undefined) {
       return "";
     }
-    axios.get(serverUrl + "/submit/checkserverdir", {
+    axios$1.get(serverUrl + "/submit/checkserverdir", {
       params: {
         dir: serverDir
       }
@@ -22877,7 +23890,7 @@ function DirectoryPicker(props) {
     props.setTooltipShow(false);
   }
   return (() => {
-    const _el$ = _tmpl$2$1.cloneNode(true),
+    const _el$ = _tmpl$2$1(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.nextSibling,
@@ -22897,10 +23910,10 @@ function DirectoryPicker(props) {
         return inputDisabled();
       },
       get fallback() {
-        return _tmpl$3$1.cloneNode(true);
+        return _tmpl$3$1();
       },
       get children() {
-        return _tmpl$$3.cloneNode(true);
+        return _tmpl$$3();
       }
     }));
     insert(_el$9, dirMessage);
@@ -22911,7 +23924,7 @@ function DirectoryPicker(props) {
 }
 delegateEvents(["keyup", "click"]);
 
-const _tmpl$$2 = /*#__PURE__*/template(`<div tabindex="-1" class="fixed top-0 left-0 right-0 z-0 w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-modal md:h-full flex items-center justify-center"><div class="relative w-[48rem]"><div class="relative bg-white rounded-lg shadow dark:bg-gray-700 text-gray-700 text-sm"><div class="px-6 py-6 lg:px-8"><img class="h-28"><p class="mt-4">OakVar needs to store system configuration and data files. Don't worry, we've got your back with pre-selected default locations. If you need to make any adjustment, feel free to do so. And if everything looks good, just hit the "Start setup" button.</p><div class="mt-4 mb-4 flex"><div class="ml-4">A quick heads up about the modules directory - to get the most out of your OakVar experience, we recommend having at least 2GB of storage space available. And if you're planning on diving into some larger annotation modules, keep in mind that they can take up a substantial amount of space, potentially reaching over 100GB.</div></div><div class="mt-4"><button type="submit" class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Start setup</button></div></div></div></div></div>`);
+const _tmpl$$2 = /*#__PURE__*/template(`<div tabindex=-1 class="fixed top-0 left-0 right-0 z-0 w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-modal md:h-full flex items-center justify-center"><div class="relative w-[48rem]"><div class="relative bg-white rounded-lg shadow dark:bg-gray-700 text-gray-700 text-sm"><div class="px-6 py-6 lg:px-8"><img class=h-28><p class=mt-4>OakVar needs to store system configuration and data files. Don't worry, we've got your back with pre-selected default locations. If you need to make any adjustment, feel free to do so. And if everything looks good, just hit the "Start setup" button.</p><div class="mt-4 mb-4 flex"><div class=ml-4>A quick heads up about the modules directory - to get the most out of your OakVar experience, we recommend having at least 2GB of storage space available. And if you're planning on diving into some larger annotation modules, keep in mind that they can take up a substantial amount of space, potentially reaching over 100GB.</div></div><div class=mt-4><button type=submit class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Start setup`);
 function SystemSetupDirectories(props) {
   const curPageNo = 5;
   const {
@@ -22957,35 +23970,35 @@ function SystemSetupDirectories(props) {
     props.setPageNo(6);
   }
   function fetchRootDir() {
-    axios.get(serverUrl + "/submit/rootdir").then(function (res) {
+    axios$1.get(serverUrl + "/submit/rootdir").then(function (res) {
       setRootDir(res.data.root_dir);
     }).catch(function (err) {
       console.error(err);
     });
   }
   function fetchModulesDir() {
-    axios.get(serverUrl + "/submit/modulesdir").then(function (res) {
+    axios$1.get(serverUrl + "/submit/modulesdir").then(function (res) {
       setModulesDir(res.data.modules_dir);
     }).catch(function (err) {
       console.error(err);
     });
   }
   function fetchJobsDir() {
-    axios.get(serverUrl + "/submit/jobsdir").then(function (res) {
+    axios$1.get(serverUrl + "/submit/jobsdir").then(function (res) {
       setJobsDir(res.data.jobs_dir);
     }).catch(function (err) {
       console.error(err);
     });
   }
   function fetchLogDir() {
-    axios.get(serverUrl + "/submit/logdir").then(function (res) {
+    axios$1.get(serverUrl + "/submit/logdir").then(function (res) {
       setLogDir(res.data.log_dir);
     }).catch(function (err) {
       console.error(err);
     });
   }
   return (() => {
-    const _el$ = _tmpl$$2.cloneNode(true),
+    const _el$ = _tmpl$$2(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.firstChild,
@@ -23071,10 +24084,10 @@ function SystemSetupDirectories(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$$1 = /*#__PURE__*/template(`<div class="mt-4 w-full flex items-center justify-center flex flex-col"><div><p class="mt-4">Congratulations, you're now ready to start using OakVar!</p><p class="mt-4">All the setup is finished and it's time to dive into the exciting world of genetics.</p><p class="mt-4">Simply click the button below and let the journey begin!</p></div><button type="button" class="mt-8 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">Enter OakVar!</button></div>`),
-  _tmpl$2 = /*#__PURE__*/template(`<div tabindex="-1" class="fixed top-0 left-0 right-0 z-0 w-full h-full p-4 md:inset-0 flex items-center justify-center"><div class="relative w-[48rem]"><div class="relative bg-white rounded-lg shadow dark:bg-gray-700 text-gray-700 text-sm p-6"><div class="px-6 py-6 lg:px-8"><img class="h-28"></div></div></div></div>`),
-  _tmpl$3 = /*#__PURE__*/template(`<div><p class="mt-4">We're getting OakVar all set up for you!</p><p class="mt-4">Just sit back and relax for a moment while we take care of everything.</p><p class="mt-4">We'll let you know as soon as we're ready for you.</p><div class="mt-4 w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700"><div class="bg-blue-600 h-2.5 rounded-full"></div></div><p class="mt-2"></p><div class="mt-4 text-xs p-6 h-[24rem] overflow-auto font-mono whitespace-pre"><div class="relative"><div></div></div></div></div>`),
-  _tmpl$4 = /*#__PURE__*/template(`<p></p>`);
+const _tmpl$$1 = /*#__PURE__*/template(`<div class="mt-4 w-full flex items-center justify-center flex flex-col"><div><p class=mt-4>Congratulations, you're now ready to start using OakVar!</p><p class=mt-4>All the setup is finished and it's time to dive into the exciting world of genetics.</p><p class=mt-4>Simply click the button below and let the journey begin!</p></div><button type=button class="mt-8 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">Enter OakVar!`),
+  _tmpl$2 = /*#__PURE__*/template(`<div tabindex=-1 class="fixed top-0 left-0 right-0 z-0 w-full h-full p-4 md:inset-0 flex items-center justify-center"><div class="relative w-[48rem]"><div class="relative bg-white rounded-lg shadow dark:bg-gray-700 text-gray-700 text-sm p-6"><div class="px-6 py-6 lg:px-8"><img class=h-28>`),
+  _tmpl$3 = /*#__PURE__*/template(`<div><p class=mt-4>We're getting OakVar all set up for you!</p><p class=mt-4>Just sit back and relax for a moment while we take care of everything.</p><p class=mt-4>We'll let you know as soon as we're ready for you.</p><div class="mt-4 w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700"><div class="bg-blue-600 h-2.5 rounded-full"></div></div><p class=mt-2></p><div class="mt-4 text-xs p-6 h-[24rem] overflow-auto font-mono whitespace-pre"><div class=relative><div>`),
+  _tmpl$4 = /*#__PURE__*/template(`<p>`);
 function SystemSetupInstalling(props) {
   const curPageNo = 6;
   const {
@@ -23134,11 +24147,11 @@ function SystemSetupInstalling(props) {
     numInstalledBaseModules = 0;
     prevSetupStageMsg = null;
     setSetupStateMsg("");
-    axios.get(serverUrl + "/submit/basemodules", {
+    axios$1.get(serverUrl + "/submit/basemodules", {
       withCredentials: withCredentials
     }).then(function (res) {
       noBaseModules = res.data.length;
-      axios.post(serverUrl + "/submit/startsetup", props.setupData, {
+      axios$1.post(serverUrl + "/submit/startsetup", props.setupData, {
         withCredentials: withCredentials
       }).then(function (_) {}).catch(function (err) {
         handleError(err);
@@ -23151,7 +24164,7 @@ function SystemSetupInstalling(props) {
     window.location.reload();
   }
   return (() => {
-    const _el$ = _tmpl$2.cloneNode(true),
+    const _el$ = _tmpl$2(),
       _el$2 = _el$.firstChild,
       _el$3 = _el$2.firstChild,
       _el$4 = _el$3.firstChild,
@@ -23171,7 +24184,7 @@ function SystemSetupInstalling(props) {
       },
       get fallback() {
         return (() => {
-          const _el$9 = _tmpl$3.cloneNode(true),
+          const _el$9 = _tmpl$3(),
             _el$10 = _el$9.firstChild,
             _el$11 = _el$10.nextSibling,
             _el$12 = _el$11.nextSibling,
@@ -23187,17 +24200,17 @@ function SystemSetupInstalling(props) {
           insert(_el$18, createComponent(For, {
             each: msgs,
             children: msg => (() => {
-              const _el$19 = _tmpl$4.cloneNode(true);
+              const _el$19 = _tmpl$4();
               insert(_el$19, () => msg.msg);
               return _el$19;
             })()
           }));
-          createRenderEffect(() => _el$14.style.setProperty("width", setupProgress() + "%"));
+          createRenderEffect(() => setupProgress() + "%" != null ? _el$14.style.setProperty("width", setupProgress() + "%") : _el$14.style.removeProperty("width"));
           return _el$9;
         })();
       },
       get children() {
-        const _el$6 = _tmpl$$1.cloneNode(true),
+        const _el$6 = _tmpl$$1(),
           _el$7 = _el$6.firstChild,
           _el$8 = _el$7.nextSibling;
         _el$8.$$click = onSetupSuccess;
@@ -23210,13 +24223,13 @@ function SystemSetupInstalling(props) {
 }
 delegateEvents(["click"]);
 
-const _tmpl$ = /*#__PURE__*/template(`<div tabindex="-1" class="fixed top-0 left-0 right-0 z-0 w-full"></div>`);
+const _tmpl$ = /*#__PURE__*/template(`<div tabindex=-1 class="fixed top-0 left-0 right-0 z-0 w-full">`);
 function SystemSetup() {
   const [pageNo, setPageNo] = createSignal(1);
   const [prevPageNo, setPrevPageNo] = createSignal(1);
   const [setupData, setSetupData] = createStore({});
   return (() => {
-    const _el$ = _tmpl$.cloneNode(true);
+    const _el$ = _tmpl$();
     insert(_el$, createComponent(SystemSetupWelcome, {
       get pageNo() {
         return pageNo();
@@ -23328,12 +24341,12 @@ function App() {
     }
   });
   function deleteToken() {
-    axios.get(serverUrl + "/server/deletetoken").then(function () {}).catch(function (err) {
+    axios$1.get(serverUrl + "/server/deletetoken").then(function () {}).catch(function (err) {
       handleError(err);
     });
   }
   function fetchMultiuserMode() {
-    axios.get(serverUrl + "/submit/servermode").then(function (res) {
+    axios$1.get(serverUrl + "/submit/servermode").then(function (res) {
       setMultiuser(res.data.servermode);
       if (!multiuser()) {
         deleteToken();
@@ -23344,7 +24357,7 @@ function App() {
     });
   }
   function fetchLoginState() {
-    axios.get(serverUrl + "/submit/loginstate").then(function (res) {
+    axios$1.get(serverUrl + "/submit/loginstate").then(function (res) {
       setLogged(res.data.loggedin);
     }).catch(function (err) {
       handleError(err);

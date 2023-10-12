@@ -1481,7 +1481,7 @@ class Runner(object):
 
         if not self.result_db_conn:
             return
-        q = "insert into info values (?, ?)"
+        q = "insert or replace into info values (?, ?)"
         if isinstance(value, list) or isinstance(value, dict):
             value = json.dumps(value)
         self.result_db_conn.execute(q, (key, value))

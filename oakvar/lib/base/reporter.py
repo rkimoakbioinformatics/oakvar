@@ -203,6 +203,10 @@ class BaseReporter:
     def check_db_is_oakvar(self):
         from ..exceptions import WrongInput
 
+        if not self.dbpath:
+            raise WrongInput(msg=f"{self.dbpath} is not an OakVar result database file.")
+        if not Path(self.dbpath).exists():
+            raise WrongInput(msg=self.dbpath)
         try:
             conn = self.get_db_conn()
             cursor = conn.cursor()

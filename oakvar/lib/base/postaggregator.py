@@ -51,7 +51,6 @@ class BasePostAggregator(object):
         self.q_v: Optional[str] = None
         self.q_g: Optional[str] = None
         self.outer = outer
-        self._open_db_connection()
         self.should_run_annotate = self.check()
 
     def make_conf_and_level(self):
@@ -172,6 +171,7 @@ class BasePostAggregator(object):
 
         if not self.conf:
             return
+        self._open_db_connection()
         self.make_result_level_columns()
         self.input_columns = {}
         input_columns = self.conf.get("input_columns")
@@ -207,6 +207,7 @@ class BasePostAggregator(object):
                 self.levelno == GENE and "base__hugo" not in self.input_columns["gene"]
             ):
                 self.input_columns["gene"].append("base__hugo")
+        self._close_db_connection()
 
     def setup_output_columns(self):
         if not self.conf:
@@ -269,13 +270,10 @@ class BasePostAggregator(object):
         from time import time, asctime, localtime
         from ..exceptions import ConfigurationError
         from ..exceptions import LoggerError
-        from ..exceptions import SetupError
         from ..util.run import update_status
 
         if self.conf is None:
             raise ConfigurationError()
-        if self.dbconn is None:
-            raise SetupError(module_name=self.module_name)
         if self.logger is None:
             raise LoggerError()
         if not self.should_run_annotate:
@@ -292,7 +290,8 @@ class BasePostAggregator(object):
         self.setup_output_columns()
         self.process_file()
         self.fill_categories()
-        self.dbconn.commit()
+        if self.dbconn:
+            self.dbconn.commit()
         self.postprocess()
         self.base_cleanup()
         end_time = time()
@@ -311,6 +310,7 @@ class BasePostAggregator(object):
         if not self.dbconn or not self.cursor_w:
             return
         lnum = 0
+        self._open_db_connection()
         self.cursor_w.execute("begin")
         for input_data in self._get_input():
             try:
@@ -332,6 +332,7 @@ class BasePostAggregator(object):
             except Exception as e:
                 self._log_runtime_exception(input_data, e)
         self.cursor_w.execute("commit")
+        self._close_db_connection()
 
     def postprocess(self):
         pass
@@ -345,6 +346,7 @@ class BasePostAggregator(object):
             raise ConfigurationError()
         if not self.cursor or not self.cursor_w:
             raise SetupError()
+        self._open_db_connection()
         self.cursor_w.execute("begin")
         for col_d in self.conf["output_columns"]:
             col_def = ColumnDefinition(col_d)
@@ -364,6 +366,7 @@ class BasePostAggregator(object):
             q = "update {}_header set col_def=? where col_name=?".format(self.level)
             self.cursor_w.execute(q, [col_def.get_json(), col_def.name])
         self.cursor_w.execute("commit")
+        self._open_db_connection()
 
     def write_output(
         self, output_dict, input_data=None, base__uid=None, base__hugo=None
@@ -432,8 +435,13 @@ class BasePostAggregator(object):
     # Setup function for the base_annotator, different from self.setup()
     # which is intended to be for the derived annotator.
     def base_setup(self):
+        self._open_db_connection()
         self._alter_tables()
         self.setup()
+        self._close_db_connection()
+
+    def open_db_connection(self):
+        self._open_db_connection()
 
     def _open_db_connection(self):
         from sqlite3 import connect
@@ -461,6 +469,9 @@ class BasePostAggregator(object):
 
             sys.exit(msg)
 
+    def close_db_connection(self):
+        self._close_db_connection()
+
     def _close_db_connection(self):
         if self.cursor is not None:
             self.cursor.close()
@@ -474,18 +485,16 @@ class BasePostAggregator(object):
             self.dbconn.close()
 
     def _alter_tables(self):
+        from ..util.inout import ColumnDefinition
+        from ..exceptions import SetupError
+
         if (
             self.level is None
             or self.conf is None
-            or self.dbconn is None
             or self.cursor is None
             or self.cursor_w is None
         ):
-            from ..exceptions import SetupError
-
             raise SetupError()
-        from ..util.inout import ColumnDefinition
-
         self.cursor_w.execute("begin")
         # annotator table
         q = 'insert or replace into {:} values ("{:}", "{:}", "{}")'.format(
@@ -520,7 +529,6 @@ class BasePostAggregator(object):
             q = "insert or replace into {} values (?, ?)".format(header_table_name)
             self.cursor_w.execute(q, [colname, col_def.get_json()])
         self.cursor_w.execute("commit")
-        # self.dbconn.commit()
 
     # Placeholder, intended to be overridded in derived class
     def setup(self):
