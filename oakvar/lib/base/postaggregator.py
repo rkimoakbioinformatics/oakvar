@@ -334,6 +334,7 @@ class BasePostAggregator(object):
 
         if self.conf is None:
             raise ConfigurationError()
+        self.open_db_connection()
         if not self.cursor or not self.cursor_w:
             raise SetupError()
         self._open_db_connection()
@@ -356,7 +357,7 @@ class BasePostAggregator(object):
             q = "update {}_header set col_def=? where col_name=?".format(self.level)
             self.cursor_w.execute(q, [col_def.get_json(), col_def.name])
         self.cursor_w.execute("commit")
-        self._open_db_connection()
+        self.close_db_connection()
 
     def write_output(
         self, output_dict, input_data=None, base__uid=None, base__hugo=None
