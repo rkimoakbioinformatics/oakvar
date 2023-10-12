@@ -465,14 +465,17 @@ class BasePostAggregator(object):
     def _close_db_connection(self):
         if self.cursor is not None:
             self.cursor.close()
+            self.cursor = None
         if self.cursor_w is not None:
             try:
                 self.cursor_w.execute("commit")
             except Exception:
                 pass
             self.cursor_w.close()
+            self.cursor_w = None
         if self.dbconn is not None:
             self.dbconn.close()
+            self.dbconn = None
 
     def _alter_tables(self):
         from ..util.inout import ColumnDefinition
