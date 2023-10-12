@@ -1,3 +1,6 @@
+from typing import Any
+from typing import List
+from typing import Dict
 from typing import Optional
 from typing import Tuple
 from pathlib import Path
@@ -143,8 +146,8 @@ class SubmitProcessor:
         from .util import get_email_from_request
 
         assert self.mu is not None
-        submit_options = await self.save_job_input_files(request, job_dir)
-        self.process_job_options(submit_options)
+        submit_options, input_files = await self.save_input_and_options(request, job_dir)
+        self.process_job_options(submit_options, input_files)
         job = self.get_job(submit_options, job_dir)
         info_json = self.make_job_info_json(submit_options, job_dir)
         job.set_info_values(info_json=info_json)
@@ -155,11 +158,10 @@ class SubmitProcessor:
         run_args = await self.get_run_args(request, submit_options, job_dir)
         run_args.extend(["--uid", str(uid)])
         submit_options["run_args"] = run_args
-        del submit_options["input_files"]
         queue_item = {"cmd": "submit", "submit_options": submit_options}
         return queue_item, job
 
-    async def save_job_input_files(self, request, job_dir: str) -> dict:
+    async def save_input_and_options(self, request, job_dir: str) -> Tuple[Dict[str, Any], List]:
         from pathlib import Path
         from ..lib.util.util import get_unique_path
 
@@ -191,8 +193,7 @@ class SubmitProcessor:
                     wf.write(await part.read())
                 self.add_module_option(job_options, module_name, option_name, path)
         submit_options["job_options"] = job_options
-        submit_options["input_files"] = input_files
-        return submit_options
+        return submit_options, input_files
 
     def add_module_option(
         self, job_options: dict, module_name, option_name, option_value
@@ -223,25 +224,25 @@ class SubmitProcessor:
                 job_options[k] = v
         return job_options
 
-    def process_job_options(self, submit_options: dict):
+    def process_job_options(self, submit_options: Dict[str, Any], input_files: List):
         from pathlib import Path
 
         job_options = submit_options.get("job_options", {})
-        input_files = submit_options.get("input_files", [])
         if (
             "inputServerFiles" in job_options
             and len(job_options["inputServerFiles"]) > 0
         ):
             input_files = job_options["inputServerFiles"]
             input_fnames = [str(Path(fn).name) for fn in input_files]
+            submit_options["input_files"] = input_files
             submit_options["use_server_input_files"] = True
         else:
             input_fnames = [fp.filename for fp in input_files]
             submit_options["use_server_input_files"] = False
+        submit_options["input_fnames"] = input_fnames
         run_name = input_fnames[0]
         if len(input_fnames) > 1:
             run_name += "_etc"
-        submit_options["input_fnames"] = input_fnames
         submit_options["run_name"] = run_name
         job_name = job_options.get("job_name")
         if job_name:
@@ -286,7 +287,7 @@ class SubmitProcessor:
         info_json["job_name"] = job_name
         info_json["run_name"] = run_name
         info_json["assembly"] = job_options.get("genome")
-        info_json["db_path"] = ""
+        info_json["db_path"] = str(job_dir / (run_name + ".sqlite"))
         info_json["orig_input_fname"] = submit_options.get("input_fnames")
         info_json["orig_input_path"] = submit_options.get("input_fpaths")
         info_json["submission_time"] = datetime.now().isoformat()

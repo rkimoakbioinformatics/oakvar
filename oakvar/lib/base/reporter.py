@@ -128,6 +128,8 @@ class BaseReporter:
         from ..module.local import get_module_conf
         from ..exceptions import WrongInput
 
+        if not self.dbpath:
+            raise WrongInput(msg=f"{self.dbpath} is not an OakVar result database file.")
         if not Path(self.dbpath).exists():
             raise WrongInput(msg=self.dbpath)
         try:
@@ -136,7 +138,7 @@ class BaseReporter:
                 db.execute("select count(*) from variant")
                 db.execute("select count(*) from gene")
         except Exception:
-            raise WrongInput(msg=f"{self.dbpath} is not an OakVar result database")
+            raise WrongInput(msg=f"{self.dbpath} is not an OakVar result database file.")
         if not self.output_dir:
             self.output_dir = str(Path(self.dbpath).parent)
         if not self.output_dir:
