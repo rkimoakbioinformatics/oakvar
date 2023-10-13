@@ -344,6 +344,7 @@ class BasePostAggregator(object):
 
         if self.conf is None:
             raise ConfigurationError()
+        self.open_db_connection()
         if not self.cursor or not self.cursor_w:
             raise SetupError()
         self._open_db_connection()
@@ -366,7 +367,7 @@ class BasePostAggregator(object):
             q = "update {}_header set col_def=? where col_name=?".format(self.level)
             self.cursor_w.execute(q, [col_def.get_json(), col_def.name])
         self.cursor_w.execute("commit")
-        self._open_db_connection()
+        self.close_db_connection()
 
     def write_output(
         self, output_dict, input_data=None, base__uid=None, base__hugo=None
@@ -474,15 +475,27 @@ class BasePostAggregator(object):
 
     def _close_db_connection(self):
         if self.cursor is not None:
-            self.cursor.close()
+            try:
+                self.cursor.close()
+            except Exception:
+                pass
+            self.cursor = None
         if self.cursor_w is not None:
             try:
                 self.cursor_w.execute("commit")
             except Exception:
                 pass
-            self.cursor_w.close()
+            try:
+                self.cursor_w.close()
+            except Exception:
+                pass
+            self.cursor_w = None
         if self.dbconn is not None:
-            self.dbconn.close()
+            try:
+                self.dbconn.close()
+            except Exception:
+                pass
+            self.dbconn = None
 
     def _alter_tables(self):
         from ..util.inout import ColumnDefinition
@@ -536,8 +549,7 @@ class BasePostAggregator(object):
 
     def base_cleanup(self):
         self.cleanup()
-        if self.dbconn is not None:
-            self._close_db_connection()
+        self._close_db_connection()
 
     def cleanup(self):
         pass
