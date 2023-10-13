@@ -18,7 +18,7 @@ class BaseReporter:
         filter_sql: Optional[str] = None,
         output_path: Optional[Path] = None,
         name: Optional[str] = None,
-        skip_gene_summary: bool = False,
+        skip_gene_summary: bool = True,
         row_per_sample: bool = False,
         output_dir: str = ".",
         run_name: str = "",
@@ -30,7 +30,6 @@ class BaseReporter:
         columns_to_include: Optional[Dict[str, List[str]]] = None,
         user: str = "",
         module_conf: Dict[str, Any] = {},
-        add_summary: bool = False,
         logtofile: bool = False,
         serveradmindb=None,
         outer=None,
@@ -47,9 +46,8 @@ class BaseReporter:
         self.filter_sql: Optional[str] = filter_sql
         self.output_path: Optional[Path] = None
         self.module_name: Optional[str] = name
-        self.skip_gene_summary: bool = skip_gene_summary
         self.row_per_sample: bool = row_per_sample
-        self.output_dir: Path
+        self.output_dir: Path = Path(".")
         self.run_name: str = run_name
         self.module_options: Dict[str, Any] = module_options
         self.tables_to_include: List[str]
@@ -61,7 +59,7 @@ class BaseReporter:
         self.samples_to_exclude: Optional[List[str]] = samples_to_exclude
         self.package_name: Optional[str] = package
         self.columns_to_include: Optional[Dict[str, List[str]]] = columns_to_include
-        self.add_summary: bool = add_summary
+        self.skip_gene_summary: bool = skip_gene_summary
         self.serveradmindb: Any = serveradmindb
         self.outer: Any = outer
         self.rf: Optional[DbFilter] = None
@@ -304,8 +302,7 @@ class BaseReporter:
     def col_is_categorical(self, col):
         return "category" in col and col["category"] in ["single", "multi"]
 
-    def do_gene_level_summary(self, add_summary=True):
-        _ = add_summary
+    def do_gene_level_summary(self):
         self.gene_summary_datas = {}
         if not self.summarizing_modules:
             return self.gene_summary_datas
@@ -316,7 +313,6 @@ class BaseReporter:
             for col in summary_cols:
                 if not self.col_is_categorical(col):
                     continue
-                colinfo_col = {}
                 colno = None
                 for i in range(len(columns)):
                     if columns[i]["col_name"] == self.get_db_col_name(mi, col):
@@ -325,10 +321,6 @@ class BaseReporter:
                 cats = []
                 for hugo in gene_summary_data:
                     val = gene_summary_data[hugo][col["name"]]
-                    repsub = colinfo_col.get("reportsub", [])
-                    if len(repsub) > 0:
-                        if val in repsub:
-                            val = repsub[val]
                     if val not in cats:
                         cats.append(val)
                 if colno is not None:
@@ -383,11 +375,13 @@ class BaseReporter:
 
     def run(
         self,
-        add_summary: Optional[bool] = None,
+        *args,
+        skip_gene_summary: bool=True,
         pagesize: Optional[int] = None,
         page: Optional[int] = None,
         make_filtered_table: bool = True,
         user=None,
+        **kwargs,
     ):
         from ..exceptions import SetupError
         from time import time
@@ -396,11 +390,12 @@ class BaseReporter:
         from ..util.run import update_status
         from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
 
+        _ = args
+        _ = kwargs
         if user is None:
             user = DEFAULT_SERVER_DEFAULT_USERNAME
         try:
-            if add_summary is None:
-                add_summary = self.add_summary
+            self.skip_gene_summary = skip_gene_summary
             if not self.rf:
                 raise SetupError(self.module_name)
             self.start_time = time()
@@ -413,13 +408,12 @@ class BaseReporter:
             )
             for level in self.tables_to_report:
                 self.level = level
-                self.make_col_infos_new(add_summary=add_summary)
-                self.write_data_new(
+                self.make_col_infos()
+                self.write_data(
                     level,
                     pagesize=pagesize,
                     page=page,
                     make_filtered_table=make_filtered_table,
-                    add_summary=add_summary,
                 )
             self.close_db()
             if self.module_conf:
@@ -467,110 +461,9 @@ class BaseReporter:
                 elif self.outer is not None:
                     self.outer.write(msg)
 
-    def write_data_new(
-        self,
-        level: str,
-        add_summary=True,
-        pagesize=None,
-        page=None,
-        make_filtered_table=True,
-    ):
-        import time
-        import sqlite3
-        from ..exceptions import SetupError
-
-        _ = make_filtered_table
-        if self.should_write_level(level) is False:
-            return
-        if not self.table_exists(level):
-            return
-        if not self.rf:
-            raise SetupError(self.module_name)
-        if add_summary and self.level == "gene":
-            self.do_gene_level_summary(add_summary=add_summary)
-        self.write_preface(level)
-        self.extracted_cols[level] = self.get_extracted_header_columns(level)
-        self.extracted_col_names[level] = [
-            col_def.get("col_name") for col_def in self.extracted_cols[level]
-        ]
-        self.write_header(level)
-        self.hugo_colno = self.colnos[level].get("base__hugo", None)
-        datacols = self.rf.get_variant_data_cols()
-        self.total_norows = self.rf.get_ftable_num_rows(level=level, uid=self.ftable_uid, ftype=level)  # type: ignore
-        if datacols is None or self.total_norows is None:
-            return
-        if level == "variant" and self.row_per_sample:
-            self.write_variant_sample_separately = True
-        else:
-            self.write_variant_sample_separately = False
-        row_count = 0
-        conn_read, conn_write = self.rf.get_db_conns()
-        if conn_read is None or conn_write is None:
-            return None
-        cursor_read = conn_read.cursor()
-        self.rf.get_level_data_iterator(
-            level,
-            page=page,
-            pagesize=pagesize,
-            uid=self.ftable_uid,
-            var_added_cols=self.var_added_cols,
-        )
-        ctime = time.time()
-        if isinstance(cursor_read, sqlite3.Cursor):
-            self.retrieved_col_names[level] = [d[0] for d in cursor_read.description]
-        else:
-            if cursor_read.description is None:
-                self.retrieved_col_names[level] = []
-            else:
-                self.retrieved_col_names[level] = [
-                    d[0] for d in cursor_read.description
-                ]
-        self.extracted_col_nos[level] = [
-            self.retrieved_col_names[level].index(col_name)
-            for col_name in self.extracted_col_names[level]
-        ]
-        self.num_retrieved_cols = len(self.retrieved_col_names[level])
-        self.colnos_to_display[level] = [
-            self.retrieved_col_names[level].index(c)
-            for c in self.colnames_to_display[level]
-        ]
-        self.extracted_colnos_in_retrieved = [
-            self.retrieved_col_names[level].index(c)
-            for c in self.extracted_col_names[level]
-        ]
-        if isinstance(cursor_read, sqlite3.Cursor):
-            datarow_iterator = cursor_read
-        else:
-            datarow_iterator = cursor_read.fetchall()
-        for datarow in datarow_iterator:
-            if self.dictrow:
-                datarow = dict(datarow)
-            else:
-                datarow = list(datarow)
-            if level == "gene" and add_summary:
-                self.add_gene_summary_data_to_gene_level(datarow)
-            datarow = self.substitute_val(level, datarow)
-            self.stringify_all_mapping(level, datarow)
-            self.escape_characters(datarow)
-            self.write_row_with_samples_separate_or_not(datarow)
-            row_count += 1
-            if row_count % 10000 == 0:
-                t = time.time()
-                msg = f"Wrote {row_count} rows. {(t - ctime) / row_count}"
-                if self.logger is not None:
-                    self.logger.info(msg)
-                elif self.outer is not None:
-                    self.outer.write(msg)
-            if pagesize and row_count == pagesize:
-                break
-        cursor_read.close()
-        conn_read.close()
-        conn_write.close()
-
     def write_data(
         self,
         level: str,
-        add_summary=True,
         pagesize=None,
         page=None,
         make_filtered_table=True,
@@ -586,8 +479,8 @@ class BaseReporter:
             return
         if not self.rf:
             raise SetupError(self.module_name)
-        if add_summary and self.level == "gene":
-            self.do_gene_level_summary(add_summary=add_summary)
+        if not self.skip_gene_summary and self.level == "gene":
+            self.do_gene_level_summary()
         self.write_preface(level)
         self.extracted_cols[level] = self.get_extracted_header_columns(level)
         self.extracted_col_names[level] = [
@@ -614,7 +507,6 @@ class BaseReporter:
             pagesize=pagesize,
             uid=self.ftable_uid,
             var_added_cols=self.var_added_cols,
-            cursor=cursor_read,
         )
         ctime = time.time()
         if isinstance(cursor_read, sqlite3.Cursor):
@@ -648,9 +540,8 @@ class BaseReporter:
                 datarow = dict(datarow)
             else:
                 datarow = list(datarow)
-            if level == "gene" and add_summary:
+            if level == "gene" and not self.skip_gene_summary:
                 self.add_gene_summary_data_to_gene_level(datarow)
-            datarow = self.substitute_val(level, datarow)
             self.stringify_all_mapping(level, datarow)
             self.escape_characters(datarow)
             self.write_row_with_samples_separate_or_not(datarow)
@@ -779,13 +670,13 @@ class BaseReporter:
         else:
             datarow.update({col: generow[col] for col in self.var_added_cols})
 
-    def get_variant_colinfo(self, add_summary: bool = False):
+    def get_variant_colinfo(self):
         try:
             if self.setup() is False:
                 self.close_db()
                 return None
             self.levels = self.get_levels_to_run("all")
-            self.make_col_infos(add_summary=add_summary)
+            self.make_col_infos()
             return self.colinfo
         except Exception:
             import traceback
@@ -1003,7 +894,7 @@ class BaseReporter:
                 self.add_to_colnames_to_display("variant", gene_column)
                 self.var_added_cols.append(gene_coldef.name)
 
-    def add_gene_level_summary_columns(self, add_summary=True):
+    def add_gene_level_summary_columns(self):
         from os.path import dirname
         import sys
         from ..exceptions import ModuleLoadingError
@@ -1015,7 +906,7 @@ class BaseReporter:
 
         conn = self.get_db_conn()
         cursor = conn.cursor()
-        if not add_summary:
+        if self.skip_gene_summary:
             return
         q = "select name from variant_annotator"
         cursor.execute(q)
@@ -1109,18 +1000,11 @@ class BaseReporter:
                 self.colnos_to_display[level].append(colno)
             colno += 1
 
-    def make_col_infos_new(self, add_summary=True):
+    def make_col_infos(self):
         prev_level = self.level
         for level in self.levels:
             self.level = level
-            self.make_col_info_new(level, add_summary=add_summary)
-        self.level = prev_level
-
-    def make_col_infos(self, add_summary=True):
-        prev_level = self.level
-        for level in self.levels:
-            self.level = level
-            self.make_col_info(level, add_summary=add_summary)
+            self.make_col_info(level)
         self.level = prev_level
 
     def add_column_number_stat_to_col_groups(self, level: str):
@@ -1131,7 +1015,7 @@ class BaseReporter:
             columngroup["end_colunm_number"] = new_last_columngroup_pos
             last_columngroup_pos = new_last_columngroup_pos
 
-    def make_col_info_new(self, level: str, add_summary=True):
+    def make_col_info(self, level: str):
         if not level or not self.table_exists(level):
             return
         self.store_mapper()
@@ -1144,7 +1028,7 @@ class BaseReporter:
         self.make_columns_colnos_colnamestodisplay_columngroup(level, coldefs)
         if not self.skip_gene_summary and self.level == "variant":
             self.add_gene_level_columns_to_variant_level()
-        if self.level == "gene" and level == "gene" and add_summary:
+        if self.level == "gene" and level == "gene" and not self.skip_gene_summary:
             self.add_gene_level_summary_columns()
         self.set_display_select_columns(level)
         self.set_cols_to_display(level)
@@ -1153,31 +1037,6 @@ class BaseReporter:
             "colgroups": self.column_groups[level],
             "columns": self.columns[level],
         }
-        self.make_report_sub(level)
-
-    def make_col_info(self, level: str, add_summary=True):
-        if not level or not self.table_exists(level):
-            return
-        self.store_mapper()
-        self.colnames_to_display[level] = []
-        self.modules_to_add_to_base = [self.mapper_name, "tagsampler"]
-        self.make_sorted_column_groups(level)
-        coldefs = self.make_coldefs(level)
-        if not coldefs:
-            return
-        self.make_columns_colnos_colnamestodisplay_columngroup(level, coldefs)
-        if not self.skip_gene_summary and self.level == "variant":
-            self.add_gene_level_columns_to_variant_level()
-        if self.level == "gene" and level == "gene" and add_summary:
-            self.add_gene_level_summary_columns()
-        self.set_display_select_columns(level)
-        self.set_cols_to_display(level)
-        self.add_column_number_stat_to_col_groups(level)
-        self.colinfo[level] = {
-            "colgroups": self.column_groups[level],
-            "columns": self.columns[level],
-        }
-        self.make_report_sub(level)
 
     def set_dbpath(self, dbpath: Union[Path, str] = ""):
         from os.path import exists
