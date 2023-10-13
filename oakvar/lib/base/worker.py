@@ -101,7 +101,6 @@ class Worker:
             return False
         if not self.converter.input_path:
             self.setup_file(self.input_paths[0], fileno=0)
-        print(f"@ getting lines")
         (
             lines,
             line_nos,
@@ -116,17 +115,13 @@ class Worker:
             return has_more_data
         if not num_alts_by_batch:
             num_alts_by_batch = [num_lines]
-        print(f"@ running _run_df")
         self._run_df(lines, line_nos, num_lines, num_alts_by_batch[0])
-        print(f"@ renumbering")
         last_val: int = self.renumber_uid(self.offset)
-        print(f"@ setup_file...")
         self.offset = last_val + 1
         if not has_more_data:
             if self.fileno < len(self.input_paths) - 1:
                 self.fileno += 1
                 self.setup_file(self.input_paths[self.fileno])
-        print(f"@ done")
         return has_more_data
 
     def _run_df(
@@ -136,13 +131,10 @@ class Worker:
         num_lines: int,
         total_num_alts: int,
     ):
-        print(f"@ getting converter dfs")
         dfs = self.converter.get_dfs(lines, line_nos, num_lines, total_num_alts)
-        print(f"@ after converter dfs={dfs}")
         if not dfs:
             return
         try:
-            print(f"@ getting mapper dfs")
             dfs = self.mapper.run_df(dfs)
         except Exception:
             import traceback
@@ -150,7 +142,6 @@ class Worker:
             traceback.print_exc()
             return
         for m in self.annotators:
-            print(f"@ getting {m} dfs")
             dfs = m.run_df(dfs)
         self.dfs = dfs
 
@@ -160,25 +151,20 @@ class Worker:
         from ..consts import SAMPLE_LEVEL_KEY
 
         last_val: int = 0
-        print(f"@ offset_levels={self.offset_levels}, dfs={self.dfs}")
         for table_name, df in self.dfs.items():
-            print(f"@ table_name={table_name}")
             if table_name in self.offset_levels or table_name.startswith(
                 SAMPLE_LEVEL_KEY
             ):
-                print(f"@ => to renumber. df={df}")
                 if df.height == 0:
                     if table_name == VARIANT_LEVEL:
                         last_val = 0
                 else:
-                    print(f"@ => renumbering {table_name}")
                     df.replace(
                         VARIANT_LEVEL_PRIMARY_KEY,
                         df[VARIANT_LEVEL_PRIMARY_KEY] + offset,
                     )
                     if table_name == VARIANT_LEVEL:
                         last_val = df[VARIANT_LEVEL_PRIMARY_KEY][-1]
-                    print(f"@ => last_val={last_val}")
         return last_val
 
     def save_df(self, dbpath: Path):
@@ -191,13 +177,11 @@ class Worker:
         for table_name, df in self.dfs.items():
             table_col_names_str = ", ".join([f'"{v}"' for v in df.columns])
             values_str = ", ".join(["?"] * len(df.columns))
-            print(f"@ table_name={table_name}, df={df.columns}")
             if isinstance(self.conn, sqlite3.Connection):
                 if table_name == GENE_LEVEL:
                     q = f"insert or ignore into {table_name} ({table_col_names_str}) values ({values_str})"
                 else:
                     q = f"insert into {table_name} ({table_col_names_str}) values ({values_str})"
-                print(f"@ q={q}")
                 for row in df.iter_rows():
                     self.conn.execute(q, row)
             else:
@@ -254,7 +238,6 @@ class ParallelWorker(Worker):
             num_alts = num_alts_by_batch[actor_num]
         else:
             num_alts = num_lines
-        print(f"@ actor_num={actor_num}, batch_size={batch_size}, num_lines_batch={num_lines_batch}, total_num_alts={num_alts_by_batch}, num_alts={num_alts}, len lines={len(lines)}, start_line_no={start_line_no}, end_line_no={end_line_no}")
         return self._run_df(
             lines[start_line_no:end_line_no],
             line_nos[start_line_no:end_line_no],

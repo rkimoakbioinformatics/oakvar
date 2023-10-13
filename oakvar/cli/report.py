@@ -96,17 +96,12 @@ def get_parser_fn_report():
         help="columns to include in reports",
     )
     parser_ov_report.add_argument(
-        "--level",
-        default=None,
-        help="Level to make a report for. 'all' to include all levels. Other possible levels include 'variant' and 'gene'.",
-    )
-    parser_ov_report.add_argument(
         "--user",
         default=DEFAULT_SERVER_DEFAULT_USERNAME,
         help=f"User who is creating this report. Default is {DEFAULT_SERVER_DEFAULT_USERNAME}.",
     )
     parser_ov_report.add_argument(
-        "--no-summary",
+        "--skip-gene-summary",
         action="store_true",
         default=False,
         help="Skip gene level summarization. This saves time.",

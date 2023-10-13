@@ -222,10 +222,10 @@ def add_parser_ov_run(subparsers):
     )
     parser_ov_run.add_argument("--filter-sql", default=None, help="Filter SQL")
     parser_ov_run.add_argument(
-        "--include-sample", nargs="+", default=None, help="Sample IDs to include"
+        "--samples-to_include", nargs="+", default=None, help="Sample IDs to include"
     )
     parser_ov_run.add_argument(
-        "--exclude-sample", nargs="+", default=None, help="Sample IDs to exclude"
+        "--samples-to-exclude", nargs="+", default=None, help="Sample IDs to exclude"
     )
     parser_ov_run.add_argument("--filter", default=None)
     parser_ov_run.add_argument(

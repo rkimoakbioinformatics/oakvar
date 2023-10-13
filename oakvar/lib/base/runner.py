@@ -617,12 +617,9 @@ class Runner(object):
                         )
                         ret.append(r)
                     ray.get(ret)
-                    print(f"@@@ saving df")
                     for worker in self.pool:
-                        import pdb; pdb.set_trace()
                         last_val: int = ray.get(worker.renumber_uid.remote(offset))  # type: ignore
                         offset = last_val + 1
-                        print(f"@ => last_val={last_val}, offset={offset}")
                         ray.get(worker.save_df.remote(dbpath))
                     if has_more_data is False:
                         break

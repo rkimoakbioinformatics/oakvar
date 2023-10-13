@@ -58,7 +58,7 @@ def get_ucsc_bins(start, stop=None):
 
 
 def load_class(
-    path: Optional[Path], class_name=None
+    path: Optional[Path], class_name=None, fresh: bool=False
 ) -> Union[
     Type[BaseConverter],
     Type[BasePreparer],
@@ -102,7 +102,8 @@ def load_class(
     ] = None
     try:
         module = import_module(module_name)
-        module = reload(module)
+        if fresh:
+            module = reload(module)
     except Exception:
         traceback.print_exc()
         try:

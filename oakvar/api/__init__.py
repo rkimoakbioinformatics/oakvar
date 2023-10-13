@@ -226,9 +226,8 @@ def report(
     samples_to_exclude: Optional[List[str]] = None,
     package: Optional[str] = None,
     columns_to_include: Optional[List[str]] = None,
-    level: Optional[str] = None,
     user: Optional[str] = None,
-    no_summary: bool = False,
+    skip_gene_summary: bool = False,
     serveradmindb=None,
     module_options: Dict[str, Dict] = {},
     logtofile: bool = False,
@@ -252,9 +251,8 @@ def report(
         output_path (Optional[Path]): output_path
         package (Optional[str]): package
         modules_dir (Optional[str]): modules_dir
-        level (Optional[str]): level
         user (Optional[str]): user
-        no_summary (bool): no_summary
+        skip_gene_summary (bool): skip_gene_summary
         serveradmindb:
         outer:
         loop:
@@ -347,9 +345,8 @@ def report(
                 samples_to_exclude=samples_to_exclude,
                 package=package,
                 columns_to_include=columns_to_include,
-                level=level,
                 user=user,
-                no_summary=no_summary,
+                skip_gene_summary=skip_gene_summary,
                 serveradmindb=serveradmindb,
                 module_options=reporter_module_options,
                 logtofile=logtofile,
