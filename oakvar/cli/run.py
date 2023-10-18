@@ -290,7 +290,7 @@ def add_parser_ov_run(subparsers):
         "--ignore-sample",
         action="store_true",
         default=False,
-        help="Ignore samples",
+        help="Do not process samples.",
     )
     parser_ov_run.add_argument(
         "--fill-in-missing-ref",

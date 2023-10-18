@@ -23,7 +23,7 @@ class BaseReporter:
         output_dir: str = ".",
         run_name: str = "",
         module_options: Dict = {},
-        tables_to_include: List[str] = [],
+        tables_to_report: List[str] = [],
         samples_to_include: Optional[List[str]] = [],
         samples_to_exclude: Optional[List[str]] = None,
         package: Optional[str] = None,
@@ -51,8 +51,8 @@ class BaseReporter:
         self.run_name: str = run_name
         self.module_options: Dict[str, Any] = module_options
         self.tables_to_include: List[str]
-        if tables_to_include:
-            self.tables_to_report = tables_to_include
+        if tables_to_report:
+            self.tables_to_report = tables_to_report
         else:
             self.tables_to_report = [VARIANT_LEVEL]
         self.samples_to_include: Optional[List[str]] = samples_to_include
@@ -66,7 +66,7 @@ class BaseReporter:
         self.colinfo = {}
         self.colnos = {}
         self.column_groups = {}
-        self.colnames_to_display: Dict[str, List[str]] = {}
+        self.columns_to_report: Dict[str, List[str]] = {}
         self.cols_to_display = {}
         self.colnos_to_display: Dict[str, List[int]] = {}
         self.extracted_cols: Dict[str, Any] = {}
@@ -87,7 +87,6 @@ class BaseReporter:
         self.dictrow: bool = True
         self.gene_summary_datas = {}
         self.total_norows: Optional[int] = None
-        self.modules_to_add_to_base = []
         self.use_duckdb: bool = False
         self.dbpath: Path = Path("")
         self.use_new_db_schema: bool = True
@@ -285,10 +284,10 @@ class BaseReporter:
         elif self.logger:
             self.logger.exception(e)
 
-    def get_extracted_header_columns(self, level):
+    def get_extracted_header_columns(self, table):
         cols = []
-        for col in self.colinfo[level]["columns"]:
-            if col["col_name"] in self.colnames_to_display[level]:
+        for col in self.colinfo[table]["columns"]:
+            if col["col_name"] in self.columns_to_report[table]:
                 cols.append(col)
         return cols
 
@@ -327,15 +326,17 @@ class BaseReporter:
                     columns[colno]["col_cats"] = cats
 
     def store_mapper(self):
+        from json import loads
+
         conn = self.get_db_conn()
         cursor = conn.cursor()
-        q = "select colval from info where colkey='_mapper'"
+        q = "select colval from info where colkey='mapper'"
         cursor.execute(q)
         r = cursor.fetchone()
         if r is None:
             self.mapper_name = "gencode"
         else:
-            self.mapper_name = str(r[0].split(":")[0])
+            self.mapper_name = loads(r[0])[0]
 
     def write_log(self, msg):
         if not self.logger:
@@ -406,11 +407,11 @@ class BaseReporter:
             self.ftable_uid = self.rf.make_ftables_and_ftable_uid(
                 make_filtered_table=make_filtered_table
             )
-            for level in self.tables_to_report:
-                self.level = level
+            for table in self.tables_to_report:
+                self.level = table
                 self.make_col_infos()
                 self.write_data(
-                    level,
+                    table,
                     pagesize=pagesize,
                     page=page,
                     make_filtered_table=make_filtered_table,
@@ -463,7 +464,7 @@ class BaseReporter:
 
     def write_data(
         self,
-        level: str,
+        table: str,
         pagesize=None,
         page=None,
         make_filtered_table=True,
@@ -473,26 +474,26 @@ class BaseReporter:
         from ..exceptions import SetupError
 
         _ = make_filtered_table
-        if self.should_write_level(level) is False:
+        if self.should_write_level(table) is False:
             return
-        if not self.table_exists(level):
+        if not self.table_exists(table):
             return
         if not self.rf:
             raise SetupError(self.module_name)
         if not self.skip_gene_summary and self.level == "gene":
             self.do_gene_level_summary()
-        self.write_preface(level)
-        self.extracted_cols[level] = self.get_extracted_header_columns(level)
-        self.extracted_col_names[level] = [
-            col_def.get("col_name") for col_def in self.extracted_cols[level]
+        self.write_preface(table)
+        self.extracted_cols[table] = self.get_extracted_header_columns(table)
+        self.extracted_col_names[table] = [
+            col_def.get("col_name") for col_def in self.extracted_cols[table]
         ]
-        self.write_header(level)
-        self.hugo_colno = self.colnos[level].get("base__hugo", None)
+        self.write_header(table)
+        self.hugo_colno = self.colnos[table].get("base__hugo", None)
         datacols = self.rf.get_variant_data_cols()
-        self.total_norows = self.rf.get_ftable_num_rows(level=level, uid=self.ftable_uid, ftype=level)  # type: ignore
+        self.total_norows = self.rf.get_ftable_num_rows(level=table, uid=self.ftable_uid, ftype=table)  # type: ignore
         if datacols is None or self.total_norows is None:
             return
-        if level == "variant" and self.row_per_sample:
+        if table == "variant" and self.row_per_sample:
             self.write_variant_sample_separately = True
         else:
             self.write_variant_sample_separately = False
@@ -502,7 +503,7 @@ class BaseReporter:
             return None
         cursor_read = conn_read.cursor()
         self.rf.get_level_data_iterator(
-            level,
+            table,
             page=page,
             pagesize=pagesize,
             uid=self.ftable_uid,
@@ -510,26 +511,26 @@ class BaseReporter:
         )
         ctime = time.time()
         if isinstance(cursor_read, sqlite3.Cursor):
-            self.retrieved_col_names[level] = [d[0] for d in cursor_read.description]
+            self.retrieved_col_names[table] = [d[0] for d in cursor_read.description]
         else:
             if cursor_read.description is None:
-                self.retrieved_col_names[level] = []
+                self.retrieved_col_names[table] = []
             else:
-                self.retrieved_col_names[level] = [
+                self.retrieved_col_names[table] = [
                     d[0] for d in cursor_read.description
                 ]
-        self.extracted_col_nos[level] = [
-            self.retrieved_col_names[level].index(col_name)
-            for col_name in self.extracted_col_names[level]
+        self.extracted_col_nos[table] = [
+            self.retrieved_col_names[table].index(col_name)
+            for col_name in self.extracted_col_names[table]
         ]
-        self.num_retrieved_cols = len(self.retrieved_col_names[level])
-        self.colnos_to_display[level] = [
-            self.retrieved_col_names[level].index(c)
-            for c in self.colnames_to_display[level]
+        self.num_retrieved_cols = len(self.retrieved_col_names[table])
+        self.colnos_to_display[table] = [
+            self.retrieved_col_names[table].index(c)
+            for c in self.columns_to_report[table]
         ]
         self.extracted_colnos_in_retrieved = [
-            self.retrieved_col_names[level].index(c)
-            for c in self.extracted_col_names[level]
+            self.retrieved_col_names[table].index(c)
+            for c in self.extracted_col_names[table]
         ]
         if isinstance(cursor_read, sqlite3.Cursor):
             datarow_iterator = cursor_read
@@ -540,9 +541,9 @@ class BaseReporter:
                 datarow = dict(datarow)
             else:
                 datarow = list(datarow)
-            if level == "gene" and not self.skip_gene_summary:
+            if table == "gene" and not self.skip_gene_summary:
                 self.add_gene_summary_data_to_gene_level(datarow)
-            self.stringify_all_mapping(level, datarow)
+            self.stringify_all_mapping(table, datarow)
             self.escape_characters(datarow)
             self.write_row_with_samples_separate_or_not(datarow)
             row_count += 1
@@ -727,98 +728,35 @@ class BaseReporter:
                 incl = False
         else:
             incl = True
-        if incl and col_name not in self.colnames_to_display[level]:
-            self.colnames_to_display[level].append(col_name)
+        if incl and col_name not in self.columns_to_report[level]:
+            self.columns_to_report[level].append(col_name)
 
     def make_sorted_column_groups(self, level):
         conn = self.get_db_conn()
         cursor = conn.cursor()
         self.column_groups[level] = []
-        if self.use_new_db_schema:
-            sql = "select name, displayname from info_modules"
-        else:
-            sql = f"select name, displayname from {level}_annotator order by name"
-        cursor.execute(sql)
+        sql = "select name, displayname, version from info_modules where parent=?"
+        cursor.execute(sql, (level,))
         rows = cursor.fetchall()
         for row in rows:
-            (name, displayname) = row
-            if name == "base":
-                self.column_groups[level].append(
-                    {"name": name, "displayname": displayname, "count": 0}
-                )
-                break
-        for row in rows:
-            (name, displayname) = row
-            if name in self.modules_to_add_to_base:
-                self.column_groups[level].append(
-                    {"name": name, "displayname": displayname, "count": 0}
-                )
-        for row in rows:
-            (name, displayname) = row
-            if name != "base" and name not in self.modules_to_add_to_base:
-                self.column_groups[level].append(
-                    {"name": name, "displayname": displayname, "count": 0}
-                )
+            (name, displayname, version) = row
+            self.column_groups[level].append(
+                {"name": name, "displayname": displayname, "version": version}
+            )
 
     def make_coldefs(self, level, group_name=None) -> List[ColumnDefinition]:
         coldefs: List[ColumnDefinition] = []
         conn = self.get_db_conn()
         cursor = conn.cursor()
-        if self.use_new_db_schema:
-            q = "select name, json from info_headers where level=?"
-            cursor.execute(q, (level,))
-            rows = cursor.fetchall()
-            for row in rows:
-                (col_name, coldef_str) = row
-                [group_name, _] = col_name.split("__")
-                coldef = ColumnDefinition({})
-                coldef.from_json(coldef_str)
-                coldefs.append(coldef)
-        else:
-            header_table = f"{level}_header"
-            group_names = []
-            if group_name:
-                group_names.append(group_name)
-                sql = (
-                    f"select col_name, col_def from {header_table} where "
-                    + f"col_name like '{group_name}__%'"
-                )
-            else:
-                group_names = [d.get("name") for d in self.column_groups[level]]
-            for group_name in group_names:
-                sql = (
-                    f"select col_def from {header_table} where col_name "
-                    + f"like '{group_name}__%'"
-                )
-                cursor.execute(sql)
-                rows = cursor.fetchall()
-                for row in rows:
-                    coljson = row[0]
-                    # group_name = col_name.split("__")[0]
-                    if (
-                        group_name == "base"
-                        or group_name in self.modules_to_add_to_base
-                    ):
-                        coldef = ColumnDefinition({})
-                        coldef.from_json(coljson)
-                        coldef.level = level
-                        coldef = self.gather_col_categories(level, coldef)
-                        if coldef is not None:
-                            coldefs.append(coldef)
-                for row in rows:
-                    coljson = row[0]
-                    # group_name = col_name.split("__")[0]
-                    if (
-                        group_name == "base"
-                        or group_name in self.modules_to_add_to_base
-                    ):
-                        continue
-                    coldef = ColumnDefinition({})
-                    coldef.from_json(coljson)
-                    coldef.level = level
-                    coldef = self.gather_col_categories(level, coldef)
-                    if coldef is not None:
-                        coldefs.append(coldef)
+        q = "select name, json from info_headers where level=?"
+        cursor.execute(q, (level,))
+        rows = cursor.fetchall()
+        for row in rows:
+            (col_name, coldef_str) = row
+            [group_name, _] = col_name.split("__")
+            coldef = ColumnDefinition({})
+            coldef.from_json(coldef_str)
+            coldefs.append(coldef)
         return coldefs
 
     def gather_col_categories(self, level, coldef):
@@ -967,21 +905,13 @@ class BaseReporter:
             self.column_groups[level].append(columngroup)
             for col in cols:
                 coldef = ColumnDefinition(col)
-                if self.should_be_in_base(mi.name):
-                    coldef.name = f"base__{coldef.name}"
-                else:
-                    coldef.name = f"{mi.name}__{coldef.name}"
+                coldef.name = f"{mi.name}__{coldef.name}"
                 coldef.genesummary = True
                 column = coldef.get_colinfo()
                 self.columns[level].append(column)
                 self.add_to_colnames_to_display(level, column)
                 self.colnos[level][coldef.name] = len(self.colnos[level])
             self.summarizing_modules.append([mi, annot, cols])
-
-    def should_be_in_base(self, name):
-        if "__" in name:
-            name = self.get_group_name(name)
-        return name in self.modules_to_add_to_base
 
     def get_group_field_names(self, col_name: str):
         return col_name.split("__")
@@ -995,7 +925,7 @@ class BaseReporter:
         colno = 0
         for col in self.columns[level]:
             col_name = col["col_name"]
-            if col_name in self.colnames_to_display[level]:
+            if col_name in self.columns_to_report[level]:
                 self.cols_to_display[level].append(col_name)
                 self.colnos_to_display[level].append(colno)
             colno += 1
@@ -1015,27 +945,26 @@ class BaseReporter:
             columngroup["end_colunm_number"] = new_last_columngroup_pos
             last_columngroup_pos = new_last_columngroup_pos
 
-    def make_col_info(self, level: str):
-        if not level or not self.table_exists(level):
+    def make_col_info(self, table: str):
+        if not table or not self.table_exists(table):
             return
         self.store_mapper()
-        self.colnames_to_display[level] = []
-        self.modules_to_add_to_base = [self.mapper_name, "tagsampler"]
-        self.make_sorted_column_groups(level)
-        coldefs = self.make_coldefs(level)
+        self.columns_to_report[table] = []
+        self.make_sorted_column_groups(table)
+        coldefs = self.make_coldefs(table)
         if not coldefs:
             return
-        self.make_columns_colnos_colnamestodisplay_columngroup(level, coldefs)
+        self.make_columns_colnos_colnamestodisplay_columngroup(table, coldefs)
         if not self.skip_gene_summary and self.level == "variant":
             self.add_gene_level_columns_to_variant_level()
-        if self.level == "gene" and level == "gene" and not self.skip_gene_summary:
+        if self.level == "gene" and table == "gene" and not self.skip_gene_summary:
             self.add_gene_level_summary_columns()
-        self.set_display_select_columns(level)
-        self.set_cols_to_display(level)
-        self.add_column_number_stat_to_col_groups(level)
-        self.colinfo[level] = {
-            "colgroups": self.column_groups[level],
-            "columns": self.columns[level],
+        self.set_display_select_columns(table)
+        self.set_cols_to_display(table)
+        self.add_column_number_stat_to_col_groups(table)
+        self.colinfo[table] = {
+            "colgroups": self.column_groups[table],
+            "columns": self.columns[table],
         }
 
     def set_dbpath(self, dbpath: Union[Path, str] = ""):

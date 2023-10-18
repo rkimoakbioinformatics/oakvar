@@ -20,6 +20,7 @@ class Runner(object):
         from .converter import BaseConverter
         from .mapper import BaseMapper
         from .annotator import BaseAnnotator
+        from .postaggregator import BasePostAggregator
         from ..consts import DEFAULT_CONVERTER_READ_SIZE
 
         self.runlevels = {
@@ -70,7 +71,6 @@ class Runner(object):
         self.annotators: Dict[str, LocalModule] = {}
         self.postaggregators = {}
         self.reporters = {}
-        self.samples: List[str] = []
         self.ignore_sample = False
         self.fill_in_missing_ref = False
         self.total_num_converted_variants = None
@@ -80,10 +80,11 @@ class Runner(object):
         self.converter_i: Optional[BaseConverter] = None
         self.mapper_i: List[BaseMapper] = []
         self.annotators_i: List[BaseAnnotator] = []
+        self.postaggregators_i: List[BasePostAggregator] = []
         self.genemapper = None
         self.append_mode = []
         self.exception = None
-        self.genome_assemblies: List[List[str]] = []
+        self.genome_assemblies: Dict[str, Dict[str, str]] = {}
         self.inkwargs = kwargs
         self.serveradmindb = None
         self.report_response = None
@@ -314,7 +315,9 @@ class Runner(object):
         from ..consts import GENE_LEVEL_PRIMARY_KEY_COLDEF
         from ..consts import OUTPUT_COLS_KEY
 
+        print(f"@ ignore_tables={ignore_tables}")
         for table_name, table_output in output.items():
+            print(f"@ table_name={table_name}")
             if table_name in ignore_tables:
                 continue
             if table_name not in coldefs:
@@ -327,23 +330,28 @@ class Runner(object):
             table_output_columns: List[Dict[str, Any]] = table_output.get(
                 OUTPUT_COLS_KEY, []
             )
+            print(f"@ table_output_columns={table_output_columns}")
             for coldef in table_output_columns:
-                coldef["level"] = table_level
-                coldef["module_name"] = module_name
+                if "level" not in coldef:
+                    coldef["level"] = table_level
+                if "module_name" not in coldef:
+                    coldef["module_name"] = module_name
                 coldef_copy = coldef.copy()
                 table_coldefs.append(coldef_copy)
-            if include_key_col:
+            if table_coldefs and include_key_col:
                 if table_level == VARIANT_LEVEL:
                     table_coldefs.insert(0, VARIANT_LEVEL_PRIMARY_KEY_COLDEF)
                 elif table_level == GENE_LEVEL:
                     table_coldefs.insert(0, GENE_LEVEL_PRIMARY_KEY_COLDEF)
                 else:
                     raise
-            coldefs[table_name].extend(table_coldefs)
-            if table_level not in self.table_names_by_level:
-                self.table_names_by_level[table_level] = []
-            if table_name not in self.table_names_by_level[table_level]:
-                self.table_names_by_level[table_level].append(table_name)
+            if table_coldefs:
+                print(f"@ table_coldefs={table_coldefs}")
+                coldefs[table_name].extend(table_coldefs)
+                if table_level not in self.table_names_by_level:
+                    self.table_names_by_level[table_level] = []
+                if table_name not in self.table_names_by_level[table_level]:
+                    self.table_names_by_level[table_level].append(table_name)
 
     def collect_output_coldefs(
         self, converter: BaseConverter
@@ -362,26 +370,18 @@ class Runner(object):
             result_table_names,
             include_key_col=False,
         )
-        for module in self.mapper_i:
-            self.add_coldefs(
-                VARIANT_LEVEL,
-                module.module_name,
-                coldefs,
-                module.output,
-                result_table_names,
-                ignore_tables=[ERR_LEVEL],
-            )
-            break
-        for m in self.annotators_i:
-            module_level: str = m.conf.get("level", VARIANT_LEVEL)
-            self.add_coldefs(
-                module_level,
-                m.module_name,
-                coldefs,
-                m.output,
-                result_table_names,
-                ignore_tables=[ERR_LEVEL],
-            )
+        for module_set in [self.mapper_i, self.annotators_i, self.postaggregators_i]:
+            for module in module_set:
+                module_level: str = module.conf.get("level", "")
+                print(f"@@@ {module.module_name}: {module.output}")
+                self.add_coldefs(
+                    module_level,
+                    module.module_name,
+                    coldefs,
+                    module.output,
+                    result_table_names,
+                    ignore_tables=[ERR_LEVEL],
+                )
         return coldefs, result_table_names
 
     def create_tables_in_result_db(
@@ -397,6 +397,7 @@ class Runner(object):
             return
         for table_name in result_table_names:
             q = f"drop table if exists {table_name}"
+            print(f"@ q={q}")
             self.result_db_conn.execute(q)
             table_col_defs = []
             for coldef in coldefs[table_name]:
@@ -408,9 +409,11 @@ class Runner(object):
                     table_col_def += " PRIMARY KEY"
                 table_col_defs.append(f"{table_col_def}")
                 table_col_names[table_name].append(coldef["name"])
-            table_col_def_str = ", ".join(table_col_defs)
-            q = f"create table {table_name} ({table_col_def_str})"
-            self.result_db_conn.execute(q)
+            if table_col_defs:
+                table_col_def_str = ", ".join(table_col_defs)
+                q = f"create table {table_name} ({table_col_def_str})"
+                print(f"@ q={q}")
+                self.result_db_conn.execute(q)
             # if table_name == GENE_LEVEL:
             #    q = f"create unique index {GENE_LEVEL}_uidx on {GENE_LEVEL} ({GENE_LEVEL_PRIMARY_KEY})"
             #    self.result_db_conn.execute(q)
@@ -419,39 +422,128 @@ class Runner(object):
     def create_info_modules_table_in_result_db(self):
         if not self.result_db_conn:
             return
-        table_name = "info_modules"
+        info_module_table_name = "info_modules"
+        q = f"drop table if exists {info_module_table_name}"
+        self.result_db_conn.execute(q)
+        q = f"create table {info_module_table_name} (name text primary key, displayname text, type text, level text, version text, description text)"
+        self.result_db_conn.execute(q)
+        for module_set in [self.mapper_i, self.annotators_i, self.postaggregators_i, self.reporters_i]:
+            for module in module_set:
+                conf = module.conf
+                q = f"insert into {info_module_table_name} values (?, ?, ?, ?, ?, ?)"
+                self.result_db_conn.execute(
+                    q,
+                    (
+                        module.module_name,
+                        conf.get("title", module.module_name),
+                        conf.get("type", ""),
+                        conf.get("level", ""),
+                        conf.get("version", ""),
+                        conf.get("description", ""),
+                    ),
+                )
+        self.result_db_conn.commit()
+
+    def create_info_module_groups_table_in_result_db(self):
+        if not self.result_db_conn:
+            return
+        info_module_table_name = "info_module_groups"
+        q = f"drop table if exists {info_module_table_name}"
+        self.result_db_conn.execute(q)
+        q = f"create table {info_module_table_name} (name text primary key, displayname text, parent text, description text)"
+        self.result_db_conn.execute(q)
+        q = f"insert into {info_module_table_name} values (?, ?, ?, ?)"
+        self.result_db_conn.execute(
+            q, ("base", "Base annotation", "", "Mapping and variant information")
+        )
+        for module_set in [self.mapper_i, self.annotators_i, self.postaggregators_i]:
+            for module in module_set:
+                conf = module.conf or {}
+                output: Dict[str, Dict[str, Any]] = conf.get("output", {})
+                for table_name, table_info in output.items():
+                    if table_name in ["variant", "gene"]:
+                        continue
+                    q = f"insert into {info_module_table_name} values (?, ?, ?, ?)"
+                    self.result_db_conn.execute(
+                        q,
+                        (
+                            table_name,
+                            table_info.get("title", ""),
+                            table_info.get("parent", ""),
+                            conf.get("desc", ""),
+                        ),
+                    )
+        self.result_db_conn.commit()
+
+    def create_info_tables_table_in_result_db(self, converter: BaseConverter):
+        from ..consts import VARIANT_LEVEL
+        from ..consts import GENE_LEVEL
+        from ..consts import ERR_LEVEL
+
+        if not self.result_db_conn:
+            return
+        write_table_name = "info_tables"
+        written_tables: List[str] = []
+        q = f"drop table if exists {write_table_name}"
+        self.result_db_conn.execute(q)
+        q = f"create table {write_table_name} (name text primary key, displayname text, parent text, description text)"
+        self.result_db_conn.execute(q)
+        q = f"insert into {write_table_name} values (?, ?, ?, ?)"
+        self.result_db_conn.execute(
+            q, (VARIANT_LEVEL, "Variant table", "", "Variant level information")
+        )
+        self.result_db_conn.execute(
+            q, ("gene", "Gene table", "", "Gene level information")
+        )
+        self.result_db_conn.execute(
+            q, ("err", "Error table", "", "Error information")
+        )
+        written_tables.extend([VARIANT_LEVEL, GENE_LEVEL, ERR_LEVEL])
+        for sample in converter.samples:
+            table_name = f"sample__{sample}"
+            self.result_db_conn.execute(
+                q, (f"{table_name}", f"Sample {sample}", VARIANT_LEVEL, f"Variant information for sample {sample}")
+            )
+            written_tables.append(table_name)
+        for module_set in [self.mapper_i, self.annotators_i, self.postaggregators_i]:
+            for module in module_set:
+                conf = module.conf
+                output: Dict[str, Dict[str, Any]] = conf.get("output", {})
+                for table_name, table_info in output.items():
+                    if table_name in written_tables:
+                        continue
+                    self.result_db_conn.execute(
+                        q,
+                        (
+                            table_name,
+                            table_info.get("title", conf.get("title", "")),
+                            table_info.get("level", conf.get("level", "")),
+                            table_info.get("description", conf.get("description", "")),
+                        ),
+                    )
+        self.result_db_conn.commit()
+
+    def create_info_headers_table_in_result_db(self, converter: BaseConverter):
+        from json import dumps
+        from ..consts import OUTPUT_COLS_KEY
+
+        if not self.result_db_conn:
+            return
+        table_name = "info_headers"
         q = f"drop table if exists {table_name}"
         self.result_db_conn.execute(q)
-        q = f"create table {table_name} (name text primary key, displayname text, level text, version text, description text)"
+        q = f"create table {table_name} (name text, tbl text, json text)"
         self.result_db_conn.execute(q)
-        q = f"insert into {table_name} values (?, ?, ?, ?, ?)"
-        self.result_db_conn.execute(
-            q, ("base", "Normalized Input", "", "", "Normalized input")
-        )
-        mapper = self.mapper_i[0]
-        q = f"insert into {table_name} values (?, ?, ?, ?, ?)"
-        self.result_db_conn.execute(
-            q,
-            (
-                mapper.module_name,
-                mapper.conf.get("title", mapper.module_name),
-                mapper.conf.get("level", "variant"),
-                mapper.conf.get("version", ""),
-                mapper.conf.get("description", ""),
-            ),
-        )
-        for module_name, module in self.annotators.items():
-            q = f"insert into {table_name} values (?, ?, ?, ?, ?)"
-            self.result_db_conn.execute(
-                q,
-                (
-                    module_name,
-                    module.conf.get("title", module_name),
-                    module.conf.get("level", "variant"),
-                    module.conf.get("version", ""),
-                    module.conf.get("description", ""),
-                ),
-            )
+        q = f"insert into {table_name} values (?, ?, ?)"
+        for module_set in [[converter], self.mapper_i, self.annotators_i, self.postaggregators_i]:
+            for module in module_set:
+                conf = module.conf or {}
+                output = conf.get("output", {})
+                for table_name, table_output in output.items():
+                    coldefs = table_output.get(OUTPUT_COLS_KEY, [])
+                    for col in coldefs:
+                        name = col['name']
+                        self.result_db_conn.execute(q, (name, table_name, dumps(col)))
         self.result_db_conn.commit()
 
     def get_offset_levels(self, converter: BaseConverter) -> List[str]:
@@ -480,36 +572,6 @@ class Runner(object):
                     offset_levels.append(table_name)
         return offset_levels
 
-    def create_info_headers_table_in_result_db(self, converter: BaseConverter):
-        from json import dumps
-        from ..consts import OUTPUT_COLS_KEY
-
-        if not self.result_db_conn:
-            return
-        table_name = "info_headers"
-        q = f"drop table if exists {table_name}"
-        self.result_db_conn.execute(q)
-        q = f"create table {table_name} (name text, level text, json text)"
-        self.result_db_conn.execute(q)
-        q = f"insert into {table_name} values (?, ?, ?)"
-        for table_name in converter.output:
-            for col in converter.output[table_name].get(OUTPUT_COLS_KEY, []):
-                col_name = col["name"]
-                self.result_db_conn.execute(q, (col_name, table_name, dumps(col)))
-        mapper = self.mapper_i[0]
-        for table_name, table_output in mapper.output.items():
-            coldefs = table_output.get(OUTPUT_COLS_KEY, [])
-            for col in coldefs:
-                name = f"base__{col['name']}"
-                self.result_db_conn.execute(q, (name, table_name, dumps(col)))
-        for m in self.annotators_i:
-            for table_name, table_output in m.output.items():
-                coldefs = table_output.get(OUTPUT_COLS_KEY, [])
-                for col in coldefs:
-                    name = f"{table_name}__{col['name']}"
-                    self.result_db_conn.execute(q, (name, table_name, dumps(col)))
-        self.result_db_conn.commit()
-
     def create_info_table_in_result_db(self):
         if not self.result_db_conn:
             return
@@ -524,6 +586,8 @@ class Runner(object):
             return []
         self.create_info_table_in_result_db()
         self.create_info_modules_table_in_result_db()
+        self.create_info_module_groups_table_in_result_db()
+        self.create_info_tables_table_in_result_db(converter)
         self.create_info_headers_table_in_result_db(converter)
 
     def create_result_database(
@@ -547,6 +611,8 @@ class Runner(object):
             return
         self.load_mapper()
         self.load_annotators()
+        self.load_postaggregators()
+        self.load_reporters()
         input_paths = self.input_paths[run_no]
         converter = self.choose_converter(input_paths)
         if converter is None:
@@ -821,7 +887,6 @@ class Runner(object):
         if args.get("annotators_replace"):
             args["annotators"] = args.get("annotators_replace")
         self.ignore_sample = args.get("ignore_sample", False)
-        self.samples = args.get("samples", [])
         self.fill_in_missing_ref = args.get("fill_in_missing_ref", False)
         self.args = SimpleNamespace(**args)
         self.outer = self.args.outer
@@ -920,9 +985,9 @@ class Runner(object):
 
     def set_genome_assemblies(self):
         if self.run_name:
-            self.genome_assemblies = [[] for _ in range(len(self.run_name))]
+            self.genome_assemblies = {}
         else:
-            self.genome_assemblies = []
+            self.genome_assemblies = {}
 
     def set_and_create_output_dir(self):
         from pathlib import Path
@@ -1528,6 +1593,14 @@ class Runner(object):
         mapper_conf = self.mapper_i[0].conf
         mapper_version = mapper_conf.get("version", mapper_conf.get("code_version"))
         self.write_info_row("mapper", [f"{self.mapper_name}=={mapper_version}"])
+        self.write_info_row(
+            "annotators",
+            [f"{m.module_name}=={m.conf['version']}" for m in self.annotators_i],
+        )
+        self.write_info_row(
+            "postaggregators",
+            [f"{m.module_name}=={m.conf['version']}" for m in self.postaggregators_i],
+        )
         input_paths = self.input_paths[run_no]
         self.write_info_row("input_paths", input_paths)
         self.write_info_row(
@@ -1535,11 +1608,8 @@ class Runner(object):
         )
         self.write_info_row("job_name", job_name)
         self.write_info_row("converter_format", converter.format_name)
-        self.write_info_row(
-            "annotators",
-            [f"{m.module_name}=={m.conf['version']}" for m in self.annotators_i],
-        )
-        self.write_info_row("samples", self.samples)
+        self.write_info_row("converter", f"{converter.name}=={converter.conf.get('version')}")
+        self.write_info_row("samples", converter.samples)
         self.result_db_conn.commit()
 
     def write_info_table(self, run_no: int, dbpath: Path, converter: BaseConverter):
@@ -1942,6 +2012,22 @@ class Runner(object):
         self.annotators_i: List[BaseAnnotator] = []
         for module_name in self.annotator_names:
             self.annotators_i.append(get_annotator(module_name))
+
+    def load_postaggregators(self):
+        from ..util.module import get_postaggregator
+        from .postaggregator import BasePostAggregator
+
+        self.postaggregators_i: List[BasePostAggregator] = []
+        for module_name in self.postaggregator_names:
+            self.postaggregators_i.append(get_postaggregator(module_name))
+
+    def load_reporters(self):
+        from ..util.module import get_reporter
+        from .reporter import BaseReporter
+
+        self.reporters_i: List[BaseReporter] = []
+        for module_name in self.reporter_names:
+            self.reporters_i.append(get_reporter(module_name))
 
     def do_step_preparer(self, run_no: int):
         step = "preparer"

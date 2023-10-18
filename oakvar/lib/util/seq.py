@@ -277,11 +277,11 @@ def reverse_complement(bases):
     return "".join([complementary_base[base] for base in bases[::-1]])
 
 
-def get_source_assembly_name(source_assembly: int):
-    return f"hg{source_assembly}"
+def get_source_assembly_name(source_assembly: str) -> str:
+    return source_assembly
 
 
-def get_chainfile_path(source_assembly: int) -> Optional[Path]:
+def get_chainfile_path(source_assembly: str) -> Optional[Path]:
     from os import makedirs
     from pathlib import Path
     from ..system import get_liftover_dir
@@ -304,7 +304,7 @@ def get_chainfile_path(source_assembly: int) -> Optional[Path]:
     return chain_file_path
 
 
-def get_lifter(source_assembly: Optional[int]) -> Optional[ChainFile]:
+def get_lifter(source_assembly: str) -> Optional[ChainFile]:
     """get_lifter.
 
     Args:
@@ -329,7 +329,7 @@ def liftover_one_pos(
     chrom: str,
     pos: int,
     lifter=None,
-    source_assembly: Optional[int] = None,
+    source_assembly: str = "",
 ) -> Optional[Tuple[str, int]]:
     """liftover_one_pos.
 
@@ -376,7 +376,7 @@ def liftover(
     alt: Optional[str] = None,
     get_ref: bool = False,
     lifter=None,
-    source_assembly: Optional[int] = None,
+    source_assembly: str = "",
     wgs_reader=None,
 ) -> Tuple[str, int, Optional[str], Optional[str]]:
     """liftover.

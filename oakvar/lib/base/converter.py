@@ -28,19 +28,16 @@ NO_ALT_ALLELE = "noallele"
 
 class BaseConverter(object):
     IGNORE = "converter_ignore"
-    input_assembly_int_dict = {
-        "hg18": 18,
-        "hg19": 19,
-        "hg38": 38,
-        "GRCh36": 18,
-        "GRCh37": 19,
-        "GRCh38": 38,
+    input_assembly_dict = {
+        "GRCh36": "hg18",
+        "GRCh37": "hg19",
+        "GRCh38": "hg38",
     }
 
     def __init__(
         self,
         format_name: str = "",
-        genome: Optional[str] = None,
+        genome: str = "",
         serveradmindb=None,
         module_options: Dict = {},
         input_encoding: Optional[str] = None,
@@ -79,8 +76,8 @@ class BaseConverter(object):
         self.read_lnum: int = 0
         self.lifter = None
         self.module_options = None
-        self.input_assembly: Optional[int] = None
-        self.given_input_assembly: Optional[str] = genome
+        self.genome_assembly: str = ""
+        self.given_input_assembly: str = genome
         self.converter_by_input_path: Dict[str, Optional[BaseConverter]] = {}
         self.num_valid_error_lines: Dict[str, int] = {}
         self.fileno = 0
@@ -90,7 +87,7 @@ class BaseConverter(object):
         self.input_encoding = input_encoding
         self.outer = outer
         self.total_num_converted_variants = 0
-        self.genome_assemblies: List[int] = []
+        self.genome_assemblies: Dict[str, str] = {}
         self.base_re = compile("^[ATGC]+|[-]+$")
         self.chromdict = {
             "chrx": "chrX",
@@ -239,7 +236,8 @@ class BaseConverter(object):
         return do_liftover
 
     def set_do_liftover(self, genome_assembly, input_path: str):
-        self.do_liftover: bool = genome_assembly != 38
+        from ..consts import SYSTEM_GENOME_ASSEMBLY
+        self.do_liftover: bool = genome_assembly != SYSTEM_GENOME_ASSEMBLY
         self.do_liftover_chrM = self.get_do_liftover_chrM(
             genome_assembly, input_path, self.do_liftover
         )
@@ -247,7 +245,7 @@ class BaseConverter(object):
             self.logger.info(f"liftover needed: {self.do_liftover}")
             self.logger.info(f"liftover for chrM needed: {self.do_liftover_chrM}")
 
-    def setup_lifter(self, genome_assembly: Optional[int]):
+    def setup_lifter(self, genome_assembly: str):
         from oakvar.lib.util.seq import get_lifter
 
         self.lifter = get_lifter(source_assembly=genome_assembly)
@@ -333,7 +331,7 @@ class BaseConverter(object):
         self.detect_encoding_of_input_path(input_path)
         self.setup(input_path)
         genome_assembly = self.get_genome_assembly()
-        self.genome_assemblies.append(genome_assembly)
+        self.genome_assemblies[input_path] = genome_assembly
         self.log_input_and_genome_assembly(input_path, genome_assembly)
         self.set_do_liftover(genome_assembly, input_path)
         if self.do_liftover or self.do_liftover_chrM:
@@ -343,25 +341,22 @@ class BaseConverter(object):
         _ = input_path or encoding
         pass
 
-    def get_genome_assembly(self) -> int:
+    def get_genome_assembly(self) -> str:
         from oakvar.lib.system.consts import DEFAULT_ASSEMBLY_KEY
         from oakvar.lib.exceptions import NoGenomeException
         from oakvar.lib.system import get_user_conf
 
         if self.given_input_assembly:
-            input_assembly = self.given_input_assembly
-        elif self.input_assembly:
-            input_assembly = self.input_assembly
+            genome_assembly = self.given_input_assembly
+        elif self.genome_assembly:
+            genome_assembly = self.genome_assembly
         else:
             user_conf = get_user_conf() or {}
-            input_assembly = user_conf.get(DEFAULT_ASSEMBLY_KEY, None)
-            if not input_assembly:
+            genome_assembly = user_conf.get(DEFAULT_ASSEMBLY_KEY, "")
+            if not genome_assembly:
                 raise NoGenomeException()
-        if not isinstance(input_assembly, int):
-            if input_assembly not in self.input_assembly_int_dict:
-                raise NoGenomeException()
-            input_assembly = self.input_assembly_int_dict.get(input_assembly, 38)
-        return input_assembly
+        genome_assembly = self.input_assembly_dict.get(genome_assembly, genome_assembly)
+        return genome_assembly
 
     def handle_chrom(self, variant: Variant):
         from oakvar.lib.exceptions import IgnoredVariant

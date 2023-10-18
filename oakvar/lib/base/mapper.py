@@ -216,7 +216,7 @@ class BaseMapper(object):
 
         self.df_headers = get_df_headers(self.output)
 
-    def get_series(self, df: pl.DataFrame) -> Dict[str, List[pl.Series]]:
+    def get_series(self, df: pl.DataFrame, var_ld: Dict[str, Dict[str, List[Any]]]) -> Dict[str, List[pl.Series]]:
         from ..consts import VARIANT_LEVEL
         from ..consts import VARIANT_LEVEL_PRIMARY_KEY
         from ..consts import GENE_LEVEL
@@ -228,16 +228,6 @@ class BaseMapper(object):
         from ..consts import ERR_KEY
         from ..util.run import initialize_err_series_data
 
-        var_ld = {}
-        var_ld[ERR_LEVEL] = initialize_err_series_data()
-        counts: Dict[str, int] = {}
-        max_counts: Dict[str, int] = {}
-        for table_name, col_names in self.col_names.items():
-            counts[table_name] = 0
-            max_counts[table_name] = df.height
-            var_ld[table_name] = {}
-            for col_name in col_names:
-                var_ld[table_name][col_name] = [None] * max_counts[table_name]
         for input_data in df.iter_rows(named=True):
             output_dict: Dict[str, List[Dict[str, Any]]]
             if input_data["alt_base"] in ["*", ".", ""]:
@@ -314,7 +304,7 @@ class BaseMapper(object):
                 seriess[table_name].append(series)
         return seriess
 
-    def run_df(self, dfs: Dict[str, pl.DataFrame]) -> Dict[str, pl.DataFrame]:
+    def run_df(self, dfs: Dict[str, pl.DataFrame], var_ld: Dict[str, Dict[str, List[Any]]]) -> Dict[str, pl.DataFrame]:
         from ..consts import VARIANT_LEVEL
         from ..consts import ERR_LEVEL
 

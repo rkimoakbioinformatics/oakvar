@@ -212,12 +212,11 @@ class BaseAnnotator(object):
             ).copy()
         if isinstance(output, dict):
             self.output = output
-        else:
-            self.output[self.module_name] = {"level": self.level, OUTPUT_COLS_KEY: []}
-            coldefs: List[Dict[str, Any]] = [VARIANT_LEVEL_PRIMARY_KEY_COLDEF]
+        elif output:
+            coldefs: List[Dict[str, Any]] = []
             for coldef in output:
                 if coldef.get("table") is True:
-                    table_name = coldef["name"]
+                    table_name = f"{self.module_name}__{coldef['name']}"
                     self.output[table_name] = {
                         "level": coldef.get("level", self.level),
                         OUTPUT_COLS_KEY: [],
@@ -228,7 +227,11 @@ class BaseAnnotator(object):
                         )
                 else:
                     coldefs.append(coldef.copy())
-            self.output[self.module_name][OUTPUT_COLS_KEY] = coldefs
+            if coldefs:
+                if self.module_name not in self.output:
+                    self.output[self.module_name] = {"level": self.level}
+                coldefs.insert(0, VARIANT_LEVEL_PRIMARY_KEY_COLDEF)
+                self.output[self.module_name][OUTPUT_COLS_KEY] = coldefs
         self.conf["output"] = self.output.copy()
         self.col_names = {
             table_name: [
@@ -426,6 +429,8 @@ class BaseAnnotator(object):
                             max_counts[table_name] += df.height
                 else:
                     table_name = self.module_name
+                    if self.module_name == "biogrid":
+                        import pdb; pdb.set_trace()
                     table_ld = var_ld[table_name]
                     table_count = counts[table_name]
                     table_max_count = max_counts[table_name]
