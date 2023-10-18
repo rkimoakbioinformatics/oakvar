@@ -513,7 +513,7 @@ class BaseAnnotator(object):
             data[hugo] = out
         return data
 
-    def _log_runtime_exception(self, lnum, __line__, __input_data__, e, fn=None):
+    def log_error(self, lnum, __line__, __input_data__, e, fn=None):
         """_log_runtime_exception.
 
         Args:

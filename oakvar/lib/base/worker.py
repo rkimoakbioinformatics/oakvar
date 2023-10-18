@@ -35,6 +35,7 @@ class Worker:
         df_headers: Optional[Dict[str, Dict[str, pl.PolarsDataType]]] = None,
         offset_levels: List[str] = [],
         use_duckdb: bool = False,
+        logger=None,
     ):
         import duckdb
         import sqlite3
@@ -46,6 +47,7 @@ class Worker:
         from oakvar.lib.util.module import get_annotator
 
         self.dfs: Dict[str, pl.DataFrame] = {}
+        self.unique_excs: Dict[str, int] = {}
         self.use_duckdb = use_duckdb
         self.batch_size: int = batch_size
         self.converter: BaseConverter
@@ -57,6 +59,7 @@ class Worker:
         self.start_line_no: int = 1
         self.offset: int = 0
         self.offset_levels: List[str] = offset_levels
+        self.logger = logger
         if converter:
             self.converter = converter
         elif converter_name:
@@ -125,7 +128,7 @@ class Worker:
                 self.setup_file(self.input_paths[self.fileno])
         return has_more_data
 
-    def log_error(self, e: Exception, input_data: Dict[str, Any]) -> Tuple[Optional[str], int]:
+    def log_error(self, e, input_data: Dict[str, Any]) -> Tuple[Optional[str], int]:
         from traceback import format_exc
         from zlib import crc32
         from oakvar.lib.exceptions import ExpectedException
@@ -189,13 +192,11 @@ class Worker:
                             var_ld[table_name][col_name] = [None] * max_counts[table_name]
         df = dfs.get(VARIANT_LEVEL)
         if df is None:
-            return
+            raise Exception(f"dfs does not have variant key.")
         mapper = self.mapper
         for input_data in df.iter_rows(named=True):
             input_level: str = VARIANT_LEVEL
-            df = dfs.get(input_level)
-            if df is None:
-                continue
+            import pdb; pdb.set_trace()
             try:
                 output_dict = mapper.map(input_data)
             except Exception as e:
