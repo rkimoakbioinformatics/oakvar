@@ -17,6 +17,9 @@ chromdict = {
     "chr24": "chrY",
 }
 base_re = compile("^[ATGC]+|[-]+$")
+VALID: str = "valid"
+ERROR: str = "error"
+IGNORED: str = "ignored"
 
 class LinesData:
     def __init__(self, lines_data: Dict[int, List[Tuple[int, Dict[str, Any]]]]):
@@ -222,6 +225,8 @@ def gather_variantss(
         err_holders: List[List[str]],
         num_valid_error_lines: Dict[str, int],
 ) -> List[List[Dict[str, Any]]]:
+    from oakvar.lib.exceptions import IgnoredInput
+
     variants_l: List[List[Dict[str, Any]]] = []
     line_data = lines_data[core_num]
     for (line_no, line) in line_data:
@@ -229,9 +234,9 @@ def gather_variantss(
             variants = converter.convert_line(line)
             variants_datas, error_occurred = handle_converted_variants(variants, do_liftover, do_liftover_chrM, lifter, wgs_reader, logger, error_logger, input_path, unique_excs, err_holders, line_no, core_num)
             if error_occurred:
-                num_valid_error_lines["error"] += 1
+                num_valid_error_lines[ERROR] += 1
             else:
-                num_valid_error_lines["valid"] += 1
+                num_valid_error_lines[VALID] += 1
             if not variants_datas:
                 continue
             variants_l.append(variants_datas)
@@ -239,7 +244,10 @@ def gather_variantss(
             raise
         except Exception as e:
             _log_conversion_error(logger, error_logger, input_path, line_no, e, unique_excs, err_holders, core_num=core_num)
-            num_valid_error_lines["error"] += 1
+            if isinstance(e, IgnoredInput):
+                num_valid_error_lines[IGNORED] += 1
+            else:
+                num_valid_error_lines[ERROR] += 1
     return variants_l
 
 def gather_variantss_wrapper(args):
@@ -836,7 +844,7 @@ class MasterConverter(object):
             self.file_num_unique_variants = 0
             self.file_num_dup_variants: int = 0
             self.file_error_lines = 0
-            self.num_valid_error_lines = {"valid": 0, "error": 0}
+            self.num_valid_error_lines = {VALID: 0, ERROR: 0, IGNORED: 0}
             start_line_pos: int = 1
             start_line_no: int = start_line_pos
             round_no: int = 0
@@ -935,16 +943,17 @@ class MasterConverter(object):
                 update_status(
                     status, logger=self.logger, serveradmindb=self.serveradmindb
                 )
+            self.logger.info(f"{input_path}: number of lines ignored: {self.num_valid_error_lines[IGNORED]}")
             self.logger.info(
-                f"{input_path}: number of lines successfully processed: {self.num_valid_error_lines['valid']}"
+                f"{input_path}: number of lines successfully processed: {self.num_valid_error_lines[VALID]}"
             )
-            self.logger.info(f"{input_path}: number of lines skipped due to errors: {self.num_valid_error_lines['error']}")
+            self.logger.info(f"{input_path}: number of lines skipped due to errors: {self.num_valid_error_lines[ERROR]}")
             self.logger.info(f"{input_path}: number of unique variants: {self.file_num_unique_variants}")
             self.logger.info(f"{input_path}: number of duplicate variants: {self.file_num_dup_variants}")
             self.total_num_unique_variants += self.file_num_unique_variants
             self.total_num_duplicate_variants += self.file_num_dup_variants
-            self.total_num_valid_lines += self.num_valid_error_lines["valid"]
-            self.total_num_error_lines += self.num_valid_error_lines["error"]
+            self.total_num_valid_lines += self.num_valid_error_lines[VALID]
+            self.total_num_error_lines += self.num_valid_error_lines[ERROR]
         for core_num in range(num_pool):
             flush_err_holder(self.err_holders, core_num, self.error_logger, force=True)
         self.close_output_files()
