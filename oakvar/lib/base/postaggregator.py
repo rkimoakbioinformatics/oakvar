@@ -297,10 +297,10 @@ class BasePostAggregator(object):
 
         if self.conf is None:
             raise ConfigurationError()
+        self._open_db_connection()
         if not self.dbconn or not self.cursor_w:
             return
         lnum = 0
-        self._open_db_connection()
         self.cursor_w.execute("begin")
         for input_data in self._get_input():
             try:
