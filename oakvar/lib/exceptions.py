@@ -44,6 +44,11 @@ class BadFormatError(InvalidData):
 class IgnoredVariant(InvalidData):
     traceback = False
 
+class IgnoredInput(ExpectedException):
+    traceback = False
+    
+    def __init__(self):
+        super().__init__(msg="Ignored input line")
 
 class LiftoverFailure(InvalidData):
     traceback = False
