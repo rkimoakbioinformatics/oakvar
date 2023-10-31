@@ -11,21 +11,6 @@ from .variant import Variant
 from .commonmodule import BaseCommonModule
 
 
-CHROM = "chrom"
-POS = "pos"
-END_POS = "end_pos"
-REF_BASE = "ref_base"
-ALT_BASE = "alt_base"
-ORI_CHROM = "ori_chrom"
-ORI_POS = "ori_pos"
-ORI_END_POS = "ori_end_pos"
-ORI_REF_BASE = "ori_ref_base"
-ORI_ALT_BASE = "ori_alt_base"
-VALID = "valid"
-ERROR = "error"
-NO_ALT_ALLELE = "noallele"
-
-
 class BaseConverter(object):
     IGNORE = "converter_ignore"
     input_assembly_dict = {
@@ -454,6 +439,18 @@ class BaseConverter(object):
         from oakvar.lib.consts import LINENO_KEY
         from oakvar.lib.consts import SAMPLE_HAS
         from oakvar.lib.consts import VARIANT_LEVEL_PRIMARY_KEY
+        from oakvar.lib.consts import CHROM
+        from oakvar.lib.consts import POS
+        from oakvar.lib.consts import NO_ALT_ALLELE
+        from oakvar.lib.consts import ERROR
+        from oakvar.lib.consts import END_POS
+        from oakvar.lib.consts import REF_BASE
+        from oakvar.lib.consts import ALT_BASE
+        from oakvar.lib.consts import ORI_POS
+        from oakvar.lib.consts import ORI_END_POS
+        from oakvar.lib.consts import ORI_REF_BASE
+        from oakvar.lib.consts import ORI_ALT_BASE
+        from oakvar.lib.consts import VALID
         from oakvar.lib.exceptions import NoVariant
 
         COLLECT_MARGIN: float = 1.2
@@ -492,10 +489,10 @@ class BaseConverter(object):
                         variant_data[END_POS][row_no] = variant.pos
                         variant_data[REF_BASE][row_no] = variant.ref_base
                         variant_data[ALT_BASE][row_no] = variant.alt_base
-                        variant_data[ORI_POS][row_no] = variant.pos
-                        variant_data[ORI_END_POS][row_no] = variant.pos
-                        variant_data[ORI_REF_BASE][row_no] = variant.ref_base
-                        variant_data[ORI_ALT_BASE][row_no] = variant.alt_base
+                        variant_data[ORI_POS][row_no] = variant.ori_pos
+                        variant_data[ORI_END_POS][row_no] = variant.ori_end_pos
+                        variant_data[ORI_REF_BASE][row_no] = variant.ori_ref_base
+                        variant_data[ORI_ALT_BASE][row_no] = variant.ori_alt_base
                         variant_data[FILENO_KEY][row_no] = self.fileno
                         variant_data[LINENO_KEY][row_no] = line_no
                         if variant.sample_data:
@@ -511,10 +508,10 @@ class BaseConverter(object):
                         variant_data[END_POS].append(variant.pos)
                         variant_data[REF_BASE].append(variant.ref_base)
                         variant_data[ALT_BASE].append(variant.alt_base)
-                        variant_data[ORI_POS].append(variant.pos)
-                        variant_data[ORI_END_POS].append(variant.pos)
-                        variant_data[ORI_REF_BASE].append(variant.ref_base)
-                        variant_data[ORI_ALT_BASE].append(variant.alt_base)
+                        variant_data[ORI_POS].append(variant.ori_pos)
+                        variant_data[ORI_END_POS].append(variant.ori_end_pos)
+                        variant_data[ORI_REF_BASE].append(variant.ori_ref_base)
+                        variant_data[ORI_ALT_BASE].append(variant.ori_alt_base)
                         variant_data[FILENO_KEY].append(self.fileno)
                         variant_data[LINENO_KEY].append(line_no)
                         if variant.sample_data:
