@@ -492,7 +492,7 @@ class MasterConverter(object):
             return converter
         except Exception:
             if self.logger:
-                self.logger.error(f"{module_name} could not be loaded.")
+                self.logger.exception(f"{module_name} could not be loaded.")
             return None
 
     def collect_converter_paths(self):
@@ -554,7 +554,7 @@ class MasterConverter(object):
                     converter = self.get_converter(module_name)
                     if not converter:
                         if self.logger:
-                            self.logger.error(f"{module_name} could not be loaded.")
+                            self.logger.exception(f"{module_name} could not be loaded.")
                         continue
                     check_success = converter.check_format(input_path)
                 except Exception:
