@@ -103,7 +103,7 @@ def get_parser_fn_report():
     )
     parser_ov_report.add_argument("-c", dest="confpath", help="path to a conf file")
     parser_ov_report.add_argument(
-        "--module-paths",
+        "--reporter-paths",
         dest="module_paths",
         nargs="*",
         default=None,

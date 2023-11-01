@@ -1106,7 +1106,7 @@ class Runner(object):
         if "reporter" in self.args.skip:
             self.reporters = {}
         else:
-            self.reporter_names = [v + "reporter" for v in self.report_names]
+            self.reporter_names = [v if v.endswith("reporter") else v + "reporter" for v in self.report_names]
             self.check_valid_modules(self.reporter_names)
             self.reporters = get_local_module_infos_by_names(self.reporter_names)
 
@@ -1987,7 +1987,6 @@ class Runner(object):
 
     async def run_reporter(self, run_no: int):
         from pathlib import Path
-        from ..module.local import get_local_module_info
         from ..util.util import load_class
         from ..util.run import update_status
         from ..exceptions import ModuleNotExist
@@ -2005,16 +2004,9 @@ class Runner(object):
             raise
         run_name = self.run_name[run_no]
         output_dir = Path(self.output_dir[run_no])
-        if len(self.reporters) > 0:
-            module_names = [v for v in self.reporters.keys()]
-            report_types = [v.replace("reporter", "") for v in self.reporters.keys()]
-        else:
-            module_names = []
-            report_types = []
         response = {}
-        for report_type, module_name in zip(report_types, module_names):
+        for module_name, module in self.reporters.items():
             reporter = None
-            module = get_local_module_info(module_name)
             announce_module(module, serveradmindb=self.serveradmindb)
             if module is None:
                 raise ModuleNotExist(module_name)
@@ -2040,6 +2032,7 @@ class Runner(object):
                     logger=self.logger,
                     serveradmindb=self.serveradmindb,
                 )
+            report_type: str = module_name.replace("reporter", "")
             response[report_type] = response_t
         return response
 

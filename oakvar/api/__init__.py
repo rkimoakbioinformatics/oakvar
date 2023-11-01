@@ -355,7 +355,7 @@ def report(
                 if outer:
                     outer.error(f"{module_path} does not exist.")
     elif report_types:
-        module_names = [v + "reporter" for v in report_types]
+        module_names = [v if v.endswith("reporter") else v + "reporter" for v in report_types]
         for module_name in module_names:
             module_info = get_local_module_info(module_name)
             if module_info:
