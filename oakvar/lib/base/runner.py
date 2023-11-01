@@ -2,16 +2,16 @@
 # 
 # Copyright (c) 2023 Oak Bioinformatics, LLC
 # 
-# This program is dual licensed under the Affero GPL-3.0 or later for non-commercial, 
-# open source use, and a commercial license, which is available for purchase, 
-# for commercial use.
+# This program is dual licensed under the Affero GPL-3.0 or later for 
+# non-commercial and open source use, and under a commercial license, 
+# which is available for purchase, for closed-source or commercial use.
 # 
-# For commercial use, please contact Oak Bioinformatics, LLC for obtaining a
-# commercial license. OakVar commercial license does not impose the Affero GPL
-# open-source licensing terms, conditions, and limitations. To obtain a
-# commercial-use license of OakVar, please visit our website at
-# https://oakbioinformatics.com or contact us at info@oakbioinformatics.com for
-# more information.
+# For the commercial use, please contact Oak Bioinformatics, LLC 
+# for obtaining such a license. OakVar commercial license does not impose 
+# the Affero GPL open-source licensing terms, conditions, and limitations. 
+# To obtain a commercial-use license of OakVar, please visit our website at
+# https://oakbioinformatics.com or contact us at info@oakbioinformatics.com 
+# for more information.
 # 
 # ================
 # OpenCRAVAT
@@ -1518,7 +1518,7 @@ class Runner(object):
         if "reporter" in self.args.skip:
             self.reporters = {}
         else:
-            self.reporter_names = [v + "reporter" for v in self.report_names]
+            self.reporter_names = [v if v.endswith("reporter") else v + "reporter" for v in self.report_names]
             self.check_valid_modules(self.reporter_names)
             self.reporters = get_local_module_infos_by_names(self.reporter_names)
 
@@ -1897,7 +1897,6 @@ class Runner(object):
 
     def run_reporter(self, run_no: int):
         from pathlib import Path
-        from ..module.local import get_local_module_info
         from ..util.module import get_reporter
         from ..util.run import update_status
         from ..exceptions import ModuleNotExist
@@ -1913,16 +1912,9 @@ class Runner(object):
             raise
         run_name = self.run_name[run_no]
         output_dir = Path(self.output_dir[run_no])
-        if len(self.reporters) > 0:
-            module_names = [v for v in self.reporters.keys()]
-            report_types = [v.replace("reporter", "") for v in self.reporters.keys()]
-        else:
-            module_names = []
-            report_types = []
         response = {}
-        for report_type, module_name in zip(report_types, module_names):
+        for module_name, module in self.reporters.items():
             reporter = None
-            module = get_local_module_info(module_name)
             announce_module(module, serveradmindb=self.serveradmindb)
             if module is None:
                 raise ModuleNotExist(module_name)
@@ -1953,6 +1945,7 @@ class Runner(object):
                     logger=self.logger,
                     serveradmindb=self.serveradmindb,
                 )
+            report_type: str = module_name.replace("reporter", "")
             response[report_type] = response_t
         return response
 
