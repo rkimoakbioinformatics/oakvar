@@ -443,7 +443,6 @@ def get_remote_manifest_from_local(module_name: str, outer=None):
     rmi["code_size"] = module_info.get_code_size()
     rmi["description"] = module_conf.get("description", "")
     rmi["developer"] = module_conf.get("developer", {})
-    rmi["downloads"] = 0
     rmi["groups"] = module_conf.get("groups", [])
     rmi["output_columns"] = module_conf.get("output_columns", [])
     rmi["publish_time"] = datetime.now().strftime(publish_time_fmt)

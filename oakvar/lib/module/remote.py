@@ -43,6 +43,7 @@ from typing import Optional
 from typing import Dict
 from typing import Tuple
 from typing import List
+from typing import Union
 from pathlib import Path
 
 
@@ -301,7 +302,7 @@ def search_remote(*patterns, module_type=None):
     return matching_names
 
 
-def get_remote_module_info_ls(module_name, version=None) -> Optional[RemoteModuleLs]:
+def get_remote_module_info_ls(module_name, version=None) -> Union[RemoteModuleLs, None]:
     from .cache import get_module_cache
     from ..store import remote_module_info_ls_latest_version
 
