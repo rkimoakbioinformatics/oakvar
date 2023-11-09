@@ -394,7 +394,6 @@ class WebServer(object):
         for route in self.routes:
             method, path, func_name = route
             self.app.router.add_route(method, path, func_name)
-        self.add_static_routes()
         self.setup_webapp_routes()
         modules_dir = get_modules_dir()
         if modules_dir:
@@ -404,6 +403,7 @@ class WebServer(object):
                 )
             if exists(join(modules_dir, "webapps")):
                 self.app.router.add_static("/webapps", join(modules_dir, "webapps"))
+        self.add_static_routes()
         self.setup_cors()
 
     def index(self, _):

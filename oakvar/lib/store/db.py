@@ -483,15 +483,6 @@ def get_remote_manifest_cache_path():
     return str(Path(conf_dir) / "remote_manifest.json")
 
 
-def save_remote_manifest_cache(content: dict):
-    from json import dump
-
-    cache_path = get_remote_manifest_cache_path()
-    if cache_path:
-        with open(cache_path, "w") as wf:
-            dump(content, wf)
-
-
 @db_func
 def fetch_ov_store_cache(
     conn=None,
@@ -507,7 +498,7 @@ def fetch_ov_store_cache(
     from ..exceptions import AuthorizationError
     from .ov.account import login_with_token_set
     from .ov import get_server_last_updated
-    from ..module.remote import make_remote_manifest
+    #from ..module.remote import make_remote_manifest
 
     if not conn or not cursor:
         return False
@@ -557,8 +548,6 @@ def fetch_ov_store_cache(
     conn.commit()
     if outer:
         outer.write("Finalizing fetch...")
-    content = make_remote_manifest()
-    save_remote_manifest_cache(content)
     if outer:
         outer.write("OakVar store cache has been fetched.")
     return True

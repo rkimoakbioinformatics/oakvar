@@ -42,6 +42,7 @@ from typing import Any
 from typing import Optional
 from typing import Union
 from typing import List
+from typing import Set
 from typing import Tuple
 from typing import Dict
 import polars as pl
@@ -1480,13 +1481,16 @@ class Runner(object):
         elif isinstance(input_module_names, str):
             module_name = input_module_names
             module = get_local_module_info(module_name)
-            if not module:
+            if not module or module.type != "annotator":
                 return None
-            required_module_names = module.conf.get("requires", [])
+            final_module_names.append(module_name)
+            required_module_names: List[str] = module.conf.get("requires", [])
             if required_module_names:
                 if isinstance(required_module_names, list):
+                    tsr: Set[str] = set(required_module_names).difference(set(final_module_names))
+                    tsrl: List[str] = list(tsr)
                     self.sort_module_names_by_requirement(
-                        required_module_names, final_module_names, module_type
+                        tsrl, final_module_names, module_type
                     )
                 else:
                     raise Exception(

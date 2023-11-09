@@ -175,13 +175,11 @@ class StoreHandlers:
 
     async def get_remote_manifest(self, _):
         from aiohttp.web import json_response
-        from ..lib.store.db import save_remote_manifest_cache
 
         content = self.get_remote_manifest_cache()
         if content:
             return json_response(content)
         content = self.make_remote_manifest()
-        save_remote_manifest_cache(content)
         return json_response(content)
 
     async def get_remote_module_logo(self, request):
