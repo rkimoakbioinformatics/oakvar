@@ -16743,7 +16743,9 @@ function findModulesRequiredByParam(mn, l, missingList) {
     return;
   }
   for (const reqMn of depModuleNames) {
-    findModulesRequiredByParam(reqMn, l, missingList);
+    if (l.indexOf(reqMn) == -1) {
+      findModulesRequiredByParam(reqMn, l, missingList);
+    }
   }
 }
 function findModulesDependingOnParam(moduleName, l) {
@@ -16754,10 +16756,10 @@ function findModulesDependingOnParam(moduleName, l) {
       continue;
     }
     const requiresCopy = [...requires];
-    if (requiresCopy.includes(moduleName)) {
-      findModulesDependingOnParam(mn, l);
-      if (!(mn in l)) {
+    if (requiresCopy.includes(moduleName) && l.indexOf(moduleName) == -1) {
+      if (l.indexOf(mn) == -1) {
         l.push(mn);
+        findModulesDependingOnParam(mn, l);
       }
     }
   }
