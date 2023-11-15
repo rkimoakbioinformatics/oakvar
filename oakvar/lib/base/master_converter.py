@@ -965,13 +965,13 @@ class MasterConverter(object):
                                     self.crv_writer.write_data(variant)
                                     self.file_num_unique_variants += 1
                                     unique_var_dict[pos][var_str] = uid_var
+                                    main_converter.write_extra_info(extra_info)
+                                    if crl:
+                                        self.crl_writer.write_data(crl)
                                 else:
                                     self.file_num_dup_variants += 1
                                 self.crs_writer.write_data(sample)
                                 self.crm_writer.write_data(variant)
-                                main_converter.write_extra_info(extra_info)
-                                if crl:
-                                    self.crl_writer.write_data(crl)
                     variants_l = None
                 if not immature_exit:
                     break
