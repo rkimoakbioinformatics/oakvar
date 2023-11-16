@@ -473,14 +473,14 @@ def try_fetch_ov_store_cache(
             )
 
 
-def get_remote_manifest_cache_path():
+def get_remote_manifest_cache_path() -> Optional[Path]:
     from ..system import get_conf_dir
     from pathlib import Path
 
     conf_dir = get_conf_dir()
     if not conf_dir:
         return None
-    return str(Path(conf_dir) / "remote_manifest.json")
+    return Path(conf_dir) / "remote_manifest.pickle"
 
 
 @db_func
@@ -498,7 +498,7 @@ def fetch_ov_store_cache(
     from ..exceptions import AuthorizationError
     from .ov.account import login_with_token_set
     from .ov import get_server_last_updated
-    #from ..module.remote import make_remote_manifest
+    from ..module.remote import make_remote_manifest
 
     if not conn or not cursor:
         return False
@@ -530,6 +530,13 @@ def fetch_ov_store_cache(
     ):
         if outer:
             outer.write("No store update to fetch")
+        path = get_remote_manifest_cache_path()
+        if path is None or not path.exists():
+            if outer:
+                outer.write("Writing store cache...")
+            make_remote_manifest(refresh=True)
+            if outer:
+                outer.write("Done")
         return True
     publish_time = local_last_updated
     drop_ov_store_cache(refresh_db=refresh_db, clean_cache_files=clean_cache_files)
@@ -548,6 +555,7 @@ def fetch_ov_store_cache(
     conn.commit()
     if outer:
         outer.write("Finalizing fetch...")
+    make_remote_manifest(refresh=True)
     if outer:
         outer.write("OakVar store cache has been fetched.")
     return True

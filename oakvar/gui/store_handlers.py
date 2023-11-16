@@ -101,12 +101,12 @@ class StoreHandlers:
         else:
             return json_response("fail")
 
-    def handle_modules_changed(self):
+    def handle_modules_changed(self, refresh: bool=False):
         from ..lib.module.cache import get_module_cache
 
         if not self.local_manifest or (
             self.local_modules_changed and self.local_modules_changed.is_set()
-        ):
+        ) or refresh:
             get_module_cache().update_local()
             if self.local_modules_changed:
                 self.local_modules_changed.clear()
@@ -121,10 +121,15 @@ class StoreHandlers:
             m = v.serialize()
             self.local_manifest[k] = m
 
-    async def get_local_manifest(self, _):
+    async def get_local_manifest(self, request):
         from aiohttp.web import json_response
 
-        self.handle_modules_changed()
+        refresh = request.rel_url.query["refresh"] or "false"
+        if refresh == "true":
+            refresh = True
+        else:
+            refresh = False
+        self.handle_modules_changed(refresh)
         return json_response(self.local_manifest)
 
     async def get_local_module_logo(self, request):
@@ -148,21 +153,21 @@ class StoreHandlers:
 
     def get_remote_manifest_cache(self) -> Optional[dict]:
         from os.path import exists
-        from json import load
+        import pickle
         from ..lib.store.db import get_remote_manifest_cache_path
 
         cache_path = get_remote_manifest_cache_path()
         if cache_path and exists(cache_path):
-            with open(cache_path) as f:
-                content = load(f)
+            with open(cache_path, "rb") as f:
+                content = pickle.load(f)
                 return content
         else:
             return None
 
-    def make_remote_manifest(self):
+    def make_remote_manifest(self, refresh: bool=False):
         from ..lib.module.remote import make_remote_manifest
 
-        content = make_remote_manifest()
+        content = make_remote_manifest(refresh=refresh)
         assert self.system_queue is not None
         for queue_data in self.system_queue:
             module_name: Optional[str] = queue_data.get("module")
@@ -174,14 +179,22 @@ class StoreHandlers:
             content["data"][module_name]["queued"] = True
         return content
 
-    async def get_remote_manifest(self, _):
+    async def get_remote_manifest(self, request):
         from aiohttp.web import json_response
+        from ..lib.store.db import fetch_ov_store_cache
 
+        refresh = request.rel_url.query.get("refresh", "false")
+        if refresh == "true":
+            refresh = True
+        else:
+            refresh = False
+        if refresh:
+            _ = fetch_ov_store_cache()
         content = self.get_remote_manifest_cache()
         if content:
             return json_response(content)
-        content = self.make_remote_manifest()
-        return json_response(content)
+        else:
+            return json_response({})
 
     async def get_remote_module_logo(self, request):
         from aiohttp.web import FileResponse
@@ -227,7 +240,6 @@ class StoreHandlers:
         from aiohttp.web import Response
         from aiohttp.web import json_response
 
-        # from ...module.local import get_local_module_info
         from ..lib.module.cache import get_module_cache
 
         queries = request.rel_url.query
