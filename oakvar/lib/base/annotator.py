@@ -158,6 +158,7 @@ class BaseAnnotator(object):
         self.supported_chroms = set(cannonical_chroms)
         self.module_type = "annotator"
         self.conf = {}
+        self.module_dir: Path = Path(".")
         if not self.main_fpath:
             if name:
                 self.module_name = name
@@ -175,6 +176,7 @@ class BaseAnnotator(object):
             )
             if not self.conf:
                 self.conf = {}
+        self.annotator_dir: str = str(self.module_dir) # oc legacy
         self.level = level
         if not self.level and "level" in self.conf:
             self.level = self.conf.get("level")
