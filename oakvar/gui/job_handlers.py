@@ -40,6 +40,8 @@
 
 from typing import Optional
 from typing import Tuple
+from typing import List
+from pathlib import Path
 
 REPORT_RUNNING = 1
 REPORT_FINISHED = 2
@@ -236,11 +238,28 @@ class JobHandlers:
         with open(log_path) as f:
             return Response(text=f.read())
 
+    async def make_download_zip(self, fpaths: List[Path], report_type: str, uid: Optional[str], dbpath: Optional[str]):
+        from zipfile import ZipFile
+        from pathlib import Path
+
+        if uid:
+            zpath = fpaths[0].parent / f"{uid}.{report_type}.zip"
+        elif dbpath:
+            dbpath_p: Path = Path(dbpath)
+            if not dbpath.endswith(".sqlite"):
+                raise Exception("No result database to make reports with.")
+            zpath = dbpath_p.parent / f"{dbpath_p.name[:-7]}.{report_type}.zip"
+        else:
+            raise Exception("UID or database path should be given to make a report.")
+        with ZipFile(zpath, "w") as wf:
+            for fpath in fpaths:
+                wf.write(fpath, arcname=Path(fpath).name)
+        return zpath
+
     async def download_report(self, request):
         from aiohttp.web import HTTPNotFound
         from aiohttp.web import FileResponse
-        from os.path import exists
-        from os.path import basename
+        from pathlib import Path
         from .util import get_email_from_request
 
         uid, dbpath = await self.get_uid_dbpath_from_request(request)
@@ -249,35 +268,41 @@ class JobHandlers:
             return HTTPNotFound
         eud = {"uid": uid, "dbpath": dbpath, "username": username}
         report_type = request.match_info["report_type"]
-        report_paths = await self.get_report_paths(request, report_type, eud=eud)
+        report_paths = await self.get_existing_report_file_paths(request, report_type, eud=eud)
         if not report_paths:
             raise HTTPNotFound
-        report_path = report_paths[0]
-        if not exists(report_path):
-            await self.generate_report(request)
-        if exists(report_path):
-            report_filename = basename(report_path)
+        if len(report_paths) == 1:
+            report_path = Path(report_paths[0])
+            report_filename = report_path.name
             headers = {"Content-Disposition": "attachment; filename=" + report_filename}
             response = FileResponse(report_path, headers=headers)
             return response
         else:
-            raise HTTPNotFound
+            zpath = await self.make_download_zip(report_paths, report_type, uid, dbpath)
+            report_filename = zpath.name
+            headers = {"Content-Disposition": "attachment; filename=" + report_filename}
+            response = FileResponse(zpath, headers=headers)
+            return response
 
-    async def get_report_paths(self, request, report_type, eud={}):
+    async def get_existing_report_file_paths(self, request, report_type, eud={}) -> List[Path]:
+        from pathlib import Path
         from .userjob import get_job_dir_from_eud
         from .userjob import get_user_job_report_paths
-        from pathlib import Path
 
+        job_dir = await get_job_dir_from_eud(request, eud=eud)
+        if not job_dir:
+            return []
         report_filenames = await get_user_job_report_paths(
             request, report_type, eud=eud
         )
-        if report_filenames is None:
-            return None
-        job_dir = await get_job_dir_from_eud(request, eud=eud)
-        if not job_dir:
-            return None
-        report_paths = [str(Path(job_dir) / v) for v in report_filenames]
-        return report_paths
+        if not report_filenames:
+            return []
+        job_dir = Path(job_dir)
+        existing_reports = []
+        for report_filename in report_filenames:
+            for fpath in job_dir.glob(report_filename):
+                existing_reports.append(fpath)
+        return existing_reports
 
     async def get_report_types(self, _):
         from aiohttp.web import json_response
@@ -303,27 +328,18 @@ class JobHandlers:
         from pathlib import Path
         from aiohttp.web import json_response
         from .userjob import get_job_dir_from_eud
-        from .userjob import get_user_job_report_paths
 
         eud = await self.get_eud_from_request(request)
         job_dir = await get_job_dir_from_eud(request, eud=eud)
         if not job_dir:
             return json_response([])
         job_dir = Path(job_dir)
-        existing_reports = []
+        existing_report_types = []
         for report_type in self.get_valid_report_types():
-            report_paths = await get_user_job_report_paths(
-                request, report_type, eud=eud
-            )
+            report_paths = await self.get_existing_report_file_paths(request, report_type, eud=eud)
             if report_paths:
-                report_exist = True
-                for p in report_paths:
-                    if not (job_dir / p).exists():
-                        report_exist = False
-                        break
-                if report_exist:
-                    existing_reports.append(report_type)
-        return json_response(existing_reports)
+                existing_report_types.append(report_type)
+        return json_response(existing_report_types)
 
     async def delete_jobs(self, request):
         from aiohttp.web import Response
