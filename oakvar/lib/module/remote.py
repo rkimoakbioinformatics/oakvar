@@ -302,7 +302,7 @@ def search_remote(*patterns, module_type=None):
     return matching_names
 
 
-def get_remote_module_info_ls(module_name, version=None) -> Union[RemoteModuleLs, None]:
+def get_remote_module_info_ls(module_name, version=None) -> Optional[RemoteModuleLs]:
     from .cache import get_module_cache
     from ..store import remote_module_info_ls_latest_version
 
@@ -327,8 +327,18 @@ def get_remote_module_info(module_name) -> Optional[RemoteModule]:
     return mc.remote[module_name]
 
 
-def make_remote_manifest():
+def save_remote_manifest_cache(content):
+    import pickle
+    from ..store.db import get_remote_manifest_cache_path
+
+    path = get_remote_manifest_cache_path()
+    if path:
+        with open(path, "wb") as wf:
+            pickle.dump(content, wf)
+
+def make_remote_manifest(refresh: bool=False):
     from ..store.db import get_manifest
+    from ..store.db import get_remote_manifest_cache_path
     from ..consts import module_tag_desc
     from traceback import print_exc
 
@@ -341,4 +351,7 @@ def make_remote_manifest():
     except Exception:
         print_exc()
         content = {"data": {}}
+    path = get_remote_manifest_cache_path()
+    if refresh or path is None or not path.exists():
+        save_remote_manifest_cache(content)
     return content

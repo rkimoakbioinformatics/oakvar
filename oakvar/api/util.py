@@ -41,44 +41,95 @@
 from typing import Optional
 from typing import List
 
-# def addjob(args, __name__="util addjob"):
-#    from shutil import copyfile
-#    from time import sleep
-#    from datetime import datetime
-#    from ..lib.system import get_jobs_dir
-#    from ..lib.consts import LOG_SUFFIX
-#
-#    dbpath = args.path
-#    user = args.user
-#    jobs_dir = get_jobs_dir()
-#    user_dir = jobs_dir / user
-#    if not user_dir.is_dir():
-#        exit(f"User {user} not found")
-#    attempts = 0
-#    while (
-#        True
-#    ):  # TODO this will currently overwrite if called in parallel. is_dir check and creation is not atomic
-#        job_id = datetime.now().strftime(r"%y%m%d-%H%M%S")
-#        job_dir = user_dir / job_id
-#        if not job_dir.is_dir():
-#            break
-#        else:
-#            attempts += 1
-#            sleep(1)
-#        if attempts >= 5:
-#            exit(
-#                "Could not acquire a job id. Too many concurrent job submissions. Wait, or reduce submission frequency."
-#            )
-#    job_dir.mkdir()
-#    new_dbpath = job_dir / dbpath.name
-#    copyfile(dbpath, new_dbpath)
-#    log_path = dbpath.with_suffix(LOG_SUFFIX)
-#    if log_path.exists():
-#        copyfile(log_path, job_dir / log_path.name)
-#    err_path = dbpath.with_suffix(".err")
-#    if err_path.exists():
-#        copyfile(err_path, job_dir / err_path.name)
-#    return True
+def job_to_gui(args, __name__="util to-gui"):
+    from shutil import copyfile
+    from pathlib import Path
+    import sqlite3
+    import json
+    import copy
+    from types import SimpleNamespace
+    from ..lib.system import get_jobs_dir
+    from ..lib.consts import LOG_SUFFIX
+    from ..gui.serveradmindb import setup_serveradmindb
+    from ..lib.util.admin_util import oakvar_version
+
+    dbpath = Path(args.path)
+    run_name = dbpath.stem
+    user = args.user
+    jobs_dir = get_jobs_dir()
+    user_dir = jobs_dir / user
+    if not user_dir.is_dir():
+        exit(f"User {user} not found")
+    conn = sqlite3.connect(dbpath)
+    c = conn.cursor()
+    c.execute("select * from info")
+    info = {
+        "db_path": str(dbpath.absolute()),
+        "runtime": 0,
+        "note": "",
+        "status": "finished",
+        "postaggregators": [],
+        "viewable": True,
+        "report_types": [],
+        "package_version": oakvar_version(),
+        "run_name": run_name,
+    }
+    modules = []
+    job = SimpleNamespace()
+    for row in c.fetchall():
+        colkey = row[0]
+        colval = row[1]
+        if colkey == "inputs":
+            inputs = json.loads(colval)
+            orig_input_fname = []
+            orig_input_path = []
+            for p in inputs:
+                pt = Path(p)
+                orig_input_fname.append(pt.name)
+                orig_input_path.append(str(pt.absolute()))
+            info["orig_input_fname"] = orig_input_fname
+            info["orig_input_path"] = orig_input_path
+        elif colkey == "job_name":
+            job.job_name = colval
+            info["job_name"] = [colval]
+            job_id = colval
+            job_dir: Path = user_dir / job_id
+            num: int = 0
+            while job_dir.exists():
+                num += 1
+                job_dir = job_dir.with_name(f"{job_id}_{num}")
+            info["dir"] = str(job_dir)
+            info["job_dir"] = [str(job_dir)]
+            job.dir = str(job_dir)
+            job_dir.mkdir()
+            new_dbpath = job_dir / dbpath.name
+            copyfile(dbpath, new_dbpath)
+            log_path = dbpath.with_suffix(LOG_SUFFIX)
+            if log_path.exists():
+                copyfile(log_path, job_dir / log_path.name)
+            err_path = dbpath.with_suffix(".err")
+            if err_path.exists():
+                copyfile(err_path, job_dir / err_path.name)
+        elif colkey == "created_at":
+            info["submission_time"] = colval
+        elif colkey == "num_variants":
+            info["numinput"] = int(colval)
+        elif colkey == "annotators":
+            annotators = [v.split("==")[0] for v in json.loads(colval) if not v.startswith("original_input")]
+            info["annotators"] = annotators
+            modules.extend(annotators)
+        elif colkey == "postaggregators":
+            postaggregators = [v.split("==")[0] for v in json.loads(colval)]
+            info["annotators"] = postaggregators
+            modules.extend(postaggregators)
+        elif colkey == "genome_assemblies":
+            info["assembly"] = json.loads(colval)[0]
+    info["info_json"] = copy.deepcopy(info)
+    job.info = info
+    job.status = "Finished"
+    serveradmindb = setup_serveradmindb()
+    serveradmindb.add_job_info_sync(user, job)
+    return True
 
 
 def variant_id(chrom, pos, ref, alt):

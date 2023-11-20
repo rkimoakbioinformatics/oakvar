@@ -249,8 +249,14 @@ class ServerAdminDb:
         cursor.execute(q, (DEFAULT_SERVER_DEFAULT_USERNAME, USER_ROLE))
         conn.commit()
 
-    def get_db_conn(self):
+    def get_db_conn_sync(self):
         from sqlite3 import connect
+
+        conn = connect(self.admindb_path)
+        return conn
+
+    async def get_db_conn(self):
+        from aiosqlite import connect
 
         conn = connect(self.admindb_path)
         return conn
@@ -261,7 +267,53 @@ class ServerAdminDb:
         conn = connect(self.admindb_path)
         return conn
 
-    def add_job_info(self, username, job):
+    def add_job_info_sync(self, username, job):
+        from json import dumps
+
+        conn = self.get_db_conn_sync()
+        if not conn:
+            return
+        cursor = conn.cursor()
+        annotators = job.info.get("annotators", [])
+        postaggregators = job.info.get("postaggregators", [])
+        modules = ",".join(annotators + postaggregators)
+        q = (
+            "insert into jobs (username, dir, name, submit, runtime, "
+            + "numinput, modules, assembly, note, info_json, status) values "
+            + "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        info_json = dumps(job.info["info_json"])
+        status: str = "Submitted"
+        if hasattr(job, "status"):
+            status = job.status
+        cursor.execute(
+            q,
+            (
+                username,
+                job.dir,
+                job.job_name,
+                job.info["submission_time"],
+                -1,
+                -1,
+                modules,
+                job.info["assembly"],
+                job.info["note"],
+                info_json,
+                status,
+            ),
+        )
+        conn.commit()
+        q = "select uid from jobs where username=? and dir=? and name=?"
+        cursor.execute(q, (username, job.dir, job.job_name))
+        ret = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if ret:
+            return ret[0]
+        else:
+            return None
+
+    async def add_job_info(self, username, job):
         from json import dumps
 
         conn = self.get_db_conn()
@@ -405,7 +457,7 @@ class ServerAdminDb:
         conn.close()
 
     @db_func
-    def get_job_status(self, uid=None, conn=Any, cursor=Any):
+    async def get_job_status(self, uid=None, conn=None, cursor=Any):
         if not uid:
             return None
         _ = conn

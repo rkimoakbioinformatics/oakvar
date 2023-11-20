@@ -86,11 +86,12 @@ def sqliteinfo(args, __name__="util sqliteinfo"):
 
 def get_parser_fn_util():
     from argparse import ArgumentParser
+    from .test import get_parser_cli_util_test
+    from ..api.util import job_to_gui
 
     parser_fn_util = ArgumentParser()
     _subparsers = parser_fn_util.add_subparsers(title="Commands")
     # test
-    from .test import get_parser_cli_util_test
 
     parser_cli_util_test = _subparsers.add_parser(
         "test",
@@ -108,23 +109,23 @@ def get_parser_fn_util():
     ]
 
     # Make job accessible through the gui
-    # parser_fn_util_addjob = _subparsers.add_parser(
-    #    "addjob", help="Copy a command line job into the GUI submission list"
-    # )
-    # parser_fn_util_addjob.add_argument("path", help="Path to result database")
-    # parser_fn_util_addjob.add_argument(
-    #    "-u",
-    #    "--user",
-    #    help="User who will own the job. Defaults to single user default user.",
-    #    type=str,
-    #    default="default",
-    # )
-    # parser_fn_util_addjob.set_defaults(func=addjob)
-    # parser_fn_util_addjob.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
-    # parser_fn_util_addjob.r_examples = [  # type: ignore
-    #    "# Add a result file to the job list of a user",
-    #    '#roakvar::util.addjob(path="example.sqlite", user="user1")',
-    # ]
+    parser_fn_util_addjob = _subparsers.add_parser(
+       "to-gui", help="Make a command line job by `ov run` to be accessible by GUI."
+    )
+    parser_fn_util_addjob.add_argument("path", help="Path to result .sqlite database file")
+    parser_fn_util_addjob.add_argument(
+       "-u",
+       "--user",
+       help="User who will own the job. Defaults to `default` user.",
+       type=str,
+       default="default",
+    )
+    parser_fn_util_addjob.set_defaults(func=job_to_gui)
+    parser_fn_util_addjob.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
+    parser_fn_util_addjob.r_examples = [  # type: ignore
+       "# Add a result file to the job list of a user",
+       '#roakvar::util.to_gui(path="example.sqlite", user="user1")',
+    ]
 
     # Merge SQLite files
     # parser_fn_util_mergesqlite = _subparsers.add_parser(

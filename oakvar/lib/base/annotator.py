@@ -149,6 +149,7 @@ class BaseAnnotator(object):
         self.df_dtypes: Dict[str, Any] = {}
         self.df_mode: bool
         self.output: Dict[str, Dict[str, Any]] = {}
+        self.module_dir: Path = Path(".")
         if not self.main_fpath:
             if name:
                 self.module_name = name
@@ -166,6 +167,7 @@ class BaseAnnotator(object):
             )
             if not self.conf:
                 self.conf = {}
+        self.annotator_dir: str = str(self.module_dir) # oc legacy
         if not level and "level" in self.conf:
             level = self.conf.get("level")
         if not level:

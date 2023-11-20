@@ -433,7 +433,9 @@ def liftover(
     """
     from oakvar.lib.exceptions import LiftoverFailure
     from oakvar.lib.util.seq import reverse_complement
+    from oakvar.lib.consts import SYSTEM_GENOME_ASSEMBLY
 
+    liftover_failure_msg: str = f"No positional mapping was found in {SYSTEM_GENOME_ASSEMBLY}."
     if not lifter:
         if not source_assembly:
             raise ValueError("Either lifter or source_assembly should be given")
@@ -443,7 +445,7 @@ def liftover(
     if ref is None or alt is None:
         converted = liftover_one_pos(chrom, pos, lifter=lifter)
         if converted is None:
-            raise LiftoverFailure(f"Liftover failure")
+            raise LiftoverFailure(liftover_failure_msg)
         newchrom = converted[0]
         newpos = converted[1]
         if get_ref:
@@ -463,7 +465,7 @@ def liftover(
         if reflen == 1 and altlen == 1:
             converted = liftover_one_pos(chrom, pos, lifter=lifter)
             if converted is None:
-                raise LiftoverFailure(f"Liftover failure")
+                raise LiftoverFailure(liftover_failure_msg)
             newchrom = converted[0]
             newpos = converted[1]
         else:
@@ -472,9 +474,9 @@ def liftover(
             converted1 = liftover_one_pos(chrom, pos1, lifter=lifter)
             converted2 = liftover_one_pos(chrom, pos2, lifter=lifter)
             if converted1 is None:
-                raise LiftoverFailure(f"Liftover failure")
+                raise LiftoverFailure(liftover_failure_msg)
             elif converted2 is None:
-                raise LiftoverFailure(f"Liftover failure")
+                raise LiftoverFailure(liftover_failure_msg)
             newchrom1 = converted1[0]
             newpos1 = converted1[1]
             newpos2 = converted2[1]
@@ -486,9 +488,9 @@ def liftover(
         converted1 = liftover_one_pos(chrom, pos1, lifter=lifter)
         converted2 = liftover_one_pos(chrom, pos2, lifter=lifter)
         if converted1 is None:
-            raise LiftoverFailure(f"Liftover failure")
+            raise LiftoverFailure(liftover_failure_msg)
         elif converted2 is None:
-            raise LiftoverFailure(f"Liftover failure")
+            raise LiftoverFailure(liftover_failure_msg)
         newchrom = converted1[0]
         newpos1 = converted1[1]
         newpos2 = converted2[1]
@@ -496,7 +498,7 @@ def liftover(
     elif refempty and not altempty:  # ins
         converted = liftover_one_pos(chrom, pos, lifter=lifter)
         if converted is None:
-            raise LiftoverFailure(f"Liftover failure")
+            raise LiftoverFailure(liftover_failure_msg)
         newchrom = converted[0]
         newpos = converted[1]
     else:
