@@ -31,6 +31,7 @@ nav:
   - Repository &#128279: "https://github.com/rkimoakbioinformatics/oakvar"
   - License &#128279: "https://github.com/rkimoakbioinformatics/oakvar/blob/master/LICENSE"
   - Sponsor &#128279: "https://github.com/sponsors/rkimoakbioinformatics"
+  - Third party: third_party.md
 theme: 
   name: material
   logo: images/logo.png
@@ -50,4 +51,4 @@ plugins:
             docstring_section_style: spacy
             separate_signature: true
 watch:
-  - /mnt/d/Git/oakvar/oakvar/api
+  - oakvar/oakvar/api
