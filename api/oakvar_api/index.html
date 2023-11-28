@@ -11,7 +11,7 @@
         <link rel="canonical" href="https://oakvar.com/api/oakvar_api/">
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.3.1, mkdocs-material-8.3.9">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-8.3.9">
     
     
       
@@ -682,6 +682,21 @@
   
 
     
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../third_party/" class="md-nav__link">
+        Third party
+      </a>
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -708,7 +723,7 @@
       
         <li class="md-nav__item">
   <a href="#oakvar.api" class="md-nav__link">
-    oakvar.api
+    api
   </a>
   
 </li>
@@ -774,6 +789,7 @@
 <div class="doc doc-object doc-module">
 
 
+
 <a id="oakvar.api"></a>
   <div class="doc doc-contents first">
 
@@ -789,16 +805,18 @@
 
 
 
+
 <div class="doc doc-object doc-function">
 
 
 
+
 <h2 id="oakvar.api.license" class="doc doc-heading">
-        <span class="doc doc-object-name doc-function-name">license</span>
+          <span class="doc doc-object-name doc-function-name">license</span>
 
 
 </h2>
-<div class="highlight"><pre><span></span><code><span class="n">license</span><span class="p">(</span><span class="n">outer</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">license</span><span class="p">(</span><span class="n">outer</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
   <div class="doc doc-contents ">
@@ -809,16 +827,18 @@
 
 </div>
 
+
 <div class="doc doc-object doc-function">
 
 
 
+
 <h2 id="oakvar.api.run" class="doc doc-heading">
-        <span class="doc doc-object-name doc-function-name">run</span>
+          <span class="doc doc-object-name doc-function-name">run</span>
 
 
 </h2>
-<div class="highlight"><pre><span></span><code><span class="n">run</span><span class="p">(</span>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">run</span><span class="p">(</span>
     <span class="n">inputs</span><span class="p">,</span>
     <span class="n">annotators</span><span class="o">=</span><span class="p">[],</span>
     <span class="n">report_types</span><span class="o">=</span><span class="p">[],</span>
@@ -860,9 +880,11 @@
     <span class="n">loglevel</span><span class="o">=</span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
     <span class="n">combine_input</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">input_format</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">converter_module</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">input_encoding</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">ignore_sample</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">uid</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">skip_variant_deduplication</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">loop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">outer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span>
@@ -872,18 +894,22 @@
   
       <p>Performs OakVar pipeline from conversion -&gt; mapping -&gt; annotation -&gt; database generation -&gt; post annotation -&gt; report generation.</p>
 
+
+
   <table>
     <thead>
       <tr>
         <th><b>PARAMETER</b></th>
-        <th><b>DESCRIPTION</b></th>
+        <th><b> DESCRIPTION</b></th>
       </tr>
     </thead>
     <tbody>
         <tr>
           <td><code>inputs</code></td>
           <td class="doc-param-details">
-            <p>Paths to input files. URLs can be used as well, in which the files will be downloaded.</p>
+            <div class="doc-md-description">
+              <p>Paths to input files. URLs can be used as well, in which the files will be downloaded.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -895,7 +921,9 @@
         <tr>
           <td><code>combine_input</code></td>
           <td class="doc-param-details">
-            <p>If True, all input files will be combined as one input.</p>
+            <div class="doc-md-description">
+              <p>If True, all input files will be combined as one input.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -911,7 +939,9 @@
         <tr>
           <td><code>annotators</code></td>
           <td class="doc-param-details">
-            <p>Annotator modules to run</p>
+            <div class="doc-md-description">
+              <p>Annotator modules to run</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -927,7 +957,9 @@
         <tr>
           <td><code>report_types</code></td>
           <td class="doc-param-details">
-            <p>Report types. If given, report files of given types will be generated. If <code>vcfreporter</code> is installed in your system, giving <code>vcf</code> will invoke the module.</p>
+            <div class="doc-md-description">
+              <p>Report types. If given, report files of given types will be generated. If <code>vcfreporter</code> is installed in your system, giving <code>vcf</code> will invoke the module.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -943,7 +975,9 @@
         <tr>
           <td><code>clean</code></td>
           <td class="doc-param-details">
-            <p>Cleans all output and intermediate files and then starts the pipeline.</p>
+            <div class="doc-md-description">
+              <p>Cleans all output and intermediate files and then starts the pipeline.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -959,7 +993,9 @@
         <tr>
           <td><code>vcf2vcf</code></td>
           <td class="doc-param-details">
-            <p>If True, the pipeline will run in vcf2vcf mode, where input and output should be VCF format files and result database files will not be generated. This can increase the speed of the pipeline significantly.</p>
+            <div class="doc-md-description">
+              <p>If True, the pipeline will run in vcf2vcf mode, where input and output should be VCF format files and result database files will not be generated. This can increase the speed of the pipeline significantly.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -975,7 +1011,9 @@
         <tr>
           <td><code>logtofile</code></td>
           <td class="doc-param-details">
-            <p>If True, .log and .err log files will be generated for normal and error logs.</p>
+            <div class="doc-md-description">
+              <p>If True, .log and .err log files will be generated for normal and error logs.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -991,7 +1029,9 @@
         <tr>
           <td><code>input_format</code></td>
           <td class="doc-param-details">
-            <p>Overrides automatic detection of input file format.</p>
+            <div class="doc-md-description">
+              <p>Overrides automatic detection of input file format.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1007,7 +1047,9 @@
         <tr>
           <td><code>postaggregators</code></td>
           <td class="doc-param-details">
-            <p>Postaggregator modules to run</p>
+            <div class="doc-md-description">
+              <p>Postaggregator modules to run</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1023,7 +1065,9 @@
         <tr>
           <td><code>preparers</code></td>
           <td class="doc-param-details">
-            <p>Preparer modules to run</p>
+            <div class="doc-md-description">
+              <p>Preparer modules to run</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1039,7 +1083,9 @@
         <tr>
           <td><code>mapper_name</code></td>
           <td class="doc-param-details">
-            <p>Mapper module to run</p>
+            <div class="doc-md-description">
+              <p>Mapper module to run</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1055,7 +1101,9 @@
         <tr>
           <td><code>output_dir</code></td>
           <td class="doc-param-details">
-            <p>Output directories. The order of inputs and output_dir elements should match.</p>
+            <div class="doc-md-description">
+              <p>Output directories. The order of inputs and output_dir elements should match.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1071,7 +1119,9 @@
         <tr>
           <td><code>startat</code></td>
           <td class="doc-param-details">
-            <p>Start at the specified step. Options are <code>converter</code>, <code>mapper</code>, <code>annotator</code>, <code>aggregator</code>, <code>postaggregator</code>, and <code>reporter</code>.</p>
+            <div class="doc-md-description">
+              <p>Start at the specified step. Options are <code>converter</code>, <code>mapper</code>, <code>annotator</code>, <code>aggregator</code>, <code>postaggregator</code>, and <code>reporter</code>.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1087,7 +1137,9 @@
         <tr>
           <td><code>endat</code></td>
           <td class="doc-param-details">
-            <p>End at the specified step. Options are <code>converter</code>, <code>mapper</code>, <code>annotator</code>, <code>aggregator</code>, <code>postaggregator</code>, and <code>reporter</code>.</p>
+            <div class="doc-md-description">
+              <p>End at the specified step. Options are <code>converter</code>, <code>mapper</code>, <code>annotator</code>, <code>aggregator</code>, <code>postaggregator</code>, and <code>reporter</code>.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1103,7 +1155,9 @@
         <tr>
           <td><code>skip</code></td>
           <td class="doc-param-details">
-            <p>Skip the specified steps. Options are <code>converter</code>, <code>mapper</code>, <code>annotator</code>, <code>aggregator</code>, <code>postaggregator</code>, and <code>reporter</code>.</p>
+            <div class="doc-md-description">
+              <p>Skip the specified steps. Options are <code>converter</code>, <code>mapper</code>, <code>annotator</code>, <code>aggregator</code>, <code>postaggregator</code>, and <code>reporter</code>.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1119,7 +1173,9 @@
         <tr>
           <td><code>genome</code></td>
           <td class="doc-param-details">
-            <p>Genome assembly of all input files. If not given, genome assembly will be figured out or default to what is defined in lib/system/consts.py:default_assembly.</p>
+            <div class="doc-md-description">
+              <p>Genome assembly of all input files. If not given, genome assembly will be figured out or default to what is defined in lib/system/consts.py:default_assembly.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1135,7 +1191,27 @@
         <tr>
           <td><code>input_encoding</code></td>
           <td class="doc-param-details">
-            <p>input_encoding</p>
+            <div class="doc-md-description">
+              <p>input_encoding</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="typing.Optional">Optional</span>[str]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>converter_module</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>converter module folder path</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1151,7 +1227,9 @@
         <tr>
           <td><code>mp</code></td>
           <td class="doc-param-details">
-            <p>Number of cores to use. Default value can be changed by <code>ov config system max_num_concurrent_annotators_per_job &lt;value&gt;</code>.</p>
+            <div class="doc-md-description">
+              <p>Number of cores to use. Default value can be changed by <code>ov config system max_num_concurrent_annotators_per_job &lt;value&gt;</code>.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1167,7 +1245,9 @@
         <tr>
           <td><code>primary_transcript</code></td>
           <td class="doc-param-details">
-            <p>primary_transcript</p>
+            <div class="doc-md-description">
+              <p>primary_transcript</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1183,7 +1263,9 @@
         <tr>
           <td><code>modules_dir</code></td>
           <td class="doc-param-details">
-            <p>modules_dir</p>
+            <div class="doc-md-description">
+              <p>modules_dir</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1199,7 +1281,9 @@
         <tr>
           <td><code>run_name</code></td>
           <td class="doc-param-details">
-            <p>run_name</p>
+            <div class="doc-md-description">
+              <p>run_name</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1215,7 +1299,9 @@
         <tr>
           <td><code>annotators_replace</code></td>
           <td class="doc-param-details">
-            <p>annotators_replace</p>
+            <div class="doc-md-description">
+              <p>annotators_replace</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1231,7 +1317,9 @@
         <tr>
           <td><code>excludes</code></td>
           <td class="doc-param-details">
-            <p>excludes</p>
+            <div class="doc-md-description">
+              <p>excludes</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1247,7 +1335,9 @@
         <tr>
           <td><code>confpath</code></td>
           <td class="doc-param-details">
-            <p>confpath</p>
+            <div class="doc-md-description">
+              <p>confpath</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1263,7 +1353,9 @@
         <tr>
           <td><code>conf</code></td>
           <td class="doc-param-details">
-            <p>conf</p>
+            <div class="doc-md-description">
+              <p>conf</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1279,7 +1371,9 @@
         <tr>
           <td><code>cleandb</code></td>
           <td class="doc-param-details">
-            <p>cleandb</p>
+            <div class="doc-md-description">
+              <p>cleandb</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1295,7 +1389,9 @@
         <tr>
           <td><code>newlog</code></td>
           <td class="doc-param-details">
-            <p>newlog</p>
+            <div class="doc-md-description">
+              <p>newlog</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1311,7 +1407,9 @@
         <tr>
           <td><code>note</code></td>
           <td class="doc-param-details">
-            <p>note</p>
+            <div class="doc-md-description">
+              <p>note</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1327,7 +1425,9 @@
         <tr>
           <td><code>keep_temp</code></td>
           <td class="doc-param-details">
-            <p>keep_temp</p>
+            <div class="doc-md-description">
+              <p>keep_temp</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1343,7 +1443,9 @@
         <tr>
           <td><code>writeadmindb</code></td>
           <td class="doc-param-details">
-            <p>writeadmindb</p>
+            <div class="doc-md-description">
+              <p>writeadmindb</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1359,7 +1461,9 @@
         <tr>
           <td><code>job_name</code></td>
           <td class="doc-param-details">
-            <p>job_name</p>
+            <div class="doc-md-description">
+              <p>job_name</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1375,7 +1479,9 @@
         <tr>
           <td><code>separatesample</code></td>
           <td class="doc-param-details">
-            <p>separatesample</p>
+            <div class="doc-md-description">
+              <p>separatesample</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1391,7 +1497,9 @@
         <tr>
           <td><code>module_options</code></td>
           <td class="doc-param-details">
-            <p>module_options</p>
+            <div class="doc-md-description">
+              <p>module_options</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1407,7 +1515,9 @@
         <tr>
           <td><code>system_option</code></td>
           <td class="doc-param-details">
-            <p>system_option</p>
+            <div class="doc-md-description">
+              <p>system_option</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1423,7 +1533,9 @@
         <tr>
           <td><code>package</code></td>
           <td class="doc-param-details">
-            <p>package</p>
+            <div class="doc-md-description">
+              <p>package</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1439,7 +1551,9 @@
         <tr>
           <td><code>filtersql</code></td>
           <td class="doc-param-details">
-            <p>filtersql</p>
+            <div class="doc-md-description">
+              <p>filtersql</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1455,7 +1569,9 @@
         <tr>
           <td><code>includesample</code></td>
           <td class="doc-param-details">
-            <p>includesample</p>
+            <div class="doc-md-description">
+              <p>includesample</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1471,7 +1587,9 @@
         <tr>
           <td><code>excludesample</code></td>
           <td class="doc-param-details">
-            <p>excludesample</p>
+            <div class="doc-md-description">
+              <p>excludesample</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1487,7 +1605,9 @@
         <tr>
           <td><code>filter</code></td>
           <td class="doc-param-details">
-            <p>filter</p>
+            <div class="doc-md-description">
+              <p>filter</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1503,7 +1623,9 @@
         <tr>
           <td><code>filterpath</code></td>
           <td class="doc-param-details">
-            <p>filterpath</p>
+            <div class="doc-md-description">
+              <p>filterpath</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1519,7 +1641,9 @@
         <tr>
           <td><code>loglevel</code></td>
           <td class="doc-param-details">
-            <p>loglevel</p>
+            <div class="doc-md-description">
+              <p>loglevel</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1535,7 +1659,9 @@
         <tr>
           <td><code>uid</code></td>
           <td class="doc-param-details">
-            <p>uid</p>
+            <div class="doc-md-description">
+              <p>uid</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1549,9 +1675,29 @@
           </td>
         </tr>
         <tr>
+          <td><code>skip_variant_deduplication</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Skip de-duplication of variants.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>bool</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
           <td><code>loop</code></td>
           <td class="doc-param-details">
-            
+            <div class="doc-md-description">
+              
+            </div>
             <p>
                 <span class="doc-param-default">
                   <b>DEFAULT:</b> 
@@ -1563,7 +1709,9 @@
         <tr>
           <td><code>outer</code></td>
           <td class="doc-param-details">
-            
+            <div class="doc-md-description">
+              
+            </div>
             <p>
                 <span class="doc-param-default">
                   <b>DEFAULT:</b> 
@@ -1574,6 +1722,8 @@
         </tr>
     </tbody>
   </table>
+
+
 
   <table>
     <thead>
@@ -1590,7 +1740,9 @@
               </span>
           </td>
           <td class="doc-returns-details">
-            <p>None or a dict of reporter names and their return values</p>
+            <div class="doc-md-description">
+              <p>None or a dict of reporter names and their return values</p>
+            </div>
           </td>
         </tr>
     </tbody>
@@ -1600,16 +1752,18 @@
 
 </div>
 
+
 <div class="doc doc-object doc-function">
 
 
 
+
 <h2 id="oakvar.api.report" class="doc doc-heading">
-        <span class="doc doc-object-name doc-function-name">report</span>
+          <span class="doc doc-object-name doc-function-name">report</span>
 
 
 </h2>
-<div class="highlight"><pre><span></span><code><span class="n">report</span><span class="p">(</span>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">report</span><span class="p">(</span>
     <span class="n">dbpath</span><span class="p">,</span>
     <span class="n">report_types</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">module_paths</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -1645,18 +1799,22 @@
   
       <p>Generates OakVar report files based on an OakVar result database file.</p>
 
+
+
   <table>
     <thead>
       <tr>
         <th><b>PARAMETER</b></th>
-        <th><b>DESCRIPTION</b></th>
+        <th><b> DESCRIPTION</b></th>
       </tr>
     </thead>
     <tbody>
         <tr>
           <td><code>dbpath</code></td>
           <td class="doc-param-details">
-            <p>Path to an OakVar result database file</p>
+            <div class="doc-md-description">
+              <p>Path to an OakVar result database file</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1668,7 +1826,9 @@
         <tr>
           <td><code>report_types</code></td>
           <td class="doc-param-details">
-            <p>Report types. For example, if <code>vcfreporter</code> module is installed, <code>"vcf"</code> will invoke the reporter.</p>
+            <div class="doc-md-description">
+              <p>Report types. For example, if <code>vcfreporter</code> module is installed, <code>"vcf"</code> will invoke the reporter.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1684,7 +1844,9 @@
         <tr>
           <td><code>module_paths</code></td>
           <td class="doc-param-details">
-            <p>Paths to report modules can be directly given. This option will override report_types. For example, if <code>customreporter</code> module is installed at <code>/home/user/ov_dev/customreporter</code>, this value can be given.</p>
+            <div class="doc-md-description">
+              <p>Paths to report modules can be directly given. This option will override report_types. For example, if <code>customreporter</code> module is installed at <code>/home/user/ov_dev/customreporter</code>, this value can be given.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1700,7 +1862,9 @@
         <tr>
           <td><code>output_dir</code></td>
           <td class="doc-param-details">
-            <p>Directory to store reports</p>
+            <div class="doc-md-description">
+              <p>Directory to store reports</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1716,7 +1880,9 @@
         <tr>
           <td><code>module_options</code></td>
           <td class="doc-param-details">
-            <p>Reporter module-specific options. For example, to tell <code>vcfreporter</code> to combine all OakVar result fields under one field, <code>{"vcfreporter": {"type": "combined"}}</code> can be used.</p>
+            <div class="doc-md-description">
+              <p>Reporter module-specific options. For example, to tell <code>vcfreporter</code> to combine all OakVar result fields under one field, <code>{"vcfreporter": {"type": "combined"}}</code> can be used.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1732,7 +1898,9 @@
         <tr>
           <td><code>cols</code></td>
           <td class="doc-param-details">
-            <p>Result columns to include. By default, all result columns are included in reports. For example, <code>["base__uid", "base__chrom", "base__pos", "base__ref_base", "base__alt_base", "clinvar__sig"]</code> will include only the variants and ClinVar significances.</p>
+            <div class="doc-md-description">
+              <p>Result columns to include. By default, all result columns are included in reports. For example, <code>["base__uid", "base__chrom", "base__pos", "base__ref_base", "base__alt_base", "clinvar__sig"]</code> will include only the variants and ClinVar significances.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1748,7 +1916,9 @@
         <tr>
           <td><code>includesample</code></td>
           <td class="doc-param-details">
-            <p>Samples to include in filtered reports</p>
+            <div class="doc-md-description">
+              <p>Samples to include in filtered reports</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1764,7 +1934,9 @@
         <tr>
           <td><code>excludesample</code></td>
           <td class="doc-param-details">
-            <p>Samples to exclude from filtered reports</p>
+            <div class="doc-md-description">
+              <p>Samples to exclude from filtered reports</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1780,7 +1952,9 @@
         <tr>
           <td><code>filterpath</code></td>
           <td class="doc-param-details">
-            <p>filterpath</p>
+            <div class="doc-md-description">
+              <p>filterpath</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1796,7 +1970,9 @@
         <tr>
           <td><code>filter</code></td>
           <td class="doc-param-details">
-            <p>filter as dict</p>
+            <div class="doc-md-description">
+              <p>filter as dict</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1812,7 +1988,9 @@
         <tr>
           <td><code>filtersql</code></td>
           <td class="doc-param-details">
-            <p>filter sql</p>
+            <div class="doc-md-description">
+              <p>filter sql</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1828,7 +2006,9 @@
         <tr>
           <td><code>filtername</code></td>
           <td class="doc-param-details">
-            <p>filter file</p>
+            <div class="doc-md-description">
+              <p>filter file</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1844,7 +2024,9 @@
         <tr>
           <td><code>filterstring</code></td>
           <td class="doc-param-details">
-            <p>filter dict as str</p>
+            <div class="doc-md-description">
+              <p>filter dict as str</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1860,7 +2042,9 @@
         <tr>
           <td><code>savepath</code></td>
           <td class="doc-param-details">
-            <p>savepath</p>
+            <div class="doc-md-description">
+              <p>savepath</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1876,7 +2060,9 @@
         <tr>
           <td><code>confpath</code></td>
           <td class="doc-param-details">
-            <p>confpath</p>
+            <div class="doc-md-description">
+              <p>confpath</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1892,7 +2078,9 @@
         <tr>
           <td><code>nogenelevelonvariantlevel</code></td>
           <td class="doc-param-details">
-            <p>nogenelevelonvariantlevel</p>
+            <div class="doc-md-description">
+              <p>nogenelevelonvariantlevel</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1908,7 +2096,9 @@
         <tr>
           <td><code>inputfiles</code></td>
           <td class="doc-param-details">
-            <p>inputfiles</p>
+            <div class="doc-md-description">
+              <p>inputfiles</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1924,7 +2114,9 @@
         <tr>
           <td><code>separatesample</code></td>
           <td class="doc-param-details">
-            <p>separatesample</p>
+            <div class="doc-md-description">
+              <p>separatesample</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1940,7 +2132,9 @@
         <tr>
           <td><code>package</code></td>
           <td class="doc-param-details">
-            <p>package</p>
+            <div class="doc-md-description">
+              <p>package</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1956,7 +2150,9 @@
         <tr>
           <td><code>modules_dir</code></td>
           <td class="doc-param-details">
-            <p>modules_dir</p>
+            <div class="doc-md-description">
+              <p>modules_dir</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1968,7 +2164,9 @@
         <tr>
           <td><code>level</code></td>
           <td class="doc-param-details">
-            <p>level</p>
+            <div class="doc-md-description">
+              <p>level</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1984,7 +2182,9 @@
         <tr>
           <td><code>user</code></td>
           <td class="doc-param-details">
-            <p>user</p>
+            <div class="doc-md-description">
+              <p>user</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -2000,7 +2200,9 @@
         <tr>
           <td><code>no_summary</code></td>
           <td class="doc-param-details">
-            <p>no_summary</p>
+            <div class="doc-md-description">
+              <p>no_summary</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -2016,7 +2218,9 @@
         <tr>
           <td><code>serveradmindb</code></td>
           <td class="doc-param-details">
-            
+            <div class="doc-md-description">
+              
+            </div>
             <p>
                 <span class="doc-param-default">
                   <b>DEFAULT:</b> 
@@ -2028,7 +2232,9 @@
         <tr>
           <td><code>outer</code></td>
           <td class="doc-param-details">
-            
+            <div class="doc-md-description">
+              
+            </div>
             <p>
                 <span class="doc-param-default">
                   <b>DEFAULT:</b> 
@@ -2040,7 +2246,9 @@
         <tr>
           <td><code>loop</code></td>
           <td class="doc-param-details">
-            
+            <div class="doc-md-description">
+              
+            </div>
             <p>
                 <span class="doc-param-default">
                   <b>DEFAULT:</b> 
@@ -2051,6 +2259,8 @@
         </tr>
     </tbody>
   </table>
+
+
 
   <table>
     <thead>
@@ -2067,7 +2277,9 @@
               </span>
           </td>
           <td class="doc-returns-details">
-            <p>None or a dict of reporter names and their return values</p>
+            <div class="doc-md-description">
+              <p>None or a dict of reporter names and their return values</p>
+            </div>
           </td>
         </tr>
     </tbody>
@@ -2077,16 +2289,18 @@
 
 </div>
 
+
 <div class="doc doc-object doc-function">
 
 
 
+
 <h2 id="oakvar.api.report_issue" class="doc doc-heading">
-        <span class="doc doc-object-name doc-function-name">report_issue</span>
+          <span class="doc doc-object-name doc-function-name">report_issue</span>
 
 
 </h2>
-<div class="highlight"><pre><span></span><code><span class="n">report_issue</span><span class="p">()</span>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">report_issue</span><span class="p">()</span>
 </code></pre></div>
 
   <div class="doc doc-contents ">
@@ -2097,34 +2311,40 @@
 
 </div>
 
+
 <div class="doc doc-object doc-function">
 
 
 
+
 <h2 id="oakvar.api.update" class="doc doc-heading">
-        <span class="doc doc-object-name doc-function-name">update</span>
+          <span class="doc doc-object-name doc-function-name">update</span>
 
 
 </h2>
-<div class="highlight"><pre><span></span><code><span class="n">update</span><span class="p">(</span><span class="n">outer</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">update</span><span class="p">(</span><span class="n">outer</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
   <div class="doc doc-contents ">
   
       <p>Updates OakVar to the latest version and sets up OakVar again.</p>
 
+
+
   <table>
     <thead>
       <tr>
         <th><b>PARAMETER</b></th>
-        <th><b>DESCRIPTION</b></th>
+        <th><b> DESCRIPTION</b></th>
       </tr>
     </thead>
     <tbody>
         <tr>
           <td><code>outer</code></td>
           <td class="doc-param-details">
-            
+            <div class="doc-md-description">
+              
+            </div>
             <p>
                 <span class="doc-param-default">
                   <b>DEFAULT:</b> 
@@ -2135,6 +2355,8 @@
         </tr>
     </tbody>
   </table>
+
+
 
   <table>
     <thead>
@@ -2151,7 +2373,9 @@
               </span>
           </td>
           <td class="doc-returns-details">
-            <p><code>True</code> if successful, <code>False</code> if not.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> if successful, <code>False</code> if not.</p>
+            </div>
           </td>
         </tr>
     </tbody>
@@ -2161,16 +2385,18 @@
 
 </div>
 
+
 <div class="doc doc-object doc-function">
 
 
 
+
 <h2 id="oakvar.api.version" class="doc doc-heading">
-        <span class="doc doc-object-name doc-function-name">version</span>
+          <span class="doc doc-object-name doc-function-name">version</span>
 
 
 </h2>
-<div class="highlight"><pre><span></span><code><span class="n">version</span><span class="p">()</span>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">version</span><span class="p">()</span>
 </code></pre></div>
 
   <div class="doc doc-contents ">

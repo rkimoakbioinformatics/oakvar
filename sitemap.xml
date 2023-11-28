@@ -2,107 +2,112 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://oakvar.com/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://oakvar.com/cli/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://oakvar.com/devguide_debugging/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://oakvar.com/devguide_modules/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://oakvar.com/devguide_workflows/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://oakvar.com/gui/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://oakvar.com/install_modules/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://oakvar.com/install_system/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://oakvar.com/overview/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://oakvar.com/register/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://oakvar.com/third_party/</loc>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://oakvar.com/tutorial/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://oakvar.com/vcf2vcf/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://oakvar.com/api/config/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://oakvar.com/api/lib_util_util/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://oakvar.com/api/main/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://oakvar.com/api/module/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://oakvar.com/api/new/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://oakvar.com/api/oakvar_api/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://oakvar.com/api/store/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://oakvar.com/api/store_account/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://oakvar.com/api/system/</loc>
-         <lastmod>2023-08-10</lastmod>
+         <lastmod>2023-11-28</lastmod>
          <changefreq>daily</changefreq>
     </url>
 </urlset>

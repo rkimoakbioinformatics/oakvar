@@ -11,7 +11,7 @@
         <link rel="canonical" href="https://oakvar.com/api/config/">
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.3.1, mkdocs-material-8.3.9">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-8.3.9">
     
     
       
@@ -523,7 +523,7 @@
       
         <li class="md-nav__item">
   <a href="#oakvar.api.config" class="md-nav__link">
-    oakvar.api.config
+    config
   </a>
   
 </li>
@@ -733,6 +733,21 @@
   
 
     
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../third_party/" class="md-nav__link">
+        Third party
+      </a>
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -759,7 +774,7 @@
       
         <li class="md-nav__item">
   <a href="#oakvar.api.config" class="md-nav__link">
-    oakvar.api.config
+    config
   </a>
   
 </li>
@@ -797,6 +812,7 @@
 <div class="doc doc-object doc-module">
 
 
+
 <a id="oakvar.api.config"></a>
   <div class="doc doc-contents first">
 
@@ -812,34 +828,40 @@
 
 
 
+
 <div class="doc doc-object doc-function">
 
 
 
+
 <h2 id="oakvar.api.config.system" class="doc doc-heading">
-        <span class="doc doc-object-name doc-function-name">system</span>
+          <span class="doc doc-object-name doc-function-name">system</span>
 
 
 </h2>
-<div class="highlight"><pre><span></span><code><span class="n">system</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;str&#39;</span><span class="p">)</span>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">system</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;str&#39;</span><span class="p">)</span>
 </code></pre></div>
 
   <div class="doc doc-contents ">
   
       <p>Gets or sets system configuration.</p>
 
+
+
   <table>
     <thead>
       <tr>
         <th><b>PARAMETER</b></th>
-        <th><b>DESCRIPTION</b></th>
+        <th><b> DESCRIPTION</b></th>
       </tr>
     </thead>
     <tbody>
         <tr>
           <td><code>key</code></td>
           <td class="doc-param-details">
-            <p>key</p>
+            <div class="doc-md-description">
+              <p>key</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -855,7 +877,9 @@
         <tr>
           <td><code>value</code></td>
           <td class="doc-param-details">
-            <p>value</p>
+            <div class="doc-md-description">
+              <p>value</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -871,7 +895,9 @@
         <tr>
           <td><code>type</code></td>
           <td class="doc-param-details">
-            <p>type</p>
+            <div class="doc-md-description">
+              <p>type</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -886,6 +912,8 @@
         </tr>
     </tbody>
   </table>
+
+
 
   <table>
     <thead>
@@ -902,7 +930,9 @@
               </span>
           </td>
           <td class="doc-returns-details">
-            <p>With no argument, system configuration is returned as a dict. With only key given, the system configuration value for the key is returned. With key, value, and type given, system configuration is updated with the value of the type for the key. If type is omitted, str is assumed.</p>
+            <div class="doc-md-description">
+              <p>With no argument, system configuration is returned as a dict. With only key given, the system configuration value for the key is returned. With key, value, and type given, system configuration is updated with the value of the type for the key. If type is omitted, str is assumed.</p>
+            </div>
           </td>
         </tr>
     </tbody>
@@ -912,21 +942,25 @@
 
 </div>
 
+
 <div class="doc doc-object doc-function">
 
 
 
+
 <h2 id="oakvar.api.config.user" class="doc doc-heading">
-        <span class="doc doc-object-name doc-function-name">user</span>
+          <span class="doc doc-object-name doc-function-name">user</span>
 
 
 </h2>
-<div class="highlight"><pre><span></span><code><span class="n">user</span><span class="p">()</span>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">user</span><span class="p">()</span>
 </code></pre></div>
 
   <div class="doc doc-contents ">
   
       <p>Gets user configuration.</p>
+
+
 
   <table>
     <thead>
@@ -943,7 +977,9 @@
               </span>
           </td>
           <td class="doc-returns-details">
-            <p>OakVar user configuration</p>
+            <div class="doc-md-description">
+              <p>OakVar user configuration</p>
+            </div>
           </td>
         </tr>
     </tbody>
