@@ -168,8 +168,6 @@ def run(
     from ..lib.base.runner import Runner
     from ..lib.util.asyn import get_event_loop
 
-    # nested asyncio
-    # nest_asyncio.apply()
     # Custom system conf
     input_paths: List[str] = []
     if isinstance(inputs, str):
@@ -421,12 +419,6 @@ def report(
                 outer=outer,
             )
             response_t = None
-            # uvloop cannot be patched.
-            # nest_asyncio patch is necessary for use in Jupyter notebook.
-            # old_loop = loop
-            # new_loop = asyncio.new_event_loop()
-            # asyncio.set_event_loop(new_loop)
-            # nest_asyncio.apply(new_loop)
             if not loop:
                 loop = get_event_loop()
             response_t = loop.run_until_complete(reporter.run())

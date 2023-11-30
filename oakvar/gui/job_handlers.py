@@ -164,6 +164,7 @@ class JobHandlers:
         from aiohttp.web import json_response
         from aiohttp.web import Response
         import asyncio
+        import sys
         from .userjob import get_user_job_dbpath
         from .util import get_email_from_request
 
@@ -179,7 +180,8 @@ class JobHandlers:
         if not dbpath:
             return Response(status=404)
         key = uid or dbpath
-        run_args = ["ov", "report", dbpath]
+        python_path = sys.executable
+        run_args = [python_path, "-m", "oakvar", "report", dbpath]
         run_args.extend(["-t", report_type])
         queue_item = {
             "cmd": "report",

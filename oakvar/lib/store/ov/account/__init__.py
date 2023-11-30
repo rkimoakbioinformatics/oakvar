@@ -650,20 +650,28 @@ def login_with_email_pw(
 
 
 def total_login(
-        email=None, pw=None, install_mode: str = "", conf: Optional[Dict] = None, outer=None
+        email=None, pw=None, create_account: bool=False, install_mode: str = "", conf: Optional[Dict] = None, outer=None
 ) -> dict:
     from ....system import show_no_user_account_prelude
 
-    if not email or not pw:
+    if email is None or pw is None:
         ret, logged_email = login_with_token_set(email=email, outer=outer)
         if ret is True:
             return {"success": True, "email": logged_email}
     ret = login_with_email_pw(email=email, pw=pw, conf=conf, outer=outer)
     if ret.get("success"):
         return {"success": True, "email": ret["email"]}
+    elif ret.get("status_code") == 400 and email is not None and pw is not None:
+        return {"success": False, "email": None}
     elif install_mode == "web":
         if outer:
             outer.write(ret)
+        return ret
+    if create_account:
+        ret = create(email=email, pw=pw, outer=outer)
+        if not ret.get("success"):
+            if outer:
+                outer.write(ret)
         return ret
     yn = None
     while True:

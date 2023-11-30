@@ -128,13 +128,11 @@ def get_ssl_context(args={}):
 
 def main(url=None, args={}):
     from webbrowser import open as open_browser
-    from ..lib.util.run import show_logo
     from ..gui.server import WebServer
     from ..gui.util import get_host_port
     from ..lib.util.asyn import get_event_loop
     from ..gui.consts import SSL_ENABELD_KEY
 
-    outer = args.get("outer")
     logger = args.get("logger")
     if is_port_occupied(args=args):
         msg = (
@@ -146,7 +144,6 @@ def main(url=None, args={}):
         if url and not args.get("headless"):
             open_browser(url)
         return
-    show_logo(outer=outer)
     host, port = get_host_port(args=args)
     msg = f"OakVar Server is served at {host}:{port}"
     if logger:
@@ -227,16 +224,13 @@ def get_logger(args={}):
     from logging.handlers import TimedRotatingFileHandler
     from logging import StreamHandler
     from ..lib.exceptions import SystemMissingException
-    from ..lib.system import get_system_conf_path
     from ..lib.system import get_log_dir
+    from ..api.system import setup
     from ..gui.util import get_log_path
 
     log_dir = get_log_dir()
-    if not log_dir:
-        sys_conf_path = get_system_conf_path()
-        raise SystemMissingException(
-            f"log_dir does not exist in {sys_conf_path}. Please consider running `ov system setup`."
-        )
+    if not log_dir or not log_dir.exists():
+        setup(clean=True, outer=args.get("outer"), sg_mode=True)
     log_path = get_log_path(log_dir=log_dir)
     logger = getLogger()
     logger.setLevel(INFO)
@@ -341,7 +335,10 @@ def gui(args, __name__="gui"):
     from sys import stderr
     from traceback import print_exc
     from ..lib.system import get_system_conf
+    from ..lib.util.run import show_logo
 
+    outer = args.get("outer")
+    show_logo(outer=outer)
     sysconf = get_system_conf()
     args["sysconf"] = sysconf
     logger, log_path = get_logger(args=args)
