@@ -371,6 +371,12 @@ class WebServer(object):
                         allow_headers="*",
                         allow_methods="*",
                     ),
+                    "http://localhost:3000": ResourceOptions(
+                        allow_credentials=True,
+                        expose_headers="*",
+                        allow_headers="*",
+                        allow_methods="*",
+                    ),
                 },
             )
 
