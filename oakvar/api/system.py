@@ -51,10 +51,12 @@ def setup(
     setup_file: Optional[Union[Path, str]] = None,
     email: Optional[str] = None,
     pw: Optional[str] = None,
+    create_account: bool = False,
     custom_system_conf: Optional[Dict] = None,
     publish_time: str = "",
     outer=None,
     system_worker_state=None,
+    sg_mode: bool = False,
 ):
     """setup.
 
@@ -81,10 +83,12 @@ def setup(
         setup_file=setup_file,
         email=email,
         pw=pw,
+        create_account=create_account,
         publish_time=publish_time,
         custom_system_conf=custom_system_conf,
         outer=outer,
         system_worker_state=system_worker_state,
+        sg_mode=sg_mode
     )
 
 

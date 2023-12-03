@@ -278,7 +278,7 @@ def get_install_deps(
             continue
         if local_info and local_info.version and local_info.version in req:
             continue
-        highest_matching = get_latest_version(rem_info.versions, target_version=version)
+        highest_matching = get_latest_version(rem_info.versions)
         if highest_matching:
             deps[req.unsafe_name] = highest_matching
     req_pypi_list = get_pypi_dependency_from_conf(config)
