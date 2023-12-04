@@ -23,7 +23,7 @@ What it does
 * Easily develop, run, and distribute CLI and GUI genomics apps. OakVar acts as an operating system for genomics apps.
 * Connect genomic data to AI/ML models.
 
-Internship (currently full)
+Internship
 ===========================
 The main project will be OakVar. Full remote work. Unpaid position (no funding yet). Please send your application to rkim@oakbioinformatics.com.
 
