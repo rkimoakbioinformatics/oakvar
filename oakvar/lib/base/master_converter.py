@@ -88,7 +88,7 @@ def _log_conversion_error(logger, error_logger, input_path: str, line_no: int, e
         err_str = str(e)
     if isinstance(e, ExpectedException):
         err_str = str(e)
-    if getattr(e, "traceback", False) is not True:
+    if getattr(e, "traceback", True) is not True:
         err_str = str(e)
     else:
         err_str = format_exc().rstrip()
@@ -116,6 +116,7 @@ def perform_liftover_if_needed(variant, do_liftover: bool, do_liftover_chrM: boo
         needed = do_liftover
     if needed:
         prelift_wdict = copy(variant)
+        orig_chrom = variant["chrom"]
         crl_data = prelift_wdict
         (
             variant["chrom"],
@@ -131,7 +132,7 @@ def perform_liftover_if_needed(variant, do_liftover: bool, do_liftover_chrM: boo
             wgs_reader=wgs_reader,
         )
         converted_end = liftover_one_pos(
-            variant["chrom"], variant["pos_end"], lifter=lifter
+            orig_chrom, variant["pos_end"], lifter=lifter
         )
         if converted_end is None:
             pos_end = ""
@@ -1035,46 +1036,6 @@ class MasterConverter(object):
         self.logger.info("runtime: %s" % runtime)
         status = "finished Converter"
         update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
-
-    def perform_liftover_if_needed(self, variant) -> Optional[Dict[str, Any]]:
-        from copy import copy
-        from oakvar.lib.util.seq import liftover_one_pos
-        from oakvar.lib.util.seq import liftover
-
-        assert self.crl_writer is not None
-        if self.is_chrM(variant):
-            needed = self.do_liftover_chrM
-        else:
-            needed = self.do_liftover
-        if needed:
-            prelift_wdict = copy(variant)
-            #prelift_wdict["uid"] = self.uid
-            #self.crl_writer.write_data(prelift_wdict)
-            crl_data = prelift_wdict
-            (
-                variant["chrom"],
-                variant["pos"],
-                variant["ref_base"],
-                variant["alt_base"],
-            ) = liftover(
-                variant["chrom"],
-                int(variant["pos"]),
-                variant["ref_base"],
-                variant["alt_base"],
-                lifter=self.lifter,
-                wgs_reader=self.wgs_reader,
-            )
-            converted_end = liftover_one_pos(
-                variant["chrom"], variant["pos_end"], lifter=self.lifter
-            )
-            if converted_end is None:
-                pos_end = ""
-            else:
-                pos_end = converted_end[1]
-            variant["pos_end"] = pos_end
-        else:
-            crl_data = None
-        return crl_data
 
     def is_chrM(self, wdict):
         return wdict["chrom"] == "chrM"
