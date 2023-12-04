@@ -389,7 +389,6 @@ def liftover_one_pos(
         lifter = get_lifter(source_assembly)
     if not lifter:
         raise ValueError(f"LiftOver not found for {source_assembly}")
-    # res = Optional[[(chrom, pos, strand, score)...]]
     hits = lifter.convert_coordinate(chrom, pos - 1)
     converted = None
     if hits:
