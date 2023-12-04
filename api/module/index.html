@@ -11,7 +11,7 @@
         <link rel="canonical" href="https://oakvar.com/api/module/">
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.3.1, mkdocs-material-8.3.9">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-8.3.9">
     
     
       
@@ -537,7 +537,7 @@
       
         <li class="md-nav__item">
   <a href="#oakvar.api.module" class="md-nav__link">
-    oakvar.api.module
+    module
   </a>
   
 </li>
@@ -768,6 +768,21 @@
   
 
     
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../third_party/" class="md-nav__link">
+        Third party
+      </a>
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -794,7 +809,7 @@
       
         <li class="md-nav__item">
   <a href="#oakvar.api.module" class="md-nav__link">
-    oakvar.api.module
+    module
   </a>
   
 </li>
@@ -867,6 +882,7 @@
 <div class="doc doc-object doc-module">
 
 
+
 <a id="oakvar.api.module"></a>
   <div class="doc doc-contents first">
 
@@ -882,34 +898,40 @@
 
 
 
+
 <div class="doc doc-object doc-function">
 
 
 
+
 <h2 id="oakvar.api.module.info" class="doc doc-heading">
-        <span class="doc doc-object-name doc-function-name">info</span>
+          <span class="doc doc-object-name doc-function-name">info</span>
 
 
 </h2>
-<div class="highlight"><pre><span></span><code><span class="n">info</span><span class="p">(</span><span class="n">module_name</span><span class="p">,</span> <span class="n">local</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">outer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">info</span><span class="p">(</span><span class="n">module_name</span><span class="p">,</span> <span class="n">local</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">outer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 </code></pre></div>
 
   <div class="doc doc-contents ">
   
       <p>info.</p>
 
+
+
   <table>
     <thead>
       <tr>
         <th><b>PARAMETER</b></th>
-        <th><b>DESCRIPTION</b></th>
+        <th><b> DESCRIPTION</b></th>
       </tr>
     </thead>
     <tbody>
         <tr>
           <td><code>module_name</code></td>
           <td class="doc-param-details">
-            <p>Module name</p>
+            <div class="doc-md-description">
+              <p>Module name</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -921,7 +943,9 @@
         <tr>
           <td><code>local</code></td>
           <td class="doc-param-details">
-            <p><code>True</code> will search the module in local installation. <code>False</code> will fetch the module's information from the OakVar store.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> will search the module in local installation. <code>False</code> will fetch the module's information from the OakVar store.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -937,7 +961,9 @@
         <tr>
           <td><code>outer</code></td>
           <td class="doc-param-details">
-            <p>If set, tabulated output will be sent to it. For example, <code>sys.stdout</code>.</p>
+            <div class="doc-md-description">
+              <p>If set, tabulated output will be sent to it. For example, <code>sys.stdout</code>.</p>
+            </div>
             <p>
                 <span class="doc-param-default">
                   <b>DEFAULT:</b> 
@@ -949,7 +975,9 @@
         <tr>
           <td><code>kwargs</code></td>
           <td class="doc-param-details">
-            
+            <div class="doc-md-description">
+              
+            </div>
             <p>
                 <span class="doc-param-default">
                   <b>DEFAULT:</b> 
@@ -960,6 +988,8 @@
         </tr>
     </tbody>
   </table>
+
+
 
   <table>
     <thead>
@@ -976,11 +1006,15 @@
               </span>
           </td>
           <td class="doc-returns-details">
-            <p><code>None</code> if the module is not found. The module's information as a dict if found.</p>
+            <div class="doc-md-description">
+              <p><code>None</code> if the module is not found. The module's information as a dict if found.</p>
+            </div>
           </td>
         </tr>
     </tbody>
   </table>
+
+
 
 <p><strong>Examples:</strong></p>
     <p>Print <code>clinvar</code> module's information to the terminal and get the same information as a dict.</p>
@@ -991,16 +1025,18 @@
 
 </div>
 
+
 <div class="doc doc-object doc-function">
 
 
 
+
 <h2 id="oakvar.api.module.install" class="doc doc-heading">
-        <span class="doc doc-object-name doc-function-name">install</span>
+          <span class="doc doc-object-name doc-function-name">install</span>
 
 
 </h2>
-<div class="highlight"><pre><span></span><code><span class="n">install</span><span class="p">(</span>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">install</span><span class="p">(</span>
     <span class="n">module_names</span><span class="o">=</span><span class="p">[],</span>
     <span class="n">urls</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">modules_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -1021,18 +1057,22 @@
   
       <p>Install modules.</p>
 
+
+
   <table>
     <thead>
       <tr>
         <th><b>PARAMETER</b></th>
-        <th><b>DESCRIPTION</b></th>
+        <th><b> DESCRIPTION</b></th>
       </tr>
     </thead>
     <tbody>
         <tr>
           <td><code>module_names</code></td>
           <td class="doc-param-details">
-            <p>Module names</p>
+            <div class="doc-md-description">
+              <p>Module names</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1048,7 +1088,9 @@
         <tr>
           <td><code>urls</code></td>
           <td class="doc-param-details">
-            <p>URLs of module zip files. If given, <code>module_names</code> also should be given to specify the module name of each URL.</p>
+            <div class="doc-md-description">
+              <p>URLs of module zip files. If given, <code>module_names</code> also should be given to specify the module name of each URL.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1064,7 +1106,9 @@
         <tr>
           <td><code>yes</code></td>
           <td class="doc-param-details">
-            <p><code>True</code> will skip a confirmation prompt.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> will skip a confirmation prompt.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1080,7 +1124,9 @@
         <tr>
           <td><code>no_fetch</code></td>
           <td class="doc-param-details">
-            <p><code>True</code> will skip fetching the latest the OakVar store cache.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> will skip fetching the latest the OakVar store cache.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1096,7 +1142,9 @@
         <tr>
           <td><code>overwrite</code></td>
           <td class="doc-param-details">
-            <p><code>True</code> will overwrite the module even if the same version.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> will overwrite the module even if the same version.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1112,7 +1160,9 @@
         <tr>
           <td><code>force_data</code></td>
           <td class="doc-param-details">
-            <p><code>True</code> will re-install module data.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> will re-install module data.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1128,7 +1178,9 @@
         <tr>
           <td><code>skip_data</code></td>
           <td class="doc-param-details">
-            <p><code>True</code> will skip installing module data.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> will skip installing module data.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1144,7 +1196,9 @@
         <tr>
           <td><code>modules_dir</code></td>
           <td class="doc-param-details">
-            <p>custom OakVar modules directory</p>
+            <div class="doc-md-description">
+              <p>custom OakVar modules directory</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1160,7 +1214,9 @@
         <tr>
           <td><code>skip_dependencies</code></td>
           <td class="doc-param-details">
-            <p><code>True</code> will bypass installing dependencies.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> will bypass installing dependencies.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1176,7 +1232,9 @@
         <tr>
           <td><code>clean</code></td>
           <td class="doc-param-details">
-            <p>clean</p>
+            <div class="doc-md-description">
+              <p>clean</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1192,7 +1250,9 @@
         <tr>
           <td><code>stage_handler</code></td>
           <td class="doc-param-details">
-            
+            <div class="doc-md-description">
+              
+            </div>
             <p>
                 <span class="doc-param-default">
                   <b>DEFAULT:</b> 
@@ -1204,7 +1264,9 @@
         <tr>
           <td><code>system_worker_state</code></td>
           <td class="doc-param-details">
-            
+            <div class="doc-md-description">
+              
+            </div>
             <p>
                 <span class="doc-param-default">
                   <b>DEFAULT:</b> 
@@ -1216,7 +1278,9 @@
         <tr>
           <td><code>outer</code></td>
           <td class="doc-param-details">
-            
+            <div class="doc-md-description">
+              
+            </div>
             <p>
                 <span class="doc-param-default">
                   <b>DEFAULT:</b> 
@@ -1227,6 +1291,8 @@
         </tr>
     </tbody>
   </table>
+
+
 
   <table>
     <thead>
@@ -1243,7 +1309,9 @@
               </span>
           </td>
           <td class="doc-returns-details">
-            <p><code>None</code> if no problem. <code>False</code> if there was a problem.</p>
+            <div class="doc-md-description">
+              <p><code>None</code> if no problem. <code>False</code> if there was a problem.</p>
+            </div>
           </td>
         </tr>
     </tbody>
@@ -1253,16 +1321,18 @@
 
 </div>
 
+
 <div class="doc doc-object doc-function">
 
 
 
+
 <h2 id="oakvar.api.module.installbase" class="doc doc-heading">
-        <span class="doc doc-object-name doc-function-name">installbase</span>
+          <span class="doc doc-object-name doc-function-name">installbase</span>
 
 
 </h2>
-<div class="highlight"><pre><span></span><code><span class="n">installbase</span><span class="p">(</span>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">installbase</span><span class="p">(</span>
     <span class="n">no_fetch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">conf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
@@ -1276,18 +1346,22 @@
   
       <p>Installs OakVar system/default modules.</p>
 
+
+
   <table>
     <thead>
       <tr>
         <th><b>PARAMETER</b></th>
-        <th><b>DESCRIPTION</b></th>
+        <th><b> DESCRIPTION</b></th>
       </tr>
     </thead>
     <tbody>
         <tr>
           <td><code>no_fetch</code></td>
           <td class="doc-param-details">
-            <p><code>True</code> will skip fetching the latest the OakVar store cache.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> will skip fetching the latest the OakVar store cache.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1303,7 +1377,9 @@
         <tr>
           <td><code>overwrite</code></td>
           <td class="doc-param-details">
-            <p><code>True</code> will overwrite the module even if the same version.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> will overwrite the module even if the same version.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1319,7 +1395,9 @@
         <tr>
           <td><code>modules_dir</code></td>
           <td class="doc-param-details">
-            <p>custom OakVar modules directory</p>
+            <div class="doc-md-description">
+              <p>custom OakVar modules directory</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1335,7 +1413,9 @@
         <tr>
           <td><code>conf</code></td>
           <td class="doc-param-details">
-            <p>Custom system configuration as a dict</p>
+            <div class="doc-md-description">
+              <p>Custom system configuration as a dict</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1351,7 +1431,9 @@
         <tr>
           <td><code>outer</code></td>
           <td class="doc-param-details">
-            
+            <div class="doc-md-description">
+              
+            </div>
             <p>
                 <span class="doc-param-default">
                   <b>DEFAULT:</b> 
@@ -1363,7 +1445,9 @@
         <tr>
           <td><code>system_worker_state</code></td>
           <td class="doc-param-details">
-            
+            <div class="doc-md-description">
+              
+            </div>
             <p>
                 <span class="doc-param-default">
                   <b>DEFAULT:</b> 
@@ -1374,6 +1458,8 @@
         </tr>
     </tbody>
   </table>
+
+
 
   <table>
     <thead>
@@ -1390,7 +1476,9 @@
               </span>
           </td>
           <td class="doc-returns-details">
-            <p><code>None</code> if successful. <code>False</code> if not.</p>
+            <div class="doc-md-description">
+              <p><code>None</code> if successful. <code>False</code> if not.</p>
+            </div>
           </td>
         </tr>
     </tbody>
@@ -1400,16 +1488,18 @@
 
 </div>
 
+
 <div class="doc doc-object doc-function">
 
 
 
+
 <h2 id="oakvar.api.module.ls" class="doc doc-heading">
-        <span class="doc doc-object-name doc-function-name">ls</span>
+          <span class="doc doc-object-name doc-function-name">ls</span>
 
 
 </h2>
-<div class="highlight"><pre><span></span><code><span class="n">ls</span><span class="p">(</span>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">ls</span><span class="p">(</span>
     <span class="n">module_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;.*&quot;</span><span class="p">],</span>
     <span class="n">module_types</span><span class="o">=</span><span class="p">[],</span>
     <span class="n">search_store</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
@@ -1425,18 +1515,22 @@
   
       <p>List installed and available OakVar modules.</p>
 
+
+
   <table>
     <thead>
       <tr>
         <th><b>PARAMETER</b></th>
-        <th><b>DESCRIPTION</b></th>
+        <th><b> DESCRIPTION</b></th>
       </tr>
     </thead>
     <tbody>
         <tr>
           <td><code>module_names</code></td>
           <td class="doc-param-details">
-            <p>Module names</p>
+            <div class="doc-md-description">
+              <p>Module names</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1452,7 +1546,9 @@
         <tr>
           <td><code>module_types</code></td>
           <td class="doc-param-details">
-            <p>Module types</p>
+            <div class="doc-md-description">
+              <p>Module types</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1468,7 +1564,9 @@
         <tr>
           <td><code>search_store</code></td>
           <td class="doc-param-details">
-            <p><code>True</code> will search not yet installed modules on the OakVar store. <code>False</code> for only locally installed modules.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> will search not yet installed modules on the OakVar store. <code>False</code> for only locally installed modules.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1484,7 +1582,9 @@
         <tr>
           <td><code>humanized_size</code></td>
           <td class="doc-param-details">
-            <p><code>True</code> will show humanized module size.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> will show humanized module size.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1500,7 +1600,9 @@
         <tr>
           <td><code>tags</code></td>
           <td class="doc-param-details">
-            <p>Module tags to search. Regular expression can be used.</p>
+            <div class="doc-md-description">
+              <p>Module tags to search. Regular expression can be used.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1516,7 +1618,9 @@
         <tr>
           <td><code>nameonly</code></td>
           <td class="doc-param-details">
-            <p><code>True</code> will return module names only.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> will return module names only.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1532,7 +1636,9 @@
         <tr>
           <td><code>outer</code></td>
           <td class="doc-param-details">
-            
+            <div class="doc-md-description">
+              
+            </div>
             <p>
                 <span class="doc-param-default">
                   <b>DEFAULT:</b> 
@@ -1543,6 +1649,8 @@
         </tr>
     </tbody>
   </table>
+
+
 
   <table>
     <thead>
@@ -1559,11 +1667,15 @@
               </span>
           </td>
           <td class="doc-returns-details">
-            <p>List of Dict, each element of which has an installed module's information.</p>
+            <div class="doc-md-description">
+              <p>List of Dict, each element of which has an installed module's information.</p>
+            </div>
           </td>
         </tr>
     </tbody>
   </table>
+
+
 
 <p><strong>Examples:</strong></p>
     <p>Get the information on the installed ClinVar module.</p>
@@ -1580,16 +1692,18 @@
 
 </div>
 
+
 <div class="doc doc-object doc-function">
 
 
 
+
 <h2 id="oakvar.api.module.pack" class="doc doc-heading">
-        <span class="doc doc-object-name doc-function-name">pack</span>
+          <span class="doc doc-object-name doc-function-name">pack</span>
 
 
 </h2>
-<div class="highlight"><pre><span></span><code><span class="n">pack</span><span class="p">(</span>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">pack</span><span class="p">(</span>
     <span class="n">module_name</span><span class="p">,</span>
     <span class="n">outdir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">code_only</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
@@ -1602,18 +1716,22 @@
   
       <p>Packs a module's code and optionally data to register it with OakVar store. This will produce zip files. They are supposed to be uploaded to somewhere on the web, and <code>oakvar.api.store.register</code> is used to register the module in the OakVar store. After this, the module will be available to all OakVar users worldwide.</p>
 
+
+
   <table>
     <thead>
       <tr>
         <th><b>PARAMETER</b></th>
-        <th><b>DESCRIPTION</b></th>
+        <th><b> DESCRIPTION</b></th>
       </tr>
     </thead>
     <tbody>
         <tr>
           <td><code>module_name</code></td>
           <td class="doc-param-details">
-            <p>Module name</p>
+            <div class="doc-md-description">
+              <p>Module name</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1625,7 +1743,9 @@
         <tr>
           <td><code>outdir</code></td>
           <td class="doc-param-details">
-            <p>Directory to store the module pack zip files. Default is the current working directory.</p>
+            <div class="doc-md-description">
+              <p>Directory to store the module pack zip files. Default is the current working directory.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1641,7 +1761,9 @@
         <tr>
           <td><code>code_only</code></td>
           <td class="doc-param-details">
-            <p><code>True</code> will pack only the code. Useful if only updated code will be registered.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> will pack only the code. Useful if only updated code will be registered.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1657,7 +1779,9 @@
         <tr>
           <td><code>split</code></td>
           <td class="doc-param-details">
-            <p><code>True</code> will split the code and data zip files by 100MB.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> will split the code and data zip files by 100MB.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1673,7 +1797,9 @@
         <tr>
           <td><code>outer</code></td>
           <td class="doc-param-details">
-            
+            <div class="doc-md-description">
+              
+            </div>
             <p>
                 <span class="doc-param-default">
                   <b>DEFAULT:</b> 
@@ -1684,6 +1810,8 @@
         </tr>
     </tbody>
   </table>
+
+
 
   <table>
     <thead>
@@ -1700,7 +1828,9 @@
               </span>
           </td>
           <td class="doc-returns-details">
-            <p><code>None</code> if the module does not exist. A dict of { "code": [Path], "data": [Path] } if successful.}</p>
+            <div class="doc-md-description">
+              <p><code>None</code> if the module does not exist. A dict of { "code": [Path], "data": [Path] } if successful.}</p>
+            </div>
           </td>
         </tr>
     </tbody>
@@ -1710,34 +1840,40 @@
 
 </div>
 
+
 <div class="doc doc-object doc-function">
 
 
 
+
 <h2 id="oakvar.api.module.uninstall" class="doc doc-heading">
-        <span class="doc doc-object-name doc-function-name">uninstall</span>
+          <span class="doc doc-object-name doc-function-name">uninstall</span>
 
 
 </h2>
-<div class="highlight"><pre><span></span><code><span class="n">uninstall</span><span class="p">(</span><span class="n">module_names</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">yes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">outer</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">uninstall</span><span class="p">(</span><span class="n">module_names</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">yes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">outer</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
   <div class="doc doc-contents ">
   
       <p>Uninstall modules.</p>
 
+
+
   <table>
     <thead>
       <tr>
         <th><b>PARAMETER</b></th>
-        <th><b>DESCRIPTION</b></th>
+        <th><b> DESCRIPTION</b></th>
       </tr>
     </thead>
     <tbody>
         <tr>
           <td><code>module_names</code></td>
           <td class="doc-param-details">
-            <p>Modules names</p>
+            <div class="doc-md-description">
+              <p>Modules names</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1753,7 +1889,9 @@
         <tr>
           <td><code>yes</code></td>
           <td class="doc-param-details">
-            <p><code>True</code> to skip a confirmation prompt.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> to skip a confirmation prompt.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1769,7 +1907,9 @@
         <tr>
           <td><code>outer</code></td>
           <td class="doc-param-details">
-            
+            <div class="doc-md-description">
+              
+            </div>
             <p>
                 <span class="doc-param-default">
                   <b>DEFAULT:</b> 
@@ -1780,6 +1920,8 @@
         </tr>
     </tbody>
   </table>
+
+
 
   <table>
     <thead>
@@ -1796,7 +1938,9 @@
               </span>
           </td>
           <td class="doc-returns-details">
-            <p><code>True</code> if successful. <code>False</code> if not.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> if successful. <code>False</code> if not.</p>
+            </div>
           </td>
         </tr>
     </tbody>
@@ -1806,16 +1950,18 @@
 
 </div>
 
+
 <div class="doc doc-object doc-function">
 
 
 
+
 <h2 id="oakvar.api.module.update" class="doc doc-heading">
-        <span class="doc doc-object-name doc-function-name">update</span>
+          <span class="doc doc-object-name doc-function-name">update</span>
 
 
 </h2>
-<div class="highlight"><pre><span></span><code><span class="n">update</span><span class="p">(</span>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">update</span><span class="p">(</span>
     <span class="n">module_name_patterns</span><span class="o">=</span><span class="p">[],</span>
     <span class="n">yes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">no_fetch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
@@ -1830,18 +1976,22 @@
   
       <p>Update installed modules.</p>
 
+
+
   <table>
     <thead>
       <tr>
         <th><b>PARAMETER</b></th>
-        <th><b>DESCRIPTION</b></th>
+        <th><b> DESCRIPTION</b></th>
       </tr>
     </thead>
     <tbody>
         <tr>
           <td><code>module_name_patterns</code></td>
           <td class="doc-param-details">
-            <p>Module name patterns. For example, <code>["clin.*"]</code> will check <code>clinvar</code>, <code>clingen</code>, etc.</p>
+            <div class="doc-md-description">
+              <p>Module name patterns. For example, <code>["clin.*"]</code> will check <code>clinvar</code>, <code>clingen</code>, etc.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1857,7 +2007,9 @@
         <tr>
           <td><code>yes</code></td>
           <td class="doc-param-details">
-            <p><code>True</code> to skip a confirmation prompt.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> to skip a confirmation prompt.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1873,7 +2025,9 @@
         <tr>
           <td><code>no_fetch</code></td>
           <td class="doc-param-details">
-            <p><code>True</code> will skip fetching the latest the OakVar store cache.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> will skip fetching the latest the OakVar store cache.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1889,7 +2043,9 @@
         <tr>
           <td><code>force_data</code></td>
           <td class="doc-param-details">
-            <p><code>True</code> will re-install module data.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> will re-install module data.</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1905,7 +2061,9 @@
         <tr>
           <td><code>modules_dir</code></td>
           <td class="doc-param-details">
-            <p>custom OakVar modules directory</p>
+            <div class="doc-md-description">
+              <p>custom OakVar modules directory</p>
+            </div>
             <p>
                 <span class="doc-param-annotation">
                   <b>TYPE:</b>
@@ -1921,7 +2079,9 @@
         <tr>
           <td><code>system_worker_state</code></td>
           <td class="doc-param-details">
-            
+            <div class="doc-md-description">
+              
+            </div>
             <p>
                 <span class="doc-param-default">
                   <b>DEFAULT:</b> 
@@ -1933,7 +2093,9 @@
         <tr>
           <td><code>outer</code></td>
           <td class="doc-param-details">
-            
+            <div class="doc-md-description">
+              
+            </div>
             <p>
                 <span class="doc-param-default">
                   <b>DEFAULT:</b> 
@@ -1944,6 +2106,8 @@
         </tr>
     </tbody>
   </table>
+
+
 
   <table>
     <thead>
@@ -1960,7 +2124,9 @@
               </span>
           </td>
           <td class="doc-returns-details">
-            <p><code>True</code> if update was successful. <code>False</code> if not.</p>
+            <div class="doc-md-description">
+              <p><code>True</code> if update was successful. <code>False</code> if not.</p>
+            </div>
           </td>
         </tr>
     </tbody>
