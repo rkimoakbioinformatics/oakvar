@@ -172,8 +172,6 @@ def run(
     from ..lib.base.runner import Runner
     from ..lib.util.asyn import get_event_loop
 
-    # nested asyncio
-    # nest_asyncio.apply()
     # Custom system conf
     input_paths: List[str] = []
     if isinstance(inputs, str):

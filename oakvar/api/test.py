@@ -608,6 +608,7 @@ class Tester:
         from ..lib.module.local import get_local_module_info
         from time import time
         from subprocess import call, STDOUT
+        import sys
         from ..lib.exceptions import ModuleLoadingError
         from ..lib.exceptions import SetupError
 
@@ -627,8 +628,11 @@ class Tester:
         else:
             self.report_type = "text"
         # Basic oc run command line
+        python_path = sys.executable
         cmd_list = [
-            "ov",
+            python_path,
+            "-m",
+            "oakvar"
             "run",
             self.input_path,
             "-d",

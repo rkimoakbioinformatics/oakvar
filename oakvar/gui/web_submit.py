@@ -347,6 +347,7 @@ class SubmitProcessor:
         return info_json
 
     async def get_run_args(self, request, submit_options: dict, job_dir: str):
+        import sys
         from pathlib import Path
         from ..lib.util.admin_util import set_user_conf_prop
 
@@ -356,7 +357,8 @@ class SubmitProcessor:
         submit_options["input_fpaths"] = [
             str(Path(job_dir) / fn) for fn in input_fnames
         ]
-        run_args = ["ov", "run"]
+        python_path = sys.executable
+        run_args = [python_path, "-m", "oakvar", "run"]
         if submit_options.get("use_server_input_files"):
             for fp in submit_options.get("input_files", []):
                 run_args.append(fp)

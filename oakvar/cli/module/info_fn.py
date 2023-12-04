@@ -40,8 +40,12 @@
 
 def print_module_info(module_info={}, outer=None):
     from rich.console import Console
+    from .. import CliOuter
 
-    console = Console(file=outer)
+    if isinstance(outer, CliOuter):
+        console = outer.out_writer
+    else:
+        console = Console(file=outer)
     readme_table = get_module_info_readme_table(module_info=module_info)
     basic_table = get_module_info_basic_table(module_info=module_info)
     developer_table = get_module_info_developer_table(module_info=module_info)

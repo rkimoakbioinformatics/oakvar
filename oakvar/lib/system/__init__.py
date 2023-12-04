@@ -52,6 +52,7 @@ def setup_system(
     clean_cache_files: bool = False,
     setup_file: Optional[Path] = None,
     email: Optional[str] = None,
+    create_account: bool = False,
     pw: Optional[str] = None,
     publish_time: str = "",
     custom_system_conf: Optional[Dict] = None,
@@ -59,7 +60,9 @@ def setup_system(
     system_worker_state=None,
     install_mode: str = "",
     ws_id: str = "",
+    sg_mode: bool = False,
 ):
+    import platform
     from os import environ
     from ...api.module import installbase
     from .consts import sys_conf_path_key
@@ -84,14 +87,19 @@ def setup_system(
     # set up a user conf file.
     setup_user_conf_file(clean=clean, outer=outer)
     # set up a store account.
-    ret = setup_store_account(
-        conf=conf,
-        email=email,
-        pw=pw,
-        install_mode=install_mode,
-        clean=clean,
-        outer=outer,
-    )
+    os_platform = platform.platform()
+    if (sg_mode or os_platform.startswith("Windows") or os_platform.startswith("Darwin") or os_platform.startswith("macOS")) and install_mode != "web":
+        ret = run_sg_store_account(email=email, pw=pw, install_mode=install_mode, clean=clean)
+    else:
+        ret = setup_store_account(
+            conf=conf, 
+            email=email, 
+            pw=pw, 
+            create_account=create_account, 
+            install_mode=install_mode, 
+            clean=clean, 
+            outer=outer
+        )
     if ret.get("success") is not True:
         if outer:
             msg = ret.get("msg")
@@ -217,6 +225,7 @@ def setup_store_account(
     conf=None,
     email=None,
     pw=None,
+    create_account: bool = False,
     install_mode: str = "",
     clean: bool = False,
     outer=None,
@@ -227,7 +236,7 @@ def setup_store_account(
     if clean:
         delete_token_set()
     return total_login(
-        email=email, pw=pw, conf=conf, install_mode=install_mode, outer=outer
+        email=email, pw=pw, conf=conf, create_account=create_account, install_mode=install_mode, outer=outer
     )
 
 
@@ -1164,3 +1173,212 @@ def update(outer=None) -> bool:
         if outer:
             outer.error("System setup failed.")
     return ret
+
+def get_ov_logo_path():
+    from ..util.admin_util import get_packagedir
+
+    logo_path = get_packagedir() / "gui" / "websubmit" / "images" / "logo_transparent.png"
+    return logo_path
+
+def run_sg_store_account(email: str="", pw: str="", install_mode: str="", clean: bool=False, outer=None) -> dict:
+    import PySimpleGUI as sg
+    from ..exceptions import SystemMissingException
+    from ..store.ov.account import login_with_email_pw
+    from ..store.ov.account import delete_token_set
+    from ..store.ov.account import login_with_token_set
+
+    if clean:
+        delete_token_set()
+    if email is None or pw is None:
+        ret, logged_email = login_with_token_set(email=email, outer=outer)
+        if ret is True:
+            return {"success": True, "email": logged_email}
+    ret = login_with_email_pw(email=email, pw=pw, outer=outer)
+    if ret.get("success"):
+        return {"success": True, "email": ret["email"]}
+    elif ret.get("status_code") == 400 and email is not None and pw is not None:
+        return {"success": False, "email": None}
+    sg.theme("LightBrown1")
+    sg.set_options(font="Verdana 12")
+    logo_data = get_sg_logo_data()
+    while True:
+        event, values = gui_get_already_has_account(logo_data)
+        if event == "Cancel":
+            sg.popup_error(f"Setup cancelled.")
+            exit()
+        username = None
+        password = None
+        if event == "No":
+            success, username, password = run_sg_create_account(logo_data)
+            if not success:
+                continue
+            else:
+                ret = login_with_email_pw(email=username, pw=password)
+                if not ret.get("success"):
+                    sg.popup_error("Login unsuccessful.")
+                return ret
+        else:
+            ret = run_sg_login(logo_data)
+            if not ret.get("success"):
+                continue
+            else:
+                return ret
+
+def run_sg_create_account(logo_data) -> bool:
+    import PySimpleGUI as sg
+    from ..util.util import email_is_valid
+    from ..util.util import pw_is_valid
+    from ..store.ov.account import create
+
+    window = None
+    while True:
+        event, values, window = gui_get_account_create_info(logo_data, window)
+        if event == "Submit":
+            username = values["-USERNAME-"]
+            password = values["-PASSWORD-"]
+            confirm_password = values["-CONFIRM-PASSWORD-"]
+            if not email_is_valid(username):
+                sg.popup_error("Wrong email format")
+            elif not pw_is_valid(password):
+                sg.popup_error("Invalid password. Please use alphabets, numbers, and !?&@-+")
+            elif password != confirm_password:
+                sg.popup_error("Password does not match.")
+            else:
+                ret = create(email=username, pw=password)
+                if not ret.get("success"):
+                    sg.popup_error(f"OakVar account could not be created: {ret['msg']}")
+                    continue
+                window.close()
+                return True, username, password
+        else:
+            window.close()
+            return False, None, None
+
+def run_sg_login(logo_data):
+    import PySimpleGUI as sg
+    from ..util.util import email_is_valid
+    from ..util.util import pw_is_valid
+    from ..store.ov.account import login_with_email_pw
+
+    window = None
+    while True:
+        event, values, window = gui_get_account_info(logo_data, window)
+        if event == "Cancel":
+            window.close()
+            return {"success": False}
+        username = values["-USERNAME-"]
+        password = values["-PASSWORD-"]
+        if not email_is_valid(username):
+            sg.popup_error("Username should be an email.")
+        elif not pw_is_valid(password):
+            sg.popup_error("Invalid password. Please use alphabets, numbers, and !?&@-+")
+        ret = login_with_email_pw(email=username, pw=password)
+        if not ret.get("success"):
+            sg.popup_error("Login unsuccessful.")
+            continue
+        else:
+            window.close()
+            return ret
+
+def get_sg_logo_data():
+    import io
+    import base64
+    from PIL import Image
+    from ..system import get_ov_logo_path
+
+    logo_path = str(get_ov_logo_path())
+    logo = Image.open(logo_path)
+    new_height = 200
+    scale = new_height / logo.height
+    new_width = int(scale * logo.width)
+    logo = logo.resize((new_width, new_height), Image.ANTIALIAS)
+    bio = io.BytesIO()
+    logo.save(bio, format="PNG")
+    logo_data = bio.getvalue()
+    return logo_data
+
+def gui_get_already_has_account(logo_data):
+    import PySimpleGUI as sg
+
+    col1 = sg.Image(data=logo_data)
+    col2 = [
+        [
+            sg.Text("Welcome to OakVar", font="Verdana 30"),
+        ],
+        [sg.Text("Let's set up OakVar.")],
+        [sg.Text("Do you have an OakVar account?")],
+        [
+            sg.Button("Yes"),
+            sg.Button("No"),
+            sg.Button("Cancel")
+        ]
+    ]
+    layout = [[col1, sg.Column(col2)]]
+    window = sg.Window("OakVar", layout)
+    event, values = window.read()
+    window.close()
+    return event, values
+
+def gui_get_account_create_info(logo_data, window):
+    import PySimpleGUI as sg
+
+    if not window:
+        col1 = sg.Image(data=logo_data)
+        col2 = [
+            [
+                sg.Text("Welcome to OakVar", font="Verdana 40"),
+            ],
+            [
+                sg.Text("An OakVar account will be created with the Email and password you enter below.")
+            ],
+            [
+                sg.Text("Email"),
+                sg.InputText(key="-USERNAME-")
+            ],
+            [
+                sg.Text("Password"),
+                sg.InputText(key="-PASSWORD-", password_char="*")
+            ],
+            [
+                sg.Text("Confirm password"),
+                sg.InputText(key="-CONFIRM-PASSWORD-", password_char="*")
+            ],
+            [
+                sg.Submit(),
+                sg.Cancel()
+            ]
+        ]
+        layout = [[col1, sg.Column(col2)]]
+        window = sg.Window("OakVar", layout)
+    event, values = window.read()
+    return event, values, window
+
+def gui_get_account_info(logo_data, window):
+    import PySimpleGUI as sg
+
+    if window is None:
+        col1 = sg.Image(data=logo_data)
+        col2 = [
+            [
+                sg.Text("Welcome to OakVar", font="Verdana 40"),
+            ],
+            [
+                sg.Text("Please enter your OakVar username and password.")
+            ],
+            [
+                sg.Text("Email"),
+                sg.InputText(key="-USERNAME-")
+            ],
+            [
+                sg.Text("Password"),
+                sg.InputText(key="-PASSWORD-", password_char="*")
+            ],
+            [
+                sg.Submit(),
+                sg.Cancel()
+            ]
+        ]
+        layout = [[col1, sg.Column(col2)]]
+        window = sg.Window("OakVar", layout)
+    event, values = window.read()
+    return event, values, window

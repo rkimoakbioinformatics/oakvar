@@ -29,7 +29,7 @@ walk_and_add("oakvar", oakvar_files)
 walk_and_add("cravat", cravat_files)
 setup(
     name="oakvar",
-    version="2.9.64",
+    version="2.9.69",
     description="A genomic variant analysis platform",
     long_description=long_description,
     long_description_content_type="text/x-rst",
@@ -73,6 +73,7 @@ setup(
         "multiprocess",
         "pandas>=1.5.0",
         "ray",
+        "PySimpleGUI",
         # below are module-specific. move them to module's yml.
         "mpmath",
         "twobitreader",
