@@ -121,5 +121,5 @@
 
 ### Show analysis result database file information
 
-	ov util showsqliteinfo
+	ov util sqliteinfo --fmt [json(default)|yaml|text]
 
