@@ -173,6 +173,10 @@ def get_sqliteinfo(fmt: str = "json", outer=None, dbpaths: List[str] = []):
         if not ret:
             c.execute('select colval from info where colkey="inputs"')
             ret = c.fetchone()
+        if not ret:
+            if outer:
+                outer.error(f"{dbpath} does not seem to be a proper OakVar result database file. Exiting.")
+                exit(1)
         input_paths = loads(ret[0].replace("'", '"'))
         if fmt == "text":
             s = "\n# Input files:"

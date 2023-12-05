@@ -150,7 +150,7 @@ def get_parser_fn_util():
         "sqliteinfo", help="Show SQLite result file information"
     )
     parser_fn_util_showsqliteinfo.add_argument(
-        "paths", nargs="+", help="SQLite result file paths"
+        "dbpaths", nargs="+", help="SQLite result file paths"
     )
     parser_fn_util_showsqliteinfo.add_argument(
         "--fmt", default="json", help="Output format. text / json / yaml"
