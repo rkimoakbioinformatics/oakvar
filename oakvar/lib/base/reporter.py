@@ -558,7 +558,7 @@ class BaseReporter:
             self.escape_characters(datarow)
             self.write_row_with_samples_separate_or_not(datarow)
             row_count += 1
-            if row_count % 10000 == 0:
+            if row_count % 100000 == 0:
                 t = time.time()
                 msg = f"Wrote {row_count} rows. {(t - ctime) / row_count}"
                 if self.logger is not None:

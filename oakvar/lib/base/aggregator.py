@@ -146,7 +146,7 @@ class Aggregator(object):
                         self.cursor.executemany(q, value_batch)
                         self.dbconn.commit()
                         value_batch = []
-                    if lnum % 10000 == 0:
+                    if lnum % 100000 == 0:
                         status = f"Running Aggregator ({self.level}:base): line {lnum}"
                         update_status(
                             status, logger=self.logger, serveradmindb=self.serveradmindb
@@ -178,7 +178,7 @@ class Aggregator(object):
                     self.cursor.execute(update_template, ins_vals)
                     if n % self.commit_threshold == 0:
                         self.dbconn.commit()
-                    if lnum % 10000 == 0:
+                    if lnum % 100000 == 0:
                         status = f"Running Aggregator ({self.level}:{annot_name}): line {lnum}"
                         update_status(
                             status, logger=self.logger, serveradmindb=self.serveradmindb
