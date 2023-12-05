@@ -877,6 +877,7 @@ class MasterConverter(object):
         pool = ThreadPool(num_pool)
         unique_var_dict: Dict[int, Dict[str, int]] = {}
         uid_var: int = 0
+        log_batch_size: int = 100000
         for input_path in self.input_paths:
             self.input_fname = Path(input_path).name
             fileno = self.input_path_dict2[input_path]
@@ -889,6 +890,7 @@ class MasterConverter(object):
             start_line_pos: int = 1
             start_line_no: int = start_line_pos
             round_no: int = 0
+            next_batch_log: int = log_batch_size
             while True:
                 lines_data, immature_exit = main_converter.get_variant_lines(input_path, num_pool, start_line_no, batch_size)
                 args = [
@@ -978,12 +980,14 @@ class MasterConverter(object):
                     break
                 start_line_no += batch_size * num_pool
                 round_no += 1
-                status = (
-                    f"Running Converter ({self.input_fname}): line {start_line_no - 1}"
-                )
-                update_status(
-                    status, logger=self.logger, serveradmindb=self.serveradmindb
-                )
+                if start_line_no >= next_batch_log:
+                    status = (
+                        f"Running Converter ({self.input_fname}): line {start_line_no - 1}"
+                    )
+                    update_status(
+                        status, logger=self.logger, serveradmindb=self.serveradmindb
+                    )
+                    next_batch_log = start_line_no + log_batch_size
             self.logger.info(f"{input_path}: number of lines ignored: {self.num_valid_error_lines[IGNORED]}")
             self.logger.info(
                 f"{input_path}: number of lines successfully processed: {self.num_valid_error_lines[VALID]}"

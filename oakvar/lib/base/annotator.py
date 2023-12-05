@@ -406,7 +406,7 @@ class BaseAnnotator(object):
             return
         cur_time = time()
         if (
-            lnum % 10000 == 0
+            lnum % 100000 == 0
             or cur_time - self.last_status_update_time > JOB_STATUS_UPDATE_INTERVAL
         ):
             status = f"Running {self.conf['title']} ({self.module_name}): line {lnum}"
