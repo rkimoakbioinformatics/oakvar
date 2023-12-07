@@ -156,6 +156,8 @@ def info(
 
         >>> clinvar_info = oakvar.api.module.info("clinvar", outer=sys.stdout)
     """
+    import json
+    import yaml
     from ...lib.module.local import get_local_module_info
     from ...lib.module.remote import get_remote_module_info
     from ...lib.module.remote import get_readme as get_remote_readme
@@ -163,7 +165,7 @@ def info(
     from ...lib.module.local import get_remote_manifest_from_local
     from ...cli.module.info_fn import print_module_info
 
-    _ = kwargs
+    fmt = kwargs.get("fmt", "json")
     ret = {}
     if not module_name:
         return None
@@ -219,7 +221,7 @@ def info(
     ret["installed"] = installed
     if installed and local_info:
         ret["installed_version"] = local_info.code_version
-        ret["location"] = local_info.directory
+        ret["location"] = str(local_info.directory)
     else:
         pass
     if (
@@ -239,8 +241,17 @@ def info(
         ret["latest_version"] = max(
             local_info.code_version, remote_info.latest_code_version
         )
-    if outer:
-        print_module_info(module_info=ret, outer=outer)
+    if fmt == "json":
+        s = json.dumps(ret)
+        if outer:
+            outer.write(s)
+    elif fmt == "yaml":
+        s = yaml.dump(ret)
+        if outer:
+            outer.write(s)
+    else:
+        if outer:
+            print_module_info(module_info=ret, outer=outer)
     return ret
 
 

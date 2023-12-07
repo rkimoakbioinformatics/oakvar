@@ -75,7 +75,8 @@ def ls(args, __name__="module ls"):
 
 @cli_entry
 def cli_module_info(args):
-    args.fmt = "yaml"
+    if args.fmt is None:
+        args.fmt = "text"
     return info(args)
 
 
@@ -367,7 +368,7 @@ def add_parser_ov_module(subparsers):
         action="store_true",
     )
     parser_ov_module_info.add_argument(
-        "--fmt", default="json", help="format of module information data. json or yaml"
+        "--fmt", default=None, help="format of module information data. json or yaml"
     )
     parser_ov_module_info.set_defaults(func=cli_module_info)
     parser_ov_module_info.r_return = "A named list. Information of the queried module"  # type: ignore
