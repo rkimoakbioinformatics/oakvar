@@ -503,7 +503,6 @@ class BaseReporter:
         page=None,
         make_filtered_table=True,
     ):
-        import time
         from ..exceptions import SetupError
 
         _ = make_filtered_table
@@ -540,7 +539,6 @@ class BaseReporter:
         await self.cf.get_level_data_iterator(
             level, page=page, pagesize=pagesize, uid=self.ftable_uid, cursor_read=cursor_read, var_added_cols=self.var_added_cols
         )
-        ctime = time.time()
         self.retrieved_col_names[level] = [d[0] for d in cursor_read.description]
         self.extracted_col_nos[level] = [self.retrieved_col_names[level].index(col_name) for col_name in self.extracted_col_names[level]]
         self.num_retrieved_cols = len(self.retrieved_col_names[level])
@@ -556,11 +554,19 @@ class BaseReporter:
             datarow = self.substitute_val(level, datarow)
             self.stringify_all_mapping(level, datarow)
             self.escape_characters(datarow)
-            self.write_row_with_samples_separate_or_not(datarow)
+            try:
+                self.write_row_with_samples_separate_or_not(datarow)
+            except Exception:
+                import traceback
+                traceback.print_exc()
+                await cursor_read.close()
+                await conn_read.close()
+                await conn_write.close()
+                if self.cf:
+                    await self.cf.close_db()
             row_count += 1
-            if row_count % 100000 == 0:
-                t = time.time()
-                msg = f"Wrote {row_count} rows. {(t - ctime) / row_count}"
+            if row_count % 10000 == 0:
+                msg = f"Wrote {row_count} rows."
                 if self.logger is not None:
                     self.logger.info(msg)
                 elif self.outer is not None:

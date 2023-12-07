@@ -204,10 +204,22 @@ def handle_ref_base(variant, wgs_reader):
 
 def handle_chrom(variant):
     from oakvar.lib.exceptions import IgnoredVariant
+    from oakvar.lib.util.seq import grch37_to_hg19
 
-    if not variant.get("chrom"):
+    chrom = variant.get("chrom")
+    if not chrom:
         raise IgnoredVariant("No chromosome")
-    if not variant.get("chrom").startswith("chr"):
+    if len(chrom) > 8:
+        chr_two = chrom[:2]
+        if chr_two in ["JH", "KE", "KB"]:
+            raise IgnoredVariant(f"Unsupported chromosome {chrom}")
+        elif chr_two == "GL":
+            if chrom in grch37_to_hg19:
+                chrom = grch37_to_hg19[chrom]
+                variant["chrom"] = chrom
+            else:
+                raise IgnoredVariant(f"Unsupported chromosome {chrom}")
+    if not chrom.startswith("chr"):
         variant["chrom"] = "chr" + variant.get("chrom")
     variant["chrom"] = chromdict.get(
         variant.get("chrom"), variant.get("chrom")
