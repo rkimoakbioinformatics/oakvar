@@ -382,7 +382,7 @@ def reverse_complement(bases):
     return "".join([complementary_base[base] for base in bases[::-1]])
 
 
-def get_lifter(source_assembly: str) -> Optional[ChainFile]:
+def get_lifter(source_assembly: str, to_assembly: str="") -> Optional[ChainFile]:
     """get_lifter.
 
     Args:
@@ -401,7 +401,9 @@ def get_lifter(source_assembly: str) -> Optional[ChainFile]:
         return None
     if not liftover_dir.exists():
         makedirs(liftover_dir, exist_ok=True)
-    chain_file_basename = f"{source_assembly.lower()}To{SYSTEM_GENOME_ASSEMBLY.capitalize()}.over.chain.gz"
+    if not to_assembly:
+        to_assembly = SYSTEM_GENOME_ASSEMBLY
+    chain_file_basename = f"{source_assembly.lower()}To{to_assembly.capitalize()}.over.chain.gz"
     chain_file_path: Path = liftover_dir / chain_file_basename
     if not chain_file_path.exists():
         url = f"https://hgdownload.cse.ucsc.edu/goldenPath/{source_assembly.lower()}/liftOver/{chain_file_basename}"
