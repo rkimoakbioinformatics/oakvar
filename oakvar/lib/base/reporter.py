@@ -585,11 +585,19 @@ class BaseReporter:
                 self.add_gene_summary_data_to_gene_level(datarow)
             self.stringify_all_mapping(table, datarow)
             self.escape_characters(datarow)
-            self.write_row_with_samples_separate_or_not(datarow)
+            try:
+                self.write_row_with_samples_separate_or_not(datarow)
+            except Exception:
+                import traceback
+                traceback.print_exc()
+                await cursor_read.close()
+                await conn_read.close()
+                await conn_write.close()
+                if self.cf:
+                    await self.cf.close_db()
             row_count += 1
             if row_count % 10000 == 0:
-                t = time.time()
-                msg = f"Wrote {row_count} rows. {(t - ctime) / row_count}"
+                msg = f"Wrote {row_count} rows."
                 if self.logger is not None:
                     self.logger.info(msg)
                 elif self.outer is not None:

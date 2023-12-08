@@ -215,7 +215,7 @@ class VCF2VCF:
         if self.conf is None:
             return
         cur_time = time()
-        if lnum % 10000 == 0 or cur_time - self.last_status_update_time > 3:
+        if lnum % 100000 == 0 or cur_time - self.last_status_update_time > 10:
             status = "Running {self.conf['title']} ({self.module_name}): line {lnum}"
             update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
             self.last_status_update_time = cur_time
@@ -281,7 +281,7 @@ class VCF2VCF:
                     pos: int = int(vcf_toks[1])
                     ref: str = vcf_toks[3]
                     alts: List[str] = vcf_toks[4].split(",")
-                    if read_lnum % 10000 == 0:
+                    if read_lnum % 100000 == 0:
                         if self.logger:
                             self.logger.info(
                                 f"{read_lnum}: {chrom} {pos} {ref} {vcf_toks[4]}"

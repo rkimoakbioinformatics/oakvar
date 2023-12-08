@@ -179,7 +179,7 @@ class BasePreparer(object):
             try:
                 count += 1
                 cur_time = time()
-                if count % 10000 == 0 or cur_time - last_status_update_time > 3:
+                if count % 100000 == 0 or cur_time - last_status_update_time > 10:
                     status = f"Running {self.module_name}: line {count}"
                     update_status(
                         status, logger=self.logger, serveradmindb=self.serveradmindb

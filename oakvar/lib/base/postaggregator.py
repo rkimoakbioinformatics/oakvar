@@ -360,7 +360,7 @@ class BasePostAggregator(object):
                 output_dict = self.handle_legacy_data(output_dict)
                 self.write_output(output_dict, input_data=input_data)
                 lnum += 1
-                if lnum % 10000 == 0:
+                if lnum % 100000 == 0:
                     status = (
                         f"Running {self.conf['title']} ({self.module_name}): row {lnum}"
                     )
