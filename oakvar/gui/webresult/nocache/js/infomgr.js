@@ -251,13 +251,13 @@ InfoMgr.prototype.store = function (
         var title = content;
         if (ui.column.link_format !== null) {
           var linkFormat = ui.column.link_format;
-          var linkRe = /\$\{(.*)\}/;
+          var linkRe = /\$\{[^{]*\}/g;
           var linkMatch = linkFormat.match(linkRe);
           var valSegment = "";
           var linkUrl = "";
           var linkText = "";
           if (linkMatch !== null) {
-            var reString = linkMatch[1];
+            var reString = linkMatch[0].substring(2, linkMatch[0].length - 1);
             var valRe = new RegExp(reString);
             var valMatch = String(val).match(valRe);
             if (valMatch !== null && valMatch[0] !== "") {
