@@ -103,11 +103,9 @@ class ModuleCache(object):
         from .local import get_module_dir
         from .local import LocalModule
 
-        # from .local import get_local_module_info
         mdir = get_module_dir(module_name)
         if not mdir:
             return
-        # module = get_local_module_info(module_name)
         self.local[module_name] = LocalModule(mdir)
         return mdir
 

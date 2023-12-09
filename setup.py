@@ -1,7 +1,43 @@
 from setuptools import setup
 import os
 from pathlib import Path
+from platform import platform
 
+
+install_requires=[
+    "requests",
+    "requests-toolbelt",
+    "liftover",
+    "markdown",
+    "aiohttp<4.0.0",
+    "chardet>=3.0.4",
+    "aiosqlite",
+    "oyaml",
+    "nest-asyncio",
+    "psutil",
+    "python-dateutil",
+    "download",
+    "gdown",
+    "split-file-reader",
+    "packaging",
+    "Pillow",
+    "duckdb",
+    "rich",
+    "aiohttp-cors",
+    "pyjwt",
+    "polars",
+    "connectorx",
+    "pyarrow",
+    "multiprocess",
+    "PySimpleGUI",
+    # below are module-specific. move them to module's yml.
+    "mpmath",
+    "twobitreader",
+    # ok to delete the below?
+    "intervaltree",
+]
+if platform().startswith("Windows"):
+    install_requires.append("PySimpleGUI")
 
 def walk_and_add(d, pkg_files):
     folders = [
@@ -29,7 +65,7 @@ walk_and_add("oakvar", oakvar_files)
 walk_and_add("cravat", cravat_files)
 setup(
     name="oakvar",
-    version="2.9.77",
+    version="2.9.79",
     description="A genomic variant analysis platform",
     long_description=long_description,
     long_description_content_type="text/x-rst",
@@ -45,41 +81,8 @@ setup(
         "Tracker": "https://github.com/rkimoakbioinformatics/oakvar/issues",
     },
     packages=["oakvar", "cravat"],
+    install_requires=install_requires,
     py_modules=[],
-    install_requires=[
-        "requests",
-        "requests-toolbelt",
-        "liftover",
-        "markdown",
-        "aiohttp<4.0.0",
-        "chardet>=3.0.4",
-        "aiosqlite",
-        "oyaml",
-        "nest-asyncio",
-        "psutil",
-        "python-dateutil",
-        "download",
-        "gdown",
-        "split-file-reader",
-        "packaging",
-        "Pillow",
-        "duckdb",
-        "rich",
-        "aiohttp-cors",
-        "pyjwt",
-        "polars>=0.18.0",
-        "connectorx",
-        "pyarrow",
-        "multiprocess",
-        "pandas>=1.5.0",
-        "ray",
-        "PySimpleGUI",
-        # below are module-specific. move them to module's yml.
-        "mpmath",
-        "twobitreader",
-        # ok to delete the below?
-        "intervaltree",
-    ],
     python_requires=">=3.8",
     package_data={"oakvar": oakvar_files, "cravat": cravat_files},
     data_files=[],

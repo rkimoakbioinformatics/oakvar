@@ -52,7 +52,6 @@ import shutil
 import tempfile
 import ftplib
 from functools import partial
-from tqdm import tqdm
 
 ALLOWED_KINDS = ["file", "tar", "zip", "tar.gz"]
 ZIP_KINDS = ["tar", "zip", "tar.gz"]
@@ -335,7 +334,6 @@ def _fetch_file(
             remote_file_size,
             progressbar,
             file_kind,
-            ncols=80,
             system_worker_state=system_worker_state,
             check_install_kill=check_install_kill,
             module_name=module_name,
@@ -366,11 +364,10 @@ def _fetch_file(
 def _get_ftp(
     url,
     temp_file_name,
-    initial_size,
-    file_size,
+    cur_file_size,
+    remote_file_size,
     progressbar,
     file_kind: str,
-    ncols=80,
     system_worker_state=None,
     check_install_kill=None,
     module_name=None,
@@ -382,13 +379,14 @@ def _get_ftp(
     # Adapted from: https://pypi.python.org/pypi/fileDownloader.py
     # but with changes
     from time import time
+    from rich.progress import Progress
+    from ...gui.util import GuiOuter
 
     assert module_name is not None
     parsed_url = urllib.parse.urlparse(url)  # type: ignore
     file_name = os.path.basename(parsed_url.path)
     server_path = parsed_url.path.replace(file_name, "")
     unquoted_server_path = urllib.parse.unquote(server_path)  # type: ignore
-
     data = ftplib.FTP()
     if parsed_url.port is not None:
         data.connect(parsed_url.hostname, parsed_url.port)
@@ -398,41 +396,43 @@ def _get_ftp(
     if len(server_path) > 1:
         data.cwd(unquoted_server_path)
     data.sendcmd("TYPE I")
-    data.sendcmd("REST " + str(initial_size))
+    data.sendcmd("REST " + str(cur_file_size))
     down_cmd = "RETR " + file_name
-    assert file_size == data.size(file_name)
-    chunk_size = 8192
-    with tqdm(
-        total=file_size,
-        initial=initial_size,
-        ncols=ncols,
-        unit="B",
-        unit_scale=True,
-        file=sys.stdout,
-        disable=not progressbar,
-    ) as progress:
-        # Callback lambda function that will be passed the downloaded data
-        # chunk and will write it to file and update the progress bar
-        mode = "ab" if initial_size > 0 else "wb"
-        t = time()
-        with open(temp_file_name, mode) as local_file:
-
-            def chunk_write(chunk):
-                return _chunk_write(chunk, local_file, progress, outer)
-
-            if check_install_kill and system_worker_state:
-                check_install_kill(
-                    system_worker_state=system_worker_state, module_name=module_name
-                )
-            data.retrbinary(down_cmd, chunk_write, blocksize=chunk_size)
-            if progress:
-                progress.update(chunk_size)
-            cur_size += chunk_size
-            if outer and time() - t > 1:
-                outer.write(
-                    f"download_{file_kind}:{module_name}:{cur_size}:{total_size}"
-                )
-            data.close()
+    assert remote_file_size == data.size(file_name)
+    chunk_size = 262144 * 4
+    if outer and progressbar:
+        progress = Progress()
+        task = progress.add_task(
+            description=f"", 
+            total=remote_file_size, 
+            completed=cur_file_size,
+        )
+        progress.start()
+    else:
+        progress = None
+        task = None
+    # Callback lambda function that will be passed the downloaded data
+    # chunk and will write it to file and update the progress bar
+    mode = "ab" if cur_file_size > 0 else "wb"
+    t = time()
+    with open(temp_file_name, mode) as local_file:
+        def chunk_write(chunk):
+            return _chunk_write(chunk, local_file, progress, outer)
+        if check_install_kill and system_worker_state:
+            check_install_kill(
+                system_worker_state=system_worker_state, module_name=module_name
+            )
+        data.retrbinary(down_cmd, chunk_write, blocksize=chunk_size)
+        if progress and task is not None:
+            progress.update(task, advance=chunk_size)
+        cur_size += chunk_size
+        if outer and isinstance(outer, GuiOuter) and time() - t > 1:
+            outer.write(
+                f"download_{file_kind}:{module_name}:{cur_size}:{total_size}"
+            )
+    data.close()
+    if progress:
+        progress.stop()
 
 
 def _get_http(
@@ -442,7 +442,6 @@ def _get_http(
     remote_file_size,
     progressbar,
     file_kind: str,
-    ncols=80,
     system_worker_state=None,
     check_install_kill=None,
     module_name=None,
@@ -453,6 +452,7 @@ def _get_http(
     """Safely (resume a) download to a file from http(s)."""
     import requests
     from time import time
+    from rich.progress import Progress
     from ...gui.util import GuiOuter
 
     assert module_name is not None
@@ -486,18 +486,17 @@ def _get_http(
     if total_size != remote_file_size:
         raise RuntimeError("URL could not be parsed properly")
     mode = "ab" if cur_file_size > 0 else "wb"
-    if outer:
-        progress = tqdm(
-            total=remote_file_size,
-            initial=cur_file_size,
-            ncols=ncols,
-            unit="B",
-            unit_scale=True,
-            file=sys.stdout,
-            disable=not progressbar,
+    if outer and progressbar:
+        progress = Progress()
+        task = progress.add_task(
+            description=f"", 
+            total=remote_file_size, 
+            completed=cur_file_size,
         )
+        progress.start()
     else:
         progress = None
+        task = None
     chunk_size = 262144 * 4
     t = time()
     with open(temp_file_name, mode) as local_file:
@@ -514,13 +513,15 @@ def _get_http(
                 chunk_size = max(chunk_size // 2, 512)
             local_file.write(chunk)
             read_size = len(chunk)
-            if progress:
-                progress.update(read_size)
+            if progress and task is not None:
+                progress.update(task, advance=read_size)
             cur_size += read_size
             if outer and isinstance(outer, GuiOuter) and time() - t > 1:
                 outer.write(
                     f"download_{file_kind}:{module_name}:{cur_size}:{total_size}"
                 )
+    if progress:
+        progress.stop()
 
 
 # def md5sum(fname, block_size=1048576):  # 2 ** 20

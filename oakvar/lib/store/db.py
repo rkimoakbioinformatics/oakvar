@@ -113,12 +113,14 @@ def latest_module_version_size(
             latest_r = r
             latest_code_version = r[1]
     if latest_r:
+        data_version: str = latest_r[2]
+        data_size: int = get_module_data_version_size_from_store(module_name, data_version)
         return {
             "code_version": latest_r[1],
-            "data_version": latest_r[2],
+            "data_version": data_version,
             "data_source": latest_r[3],
             "code_size": int(latest_r[4]),
-            "data_size": int(latest_r[5]),
+            "data_size": data_size,
         }
     else:
         return None
@@ -189,14 +191,15 @@ def module_sizes(
         return None
     name, store = r
     q = (
-        "select code_size, data_size from versions where "
+        "select code_size, data_version from versions where "
         + "name=? and store=? and code_version=?"
     )
     cursor.execute(q, (name, store, code_version))
     r = cursor.fetchone()
     if not r:
         return None
-    code_size, data_size = r
+    code_size, data_version = r
+    data_size = get_module_data_version_size_from_store(module_name, data_version)
     return int(code_size), int(data_size)
 
 
@@ -882,3 +885,29 @@ def check_tables(outer=None, conn=Any, cursor=Any) -> bool:
                 outer.write(f"Store cache table {table} does not exist.")
             return False
     return True
+
+
+@db_func
+def get_module_data_version_size_from_store(
+    module_name: str, data_version: str, conn=None, cursor=None
+) -> int:
+    if not conn or not cursor:
+        return 0
+    r = find_name_store(module_name)
+    if not r:
+        return 0
+    name, store = r
+    q = (
+        "select data_size from versions where "
+        + "name=? and store=? and data_version=?"
+    )
+    data_size: int = 0
+    for store in ["ov", "oc"]:
+        cursor.execute(q, (name, store, data_version))
+        for r in cursor.fetchall():
+            if r:
+                data_size = int(r[0])
+        if data_size:
+            return data_size
+    return data_size
+
