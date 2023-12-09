@@ -132,7 +132,7 @@ def download(
         # Create new folder for data if we need it
         if path and not op.isdir(path):
             if verbose and outer:
-                tqdm.write("Creating data folder...", file=sys.stdout)
+                outer.write("Creating data folder...")
             os.makedirs(path)
 
         # Download the file to a temporary folder to unzip
@@ -153,7 +153,7 @@ def download(
 
         # Unzip the file to the out path
         if verbose and outer:
-            tqdm.write("Extracting {} file...".format(kind), file=sys.stdout)
+            outer.write(f"Extracting {kind} file...")
         if kind == "zip":
             zipper = ZipFile
         elif kind == "tar":
@@ -185,7 +185,7 @@ def download(
         )
         msg = "Successfully downloaded file to {}".format(path)
     if verbose and outer:
-        tqdm.write(msg, file=sys.stdout)
+        outer.write(msg)
     return path
 
 
@@ -308,9 +308,8 @@ def _fetch_file(
             u.close()
             del u
         if verbose and outer:
-            tqdm.write(
-                "Downloading data from %s (%s)\n" % (url, sizeof_fmt(remote_file_size)),
-                file=sys.stdout,
+            outer.write(
+                f"Downloading data from {url} ({sizeof_fmt(remote_file_size)})"
             )
         # Triage resume
         if not os.path.exists(temp_file_name):
@@ -347,7 +346,7 @@ def _fetch_file(
         # check md5sum
         #if hash_ is not None:
         #    if verbose and outer:
-        #        tqdm.write("Verifying download hash.", file=sys.stdout)
+        #        outer.write("Verifying download hash.")
         #    md5 = md5sum(temp_file_name)
         #    if hash_ != md5:
         #        raise RuntimeError(
@@ -406,7 +405,6 @@ def _get_ftp(
     with tqdm(
         total=file_size,
         initial=initial_size,
-        desc="file_sizes",
         ncols=ncols,
         unit="B",
         unit_scale=True,
@@ -466,11 +464,10 @@ def _get_http(
         r = session.get(url, headers=headers, stream=True)
     except Exception:
         if outer:
-            tqdm.write(
+            outer.write(
                 "Resuming download failed (server "
                 "rejected the request). Attempting to "
                 "restart downloading the entire file.",
-                file=sys.stdout,
             )
         del headers["Range"]
         r = session.get(url, headers=headers, stream=True)
@@ -478,7 +475,7 @@ def _get_http(
     total_size = int(r.headers.get("Content-Length", "0").strip())
     if cur_file_size > 0 and remote_file_size == total_size:
         if outer:
-            tqdm.write(
+            outer.write(
                 "Resuming download failed (resume file size "
                 "mismatch). Attempting to restart downloading the "
                 "entire file.",
@@ -493,7 +490,6 @@ def _get_http(
         progress = tqdm(
             total=remote_file_size,
             initial=cur_file_size,
-            desc="File size",
             ncols=ncols,
             unit="B",
             unit_scale=True,

@@ -170,6 +170,7 @@ class WebServer(object):
                 self.system_worker_state,
                 self.local_modules_changed,
                 self.manager,
+                self.args.get("debug"),
             ),
         )
         self.system_worker.start()
