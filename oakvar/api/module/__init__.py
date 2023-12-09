@@ -174,7 +174,7 @@ def info(
     up_to_date = False
     local_info = None
     remote_info = None
-    # Readm
+    # Readme
     readme = get_remote_readme(module_name)
     if not readme:
         readme = get_local_readme(module_name)

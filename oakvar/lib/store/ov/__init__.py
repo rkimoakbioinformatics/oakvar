@@ -239,7 +239,7 @@ def register(
         params["readme"] = get_readme(module_name) or ""
         params["logo"] = get_logo_b64(module_name) or ""
         params["code_size"] = get_code_size(module_name)
-        params["data_size"] = get_data_size(module_name) or 0
+        params["data_size"] = get_data_size(module_name)
         params["overwrite"] = overwrite
         params["publish_time"] = datetime.now().strftime(publish_time_fmt)
         if not params["conf"]:

@@ -100,11 +100,9 @@ class ModuleCache(object):
     def add_local(self, module_name):
         from .local import get_module_dir
 
-        # from .local import get_local_module_info
         mdir = get_module_dir(module_name)
         if not mdir:
             return
-        # module = get_local_module_info(module_name)
         self.local[module_name] = mdir
         return mdir
 

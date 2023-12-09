@@ -512,32 +512,36 @@ def get_readme(module_name, module_type: str = "") -> Optional[str]:
         return "\n".join(f.readlines())
 
 
-def get_module_size(module_name, module_type: str = "") -> Optional[int]:
+def get_module_size(module_name, module_type: str = "") -> int:
     from ..util.util import get_directory_size
 
     d = get_module_dir(module_name, module_type=module_type)
     if d:
         return get_directory_size(d)
+    else:
+        return 0
 
 
-def get_data_size(module_name, module_type: str = "") -> Optional[int]:
+def get_data_size(module_name, data_version: str = "", module_type: str = "") -> Optional[int]:
     from ..util.util import get_directory_size
-    from os.path import join
-    from os.path import exists
+    from ..store.db import get_module_data_version_size_from_store
 
     d = get_module_dir(module_name, module_type=module_type)
     if d:
-        data_dir = join(d, "data")
-        if exists(data_dir):
+        data_dir = d / "data"
+        if data_dir.exists():
             return get_directory_size(data_dir)
+    else:
+        return get_module_data_version_size_from_store(module_name, data_version)
 
 
 def get_code_size(module_name, module_type: str = "") -> Optional[int]:
     module_size = get_module_size(module_name, module_type=module_type)
     data_size = get_data_size(module_name, module_type=module_type) or 0
-    if module_size:
+    if module_size > data_size:
         return module_size - data_size
-    return None
+    else:
+        return None
 
 
 def get_module_name_and_module_dir(module_name: str) -> Tuple[str, Path]:
