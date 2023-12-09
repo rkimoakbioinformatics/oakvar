@@ -86,6 +86,23 @@ class StoreHandlers:
                 self.local_module_logo_exists,
             ]
         )
+        self.routes.append(["GET", "/store/requiredmodules", self.get_required_modules])
+
+    async def get_required_modules(self, request):
+        from aiohttp.web import json_response
+        from ..api.module.install_defs import get_modules_to_install
+
+        module_name = request.rel_url.query.get("module_name")
+        if not module_name:
+            return json_response({})
+        to_install = get_modules_to_install(
+            module_names=[module_name]
+        )
+        ret = []
+        for mn, v in to_install.items():
+            v["module_name"] = mn
+            ret.append(v)
+        return json_response(ret)
 
     async def local_module_logo_exists(self, request):
         from aiohttp.web import json_response
@@ -301,7 +318,7 @@ class StoreHandlers:
 
         if not self.system_worker_state or not module_name:
             return
-        if module_name in self.system_worker_state:
+        if self.system_worker_state[SYSTEM_STATE_INSTALL_KEY].get(module_name):
             self.system_worker_state[SYSTEM_STATE_INSTALL_KEY][module_name][
                 INSTALL_KILL_SIGNAL
             ] = True

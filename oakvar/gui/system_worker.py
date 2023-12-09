@@ -49,19 +49,17 @@ def system_queue_worker(
     system_worker_state: Optional[DictProxy],
     local_modules_changed,
     manager,
+    debug: bool,
 ):
     from time import sleep
     import traceback
     from ..lib.module import install_module
     from ..lib.system import setup_system
     from ..lib.exceptions import ModuleToSkipInstallation
-
-    # from .consts import SYSTEM_STATE_SETUP_KEY
-    # from .consts import SYSTEM_MSG_KEY
     from .util import GuiOuter
 
-    setup_outer = GuiOuter(kind="setup")
-    install_outer = GuiOuter(kind="install")
+    setup_outer = GuiOuter(kind="setup", stdout_mirror=debug)
+    install_outer = GuiOuter(kind="install", stdout_mirror=debug)
     while True:
         try:
             sleep(1)
@@ -72,7 +70,6 @@ def system_queue_worker(
             system_queue.pop(0)
             if work_type == "setup":
                 args = data.get("args")
-                # args[SYSTEM_MSG_KEY] = SYSTEM_STATE_SETUP_KEY
                 try:
                     setup_system(outer=setup_outer, **args)
                 except Exception as e:
@@ -94,20 +91,18 @@ def system_queue_worker(
                         stage_handler=stage_handler,
                         overwrite=True,
                         fresh=True,
+                        system_worker_state=system_worker_state,
                         outer=install_outer,
                     )
                     if system_worker_state:
                         remove_module_from_system_worker(
                             system_worker_state, module_name
                         )
-                    # unqueue(module_name, system_queue)
                     local_modules_changed.set()
                     install_outer.write(f"finished:{module_name}::")
                 except ModuleToSkipInstallation:
-                    # unqueue(module_name, system_queue)
                     stage_handler.stage_start("skip")
                 except Exception:
-                    # unqueue(module_name, system_queue)
                     local_modules_changed.set()
                     stage_handler.stage_start("error")
                     exc_str = traceback.format_exc()

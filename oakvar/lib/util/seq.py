@@ -391,11 +391,10 @@ def get_source_assembly_name(source_assembly: str) -> str:
     return source_assembly
 
 
-def get_chainfile_path(source_assembly: str) -> Optional[Path]:
+def get_chainfile_path(source_assembly: str, to_assembly: str) -> Optional[Path]:
     from os import makedirs
     from pathlib import Path
     from ..system import get_liftover_dir
-    from ..consts import SYSTEM_GENOME_ASSEMBLY
 
     liftover_dir = get_liftover_dir()
     if not liftover_dir:
@@ -403,7 +402,7 @@ def get_chainfile_path(source_assembly: str) -> Optional[Path]:
     if not liftover_dir.exists():
         makedirs(liftover_dir, exist_ok=True)
     source_assembly_name = get_source_assembly_name(source_assembly)
-    target_assembly_name = SYSTEM_GENOME_ASSEMBLY.capitalize()
+    target_assembly_name = to_assembly.capitalize()
     chain_file_basename = (
         f"{source_assembly_name}To{target_assembly_name}.over.chain.gz"
     )
@@ -414,7 +413,7 @@ def get_chainfile_path(source_assembly: str) -> Optional[Path]:
     return chain_file_path
 
 
-def get_lifter(source_assembly: str) -> Optional[ChainFile]:
+def get_lifter(source_assembly: str, to_assembly: str="") -> Optional[ChainFile]:
     """get_lifter.
 
     Args:
@@ -427,10 +426,12 @@ def get_lifter(source_assembly: str) -> Optional[ChainFile]:
 
     if not source_assembly:
         return None
+    if not to_assembly:
+        to_assembly = SYSTEM_GENOME_ASSEMBLY
     source_assembly_name = get_source_assembly_name(source_assembly)
-    chainfile_path: Optional[Path] = get_chainfile_path(source_assembly)
+    chainfile_path: Optional[Path] = get_chainfile_path(source_assembly, to_assembly)
     lifter = ChainFile(
-        str(chainfile_path), SYSTEM_GENOME_ASSEMBLY, source_assembly_name
+        str(chainfile_path), to_assembly, source_assembly_name
     )
     return lifter
 

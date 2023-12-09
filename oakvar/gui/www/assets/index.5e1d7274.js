@@ -15126,6 +15126,288 @@ function createGlobalStates$7() {
 }
 const gvLocalModules = createRoot(createGlobalStates$7);
 
+/**
+ * Compare [semver](https://semver.org/) version strings to find greater, equal or lesser.
+ * This library supports the full semver specification, including comparing versions with different number of digits like `1.0.0`, `1.0`, `1`, and pre-release versions like `1.0.0-alpha`.
+ * @param v1 - First version to compare
+ * @param v2 - Second version to compare
+ * @returns Numeric value compatible with the [Array.sort(fn) interface](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort#Parameters).
+ */
+const compareVersions = (v1, v2) => {
+    // validate input and split into segments
+    const n1 = validateAndParse(v1);
+    const n2 = validateAndParse(v2);
+    // pop off the patch
+    const p1 = n1.pop();
+    const p2 = n2.pop();
+    // validate numbers
+    const r = compareSegments(n1, n2);
+    if (r !== 0)
+        return r;
+    // validate pre-release
+    if (p1 && p2) {
+        return compareSegments(p1.split('.'), p2.split('.'));
+    }
+    else if (p1 || p2) {
+        return p1 ? -1 : 1;
+    }
+    return 0;
+};
+/**
+ * Compare [semver](https://semver.org/) version strings using the specified operator.
+ *
+ * @param v1 First version to compare
+ * @param v2 Second version to compare
+ * @param operator Allowed arithmetic operator to use
+ * @returns `true` if the comparison between the firstVersion and the secondVersion satisfies the operator, `false` otherwise.
+ *
+ * @example
+ * ```
+ * compare('10.1.8', '10.0.4', '>'); // return true
+ * compare('10.0.1', '10.0.1', '='); // return true
+ * compare('10.1.1', '10.2.2', '<'); // return true
+ * compare('10.1.1', '10.2.2', '<='); // return true
+ * compare('10.1.1', '10.2.2', '>='); // return false
+ * ```
+ */
+const compare = (v1, v2, operator) => {
+    // validate input operator
+    assertValidOperator(operator);
+    // since result of compareVersions can only be -1 or 0 or 1
+    // a simple map can be used to replace switch
+    const res = compareVersions(v1, v2);
+    return operatorResMap[operator].includes(res);
+};
+const semver = /^[v^~<>=]*?(\d+)(?:\.([x*]|\d+)(?:\.([x*]|\d+)(?:\.([x*]|\d+))?(?:-([\da-z\-]+(?:\.[\da-z\-]+)*))?(?:\+[\da-z\-]+(?:\.[\da-z\-]+)*)?)?)?$/i;
+const validateAndParse = (version) => {
+    if (typeof version !== 'string') {
+        throw new TypeError('Invalid argument expected string');
+    }
+    const match = version.match(semver);
+    if (!match) {
+        throw new Error(`Invalid argument not valid semver ('${version}' received)`);
+    }
+    match.shift();
+    return match;
+};
+const isWildcard = (s) => s === '*' || s === 'x' || s === 'X';
+const tryParse = (v) => {
+    const n = parseInt(v, 10);
+    return isNaN(n) ? v : n;
+};
+const forceType = (a, b) => typeof a !== typeof b ? [String(a), String(b)] : [a, b];
+const compareStrings = (a, b) => {
+    if (isWildcard(a) || isWildcard(b))
+        return 0;
+    const [ap, bp] = forceType(tryParse(a), tryParse(b));
+    if (ap > bp)
+        return 1;
+    if (ap < bp)
+        return -1;
+    return 0;
+};
+const compareSegments = (a, b) => {
+    for (let i = 0; i < Math.max(a.length, b.length); i++) {
+        const r = compareStrings(a[i] || '0', b[i] || '0');
+        if (r !== 0)
+            return r;
+    }
+    return 0;
+};
+const operatorResMap = {
+    '>': [1],
+    '>=': [0, 1],
+    '=': [0],
+    '<=': [-1, 0],
+    '<': [-1],
+};
+const allowedOperators = Object.keys(operatorResMap);
+const assertValidOperator = (op) => {
+    if (typeof op !== 'string') {
+        throw new TypeError(`Invalid operator type, expected string but got ${typeof op}`);
+    }
+    if (allowedOperators.indexOf(op) === -1) {
+        throw new Error(`Invalid operator, expected one of ${allowedOperators.join('|')}`);
+    }
+};
+
+const {
+  localModules: localModules$2
+} = gvLocalModules;
+function objectIsEmpty(o) {
+  if (Object.keys(o).length == 0) {
+    return true;
+  } else {
+    return false;
+  }
+}
+function getAnnotatorsAndPostaggregators(searchText, selectedTag) {
+  let moduleNames = [];
+  for (const [moduleName, module] of Object.entries(localModules$2)) {
+    let add = true;
+    if (moduleName == "tagsampler" || moduleName == "vcfinfo" || moduleName == "varmeta") {
+      add = false;
+    } else if (module.type != "annotator" && module.type != "postaggregator") {
+      add = false;
+    } else if (selectedTag != null) {
+      if (selectedTag == "no tag") {
+        if (module.tags.length > 0) {
+          add = false;
+        }
+      } else if (module.tags.indexOf(selectedTag) == -1) {
+        add = false;
+      }
+    }
+    if (add && searchText != null) {
+      add = false;
+      if (moduleName.indexOf(searchText) >= 0) {
+        add = true;
+      } else if (module.title.indexOf(searchText) >= 0) {
+        add = true;
+      } else if (module.description && module.description.indexOf(searchText) >= 0) {
+        add = true;
+      }
+    }
+    if (add) {
+      moduleNames.push(moduleName);
+    }
+  }
+  moduleNames.sort();
+  return moduleNames;
+}
+function getSizeString(size) {
+  const dm = 1;
+  const kilo = 1024;
+  const mega = kilo * kilo;
+  const giga = mega * kilo;
+  const tera = giga * kilo;
+  let sizeS = "";
+  if (size > tera) {
+    sizeS = (size / tera).toFixed(dm) + " TB";
+  } else if (size > giga) {
+    sizeS = (size / giga).toFixed(dm) + " GB";
+  } else if (size > mega) {
+    sizeS = (size / mega).toFixed(dm) + " MB";
+  } else if (size > kilo) {
+    sizeS = (size / kilo).toFixed(dm) + " KB";
+  } else {
+    sizeS = size + "B";
+  }
+  return sizeS;
+}
+
+function createGlobalStates$6() {
+  const [moduleInstallStates, setModuleInstallStates] = createStore({});
+  const [updateAvailable, setUpdateAvailable] = createSignal(false);
+  const [numUpdateAvailable, setNumUpdateAvailable] = createSignal(false);
+  const {
+    localModules
+  } = gvLocalModules;
+  const {
+    remoteModules,
+    getFilteredRemoteModules
+  } = gvRemoteModules;
+  const [initialLoaded, setInitialLoaded] = createSignal(false);
+  const [refreshOn, setRefreshOn] = createSignal(false);
+  createEffect(function () {
+    if (!objectIsEmpty(localModules) && !objectIsEmpty(remoteModules) && localModules["__initial"] == undefined && remoteModules["__initial"] == undefined && initialLoaded() == false) {
+      makeModuleInstallStates();
+      setInitialLoaded(true);
+      setRefreshOn(false);
+    }
+  });
+  function makeModuleInstallStates() {
+    let d = {};
+    let n = 0;
+    for (const moduleName in remoteModules) {
+      if (moduleName in localModules) {
+        d[moduleName] = {
+          installed: true
+        };
+        const localModule = localModules[moduleName];
+        const remoteModule = remoteModules[moduleName];
+        const localVer = localModule.version;
+        const remoteVer = remoteModule.latest_version;
+        if (compare(remoteVer, localVer, ">") == true) {
+          d[moduleName]["update_available"] = true;
+          n += 1;
+        } else {
+          d[moduleName]["update_available"] = false;
+        }
+      } else {
+        d[moduleName] = {
+          installed: false,
+          update_available: false
+        };
+      }
+    }
+    setModuleInstallStates(d);
+    setNumUpdateAvailable(n);
+    setUpdateAvailable(n > 0);
+  }
+  function getInstalledModules(searchText, selectedTyes, selectedTag, updateAvailableOnly, sort) {
+    const l = [];
+    if (moduleInstallStates == null || Object.keys(remoteModules).length == 0) {
+      return l;
+    }
+    for (const moduleName of getFilteredRemoteModules(searchText, selectedTyes, selectedTag, sort)) {
+      const m = moduleInstallStates[moduleName];
+      let add = false;
+      if (m.installed == true) {
+        if (updateAvailableOnly == true) {
+          if (m.update_available == true) {
+            add = true;
+          }
+        } else {
+          add = true;
+        }
+      }
+      if (add == true) {
+        l.push(moduleName);
+      }
+    }
+    return l;
+  }
+  function getNotInstalledModules(searchText, selectedTypes, selectedTag, sort) {
+    const l = [];
+    if (moduleInstallStates == null || Object.keys(remoteModules).length == 0) {
+      return l;
+    }
+    for (const moduleName of getFilteredRemoteModules(searchText, selectedTypes, selectedTag, sort)) {
+      const m = moduleInstallStates[moduleName];
+      if (m.installed != true) {
+        l.push(moduleName);
+      }
+    }
+    return l;
+  }
+  function installed(moduleName) {
+    if (moduleInstallStates == null) {
+      return false;
+    }
+    return moduleInstallStates[moduleName].installed;
+  }
+  function updateAvailableForModule(moduleName) {
+    return moduleInstallStates[moduleName].update_available;
+  }
+  return {
+    moduleInstallStates,
+    setModuleInstallStates,
+    makeModuleInstallStates,
+    updateAvailable,
+    numUpdateAvailable,
+    getInstalledModules,
+    getNotInstalledModules,
+    installed,
+    updateAvailableForModule,
+    initialLoaded,
+    setInitialLoaded,
+    refreshOn,
+    setRefreshOn
+  };
+}
+const gvModuleInstallStates = createRoot(createGlobalStates$6);
+
 const {
   serverUrl: serverUrl$4,
   withCredentials: withCredentials$2
@@ -15133,12 +15415,15 @@ const {
 const {
   getRemoteModule
 } = gvRemoteModules;
-function createGlobalStates$6() {
+function createGlobalStates$5() {
   const [installQueue, setInstallQueue] = createStore([]);
   const [installState, setInstallState] = createStore({});
   const {
     loadAllLocalModules
   } = gvLocalModules;
+  const {
+    makeModuleInstallStates
+  } = gvModuleInstallStates;
   fetchInstallQueue();
   fetchInstallState();
   function fetchInstallQueue() {
@@ -15196,15 +15481,28 @@ function createGlobalStates$6() {
     if (moduleInfo == null) {
       return;
     }
-    axios$1.get(serverUrl$4 + "/store/queueinstall", {
+    axios$1.get(serverUrl$4 + "/store/requiredmodules", {
       params: {
-        module: moduleName,
-        version: moduleInfo.latest_version
+        module_name: moduleName
       },
       withCredentials: withCredentials$2
-    }).then(function (_) {
-      fetchInstallQueue();
-      fetchInstallState();
+    }).then(function (res) {
+      for (const moduleData of res.data) {
+        let mn = moduleData.module_name;
+        let version = moduleData.version;
+        axios$1.get(serverUrl$4 + "/store/queueinstall", {
+          params: {
+            module: mn,
+            version: version
+          },
+          withCredentials: withCredentials$2
+        }).then(function (_) {
+          fetchInstallQueue();
+          fetchInstallState();
+        }).catch(function (err) {
+          handleError(err);
+        });
+      }
     }).catch(function (err) {
       handleError(err);
     });
@@ -15248,7 +15546,8 @@ function createGlobalStates$6() {
       },
       withCredentials: withCredentials$2
     }).then(function (_) {
-      loadAllLocalModules();
+      loadAllLocalModules(true);
+      makeModuleInstallStates();
     }).catch(function (err) {
       handleError(err);
       fetchInstallQueue();
@@ -15293,23 +15592,23 @@ function createGlobalStates$6() {
     fetchInstallQueue
   };
 }
-const gvInstallQueue = createRoot(createGlobalStates$6);
+const gvInstallQueue = createRoot(createGlobalStates$5);
 
-function createGlobalStates$5() {
+function createGlobalStates$4() {
   const [systemMsg, setSystemMsg] = createSignal(null);
   return {
     systemMsg,
     setSystemMsg
   };
 }
-const gvSystemMessage = createRoot(createGlobalStates$5);
+const gvSystemMessage = createRoot(createGlobalStates$4);
 
 const SYSTEM_STATE_CONNECTION_KEY = "connection";
 const SYSTEM_STATE_SETUP_KEY = "setup";
 const SYSTEM_STATE_SETUP_ERROR_KEY = "setup_error";
 const SYSTEM_STATE_INSTALL_KEY = "install";
 const SYSTEM_STATE_INSTALL_ERROR_KEY = "install_error";
-function createGlobalStates$4() {
+function createGlobalStates$3() {
   const [ws, setWs] = createSignal(null);
   const [wsOpened, setWsOpened] = createSignal(false);
   const {
@@ -15319,6 +15618,9 @@ function createGlobalStates$4() {
     removeFromInstallState,
     getInstallProgress
   } = gvInstallQueue;
+  const {
+    makeModuleInstallStates
+  } = gvModuleInstallStates;
   const {
     wsUrl
   } = gvServer;
@@ -15459,6 +15761,7 @@ function createGlobalStates$4() {
       removeFromInstallState(moduleName);
       if (stage == "finished") {
         loadAllLocalModules();
+        makeModuleInstallStates();
       }
     }
   }
@@ -15486,7 +15789,7 @@ function createGlobalStates$4() {
     setSetupStateMsg
   };
 }
-const gvWebSocket = createRoot(createGlobalStates$4);
+const gvWebSocket = createRoot(createGlobalStates$3);
 
 function NoServerConnectionPanel() {
   const {
@@ -16405,7 +16708,7 @@ function ModuleOption(props) {
 }
 delegateEvents(["click", "keyup"]);
 
-function createGlobalStates$3() {
+function createGlobalStates$2() {
   const [annotators, setAnnotators] = createStore({
     __initial: true
   });
@@ -16435,10 +16738,10 @@ function createGlobalStates$3() {
     setReporters
   };
 }
-const gvSubmitModules = createRoot(createGlobalStates$3);
+const gvSubmitModules = createRoot(createGlobalStates$2);
 
 const {
-  localModules: localModules$2
+  localModules: localModules$1
 } = gvLocalModules;
 const {
   remoteModules: remoteModules$1
@@ -16452,7 +16755,7 @@ const {
   setReporters
 } = gvSubmitModules;
 function deleteModule(mn) {
-  const mI = localModules$2[mn];
+  const mI = localModules$1[mn];
   const ty = mI.type;
   let l = [];
   let missingList = [];
@@ -16508,7 +16811,7 @@ function addModuleDown(moduleName) {
   addModuleDownNewList(moduleName);
 }
 function findModulesRequiredByParam(mn, l, missingList) {
-  const mI = localModules$2[mn];
+  const mI = localModules$1[mn];
   if (mI == undefined) {
     if (missingList.includes(mn) == false) {
       missingList.push(mn);
@@ -16533,8 +16836,8 @@ function findModulesRequiredByParam(mn, l, missingList) {
   }
 }
 function findModulesDependingOnParam(moduleName, l) {
-  for (const mn in localModules$2) {
-    const mI = localModules$2[mn];
+  for (const mn in localModules$1) {
+    const mI = localModules$1[mn];
     const requires = mI.conf.requires;
     if (requires == undefined || requires.length == 0) {
       continue;
@@ -16579,7 +16882,7 @@ function addModuleDownNewList(mn) {
     return;
   }
   for (const addMn of l) {
-    const mI = localModules$2[addMn];
+    const mI = localModules$1[addMn];
     const ty = mI.type;
     if (ty == "annotator") {
       setAnnotators(addMn, mI);
@@ -16795,71 +17098,6 @@ function ModuleFilterCategoryButton(props) {
   })();
 }
 delegateEvents(["click"]);
-
-const {
-  localModules: localModules$1
-} = gvLocalModules;
-function objectIsEmpty(o) {
-  if (Object.keys(o).length == 0) {
-    return true;
-  } else {
-    return false;
-  }
-}
-function getAnnotatorsAndPostaggregators(searchText, selectedTag) {
-  let moduleNames = [];
-  for (const [moduleName, module] of Object.entries(localModules$1)) {
-    let add = true;
-    if (moduleName == "tagsampler" || moduleName == "vcfinfo" || moduleName == "varmeta") {
-      add = false;
-    } else if (module.type != "annotator" && module.type != "postaggregator") {
-      add = false;
-    } else if (selectedTag != null) {
-      if (selectedTag == "no tag") {
-        if (module.tags.length > 0) {
-          add = false;
-        }
-      } else if (module.tags.indexOf(selectedTag) == -1) {
-        add = false;
-      }
-    }
-    if (add && searchText != null) {
-      add = false;
-      if (moduleName.indexOf(searchText) >= 0) {
-        add = true;
-      } else if (module.title.indexOf(searchText) >= 0) {
-        add = true;
-      } else if (module.description && module.description.indexOf(searchText) >= 0) {
-        add = true;
-      }
-    }
-    if (add) {
-      moduleNames.push(moduleName);
-    }
-  }
-  moduleNames.sort();
-  return moduleNames;
-}
-function getSizeString(size) {
-  const dm = 1;
-  const kilo = 1024;
-  const mega = kilo * kilo;
-  const giga = mega * kilo;
-  const tera = giga * kilo;
-  let sizeS = "";
-  if (size > tera) {
-    sizeS = (size / tera).toFixed(dm) + " TB";
-  } else if (size > giga) {
-    sizeS = (size / giga).toFixed(dm) + " GB";
-  } else if (size > mega) {
-    sizeS = (size / mega).toFixed(dm) + " MB";
-  } else if (size > kilo) {
-    sizeS = (size / kilo).toFixed(dm) + " KB";
-  } else {
-    sizeS = size + "B";
-  }
-  return sizeS;
-}
 
 const _tmpl$$_ = /*#__PURE__*/template(`<div class="flex mb-2"><label for="search" class="sr-only">Search</label><input type="text" name="search" class="block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mr-2 w-48" placeholder="Search"><button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Add all</button><button type="button" class="items-center rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-2">Remove all`);
 function ModuleSearchPanel$1(props) {
@@ -18176,223 +18414,6 @@ function TabJobs(props) {
     return _el$;
   })();
 }
-
-/**
- * Compare [semver](https://semver.org/) version strings to find greater, equal or lesser.
- * This library supports the full semver specification, including comparing versions with different number of digits like `1.0.0`, `1.0`, `1`, and pre-release versions like `1.0.0-alpha`.
- * @param v1 - First version to compare
- * @param v2 - Second version to compare
- * @returns Numeric value compatible with the [Array.sort(fn) interface](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort#Parameters).
- */
-const compareVersions = (v1, v2) => {
-    // validate input and split into segments
-    const n1 = validateAndParse(v1);
-    const n2 = validateAndParse(v2);
-    // pop off the patch
-    const p1 = n1.pop();
-    const p2 = n2.pop();
-    // validate numbers
-    const r = compareSegments(n1, n2);
-    if (r !== 0)
-        return r;
-    // validate pre-release
-    if (p1 && p2) {
-        return compareSegments(p1.split('.'), p2.split('.'));
-    }
-    else if (p1 || p2) {
-        return p1 ? -1 : 1;
-    }
-    return 0;
-};
-/**
- * Compare [semver](https://semver.org/) version strings using the specified operator.
- *
- * @param v1 First version to compare
- * @param v2 Second version to compare
- * @param operator Allowed arithmetic operator to use
- * @returns `true` if the comparison between the firstVersion and the secondVersion satisfies the operator, `false` otherwise.
- *
- * @example
- * ```
- * compare('10.1.8', '10.0.4', '>'); // return true
- * compare('10.0.1', '10.0.1', '='); // return true
- * compare('10.1.1', '10.2.2', '<'); // return true
- * compare('10.1.1', '10.2.2', '<='); // return true
- * compare('10.1.1', '10.2.2', '>='); // return false
- * ```
- */
-const compare = (v1, v2, operator) => {
-    // validate input operator
-    assertValidOperator(operator);
-    // since result of compareVersions can only be -1 or 0 or 1
-    // a simple map can be used to replace switch
-    const res = compareVersions(v1, v2);
-    return operatorResMap[operator].includes(res);
-};
-const semver = /^[v^~<>=]*?(\d+)(?:\.([x*]|\d+)(?:\.([x*]|\d+)(?:\.([x*]|\d+))?(?:-([\da-z\-]+(?:\.[\da-z\-]+)*))?(?:\+[\da-z\-]+(?:\.[\da-z\-]+)*)?)?)?$/i;
-const validateAndParse = (version) => {
-    if (typeof version !== 'string') {
-        throw new TypeError('Invalid argument expected string');
-    }
-    const match = version.match(semver);
-    if (!match) {
-        throw new Error(`Invalid argument not valid semver ('${version}' received)`);
-    }
-    match.shift();
-    return match;
-};
-const isWildcard = (s) => s === '*' || s === 'x' || s === 'X';
-const tryParse = (v) => {
-    const n = parseInt(v, 10);
-    return isNaN(n) ? v : n;
-};
-const forceType = (a, b) => typeof a !== typeof b ? [String(a), String(b)] : [a, b];
-const compareStrings = (a, b) => {
-    if (isWildcard(a) || isWildcard(b))
-        return 0;
-    const [ap, bp] = forceType(tryParse(a), tryParse(b));
-    if (ap > bp)
-        return 1;
-    if (ap < bp)
-        return -1;
-    return 0;
-};
-const compareSegments = (a, b) => {
-    for (let i = 0; i < Math.max(a.length, b.length); i++) {
-        const r = compareStrings(a[i] || '0', b[i] || '0');
-        if (r !== 0)
-            return r;
-    }
-    return 0;
-};
-const operatorResMap = {
-    '>': [1],
-    '>=': [0, 1],
-    '=': [0],
-    '<=': [-1, 0],
-    '<': [-1],
-};
-const allowedOperators = Object.keys(operatorResMap);
-const assertValidOperator = (op) => {
-    if (typeof op !== 'string') {
-        throw new TypeError(`Invalid operator type, expected string but got ${typeof op}`);
-    }
-    if (allowedOperators.indexOf(op) === -1) {
-        throw new Error(`Invalid operator, expected one of ${allowedOperators.join('|')}`);
-    }
-};
-
-function createGlobalStates$2() {
-  const [moduleInstallStates, setModuleInstallStates] = createStore({});
-  const [updateAvailable, setUpdateAvailable] = createSignal(false);
-  const [numUpdateAvailable, setNumUpdateAvailable] = createSignal(false);
-  const {
-    localModules
-  } = gvLocalModules;
-  const {
-    remoteModules,
-    getFilteredRemoteModules
-  } = gvRemoteModules;
-  const [initialLoaded, setInitialLoaded] = createSignal(false);
-  const [refreshOn, setRefreshOn] = createSignal(false);
-  createEffect(function () {
-    if (!objectIsEmpty(localModules) && !objectIsEmpty(remoteModules) && localModules["__initial"] == undefined && remoteModules["__initial"] == undefined && initialLoaded() == false) {
-      makeModuleInstallStates();
-      setInitialLoaded(true);
-      setRefreshOn(false);
-    }
-  });
-  function makeModuleInstallStates() {
-    let d = {};
-    let n = 0;
-    for (const moduleName in remoteModules) {
-      if (moduleName in localModules) {
-        d[moduleName] = {
-          installed: true
-        };
-        const localModule = localModules[moduleName];
-        const remoteModule = remoteModules[moduleName];
-        const localVer = localModule.version;
-        const remoteVer = remoteModule.latest_version;
-        if (compare(remoteVer, localVer, ">") == true) {
-          d[moduleName]["update_available"] = true;
-          n += 1;
-        } else {
-          d[moduleName]["update_available"] = false;
-        }
-      } else {
-        d[moduleName] = {
-          installed: false,
-          update_available: false
-        };
-      }
-    }
-    setModuleInstallStates(d);
-    setNumUpdateAvailable(n);
-    setUpdateAvailable(n > 0);
-  }
-  function getInstalledModules(searchText, selectedTyes, selectedTag, updateAvailableOnly, sort) {
-    const l = [];
-    if (moduleInstallStates == null || Object.keys(remoteModules).length == 0) {
-      return l;
-    }
-    for (const moduleName of getFilteredRemoteModules(searchText, selectedTyes, selectedTag, sort)) {
-      const m = moduleInstallStates[moduleName];
-      let add = false;
-      if (m.installed == true) {
-        if (updateAvailableOnly == true) {
-          if (m.update_available == true) {
-            add = true;
-          }
-        } else {
-          add = true;
-        }
-      }
-      if (add == true) {
-        l.push(moduleName);
-      }
-    }
-    return l;
-  }
-  function getNotInstalledModules(searchText, selectedTypes, selectedTag, sort) {
-    const l = [];
-    if (moduleInstallStates == null || Object.keys(remoteModules).length == 0) {
-      return l;
-    }
-    for (const moduleName of getFilteredRemoteModules(searchText, selectedTypes, selectedTag, sort)) {
-      const m = moduleInstallStates[moduleName];
-      if (m.installed != true) {
-        l.push(moduleName);
-      }
-    }
-    return l;
-  }
-  function installed(moduleName) {
-    if (moduleInstallStates == null) {
-      return false;
-    }
-    return moduleInstallStates[moduleName].installed;
-  }
-  function updateAvailableForModule(moduleName) {
-    return moduleInstallStates[moduleName].update_available;
-  }
-  return {
-    moduleInstallStates,
-    setModuleInstallStates,
-    makeModuleInstallStates,
-    updateAvailable,
-    numUpdateAvailable,
-    getInstalledModules,
-    getNotInstalledModules,
-    installed,
-    updateAvailableForModule,
-    initialLoaded,
-    setInitialLoaded,
-    refreshOn,
-    setRefreshOn
-  };
-}
-const gvModuleInstallStates = createRoot(createGlobalStates$2);
 
 function createGlobalStates$1() {
   const [showDetailCard, setShowDetailCard] = createSignal(null);
@@ -22854,7 +22875,7 @@ const _tmpl$$f = /*#__PURE__*/template(`<div class="absolute w-full h-full bg-wh
   openLinksInNewWindow: true,
   simplifiedAutoLink: true,
 });*/
-const ocImgRegex = /img src=\"(?!http)/g;
+const ocImgRegex = /img src=\"(?!https)/g;
 function DetailCard() {
   const {
     detailModuleName,

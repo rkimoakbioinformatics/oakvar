@@ -53,6 +53,7 @@ def download(
     total_size=0,
     cur_size=0,
     kind: str = "file",
+    progressbar: bool=True,
     outer=None,
 ):
     from .download_library import download as download_util
@@ -80,6 +81,7 @@ def download(
             module_name=module_name,
             total_size=total_size,
             cur_size=cur_size,
+            progressbar=progressbar,
             outer=outer,
         )
 

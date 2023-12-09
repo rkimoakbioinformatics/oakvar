@@ -313,6 +313,8 @@ def check_install_kill(system_worker_state=None, module_name=None):
 
     if not system_worker_state or not module_name:
         return
+    if system_worker_state[SYSTEM_STATE_INSTALL_KEY].get(module_name) is None:
+        raise KillInstallException
     if (
         system_worker_state[SYSTEM_STATE_INSTALL_KEY]
         .get(module_name, {})
@@ -346,6 +348,7 @@ def download_code_or_data(
     from json import loads
     from ..util.download import download
     from ..store.consts import MODULE_PACK_SPLIT_FILE_SIZE
+    from ...gui.util import GuiOuter
 
     check_install_kill(system_worker_state=system_worker_state, module_name=module_name)
     if not module_name or not version or not temp_dir:
@@ -370,6 +373,10 @@ def download_code_or_data(
         one_url = urls
     if not one_url and not url_list:
         return
+    if isinstance(outer, GuiOuter):
+        progressbar = False
+    else:
+        progressbar = True
     if one_url:
         download(
             url=one_url,
@@ -378,6 +385,7 @@ def download_code_or_data(
             system_worker_state=system_worker_state,
             check_install_kill=check_install_kill,
             module_name=module_name,
+            progressbar=progressbar,
             kind=kind,
             outer=outer,
         )
@@ -403,6 +411,8 @@ def download_code_or_data(
                     and getsize(part_path) == MODULE_PACK_SPLIT_FILE_SIZE
                 ):
                     continue
+                if outer:
+                    outer.write(stage_handler._stage_msg(f"Downloading data file {i} / {num_urls}...")) # type: ignore
                 download(
                     url_list[i],
                     part_path,
@@ -412,6 +422,7 @@ def download_code_or_data(
                     total_size=total_size,
                     cur_size=cur_size,
                     kind=kind,
+                    progressbar=progressbar,
                     outer=outer,
                 )
                 if i < num_urls - 1:
