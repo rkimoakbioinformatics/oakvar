@@ -364,7 +364,7 @@ def download_code_or_data(
         return
     one_url = ""
     url_list: List[str] = []
-    if urls[0] == "[":  # a list of URLs
+    if urls[0] == "[":  # a list of URLs "]" is just to make autoindent work.
         url_list = loads(urls)
         if len(url_list) == 1:
             one_url = url_list[0]
@@ -412,7 +412,7 @@ def download_code_or_data(
                 ):
                     continue
                 if outer:
-                    outer.write(stage_handler._stage_msg(f"Downloading data file {i} / {num_urls}...")) # type: ignore
+                    outer.write(stage_handler._stage_msg(f"Downloading {module_name} data file {i} / {num_urls}...")) # type: ignore
                 download(
                     url_list[i],
                     part_path,
