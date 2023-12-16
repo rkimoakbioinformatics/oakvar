@@ -598,7 +598,7 @@ class MasterConverter(object):
         converter_name: str = ""
         if self.converter_module:
             module_name: str = Path(self.converter_module).name
-            converter_name = self.converter_paths[module_name]
+            converter_name = module_name
         elif self.format:
             converter_name = f"{self.format}-converter"
         else:
