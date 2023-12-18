@@ -1989,7 +1989,7 @@ class Runner(object):
         )
         self.report_response = response
 
-    async def run_reporter(self, run_no: int):
+    async def run_reporter(self, run_no: int, head_n: Optional[int]=None):
         from pathlib import Path
         from ..util.util import load_class
         from ..util.run import update_status
@@ -2023,12 +2023,11 @@ class Runner(object):
             arg_dict[MODULE_OPTIONS_KEY] = self.run_conf.get(module_name, {})
             Reporter: Type[BaseReporter] = load_class(module.script_path, "Reporter") # type: ignore
             reporter = Reporter(**arg_dict)
-            response_t = await self.log_time_of_func(reporter.run, work=module_name)
+            response_t = await self.log_time_of_func(reporter.run, head_n=head_n, work=module_name)
             output_fns = None
-            response_type = type(response_t)
-            if response_type == list:
+            if isinstance(response_t, list):
                 output_fns = " ".join(response_t)
-            elif response_type == str:
+            elif isinstance(response_t, str):
                 output_fns = response_t
             if output_fns is not None:
                 update_status(

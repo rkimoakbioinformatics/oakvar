@@ -40,6 +40,7 @@
 
 from typing import Optional
 from typing import Union
+from typing import Tuple
 from typing import Dict
 from pathlib import Path
 
@@ -51,9 +52,9 @@ def setup_system(
     refresh_db: bool = False,
     clean_cache_files: bool = False,
     setup_file: Optional[Path] = None,
-    email: Optional[str] = None,
+    email: str = "",
     create_account: bool = False,
-    pw: Optional[str] = None,
+    pw: str = "",
     publish_time: str = "",
     custom_system_conf: Optional[Dict] = None,
     outer=None,
@@ -1204,7 +1205,7 @@ def run_sg_store_account(email: str="", pw: str="", install_mode: str="", clean:
             else:
                 return ret
 
-def run_sg_create_account(logo_data) -> bool:
+def run_sg_create_account(logo_data) -> Tuple[bool, Optional[str], Optional[str]]:
     import PySimpleGUI as sg
     from ..util.util import email_is_valid
     from ..util.util import pw_is_valid

@@ -269,6 +269,7 @@ def report(
     no_summary: bool = False,
     serveradmindb=None,
     module_options: Dict[str, Dict] = {},
+    head_n: Optional[int]=None,
     logtofile: bool = False,
     outer=None,
     loop=None,
@@ -299,6 +300,7 @@ def report(
         level (Optional[str]): level
         user (Optional[str]): user
         no_summary (bool): no_summary
+        head_n (Optional[int]): Make a report with the first n number of variants.
         serveradmindb:
         outer:
         loop:
@@ -421,7 +423,7 @@ def report(
             response_t = None
             if not loop:
                 loop = get_event_loop()
-            response_t = loop.run_until_complete(reporter.run())
+            response_t = loop.run_until_complete(reporter.run(head_n=head_n))
             # asyncio.set_event_loop(old_loop)
             output_fns = None
             if type(response_t) == list:

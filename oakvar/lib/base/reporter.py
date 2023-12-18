@@ -73,6 +73,7 @@ class BaseReporter:
         level: Optional[str] = None,
         user: Optional[str] = None,
         no_summary: bool = False,
+        make_col_categories: bool = False,
         logtofile: bool = False,
         serveradmindb=None,
         outer=None,
@@ -100,6 +101,7 @@ class BaseReporter:
         self.package = package
         self.cols = cols
         self.level = level
+        self.make_col_categories = make_col_categories
         if user:
             self.user = user
         else:
@@ -435,6 +437,8 @@ class BaseReporter:
         pagesize=None,
         page=None,
         make_filtered_table=True,
+        head_n: Optional[int]=None,
+        make_col_categories: bool=False,
         user=None,
     ):
         from ..exceptions import SetupError
@@ -467,13 +471,14 @@ class BaseReporter:
             self.levels = await self.get_levels_to_run(tab)
             for level in self.levels:
                 self.level = level
-                await self.make_col_infos(add_summary=add_summary)
+                await self.make_col_infos(add_summary=add_summary, make_col_categories=make_col_categories)
                 await self.write_data(
                     level,
                     pagesize=pagesize,
                     page=page,
                     make_filtered_table=make_filtered_table,
                     add_summary=add_summary,
+                    head_n=head_n,
                 )
             await self.close_db()
             if self.module_conf:
@@ -502,6 +507,7 @@ class BaseReporter:
         pagesize=None,
         page=None,
         make_filtered_table=True,
+        head_n: Optional[int]=None,
     ):
         from ..exceptions import SetupError
 
@@ -537,7 +543,7 @@ class BaseReporter:
             return None
         cursor_read = await conn_read.cursor()
         await self.cf.get_level_data_iterator(
-            level, page=page, pagesize=pagesize, uid=self.ftable_uid, cursor_read=cursor_read, var_added_cols=self.var_added_cols
+            level, page=page, pagesize=pagesize, uid=self.ftable_uid, cursor_read=cursor_read, var_added_cols=self.var_added_cols, head_n=head_n,
         )
         self.retrieved_col_names[level] = [d[0] for d in cursor_read.description]
         self.extracted_col_nos[level] = [self.retrieved_col_names[level].index(col_name) for col_name in self.extracted_col_names[level]]
@@ -678,14 +684,14 @@ class BaseReporter:
         else:
             datarow.update({col: generow[col] for col in self.var_added_cols})
 
-    async def get_variant_colinfo(self, add_summary=True):
+    async def get_variant_colinfo(self, add_summary=True, make_col_categories: bool=False):
         try:
             await self.prep()
             if self.setup() is False:
                 await self.close_db()
                 return None
             self.levels = await self.get_levels_to_run("all")
-            await self.make_col_infos(add_summary=add_summary)
+            await self.make_col_infos(add_summary=add_summary, make_col_categories=make_col_categories)
             return self.colinfo
         except Exception:
             import traceback
@@ -765,7 +771,7 @@ class BaseReporter:
                     {"name": name, "displayname": displayname, "count": 0}
                 )
 
-    async def make_coldefs(self, level, conn=Any, group_name=None):
+    async def make_coldefs(self, level, conn=Any, make_col_categories:bool=False, group_name=None):
         from ..util.inout import ColumnDefinition
 
         if not conn:
@@ -796,7 +802,8 @@ class BaseReporter:
                     coldef = ColumnDefinition({})
                     coldef.from_json(coljson)
                     coldef.level = level
-                    coldef = await self.gather_col_categories(level, coldef, conn)
+                    if make_col_categories:
+                        coldef = await self.gather_col_categories(level, coldef, conn)
                     coldefs.append(coldef)
             for row in rows:
                 coljson = row[0]
@@ -806,7 +813,8 @@ class BaseReporter:
                 coldef = ColumnDefinition({})
                 coldef.from_json(coljson)
                 coldef.level = level
-                coldef = await self.gather_col_categories(level, coldef, conn)
+                if make_col_categories:
+                    coldef = await self.gather_col_categories(level, coldef, conn)
                 coldefs.append(coldef)
         return coldefs
 
@@ -862,7 +870,7 @@ class BaseReporter:
         modules_to_add = await self.get_gene_level_modules_to_add_to_variant_level(conn)
         for module_name in modules_to_add:
             gene_coldefs = await self.make_coldefs(
-                "gene", conn=conn, group_name=module_name
+                "gene", conn=conn, make_col_categories=self.make_col_categories, group_name=module_name
             )
             if not gene_coldefs:
                 continue
@@ -1016,11 +1024,12 @@ class BaseReporter:
                 self.colnos_to_display[level].append(colno)
             colno += 1
 
-    async def make_col_infos(self, add_summary=True):
+    async def make_col_infos(self, add_summary=True, make_col_categories: bool=False):
         prev_level = self.level
         for level in self.levels:
-            self.level = level
-            await self.exec_db(self.make_col_info, level, add_summary=add_summary)
+            if self.should_write_level(level):
+                self.level = level
+                await self.exec_db(self.make_col_info, level, add_summary=add_summary, make_col_categories=make_col_categories)
         self.level = prev_level
 
     def add_column_number_stat_to_col_groups(self, level: str):
@@ -1031,15 +1040,17 @@ class BaseReporter:
             columngroup["end_colunm_number"] = new_last_columngroup_pos
             last_columngroup_pos = new_last_columngroup_pos
 
-    async def make_col_info(self, level: str, add_summary=True, conn=Any, cursor=Any):
+    async def make_col_info(self, level: str, add_summary=True, make_col_categories: bool=False, conn=Any, cursor=Any):
         _ = cursor
         if not level or not await self.exec_db(self.table_exists, level):
+            return
+        if level in self.colinfo:
             return
         await self.exec_db(self.store_mapper)
         self.colnames_to_display[level] = []
         self.modules_to_add_to_base = [self.mapper_name, "tagsampler"]
         await self.make_sorted_column_groups(level, conn=conn)
-        coldefs = await self.make_coldefs(level, conn=conn)
+        coldefs = await self.make_coldefs(level, conn=conn, make_col_categories=make_col_categories)
         if not coldefs:
             return
         await self.make_columns_colnos_colnamestodisplay_columngroup(level, coldefs)
