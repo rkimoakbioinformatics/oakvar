@@ -861,3 +861,4 @@ def get_df_from_db(
     else:
         df = pl.read_database(sql, conn_url) # type: ignore
     return df
+

@@ -491,6 +491,8 @@ class MasterConverter(object):
             self.input_file_handles[input_path] = encoding
 
     def setup(self, *args, **kwargs):
+        _ = args
+        _ = kwargs
         self.collect_converter_paths()
         self.collect_input_file_handles()
         self.collect_converter_name_by_input()

@@ -1163,11 +1163,11 @@ def get_ov_logo_path():
 
 def run_sg_store_account(email: str="", pw: str="", install_mode: str="", clean: bool=False, outer=None) -> dict:
     import PySimpleGUI as sg
-    from ..exceptions import SystemMissingException
     from ..store.ov.account import login_with_email_pw
     from ..store.ov.account import delete_token_set
     from ..store.ov.account import login_with_token_set
 
+    _ = install_mode
     if clean:
         delete_token_set()
     if email is None or pw is None:
@@ -1183,7 +1183,7 @@ def run_sg_store_account(email: str="", pw: str="", install_mode: str="", clean:
     sg.set_options(font="Verdana 12")
     logo_data = get_sg_logo_data()
     while True:
-        event, values = gui_get_already_has_account(logo_data)
+        event, _ = gui_get_already_has_account(logo_data)
         if event == "Cancel":
             sg.popup_error(f"Setup cancelled.")
             exit()
@@ -1263,7 +1263,6 @@ def run_sg_login(logo_data):
 
 def get_sg_logo_data():
     import io
-    import base64
     from PIL import Image
     from ..system import get_ov_logo_path
 

@@ -223,7 +223,6 @@ def get_logger(args={}):
     from logging import Formatter
     from logging.handlers import TimedRotatingFileHandler
     from logging import StreamHandler
-    from ..lib.exceptions import SystemMissingException
     from ..lib.system import get_log_dir
     from ..api.system import setup
     from ..gui.util import get_log_path

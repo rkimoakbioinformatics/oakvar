@@ -49,9 +49,24 @@ def cli_util_sqliteinfo(args):
 
 @cli_func
 def sqliteinfo(args, __name__="util sqliteinfo"):
-    from ..api.util import get_sqliteinfo
+    import json
+    from rich import print_json
+    from rich.console import Console
+    from rich.syntax import Syntax
+    from ..api.util import sqliteinfo
 
-    return get_sqliteinfo(**args)
+    fmt = args.get("fmt", "json")
+    out = sqliteinfo(**args)
+    if not out:
+        return
+    console = Console()
+    if isinstance(out, str):
+        if fmt == "yaml":
+            syntax = Syntax(out, "yaml")
+            console.print(syntax)
+    elif isinstance(out, dict):
+        if fmt == "json":
+            print_json(json.dumps(out))
 
 
 # @cli_entry
@@ -150,7 +165,7 @@ def get_parser_fn_util():
         "sqliteinfo", help="Show SQLite result file information"
     )
     parser_fn_util_showsqliteinfo.add_argument(
-        "dbpaths", nargs="+", help="SQLite result file paths"
+        "dbpath", help="SQLite result file path"
     )
     parser_fn_util_showsqliteinfo.add_argument(
         "--fmt", default="json", help="Output format. text / json / yaml"
