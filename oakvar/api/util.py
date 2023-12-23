@@ -40,6 +40,8 @@
 
 from typing import Optional
 from typing import List
+from typing import Union
+from pathlib import Path
 
 def job_to_gui(args, __name__="util to-gui"):
     from shutil import copyfile
@@ -144,124 +146,25 @@ def variant_id(chrom, pos, ref, alt):
     return chrom + str(pos) + ref + alt
 
 
-def get_sqliteinfo(fmt: str = "json", outer=None, dbpaths: List[str] = []):
-    """get_sqliteinfo.
-
-    Args:
-        fmt (str): fmt
-        outer:
-        dbpaths (List[str]): dbpaths
-    """
-    import sqlite3
-    from json import loads
-    from oyaml import dump
-
-    width_colname = 30
-    width_coltitle = 40
-    ret_list = []
-    ret_dict = {}
-    for dbpath in dbpaths:
-        if fmt == "text":
-            s = f"# SQLite file:\n{dbpath}"
-            ret_list.append(s)
-        elif fmt in ["json", "yaml"]:
-            ret_dict["dbpath"] = dbpath
-        conn = sqlite3.connect(dbpath)
-        c = conn.cursor()
-        c.execute('select colval from info where colkey="_input_paths"')
-        ret = c.fetchone()
-        if not ret:
-            c.execute('select colval from info where colkey="inputs"')
-            ret = c.fetchone()
-        if not ret:
-            if outer:
-                outer.error(f"{dbpath} does not seem to be a proper OakVar result database file. Exiting.")
-                exit(1)
-        input_paths = loads(ret[0].replace("'", '"'))
-        if fmt == "text":
-            s = "\n# Input files:"
-            ret_list.append(s)
-            if isinstance(input_paths, dict):
-                for p in input_paths.values():
-                    s = f"{p}"
-                    ret_list.append(s)
-            elif isinstance(input_paths, list):
-                ret_list.extend(input_paths)
-        elif fmt in ["json", "yaml"]:
-            if isinstance(input_paths, dict):
-                ret_dict["inputs"] = list(input_paths.values())
-            elif isinstance(input_paths, list):
-                ret_dict["inputs"] = input_paths
-        if fmt == "text":
-            s = "\n# Output columns"
-            ret_list.append(s)
-            s = f'{"# Name".ljust(width_colname)} {"Title".ljust(width_coltitle)} Type'
-            ret_list.append(s)
-        else:
-            ret_dict["output_columns"] = {}
-        c.execute("select col_name, col_def from variant_header")
-        rs = c.fetchall()
-        if fmt in ["json", "yaml"]:
-            ret_dict["output_columns"] = {}
-            ret_dict["output_columns"]["variant"] = []
-            ret_dict["output_columns"]["gene"] = []
-        for r in rs:
-            col_name, col_def = r
-            col_def = loads(col_def)
-            if fmt == "text":
-                s = f"{col_name.ljust(width_colname)} {col_def['title'].ljust(width_coltitle)} {col_def['type']}"
-                ret_list.append(s)
-            elif fmt in ["json", "yaml"]:
-                ret_dict["output_columns"]["variant"].append(
-                    {
-                        "name": col_name,
-                        "title": col_def["title"],
-                        "type": col_def["type"],
-                    }
-                )
-        c.execute("select col_name, col_def from gene_header")
-        rs = c.fetchall()
-        for r in rs:
-            col_name, col_def = r
-            col_def = loads(col_def)
-            if fmt == "text":
-                s = f"{col_name.ljust(width_colname)} {col_def['title'].ljust(width_coltitle)} {col_def['type']}"
-                ret_list.append(s)
-            elif fmt in ["json", "yaml"]:
-                ret_dict["output_columns"]["gene"].append(
-                    {
-                        "name": col_name,
-                        "title": col_def["title"],
-                        "type": col_def["type"],
-                    }
-                )
-        c.close()
-        conn.close()
-        if outer:
-            if fmt == "text":
-                outer.write("\n".join(ret_list))
-            elif fmt == "json":
-                outer.write(ret_dict)
-            elif fmt == "yaml":
-                outer.write(dump(ret_dict, default_flow_style=False))
-        else:
-            if fmt == "text":
-                return ret_list
-            elif fmt == "json":
-                return ret_dict
-            elif fmt == "yaml":
-                return dump(ret_dict, default_flow_style=False)
-
-
-def sqliteinfo(dbpaths: List[str] = [], outer=None, fmt: str = "json"):
+def sqliteinfo(dbpath: Union[Path, str], fmt: str = "json", outer = None):
     """sqliteinfo.
 
     Args:
-        dbpaths (List[str]): dbpaths
-        outer:
-        fmt (str): fmt
+        dbpath (str): Path to a result SQLite file
+        fmt (str): json or yaml
+        outer: Deprecated
     """
-    return get_sqliteinfo(dbpaths=dbpaths, outer=outer, fmt=fmt)
+    from oyaml import dump
+    from ..lib.util.db import get_sqliteinfo
+
+    _ = outer
+    out = get_sqliteinfo(dbpath)
+    if fmt == "json":
+        return out
+    elif fmt == "yaml":
+        return str(dump(out, default_flow_style=False))
+    else:
+        return out
 
 
 def mergesqlite(dbpaths: List[str] = [], outpath: str = ""):

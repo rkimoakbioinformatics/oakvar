@@ -1065,7 +1065,7 @@ class ReportFilter:
         ret = await cursor_read.fetchone()
         return ret[0]
 
-    async def get_level_data_iterator(self, level, page=None, pagesize=None, uid=None, var_added_cols=[], cursor_read=None):
+    async def get_level_data_iterator(self, level, page=None, pagesize=None, uid=None, var_added_cols=[], head_n: Optional[int]=None, cursor_read=None):
         if not level:
             return None
         if not cursor_read:
@@ -1090,6 +1090,8 @@ class ReportFilter:
         if page and pagesize:
             offset = (page - 1) * pagesize
             q += f" limit {pagesize} offset {offset}"
+        elif head_n is not None:
+            q += f" limit {head_n}"
         await cursor_read.execute(q)
 
     async def get_gene_row(self, hugo=None, cursor_read=Any, cursor_write=Any):

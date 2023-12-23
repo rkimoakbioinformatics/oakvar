@@ -151,5 +151,12 @@ def get_parser_fn_report():
         action="store_true",
         help="Use this option to prevent gene level result from being added to variant level result.",
     )
+    parser_ov_report.add_argument(
+        "--head",
+        dest="head_n",
+        default=None,
+        type=int,
+        help="Make reports with the first n number of variants."
+    )
     parser_ov_report.set_defaults(func=cli_report)
     return parser_ov_report

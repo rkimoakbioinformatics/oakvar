@@ -40,6 +40,7 @@
 
 from typing import Optional
 from typing import Union
+from typing import Tuple
 from typing import Dict
 from pathlib import Path
 
@@ -51,9 +52,9 @@ def setup_system(
     refresh_db: bool = False,
     clean_cache_files: bool = False,
     setup_file: Optional[Path] = None,
-    email: Optional[str] = None,
+    email: str = "",
     create_account: bool = False,
-    pw: Optional[str] = None,
+    pw: str = "",
     publish_time: str = "",
     custom_system_conf: Optional[Dict] = None,
     outer=None,
@@ -1182,11 +1183,11 @@ def get_ov_logo_path():
 
 def run_sg_store_account(email: str="", pw: str="", install_mode: str="", clean: bool=False, outer=None) -> dict:
     import PySimpleGUI as sg
-    from ..exceptions import SystemMissingException
     from ..store.ov.account import login_with_email_pw
     from ..store.ov.account import delete_token_set
     from ..store.ov.account import login_with_token_set
 
+    _ = install_mode
     if clean:
         delete_token_set()
     if email is None or pw is None:
@@ -1202,7 +1203,7 @@ def run_sg_store_account(email: str="", pw: str="", install_mode: str="", clean:
     sg.set_options(font="Verdana 12")
     logo_data = get_sg_logo_data()
     while True:
-        event, values = gui_get_already_has_account(logo_data)
+        event, _ = gui_get_already_has_account(logo_data)
         if event == "Cancel":
             sg.popup_error(f"Setup cancelled.")
             exit()
@@ -1224,7 +1225,7 @@ def run_sg_store_account(email: str="", pw: str="", install_mode: str="", clean:
             else:
                 return ret
 
-def run_sg_create_account(logo_data) -> bool:
+def run_sg_create_account(logo_data) -> Tuple[bool, Optional[str], Optional[str]]:
     import PySimpleGUI as sg
     from ..util.util import email_is_valid
     from ..util.util import pw_is_valid
@@ -1282,7 +1283,6 @@ def run_sg_login(logo_data):
 
 def get_sg_logo_data():
     import io
-    import base64
     from PIL import Image
     from ..system import get_ov_logo_path
 

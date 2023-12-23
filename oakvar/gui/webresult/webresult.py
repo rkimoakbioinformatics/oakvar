@@ -417,6 +417,7 @@ async def get_result(request):
         separatesample=separatesample,
         report_types=["text"],
         no_summary=no_summary,
+        make_col_categories=True,
     )
     data = reporter.run(
         tab=tab,
@@ -424,6 +425,7 @@ async def get_result(request):
         page=page,
         add_summary=add_summary,
         make_filtered_table=make_filtered_table,
+        make_col_categories=True,
     )
     data["modules_info"] = await get_modules_info(request)
     content = {}
@@ -703,7 +705,7 @@ def get_colinfo(dbpath, confpath=None, filterstring=None, add_summary=False):
     # reporter_levels = reporter.get_levels_to_run("all")
     # reporter.levels = reporter_levels
     try:
-        colinfo = reporter.get_variant_colinfo(add_summary=add_summary)
+        colinfo = reporter.get_variant_colinfo(add_summary=add_summary, make_col_categories=True)
         reporter.close_db()
         if reporter.cf is not None:
             reporter.cf.close_db()

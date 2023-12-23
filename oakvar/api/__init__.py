@@ -268,6 +268,7 @@ def report(
     skip_gene_summary: bool = False,
     serveradmindb=None,
     module_options: Dict[str, Dict] = {},
+    head_n: Optional[int]=None,
     logtofile: bool = False,
     outer=None,
 ) -> Dict[str, Any]:
@@ -291,6 +292,7 @@ def report(
         modules_dir (Optional[str]): modules_dir
         user (Optional[str]): user
         skip_gene_summary (bool): skip_gene_summary
+        head_n (Optional[int]): Make a report with the first n number of variants.
         serveradmindb:
         outer:
         loop:

@@ -70,6 +70,7 @@ class BaseReporter:
         columns_to_include: Optional[Dict[str, List[str]]] = None,
         user: str = "",
         module_conf: Dict[str, Any] = {},
+        make_col_categories: bool = False,
         logtofile: bool = False,
         serveradmindb=None,
         outer=None,
@@ -91,6 +92,7 @@ class BaseReporter:
         self.run_name: str = run_name
         self.module_options: Dict[str, Any] = module_options
         self.tables_to_include: List[str]
+        self.make_col_categories = make_col_categories
         if tables_to_report:
             self.tables_to_report = tables_to_report
         else:
@@ -421,6 +423,7 @@ class BaseReporter:
         pagesize: Optional[int] = None,
         page: Optional[int] = None,
         make_filtered_table: bool = True,
+        make_col_categories: bool=False,
         user=None,
         **kwargs,
     ):
@@ -455,6 +458,7 @@ class BaseReporter:
                     pagesize=pagesize,
                     page=page,
                     make_filtered_table=make_filtered_table,
+                    make_col_categories=make_col_categories
                 )
             self.close_db()
             if self.module_conf:
@@ -508,6 +512,7 @@ class BaseReporter:
         pagesize=None,
         page=None,
         make_filtered_table=True,
+        head_n: Optional[int]=None,
     ):
         import time
         import sqlite3
@@ -719,13 +724,13 @@ class BaseReporter:
         else:
             datarow.update({col: generow[col] for col in self.var_added_cols})
 
-    def get_variant_colinfo(self):
+    def get_variant_colinfo(self, make_col_categories: bool = False):
         try:
             if self.setup() is False:
                 self.close_db()
                 return None
             self.levels = self.get_levels_to_run("all")
-            self.make_col_infos()
+            self.make_col_infos(make_col_categories=make_col_categories)
             return self.colinfo
         except Exception:
             import traceback
@@ -792,7 +797,7 @@ class BaseReporter:
                 {"name": name, "displayname": displayname, "version": version}
             )
 
-    def make_coldefs(self, level, group_name=None) -> List[ColumnDefinition]:
+    def make_coldefs(self, level, group_name=None, make_col_categories: bool = False) -> List[ColumnDefinition]:
         coldefs: List[ColumnDefinition] = []
         conn = self.get_db_conn()
         cursor = conn.cursor()
@@ -805,6 +810,8 @@ class BaseReporter:
             coldef = ColumnDefinition({})
             coldef.from_json(coldef_str)
             coldefs.append(coldef)
+            if make_col_categories:
+                coldef = self.gather_col_categories(level, coldef, conn)
         return coldefs
 
     def gather_col_categories(self, level, coldef):
@@ -866,7 +873,7 @@ class BaseReporter:
             return
         modules_to_add = self.get_gene_level_modules_to_add_to_variant_level()
         for module_name in modules_to_add:
-            gene_coldefs = self.make_coldefs("gene", group_name=module_name)
+            gene_coldefs = self.make_coldefs("gene", group_name=module_name, make_col_categories=self.make_col_categories)
             if not gene_coldefs:
                 continue
             self.add_gene_level_displayname_to_variant_level_columngroups(
@@ -978,7 +985,7 @@ class BaseReporter:
                 self.colnos_to_display[level].append(colno)
             colno += 1
 
-    def make_col_infos(self):
+    def make_col_infos(self, make_col_categories: bool=False):
         prev_level = self.level
         for level in self.levels:
             self.level = level
@@ -993,13 +1000,13 @@ class BaseReporter:
             columngroup["end_colunm_number"] = new_last_columngroup_pos
             last_columngroup_pos = new_last_columngroup_pos
 
-    def make_col_info(self, table: str):
+    def make_col_info(self, table: str, make_col_categories: bool = False):
         if not table or not self.table_exists(table):
             return
         self.store_mapper()
         self.columns_to_report[table] = []
         self.make_sorted_column_groups(table)
-        coldefs = self.make_coldefs(table)
+        coldefs = self.make_coldefs(table, make_col_categories=make_col_categories)
         if not coldefs:
             return
         self.make_columns_colnos_colnamestodisplay_columngroup(table, coldefs)

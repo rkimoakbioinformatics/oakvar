@@ -1899,7 +1899,7 @@ class Runner(object):
         )
         self.report_response = response
 
-    def run_reporter(self, run_no: int):
+    def run_reporter(self, run_no: int, head_n: Optional[int]=None):
         from pathlib import Path
         from ..util.module import get_reporter
         from ..util.run import update_status
@@ -1936,12 +1936,12 @@ class Runner(object):
                 module_options=module_options,
                 use_duckdb=self.args.use_duckdb,
             )
-            response_t = self.log_time_of_func(reporter.run, work=module_name)
+            response_t = self.log_time_of_func(reporter.run, head_n=head_n, work=module_name)
             output_fns = None
             response_type = type(response_t)
             if response_type == list and response_t:
                 output_fns = " ".join(response_t)
-            elif response_type == str:
+            elif isinstance(response_t, str):
                 output_fns = response_t
             if output_fns is not None:
                 update_status(
