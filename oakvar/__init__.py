@@ -38,6 +38,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import signal
 from . import lib
 from . import api
 from . import cli
@@ -64,7 +65,6 @@ from .lib.util.seq import get_lifter
 from .lib.util.seq import liftover
 from .lib.util.seq import get_wgs_reader
 from .cli import CliOuter
-import signal
 
 # for compatibility with oc
 from .lib.exceptions import BadFormatError
@@ -125,13 +125,20 @@ def get_annotator(module_name, input_file=None):
     return module
 
 
-def get_mapper(module_name, input_file=None):
+def get_mapper(module_name, input_file=None) -> BaseMapper:
+    from .lib.exceptions import ModuleLoadingError
+
     module = None
     ModuleClass = get_module(module_name, module_type="mapper")
-    if ModuleClass:
-        module = ModuleClass(input_file=input_file)
-        module.name = module_name
-        module.setup()
+    if ModuleClass is None:
+        raise ModuleLoadingError(module_name)
+    if not isinstance(ModuleClass, BaseMapper):
+        raise ModuleLoadingError(f"{module_name} is not a mapper module.")
+    module = ModuleClass.__init__(input_file=input_file)
+    if module is None:
+        raise ModuleLoadingError(module_name)
+    module.name = module_name
+    module.setup()
     return module
 
 

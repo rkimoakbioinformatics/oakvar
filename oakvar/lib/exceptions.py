@@ -150,7 +150,7 @@ class ModuleNotExist(ExpectedException):
         if msg:
             super().__init__(msg)
         else:
-            super().__init__(f"module [{module_name}] does not exist.")
+            super().__init__(f"module [{module_name}] does not exist. Possible solutions: 'ov system setup' and/or 'ov module install {module_name}'")
 
 
 class NoConverterFound(ExpectedException):
