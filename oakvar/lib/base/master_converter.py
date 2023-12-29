@@ -140,7 +140,7 @@ def perform_liftover_if_needed(variant, do_liftover: bool, do_liftover_chrM: boo
             pos_end = converted_end[1]
         variant["pos_end"] = pos_end
     else:
-        crl_data = None
+        crl_data = variant.get("crl")
     return crl_data
 
 def add_end_pos_if_absent(variant: dict):

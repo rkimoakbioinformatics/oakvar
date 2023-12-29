@@ -55,6 +55,7 @@ class BaseMapper(object):
         serveradmindb=None,
         module_options: Dict = {},
         postfix: str = "",
+        script_path: str = __file__,
     ):
         from time import time
         from pathlib import Path
@@ -63,6 +64,7 @@ class BaseMapper(object):
         from ..module.local import get_module_conf
         from ..consts import STANDARD_INPUT_FILE_SUFFIX
 
+        self.script_path = Path(script_path)
         self.input_dir: Optional[Path] = None
         self.output_dir: Optional[Path] = None
         self.input_fname: Optional[str] = None

@@ -137,8 +137,11 @@ class ModuleInstallationError(ExpectedException):
     traceback = False
     halt = False
 
-    def __init__(self, msg):
-        super().__init__(msg)
+    def __init__(self, module_name: str, msg=""):
+        if msg:
+            super().__init__(msg)
+        else:
+            super().__init__(f"{module_name} was not properly installed. Consider 'ov module install {module_name}'.")
 
 
 class ModuleNotExist(ExpectedException):

@@ -580,29 +580,3 @@ def get_wgs_reader(assembly="hg38"):
         wgs.setup()
     return wgs
 
-
-def hgvs_c_to_hgvs_g(hgvs_c: str):
-    from pathlib import Path
-    from ... import get_mapper
-    from ..system import get_user_conf
-    from ..module.local import get_module_conf
-    from ..module.local import get_module_dir
-    from ..exceptions import ModuleNotExist
-
-    user_conf = get_user_conf()
-    module_name = user_conf.get("genemapper")
-    if not module_name:
-        raise Exception("genemapper should be defined in the user configuration file. Run 'ov system setup' to fix.")
-    mapper = get_mapper(module_name)
-    conf = get_module_conf(module_name)
-    if conf is None:
-        raise ModuleNotExist(module_name)
-    module_dir = get_module_dir(module_name)
-    if module_dir is None:
-        raise ModuleNotExist(module_name)
-    data_dir = module_dir / "data"
-    vs = [v for v in data_dir.glob("gene_*.sqlite")]
-    if not vs:
-        raise ModuleNotExist(module_name)
-    sqlite_path = vs[0]
-
