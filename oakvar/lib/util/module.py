@@ -23,12 +23,16 @@ def get_converter(module_name, *args, **kwargs) -> BaseConverter:
 
 
 def get_mapper(module_name, *args, **kwargs) -> BaseMapper:
+    from ..exceptions import ModuleLoadingError
+
     ModuleClass = get_module_class(module_name)
     if not ModuleClass:
-        raise ValueError(f"{module_name} was not found.")
+        raise ModuleLoadingError(module_name)
     if not issubclass(ModuleClass, BaseMapper):
-        raise ValueError(f"{ModuleClass} is not a mapper class.")
+        raise ModuleLoadingError(f"{module_name} is not a mapper module.")
     module = ModuleClass(*args, **kwargs)
+    module.name = module_name
+    module.setup()
     return module
 
 

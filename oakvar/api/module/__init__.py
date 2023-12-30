@@ -133,7 +133,11 @@ def ls(
         humanized_size=humanized_size,
     )
     if outer:
-        print_list_of_dict(ret, outer=outer)
+        if nameonly:
+            for d in ret:
+                outer.write(d.get("name"))
+        else:
+            print_list_of_dict(ret, outer=outer)
     return ret
 
 

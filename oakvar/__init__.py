@@ -38,6 +38,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import signal
 from . import lib
 from . import api
 from . import cli
@@ -71,7 +72,6 @@ from .lib.util.module import get_annotator
 from .lib.util.module import get_postaggregator
 from .lib.util.module import get_reporter
 from .cli import CliOuter
-import signal
 
 # for compatibility with oc
 from .lib.exceptions import BadFormatError

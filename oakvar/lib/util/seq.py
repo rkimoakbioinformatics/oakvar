@@ -614,3 +614,4 @@ def get_wgs_reader(assembly=SYSTEM_GENOME_ASSEMBLY) -> BaseCommonModule:
     wgs = ModuleClass()
     wgs.setup()
     return wgs
+
