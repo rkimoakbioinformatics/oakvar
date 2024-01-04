@@ -1010,11 +1010,7 @@ class Runner(object):
         if "postaggregator" in self.args.skip:
             self.postaggregators = {}
             return
-        self.postaggregator_names = sorted(
-            list(
-                set(self.postaggregator_names).union(set(default_postaggregator_names))
-            )
-        )
+        self.postaggregator_names = default_postaggregator_names + self.postaggregator_names
         self.check_valid_modules(self.postaggregator_names)
         self.postaggregators = get_local_module_infos_by_names(
             self.postaggregator_names

@@ -230,12 +230,7 @@ class BasePostAggregator(object):
                     if self.input_columns.get(level) is None:
                         self.input_columns[level] = []
                     self.input_columns[level].extend(column_names)
-        level, column_names = self.get_result_module_columns(self.module_name)
-        if level and column_names:
-            if self.input_columns.get(level) is None:
-                self.input_columns[level] = []
-            self.input_columns[level].extend(column_names)
-        if not self.input_columns:
+        else:
             self.input_columns = None
         if self.input_columns:
             if self.levelno == VARIANT:
