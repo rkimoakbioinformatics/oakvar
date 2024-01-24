@@ -45,6 +45,7 @@ from typing import Set
 from typing import Dict
 from typing import Tuple
 from re import compile
+from pathlib import Path
 from liftover import ChainFile
 from oakvar import BaseConverter
 
@@ -335,7 +336,7 @@ class MasterConverter(object):
         self.crs_writer = None
         self.crm_writer = None
         self.crl_writer = None
-        self.converter_paths: Dict[str, str] = {}
+        self.converter_paths: Dict[str, Path] = {}
         self.input_paths = None
         self.input_dir = None
         self.input_path_dict = {}
@@ -511,7 +512,7 @@ class MasterConverter(object):
         from oakvar.lib.exceptions import ModuleLoadingError
 
         try:
-            script_path: str = self.converter_paths[module_name]
+            script_path: Path = self.converter_paths[module_name]
             cls = load_class(script_path)
             if cls is None:
                 raise ModuleLoadingError(module_name=module_name)
@@ -519,7 +520,7 @@ class MasterConverter(object):
                 module_conf = self.module_options.get(module_name)
             else:
                 module_conf = None
-            module_info = get_local_module_info(script_path)
+            module_info = get_local_module_info(script_path.parent)
             if not module_info:
                 if self.logger:
                     self.logger.error(f"{module_name} yml file is missing or bad.")
@@ -560,7 +561,7 @@ class MasterConverter(object):
             if module_name in ["cravat-converter", "oldcravat-converter"]:
                 if self.logger:
                     self.logger.warn(f"{module_name} is deprecated. Please install and use csv-converter module.")
-            script_path: str = str(module_path / f"{module_name}.py")
+            script_path: Path = module_path / f"{module_name}.py"
             self.converter_paths[module_name] = script_path
         else:
             for module_name, module_info in get_local_module_infos_of_type(

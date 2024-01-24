@@ -132,9 +132,9 @@ def get_mapper(module_name, input_file=None) -> BaseMapper:
     ModuleClass = get_module(module_name, module_type="mapper")
     if ModuleClass is None:
         raise ModuleLoadingError(module_name)
-    if not isinstance(ModuleClass, BaseMapper):
-        raise ModuleLoadingError(f"{module_name} is not a mapper module.")
-    module = ModuleClass.__init__(input_file=input_file)
+    if not issubclass(ModuleClass, BaseMapper):
+        raise ModuleLoadingError(msg=f"{module_name} is not a mapper module.")
+    module = ModuleClass(input_file=input_file)
     if module is None:
         raise ModuleLoadingError(module_name)
     module.name = module_name

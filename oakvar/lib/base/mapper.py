@@ -102,6 +102,7 @@ class BaseMapper(object):
         self.logger = None
         self.error_logger = None
         self.unique_excs = []
+        self.name: str = ""
         self.t = time()
         main_fpath = Path(sys.modules[self.__class__.__module__].__file__ or "")
         self.module_name = main_fpath.stem
