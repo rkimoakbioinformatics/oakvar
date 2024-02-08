@@ -687,7 +687,6 @@ class MasterConverter(object):
         )
         self.crs_writer = FileWriter(self.crs_path)
         self.crs_writer.add_columns(crs_def)
-        self.crs_writer.add_columns(self.extra_output_columns)
         self.crs_writer.write_definition()
         for index_columns in crs_idx:
             self.crs_writer.add_index(index_columns)
