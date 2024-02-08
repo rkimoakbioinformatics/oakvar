@@ -203,38 +203,40 @@ def handle_ref_base(variant, wgs_reader):
                 variant.get("chrom"), int(variant.get("pos"))
             )
 
-def handle_chrom(variant):
+def handle_chrom(variant, genome: str):
     from oakvar.lib.exceptions import IgnoredVariant
-    from oakvar.lib.util.seq import grch37_to_hg19
+    from oakvar.lib.util.seq import get_grch37_to_hg19
+    from oakvar.lib.util.seq import get_grch38_to_hg38
 
     chrom = variant.get("chrom")
     if not chrom:
         raise IgnoredVariant("No chromosome")
     if len(chrom) > 8:
-        chr_two = chrom[:2]
-        if chr_two in ["JH", "KE", "KB"]:
-            raise IgnoredVariant(f"Unsupported chromosome {chrom}")
-        elif chr_two == "GL":
-            if chrom in grch37_to_hg19:
-                chrom = grch37_to_hg19[chrom]
-                variant["chrom"] = chrom
-            else:
+        if genome == "hg19":
+            new_chrom = get_grch37_to_hg19(chrom)
+            if not new_chrom:
                 raise IgnoredVariant(f"Unsupported chromosome {chrom}")
-    if not chrom.startswith("chr"):
+            variant["chrom"] = new_chrom
+        elif genome == "hg38":
+            new_chrom = get_grch38_to_hg38(chrom)
+            if not new_chrom:
+                raise IgnoredVariant(f"Unsupported chromosome {chrom}")
+            variant["chrom"] = new_chrom
+    if not chrom[0] != "c":
         variant["chrom"] = "chr" + variant.get("chrom")
     variant["chrom"] = chromdict.get(
         variant.get("chrom"), variant.get("chrom")
     )
 
 def handle_variant(
-        variant: dict, do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, line_no: int
+        variant: dict, do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, line_no: int, genome: str
 ):
     from oakvar.lib.exceptions import NoVariantError
 
     if variant["ref_base"] == variant["alt_base"]:
         raise NoVariantError()
     tags = variant.get("tags")
-    handle_chrom(variant)
+    handle_chrom(variant, genome)
     handle_ref_base(variant, wgs_reader)
     check_invalid_base(variant)
     normalize_variant(variant)
@@ -246,7 +248,7 @@ def handle_variant(
     variant["crl"] = crl_data
 
 def handle_converted_variants(
-        variants: List[Dict[str, Any]], do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, logger, error_logger, input_path: str, unique_excs: dict, err_holders: List[List[str]], line_no: int, core_num: int
+        variants: List[Dict[str, Any]], do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, logger, error_logger, input_path: str, unique_excs: dict, err_holders: List[List[str]], line_no: int, core_num: int, genome: str
 ) -> Tuple[List[Dict[str, Any]], bool]:
     if variants is BaseConverter.IGNORE:
         return [], False
@@ -256,7 +258,7 @@ def handle_converted_variants(
     error_occurred: bool = False
     for variant in variants:
         try:
-            handle_variant(variant, do_liftover, do_liftover_chrM, lifter, wgs_reader, line_no)
+            handle_variant(variant, do_liftover, do_liftover_chrM, lifter, wgs_reader, line_no, genome)
             variant_l.append(variant)
         except Exception as e:
             _log_conversion_error(logger, error_logger, input_path, line_no, e, unique_excs, err_holders, core_num=core_num)
@@ -278,6 +280,7 @@ def gather_variantss(
         unique_excs: dict, 
         err_holders: List[List[str]],
         num_valid_error_lines: Dict[str, int],
+        genome: str,
 ) -> List[List[Dict[str, Any]]]:
     from oakvar.lib.exceptions import IgnoredInput
 
@@ -286,7 +289,7 @@ def gather_variantss(
     for (line_no, line) in line_data:
         try:
             variants = converter.convert_line(line)
-            variants_datas, error_occurred = handle_converted_variants(variants, do_liftover, do_liftover_chrM, lifter, wgs_reader, logger, error_logger, input_path, unique_excs, err_holders, line_no, core_num)
+            variants_datas, error_occurred = handle_converted_variants(variants, do_liftover, do_liftover_chrM, lifter, wgs_reader, logger, error_logger, input_path, unique_excs, err_holders, line_no, core_num, genome)
             if error_occurred:
                 num_valid_error_lines[ERROR] += 1
             else:
@@ -354,7 +357,6 @@ class MasterConverter(object):
         self.do_liftover_chrM = None
         self.lifter = None
         self.module_options = None
-        self.given_input_assembly: Optional[str] = None
         self.converter_name_by_input_path: Dict[str, str] = {}
         self.extra_output_columns = []
         self.file_num_unique_variants: int = 0
@@ -388,10 +390,10 @@ class MasterConverter(object):
         self.format = input_format
         self.name = name
         self.output_dir = output_dir
-        self.genome = genome
+        self.genome: str = genome if genome is not None else ""
         self.parse_inputs()
         self.parse_output_dir()
-        self.given_input_assembly = genome
+        self.given_input_assembly: Optional[str] = genome
         self.conf: Dict = {}
         self.module_options = module_options
         if conf:
@@ -774,6 +776,7 @@ class MasterConverter(object):
             genome_assembly = self.get_genome_assembly(converter)
             self.genome_assemblies.append(genome_assembly)
             self.log_input_and_genome_assembly(input_path, genome_assembly, converter)
+            self.genome = genome_assembly
             self.set_do_liftover(genome_assembly, converter, input_path)
             if self.do_liftover or self.do_liftover_chrM:
                 self.setup_lifter(genome_assembly)
@@ -922,6 +925,7 @@ class MasterConverter(object):
                         self.unique_excs, 
                         self.err_holders,
                         self.num_valid_error_lines,
+                        self.genome,
                     ) for core_num in range(num_pool)
                 ]
                 results = pool.map(gather_variantss_wrapper, args)
