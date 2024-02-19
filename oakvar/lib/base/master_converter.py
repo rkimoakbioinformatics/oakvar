@@ -222,10 +222,10 @@ def handle_chrom(variant, genome: str):
             if not new_chrom:
                 raise IgnoredVariant(f"Unsupported chromosome {chrom}")
             variant["chrom"] = new_chrom
-    if not chrom[0] != "c":
-        variant["chrom"] = "chr" + variant.get("chrom")
+    if not chrom[0].startswith("c"):
+        chrom = "chr" + chrom
     variant["chrom"] = chromdict.get(
-        variant.get("chrom"), variant.get("chrom")
+        chrom, chrom
     )
 
 def handle_variant(

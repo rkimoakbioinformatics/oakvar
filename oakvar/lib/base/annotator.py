@@ -76,6 +76,7 @@ class BaseAnnotator(object):
         logtofile: bool = False,
         module_options: Dict = {},
         serveradmindb=None,
+        logger=None,
         name: Optional[str] = None,
         title: Optional[str] = None,
         level: Optional[str] = None,
@@ -138,7 +139,7 @@ class BaseAnnotator(object):
             self.main_fpath = Path(fp).resolve()
         self.secondary_paths = {}
         self.output_basename = None
-        self.logger = None
+        self.logger = logger
         self.error_logger = None
         self.dbconn = None
         self.cursor = None
@@ -848,7 +849,6 @@ class BaseAnnotator(object):
         """
         from logging import getLogger
 
-        self.logger = getLogger("oakvar." + self.module_name)
         self.error_logger = getLogger("err." + self.module_name)
 
     def _get_input(self):

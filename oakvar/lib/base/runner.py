@@ -249,7 +249,7 @@ class Runner(object):
             self.logmode = "a"
         self.logger = logging.getLogger("oakvar")
         self.error_logger = logging.getLogger("err")
-        set_logger_handler(self.logger, self.error_logger, output_dir=output_dir, run_name=run_name, mode=self.logmode, level=self.args.loglevel, logtofile=self.args.logtofile, clean=self.args.clean, newlog=self.args.newlog)
+        self.log_path, self.error_log_path = set_logger_handler(self.logger, self.error_logger, output_dir=output_dir, run_name=run_name, mode=self.logmode, level=self.args.loglevel, logtofile=self.args.logtofile, clean=self.args.clean, newlog=self.args.newlog)
 
     def log_versions(self):
         from ..util import admin_util as au

@@ -179,6 +179,8 @@ def set_logger_handler(
         "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
     )
     err_formatter = logging.Formatter("%(name)s\t%(message)s")
+    log_path: Optional[Path] = None
+    error_log_path: Optional[Path] = None
     if logtofile and output_dir:
         log_path = Path(output_dir) / (run_name + LOG_SUFFIX)
         if (newlog or clean) and log_path.exists():
@@ -201,6 +203,7 @@ def set_logger_handler(
     logger.addHandler(log_handler)
     error_log_handler.setLevel(level)
     error_logger.addHandler(error_log_handler)
+    return log_path, error_log_path
 
 def get_module_options(module_options_sl: Optional[List[str]], outer=None):
     module_options: Dict[str, Dict[str, Any]] = {}
