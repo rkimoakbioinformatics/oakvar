@@ -68,6 +68,20 @@ def sqliteinfo(args, __name__="util sqliteinfo"):
         if fmt == "json":
             print_json(json.dumps(out))
 
+@cli_entry
+def cli_util_movejob(args):
+    movejob(args)
+
+@cli_func
+def movejob(args, __name__="util move-job"):
+    from rich.console import Console
+    from ..api.util import move_job
+
+    out = move_job(**args)
+    if not out:
+        return
+    console = Console()
+    console.print(out)
 
 # @cli_entry
 # def cli_util_mergesqlite(args):
@@ -176,6 +190,18 @@ def get_parser_fn_util():
         "# Get the named list of the information of an analysis result file",
         '#roakvar::util.sqliteinfo(paths="example.sqlite")',
     ]
+
+    # Move a job to an account
+    parser_fn_util_movejob = _subparsers.add_parser(
+        "move-job", help="Move a job to another account"
+    )
+    parser_fn_util_movejob.add_argument(
+        "--job-dir", help="Job directory"
+    )
+    parser_fn_util_movejob.add_argument(
+        "--new-account", help="New account"
+    )
+    parser_fn_util_movejob.set_defaults(func=cli_util_movejob)
 
     # Filter SQLite
     # parser_fn_util_filtersqlite = _subparsers.add_parser(

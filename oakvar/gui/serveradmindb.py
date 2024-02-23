@@ -735,7 +735,6 @@ class ServerAdminDb:
         cursor.close()
         conn.close()
 
-
 def setup_serveradmindb(clean: bool = False) -> ServerAdminDb:
     from os import remove
     from pathlib import Path

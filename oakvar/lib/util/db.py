@@ -188,3 +188,62 @@ def get_sqliteinfo(dbpath: Union[Path, str] = "") -> Dict[str, Any]:
     }
     return out
 
+def move_job_to_account(job_dir: Union[Path, str], new_username: str):
+    from sqlite3 import connect
+    import json
+    from ..system import get_user_jobs_dir
+    from ...gui.serveradmindb import get_admindb_path
+
+    import pdb; pdb.set_trace()
+    if isinstance(job_dir, str):
+        job_dir = Path(job_dir)
+    job_dir = job_dir.resolve()
+    if not job_dir.exists():
+        print(f"{job_dir} does not exist. Exiting.")
+    # Retrieve db
+    conn = connect(get_admindb_path())
+    cursor = conn.cursor()
+    q = "select uid, username, info_json from jobs where dir=?"
+    cursor.execute(q, (str(job_dir),))
+    ret = cursor.fetchone()
+    if not ret:
+        cursor.close()
+        conn.close()
+        return
+    uid = ret[0]
+    old_username = ret[1]
+    info_json = ret[2]
+    info_json = json.loads(info_json)
+    new_user_jobs_dir = get_user_jobs_dir(new_username)
+    if new_user_jobs_dir is None:
+        print(f"User jobs dir for {new_username} does not exist. Exiting.")
+        cursor.close()
+        conn.close()
+        return
+    new_user_jobs_dir = new_user_jobs_dir.resolve()
+    # New job dir
+    new_job_dir_parts = []
+    for part in list(job_dir.parts):
+        if part == old_username:
+            part = new_username
+        new_job_dir_parts.append(part)
+    new_job_dir = Path(*new_job_dir_parts)
+    # New input_path
+    new_input_fname = info_json["orig_input_fname"]
+    # New db_path
+    db_path = Path(info_json["db_path"])
+    new_db_path = new_job_dir / db_path.relative_to(job_dir)
+    # New info_json
+    info_json["db_path"] = str(new_db_path)
+    info_json["job_dir"] = str(new_job_dir)
+    info_json["orig_input_fname"] = new_input_fname
+    # Update jobs table
+    q = "update jobs set username=?, dir=?, info_json=? where uid=?"
+    cursor.execute(q, (new_username, str(new_job_dir), json.dumps(info_json), uid))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    # Move job dir
+    job_dir.rename(new_job_dir)
+    print(f"Job {job_dir} moved to {new_job_dir} for {new_username}.")
+

@@ -488,3 +488,28 @@ async def filtersqlite_async(
             c.close()
             conn.close()
             raise e
+
+def move_job(job_dir="", new_account="", outer=None):
+    """move_job_to_account.
+
+    Args:
+        job_dir:
+        new_account:
+    """
+    from ..lib.util.db import move_job_to_account
+
+    if not job_dir:
+        msg = "Job directory (--job-dir) should be given"
+        if outer:
+            outer.error(msg)
+            return
+        else:
+            return msg
+    if not new_account:
+        msg = "New account (--new-account) should be given"
+        if outer:
+            outer.error(msg)
+            return
+        else:
+            return msg
+    return move_job_to_account(job_dir, new_account)
