@@ -47,9 +47,13 @@ def init_worker():
 def annot_from_queue(
     start_queue, end_queue, queue_populated, serveradmindb, logtofile, log_path
 ):
-    from ..util.util import load_class
-    from logging import getLogger, StreamHandler, FileHandler, Formatter
+    import sys
+    from logging import getLogger
+    from logging import StreamHandler
+    from logging import FileHandler
+    from logging import Formatter
     from queue import Empty
+    from ..util.util import load_class
     from ..exceptions import ModuleLoadingError
 
     while True:
@@ -68,7 +72,7 @@ def annot_from_queue(
             if logtofile and log_path:
                 log_handler = FileHandler(log_path, "a")
             else:
-                log_handler = StreamHandler()
+                log_handler = StreamHandler(stream=sys.stdout)
             formatter = Formatter(
                 "%(asctime)s %(name)-20s %(message)s", "%Y/%m/%d %H:%M:%S"
             )
