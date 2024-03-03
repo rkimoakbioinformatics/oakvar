@@ -8,14 +8,14 @@
       
       
       
-        <link rel="canonical" href="https://oakvar.com/overview/">
+        <link rel="canonical" href="https://oakvar.com/apache_spark/">
       
       <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-8.3.9">
     
     
       
-        <title>Overview - OakVar</title>
+        <title>Apache Spark - OakVar</title>
       
     
     
@@ -63,11 +63,6 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
-        
-        <a href="#modular" class="md-skip">
-          Skip to content
-        </a>
-      
     </div>
     <div data-md-component="announce">
       
@@ -96,7 +91,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Overview
+              Apache Spark
             
           </span>
         </div>
@@ -256,76 +251,11 @@
 
   
   
-    
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          Overview
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../overview/" class="md-nav__link">
         Overview
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#modular" class="md-nav__link">
-    Modular
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#annotation" class="md-nav__link">
-    Annotation
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#query" class="md-nav__link">
-    Query
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#visualize" class="md-nav__link">
-    Visualize
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#applications" class="md-nav__link">
-    Applications
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -689,11 +619,19 @@
 
   
   
+    
   
-    <li class="md-nav__item">
-      <a href="../apache_spark/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         Apache Spark
       </a>
+      
     </li>
   
 
@@ -791,49 +729,6 @@
   
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#modular" class="md-nav__link">
-    Modular
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#annotation" class="md-nav__link">
-    Annotation
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#query" class="md-nav__link">
-    Query
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#visualize" class="md-nav__link">
-    Visualize
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#applications" class="md-nav__link">
-    Applications
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -846,43 +741,147 @@
                 
 
 
-  <h1>Overview</h1>
+  <h1>Apache Spark</h1>
 
-<h2 id="modular">Modular</h2>
-<p>OakVar is a <strong>platform</strong> for genomic variant analyses. By platform, we mean that OakVar is modular. <em>Modules</em> written in Python are the building blocks of OakVar. OakVar achieves its functions by orchestrating such modules.</p>
-<p>OakVar has the following core functionality:</p>
-<ul>
-<li>Annotation</li>
-<li>Query</li>
-<li>Serve applications</li>
-<li>Visualize</li>
-</ul>
-<h2 id="annotation">Annotation</h2>
-<p>Annotation is adding additional information to a variant. A certain variant may have a clinical consequence such as a genetic disease or a meaning such as being rarely observed in a population. There are many sources of such annotation, and manually finding the annotation from these many sources for many variants can be laborious and daunting.</p>
-<p>OakVar automates this annotation work by:</p>
-<ul>
-<li>Loop over variants</li>
-<li>Standardize annotation sources</li>
-<li>Manage installation of annotation sources</li>
-<li>Organize the annotation from different sources by variant</li>
-</ul>
-<p>The main OakVar command for annotation is <code>ov run</code>. For example, the following command will annotate the variants in a VCF file, <code>input.vcf</code>, with annotation sources ClinVar and COSMIC and generate an annotated VCF file, <code>annotated.vcf</code> as well as a database file, <code>annotated.sqlite</code>.</p>
-<pre><code>ov module install clinvar # if clinvar module is not already installed.
-ov run input.vcf -a clinvar cosmic -t vcf -n annotated
+<p>OakVar is natively integrated with Apache Spark, allowing annotation on the big genome project scale.</p>
+<p>Let's see how it is done.</p>
+<p>First, create a Spark session.</p>
+<pre><code class="language-python">import pyspark
+from pyspark.sql import SparkSession
+
+conf = pyspark.SparkConf().setAppName(&quot;ov&quot;)
+sc = pyspark.SparkContext(conf=conf)
+spark = SparkSession(sc)
 </code></pre>
-<h2 id="query">Query</h2>
-<p>Once variants are annotated, they can be filtered by their annotation, for example to know if a sample has clinically relevant variants or not. OakVar stores annotated variants as a database, and thus variants annotated with OakVar can be filtered with SQL queries. OakVar provides a standard mechanism to query variants regardless of their annotation sources.</p>
-<p>The main OakVar command for querying variants is <code>ov report</code>. For example, the following command will filter the variants in <code>annotated.sqlite</code> with the filter set defined in <code>filter.json</code> and produce a VCF file of filtered variants, <code>filtered.vcf</code>.</p>
-<pre><code>ov report annotated.sqlite -f filter.json -s filtered -t vcf
+<p>Then, let's make a test set of variants as a Spark DataFrame.</p>
+<pre><code class="language-python">data = [
+        {&quot;chrom&quot;: &quot;chr7&quot;, &quot;pos&quot;:140734758, &quot;ref_base&quot;: &quot;T&quot;, &quot;alt_base&quot;: &quot;C&quot;},
+        {&quot;chrom&quot;: &quot;chr7&quot;, &quot;pos&quot;:140734780, &quot;ref_base&quot;: &quot;-&quot;, &quot;alt_base&quot;: &quot;G&quot;},
+        {&quot;chrom&quot;: &quot;chr7&quot;, &quot;pos&quot;:140736487, &quot;ref_base&quot;: &quot;GTGCGA&quot;, &quot;alt_base&quot;: &quot;-&quot;},
+        {&quot;chrom&quot;: &quot;chr7&quot;, &quot;pos&quot;:140736487, &quot;ref_base&quot;: &quot;GTGCGAT&quot;, &quot;alt_base&quot;: &quot;-&quot;},
+        {&quot;chrom&quot;: &quot;chr7&quot;, &quot;pos&quot;:140742186, &quot;ref_base&quot;: &quot;-&quot;, &quot;alt_base&quot;: &quot;T&quot;},
+        {&quot;chrom&quot;: &quot;chr7&quot;, &quot;pos&quot;:140753351, &quot;ref_base&quot;: &quot;A&quot;, &quot;alt_base&quot;: &quot;G&quot;},
+        {&quot;chrom&quot;: &quot;chr7&quot;, &quot;pos&quot;:140800417, &quot;ref_base&quot;: &quot;CT&quot;, &quot;alt_base&quot;: &quot;-&quot;},
+        {&quot;chrom&quot;: &quot;chr7&quot;, &quot;pos&quot;:140800417, &quot;ref_base&quot;: &quot;CTG&quot;, &quot;alt_base&quot;: &quot;-&quot;},
+        {&quot;chrom&quot;: &quot;chr7&quot;, &quot;pos&quot;:140807936, &quot;ref_base&quot;: &quot;A&quot;, &quot;alt_base&quot;: &quot;-&quot;},
+        {&quot;chrom&quot;: &quot;chr7&quot;, &quot;pos&quot;:140924703, &quot;ref_base&quot;: &quot;A&quot;, &quot;alt_base&quot;: &quot;T&quot;},
+        {&quot;chrom&quot;: &quot;chr7&quot;, &quot;pos&quot;:148847298, &quot;ref_base&quot;: &quot;A&quot;, &quot;alt_base&quot;: &quot;T&quot;},
+        {&quot;chrom&quot;: &quot;chr7&quot;, &quot;pos&quot;:27199497, &quot;ref_base&quot;: &quot;C&quot;, &quot;alt_base&quot;: &quot;G&quot;},
+        {&quot;chrom&quot;: &quot;chr7&quot;, &quot;pos&quot;:2958506, &quot;ref_base&quot;: &quot;A&quot;, &quot;alt_base&quot;: &quot;T&quot;},
+        {&quot;chrom&quot;: &quot;chr7&quot;, &quot;pos&quot;:50319062, &quot;ref_base&quot;: &quot;A&quot;, &quot;alt_base&quot;: &quot;T&quot;},
+        {&quot;chrom&quot;: &quot;chr7&quot;, &quot;pos&quot;:55019278, &quot;ref_base&quot;: &quot;A&quot;, &quot;alt_base&quot;: &quot;T&quot;},
+        {&quot;chrom&quot;: &quot;chr7&quot;, &quot;pos&quot;:55019338, &quot;ref_base&quot;: &quot;G&quot;, &quot;alt_base&quot;: &quot;A&quot;},
+        {&quot;chrom&quot;: &quot;chr7&quot;, &quot;pos&quot;:55181319, &quot;ref_base&quot;: &quot;-&quot;, &quot;alt_base&quot;: &quot;GGGTTG&quot;},
+        {&quot;chrom&quot;: &quot;chr8&quot;, &quot;pos&quot;:127738263, &quot;ref_base&quot;: &quot;A&quot;, &quot;alt_base&quot;: &quot;T&quot;},
+        {&quot;chrom&quot;: &quot;chr8&quot;, &quot;pos&quot;:43018497, &quot;ref_base&quot;: &quot;A&quot;, &quot;alt_base&quot;: &quot;G&quot;},
+        {&quot;chrom&quot;: &quot;chr9&quot;, &quot;pos&quot;:107489172, &quot;ref_base&quot;: &quot;A&quot;, &quot;alt_base&quot;: &quot;T&quot;},
+        {&quot;chrom&quot;: &quot;chr9&quot;, &quot;pos&quot;:130714320, &quot;ref_base&quot;: &quot;A&quot;, &quot;alt_base&quot;: &quot;T&quot;},
+        {&quot;chrom&quot;: &quot;chr9&quot;, &quot;pos&quot;:132928872, &quot;ref_base&quot;: &quot;A&quot;, &quot;alt_base&quot;: &quot;T&quot;},
+        {&quot;chrom&quot;: &quot;chr9&quot;, &quot;pos&quot;:136545786, &quot;ref_base&quot;: &quot;A&quot;, &quot;alt_base&quot;: &quot;T&quot;},
+        {&quot;chrom&quot;: &quot;chr9&quot;, &quot;pos&quot;:21968622, &quot;ref_base&quot;: &quot;C&quot;, &quot;alt_base&quot;: &quot;-&quot;},
+        {&quot;chrom&quot;: &quot;chr9&quot;, &quot;pos&quot;:21974827, &quot;ref_base&quot;: &quot;A&quot;, &quot;alt_base&quot;: &quot;T&quot;},
+        {&quot;chrom&quot;: &quot;chr9&quot;, &quot;pos&quot;:37034031, &quot;ref_base&quot;: &quot;A&quot;, &quot;alt_base&quot;: &quot;T&quot;},
+        {&quot;chrom&quot;: &quot;chr9&quot;, &quot;pos&quot;:5021988, &quot;ref_base&quot;: &quot;A&quot;, &quot;alt_base&quot;: &quot;T&quot;},
+]
+for uid in range(len(data)):
+    data[uid][&quot;uid&quot;] = uid
+df = spark.createDataFrame(data)
+print(&quot;Original DataFrame&quot;)
+df.show()
 </code></pre>
-<p>Query options can be given to <code>ov run</code> as well. The following command will generate the same <code>annotated.sqlite</code> with annotated variants, but <code>annotated.vcf</code> will already have annotated and filtered variants.</p>
-<pre><code>ov run input.vcf -a clinvar cosmic -t vcf -n annotated -f filter.json
+<p>Output:</p>
+<pre><code>Original DataFrame
++--------+-----+---------+--------+---+
+|alt_base|chrom|      pos|ref_base|uid|
++--------+-----+---------+--------+---+
+|       C| chr7|140734758|       T|  0|
+|       G| chr7|140734780|       -|  1|
+|       -| chr7|140736487|  GTGCGA|  2|
+|       -| chr7|140736487| GTGCGAT|  3|
+|       T| chr7|140742186|       -|  4|
+|       G| chr7|140753351|       A|  5|
+|       -| chr7|140800417|      CT|  6|
+|       -| chr7|140800417|     CTG|  7|
+|       -| chr7|140807936|       A|  8|
+|       T| chr7|140924703|       A|  9|
+|       T| chr7|148847298|       A| 10|
+|       G| chr7| 27199497|       C| 11|
+|       T| chr7|  2958506|       A| 12|
+|       T| chr7| 50319062|       A| 13|
+|       T| chr7| 55019278|       A| 14|
+|       A| chr7| 55019338|       G| 15|
+|  GGGTTG| chr7| 55181319|       -| 16|
+|       T| chr8|127738263|       A| 17|
+|       G| chr8| 43018497|       A| 18|
+|       T| chr9|107489172|       A| 19|
++--------+-----+---------+--------+---+
+only showing top 20 rows
 </code></pre>
-<h2 id="visualize">Visualize</h2>
-<p>OakVar comes with a graphical user interface. <code>ov gui</code> launches a job and store management web app by default, and also works as the entry point for OakVar's web apps. </p>
-<h2 id="applications">Applications</h2>
-<p>Most common way of using OakVar is the input-to-output workflow using <code>ov run</code> and <code>ov report</code>. However, any Python-based program can access the variants annotated with OakVar since OakVar is a Python library as well. This aspect of OakVar is being actively developed and streamlined. OakVar comes with two built-in web applications - one for job submission and module management and the other for exploring annotation result, as well as one installable web application for exploring the details of a single variant.</p>
-<p>Check back this page later for exciting future development in this area.</p>
+<p>Then, we create a Spark Resilient Distributed Dataset (RDD).</p>
+<pre><code class="language-python">rdd = sc.parallelize(data, 4)
+</code></pre>
+<p>Then, let's define a custom function which will be run in each worker node and for a partition of the RDD.</p>
+<pre><code class="language-python">import oakvar as ov
+
+def get_ov_annotation(iterator):
+    mapper = ov.get_mapper(&quot;gencode&quot;)
+    clinvar = ov.get_annotator(&quot;clinvar&quot;)
+    for row in iterator:
+        ret = mapper.map(row)
+        ret = clinvar.append_annotation(ret)
+        yield ret
+</code></pre>
+<p>This function will be run as a standalone function in worker nodes, so the worker nodes should already have OakVar installed and their Python should have access to the installed OakVar package.</p>
+<p>This function loads a <code>gencode</code> mapper and a <code>clinvar</code> annotation module, and for variant, runs the mapper and the annotator.</p>
+<p>Let's apply this custom function to the variant RDD.</p>
+<pre><code class="language-python">ret = rdd.mapPartitions(get_ov_annotation).collect()
+</code></pre>
+<p><code>ret</code> will be a <code>list</code> of <code>dict</code>, each <code>dict</code> corresponding to one annotated variant.</p>
+<p>Let's create a new RDD with annotated variants. We'll use GENCODE mapper (<code>gencode</code>) and ClinVar annotator (<code>clinvar</code>). They should be already installed in the worker nodes.</p>
+<pre><code class="language-python">schema = ov.lib.util.run.get_spark_schema([&quot;gencode&quot;, &quot;clinvar&quot;])
+df = spark.createDataFrame(ret, schema)
+</code></pre>
+<p>The annotated variants can be saved as Parquet files.</p>
+<pre><code class="language-python">df.write.parquet(&quot;annotated_variants.parquet&quot;)
+</code></pre>
+<p>Or, quick inspection:</p>
+<pre><code class="language-python">df = df.toPandas()
+print(df)
+</code></pre>
+<p>Output:</p>
+<pre><code>Annotated DataFrame
+    uid chrom  ...  clinvar__id clinvar__sig_conf
+0     0  chr7  ...    1410272.0              None
+1     1  chr7  ...    1334201.0              None
+2     2  chr7  ...          NaN              None
+3     3  chr7  ...          NaN              None
+4     4  chr7  ...          NaN              None
+5     5  chr7  ...     376290.0              None
+6     6  chr7  ...          NaN              None
+7     7  chr7  ...          NaN              None
+8     8  chr7  ...          NaN              None
+9     9  chr7  ...          NaN              None
+10   10  chr7  ...          NaN              None
+11   11  chr7  ...          NaN              None
+12   12  chr7  ...          NaN              None
+13   13  chr7  ...          NaN              None
+14   14  chr7  ...          NaN              None
+15   15  chr7  ...     848579.0              None
+16   16  chr7  ...          NaN              None
+17   17  chr8  ...          NaN              None
+18   18  chr8  ...          NaN              None
+19   19  chr9  ...          NaN              None
+20   20  chr9  ...          NaN              None
+21   21  chr9  ...          NaN              None
+22   22  chr9  ...          NaN              None
+23   23  chr9  ...          NaN              None
+24   24  chr9  ...          NaN              None
+25   25  chr9  ...          NaN              None
+26   26  chr9  ...          NaN              None
+
+[27 rows x 21 columns]
+</code></pre>
+<p>We are considering adding more helper methods to OakVar to make this process more ergonomic. Please let us know what you think at our Discord server at <a href="https://discord.gg/wZfkTMKTjG">https://discord.gg/wZfkTMKTjG</a></p>
 
               
             </article>
@@ -898,7 +897,7 @@ ov run input.vcf -a clinvar cosmic -t vcf -n annotated
     <nav class="md-footer__inner md-grid" aria-label="Footer" >
       
         
-        <a href="../install_modules/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Modules" rel="prev">
+        <a href="../api/lib_util_util/" class="md-footer__link md-footer__link--prev" aria-label="Previous: oakvar.lib.util.util" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
           </div>
@@ -907,20 +906,20 @@ ov run input.vcf -a clinvar cosmic -t vcf -n annotated
               <span class="md-footer__direction">
                 Previous
               </span>
-              Modules
+              oakvar.lib.util.util
             </div>
           </div>
         </a>
       
       
         
-        <a href="../tutorial/" class="md-footer__link md-footer__link--next" aria-label="Next: Tutorial" rel="next">
+        <a href="../third_party/" class="md-footer__link md-footer__link--next" aria-label="Next: Third party" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              Tutorial
+              Third party
             </div>
           </div>
           <div class="md-footer__button md-icon">
