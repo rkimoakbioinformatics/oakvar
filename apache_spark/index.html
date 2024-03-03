@@ -843,44 +843,10 @@ rdd = spark.createDataFrame(ret, schema)
 rdd.show()
 </code></pre>
 <p>Output:</p>
-<pre><code class="language-bash">|       -| chr7|140800417|     CTG|  7|
-|       -| chr7|140807936|       A|  8|
-|       T| chr7|140924703|       A|  9|
-|       T| chr7|148847298|       A| 10|
-|       G| chr7| 27199497|       C| 11|
-|       T| chr7|  2958506|       A| 12|
-|       T| chr7| 50319062|       A| 13|
-|       T| chr7| 55019278|       A| 14|
-|       A| chr7| 55019338|       G| 15|
-|  GGGTTG| chr7| 55181319|       -| 16|
-|       T| chr8|127738263|       A| 17|
-|       G| chr8| 43018497|       A| 18|
-|       T| chr9|107489172|       A| 19|
-+--------+-----+---------+--------+---+
-only showing top 20 rows
-
-@ schema=StructType([StructField('uid', IntegerType(), True), StructField('chrom', StringType(), True), StructField('pos
-', IntegerType(), True), StructField('ref_base', StringType(), True), StructField('alt_base', StringType(), True), Struc
-tField('note', StringType(), True), StructField('coding', StringType(), True), StructField('hugo', StringType(), True),
-StructField('transcript', StringType(), True), StructField('so', StringType(), True), StructField('cchange', StringType(
-), True), StructField('achange', StringType(), True), StructField('exonno', StringType(), True), StructField('all_mappin
-gs', StringType(), True), StructField('clinvar__uid', IntegerType(), True), StructField('clinvar__sig', StringType(), Tr
-ue), StructField('clinvar__disease_refs', StringType(), True), StructField('clinvar__disease_names', StringType(), True)
-, StructField('clinvar__rev_stat', StringType(), True), StructField('clinvar__id', IntegerType(), True), StructField('cl
-invar__sig_conf', StringType(), True)])
-@ df rdd=
-+---+-----+---------+--------+--------+----+------+------+-----------------+---+--------------------+-------------------
--+------+--------------------+------------+--------------------+---------------------+----------------------+-----------
----------+-----------+-----------------+
-|uid|chrom|      pos|ref_base|alt_base|note|coding|  hugo|       transcript| so|             cchange|             achang
-e|exonno|        all_mappings|clinvar__uid|        clinvar__sig|clinvar__disease_refs|clinvar__disease_names|   clinvar_
-_rev_stat|clinvar__id|clinvar__sig_conf|
-+---+-----+---------+--------+--------+----+------+------+-----------------+---+--------------------+-------------------
--+------+--------------------+------------+--------------------+---------------------+----------------------+-----------
----------+-----------+-----------------+
-|  0| chr7|140734758|       T|       C|NULL|     Y|  BRAF|ENST00000646891.2|MIS|           c.2140A&gt;G|         p.Ile714Va
-l|    18|{&quot;BRAF&quot;: [[&quot;A0A2U...|        NULL|Uncertain signifi...| MONDO:MONDO:00055...|  Colorectal cancer...|criteria pr
-ovided...|    1410272|             NULL|
+<pre><code class="language-bash">+---+-----+---------+--------+--------+----+------+------+-----------------+---+--------------------+--------------------+------+--------------------+------------+--------------------+---------------------+----------------------+--------------------+-----------+-----------------+
+|uid|chrom|      pos|ref_base|alt_base|note|coding|  hugo|       transcript| so|             cchange|             achange|exonno|        all_mappings|clinvar__uid|        clinvar__sig|clinvar__disease_refs|clinvar__disease_names|   clinvar__rev_stat|clinvar__id|clinvar__sig_conf|
++---+-----+---------+--------+--------+----+------+------+-----------------+---+--------------------+--------------------+------+--------------------+------------+--------------------+---------------------+----------------------+--------------------+-----------+-----------------+
+|  0| chr7|140734758|       T|       C|NULL|     Y|  BRAF|ENST00000646891.2|MIS|           c.2140A&gt;G|         p.Ile714Val|    18|{&quot;BRAF&quot;: [[&quot;A0A2U...|        NULL|Uncertain signifi...| MONDO:MONDO:00055...|  Colorectal cancer...|criteria provided...|    1410272|             NULL|
 |  1| chr7|140734780|       -|       G|NULL|      |  BRAF|ENST00000646891.2|INT|c.2128-10_2128-9insC|
 |  2| chr7|140736487|  GTGCGA|       -|NULL|      |  BRAF|ENST00000646891.2|INT|c.2128-1722_2128-...|
 |  3| chr7|140736487| GTGCGAT|       -|NULL|      |  BRAF|ENST00000646891.2|INT|c.2128-1723_2128-...|
