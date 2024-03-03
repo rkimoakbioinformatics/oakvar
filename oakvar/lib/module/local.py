@@ -304,7 +304,7 @@ def get_module_dir(module_name: str, module_type: str = "") -> Optional[Path]:
 
 def get_module_conf(
     module_name, module_type: str = "", module_dir: Optional[Path] = None
-) -> Optional[Dict[str, Any]]:
+) -> Dict[str, Any]:
     from pathlib import Path
     from ..util.util import load_yml_conf
 
@@ -316,7 +316,7 @@ def get_module_conf(
     if conf_path:
         return load_yml_conf(conf_path)
     else:
-        return None
+        return {}
 
 
 def get_module_conf_path(module_name: str, module_type: str = ""):

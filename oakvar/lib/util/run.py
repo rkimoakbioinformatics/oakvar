@@ -260,3 +260,49 @@ def get_standardized_module_option(v: Any):
         v = False
     return v
 
+def get_spark_schema(module_names):
+    from pyspark.sql.types import StructType
+    from ..module.local import get_module_conf
+    from ... import get_mapper
+    from ... import get_annotator
+
+    modules = []
+    for module_name in module_names:
+        conf = get_module_conf(module_name)
+        if conf.get("type") == "mapper":
+            module = get_mapper(module_name)
+        elif conf.get("type") == "annotator":
+            module = get_annotator(module_name)
+        else:
+            raise ValueError(f"Module type {module_name} is not supported.")
+        modules.append(module)
+    schema = StructType()
+    for module in modules:
+        if module.conf.get("type", "annotator") == "mapper":
+            add_spark_schema_field(schema, module, add_module_name=False)
+        else:
+            add_spark_schema_field(schema, module, add_module_name=True)
+    return schema
+
+def add_spark_schema_field(schema, module, add_module_name: bool = False):
+    from pyspark.sql.types import StructField
+    from pyspark.sql.types import StringType
+    from pyspark.sql.types import IntegerType
+    from pyspark.sql.types import FloatType
+
+    module_name = module.module_name
+    for v in module.conf.get("output_columns", []):
+        ty = v["type"]
+        if ty == "string":
+            sty = StringType()
+        elif ty == "int":
+            sty = IntegerType()
+        elif ty == "float":
+            sty = FloatType()
+        else:
+            raise ValueError(f"Unknown type: {ty}")
+        if not add_module_name:
+            schema.add(StructField(v["name"], sty, True))
+        else:
+            schema.add(StructField(f"{module_name}__{v['name']}", sty, True))
+

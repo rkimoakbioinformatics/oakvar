@@ -117,7 +117,6 @@ class BaseAnnotator(object):
         from ..module.local import get_module_conf
         from ..module.data_cache import ModuleDataCache
         from ..exceptions import ModuleLoadingError
-        from ..exceptions import LoggerError
 
         self.module_options = module_options
         if input_file:
@@ -229,7 +228,8 @@ class BaseAnnotator(object):
         self.set_ref_colname()
         self._verify_conf()
         if self.logger is None:
-            raise LoggerError(module_name=self.module_name)
+            from logging import getLogger
+            self.logger = getLogger(self.module_name)
         if "logging_level" in self.conf:
             self.logger.setLevel(self.conf["logging_level"].upper())
         if "title" in self.conf:
@@ -885,6 +885,21 @@ class BaseAnnotator(object):
                     lnum, line, reader_data, e, fn=self.primary_input_reader.path
                 )
                 continue
+
+    def append_annotation(self, input_data, secondary_data=None) -> Dict[str, Any]:
+        """annotate_full_name.
+
+        Args:
+            input_data:
+            secondary_data:
+        """
+        _ = secondary_data
+        ret = self.annotate(input_data)
+        if ret is None:
+            ret = input_data
+        else:
+            ret = {**input_data, **{f"{self.module_name}__{k}": v for k, v in ret.items()}}
+        return ret
 
     def annotate(self, input_data, secondary_data=None):
         """annotate.

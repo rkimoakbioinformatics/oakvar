@@ -113,15 +113,19 @@ def raise_break(__signal_number__, __stack_frame__):
         os.kill(pid, signal.SIGTERM)
 
 
-def get_annotator(module_name, input_file=None):
+def get_annotator(module_name, input_file=None) -> BaseAnnotator:
+    from .lib.exceptions import ModuleLoadingError
 
     module = None
     input_file = input_file or "__dummy__"
     ModuleClass = get_module(module_name)
-    if ModuleClass:
-        module = ModuleClass(input_file=input_file)
-        module.connect_db()
-        module.setup()
+    if ModuleClass is None:
+        raise ModuleLoadingError(module_name)
+    module = ModuleClass(input_file=input_file)
+    if module is None:
+        raise ModuleLoadingError(module_name)
+    module.connect_db()
+    module.setup()
     return module
 
 

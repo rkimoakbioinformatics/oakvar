@@ -39,6 +39,7 @@
 # SOFTWARE.
 
 from typing import Optional
+from typing import Any
 from typing import List
 from typing import Dict
 
@@ -188,8 +189,8 @@ class BaseMapper(object):
         self.make_crx_writer()
         self.make_crg_writer()
 
-    def map(self, crv_data: dict):
-        _ = crv_data
+    def map(self, crv_data: dict) -> Dict[str, Any]:
+        return crv_data
 
     def process_file(self):
         from time import time
