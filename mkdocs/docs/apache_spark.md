@@ -117,7 +117,70 @@ Let's create a new RDD with annotated variants. We'll use GENCODE mapper (`genco
 
 ```python
 schema = ov.lib.util.run.get_spark_schema(["gencode", "clinvar"])
-df = spark.createDataFrame(ret, schema)
+rdd = spark.createDataFrame(ret, schema)
+rdd.show()
+```
+Output:
+```bash
+|       -| chr7|140800417|     CTG|  7|
+|       -| chr7|140807936|       A|  8|
+|       T| chr7|140924703|       A|  9|
+|       T| chr7|148847298|       A| 10|
+|       G| chr7| 27199497|       C| 11|
+|       T| chr7|  2958506|       A| 12|
+|       T| chr7| 50319062|       A| 13|
+|       T| chr7| 55019278|       A| 14|
+|       A| chr7| 55019338|       G| 15|
+|  GGGTTG| chr7| 55181319|       -| 16|
+|       T| chr8|127738263|       A| 17|
+|       G| chr8| 43018497|       A| 18|
+|       T| chr9|107489172|       A| 19|
++--------+-----+---------+--------+---+
+only showing top 20 rows
+
+@ schema=StructType([StructField('uid', IntegerType(), True), StructField('chrom', StringType(), True), StructField('pos
+', IntegerType(), True), StructField('ref_base', StringType(), True), StructField('alt_base', StringType(), True), Struc
+tField('note', StringType(), True), StructField('coding', StringType(), True), StructField('hugo', StringType(), True),
+StructField('transcript', StringType(), True), StructField('so', StringType(), True), StructField('cchange', StringType(
+), True), StructField('achange', StringType(), True), StructField('exonno', StringType(), True), StructField('all_mappin
+gs', StringType(), True), StructField('clinvar__uid', IntegerType(), True), StructField('clinvar__sig', StringType(), Tr
+ue), StructField('clinvar__disease_refs', StringType(), True), StructField('clinvar__disease_names', StringType(), True)
+, StructField('clinvar__rev_stat', StringType(), True), StructField('clinvar__id', IntegerType(), True), StructField('cl
+invar__sig_conf', StringType(), True)])
+@ df rdd=
++---+-----+---------+--------+--------+----+------+------+-----------------+---+--------------------+-------------------
+-+------+--------------------+------------+--------------------+---------------------+----------------------+-----------
+---------+-----------+-----------------+
+|uid|chrom|      pos|ref_base|alt_base|note|coding|  hugo|       transcript| so|             cchange|             achang
+e|exonno|        all_mappings|clinvar__uid|        clinvar__sig|clinvar__disease_refs|clinvar__disease_names|   clinvar_
+_rev_stat|clinvar__id|clinvar__sig_conf|
++---+-----+---------+--------+--------+----+------+------+-----------------+---+--------------------+-------------------
+-+------+--------------------+------------+--------------------+---------------------+----------------------+-----------
+---------+-----------+-----------------+
+|  0| chr7|140734758|       T|       C|NULL|     Y|  BRAF|ENST00000646891.2|MIS|           c.2140A>G|         p.Ile714Va
+l|    18|{"BRAF": [["A0A2U...|        NULL|Uncertain signifi...| MONDO:MONDO:00055...|  Colorectal cancer...|criteria pr
+ovided...|    1410272|             NULL|
+|  1| chr7|140734780|       -|       G|NULL|      |  BRAF|ENST00000646891.2|INT|c.2128-10_2128-9insC|
+|  2| chr7|140736487|  GTGCGA|       -|NULL|      |  BRAF|ENST00000646891.2|INT|c.2128-1722_2128-...|
+|  3| chr7|140736487| GTGCGAT|       -|NULL|      |  BRAF|ENST00000646891.2|INT|c.2128-1723_2128-...|
+|  4| chr7|140742186|       -|       T|NULL|      |  BRAF|ENST00000646891.2|INT|      c.1993-2240dup|
+|  5| chr7|140753351|       A|       G|NULL|     Y|  BRAF|ENST00000646891.2|MIS|           c.1784T>C|         p.Phe595Se
+|  6| chr7|140800417|      CT|       -|NULL|     Y|  BRAF|ENST00000646891.2|FSD|        c.927_928del|  p.Glu309AspfsTer4
+|  7| chr7|140800417|     CTG|       -|NULL|     Y|  BRAF|ENST00000646891.2|IND|        c.923_925del|         p.Ala308de
+|  8| chr7|140807936|       A|       -|NULL|      |  BRAF|ENST00000646891.2|INT|         c.711+24del|
+|  9| chr7|140924703|       A|       T|NULL|     Y|  BRAF|ENST00000646891.2|SYN|              c.1T>A|             p.Met1
+| 10| chr7|148847298|       A|       T|NULL|     Y|  EZH2|ENST00000320356.7|SYN|              c.1T>A|             p.Met1
+| 11| chr7| 27199497|       C|       G|NULL|     Y|HOXA13|ENST00000649031.1|MIS|            c.581G>C|         p.Cys194Se
+| 12| chr7|  2958506|       A|       T|NULL|     Y|CARD11|ENST00000396946.9|SYN|              c.1T>A|             p.Met1
+| 13| chr7| 50319062|       A|       T|NULL|     Y| IKZF1|ENST00000331340.8|MLO|              c.1A>T|             p.Met1
+| 14| chr7| 55019278|       A|       T|NULL|     Y|  EGFR|ENST00000275493.7|MLO|              c.1A>T|             p.Met1?|     1|{"EGFR": [["P0053...|        NULL|                NULL|                 NULL|                  NULL|                NULL|       NULL|             NULL|
+| 15| chr7| 55019338|       G|       A|NULL|     Y|  EGFR|ENST00000275493.7|MIS|             c.61G>A|          p.Ala21Thr|     1|{"EGFR": [["P0053...|        NULL|Uncertain signifi...|      MedGen:CN130014|  EGFR-related lung...|criteria provided...|     848579|             NULL|
+| 16| chr7| 55181319|       -|  GGGTTG|NULL|     Y|  EGFR|ENST00000275493.7|INI|c.2309_2310insGGGTTG|p.Asp770delinsGlu...|    20|{"EGFR": [["P0053...|        NULL|                NULL|                 NULL|                  NULL|                NULL|       NULL|             NULL|
+| 17| chr8|127738263|       A|       T|NULL|     Y|   MYC|ENST00000377970.6|MLO|              c.1A>T|             p.Met1?|     2|{"CASC11": [["", ...|        NULL|                NULL|                 NULL|                  NULL|                NULL|       NULL|             NULL|
+| 18| chr8| 43018497|       A|       G|NULL|     Y| HOOK3|ENST00000307602.9|STL|           c.2156A>G| p.Ter719TrpextTer84|    22|{"HOOK3": [["Q86V...|        NULL|                NULL|                 NULL|                  NULL|                NULL|       NULL|             NULL|
+| 19| chr9|107489172|       A|       T|NULL|     Y|  KLF4|ENST00000374672.5|SYN|              c.1T>A|             p.Met1=|     1|{"ENSG00000289987...|        NULL|                NULL|                 NULL|                  NULL|                NULL|       NULL|             NULL|
++---+-----+---------+--------+--------+----+------+------+-----------------+---+--------------------+--------------------+------+--------------------+------------+--------------------+---------------------+----------------------+--------------------+-----------+-----------------+
+only showing top 20 rows
 ```
 
 The annotated variants can be saved as Parquet files.
@@ -126,44 +189,4 @@ The annotated variants can be saved as Parquet files.
 df.write.parquet("annotated_variants.parquet")
 ```
 
-Or, quick inspection:
-```python
-df = df.toPandas()
-print(df)
-```
-Output:
-```
-Annotated DataFrame
-    uid chrom        pos  ...                                  clinvar__rev_stat clinvar__id clinvar__sig_conf
-0     0  chr7  140734758  ...  criteria provided, multiple submitters, no con...   1410272.0              None
-1     1  chr7  140734780  ...  criteria provided, multiple submitters, no con...   1334201.0              None
-2     2  chr7  140736487  ...                                               None         NaN              None
-3     3  chr7  140736487  ...                                               None         NaN              None
-4     4  chr7  140742186  ...                                               None         NaN              None
-5     5  chr7  140753351  ...                     no assertion criteria provided    376290.0              None
-6     6  chr7  140800417  ...                                               None         NaN              None
-7     7  chr7  140800417  ...                                               None         NaN              None
-8     8  chr7  140807936  ...                                               None         NaN              None
-9     9  chr7  140924703  ...                                               None         NaN              None
-10   10  chr7  148847298  ...                                               None         NaN              None
-11   11  chr7   27199497  ...                                               None         NaN              None
-12   12  chr7    2958506  ...                                               None         NaN              None
-13   13  chr7   50319062  ...                                               None         NaN              None
-14   14  chr7   55019278  ...                                               None         NaN              None
-15   15  chr7   55019338  ...                criteria provided, single submitter    848579.0              None
-16   16  chr7   55181319  ...                                               None         NaN              None
-17   17  chr8  127738263  ...                                               None         NaN              None
-18   18  chr8   43018497  ...                                               None         NaN              None
-19   19  chr9  107489172  ...                                               None         NaN              None
-20   20  chr9  130714320  ...                                               None         NaN              None
-21   21  chr9  132928872  ...                                               None         NaN              None
-22   22  chr9  136545786  ...                                               None         NaN              None
-23   23  chr9   21968622  ...                                               None         NaN              None
-24   24  chr9   21974827  ...                                               None         NaN              None
-25   25  chr9   37034031  ...                                               None         NaN              None
-26   26  chr9    5021988  ...                                               None         NaN              None
-
-[27 rows x 21 columns]
-```
-
-We are considering adding more helper methods to OakVar to make this process more ergonomic. Please let us know what you think at our Discord server at [https://discord.gg/wZfkTMKTjG](https://discord.gg/wZfkTMKTjG)
+We are considering adding more helper methods to OakVar to make this process more ergonomic. Please let us know what you think at our Discord server at [https://discord.gg/wZfkTMKTjG](https://discord.gg/wZfkTMKTjG).
