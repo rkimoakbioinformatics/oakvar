@@ -1,5 +1,7 @@
 OakVar is natively integrated with Apache Spark, allowing annotation on the big genome project scale.
 
+Since OakVar's annotation capability is unlimited through Python, including AI/ML-based annotation, this means that your Apache Spark pipeline can annotate variants in unlimited ways.
+
 Let's see how it is done.
 
 First, create a Spark session.
