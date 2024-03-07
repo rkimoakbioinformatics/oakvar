@@ -400,6 +400,7 @@ class Runner(object):
         self.add_required_modules_for_postaggregators()
         self.sort_annotators()
         self.sort_postaggregators()
+        self.process_module_options()
         self.set_start_end_levels()
         self.set_self_inputs()  # self.inputs is list.
         self.set_and_create_output_dir()  # self.output_dir is list.
@@ -407,6 +408,33 @@ class Runner(object):
         self.set_job_name()  # self.job_name is list.
         self.set_append_mode()  # self.append_mode is list.
         self.set_genome_assemblies()  # self.genome_assemblies is list.
+
+    def process_module_options(self):
+        from ..exceptions import SetupError
+        from ..util.run import get_module_options
+
+        if self.args is None or self.conf is None:
+            raise SetupError()
+        module_options: Dict[str, Dict[str, Any]] = {}
+        if self.mapper is not None:
+            if "module_options" in self.mapper.conf:
+                for module_name, options in self.mapper.conf["module_options"].items():
+                    if module_name not in module_options:
+                        module_options[module_name] = options
+                    else:
+                        module_options[module_name].update(options)
+        for annotator in self.annotators.values():
+            if "module_options" in annotator.conf:
+                for module_name, options in annotator.conf["module_options"].items():
+                    if module_name not in module_options:
+                        module_options[module_name] = options
+                    else:
+                        module_options[module_name].update(options)
+            module_options.get(annotator.name, {}).update(annotator.conf.get("module_options", {}))
+        module_options.update(get_module_options(self.args.module_options, outer=self.outer))
+        if isinstance(self.args.module_options, dict):
+            module_options.update(**self.args.module_options)
+        self.run_conf.update(module_options)
 
     def make_self_args_considering_package_conf(self, args):
         from types import SimpleNamespace
@@ -439,7 +467,6 @@ class Runner(object):
             if self.outer:
                 self.outer.write("--vcf2vcf is used. --combine-input is disabled.")
             self.args.combine_input = False
-        self.process_module_options()
 
     def connect_admindb_if_needed(self, run_no: int):
         from ...gui.serveradmindb import ServerAdminDb
@@ -483,18 +510,6 @@ class Runner(object):
                     if annot_name not in annot_names:
                         annot_names.append(annot_name)
         annot_names.sort()
-
-    def process_module_options(self):
-        from ..exceptions import SetupError
-        from ..util.run import get_module_options
-
-        if self.args is None or self.conf is None:
-            raise SetupError()
-        if isinstance(self.args.module_options, dict):
-            module_options = self.args.module_options
-        else:
-            module_options = get_module_options(self.args.module_options, outer=self.outer)
-        self.run_conf.update(module_options)
 
     def remove_absent_inputs(self):
         if not self.inputs:
