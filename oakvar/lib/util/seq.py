@@ -374,7 +374,7 @@ def get_lifter(source_assembly: str, to_assembly: str="") -> Optional[ChainFile]
     if not chain_file_path.exists():
         url = f"https://hgdownload.cse.ucsc.edu/goldenPath/{source_assembly.lower()}/liftOver/{chain_file_basename}"
         download_file(url, chain_file_path)
-    lifter = ChainFile(str(chain_file_path), SYSTEM_GENOME_ASSEMBLY, source_assembly)
+    lifter = ChainFile(str(chain_file_path), source_assembly, to_assembly)
     return lifter
 
 
