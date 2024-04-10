@@ -109,7 +109,7 @@ def fn_new_exampleinput(d: str) -> Path:
     from pathlib import Path
     import shutil
 
-    fn = "exampleinput"
+    fn = "oakvar_example.vcf"
     ifn = Path(get_packagedir()) / "lib" / "assets" / fn
     ofn = Path(d) / fn
     shutil.copyfile(ifn, ofn)
