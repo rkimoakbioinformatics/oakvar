@@ -67,7 +67,7 @@ Individual Sponsors
 OakVar is in CodeX
 ******************
 
-.. image:: https://confluence.hl7.org/download/attachments/58657090/CodeX-logo-simple.png?version=1&modificationDate=1635792171094&api=v2
+.. image:: https://storage.oakvar.com/oakvar-public/codex.png
   :width: 400
   :alt: CodeX logo
 
