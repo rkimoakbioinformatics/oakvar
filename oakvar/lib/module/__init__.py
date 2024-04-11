@@ -186,7 +186,7 @@ def install_pypi_dependency(pypi_dependency: Optional[List[str]] = None, outer=N
     idx = 0
     while idx < len(pypi_dependency):
         dep = pypi_dependency[idx]
-        r = run(["pip", "install", dep])
+        r = run(["pip", "install", "-U", "-v", dep])
         if r.returncode == 0:
             pypi_dependency.remove(dep)
         else:
