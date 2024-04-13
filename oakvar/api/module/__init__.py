@@ -403,6 +403,7 @@ def update(
     from ...lib.module.local import search_local
     from ...lib.module import get_updatable
     from ...lib.store.db import try_fetch_ov_store_cache
+    from ...lib.util.util import is_in_jupyter_notebook
 
     if not no_fetch:
         try_fetch_ov_store_cache(
@@ -421,7 +422,11 @@ def update(
                 local_version = to_update[mn][0]
                 remote_version = to_update[mn][1]
                 outer.write(f"- {mn}: {local_version} => {remote_version}")
-            yn = input("Proceed? (y/N) > ")
+            if is_in_jupyter_notebook():
+                print("Interactive mode not supported in Jupyter notebook. Please provide -y as arguments.")
+                return False
+            else:
+                yn = input("Proceed? (y/N) > ")
             if not yn or yn.lower() not in ["y", "yes"]:
                 return True
     ret = install(
@@ -457,6 +462,7 @@ def uninstall(
     from ...lib.module.local import search_local
     from ...lib.module import uninstall_module
     from ...lib.exceptions import ArgumentError
+    from ...lib.util.util import is_in_jupyter_notebook
 
     if not module_names:
         e = ArgumentError("No modules to uninstall.")
@@ -472,7 +478,11 @@ def uninstall(
         for mn in module_names:
             outer.write(f"- {mn}")
     if not yes:
-        yn = input("Proceed? (y/N) > ")
+        if is_in_jupyter_notebook():
+            print("Interactive mode not supported in Jupyter notebook. Please provide -y as arguments.")
+            return False
+        else:
+            yn = input("Proceed? (y/N) > ")
         if not yn or yn.lower() != "y":
             return True
     for module_name in module_names:

@@ -63,11 +63,16 @@ def get_email_pw_interactively(
 ) -> Tuple:
     from ....util.util import email_is_valid
     from ....util.util import pw_is_valid
+    from ....util.util import is_in_jupyter_notebook
     from getpass import getpass
 
     if not email:
         while True:
-            email = input("Email: ")
+            if is_in_jupyter_notebook():
+                print("Interactive mode not supported in Jupyter notebook. Please provide email and password as arguments.")
+                return email, pw
+            else:
+                email = input("Email: ")
             if email_is_valid(email):
                 break
             if outer:
@@ -98,10 +103,18 @@ def create(
     from requests import post
     from ....system import get_system_conf
     from ....store.consts import store_url_key
-    from ....store.ov.account import get_email_pw_interactively
+    from ....util.util import is_in_jupyter_notebook
 
     if (not email or not pw) and interactive:
-        email, pw = get_email_pw_interactively(email=email, pw=pw, pwconfirm=pwconfirm)
+        if is_in_jupyter_notebook():
+            return {
+                "status_code": 403,
+                "msg": "Interactive mode not supported in Jupyter notebook. Please provide email and password as arguments.",
+                "success": False,
+                "email": email,
+            }
+        else:
+            email, pw = get_email_pw_interactively(email=email, pw=pw, pwconfirm=pwconfirm)
     if not email:
         return {"msg": "no email", "success": False, "email": email}
     sys_conf = get_system_conf()
@@ -254,6 +267,7 @@ def login(
 ) -> Dict[str, Any]:
     from requests import post
     from ...ov import get_store_url
+    from ....util.util import is_in_jupyter_notebook
 
     if not relogin and not email:
         ret, token_set_email = try_login_with_token(email=email)
@@ -266,7 +280,15 @@ def login(
     if not email or not pw:
         email, pw = get_email_pw_from_user_conf(email=email, pw=pw)
     if (not email or not pw) and interactive:
-        email, pw = get_email_pw_interactively(email=email, pw=pw)
+        if is_in_jupyter_notebook():
+            return {
+                "status_code": 403,
+                "msg": "Interactive mode not supported in Jupyter notebook. Please provide email and password as arguments.",
+                "success": False,
+                "email": email,
+            }
+        else:
+            email, pw = get_email_pw_interactively(email=email, pw=pw)
     if not email:
         return {"success": False, "msg": "No email", "email": email}
     if not pw:
@@ -653,6 +675,7 @@ def total_login(
         email=None, pw=None, create_account: bool=False, install_mode: str = "", conf: Optional[Dict] = None, outer=None
 ) -> dict:
     from ....system import show_no_user_account_prelude
+    from ....util.util import is_in_jupyter_notebook
 
     if email is None or pw is None:
         ret, logged_email = login_with_token_set(email=email, outer=outer)
@@ -674,17 +697,38 @@ def total_login(
                 outer.write(ret)
         return ret
     yn = None
+    import sys; print("ipkernel" in sys.modules)
     while True:
-        yn = input("Do you already have an OakVar store account? (y/N): ")
+        if is_in_jupyter_notebook():
+            print("Interactive mode is not available in Jupyter notebook. Assuming that you have an OakVar account...")
+            break
+        else:
+            yn = input("Do you already have an OakVar store account? (y/N): ")
         if yn.lower() in ["y", "n", ""]:
             break
     if yn == "y":
-        email, pw = get_email_pw_interactively(email=email, pw=pw, pwconfirm=False, outer=outer)
+        if is_in_jupyter_notebook():
+            return {
+                "status_code": 403,
+                "msg": "Interactive mode not supported in Jupyter notebook. Please provide email and password as arguments.",
+                "success": False,
+                "email": email,
+            }
+        else:
+            email, pw = get_email_pw_interactively(email=email, pw=pw, pwconfirm=False, outer=outer)
         ret = login_with_email_pw(email=email, pw=pw, conf=conf)
         return ret
     else:
         show_no_user_account_prelude()
-        email, pw = get_email_pw_interactively(email=email, pw=pw, pwconfirm=True)
+        if is_in_jupyter_notebook():
+            return {
+                "status_code": 403,
+                "msg": "Interactive mode not supported in Jupyter notebook. Please provide email and password as arguments.",
+                "success": False,
+                "email": email,
+            }
+        else:
+            email, pw = get_email_pw_interactively(email=email, pw=pw, pwconfirm=True)
         ret = create(email=email, pw=pw, outer=outer)
         if not ret.get("success"):
             if outer:

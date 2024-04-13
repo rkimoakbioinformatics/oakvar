@@ -862,3 +862,7 @@ def get_df_from_db(
         df = pl.read_database(sql, conn_url) # type: ignore
     return df
 
+def is_in_jupyter_notebook() -> bool:
+    import os
+
+    return "JPY_SESSION_NAME" in os.environ

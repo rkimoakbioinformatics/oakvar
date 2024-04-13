@@ -797,6 +797,7 @@ def create_module_files(instance, overwrite: bool = False, interactive: bool = F
     from ..exceptions import IncompleteModuleError
     from ..exceptions import SystemMissingException
     from ..system import get_modules_dir
+    from ..util.util import is_in_jupyter_notebook
 
     cls = instance.__class__
     if not cls:
@@ -824,7 +825,10 @@ def create_module_files(instance, overwrite: bool = False, interactive: bool = F
     )
     if not module_name:
         if interactive:
-            module_name = input("Module name:")
+            if is_in_jupyter_notebook():
+                print("Interactive mode is not available in Jupyter notebook. Please provide module name in the instance argument.")
+            else:
+                module_name = input("Module name:")
     if not module_name:
         raise IncompleteModuleError(
             msg="name property does not exist in the module. Consider "
@@ -832,7 +836,10 @@ def create_module_files(instance, overwrite: bool = False, interactive: bool = F
         )
     if not module_version:
         if interactive:
-            module_version = input("Module version:")
+            if is_in_jupyter_notebook():
+                print("Interactive mode is not available in Jupyter notebook. Please provide module version in the instance argument.")
+            else:
+                module_version = input("Module version:")
     if not module_version:
         raise IncompleteModuleError(
             msg="code_version property does not exist in the module. Consider "
@@ -840,14 +847,20 @@ def create_module_files(instance, overwrite: bool = False, interactive: bool = F
         )
     if not module_title:
         if interactive:
-            module_title = input("Module title:")
+            if is_in_jupyter_notebook():
+                print("Interactive mode is not available in Jupyter notebook. Please provide module title in the instance argument.")
+            else:
+                module_title = input("Module title:")
     if not module_title:
         raise IncompleteModuleError(
             msg="title property does not exist in the module. Consider giving "
             + "'title' argument at initializing the module."
         )
     if not module_type:
-        module_type = input("Module type:")
+        if is_in_jupyter_notebook():
+            print("Interactive mode is not available in Jupyter notebook. Please provide module type in the instance argument.")
+        else:
+            module_type = input("Module type:")
     if not module_type:
         raise IncompleteModuleError(
             msg="module_type property does not exist in the module."
@@ -855,7 +868,10 @@ def create_module_files(instance, overwrite: bool = False, interactive: bool = F
     module_dir = modules_dir / (module_type + "s") / module_name
     if module_type in ["annotator", "postaggregator"]:
         if not module_level:
-            module_level = input("Module level:")
+            if is_in_jupyter_notebook():
+                print("Interactive mode is not available in Jupyter notebook. Please provide module level in the instance argument.")
+            else:
+                module_level = input("Module level:")
         if not module_level:
             raise IncompleteModuleError(
                 msg="title property does not exist in the module. Consider giving "

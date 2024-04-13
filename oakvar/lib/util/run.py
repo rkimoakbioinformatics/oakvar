@@ -99,8 +99,14 @@ def log_variant_exception(
 
 
 def get_y_or_n():
+    from .util import is_in_jupyter_notebook
+
     while True:
-        resp = input("Proceed? ([y]/n) > ")
+        if is_in_jupyter_notebook():
+            print("Interactive mode is not available in Jupyter notebook. Proceeding...")
+            return True
+        else:
+            resp = input("Proceed? ([y]/n) > ")
         if resp == "y" or resp == "":
             return True
         if resp == "n":
