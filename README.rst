@@ -25,7 +25,7 @@ What it does
 
 Internship
 ===========================
-The main project will be OakVar. Full remote work. Unpaid position (no funding yet). Please send your application to rkim@oakbioinformatics.com.
+The main project will be OakVar. Full remote work. Unpaid position (no funding yet). Please send your application to info@oakbioinformatics.com.
 
 Resources
 =========
@@ -43,7 +43,7 @@ Discord: https://discord.gg/wZfkTMKTjG
 
 Reddit: https://www.reddit.com/r/oakvar
 
-Email: rkim@oakbioinformatics.com
+Email: info@oakbioinformatics.com
 
 Many Thanks to Our Sponsors
 =================================
