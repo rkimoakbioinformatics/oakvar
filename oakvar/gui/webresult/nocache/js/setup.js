@@ -2763,9 +2763,6 @@ function loadGridObject(_, data, tabName, tableTitle, _) {
   gridObject.hoverMode = "cell";
   gridObject.colModel = infomgr.getColModel(tabName);
   gridObject.dataModel = { data: Array.from(data) };
-  if (tabName == "variant") {
-    gridObject.freezeCols = 5;
-  }
   var sortColumnToUse = "input_line_number";
   gridObject.sortModel = {
     cancel: true,

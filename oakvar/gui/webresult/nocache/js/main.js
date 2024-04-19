@@ -275,9 +275,6 @@ function copyColModel(colModelGroup) {
 }
 
 function addGeneLevelToVariantLevel() {
-  if (currentTab != "variant") {
-    return
-  }
   var oriNoColVar = infomgr.columnss.variant.length;
   var geneColModels = infomgr.colModels["gene"];
   var colNo = oriNoColVar;
@@ -358,6 +355,7 @@ function addGeneLevelToVariantLevel() {
     var hugo = row[0];
     geneRows[hugo] = row;
   }
+  infomgr.geneRows = geneRows;
   var hugoColNo = infomgr.getColumnNo("variant", "base__hugo");
   function convertToInt(v) {
     return parseInt(v);

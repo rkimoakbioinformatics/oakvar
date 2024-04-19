@@ -446,3 +446,15 @@ InfoMgr.prototype.getVariantColumnGroupByName = function (groupName) {
   }
   return null;
 };
+
+InfoMgr.prototype.updateVariantCell = function(tabName, row, colName, value) {
+  var rowKey = row[0];
+  for (var i = 0; i < this.datas[tabName].length; i++) {
+    var row = this.datas[tabName][i];
+    if (row[0] == rowKey) {
+      row[this.columnnoss[tabName][colName]] = value;
+      break;
+    }
+  }
+}
+

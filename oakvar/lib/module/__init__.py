@@ -488,7 +488,7 @@ def cleanup_install(
         return
     # Update
     if data_installed:
-        rmtree(module_dir)
+        rmtree(module_dir, ignore_errors=True)
         move(str(temp_dir), module_dir)
     elif code_installed:
         remove_code_part_of_module(module_name)

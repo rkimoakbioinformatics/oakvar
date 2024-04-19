@@ -141,7 +141,11 @@ class StoreHandlers:
     async def get_local_manifest(self, request):
         from aiohttp.web import json_response
 
-        refresh = request.rel_url.query["refresh"] or "false"
+        query = request.rel_url.query
+        if "refresh" in query:
+            refresh = query["refresh"]
+        else:
+            refresh = "false"
         if refresh == "true":
             refresh = True
         else:

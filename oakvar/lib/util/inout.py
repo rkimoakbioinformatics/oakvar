@@ -586,7 +586,15 @@ class ColumnDefinition(object):
         self.d["filterable"] = bool(d.get("filterable", "True"))
         self.d["hide_from_gui_filter"] = d.get("hide_from_gui_filter", False)
         self.d["link_format"] = d.get("link_format")
-        self.d["genesummary"] = bool(d.get("genesummary", "False"))
+        if "genesummary" in d:
+            genesummary = d.get("genesummary")
+            if genesummary is None:
+                genesummary = False
+            elif isinstance(genesummary, str):
+                genesummary = bool(genesummary)
+        else:
+            genesummary = False
+        self.d["genesummary"] = genesummary
         self.d["table"] = bool(d.get("table", "False"))
         self.d["level"] = d.get("level")
         self.index = d.get("index")
@@ -601,7 +609,7 @@ class ColumnDefinition(object):
         self.filterable = bool(d.get("filterable", True))
         self.hide_from_gui_filter = d.get("hide_from_gui_filter")
         self.link_format = d.get("link_format")
-        self.genesummary = d.get("genesummary", False)
+        self.genesummary = self.d["genesummary"]
         self.table = d.get("table", False)
         self.level = d.get("level")
         self.fhir = d.get("fhir")

@@ -313,7 +313,9 @@ def get_module_conf(
         conf_path = p / (p.stem + ".yml")
     else:
         conf_path = get_module_conf_path(module_name, module_type=module_type)
-    if conf_path:
+    if conf_path is None:
+        return {}
+    if conf_path.exists():
         return load_yml_conf(conf_path)
     else:
         return {}

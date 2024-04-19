@@ -314,6 +314,8 @@ def get_widgetlist(_):
     content = []
     modules = get_local_module_infos_of_type("webviewerwidget")
     for module_name in modules:
+        if module_name in ["wgcasecontrols"]:
+            continue
         module = modules[module_name]
         conf = module.conf
         if "required_annotator" in conf:
