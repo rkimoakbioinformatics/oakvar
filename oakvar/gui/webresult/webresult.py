@@ -527,9 +527,34 @@ async def get_result_levels(request):
     return web.json_response(content)
 
 
+async def get_request_json_from_post(request) -> dict:
+    try:
+        queries = await request.json()
+    except Exception:
+        t = await request.text()
+        rep_d = {"%2F":"/", "%40":"@", "%7B":"{", "%22":"\"", "%3A":":", "%5B":"[", "%2C":",", "%5D":"]", "%7D":"}"}
+        for k, v in rep_d.items():
+            t = t.replace(k, v)
+        parts = t.split("&")
+        d = {}
+        for part in parts:
+            kv = part.split("=")
+            k = kv[0]
+            v = kv[1]
+            if v == "":
+                d[k] = None
+            else:
+                v0 = v[0]
+                if v0 not in ["{", "["] and not (v0 >= "0" and v0 <= "9"):
+                    v = f"\"{v}\""
+                d[k] = json.loads(v)
+        queries = d
+    return queries
+
 async def get_dbpath(request) -> Optional[str]:
     from ..util import get_email_from_request
     from ..serveradmindb import get_serveradmindb
+    import json
 
     global servermode
     global wu
@@ -538,7 +563,7 @@ async def get_dbpath(request) -> Optional[str]:
     if method == "GET":
         queries = request.rel_url.query
     elif method == "POST":
-        queries = await request.json()
+        queries = await get_request_json_from_post(request)
     if not queries:
         return None
     dbpath = queries.get("dbpath")
@@ -811,21 +836,26 @@ async def serve_runwidget_post(request):
         return Response(status=404)
     path = "wg" + request.match_info["module"]
     dbpath = await get_dbpath(request)
-    queries = await request.json()
+    queries = await get_request_json_from_post(request)
     new_queries = {}
     for k in queries:
         val = queries[k]
-        if val == "":
-            val = '""'
-        elif val.startswith("{") and val.endswith("}"):
-            pass
-        elif val.startswith("[") and val.endswith("]"):
+        if type(val) is not str:
             pass
         else:
-            val = '"' + val + '"'
-        if sys.platform == "win32":
-            val = val.replace("\\", "\\\\")
-        val = json.loads(val)
+            if val is None:
+                val = '""'
+            elif val == "":
+                val = '""'
+            elif val.startswith("{") and val.endswith("}"):
+                pass
+            elif val.startswith("[") and val.endswith("]"):
+                pass
+            else:
+                val = '"' + val + '"'
+            if sys.platform == "win32":
+                val = val.replace("\\", "\\\\")
+            val = json.loads(val)
         new_queries[k] = val
     queries = new_queries
     if ("dbpath" not in queries or queries["dbpath"] == "") and dbpath is not None:
