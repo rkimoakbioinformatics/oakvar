@@ -405,6 +405,8 @@ def id_token_is_valid() -> Tuple[bool, bool]:  # valid, expired
     elif st == 200:
         return True, False
     else:
+        msg = res.text
+        print(f"Unknown idToken error: {msg}")
         return False, True
 
 
