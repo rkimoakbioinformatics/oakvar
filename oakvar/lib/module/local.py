@@ -662,13 +662,11 @@ def pack_module_zip(
             sfw.close()
             if outer:
                 outer.write(f"{pack_path}* files written")
-            else:
-                return pack_path
+            return pack_path
         else:
             if outer:
                 outer.write(f"{pack_path} written")
-            else:
-                return pack_path
+            return pack_path
 
 
 def pack_module(
