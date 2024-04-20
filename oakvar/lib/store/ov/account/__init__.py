@@ -679,7 +679,7 @@ def total_login(
     from ....system import show_no_user_account_prelude
     from ....util.util import is_in_jupyter_notebook
 
-    if email is None or pw is None:
+    if not email or not pw :
         ret, logged_email = login_with_token_set(email=email, outer=outer)
         if ret is True:
             return {"success": True, "email": logged_email}
