@@ -495,9 +495,9 @@ def cleanup_install(
         for item in listdir(temp_dir):
             old_path = Path(temp_dir) / item
             new_path = Path(module_dir) / item
-            if item != "data":
+            if item != "data" and old_path.exists():
                 move(str(old_path), new_path)
-        rmtree(temp_dir)
+        rmtree(temp_dir, ignore_errors=True)
 
 
 def write_install_marks(module_dir: str):

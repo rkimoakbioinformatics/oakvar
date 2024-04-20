@@ -1572,6 +1572,7 @@ class Runner(object):
         self.info_json["report_types"] = (
             self.args.report_types if self.args.report_types is not None else []
         )
+        self.info_json["reports"] = self.info_json["report_types"]
         self.pkg_ver = oakvar_version()
         self.info_json["package_version"] = self.pkg_ver
         annot_names = [

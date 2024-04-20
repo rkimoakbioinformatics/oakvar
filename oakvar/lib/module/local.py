@@ -713,9 +713,9 @@ def remove_code_part_of_module(module_name: str, module_dir=None):
         return
     for item in listdir(module_dir):
         item_path = Path(module_dir) / item
-        if item != "data":
+        if item != "data" and item_path.exists():
             if item_path.is_dir():
-                rmtree(item_path)
+                rmtree(item_path, ignore_errors=True)
             else:
                 remove(item_path)
 

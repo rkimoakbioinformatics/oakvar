@@ -735,6 +735,18 @@ class ServerAdminDb:
         cursor.close()
         conn.close()
 
+    def get_job_info_by_username_uid(self, username: str, uid: int):
+        conn = self.get_sync_db_conn()
+        cursor = conn.cursor()
+        q = "select info_json from jobs where username=? and uid=?"
+        cursor.execute(q, (username, uid))
+        ret = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if ret:
+            return ret[0]
+        return ret
+
 def setup_serveradmindb(clean: bool = False) -> ServerAdminDb:
     from os import remove
     from pathlib import Path

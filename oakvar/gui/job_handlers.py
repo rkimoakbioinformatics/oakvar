@@ -100,6 +100,7 @@ class JobHandlers:
         )
         self.routes.append(["GET", "/submit/jobdb", self.download_db])
         self.routes.append(["GET", "/submit/reporttypes", self.get_report_types])
+        self.routes.append(["POST", "/submit/jobinfo", self.get_job_info_by_username_uid])
 
     async def get_tags_of_annotators_and_postaggregators(self, _):
         from aiohttp.web import json_response
@@ -382,6 +383,27 @@ class JobHandlers:
             else:
                 await sleep(1)
         return Response()
+
+    async def get_job_info_by_username_uid(self, request):
+        from aiohttp.web import json_response
+        from .serveradmindb import get_serveradmindb
+        import json
+
+        eud = await self.get_eud_from_request(request)
+        username = eud.get("username")
+        uid = eud.get("uid")
+        if not username or not uid:
+            return json_response({})
+        serveradmindb = await get_serveradmindb()
+        job_info = serveradmindb.get_job_info_by_username_uid(username, uid)
+        if not job_info:
+            return json_response({})
+        try:
+            job_info = json.loads(job_info)
+        except Exception as e:
+            print(f"Error loading job info: {e}")
+            return json_response({})
+        return json_response(job_info)
 
     async def get_job_status(self, request):
         from aiohttp.web import Response

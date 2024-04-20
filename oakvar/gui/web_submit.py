@@ -337,7 +337,8 @@ class SubmitProcessor:
         info_json["package_version"] = pkg_ver
         info_json["annotators"] = job_options.get("annotators", [])
         info_json["postaggregators"] = job_options.get("postaggregators", [])
-        info_json["report_types"] = job_options.get("reporters", [])
+        info_json["report_types"] = job_options.get("report_types", [])
+        info_json["reports"] = info_json["report_types"]
         with open(Path(job_dir) / (run_name + ".info.json"), "w") as wf:
             dump(info_json, wf, indent=2, sort_keys=True)
         return info_json
