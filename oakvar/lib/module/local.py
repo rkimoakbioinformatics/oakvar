@@ -599,8 +599,14 @@ def pack_module_zip(
     from ..module.local import get_module_code_version
     from ..store.consts import MODULE_PACK_SPLIT_FILE_SIZE
     from ..exceptions import ArgumentError
+    from ..exceptions import ModuleLoadingError
 
-    module_name, module_dir = get_module_name_and_module_dir(module_name)
+    try:
+        module_name, module_dir = get_module_name_and_module_dir(module_name)
+    except ModuleLoadingError:
+        if outer:
+            outer.error(f"Module {module_name} not found.")
+        return None
     if kind == "code":
         version = get_module_code_version(module_name, module_dir=module_dir)
     elif kind == "data":
@@ -667,15 +673,19 @@ def pack_module_zip(
 
 def pack_module(
     module_name: str, outdir: Path, code_only: bool, split: bool, outer=None
-) -> Dict[str, Optional[Path]]:
+) -> Optional[Dict[str, Optional[Path]]]:
     conf = get_module_conf(module_name)
     code_zip_path = pack_module_zip(
         module_name, "code", outdir=outdir, split=split, outer=outer
     )
+    if code_zip_path is None:
+        return None
     if not code_only and not (conf and conf.get("no_data")):
         data_zip_path = pack_module_zip(
             module_name, "data", outdir=outdir, split=split, outer=outer
         )
+        if data_zip_path is None:
+            return None
     else:
         data_zip_path = None
     return {"code": code_zip_path, "data": data_zip_path}

@@ -454,7 +454,7 @@ def license(outer=None):
     show_license(outer=outer)
 
 
-def update(outer=None) -> bool:
+def update(yes: bool=False, outer=None) -> bool:
     """Updates OakVar to the latest version and sets up OakVar again.
 
     Args:
@@ -465,7 +465,7 @@ def update(outer=None) -> bool:
     """
     from ..lib.system import update
 
-    return update(outer=outer)
+    return update(yes=yes, outer=outer)
 
 
 def handle_exception(e: Exception):

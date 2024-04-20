@@ -55,8 +55,9 @@ def pack(args: dict, __name__="module pack"):
     module_name = args.get("module_name", "")
     if "module_name" in args:
         del args["module_name"]
-    pack(module_name, **args)
-    print("To register the packed module, use `ov store register`.")
+    ret = pack(module_name, **args)
+    if ret:
+        print("To register the packed module, use `ov store register`.")
 
 
 @cli_entry

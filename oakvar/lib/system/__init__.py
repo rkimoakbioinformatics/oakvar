@@ -1118,7 +1118,7 @@ def show_liftover_license(outer=None):
     get_file_content_as_table(fpath, "LiftOver License", outer=outer)
 
 
-def update(outer=None) -> bool:
+def update(yes: bool=False, outer=None) -> bool:
     from subprocess import run
     from packaging.version import Version
     from ..util.admin_util import get_current_package_version
@@ -1146,14 +1146,28 @@ def update(outer=None) -> bool:
     if outer:
         outer.write("Package updated successfully.")
         outer.write("Setting up system...")
-    ret = setup_system(outer=outer)
-    if ret is True:
+    cmd = ["ov", "system", "setup"]
+    cp = run(cmd)
+    if cp.returncode != 0:
         if outer:
-            outer.write("System setup successful.")
-    else:
-        if outer:
+            outer.error(str(cp.stderr))
             outer.error("System setup failed.")
-    return ret
+        return False
+    if outer:
+        outer.write("System setup successful.")
+        outer.write("Updating installed modules...")
+    cmd = ["ov", "module", "update"]
+    if yes:
+        cmd.append("--yes")
+    cp = run(cmd)
+    if cp.returncode != 0:
+        if outer:
+            outer.error(str(cp.stderr))
+            outer.error("Module update failed.")
+        return False
+    if outer:
+        outer.write("Modules updated successfully.")
+    return True
 
 def get_ov_logo_path():
     from ..util.admin_util import get_packagedir

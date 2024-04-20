@@ -60,5 +60,12 @@ def get_parser_ov_update():
     parser_ov_update = ArgumentParser(
         description="Updates OakVar to the latest version.",
     )
+    parser_ov_update.add_argument(
+        "-y",
+        "--yes",
+        dest="yes",
+        action="store_true",
+        help="Automatically answer 'yes' to all prompts.",
+    )
     parser_ov_update.set_defaults(func=cli_update)
     return parser_ov_update
