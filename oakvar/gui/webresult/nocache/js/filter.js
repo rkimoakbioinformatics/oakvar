@@ -362,6 +362,14 @@ const populateFilterValues = (valsContainer, testName, value) => {
       });
     }
     select.nextSibling.classList.add("ui-state-hover");
+  } else if (testName == "inList") {
+    var valueInput = $(getEl("input")).addClass("filter-value-input");
+    valueInput.attr("type", "file");
+    valueInput[0].classList.add("ml-2");
+    valsContainer.append(valueInput);
+    if (value !== undefined) {
+      valueInput.val(value);
+    }
   } else {
     for (let i = 0; i < testDesc.inputs; i++) {
       const valueInput = $(getEl("input")).addClass("filter-value-input");
@@ -414,7 +422,7 @@ const populateFilterColumnSelector = (colSel, groupTitle) => {
   colSel[0].dispatchEvent(event);
 };
 
-function makeFilterRootGroupDiv(filter, name, filterLevel) {
+function makeFilterRootGroupDiv(filter, name, _) {
   var filterToShow = filter;
   if (filter != undefined && filter.variant != undefined) {
     filterToShow = filter.variant;
@@ -423,9 +431,6 @@ function makeFilterRootGroupDiv(filter, name, filterLevel) {
   filterRootGroupDiv[0].id = name;
   filterRootGroupDiv.css("margin-left", "0px");
   filterRootGroupDiv.children(".filter-element-remove").attr("hidden", "true");
-  const rootElemsDiv = filterRootGroupDiv
-    .children(".filter-group-div")
-    .children(".filter-group-elements-div");
   return filterRootGroupDiv;
 }
 
@@ -555,7 +560,7 @@ const addFilterGroupHandler = (event) => {
   addFilterElement(elemsDiv, "group", undefined);
 };
 
-const makeJoinOperatorDiv = function (operator) {
+const makeJoinOperatorDiv = function (_) {
   const joinOpDiv = $(getEl("div"))
     .addClass("filter-join-operator-div")
     .addClass("filter-drop-target");
@@ -636,11 +641,9 @@ const addFilterElement = (allElemsDiv, elementType, filter) => {
     evt.target.closest(".filter-element-div").classList.remove("dragclicked");
   });
   allElemsDiv.append(elemDiv);
-  //if (allElemsDiv.children().length > 0) {
   const operator = allElemsDiv.attr("join-operator");
   const joinOpDiv = makeJoinOperatorDiv(operator);
   allElemsDiv.append(joinOpDiv);
-  //}
 };
 
 const groupOperatorClickHandler = (event) => {
@@ -665,7 +668,7 @@ function doReportSub(reportsub, reportsubKeys, origVal) {
   return origVal;
 }
 
-const makeGroupFilter = (groupDiv) => {
+async function makeGroupFilter(groupDiv) {
   const filter = {};
   const elemsDiv = groupDiv.children(".filter-group-elements-div");
   // Operator
@@ -698,6 +701,24 @@ const makeGroupFilter = (groupDiv) => {
       if (colFilter.value.length == 0) {
         continue;
       }
+    } else if (colFilter.test == "inList") {
+      var fileInput = valInputs[0];
+      if (fileInput.files.length == 0) {
+        continue;
+      }
+      var file = fileInput.files[0];
+      var reader = new FileReader();
+      function loadFile(file) {
+        return new Promise((resolve, reject) => {
+          reader.onload = function () {
+            resolve(reader.result);
+          };
+          reader.onerror = reject;
+          reader.readAsText(file);
+        });
+      }
+      var content = await loadFile(file);
+      colFilter.value = content;
     } else {
       if (valInputs.length === 0) {
         colFilter.value = null;
@@ -757,7 +778,7 @@ const makeGroupFilter = (groupDiv) => {
   // Negate
   filter.negate = groupDiv.children(".filter-not-toggle").attr("active") === "true"
   return filter;
-};
+}
 
 const filterTests = {
   equals: {
@@ -782,6 +803,7 @@ const filterTests = {
   stringContains: { title: "contains", inputs: 1, colTypes: ["string"] },
   between: { title: "in range", inputs: 2, colTypes: ["float", "int"] },
   select: { title: "one of", inputs: 1, colTypes: ["select"] },
+  inList: { title: "in file", inputs: 1, colTypes: ["string"] },
 };
 
 const filterTestNames = [
@@ -795,4 +817,5 @@ const filterTestNames = [
   "greaterThan",
   "stringContains",
   "select",
+  "inList",
 ];

@@ -76,6 +76,7 @@ class FilterColumn(object):
         "between": "between",
         "in": "in",
         "select": "in",
+        "inList": "in",
     }
 
     def __init__(self, d, parent_operator):
@@ -99,6 +100,21 @@ class FilterColumn(object):
             for v in self.value[1:]:
                 s += ' or {} like "%{}%"'.format(col_name, v)
         elif self.test in ("select", "in"):
+            ss = []
+            for val in self.value:
+                if type(val) == str:
+                    val = '"{}"'.format(val)
+                else:
+                    val = str(val)
+                ss.append(f"({col_name} = {val})")
+            if ss:
+                s = "(" + " or ".join(ss) + ")"
+            else:
+                s = ""
+        elif self.test == "inList":
+            if isinstance(self.value, str):
+                lines = self.value.split("\n")
+                self.value = [x.strip() for x in lines if x.strip() != ""]
             ss = []
             for val in self.value:
                 if type(val) == str:

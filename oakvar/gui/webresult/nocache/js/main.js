@@ -493,7 +493,7 @@ async function loadData() {
       await removeSpinner();
     }
   };
-  var loadVariantResult = async function () {
+  async function loadVariantResult() {
     async function callLoadVariant() {
       var callback = null;
       if (usedAnnotators["gene"]) {
@@ -525,7 +525,11 @@ async function loadData() {
       await callLoadVariant();
     }
   };
-  await loadVariantResult();
+  try {
+    await loadVariantResult();
+  } catch (error) {
+    console.error(error);
+  }
   filterArmed = filterJson;
 }
 

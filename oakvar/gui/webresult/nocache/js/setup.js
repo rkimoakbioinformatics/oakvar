@@ -130,10 +130,7 @@ class FilterManager {
     filterApply.style.marginLeft = "0.25rem";
     addEl(filterApply, getTn("Apply"));
     filterApply.addEventListener("click", function (_) {
-      makeFilterJson();
-      drawingRetrievingDataDiv("filter");
-      loadData()
-      loadLayoutSetting(quickSaveName, null);
+      applyFilterVariants();
     });
     filterControls.append(filterApply);
 
@@ -969,21 +966,10 @@ function makeFilterTab(rightDiv) {
   btn.classList.add(...stringToArray("ml-2 butn"))
   btn.title = "Count the result of filter"
   btn.textContent = "Preview"
-  btn.addEventListener("click", function(_) {
+  btn.addEventListener("click", async function(_) {
     countFilterVariants();
   })
   loadControls[0].appendChild(btn)
-  //var filterApply = getEl("button");
-  //filterApply.id = "load_button";
-  //filterApply.classList.add("butn");
-  //addEl(filterApply, getTn("Apply"));
-  //filterApply.addEventListener("click", function (_) {
-  //  makeFilterJson();
-  //  drawingRetrievingDataDiv("filter");
-  //  loadData()
-  //  loadLayoutSetting(quickSaveName, null);
-  //});
-  //loadControls.append(filterApply);
   var saveIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   saveIcon.style.marginLeft = "auto";
   saveIcon.setAttribute("id", "filter-save");
@@ -1051,16 +1037,20 @@ function importFilter(file) {
   });
 }
 
-function countFilterVariants() {
+async function applyFilterVariants() {
+  await makeFilterJson();
+  drawingRetrievingDataDiv("filter");
+  await loadData()
+  loadLayoutSetting(quickSaveName, null);
+}
+
+async function countFilterVariants() {
   enableLoadingDiv()
-  return new Promise((resolve, _) => {
-    makeFilterJson();
-    infomgr.count(dbPath, "variant", (_, data) => {
-      let count = data.n;
-      displayFilterCount(count);
-      removeLoadingDiv()
-      resolve(count);
-    });
+  await makeFilterJson();
+  infomgr.count(dbPath, "variant", (_, data) => {
+    let count = data.n;
+    displayFilterCount(count);
+    removeLoadingDiv()
   });
 }
 
@@ -1090,7 +1080,7 @@ function getFilterFile() {
   a.click();
 }
 
-function makeFilterJson() {
+async function makeFilterJson() {
   let fjs = {};
   // Samples
   if (filterMgr.requireSamples.size > 0 || filterMgr.requireSamples.size > 0) {
@@ -1109,41 +1099,8 @@ function makeFilterJson() {
     fjs.genes = geneList;
   }
   // Variant Properties
-  let activeVprop = document.querySelector("#" + filterMgr.vpropSelectId).value
-  if (activeVprop === "sf") {
-    let sfWrapDiv = $("#" + filterMgr.vpropSfId);
-    let sfDivs = sfWrapDiv.children("div");
-    let fullSf = { operator: "and", rules: [] };
-    let sfState = {};
-    var sfUsed = false
-    for (let i = 0; i < sfDivs.length; i++) {
-      sfDiv = $(sfDivs[i]);
-      if (!sfDiv.hasClass("smartfilter-active")) {
-        continue;
-      }
-      let fullName = sfDiv.attr("full-name");
-      let sfSource = fullName.split(".")[0];
-      let sfName = fullName.split(".")[1];
-      let sfDef = smartFilters[sfSource].definitions[sfName];
-      sfDef.filter.level = sfDef.level
-      let val = pullSfValue(sfDiv);
-      let sfResult = addSfValue(sfDef.filter, val);
-      fullSf.rules.push(sfResult);
-      if (!sfState.hasOwnProperty(sfSource)) {
-        sfState[sfSource] = {};
-      }
-      sfState[sfSource][sfName] = val;
-      sfUsed = true
-    }
-    if (sfUsed) {
-      fjs.variant = fullSf;
-      fjs.smartfilter = sfState;
-    }
-  } else if (activeVprop === "qb") {
-    let qbRoot = $("#" + filterMgr.qbRootId);
-    fjs.variant = makeGroupFilter(qbRoot);
-    //fjs.smartfilter = {};
-  }
+  let qbRoot = $("#" + filterMgr.qbRootId);
+  fjs.variant = await makeGroupFilter(qbRoot);
   if (Object.keys(fjs).length == 0) {
     filterJson = null
   } else {

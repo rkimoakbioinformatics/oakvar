@@ -556,7 +556,6 @@ async def get_request_json_from_post(request) -> dict:
 async def get_dbpath(request) -> Optional[str]:
     from ..util import get_email_from_request
     from ..serveradmindb import get_serveradmindb
-    import json
 
     global servermode
     global wu
@@ -855,7 +854,7 @@ async def serve_runwidget_post(request):
                 pass
             else:
                 val = '"' + val + '"'
-            if sys.platform == "win32":
+            if sys.platform in ["win32"]:
                 val = val.replace("\\", "\\\\")
             val = json.loads(val)
         new_queries[k] = val
