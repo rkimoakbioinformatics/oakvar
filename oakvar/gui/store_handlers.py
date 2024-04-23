@@ -87,6 +87,13 @@ class StoreHandlers:
             ]
         )
         self.routes.append(["GET", "/store/requiredmodules", self.get_required_modules])
+        self.routes.append(["GET", "/store/storeurl", self.get_store_url])
+
+    async def get_store_url(self, _):
+        from aiohttp.web import json_response
+        from ..lib.store.ov import get_store_url
+
+        return json_response({"store_url": get_store_url()})
 
     async def get_required_modules(self, request):
         from aiohttp.web import json_response
@@ -151,7 +158,7 @@ class StoreHandlers:
         else:
             refresh = False
         self.handle_modules_changed(refresh)
-        for mn in ["tagsampler", "casecontrol", "hg38", "cravat-converter", "oldcravat-converter", "tagsampler", "jsonreporter", "varmeta", "vcfinfo"]:
+        for mn in ["tagsampler", "casecontrol", "hg38", "cravat-converter", "oldcravat-converter", "tagsampler", "jsonreporter"]:
             if mn in self.local_manifest:
                 del self.local_manifest[mn]
         return json_response(self.local_manifest)
@@ -185,7 +192,7 @@ class StoreHandlers:
             with open(cache_path, "rb") as f:
                 content = pickle.load(f)
                 data = content.get("data", {})
-                for mn in ["tagsampler", "casecontrol", "hg38", "cravat-converter", "oldcravat-converter", "tagsampler", "jsonreporter", "varmeta", "vcfinfo"]:
+                for mn in ["tagsampler", "casecontrol", "hg38", "cravat-converter", "oldcravat-converter", "tagsampler", "jsonreporter"]:
                     if mn in data:
                         del data[mn]
                 keys = list(data.keys())

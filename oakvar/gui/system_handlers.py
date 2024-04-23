@@ -73,6 +73,27 @@ class SystemHandlers:
         self.routes.append(
             ["GET", "/submit/localmodules/{module}", self.get_local_module_info_web]
         )
+        self.routes.append(["GET", "/system/ez", self.get_ez])
+
+    async def get_ez(self, _):
+        from aiohttp.web import json_response
+        from ..lib.system import get_conf_dir
+        from ..lib.store.ov.account import get_token_set
+
+        conf_dir = get_conf_dir()
+        token_set = get_token_set()
+        if token_set is None:
+            return json_response({"ez": "", "email": ""})
+        email = token_set.get("email", "")
+        id_token = token_set.get("idToken", "")
+        if conf_dir is None:
+            return json_response({"ez": "", "email": ""})
+        ez_path = conf_dir / "ez"
+        if not ez_path.exists():
+            return json_response({"ez": "", "email": ""})
+        with open(ez_path) as f:
+            ez = f.read().strip()
+            return json_response({"ez": ez, "email": email, "idToken": id_token})
 
     async def get_base_modules(self, request):
         from aiohttp.web import json_response
