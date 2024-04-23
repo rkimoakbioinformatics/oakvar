@@ -700,22 +700,25 @@ class BaseReporter:
             await self.close_db()
             return None
 
-    def setup(self):
+    def setup(self) -> Optional[bool]:
         pass
 
-    def end(self):
+    def end(self) -> Optional[Any]:
         self.flush()
 
     def flush(self):
         pass
 
-    def write_preface(self, __level__: str):
+    def write_preface(self, level: str):
+        _ = level
         pass
 
-    def write_header(self, __level__: str):
+    def write_header(self, level: str):
+        _ = level
         pass
 
-    def write_table_row(self, __row__: Union[Dict[str, Any], List[Any]]):
+    def write_table_row(self, row: Union[Dict[str, Any], List[Any]]):
+        _ = row
         pass
 
     def get_extracted_row(self, row) -> Union[Dict[str, Any], List[Any]]:
