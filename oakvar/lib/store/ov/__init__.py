@@ -232,6 +232,11 @@ def register(
             overwrite=overwrite,
             outer=outer,
         )
+    except Exception as e:
+        if outer:
+            outer.error(e)
+        return False
+    try:
         if not params:
             return False
         params["idToken"] = id_token

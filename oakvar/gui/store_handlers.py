@@ -151,6 +151,9 @@ class StoreHandlers:
         else:
             refresh = False
         self.handle_modules_changed(refresh)
+        for mn in ["tagsampler", "casecontrol", "hg38", "cravat-converter", "oldcravat-converter", "tagsampler", "jsonreporter", "varmeta", "vcfinfo"]:
+            if mn in self.local_manifest:
+                del self.local_manifest[mn]
         return json_response(self.local_manifest)
 
     async def get_local_module_logo(self, request):
@@ -181,6 +184,14 @@ class StoreHandlers:
         if cache_path and exists(cache_path):
             with open(cache_path, "rb") as f:
                 content = pickle.load(f)
+                data = content.get("data", {})
+                for mn in ["tagsampler", "casecontrol", "hg38", "cravat-converter", "oldcravat-converter", "tagsampler", "jsonreporter", "varmeta", "vcfinfo"]:
+                    if mn in data:
+                        del data[mn]
+                keys = list(data.keys())
+                for k in keys:
+                    if k.endswith("package"):
+                        del data[k]
                 return content
         else:
             return None

@@ -928,6 +928,6 @@ def uninstall_module(module_name, outer=None):
         if outer:
             outer.write(f"{module_name} does not exist.")
         return False
-    shutil.rmtree(local_info.directory)
+    shutil.rmtree(local_info.directory, ignore_errors=True)
     mc = get_module_cache()
     mc.remove_local(module_name)

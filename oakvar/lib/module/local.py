@@ -118,6 +118,7 @@ class LocalModule(object):
         self.installed = True
         self.local_code_version = self.code_version
         self.local_data_source = self.data_source
+        self.has_logo = get_logo_path(self.name, self.type, module_dir=self.directory) is not None
 
     def get_size(self):
         """

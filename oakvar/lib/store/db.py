@@ -101,8 +101,8 @@ def latest_module_version_size(
         "select store, code_version, data_version, data_source, "
         + "code_size, data_size from versions where name=?"
     )
-    cursor.execute(q, (module_name,))
-    ret = cursor.fetchall()
+    cursor.execute(q, (module_name,)) # type: ignore
+    ret = cursor.fetchall() # type: ignore
     latest_code_version = ""
     latest_r = None
     for r in ret:
@@ -162,8 +162,8 @@ def module_data_sources(module_name, conn=Any, cursor=Any) -> Optional[List[str]
         return None
     name, store = r
     q = "select data_source from versions where name=? and store=?"
-    cursor.execute(q, (name, store))
-    values = [r[0] for r in cursor.fetchall()]
+    cursor.execute(q, (name, store)) # type: ignore
+    values = [r[0] for r in cursor.fetchall()] # type: ignore
     return values
 
 
@@ -175,8 +175,8 @@ def module_min_pkg_vers(module_name, conn=Any, cursor=Any) -> Optional[List[str]
         return None
     name, store = r
     q = "select min_pkg_ver from versions where name=? and store=?"
-    cursor.execute(q, (name, store))
-    values = [r[0] for r in cursor.fetchall()]
+    cursor.execute(q, (name, store)) # type: ignore
+    values = [r[0] for r in cursor.fetchall()] # type: ignore
     return values
 
 
@@ -257,9 +257,9 @@ def module_code_version_is_not_compatible_with_pkg_version(
     _ = conn
     pkg_ver = Version(oakvar_version())
     q = "select min_pkg_ver from versions where name=? and code_version=?"
-    cursor.execute(q, (module_name, code_version))
+    cursor.execute(q, (module_name, code_version)) # type: ignore
     min_pkg_ver = None
-    for row in cursor.fetchall():
+    for row in cursor.fetchall(): # type: ignore
         version = row[0]
         if Version(version) <= pkg_ver:
             return None
@@ -378,13 +378,13 @@ def is_store_db_schema_changed(conn=Any, cursor=Any) -> bool:
 
     _ = conn
     q = 'pragma table_info("summary")'
-    cursor.execute(q)
-    cols = [row[1] for row in cursor.fetchall()]
+    cursor.execute(q) # type: ignore
+    cols = [row[1] for row in cursor.fetchall()] # type: ignore
     if len(cols) > 0 and cols != summary_table_cols:
         return True
     q = 'pragma table_info("versions")'
-    cursor.execute(q)
-    cols = [row[1] for row in cursor.fetchall()]
+    cursor.execute(q) # type: ignore
+    cols = [row[1] for row in cursor.fetchall()] # type: ignore
     if len(cols) > 0 and cols != versions_table_cols:
         return True
     return False
@@ -568,8 +568,8 @@ def fetch_ov_store_cache(
 def is_new_store_db_setup(conn=Any, cursor=Any):
     _ = conn
     q = "pragma table_info('info')"
-    cursor.execute(q)
-    ret = cursor.fetchall()
+    cursor.execute(q) # type: ignore
+    ret = cursor.fetchall() # type: ignore
     if len(ret) > 0:
         return False
     else:
@@ -742,8 +742,8 @@ def fetch_summary_cache(publish_time: str = "", outer=None, conn=Any, cursor=Any
             raise StoreServerError()
         return False
     q = "delete from summary"
-    cursor.execute(q)
-    conn.commit()
+    cursor.execute(q) # type: ignore
+    conn.commit() # type: ignore
     res = res.json()
     cols = res["cols"]
     for row in res["data"]:
@@ -751,8 +751,8 @@ def fetch_summary_cache(publish_time: str = "", outer=None, conn=Any, cursor=Any
             f"insert or replace into summary ( {', '.join(cols)} ) "
             + f"values ( {', '.join(['?'] * len(cols))} )"
         )
-        cursor.execute(q, row)
-    conn.commit()
+        cursor.execute(q, row) # type: ignore
+    conn.commit() # type: ignore
 
 
 @db_func
@@ -824,6 +824,8 @@ def get_manifest(conn=None, cursor=None) -> Optional[dict]:
     mi = {}
     for r in res:
         name = r[0]
+        if name in ["cravat-converter", "oldcravat-converter", "hg38", "casecontrol"]:
+            continue
         m = module_info(name)
         if m:
             mi[name] = m.to_dict()
@@ -869,8 +871,8 @@ def get_urls(module_name: str, code_version: str, conn=None, cursor=None):
 def table_has_entry(table: str, conn=Any, cursor=Any) -> bool:
     _ = conn or cursor
     q = f"select count(*) from {table}"
-    cursor.execute(q)
-    v = cursor.fetchone()[0]
+    cursor.execute(q) # type: ignore
+    v = cursor.fetchone()[0] # type: ignore
     return v > 0
 
 
