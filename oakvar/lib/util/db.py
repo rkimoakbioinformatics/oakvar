@@ -194,7 +194,6 @@ def move_job_to_account(job_dir: Union[Path, str], new_username: str):
     from ..system import get_user_jobs_dir
     from ...gui.serveradmindb import get_admindb_path
 
-    import pdb; pdb.set_trace()
     if isinstance(job_dir, str):
         job_dir = Path(job_dir)
     job_dir = job_dir.resolve()
