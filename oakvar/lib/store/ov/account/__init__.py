@@ -699,7 +699,6 @@ def total_login(
                 outer.write(ret)
         return ret
     yn = None
-    import sys; print("ipkernel" in sys.modules)
     while True:
         if is_in_jupyter_notebook():
             print("Interactive mode is not available in Jupyter notebook. Assuming that you have an OakVar account...")
