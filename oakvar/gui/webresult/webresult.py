@@ -42,7 +42,6 @@ import os
 import aiosqlite
 import json
 import sys
-import imp
 from typing import Optional
 from ... import ReportFilter
 from aiohttp import web
@@ -363,6 +362,9 @@ async def get_count(request):
 
 
 async def get_result(request):
+    import importlib
+    import importlib.util
+    from pathlib import Path
     from ...lib.exceptions import DatabaseConnectionError
 
     global logger
@@ -391,15 +393,13 @@ async def get_result(request):
     else:
         confpath = None
     reporter_name = "jsonreporter"
-    f, fn, d = imp.find_module(
-        reporter_name,
-        [
-            os.path.join(
-                os.path.dirname(__file__),
-            )
-        ],
-    )
-    m = imp.load_module(reporter_name, f, fn, d)  # type: ignore
+    this_file_dir = Path(__file__).parent
+    reporter_path = this_file_dir / f"{reporter_name}.py"
+    spec = importlib.util.spec_from_file_location(reporter_name, reporter_path)
+    if spec is None:
+        raise Exception(f"Could not load {reporter_name}.")
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m) # type: ignore
     if "separatesample" in queries:
         separatesample = queries["separatesample"]
         if separatesample == "true":
@@ -703,16 +703,18 @@ def get_colmodel(tab, colinfo):
 
 
 async def get_colinfo(dbpath, confpath=None, filterstring=None, add_summary=True):
+    import importlib
+    import importlib.util
+    from pathlib import Path
+
     reporter_name = "jsonreporter"
-    f, fn, d = imp.find_module(
-        reporter_name,
-        [
-            os.path.join(
-                os.path.dirname(__file__),
-            )
-        ],
-    )
-    m = imp.load_module(reporter_name, f, fn, d)  # type: ignore
+    this_file_dir = Path(__file__).parent
+    reporter_path = this_file_dir / f"{reporter_name}.py"
+    spec = importlib.util.spec_from_file_location(reporter_name, reporter_path)
+    if spec is None:
+        raise Exception(f"Could not load {reporter_name}.")
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m) # type: ignore
     reporter = m.Reporter(
         dbpath,
         module_name=reporter_name,
@@ -772,12 +774,14 @@ def serve_widgetfile(request):
 
 async def serve_runwidget(request):
     from aiohttp.web import Response
+    import importlib
+    import importlib.util
     from ...lib.system import get_modules_dir
 
     modules_dir = get_modules_dir()
     if not modules_dir:
         return Response(status=404)
-    path = "wg" + request.match_info["module"]
+    module_name = "wg" + request.match_info["module"]
     queries = request.rel_url.query
     dbpath = await get_dbpath(request) or ""
     if ("dbpath" not in queries or queries["dbpath"] == "") and dbpath is not None:
@@ -787,10 +791,13 @@ async def serve_runwidget(request):
             if key != "dbpath":
                 new_queries[key] = queries[key]
         queries = new_queries
-    f, fn, d = imp.find_module(
-        path, [os.path.join(modules_dir, "webviewerwidgets", path)]
-    )
-    m = imp.load_module(path, f, fn, d)  # type: ignore
+    module_dir = modules_dir / "webviewerwidgets" / module_name
+    module_path = module_dir / f"{module_name}.py"
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if spec is None:
+        raise Exception(f"Could not load {module_name}.")
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m) # type: ignore
     cf = await ReportFilter.create(dbpath=dbpath, mode="sub")
     filterstring = await cf.exec_db(
         cf.get_report_filter_string, uid=queries.get("ftable_uid")
@@ -803,6 +810,8 @@ async def serve_runwidget(request):
 
 async def serve_webapp_runwidget(request):
     from aiohttp.web import Response
+    import importlib
+    import importlib.util
     from ...lib.system import get_modules_dir
 
     modules_dir = get_modules_dir()
@@ -810,32 +819,33 @@ async def serve_webapp_runwidget(request):
         return Response(status=404)
     module_name = request.match_info["module"]
     widget_name = request.match_info["widget"]
+    widget_module_name = "wg" + widget_name
     queries = request.rel_url.query
     tmp_queries = {}
     for key in queries:
         tmp_queries[key] = queries[key]
     queries = tmp_queries
-    f, fn, d = imp.find_module(
-        "wg" + widget_name,
-        [
-            os.path.join(
-                modules_dir, "webapps", module_name, "widgets", "wg" + widget_name
-            )
-        ],
-    )
-    m = imp.load_module(widget_name, f, fn, d)  # type: ignore
+    module_dir = modules_dir / "webapps" / module_name / "widgets" / widget_module_name
+    module_path = module_dir / f"{widget_module_name}.py"
+    spec = importlib.util.spec_from_file_location(widget_module_name, module_path)
+    if spec is None:
+        raise Exception(f"Could not load {module_name}.")
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m) # type: ignore
     content = await m.get_data(queries)
     return web.json_response(content)
 
 
 async def serve_runwidget_post(request):
     from aiohttp.web import Response
+    import importlib
+    import importlib.util
     from ...lib.system import get_modules_dir
 
     modules_dir = get_modules_dir()
     if not modules_dir:
         return Response(status=404)
-    path = "wg" + request.match_info["module"]
+    module_name = "wg" + request.match_info["module"]
     dbpath = await get_dbpath(request)
     queries = await get_request_json_from_post(request)
     new_queries = {}
@@ -866,10 +876,13 @@ async def serve_runwidget_post(request):
             if key != "dbpath":
                 new_queries[key] = queries[key]
         queries = new_queries
-    f, fn, d = imp.find_module(
-        path, [os.path.join(modules_dir, "webviewerwidgets", path)]
-    )
-    m = imp.load_module(path, f, fn, d)  # type: ignore
+    module_dir = modules_dir / "webviewerwidgets" / module_name
+    module_path = module_dir / f"{module_name}.py"
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if spec is None:
+        raise Exception(f"Could not load {module_name}.")
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m) # type: ignore
     content = await m.get_data(queries)
     return web.json_response(content)
 

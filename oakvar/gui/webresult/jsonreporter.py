@@ -56,6 +56,8 @@ class Reporter(BaseReporter):
         self.level = level
 
     def write_table_row(self, row):
+        if isinstance(row, list):
+            return
         self.data[self.level].append(
             [row[col] for col in self.colnames_to_display[self.level]]
         )
