@@ -208,7 +208,6 @@ class SubmitProcessor:
         submit_options = {}
         job_options = {}
         input_files = []
-        job_options = {}
         chunk_size = 131072
         reader = await request.multipart()
         while True:

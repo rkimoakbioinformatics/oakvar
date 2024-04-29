@@ -206,6 +206,7 @@ def move_job_to_account(job_dir: Union[Path, str], new_username: str):
     cursor.execute(q, (str(job_dir),))
     ret = cursor.fetchone()
     if not ret:
+        print(f"Job dir {job_dir} not found in the jobs table. Exiting.")
         cursor.close()
         conn.close()
         return
@@ -214,8 +215,8 @@ def move_job_to_account(job_dir: Union[Path, str], new_username: str):
     info_json = ret[2]
     info_json = json.loads(info_json)
     new_user_jobs_dir = get_user_jobs_dir(new_username)
-    if new_user_jobs_dir is None:
-        print(f"User jobs dir for {new_username} does not exist. Exiting.")
+    if new_user_jobs_dir is None or not new_user_jobs_dir.exists():
+        print(f"Job directory for user {new_username} does not exist. Exiting.")
         cursor.close()
         conn.close()
         return
