@@ -87,7 +87,7 @@ def add_parser_ov_run(subparsers):
         nargs="+",
         dest="annotators",
         default=[],
-        help="Annotator module names or directories. If --package is used also, annotator modules defined with -a will be added.",
+        help="Annotator module names or directories. If --package is used also, annotator modules defined with -a will be added. Use '-a all' to run all installed annotators.",
     )
     parser_ov_run.add_argument(
         "-A",

@@ -412,6 +412,7 @@ class Runner(object):
     def process_module_options(self):
         from ..exceptions import SetupError
         from ..util.run import get_module_options
+        from ..exceptions import ModuleLoadingError
 
         if self.args is None or self.conf is None:
             raise SetupError()
@@ -425,6 +426,10 @@ class Runner(object):
                         module_options[module_name].update(options)
         for annotator in self.annotators.values():
             if "module_options" in annotator.conf:
+                if not isinstance(annotator.conf["module_options"], dict):
+                    e = ModuleLoadingError(msg=f"Module loading error: {annotator.name}: \"module_options\" in {annotator.name}.yml should be a dict. Consider contacting the module developers or correct the module yml file. Running `ov module info {annotator.name}` will show the module developer contact information as well as the location of the module files.")
+                    e.traceback = False
+                    raise e
                 for module_name, options in annotator.conf["module_options"].items():
                     if module_name not in module_options:
                         module_options[module_name] = options
