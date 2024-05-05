@@ -788,8 +788,12 @@ class MasterConverter(object):
 
         if not variant.get("chrom"):
             raise IgnoredVariant("No chromosome")
-        if not variant.get("chrom").startswith("chr"):
-            variant["chrom"] = "chr" + variant.get("chrom")
+        chrom = variant.get("chrom")
+        if isinstance(chrom, int):
+            chrom = f"chr{chrom}"
+        elif not chrom.startswith("chr"):
+            chrom = f"chr{chrom}"
+        variant["chrom"] = chrom
         variant["chrom"] = self.chromdict.get(
             variant.get("chrom"), variant.get("chrom")
         )

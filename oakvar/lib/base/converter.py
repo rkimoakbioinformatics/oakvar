@@ -87,8 +87,11 @@ class BaseConverter(object):
             else:
                 self.code_version: str = ""
 
-    def check_format(self, *__args__, **__kwargs__):
-        pass
+    def check_format(self, f, *args, **kwargs) -> bool:
+        _ = f
+        _ = args
+        _ = kwargs
+        return False
 
     def setup(self, *__args__, **__kwargs__):
         pass
@@ -97,14 +100,14 @@ class BaseConverter(object):
         return []
 
     def get_variant_lines(
-        self, input_path: str, mp: int, start_line_no: int, batch_size: int
+        self, input_path: str, num_pool: int, start_line_no: int, batch_size: int
     ) -> Tuple[Dict[int, List[Tuple[int, Any]]], bool]:
         import linecache
 
         immature_exit: bool = False
         line_no: int = start_line_no
-        end_line_no = line_no + mp * batch_size - 1
-        lines: Dict[int, List[Tuple[int, Any]]] = {i: [] for i in range(mp)}
+        end_line_no = line_no + num_pool * batch_size - 1
+        lines: Dict[int, List[Tuple[int, Any]]] = {i: [] for i in range(num_pool)}
         chunk_no: int = 0
         chunk_size: int = 0
         while True:
