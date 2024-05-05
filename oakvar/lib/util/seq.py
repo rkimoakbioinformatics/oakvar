@@ -455,7 +455,7 @@ def liftover(
     from oakvar.lib.util.seq import reverse_complement
     from oakvar.lib.consts import SYSTEM_GENOME_ASSEMBLY
 
-    liftover_failure_msg: str = f"No positional mapping was found in {SYSTEM_GENOME_ASSEMBLY}."
+    liftover_failure_msg: str = f"There is no conversion to {SYSTEM_GENOME_ASSEMBLY}."
     if not lifter:
         if not source_assembly:
             raise ValueError("Either lifter or source_assembly should be given")
