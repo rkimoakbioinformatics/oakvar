@@ -907,7 +907,7 @@ def get_module_data_version_size_from_store(
     for store in ["ov", "oc"]:
         cursor.execute(q, (name, store, data_version))
         for r in cursor.fetchall():
-            if r and r is not None:
+            if r and r[0] is not None:
                 data_size = int(r[0])
         if data_size:
             return data_size
