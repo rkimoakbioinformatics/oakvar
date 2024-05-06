@@ -240,7 +240,8 @@ def run(
         run_name = [run_name]
     if not loop:
         loop = get_event_loop()
-    return loop.run_until_complete(module.main())
+    ret = loop.run_until_complete(module.main())
+    return ret
 
 
 def report(

@@ -161,7 +161,7 @@ class NoConverterFound(ExpectedException):
     halt = True
 
     def __init__(self, input_file):
-        super().__init__(f"No converter was found for {input_file}.")
+        super().__init__(msg=f"No converter was found for {input_file}.")
 
 
 class NoVariantError(ExpectedException):
@@ -175,8 +175,11 @@ class NoInput(ExpectedException):
     traceback = False
     halt = True
 
-    def __init__(self):
-        super().__init__("No valid input was given.")
+    def __init__(self, msg=None):
+        if msg:
+            super().__init__(msg)
+        else:
+            super().__init__("No valid input was given.")
 
 
 class InvalidInputFormat(ExpectedException):

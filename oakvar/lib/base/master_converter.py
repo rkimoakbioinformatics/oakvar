@@ -536,7 +536,7 @@ class MasterConverter(object):
             converter.version = module_info.version
             converter.conf = module_info.conf
             # end of backward compatibility
-            if not hasattr(converter, "format_name"):
+            if not hasattr(converter, "format_name") or converter.format_name is None:
                 format_name = module_info.conf.get("format_name")
                 if format_name:
                     converter.format_name = format_name
@@ -544,14 +544,12 @@ class MasterConverter(object):
                     converter.format_name = module_name.split("-")[0]
             if not converter.format_name:
                 if self.logger:
-                    self.logger.error(f"{module_name} does not format_name.")
+                    self.logger.error(f"{module_name} module code does not have 'format_name' variable.")
                 return None
             converter.script_path = script_path
             return converter
-        except Exception:
-            if self.logger:
-                self.logger.exception(f"{module_name} could not be loaded.")
-            return None
+        except Exception as e:
+            raise e
 
     def collect_converter_paths(self):
         from pathlib import Path
@@ -599,6 +597,7 @@ class MasterConverter(object):
 
     def get_converter_name_for_input_file(self, input_path) -> str:
         from pathlib import Path
+        from oakvar.lib.exceptions import NoConverterFound 
 
         converter_name: str = ""
         if self.converter_module:
@@ -627,6 +626,8 @@ class MasterConverter(object):
         if converter_name:
             if self.logger:
                 self.logger.info(f"Using {converter_name} for {input_path}")
+        else:
+            raise NoConverterFound(input_path)
         return converter_name
 
     def set_converter_properties(self, converter):

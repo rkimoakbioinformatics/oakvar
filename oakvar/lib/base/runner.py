@@ -365,7 +365,9 @@ class Runner(object):
                 import traceback
 
                 if self.exception:
-                    traceback.print_exc()
+                    s = traceback.format_exc().strip()
+                    if s != "NoneType: None":
+                        print(s)
                 if not self.exception:
                     update_status(JOB_STATUS_FINISHED, serveradmindb=self.serveradmindb)
                 else:
@@ -374,13 +376,12 @@ class Runner(object):
                         serveradmindb=self.serveradmindb,
                     )
                     if self.logger:
-                        self.logger.exception(self.exception)
+                        self.logger.error(self.exception)
                 self.close_error_logger()
                 self.clean_up_at_end(run_no)
                 self.close_logger()
                 self.shutdown_logging()
-                if self.exception:
-                    raise self.exception
+                break
         return self.report_response
 
     async def process_arguments(self, args):

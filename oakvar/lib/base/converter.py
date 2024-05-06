@@ -93,8 +93,9 @@ class BaseConverter(object):
         _ = kwargs
         return False
 
-    def setup(self, *__args__, **__kwargs__):
-        pass
+    def setup(self, *args, **kwargs):
+        _ = args
+        _ = kwargs
 
     def convert_line(self, *__args__, **__kwargs__) -> List[Dict[str, Any]]:
         return []
@@ -148,5 +149,9 @@ class BaseConverter(object):
         _ = kwargs
 
     def get_extra_output_columns(self) -> List[Dict[str, Any]]:
-        return []
+        from ..module.local import get_module_conf
+
+        conf = get_module_conf(self.module_name, module_type="converter")
+        output_columns: List[Dict[str, Any]] = conf.get("extra_output_columns", [])
+        return output_columns
 

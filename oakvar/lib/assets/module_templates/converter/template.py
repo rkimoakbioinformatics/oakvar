@@ -19,12 +19,12 @@ from oakvar import BaseConverter
 
 
 class Converter(BaseConverter):
-    def check_format(self, f) -> bool:
+    def check_format(self, input_path: str) -> bool:
         """
         Detect the format of an input file.
 
         Arguments:
-            f: a file handle to an input file
+            input_path: a file path str to an input file
         Returns:
             bool: True if the input file is for this converter,
                   False if not.
@@ -32,8 +32,9 @@ class Converter(BaseConverter):
         The example below checks if the input file's first line indicates
         VCF file format.
         """
-        line = f.readline()
-        return line.startswith("##fileformat=VCF")
+        with open(input_path, "r") as f:
+            line = f.readline()
+            return line.startswith("##fileformat=VCF")
 
     # If your converter module needs something else than
     # the standard way of opening a text input file,

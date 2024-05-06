@@ -9,6 +9,9 @@ type: converter
 level: variant
 version: 0.0.1
 
+# TODO: format_name should be specified.
+format_name: MODULE_TITLE
+
 # If your module has its own data under module_dir/data folder,
 # remove no_data field and uncomment data_version field with 
 # a data version number.
