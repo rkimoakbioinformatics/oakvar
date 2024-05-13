@@ -8,7 +8,9 @@ nav:
   - Overview: overview.md
   - Tutorial: tutorial.md
   - VCF2VCF: vcf2vcf.md
-  - Command-line interface: cli.md
+  - Command-line interface:
+    - Overview: cli.md
+    - Package file: package.md
   - Graphical user interface: gui.md
   - Publishing your module: register.md
   - Developer guide: 
