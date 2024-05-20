@@ -880,7 +880,7 @@ def check_account(outer=None) -> bool:
         return False
     if not check_logged_in_with_token(outer=outer):
         if outer:
-            outer.write("Not logged in. Use `ov account login` to log in.")
+            outer.write("Not logged in. Use `ov store login` to log in.")
         return False
     return True
 
