@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://oakvar.com/cli/">
+        <link rel="canonical" href="https://oakvar.com/ai_ml/">
       
       
-        <link rel="prev" href="../vcf2vcf/">
+        <link rel="prev" href="../gui/">
       
       
-        <link rel="next" href="../package/">
+        <link rel="next" href="../devguide_modules/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Overview - OakVar</title>
+        <title>Integration with AI/ML - OakVar</title>
       
     
     
@@ -65,11 +65,6 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
-        
-        <a href="#cli-commands" class="md-skip">
-          Skip to content
-        </a>
-      
     </div>
     <div data-md-component="announce">
       
@@ -101,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Overview
+              Integration with AI/ML
             
           </span>
         </div>
@@ -354,19 +349,17 @@
       
   
   
-    
   
   
-  
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
           <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
@@ -380,7 +373,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             Command-line interface
@@ -391,30 +384,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Overview
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -423,353 +396,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      Setup
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#run-an-analysis-job" class="md-nav__link">
-    <span class="md-ellipsis">
-      Run an analysis job
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#create-annotation-reports" class="md-nav__link">
-    <span class="md-ellipsis">
-      Create annotation reports
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#launch-a-gui-server" class="md-nav__link">
-    <span class="md-ellipsis">
-      Launch a GUI server
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#manage-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      Manage modules
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Manage modules">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#list-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      List modules
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#install-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      Install modules
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#uninstall-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      Uninstall modules
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#install-system-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      Install system modules
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#update-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      Update modules
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#get-information-on-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      Get information on modules
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#manage-store-accounts" class="md-nav__link">
-    <span class="md-ellipsis">
-      Manage store accounts
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Manage store accounts">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#create-a-store-account" class="md-nav__link">
-    <span class="md-ellipsis">
-      Create a store account
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#delete-a-store-account" class="md-nav__link">
-    <span class="md-ellipsis">
-      Delete a store account
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#change-a-store-account-password" class="md-nav__link">
-    <span class="md-ellipsis">
-      Change a store account password
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#check-if-logged-in-on-the-oakvar-store" class="md-nav__link">
-    <span class="md-ellipsis">
-      Check if logged in on the OakVar store
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#log-in-on-the-oakvar-store" class="md-nav__link">
-    <span class="md-ellipsis">
-      Log in on the OakVar store
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#log-out-from-the-oakvar-store" class="md-nav__link">
-    <span class="md-ellipsis">
-      Log out from the OakVar store
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#reset-the-password-of-a-store-account" class="md-nav__link">
-    <span class="md-ellipsis">
-      Reset the password of a store account
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#publish-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      Publish modules
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Publish modules">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#pack-a-module-for-registering-at-the-oakvar-store" class="md-nav__link">
-    <span class="md-ellipsis">
-      Pack a module for registering at the OakVar store
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#register-a-module-at-the-oakvar-store" class="md-nav__link">
-    <span class="md-ellipsis">
-      Register a module at the OakVar store
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#manage-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      Manage configuration
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Manage configuration">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#manage-modules-directory" class="md-nav__link">
-    <span class="md-ellipsis">
-      Manage modules directory
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#show-system-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      Show system configuration
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#show-user-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      Show user configuration
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#test-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      Test modules
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#utilities" class="md-nav__link">
-    <span class="md-ellipsis">
-      Utilities
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Utilities">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#create-an-example-input-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      Create an example input file
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#create-an-annotation-module-template" class="md-nav__link">
-    <span class="md-ellipsis">
-      Create an annotation module template
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#merge-analysis-result-database-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      Merge analysis result database files
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#filter-analysis-result-database-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      Filter analysis result database files
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#show-analysis-result-database-file-information" class="md-nav__link">
-    <span class="md-ellipsis">
-      Show analysis result database file information
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -827,10 +453,17 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../ai_ml/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -839,6 +472,7 @@
   
 
       </a>
+      
     </li>
   
 
@@ -1384,343 +1018,6 @@
   
   
   
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      Setup
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#run-an-analysis-job" class="md-nav__link">
-    <span class="md-ellipsis">
-      Run an analysis job
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#create-annotation-reports" class="md-nav__link">
-    <span class="md-ellipsis">
-      Create annotation reports
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#launch-a-gui-server" class="md-nav__link">
-    <span class="md-ellipsis">
-      Launch a GUI server
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#manage-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      Manage modules
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Manage modules">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#list-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      List modules
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#install-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      Install modules
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#uninstall-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      Uninstall modules
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#install-system-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      Install system modules
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#update-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      Update modules
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#get-information-on-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      Get information on modules
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#manage-store-accounts" class="md-nav__link">
-    <span class="md-ellipsis">
-      Manage store accounts
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Manage store accounts">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#create-a-store-account" class="md-nav__link">
-    <span class="md-ellipsis">
-      Create a store account
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#delete-a-store-account" class="md-nav__link">
-    <span class="md-ellipsis">
-      Delete a store account
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#change-a-store-account-password" class="md-nav__link">
-    <span class="md-ellipsis">
-      Change a store account password
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#check-if-logged-in-on-the-oakvar-store" class="md-nav__link">
-    <span class="md-ellipsis">
-      Check if logged in on the OakVar store
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#log-in-on-the-oakvar-store" class="md-nav__link">
-    <span class="md-ellipsis">
-      Log in on the OakVar store
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#log-out-from-the-oakvar-store" class="md-nav__link">
-    <span class="md-ellipsis">
-      Log out from the OakVar store
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#reset-the-password-of-a-store-account" class="md-nav__link">
-    <span class="md-ellipsis">
-      Reset the password of a store account
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#publish-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      Publish modules
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Publish modules">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#pack-a-module-for-registering-at-the-oakvar-store" class="md-nav__link">
-    <span class="md-ellipsis">
-      Pack a module for registering at the OakVar store
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#register-a-module-at-the-oakvar-store" class="md-nav__link">
-    <span class="md-ellipsis">
-      Register a module at the OakVar store
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#manage-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      Manage configuration
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Manage configuration">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#manage-modules-directory" class="md-nav__link">
-    <span class="md-ellipsis">
-      Manage modules directory
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#show-system-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      Show system configuration
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#show-user-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      Show user configuration
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#test-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      Test modules
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#utilities" class="md-nav__link">
-    <span class="md-ellipsis">
-      Utilities
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Utilities">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#create-an-example-input-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      Create an example input file
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#create-an-annotation-module-template" class="md-nav__link">
-    <span class="md-ellipsis">
-      Create an annotation module template
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#merge-analysis-result-database-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      Merge analysis result database files
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#filter-analysis-result-database-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      Filter analysis result database files
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#show-analysis-result-database-file-information" class="md-nav__link">
-    <span class="md-ellipsis">
-      Show analysis result database file information
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
   
 </nav>
                   </div>
@@ -1735,96 +1032,33 @@
                   
 
 
-<h1 id="cli-commands">CLI Commands</h1>
-<h2 id="setup">Setup</h2>
-<pre><code>ov system setup
+  <h1>Integration with AI/ML</h1>
+
+<p><strong>This page will be updated with more content in the future.</strong></p>
+<p>One of OakVar's main aims is easy integration of genomic variant analysis results with AI/ML frameworks.</p>
+<p>The first step toward that goal is the conversion of analysis results into DataFrames.</p>
+<p>OakVar provides the following method to convert the analysis results in SQLite tables into <a href="https://docs.pola.rs/py-polars/html/reference/">Polars</a> DataFrame.</p>
+<pre><code>import oakvar as ov
+df = ov.get_df_from_db("oakvar_example.vcf.sqlite")
 </code></pre>
-<h2 id="run-an-analysis-job">Run an analysis job</h2>
-<pre><code>ov run
+<p>This will load the content of <code>variant</code> table into <code>df</code> as a Polars DataFrame.</p>
+<p>If you want to use Pandas DataFrame instead, </p>
+<pre><code>df.to_pandas(use_pyarrow_extension_array = True)
 </code></pre>
-<h2 id="create-annotation-reports">Create annotation reports</h2>
-<pre><code>ov report
+<p>will produce a Pandas version of the same DataFrame.</p>
+<p>Back to <code>get_df_from_db</code> method, you can specify which table to load and a SQL expression for filtering the content.</p>
+<pre><code>df = ov.get_df_from_db(
+    "oakvar_example.vcf.sqlite", table_name="sample"
+)
 </code></pre>
-<h2 id="launch-a-gui-server">Launch a GUI server</h2>
-<pre><code>ov gui
+<p>will load the <code>sample</code> table into <code>df</code> as a DataFrame.</p>
+<pre><code>df = ov.get_df_from_db(
+    "oakvar_example.vcf.sqlite", 
+    table_name="variant", 
+    sql="base__so='MIS' and clinvar__sig like '%Pathogenic%'"
+)
 </code></pre>
-<h2 id="manage-modules">Manage modules</h2>
-<h3 id="list-modules">List modules</h3>
-<pre><code>ov module ls
-</code></pre>
-<h3 id="install-modules">Install modules</h3>
-<pre><code>ov module install
-</code></pre>
-<h3 id="uninstall-modules">Uninstall modules</h3>
-<pre><code>ov module uninstall
-</code></pre>
-<h3 id="install-system-modules">Install system modules</h3>
-<pre><code>ov module installbase
-</code></pre>
-<h3 id="update-modules">Update modules</h3>
-<pre><code>ov module update
-</code></pre>
-<h3 id="get-information-on-modules">Get information on modules</h3>
-<pre><code>ov module info
-</code></pre>
-<h2 id="manage-store-accounts">Manage store accounts</h2>
-<h3 id="create-a-store-account">Create a store account</h3>
-<pre><code>ov store account create
-</code></pre>
-<h3 id="delete-a-store-account">Delete a store account</h3>
-<pre><code>ov store account delete
-</code></pre>
-<h3 id="change-a-store-account-password">Change a store account password</h3>
-<pre><code>ov store account change
-</code></pre>
-<h3 id="check-if-logged-in-on-the-oakvar-store">Check if logged in on the OakVar store</h3>
-<pre><code>ov store account check
-</code></pre>
-<h3 id="log-in-on-the-oakvar-store">Log in on the OakVar store</h3>
-<pre><code>ov store account login
-</code></pre>
-<h3 id="log-out-from-the-oakvar-store">Log out from the OakVar store</h3>
-<pre><code>ov store account logout
-</code></pre>
-<h3 id="reset-the-password-of-a-store-account">Reset the password of a store account</h3>
-<pre><code>ov store account reset
-</code></pre>
-<h2 id="publish-modules">Publish modules</h2>
-<h3 id="pack-a-module-for-registering-at-the-oakvar-store">Pack a module for registering at the OakVar store</h3>
-<pre><code>ov module pack
-</code></pre>
-<h3 id="register-a-module-at-the-oakvar-store">Register a module at the OakVar store</h3>
-<pre><code>ov store register
-</code></pre>
-<h2 id="manage-configuration">Manage configuration</h2>
-<h3 id="manage-modules-directory">Manage modules directory</h3>
-<pre><code>ov system md
-</code></pre>
-<h3 id="show-system-configuration">Show system configuration</h3>
-<pre><code>ov config system
-</code></pre>
-<h3 id="show-user-configuration">Show user configuration</h3>
-<pre><code>ov config user
-</code></pre>
-<h2 id="test-modules">Test modules</h2>
-<pre><code>ov util test
-</code></pre>
-<h2 id="utilities">Utilities</h2>
-<h3 id="create-an-example-input-file">Create an example input file</h3>
-<pre><code>ov new exampleinput
-</code></pre>
-<h3 id="create-an-annotation-module-template">Create an annotation module template</h3>
-<pre><code>ov new annotator
-</code></pre>
-<h3 id="merge-analysis-result-database-files">Merge analysis result database files</h3>
-<pre><code>ov util mergesqlite
-</code></pre>
-<h3 id="filter-analysis-result-database-files">Filter analysis result database files</h3>
-<pre><code>ov util filtersqlite
-</code></pre>
-<h3 id="show-analysis-result-database-file-information">Show analysis result database file information</h3>
-<pre><code>ov util sqliteinfo --fmt [json(default)|yaml|text]
-</code></pre>
+<p>will load the <code>variant</code> table, but with the filter for the variants whose consequence is missense and whose ClinVar clinical significance include <code>Pathogenic</code>.</p>
 
 
 
