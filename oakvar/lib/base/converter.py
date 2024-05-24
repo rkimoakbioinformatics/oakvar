@@ -39,6 +39,7 @@
 # SOFTWARE.
 
 from typing import Optional
+from typing import Union
 from typing import Any
 from typing import List
 from typing import Dict
@@ -91,13 +92,16 @@ class BaseConverter(object):
         _ = f
         _ = args
         _ = kwargs
-        return False
+        ret = False
+        return ret
 
     def setup(self, *args, **kwargs):
         _ = args
         _ = kwargs
 
-    def convert_line(self, *__args__, **__kwargs__) -> List[Dict[str, Any]]:
+    def convert_line(self, *args, **kwargs) -> Union[str, List[Dict[str, Any]]]:
+        _ = args
+        _ = kwargs
         return []
 
     def get_variant_lines(

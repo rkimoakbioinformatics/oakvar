@@ -39,6 +39,7 @@
 # SOFTWARE.
 
 from typing import Optional
+from typing import Any
 from typing import Dict
 
 
@@ -91,6 +92,7 @@ class BasePostAggregator(object):
         self.q_g: Optional[str] = None
         self.outer = outer
         self.should_run_annotate = self.check()
+        self._close_db_connection()
 
     def make_conf_and_level(self):
         from ..module.local import get_module_conf
@@ -104,7 +106,7 @@ class BasePostAggregator(object):
             raise SetupError(msg="level is not defined in {self.module_name}")
         self.levelno = LEVELS[self.level]
 
-    def check(self):
+    def check(self) -> bool:
         """
         Return boolean indicating whether main 'annotate' loop should be run.
         Should be overridden in sub-classes.
@@ -485,7 +487,6 @@ class BasePostAggregator(object):
             self.dbconn = connect(self.db_path)
             self.cursor = self.dbconn.cursor()
             self.cursor_w = self.dbconn.cursor()
-            self.cursor_w.execute('pragma journal_mode="wal"')
             self.cursor_w.execute("pragma synchronous=0;")
             self.cursor_w.execute("pragma journal_mode=off;")
             self.cursor_w.execute("pragma cache_size=1000000;")
@@ -512,6 +513,7 @@ class BasePostAggregator(object):
             self.cursor = None
         if self.cursor_w is not None:
             try:
+                self.cursor_w.execute("pragma locking_mode=NORMAL")
                 self.cursor_w.execute("commit")
             except Exception:
                 pass
@@ -522,6 +524,7 @@ class BasePostAggregator(object):
             self.cursor_w = None
         if self.dbconn is not None:
             try:
+                self.dbconn.commit()
                 self.dbconn.close()
             except Exception:
                 pass
@@ -735,6 +738,7 @@ class BasePostAggregator(object):
         if self.c_gen:
             self.c_gen.close()
 
-    def annotate(self, __input_data__):
+    def annotate(self, input_data) -> Optional[Dict[str, Any]]:
+        _ = input_data
         raise NotImplementedError()
 

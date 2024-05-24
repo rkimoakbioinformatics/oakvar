@@ -203,6 +203,12 @@ def handle_ref_base(variant, wgs_reader):
                 variant.get("chrom"), int(variant.get("pos"))
             )
 
+def handle_alt_base(variant):
+    from oakvar.lib.exceptions import IgnoredVariant
+
+    if variant["alt_base"] is None:
+        raise IgnoredVariant("No alternate base")
+
 def handle_chrom(variant, genome: str):
     from oakvar.lib.exceptions import IgnoredVariant
     from oakvar.lib.util.seq import get_grch37_to_hg19
@@ -238,6 +244,7 @@ def handle_variant(
     tags = variant.get("tags")
     handle_chrom(variant, genome)
     handle_ref_base(variant, wgs_reader)
+    handle_alt_base(variant)
     check_invalid_base(variant)
     normalize_variant(variant)
     add_end_pos_if_absent(variant)

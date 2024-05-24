@@ -1690,7 +1690,7 @@ class Runner(object):
                 f"input line chunksize={chunksize} total number of "
                 + f"input lines={num_lines} number of chunks={len_poss}"
             )
-        pool = mp.Pool(num_workers, init_worker)
+        pool = mp.get_context("spawn").Pool(num_workers, init_worker)
         pos_no = 0
         while pos_no < len_poss:
             jobs = []
