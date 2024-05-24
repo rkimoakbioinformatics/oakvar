@@ -12,11 +12,12 @@ nav:
     - Overview: cli.md
     - Package file: package.md
   - Graphical user interface: gui.md
-  - Publishing your module: register.md
+  - Integration with AI/ML: ai_ml.md
   - Developer guide: 
     - Modules: devguide_modules.md
     - Workflows: devguide_workflows.md
     - Debugging: devguide_debugging.md
+    - Publishing your module: register.md
   - Python API:
     - api/main.md
     - oakvar.api: 
