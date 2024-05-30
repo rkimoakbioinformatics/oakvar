@@ -12,7 +12,9 @@ nav:
     - Overview: cli.md
     - Package file: package.md
   - Graphical user interface: gui.md
-  - Integration with AI/ML: ai_ml.md
+  - Integration with AI/ML: 
+    - scikit-learn: scikit_learn.md
+    - General: ai_ml.md
   - Developer guide: 
     - Modules: devguide_modules.md
     - Workflows: devguide_workflows.md
