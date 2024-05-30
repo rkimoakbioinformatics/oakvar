@@ -40,10 +40,12 @@
 
 from typing import Any
 from typing import List
+from typing import Tuple
 from typing import Dict
 from typing import Optional
 from pathlib import Path
 from polars import DataFrame
+import numpy as np
 
 ov_system_output_columns: Optional[Dict[str, List[Dict[str, Any]]]] = None
 
@@ -787,12 +789,90 @@ def get_result_db_conn(db_path: str):
     return conn
 
 
+def get_sample_uid_variant_arrays(
+    db_path: str, variant_criteria = None, use_zygosity: bool = True
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Gets a Polars DataFrame of the presence of variants in samples.
+
+    Rows are samples and columns are variants.
+
+    Args:
+        db_path (str): Path to the OakVar result database file
+                       from which a Polars DataFrame will be extracted.
+
+    Returns:
+        Optional[Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]]: If no error, three DataFrames will be returned.
+            The first array is a 1D array of sample names.
+            The second array is a 1D array of variant UIDs.
+            The third array is a 2D array of variant presence in samples.
+    """
+
+    import sqlite3
+    import numpy as np
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("select distinct(base__sample_id) from sample")
+    samples = np.array([r[0] for r in cursor.fetchall()], dtype=str)
+    samples.sort()
+    if variant_criteria is not None:
+        cursor.execute(
+            f"select distinct(base__uid) from variant where {variant_criteria} order by base__uid"
+        )
+    else:
+        cursor.execute("select distinct(base__uid) from variant order by base__uid")
+    uids = [r[0] for r in cursor.fetchall()]
+    num_samples = len(samples)
+    num_uids = len(uids)
+    arr = np.zeros([num_samples, num_uids])
+    for sample_no in range(num_samples):
+        if use_zygosity:
+            if variant_criteria is not None:
+                cursor.execute(
+                    "select s.base__uid, s.base__zygosity from (select base__uid, base__zygosity from sample where base__sample_id=?) as s, (select base__uid from variant where " + variant_criteria + ") as v on s.base__uid = v.base__uid order by s.base__uid",
+                    (samples[sample_no],),
+                )
+            else:
+                cursor.execute(
+                    "select base__uid, base__zygosity from sample where base__sample_id=? order by base__uid", 
+                    (samples[sample_no],)
+                )
+        else:
+            if variant_criteria is not None:
+                cursor.execute(
+                    "select s.base__uid from (select base__uid from sample where base__sample_id=?) as s, (select base__uid from variant where " + variant_criteria + ") as v on s.base__uid = v.base__uid order by s.base__uid",
+                    (samples[sample_no],),
+                )
+            else:
+                cursor.execute(
+                    "select base__uid from sample where base__sample_id=? order by base__uid", 
+                    (samples[sample_no],)
+                )
+        for r in cursor.fetchall():
+            if variant_criteria is not None:
+                pos = uids.index(r[0])
+            else:
+                pos = r[0] - 1
+            if use_zygosity:
+                zygosity = r[1]
+                if zygosity == "het":
+                    arr[sample_no][pos] = 1
+                elif zygosity == "hom":
+                    arr[sample_no][pos] = 2
+                else:
+                    raise ValueError(f"Unknown zygosity: {zygosity}")
+            else:
+                arr[sample_no][pos] = 1
+    uids = np.array(uids, dtype=np.uint32)
+    return samples, uids, arr
+
 def get_df_from_db(
     db_path: str,
     table_name: str = "variant",
     sql: Optional[str] = None,
     num_cores: int = 1,
     conn = None,
+    library: Optional[str] = "polars",
 ) -> Optional[DataFrame]:
     """Gets a Polars DataFrame of a table in an OakVar result database.
 
@@ -816,8 +896,6 @@ def get_df_from_db(
     import platform
 
     environ["RUST_LOG"] = "connectorx=warn,connectorx_python=warn"
-    import polars as pl
-
     partition_ons = {
         "variant": "base__uid",
         "gene": "base__hugo",
@@ -855,9 +933,11 @@ def get_df_from_db(
     else:
         conn_url = f"sqlite://{db_path_to_use}"
     if partition_on and num_cores > 1:
-        df = pl.read_database(
-            sql, conn_url, partition_on=partition_on, partition_num=num_cores # type: ignore
-        )
+        if library == "polars":
+            import polars as pl
+            df = pl.read_database(
+                sql, conn_url, partition_on=partition_on, partition_num=num_cores
+            )
     else:
         df = pl.read_database(sql, conn_url) # type: ignore
     return df

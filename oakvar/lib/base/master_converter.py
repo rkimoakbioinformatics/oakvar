@@ -78,7 +78,7 @@ def flush_err_holder(err_holders: List[List[str]], core_num: int, error_logger, 
             error_logger.error(err_line)
         err_holder.clear()
 
-def _log_conversion_error(logger, error_logger, input_path: str, line_no: int, e, unique_excs: dict, err_holders: List[List[str]], core_num=None):
+def _log_conversion_error(logger, error_logger, input_path: str, line_no: int, e, unique_excs: dict, err_holders: List[List[str]], unique_err_in_line: Set[str], core_num=None):
     from traceback import format_exc
     from oakvar.lib.exceptions import ExpectedException
     from oakvar.lib.exceptions import NoAlternateAllele
@@ -98,9 +98,12 @@ def _log_conversion_error(logger, error_logger, input_path: str, line_no: int, e
         unique_excs[err_str] = err_no
         logger.error(f"Error [{err_no}]: {input_path}: {err_str}")
         err_holders[core_num].append(f"{err_no}:{line_no}\t{str(e)}")
+        unique_err_in_line.add(err_str)
     else:
-        err_no = unique_excs[err_str]
-        err_holders[core_num].append(f"{err_no}:{line_no}\t{str(e)}")
+        if err_str not in unique_err_in_line:
+            err_no = unique_excs[err_str]
+            err_holders[core_num].append(f"{err_no}:{line_no}\t{str(e)}")
+            unique_err_in_line.add(err_str)
     flush_err_holder(err_holders, core_num, error_logger)
 
 def is_chrM(wdict):
@@ -207,7 +210,7 @@ def handle_alt_base(variant):
     from oakvar.lib.exceptions import IgnoredVariant
 
     if variant["alt_base"] is None:
-        raise IgnoredVariant("No alternate base")
+        raise IgnoredVariant("No alternate allele")
 
 def handle_chrom(variant, genome: str):
     from oakvar.lib.exceptions import IgnoredVariant
@@ -255,7 +258,7 @@ def handle_variant(
     variant["crl"] = crl_data
 
 def handle_converted_variants(
-        variants: List[Dict[str, Any]], do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, logger, error_logger, input_path: str, unique_excs: dict, err_holders: List[List[str]], line_no: int, core_num: int, genome: str
+        variants: List[Dict[str, Any]], do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, logger, error_logger, input_path: str, unique_excs: dict, err_holders: List[List[str]], line_no: int, core_num: int, genome: str, unique_err_in_line: Set[str]
 ) -> Tuple[List[Dict[str, Any]], bool]:
     if variants is BaseConverter.IGNORE:
         return [], False
@@ -268,7 +271,7 @@ def handle_converted_variants(
             handle_variant(variant, do_liftover, do_liftover_chrM, lifter, wgs_reader, line_no, genome)
             variant_l.append(variant)
         except Exception as e:
-            _log_conversion_error(logger, error_logger, input_path, line_no, e, unique_excs, err_holders, core_num=core_num)
+            _log_conversion_error(logger, error_logger, input_path, line_no, e, unique_excs, err_holders, unique_err_in_line, core_num=core_num)
             error_occurred = True
             continue
     return variant_l, error_occurred
@@ -294,9 +297,10 @@ def gather_variantss(
     variants_l: List[List[Dict[str, Any]]] = []
     line_data = lines_data[core_num]
     for (line_no, line) in line_data:
+        unique_err_in_line: Set[str] = set()
         try:
             variants = converter.convert_line(line)
-            variants_datas, error_occurred = handle_converted_variants(variants, do_liftover, do_liftover_chrM, lifter, wgs_reader, logger, error_logger, input_path, unique_excs, err_holders, line_no, core_num, genome)
+            variants_datas, error_occurred = handle_converted_variants(variants, do_liftover, do_liftover_chrM, lifter, wgs_reader, logger, error_logger, input_path, unique_excs, err_holders, line_no, core_num, genome, unique_err_in_line)
             if error_occurred:
                 num_valid_error_lines[ERROR] += 1
             else:
@@ -307,7 +311,7 @@ def gather_variantss(
         except KeyboardInterrupt:
             raise
         except Exception as e:
-            _log_conversion_error(logger, error_logger, input_path, line_no, e, unique_excs, err_holders, core_num=core_num)
+            _log_conversion_error(logger, error_logger, input_path, line_no, e, unique_excs, err_holders, unique_err_in_line, core_num=core_num)
             if isinstance(e, IgnoredInput):
                 num_valid_error_lines[IGNORED] += 1
             else:

@@ -60,6 +60,7 @@ from .lib.util.inout import FileWriter
 from .lib.util import inout
 from .lib.util import admin_util
 from .lib.util.util import get_df_from_db
+from .lib.util.util import get_sample_uid_variant_arrays
 from .lib.util.inout import read_crv
 from .lib.util.seq import get_lifter
 from .lib.util.seq import liftover
@@ -203,4 +204,4 @@ _ = CravatFilter or Cravat
 _ = cli or wgs
 _ = stdouter
 _ = get_lifter or liftover or get_wgs_reader
-_ = get_df_from_db or read_crv
+_ = get_df_from_db or get_sample_uid_variant_arrays or read_crv
