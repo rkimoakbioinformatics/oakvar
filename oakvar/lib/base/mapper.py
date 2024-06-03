@@ -189,8 +189,8 @@ class BaseMapper(object):
         self.make_crx_writer()
         self.make_crg_writer()
 
-    def map(self, crv_data: dict) -> Dict[str, Any]:
-        return crv_data
+    def map(self, input_data: dict) -> Dict[str, Any]:
+        return input_data
 
     def process_file(self):
         from time import time

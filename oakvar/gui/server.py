@@ -363,7 +363,7 @@ class WebServer(object):
         if not self.cors:
             return
         for resource in list(self.app.router.resources()):
-            self.cors.add(
+            self.cors.add( # type: ignore
                 resource,
                 {
                     "http://0.0.0.0:3000": ResourceOptions(

@@ -205,7 +205,8 @@ class BasePreparer(object):
         self.end()
         return output
 
-    def prepare(self):
+    def prepare(self, input_data: dict):
+        _ = input_data
         pass
 
     def postloop(self):

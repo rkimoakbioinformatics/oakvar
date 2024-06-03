@@ -19,7 +19,7 @@ from oakvar import BaseConverter
 
 
 class Converter(BaseConverter):
-    def check_format(self, input_path: str) -> bool:
+    def check_format(self, input_path: str, *args, **kwargs) -> bool:
         """
         Detect the format of an input file.
 
@@ -32,6 +32,8 @@ class Converter(BaseConverter):
         The example below checks if the input file's first line indicates
         VCF file format.
         """
+        _ = args
+        _ = kwargs
         with open(input_path, "r") as f:
             line = f.readline()
             return line.startswith("##fileformat=VCF")
@@ -59,7 +61,7 @@ class Converter(BaseConverter):
     #                 raise e
     #     return None
 
-    def convert_line(self, line) -> List[Dict]:
+    def convert_line(self, line, *args, **kwargs) -> List[Dict]:
         """
         Converts a line from an input file to OakVar's variant dict.
 
@@ -81,6 +83,8 @@ class Converter(BaseConverter):
                   tags: a custom tag given to the variant [list[str]]
         """
         _ = line
+        _ = args
+        _ = kwargs
         var_dicts = []
         var_dict = {
             "chrom": "chr1",

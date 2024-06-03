@@ -749,7 +749,7 @@ class BaseReporter:
             self.colnames_to_display[level].append(col_name)
 
     async def make_sorted_column_groups(self, level, conn=Any):
-        cursor = await conn.cursor()
+        cursor = await conn.cursor() # type: ignore
         self.columngroups[level] = []
         sql = f"select name, displayname from {level}_annotator order by name"
         await cursor.execute(sql)
@@ -779,7 +779,7 @@ class BaseReporter:
 
         if not conn:
             return
-        cursor = await conn.cursor()
+        cursor = await conn.cursor() # type: ignore
         header_table = f"{level}_header"
         coldefs = []
         group_names = []
@@ -903,8 +903,8 @@ class BaseReporter:
         if not add_summary:
             return
         q = "select name from variant_annotator"
-        await cursor.execute(q)
-        done_var_annotators = [v[0] for v in await cursor.fetchall()]
+        await cursor.execute(q) # type: ignore
+        done_var_annotators = [v[0] for v in await cursor.fetchall()] # type: ignore
         self.summarizing_modules = []
         local_modules = get_local_module_infos_of_type("annotator")
         local_modules.update(get_local_module_infos_of_type("postaggregator"))

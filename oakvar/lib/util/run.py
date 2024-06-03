@@ -267,7 +267,7 @@ def get_standardized_module_option(v: Any):
     return v
 
 def get_spark_schema(module_names):
-    from pyspark.sql.types import StructType
+    from pyspark.sql.types import StructType # type: ignore
     from ..module.local import get_module_conf
     from ... import get_mapper
     from ... import get_annotator
@@ -291,10 +291,10 @@ def get_spark_schema(module_names):
     return schema
 
 def add_spark_schema_field(schema, module, add_module_name: bool = False):
-    from pyspark.sql.types import StructField
-    from pyspark.sql.types import StringType
-    from pyspark.sql.types import IntegerType
-    from pyspark.sql.types import FloatType
+    from pyspark.sql.types import StructField # type: ignore
+    from pyspark.sql.types import StringType # type: ignore
+    from pyspark.sql.types import IntegerType # type: ignore
+    from pyspark.sql.types import FloatType # type: ignore
 
     module_name = module.module_name
     for v in module.conf.get("output_columns", []):

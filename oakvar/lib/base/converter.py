@@ -39,7 +39,6 @@
 # SOFTWARE.
 
 from typing import Optional
-from typing import Union
 from typing import Any
 from typing import List
 from typing import Dict
@@ -88,8 +87,8 @@ class BaseConverter(object):
             else:
                 self.code_version: str = ""
 
-    def check_format(self, f, *args, **kwargs) -> bool:
-        _ = f
+    def check_format(self, input_path, *args, **kwargs) -> bool:
+        _ = input_path
         _ = args
         _ = kwargs
         ret = False
@@ -99,7 +98,8 @@ class BaseConverter(object):
         _ = args
         _ = kwargs
 
-    def convert_line(self, *args, **kwargs) -> Union[str, List[Dict[str, Any]]]:
+    def convert_line(self, line, *args, **kwargs) -> List[Dict[str, Any]]:
+        _ = line
         _ = args
         _ = kwargs
         return []

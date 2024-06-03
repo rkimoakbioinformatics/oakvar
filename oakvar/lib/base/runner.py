@@ -84,7 +84,7 @@ class Runner(object):
         self.conf_path = None
         self.conf = {}
         self.first_non_url_input = None
-        self.inputs: Optional[List[Path]] = None
+        self.inputs: List[Path] = []
         self.run_name: Optional[List[str]] = None
         self.output_dir: Optional[List[str]] = None
         self.startlevel = self.runlevels["converter"]
@@ -192,8 +192,6 @@ class Runner(object):
         from ..util.util import is_url, humanize_bytes
         from ..util.run import update_status
 
-        if not self.inputs:
-            raise
         if " " in ip:
             print(f"Space is not allowed in input file paths ({ip})")
             exit()
@@ -287,7 +285,7 @@ class Runner(object):
 
     def log_input(self, run_no: int):
 
-        if not self.inputs or not self.args:
+        if not self.args:
             raise
         if self.logger:
             if self.args.combine_input:
@@ -518,8 +516,6 @@ class Runner(object):
         annot_names.sort()
 
     def remove_absent_inputs(self):
-        if not self.inputs:
-            return
         inputs_to_remove = [v for v in self.inputs if not v.exists() and "*" not in str(v)]
         for v in inputs_to_remove:
             self.inputs.remove(v)
@@ -532,12 +528,10 @@ class Runner(object):
             raise
         self.first_non_url_input = None
         if self.args.inputs is not None:
-            self.inputs = [
+            self.inputs = [ # type: ignore
                 Path(x).resolve() if not is_url(x) and x != "-" else x
                 for x in self.args.inputs
             ]
-            if self.inputs is None:
-                raise
             for input_no in range(len(self.inputs)):
                 inp = self.inputs[input_no]
                 if is_url(str(inp)):

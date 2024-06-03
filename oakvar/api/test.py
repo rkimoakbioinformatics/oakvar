@@ -40,6 +40,8 @@
 
 from typing import Optional
 from typing import List
+from typing import Tuple
+from typing import Union
 from abc import ABC, abstractmethod
 from ..lib.exceptions import ExpectedException
 
@@ -55,20 +57,20 @@ class ReportReader(ABC):
 
     # Return the file extension of this type of report (e.g. text is .tsv)
     @abstractmethod
-    def reportFileExtension(self):
-        pass
+    def reportFileExtension(self) -> str:
+        return ""
 
     # Read the specified level (variant, gene, etc) from a oakvar report
     # Return a list of the report headers and a list of the row values
     # The bDict parameter indicates whether to return Rows as a list or dictionary
     @abstractmethod
-    def readReport(self, test_level, bDict):
+    def readReport(self, test_level, bDict) -> Tuple[Optional[list], Union[list, dict]]:
         pass
 
 
 # Derived Report Reader class for reating text reports (-t text)
 class TextReportReader(ReportReader):
-    def reportFileExtension(self):
+    def reportFileExtension(self) -> str:
         return ".tsv"
 
     # Based on the level selected, return column headers and row values.
@@ -169,7 +171,7 @@ class TextReportReader(ReportReader):
 
 # Derived Report Reader class for reating text reports (-t text)
 class ExcelReportReader(ReportReader):
-    def reportFileExtension(self):
+    def reportFileExtension(self) -> str:
         return ".xlsx"
 
     # Based on the level selected, return column headers and row values.
@@ -194,11 +196,11 @@ class ExcelReportReader(ReportReader):
         rows_list = []
         if headers is None:
             headers = self.readSectionHeader(test_level, sheet)
-        for i in range(3, sheet.max_row + 1):
+        for i in range(3, sheet.max_row + 1): # type: ignore
             columns = []
-            for j in range(1, sheet.max_column + 1):
+            for j in range(1, sheet.max_column + 1): # type: ignore
                 columns.append(
-                    "" if sheet.cell(i, j).value is None else sheet.cell(i, j).value
+                    "" if sheet.cell(i, j).value is None else sheet.cell(i, j).value # type: ignore
                 )
             line_id = self.getRowID(headers, columns, test_level)
             if bDict:
@@ -265,16 +267,17 @@ class ExcelReportReader(ReportReader):
 
 # Derived Report Reader class for reating text reports (-t text)
 class VcfReportReader(ReportReader):
-    def reportFileExtension(self):
+    def reportFileExtension(self) -> str:
         return ".vcf"
 
     # Based on the level selected, return column headers and row values.
-    def readReport(self, __test_level__, bDict):
+    def readReport(self, test_level, bDict):
+        import vcf  # type: ignore
+
+        _ = test_level
         headers = None
         rows_dict = {}
         rows_list = []
-        import vcf  # type: ignore
-
         reader = vcf.Reader(filename=self.rsltFile)
         if headers is None:
             headers = self.readSectionHeader(reader)
@@ -352,7 +355,7 @@ class VcfReportReader(ReportReader):
 
 # Derived Report Reader class for reating text reports (-t text)
 class TsvReportReader(ReportReader):
-    def reportFileExtension(self):
+    def reportFileExtension(self) -> str:
         return ".variant.tsv"
 
     # Based on the level selected, return column headers and row values.
@@ -448,7 +451,7 @@ class TsvReportReader(ReportReader):
 
 # Derived Report Reader class for reating text reports (-t text)
 class CsvReportReader(ReportReader):
-    def reportFileExtension(self):
+    def reportFileExtension(self) -> str:
         return ".variant.csv"
 
     # Based on the level selected, return column headers and row values.

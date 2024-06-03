@@ -693,7 +693,7 @@ def read_crv(fpath):
     # Read the CSV using the comment character
     df = pl.read_csv(
         fpath,
-        comment_char='#',
+        comment_char='#', # type: ignore
         has_header=False,
         new_columns=["uid", "chrom", "pos", "pos_end", "ref_base", "alt_base"]
     )
