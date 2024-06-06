@@ -1631,6 +1631,7 @@ class Runner(object):
             module_options=self.run_conf,
             skip_variant_deduplication=self.args.skip_variant_deduplication,
             mp=self.args.mp,
+            keep_liftover_failed=self.args.keep_liftover_failed,
             outer=self.outer,
         )
         ret = converter.run()

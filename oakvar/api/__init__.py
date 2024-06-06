@@ -109,6 +109,7 @@ def run(
     ignore_sample: bool = False,
     uid: Optional[str] = None,
     skip_variant_deduplication: bool=False,
+    keep_liftover_failed: bool=False,
     loop=None,
     outer=None,
 ) -> Optional[Dict[str, Any]]:
@@ -229,6 +230,7 @@ def run(
         input_encoding=input_encoding,
         ignore_sample=ignore_sample,
         skip_variant_deduplication=skip_variant_deduplication,
+        keep_liftover_failed=keep_liftover_failed,
         uid=uid,
         outer=outer,
     )

@@ -109,7 +109,7 @@ def _log_conversion_error(logger, error_logger, input_path: str, line_no: int, e
 def is_chrM(wdict):
     return wdict["chrom"] == "chrM"
 
-def perform_liftover_if_needed(variant, do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader) -> Optional[Dict[str, Any]]:
+def perform_liftover_if_needed(variant, do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, keep_liftover_failed: bool) -> Optional[Dict[str, Any]]:
     from copy import copy
     from oakvar.lib.util.seq import liftover_one_pos
     from oakvar.lib.util.seq import liftover
@@ -122,19 +122,29 @@ def perform_liftover_if_needed(variant, do_liftover: bool, do_liftover_chrM: boo
         prelift_wdict = copy(variant)
         orig_chrom = variant["chrom"]
         crl_data = prelift_wdict
-        (
-            variant["chrom"],
-            variant["pos"],
-            variant["ref_base"],
-            variant["alt_base"],
-        ) = liftover(
-            variant["chrom"],
-            int(variant["pos"]),
-            variant["ref_base"],
-            variant["alt_base"],
-            lifter=lifter,
-            wgs_reader=wgs_reader,
-        )
+        try:
+            (
+                variant["chrom"],
+                variant["pos"],
+                variant["ref_base"],
+                variant["alt_base"],
+            ) = liftover(
+                variant["chrom"],
+                int(variant["pos"]),
+                variant["ref_base"],
+                variant["alt_base"],
+                lifter=lifter,
+                wgs_reader=wgs_reader,
+            )
+        except Exception as e:
+            if keep_liftover_failed:
+                variant["pos"] = 0
+                variant["pos_end"] = 0
+                variant["ref_base"] = ""
+                variant["alt_base"] = ""
+                return crl_data
+            else:
+                raise e
         converted_end = liftover_one_pos(
             orig_chrom, variant["pos_end"], lifter=lifter
         )
@@ -238,7 +248,7 @@ def handle_chrom(variant, genome: str):
     )
 
 def handle_variant(
-        variant: dict, do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, line_no: int, genome: str
+        variant: dict, do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, line_no: int, genome: str, keep_liftover_failed: bool
 ):
     from oakvar.lib.exceptions import NoVariantError
 
@@ -251,14 +261,14 @@ def handle_variant(
     check_invalid_base(variant)
     normalize_variant(variant)
     add_end_pos_if_absent(variant)
-    crl_data = perform_liftover_if_needed(variant, do_liftover, do_liftover_chrM, lifter, wgs_reader)
+    crl_data = perform_liftover_if_needed(variant, do_liftover, do_liftover_chrM, lifter, wgs_reader, keep_liftover_failed)
     handle_genotype(variant)
     variant["original_line"] = line_no
     variant["tags"] = tags
     variant["crl"] = crl_data
 
 def handle_converted_variants(
-        variants: List[Dict[str, Any]], do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, logger, error_logger, input_path: str, unique_excs: dict, err_holders: List[List[str]], line_no: int, core_num: int, genome: str, unique_err_in_line: Set[str]
+        variants: List[Dict[str, Any]], do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, logger, error_logger, input_path: str, unique_excs: dict, err_holders: List[List[str]], line_no: int, core_num: int, genome: str, unique_err_in_line: Set[str], keep_liftover_failed: bool
 ) -> Tuple[List[Dict[str, Any]], bool]:
     if variants is BaseConverter.IGNORE:
         return [], False
@@ -268,7 +278,7 @@ def handle_converted_variants(
     error_occurred: bool = False
     for variant in variants:
         try:
-            handle_variant(variant, do_liftover, do_liftover_chrM, lifter, wgs_reader, line_no, genome)
+            handle_variant(variant, do_liftover, do_liftover_chrM, lifter, wgs_reader, line_no, genome, keep_liftover_failed)
             variant_l.append(variant)
         except Exception as e:
             _log_conversion_error(logger, error_logger, input_path, line_no, e, unique_excs, err_holders, unique_err_in_line, core_num=core_num)
@@ -291,6 +301,7 @@ def gather_variantss(
         err_holders: List[List[str]],
         num_valid_error_lines: Dict[str, int],
         genome: str,
+        keep_liftover_failed: bool
 ) -> List[List[Dict[str, Any]]]:
     from oakvar.lib.exceptions import IgnoredInput
 
@@ -300,7 +311,7 @@ def gather_variantss(
         unique_err_in_line: Set[str] = set()
         try:
             variants = converter.convert_line(line)
-            variants_datas, error_occurred = handle_converted_variants(variants, do_liftover, do_liftover_chrM, lifter, wgs_reader, logger, error_logger, input_path, unique_excs, err_holders, line_no, core_num, genome, unique_err_in_line)
+            variants_datas, error_occurred = handle_converted_variants(variants, do_liftover, do_liftover_chrM, lifter, wgs_reader, logger, error_logger, input_path, unique_excs, err_holders, line_no, core_num, genome, unique_err_in_line, keep_liftover_failed)
             if error_occurred:
                 num_valid_error_lines[ERROR] += 1
             else:
@@ -339,6 +350,7 @@ class MasterConverter(object):
         ignore_sample: bool=False,
         skip_variant_deduplication: bool=False,
         mp: int=DEFAULT_MP,
+        keep_liftover_failed: bool=False,
         outer=None,
     ):
         from re import compile
@@ -383,6 +395,7 @@ class MasterConverter(object):
         self.total_num_duplicate_variants: int = 0
         self.skip_variant_deduplication: bool = skip_variant_deduplication
         self.input_formats: List[str] = []
+        self.keep_liftover_failed: bool = keep_liftover_failed
         self.converter_module: Optional[str] = converter_module
         self.genome_assemblies: List[str] = []
         self.base_re = compile("^[ATGC]+|[-]+$")
@@ -942,6 +955,7 @@ class MasterConverter(object):
                         self.err_holders,
                         self.num_valid_error_lines,
                         self.genome,
+                        self.keep_liftover_failed
                     ) for core_num in range(num_pool)
                 ]
                 results = pool.map(gather_variantss_wrapper, args)

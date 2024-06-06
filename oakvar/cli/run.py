@@ -337,4 +337,10 @@ def add_parser_ov_run(subparsers):
         default=False,
         help="Skip de-duplication of variants"
     )
+    parser_ov_run.add_argument(
+        "--keep-liftover-failed",
+        action="store_true",
+        default=False,
+        help="Keep variants that failed liftover"
+    )
     parser_ov_run.set_defaults(func=cli_run)
