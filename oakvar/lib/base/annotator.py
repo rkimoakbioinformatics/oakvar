@@ -39,6 +39,7 @@
 # SOFTWARE.
 
 from typing import Optional
+from typing import Union
 from typing import Any
 from typing import List
 from typing import Dict
@@ -908,7 +909,7 @@ class BaseAnnotator(object):
             ret = {**input_data, **{f"{self.module_name}__{k}": v for k, v in ret.items()}}
         return ret
 
-    def annotate(self, input_data, secondary_data=None):
+    def annotate(self, input_data, secondary_data=None) -> Union[Dict[str, Any], None]:
         """annotate.
 
         Args:
