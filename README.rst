@@ -74,6 +74,6 @@ OakVar is in CodeX
 License
 *******
 
-OakVar is licensed under dual licensing: 1) APGL v3 or higher and 2) paid subscription for institutional, commercial, or closed-source use. For full license information, see `LICENSE`_.
+OakVar is free to use for personal or research use in non-commercial activities by non-commercial entities. For other uses including commercial use by commercial entities, a paid license must be obtained. For full license information, see `LICENSE`_.
 
 .. _LICENSE: https://github.com/rkimoakbioinformatics/oakvar/blob/master/LICENSE
