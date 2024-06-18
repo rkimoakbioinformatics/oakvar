@@ -894,6 +894,7 @@ def get_df_from_db(
     from os import environ
     from urllib.parse import quote
     import platform
+    import polars as pl
 
     environ["RUST_LOG"] = "connectorx=warn,connectorx_python=warn"
     partition_ons = {
@@ -934,7 +935,6 @@ def get_df_from_db(
         conn_url = f"sqlite://{db_path_to_use}"
     if partition_on and num_cores > 1:
         if library == "polars":
-            import polars as pl
             df = pl.read_database(
                 sql, conn_url, partition_on=partition_on, partition_num=num_cores
             )
