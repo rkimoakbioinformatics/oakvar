@@ -242,7 +242,7 @@ def get_grch38_to_hg38(chrom: str) -> str:
     global hg38_chrom_aliases
     if not hg38_chrom_aliases:
         load_chrom_aliases("hg38")
-    return hg38_chrom_aliases[chrom] or ""
+    return hg38_chrom_aliases.get(chrom, "")
 
 def trim_input_left_adjust(ref, alt, pos, strand):
     """trim_input_left_adjust.
