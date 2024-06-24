@@ -150,7 +150,10 @@ class BaseMapper(object):
 
         if not self.output_dir or self.conf is None:
             raise
-        crx_def = get_crx_def()
+        sys_crx_def = get_crx_def()
+        crx_def = self.conf.get("output_columns")
+        if crx_def is None:
+            crx_def = sys_crx_def
         crx_fname = f"{self.output_base_fname}{VARIANT_LEVEL_MAPPED_FILE_SUFFIX}"
         self.crx_path = self.output_dir / (crx_fname + self.postfix)
         self.crx_writer = FileWriter(self.crx_path)

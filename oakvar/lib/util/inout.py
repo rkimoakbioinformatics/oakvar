@@ -324,6 +324,19 @@ class FileWriter(BaseFile):
                 continue
         self.columns[col_index] = col_def
 
+    def insert_column_after(self, col_d, col_name):
+        col_idx = None
+        for i in range(len(self.columns)):
+            if self.columns[i].name == col_name:
+                col_idx = i
+                break
+        if col_idx is None:
+            raise Exception(f"Column {col_name} not found")
+        for i in range(len(self.columns) - 1, col_idx, -1):
+            v = self.columns[i]
+            self.columns[i + 1] = v
+        self.columns[col_idx + 1] = ColumnDefinition(col_d)
+
     def add_columns(self, col_defs):
         for col_def in col_defs:
             self.add_column(col_def)
