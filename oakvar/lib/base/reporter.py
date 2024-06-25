@@ -629,9 +629,9 @@ class BaseReporter:
         newvals = []
         for hugo in all_map:
             for maprow in all_map[hugo]:
-                if len(maprow) == 5:
-                    # TODO: remove this after a while. Now is 10/22/2022.
-                    [protid, protchange, so, transcript, rnachange] = maprow
+                if len(maprow) == 9:
+                    [transcript, refseq, mane_select, mane_plus_clinical, exonno, rnachange, protchange, so, protid] = maprow
+                    _ = refseq or mane_select or mane_plus_clinical
                     exonno = ""
                 else:
                     [protid, protchange, so, transcript, rnachange, exonno] = maprow
