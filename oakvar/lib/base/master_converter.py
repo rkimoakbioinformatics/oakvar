@@ -82,6 +82,7 @@ def _log_conversion_error(logger, error_logger, input_path: str, line_no: int, e
     from traceback import format_exc
     from oakvar.lib.exceptions import ExpectedException
     from oakvar.lib.exceptions import NoAlternateAllele
+    from oakvar.lib.exceptions import IgnoredVariant
 
     if core_num is None:
         raise Exception(f"core_num is None.")
@@ -96,7 +97,11 @@ def _log_conversion_error(logger, error_logger, input_path: str, line_no: int, e
     if err_str not in unique_excs:
         err_no = len(unique_excs)
         unique_excs[err_str] = err_no
-        logger.error(f"Error [{err_no}]: {input_path}: {err_str}")
+        if isinstance(e, IgnoredVariant):
+            header = "Ignored"
+        else:
+            header = "Error"
+        logger.error(f"{header} [{err_no}]: {input_path}: {err_str}")
         err_holders[core_num].append(f"{err_no}:{line_no}\t{str(e)}")
         unique_err_in_line.add(err_str)
     else:
