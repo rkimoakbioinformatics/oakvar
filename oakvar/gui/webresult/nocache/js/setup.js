@@ -1403,6 +1403,18 @@ async function makeReportTab(rightDiv) {
       })
       addEl(generateDiv, a)
     } else {
+      var generateDiv = getEl("div")
+      generateDiv.className = "w-0 flex-1 flex"
+      addEl(actionsDiv, generateDiv)
+      var a = getEl("a")
+      a.href = "#"
+      a.className = "relative -mr-px w-0 flex-1 inline-flex items-center justify-center py-4 text-sm text-gray-700 font-medium border border-transparent rounded-bl-lg hover:text-gray-500"
+      a.textContent = "Re-generate"
+      a.addEventListener("click", async function(_) {
+        this.textContent = "Generating..."
+        await generateReport(uid, dbPath, reportType)
+      })
+      addEl(generateDiv, a)
       var downloadDiv = getEl("div")
       downloadDiv.className = "w-0 flex-1 flex"
       addEl(actionsDiv, downloadDiv)
