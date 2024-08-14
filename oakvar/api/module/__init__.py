@@ -270,6 +270,7 @@ def install(
     skip_dependencies: bool = False,
     skip_data: bool = False,
     no_fetch: bool = False,
+    file: Optional[str] = None,
     outer=None,
     stage_handler=None,
     system_worker_state=None,
@@ -307,6 +308,15 @@ def install(
 
     if not no_fetch:
         try_fetch_ov_store_cache(outer=outer)
+    if file is not None:
+        fpath = Path(file)
+        if fpath.exists():
+            with open(fpath, "r") as f:
+                for line in f:
+                    module_names.append(line.strip())
+        else:
+            if outer:
+                outer.error(f"File not found: {file}")
     to_install = get_modules_to_install(
         module_names=module_names,
         urls=urls,
@@ -526,7 +536,7 @@ def installbase(
         print(f"cravat-converter has been deprecated. Please remove it with \"ov module uninstall cravat-converter\".")
     if "oldcravat-converter" in base_modules:
         base_modules.remove("oldcravat-converter")
-        print(f"oldcravat-converter has been deprecated. Please remove it with \"ov module uninstall cravat-converter\".")
+        print(f"oldcravat-converter has been deprecated. Please remove it with \"ov module uninstall oldcravat-converter\".")
     ret = install(
         module_names=base_modules,
         modules_dir=modules_dir,

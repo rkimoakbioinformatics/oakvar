@@ -284,6 +284,11 @@ def add_parser_ov_module_install(subparsers):
         default=False,
         help="removes temporary installation directory",
     )
+    parser_ov_module_install.add_argument(
+        "--file",
+        default=None,
+        help="Use a file with module names to install",
+    )
     parser_ov_module_install.set_defaults(func=cli_module_install)
     parser_ov_module_install.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_ov_module_install.r_examples = [  # type: ignore

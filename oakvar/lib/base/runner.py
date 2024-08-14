@@ -413,7 +413,7 @@ class Runner(object):
         from ..util.run import get_module_options
         from ..exceptions import ModuleLoadingError
 
-        if self.args is None or self.conf is None:
+        if self.args is None:
             raise SetupError()
         module_options: Dict[str, Dict[str, Any]] = {}
         if self.mapper is not None:
@@ -484,10 +484,16 @@ class Runner(object):
 
     def make_self_conf(self, args):
         from ..exceptions import SetupError
+        from ..util.util import load_yml_conf
 
         if args is None:
             raise SetupError()
-        self.run_conf = args.get("conf", {}).get("run", {})
+        if self.conf_path is not None:
+            self.conf = load_yml_conf(self.conf_path)
+        elif args.get("conf") is not None:
+            self.conf = args.get("conf", {})
+        else:
+            self.conf = {}
 
     def populate_secondary_annotators(self, run_no):
         from os import listdir
@@ -953,7 +959,7 @@ class Runner(object):
         from ..module.local import get_local_module_info_by_name
         from ..exceptions import SetupError
 
-        if self.args is None or self.conf is None:
+        if self.args is None:
             raise SetupError()
         if self.args.mapper_name:
             self.mapper_name = self.args.mapper_name[0]
@@ -1596,8 +1602,7 @@ class Runner(object):
         from ..util.run import announce_module
 
         if (
-            self.conf is None
-            or not self.args
+            not self.args
             or not self.inputs
             or not self.run_name
             or not self.output_dir
@@ -1644,7 +1649,7 @@ class Runner(object):
         from ..util.util import load_class
         from ..consts import MODULE_OPTIONS_KEY
 
-        if self.conf is None or not self.run_name or not self.output_dir:
+        if not self.run_name or not self.output_dir:
             raise
         run_name = self.run_name[run_no]
         output_dir = self.output_dir[run_no]
@@ -1900,14 +1905,11 @@ class Runner(object):
     async def run_postaggregators(self, run_no: int):
         from time import time
         from ..util.run import announce_module
-        from ..exceptions import SetupError
         from ..util.util import load_class
         from ..util.run import update_status
         from ..system.consts import default_postaggregator_names
         from ..consts import MODULE_OPTIONS_KEY
 
-        if self.conf is None:
-            raise SetupError()
         if not self.run_name or not self.output_dir:
             raise
         run_name = self.run_name[run_no]
@@ -1952,8 +1954,7 @@ class Runner(object):
         from ..exceptions import ModuleNotExist
 
         if (
-            self.conf is None
-            or not self.args
+            not self.args
             or not self.output_dir
             or not self.run_name
         ):
@@ -2013,7 +2014,6 @@ class Runner(object):
 
         if (
             not self.run_name
-            or self.conf is None
             or not self.args
             or not self.output_dir
             or not self.inputs
