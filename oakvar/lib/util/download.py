@@ -1,18 +1,25 @@
-# OakVar Dual License
+# OakVar
 # 
-# Copyright (c) 2023 Oak Bioinformatics, LLC
+# Copyright (c) 2024 Oak Bioinformatics, LLC
 # 
-# This program is dual licensed under the Affero GPL-3.0 or later for 
-# non-commercial and open source use, and under a commercial license, 
-# which is available for purchase, for closed-source or commercial use.
+# All rights reserved.
 # 
-# For the commercial use, please contact Oak Bioinformatics, LLC 
-# for obtaining such a license. OakVar commercial license does not impose 
-# the Affero GPL open-source licensing terms, conditions, and limitations. 
-# To obtain a commercial-use license of OakVar, please visit our website at
-# https://oakbioinformatics.com or contact us at info@oakbioinformatics.com 
-# for more information.
+# Do not distribute or use this software without obtaining 
+# a license from Oak Bioinformatics, LLC.
 # 
+# Do not use this software to develop another software 
+# which competes with the products by Oak Bioinformatics, LLC, 
+# without obtaining a license for such use from Oak Bioinformatics, LLC.
+# 
+# For personal use of non-commercial nature, you may use this software
+# after registering with `ov store account create`.
+# 
+# For research use of non-commercial nature, you may use this software
+# after registering with `ov store account create`.
+# 
+# For use by commercial entities, you must obtain a commercial license
+# from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
+# to obtain the commercial license.
 # ================
 # OpenCRAVAT
 # 
