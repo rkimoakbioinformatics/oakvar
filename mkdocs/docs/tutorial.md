@@ -40,21 +40,21 @@ Next, we need some variants to annotate. OakVar has a built-in variant file for 
 
     ov new exampleinput
 
-This will create an example input file, `exampleinput`, in the current directory.
+This will create an example input file, `oakvar_example.vcf`, in the current directory.
 
 #### Run an annotation job
 
 Now, we annotate the example input file with ClinVar and then create a result VCF file with annotated variants. `-a` option controls annotation sources and `-t` option report formats.
 
-    ov run exampleinput -a clinvar -t vcf
+    ov run oakvar_example.vcf -a clinvar -t vcf
 
-This will create `exampleinuput.vcf` which will have the input variants annotated with ClinVar. Additionally, `exampleinput.sqlite` will be created. This file is a SQLite database file with annotated variants.
+This will create `exampleinuput.vcf` which will have the input variants annotated with ClinVar. Additionally, `oakvar_example.vcf.sqlite` will be created. This file is a SQLite database file with annotated variants.
 
 #### Examine the annotated variants
 
 Let's examine the annotated variants in the previous step. `ov report` is used to show or generate the output of annotated variants.
 
-    ov report exampleinput.sqlite -t stdout
+    ov report oakvar_example.vcf.sqlite -t stdout
 
 This will print out the annotated variants to the screen. `-t stdout` tells `ov report` to use `stdoutreporter` module, which is a reporter module and will receive annotated variants, variant by variant, from `ov report` and convert it to the standard output of the terminal.
 
@@ -62,7 +62,7 @@ This will print out the annotated variants to the screen. `-t stdout` tells `ov 
 
 There are more reporter modules. `excelreporter`, an Excel format reporting module is included in OakVar by default. `-s` option defines the file name of the report file except the extension.
 
-    ov report exampleinput.sqlite -t excel -s annotated
+    ov report oakvar_example.vcf.sqlite -t excel -s annotated
 
 This will generate `annotated.xlsx` file with annotated variants.
 
@@ -70,7 +70,7 @@ This will generate `annotated.xlsx` file with annotated variants.
 
 OakVar comes with a couple of embedded web applications, for graphical user interface-based operation of OakVar. Let's explore the annotated variants on a web browser.
 
-    ov gui exampleinput.sqlite
+    ov gui oakvar_example.vcf.sqlite
 
 This will launch an interactive result viewer for the analysis job done in the previous section.
 
