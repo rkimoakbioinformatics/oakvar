@@ -1332,25 +1332,25 @@ ov module uninstall biogrid
 <p>Next, we need some variants to annotate. OakVar has a built-in variant file for this purpose.</p>
 <pre><code>ov new exampleinput
 </code></pre>
-<p>This will create an example input file, <code>exampleinput</code>, in the current directory.</p>
+<p>This will create an example input file, <code>oakvar_example.vcf</code>, in the current directory.</p>
 <h4 id="run-an-annotation-job">Run an annotation job</h4>
 <p>Now, we annotate the example input file with ClinVar and then create a result VCF file with annotated variants. <code>-a</code> option controls annotation sources and <code>-t</code> option report formats.</p>
-<pre><code>ov run exampleinput -a clinvar -t vcf
+<pre><code>ov run oakvar_example.vcf -a clinvar -t vcf
 </code></pre>
-<p>This will create <code>exampleinuput.vcf</code> which will have the input variants annotated with ClinVar. Additionally, <code>exampleinput.sqlite</code> will be created. This file is a SQLite database file with annotated variants.</p>
+<p>This will create <code>exampleinuput.vcf</code> which will have the input variants annotated with ClinVar. Additionally, <code>oakvar_example.vcf.sqlite</code> will be created. This file is a SQLite database file with annotated variants.</p>
 <h4 id="examine-the-annotated-variants">Examine the annotated variants</h4>
 <p>Let's examine the annotated variants in the previous step. <code>ov report</code> is used to show or generate the output of annotated variants.</p>
-<pre><code>ov report exampleinput.sqlite -t stdout
+<pre><code>ov report oakvar_example.vcf.sqlite -t stdout
 </code></pre>
 <p>This will print out the annotated variants to the screen. <code>-t stdout</code> tells <code>ov report</code> to use <code>stdoutreporter</code> module, which is a reporter module and will receive annotated variants, variant by variant, from <code>ov report</code> and convert it to the standard output of the terminal.</p>
 <h4 id="generate-an-excel-report-of-annotated-variants">Generate an Excel report of annotated variants</h4>
 <p>There are more reporter modules. <code>excelreporter</code>, an Excel format reporting module is included in OakVar by default. <code>-s</code> option defines the file name of the report file except the extension.</p>
-<pre><code>ov report exampleinput.sqlite -t excel -s annotated
+<pre><code>ov report oakvar_example.vcf.sqlite -t excel -s annotated
 </code></pre>
 <p>This will generate <code>annotated.xlsx</code> file with annotated variants.</p>
 <h4 id="visualize-annotated-variants">Visualize annotated variants</h4>
 <p>OakVar comes with a couple of embedded web applications, for graphical user interface-based operation of OakVar. Let's explore the annotated variants on a web browser.</p>
-<pre><code>ov gui exampleinput.sqlite
+<pre><code>ov gui oakvar_example.vcf.sqlite
 </code></pre>
 <p>This will launch an interactive result viewer for the analysis job done in the previous section.</p>
 <p><img alt="interactive result viewer summary tab" src="../images/ov_summary_exampleinputsqlite.png" /></p>
