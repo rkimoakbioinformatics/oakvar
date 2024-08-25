@@ -143,19 +143,6 @@ def uninstall(args, __name__="module uninstall"):
     return uninstall(**args)
 
 
-@cli_entry
-def cli_module_installbase(args):
-    return installbase(args)
-
-
-@cli_func
-def installbase(args, no_fetch=False, __name__="module installbase"):
-    from ...api.module import installbase
-
-    ret = installbase(**args, no_fetch=no_fetch)
-    return ret
-
-
 class InstallProgressStdout(InstallProgressHandler):
     def __init__(self, module_name=None, module_version=None, quiet=True):
         super().__init__(module_name=module_name, module_version=module_version)
@@ -204,35 +191,6 @@ def add_parser_fn_module_pack(subparsers):
     parser_cli_module_pack.r_examples = [  # type: ignore
         '# Pack a module "mymodule" into one zip file for its code and another zip file for its data.',
         '#roakvar::store.pack(module="mymodule")',
-    ]
-
-
-def add_parser_ov_module_installbase(subparsers):
-    parser_ov_module_installbase = subparsers.add_parser(
-        "installbase",
-        help="installs base modules.",
-        description="installs base modules.",
-    )
-    parser_ov_module_installbase.add_argument(
-        "-f",
-        "--force",
-        default=None,
-        help="Overwrite existing modules",
-    )
-    parser_ov_module_installbase.add_argument(
-        "-d",
-        "--force-data",
-        action="store_true",
-        help="Download data even if latest data is already installed",
-    )
-    parser_ov_module_installbase.add_argument(
-        "--quiet", action="store_true", default=None, help="suppress stdout output"
-    )
-    parser_ov_module_installbase.set_defaults(func=cli_module_installbase)
-    parser_ov_module_installbase.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
-    parser_ov_module_installbase.r_examples = [  # type: ignore
-        "# Install OakVar system modules",
-        "#roakvar::module.installbase()",
     ]
 
 
@@ -314,8 +272,6 @@ def add_parser_ov_module(subparsers):
     )
     subparsers = parser_ov_module.add_subparsers()
 
-    # installbase
-    add_parser_ov_module_installbase(subparsers)
     # install
     add_parser_ov_module_install(subparsers)
     # pack
