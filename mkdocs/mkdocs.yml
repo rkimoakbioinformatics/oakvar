@@ -7,7 +7,6 @@ nav:
     - Modules: install_modules.md
   - Overview: overview.md
   - Tutorial: tutorial.md
-  - VCF2VCF: vcf2vcf.md
   - Command-line interface:
     - Overview: cli.md
     - Package file: package.md
@@ -33,6 +32,8 @@ nav:
       - system: api/system.md
     - oakvar.lib.util.util: api/lib_util_util.md
   - Apache Spark: apache_spark.md
+  - Technical Details: technical.md
+  - VCF2VCF: vcf2vcf.md
   - Release notes &#128279: "https://github.com/rkimoakbioinformatics/oakvar/releases"
   - Repository &#128279: "https://github.com/rkimoakbioinformatics/oakvar"
   - License &#128279: "https://github.com/rkimoakbioinformatics/oakvar/blob/master/LICENSE"
