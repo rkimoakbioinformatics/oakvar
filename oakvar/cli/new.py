@@ -107,8 +107,8 @@ def get_parser_fn_new():
     parser_cli_new_annotator = _subparsers.add_parser(
         "module", help="creates a new module skeleton."
     )
-    parser_cli_new_annotator.add_argument("-n", dest="name", help="Module name")
-    parser_cli_new_annotator.add_argument("-t", dest="type", help="Module type")
+    parser_cli_new_annotator.add_argument("-n", dest="name", required=True, help="Module name")
+    parser_cli_new_annotator.add_argument("-t", dest="type", required=True, help="Module type")
     parser_cli_new_annotator.add_argument(
         "--quiet", action="store_true", default=None, help="No print to stdout"
     )
