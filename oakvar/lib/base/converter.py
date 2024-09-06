@@ -50,6 +50,7 @@ from typing import Any
 from typing import List
 from typing import Dict
 from typing import Tuple
+from typing import Union
 
 
 class BaseConverter(object):
@@ -105,7 +106,7 @@ class BaseConverter(object):
         _ = args
         _ = kwargs
 
-    def convert_line(self, line, *args, **kwargs) -> List[Dict[str, Any]]:
+    def convert_line(self, line, *args, **kwargs) -> Union[str, List[Dict[str, Any]]]:
         _ = line
         _ = args
         _ = kwargs
