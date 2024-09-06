@@ -73,15 +73,13 @@ from .lib.util.seq import get_lifter
 from .lib.util.seq import liftover
 from .lib.util.seq import get_wgs_reader
 from .cli import CliOuter
-
-# for Rust spawn
-import multiprocessing
-
-multiprocessing.set_start_method("spawn", force=True)
-
 # for compatibility with oc
 from .lib.exceptions import BadFormatError
 from .lib.exceptions import InvalidData
+# for Rust spawn
+import multiprocessing
+multiprocessing.set_start_method("spawn", force=True)
+
 
 Cravat = Runner
 CravatReport = BaseReporter

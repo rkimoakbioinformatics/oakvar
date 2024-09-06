@@ -439,7 +439,7 @@ def report(
             response_t = loop.run_until_complete(reporter.run(head_n=head_n))
             # asyncio.set_event_loop(old_loop)
             output_fns = None
-            if type(response_t) == list:
+            if isinstance(response_t, list):
                 output_fns = " ".join(response_t)
             else:
                 output_fns = response_t
