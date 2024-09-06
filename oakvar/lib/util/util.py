@@ -1,42 +1,42 @@
 # OakVar
-# 
+#
 # Copyright (c) 2024 Oak Bioinformatics, LLC
-# 
+#
 # All rights reserved.
-# 
-# Do not distribute or use this software without obtaining 
+#
+# Do not distribute or use this software without obtaining
 # a license from Oak Bioinformatics, LLC.
-# 
-# Do not use this software to develop another software 
-# which competes with the products by Oak Bioinformatics, LLC, 
+#
+# Do not use this software to develop another software
+# which competes with the products by Oak Bioinformatics, LLC,
 # without obtaining a license for such use from Oak Bioinformatics, LLC.
-# 
+#
 # For personal use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For research use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For use by commercial entities, you must obtain a commercial license
 # from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
 # to obtain the commercial license.
 # ================
 # OpenCRAVAT
-# 
+#
 # MIT License
-# 
+#
 # Copyright (c) 2021 KarchinLab
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 # of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -797,7 +797,7 @@ def get_result_db_conn(db_path: str):
 
 
 def get_sample_uid_variant_arrays(
-    db_path: str, variant_criteria = None, use_zygosity: bool = True
+    db_path: str, variant_criteria=None, use_zygosity: bool = True
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Gets a Polars DataFrame of the presence of variants in samples.
 
@@ -836,24 +836,28 @@ def get_sample_uid_variant_arrays(
         if use_zygosity:
             if variant_criteria is not None:
                 cursor.execute(
-                    "select s.base__uid, s.base__zygosity from (select base__uid, base__zygosity from sample where base__sample_id=?) as s, (select base__uid from variant where " + variant_criteria + ") as v on s.base__uid = v.base__uid order by s.base__uid",
+                    "select s.base__uid, s.base__zygosity from (select base__uid, base__zygosity from sample where base__sample_id=?) as s, (select base__uid from variant where "
+                    + variant_criteria
+                    + ") as v on s.base__uid = v.base__uid order by s.base__uid",
                     (samples[sample_no],),
                 )
             else:
                 cursor.execute(
-                    "select base__uid, base__zygosity from sample where base__sample_id=? order by base__uid", 
-                    (samples[sample_no],)
+                    "select base__uid, base__zygosity from sample where base__sample_id=? order by base__uid",
+                    (samples[sample_no],),
                 )
         else:
             if variant_criteria is not None:
                 cursor.execute(
-                    "select s.base__uid from (select base__uid from sample where base__sample_id=?) as s, (select base__uid from variant where " + variant_criteria + ") as v on s.base__uid = v.base__uid order by s.base__uid",
+                    "select s.base__uid from (select base__uid from sample where base__sample_id=?) as s, (select base__uid from variant where "
+                    + variant_criteria
+                    + ") as v on s.base__uid = v.base__uid order by s.base__uid",
                     (samples[sample_no],),
                 )
             else:
                 cursor.execute(
-                    "select base__uid from sample where base__sample_id=? order by base__uid", 
-                    (samples[sample_no],)
+                    "select base__uid from sample where base__sample_id=? order by base__uid",
+                    (samples[sample_no],),
                 )
         for r in cursor.fetchall():
             if variant_criteria is not None:
@@ -873,12 +877,13 @@ def get_sample_uid_variant_arrays(
     uids = np.array(uids, dtype=np.uint32)
     return samples, uids, arr
 
+
 def get_df_from_db(
     db_path: str,
     table_name: str = "variant",
     sql: Optional[str] = None,
     num_cores: int = 1,
-    conn = None,
+    conn=None,
     library: Optional[str] = "polars",
 ) -> Optional[DataFrame]:
     """Gets a Polars DataFrame of a table in an OakVar result database.
@@ -946,8 +951,9 @@ def get_df_from_db(
                 sql, conn_url, partition_on=partition_on, partition_num=num_cores
             )
     else:
-        df = pl.read_database(sql, conn_url) # type: ignore
+        df = pl.read_database(sql, conn_url)  # type: ignore
     return df
+
 
 def is_in_jupyter_notebook() -> bool:
     import os

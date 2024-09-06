@@ -1,42 +1,42 @@
 # OakVar
-# 
+#
 # Copyright (c) 2024 Oak Bioinformatics, LLC
-# 
+#
 # All rights reserved.
-# 
-# Do not distribute or use this software without obtaining 
+#
+# Do not distribute or use this software without obtaining
 # a license from Oak Bioinformatics, LLC.
-# 
-# Do not use this software to develop another software 
-# which competes with the products by Oak Bioinformatics, LLC, 
+#
+# Do not use this software to develop another software
+# which competes with the products by Oak Bioinformatics, LLC,
 # without obtaining a license for such use from Oak Bioinformatics, LLC.
-# 
+#
 # For personal use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For research use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For use by commercial entities, you must obtain a commercial license
 # from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
 # to obtain the commercial license.
 # ================
 # OpenCRAVAT
-# 
+#
 # MIT License
-# 
+#
 # Copyright (c) 2021 KarchinLab
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 # of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -107,7 +107,9 @@ class JobHandlers:
         )
         self.routes.append(["GET", "/submit/jobdb", self.download_db])
         self.routes.append(["GET", "/submit/reporttypes", self.get_report_types])
-        self.routes.append(["POST", "/submit/jobinfo", self.get_job_info_by_username_uid])
+        self.routes.append(
+            ["POST", "/submit/jobinfo", self.get_job_info_by_username_uid]
+        )
 
     async def get_tags_of_annotators_and_postaggregators(self, _):
         from aiohttp.web import json_response
@@ -248,7 +250,13 @@ class JobHandlers:
         with open(log_path) as f:
             return Response(text=f.read())
 
-    async def make_download_zip(self, fpaths: List[Path], report_type: str, uid: Optional[str], dbpath: Optional[str]):
+    async def make_download_zip(
+        self,
+        fpaths: List[Path],
+        report_type: str,
+        uid: Optional[str],
+        dbpath: Optional[str],
+    ):
         from zipfile import ZipFile
         from pathlib import Path
 
@@ -278,7 +286,9 @@ class JobHandlers:
             return HTTPNotFound
         eud = {"uid": uid, "dbpath": dbpath, "username": username}
         report_type = request.match_info["report_type"]
-        report_paths = await self.get_existing_report_file_paths(request, report_type, eud=eud)
+        report_paths = await self.get_existing_report_file_paths(
+            request, report_type, eud=eud
+        )
         if not report_paths:
             raise HTTPNotFound
         if len(report_paths) == 1:
@@ -294,7 +304,9 @@ class JobHandlers:
             response = FileResponse(zpath, headers=headers)
             return response
 
-    async def get_existing_report_file_paths(self, request, report_type, eud={}) -> List[Path]:
+    async def get_existing_report_file_paths(
+        self, request, report_type, eud={}
+    ) -> List[Path]:
         from pathlib import Path
         from .userjob import get_job_dir_from_eud
         from .userjob import get_user_job_report_paths
@@ -346,7 +358,9 @@ class JobHandlers:
         job_dir = Path(job_dir)
         existing_report_types = []
         for report_type in self.get_valid_report_types():
-            report_paths = await self.get_existing_report_file_paths(request, report_type, eud=eud)
+            report_paths = await self.get_existing_report_file_paths(
+                request, report_type, eud=eud
+            )
             if report_paths:
                 existing_report_types.append(report_type)
         return json_response(existing_report_types)

@@ -1,42 +1,42 @@
 # OakVar
-# 
+#
 # Copyright (c) 2024 Oak Bioinformatics, LLC
-# 
+#
 # All rights reserved.
-# 
-# Do not distribute or use this software without obtaining 
+#
+# Do not distribute or use this software without obtaining
 # a license from Oak Bioinformatics, LLC.
-# 
-# Do not use this software to develop another software 
-# which competes with the products by Oak Bioinformatics, LLC, 
+#
+# Do not use this software to develop another software
+# which competes with the products by Oak Bioinformatics, LLC,
 # without obtaining a license for such use from Oak Bioinformatics, LLC.
-# 
+#
 # For personal use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For research use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For use by commercial entities, you must obtain a commercial license
 # from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
 # to obtain the commercial license.
 # ================
 # OpenCRAVAT
-# 
+#
 # MIT License
-# 
+#
 # Copyright (c) 2021 KarchinLab
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 # of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -97,9 +97,19 @@ def setup_system(
     # set up a store account.
     os_platform = platform.platform()
     if (sg_mode or os_platform.startswith("Windows")) and install_mode != "web":
-        ret = run_sg_store_account(email=email, pw=pw, install_mode=install_mode, clean=clean)
+        ret = run_sg_store_account(
+            email=email, pw=pw, install_mode=install_mode, clean=clean
+        )
     else:
-        ret = setup_store_account(conf=conf, email=email, pw=pw, create_account=create_account, install_mode=install_mode, clean=clean, outer=outer)
+        ret = setup_store_account(
+            conf=conf,
+            email=email,
+            pw=pw,
+            create_account=create_account,
+            install_mode=install_mode,
+            clean=clean,
+            outer=outer,
+        )
     if ret.get("success") is not True:
         if outer:
             msg = ret.get("msg")
@@ -176,7 +186,9 @@ def setup_system_conf(
 
     conf = None
     if setup_file:
-        conf = get_system_conf(sys_conf_path=setup_file, conf=custom_system_conf, clean=clean)
+        conf = get_system_conf(
+            sys_conf_path=setup_file, conf=custom_system_conf, clean=clean
+        )
         if outer:
             outer.write(f"Loaded system configuration from {setup_file}.")
     else:
@@ -219,13 +231,28 @@ def show_email_verify_action_banner(email: str):
     )
 
 
-def setup_store_account(conf=None, email=None, pw=None, create_account: bool = False, install_mode: str = "", clean: bool=False, outer=None) -> dict:
+def setup_store_account(
+    conf=None,
+    email=None,
+    pw=None,
+    create_account: bool = False,
+    install_mode: str = "",
+    clean: bool = False,
+    outer=None,
+) -> dict:
     from ..store.ov.account import total_login
     from ..store.ov.account import delete_token_set
 
     if clean:
         delete_token_set()
-    return total_login(email=email, pw=pw, conf=conf, create_account=create_account, install_mode=install_mode, outer=outer)
+    return total_login(
+        email=email,
+        pw=pw,
+        conf=conf,
+        create_account=create_account,
+        install_mode=install_mode,
+        outer=outer,
+    )
 
 
 def setup_user_conf_file(clean: bool = False, outer=None):
@@ -520,7 +547,7 @@ def augment_with_sys_conf_temp(conf: dict, conf_template: dict):
                         conf[k_t][kk_t] = vv_t
 
 
-def get_system_conf(sys_conf_path=None, conf=None, clean: bool=False) -> dict:
+def get_system_conf(sys_conf_path=None, conf=None, clean: bool = False) -> dict:
     from os import environ
     from os.path import exists
     from .consts import sys_conf_path_key
@@ -1125,7 +1152,7 @@ def show_liftover_license(outer=None):
     get_file_content_as_table(fpath, "LiftOver License", outer=outer)
 
 
-def update(yes: bool=False, outer=None) -> bool:
+def update(yes: bool = False, outer=None) -> bool:
     from subprocess import run
     from packaging.version import Version
     from ..util.admin_util import get_current_package_version
@@ -1176,13 +1203,23 @@ def update(yes: bool=False, outer=None) -> bool:
         outer.write("Modules updated successfully.")
     return True
 
+
 def get_ov_logo_path():
     from ..util.admin_util import get_packagedir
 
-    logo_path = get_packagedir() / "gui" / "websubmit" / "images" / "logo_transparent.png"
+    logo_path = (
+        get_packagedir() / "gui" / "websubmit" / "images" / "logo_transparent.png"
+    )
     return logo_path
 
-def run_sg_store_account(email: str="", pw: str="", install_mode: str="", clean: bool=False, outer=None) -> dict:
+
+def run_sg_store_account(
+    email: str = "",
+    pw: str = "",
+    install_mode: str = "",
+    clean: bool = False,
+    outer=None,
+) -> dict:
     import PySimpleGUI as sg
     from ..store.ov.account import login_with_email_pw
     from ..store.ov.account import delete_token_set
@@ -1226,6 +1263,7 @@ def run_sg_store_account(email: str="", pw: str="", install_mode: str="", clean:
             else:
                 return ret
 
+
 def run_sg_create_account(logo_data) -> Tuple[bool, Optional[str], Optional[str]]:
     import PySimpleGUI as sg
     from ..util.util import email_is_valid
@@ -1242,7 +1280,9 @@ def run_sg_create_account(logo_data) -> Tuple[bool, Optional[str], Optional[str]
             if not email_is_valid(username):
                 sg.popup_error("Wrong email format")
             elif not pw_is_valid(password):
-                sg.popup_error("Invalid password. Please use alphabets, numbers, and !?&@-+")
+                sg.popup_error(
+                    "Invalid password. Please use alphabets, numbers, and !?&@-+"
+                )
             elif password != confirm_password:
                 sg.popup_error("Password does not match.")
             else:
@@ -1255,6 +1295,7 @@ def run_sg_create_account(logo_data) -> Tuple[bool, Optional[str], Optional[str]
         else:
             window.close()
             return False, None, None
+
 
 def run_sg_login(logo_data):
     import PySimpleGUI as sg
@@ -1273,7 +1314,9 @@ def run_sg_login(logo_data):
         if not email_is_valid(username):
             sg.popup_error("Username should be an email.")
         elif not pw_is_valid(password):
-            sg.popup_error("Invalid password. Please use alphabets, numbers, and !?&@-+")
+            sg.popup_error(
+                "Invalid password. Please use alphabets, numbers, and !?&@-+"
+            )
         ret = login_with_email_pw(email=username, pw=password)
         if not ret.get("success"):
             sg.popup_error("Login unsuccessful.")
@@ -1281,6 +1324,7 @@ def run_sg_login(logo_data):
         else:
             window.close()
             return ret
+
 
 def get_sg_logo_data():
     import io
@@ -1292,11 +1336,12 @@ def get_sg_logo_data():
     new_height = 200
     scale = new_height / logo.height
     new_width = int(scale * logo.width)
-    logo = logo.resize((new_width, new_height), Image.ANTIALIAS) # type: ignore
+    logo = logo.resize((new_width, new_height), Image.ANTIALIAS)  # type: ignore
     bio = io.BytesIO()
     logo.save(bio, format="PNG")
     logo_data = bio.getvalue()
     return logo_data
+
 
 def gui_get_already_has_account(logo_data):
     import PySimpleGUI as sg
@@ -1308,17 +1353,14 @@ def gui_get_already_has_account(logo_data):
         ],
         [sg.Text("Let's set up OakVar.")],
         [sg.Text("Do you have an OakVar account?")],
-        [
-            sg.Button("Yes"),
-            sg.Button("No"),
-            sg.Button("Cancel")
-        ]
+        [sg.Button("Yes"), sg.Button("No"), sg.Button("Cancel")],
     ]
     layout = [[col1, sg.Column(col2)]]
     window = sg.Window("OakVar", layout)
     event, values = window.read()
     window.close()
     return event, values
+
 
 def gui_get_account_create_info(logo_data, window):
     import PySimpleGUI as sg
@@ -1330,29 +1372,23 @@ def gui_get_account_create_info(logo_data, window):
                 sg.Text("Welcome to OakVar", font="Verdana 40"),
             ],
             [
-                sg.Text("An OakVar account will be created with the Email and password you enter below.")
+                sg.Text(
+                    "An OakVar account will be created with the Email and password you enter below."
+                )
             ],
-            [
-                sg.Text("Email"),
-                sg.InputText(key="-USERNAME-")
-            ],
-            [
-                sg.Text("Password"),
-                sg.InputText(key="-PASSWORD-", password_char="*")
-            ],
+            [sg.Text("Email"), sg.InputText(key="-USERNAME-")],
+            [sg.Text("Password"), sg.InputText(key="-PASSWORD-", password_char="*")],
             [
                 sg.Text("Confirm password"),
-                sg.InputText(key="-CONFIRM-PASSWORD-", password_char="*")
+                sg.InputText(key="-CONFIRM-PASSWORD-", password_char="*"),
             ],
-            [
-                sg.Submit(),
-                sg.Cancel()
-            ]
+            [sg.Submit(), sg.Cancel()],
         ]
         layout = [[col1, sg.Column(col2)]]
         window = sg.Window("OakVar", layout)
     event, values = window.read()
     return event, values, window
+
 
 def gui_get_account_info(logo_data, window):
     import PySimpleGUI as sg
@@ -1363,21 +1399,10 @@ def gui_get_account_info(logo_data, window):
             [
                 sg.Text("Welcome to OakVar", font="Verdana 40"),
             ],
-            [
-                sg.Text("Please enter your OakVar username and password.")
-            ],
-            [
-                sg.Text("Email"),
-                sg.InputText(key="-USERNAME-")
-            ],
-            [
-                sg.Text("Password"),
-                sg.InputText(key="-PASSWORD-", password_char="*")
-            ],
-            [
-                sg.Submit(),
-                sg.Cancel()
-            ]
+            [sg.Text("Please enter your OakVar username and password.")],
+            [sg.Text("Email"), sg.InputText(key="-USERNAME-")],
+            [sg.Text("Password"), sg.InputText(key="-PASSWORD-", password_char="*")],
+            [sg.Submit(), sg.Cancel()],
         ]
         layout = [[col1, sg.Column(col2)]]
         window = sg.Window("OakVar", layout)

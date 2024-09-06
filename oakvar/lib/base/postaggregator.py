@@ -1,42 +1,42 @@
 # OakVar
-# 
+#
 # Copyright (c) 2024 Oak Bioinformatics, LLC
-# 
+#
 # All rights reserved.
-# 
-# Do not distribute or use this software without obtaining 
+#
+# Do not distribute or use this software without obtaining
 # a license from Oak Bioinformatics, LLC.
-# 
-# Do not use this software to develop another software 
-# which competes with the products by Oak Bioinformatics, LLC, 
+#
+# Do not use this software to develop another software
+# which competes with the products by Oak Bioinformatics, LLC,
 # without obtaining a license for such use from Oak Bioinformatics, LLC.
-# 
+#
 # For personal use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For research use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For use by commercial entities, you must obtain a commercial license
 # from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
 # to obtain the commercial license.
 # ================
 # OpenCRAVAT
-# 
+#
 # MIT License
-# 
+#
 # Copyright (c) 2021 KarchinLab
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 # of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -51,7 +51,6 @@ from typing import Dict
 
 
 class BasePostAggregator(object):
-
     cr_type_to_sql = {"string": "text", "int": "integer", "float": "real"}
 
     def __init__(
@@ -268,14 +267,22 @@ class BasePostAggregator(object):
                     self.table_headers[col["name"]].append(h["name"])
 
     def get_df(
-        self, level: str = "variant", sql: Optional[str] = None, num_cores: int = 1, conn = None,
+        self,
+        level: str = "variant",
+        sql: Optional[str] = None,
+        num_cores: int = 1,
+        conn=None,
     ):
         from ..util.util import get_df_from_db
 
         if not self.db_path:
             return None
         df = get_df_from_db(
-            self.db_path, table_name=level, sql=sql, num_cores=num_cores, conn=conn,
+            self.db_path,
+            table_name=level,
+            sql=sql,
+            num_cores=num_cores,
+            conn=conn,
         )
         return df
 
@@ -748,4 +755,3 @@ class BasePostAggregator(object):
     def annotate(self, input_data) -> Optional[Dict[str, Any]]:
         _ = input_data
         raise NotImplementedError()
-

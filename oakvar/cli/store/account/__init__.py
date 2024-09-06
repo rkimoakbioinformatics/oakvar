@@ -1,42 +1,42 @@
 # OakVar
-# 
+#
 # Copyright (c) 2024 Oak Bioinformatics, LLC
-# 
+#
 # All rights reserved.
-# 
-# Do not distribute or use this software without obtaining 
+#
+# Do not distribute or use this software without obtaining
 # a license from Oak Bioinformatics, LLC.
-# 
-# Do not use this software to develop another software 
-# which competes with the products by Oak Bioinformatics, LLC, 
+#
+# Do not use this software to develop another software
+# which competes with the products by Oak Bioinformatics, LLC,
 # without obtaining a license for such use from Oak Bioinformatics, LLC.
-# 
+#
 # For personal use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For research use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For use by commercial entities, you must obtain a commercial license
 # from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
 # to obtain the commercial license.
 # ================
 # OpenCRAVAT
-# 
+#
 # MIT License
-# 
+#
 # Copyright (c) 2021 KarchinLab
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 # of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -149,7 +149,9 @@ def add_parser_fn_store_account_create(subparsers):
         "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_store_createaccount.set_defaults(func=cli_store_createaccount)
-    parser_cli_store_createaccount.r_return = "A boolean. TRUE if successful, FALSE if not."  # type: ignore
+    parser_cli_store_createaccount.r_return = (
+        "A boolean. TRUE if successful, FALSE if not."  # type: ignore
+    )
     parser_cli_store_createaccount.r_examples = [  # type: ignore
         "# Create a store account",
         '#roakvar::store.createaccount(email="user1", password="password")',
@@ -165,7 +167,9 @@ def add_parser_fn_store_account_delete(subparsers):
         "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_store_deleteaccount.set_defaults(func=cli_store_deleteaccount)
-    parser_cli_store_deleteaccount.r_return = "A boolean. TRUE if successful, FALSE if not."  # type: ignore
+    parser_cli_store_deleteaccount.r_return = (
+        "A boolean. TRUE if successful, FALSE if not."  # type: ignore
+    )
     parser_cli_store_deleteaccount.r_examples = [  # type: ignore
         "# Create a store account",
         '#roakvar::store.deleteaccount(email="user1", password="password")',
@@ -182,7 +186,9 @@ def add_parser_fn_store_account_change(subparsers):
         "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_store_changepassword.set_defaults(func=cli_store_changepassword)
-    parser_cli_store_changepassword.r_return = "A string. Response from the store server"  # type: ignore
+    parser_cli_store_changepassword.r_return = (
+        "A string. Response from the store server"  # type: ignore
+    )
     parser_cli_store_changepassword.r_examples = [  # type: ignore
         "# Change the password of a store account",
         '#roakvar::store.changepassword(email="user1", ',
@@ -200,7 +206,9 @@ def add_parser_fn_store_account_reset(subparsers):
     )
     parser_cli_store_resetpassword.add_argument("--email", required=True, help="email")
     parser_cli_store_resetpassword.set_defaults(func=cli_store_account_reset)
-    parser_cli_store_resetpassword.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
+    parser_cli_store_resetpassword.r_return = (
+        "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
+    )
     parser_cli_store_resetpassword.r_examples = [  # type: ignore
         "# Ask the store to send an email to reset the password of a store account",
         '#roakvar::store.account.reset(email="user1")',
@@ -216,7 +224,9 @@ def add_parser_fn_store_account_check(subparsers):
         "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_store_checklogin.set_defaults(func=cli_store_check)
-    parser_cli_store_checklogin.r_return = "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
+    parser_cli_store_checklogin.r_return = (
+        "A boolean. A boolean. TRUE if successful, FALSE if not"  # type: ignore
+    )
     parser_cli_store_checklogin.r_examples = [  # type: ignore
         "# Check if the current is logged in the OakVar Store nor not. ",
         '#roakvar::store.checklogin(email="user1", password="password")',

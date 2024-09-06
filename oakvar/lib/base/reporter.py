@@ -1,42 +1,42 @@
 # OakVar
-# 
+#
 # Copyright (c) 2024 Oak Bioinformatics, LLC
-# 
+#
 # All rights reserved.
-# 
-# Do not distribute or use this software without obtaining 
+#
+# Do not distribute or use this software without obtaining
 # a license from Oak Bioinformatics, LLC.
-# 
-# Do not use this software to develop another software 
-# which competes with the products by Oak Bioinformatics, LLC, 
+#
+# Do not use this software to develop another software
+# which competes with the products by Oak Bioinformatics, LLC,
 # without obtaining a license for such use from Oak Bioinformatics, LLC.
-# 
+#
 # For personal use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For research use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For use by commercial entities, you must obtain a commercial license
 # from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
 # to obtain the commercial license.
 # ================
 # OpenCRAVAT
-# 
+#
 # MIT License
-# 
+#
 # Copyright (c) 2021 KarchinLab
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 # of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -56,7 +56,7 @@ from pathlib import Path
 class BaseReporter:
     def __init__(
         self,
-        dbpath: str="",
+        dbpath: str = "",
         report_types: List[str] = [],
         filterpath: Optional[str] = None,
         filter=None,
@@ -178,7 +178,9 @@ class BaseReporter:
         from ..exceptions import WrongInput
 
         if not self.dbpath:
-            raise WrongInput(msg=f"{self.dbpath} is not an OakVar result database file.")
+            raise WrongInput(
+                msg=f"{self.dbpath} is not an OakVar result database file."
+            )
         if not Path(self.dbpath).exists():
             raise WrongInput(msg=self.dbpath)
         try:
@@ -187,7 +189,9 @@ class BaseReporter:
                 db.execute("select count(*) from variant")
                 db.execute("select count(*) from gene")
         except Exception:
-            raise WrongInput(msg=f"{self.dbpath} is not an OakVar result database file.")
+            raise WrongInput(
+                msg=f"{self.dbpath} is not an OakVar result database file."
+            )
         if not self.output_dir:
             self.output_dir = str(Path(self.dbpath).parent)
         if not self.output_dir:
@@ -219,8 +223,10 @@ class BaseReporter:
             for level in ["variant", "gene", "sample", "mapping"]:
                 self.extract_columns_multilevel[level] = self.cols
         else:
-            self.extract_columns_multilevel = self.get_extract_columns_multilevel_from_option(
-                self.module_options.get("extract_columns", {})
+            self.extract_columns_multilevel = (
+                self.get_extract_columns_multilevel_from_option(
+                    self.module_options.get("extract_columns", {})
+                )
             )
         self.add_summary = not self.no_summary
 
@@ -444,8 +450,8 @@ class BaseReporter:
         pagesize=None,
         page=None,
         make_filtered_table=True,
-        head_n: Optional[int]=None,
-        make_col_categories: bool=False,
+        head_n: Optional[int] = None,
+        make_col_categories: bool = False,
         user=None,
     ):
         from ..exceptions import SetupError
@@ -478,7 +484,9 @@ class BaseReporter:
             self.levels = await self.get_levels_to_run(tab)
             for level in self.levels:
                 self.level = level
-                await self.make_col_infos(add_summary=add_summary, make_col_categories=make_col_categories)
+                await self.make_col_infos(
+                    add_summary=add_summary, make_col_categories=make_col_categories
+                )
                 await self.write_data(
                     level,
                     pagesize=pagesize,
@@ -514,7 +522,7 @@ class BaseReporter:
         pagesize=None,
         page=None,
         make_filtered_table=True,
-        head_n: Optional[int]=None,
+        head_n: Optional[int] = None,
     ):
         from ..exceptions import SetupError
 
@@ -550,13 +558,28 @@ class BaseReporter:
             return None
         cursor_read = await conn_read.cursor()
         await self.cf.get_level_data_iterator(
-            level, page=page, pagesize=pagesize, uid=self.ftable_uid, cursor_read=cursor_read, var_added_cols=self.var_added_cols, head_n=head_n,
+            level,
+            page=page,
+            pagesize=pagesize,
+            uid=self.ftable_uid,
+            cursor_read=cursor_read,
+            var_added_cols=self.var_added_cols,
+            head_n=head_n,
         )
         self.retrieved_col_names[level] = [d[0] for d in cursor_read.description]
-        self.extracted_col_nos[level] = [self.retrieved_col_names[level].index(col_name) for col_name in self.extracted_col_names[level]]
+        self.extracted_col_nos[level] = [
+            self.retrieved_col_names[level].index(col_name)
+            for col_name in self.extracted_col_names[level]
+        ]
         self.num_retrieved_cols = len(self.retrieved_col_names[level])
-        self.colnos_to_display[level] = [self.retrieved_col_names[level].index(c) for c in self.colnames_to_display[level]]
-        self.extracted_colnos_in_retrieved = [self.retrieved_col_names[level].index(c) for c in self.extracted_col_names[level]]
+        self.colnos_to_display[level] = [
+            self.retrieved_col_names[level].index(c)
+            for c in self.colnames_to_display[level]
+        ]
+        self.extracted_colnos_in_retrieved = [
+            self.retrieved_col_names[level].index(c)
+            for c in self.extracted_col_names[level]
+        ]
         async for datarow in cursor_read:
             if self.dictrow:
                 datarow = dict(datarow)
@@ -571,6 +594,7 @@ class BaseReporter:
                 self.write_row_with_samples_separate_or_not(datarow)
             except Exception:
                 import traceback
+
                 traceback.print_exc()
                 await cursor_read.close()
                 await conn_read.close()
@@ -637,7 +661,17 @@ class BaseReporter:
         for hugo in all_map:
             for maprow in all_map[hugo]:
                 if len(maprow) == 9:
-                    [transcript, refseq, mane_select, mane_plus_clinical, exonno, rnachange, protchange, so, protid] = maprow
+                    [
+                        transcript,
+                        refseq,
+                        mane_select,
+                        mane_plus_clinical,
+                        exonno,
+                        rnachange,
+                        protchange,
+                        so,
+                        protid,
+                    ] = maprow
                     _ = refseq or mane_select or mane_plus_clinical
                     exonno = ""
                 else:
@@ -691,14 +725,18 @@ class BaseReporter:
         else:
             datarow.update({col: generow[col] for col in self.var_added_cols})
 
-    async def get_variant_colinfo(self, add_summary=True, make_col_categories: bool=False):
+    async def get_variant_colinfo(
+        self, add_summary=True, make_col_categories: bool = False
+    ):
         try:
             await self.prep()
             if self.setup() is False:
                 await self.close_db()
                 return None
             self.levels = await self.get_levels_to_run("all")
-            await self.make_col_infos(add_summary=add_summary, make_col_categories=make_col_categories)
+            await self.make_col_infos(
+                add_summary=add_summary, make_col_categories=make_col_categories
+            )
             return self.colinfo
         except Exception:
             import traceback
@@ -756,7 +794,7 @@ class BaseReporter:
             self.colnames_to_display[level].append(col_name)
 
     async def make_sorted_column_groups(self, level, conn=Any):
-        cursor = await conn.cursor() # type: ignore
+        cursor = await conn.cursor()  # type: ignore
         self.columngroups[level] = []
         sql = f"select name, displayname from {level}_annotator order by name"
         await cursor.execute(sql)
@@ -781,12 +819,14 @@ class BaseReporter:
                     {"name": name, "displayname": displayname, "count": 0}
                 )
 
-    async def make_coldefs(self, level, conn=Any, make_col_categories:bool=False, group_name=None):
+    async def make_coldefs(
+        self, level, conn=Any, make_col_categories: bool = False, group_name=None
+    ):
         from ..util.inout import ColumnDefinition
 
         if not conn:
             return
-        cursor = await conn.cursor() # type: ignore
+        cursor = await conn.cursor()  # type: ignore
         header_table = f"{level}_header"
         coldefs = []
         group_names = []
@@ -880,7 +920,10 @@ class BaseReporter:
         modules_to_add = await self.get_gene_level_modules_to_add_to_variant_level(conn)
         for module_name in modules_to_add:
             gene_coldefs = await self.make_coldefs(
-                "gene", conn=conn, make_col_categories=self.make_col_categories, group_name=module_name
+                "gene",
+                conn=conn,
+                make_col_categories=self.make_col_categories,
+                group_name=module_name,
             )
             if not gene_coldefs:
                 continue
@@ -910,8 +953,8 @@ class BaseReporter:
         if not add_summary:
             return
         q = "select name from variant_annotator"
-        await cursor.execute(q) # type: ignore
-        done_var_annotators = [v[0] for v in await cursor.fetchall()] # type: ignore
+        await cursor.execute(q)  # type: ignore
+        done_var_annotators = [v[0] for v in await cursor.fetchall()]  # type: ignore
         self.summarizing_modules = []
         local_modules = get_local_module_infos_of_type("annotator")
         local_modules.update(get_local_module_infos_of_type("postaggregator"))
@@ -1034,12 +1077,17 @@ class BaseReporter:
                 self.colnos_to_display[level].append(colno)
             colno += 1
 
-    async def make_col_infos(self, add_summary=True, make_col_categories: bool=False):
+    async def make_col_infos(self, add_summary=True, make_col_categories: bool = False):
         prev_level = self.level
         for level in self.levels:
             if self.should_write_level(level):
                 self.level = level
-                await self.exec_db(self.make_col_info, level, add_summary=add_summary, make_col_categories=make_col_categories)
+                await self.exec_db(
+                    self.make_col_info,
+                    level,
+                    add_summary=add_summary,
+                    make_col_categories=make_col_categories,
+                )
         self.level = prev_level
 
     def add_column_number_stat_to_col_groups(self, level: str):
@@ -1050,7 +1098,14 @@ class BaseReporter:
             columngroup["end_colunm_number"] = new_last_columngroup_pos
             last_columngroup_pos = new_last_columngroup_pos
 
-    async def make_col_info(self, level: str, add_summary=True, make_col_categories: bool=False, conn=Any, cursor=Any):
+    async def make_col_info(
+        self,
+        level: str,
+        add_summary=True,
+        make_col_categories: bool = False,
+        conn=Any,
+        cursor=Any,
+    ):
         _ = cursor
         if not level or not await self.exec_db(self.table_exists, level):
             return
@@ -1060,7 +1115,9 @@ class BaseReporter:
         self.colnames_to_display[level] = []
         self.modules_to_add_to_base = [self.mapper_name, "tagsampler"]
         await self.make_sorted_column_groups(level, conn=conn)
-        coldefs = await self.make_coldefs(level, conn=conn, make_col_categories=make_col_categories)
+        coldefs = await self.make_coldefs(
+            level, conn=conn, make_col_categories=make_col_categories
+        )
         if not coldefs:
             return
         await self.make_columns_colnos_colnamestodisplay_columngroup(level, coldefs)
@@ -1077,17 +1134,19 @@ class BaseReporter:
         }
         await self.make_report_sub(level, conn)
 
-    def get_extract_columns_multilevel_from_option(self, v: Optional[str]) -> Dict[str, List[str]]:
+    def get_extract_columns_multilevel_from_option(
+        self, v: Optional[str]
+    ) -> Dict[str, List[str]]:
         import json
 
         ret: Dict[str, List[str]] = {}
         if isinstance(v, str):
-            if v.startswith("{"): # dict
-                v = v.replace("'", "\"")
+            if v.startswith("{"):  # dict
+                v = v.replace("'", '"')
                 ret = json.loads(v)
         return ret
 
-    async def set_dbpath(self, dbpath: str=""):
+    async def set_dbpath(self, dbpath: str = ""):
         from os.path import exists
         from ..exceptions import NoInput
         from ..exceptions import WrongInput
@@ -1155,5 +1214,6 @@ class BaseReporter:
         from ..util.run import get_standardized_module_option
 
         return get_standardized_module_option(v)
+
 
 CravatReport = BaseReporter

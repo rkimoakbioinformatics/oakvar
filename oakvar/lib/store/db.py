@@ -1,42 +1,42 @@
 # OakVar
-# 
+#
 # Copyright (c) 2024 Oak Bioinformatics, LLC
-# 
+#
 # All rights reserved.
-# 
-# Do not distribute or use this software without obtaining 
+#
+# Do not distribute or use this software without obtaining
 # a license from Oak Bioinformatics, LLC.
-# 
-# Do not use this software to develop another software 
-# which competes with the products by Oak Bioinformatics, LLC, 
+#
+# Do not use this software to develop another software
+# which competes with the products by Oak Bioinformatics, LLC,
 # without obtaining a license for such use from Oak Bioinformatics, LLC.
-# 
+#
 # For personal use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For research use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For use by commercial entities, you must obtain a commercial license
 # from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
 # to obtain the commercial license.
 # ================
 # OpenCRAVAT
-# 
+#
 # MIT License
-# 
+#
 # Copyright (c) 2021 KarchinLab
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 # of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -108,8 +108,8 @@ def latest_module_version_size(
         "select store, code_version, data_version, data_source, "
         + "code_size, data_size from versions where name=?"
     )
-    cursor.execute(q, (module_name,)) # type: ignore
-    ret = cursor.fetchall() # type: ignore
+    cursor.execute(q, (module_name,))  # type: ignore
+    ret = cursor.fetchall()  # type: ignore
     latest_code_version = ""
     latest_r = None
     for r in ret:
@@ -121,7 +121,9 @@ def latest_module_version_size(
             latest_code_version = r[1]
     if latest_r:
         data_version: str = latest_r[2]
-        data_size: int = get_module_data_version_size_from_store(module_name, data_version)
+        data_size: int = get_module_data_version_size_from_store(
+            module_name, data_version
+        )
         return {
             "code_version": latest_r[1],
             "data_version": data_version,
@@ -169,8 +171,8 @@ def module_data_sources(module_name, conn=Any, cursor=Any) -> Optional[List[str]
         return None
     name, store = r
     q = "select data_source from versions where name=? and store=?"
-    cursor.execute(q, (name, store)) # type: ignore
-    values = [r[0] for r in cursor.fetchall()] # type: ignore
+    cursor.execute(q, (name, store))  # type: ignore
+    values = [r[0] for r in cursor.fetchall()]  # type: ignore
     return values
 
 
@@ -182,8 +184,8 @@ def module_min_pkg_vers(module_name, conn=Any, cursor=Any) -> Optional[List[str]
         return None
     name, store = r
     q = "select min_pkg_ver from versions where name=? and store=?"
-    cursor.execute(q, (name, store)) # type: ignore
-    values = [r[0] for r in cursor.fetchall()] # type: ignore
+    cursor.execute(q, (name, store))  # type: ignore
+    values = [r[0] for r in cursor.fetchall()]  # type: ignore
     return values
 
 
@@ -264,9 +266,9 @@ def module_code_version_is_not_compatible_with_pkg_version(
     _ = conn
     pkg_ver = Version(oakvar_version())
     q = "select min_pkg_ver from versions where name=? and code_version=?"
-    cursor.execute(q, (module_name, code_version)) # type: ignore
+    cursor.execute(q, (module_name, code_version))  # type: ignore
     min_pkg_ver = None
-    for row in cursor.fetchall(): # type: ignore
+    for row in cursor.fetchall():  # type: ignore
         version = row[0]
         if Version(version) <= pkg_ver:
             return None
@@ -385,13 +387,13 @@ def is_store_db_schema_changed(conn=Any, cursor=Any) -> bool:
 
     _ = conn
     q = 'pragma table_info("summary")'
-    cursor.execute(q) # type: ignore
-    cols = [row[1] for row in cursor.fetchall()] # type: ignore
+    cursor.execute(q)  # type: ignore
+    cols = [row[1] for row in cursor.fetchall()]  # type: ignore
     if len(cols) > 0 and cols != summary_table_cols:
         return True
     q = 'pragma table_info("versions")'
-    cursor.execute(q) # type: ignore
-    cols = [row[1] for row in cursor.fetchall()] # type: ignore
+    cursor.execute(q)  # type: ignore
+    cols = [row[1] for row in cursor.fetchall()]  # type: ignore
     if len(cols) > 0 and cols != versions_table_cols:
         return True
     return False
@@ -575,8 +577,8 @@ def fetch_ov_store_cache(
 def is_new_store_db_setup(conn=Any, cursor=Any):
     _ = conn
     q = "pragma table_info('info')"
-    cursor.execute(q) # type: ignore
-    ret = cursor.fetchall() # type: ignore
+    cursor.execute(q)  # type: ignore
+    ret = cursor.fetchall()  # type: ignore
     if len(ret) > 0:
         return False
     else:
@@ -749,8 +751,8 @@ def fetch_summary_cache(publish_time: str = "", outer=None, conn=Any, cursor=Any
             raise StoreServerError()
         return False
     q = "delete from summary"
-    cursor.execute(q) # type: ignore
-    conn.commit() # type: ignore
+    cursor.execute(q)  # type: ignore
+    conn.commit()  # type: ignore
     res = res.json()
     cols = res["cols"]
     for row in res["data"]:
@@ -758,8 +760,8 @@ def fetch_summary_cache(publish_time: str = "", outer=None, conn=Any, cursor=Any
             f"insert or replace into summary ( {', '.join(cols)} ) "
             + f"values ( {', '.join(['?'] * len(cols))} )"
         )
-        cursor.execute(q, row) # type: ignore
-    conn.commit() # type: ignore
+        cursor.execute(q, row)  # type: ignore
+    conn.commit()  # type: ignore
 
 
 @db_func
@@ -878,8 +880,8 @@ def get_urls(module_name: str, code_version: str, conn=None, cursor=None):
 def table_has_entry(table: str, conn=Any, cursor=Any) -> bool:
     _ = conn or cursor
     q = f"select count(*) from {table}"
-    cursor.execute(q) # type: ignore
-    v = cursor.fetchone()[0] # type: ignore
+    cursor.execute(q)  # type: ignore
+    v = cursor.fetchone()[0]  # type: ignore
     return v > 0
 
 
@@ -919,4 +921,3 @@ def get_module_data_version_size_from_store(
         if data_size:
             return data_size
     return data_size
-

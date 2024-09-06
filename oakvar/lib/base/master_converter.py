@@ -1,42 +1,42 @@
 # OakVar
-# 
+#
 # Copyright (c) 2024 Oak Bioinformatics, LLC
-# 
+#
 # All rights reserved.
-# 
-# Do not distribute or use this software without obtaining 
+#
+# Do not distribute or use this software without obtaining
 # a license from Oak Bioinformatics, LLC.
-# 
-# Do not use this software to develop another software 
-# which competes with the products by Oak Bioinformatics, LLC, 
+#
+# Do not use this software to develop another software
+# which competes with the products by Oak Bioinformatics, LLC,
 # without obtaining a license for such use from Oak Bioinformatics, LLC.
-# 
+#
 # For personal use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For research use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For use by commercial entities, you must obtain a commercial license
 # from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
 # to obtain the commercial license.
 # ================
 # OpenCRAVAT
-# 
+#
 # MIT License
-# 
+#
 # Copyright (c) 2021 KarchinLab
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 # of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -69,23 +69,39 @@ VALID: str = "valid"
 ERROR: str = "error"
 IGNORED: str = "ignored"
 
+
 class LinesData:
     def __init__(self, lines_data: Dict[int, List[Tuple[int, Dict[str, Any]]]]):
         self.lines_data = lines_data
+
 
 def handle_genotype(variant):
     genotype = variant.get("genotype")
     if genotype and "." in genotype:
         variant["genotype"] = variant["genotype"].replace(".", variant["ref_base"])
 
-def flush_err_holder(err_holders: List[List[str]], core_num: int, error_logger, force: bool=False):
+
+def flush_err_holder(
+    err_holders: List[List[str]], core_num: int, error_logger, force: bool = False
+):
     err_holder: List[str] = err_holders[core_num]
     if len(err_holder) > 1000 or force:
         for err_line in err_holder:
             error_logger.error(err_line)
         err_holder.clear()
 
-def _log_conversion_error(logger, error_logger, input_path: str, line_no: int, e, unique_excs: dict, err_holders: List[List[str]], unique_err_in_line: Set[str], core_num=None):
+
+def _log_conversion_error(
+    logger,
+    error_logger,
+    input_path: str,
+    line_no: int,
+    e,
+    unique_excs: dict,
+    err_holders: List[List[str]],
+    unique_err_in_line: Set[str],
+    core_num=None,
+):
     from traceback import format_exc
     from oakvar.lib.exceptions import ExpectedException
     from oakvar.lib.exceptions import NoAlternateAllele
@@ -118,10 +134,19 @@ def _log_conversion_error(logger, error_logger, input_path: str, line_no: int, e
             unique_err_in_line.add(err_str)
     flush_err_holder(err_holders, core_num, error_logger)
 
+
 def is_chrM(wdict):
     return wdict["chrom"] == "chrM"
 
-def perform_liftover_if_needed(variant, do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, keep_liftover_failed: bool) -> Optional[Dict[str, Any]]:
+
+def perform_liftover_if_needed(
+    variant,
+    do_liftover: bool,
+    do_liftover_chrM: bool,
+    lifter,
+    wgs_reader,
+    keep_liftover_failed: bool,
+) -> Optional[Dict[str, Any]]:
     from copy import copy
     from oakvar.lib.util.seq import liftover_one_pos
     from oakvar.lib.util.seq import liftover
@@ -157,9 +182,7 @@ def perform_liftover_if_needed(variant, do_liftover: bool, do_liftover_chrM: boo
                 return crl_data
             else:
                 raise e
-        converted_end = liftover_one_pos(
-            orig_chrom, variant["pos_end"], lifter=lifter
-        )
+        converted_end = liftover_one_pos(orig_chrom, variant["pos_end"], lifter=lifter)
         if converted_end is None:
             pos_end = ""
         else:
@@ -168,6 +191,7 @@ def perform_liftover_if_needed(variant, do_liftover: bool, do_liftover_chrM: boo
     else:
         crl_data = variant.get("crl")
     return crl_data
+
 
 def add_end_pos_if_absent(variant: dict):
     col_name = "pos_end"
@@ -178,6 +202,7 @@ def add_end_pos_if_absent(variant: dict):
             variant[col_name] = variant["pos"]
         else:
             variant[col_name] = variant["pos"] + ref_len - 1
+
 
 def normalize_variant(variant):
     from oakvar.lib.util.seq import normalize_variant_left
@@ -196,6 +221,7 @@ def normalize_variant(variant):
     variant["ref_base"] = new_ref
     variant["alt_base"] = new_alt
 
+
 def check_invalid_base(variant: dict):
     from oakvar.lib.exceptions import IgnoredVariant
 
@@ -203,6 +229,7 @@ def check_invalid_base(variant: dict):
         raise IgnoredVariant(f"Invalid reference base {variant['ref_base']}")
     if not base_re.fullmatch(variant["alt_base"]):
         raise IgnoredVariant(f"Invalid alternate base {variant['alt_base']}")
+
 
 def handle_ref_base(variant, wgs_reader):
     from oakvar.lib.exceptions import IgnoredVariant
@@ -228,11 +255,13 @@ def handle_ref_base(variant, wgs_reader):
                 variant.get("chrom"), int(variant.get("pos"))
             )
 
+
 def handle_alt_base(variant):
     from oakvar.lib.exceptions import IgnoredVariant
 
     if variant["alt_base"] is None:
         raise IgnoredVariant("No alternate allele")
+
 
 def handle_chrom(variant, genome: str):
     from oakvar.lib.exceptions import IgnoredVariant
@@ -255,12 +284,18 @@ def handle_chrom(variant, genome: str):
             variant["chrom"] = new_chrom
     if not chrom[0].startswith("c"):
         chrom = "chr" + chrom
-    variant["chrom"] = chromdict.get(
-        chrom, chrom
-    )
+    variant["chrom"] = chromdict.get(chrom, chrom)
+
 
 def handle_variant(
-        variant: dict, do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, line_no: int, genome: str, keep_liftover_failed: bool
+    variant: dict,
+    do_liftover: bool,
+    do_liftover_chrM: bool,
+    lifter,
+    wgs_reader,
+    line_no: int,
+    genome: str,
+    keep_liftover_failed: bool,
 ):
     from oakvar.lib.exceptions import NoVariantError
 
@@ -273,14 +308,31 @@ def handle_variant(
     check_invalid_base(variant)
     normalize_variant(variant)
     add_end_pos_if_absent(variant)
-    crl_data = perform_liftover_if_needed(variant, do_liftover, do_liftover_chrM, lifter, wgs_reader, keep_liftover_failed)
+    crl_data = perform_liftover_if_needed(
+        variant, do_liftover, do_liftover_chrM, lifter, wgs_reader, keep_liftover_failed
+    )
     handle_genotype(variant)
     variant["original_line"] = line_no
     variant["tags"] = tags
     variant["crl"] = crl_data
 
+
 def handle_converted_variants(
-        variants: List[Dict[str, Any]], do_liftover: bool, do_liftover_chrM: bool, lifter, wgs_reader, logger, error_logger, input_path: str, unique_excs: dict, err_holders: List[List[str]], line_no: int, core_num: int, genome: str, unique_err_in_line: Set[str], keep_liftover_failed: bool
+    variants: List[Dict[str, Any]],
+    do_liftover: bool,
+    do_liftover_chrM: bool,
+    lifter,
+    wgs_reader,
+    logger,
+    error_logger,
+    input_path: str,
+    unique_excs: dict,
+    err_holders: List[List[str]],
+    line_no: int,
+    core_num: int,
+    genome: str,
+    unique_err_in_line: Set[str],
+    keep_liftover_failed: bool,
 ) -> Tuple[List[Dict[str, Any]], bool]:
     if variants is BaseConverter.IGNORE:
         return [], False
@@ -290,40 +342,76 @@ def handle_converted_variants(
     error_occurred: bool = False
     for variant in variants:
         try:
-            handle_variant(variant, do_liftover, do_liftover_chrM, lifter, wgs_reader, line_no, genome, keep_liftover_failed)
+            handle_variant(
+                variant,
+                do_liftover,
+                do_liftover_chrM,
+                lifter,
+                wgs_reader,
+                line_no,
+                genome,
+                keep_liftover_failed,
+            )
             variant_l.append(variant)
         except Exception as e:
-            _log_conversion_error(logger, error_logger, input_path, line_no, e, unique_excs, err_holders, unique_err_in_line, core_num=core_num)
+            _log_conversion_error(
+                logger,
+                error_logger,
+                input_path,
+                line_no,
+                e,
+                unique_excs,
+                err_holders,
+                unique_err_in_line,
+                core_num=core_num,
+            )
             error_occurred = True
             continue
     return variant_l, error_occurred
 
+
 def gather_variantss(
-        converter: BaseConverter, 
-        lines_data: Dict[int, List[Tuple[int, Dict[str, Any]]]],
-        core_num: int, 
-        do_liftover: bool, 
-        do_liftover_chrM: bool, 
-        lifter, 
-        wgs_reader, 
-        logger, 
-        error_logger, 
-        input_path: str, 
-        unique_excs: dict, 
-        err_holders: List[List[str]],
-        num_valid_error_lines: Dict[str, int],
-        genome: str,
-        keep_liftover_failed: bool
+    converter: BaseConverter,
+    lines_data: Dict[int, List[Tuple[int, Dict[str, Any]]]],
+    core_num: int,
+    do_liftover: bool,
+    do_liftover_chrM: bool,
+    lifter,
+    wgs_reader,
+    logger,
+    error_logger,
+    input_path: str,
+    unique_excs: dict,
+    err_holders: List[List[str]],
+    num_valid_error_lines: Dict[str, int],
+    genome: str,
+    keep_liftover_failed: bool,
 ) -> List[List[Dict[str, Any]]]:
     from oakvar.lib.exceptions import IgnoredInput
 
     variants_l: List[List[Dict[str, Any]]] = []
     line_data = lines_data[core_num]
-    for (line_no, line) in line_data:
+    for line_no, line in line_data:
         unique_err_in_line: Set[str] = set()
         try:
             variants = converter.convert_line(line)
-            variants_datas, error_occurred = handle_converted_variants(variants, do_liftover, do_liftover_chrM, lifter, wgs_reader, logger, error_logger, input_path, unique_excs, err_holders, line_no, core_num, genome, unique_err_in_line, keep_liftover_failed)
+            variants_datas, error_occurred = handle_converted_variants(
+                variants,
+                do_liftover,
+                do_liftover_chrM,
+                lifter,
+                wgs_reader,
+                logger,
+                error_logger,
+                input_path,
+                unique_excs,
+                err_holders,
+                line_no,
+                core_num,
+                genome,
+                unique_err_in_line,
+                keep_liftover_failed,
+            )
             if error_occurred:
                 num_valid_error_lines[ERROR] += 1
             else:
@@ -334,15 +422,27 @@ def gather_variantss(
         except KeyboardInterrupt:
             raise
         except Exception as e:
-            _log_conversion_error(logger, error_logger, input_path, line_no, e, unique_excs, err_holders, unique_err_in_line, core_num=core_num)
+            _log_conversion_error(
+                logger,
+                error_logger,
+                input_path,
+                line_no,
+                e,
+                unique_excs,
+                err_holders,
+                unique_err_in_line,
+                core_num=core_num,
+            )
             if isinstance(e, IgnoredInput):
                 num_valid_error_lines[IGNORED] += 1
             else:
                 num_valid_error_lines[ERROR] += 1
     return variants_l
 
+
 def gather_variantss_wrapper(args):
     return gather_variantss(*args)
+
 
 class MasterConverter(object):
     DEFAULT_MP: int = 4
@@ -359,10 +459,10 @@ class MasterConverter(object):
         conf: Dict = {},
         module_options: Dict = {},
         input_encoding=None,
-        ignore_sample: bool=False,
-        skip_variant_deduplication: bool=False,
-        mp: int=DEFAULT_MP,
-        keep_liftover_failed: bool=False,
+        ignore_sample: bool = False,
+        skip_variant_deduplication: bool = False,
+        mp: int = DEFAULT_MP,
+        keep_liftover_failed: bool = False,
         outer=None,
     ):
         from re import compile
@@ -479,9 +579,7 @@ class MasterConverter(object):
         from pathlib import Path
 
         self.input_paths = []
-        self.input_paths = [
-            str(Path(x).absolute()) for x in self.inputs if x != "-"
-        ]
+        self.input_paths = [str(Path(x).absolute()) for x in self.inputs if x != "-"]
         self.input_dir = str(Path(self.input_paths[0]).parent)
         for i in range(len(self.input_paths)):
             self.input_path_dict[i] = self.input_paths[i]
@@ -580,7 +678,9 @@ class MasterConverter(object):
                     converter.format_name = module_name.split("-")[0]
             if not converter.format_name:
                 if self.logger:
-                    self.logger.error(f"{module_name} module code does not have 'format_name' variable.")
+                    self.logger.error(
+                        f"{module_name} module code does not have 'format_name' variable."
+                    )
                 return None
             converter.script_path = script_path
             return converter
@@ -596,7 +696,9 @@ class MasterConverter(object):
             module_name = module_path.stem
             if module_name in ["cravat-converter", "oldcravat-converter"]:
                 if self.logger:
-                    self.logger.warn(f"{module_name} is deprecated. Please install and use csv-converter module.")
+                    self.logger.warn(
+                        f"{module_name} is deprecated. Please install and use csv-converter module."
+                    )
             script_path: Path = module_path / f"{module_name}.py"
             self.converter_paths[module_name] = script_path
         else:
@@ -606,7 +708,9 @@ class MasterConverter(object):
                 module_name = module_info.name
                 if module_name in ["cravat-converter", "oldcravat-converter"]:
                     if self.logger:
-                        self.logger.warn(f"{module_name} is deprecated. Please install and use csv-converter module.")
+                        self.logger.warn(
+                            f"{module_name} is deprecated. Please install and use csv-converter module."
+                        )
                     continue
                 self.converter_paths[module_name] = module_info.script_path
 
@@ -633,7 +737,7 @@ class MasterConverter(object):
 
     def get_converter_name_for_input_file(self, input_path) -> str:
         from pathlib import Path
-        from oakvar.lib.exceptions import NoConverterFound 
+        from oakvar.lib.exceptions import NoConverterFound
 
         converter_name: str = ""
         if self.converter_module:
@@ -806,7 +910,7 @@ class MasterConverter(object):
             self.fileno += 1
             self.set_converter_properties(converter)
             log_module(converter, self.logger)
-            self.error_logger = getLogger("err." + converter.module_name) # type: ignore
+            self.error_logger = getLogger("err." + converter.module_name)  # type: ignore
             converter.input_path = input_path
             converter.input_paths = self.input_paths
             converter.setup(input_path, encoding=encoding)
@@ -923,7 +1027,9 @@ class MasterConverter(object):
             raise ValueError("No crm_writer")
         if not self.crl_writer:
             raise ValueError("No crl_writer")
-        if sysplatform == "win32": # TODO: Remove after releasing Rust-based vcf-converter.
+        if (
+            sysplatform == "win32"
+        ):  # TODO: Remove after releasing Rust-based vcf-converter.
             batch_size: int = 10000
             num_pool = 1
         else:
@@ -950,29 +1056,34 @@ class MasterConverter(object):
             round_no: int = 0
             next_batch_log: int = log_batch_size
             while True:
-                lines_data, immature_exit = main_converter.get_variant_lines(input_path, num_pool, start_line_no, batch_size)
+                lines_data, immature_exit = main_converter.get_variant_lines(
+                    input_path, num_pool, start_line_no, batch_size
+                )
                 args = [
                     (
-                        converters[core_num], 
+                        converters[core_num],
                         lines_data,
-                        core_num, 
-                        self.do_liftover, 
-                        self.do_liftover_chrM, 
-                        self.lifter, 
-                        self.wgs_reader, 
-                        self.logger, 
-                        self.error_logger, 
-                        input_path, 
-                        self.unique_excs, 
+                        core_num,
+                        self.do_liftover,
+                        self.do_liftover_chrM,
+                        self.lifter,
+                        self.wgs_reader,
+                        self.logger,
+                        self.error_logger,
+                        input_path,
+                        self.unique_excs,
                         self.err_holders,
                         self.num_valid_error_lines,
                         self.genome,
-                        self.keep_liftover_failed
-                    ) for core_num in range(num_pool)
+                        self.keep_liftover_failed,
+                    )
+                    for core_num in range(num_pool)
                 ]
                 results = pool.map(gather_variantss_wrapper, args)
                 for core_num in range(num_pool):
-                    flush_err_holder(self.err_holders, core_num, self.error_logger, force=True)
+                    flush_err_holder(
+                        self.err_holders, core_num, self.error_logger, force=True
+                    )
                 lines_data = None
                 for result in results:
                     variants_l = result
@@ -1013,7 +1124,9 @@ class MasterConverter(object):
                                 for comp_var_str in unique_var_dict.get(pos, {}).keys():
                                     if var_str == comp_var_str:
                                         # crs: uid, sample_id, genotype, zygosity, tot_reads, alt_reads, af
-                                        comp_uid: int = unique_var_dict[pos][comp_var_str]
+                                        comp_uid: int = unique_var_dict[pos][
+                                            comp_var_str
+                                        ]
                                         sample["uid"] = comp_uid
                                         variant["uid"] = comp_uid
                                         dup_found = True
@@ -1041,20 +1154,26 @@ class MasterConverter(object):
                 start_line_no += batch_size * num_pool
                 round_no += 1
                 if start_line_no >= next_batch_log:
-                    status = (
-                        f"Running Converter ({self.input_fname}): line {start_line_no - 1}"
-                    )
+                    status = f"Running Converter ({self.input_fname}): line {start_line_no - 1}"
                     update_status(
                         status, logger=self.logger, serveradmindb=self.serveradmindb
                     )
                     next_batch_log = start_line_no + log_batch_size
-            self.logger.info(f"{input_path}: number of lines ignored: {self.num_valid_error_lines[IGNORED]}")
+            self.logger.info(
+                f"{input_path}: number of lines ignored: {self.num_valid_error_lines[IGNORED]}"
+            )
             self.logger.info(
                 f"{input_path}: number of lines successfully processed: {self.num_valid_error_lines[VALID]}"
             )
-            self.logger.info(f"{input_path}: number of lines skipped due to errors: {self.num_valid_error_lines[ERROR]}")
-            self.logger.info(f"{input_path}: number of unique variants: {self.file_num_unique_variants}")
-            self.logger.info(f"{input_path}: number of duplicate variants: {self.file_num_dup_variants}")
+            self.logger.info(
+                f"{input_path}: number of lines skipped due to errors: {self.num_valid_error_lines[ERROR]}"
+            )
+            self.logger.info(
+                f"{input_path}: number of unique variants: {self.file_num_unique_variants}"
+            )
+            self.logger.info(
+                f"{input_path}: number of duplicate variants: {self.file_num_dup_variants}"
+            )
             self.total_num_unique_variants += self.file_num_unique_variants
             self.total_num_duplicate_variants += self.file_num_dup_variants
             self.total_num_valid_lines += self.num_valid_error_lines[VALID]
@@ -1090,8 +1209,12 @@ class MasterConverter(object):
 
         if not self.logger:
             raise
-        self.logger.info(f"total number of unique variants: {self.total_num_unique_variants}")
-        self.logger.info(f"total number of duplicate variants: {self.total_num_duplicate_variants}")
+        self.logger.info(
+            f"total number of unique variants: {self.total_num_unique_variants}"
+        )
+        self.logger.info(
+            f"total number of duplicate variants: {self.total_num_duplicate_variants}"
+        )
         self.logger.info(f"total number of valid lines: {self.total_num_valid_lines}")
         self.logger.info(f"total number of error lines: {self.total_num_error_lines}")
         end_time = time()
@@ -1114,4 +1237,3 @@ class MasterConverter(object):
 
     def end(self):
         pass
-

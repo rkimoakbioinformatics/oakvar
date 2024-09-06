@@ -1,42 +1,42 @@
 # OakVar
-# 
+#
 # Copyright (c) 2024 Oak Bioinformatics, LLC
-# 
+#
 # All rights reserved.
-# 
-# Do not distribute or use this software without obtaining 
+#
+# Do not distribute or use this software without obtaining
 # a license from Oak Bioinformatics, LLC.
-# 
-# Do not use this software to develop another software 
-# which competes with the products by Oak Bioinformatics, LLC, 
+#
+# Do not use this software to develop another software
+# which competes with the products by Oak Bioinformatics, LLC,
 # without obtaining a license for such use from Oak Bioinformatics, LLC.
-# 
+#
 # For personal use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For research use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For use by commercial entities, you must obtain a commercial license
 # from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
 # to obtain the commercial license.
 # ================
 # OpenCRAVAT
-# 
+#
 # MIT License
-# 
+#
 # Copyright (c) 2021 KarchinLab
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 # of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -82,56 +82,40 @@ def get_table_info_sqlite(dbpath: Path, level: str):
         "name": table_name,
         "description": f"Modules used to generate annotation data for {level} level",
         "output_columns": [
-            {
-                "name": "name",
-                "description": "Module name",
-                "type": "string"
-            },
+            {"name": "name", "description": "Module name", "type": "string"},
             {
                 "name": "display",
                 "description": "Human-readable module name",
-                "type": "string"
+                "type": "string",
             },
-            {
-                "name": "version",
-                "description": "Version",
-                "type": "string"
-            }
-        ]
+            {"name": "version", "description": "Version", "type": "string"},
+        ],
     }
     table_name = f"{level}_header"
     out[table_name] = {
         "name": table_name,
         "description": f"Columns in the {level} table",
         "output_columns": [
-            {
-                "name": "col_name",
-                "description": "Column name",
-                "type": "string"
-            },
+            {"name": "col_name", "description": "Column name", "type": "string"},
             {
                 "name": "col_def",
                 "description": "Column definition in JSON",
-                "type": "string"
-            }
-        ]
+                "type": "string",
+            },
+        ],
     }
     table_name = f"{level}_reportsub"
     out[table_name] = {
         "name": table_name,
         "description": f"Code to human-readable text substitution table for the {level} table",
         "output_columns": [
-            {
-                "name": "module",
-                "description": "Module name",
-                "type": "string"
-            },
+            {"name": "module", "description": "Module name", "type": "string"},
             {
                 "name": "subdict",
                 "description": "JSON string of the dictionary of internal code and human-readable text pairs.",
-                "type": "string"
-            }
-        ]
+                "type": "string",
+            },
+        ],
     }
     c.close()
     conn.close()
@@ -164,7 +148,9 @@ def get_sqliteinfo(dbpath: Union[Path, str] = "") -> Dict[str, Any]:
         c.execute('select colval from info where colkey="inputs"')
         ret = c.fetchone()
     if not ret:
-        raise ExpectedException(f"{dbpath} does not seem to be a proper OakVar result database file. Exiting.")
+        raise ExpectedException(
+            f"{dbpath} does not seem to be a proper OakVar result database file. Exiting."
+        )
     input_paths = loads(ret[0].replace("'", '"'))
     if isinstance(input_paths, dict):
         out["inputs"] = list(input_paths.values())
@@ -175,25 +161,15 @@ def get_sqliteinfo(dbpath: Union[Path, str] = "") -> Dict[str, Any]:
         "name": "info",
         "description": "General information on the ov run job",
         "output_columns": [
-            {
-                "name": "colkey",
-                "description": "Information key",
-                "type": "string"
-            },
-            {
-                "name": "colval",
-                "description": "Information value",
-                "type": "string"
-            }
-        ]
+            {"name": "colkey", "description": "Information key", "type": "string"},
+            {"name": "colval", "description": "Information value", "type": "string"},
+        ],
     }
     for level in ["variant", "gene", "sample", "mapping"]:
         out["tables"].update(get_table_info_sqlite(dbpath, level))
-    out["tables"]["viewersetup"] = {
-        "name": "viewersetup",
-        "description": "Deprecated"
-    }
+    out["tables"]["viewersetup"] = {"name": "viewersetup", "description": "Deprecated"}
     return out
+
 
 def move_job_to_account(job_dir: Union[Path, str], new_username: str):
     from sqlite3 import connect
@@ -253,4 +229,3 @@ def move_job_to_account(job_dir: Union[Path, str], new_username: str):
     # Move job dir
     job_dir.rename(new_job_dir)
     print(f"Job {job_dir} moved to {new_job_dir} for {new_username}.")
-

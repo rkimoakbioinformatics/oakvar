@@ -1,42 +1,42 @@
 # OakVar
-# 
+#
 # Copyright (c) 2024 Oak Bioinformatics, LLC
-# 
+#
 # All rights reserved.
-# 
-# Do not distribute or use this software without obtaining 
+#
+# Do not distribute or use this software without obtaining
 # a license from Oak Bioinformatics, LLC.
-# 
-# Do not use this software to develop another software 
-# which competes with the products by Oak Bioinformatics, LLC, 
+#
+# Do not use this software to develop another software
+# which competes with the products by Oak Bioinformatics, LLC,
 # without obtaining a license for such use from Oak Bioinformatics, LLC.
-# 
+#
 # For personal use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For research use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For use by commercial entities, you must obtain a commercial license
 # from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
 # to obtain the commercial license.
 # ================
 # OpenCRAVAT
-# 
+#
 # MIT License
-# 
+#
 # Copyright (c) 2021 KarchinLab
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 # of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -465,8 +465,8 @@ class ServerAdminDb:
             return None
         _ = conn
         q = "select status from jobs where uid=?"
-        await cursor.execute(q, (uid,)) # type: ignore
-        ret = await cursor.fetchone() # type: ignore
+        await cursor.execute(q, (uid,))  # type: ignore
+        ret = await cursor.fetchone()  # type: ignore
         if not ret:
             return None
         return ret[0]
@@ -479,8 +479,8 @@ class ServerAdminDb:
             return None
         _ = conn
         q = "select dir from jobs where username=? and uid=?"
-        await cursor.execute(q, (eud.get("username"), eud.get("uid"))) # type: ignore
-        ret = await cursor.fetchone() # type: ignore
+        await cursor.execute(q, (eud.get("username"), eud.get("uid")))  # type: ignore
+        ret = await cursor.fetchone()  # type: ignore
         if not ret:
             return None
         else:
@@ -494,8 +494,8 @@ class ServerAdminDb:
             return None
         _ = conn
         q = "select info_json from jobs where username=? and uid=?"
-        await cursor.execute(q, (eud.get("username"), eud.get("uid"))) # type: ignore
-        ret = await cursor.fetchone() # type: ignore
+        await cursor.execute(q, (eud.get("username"), eud.get("uid")))  # type: ignore
+        ret = await cursor.fetchone()  # type: ignore
         if not ret:
             return None
         info_json = loads(ret[0])
@@ -579,13 +579,13 @@ class ServerAdminDb:
             "select uid, name, info_json, status from jobs where username=? "
             + f"order by uid desc limit {limit} offset {offset}"
         )
-        await cursor.execute(q, (email,)) # type: ignore
-        ret = await cursor.fetchall() # type: ignore
+        await cursor.execute(q, (email,))  # type: ignore
+        ret = await cursor.fetchall()  # type: ignore
         ret = [dict(v) for v in ret]
         if len(ret) == 0:
             q = "select count(*) from jobs where username=?"
-            await cursor.execute(q, (email,)) # type: ignore
-            total_ret = await cursor.fetchone() # type: ignore
+            await cursor.execute(q, (email,))  # type: ignore
+            total_ret = await cursor.fetchone()  # type: ignore
             total = total_ret[0]
             if offset > total:
                 return None
@@ -606,8 +606,8 @@ class ServerAdminDb:
         if not username or not uid:
             return None
         q = "select info_json from jobs where username=? and uid=?"
-        await cursor.execute(q, (username, uid)) # type: ignore
-        ret = await cursor.fetchone() # type: ignore
+        await cursor.execute(q, (username, uid))  # type: ignore
+        ret = await cursor.fetchone()  # type: ignore
         if not ret:
             return None
         info_json = loads(ret[0])
@@ -618,16 +618,16 @@ class ServerAdminDb:
         if not username or not uid:
             return
         q = "update jobs set status=? where username=? and uid=?"
-        await cursor.execute(q, ("Aborted", username, uid)) # type: ignore
-        await conn.commit() # type: ignore
+        await cursor.execute(q, ("Aborted", username, uid))  # type: ignore
+        await conn.commit()  # type: ignore
 
     @db_func
     async def get_users(self, conn=Any, cursor=Any):
         _ = conn
         q = "select email, role from users"
-        await cursor.execute(q) # type: ignore
+        await cursor.execute(q)  # type: ignore
         res = []
-        for row in await cursor.fetchall(): # type: ignore
+        for row in await cursor.fetchall():  # type: ignore
             res.append({"email": row[0], "role": row[1]})
         return res
 
@@ -635,28 +635,28 @@ class ServerAdminDb:
     async def make_admin(self, email: str, conn=Any, cursor=Any):
         _ = conn
         q = "update users set role=? where email=?"
-        await cursor.execute( # type: ignore
+        await cursor.execute(  # type: ignore
             q,
             (
                 "admin",
                 email,
             ),
         )
-        await conn.commit() # type: ignore
+        await conn.commit()  # type: ignore
 
     @db_func
     async def remove_admin(self, email: str, conn=Any, cursor=Any):
         _ = conn
         q = "update users set role='user' where email=?"
-        await cursor.execute(q, (email,)) # type: ignore
-        await conn.commit() # type: ignore
+        await cursor.execute(q, (email,))  # type: ignore
+        await conn.commit()  # type: ignore
 
     @db_func
     async def remove_user(self, email: str, conn=Any, cursor=Any):
         _ = conn
         q = "delete from users where email=?"
-        await cursor.execute(q, (email,)) # type: ignore
-        await conn.commit() # type: ignore
+        await cursor.execute(q, (email,))  # type: ignore
+        await conn.commit()  # type: ignore
 
     def retrieve_user_jobs_into_db(self):
         from pathlib import Path
@@ -753,6 +753,7 @@ class ServerAdminDb:
         if ret:
             return ret[0]
         return ret
+
 
 def setup_serveradmindb(clean: bool = False) -> ServerAdminDb:
     from os import remove

@@ -1,42 +1,42 @@
 # OakVar
-# 
+#
 # Copyright (c) 2024 Oak Bioinformatics, LLC
-# 
+#
 # All rights reserved.
-# 
-# Do not distribute or use this software without obtaining 
+#
+# Do not distribute or use this software without obtaining
 # a license from Oak Bioinformatics, LLC.
-# 
-# Do not use this software to develop another software 
-# which competes with the products by Oak Bioinformatics, LLC, 
+#
+# Do not use this software to develop another software
+# which competes with the products by Oak Bioinformatics, LLC,
 # without obtaining a license for such use from Oak Bioinformatics, LLC.
-# 
+#
 # For personal use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For research use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For use by commercial entities, you must obtain a commercial license
 # from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
 # to obtain the commercial license.
 # ================
 # OpenCRAVAT
-# 
+#
 # MIT License
-# 
+#
 # Copyright (c) 2021 KarchinLab
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 # of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -115,8 +115,8 @@ def run(
     input_encoding: Optional[str] = None,
     ignore_sample: bool = False,
     uid: Optional[str] = None,
-    skip_variant_deduplication: bool=False,
-    keep_liftover_failed: bool=False,
+    skip_variant_deduplication: bool = False,
+    keep_liftover_failed: bool = False,
     loop=None,
     outer=None,
 ) -> Optional[Dict[str, Any]]:
@@ -279,7 +279,7 @@ def report(
     no_summary: bool = False,
     serveradmindb=None,
     module_options: Dict[str, Dict] = {},
-    head_n: Optional[int]=None,
+    head_n: Optional[int] = None,
     logtofile: bool = False,
     outer=None,
     loop=None,
@@ -365,7 +365,9 @@ def report(
                 if outer:
                     outer.error(f"{module_path} does not exist.")
     elif report_types:
-        module_names = [v if v.endswith("reporter") else v + "reporter" for v in report_types]
+        module_names = [
+            v if v.endswith("reporter") else v + "reporter" for v in report_types
+        ]
         for module_name in module_names:
             module_info = get_local_module_info(module_name)
             if module_info:
@@ -392,7 +394,8 @@ def report(
             elif outer:
                 outer.write(f"Generating {module_name} report...")
             spec = spec_from_file_location(  # type: ignore
-                module_name, module_info.script_path  # type: ignore
+                module_name,
+                module_info.script_path,  # type: ignore
             )
             if not spec:
                 continue
@@ -464,7 +467,7 @@ def license(outer=None):
     show_license(outer=outer)
 
 
-def update(yes: bool=False, outer=None) -> bool:
+def update(yes: bool = False, outer=None) -> bool:
     """Updates OakVar to the latest version and sets up OakVar again.
 
     Args:

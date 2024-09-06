@@ -1,42 +1,42 @@
 # OakVar
-# 
+#
 # Copyright (c) 2024 Oak Bioinformatics, LLC
-# 
+#
 # All rights reserved.
-# 
-# Do not distribute or use this software without obtaining 
+#
+# Do not distribute or use this software without obtaining
 # a license from Oak Bioinformatics, LLC.
-# 
-# Do not use this software to develop another software 
-# which competes with the products by Oak Bioinformatics, LLC, 
+#
+# Do not use this software to develop another software
+# which competes with the products by Oak Bioinformatics, LLC,
 # without obtaining a license for such use from Oak Bioinformatics, LLC.
-# 
+#
 # For personal use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For research use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For use by commercial entities, you must obtain a commercial license
 # from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
 # to obtain the commercial license.
 # ================
 # OpenCRAVAT
-# 
+#
 # MIT License
-# 
+#
 # Copyright (c) 2021 KarchinLab
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 # of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -68,7 +68,6 @@ level_prefixes = {"variant": "v", "gene": "g"}
 
 
 class FilterColumn(object):
-
     test2sql = {
         "equals": "==",
         "lessThanEq": "<=",
@@ -268,7 +267,7 @@ class ReportFilter:
         self.dbpath = dbpath
         if self.dbpath is not None:
             self.dbpath = str(Path(dbpath).absolute())
-        #self.conn = None
+        # self.conn = None
         self.filterpath = filterpath
         self.cmd = None
         self.level = None
@@ -469,10 +468,12 @@ class ReportFilter:
 
     async def filtertable_exists(self, cursor_read=Any, cursor_write=Any):
         _ = cursor_write
-        sql = 'select * from viewersetup where datatype="filter" and ' +\
-                f'name="{self.filtername}"'
-        await cursor_read.execute(sql) # type: ignore
-        row = await cursor_read.fetchone() # type: ignore
+        sql = (
+            'select * from viewersetup where datatype="filter" and '
+            + f'name="{self.filtername}"'
+        )
+        await cursor_read.execute(sql)  # type: ignore
+        row = await cursor_read.fetchone()  # type: ignore
         if row is None:
             ret = False
         else:
@@ -525,13 +526,13 @@ class ReportFilter:
             self.filterstring = self.filterstring.replace("'", '"')
             self.filter = loads(self.filterstring)
         elif self.filtername is not None and filter_table_present:
-            await cursor_read.execute( # type: ignore
+            await cursor_read.execute(  # type: ignore
                 "select viewersetup from viewersetup"
                 + ' where datatype="filter" and name="'
                 + self.filtername
                 + '"'
             )
-            criteria = await cursor_read.fetchone() # type: ignore
+            criteria = await cursor_read.fetchone()  # type: ignore
             if criteria is not None:
                 self.filter = loads(criteria[0])["filterSet"]
         elif self.filterpath is not None and exists(self.filterpath):
@@ -677,13 +678,13 @@ class ReportFilter:
             if not table_name:
                 return
             q = f"drop table if exists {table_name}"
-            await cursor_write.execute(q) # type: ignore
+            await cursor_write.execute(q)  # type: ignore
         if gene_to_filter:
             table_name = self.get_gene_to_filter_table_name(uid=uid)
             if not table_name:
                 return
             q = f"drop table if exists {table_name}"
-            await cursor_write.execute(q) # type: ignore
+            await cursor_write.execute(q)  # type: ignore
         await conn_write.commit()
         await conn_read.close()
         await conn_write.close()
@@ -701,7 +702,7 @@ class ReportFilter:
         if not table_name:
             return
         q = f"drop table if exists {table_name}"
-        await cursor_write.execute(q) # type: ignore
+        await cursor_write.execute(q)  # type: ignore
         await conn_write.commit()
         q = f"create table {table_name} as select distinct base__uid from main.sample"
         if req:
@@ -713,7 +714,7 @@ class ReportFilter:
                 " except select base__uid from main.sample where "
                 + f"base__sample_id in ({rej_s})"
             )
-        await cursor_write.execute(q) # type: ignore
+        await cursor_write.execute(q)  # type: ignore
         await conn_write.commit()
         await conn_read.close()
         await conn_write.close()
@@ -737,8 +738,8 @@ class ReportFilter:
             f"select uid, status from {tablename} where "
             + "user=? and dbpath=? and filterjson=?"
         )
-        await cursor_read.execute(q, (self.user, self.dbpath, filterjson)) # type: ignore
-        ret = await cursor_read.fetchone() # type: ignore
+        await cursor_read.execute(q, (self.user, self.dbpath, filterjson))  # type: ignore
+        ret = await cursor_read.fetchone()  # type: ignore
         if not ret:
             await conn_read.close()
             await conn_write.close()
@@ -751,8 +752,8 @@ class ReportFilter:
     async def get_report_filter_count(self, cursor=Any):
         tablename = self.get_registry_table_name()
         q = f"select count(*) from {tablename}"
-        await cursor.execute(q) # type: ignore
-        ret = await cursor.fetchone() # type: ignore
+        await cursor.execute(q)  # type: ignore
+        ret = await cursor.fetchone()  # type: ignore
         count = ret[0]
         return count
 
@@ -761,8 +762,8 @@ class ReportFilter:
         q = f"select max(uid) from {tablename}"
         if where:
             q += f" where {where}"
-        await cursor.execute(q) # type: ignore
-        ret = await cursor.fetchone() # type: ignore
+        await cursor.execute(q)  # type: ignore
+        ret = await cursor.fetchone()  # type: ignore
         n = ret[0]
         return n
 
@@ -771,8 +772,8 @@ class ReportFilter:
         q = f"select min(uid) from {tablename}"
         if where:
             q += f" where {where}"
-        await cursor.execute(q) # type: ignore
-        ret = await cursor.fetchone() # type: ignore
+        await cursor.execute(q)  # type: ignore
+        ret = await cursor.fetchone()  # type: ignore
         n = ret[0]
         return n
 
@@ -784,8 +785,8 @@ class ReportFilter:
         _ = cursor_write
         tablename = self.get_registry_table_name()
         q = f"select filterjson from {tablename} where uid=?"
-        await cursor_read.execute(q, (uid,)) # type: ignore
-        ret = await cursor_read.fetchone() # type: ignore
+        await cursor_read.execute(q, (uid,))  # type: ignore
+        ret = await cursor_read.fetchone()  # type: ignore
         if ret:
             return ret[0]
         else:
@@ -836,8 +837,8 @@ class ReportFilter:
         else:
             table_name = self.get_ftable_name(uid=self.uid, ftype="gene")
         q = f"select base__hugo from {table_name}"
-        await cursor_read.execute(q) # type: ignore
-        rets = [v[0] for v in await cursor_read.fetchall()] # type: ignore
+        await cursor_read.execute(q)  # type: ignore
+        rets = [v[0] for v in await cursor_read.fetchall()]  # type: ignore
         return rets
 
     async def register_new_report_filter(
@@ -855,7 +856,7 @@ class ReportFilter:
             + f"{REPORT_FILTER_REGISTRY_NAME} ( uid, user, dbpath, "
             + "filterjson, status) values (?, ?, ?, ?, ?)"
         )
-        await cursor_write.execute( # type: ignore
+        await cursor_write.execute(  # type: ignore
             q, (uid, self.user, self.dbpath, filterjson, REPORT_FILTER_IN_PROGRESS)
         )
         await conn_write.commit()
@@ -922,7 +923,7 @@ class ReportFilter:
             uid=uid, gene_to_filter=gene_to_filter, sample_to_filter=sample_to_filter
         )
         q = f"create table {table_name} as {q}"
-        await cursor_write.execute(q) # type: ignore
+        await cursor_write.execute(q)  # type: ignore
         await conn_write.commit()
         await conn_read.close()
         await conn_write.close()
@@ -941,7 +942,7 @@ class ReportFilter:
             + f"from main.variant as v inner join {fvariant} as vf on "
             + "vf.base__uid=v.base__uid where v.base__hugo is not null"
         )
-        await cursor_write.execute(q) # type: ignore
+        await cursor_write.execute(q)  # type: ignore
         await conn_write.commit()
         await conn_read.close()
         await conn_write.close()
@@ -974,7 +975,7 @@ class ReportFilter:
             return
         table_name = self.get_registry_table_name()
         q = f"update {table_name} set status=?"
-        await cursor_write.execute(q, (status,)) # type: ignore
+        await cursor_write.execute(q, (status,))  # type: ignore
         await conn_write.commit()
         await conn_read.close()
         await conn_write.close()
@@ -990,9 +991,9 @@ class ReportFilter:
         for uid in uids:
             for level in ["variant", "gene"]:
                 q = f"drop table if exists f{level}_{uid}"
-                await cursor_write.execute(q) # type: ignore
+                await cursor_write.execute(q)  # type: ignore
             q = f"delete from {tablename} where uid=?"
-            await cursor_write.execute(q, (uid,)) # type: ignore
+            await cursor_write.execute(q, (uid,))  # type: ignore
         await conn_write.commit()
         await conn_read.commit()
         await conn_read.close()
@@ -1009,7 +1010,7 @@ class ReportFilter:
         _ = cursor_read
         table_name = self.get_ftable_name(uid=uid, ftype=ftype)
         q = f"drop table if exists {table_name}"
-        await cursor_write.execute(q) # type: ignore
+        await cursor_write.execute(q)  # type: ignore
         await conn_write.commit()
         await conn_read.close()
         await conn_write.close()
@@ -1070,8 +1071,8 @@ class ReportFilter:
     ) -> List[str]:
         _ = cursor_write
         q = "select * from main.variant limit 1"
-        await cursor_read.execute(q) # type: ignore
-        return [v[0] for v in cursor_read.description] # type: ignore
+        await cursor_read.execute(q)  # type: ignore
+        return [v[0] for v in cursor_read.description]  # type: ignore
 
     async def get_ftable_num_rows(
         self, level=None, uid=None, ftype=None, cursor_read=Any, cursor_write=Any
@@ -1084,11 +1085,20 @@ class ReportFilter:
             q = f"select count(*) from {table_name}"
         else:
             q = f"select count(*) from main.{level}"
-        await cursor_read.execute(q) # type: ignore
-        ret = await cursor_read.fetchone() # type: ignore
+        await cursor_read.execute(q)  # type: ignore
+        ret = await cursor_read.fetchone()  # type: ignore
         return ret[0]
 
-    async def get_level_data_iterator(self, level, page=None, pagesize=None, uid=None, var_added_cols=[], head_n: Optional[int]=None, cursor_read=None):
+    async def get_level_data_iterator(
+        self,
+        level,
+        page=None,
+        pagesize=None,
+        uid=None,
+        var_added_cols=[],
+        head_n: Optional[int] = None,
+        cursor_read=None,
+    ):
         if not level:
             return None
         if not cursor_read:
@@ -1120,8 +1130,8 @@ class ReportFilter:
     async def get_gene_row(self, hugo=None, cursor_read=Any, cursor_write=Any):
         _ = cursor_write
         q = "select * from main.gene where base__hugo=?"
-        await cursor_read.execute(q, (hugo,)) # type: ignore
-        return await cursor_read.fetchone() # type: ignore
+        await cursor_read.execute(q, (hugo,))  # type: ignore
+        return await cursor_read.fetchone()  # type: ignore
 
     def get_gene_to_filter(self):
         if isinstance(self.filter, dict) and "genes" in self.filter:
@@ -1137,9 +1147,7 @@ class ReportFilter:
             return None
         return f"{REPORT_FILTER_DB_NAME}.{GENE_TO_FILTER_TABLE_NAME}_{uid}"
 
-    def make_gene_to_filter_table(
-        self, uid=None, genes=None
-    ):
+    def make_gene_to_filter_table(self, uid=None, genes=None):
         import sqlite3
         from os import mkdir
 
@@ -1184,13 +1192,13 @@ class ReportFilter:
         if conn and cursor_write and bypassfilter is False:
             gftable = "gene_filtered"
             q = f"drop table if exists {gftable}"
-            await cursor_write.execute(q) # type: ignore
+            await cursor_write.execute(q)  # type: ignore
             q = (
                 f"create table {gftable} as select distinct v.base__hugo "
                 + "from variant as v inner join variant_filtered as vf on "
                 + "vf.base__uid=v.base__uid where v.base__hugo is not null"
             )
-            await cursor_write.execute(q) # type: ignore
+            await cursor_write.execute(q)  # type: ignore
 
     async def table_exists(self, table, cursor_read=Any, cursor_write=Any) -> bool:
         _ = cursor_write
@@ -1200,8 +1208,8 @@ class ReportFilter:
             + table
             + '"'
         )
-        await cursor_read.execute(sql) # type: ignore
-        row = await cursor_read.fetchone() # type: ignore
+        await cursor_read.execute(sql)  # type: ignore
+        row = await cursor_read.fetchone()  # type: ignore
         if row:
             return True
         else:
@@ -1217,8 +1225,8 @@ class ReportFilter:
             q += " inner join variant_filtered as f on v.base__uid=f.base__uid"
         if cols[0] == "v.base__uid":
             cols[0] = "base__uid"
-        await cursor_read.execute(q) # type: ignore
-        rows = await cursor_read.fetchall() # type: ignore
+        await cursor_read.execute(q)  # type: ignore
+        rows = await cursor_read.fetchall()  # type: ignore
         return rows
 
     async def get_result_levels(self, cursor_read=Any, cursor_write=Any) -> List[str]:
@@ -1228,8 +1236,8 @@ class ReportFilter:
             'select name from sqlite_master where type="table" and '
             + 'name like "%_header"'
         )
-        await cursor_read.execute(q) # type: ignore
-        for row in await cursor_read.fetchall(): # type: ignore
+        await cursor_read.execute(q)  # type: ignore
+        for row in await cursor_read.fetchall():  # type: ignore
             table_names.append(row[0].replace("_header", ""))
         return table_names
 
@@ -1244,8 +1252,8 @@ class ReportFilter:
             "select col_def from variant_header where col_name like"
             + ' "{module_name}\\_\\_%" escape "\\"'
         )
-        await cursor_read.execute(q) # type: ignore
-        for row in await cursor_read.fetchall(): # type: ignore
+        await cursor_read.execute(q)  # type: ignore
+        for row in await cursor_read.fetchall():  # type: ignore
             d = loads(row[0])
             d["name"] = d["name"].replace(f"{module_name}__", "")
             output_columns.append(d)

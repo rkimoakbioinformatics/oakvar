@@ -1,42 +1,42 @@
 # OakVar
-# 
+#
 # Copyright (c) 2024 Oak Bioinformatics, LLC
-# 
+#
 # All rights reserved.
-# 
-# Do not distribute or use this software without obtaining 
+#
+# Do not distribute or use this software without obtaining
 # a license from Oak Bioinformatics, LLC.
-# 
-# Do not use this software to develop another software 
-# which competes with the products by Oak Bioinformatics, LLC, 
+#
+# Do not use this software to develop another software
+# which competes with the products by Oak Bioinformatics, LLC,
 # without obtaining a license for such use from Oak Bioinformatics, LLC.
-# 
+#
 # For personal use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For research use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For use by commercial entities, you must obtain a commercial license
 # from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
 # to obtain the commercial license.
 # ================
 # OpenCRAVAT
-# 
+#
 # MIT License
-# 
+#
 # Copyright (c) 2021 KarchinLab
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 # of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -218,6 +218,7 @@ codon_table = {
 hg19_chrom_aliases: Dict[str, str] = {}
 hg38_chrom_aliases: Dict[str, str] = {}
 
+
 def load_chrom_aliases(genome: str):
     from pathlib import Path
 
@@ -239,17 +240,20 @@ def load_chrom_aliases(genome: str):
             for alias in words[1:]:
                 d[alias] = words[0]
 
+
 def get_grch37_to_hg19(chrom: str) -> str:
     global hg19_chrom_aliases
     if not hg19_chrom_aliases:
         load_chrom_aliases("hg19")
     return hg19_chrom_aliases[chrom] or ""
 
+
 def get_grch38_to_hg38(chrom: str) -> str:
     global hg38_chrom_aliases
     if not hg38_chrom_aliases:
         load_chrom_aliases("hg38")
     return hg38_chrom_aliases.get(chrom, "")
+
 
 def trim_input_left_adjust(ref, alt, pos, strand):
     """trim_input_left_adjust.
@@ -355,7 +359,7 @@ def reverse_complement(bases):
     return "".join([complementary_base[base] for base in bases[::-1]])
 
 
-def get_lifter(source_assembly: str, to_assembly: str="") -> Optional[ChainFile]:
+def get_lifter(source_assembly: str, to_assembly: str = "") -> Optional[ChainFile]:
     """get_lifter.
 
     Args:
@@ -376,7 +380,9 @@ def get_lifter(source_assembly: str, to_assembly: str="") -> Optional[ChainFile]
         makedirs(liftover_dir, exist_ok=True)
     if not to_assembly:
         to_assembly = SYSTEM_GENOME_ASSEMBLY
-    chain_file_basename = f"{source_assembly.lower()}To{to_assembly.capitalize()}.over.chain.gz"
+    chain_file_basename = (
+        f"{source_assembly.lower()}To{to_assembly.capitalize()}.over.chain.gz"
+    )
     chain_file_path: Path = liftover_dir / chain_file_basename
     if not chain_file_path.exists():
         url = f"https://hgdownload.cse.ucsc.edu/goldenPath/{source_assembly.lower()}/liftOver/{chain_file_basename}"
@@ -552,4 +558,3 @@ def get_wgs_reader(assembly="hg38"):
         wgs = ModuleClass()
         wgs.setup()
     return wgs
-

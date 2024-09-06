@@ -1,42 +1,42 @@
 # OakVar
-# 
+#
 # Copyright (c) 2024 Oak Bioinformatics, LLC
-# 
+#
 # All rights reserved.
-# 
-# Do not distribute or use this software without obtaining 
+#
+# Do not distribute or use this software without obtaining
 # a license from Oak Bioinformatics, LLC.
-# 
-# Do not use this software to develop another software 
-# which competes with the products by Oak Bioinformatics, LLC, 
+#
+# Do not use this software to develop another software
+# which competes with the products by Oak Bioinformatics, LLC,
 # without obtaining a license for such use from Oak Bioinformatics, LLC.
-# 
+#
 # For personal use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For research use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For use by commercial entities, you must obtain a commercial license
 # from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
 # to obtain the commercial license.
 # ================
 # OpenCRAVAT
-# 
+#
 # MIT License
-# 
+#
 # Copyright (c) 2021 KarchinLab
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 # of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -125,7 +125,9 @@ class LocalModule(object):
         self.installed = True
         self.local_code_version = self.code_version
         self.local_data_source = self.data_source
-        self.has_logo = get_logo_path(self.name, self.type, module_dir=self.directory) is not None
+        self.has_logo = (
+            get_logo_path(self.name, self.type, module_dir=self.directory) is not None
+        )
 
     def get_size(self):
         """
@@ -532,7 +534,9 @@ def get_module_size(module_name, module_type: str = "") -> int:
         return 0
 
 
-def get_data_size(module_name, data_version: str = "", module_type: str = "") -> Optional[int]:
+def get_data_size(
+    module_name, data_version: str = "", module_type: str = ""
+) -> Optional[int]:
     from ..util.util import get_directory_size
     from ..store.db import get_module_data_version_size_from_store
 
@@ -844,7 +848,9 @@ def create_module_files(instance, overwrite: bool = False, interactive: bool = F
     if not module_name:
         if interactive:
             if is_in_jupyter_notebook():
-                print("Interactive mode is not available in Jupyter notebook. Please provide module name in the instance argument.")
+                print(
+                    "Interactive mode is not available in Jupyter notebook. Please provide module name in the instance argument."
+                )
             else:
                 module_name = input("Module name:")
     if not module_name:
@@ -855,7 +861,9 @@ def create_module_files(instance, overwrite: bool = False, interactive: bool = F
     if not module_version:
         if interactive:
             if is_in_jupyter_notebook():
-                print("Interactive mode is not available in Jupyter notebook. Please provide module version in the instance argument.")
+                print(
+                    "Interactive mode is not available in Jupyter notebook. Please provide module version in the instance argument."
+                )
             else:
                 module_version = input("Module version:")
     if not module_version:
@@ -866,7 +874,9 @@ def create_module_files(instance, overwrite: bool = False, interactive: bool = F
     if not module_title:
         if interactive:
             if is_in_jupyter_notebook():
-                print("Interactive mode is not available in Jupyter notebook. Please provide module title in the instance argument.")
+                print(
+                    "Interactive mode is not available in Jupyter notebook. Please provide module title in the instance argument."
+                )
             else:
                 module_title = input("Module title:")
     if not module_title:
@@ -876,7 +886,9 @@ def create_module_files(instance, overwrite: bool = False, interactive: bool = F
         )
     if not module_type:
         if is_in_jupyter_notebook():
-            print("Interactive mode is not available in Jupyter notebook. Please provide module type in the instance argument.")
+            print(
+                "Interactive mode is not available in Jupyter notebook. Please provide module type in the instance argument."
+            )
         else:
             module_type = input("Module type:")
     if not module_type:
@@ -887,7 +899,9 @@ def create_module_files(instance, overwrite: bool = False, interactive: bool = F
     if module_type in ["annotator", "postaggregator"]:
         if not module_level:
             if is_in_jupyter_notebook():
-                print("Interactive mode is not available in Jupyter notebook. Please provide module level in the instance argument.")
+                print(
+                    "Interactive mode is not available in Jupyter notebook. Please provide module level in the instance argument."
+                )
             else:
                 module_level = input("Module level:")
         if not module_level:
@@ -963,4 +977,9 @@ def create_module_files(instance, overwrite: bool = False, interactive: bool = F
     cwd = Path(getcwd())
     data_dir = cwd / "data"
     if data_dir.exists():
-        copytree(data_dir, module_dir / "data", ignore=ignore_patterns(".ipynb_checkpoints"), dirs_exist_ok=True)
+        copytree(
+            data_dir,
+            module_dir / "data",
+            ignore=ignore_patterns(".ipynb_checkpoints"),
+            dirs_exist_ok=True,
+        )

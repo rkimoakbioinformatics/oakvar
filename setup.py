@@ -4,7 +4,7 @@ from pathlib import Path
 from platform import platform
 
 
-install_requires=[
+install_requires = [
     "requests",
     "requests-toolbelt",
     "liftover",
@@ -39,6 +39,7 @@ install_requires=[
 ]
 if platform().startswith("Windows"):
     install_requires.append("PySimpleGUI")
+
 
 def walk_and_add(d, pkg_files):
     folders = [

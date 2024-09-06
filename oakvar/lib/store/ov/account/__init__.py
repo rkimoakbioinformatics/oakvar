@@ -1,42 +1,42 @@
 # OakVar
-# 
+#
 # Copyright (c) 2024 Oak Bioinformatics, LLC
-# 
+#
 # All rights reserved.
-# 
-# Do not distribute or use this software without obtaining 
+#
+# Do not distribute or use this software without obtaining
 # a license from Oak Bioinformatics, LLC.
-# 
-# Do not use this software to develop another software 
-# which competes with the products by Oak Bioinformatics, LLC, 
+#
+# Do not use this software to develop another software
+# which competes with the products by Oak Bioinformatics, LLC,
 # without obtaining a license for such use from Oak Bioinformatics, LLC.
-# 
+#
 # For personal use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For research use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For use by commercial entities, you must obtain a commercial license
 # from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
 # to obtain the commercial license.
 # ================
 # OpenCRAVAT
-# 
+#
 # MIT License
-# 
+#
 # Copyright (c) 2021 KarchinLab
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 # of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -76,7 +76,9 @@ def get_email_pw_interactively(
     if not email:
         while True:
             if is_in_jupyter_notebook():
-                print("Interactive mode not supported in Jupyter notebook. Please provide email and password as arguments.")
+                print(
+                    "Interactive mode not supported in Jupyter notebook. Please provide email and password as arguments."
+                )
                 return email, pw
             else:
                 email = input("Email: ")
@@ -121,7 +123,9 @@ def create(
                 "email": email,
             }
         else:
-            email, pw = get_email_pw_interactively(email=email, pw=pw, pwconfirm=pwconfirm)
+            email, pw = get_email_pw_interactively(
+                email=email, pw=pw, pwconfirm=pwconfirm
+            )
     if not email:
         return {"msg": "no email", "success": False, "email": email}
     sys_conf = get_system_conf()
@@ -313,7 +317,12 @@ def login(
         else:
             if outer:
                 outer.write(f"fail. {r.text}")
-            d = {"success": False, "status_code": status_code, "mgs": "Login failed.", "email": email}
+            d = {
+                "success": False,
+                "status_code": status_code,
+                "mgs": "Login failed.",
+                "email": email,
+            }
             return d
     except Exception:
         import traceback
@@ -681,12 +690,17 @@ def login_with_email_pw(
 
 
 def total_login(
-        email=None, pw=None, create_account: bool=False, install_mode: str = "", conf: Optional[Dict] = None, outer=None
+    email=None,
+    pw=None,
+    create_account: bool = False,
+    install_mode: str = "",
+    conf: Optional[Dict] = None,
+    outer=None,
 ) -> dict:
     from ....system import show_no_user_account_prelude
     from ....util.util import is_in_jupyter_notebook
 
-    if not email or not pw :
+    if not email or not pw:
         ret, logged_email = login_with_token_set(email=email, outer=outer)
         if ret is True:
             return {"success": True, "email": logged_email}
@@ -708,7 +722,9 @@ def total_login(
     yn = None
     while True:
         if is_in_jupyter_notebook():
-            print("Interactive mode is not available in Jupyter notebook. Assuming that you have an OakVar account...")
+            print(
+                "Interactive mode is not available in Jupyter notebook. Assuming that you have an OakVar account..."
+            )
             break
         else:
             yn = input("Do you already have an OakVar store account? (y/N): ")
@@ -723,7 +739,9 @@ def total_login(
                 "email": email,
             }
         else:
-            email, pw = get_email_pw_interactively(email=email, pw=pw, pwconfirm=False, outer=outer)
+            email, pw = get_email_pw_interactively(
+                email=email, pw=pw, pwconfirm=False, outer=outer
+            )
         ret = login_with_email_pw(email=email, pw=pw, conf=conf)
         return ret
     else:

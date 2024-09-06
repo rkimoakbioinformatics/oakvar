@@ -1,42 +1,42 @@
 # OakVar
-# 
+#
 # Copyright (c) 2024 Oak Bioinformatics, LLC
-# 
+#
 # All rights reserved.
-# 
-# Do not distribute or use this software without obtaining 
+#
+# Do not distribute or use this software without obtaining
 # a license from Oak Bioinformatics, LLC.
-# 
-# Do not use this software to develop another software 
-# which competes with the products by Oak Bioinformatics, LLC, 
+#
+# Do not use this software to develop another software
+# which competes with the products by Oak Bioinformatics, LLC,
 # without obtaining a license for such use from Oak Bioinformatics, LLC.
-# 
+#
 # For personal use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For research use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For use by commercial entities, you must obtain a commercial license
 # from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
 # to obtain the commercial license.
 # ================
 # OpenCRAVAT
-# 
+#
 # MIT License
-# 
+#
 # Copyright (c) 2021 KarchinLab
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 # of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -254,7 +254,17 @@ class Runner(object):
             self.logmode = "a"
         self.logger = logging.getLogger("oakvar")
         self.error_logger = logging.getLogger("err")
-        self.log_path, self.error_log_path = set_logger_handler(self.logger, self.error_logger, output_dir=output_dir, run_name=run_name, mode=self.logmode, level=self.args.loglevel, logtofile=self.args.logtofile, clean=self.args.clean, newlog=self.args.newlog)
+        self.log_path, self.error_log_path = set_logger_handler(
+            self.logger,
+            self.error_logger,
+            output_dir=output_dir,
+            run_name=run_name,
+            mode=self.logmode,
+            level=self.args.loglevel,
+            logtofile=self.args.logtofile,
+            clean=self.args.clean,
+            newlog=self.args.newlog,
+        )
 
     def log_versions(self):
         from ..util import admin_util as au
@@ -291,7 +301,6 @@ class Runner(object):
         self.delete_output_files(run_no)
 
     def log_input(self, run_no: int):
-
         if not self.args:
             raise
         if self.logger:
@@ -433,7 +442,9 @@ class Runner(object):
         for annotator in self.annotators.values():
             if "module_options" in annotator.conf:
                 if not isinstance(annotator.conf["module_options"], dict):
-                    e = ModuleLoadingError(msg=f"Module loading error: {annotator.name}: \"module_options\" in {annotator.name}.yml should be a dict. Consider contacting the module developers or correct the module yml file. Running `ov module info {annotator.name}` will show the module developer contact information as well as the location of the module files.")
+                    e = ModuleLoadingError(
+                        msg=f'Module loading error: {annotator.name}: "module_options" in {annotator.name}.yml should be a dict. Consider contacting the module developers or correct the module yml file. Running `ov module info {annotator.name}` will show the module developer contact information as well as the location of the module files.'
+                    )
                     e.traceback = False
                     raise e
                 for module_name, options in annotator.conf["module_options"].items():
@@ -441,8 +452,12 @@ class Runner(object):
                         module_options[module_name] = options
                     else:
                         module_options[module_name].update(options)
-            module_options.get(annotator.name, {}).update(annotator.conf.get("module_options", {}))
-        module_options.update(get_module_options(self.args.module_options, outer=self.outer))
+            module_options.get(annotator.name, {}).update(
+                annotator.conf.get("module_options", {})
+            )
+        module_options.update(
+            get_module_options(self.args.module_options, outer=self.outer)
+        )
         if isinstance(self.args.module_options, dict):
             module_options.update(**self.args.module_options)
         self.run_conf.update(module_options)
@@ -529,7 +544,9 @@ class Runner(object):
         annot_names.sort()
 
     def remove_absent_inputs(self):
-        inputs_to_remove = [v for v in self.inputs if not v.exists() and "*" not in str(v)]
+        inputs_to_remove = [
+            v for v in self.inputs if not v.exists() and "*" not in str(v)
+        ]
         for v in inputs_to_remove:
             self.inputs.remove(v)
 
@@ -541,7 +558,7 @@ class Runner(object):
             raise
         self.first_non_url_input = None
         if self.args.inputs is not None:
-            self.inputs = [ # type: ignore
+            self.inputs = [  # type: ignore
                 Path(x).resolve() if not is_url(x) and x != "-" else x
                 for x in self.args.inputs
             ]
@@ -1038,7 +1055,9 @@ class Runner(object):
         if "postaggregator" in self.args.skip:
             self.postaggregators = {}
             return
-        self.postaggregator_names = default_postaggregator_names + self.postaggregator_names
+        self.postaggregator_names = (
+            default_postaggregator_names + self.postaggregator_names
+        )
         self.check_valid_modules(self.postaggregator_names)
         self.postaggregators = get_local_module_infos_by_names(
             self.postaggregator_names
@@ -1099,7 +1118,9 @@ class Runner(object):
             required_module_names: List[str] = module.conf.get("requires", [])
             if required_module_names:
                 if isinstance(required_module_names, list):
-                    tsr: Set[str] = set(required_module_names).difference(set(final_module_names))
+                    tsr: Set[str] = set(required_module_names).difference(
+                        set(final_module_names)
+                    )
                     tsrl: List[str] = list(tsr)
                     self.sort_module_names_by_requirement(
                         tsrl, final_module_names, module_type
@@ -1134,7 +1155,10 @@ class Runner(object):
         if "reporter" in self.args.skip:
             self.reporters = {}
         else:
-            self.reporter_names = [v if v.endswith("reporter") else v + "reporter" for v in self.report_names]
+            self.reporter_names = [
+                v if v.endswith("reporter") else v + "reporter"
+                for v in self.report_names
+            ]
             self.check_valid_modules(self.reporter_names)
             self.reporters = get_local_module_infos_by_names(self.reporter_names)
 
@@ -1608,12 +1632,7 @@ class Runner(object):
         from ..util.admin_util import get_packagedir
         from ..util.run import announce_module
 
-        if (
-            not self.args
-            or not self.inputs
-            or not self.run_name
-            or not self.output_dir
-        ):
+        if not self.args or not self.inputs or not self.run_name or not self.output_dir:
             raise
         if self.args.combine_input:
             input_files = self.inputs
@@ -1673,7 +1692,9 @@ class Runner(object):
             module_cls = load_class(module.script_path, "Preparer")
             if not module_cls:
                 if self.error_logger:
-                    self.error_logger.error(f"{module_name} does not exist. Skipping the module.")
+                    self.error_logger.error(
+                        f"{module_name} does not exist. Skipping the module."
+                    )
                 continue
             module_ins = module_cls(kwargs)
             await self.log_time_of_func(module_ins.run, work=module_name)
@@ -1830,7 +1851,7 @@ class Runner(object):
                 queue_populated,
                 self.serveradmindb,
                 self.args.logtofile,
-                self.log_path
+                self.log_path,
             ]
         ] * num_workers
         with Pool(num_workers, init_worker) as pool:
@@ -1938,7 +1959,9 @@ class Runner(object):
                 post_agg_cls = load_class(module.script_path, "CravatPostAggregator")
             if not post_agg_cls:
                 if self.error_logger:
-                    self.error_logger.error(f"{module_name} does not exist. Skipping the module.")
+                    self.error_logger.error(
+                        f"{module_name} does not exist. Skipping the module."
+                    )
                 continue
             post_agg = post_agg_cls(**arg_dict)
             announce_module(module, serveradmindb=self.serveradmindb)
@@ -1960,11 +1983,7 @@ class Runner(object):
         from ..base import vcf2vcf
         from ..exceptions import ModuleNotExist
 
-        if (
-            not self.args
-            or not self.output_dir
-            or not self.run_name
-        ):
+        if not self.args or not self.output_dir or not self.run_name:
             raise
         if not self.inputs:
             raise
@@ -2010,7 +2029,7 @@ class Runner(object):
         )
         self.report_response = response
 
-    async def run_reporter(self, run_no: int, head_n: Optional[int]=None):
+    async def run_reporter(self, run_no: int, head_n: Optional[int] = None):
         from pathlib import Path
         from ..util.util import load_class
         from ..util.run import update_status
@@ -2019,12 +2038,7 @@ class Runner(object):
         from ..consts import MODULE_OPTIONS_KEY
         from .reporter import BaseReporter
 
-        if (
-            not self.run_name
-            or not self.args
-            or not self.output_dir
-            or not self.inputs
-        ):
+        if not self.run_name or not self.args or not self.output_dir or not self.inputs:
             raise
         run_name = self.run_name[run_no]
         output_dir = Path(self.output_dir[run_no])
@@ -2041,9 +2055,11 @@ class Runner(object):
             arg_dict["run_name"] = run_name
             arg_dict["module_name"] = module_name
             arg_dict[MODULE_OPTIONS_KEY] = self.run_conf.get(module_name, {})
-            Reporter: Type[BaseReporter] = load_class(module.script_path, "Reporter") # type: ignore
+            Reporter: Type[BaseReporter] = load_class(module.script_path, "Reporter")  # type: ignore
             reporter = Reporter(**arg_dict)
-            response_t = await self.log_time_of_func(reporter.run, head_n=head_n, work=module_name)
+            response_t = await self.log_time_of_func(
+                reporter.run, head_n=head_n, work=module_name
+            )
             output_fns = None
             if isinstance(response_t, list):
                 output_fns = " ".join(response_t)

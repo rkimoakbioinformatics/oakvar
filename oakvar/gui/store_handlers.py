@@ -1,42 +1,42 @@
 # OakVar
-# 
+#
 # Copyright (c) 2024 Oak Bioinformatics, LLC
-# 
+#
 # All rights reserved.
-# 
-# Do not distribute or use this software without obtaining 
+#
+# Do not distribute or use this software without obtaining
 # a license from Oak Bioinformatics, LLC.
-# 
-# Do not use this software to develop another software 
-# which competes with the products by Oak Bioinformatics, LLC, 
+#
+# Do not use this software to develop another software
+# which competes with the products by Oak Bioinformatics, LLC,
 # without obtaining a license for such use from Oak Bioinformatics, LLC.
-# 
+#
 # For personal use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For research use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For use by commercial entities, you must obtain a commercial license
 # from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
 # to obtain the commercial license.
 # ================
 # OpenCRAVAT
-# 
+#
 # MIT License
-# 
+#
 # Copyright (c) 2021 KarchinLab
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 # of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -109,9 +109,7 @@ class StoreHandlers:
         module_name = request.rel_url.query.get("module_name")
         if not module_name:
             return json_response({})
-        to_install = get_modules_to_install(
-            module_names=[module_name]
-        )
+        to_install = get_modules_to_install(module_names=[module_name])
         ret = []
         for mn, v in to_install.items():
             v["module_name"] = mn
@@ -132,12 +130,14 @@ class StoreHandlers:
         else:
             return json_response("fail")
 
-    def handle_modules_changed(self, refresh: bool=False):
+    def handle_modules_changed(self, refresh: bool = False):
         from ..lib.module.cache import get_module_cache
 
-        if not self.local_manifest or (
-            self.local_modules_changed and self.local_modules_changed.is_set()
-        ) or refresh:
+        if (
+            not self.local_manifest
+            or (self.local_modules_changed and self.local_modules_changed.is_set())
+            or refresh
+        ):
             get_module_cache().update_local()
             if self.local_modules_changed:
                 self.local_modules_changed.clear()
@@ -165,7 +165,15 @@ class StoreHandlers:
         else:
             refresh = False
         self.handle_modules_changed(refresh)
-        for mn in ["tagsampler", "casecontrol", "hg38", "cravat-converter", "oldcravat-converter", "tagsampler", "jsonreporter"]:
+        for mn in [
+            "tagsampler",
+            "casecontrol",
+            "hg38",
+            "cravat-converter",
+            "oldcravat-converter",
+            "tagsampler",
+            "jsonreporter",
+        ]:
             if mn in self.local_manifest:
                 del self.local_manifest[mn]
         return json_response(self.local_manifest)
@@ -199,7 +207,15 @@ class StoreHandlers:
             with open(cache_path, "rb") as f:
                 content = pickle.load(f)
                 data = content.get("data", {})
-                for mn in ["tagsampler", "casecontrol", "hg38", "cravat-converter", "oldcravat-converter", "tagsampler", "jsonreporter"]:
+                for mn in [
+                    "tagsampler",
+                    "casecontrol",
+                    "hg38",
+                    "cravat-converter",
+                    "oldcravat-converter",
+                    "tagsampler",
+                    "jsonreporter",
+                ]:
                     if mn in data:
                         del data[mn]
                 keys = list(data.keys())
@@ -210,7 +226,7 @@ class StoreHandlers:
         else:
             return None
 
-    def make_remote_manifest(self, refresh: bool=False):
+    def make_remote_manifest(self, refresh: bool = False):
         from ..lib.module.remote import make_remote_manifest
 
         content = make_remote_manifest(refresh=refresh)
@@ -376,12 +392,12 @@ class StoreHandlers:
         from .consts import SYSTEM_STATE_INSTALL_QUEUE_KEY
 
         to_del = None
-        for i in range(len(self.system_queue)): # type: ignore
-            if self.system_queue[i].get("module") == module_name: # type: ignore
+        for i in range(len(self.system_queue)):  # type: ignore
+            if self.system_queue[i].get("module") == module_name:  # type: ignore
                 to_del = i
                 break
         if to_del is not None:
-            self.system_queue.pop(to_del) # type: ignore
+            self.system_queue.pop(to_del)  # type: ignore
         if module_name in self.system_worker_state[SYSTEM_STATE_INSTALL_QUEUE_KEY]:
             self.system_worker_state[SYSTEM_STATE_INSTALL_QUEUE_KEY].remove(module_name)
         if module_name in self.system_worker_state[SYSTEM_STATE_INSTALL_KEY]:

@@ -1,42 +1,42 @@
 # OakVar
-# 
+#
 # Copyright (c) 2024 Oak Bioinformatics, LLC
-# 
+#
 # All rights reserved.
-# 
-# Do not distribute or use this software without obtaining 
+#
+# Do not distribute or use this software without obtaining
 # a license from Oak Bioinformatics, LLC.
-# 
-# Do not use this software to develop another software 
-# which competes with the products by Oak Bioinformatics, LLC, 
+#
+# Do not use this software to develop another software
+# which competes with the products by Oak Bioinformatics, LLC,
 # without obtaining a license for such use from Oak Bioinformatics, LLC.
-# 
+#
 # For personal use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For research use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For use by commercial entities, you must obtain a commercial license
 # from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
 # to obtain the commercial license.
 # ================
 # OpenCRAVAT
-# 
+#
 # MIT License
-# 
+#
 # Copyright (c) 2021 KarchinLab
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 # of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -406,7 +406,7 @@ async def get_result(request):
     if spec is None:
         raise Exception(f"Could not load {reporter_name}.")
     m = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(m) # type: ignore
+    spec.loader.exec_module(m)  # type: ignore
     if "separatesample" in queries:
         separatesample = queries["separatesample"]
         if separatesample == "true":
@@ -541,7 +541,17 @@ async def get_request_json_from_post(request) -> dict:
         queries = await request.json()
     except Exception:
         t = await request.text()
-        rep_d = {"%2F":"/", "%40":"@", "%7B":"{", "%22":"\"", "%3A":":", "%5B":"[", "%2C":",", "%5D":"]", "%7D":"}"}
+        rep_d = {
+            "%2F": "/",
+            "%40": "@",
+            "%7B": "{",
+            "%22": '"',
+            "%3A": ":",
+            "%5B": "[",
+            "%2C": ",",
+            "%5D": "]",
+            "%7D": "}",
+        }
         for k, v in rep_d.items():
             t = t.replace(k, v)
         parts = t.split("&")
@@ -555,10 +565,11 @@ async def get_request_json_from_post(request) -> dict:
             else:
                 v0 = v[0]
                 if v0 not in ["{", "["] and not (v0 >= "0" and v0 <= "9"):
-                    v = f"\"{v}\""
+                    v = f'"{v}"'
                 d[k] = json.loads(v)
         queries = d
     return queries
+
 
 async def get_dbpath(request) -> Optional[str]:
     from ..util import get_email_from_request
@@ -721,19 +732,21 @@ async def get_colinfo(dbpath, confpath=None, filterstring=None, add_summary=True
     if spec is None:
         raise Exception(f"Could not load {reporter_name}.")
     m = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(m) # type: ignore
+    spec.loader.exec_module(m)  # type: ignore
     reporter = m.Reporter(
         dbpath,
         module_name=reporter_name,
         confpath=confpath,
         filterstring=filterstring,
-        report_types=["text"]
+        report_types=["text"],
     )
     await reporter.prep()
     # reporter_levels = await reporter.get_levels_to_run("all")
     # reporter.levels = reporter_levels
     try:
-        colinfo = await reporter.get_variant_colinfo(add_summary=add_summary, make_col_categories=True)
+        colinfo = await reporter.get_variant_colinfo(
+            add_summary=add_summary, make_col_categories=True
+        )
         await reporter.close_db()
         if reporter.cf is not None:
             await reporter.cf.close_db()
@@ -804,7 +817,7 @@ async def serve_runwidget(request):
     if spec is None:
         raise Exception(f"Could not load {module_name}.")
     m = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(m) # type: ignore
+    spec.loader.exec_module(m)  # type: ignore
     cf = await ReportFilter.create(dbpath=dbpath, mode="sub")
     filterstring = await cf.exec_db(
         cf.get_report_filter_string, uid=queries.get("ftable_uid")
@@ -838,7 +851,7 @@ async def serve_webapp_runwidget(request):
     if spec is None:
         raise Exception(f"Could not load {module_name}.")
     m = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(m) # type: ignore
+    spec.loader.exec_module(m)  # type: ignore
     content = await m.get_data(queries)
     return web.json_response(content)
 
@@ -889,7 +902,7 @@ async def serve_runwidget_post(request):
     if spec is None:
         raise Exception(f"Could not load {module_name}.")
     m = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(m) # type: ignore
+    spec.loader.exec_module(m)  # type: ignore
     content = await m.get_data(queries)
     return web.json_response(content)
 

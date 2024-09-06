@@ -1,42 +1,42 @@
 # OakVar
-# 
+#
 # Copyright (c) 2024 Oak Bioinformatics, LLC
-# 
+#
 # All rights reserved.
-# 
-# Do not distribute or use this software without obtaining 
+#
+# Do not distribute or use this software without obtaining
 # a license from Oak Bioinformatics, LLC.
-# 
-# Do not use this software to develop another software 
-# which competes with the products by Oak Bioinformatics, LLC, 
+#
+# Do not use this software to develop another software
+# which competes with the products by Oak Bioinformatics, LLC,
 # without obtaining a license for such use from Oak Bioinformatics, LLC.
-# 
+#
 # For personal use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For research use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For use by commercial entities, you must obtain a commercial license
 # from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
 # to obtain the commercial license.
 # ================
 # OpenCRAVAT
-# 
+#
 # MIT License
-# 
+#
 # Copyright (c) 2021 KarchinLab
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 # of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -53,9 +53,7 @@ from typing import Dict
 
 
 class BaseAnnotator(object):
-    """BaseAnnotator.
-    """
-
+    """BaseAnnotator."""
 
     from ..util.util import get_crv_def
     from ..util.util import get_crx_def
@@ -184,7 +182,7 @@ class BaseAnnotator(object):
             )
             if not self.conf:
                 self.conf = {}
-        self.annotator_dir: str = str(self.module_dir) # oc legacy
+        self.annotator_dir: str = str(self.module_dir)  # oc legacy
         self.level = level
         if not self.level and "level" in self.conf:
             self.level = self.conf.get("level")
@@ -237,6 +235,7 @@ class BaseAnnotator(object):
         self._verify_conf()
         if self.logger is None:
             from logging import getLogger
+
             self.logger = getLogger(self.module_name)
         if "logging_level" in self.conf:
             self.logger.setLevel(self.conf["logging_level"].upper())
@@ -276,8 +275,7 @@ class BaseAnnotator(object):
         self.conf["output_columns"] = output_columns
 
     def set_ref_colname(self):
-        """set_ref_colname.
-        """
+        """set_ref_colname."""
         ref_colnames = {
             "variant": "uid",
             "gene": "hugo",
@@ -318,8 +316,7 @@ class BaseAnnotator(object):
             return True
 
     def _verify_conf(self):
-        """_verify_conf.
-        """
+        """_verify_conf."""
         from ..consts import VARIANT_LEVEL_KEY
         from ..consts import GENE_LEVEL_KEY
 
@@ -334,10 +331,12 @@ class BaseAnnotator(object):
                 err_msg = 'Required key "%s" not found in configuration' % k
                 raise ConfigurationError(err_msg)
         if self.conf["level"] in self.valid_levels and self.level:
-            if self.id_col_defs[self.level]["name"] not in [c["name"] for c in self.conf["output_columns"]]:
-                self.conf["output_columns"] = [self.id_col_defs[self.level]] + self.conf[
-                    "output_columns"
-                ]
+            if self.id_col_defs[self.level]["name"] not in [
+                c["name"] for c in self.conf["output_columns"]
+            ]:
+                self.conf["output_columns"] = [
+                    self.id_col_defs[self.level]
+                ] + self.conf["output_columns"]
         else:
             err_msg = "%s is not a valid level. Valid levels are %s" % (
                 self.conf["level"],
@@ -366,8 +365,7 @@ class BaseAnnotator(object):
             ]
 
     def parse_cmd_args(self):
-        """parse_cmd_args.
-        """
+        """parse_cmd_args."""
         import re
         from pathlib import Path
 
@@ -460,8 +458,7 @@ class BaseAnnotator(object):
         return output_dict
 
     def make_json_colnames(self):
-        """make_json_colnames.
-        """
+        """make_json_colnames."""
         if self.output_columns is None:
             return
         self.json_colnames = []
@@ -565,8 +562,7 @@ class BaseAnnotator(object):
             self.log_handler.close()
 
     def process_file(self):
-        """process_file.
-        """
+        """process_file."""
         assert self._id_col_name, "_id_col_name should not be None."
         for lnum, line, input_data, secondary_data in self._get_input():
             try:
@@ -608,8 +604,7 @@ class BaseAnnotator(object):
                 )
 
     def postprocess(self):
-        """postprocess.
-        """
+        """postprocess."""
         pass
 
     async def get_gene_summary_data(self, cf):
@@ -673,8 +668,7 @@ class BaseAnnotator(object):
             print(err_logger_s)
 
     def base_setup(self):
-        """base_setup.
-        """
+        """base_setup."""
         self._setup_primary_input()
         self._setup_secondary_inputs()
         self._setup_outputs()
@@ -686,8 +680,7 @@ class BaseAnnotator(object):
             )
 
     def _setup_primary_input(self):
-        """_setup_primary_input.
-        """
+        """_setup_primary_input."""
         if self.conf is None:
             from ..exceptions import SetupError
 
@@ -725,8 +718,7 @@ class BaseAnnotator(object):
                     )
 
     def _setup_secondary_inputs(self):
-        """_setup_secondary_inputs.
-        """
+        """_setup_secondary_inputs."""
         from ..exceptions import SetupError
 
         if self.conf is None:
@@ -760,8 +752,7 @@ class BaseAnnotator(object):
             self.secondary_readers[sec_name] = fetcher
 
     def _setup_outputs(self):
-        """_setup_outputs.
-        """
+        """_setup_outputs."""
         from os import makedirs
         from pathlib import Path
         from ..util.inout import FileWriter
@@ -812,26 +803,26 @@ class BaseAnnotator(object):
             )
 
     def connect_db(self):
-        """connect_db.
-        """
+        """connect_db."""
         from pathlib import Path
 
         db_path = Path(self.data_dir) / (self.module_name + ".sqlite")
         if db_path.exists():
             import sqlite3
+
             self.dbconn = sqlite3.connect(str(db_path))
             self.cursor = self.dbconn.cursor()
             return
         db_path = Path(self.data_dir) / (self.module_name + ".duckdb")
         if db_path.exists():
             import duckdb
+
             self.dbconn = duckdb.connect(str(db_path))
             self.cursor = self.dbconn.cursor()
             return
 
     def close_db_connection(self):
-        """close_db_connection.
-        """
+        """close_db_connection."""
         if self.cursor is not None:
             self.cursor.close()
         if self.dbconn is not None:
@@ -839,13 +830,11 @@ class BaseAnnotator(object):
 
     # Placeholder, intended to be overridded in derived class
     def setup(self):
-        """setup.
-        """
+        """setup."""
         pass
 
     def base_cleanup(self):
-        """base_cleanup.
-        """
+        """base_cleanup."""
         if self.output_writer:
             self.output_writer.close()
         # self.invalid_file.close()
@@ -855,20 +844,17 @@ class BaseAnnotator(object):
 
     # Placeholder, intended to be overridden in derived class
     def cleanup(self):
-        """cleanup.
-        """
+        """cleanup."""
         pass
 
     def _setup_logger(self):
-        """_setup_logger.
-        """
+        """_setup_logger."""
         from logging import getLogger
 
         self.error_logger = getLogger("err." + self.module_name)
 
     def _get_input(self):
-        """_get_input.
-        """
+        """_get_input."""
         from ..util.inout import AllMappingsParser
         from ..consts import all_mappings_col_name
         from ..consts import mapping_parser_name
@@ -913,7 +899,10 @@ class BaseAnnotator(object):
         if ret is None:
             ret = input_data
         else:
-            ret = {**input_data, **{f"{self.module_name}__{k}": v for k, v in ret.items()}}
+            ret = {
+                **input_data,
+                **{f"{self.module_name}__{k}": v for k, v in ret.items()},
+            }
         return ret
 
     def annotate(self, input_data, secondary_data=None) -> Union[Dict[str, Any], None]:
@@ -979,8 +968,7 @@ class BaseAnnotator(object):
 
 
 class SecondaryInputFetcher:
-    """SecondaryInputFetcher.
-    """
+    """SecondaryInputFetcher."""
 
     def __init__(self, input_path, key_col, fetch_cols=[]):
         """__init__.
@@ -1018,8 +1006,7 @@ class SecondaryInputFetcher:
         self.load_input()
 
     def load_input(self):
-        """load_input.
-        """
+        """load_input."""
         for _, _, all_col_data in self.input_reader.loop_data():
             key_data = all_col_data.get(self.key_col)
             if key_data not in self.data:

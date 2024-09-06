@@ -1,42 +1,42 @@
 # OakVar
-# 
+#
 # Copyright (c) 2024 Oak Bioinformatics, LLC
-# 
+#
 # All rights reserved.
-# 
-# Do not distribute or use this software without obtaining 
+#
+# Do not distribute or use this software without obtaining
 # a license from Oak Bioinformatics, LLC.
-# 
-# Do not use this software to develop another software 
-# which competes with the products by Oak Bioinformatics, LLC, 
+#
+# Do not use this software to develop another software
+# which competes with the products by Oak Bioinformatics, LLC,
 # without obtaining a license for such use from Oak Bioinformatics, LLC.
-# 
+#
 # For personal use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For research use of non-commercial nature, you may use this software
 # after registering with `ov store account create`.
-# 
+#
 # For use by commercial entities, you must obtain a commercial license
 # from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
 # to obtain the commercial license.
 # ================
 # OpenCRAVAT
-# 
+#
 # MIT License
-# 
+#
 # Copyright (c) 2021 KarchinLab
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 # of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -74,7 +74,9 @@ def add_parser_ov_run(subparsers):
         help="Run a job",
         epilog="inputs should be the first argument",
     )
-    parser_ov_run.r_return = "A string, a named list, or a dataframe. Output of reporters"  # type: ignore
+    parser_ov_run.r_return = (
+        "A string, a named list, or a dataframe. Output of reporters"  # type: ignore
+    )
     parser_ov_run.r_examples = [  # type: ignore
         "# Annotate the input file `input` with ClinVar and COSMIC modules ",
         "# and make a VCF-format report of annotated variants.",
@@ -342,12 +344,12 @@ def add_parser_ov_run(subparsers):
         "--skip-variant-deduplication",
         action="store_true",
         default=False,
-        help="Skip de-duplication of variants"
+        help="Skip de-duplication of variants",
     )
     parser_ov_run.add_argument(
         "--keep-liftover-failed",
         action="store_true",
         default=False,
-        help="Keep variants that failed liftover"
+        help="Keep variants that failed liftover",
     )
     parser_ov_run.set_defaults(func=cli_run)
