@@ -54,7 +54,7 @@ from typing import Tuple
 from re import compile
 from pathlib import Path
 from liftover import ChainFile
-from oakvar import BaseConverter
+from oakvar.lib.base.converter import BaseConverter
 
 chromdict = {
     "chrx": "chrX",

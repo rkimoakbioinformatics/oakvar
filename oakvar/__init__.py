@@ -158,13 +158,13 @@ def get_mapper(module_name, input_file=None) -> BaseMapper:
     return module
 
 
-def get_converter(module_name, *args, **kwargs):
+def get_converter(module_name, *args, input_file=None, **kwargs):
     module = None
     ModuleClass = get_module(module_name, module_type="converter")
     if ModuleClass:
         module = ModuleClass()
         module.name = module_name
-        module.setup(*args, **kwargs)
+        module.setup(input_file, *args, **kwargs)
     return module
 
 
