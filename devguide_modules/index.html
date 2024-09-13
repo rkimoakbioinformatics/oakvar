@@ -1439,6 +1439,17 @@ class Annotator(BaseAnnotator):
  "ref_base": "A", 
  "alt_base": "G"}
 </code></pre>
+<p>If you add <code>input_format: crx</code> to your module's yml file, <code>input_data</code> will have additional information pulled from .crx file, such as</p>
+<pre><code>{"uid": 1834, 
+ "chrom": "chr1", 
+ "pos": 19834895, 
+ "ref_base": "A", 
+ "alt_base": "G",
+ "hugo": "GeneA",
+ "transcript": "ENST0000038472",
+ "so": "missense_variant",
+ ...}
+</code></pre>
 <p>OakVar will feed into <code>annotate</code> of an annotator module with variants of the input file, one by one, and excepts a <code>dict</code> of the module's output for each given variant. In the above example, the output is a <code>dict</code> with two keys, <code>rationale</code> and <code>therapy</code>. OakVar will collect the <code>dict</code>s of input variants and feed them to the downstream steps. </p>
 <p>The two keys <code>rationale</code> and <code>therapy</code> in the above example are the output columns of the module. The output columns of a module should be defined in the module's config (<code>.yml</code>) file. <code>target</code> module's config file, <code>target.yml</code>, has the following output columns definition.</p>
 <pre><code>output_columns:
