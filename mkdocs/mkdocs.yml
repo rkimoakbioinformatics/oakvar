@@ -58,5 +58,4 @@ plugins:
             docstring_section_style: spacy
             separate_signature: true
 watch:
-  #- D:\git\oakvar\oakvar\api
-  - /Users/rick/oxv/oakvar/oakvar/api
+  - ../oakvar/api

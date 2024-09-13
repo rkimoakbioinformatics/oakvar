@@ -109,6 +109,18 @@ The essential function for *annotator* modules is `annotator`. Below is `target.
      "ref_base": "A", 
      "alt_base": "G"}
 
+If you add `input_format: crx` to your module's yml file, `input_data` will have additional information pulled from .crx file, such as
+
+    {"uid": 1834, 
+     "chrom": "chr1", 
+     "pos": 19834895, 
+     "ref_base": "A", 
+     "alt_base": "G",
+     "hugo": "GeneA",
+     "transcript": "ENST0000038472",
+     "so": "missense_variant",
+     ...}
+
 OakVar will feed into `annotate` of an annotator module with variants of the input file, one by one, and excepts a `dict` of the module's output for each given variant. In the above example, the output is a `dict` with two keys, `rationale` and `therapy`. OakVar will collect the `dict`s of input variants and feed them to the downstream steps. 
 
 The two keys `rationale` and `therapy` in the above example are the output columns of the module. The output columns of a module should be defined in the module's config (`.yml`) file. `target` module's config file, `target.yml`, has the following output columns definition.
