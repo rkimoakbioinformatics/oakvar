@@ -224,6 +224,8 @@ def set_logger_handler(
 
 def get_module_options(module_options_sl: Optional[List[str]], outer=None):
     module_options: Dict[str, Dict[str, Any]] = {}
+    if not isinstance(module_options_sl, list):
+        return module_options
     if not module_options_sl:
         return module_options
     for opt_str in module_options_sl:

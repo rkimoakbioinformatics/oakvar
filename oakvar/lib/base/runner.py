@@ -424,40 +424,46 @@ class Runner(object):
         self.set_append_mode()  # self.append_mode is list.
         self.set_genome_assemblies()  # self.genome_assemblies is list.
 
+    def update_module_options(self, options: Dict[str, Any], incoming: Dict[str, Any]):
+        from ..exceptions import ModuleLoadingError
+
+        if not incoming:
+            return
+        if not isinstance(incoming, dict):
+            e = ModuleLoadingError(
+                msg=f"Module loading error: module_options in {incoming} should be a dict. Consider contacting the module developers or correct the module yml file. Running `ov module info {options}` will show the module developer contact information as well as the location of the module files."
+            )
+            e.traceback = False
+            raise e
+        for k, v in incoming.items():
+            if k not in options:
+                options[k] = v
+            elif isinstance(v, list):
+                options[k] += v
+            elif isinstance(v, dict):
+                self.update_module_options(options[k], v)
+
     def process_module_options(self):
         from ..exceptions import SetupError
         from ..util.run import get_module_options
-        from ..exceptions import ModuleLoadingError
 
         if self.args is None:
             raise SetupError()
         module_options: Dict[str, Dict[str, Any]] = {}
         if self.mapper is not None:
-            if "module_options" in self.mapper.conf:
-                for module_name, options in self.mapper.conf["module_options"].items():
-                    if module_name not in module_options:
-                        module_options[module_name] = options
-                    else:
-                        module_options[module_name].update(options)
+            self.update_module_options(module_options, self.mapper.conf.get("module_options", {}))
         for annotator in self.annotators.values():
-            if "module_options" in annotator.conf:
-                if not isinstance(annotator.conf["module_options"], dict):
-                    e = ModuleLoadingError(
-                        msg=f'Module loading error: {annotator.name}: "module_options" in {annotator.name}.yml should be a dict. Consider contacting the module developers or correct the module yml file. Running `ov module info {annotator.name}` will show the module developer contact information as well as the location of the module files.'
-                    )
-                    e.traceback = False
-                    raise e
-                for module_name, options in annotator.conf["module_options"].items():
-                    if module_name not in module_options:
-                        module_options[module_name] = options
-                    else:
-                        module_options[module_name].update(options)
+            # module_options by other modules
+            self.update_module_options(module_options, annotator.conf.get("module_options", {}))
+            # module_options by self overwrites.
             module_options.get(annotator.name, {}).update(
                 annotator.conf.get("module_options", {})
             )
+        # CLI module_options from args overwrites.
         module_options.update(
             get_module_options(self.args.module_options, outer=self.outer)
         )
+        # dict module_options passed overwrites.
         if isinstance(self.args.module_options, dict):
             module_options.update(**self.args.module_options)
         self.run_conf.update(module_options)
