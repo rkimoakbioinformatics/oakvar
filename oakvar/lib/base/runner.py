@@ -993,9 +993,12 @@ class Runner(object):
             raise SetupError()
         if self.args.mapper_name:
             self.mapper_name = self.args.mapper_name[0]
-        self.mapper_name = self.get_package_conf_run_value("mapper")
+        else:
+            self.mapper_name = self.get_package_conf_run_value("mapper")
         if not self.mapper_name:
             self.mapper_name = self.main_conf.get("genemapper")
+        if not self.mapper_name:
+            raise SetupError(msg="Mapper is not defined. Please use -m option to define a mapper module name, such as gencode.")
         self.check_valid_modules([self.mapper_name])
         self.mapper = get_local_module_info_by_name(self.mapper_name)
 
