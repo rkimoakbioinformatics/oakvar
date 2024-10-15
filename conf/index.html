@@ -8,7 +8,7 @@
       
       
       
-        <link rel="canonical" href="https://oakvar.com/package/">
+        <link rel="canonical" href="https://oakvar.com/conf/">
       
       
         <link rel="prev" href="../cli/">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Package file - OakVar</title>
+        <title>Conf file - OakVar</title>
       
     
     
@@ -66,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#annotate-with-a-ov-run-configuration-file" class="md-skip">
+        <a href="#annotate-with-an-oakvar-configuration-file" class="md-skip">
           Skip to content
         </a>
       
@@ -101,7 +101,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Package file
+              Conf file
             
           </span>
         </div>
@@ -406,7 +406,7 @@
           
   
   <span class="md-ellipsis">
-    Package file
+    Conf file
   </span>
   
 
@@ -417,7 +417,7 @@
         
   
   <span class="md-ellipsis">
-    Package file
+    Conf file
   </span>
   
 
@@ -437,9 +437,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#annotate-with-a-ov-run-configuration-file" class="md-nav__link">
+  <a href="#annotate-with-an-oakvar-configuration-file" class="md-nav__link">
     <span class="md-ellipsis">
-      Annotate with a ov run configuration file
+      Annotate with an OakVar configuration file
     </span>
   </a>
   
@@ -1154,9 +1154,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#annotate-with-a-ov-run-configuration-file" class="md-nav__link">
+  <a href="#annotate-with-an-oakvar-configuration-file" class="md-nav__link">
     <span class="md-ellipsis">
-      Annotate with a ov run configuration file
+      Annotate with an OakVar configuration file
     </span>
   </a>
   
@@ -1177,22 +1177,23 @@
                   
 
 
-  <h1>Package file</h1>
+  <h1>Conf file</h1>
 
-<h4 id="annotate-with-a-ov-run-configuration-file">Annotate with a ov run configuration file</h4>
+<h4 id="annotate-with-an-oakvar-configuration-file">Annotate with an OakVar configuration file</h4>
 <p>For repeated jobs, using a .yml file with job definition is handy.</p>
 <p>For example, consider the following <code>ov run</code> job:</p>
 <pre><code>ov run input.vcf -a clinvar cosmic dbsnp -t csv
 </code></pre>
-<p>The configuration of this job can be written in ovdef.yml file as follows:</p>
-<pre><code>annotators: 
-- clinvar
-- cosmic
-- dbsnp
-report_types: csv
+<p>The configuration of this job can be written in <code>conf.yml</code> file as follows:</p>
+<pre><code>run:
+    annotators: 
+    - clinvar
+    - cosmic
+    - dbsnp
+    report_types: csv
 </code></pre>
 <p>Then, this file can be used as follows.</p>
-<pre><code>ov run input.vcf -c ovdef.yml
+<pre><code>ov run input.vcf -c conf.yml
 </code></pre>
 <p>which will work in the same way as the first <code>ov run</code> command.</p>
 <p>Below are the correspondence between <code>ov run</code> options and the fields in package .yml files.</p>

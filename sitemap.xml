@@ -21,6 +21,11 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
+         <loc>https://oakvar.com/conf/</loc>
+         <lastmod>2024-10-15</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
          <loc>https://oakvar.com/devguide_debugging/</loc>
          <lastmod>2024-10-15</lastmod>
          <changefreq>daily</changefreq>
@@ -52,11 +57,6 @@
     </url>
     <url>
          <loc>https://oakvar.com/overview/</loc>
-         <lastmod>2024-10-15</lastmod>
-         <changefreq>daily</changefreq>
-    </url>
-    <url>
-         <loc>https://oakvar.com/package/</loc>
          <lastmod>2024-10-15</lastmod>
          <changefreq>daily</changefreq>
     </url>
