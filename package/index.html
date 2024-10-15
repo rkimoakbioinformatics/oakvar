@@ -66,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#run-package" class="md-skip">
+        <a href="#annotate-with-a-ov-run-configuration-file" class="md-skip">
           Skip to content
         </a>
       
@@ -437,9 +437,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#run-package" class="md-nav__link">
+  <a href="#annotate-with-a-ov-run-configuration-file" class="md-nav__link">
     <span class="md-ellipsis">
-      Run Package
+      Annotate with a ov run configuration file
     </span>
   </a>
   
@@ -1154,9 +1154,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#run-package" class="md-nav__link">
+  <a href="#annotate-with-a-ov-run-configuration-file" class="md-nav__link">
     <span class="md-ellipsis">
-      Run Package
+      Annotate with a ov run configuration file
     </span>
   </a>
   
@@ -1179,12 +1179,12 @@
 
   <h1>Package file</h1>
 
-<h4 id="run-package">Run Package</h4>
+<h4 id="annotate-with-a-ov-run-configuration-file">Annotate with a ov run configuration file</h4>
 <p>For repeated jobs, using a .yml file with job definition is handy.</p>
 <p>For example, consider the following <code>ov run</code> job:</p>
 <pre><code>ov run input.vcf -a clinvar cosmic dbsnp -t csv
 </code></pre>
-<p>The configuration of this job can be written in run.yml file as follows:</p>
+<p>The configuration of this job can be written in ovdef.yml file as follows:</p>
 <pre><code>annotators: 
 - clinvar
 - cosmic
@@ -1192,7 +1192,7 @@
 report_types: csv
 </code></pre>
 <p>Then, this file can be used as follows.</p>
-<pre><code>ov run input.vcf --package run.yml
+<pre><code>ov run input.vcf -c ovdef.yml
 </code></pre>
 <p>which will work in the same way as the first <code>ov run</code> command.</p>
 <p>Below are the correspondence between <code>ov run</code> options and the fields in package .yml files.</p>
