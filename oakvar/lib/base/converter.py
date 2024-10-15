@@ -61,6 +61,7 @@ class BaseConverter(object):
         name: Optional[str] = None,
         title: Optional[str] = None,
         module_conf: dict = {},
+        module_options: dict = {},
         ignore_sample: bool = False,
         code_version: Optional[str] = None,
     ):
@@ -70,7 +71,7 @@ class BaseConverter(object):
         self.run_name = None
         self.module_name: str = ""
         self.version = None
-        self.conf: dict = {}
+        self.conf: dict = module_conf
         self.input_path: str = ""
         self.input_paths: Optional[List[str]] = None
         self.ignore_sample: bool = ignore_sample
@@ -79,12 +80,13 @@ class BaseConverter(object):
         if name:
             self.module_name = name
         self.title = title
-        if self.title and self.conf is not None:
+        if not self.conf and self.title:
             self.conf["title"] = self.title
         elif self.conf and "title" in self.conf:
             self.title = self.conf["title"]
         if module_conf:
-            self.conf = module_conf.copy()
+            self.conf.update(module_conf)
+        self.module_options = module_options
         if code_version:
             self.code_version: str = code_version
         else:

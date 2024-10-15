@@ -491,7 +491,6 @@ class MasterConverter(object):
         self.do_liftover = None
         self.do_liftover_chrM = None
         self.lifter = None
-        self.module_options = None
         self.converter_name_by_input_path: Dict[str, str] = {}
         self.extra_output_columns = []
         self.file_num_unique_variants: int = 0
@@ -652,16 +651,13 @@ class MasterConverter(object):
             cls = load_class(script_path)
             if cls is None:
                 raise ModuleLoadingError(module_name=module_name)
-            if self.module_options is not None:
-                module_conf = self.module_options.get(module_name)
-            else:
-                module_conf = None
+            module_options = self.module_options.get(module_name, {})
             module_info = get_local_module_info(script_path.parent)
             if not module_info:
                 if self.logger:
                     self.logger.error(f"{module_name} yml file is missing or bad.")
                 return None
-            converter = cls(ignore_sample=self.ignore_sample, module_conf=module_conf)
+            converter = cls(ignore_sample=self.ignore_sample, module_options=module_options)
             # TODO: backward compatibility
             converter.output_dir = None
             converter.run_name = None
