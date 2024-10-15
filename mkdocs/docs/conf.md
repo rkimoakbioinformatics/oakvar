@@ -1,4 +1,4 @@
-#### Annotate with a ov run configuration file
+#### Annotate with an OakVar configuration file
 
 For repeated jobs, using a .yml file with job definition is handy.
 
@@ -6,17 +6,18 @@ For example, consider the following `ov run` job:
 
     ov run input.vcf -a clinvar cosmic dbsnp -t csv
 
-The configuration of this job can be written in ovdef.yml file as follows:
+The configuration of this job can be written in `conf.yml` file as follows:
 
-    annotators: 
-    - clinvar
-    - cosmic
-    - dbsnp
-    report_types: csv
+    run:
+        annotators: 
+        - clinvar
+        - cosmic
+        - dbsnp
+        report_types: csv
 
 Then, this file can be used as follows.
 
-    ov run input.vcf -c ovdef.yml
+    ov run input.vcf -c conf.yml
 
 which will work in the same way as the first `ov run` command.
 

@@ -9,7 +9,7 @@ nav:
   - Tutorial: tutorial.md
   - Command-line interface:
     - Overview: cli.md
-    - Package file: package.md
+    - Conf file: conf.md
   - Graphical user interface: gui.md
   - Integration with AI/ML: 
     - scikit-learn: scikit_learn.md
