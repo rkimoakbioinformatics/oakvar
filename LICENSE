@@ -4,22 +4,27 @@ Copyright (c) 2024 Oak Bioinformatics, LLC
 
 All rights reserved.
 
-Do not distribute or use this software without obtaining 
-a license from Oak Bioinformatics, LLC.
+Do not distribute or use this software 
+without obtaining a license from Oak Bioinformatics, LLC.
 
-Do not use this software to develop another software 
+Do not use this software 
+to develop another software 
 which competes with the products by Oak Bioinformatics, LLC, 
 without obtaining a license for such use from Oak Bioinformatics, LLC.
 
-For personal use of non-commercial nature, you may use this software
-after registering with `ov store account create`.
+For personal use of non-commercial nature, 
+you may use this software after registering with `ov store account create`.
 
-For research use of non-commercial nature, you may use this software
-after registering with `ov store account create`.
+For research use of non-commercial nature at an academic research institution, 
+you may use this software after registering with `ov store account create`.
 
-For use by commercial entities, you must obtain a commercial license
-from Oak Bioinformatics, LLC. Please write to info@oakbioinformatics.com
-to obtain the commercial license.
+For research use at government institutions, 
+you may obtain a commercial license from Oak Bioinformatics, LLC. 
+Please write to info@oakbioinformatics.com to obtain the commercial license.
+
+For use by commercial entities, 
+you must obtain a commercial license from Oak Bioinformatics, LLC. 
+Please write to info@oakbioinformatics.com to obtain the commercial license.
 ================
 OpenCRAVAT
 
