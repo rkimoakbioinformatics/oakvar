@@ -772,7 +772,7 @@ async function makeGroupFilter(groupDiv) {
   const groupDivs = elemsDiv.children(".filter-group-div");
   for (let i = 0; i < groupDivs.length; i++) {
     subGroupDiv = $(groupDivs[i]);
-    subGroupFilter = makeGroupFilter(subGroupDiv);
+    subGroupFilter = await makeGroupFilter(subGroupDiv);
     filter.rules.push(subGroupFilter);
   }
   // Negate

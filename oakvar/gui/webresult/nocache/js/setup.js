@@ -1224,11 +1224,7 @@ function changeMenu() {
   }
 }
 
-function downloadReport(j, d, reportType) {
-  var data = j
-  if (dbPath) {
-    data = d
-  }
+function downloadReport(_j, _d, reportType) {
   url = "/submit/downloadreport/" + reportType
   var form = getEl("form")
   form.setAttribute("action", url)
