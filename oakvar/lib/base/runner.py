@@ -124,6 +124,7 @@ class Runner(object):
         self.inkwargs = kwargs
         self.serveradmindb = None
         self.report_response = None
+        self.filtersql = None
         self.outer = None
         self.error = None
 
@@ -499,6 +500,7 @@ class Runner(object):
             if self.outer:
                 self.outer.write("--vcf2vcf is used. --combine-input is disabled.")
             self.args.combine_input = False
+        self.filtersql = args.get("filtersql", None)
 
     def connect_admindb_if_needed(self, run_no: int):
         from ...gui.serveradmindb import ServerAdminDb
@@ -2063,6 +2065,7 @@ class Runner(object):
             arg_dict["output_dir"] = output_dir
             arg_dict["run_name"] = run_name
             arg_dict["module_name"] = module_name
+            arg_dict["filtersql"] = self.filtersql
             arg_dict[MODULE_OPTIONS_KEY] = self.run_conf.get(module_name, {})
             Reporter: Type[BaseReporter] = load_class(module.script_path, "Reporter")  # type: ignore
             reporter = Reporter(**arg_dict)

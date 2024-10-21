@@ -901,7 +901,6 @@ class ReportFilter:
             if "s." in self.filtersql:
                 q += " join main.sample as s on v.base__uid=s.base__uid"
             q += " where " + self.filtersql
-        # q += " order by base__uid"
         return q
 
     async def populate_fvariant(
@@ -1018,7 +1017,7 @@ class ReportFilter:
     async def make_ftables(self):
         if self.should_bypass_filter():
             return None
-        if not self.filter:
+        if not self.filter and not self.filtersql:
             return {"uid": None, "status": REPORT_FILTER_NOT_NEEDED}
         ret = await self.exec_db(self.get_existing_report_filter_status)
         if ret:
