@@ -10,6 +10,7 @@ nav:
   - Command-line interface:
     - Overview: cli.md
     - Conf file: conf.md
+    - Filtering: filter.md
   - Graphical user interface: gui.md
   - Integration with AI/ML: 
     - scikit-learn: scikit_learn.md
