@@ -699,13 +699,16 @@ class Runner(object):
                     str(Path(v).absolute()) for v in self.args.output_dir
                 ]
             else:
-                if len(self.args.output_dir) != len(self.inputs):
-                    raise ArgumentError(
-                        msg="-d should have the same number of values as inputs."
-                    )
-                self.output_dir = [
-                    str(Path(v).absolute()) for v in self.args.output_dir
-                ]
+                if len(self.args.output_dir) == 1:
+                    self.output_dir = [self.args.output_dir] * len(self.inputs)
+                else:
+                    if len(self.args.output_dir) != len(self.inputs):
+                        raise ArgumentError(
+                            msg="-d should have the same number of values as inputs."
+                        )
+                    self.output_dir = [
+                        str(Path(v).absolute()) for v in self.args.output_dir
+                    ]
         for output_dir in self.output_dir:
             if not Path(output_dir).exists():
                 mkdir(output_dir)
