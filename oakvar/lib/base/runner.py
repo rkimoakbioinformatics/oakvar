@@ -700,7 +700,7 @@ class Runner(object):
                 ]
             else:
                 if len(self.args.output_dir) == 1:
-                    self.output_dir = [self.args.output_dir] * len(self.inputs)
+                    self.output_dir = [self.args.output_dir[0]] * len(self.inputs)
                 else:
                     if len(self.args.output_dir) != len(self.inputs):
                         raise ArgumentError(
