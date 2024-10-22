@@ -346,6 +346,8 @@ class Runner(object):
         for run_no in range(len(self.run_name)):
             try:
                 self.start_log(run_no)
+                if self.logger:
+                    self.logger.info(f"Processing {self.inputs[run_no]}")
                 await self.process_clean(run_no)
                 self.connect_admindb_if_needed(run_no)
                 self.start_time = time()
@@ -396,7 +398,6 @@ class Runner(object):
                 self.clean_up_at_end(run_no)
                 self.close_logger()
                 self.shutdown_logging()
-                break
         return self.report_response
 
     async def process_arguments(self, args):
