@@ -537,11 +537,11 @@ def augment_with_sys_conf_temp(conf: dict, conf_template: dict):
             conf[k_t] = v_t
         else:
             ty_t = type(v_t)
-            if ty_t == list:
+            if isinstance(ty_t, list):
                 for v in v_t:
                     if v not in conf[k_t]:
                         conf[k_t].append(v)
-            elif ty_t == dict:
+            elif isinstance(ty_t, dict):
                 for kk_t, vv_t in conf[k_t].items():
                     if kk_t not in conf[k_t]:
                         conf[k_t][kk_t] = vv_t
@@ -619,21 +619,13 @@ def set_modules_dir(path, __overwrite__=False):
     """
     Set the modules_dir to the directory in path.
     """
-    import shutil
     import os
     from .consts import modules_dir_key
 
     path = os.path.abspath(os.path.expanduser(path))
     if not (os.path.isdir(path)):
         os.makedirs(path)
-    old_conf_path = get_user_conf_path()
     update_system_conf_file({modules_dir_key: path})
-    if not (os.path.exists(get_user_conf_path())):
-        if os.path.exists(old_conf_path):
-            overwrite_conf_path = old_conf_path
-        else:
-            overwrite_conf_path = get_main_default_path()
-        shutil.copy(overwrite_conf_path, get_user_conf_path())
 
 
 def create_dir_if_absent(d, outer=None):
@@ -1228,7 +1220,7 @@ def run_sg_store_account(
     _ = install_mode
     if clean:
         delete_token_set()
-    if email is None or pw is None:
+    if not email or not pw:
         ret, logged_email = login_with_token_set(email=email, outer=outer)
         if ret is True:
             return {"success": True, "email": logged_email}
@@ -1243,7 +1235,7 @@ def run_sg_store_account(
     while True:
         event, _ = gui_get_already_has_account(logo_data)
         if event == "Cancel":
-            sg.popup_error(f"Setup cancelled.")
+            sg.popup_error("Setup cancelled.")
             exit()
         username = None
         password = None

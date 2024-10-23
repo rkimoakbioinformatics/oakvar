@@ -994,6 +994,7 @@ class Runner(object):
     def set_mapper(self):
         from ..module.local import get_local_module_info_by_name
         from ..exceptions import SetupError
+        from ..system import get_modules_dir
 
         if self.args is None:
             raise SetupError()
@@ -1004,7 +1005,21 @@ class Runner(object):
         if not self.mapper_name:
             self.mapper_name = self.main_conf.get("genemapper")
         if not self.mapper_name:
-            raise SetupError(msg="Mapper is not defined. Please use -m option to define a mapper module name, such as gencode.")
+            modules_dir = get_modules_dir()
+            mapper_module_dirs = []
+            if modules_dir:
+                mappers_dir = modules_dir / "mappers"
+                entries = mappers_dir.glob("*")
+                for entry in entries:
+                    if not entry.is_dir():
+                        continue
+                    yml_path = entry / (entry.name + ".yml")
+                    if yml_path.exists():
+                        mapper_module_dirs.append(entry)
+            if len(mapper_module_dirs) == 1:
+                self.mapper_name = mapper_module_dirs[0].name
+        if not self.mapper_name:
+            raise SetupError(msg="Mapper is not defined. Please use -m option to define a mapper module name, such as gencode, or if you are using -c option, add \"run: mapper_name: MAPPER_MODULE_NAME\" in the yml file for the -c option.")
         self.check_valid_modules([self.mapper_name])
         self.mapper = get_local_module_info_by_name(self.mapper_name)
 

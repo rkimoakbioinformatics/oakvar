@@ -512,11 +512,11 @@ def load_yml_conf(yml_conf_path: Path) -> Dict[str, Any]:
     """
     from oyaml import safe_load
 
+    if not Path(yml_conf_path).exists():
+        return {}
     with open(yml_conf_path, encoding="utf-8") as f:
-        conf: dict = safe_load(f)
-    if conf is None:
-        conf = {}
-    return conf
+        conf = safe_load(f)
+        return conf
 
 
 def compare_version(v1: str, v2: str) -> int:
