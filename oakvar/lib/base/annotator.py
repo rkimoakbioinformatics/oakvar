@@ -287,14 +287,14 @@ class BaseAnnotator(object):
         else:
             self._id_col_name = None
 
-    def summarize_by_gene(self, __hugo__, __input_data__):
+    def summarize_by_gene(self, hugo, input_data) -> Union[Dict[str, Any], None]:
         """summarize_by_gene.
 
         Args:
             __hugo__:
             __input_data__:
         """
-        pass
+        _ = hugo or input_data
 
     def _log_exception(self, e, halt=True):
         """_log_exception.

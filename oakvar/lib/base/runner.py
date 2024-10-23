@@ -1047,7 +1047,7 @@ class Runner(object):
             return None
         if not self.package_conf.get("run"):
             return None
-        return self.package_conf["run"].get(field)
+        return self.package_conf["run"].get(field, None)
 
     def set_postaggregators(self):
         from ..exceptions import SetupError
@@ -1164,8 +1164,8 @@ class Runner(object):
         else:
             package_conf_reports = self.get_package_conf_run_value("reports")
             if package_conf_reports:
-                self.report_names = self.package_conf["run"]["reports"]
-            else:
+                self.report_names = self.get_package_argument_run_value("reports")
+            if not self.report_names:
                 self.report_names = []
         if "reporter" in self.args.skip:
             self.reporters = {}

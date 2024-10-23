@@ -474,15 +474,15 @@ class AllMappingsParser(object):
         from json import loads
         from collections import OrderedDict
 
-        if type(s) == str:
+        if isinstance(s, str):
             self._d = loads(s, object_pairs_hook=OrderedDict)
         else:
             self._d = s
-        self._protein_index = 0
-        self._achange_index = 1
-        self._so_index = 2
-        self._transc_index = 3
-        self._tchange_index = 4
+        self._transc_index = 0
+        self._tchange_index = 5
+        self._achange_index = 6
+        self._so_index = 7
+        self._protein_index = 8
         self.mappings = self.get_all_mappings()
 
     def get_genes(self):
