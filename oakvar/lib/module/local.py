@@ -503,7 +503,7 @@ def get_cache_conf(module_name, module_type: str = "") -> Optional[dict]:
     conf = get_conf(module_name, module_type=module_type)
     if not conf:
         return None
-    cache_conf = conf.get("cache")
+    cache_conf = conf.get("cache", None)
     return cache_conf
 
 

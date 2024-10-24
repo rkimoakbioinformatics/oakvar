@@ -54,21 +54,24 @@ class ModuleDataCache:
         from .local import get_cache_conf
         from .local import get_module_dir
 
-        self.conn = None
-        self.module_name = module_name
-        self.module_type = module_type
-        self.module_dir = get_module_dir(module_name, module_type=module_type)
-        self.conf = get_cache_conf(module_name, module_type=module_type)
-        self.expiration_in_day = self.conf.get("expiration") if self.conf else None
-        self.expiration = (
-            self.expiration_in_day * 60 * 60 * 24 if self.expiration_in_day else None
-        )
-        self.dir = Path(self.module_dir) / "cache" if self.module_dir else None
-        self.path = self.dir / "cache.sqlite" if self.dir else None
-        if self.path:
-            self.create_cache_dir_if_needed()
-        self.conn = self.get_conn()
-        self.create_cache_table_if_needed()
+        try:
+            self.conn = None
+            self.module_name = module_name
+            self.module_type = module_type
+            self.module_dir = get_module_dir(module_name, module_type=module_type)
+            self.conf = get_cache_conf(module_name, module_type=module_type)
+            self.expiration_in_day = self.conf.get("expiration", None) if self.conf else None
+            self.expiration = (
+                self.expiration_in_day * 60 * 60 * 24 if self.expiration_in_day else None
+            )
+            self.dir = Path(self.module_dir) / "cache" if self.module_dir else None
+            self.path = self.dir / "cache.sqlite" if self.dir else None
+            if self.path:
+                self.create_cache_dir_if_needed()
+            self.conn = self.get_conn()
+            self.create_cache_table_if_needed()
+        except Exception as e:
+            print(f"Cache creation error for {module_name} due to {e}. Skipping cache creation for {module_name}.")
 
     def create_cache_dir_if_needed(self):
         from pathlib import Path
