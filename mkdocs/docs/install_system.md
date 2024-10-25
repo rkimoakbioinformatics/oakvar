@@ -24,10 +24,17 @@ A setup file in yaml format can be used. System configuration fields which are m
 
     ov system setup -f setup.yaml
 
-where setup.yaml is
+where `setup.yaml` is
 
     modules_dir: ~/oakvar_modules
     logs_dir: ~/oakvar_logs
+
+The filename of the setup file does not have to be `setup.yaml`. 
+
+You can specify your OakVar store account email and password in setup.yaml as follows:
+
+    ov_store_email: YOUR_EMAIL
+    ov_store_pw: YOUR_PASSWORD
 
 ### Setup with environment variables
 
