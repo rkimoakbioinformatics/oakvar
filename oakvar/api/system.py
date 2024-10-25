@@ -48,6 +48,7 @@
 from typing import Optional
 from typing import Union
 from typing import Dict
+from typing import List
 from pathlib import Path
 
 
@@ -64,6 +65,7 @@ def setup(
     outer=None,
     system_worker_state=None,
     sg_mode: bool = False,
+    modules: List[str] = []
 ):
     """setup.
 
@@ -96,6 +98,7 @@ def setup(
         outer=outer,
         system_worker_state=system_worker_state,
         sg_mode=sg_mode,
+        modules=modules,
     )
 
 

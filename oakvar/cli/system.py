@@ -113,6 +113,9 @@ def add_parser_ov_system_setup(subparsers):
     parser_cli_ov_system_setup.add_argument(
         "--quiet", action="store_true", default=None, help="run quietly"
     )
+    parser_cli_ov_system_setup.add_argument(
+        "--modules", default=[], help="Modules to install", nargs="*"
+    )
     parser_cli_ov_system_setup.set_defaults(func=cli_system_setup)
     parser_cli_ov_system_setup.r_return = "A boolean. TRUE if successful, FALSE if not"  # type: ignore
     parser_cli_ov_system_setup.r_examples = [  # type: ignore

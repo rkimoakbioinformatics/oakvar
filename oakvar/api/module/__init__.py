@@ -545,12 +545,12 @@ def installbase(
     if "cravat-converter" in base_modules:
         base_modules.remove("cravat-converter")
         print(
-            f'cravat-converter has been deprecated. Please remove it with "ov module uninstall cravat-converter".'
+            'cravat-converter has been deprecated. Please remove it with "ov module uninstall cravat-converter".'
         )
     if "oldcravat-converter" in base_modules:
         base_modules.remove("oldcravat-converter")
         print(
-            f'oldcravat-converter has been deprecated. Please remove it with "ov module uninstall oldcravat-converter".'
+            'oldcravat-converter has been deprecated. Please remove it with "ov module uninstall oldcravat-converter".'
         )
     ret = install(
         module_names=base_modules,

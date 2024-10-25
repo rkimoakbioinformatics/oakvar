@@ -49,6 +49,7 @@ from typing import Optional
 from typing import Union
 from typing import Tuple
 from typing import Dict
+from typing import List
 from pathlib import Path
 
 custom_system_conf = None
@@ -69,10 +70,12 @@ def setup_system(
     install_mode: str = "",
     ws_id: str = "",
     sg_mode: bool = False,
+    modules: List[str] = [],
 ):
     import platform
     from os import environ
     from ...api.module import installbase
+    from ...api.module import install
     from .consts import sys_conf_path_key
     from ..store.ov import setup_ov_store_cache
     from ..util.run import show_logo
@@ -87,6 +90,8 @@ def setup_system(
         custom_system_conf=custom_system_conf,
         outer=outer,
     )
+    if not modules and "modules" in conf:
+        modules = conf["modules"]
     add_system_dirs_to_system_conf(conf)
     save_system_conf(conf)
     if outer:
@@ -144,6 +149,17 @@ def setup_system(
         outer=outer,
         system_worker_state=system_worker_state,
     )
+    if ret is not None and ret != 0 and ret is not True:
+        if outer:
+            outer.write(
+                "Problem occurred while installing system modules. "
+                + f"Return value is {ret}.\nPlease run `ov system setup` "
+                + "again to install the missing modules.\n"
+            )
+        return False
+    if outer:
+        outer.write("Installing additional modules...")
+    ret = install(module_names=modules, yes=True, no_fetch=True, outer=outer, system_worker_state=system_worker_state)
     if ret is None or ret == 0 or ret is True:  # 0 or None?
         if outer:
             outer.write("Done setting up the system.")
@@ -151,9 +167,8 @@ def setup_system(
     else:  # return False is converted to 1 with @cli_func.
         if outer:
             outer.write(
-                "Problem occurred while installing system modules. "
-                + f"Return value is {ret}.\nPlease run `ov system setup` "
-                + "again to install the missing modules.\n"
+                "Setting up the system was successful, but some modules failed to install.\n"
+                + f"Return value is {ret}.\nIndividual modules can be installed with `ov module install` command."
             )
         return False
 
@@ -782,7 +797,10 @@ def save_system_conf(conf: Dict):
     from .consts import sys_conf_path_key
     from oyaml import dump
     from os import makedirs
+    import copy
     from ..exceptions import SystemMissingException
+    from ..store.consts import OV_STORE_EMAIL_KEY
+    from ..store.consts import OV_STORE_PW_KEY
 
     sys_conf_path: Optional[str] = conf.get(sys_conf_path_key)
     if sys_conf_path is None or sys_conf_path == "":
@@ -791,6 +809,13 @@ def save_system_conf(conf: Dict):
     if not sys_conf_dir.exists():
         makedirs(sys_conf_dir)
     wf = open(sys_conf_path, "w")
+    conf = copy.deepcopy(conf)
+    if OV_STORE_EMAIL_KEY in conf:
+        del conf[OV_STORE_EMAIL_KEY]
+    if OV_STORE_PW_KEY in conf:
+        del conf[OV_STORE_PW_KEY]
+    if "modules" in conf:
+        del conf["modules"]
     dump(conf, wf, default_flow_style=False)
     wf.close()
 
