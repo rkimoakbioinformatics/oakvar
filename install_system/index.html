@@ -1331,9 +1331,14 @@
 <p>A setup file in yaml format can be used. System configuration fields which are missing in the setup file will be filled with sane defaults. Setup with a file with custom locations for modules and logs can be done as</p>
 <pre><code>ov system setup -f setup.yaml
 </code></pre>
-<p>where setup.yaml is</p>
+<p>where <code>setup.yaml</code> is</p>
 <pre><code>modules_dir: ~/oakvar_modules
 logs_dir: ~/oakvar_logs
+</code></pre>
+<p>The filename of the setup file does not have to be <code>setup.yaml</code>. </p>
+<p>You can specify your OakVar store account email and password in setup.yaml as follows:</p>
+<pre><code>ov_store_email: YOUR_EMAIL
+ov_store_pw: YOUR_PASSWORD
 </code></pre>
 <h3 id="setup-with-environment-variables">Setup with environment variables</h3>
 <p>All system configuration fields can be overridden with environment variables. To override a system config field, set the environment variable <code>OV_</code> + upper-cased field name to a desired value. For example, </p>
