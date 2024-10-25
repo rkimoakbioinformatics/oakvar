@@ -127,17 +127,22 @@ def raise_break(__signal_number__, __stack_frame__):
 def get_annotator(module_name, input_file=None) -> BaseAnnotator:
     from .lib.exceptions import ModuleLoadingError
 
-    module = None
-    input_file = input_file or "__dummy__"
-    ModuleClass = get_module(module_name)
-    if ModuleClass is None:
-        raise ModuleLoadingError(module_name)
-    module = ModuleClass(input_file=input_file)
-    if module is None:
-        raise ModuleLoadingError(module_name)
-    module.connect_db()
-    module.setup()
-    return module
+    try:
+        module = None
+        input_file = input_file or "__dummy__"
+        ModuleClass = get_module(module_name)
+        if ModuleClass is None:
+            raise ModuleLoadingError(module_name)
+        module = ModuleClass(input_file=input_file)
+        if module is None:
+            raise ModuleLoadingError(module_name)
+        module.connect_db()
+        module.setup()
+        return module
+    except Exception:
+        import traceback
+        msg = traceback.format_exc()
+        raise ModuleLoadingError(msg=msg)
 
 
 def get_mapper(module_name, input_file=None) -> BaseMapper:
