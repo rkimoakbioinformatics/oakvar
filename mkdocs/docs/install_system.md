@@ -18,6 +18,10 @@ Install OakVar.
 
 Setup process can be customized with a setup file or environment variables, which can be useful in automated deployment.
 
+System modules are automatically installed with `ov system setup`. If you want to install additional modules as a part of `ov system setup` process, you can use `--modules` option as follows.
+
+    ov system setup --modules clinvar biogrid
+
 ### Setup with a file
 
 A setup file in yaml format can be used. System configuration fields which are missing in the setup file will be filled with sane defaults. Setup with a file with custom locations for modules and logs can be done as
@@ -35,6 +39,12 @@ You can specify your OakVar store account email and password in setup.yaml as fo
 
     ov_store_email: YOUR_EMAIL
     ov_store_pw: YOUR_PASSWORD
+
+Additional modules can be specified as well in the setup file as follows.
+
+    modules:
+    - clinvar
+    - biogrid
 
 ### Setup with environment variables
 
