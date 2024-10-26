@@ -124,7 +124,7 @@ class BasePostAggregator(object):
 
         if not self.conf or not self.module_name:
             raise ConfigurationError()
-        for col in self.conf["output_columns"]:
+        for col in self.conf.get("output_columns", []):
             col["name"] = self.module_name + "__" + col["name"]
 
     def _log_exception(self, e, halt=True):
@@ -258,7 +258,7 @@ class BasePostAggregator(object):
     def setup_output_columns(self):
         if not self.conf:
             return
-        output_columns = self.conf["output_columns"]
+        output_columns = self.conf.get("output_columns", [])
         for col in output_columns:
             if "table" in col and col["table"] is True:
                 self.json_colnames.append(col["name"])
@@ -300,7 +300,7 @@ class BasePostAggregator(object):
         if not ref_colname:
             return
         c = self.dbconn.cursor()
-        output_columns = self.conf["output_columns"]
+        output_columns = self.conf.get("output_columns", [])
         for coldef in output_columns:
             print(coldef)
             col_name = f"{coldef['name']}"
@@ -395,7 +395,7 @@ class BasePostAggregator(object):
             raise SetupError()
         self._open_db_connection()
         self.cursor_w.execute("begin")
-        for col_d in self.conf["output_columns"]:
+        for col_d in self.conf.get("output_columns", []):
             col_def = ColumnDefinition(col_d)
             if col_def.category not in ["single", "multi"]:
                 continue
@@ -428,7 +428,7 @@ class BasePostAggregator(object):
             raise SetupError()
         vals = []
         set_strs = []
-        for col_def in self.conf["output_columns"]:
+        for col_def in self.conf.get("output_columns", []):
             col_name = col_def["name"]
             shortcol_name = col_name.split("__")[1]
             if shortcol_name in output_dict:
@@ -566,7 +566,7 @@ class BasePostAggregator(object):
         self.cursor_w.execute(q)
         # data table and header table
         header_table_name = self.level + "_header"
-        for col_d in self.conf["output_columns"]:
+        for col_d in self.conf.get("output_columns", []):
             col_def = ColumnDefinition(col_d)
             colname = col_def.name
             coltype = col_def.type
