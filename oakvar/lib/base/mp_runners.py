@@ -63,6 +63,7 @@ def annot_from_queue(
     from queue import Empty
     from ..util.util import load_class
     from ..exceptions import ModuleLoadingError
+    import traceback
 
     while True:
         try:
@@ -86,28 +87,36 @@ def annot_from_queue(
             )
             log_handler.setFormatter(formatter)
             logger.addHandler(log_handler)
-        except Exception:
-            import traceback
-
+        except Exception as e:
             traceback.print_exc()
+            raise e
+        annotator_class = None
         try:
             kwargs["serveradmindb"] = serveradmindb
             kwargs["logger"] = logger
             annotator_class = load_class(module.script_path, "Annotator")
             if not annotator_class:
                 annotator_class = load_class(module.script_path, "CravatAnnotator")
-            if annotator_class:
-                annotator = annotator_class(**kwargs)
-                annotator.run()
-                end_queue.put(module.name)
-            else:
-                raise ModuleLoadingError(
-                    msg=f"Annotator of {module.name} could not be loaded."
-                )
-        except Exception:
+        except Exception as e:
+            traceback.print_exc()
             err = ModuleLoadingError(module_name=module.name)
             if logger:
                 logger.exception(err)
+            raise e
+        if annotator_class:
+            try:
+                annotator = annotator_class(**kwargs)
+                annotator.run()
+                end_queue.put(module.name)
+            except Exception as e:
+                traceback.print_exc()
+                if logger:
+                    logger.exception(e)
+                raise e
+        else:
+            raise ModuleLoadingError(
+                msg=f"Annotator of {module.name} could not be loaded."
+            )
 
 
 def mapper_runner(
