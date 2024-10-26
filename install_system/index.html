@@ -1327,6 +1327,9 @@
 <h2 id="setup">Setup</h2>
 <p><code>ov system setup</code> will set up OakVar with sane defaults.</p>
 <p>Setup process can be customized with a setup file or environment variables, which can be useful in automated deployment.</p>
+<p>System modules are automatically installed with <code>ov system setup</code>. If you want to install additional modules as a part of <code>ov system setup</code> process, you can use <code>--modules</code> option as follows.</p>
+<pre><code>ov system setup --modules clinvar biogrid
+</code></pre>
 <h3 id="setup-with-a-file">Setup with a file</h3>
 <p>A setup file in yaml format can be used. System configuration fields which are missing in the setup file will be filled with sane defaults. Setup with a file with custom locations for modules and logs can be done as</p>
 <pre><code>ov system setup -f setup.yaml
@@ -1339,6 +1342,11 @@ logs_dir: ~/oakvar_logs
 <p>You can specify your OakVar store account email and password in setup.yaml as follows:</p>
 <pre><code>ov_store_email: YOUR_EMAIL
 ov_store_pw: YOUR_PASSWORD
+</code></pre>
+<p>Additional modules can be specified as well in the setup file as follows.</p>
+<pre><code>modules:
+- clinvar
+- biogrid
 </code></pre>
 <h3 id="setup-with-environment-variables">Setup with environment variables</h3>
 <p>All system configuration fields can be overridden with environment variables. To override a system config field, set the environment variable <code>OV_</code> + upper-cased field name to a desired value. For example, </p>
