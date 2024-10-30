@@ -264,3 +264,26 @@ will generate the template for the converter module `converter_1` in the folder 
 
 will generate the template for the postaggregator module `postaggregator_1` in the folder `<MODULES_DIR>/postaggregators/postaggregator_1`.
 
+### Module options
+
+Modules can receive custom options through CLI or GUI. In `ov run`, such options to modules can be given with `--module-options` option. For example,
+
+    ov run input.vcf --module-options annotator_1.option_1=value_1
+
+will send the following Python `dict` to the `annotator_1` module as `self.module_options`.
+
+    { "option_1": "value_1" }
+
+In `annotator_1.py`, `self.module_options` will have the above `dict`.
+
+Module options should be defined in the module's yml file. Thus, `annotator_1.yml` should have the following.
+
+    module_options:
+        annotator_1:
+            option_1:
+                title: Option 1
+                type: string
+                help: Option 1 help
+
+Under the `module_options` key, the name of the annotator module should come. Then, the name of the option key. Then, `title`, `type`, and `help` are mandatory keys. `type` can be `string`, `int`, or `float`. With these defined, when `annotator_1` is selected on the OakVar GUI (launched by `ov gui`), an input box for `option_1` will appear under the title and will have a tooltip with the text of `help`.
+
