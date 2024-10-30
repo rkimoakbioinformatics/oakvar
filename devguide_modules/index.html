@@ -726,6 +726,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#module-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Module options
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1369,6 +1378,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#module-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Module options
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1596,6 +1614,23 @@ class Postaggregator(BasePostaggregator):
 <pre><code>ov new module -m postaggregator_1 -t postaggregator
 </code></pre>
 <p>will generate the template for the postaggregator module <code>postaggregator_1</code> in the folder <code>&lt;MODULES_DIR&gt;/postaggregators/postaggregator_1</code>.</p>
+<h3 id="module-options">Module options</h3>
+<p>Modules can receive custom options through CLI or GUI. In <code>ov run</code>, such options to modules can be given with <code>--module-options</code> option. For example,</p>
+<pre><code>ov run input.vcf --module-options annotator_1.option_1=value_1
+</code></pre>
+<p>will send the following Python <code>dict</code> to the <code>annotator_1</code> module as <code>self.module_options</code>.</p>
+<pre><code>{ "option_1": "value_1" }
+</code></pre>
+<p>In <code>annotator_1.py</code>, <code>self.module_options</code> will have the above <code>dict</code>.</p>
+<p>Module options should be defined in the module's yml file. Thus, <code>annotator_1.yml</code> should have the following.</p>
+<pre><code>module_options:
+    annotator_1:
+        option_1:
+            title: Option 1
+            type: string
+            help: Option 1 help
+</code></pre>
+<p>Under the <code>module_options</code> key, the name of the annotator module should come. Then, the name of the option key. Then, <code>title</code>, <code>type</code>, and <code>help</code> are mandatory keys. <code>type</code> can be <code>string</code>, <code>int</code>, or <code>float</code>. With these defined, when <code>annotator_1</code> is selected on the OakVar GUI (launched by <code>ov gui</code>), an input box for <code>option_1</code> will appear under the title and will have a tooltip with the text of <code>help</code>.</p>
 
 
 
