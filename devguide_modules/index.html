@@ -717,6 +717,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#template-generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Template generation
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1351,6 +1360,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#template-generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Template generation
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1563,6 +1581,21 @@ class Postaggregator(BasePostaggregator):
 - numpy
 </code></pre>
 <p><code>ov module install annotator1</code> will automatically perform <code>pip install numpy</code> while installing <code>annotate1</code> module.</p>
+<h3 id="template-generation">Template generation</h3>
+<p><code>ov new module</code> command will generate a module template folder, with template .py, .yml. and .md files for the module. The template will be in the correct folder for the module and recognized by OakVar automatically. Its usage is</p>
+<pre><code>ov new module -m MODULE_NAME -t MODULE_TYPE
+</code></pre>
+<p>where MODULE_NAME is the name of the new module (numbers and small letters and up to one underscore between two letters) and MODULE_TYPE is the type of the new module (converter, mapper, annotator, postaggregator, and reporter).</p>
+<p>Below are examples.</p>
+<pre><code>ov new module -m annotator_1 -t annotator
+</code></pre>
+<p>will generate the template for the annotator module <code>annotator_1</code> in the folder <code>&lt;MODULES_DIR&gt;/annotators/annotator_1</code>.</p>
+<pre><code>ov new module -m converter_1 -t converter
+</code></pre>
+<p>will generate the template for the converter module <code>converter_1</code> in the folder <code>&lt;MODULES_DIR&gt;/converters/converter_1</code>.</p>
+<pre><code>ov new module -m postaggregator_1 -t postaggregator
+</code></pre>
+<p>will generate the template for the postaggregator module <code>postaggregator_1</code> in the folder <code>&lt;MODULES_DIR&gt;/postaggregators/postaggregator_1</code>.</p>
 
 
 
