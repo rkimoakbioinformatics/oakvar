@@ -45,11 +45,14 @@ https://github.com/yourorganization/yourrepo/
 Your colleagues can install `awesomeannotator` module with the following command.
 
 ```
-ov module install \
+ov module install awesomeannotator \
  https://github.com/yourorganization/yourrepo/\
  tree/dev/oakvar_modules/annotators/awssomeannotator
 ```
 
-will download the content of only the `annotator` folder in the `dev` branch of the repository, figure out that the module is an `annotator`, and put the `awesomeannotator` module under the appropriate `annotators` category folder inside your system's OakVar modules root directory.
+will download the content of only the `awesomeannotator` folder in the `dev` branch of the repository, figure out that the module is an `annotator`, and put the `awesomeannotator` module under the appropriate `annotators` category folder inside your system's OakVar modules root directory.
 
 This way, your custom module under development can be easily shared with your colleagues.
+
+It is important to give the module's name as a separate argument and also to use a full GitHub tree URL, which has `/tree/<branch name>`, to the module's folder. If the module files are hosted at the root folder of a repository, the tree URL should end with `/tree/<branch name>`.
+
