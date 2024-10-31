@@ -370,6 +370,7 @@ def install(
                     stage_handler=stage_handler,
                     skip_data=skip_data,
                     modules_dir=modules_dir,
+                    clean=clean,
                     outer=outer,
                     system_worker_state=system_worker_state,
                 )
@@ -380,7 +381,9 @@ def install(
                 if module_name not in problem_modules:
                     problem_modules.append(module_name)
             if outer:
-                outer.error(e)
+                import traceback
+                s = traceback.format_exc()
+                outer.error(s)
             else:
                 sys.stderr.write(str(e) + "\n")
     if problem_modules:
