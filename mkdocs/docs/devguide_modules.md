@@ -246,21 +246,21 @@ If an OakVar module needs packages from PyPI, such requirement can be specified 
 
 `ov new module` command will generate a module template folder, with template .py, .yml. and .md files for the module. The template will be in the correct folder for the module and recognized by OakVar automatically. Its usage is
 
-    ov new module -m MODULE_NAME -t MODULE_TYPE
+    ov new module -n MODULE_NAME -t MODULE_TYPE
 
 where MODULE_NAME is the name of the new module (numbers and small letters and up to one underscore between two letters) and MODULE_TYPE is the type of the new module (converter, mapper, annotator, postaggregator, and reporter).
 
 Below are examples.
 
-    ov new module -m annotator_1 -t annotator
+    ov new module -n annotator_1 -t annotator
 
 will generate the template for the annotator module `annotator_1` in the folder `<MODULES_DIR>/annotators/annotator_1`.
 
-    ov new module -m converter_1 -t converter
+    ov new module -n converter_1 -t converter
 
 will generate the template for the converter module `converter_1` in the folder `<MODULES_DIR>/converters/converter_1`.
 
-    ov new module -m postaggregator_1 -t postaggregator
+    ov new module -n postaggregator_1 -t postaggregator
 
 will generate the template for the postaggregator module `postaggregator_1` in the folder `<MODULES_DIR>/postaggregators/postaggregator_1`.
 
