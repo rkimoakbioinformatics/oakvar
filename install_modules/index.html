@@ -1245,12 +1245,13 @@
                     awesomeannotator.sqlite
 </code></pre>
 <p>Your colleagues can install <code>awesomeannotator</code> module with the following command.</p>
-<pre><code>ov module install \
+<pre><code>ov module install awesomeannotator \
  https://github.com/yourorganization/yourrepo/\
  tree/dev/oakvar_modules/annotators/awssomeannotator
 </code></pre>
-<p>will download the content of only the <code>annotator</code> folder in the <code>dev</code> branch of the repository, figure out that the module is an <code>annotator</code>, and put the <code>awesomeannotator</code> module under the appropriate <code>annotators</code> category folder inside your system's OakVar modules root directory.</p>
+<p>will download the content of only the <code>awesomeannotator</code> folder in the <code>dev</code> branch of the repository, figure out that the module is an <code>annotator</code>, and put the <code>awesomeannotator</code> module under the appropriate <code>annotators</code> category folder inside your system's OakVar modules root directory.</p>
 <p>This way, your custom module under development can be easily shared with your colleagues.</p>
+<p>It is important to give the module's name as a separate argument and also to use a full GitHub tree URL, which has <code>/tree/&lt;branch name&gt;</code>, to the module's folder. If the module files are hosted at the root folder of a repository, the tree URL should end with <code>/tree/&lt;branch name&gt;</code>.</p>
 
 
 
