@@ -28,7 +28,7 @@ will install all modules the name of which starts with `clin`.
 
 ## Installing through GitHub
 
-`ov module install` can accept a GitHub URL as *module_name*. Thus, OakVar can now install custom modules directly from GitHub. It is as easy as simply giving the URL of the folder of the module on GitHub to `ov module install`. Let's say you have a custom module hosted on the `dev` branch of your GitHub repo `yourorganization/yourrepo` in the following folder:
+OakVar can install custom modules directly from GitHub. It is as easy as simply giving the module's name and the URL of the folder of the module on GitHub to `ov module install`. Let's say you have a custom module hosted on the `dev` branch of your GitHub repo `yourorganization/yourrepo` in the following folder:
 
 ```
 https://github.com/yourorganization/yourrepo/
