@@ -262,15 +262,15 @@ def is_compatible_version(dbpath):
     """
     from .admin_util import get_max_version_supported_for_migration
     from packaging.version import Version
-    from pkg_resources import get_distribution
+    from importlib import metadata
 
     max_version_supported_for_migration = get_max_version_supported_for_migration()
     try:
-        ov_version = Version(get_distribution("oakvar").version)
+        ov_version = Version(metadata.version("oakvar"))
     except Exception:
         ov_version = None
     try:
-        oc_version = Version(get_distribution("open-cravat").version)
+        oc_version = Version(metadata.version("open-cravat"))
     except Exception:
         oc_version = None
     job_version_ov = get_job_version(dbpath, "oakvar")
@@ -324,7 +324,7 @@ def get_args_conf(args: dict) -> Dict:
     Returns:
         Dict:
     """
-    if args is None:
+    if not args:
         return {}
     # fill with run_conf dict
     run_conf = args.get("run_conf")
@@ -353,7 +353,7 @@ def get_args_package(args: dict) -> Dict:
     Returns:
         Dict:
     """
-    if args is None:
+    if not args:
         return {}
     package = args.get("package")
     if package:
@@ -388,14 +388,13 @@ def get_args(parser, inargs, inkwargs) -> dict:
     inarg_dict = {}
     if inargs is not None:
         for inarg in inargs:
-            t = type(inarg)
-            if t == list:  # ['-t', 'text']
+            if isinstance(inarg, list):  # ['-t', 'text']
                 inarg_dict.update(**vars(parser.parse_args(inarg)))
-            elif t == Namespace:  # already parsed by a parser.
+            elif isinstance(inarg, Namespace):  # already parsed by a parser.
                 inarg_dict.update(**vars(inarg))
-            elif t == SimpleNamespace:
+            elif isinstance(inarg, SimpleNamespace):
                 inarg_dict.update(**vars(inarg))
-            elif t == dict:  # {'output_dir': '/rt'}
+            elif isinstance(inarg, dict):  # {'output_dir': '/rt'}
                 inarg_dict.update(inarg)
     if inkwargs is not None:
         inarg_dict.update(inkwargs)
@@ -646,7 +645,7 @@ def print_list_of_dict(ld: List[Dict], outer=None):
         row = []
         for header in headers:
             v = d[header]
-            if type(v) == list:
+            if isinstance(v, list):
                 v = ", ".join(v)
             else:
                 v = str(v)
@@ -949,7 +948,7 @@ def get_df_from_db(
         if library == "polars":
             df = pl.read_database(
                 sql, conn_url, partition_on=partition_on, partition_num=num_cores
-            )
+            ) # type: ignore
     else:
         df = pl.read_database(sql, conn_url)  # type: ignore
     return df

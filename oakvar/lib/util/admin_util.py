@@ -68,9 +68,9 @@ def get_user_conf():
 
 
 def get_current_package_version() -> str:
-    from pkg_resources import get_distribution
+    from importlib import metadata
 
-    version = get_distribution("oakvar").version
+    version = metadata.version("oakvar")
     return version
 
 

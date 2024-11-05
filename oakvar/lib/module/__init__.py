@@ -418,7 +418,7 @@ def download_code_or_data(
                     and getsize(part_path) == MODULE_PACK_SPLIT_FILE_SIZE
                 ):
                     continue
-                if outer:
+                if outer and stage_handler:
                     outer.write(
                         stage_handler._stage_msg(
                             f"Downloading {module_name} data file {i} / {num_urls}..."

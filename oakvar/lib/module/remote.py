@@ -249,7 +249,7 @@ def get_install_deps(
     conf_path: Optional[Path] = None,
     skip_installed=True,
 ) -> Tuple[dict, list]:
-    from pkg_resources import Requirement
+    from packaging.requirements import Requirement
     from .local import get_local_module_info
     from ..store import remote_module_latest_version
     from ..util.util import get_latest_version
@@ -277,18 +277,18 @@ def get_install_deps(
     req_list = config.get("requires", []) or []
     deps = {}
     for req_string in req_list:
-        req = Requirement.parse(req_string)
-        rem_info = get_remote_module_info(req.unsafe_name)
+        req = Requirement(req_string)
+        rem_info = get_remote_module_info(req.name)
         if not rem_info:
             continue
-        local_info = get_local_module_info(req.unsafe_name)
+        local_info = get_local_module_info(req.name)
         if skip_installed and local_info:
             continue
         if local_info and local_info.version and local_info.version in req:
             continue
         highest_matching = get_latest_version(rem_info.versions)
         if highest_matching:
-            deps[req.unsafe_name] = highest_matching
+            deps[req.name] = highest_matching
     req_pypi_list = get_pypi_dependency_from_conf(config)
     deps_pypi = []
     for req_pypi in req_pypi_list:

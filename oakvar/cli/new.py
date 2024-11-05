@@ -95,7 +95,7 @@ def get_parser_fn_new():
         "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_new_exampleinput.set_defaults(func=cli_new_exampleinput)
-    parser_cli_new_exampleinput.r_return = (
+    parser_cli_new_exampleinput.r_return = ( # type: ignore
         "A string. Location of the example input file"  # type: ignore
     )
     parser_cli_new_exampleinput.r_examples = [  # type: ignore

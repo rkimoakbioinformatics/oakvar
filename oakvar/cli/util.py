@@ -195,7 +195,7 @@ def get_parser_fn_util():
         "--fmt", default="json", help="Output format. text / json / yaml"
     )
     parser_fn_util_showsqliteinfo.set_defaults(func=cli_util_sqliteinfo)
-    parser_fn_util_showsqliteinfo.r_return = (
+    parser_fn_util_showsqliteinfo.r_return = ( # type: ignore
         "A named list. Information of a job SQLite file"  # type: ignore
     )
     parser_fn_util_showsqliteinfo.r_examples = [  # type: ignore

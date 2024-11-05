@@ -1353,7 +1353,7 @@ def get_sg_logo_data():
     new_height = 200
     scale = new_height / logo.height
     new_width = int(scale * logo.width)
-    logo = logo.resize((new_width, new_height), Image.ANTIALIAS)  # type: ignore
+    logo = logo.resize((new_width, new_height), Image.Resampling.LANCZOS)
     bio = io.BytesIO()
     logo.save(bio, format="PNG")
     logo_data = bio.getvalue()

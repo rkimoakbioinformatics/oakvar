@@ -51,6 +51,7 @@ from typing import List
 from typing import Set
 from typing import Dict
 from typing import Tuple
+from typing import Union
 from re import compile
 from pathlib import Path
 from liftover import ChainFile
@@ -108,7 +109,7 @@ def _log_conversion_error(
     from oakvar.lib.exceptions import IgnoredVariant
 
     if core_num is None:
-        raise Exception(f"core_num is None.")
+        raise Exception("core_num is None.")
     if isinstance(e, NoAlternateAllele):
         err_str = str(e)
     if isinstance(e, ExpectedException):
@@ -318,7 +319,7 @@ def handle_variant(
 
 
 def handle_converted_variants(
-    variants: List[Dict[str, Any]],
+    variants: Union[str, List[Dict[str, Any]]],
     do_liftover: bool,
     do_liftover_chrM: bool,
     lifter,
@@ -338,6 +339,8 @@ def handle_converted_variants(
         return [], False
     if not variants:
         return [], False
+    if isinstance(variants, str):
+        raise Exception(f"variants is str: {variants}")
     variant_l: List[Dict[str, Any]] = []
     error_occurred: bool = False
     for variant in variants:
@@ -692,7 +695,7 @@ class MasterConverter(object):
             module_name = module_path.stem
             if module_name in ["cravat-converter", "oldcravat-converter"]:
                 if self.logger:
-                    self.logger.warn(
+                    self.logger.warning(
                         f"{module_name} is deprecated. Please install and use csv-converter module."
                     )
             script_path: Path = module_path / f"{module_name}.py"
@@ -704,7 +707,7 @@ class MasterConverter(object):
                 module_name = module_info.name
                 if module_name in ["cravat-converter", "oldcravat-converter"]:
                     if self.logger:
-                        self.logger.warn(
+                        self.logger.warning(
                             f"{module_name} is deprecated. Please install and use csv-converter module."
                         )
                     continue
