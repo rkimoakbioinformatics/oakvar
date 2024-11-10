@@ -19,7 +19,8 @@ nav:
     - Modules: devguide_modules.md
     - Workflows: devguide_workflows.md
     - Debugging: devguide_debugging.md
-    - Publishing your module: register.md
+    - Testing: devguide_testing.md
+    - Publishing: register.md
   - Python API:
     - api/main.md
     - oakvar.api: 
