@@ -77,6 +77,9 @@ def get_parser_ov_test():
         "-m", "--modules", nargs="+", help="Name of module(s) to test. (e.g. gnomad)"
     )
     parser_cli_util_test.add_argument(
+        "--clean", action="store_true", help="Perform a clean test"
+    )
+    parser_cli_util_test.add_argument(
         "--quiet", action="store_true", default=None, help="run quietly"
     )
     parser_cli_util_test.set_defaults(func=cli_util_test)

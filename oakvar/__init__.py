@@ -72,6 +72,7 @@ from .lib.util.inout import read_crv
 from .lib.util.seq import get_lifter
 from .lib.util.seq import liftover
 from .lib.util.seq import get_wgs_reader
+from .lib.module.local import get_module_test_dir
 from .cli import CliOuter
 # for compatibility with oc
 from .lib.exceptions import BadFormatError
@@ -262,3 +263,4 @@ _ = cli or wgs
 _ = stdouter
 _ = get_lifter or liftover or get_wgs_reader
 _ = get_df_from_db or get_sample_uid_variant_arrays or read_crv
+_ = get_module_test_dir

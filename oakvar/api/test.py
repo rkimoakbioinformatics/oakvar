@@ -72,6 +72,8 @@ def test(modules: List[str] = [], output_dir: str="oakvar_module_test", clean: b
     result = {}
     cur_dir = os.getcwd()
     output_dir_p = Path(output_dir).resolve()
+    if not output_dir_p.exists():
+        os.mkdir(output_dir_p)
     for module_name in module_names:
         os.chdir(output_dir_p)
         test_dir = (output_dir_p / module_name).resolve()
@@ -123,4 +125,4 @@ def test(modules: List[str] = [], output_dir: str="oakvar_module_test", clean: b
     console.print(f"{get_time_str()} passed {len(passed)} failed {len(failed)}")
     for module_name in failed:
         console.print(f"{get_time_str()}[red] failed module: {module_name}")
-    return {"passed": len(failed) == 0, "details": result, "num_passed": passed, "num_failed": failed}
+    return {"passed": len(failed) == 0, "details": result, "num_passed": len(passed), "num_failed": len(failed)}
