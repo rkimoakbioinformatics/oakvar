@@ -58,6 +58,7 @@ from .cli.system import add_parser_ov_system
 from .cli.config import get_parser_fn_config
 from .cli.license import get_parser_ov_license
 from .cli.update import get_parser_ov_update
+from .cli.test import get_parser_ov_test
 from . import CliOuter
 
 _ = CliOuter
@@ -134,6 +135,14 @@ def get_entry_parser():
         add_help=False,
         help="OakVar utilities",
     )
+    # test
+    _ = subparsers.add_parser(
+        "test",
+        parents=[get_parser_ov_test()],
+        description="Run tests",
+        add_help=False,
+        help="Run tests on OakVar modules. `def test` should be defined in tested modules.",
+    )
     # version
     p_version = subparsers.add_parser(
         "version",
@@ -146,7 +155,6 @@ def get_entry_parser():
         "# Get the version of the installed OakVar",
         "#roakvar::version()",
     ]
-
     # issue
     p_issue = subparsers.add_parser(
         name="issue",

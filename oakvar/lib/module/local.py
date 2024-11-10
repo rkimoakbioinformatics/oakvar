@@ -312,6 +312,12 @@ def get_module_dir(module_name: str, module_type: str = "") -> Optional[Path]:
     return None
 
 
+def get_module_test_dir(module_name: str, module_type: str = "") -> Optional[Path]:
+    module_dir = get_module_dir(module_name, module_type=module_type)
+    if module_dir:
+        return module_dir / "test"
+    return None
+
 def get_module_conf(
     module_name, module_type: str = "", module_dir: Optional[Path] = None
 ) -> Dict[str, Any]:

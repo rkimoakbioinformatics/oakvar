@@ -86,7 +86,40 @@ class BaseReporter:
         outer=None,
     ):
         from ..system.consts import DEFAULT_SERVER_DEFAULT_USERNAME
+        from ..exceptions import ModuleLoadingError
+        from pathlib import Path
+        import os
+        from ..module.local import get_module_conf
+        import sys
 
+        self.module_type = "reporter"
+        if self.__module__ == "__main__":
+            fp = None
+            self.main_fpath = None
+        else:
+            fp = sys.modules[self.__module__].__file__
+            if not fp:
+                raise ModuleLoadingError(module_name=self.__module__)
+            self.main_fpath = Path(fp).resolve()
+        if not self.main_fpath:
+            if module_name:
+                self.module_name = module_name
+                self.module_dir = Path(os.getcwd()).absolute()
+            else:
+                raise ModuleLoadingError(msg="name argument should be given.")
+            self.conf = conf.copy()
+        else:
+            self.module_name = self.main_fpath.stem
+            self.module_dir = self.main_fpath.parent
+            self.conf = get_module_conf(
+                self.module_name,
+                module_type=self.module_type,
+                module_dir=self.module_dir,
+            )
+            if not self.conf:
+                self.conf = {}
+        if not dbpath:
+            raise ValueError("dbpath argument is required to initialize a reporter module.")
         self.dbpath = dbpath
         self.report_types = report_types
         self.filterpath = filterpath
@@ -96,7 +129,6 @@ class BaseReporter:
         self.filterstring = filterstring
         self.savepath = savepath
         self.confpath = confpath
-        self.module_name = module_name
         self.nogenelevelonvariantlevel = nogenelevelonvariantlevel
         self.inputfiles = inputfiles
         self.separatesample = separatesample
@@ -134,7 +166,6 @@ class BaseReporter:
         self.retrieved_col_names: Dict[str, List[str]] = {}
         self.conn = None
         self.levels_to_write = None
-        self.conf = conf
         self.module_conf = None
         self.output_basename = None
         self.extract_columns_multilevel: Dict[str, List[str]] = {}
@@ -182,7 +213,7 @@ class BaseReporter:
                 msg=f"{self.dbpath} is not an OakVar result database file."
             )
         if not Path(self.dbpath).exists():
-            raise WrongInput(msg=self.dbpath)
+            raise WrongInput(msg=f"{self.dbpath} does not exist.")
         try:
             with sqlite3.connect(self.dbpath) as db:
                 db.execute("select count(*) from info")
@@ -988,7 +1019,7 @@ class BaseReporter:
             mi = local_modules[module_name]
             if not mi:
                 continue
-            sys.path = sys.path + [dirname(mi.script_path)]
+            sys.path = [dirname(mi.script_path)] + sys.path
             annot_cls = None
             if mi.name in done_var_annotators or mi.name == self.mapper_name:
                 annot_cls = load_class(mi.script_path)
@@ -1162,7 +1193,7 @@ class BaseReporter:
         import sqlite3
 
         for conn in self.conns:
-            if type(conn) == sqlite3.Connection:
+            if isinstance(conn, sqlite3.Connection):
                 conn.close()
             else:
                 await conn.close()

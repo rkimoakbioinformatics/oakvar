@@ -377,14 +377,13 @@ class Runner(object):
                 if self.args and self.args.writeadmindb:
                     await self.write_admin_db_final_info(runtime, run_no)
             except Exception as e:
-                self.exception = e
-            finally:
                 import traceback
-
-                if self.exception:
-                    s = traceback.format_exc().strip()
-                    if s != "NoneType: None":
-                        print(s)
+                self.exception = e
+                s = traceback.format_exc().strip()
+                if s != "NoneType: None":
+                    if self.logger:
+                        self.logger.error(s)
+            finally:
                 if not self.exception:
                     update_status(JOB_STATUS_FINISHED, serveradmindb=self.serveradmindb)
                 else:
@@ -393,6 +392,7 @@ class Runner(object):
                         serveradmindb=self.serveradmindb,
                     )
                     if self.logger:
+                        self.logger.error("Error occurred:")
                         self.logger.error(self.exception)
                 self.close_error_logger()
                 self.clean_up_at_end(run_no)
@@ -557,6 +557,8 @@ class Runner(object):
             v for v in self.inputs if not v.exists() and "*" not in str(v)
         ]
         for v in inputs_to_remove:
+            if self.outer:
+                self.outer.write(f"Input file {v} does not exist.")
             self.inputs.remove(v)
 
     def process_url_and_pipe_inputs(self):
@@ -848,7 +850,7 @@ class Runner(object):
         if self.args and not self.args.inputs:
             inputs = self.run_conf.get("inputs")
             if inputs:
-                if type(inputs) == list:
+                if isinstance(inputs, list):
                     self.args.inputs = inputs
                 else:
                     if self.outer:

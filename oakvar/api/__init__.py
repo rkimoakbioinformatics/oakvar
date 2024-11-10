@@ -51,6 +51,7 @@ from typing import List
 from typing import Dict
 from typing import Union
 from pathlib import Path
+from typing import Type
 from .test import test as do_test
 from . import new
 from . import store
@@ -322,14 +323,16 @@ def report(
     from pathlib import Path
     from ..lib.util.asyn import get_event_loop
     from ..lib.util.util import is_compatible_version
-    from importlib.util import spec_from_file_location
-    from importlib.util import module_from_spec
     from ..lib.exceptions import IncompatibleResult
     from ..lib.module.local import get_local_module_info
     from ..lib.module.local import LocalModule
     from ..lib.util.run import set_logger_handler
     from . import handle_exception
+    from ..lib.util.util import load_class
+    from ..lib.base.reporter import BaseReporter
 
+    if report_types is None:
+        report_types = []
     if not report_types:
         if package:
             m_info = get_local_module_info(package)
@@ -340,6 +343,7 @@ def report(
                     report_types = package_conf_reports
     if isinstance(report_types, str):
         report_types = [report_types]
+    assert isinstance(report_types, list)
     compatible_version, _, _ = is_compatible_version(dbpath)
     if not compatible_version:
         raise IncompatibleResult()
@@ -393,19 +397,10 @@ def report(
                 logger.info(f"Generating {module_name} report...")
             elif outer:
                 outer.write(f"Generating {module_name} report...")
-            spec = spec_from_file_location(  # type: ignore
-                module_name,
-                module_info.script_path,  # type: ignore
-            )
-            if not spec:
-                continue
-            module = module_from_spec(spec)  # type: ignore
-            if not module or not spec.loader:
-                continue
-            spec.loader.exec_module(module)
-            reporter_module_options = module_options.get(module_name, {})
-            reporter = module.Reporter(
-                dbpath=dbpath,
+            Reporter: Type[BaseReporter] = load_class(module_info.script_path, "Reporter")  # type: ignore
+            #reporter_module_options = module_options.get(module_name, {})
+            reporter = Reporter(
+                dbpath=str(dbpath),
                 report_types=report_types,
                 filterpath=filterpath,
                 filter=filter,
@@ -419,7 +414,7 @@ def report(
                 nogenelevelonvariantlevel=nogenelevelonvariantlevel,
                 inputfiles=inputfiles,
                 separatesample=separatesample,
-                output_dir=output_dir,
+                output_dir=str(output_dir),
                 run_name=run_name,
                 includesample=includesample,
                 excludesample=excludesample,
@@ -429,7 +424,7 @@ def report(
                 user=user,
                 no_summary=no_summary,
                 serveradmindb=serveradmindb,
-                module_options=reporter_module_options,
+                module_options=module_options,
                 logtofile=logtofile,
                 outer=outer,
             )

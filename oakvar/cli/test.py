@@ -55,7 +55,7 @@ def cli_util_test(args):
 
 
 @cli_func
-def test(args, __name__="util test"):
+def test(args, __name__="test"):
     from ..api.test import test
 
     ret = test(**args)
@@ -68,7 +68,7 @@ def test(args, __name__="util test"):
     return True
 
 
-def get_parser_cli_util_test():
+def get_parser_ov_test():
     from argparse import ArgumentParser
 
     parser_cli_util_test = ArgumentParser()
@@ -84,7 +84,7 @@ def get_parser_cli_util_test():
 
 
 def main():
-    args = get_parser_cli_util_test().parse_args()
+    args = get_parser_ov_test().parse_args()
     cli_util_test(args)
 
 

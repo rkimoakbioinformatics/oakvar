@@ -125,28 +125,10 @@ def movejob(args, __name__="util move-job"):
 
 def get_parser_fn_util():
     from argparse import ArgumentParser
-    from .test import get_parser_cli_util_test
     from ..api.util import job_to_gui
 
     parser_fn_util = ArgumentParser()
     _subparsers = parser_fn_util.add_subparsers(title="Commands")
-    # test
-
-    parser_cli_util_test = _subparsers.add_parser(
-        "test",
-        parents=[get_parser_cli_util_test()],
-        add_help=False,
-        description="Test modules",
-        help="Test installed modules",
-    )
-    parser_cli_util_test.r_return = "A named list. Field result is a named list showing the test result for each module. Fields num_passed and num_failed show the number of passed and failed modules."  # type: ignore
-    parser_cli_util_test.r_examples = [  # type: ignore
-        "# Test the ClinVar module",
-        '#roakvar::util.test(modules="clinvar")',
-        "# Test the ClinVar and the COSMIC modules",
-        '#roakvar::util.test(modules=list("clinvar", "cosmic"))',
-    ]
-
     # Make job accessible through the gui
     parser_fn_util_addjob = _subparsers.add_parser(
         "to-gui", help="Make a command line job by `ov run` to be accessible by GUI."

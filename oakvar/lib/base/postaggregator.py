@@ -55,7 +55,8 @@ class BasePostAggregator(object):
 
     def __init__(
         self,
-        module_name: str,
+        module_name: Optional[str] = None,
+        module_conf: Dict[str, Any] = {},
         run_name: Optional[str] = None,
         output_dir: Optional[str] = None,
         serveradmindb=None,
@@ -64,7 +65,38 @@ class BasePostAggregator(object):
     ):
         from ..exceptions import ArgumentError
         from ..util.util import get_result_dbpath
+        import sys
+        from ..exceptions import ModuleLoadingError
+        from pathlib import Path
+        import os
+        from ..module.local import get_module_conf
 
+        self.module_type = "postaggregator"
+        if self.__module__ == "__main__":
+            fp = None
+            self.main_fpath = None
+        else:
+            fp = sys.modules[self.__module__].__file__
+            if not fp:
+                raise ModuleLoadingError(module_name=self.__module__)
+            self.main_fpath = Path(fp).resolve()
+        if not self.main_fpath:
+            if module_name:
+                self.module_name = module_name
+                self.module_dir = Path(os.getcwd()).absolute()
+            else:
+                raise ModuleLoadingError(msg="name argument should be given.")
+            self.conf = module_conf.copy()
+        else:
+            self.module_name = self.main_fpath.stem
+            self.module_dir = self.main_fpath.parent
+            self.conf = get_module_conf(
+                self.module_name,
+                module_type=self.module_type,
+                module_dir=self.module_dir,
+            )
+            if not self.conf:
+                self.conf = {}
         self.serveradmindb = serveradmindb
         self.run_name = run_name
         self.output_dir = output_dir
@@ -75,7 +107,6 @@ class BasePostAggregator(object):
         self.logger = None
         self.error_logger = None
         self.unique_excs = []
-        self.module_name = module_name
         if not self.output_dir:
             raise ArgumentError(msg="Output directory was not given.")
         if not self.run_name:
@@ -101,11 +132,9 @@ class BasePostAggregator(object):
         self._close_db_connection()
 
     def make_conf_and_level(self):
-        from ..module.local import get_module_conf
         from ..exceptions import SetupError
         from ..consts import LEVELS
 
-        self.conf = get_module_conf(self.module_name, module_type="postaggregator")
         if self.conf and self.conf.get("level"):
             self.level = self.conf.get("level")
         if not self.level:

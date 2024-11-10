@@ -172,6 +172,50 @@ def get_converter(module_name, *args, input_file=None, **kwargs):
     return module
 
 
+def get_postaggregator(module_name, **kwargs) -> BasePostAggregator:
+    from .lib.exceptions import ModuleLoadingError
+
+    try:
+        module = None
+        ModuleClass = get_module(module_name, module_type="postaggregator")
+        if ModuleClass is None:
+            raise ModuleLoadingError(msg=f"{module_name} (postaggregator)")
+        if "output_dir" not in kwargs:
+            kwargs["output_dir"] = "."
+        if "run_name" not in kwargs:
+            kwargs["run_name"] = "__dummy__"
+        module = ModuleClass(**kwargs)
+        if module is None:
+            raise ModuleLoadingError(module_name)
+        module.setup()
+        return module
+    except Exception:
+        import traceback
+        msg = traceback.format_exc()
+        raise ModuleLoadingError(msg=msg)
+
+
+def get_reporter(module_name, **kwargs) -> BaseReporter:
+    from .lib.exceptions import ModuleLoadingError
+
+    try:
+        module = None
+        ModuleClass = get_module(module_name, module_type="reporter")
+        if ModuleClass is None:
+            raise ModuleLoadingError(module_name)
+        if "dbpath" not in kwargs:
+            kwargs["dbpath"] = None
+        module = ModuleClass(**kwargs)
+        if module is None:
+            raise ModuleLoadingError(msg=f"{module_name} (reporter)")
+        module.setup()
+        return module
+    except Exception:
+        import traceback
+        msg = traceback.format_exc()
+        raise ModuleLoadingError(msg=msg)
+
+
 def get_module(module_name, module_type: str = ""):
     from os.path import dirname
     from .lib.module.local import get_local_module_info
@@ -180,6 +224,8 @@ def get_module(module_name, module_type: str = ""):
 
     ModuleClass = None
     module_conf = get_module_conf(module_name, module_type=module_type)
+    if not module_conf:
+        return None
     module_info = get_local_module_info(module_name)
     if module_info is not None:
         script_path = module_info.script_path

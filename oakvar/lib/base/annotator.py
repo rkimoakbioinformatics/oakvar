@@ -50,6 +50,7 @@ from typing import Union
 from typing import Any
 from typing import List
 from typing import Dict
+from typing import Tuple
 
 
 class BaseAnnotator(object):
@@ -134,6 +135,7 @@ class BaseAnnotator(object):
         self.output_dir = output_dir
         self.plain_output = plainoutput
         self.logtofile = logtofile
+        self.module_type = "annotator"
         if self.__module__ == "__main__":
             fp = None
             self.main_fpath = None
@@ -142,6 +144,23 @@ class BaseAnnotator(object):
             if not fp:
                 raise ModuleLoadingError(module_name=self.__module__)
             self.main_fpath = Path(fp).resolve()
+        if not self.main_fpath:
+            if name:
+                self.module_name = name
+                self.module_dir = Path(os.getcwd()).absolute()
+            else:
+                raise ModuleLoadingError(msg="name argument should be given.")
+            self.conf = module_conf.copy()
+        else:
+            self.module_name = self.main_fpath.stem
+            self.module_dir = self.main_fpath.parent
+            self.conf = get_module_conf(
+                self.module_name,
+                module_type=self.module_type,
+                module_dir=self.module_dir,
+            )
+            if not self.conf:
+                self.conf = {}
         self.secondary_paths = {}
         self.output_basename = None
         self.logger = logger
@@ -162,26 +181,6 @@ class BaseAnnotator(object):
         self.parse_cmd_args()
         self.serveradmindb = serveradmindb
         self.supported_chroms = set(cannonical_chroms)
-        self.module_type = "annotator"
-        self.conf = {}
-        self.module_dir: Path = Path(".")
-        if not self.main_fpath:
-            if name:
-                self.module_name = name
-                self.module_dir = Path(os.getcwd()).absolute()
-            else:
-                raise ModuleLoadingError(msg="name argument should be given.")
-            self.conf = module_conf.copy()
-        else:
-            self.module_name = self.main_fpath.stem
-            self.module_dir = self.main_fpath.parent
-            self.conf = get_module_conf(
-                self.module_name,
-                module_type=self.module_type,
-                module_dir=self.module_dir,
-            )
-            if not self.conf:
-                self.conf = {}
         self.annotator_dir: str = str(self.module_dir)  # oc legacy
         self.level = level
         if not self.level and "level" in self.conf:
@@ -669,9 +668,11 @@ class BaseAnnotator(object):
 
     def base_setup(self):
         """base_setup."""
-        self._setup_primary_input()
-        self._setup_secondary_inputs()
-        self._setup_outputs()
+        if self.primary_input_path and not self.primary_input_path.name.endswith("__dummy__"):
+            self._setup_primary_input()
+            self._setup_secondary_inputs()
+        if self.output_dir:
+            self._setup_outputs()
         self.connect_db()
         self.setup()
         if not hasattr(self, "supported_chroms"):
@@ -966,6 +967,11 @@ class BaseAnnotator(object):
 
         create_module_files(self, overwrite=overwrite, interactive=interactive)
 
+    def test(self, *args, **kwargs) -> Tuple[bool, str]:
+        """test."""
+        _ = args
+        _ = kwargs
+        raise NotImplementedError("test method should be implemented.")
 
 class SecondaryInputFetcher:
     """SecondaryInputFetcher."""

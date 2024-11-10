@@ -96,17 +96,10 @@ def get_ucsc_bins(start, stop=None):
     ]
 
 
-def load_class(path, class_name=None):
-    """load_class.
-
-    Args:
-        path:
-        class_name:
-    """
+def load_module(path):
     from importlib.util import spec_from_file_location, module_from_spec
     from importlib import import_module
     import sys
-    import inspect
     from pathlib import Path
     from ..exceptions import ModuleLoadingError
 
@@ -114,54 +107,65 @@ def load_class(path, class_name=None):
     path_dir = str(p.parent)
     sys.path = [path_dir] + sys.path
     module = None
-    module_class = None
     module_name = p.stem
     try:
         module = import_module(module_name)
     except Exception:
         import traceback
-
         traceback.print_exc()
         try:
-            if class_name:
-                spec = spec_from_file_location(class_name, path)
-                if spec is not None:
-                    module = module_from_spec(spec)
-                    loader = spec.loader
-                    if loader is not None:
-                        loader.exec_module(module)
+            spec = spec_from_file_location(module_name, path)
+            if spec is not None:
+                module = module_from_spec(spec)
+                loader = spec.loader
+                if loader is not None:
+                    loader.exec_module(module)
         except Exception:
             import traceback
-
             traceback.print_exc()
             raise ModuleLoadingError(module_name=module_name)
-    if module:
-        if class_name:
-            if hasattr(module, class_name):
-                module_class = getattr(module, class_name)
-                if not inspect.isclass(module_class):
-                    module_class = None
-        else:
-            for n in dir(module):
-                if n in [
-                    "Converter",
-                    "Mapper",
-                    "Annotator",
-                    "PostAggregator",
-                    "Reporter",
-                    "CommonModule",
-                    "CravatConverter",
-                    "CravatMapper",
-                    "CravatAnnotator",
-                    "CravatPostAggregator",
-                    "CravatReporter",
-                    "CravatCommonModule",
-                ]:
-                    if hasattr(module, n):
-                        module_class = getattr(module, n)
-                        if not inspect.isclass(module_class):
-                            module_class = None
     del sys.path[0]
+    return module
+
+
+def load_class(path, class_name=None):
+    """load_class.
+
+    Args:
+        path:
+        class_name:
+    """
+    import inspect
+
+    module = load_module(path)
+    if not module:
+        return None
+    module_class = None
+    if class_name:
+        if hasattr(module, class_name):
+            module_class = getattr(module, class_name)
+            if not inspect.isclass(module_class):
+                module_class = None
+    else:
+        for n in dir(module):
+            if n in [
+                "Converter",
+                "Mapper",
+                "Annotator",
+                "PostAggregator",
+                "Reporter",
+                "CommonModule",
+                "CravatConverter",
+                "CravatMapper",
+                "CravatAnnotator",
+                "CravatPostAggregator",
+                "CravatReporter",
+                "CravatCommonModule",
+            ]:
+                if hasattr(module, n):
+                    module_class = getattr(module, n)
+                    if not inspect.isclass(module_class):
+                        module_class = None
     return module_class
 
 

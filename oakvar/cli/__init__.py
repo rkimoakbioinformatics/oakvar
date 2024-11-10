@@ -139,7 +139,7 @@ def get_commands(p):
 
     cmds: dict[str, Any] = {}
     for a in p._actions:
-        if type(a) == _SubParsersAction:
+        if isinstance(a, _SubParsersAction):
             cmds = a.choices
             break
     return cmds
