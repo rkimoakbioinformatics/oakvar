@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://oakvar.com/scikit_learn/">
+        <link rel="canonical" href="https://oakvar.com/devguide_testing/">
       
       
-        <link rel="prev" href="../gui/">
+        <link rel="prev" href="../devguide_debugging/">
       
       
-        <link rel="next" href="../ai_ml/">
+        <link rel="next" href="../register/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>scikit-learn - OakVar</title>
+        <title>Testing - OakVar</title>
       
     
     
@@ -65,11 +65,6 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
-        
-        <a href="#overview" class="md-skip">
-          Skip to content
-        </a>
-      
     </div>
     <div data-md-component="announce">
       
@@ -101,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              scikit-learn
+              Testing
             
           </span>
         </div>
@@ -459,19 +454,17 @@
       
   
   
-    
   
   
-  
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
           <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
@@ -485,7 +478,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             Integration with AI/ML
@@ -496,28 +489,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    scikit-learn
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../scikit_learn/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -526,114 +501,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      Overview
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dataset" class="md-nav__link">
-    <span class="md-ellipsis">
-      Dataset
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#oakvar" class="md-nav__link">
-    <span class="md-ellipsis">
-      OakVar
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#python-libraries" class="md-nav__link">
-    <span class="md-ellipsis">
-      Python libraries
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#jupyterlab" class="md-nav__link">
-    <span class="md-ellipsis">
-      JupyterLab
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#oakvar-annotation" class="md-nav__link">
-    <span class="md-ellipsis">
-      OakVar annotation
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#annotation-database-to-arrays" class="md-nav__link">
-    <span class="md-ellipsis">
-      Annotation database to arrays
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#y-values" class="md-nav__link">
-    <span class="md-ellipsis">
-      y values
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#training-and-testing-classifiers" class="md-nav__link">
-    <span class="md-ellipsis">
-      Training and testing classifiers
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#epilog" class="md-nav__link">
-    <span class="md-ellipsis">
-      Epilog
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -671,17 +538,19 @@
       
   
   
+    
   
   
+  
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
         
           
           <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
@@ -695,7 +564,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             Developer guide
@@ -769,10 +638,17 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../devguide_testing/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -781,6 +657,7 @@
   
 
       </a>
+      
     </li>
   
 
@@ -1270,104 +1147,6 @@
   
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      Overview
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dataset" class="md-nav__link">
-    <span class="md-ellipsis">
-      Dataset
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#oakvar" class="md-nav__link">
-    <span class="md-ellipsis">
-      OakVar
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#python-libraries" class="md-nav__link">
-    <span class="md-ellipsis">
-      Python libraries
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#jupyterlab" class="md-nav__link">
-    <span class="md-ellipsis">
-      JupyterLab
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#oakvar-annotation" class="md-nav__link">
-    <span class="md-ellipsis">
-      OakVar annotation
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#annotation-database-to-arrays" class="md-nav__link">
-    <span class="md-ellipsis">
-      Annotation database to arrays
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#y-values" class="md-nav__link">
-    <span class="md-ellipsis">
-      y values
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#training-and-testing-classifiers" class="md-nav__link">
-    <span class="md-ellipsis">
-      Training and testing classifiers
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#epilog" class="md-nav__link">
-    <span class="md-ellipsis">
-      Epilog
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -1381,248 +1160,123 @@
                   
 
 
-  <h1>scikit-learn</h1>
+  <h1>Testing</h1>
 
-<p>OakVar is a Python-based platform for analyzing genomic variants. One main aim of OakVar is easy integration of genomic data with AI/ML frameworks. In this tutorial, I’d like to show how easily such integration can be done.</p>
-<h2 id="overview">Overview</h2>
-<p>We will train classifiers which will predict the ancestry of a person using the person’s genotype data.</p>
-<p>Let’s say we are considering only 5 variants, sampled from 5 people, each of whom belongs to one of two populations, African and European. These 5 people’s ancestry and variant presence are below.</p>
-<pre><code>                    Variants
-Name    Ancestry  A  B  C  D  E
-Jack    African   o  o  x  x  x
-Paul    European  x  x  o  o  o
-James   European  x  x  x  o  o
-John    African   o  o  o  x  x
-Brian   African   o  o  x  x  x
+<p>OakVar has a command for testing the modules you are developing. </p>
+<pre><code>ov test -m MODULE_NAME [MODULE_NAME]...
 </code></pre>
-<p>We can consider the above as the following.</p>
-<pre><code>    y           X
-African   1  1  0  0  0
-European  0  0  1  1  1
-European  0  0  0  1  1
-African   1  1  1  0  0
-African   1  1  0  0  0
+<p>For example,</p>
+<pre><code>ov test -m clinvar
 </code></pre>
-<p>Using <a href="https://scikit-learn.org/stable/index.html">scikit-learn</a> library of Python and the above data, a classifier to predict ancestry based on these five variants can be trained as follows.</p>
-<pre><code>import numpy as np
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.model_selection import train_test_split
+<p>will test <code>clinvar</code> module, if it is in your annotators directory.</p>
+<p>For this test to work, your module's Python script (<code>clinvar.py</code> in <code>clinvar</code> module) should have <code>test</code> method.</p>
+<p>For example, let's say you want to test if your annotator module's <code>annotate</code> method works well for some test input. <code>clinvar.py</code> can have something like the following.</p>
+<pre><code>def test(*args, **kwargs):
+    m = Annotator()
+    m.base_setup()
+    out = m.annotate({
+        &quot;chrom&quot;: &quot;chr1&quot;, 
+        &quot;pos&quot;: 925952, 
+        &quot;ref_base&quot;: &quot;G&quot;, 
+        &quot;alt_base&quot;: &quot;A&quot;
+    })
+    expected = {
+        'sig': 'Uncertain significance', 
+        'disease_refs': 'MedGen:CN517202', 
+        'disease_names': 'not provided', 
+        'rev_stat': 'criteria provided, single submitter', 
+        'id': 1019397, 
+        'sig_conf': None
+    }
+    if out == expected:
+        return True, &quot;&quot;
+    else:
+        return False, \
+            f&quot;annotated output does not match expected: {out} != {expected}&quot;
+</code></pre>
+<p><code>Annotator()</code> to create an instance of your annotator and call <code>base_setup()</code> to set up the annotator instance. In the code above, expected and actual output are compared. The return value of <code>test</code> is always <code>Tuple[bool, str]</code>. <code>bool</code> shows whether the test was successful or not. <code>str</code> can have an arbitrary message.</p>
+<p>With the <code>test</code> code above in <code>clinvar.py</code>, <code>ov test -m clinvar</code> will produce the following.</p>
+<pre><code>&gt;ov test -m clinvar
+[2024/11/10 09:08:06] clinvar: testing...
+[2024/11/10 09:08:06] clinvar: ok
+[2024/11/10 09:08:06] passed 1 failed 0
+</code></pre>
+<p><code>ov test</code> will create <code>oakvar_module_test</code> folder under the current directory. To wipe out the test folder and perform a clean test, give <code>--clean</code> option.</p>
+<p><code>test</code> method can have any test logic. Below is a test example for <code>csvreporter</code>.</p>
+<pre><code>def test(*args, **kwagrs):
+    from pathlib import Path
+    import subprocess
+    from oakvar import get_module_test_dir
+    import csv
 
-X = np.array([
-    [1,1,0,0,0],
-    [0,0,1,1,1],
-    [0,0,0,1,1],
-    [1,1,1,0,0],
-    [1,1,0,0,0]
-])
-y = np.array([
-    "African",
-    "European",
-    "European",
-    "African",
-    "African"
-])
-clf = MultinomialNB()
-X_train, X_test, y_train, y_test = train_test_split(X, y)
-y_pred = clf.fit(X_train, y_train).predict(X_test)
-print("y_test:", y_test)
-print("y_pred:", y_pred)
-y_test: ['African' 'European']
-y_pred: ['African' 'European']
+    test_dir = get_module_test_dir(&quot;csvreporter&quot;, module_type=&quot;reporter&quot;)
+    if not test_dir:
+        return False, &quot;could not find csvreporter test dir.&quot;
+    input_path = (test_dir / &quot;oakvar_example.vcf&quot;).resolve()
+    subprocess.run([&quot;ov&quot;, &quot;run&quot;, str(input_path), 
+        &quot;-t&quot;, &quot;csvreporter&quot;, &quot;-d&quot;, &quot;.&quot;])
+    output_path = Path(&quot;.&quot;) / (input_path.name + &quot;.variant.csv&quot;)
+    if not output_path.exists():
+        return False, f&quot;ov run did not produce {output_path}.&quot;
+    reference_path = test_dir / &quot;oakvar_example.vcf.variant.csv&quot;
+    with open(output_path, mode=&quot;r&quot;) as f:
+        reader = csv.reader(f, )
+        out = [row for row in reader if not row[0].startswith(&quot;#&quot;)]
+    with open(reference_path, mode=&quot;r&quot;) as f:
+        reader = csv.reader(f)
+        ref = [row for row in reader if not row[0].startswith(&quot;#&quot;)]
+    if out == ref:
+        return True, &quot;&quot;
+    else:
+        return False, &quot;output does not match reference.&quot;
 </code></pre>
-<p>This was a toy example. The real data we will use is <a href="https://www.internationalgenome.org/">The 1000 Genomes Project</a>, which has the same kind of ancestry and genotyping data of more than 2,000 people from around the world.</p>
-<h2 id="dataset">Dataset</h2>
-<p>As a quick test, we will use the chromosome Y dataset of the 1000 Genomes Project, one of its smallest datasets. This dataset has the genotype and phenotype data of 1,233 people.</p>
-<p>There are three files to download. Please download them <a href="https://drive.google.com/file/d/1UA_TAMB8xBOszrRTorvX2-rH_iQy6b8Y/view?usp=sharing">here</a>, <a href="https://drive.google.com/file/d/1fgJRkI-NGBmhSExfW364yL7ab-1XKhDy/view?usp=sharing">here</a>, and <a href="https://drive.google.com/file/d/1QpcqGTZVpw5LoSsoSFkQUPHvKO9RU6HP/view?usp=sharing">here</a>.</p>
-<p>Afterwards, the following three files should be present in your working directory.</p>
-<pre><code>ALL.chrY.phase3_integrated_v1b.20130502.genotypes.vcf.gz
-20130606_g1k.ped
-20131219.populations.tsv
+<p>The method invokes OakVar to do a complete run to produce the output file of the reporter module. Then, it compares the output with the reference data. </p>
+<p>For convenience, OakVar provides <code>get_module_test_dir</code> method, which will give the path to the <code>test</code> folder under the tested module's directory. This way, you can add input files and reference output files in the <code>test</code> folder and conveniently access them from within the <code>test</code> method.</p>
+<p>Since <code>test</code> method is a regular Python method and the only requirement for the method is the <code>Tuple[bool, str]</code> return value, <code>test</code> can even connect to internet sources and do comparison as well.</p>
+<p><code>*args</code> and <code>**kwargs</code> arguments are not currently used, but reserved for future expansion of the method.</p>
+<p>If tested modules do not have <code>test</code> method, then the test will pass.</p>
+<pre><code>ov test -m biogrid go
+[2024/11/10 09:27:14] biogrid: testing...
+[2024/11/10 09:27:14] biogrid: no test function. Skipping.
+[2024/11/10 09:27:14] go: testing...
+[2024/11/10 09:27:14] go: no test function. Skipping.
+[2024/11/10 09:27:14] passed 2 failed 0
 </code></pre>
-<p>The <code>.vcf.gz</code> file is genotyping data. The <code>.ped</code> and <code>.tsv</code> files are ancestry data.</p>
-<h2 id="oakvar">OakVar</h2>
-<p>If you are new to OakVar, please install it as explained in <a href="https://rkimoakbioinformatics.github.io/oakvar/install_system/">the instruction</a>. In brief, open a command-line interface with a Python environment and run</p>
-<pre><code>pip install oakvar
-</code></pre>
-<p>to install OakVar and</p>
-<pre><code>ov system setup
-</code></pre>
-<p>to set up OakVar in your system.</p>
-<h2 id="python-libraries">Python libraries</h2>
-<p>Please install the following Python libraries.</p>
-<pre><code>pip install scikit-learn
-pip install numpy
-pip install matplotlib
-pip install polars
-</code></pre>
-<h2 id="jupyterlab">JupyterLab</h2>
-<p>I’ll use <a href="https://jupyter.org/">JupyterLab</a> for interactive analysis and visualization. If you don’t have it yet, please install it according to <a href="https://jupyter.org/install">their instruction</a>. Then, launch it with</p>
-<pre><code>jupyter-lab
-</code></pre>
-<p>On the JupyterLab, choose a Python 3 notebook. The codes from here are supposed to be entered on a JupyterLab notebook.</p>
-<h2 id="oakvar-annotation">OakVar annotation</h2>
-<p>Let’s load the chromosome Y data into an OakVar result database.</p>
-<pre><code>!ov run ALL.chrY.phase3_integrated_v1b.20130502.genotypes.vcf.gz
-</code></pre>
-<p>This will perform basic annotation of the genotype data and write the result to <code>ALL.chrY.phase3_integrated_v1b.20130502.genotypes.vcf.gz.sqlite</code>.</p>
-<p>If you are interested, the analysis result can be explored in a GUI with</p>
-<pre><code>!ov gui ALL.chrY.phase3_integrated_v2b.20130502.genotypes.vcf.gz.sqlite
-</code></pre>
-<p>See <a href="https://rkimoakbioinformatics.github.io/oakvar/tutorial/#visualize-annotated-variants">here</a> for how to use the GUI result viewer. Interrupt the kernel of JupyterLab to finish the viewer.</p>
-<h2 id="annotation-database-to-arrays">Annotation database to arrays</h2>
-<p>As shown in the beginning of this post, we need <code>X</code> and <code>y</code> arrays to train and test classifiers with scikit-learn. <code>X</code> will be a 2D array of variants. <code>y</code> will be a 1D array of ancestry.</p>
-<p>OakVar provides a method with which we can construct such <code>X</code> and <code>y</code> from genotyping data. Using the annotation result in the previous section,</p>
-<pre><code>import oakvar as ov
-
-samples, uids, variants = ov.get_sample_uid_variant_arrays(
-  "ALL.chrY.phase3_integrated_v2b.20130502.genotypes.vcf.sqlite"
-)
-</code></pre>
-<p><code>ov.get_sample_uid_variant_arrays</code> returns three NumPy arrays. The first one (<code>samples</code>) is a 1D array of sample names.</p>
-<pre><code>array(['HG00096', 'HG00101', 'HG00103', ..., 'NA21130', 'NA21133',
-       'NA21135'], dtype='&lt;U7')
-</code></pre>
-<p>The second one (<code>uids</code>) is a 1D array of the variant UIDs.</p>
-<pre><code>array([    1,     2,     3, ..., 61868, 61869, 61870], dtype=uint32)
-</code></pre>
-<p>The third one (<code>variants</code>) is a 2D array of the presence of variants.</p>
-<pre><code>array([[0., 0., 0., ..., 0., 0., 0.],
-       [0., 0., 0., ..., 0., 0., 0.],
-       [0., 0., 0., ..., 0., 0., 0.],
-       ...,
-       [0., 0., 0., ..., 0., 0., 0.],
-       [0., 0., 0., ..., 0., 0., 0.],
-       [0., 0., 0., ..., 0., 0., 0.]])
-</code></pre>
-<p>The relationship of the three arrays are: <code>samples</code> describes the rows of <code>variants</code> with the name of the sample of each row of <code>variants</code>, and <code>uids</code> describes the columns of <code>variants</code> with the variant UID of each column of <code>variants</code>.
-We don’t have <code>X</code> and <code>y</code> yet. We still need some transformation to get them.</p>
-<h2 id="y-values">y values</h2>
-<p>The 1000 Genomes project data is organized in several levels. The first level is <code>samples</code>, which are individual persons. Samples are grouped into populations, which are shown below.</p>
-<pre><code>Japanese in Tokyo, Japan
-Punjabi in Lahore, Pakistan
-British in England and Scotland
-African Caribbean in Barbados
-...
-</code></pre>
-<p>Populations are grouped into super populations and there are five super populations in the 1000 Genomes project data.</p>
-<pre><code>AFR = African
-AMR = American
-EAS = East Asian
-EUR = European
-SAS = South Asian
-</code></pre>
-<p>The chromosome Y data is too small to predict populations. Thus, we will aim to predict super populations. The rows of <code>variants</code> array we retrieved in the previous section correspond to <code>samples</code>. We need an array of super populations which corresponds to <code>samples</code> array.</p>
-<pre><code>import polars as pl
-
-df_p = pl.read_csv(
-    "20131219.populations.tsv", 
-    separator="\t"
-).select(
-    pl.col("Population Code", "Super Population")
-).drop_nulls()
-df_s = pl.read_csv(
-    "20130606_g1k.ped", 
-    separator="\t", 
-    infer_schema_length=1000
-).select(
-    pl.col("Individual ID", "Population")
-).drop_nulls()
-df_s = df_s.join(
-    df_p, 
-    left_on="Population", 
-    right_on="Population Code"
-)
-superpopulations = [
-    df_s["Super Population"][np.where(df_s["Individual ID"] == v)[0]][0] 
-    for v in samples
-]
-</code></pre>
-<p>superpopulations will be a 1D array which corresponds to the rows of <code>variants</code>. This is our <code>y</code>.</p>
-<p>For <code>X</code>, <code>variants</code> has too many columns (61,870 columns), allowing over-training. We use principal component analysis (PCA) to reduce its dimensionality to 2 columns.</p>
-<pre><code>from sklearn import decomposition
-
-pca = decomposition.PCA(n_components=2)
-pca.fit(variants)
-X = pca.transform(variants)
-</code></pre>
-<p>We now have our <code>X</code> and <code>y</code> for training and testing ancestry classifiers.</p>
-<pre><code>y                X
-EUR  -22.72643988 -22.48927295
-EUR   -8.68957706  13.9559764
-EUR  -22.78267228 -22.48553873
-...
-</code></pre>
-<p>Let’s visualize this data.</p>
-<pre><code>import matplotlib.pyplot as plt
-
-color_by_superpopulation = {
-    "AFR": "#ff0000",
-    "EAS": "#00ff00",
-    "EUR": "#0000ff",
-    "AMR": "#00ffff",
-    "SAS": "#ff00ff",
+<p>Testing can be done with Python API as well.</p>
+<pre><code>➜ python
+Python 3.12.3
+Type &quot;help&quot;, &quot;copyright&quot;, &quot;credits&quot; or &quot;license&quot; for more information.
+&gt;&gt;&gt; import oakvar as ov
+&gt;&gt;&gt; ov.api.test.test([&quot;clinvar&quot;, &quot;go&quot;])
+[2024/11/10 09:28:55] clinvar: testing...
+[2024/11/10 09:28:56] clinvar: ok
+[2024/11/10 09:28:56] go: testing...
+[2024/11/10 09:28:56] go: no test function. Skipping.
+[2024/11/10 09:28:56] passed 2 failed 0
+{
+    'passed': True, 
+    'details': {
+        'clinvar': {
+            'passed': True, 
+            'msg': ''
+        }, 
+        'go': {
+            'passed': True, 
+            'msg': 'no test function'
+        }
+    }, 
+    'num_passed': 2, 
+    'num_failed': 0
 }
-colors = [color_by_superpopulation[v] for v in superpopulations]
-fig = plt.figure()
-ax = fig.add_subplot()
-ax.scatter(X[:, 0], X[:, 1], c=colors)
-plt.show()
 </code></pre>
-<p><img alt="pca plot" src="https://miro.medium.com/v2/resize:fit:1108/format:webp/1*gYO4kq30VaqYyFVr_2X5_w.png" /></p>
-<p>Each dot is a sample, colored by the sample’s super population. Overall, Europeans (blue), East Asians (green), and Africans (red) make three extremities, and Americans (cyan) and South Asians (purple) connect these three extremities. However, European dots are not clearly separated from other super population dots. Meanwhile, East Asian and African dots are more clearly separated. This is understandable, because the European super population in the 1000 Genomes Project includes British, Spanish, Finnish, Italian, and people of Northern and Western European ancestry, so it is already quite diverse. We will see if trained classifiers will reflect this aspect.</p>
-<h2 id="training-and-testing-classifiers">Training and testing classifiers</h2>
-<p>The first kind of classifiers we will test is K-nearest neighbor (k-NN) classifier.</p>
-<pre><code>from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import train_test_split
-
-clf = KNeighborsClassifier()
-y = superpopulations
-X_train, X_test, y_train, y_test = train_test_split(X, y)
-y_pred = clf.fit(X_train, y_train).predict(X_test)
+<p>The return value of <code>oakvar.api.test.test</code> is a <code>dict</code>:</p>
+<pre><code>passed: bool. True if all modules passed or False
+details: a dict. Keys are module names. Values are:
+    passed: bool. True if the module passed or False
+    msg: str. Any return message from the module's test method.
+num_passed: int. Number of modules which passed
+num_failed: int. Number of modules which did not pass
 </code></pre>
-<p>This classifier’s precision, accuracy, and F1 score are:</p>
-<pre><code>     Precision  F1 score
-AFR  0.924      0.912
-AMR  0.548      0.430
-EAS  0.962      0.971
-EUR  0.532      0.596
-SAS  0.838      0.844
-
-Accuracy: 0.773
-</code></pre>
-<p>Good performance with Africans and East Asians and lower performance with Europeans agree with what we saw in the PCA plot in the previous section.</p>
-<p>The next is Random Forest classifier.</p>
-<pre><code>from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-
-clf = RandomForestClassifier(n_estimators=10)
-y = superpopulations
-X_train, X_test, y_train, y_test = train_test_split(X, y)
-y_pred = clf.fit(X_train, y_train).predict(X_test)
-</code></pre>
-<p>This classifier’s precision, accuracy, and F1 score are:</p>
-<pre><code>     Precision  F1 score
-AFR  0.944      0.944
-AMR  0.478      0.543
-EAS  0.981      0.981
-EUR  0.642      0.602
-SAS  0.924      0.897
-
-Accuracy: 0.825
-</code></pre>
-<p>This one performs slightly better than the k-NN one, but it has the same characteristic that it performs better with Africans and East Asians than with Europeans.</p>
-<h2 id="epilog">Epilog</h2>
-<p><code>get_sample_uid_variant_arrays</code> can be used to selectively retrieve <code>samples</code> and <code>variants</code>.</p>
-<pre><code>samples, uids, variants = get_sample_uid_variant_arrays(
-    "ALL.chrY.phase3_integrated_v2b.20130502.genotypes.vcf.sqlite",
-    variant_criteria="gnomad3__af &gt; 0.01"
-)
-</code></pre>
-<p>will return <code>variants</code> the gnomAD allele frequency of which is greater than 1%, if the input file was annotated with gnomad3 OakVar module as in</p>
-<pre><code>ov run ALL.chrY.phase3_integrated_v2b.20130502.genotypes.vcf.sqlite -a gnomad3
-</code></pre>
-<p><code>samples</code> and <code>uids</code> will be adjusted accordingly as well. Any OakVar module can be used for such filtration.</p>
-<p>This was a quick demonstration of OakVar’s ability to interface genomic data and scikit-learn, a machine learning framework. Please stay tuned for future publications for more examples.</p>
 
 
 
