@@ -108,7 +108,7 @@ class FilterColumn(object):
         elif self.test in ("select", "in"):
             ss = []
             for val in self.value:
-                if type(val) == str:
+                if isinstance(val, str):
                     val = '"{}"'.format(val)
                 else:
                     val = str(val)
@@ -123,7 +123,7 @@ class FilterColumn(object):
                 self.value = [x.strip() for x in lines if x.strip() != ""]
             ss = []
             for val in self.value:
-                if type(val) == str:
+                if isinstance(val, str):
                     val = '"{}"'.format(val)
                 else:
                     val = str(val)
@@ -984,7 +984,7 @@ class ReportFilter:
         if not conn_read or not conn_write:
             return
         _ = cursor_read
-        if type(uids) == int:
+        if isinstance(uids, int):
             uids = [uids]
         tablename = self.get_registry_table_name()
         for uid in uids:
@@ -1073,15 +1073,35 @@ class ReportFilter:
         await cursor_read.execute(q)  # type: ignore
         return [v[0] for v in cursor_read.description]  # type: ignore
 
+    async def table_exists(self, tablename, cursor_read=None, cursor_write=None):
+        if not cursor_read or not cursor_write:
+            return False
+        sql = (
+            "select name from sqlite_master where "
+            + 'type="table" and name="'
+            + tablename
+            + '"'
+        )
+        await cursor_read.execute(sql)
+        row = await cursor_read.fetchone()
+        if row is None:
+            ret = False
+        else:
+            ret = True
+        return ret
+
     async def get_ftable_num_rows(
         self, level=None, uid=None, ftype=None, cursor_read=Any, cursor_write=Any
     ):
         _ = cursor_write
         if not level or not ftype:
             return
-        table_name = self.get_ftable_name(uid=uid, ftype=ftype)
-        if table_name:
-            q = f"select count(*) from {table_name}"
+        ftable_name = self.get_ftable_name(uid=uid, ftype=ftype)
+        if ftable_name:
+            if await self.filter_table_exists(ftable_name, cursor=cursor_read) is True:
+                q = f"select count(*) from {ftable_name}"
+            else:
+                q = f"select count(*) from main.{level}"
         else:
             q = f"select count(*) from main.{level}"
         await cursor_read.execute(q)  # type: ignore
@@ -1118,7 +1138,19 @@ class ReportFilter:
             q = f"select d.* from main.{level} as d"
         if uid is not None:
             ftable = self.get_ftable_name(uid=uid, ftype=level)
-            q += f" join {ftable} as f on d.{ref_col_name}=f.{ref_col_name}"
+            if await self.filter_table_exists(ftable, cursor=cursor_read):
+                q += f" join {ftable} as f on d.{ref_col_name}=f.{ref_col_name}"
+            if level == "sample":
+                fvariant = self.get_ftable_name(uid=uid, ftype="variant")
+                if await self.filter_table_exists(fvariant, cursor=cursor_read):
+                    q += f" join {fvariant} as vf on d.base__uid=vf.base__uid"
+                fsamplegiven = self.get_sample_to_filter_table_name(uid=uid)
+                if await self.filter_table_exists(fsamplegiven, cursor=cursor_read):
+                    q += f" join {fsamplegiven} as sg on d.base__uid=sg.base__uid"
+            elif level == "mapping":
+                fvariant = self.get_ftable_name(uid=uid, ftype="variant")
+                if await self.filter_table_exists(fvariant, cursor=cursor_read):
+                    q += f" join {fvariant} as vf on d.base__uid=vf.base__uid"
         if page and pagesize:
             offset = (page - 1) * pagesize
             q += f" limit {pagesize} offset {offset}"
@@ -1199,17 +1231,16 @@ class ReportFilter:
             )
             await cursor_write.execute(q)  # type: ignore
 
-    async def table_exists(self, table, cursor_read=Any, cursor_write=Any) -> bool:
-        _ = cursor_write
-        sql = (
-            'select name from sqlite_master where type="table" and '
+    async def filter_table_exists(self, table, cursor=Any) -> bool:
+        q = (
+            f'select name from {REPORT_FILTER_DB_NAME}.sqlite_master where type="table" and '
             + 'name="'
-            + table
+            + table.split(".")[1]
             + '"'
         )
-        await cursor_read.execute(sql)  # type: ignore
-        row = await cursor_read.fetchone()  # type: ignore
-        if row:
+        await cursor.execute(q)  # type: ignore
+        row = await cursor.fetchone()  # type: ignore
+        if row is not None:
             return True
         else:
             return False

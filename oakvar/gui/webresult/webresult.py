@@ -53,6 +53,7 @@ from typing import Optional
 from ... import ReportFilter
 from aiohttp import web
 import time
+from typing import Type
 
 wu = None
 logger = None
@@ -612,9 +613,9 @@ async def get_variant_cols(request):
         dbpath, confpath=confpath, filterstring=filterstring, add_summary=add_summary
     )
     data["columns"] = {}
-    if "variant" in colinfo:
+    if colinfo and "variant" in colinfo:
         data["columns"]["variant"] = get_colmodel("variant", colinfo)
-    if "gene" in colinfo:
+    if colinfo and "gene" in colinfo:
         data["columns"]["gene"] = get_colmodel("gene", colinfo)
     content = data
     return web.json_response(content)
@@ -721,19 +722,15 @@ def get_colmodel(tab, colinfo):
 
 
 async def get_colinfo(dbpath, confpath=None, filterstring=None, add_summary=True):
-    import importlib
-    import importlib.util
     from pathlib import Path
+    from ...lib.base.reporter import BaseReporter
+    from ...lib.util.util import load_class
 
     reporter_name = "jsonreporter"
     this_file_dir = Path(__file__).parent
-    reporter_path = this_file_dir / f"{reporter_name}.py"
-    spec = importlib.util.spec_from_file_location(reporter_name, reporter_path)
-    if spec is None:
-        raise Exception(f"Could not load {reporter_name}.")
-    m = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(m)  # type: ignore
-    reporter = m.Reporter(
+    script_path = this_file_dir / f"{reporter_name}.py"
+    Reporter: Type[BaseReporter] = load_class(script_path, "Reporter")  # type: ignore
+    reporter = Reporter(
         dbpath,
         module_name=reporter_name,
         confpath=confpath,
@@ -741,8 +738,6 @@ async def get_colinfo(dbpath, confpath=None, filterstring=None, add_summary=True
         report_types=["text"],
     )
     await reporter.prep()
-    # reporter_levels = await reporter.get_levels_to_run("all")
-    # reporter.levels = reporter_levels
     try:
         colinfo = await reporter.get_variant_colinfo(
             add_summary=add_summary, make_col_categories=True

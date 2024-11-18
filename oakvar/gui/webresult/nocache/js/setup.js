@@ -1298,8 +1298,9 @@ function showYesNoDialog(content, yescallback, noSpace, justOk) {
 }
 
 async function generateReport(j, d, reportType) {
+  fjs = JSON.stringify(filterJson)
   var res = await axios.post("/submit/makereport/" + reportType,
-    { job_id: j, dbpath: d }
+    { job_id: j, dbpath: d, filterstring: fjs }
   )
   var data = res.data
   if (data == "fail") {
@@ -1315,7 +1316,6 @@ async function generateReport(j, d, reportType) {
     addEl(mdiv, span);
     showYesNoDialog(mdiv, null, false, true);
   } else {
-    console.log("setting up report")
     makeReportTab(getRightDiv("report"))
   }
 }

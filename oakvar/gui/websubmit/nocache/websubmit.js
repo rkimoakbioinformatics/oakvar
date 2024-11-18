@@ -1342,7 +1342,6 @@ function getSystemLog() {
 
 function setupIntersectionObserver() {
   var observer = new IntersectionObserver(function(entries) {
-    console.log("@ intersection. entries=", entries)
   })
 }
 

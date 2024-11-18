@@ -566,19 +566,17 @@ class BaseReporter:
             raise SetupError(self.module_name)
         if add_summary and self.level == "gene":
             await self.do_gene_level_summary(add_summary=add_summary)
-        self.write_preface(level)
         self.extracted_cols[level] = self.get_extracted_header_columns(level)
         self.extracted_col_names[level] = [
             col_def.get("col_name") for col_def in self.extracted_cols[level]
         ]
-        self.write_header(level)
         self.hugo_colno = self.colnos[level].get("base__hugo", None)
-        datacols = await self.cf.exec_db(self.cf.get_variant_data_cols)
-        self.total_norows = await self.cf.exec_db(
-            self.cf.get_ftable_num_rows, level=level, uid=self.ftable_uid, ftype=level
-        )  # type: ignore
-        if datacols is None or self.total_norows is None:
-            return
+        #datacols = await self.cf.exec_db(self.cf.get_variant_data_cols)
+        #self.total_norows = await self.cf.exec_db(
+        #    self.cf.get_ftable_num_rows, level=level, uid=self.ftable_uid, ftype=level
+        #)  # type: ignore
+        #if datacols is None or self.total_norows is None:
+        #    return
         if level == "variant" and self.separatesample:
             self.write_variant_sample_separately = True
         else:
@@ -611,6 +609,8 @@ class BaseReporter:
             self.retrieved_col_names[level].index(c)
             for c in self.extracted_col_names[level]
         ]
+        self.write_preface(level)
+        self.write_header(level)
         async for datarow in cursor_read:
             if self.dictrow:
                 datarow = dict(datarow)
@@ -641,6 +641,12 @@ class BaseReporter:
                     self.outer.write(msg)
             if pagesize and row_count == pagesize:
                 break
+        #datacols = await self.cf.exec_db(self.cf.get_variant_data_cols)
+        self.total_norows = await self.cf.exec_db(
+            self.cf.get_ftable_num_rows, level=level, uid=self.ftable_uid, ftype=level
+        )  # type: ignore
+        #if datacols is None or self.total_norows is None:
+        #    return
         await cursor_read.close()
         await conn_read.close()
         await conn_write.close()

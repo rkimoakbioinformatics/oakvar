@@ -184,6 +184,8 @@ class JobHandlers:
         if (not username or not uid) and not dbpath:
             return Response(status=404)
         report_type = request.match_info["report_type"]
+        json_data = await request.json()
+        filterstring = json_data.get("filterstring")
         eud = {"username": username, "uid": uid, "dbpath": dbpath}
         if not dbpath:
             dbpath = await get_user_job_dbpath(request, eud)
@@ -192,7 +194,7 @@ class JobHandlers:
         key = uid or dbpath
         python_path = sys.executable
         run_args = [python_path, "-m", "oakvar", "report", dbpath]
-        run_args.extend(["-t", report_type])
+        run_args.extend(["-t", report_type, "--filterstring", filterstring])
         queue_item = {
             "cmd": "report",
             "run_args": run_args,
@@ -495,7 +497,6 @@ class JobHandlers:
     async def get_uid_dbpath_from_request(
         self, request
     ) -> Tuple[Optional[str], Optional[str]]:
-        # from urllib.parse import unquote
         try:
             json_data = await request.json()
         except Exception:
