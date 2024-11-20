@@ -71,9 +71,4 @@ OakVar is in CodeX
   :width: 400
   :alt: CodeX logo
 
-License
-*******
-
-OakVar is free to use for personal or research use in non-commercial activities by non-commercial entities. For other uses including commercial use by commercial entities, a paid license must be obtained. For full license information, see `LICENSE`_.
-
 .. _LICENSE: https://github.com/rkimoakbioinformatics/oakvar/blob/master/LICENSE
