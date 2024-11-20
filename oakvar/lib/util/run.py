@@ -216,10 +216,11 @@ def set_logger_handler(
     logger.setLevel(level)
     error_logger.setLevel(level)
     log_handler.setLevel(level)
+    log_handler = log_handler
     logger.addHandler(log_handler)
     error_log_handler.setLevel(level)
     error_logger.addHandler(error_log_handler)
-    return log_path, error_log_path
+    return log_path, error_log_path, log_handler, error_log_handler
 
 
 def get_module_options(module_options_sl: Optional[List[str]], outer=None):

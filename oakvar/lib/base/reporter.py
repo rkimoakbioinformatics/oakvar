@@ -312,7 +312,7 @@ class BaseReporter:
         try:
             self.logger = logging.getLogger(self.module_name)
             self.error_logger = logging.getLogger("err." + self.module_name)
-            self.log_path, self.error_log_path = set_logger_handler(
+            self.log_path, self.error_log_path, _, _ = set_logger_handler(
                 self.logger,
                 self.error_logger,
                 output_dir=Path(self.output_dir),

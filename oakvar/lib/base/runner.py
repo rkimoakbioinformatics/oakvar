@@ -255,7 +255,7 @@ class Runner(object):
             self.logmode = "a"
         self.logger = logging.getLogger("oakvar")
         self.error_logger = logging.getLogger("err")
-        self.log_path, self.error_log_path = set_logger_handler(
+        self.log_path, self.error_log_path, self.log_handler, self.error_log_handler = set_logger_handler(
             self.logger,
             self.error_logger,
             output_dir=output_dir,
