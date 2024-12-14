@@ -426,24 +426,27 @@ class Runner(object):
         self.set_append_mode()  # self.append_mode is list.
         self.set_genome_assemblies()  # self.genome_assemblies is list.
 
-    def update_module_options(self, options: Dict[str, Any], incoming: Dict[str, Any]):
+    def update_module_options(self, module_options: Dict[str, Any], incoming_options: Dict[str, Any]):
         from ..exceptions import ModuleLoadingError
 
-        if not incoming:
+        if not incoming_options:
             return
-        if not isinstance(incoming, dict):
+        if not isinstance(incoming_options, dict):
             e = ModuleLoadingError(
-                msg=f"Module loading error: module_options in {incoming} should be a dict. Consider contacting the module developers or correct the module yml file. Running `ov module info {options}` will show the module developer contact information as well as the location of the module files."
+                msg=f"Module loading error: module_options in {incoming_options} should be a dict. Consider contacting the module developers or correct the module yml file. Running `ov module info {options}` will show the module developer contact information as well as the location of the module files."
             )
             e.traceback = False
             raise e
-        for k, v in incoming.items():
-            if k not in options:
-                options[k] = v
-            elif isinstance(v, list):
-                options[k] += v
-            elif isinstance(v, dict):
-                self.update_module_options(options[k], v)
+        for module_name, incoming_options_by_module in incoming_options.items():
+            if module_name not in module_options:
+                module_options[module_name] = {}
+            for k, v in incoming_options_by_module.items():
+                if k not in module_options[module_name]:
+                    module_options[module_name][k] = v
+                elif isinstance(v, list):
+                    module_options[module_name][k] += v
+                elif isinstance(v, dict):
+                    module_options[module_name][k].update(v)
 
     def process_module_options(self):
         from ..exceptions import SetupError
