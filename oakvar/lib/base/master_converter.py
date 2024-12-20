@@ -297,10 +297,11 @@ def handle_variant(
     line_no: int,
     genome: str,
     keep_liftover_failed: bool,
+    keep_ref: bool,
 ):
     from oakvar.lib.exceptions import NoVariantError
 
-    if variant["ref_base"] == variant["alt_base"]:
+    if not keep_ref and variant["ref_base"] == variant["alt_base"]:
         raise NoVariantError()
     tags = variant.get("tags")
     handle_chrom(variant, genome)
@@ -334,6 +335,7 @@ def handle_converted_variants(
     genome: str,
     unique_err_in_line: Set[str],
     keep_liftover_failed: bool,
+    keep_ref: bool,
 ) -> Tuple[List[Dict[str, Any]], bool]:
     if variants is BaseConverter.IGNORE:
         return [], False
@@ -354,6 +356,7 @@ def handle_converted_variants(
                 line_no,
                 genome,
                 keep_liftover_failed,
+                keep_ref
             )
             variant_l.append(variant)
         except Exception as e:
@@ -389,6 +392,7 @@ def gather_variantss(
     num_valid_error_lines: Dict[str, int],
     genome: str,
     keep_liftover_failed: bool,
+    keep_ref: bool,
 ) -> List[List[Dict[str, Any]]]:
     from oakvar.lib.exceptions import IgnoredInput
 
@@ -414,6 +418,7 @@ def gather_variantss(
                 genome,
                 unique_err_in_line,
                 keep_liftover_failed,
+                keep_ref
             )
             if error_occurred:
                 num_valid_error_lines[ERROR] += 1
@@ -466,6 +471,7 @@ class MasterConverter(object):
         skip_variant_deduplication: bool = False,
         mp: int = DEFAULT_MP,
         keep_liftover_failed: bool = False,
+        keep_ref: bool = False,
         outer=None,
     ):
         from re import compile
@@ -543,6 +549,7 @@ class MasterConverter(object):
         self.wgs_reader = get_wgs_reader(assembly="hg38")
         self.time_error_written: float = 0
         self.mp = mp or self.DEFAULT_MP
+        self.keep_ref = keep_ref
 
     def get_genome_assembly(self, converter) -> str:
         from oakvar.lib.system.consts import default_assembly_key
@@ -668,6 +675,7 @@ class MasterConverter(object):
             converter.name = module_info.name
             converter.version = module_info.version
             converter.conf = module_info.conf
+            converter.keep_ref = self.keep_ref
             # end of backward compatibility
             if not hasattr(converter, "format_name") or converter.format_name is None:
                 format_name = module_info.conf.get("format_name")
@@ -1075,6 +1083,7 @@ class MasterConverter(object):
                         self.num_valid_error_lines,
                         self.genome,
                         self.keep_liftover_failed,
+                        self.keep_ref
                     )
                     for core_num in range(num_pool)
                 ]

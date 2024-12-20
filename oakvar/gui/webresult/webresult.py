@@ -529,8 +529,10 @@ async def get_result_levels(request):
             levels.insert(1, "filter")
         else:
             levels = []
-        levels.remove("sample")
-        levels.remove("mapping")
+        if "sample" in levels:
+            levels.remove("sample")
+        if "mapping" in levels:
+            levels.remove("mapping")
         content["levels"] = levels
         await cursor.close()
         await conn.close()

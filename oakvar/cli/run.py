@@ -352,4 +352,10 @@ def add_parser_ov_run(subparsers):
         default=False,
         help="Keep variants that failed liftover",
     )
+    parser_ov_run.add_argument(
+        "--keep-ref",
+        action="store_true",
+        default=False,
+        help="Keep reference variants",
+    )
     parser_ov_run.set_defaults(func=cli_run)

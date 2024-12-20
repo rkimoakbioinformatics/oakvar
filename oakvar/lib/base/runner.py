@@ -125,6 +125,7 @@ class Runner(object):
         self.serveradmindb = None
         self.report_response = None
         self.filtersql = None
+        self.keep_ref = False
         self.outer = None
         self.error = None
 
@@ -505,6 +506,7 @@ class Runner(object):
                 self.outer.write("--vcf2vcf is used. --combine-input is disabled.")
             self.args.combine_input = False
         self.filtersql = args.get("filtersql", None)
+        self.keep_ref = args.get("keep_ref", False)
 
     def connect_admindb_if_needed(self, run_no: int):
         from ...gui.serveradmindb import ServerAdminDb
@@ -1255,7 +1257,7 @@ class Runner(object):
                         f"error handling --mp argument: {self.args.mp}"
                     )
         if not num_workers:
-            num_workers = cpu_count()
+            num_workers = cpu_count() or 1
         if self.logger:
             self.logger.info("num_workers: {}".format(num_workers))
         return num_workers
@@ -1698,6 +1700,7 @@ class Runner(object):
             skip_variant_deduplication=self.args.skip_variant_deduplication,
             mp=self.args.mp,
             keep_liftover_failed=self.args.keep_liftover_failed,
+            keep_ref=self.keep_ref,
             outer=self.outer,
         )
         ret = converter.run()

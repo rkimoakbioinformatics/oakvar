@@ -118,6 +118,7 @@ def run(
     uid: Optional[str] = None,
     skip_variant_deduplication: bool = False,
     keep_liftover_failed: bool = False,
+    keep_ref: bool = False,
     loop=None,
     outer=None,
 ) -> Optional[Dict[str, Any]]:
@@ -168,6 +169,7 @@ def run(
         loglevel (str): loglevel
         uid (Optional[str]): uid
         skip_variant_deduplication (bool): Skip de-duplication of variants.
+        keep_ref (bool): Keep reference alleles.
         loop:
         outer:
 
@@ -239,6 +241,7 @@ def run(
         ignore_sample=ignore_sample,
         skip_variant_deduplication=skip_variant_deduplication,
         keep_liftover_failed=keep_liftover_failed,
+        keep_ref=keep_ref,
         uid=uid,
         outer=outer,
     )
