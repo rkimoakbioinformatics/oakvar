@@ -320,7 +320,7 @@ def login(
             d = {
                 "success": False,
                 "status_code": status_code,
-                "mgs": "Login failed.",
+                "msg": "Login failed.",
                 "email": email,
             }
             return d

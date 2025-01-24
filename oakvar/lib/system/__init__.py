@@ -47,7 +47,7 @@
 
 from typing import Optional
 from typing import Union
-from typing import Tuple
+#from typing import Tuple
 from typing import Dict
 from typing import List
 from pathlib import Path
@@ -72,7 +72,7 @@ def setup_system(
     sg_mode: bool = False,
     modules: List[str] = [],
 ):
-    import platform
+    #import platform
     from os import environ
     from ...api.module import installbase
     from ...api.module import install
@@ -81,6 +81,7 @@ def setup_system(
     from ..util.run import show_logo
     from ...gui.serveradmindb import setup_serveradmindb
 
+    _ = sg_mode
     _ = ws_id
     show_logo(outer=outer)
     # set up a sys conf file.
@@ -100,25 +101,25 @@ def setup_system(
     # set up a user conf file.
     setup_user_conf_file(clean=clean, outer=outer)
     # set up a store account.
-    os_platform = platform.platform()
-    if (sg_mode or os_platform.startswith("Windows")) and install_mode != "web":
-        ret = run_sg_store_account(
-            email=email, pw=pw, install_mode=install_mode, clean=clean
-        )
-    else:
-        ret = setup_store_account(
-            conf=conf,
-            email=email,
-            pw=pw,
-            create_account=create_account,
-            install_mode=install_mode,
-            clean=clean,
-            outer=outer,
-        )
+    #os_platform = platform.platform()
+    #if (sg_mode or os_platform.startswith("Windows")) and install_mode != "web":
+    #    ret = run_sg_store_account(
+    #        email=email, pw=pw, install_mode=install_mode, clean=clean
+    #    )
+    #else:
+    ret = setup_store_account(
+        conf=conf,
+        email=email,
+        pw=pw,
+        create_account=create_account,
+        install_mode=install_mode,
+        clean=clean,
+        outer=outer,
+    )
     if ret.get("success") is not True:
         if outer:
             msg = ret.get("msg")
-            outer.write(f"Login failed: {msg}")
+            outer.write(f"{msg}")
         return False
     if outer:
         outer.write(f"Logged in as {ret['email']}")
@@ -1230,14 +1231,14 @@ def get_ov_logo_path():
     return logo_path
 
 
+"""
 def run_sg_store_account(
     email: str = "",
     pw: str = "",
     install_mode: str = "",
     clean: bool = False,
     outer=None,
-) -> dict:
-    import PySimpleGUI as sg
+):
     from ..store.ov.account import login_with_email_pw
     from ..store.ov.account import delete_token_set
     from ..store.ov.account import login_with_token_set
@@ -1279,10 +1280,10 @@ def run_sg_store_account(
                 continue
             else:
                 return ret
+"""
 
-
+"""
 def run_sg_create_account(logo_data) -> Tuple[bool, Optional[str], Optional[str]]:
-    import PySimpleGUI as sg
     from ..util.util import email_is_valid
     from ..util.util import pw_is_valid
     from ..store.ov.account import create
@@ -1315,7 +1316,6 @@ def run_sg_create_account(logo_data) -> Tuple[bool, Optional[str], Optional[str]
 
 
 def run_sg_login(logo_data):
-    import PySimpleGUI as sg
     from ..util.util import email_is_valid
     from ..util.util import pw_is_valid
     from ..store.ov.account import login_with_email_pw
@@ -1341,7 +1341,7 @@ def run_sg_login(logo_data):
         else:
             window.close()
             return ret
-
+"""
 
 def get_sg_logo_data():
     import io
@@ -1359,10 +1359,8 @@ def get_sg_logo_data():
     logo_data = bio.getvalue()
     return logo_data
 
-
+"""
 def gui_get_already_has_account(logo_data):
-    import PySimpleGUI as sg
-
     col1 = sg.Image(data=logo_data)
     col2 = [
         [
@@ -1380,8 +1378,6 @@ def gui_get_already_has_account(logo_data):
 
 
 def gui_get_account_create_info(logo_data, window):
-    import PySimpleGUI as sg
-
     if not window:
         col1 = sg.Image(data=logo_data)
         col2 = [
@@ -1408,8 +1404,6 @@ def gui_get_account_create_info(logo_data, window):
 
 
 def gui_get_account_info(logo_data, window):
-    import PySimpleGUI as sg
-
     if window is None:
         col1 = sg.Image(data=logo_data)
         col2 = [
@@ -1425,3 +1419,4 @@ def gui_get_account_info(logo_data, window):
         window = sg.Window("OakVar", layout)
     event, values = window.read()
     return event, values, window
+"""
