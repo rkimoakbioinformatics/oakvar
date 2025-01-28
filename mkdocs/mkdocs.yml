@@ -12,6 +12,7 @@ nav:
     - Conf file: conf.md
     - Filtering: filter.md
   - Graphical user interface: gui.md
+  - Tips: tips.md
   - Integration with AI/ML: 
     - scikit-learn: scikit_learn.md
     - General: ai_ml.md
