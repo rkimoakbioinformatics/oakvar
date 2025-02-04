@@ -51,7 +51,6 @@ from typing import Tuple
 from typing import Dict
 from typing import Optional
 from pathlib import Path
-from polars import DataFrame
 import numpy as np
 
 ov_system_output_columns: Optional[Dict[str, List[Dict[str, Any]]]] = None
@@ -888,7 +887,7 @@ def get_df_from_db(
     num_cores: int = 1,
     conn=None,
     library: Optional[str] = "polars",
-) -> Optional[DataFrame]:
+    ):
     """Gets a Polars DataFrame of a table in an OakVar result database.
 
     Args:
