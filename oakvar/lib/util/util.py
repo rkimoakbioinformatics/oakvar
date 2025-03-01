@@ -52,6 +52,7 @@ from typing import Dict
 from typing import Optional
 from pathlib import Path
 import numpy as np
+from polars import schema
 
 ov_system_output_columns: Optional[Dict[str, List[Dict[str, Any]]]] = None
 
@@ -906,8 +907,6 @@ def get_df_from_db(
     import sys
     from pathlib import Path
     from os import environ
-    from urllib.parse import quote
-    import platform
     import polars as pl
 
     environ["RUST_LOG"] = "connectorx=warn,connectorx_python=warn"
@@ -933,27 +932,36 @@ def get_df_from_db(
         if not ret:
             sys.stderr.write(f"{partition_on} does not exist in {table_name}")
             c.close()
-            if conn is None:
-                db_conn.close()
             return None
         else:
             c.close()
-            if conn is None:
-                db_conn.close()
+    c = db_conn.cursor()
+    c.execute("select sql from sqlite_master where type='table' and tbl_name='variant'")
+    ret = c.fetchone()
+    if not ret:
+        return None
+    col_defs = ret[0].split("(")[1].rstrip(")").split(", ")
+    schema_overrides = {}
+    for col_def in col_defs:
+        parts = col_def.split(" ")
+        col_name = parts[0]
+        col_type = parts[1]
+        if col_type == "text":
+            pl_type = pl.String
+        elif col_type == "integer":
+            pl_type = pl.Int32
+        elif col_type == "float":
+            pl_type = pl.Float32
+        else:
+            sys.stderr.write("Unknown column type: " + col_type)
+            return None
+        schema_overrides[col_name] = pl_type
+    c.close()
     if not sql:
         sql = f"select * from {table_name}"
-    ol_pl = platform.platform()
-    if ol_pl.startswith("Windows"):
-        conn_url = f"sqlite://{quote(db_path_to_use)}"
-    else:
-        conn_url = f"sqlite://{db_path_to_use}"
-    if partition_on and num_cores > 1:
-        if library == "polars":
-            df = pl.read_database(
-                sql, conn_url, partition_on=partition_on, partition_num=num_cores
-            ) # type: ignore
-    else:
-        df = pl.read_database(sql, conn_url)  # type: ignore
+    df = pl.read_database(sql, db_conn, schema_overrides=schema_overrides)  # type: ignore
+    if conn is None:
+        db_conn.close()
     return df
 
 
