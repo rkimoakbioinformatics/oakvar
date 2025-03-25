@@ -97,29 +97,20 @@ function addSpinnerById(parentDivId, scaleFactor, minDim, spinnerDivId) {
 
 function saveFilterSetting(name, useFilterJson) {
   return new Promise((resolve, _) => {
-    var saveData = {};
     if (useFilterJson == undefined) {
-      makeFilterJson();
+      makeFilterJson().then((_) => {
+      })
     }
-    saveData["filterSet"] = filterJson;
-    var saveDataStr = JSON.stringify(saveData);
-    $.ajax({
-      type: "GET",
-      async: true,
-      url: "/result/service/savefiltersetting",
-      data: {
-        username: username,
-        uid: uid,
-        dbpath: dbPath,
-        name: name,
-        savedata: saveDataStr,
-      },
-      success: function (_) {
-        writeLogDiv("Filter setting has been saved.");
-        resolve();
-        lastUsedFilterName = name;
-      },
-    });
+    console.log("@ filterJson:", filterJson)
+    let s = JSON.stringify(filterJson);
+    let blob = new Blob([s], { type: "application/json" });
+    let url = URL.createObjectURL(blob);
+    let link = document.createElement("a");
+    link.href = url;
+    link.download = name + ".json";
+    link.click();
+    URL.revokeObjectURL(url);
+    return resolve
   });
 }
 
