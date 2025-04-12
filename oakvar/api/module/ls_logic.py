@@ -123,6 +123,7 @@ def list_modules(
                         "installed": module_info.installed,
                         "local_code_version": module_info.local_code_version,
                         "local_data_source": module_info.local_data_source,
+                        "publish_time": module_info.publish_time
                     }
                 )
             else:

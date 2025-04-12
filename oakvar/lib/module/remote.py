@@ -73,6 +73,7 @@ class RemoteModuleLs:
         self.installed = False
         self.local_code_version = ""
         self.local_data_source = ""
+        self.publish_time = kwargs["publish_time"]
 
 
 class RemoteModule(object):

@@ -128,6 +128,7 @@ class LocalModule(object):
         self.has_logo = (
             get_logo_path(self.name, self.type, module_dir=self.directory) is not None
         )
+        self.publish_time = ""
 
     def get_size(self):
         """
