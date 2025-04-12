@@ -130,6 +130,7 @@ def ls(
     from .ls_logic import list_modules
     from ...lib.util.util import print_list_of_dict
 
+    fmt = kwargs.get("fmt", "tabular")
     _ = kwargs
     ret = list_modules(
         module_names=module_names,
@@ -144,7 +145,10 @@ def ls(
             for d in ret:
                 outer.write(d.get("name"))
         else:
-            print_list_of_dict(ret, outer=outer)
+            if fmt == "json":
+                print(ret)
+            else:
+                print_list_of_dict(ret, outer=outer)
     return ret
 
 
