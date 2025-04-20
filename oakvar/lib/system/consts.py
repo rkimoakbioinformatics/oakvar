@@ -49,6 +49,7 @@
 # env keys
 #
 env_key_prefix = "OV_"
+PIP_ENV_KEY = "PIP"
 
 #
 # Directories

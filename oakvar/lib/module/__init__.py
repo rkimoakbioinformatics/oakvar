@@ -185,15 +185,23 @@ def get_readme(module_name):
 
 def install_pypi_dependency(pypi_dependency: Optional[List[str]] = None, outer=None):
     from subprocess import run
+    import os
+    from ..system.consts import PIP_ENV_KEY
 
     if not pypi_dependency:
         return True
     if outer:
         outer.write("Installing required PyPI packages...")
     idx = 0
+    pypi_cmd = os.environ.get(PIP_ENV_KEY)
+    if pypi_cmd is None:
+        pypi_cmd = "pip"
+    pypi_cmds = pypi_cmd.strip().split()
+    pypi_cmds = pypi_cmds + ["install", "-U"]
     while idx < len(pypi_dependency):
         dep = pypi_dependency[idx]
-        r = run(["pip", "install", "-U", "-v", dep])
+        args = pypi_cmds + [dep]
+        r = run(args)
         if r.returncode == 0:
             pypi_dependency.remove(dep)
         else:
@@ -483,8 +491,8 @@ def cleanup_install(
     data_installed: bool,
 ):
     from pathlib import Path
-    from shutil import rmtree
-    from shutil import move
+    import shutil
+    import os
     from os import listdir
     from .local import remove_code_part_of_module
 
@@ -493,22 +501,27 @@ def cleanup_install(
     # Unsuccessful installation
     if not installation_finished:
         return
+    module_p = Path(module_dir)
+    if not module_p.parent.exists():
+        module_p.parent.mkdir(parents=True, exist_ok=True)
     # New installation
     if not Path(module_dir).exists():
-        move(str(temp_dir), module_dir)
+        os.rename(str(temp_dir), module_dir)
         return
     # Update
     if data_installed:
-        rmtree(module_dir, ignore_errors=True)
-        move(str(temp_dir), module_dir)
+        shutil.rmtree(module_dir, ignore_errors=True)
+        os.rename(str(temp_dir), module_dir)
     elif code_installed:
         remove_code_part_of_module(module_name)
         for item in listdir(temp_dir):
             old_path = Path(temp_dir) / item
             new_path = Path(module_dir) / item
             if item != "data" and old_path.exists():
-                move(str(old_path), new_path)
-        rmtree(temp_dir, ignore_errors=True)
+                if not new_path.parent.exists():
+                    new_path.parent.mkdir(parents=True, exist_ok=True)
+                os.rename(str(old_path), new_path)
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 def write_install_marks(module_dir: str):

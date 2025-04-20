@@ -518,7 +518,7 @@ def uninstall(
     return True
 
 
-def installbase(
+def install_system_modules(
     no_fetch: bool = False,
     conf: Optional[dict] = None,
     overwrite: bool = False,
@@ -548,19 +548,19 @@ def installbase(
             outer=outer,
         )
     sys_conf = get_system_conf(conf=conf)
-    base_modules: List[str] = sys_conf.get(base_modules_key, [])
-    if "cravat-converter" in base_modules:
-        base_modules.remove("cravat-converter")
+    system_modules: List[str] = sys_conf.get(base_modules_key, [])
+    if "cravat-converter" in system_modules:
+        system_modules.remove("cravat-converter")
         print(
             'cravat-converter has been deprecated. Please remove it with "ov module uninstall cravat-converter".'
         )
-    if "oldcravat-converter" in base_modules:
-        base_modules.remove("oldcravat-converter")
+    if "oldcravat-converter" in system_modules:
+        system_modules.remove("oldcravat-converter")
         print(
             'oldcravat-converter has been deprecated. Please remove it with "ov module uninstall oldcravat-converter".'
         )
     ret = install(
-        module_names=base_modules,
+        module_names=system_modules,
         modules_dir=modules_dir,
         overwrite=overwrite,
         force_data=False,

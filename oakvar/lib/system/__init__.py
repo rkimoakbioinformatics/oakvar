@@ -74,7 +74,7 @@ def setup_system(
 ):
     #import platform
     from os import environ
-    from ...api.module import installbase
+    from ...api.module import install_system_modules
     from ...api.module import install
     from .consts import sys_conf_path_key
     from ..store.ov import setup_ov_store_cache
@@ -137,13 +137,13 @@ def setup_system(
     if outer:
         outer.write("Setting up administrative database...")
     setup_serveradmindb(clean=clean)
-    # install base modules.
+    # install system modules.
     environ[get_env_key(sys_conf_path_key)] = conf[sys_conf_path_key]
     if outer:
         outer.write("Installing system modules...")
     modules_dir_op = conf.get("modules_dir")
     modules_dir = Path(modules_dir_op) if modules_dir_op else None
-    ret = installbase(
+    ret = install_system_modules(
         modules_dir=modules_dir,
         no_fetch=True,
         conf=conf,
@@ -1173,8 +1173,10 @@ def show_liftover_license(outer=None):
 def update(yes: bool = False, outer=None) -> bool:
     from subprocess import run
     from packaging.version import Version
+    import os
     from ..util.admin_util import get_current_package_version
     from ..util.admin_util import get_latest_package_version
+    from .consts import PIP_ENV_KEY
 
     if outer:
         outer.write("Updating OakVar PyPI package...")
@@ -1188,7 +1190,11 @@ def update(yes: bool = False, outer=None) -> bool:
                 + f"({str(pypi_ver)}). Aborting."
             )
         return True
-    cmd = ["pip", "install", "-U", "oakvar"]
+    pypi_cmd = os.environ.get(PIP_ENV_KEY)
+    if pypi_cmd is None:
+        pypi_cmd = "pip"
+    pypi_cmds = pypi_cmd.split()
+    cmd = pypi_cmds + ["install", "-U", "oakvar"]
     cp = run(cmd)
     if cp.returncode != 0:
         if outer:
