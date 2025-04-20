@@ -153,7 +153,12 @@ const makeFilterColDiv = (filter) => {
   if (filter !== undefined) {
     // Annotator select
     const annotName = filter.column.split("__")[0];
-    const annotTitle = getAnnotColsByName(annotName).title;
+    const col = getAnnotColsByName(annotName)
+    if (col == undefined) {
+      alert("Filter column not found: " + filter.column);
+      throw new Error("Filter column not found: " + filter.column);
+    }
+    const annotTitle = col.title;
     groupSel.val(annotTitle);
     // Column select
     populateFilterColumnSelector(colSel, groupSel.val());
