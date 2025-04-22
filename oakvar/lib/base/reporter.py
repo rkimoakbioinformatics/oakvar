@@ -386,9 +386,10 @@ class BaseReporter:
 
     def get_extracted_header_columns(self, level):
         cols = []
-        for col in self.colinfo[level]["columns"]:
-            if col["col_name"] in self.colnames_to_display[level]:
-                cols.append(col)
+        if level in self.colinfo:
+            for col in self.colinfo[level]["columns"]:
+                if col["col_name"] in self.colnames_to_display[level]:
+                    cols.append(col)
         return cols
 
     def get_db_col_name(self, mi, col):
@@ -871,14 +872,14 @@ class BaseReporter:
             group_names.append(group_name)
             sql = (
                 f"select col_name, col_def from {header_table} where "
-                + f"col_name like '{group_name}__%'"
+                + f"col_name like '{group_name}" + r"\_\_%' escape '\'"
             )
         else:
             group_names = [d.get("name") for d in self.columngroups[level]]
         for group_name in group_names:
             sql = (
                 f"select col_def from {header_table} where col_name "
-                + f"like '{group_name}__%'"
+                + f"like '{group_name}" + r"\_\_%' escape '\'"
             )
             await cursor.execute(sql)
             rows = await cursor.fetchall()

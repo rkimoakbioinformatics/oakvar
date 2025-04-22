@@ -93,7 +93,7 @@ class FilterColumn(object):
         self.value = d.get("value")
         self.negate = d.get("negate", False)
         self.parent_operator = parent_operator
-        self.level = d.get("level")
+        self.level = d.get("level", "variant")
 
     def __repr__(self):
         return f"{self.column} {self.test} {self.value}"
@@ -1133,7 +1133,7 @@ class ReportFilter:
                 uid = filter_uid_status.get("uid")
         if level == "variant" and var_added_cols:
             gene_level_cols = [f"g.{col}" for col in var_added_cols]
-            q = f"select d.*, {','.join(gene_level_cols)} from main.{level} as d left join main.gene as g on d.base__hugo=g.base__hugo"
+            q = f"select d.*,{','.join(gene_level_cols)} from main.{level} as d left join main.gene as g on d.base__hugo=g.base__hugo"
         else:
             q = f"select d.* from main.{level} as d"
         if uid is not None:
