@@ -325,6 +325,7 @@ def mergesqlite(dbpaths: List[str] = [], outpath: str = ""):
 def filtersqlite(
     dbpaths: List[str] = [],
     suffix: str = "filtered",
+    out: str = ".",
     filterpath: Optional[str] = None,
     filtersql: Optional[str] = None,
     includesample: List[str] = [],
@@ -347,6 +348,7 @@ def filtersqlite(
         filtersqlite_async(
             dbpaths=dbpaths,
             suffix=suffix,
+            out=out,
             filterpath=filterpath,
             filtersql=filtersql,
             includesample=includesample,
@@ -355,7 +357,7 @@ def filtersqlite(
     )
 
 
-def filtersqlite_async_drop_copy_table(c, table_name):
+async def filtersqlite_async_drop_copy_table(cursor_old, conn_new, table_name):
     """filtersqlite_async_drop_copy_table.
 
     Args:
@@ -363,13 +365,26 @@ def filtersqlite_async_drop_copy_table(c, table_name):
         table_name:
     """
     print(f"- {table_name}")
-    c.execute(f"drop table if exists main.{table_name}")
-    c.execute(f"create table main.{table_name} as select * from old_db.{table_name}")
+    await conn_new.execute(f"drop table if exists {table_name}")
+    await cursor_old.execute(f"select sql from sqlite_master where name='{table_name}'")
+    ret = await cursor_old.fetchone()
+    if ret is None:
+        raise Exception(f"Table {table_name} not found")
+    sql = ret[0]
+    await conn_new.execute(sql)
+    await cursor_old.execute(f"select * from {table_name}")
+    q = f"insert into {table_name} values ({','.join(['?' for _ in cursor_old.description])})"
+    ret = await cursor_old.fetchall()
+    for row in ret:
+        if row is None:
+            continue
+        await conn_new.execute(q, row)
 
 
 async def filtersqlite_async(
     dbpaths: List[str] = [],
     suffix: str = "filtered",
+    out: str=".",
     filterpath: Optional[str] = None,
     filtersql: Optional[str] = None,
     includesample: List[str] = [],
@@ -385,23 +400,20 @@ async def filtersqlite_async(
         includesample (List[str]): includesample
         excludesample (List[str]): excludesample
     """
-    import sqlite3
     from os import remove
     from os.path import exists
+    import aiosqlite
     from .. import ReportFilter
 
     for dbpath in dbpaths:
         if not dbpath.endswith(".sqlite"):
             print("  Skipping")
             continue
-        opath = f"{dbpath[:-7]}.{suffix}.sqlite"
+        opath = Path(out) / f"{dbpath[:-7]}.{suffix}.sqlite"
         print(f"{opath}")
         if exists(opath):
             remove(opath)
-        conn = sqlite3.connect(opath)
-        c = conn.cursor()
         try:
-            c.execute("attach database '" + dbpath + "' as old_db")
             cf = await ReportFilter.create(
                 dbpath=dbpath,
                 filterpath=filterpath,
@@ -418,6 +430,13 @@ async def filtersqlite_async(
                 from ..lib.exceptions import FilterLoadingError
 
                 raise FilterLoadingError()
+            conn_read, conn_write = await cf.get_db_conns()
+            if conn_read is None or conn_write is None:
+                from ..lib.exceptions import FilterLoadingError
+
+                raise FilterLoadingError()
+            cursor_read = await conn_read.cursor()
+            conn_new = await aiosqlite.connect(opath)
             for table_name in [
                 "info",
                 "viewersetup",
@@ -432,73 +451,92 @@ async def filtersqlite_async(
                 "mapping_annotator",
                 "mapping_header",
             ]:
-                filtersqlite_async_drop_copy_table(c, table_name)
+                await filtersqlite_async_drop_copy_table(cursor_read, conn_new, table_name)
+            await conn_new.commit()
+            # Pragma
+            #c.execute("pragma journal_mode=off")
+            #c.execute("pragma synchronous=off")
+            ftable_uid = await cf.make_ftables_and_ftable_uid()
             # Variant
+            await cursor_read.execute("select sql from sqlite_master where name='variant'")
+            sql = await cursor_read.fetchone()
+            if sql is None:
+                raise Exception("variant table not found")
+            sql = sql[0]
             print("- variant")
-            if hasattr(cf, "make_filtered_uid_table"):
-                await cf.exec_db(getattr(cf, "make_filtered_uid_table"))
-            c.execute(
-                "create table variant as select v.* from old_db.variant as v, old_db.variant_filtered as f where v.base__uid=f.base__uid"
-            )
+            await conn_new.execute("drop table if exists variant")
+            await conn_new.execute(sql)
+            await cf.get_level_data_iterator("variant", uid=ftable_uid, cursor_read=cursor_read)
+            q = f"insert into variant values ({",".join(['?' for _ in cursor_read.description])})"
+            num_vars = 0
+            for row in await cursor_read.fetchall():
+                await conn_new.execute(q, row)
+                num_vars += 1
+            await conn_new.commit()
             # Gene
             print("- gene")
-            await cf.exec_db(cf.make_filtered_hugo_table)
-            c.execute(
-                "create table gene as select g.* from old_db.gene as g, old_db.gene_filtered as f where g.base__hugo=f.base__hugo"
-            )
+            await cursor_read.execute("select sql from sqlite_master where name='gene'")
+            sql = await cursor_read.fetchone()
+            if sql is None:
+                raise Exception("gene table not found")
+            sql = sql[0]
+            await conn_new.execute("drop table if exists gene")
+            await conn_new.execute(sql)
+            await cf.get_level_data_iterator("gene", uid=ftable_uid, cursor_read=cursor_read)
+            q = f"insert into main.gene values ({",".join(['?' for _ in cursor_read.description])})"
+            for row in await cursor_read.fetchall():
+                await conn_new.execute(q, row)
+            await conn_new.commit()
             # Sample
             print("- sample")
-            req = []
-            rej = []
-            if "sample" in cf.filter:
-                if "require" in cf.filter["sample"]:
-                    req = cf.filter["sample"]["require"]
-                if "reject" in cf.filter["sample"]:
-                    rej = cf.filter["sample"]["reject"]
-            if cf.includesample is not None:
-                req = cf.includesample
-            if cf.excludesample is not None:
-                rej = cf.excludesample
-            if len(req) > 0 or len(rej) > 0:
-                q = "create table sample as select s.* from old_db.sample as s, old_db.variant_filtered as v where s.base__uid=v.base__uid"
-                if req:
-                    q += " and s.base__sample_id in ({})".format(
-                        ", ".join(['"{}"'.format(sid) for sid in req])
-                    )
-                for s in rej:
-                    q += ' except select * from sample where base__sample_id="{}"'.format(
-                        s
-                    )
-            else:
-                q = "create table sample as select s.* from old_db.sample as s, old_db.variant_filtered as v where s.base__uid=v.base__uid"
-            c.execute(q)
+            await cursor_read.execute("select sql from sqlite_master where name='sample'")
+            sql = await cursor_read.fetchone()
+            if sql is None:
+                raise Exception("sample table not found")
+            sql = sql[0]
+            await conn_new.execute("drop table if exists sample")
+            await conn_new.execute(sql)
+            await cf.get_level_data_iterator("sample", uid=ftable_uid, cursor_read=cursor_read)
+            q = f"insert into sample values ({','.join(['?' for _ in cursor_read.description])})"
+            for row in await cursor_read.fetchall():
+                await conn_new.execute(q, row)
+            await conn_new.commit()
             # Mapping
-            c.execute(
-                "create table mapping as select m.* from old_db.mapping as m, old_db.variant_filtered as v where m.base__uid=v.base__uid"
-            )
+            await cursor_read.execute("select sql from sqlite_master where name='mapping'")
+            sql = await cursor_read.fetchone()
+            if sql is None:
+                raise Exception("mapping table not found")
+            sql = sql[0]
+            await conn_new.execute("drop table if exists mapping")
+            await conn_new.execute(sql)
+            await cf.get_level_data_iterator("mapping", uid=ftable_uid, cursor_read=cursor_read)
+            q = f"insert into mapping values ({','.join(['?' for _ in cursor_read.description])})"
+            for row in await cursor_read.fetchall():
+                if row is None:
+                    continue
+                await conn_new.execute(q, row)
             # Indices
-            c.execute("select name, sql from old_db.sqlite_master where type='index'")
-            for r in c.fetchall():
+            await cursor_read.execute("select name, sql from sqlite_master where type='index'")
+            for r in await cursor_read.fetchall():
                 index_name = r[0]
                 sql = r[1]
                 if sql is not None:
                     print(f"- {index_name}")
-                    c.execute(sql)
+                    await conn_new.execute(sql)
+            await conn_new.commit()
             # Info
             print("- info")
-            c.execute("select count(*) from variant")
-            n = c.fetchone()[0]
-            c.execute(
-                f'update info set colval={n} where colkey="Number of unique input variants"'
+            await conn_new.execute(
+                f'update info set colval={num_vars} where colkey="num_variants"'
             )
-            conn.commit()
+            await conn_new.commit()
             await cf.close_db()
-            c.close()
-            conn.close()
-            print(f"-> {opath}")
+            await cursor_read.close()
+            await conn_read.close()
+            await conn_write.close()
+            await conn_new.close()
+            print(f"{opath} generated")
         except Exception as e:
-            c.close()
-            conn.close()
             raise e
 
 

@@ -105,22 +105,23 @@ def movejob(args, __name__="util move-job"):
 # return mergesqlite(**args)
 
 
-# @cli_entry
-# def cli_util_filtersqlite(args):
-#    return filtersqlite(args)
-#
-#
-# @cli_func
-# def filtersqlite(args, __name__="util filtersqlite"):
-#    from ..api.util import filtersqlite
-#
-#    dbpaths = args.get("dbpaths")
-#    suffix = args.get("suffix")
-#    filterpath = args.get("filterpath")
-#    filtersql = args.get("filtersql")
-#    includesample = args.get("includesample")
-#    excludesample = args.get("excludesample")
-#    return filtersqlite(dbpaths=dbpaths, suffix=suffix, filterpath=filterpath, filtersql=filtersql, includesample=includesample, excludesample=excludesample)
+@cli_entry
+def cli_util_filtersqlite(args):
+    return filtersqlite(args)
+
+
+@cli_func
+def filtersqlite(args, __name__="util filtersqlite"):
+   from ..api.util import filtersqlite
+
+   dbpaths = args.get("dbpaths")
+   suffix = args.get("suffix")
+   out = args.get("out")
+   filterpath = args.get("filterpath")
+   filtersql = args.get("filtersql")
+   includesample = args.get("includesample")
+   excludesample = args.get("excludesample")
+   return filtersqlite(dbpaths=dbpaths, suffix=suffix, out=out, filterpath=filterpath, filtersql=filtersql, includesample=includesample, excludesample=excludesample)
 
 
 def get_parser_fn_util():
@@ -194,40 +195,40 @@ def get_parser_fn_util():
     parser_fn_util_movejob.set_defaults(func=cli_util_movejob)
 
     # Filter SQLite
-    # parser_fn_util_filtersqlite = _subparsers.add_parser(
-    #    "filtersqlite",
-    #    help="Filter SQLite result files to produce filtered SQLite result files",
-    # )
-    # parser_fn_util_filtersqlite.add_argument(
-    #    "paths", nargs="+", help="Path to result database"
-    # )
-    # parser_fn_util_filtersqlite.add_argument(
-    #    "-o", dest="out", default=".", help="Output SQLite file folder"
-    # )
-    # parser_fn_util_filtersqlite.add_argument(
-    #    "-s", dest="suffix", default="filtered", help="Suffix for output SQLite files"
-    # )
-    # parser_fn_util_filtersqlite.add_argument(
-    #    "-f", dest="filterpath", default=None, help="Path to a filter JSON file"
-    # )
-    # parser_fn_util_filtersqlite.add_argument(
-    #    "--filtersql", default=None, help="Filter SQL"
-    # )
-    # parser_fn_util_filtersqlite.add_argument(
-    #    "--includesample",
-    #    dest="includesample",
-    #    nargs="+",
-    #    default=None,
-    #    help="Sample IDs to include",
-    # )
-    # parser_fn_util_filtersqlite.add_argument(
-    #    "--excludesample",
-    #    dest="excludesample",
-    #    nargs="+",
-    #    default=None,
-    #    help="Sample IDs to exclude",
-    # )
-    # parser_fn_util_filtersqlite.set_defaults(func=filtersqlite)
+    parser_fn_util_filtersqlite = _subparsers.add_parser(
+       "filtersqlite",
+       help="Filter SQLite result files to produce filtered SQLite result files",
+    )
+    parser_fn_util_filtersqlite.add_argument(
+       "dbpaths", nargs="+", help="Path to result database"
+    )
+    parser_fn_util_filtersqlite.add_argument(
+       "-o", dest="out", default=".", help="Output SQLite file folder"
+    )
+    parser_fn_util_filtersqlite.add_argument(
+       "-s", dest="suffix", default="filtered", help="Suffix for output SQLite files"
+    )
+    parser_fn_util_filtersqlite.add_argument(
+       "-f", dest="filterpath", default=None, help="Path to a filter JSON file"
+    )
+    parser_fn_util_filtersqlite.add_argument(
+       "--filtersql", default=None, help="Filter SQL"
+    )
+    parser_fn_util_filtersqlite.add_argument(
+       "--includesample",
+       dest="includesample",
+       nargs="+",
+       default=None,
+       help="Sample IDs to include",
+    )
+    parser_fn_util_filtersqlite.add_argument(
+       "--excludesample",
+       dest="excludesample",
+       nargs="+",
+       default=None,
+       help="Sample IDs to exclude",
+    )
+    parser_fn_util_filtersqlite.set_defaults(func=cli_util_filtersqlite)
     # parser_fn_util_filtersqlite.r_return = "A boolean. TRUE if " +\
     #        "successful, FALSE if not"  # type: ignore
     # parser_fn_util_filtersqlite.r_examples = [  # type: ignore
