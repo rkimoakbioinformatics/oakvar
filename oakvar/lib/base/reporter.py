@@ -456,8 +456,19 @@ class BaseReporter:
         from ..util.run import update_status
 
         self.write_log("started: %s" % asctime(localtime(self.start_time)))
-        if self.cf and self.cf.filter:
-            self.write_log(f"filter:\n{yaml.dump(self.filter)}")
+        if self.cf:
+            if self.cf.filterpath:
+                self.write_log(f"filter: {self.cf.filterpath}")
+            elif self.cf.filtersql:
+                self.write_log(f"filter: {self.cf.filtersql}")
+            elif self.cf.filterstring:
+                self.write_log(f"filter: {self.cf.filterstring}")
+            elif self.cf.filter:
+                d = yaml.dump(self.cf.filter)
+                d = d.split("\n")
+                self.write_log("filter:")
+                for line in d:
+                    self.write_log(f"{line}")
         if self.module_conf:
             status = f"started {self.module_conf['title']} ({self.module_name})"
             update_status(status, logger=self.logger, serveradmindb=self.serveradmindb)
