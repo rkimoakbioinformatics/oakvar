@@ -123,6 +123,11 @@ class BaseReporter:
         self.dbpath = dbpath
         self.report_types = report_types
         self.filterpath = filterpath
+        if self.filterpath and not Path(self.filterpath).exists():
+            from ..exceptions import ArgumentError
+            err = ArgumentError(msg = f"Filter file {self.filterpath} does not exist.")
+            err.traceback = False
+            raise err
         self.filter = filter
         self.filtersql = filtersql
         self.filtername = filtername

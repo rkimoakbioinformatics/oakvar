@@ -45,6 +45,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+from pathlib import Path
 from typing import Any
 from typing import Optional
 from typing import Type
@@ -508,6 +509,11 @@ class Runner(object):
             self.args.combine_input = False
         self.filtersql = args.get("filtersql", None)
         self.filterpath = args.get("filterpath", None)
+        if not Path(self.filterpath).exists():
+            from ..exceptions import ArgumentError
+            err = ArgumentError(msg = f"Filter file {self.filterpath} does not exist.")
+            err.traceback = False
+            raise err
         self.keep_ref = args.get("keep_ref", False)
 
     def connect_admindb_if_needed(self, run_no: int):
