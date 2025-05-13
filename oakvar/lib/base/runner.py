@@ -509,7 +509,7 @@ class Runner(object):
             self.args.combine_input = False
         self.filtersql = args.get("filtersql", None)
         self.filterpath = args.get("filterpath", None)
-        if not Path(self.filterpath).exists():
+        if self.filterpath and not Path(self.filterpath).exists():
             from ..exceptions import ArgumentError
             err = ArgumentError(msg = f"Filter file {self.filterpath} does not exist.")
             err.traceback = False
