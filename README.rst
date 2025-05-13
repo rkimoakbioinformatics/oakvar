@@ -5,9 +5,7 @@
 OakVar: Genomic Variant Analysis Platform
 *****************************************
 
-Listen to Deep Dive into OakVar!
-
-.. _youtube: https://youtu.be/MNvDdL_p5s8
+Listen to Deep Dive into OakVar!: https://youtu.be/MNvDdL_p5s8
 
 Mission
 =======
