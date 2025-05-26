@@ -467,7 +467,7 @@ async def filtersqlite_async(
             await conn_new.execute("drop table if exists variant")
             await conn_new.execute(sql)
             await cf.get_level_data_iterator("variant", uid=ftable_uid, cursor_read=cursor_read)
-            q = f"insert into variant values ({",".join(['?' for _ in cursor_read.description])})"
+            q = f"insert into variant values ({','.join(['?' for _ in cursor_read.description])})"
             num_vars = 0
             for row in await cursor_read.fetchall():
                 await conn_new.execute(q, row)
@@ -483,7 +483,7 @@ async def filtersqlite_async(
             await conn_new.execute("drop table if exists gene")
             await conn_new.execute(sql)
             await cf.get_level_data_iterator("gene", uid=ftable_uid, cursor_read=cursor_read)
-            q = f"insert into main.gene values ({",".join(['?' for _ in cursor_read.description])})"
+            q = f"insert into main.gene values ({','.join(['?' for _ in cursor_read.description])})"
             for row in await cursor_read.fetchall():
                 await conn_new.execute(q, row)
             await conn_new.commit()
