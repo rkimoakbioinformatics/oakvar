@@ -1,3 +1,112 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "oakvar"
+version = "2.12.19"
+description = "A genomic variant analysis platform"
+readme = "README.rst"
+license = { text = "Proprietary" }
+authors = [
+    { name = "Ryangguk Kim", email = "rkim@oakbioinformatics.com" }
+]
+maintainers = [
+    { name = "Ryangguk Kim", email = "rkim@oakbioinformatics.com" }
+]
+keywords = ["genomic", "variant", "analysis", "interpretation", "genome"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "License :: Other/Proprietary License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13"
+]
+requires-python = ">=3.9"
+dependencies = [
+    "requests",
+    "requests-toolbelt",
+    "liftover",
+    "markdown",
+    "aiohttp<4.0.0",
+    "chardet>=3.0.4",
+    "aiosqlite",
+    "oyaml",
+    "nest-asyncio",
+    "psutil",
+    "python-dateutil",
+    "download",
+    "gdown",
+    "split-file-reader",
+    "packaging",
+    "Pillow",
+    "duckdb",
+    "rich",
+    "aiohttp-cors",
+    "pyjwt",
+    "polars>=1.9.0",
+    "connectorx",
+    "pyarrow",
+    "multiprocess",
+    "PySimpleGUI; platform_system=='Windows'",
+    "ujson",
+    "numpy",
+    "mpmath",
+    "twobitreader",
+    "intervaltree",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "vulture",
+    "pytest",
+    "pytest-cov",
+    "black",
+    "mypy",
+]
+gui = [
+    "PySimpleGUI",
+]
+
+[project.urls]
+Homepage = "https://github.com/rkimoakbioinformatics/oakvar"
+Documentation = "https://oakvar.readthedocs.io"
+Source = "https://github.com/rkimoakbioinformatics/oakvar"
+Tracker = "https://github.com/rkimoakbioinformatics/oakvar/issues"
+"Bug Reports" = "https://github.com/rkimoakbioinformatics/oakvar/issues"
+"Funding" = "https://github.com/sponsors/rkimoakbioinformatics"
+
+[project.scripts]
+ov = "oakvar.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["oakvar", "cravat"]
+
+[tool.hatch.build.targets.wheel.sources]
+"oakvar" = "oakvar"
+"cravat" = "cravat"
+
+[tool.hatch.build]
+include = [
+    "oakvar/**/*",
+    "cravat/**/*",
+    "README.rst",
+    "LICENSE",
+]
+exclude = [
+    "**/__pycache__",
+    "**/*.pyc",
+    "**/*.pyo",
+    "**/tests",
+    "**/.git*",
+]
+
 [tool.vulture]
 paths = ["/mnt/d/Git/oakvar/oakvar", "/mnt/e/oakvar"]
 ignore_names = ["r_examples", "r_return", "row_factory"]
@@ -30,5 +139,24 @@ line-length = 88
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 target-version = "py310"
 ignore = ["E501"]
+
 [tool.ruff.mccabe]
 max-complexity = 10
+
+[tool.uv]
+dev-dependencies = [
+    "ruff",
+    "vulture",
+    "pytest",
+    "pytest-cov",
+    "black",
+    "mypy",
+]
+
+[tool.uv.sources]
+# Optional: specify sources for private repositories or alternative indexes
+# example: mypackage = { url = "https://my-private-repo.com/simple" }
+
+[tool.hatch.version]
+path = "oakvar/__init__.py"
+pattern = '__version__ = "(?P<version>[^"]+)"'
