@@ -1,46 +1,67 @@
-# Contributor License Agreement
+# OakVar Contributor License Agreement
 
-Thank you for your interest in contributing to OakVar ("Project") maintained by Oak Bioinformatics, LLC ("We" or "Us"). This Contributor License Agreement ("Agreement") clarifies the terms under which You provide Contributions to Us.
-
-By submitting a Contribution, You accept and agree to the following terms and conditions.
+Thank you for your interest in contributing to OakVar. This Contributor License Agreement ("Agreement") clarifies the intellectual property rights granted with your Contributions to ensure we can continue offering OakVar under our dual-licensing model.
 
 1. Definitions
 
-"You" means the individual or legal entity submitting Contributions to the Project.
-
-"Contribution" means any work of authorship, including the original version and any modifications or additions, that You submit to the Project in any manner.
+- "Project": OakVar software and all associated documentation, code, and materials maintained by Oak Bioinformatics, LLC ("Oak Bio", "we", "us", or "our").
+- "You": The individual or legal entity submitting a Contribution. If you submit on behalf of an entity, "You" includes both you and the entity.
+- "Contribution": Any original work you intentionally submit to the Project, including source code, documentation, designs, or other materials, and any modifications or additions to existing work.
 
 2. Grant of Copyright License
 
-You retain ownership of the copyright in Your Contributions. You hereby grant to Us and our successors a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable, and transferable license to:
-•	Use, reproduce, prepare derivative works of, publicly display, publicly perform, sublicense, and distribute Your Contributions and such derivative works
-•	Incorporate Your Contributions into the Project and any other products or services
-•	Relicense Your Contributions under any terms, including proprietary/commercial licenses, source-available licenses, or open source licenses
-•	Sublicense these rights to third parties, including our customers and users
+You retain ownership of the copyright in your Contributions.
+
+You grant Oak Bio and our successors a perpetual, worldwide, non-exclusive, royalty-free, irrevocable, transferable, and sublicensable license to:
+
+- Use, reproduce, modify, and create derivative works from your Contributions
+- Publicly perform, display, and distribute your Contributions and derivative works
+- Incorporate your Contributions into the Project and other Oak Bio products or services
+- Relicense your Contributions under any terms, including proprietary, source-available, or open-source licenses
+
+Moral Rights: To the fullest extent permitted by law, you waive any moral rights or similar rights in your Contributions.
 
 3. Grant of Patent License
 
-You hereby grant to Us a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable patent license to make, have made, use, offer to sell, sell, import, and otherwise transfer Your Contributions, where such license applies only to those patent claims licensable by You that are necessarily infringed by Your Contributions alone or by combination of Your Contributions with the Project.
+You grant Oak Bio a perpetual, worldwide, non-exclusive, royalty-free, irrevocable patent license to make, use, sell, and otherwise transfer your Contributions, applicable only to patent claims licensable by you that are necessarily infringed by your Contributions alone or in combination with the Project.
 
-4. Representations
+4. Your Representations
 
 You represent and warrant that:
-•	You have the legal authority to enter into this Agreement.
-•	You own the copyright to Your Contributions.
-•	Your Contributions are Your original work.
-•	Your Contributions do not violate any third party's intellectual property rights.
-•	If You are employed, Your employer has waived such rights for Your Contributions to the Project, or You have received permission to make Contributions on behalf of that employer.
 
-5. No Obligation
+- You have the legal authority to enter this Agreement and grant these licenses
+- Your Contributions are your original work or you have the right to submit them
+- Your Contributions do not violate any third-party intellectual property rights
+- If employed, you have permission from your employer to make these Contributions
 
-You understand that We are under no obligation to use or incorporate Your Contributions into the Project. The decision to use, modify, or distribute Your Contributions remains at Our sole discretion.
+5. Privacy and Data Collection
 
-6. Miscellaneous
+We collect minimal personal data (name, email, username) for attribution and record-keeping purposes.
 
-•	You are not expected to provide support for Your Contributions.
-•	This Agreement is governed by the State of Virginia, United States of America law.
-•	This Agreement may only be modified by a written amendment signed by both parties.
+For EU/UK/Swiss residents: Oak Bio processes this data based on legitimate interests under GDPR Article 6(1)(f). Data may be transferred to the United States under appropriate safeguards. You may exercise your data rights by contacting privacy@oakbioinformatics.com.
 
-Agreement
+6. No Obligation to Use
 
-By submitting a Contribution to the Project, You signify Your acceptance of this Agreement.
+Oak Bio is not obligated to use, merge, or distribute your Contributions. Any feedback or suggestions you provide may be used by Oak Bio without restriction or compensation.
+
+7. Export Compliance
+
+You confirm your Contributions are not subject to export controls or sanctions that would prohibit Oak Bio from accepting or using them. You are responsible for compliance with applicable export laws.
+
+8. Warranty and Liability
+
+- Contributions are provided "AS IS" without any warranties
+- Oak Bio's liability is limited to the maximum extent permitted by law
+
+9. General Terms
+
+- Governing Law: Virginia law governs this Agreement, excluding conflict-of-law rules
+- Disputes: Resolved exclusively in Fairfax County, Virginia courts
+- Updates: Oak Bio may update this Agreement; new Contributions require acceptance of the current version
+- Complete Agreement: This Agreement supersedes all prior agreements regarding Contributions
+
+How to Accept
+
+By submitting a Contribution (via pull request, code upload, or patch), you confirm that you have read, understood, and agree to this Contributor License Agreement.
+
+Last updated: July 9, 2025
