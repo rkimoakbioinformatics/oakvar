@@ -1,0 +1,74 @@
+name: Test Small Oakvar Modules
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:
+
+jobs:
+  test-small-modules:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        enable-cache: true
+
+    - name: Install dependencies
+      run: |
+        uv sync
+
+    - name: Setup oakvar system (with keep-alive)
+      env:
+        OAKVAR_EMAIL: ${{ secrets.OAKVAR_EMAIL }}
+        OAKVAR_PASSWORD: ${{ secrets.OAKVAR_PASSWORD }}
+      run: |
+        echo "Checking if secrets are available..."
+        if [ -z "$OAKVAR_EMAIL" ]; then
+          echo "ERROR: OAKVAR_EMAIL is not set"
+          exit 1
+        fi
+        if [ -z "$OAKVAR_PASSWORD" ]; then
+          echo "ERROR: OAKVAR_PASSWORD is not set"
+          exit 1
+        fi
+        echo "Secrets are available, proceeding with setup..."
+        (
+          uv run ov system setup --email="${OAKVAR_EMAIL}" --pw="${OAKVAR_PASSWORD}" &
+          pid=$!
+          while kill -0 $pid 2>/dev/null; do
+            echo "Still running at $(date)"
+            sleep 60
+          done
+          wait $pid
+        )
+
+    - name: Install pmkb module
+      run: |
+        uv run ov module install -y pmkb
+
+    - name: Run pmkb tests
+      run: |
+        uv run ov test -m pmkb
+
+    - name: Install spdi module
+      run: |
+        uv run ov module install -y spdi
+
+    - name: Run spdi tests
+      run: |
+        uv run ov test -m spdi
