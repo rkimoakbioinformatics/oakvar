@@ -1,3 +1,5 @@
+# GUI
+
 OakVar's graphical user interface (GUI) is launched by
 
     ov gui

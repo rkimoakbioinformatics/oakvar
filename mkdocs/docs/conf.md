@@ -1,3 +1,5 @@
+# OakVar Configuration file
+
 #### Annotate with an OakVar configuration file
 
 For repeated jobs, using a .yml file with job definition is handy.

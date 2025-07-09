@@ -1,3 +1,5 @@
+# Registering OakVar Modules on OakVar Store
+
 You can publish your OakVar modules to the OakVar store with OakVar command-line interface. For example, let's say you made an awesome OakVar annotation module named `awesome` and wants to share it with the world. You can do this in three steps. 
 
     ov module pack awesome

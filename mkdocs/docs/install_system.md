@@ -1,4 +1,4 @@
-## Installation
+## Installing OakVar
 
 Install OakVar.
 

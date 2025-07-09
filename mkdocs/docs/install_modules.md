@@ -1,4 +1,4 @@
-## Installing through OakVar Store
+## Installing OakVar Modules through OakVar Store
 
 The OakVar Store is where OakVar's modules are registered, found, and distributed. If you used OpenCRAVAT, OpenCRAVAT's modules are also available through OakVar Store if there is no updated OakVar version of the same module exists. To know which modules are available through the OakVar Store, do
 

@@ -1,3 +1,5 @@
+# Overview of OakVar
+
 ## Modular
 
 OakVar is a **platform** for genomic variant analyses. By platform, we mean that OakVar is modular. *Modules* written in Python are the building blocks of OakVar. OakVar achieves its functions by orchestrating such modules.

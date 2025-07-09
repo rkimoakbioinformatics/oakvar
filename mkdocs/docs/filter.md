@@ -1,3 +1,5 @@
+# Filters
+
 Your initial `ov run` may produce a result database with unnecessary variants. Reports generated with this database can be too big as well. You can generate a trimmed down version of the result database and corresponding reports using filters.
 
 A filter is a JSON object specifying the conditions used to filter variants. An example filter JSON object is below.

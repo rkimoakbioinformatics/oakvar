@@ -1,0 +1,957 @@
+┌─────────┬────────┬─────────┬────────┬─────────┬────────┬─────────┬────────┬─────────┬────────┐
+│ name    │ title  │ type    │ size   │ version │ data_… │ instal… │ local… │ local_… │ publi… │
+├─────────┼────────┼─────────┼────────┼─────────┼────────┼─────────┼────────┼─────────┼────────┤
+│ 23andm… │ 23and… │ conver… │ 30015  │ 3.1.1   │        │ yes     │ 3.1.1  │         │ 2025-… │
+│         │ Conve… │         │        │         │        │         │        │         │        │
+│ abraom  │ ABRaOM │ annota… │ 11363… │ 1.0.1   │        │ yes     │ 1.0.1  │         │ 2023-… │
+│ aggreg… │ Aggre… │ aggreg… │ 13032  │ 1.0.2   │ None   │         │        │         │ 2018-… │
+│ alfa    │ ALFA:  │ annota… │ 73471… │ 1.0.0   │ 2020.… │ yes     │ 1.0.0  │ 2020.0… │ 2021-… │
+│         │ Allele │         │        │         │        │         │        │         │        │
+│         │ Frequ… │         │        │         │        │         │        │         │        │
+│         │ Aggre… │         │        │         │        │         │        │         │        │
+│ alfa_a… │ ALFA:  │ annota… │ 74151… │ 1.0.0   │ 2020.… │         │        │         │ 2021-… │
+│         │ Allele │         │        │         │        │         │        │         │        │
+│         │ Frequ… │         │        │         │        │         │        │         │        │
+│         │ Aggre… │         │        │         │        │         │        │         │        │
+│         │ Afric… │         │        │         │        │         │        │         │        │
+│ alfa_a… │ ALFA:  │ annota… │ 72958… │ 1.0.0   │ 2020.… │         │        │         │ 2021-… │
+│         │ Allele │         │        │         │        │         │        │         │        │
+│         │ Frequ… │         │        │         │        │         │        │         │        │
+│         │ Aggre… │         │        │         │        │         │        │         │        │
+│         │ Asian  │         │        │         │        │         │        │         │        │
+│ alfa_e… │ ALFA:  │ annota… │ 73148… │ 1.0.0   │ 2020.… │         │        │         │ 2021-… │
+│         │ Allele │         │        │         │        │         │        │         │        │
+│         │ Frequ… │         │        │         │        │         │        │         │        │
+│         │ Aggre… │         │        │         │        │         │        │         │        │
+│         │ Europ… │         │        │         │        │         │        │         │        │
+│ alfa_g… │ ALFA:  │ group   │ 100229 │ 1.0.0   │ 2020.… │ yes     │ 1.0.0  │ 2020.0… │ 2021-… │
+│         │ Allele │         │        │         │        │         │        │         │        │
+│         │ Frequ… │         │        │         │        │         │        │         │        │
+│         │ Aggre… │         │        │         │        │         │        │         │        │
+│ alfa_l… │ ALFA:  │ annota… │ 74579… │ 1.0.0   │ 2020.… │         │        │         │ 2021-… │
+│         │ Allele │         │        │         │        │         │        │         │        │
+│         │ Frequ… │         │        │         │        │         │        │         │        │
+│         │ Aggre… │         │        │         │        │         │        │         │        │
+│         │ Latin  │         │        │         │        │         │        │         │        │
+│         │ Ameri… │         │        │         │        │         │        │         │        │
+│ alfa_o… │ ALFA:  │ annota… │ 71420… │ 1.0.0   │ 2020.… │         │        │         │ 2021-… │
+│         │ Allele │         │        │         │        │         │        │         │        │
+│         │ Frequ… │         │        │         │        │         │        │         │        │
+│         │ Aggre… │         │        │         │        │         │        │         │        │
+│         │ Others │         │        │         │        │         │        │         │        │
+│ allofu… │ All of │ annota… │ 45886… │ 7.1.0   │ Varia… │         │        │         │ 2025-… │
+│         │ Us     │         │        │         │ Annot… │         │        │         │        │
+│         │        │         │        │         │ Table  │         │        │         │        │
+│         │        │         │        │         │ v7.1   │         │        │         │        │
+│ aloft   │ ALoFT  │ annota… │ 91299… │ 1.1.0   │ v4.3a  │ yes     │ 1.1.0  │ v4.3a   │ 2023-… │
+│ alpham… │ Alpha… │ annota… │ 12900… │ 1.1.0   │ None   │ yes     │ 1.0.0  │         │ 2025-… │
+│ ancest… │ Ances… │ conver… │ 35844  │ 2.1.1   │        │ yes     │ 2.1.1  │         │ 2024-… │
+│         │ Conve… │         │        │         │        │         │        │         │        │
+│ arrvars │ Arrhy… │ annota… │ 21257… │ 1.2.1   │ Janua… │ yes     │ 1.2.1  │ January │ 2023-… │
+│         │ Chann… │         │        │         │ 2020   │         │        │ 2020    │        │
+│         │ Varia… │         │        │         │        │         │        │         │        │
+│ bayesd… │ Bayes… │ annota… │ 28571… │ 1.1.0   │ dbNSFP │         │        │         │ 2024-… │
+│         │        │         │        │         │ v4.7a  │         │        │         │        │
+│ biogrid │ BioGR… │ annota… │ 29584… │ 3.9.2   │ v4.4.… │ yes     │ 3.9.1  │ v4.4.2… │ 2024-… │
+│ brca1_… │ BRCA1  │ annota… │ 157698 │ 2019.0… │ 2018.… │ yes     │ 2019.… │ 2018.0… │ 2021-… │
+│         │ Satur… │         │        │         │        │         │        │         │        │
+│         │ Genome │         │        │         │        │         │        │         │        │
+│         │ Editi… │         │        │         │        │         │        │         │        │
+│         │ Scores │         │        │         │        │         │        │         │        │
+│ cadd    │ CADD   │ annota… │ 41302… │ 1.7.2   │ v1.7   │ yes     │ 1.7.2  │ v1.7    │ 2024-… │
+│ cadd_e… │ CADD   │ annota… │ 35807… │ 1.7.0   │ 1.6    │ yes     │ 1.6.1  │ 1.6     │ 2024-… │
+│         │ Exome  │         │        │         │        │         │        │         │        │
+│ cancer… │ Cancer │ annota… │ 362392 │ 1.3.0   │ 2018.… │ yes     │ 1.3.0  │ 2018.0… │ 2022-… │
+│         │ Genome │         │        │         │        │         │        │         │        │
+│         │ Inter… │         │        │         │        │         │        │         │        │
+│ cancer… │ Cancer │ annota… │ 87676  │ 1.2.1   │ Decem… │ yes     │ 1.2.2  │ Decemb… │ 2021-… │
+│         │ Hotsp… │         │        │         │ 2017   │         │        │ 2017    │        │
+│ cardio… │ Cardi… │ annota… │ 43001… │ 1.0.0   │ v2.1   │ yes     │ 1.0.0  │ v2.1    │ 2021-… │
+│ caseco… │ Case-… │ postag… │ 38439  │ 1.3.0   │        │ yes     │ 1.3.0  │         │ 2022-… │
+│ ccr     │ CCR:   │ annota… │ 25009… │ 1.0.0   │ Decem… │ yes     │ 1.0.0  │ Decemb… │ 2021-… │
+│         │ Const… │         │        │         │ 2018   │         │        │ 2018    │        │
+│         │ Coding │         │        │         │        │         │        │         │        │
+│         │ Regio… │         │        │         │        │         │        │         │        │
+│ ccre_s… │ Candi… │ annota… │ 27353… │ 1.0.1   │ 2019.1 │ yes     │ 1.0.1  │ 2019.1  │ 2021-… │
+│         │ cis-R… │         │        │         │        │         │        │         │        │
+│         │ Eleme… │         │        │         │        │         │        │         │        │
+│         │ by     │         │        │         │        │         │        │         │        │
+│         │ ENCODE │         │        │         │        │         │        │         │        │
+│         │ (SCRE… │         │        │         │        │         │        │         │        │
+│ cedar   │ CEDAR  │ annota… │ 15515… │ 1.0.0   │ None   │ yes     │ 1.0.0  │         │ 2024-… │
+│ cgc     │ Cancer │ annota… │ 172240 │ 99.0.0  │ v99    │ yes     │ 85.0.… │ 2019-0… │ 2024-… │
+│         │ Gene   │         │        │         │        │         │        │         │        │
+│         │ Census │         │        │         │        │         │        │         │        │
+│ cgd     │ CGD:   │ annota… │ 706316 │ 1.0.2   │ 2021.… │ yes     │ 1.0.3  │ 2021.0… │ 2023-… │
+│         │ Clini… │         │        │         │        │         │        │         │        │
+│         │ Genom… │         │        │         │        │         │        │         │        │
+│         │ Datab… │         │        │         │        │         │        │         │        │
+│ cgl     │ Cancer │ annota… │ 998933 │ 1.1.1   │ v2013… │ yes     │ 1.1.1  │ v2013.… │ 2023-… │
+│         │ Gene   │         │        │         │        │         │        │         │        │
+│         │ Lands… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21735… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│ chasmp… │ CHASM… │ annota… │ 21086… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ ACC    │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 30982  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ ACC    │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21289… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ BLCA   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 50634  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ BLCA   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21268… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ BRCA   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 47695  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ BRCA   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21232… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ CESC   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 47230  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ CESC   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21095… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ CHOL   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 23640  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ CHOL   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21200… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ COAD   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 48322  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ COAD   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21098… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ DLBC   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 30951  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ DLBC   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21180… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ ESCA   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 36086  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ ESCA   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21160… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ GBM    │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 46122  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ GBM    │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21315… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ HNSC   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 56048  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ HNSC   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21037… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ KICH   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 28566  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ KICH   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21288… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ KIRC   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 42856  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ KIRC   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21267… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ KIRP   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 40781  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ KIRP   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21269… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ LAML   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 29102  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ LAML   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21156… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ LGG    │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 38894  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ LGG    │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21238… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ LIHC   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 40574  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ LIHC   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21340… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ LUAD   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 62379  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ LUAD   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21346… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ LUSC   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 53384  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ LUSC   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21092… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ MESO   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 37910  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ MESO   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21256… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ OV     │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 43739  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ OV     │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21091… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ PAAD   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 39017  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ PAAD   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21129… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ PCPG   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 31386  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ PCPG   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21174… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ PRAD   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 40971  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ PRAD   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21095… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ READ   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 38213  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ READ   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21108… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ SARC   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 35987  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ SARC   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21340… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ SKCM   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 56123  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ SKCM   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21283… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ STAD   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 41680  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ STAD   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21147… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ TGCT   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 26295  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ TGCT   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21172… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ THCA   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 16290  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ THCA   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21054… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ THYM   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 24093  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ THYM   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21545… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ UCEC   │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 64067  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ UCEC   │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21118… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ UCS    │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 36219  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ UCS    │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 21051… │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ UVM    │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ annota… │ 26791  │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ UVM    │         │        │         │        │         │        │         │        │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ group   │ 75507  │ 1.2.0   │ v1.0.0 │ yes     │ 1.2.0  │ v1.0.0  │ 2020-… │
+│ chasmp… │ CHASM… │ annota… │ 143997 │ 1.3.0   │ v1.0.0 │ yes     │ 1.3.0  │ v1.0.0  │ 2021-… │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ chasmp… │ CHASM… │ group   │ 75626  │ 1.2.0   │ v1.0.0 │ yes     │ 1.2.0  │ v1.0.0  │ 2020-… │
+│         │ MSK-I… │         │        │         │        │         │        │         │        │
+│ civic   │ CIViC  │ annota… │ 132874 │ 2025.0… │ 2025.… │ yes     │ 1.2.0  │ 2024.1… │ 2025-… │
+│ civic_… │ CIViC  │ annota… │ 159909 │ 2025.0… │ 2025.… │ yes     │ 1.0.11 │ Jan     │ 2025-… │
+│         │ Gene   │         │        │         │        │         │        │ 2019    │        │
+│ clingen │ ClinG… │ annota… │ 695559 │ 1.1.1   │        │ yes     │ 1.1.1  │         │ 2024-… │
+│         │ Gene   │         │        │         │        │         │        │         │        │
+│ clinge… │ Cling… │ conver… │ 8201   │ 1.0.1   │ None   │         │        │         │ 2025-… │
+│         │ Allele │         │        │         │        │         │        │         │        │
+│         │ Regis… │         │        │         │        │         │        │         │        │
+│         │ Conve… │         │        │         │        │         │        │         │        │
+│ clinge… │ ClinG… │ annota… │ 10781… │ 1.1.1   │ ClinG… │ yes     │ 1.0.0  │ Latest  │ 2025-… │
+│         │ Allele │         │        │         │ Allele │         │        │ Availa… │        │
+│         │ Regis… │         │        │         │ Regis… │         │        │         │        │
+│         │        │         │        │         │ API    │         │        │         │        │
+│ clinpr… │ ClinP… │ annota… │ 94153… │ 1.0.0   │ Octob… │ yes     │ 1.0.0  │ October │ 2021-… │
+│         │        │         │        │         │ 2018   │         │        │ 2018    │        │
+│ clinvar │ ClinV… │ annota… │ 18586… │ 2025.0… │ 2025.… │ yes     │ 2025.… │ 2025.0… │ 2025-… │
+│ clinva… │ ClinV… │ annota… │ 25204… │ 2025.0… │ 2025.… │ yes     │ 2021.… │ 2021.1… │ 2025-… │
+│         │ ACMG   │         │        │         │        │         │        │         │        │
+│ clinva… │ ClinV… │ annota… │ 289538 │ 2021.1… │ 2021.… │         │        │         │ 2024-… │
+│ cohort… │ Cohort │ postag… │ 21277  │ 1.2.0   │ None   │         │        │         │ 2024-… │
+│         │ Compa… │         │        │         │        │         │        │         │        │
+│ cosmic  │ COSMIC │ annota… │ 43459… │ 100.0.0 │ v100   │ yes     │ 100.0… │ v100    │ 2024-… │
+│ cosmic… │ COSMIC │ annota… │ 34682… │ 100.0.0 │ v100   │ yes     │ 94.0.1 │ v94     │ 2024-… │
+│         │ Gene   │         │        │         │        │         │        │         │        │
+│ cravat… │ Cravat │ conver… │ 4111   │ 1.1.2   │ None   │ yes     │ 3.0.0  │         │ 2020-… │
+│         │ Conve… │         │        │         │        │         │        │         │        │
+│ cscape  │ CScape │ annota… │ 56444… │ 1.0.1   │ 2017   │ yes     │ 1.0.1  │ 2017    │ 2021-… │
+│ cscape… │ CScape │ annota… │ 24944… │ 1.0.0   │ 2017   │ yes     │ 1.0.0  │ 2017    │ 2021-… │
+│         │ Coding │         │        │         │        │         │        │         │        │
+│ csv-co… │ csv-c… │ conver… │ 35160  │ 1.1.11  │        │ yes     │ 1.1.12 │         │ 2024-… │
+│ csvrep… │ CSV    │ report… │ 313162 │ 3.1.1   │        │ yes     │ 3.1.1  │         │ 2024-… │
+│         │ Repor… │         │        │         │        │         │        │         │        │
+│ cvdkp   │ Cardi… │ annota… │ 96118… │ 1.0.0   │ 27     │ yes     │ 1.0.0  │ 27      │ 2021-… │
+│         │ Disea… │         │        │         │ March  │         │        │ March   │        │
+│         │ Knowl… │         │        │         │ 2019   │         │        │ 2019    │        │
+│         │ Portal │         │        │         │        │         │        │         │        │
+│ dann    │ DANN   │ annota… │ 10956… │ 1.1.0   │ March  │ yes     │ 1.0.2… │ March   │ 2025-… │
+│         │        │         │        │         │ 2015   │         │        │ 2015    │        │
+│ dann_c… │ DANN   │ annota… │ 18634… │ 1.1.0   │ v4.1   │ yes     │ 1.0.0  │ v4.1    │ 2025-… │
+│         │ Coding │         │        │         │        │         │        │         │        │
+│ dbcid   │ dbCID: │ annota… │ 170853 │ 1.0.1   │ v1.0   │ yes     │ 1.0.1  │ v1.0    │ 2021-… │
+│         │ Datab… │         │        │         │        │         │        │         │        │
+│         │ of     │         │        │         │        │         │        │         │        │
+│         │ Cancer │         │        │         │        │         │        │         │        │
+│         │ Driver │         │        │         │        │         │        │         │        │
+│         │ InDels │         │        │         │        │         │        │         │        │
+│ dbgap   │ dbGaP  │ annota… │ 21796… │ 1.0.2   │        │ yes     │ 1.0.2  │         │ 2024-… │
+│ dbscsnv │ dbscS… │ annota… │ 28570… │ 1.1.0   │ v1.1   │ yes     │ 1.1.0  │ v1.1    │ 2023-… │
+│ dbsnp   │ dbSNP  │ annota… │ 47096… │ 156.0.3 │ 156    │ yes     │ 156.0… │ 156     │ 2025-… │
+│ dbsnp-… │ dbSNP  │ conver… │ 14982… │ 1.5.3   │ v154   │ yes     │ 1.5.3  │ v154    │ 2025-… │
+│         │ Conve… │         │        │         │        │         │        │         │        │
+│ dbsnp_… │ dbSNP  │ annota… │ 52788… │ 1.1.1   │ v156   │ yes     │ 1.1.1  │ v156    │ 2024-… │
+│         │ Common │         │        │         │        │         │        │         │        │
+│ defaul… │ Defau… │ package │ 323178 │ 1.0.0   │ None   │         │        │         │ 2023-… │
+│         │ Packa… │         │        │         │        │         │        │         │        │
+│ denovo  │ Denov… │ annota… │ 11190… │ 1.6.11  │ v161   │ yes     │ 1.6.11 │ v161    │ 2021-… │
+│ dgi     │ DGIdb: │ annota… │ 75175… │ 1.0.1   │ Jan    │ yes     │ 1.0.1  │ Jan     │ 2025-… │
+│         │ The    │         │        │         │ 2021   │         │        │ 2021    │        │
+│         │ Drug   │         │        │         │        │         │        │         │        │
+│         │ Inter… │         │        │         │        │         │        │         │        │
+│         │ Datab… │         │        │         │        │         │        │         │        │
+│ dia_li… │ dia_l… │ annota… │ 117159 │ 0.0.2   │        │         │        │         │ 2024-… │
+│ dida    │ DIDA:  │ annota… │ 125961 │ 1.0.0   │ July   │ yes     │ 1.0.0  │ July    │ 2021-… │
+│         │ Digen… │         │        │         │ 2017   │         │        │ 2017    │        │
+│         │ Disea… │         │        │         │        │         │        │         │        │
+│         │ Datab… │         │        │         │        │         │        │         │        │
+│ ditto   │ DITTO  │ annota… │ 72359  │ 0.0.2   │ 0.0.1  │         │        │         │ 2024-… │
+│ docm    │ docm   │ annota… │ 359912 │ 1.0.1   │        │ yes     │ 1.0.1  │         │ 2024-… │
+│ drug_i… │ Drug   │ package │ 896773 │ 1.0.0   │ None   │         │        │         │ 2023-… │
+│         │ Inter… │         │        │         │        │         │        │         │        │
+│         │ Packa… │         │        │         │        │         │        │         │        │
+│ encode… │ ENCODE │ annota… │ 57863… │ 1.0.4   │ 2012-… │ yes     │ 1.0.4  │ 2012-03 │ 2023-… │
+│         │ TFBS   │         │        │         │        │         │        │         │        │
+│ ensemb… │ Ensem… │ annota… │ 49556… │ 1.0.4   │ 2020.… │ yes     │ 1.0.4  │ 2020.0… │ 2023-… │
+│         │ Regul… │         │        │         │        │         │        │         │        │
+│         │ Build  │         │        │         │        │         │        │         │        │
+│ esm1b   │ ESM1b  │ annota… │ 17328… │ 1.1.0   │ dbNSFP │         │        │         │ 2025-… │
+│         │        │         │        │         │ v4.7a  │         │        │         │        │
+│ esm1b_… │ ESM1b… │ annota… │ 12850… │ 0.1.0   │        │         │        │         │ 2024-… │
+│ esp6500 │ ESP65… │ annota… │ 42064… │ 6500.2… │ v0.0.… │ yes     │ 6500.… │ v0.0.30 │ 2021-… │
+│ ess_ge… │ Essen… │ annota… │ 874913 │ 3.5.9   │ dbNSFP │ yes     │ 3.5.9  │ dbNSFP  │ 2023-… │
+│         │ Genes  │         │        │         │ v4.0b1 │         │        │ v4.0b1  │        │
+│ eve     │ EVE    │ annota… │ 30173… │ 1.0.0   │ dbNSFP │         │        │         │ 2025-… │
+│         │        │         │        │         │ v4.9a  │         │        │         │        │
+│ exac_g… │ ExAC   │ annota… │ 25306… │ 0.4.1   │ v0.3.1 │ yes     │ 0.4.1  │ v0.3.1  │ 2023-… │
+│         │ Gene   │         │        │         │        │         │        │         │        │
+│         │ and    │         │        │         │        │         │        │         │        │
+│         │ CNV    │         │        │         │        │         │        │         │        │
+│ excelr… │ Excel  │ report… │ 178675 │ 3.1.1   │        │ yes     │ 3.1.1  │         │ 2024-… │
+│         │ Repor… │         │        │         │        │         │        │         │        │
+│ fathmm  │ FATHMM │ annota… │ 10401… │ 2.4.0   │ v2.3   │ yes     │ 2.3.7… │ v2.3    │ 2023-… │
+│ fathmm… │ FATHMM │ annota… │ 17166… │ 1.1.0   │ v4.1   │ yes     │ 1.0.0  │ v4.1    │ 2025-… │
+│         │ MKL    │         │        │         │        │         │        │         │        │
+│ fathmm… │ FATHMM │ annota… │ 36734… │ 1.0.2   │ None   │ yes     │ 1.0.2  │         │ 2021-… │
+│         │ XF     │         │        │         │        │         │        │         │        │
+│ fathmm… │ FATHMM │ annota… │ 16478… │ 1.1.0   │ v4.1   │ yes     │ 1.1.0  │ v4.1    │ 2025-… │
+│         │ XF     │         │        │         │        │         │        │         │        │
+│         │ Coding │         │        │         │        │         │        │         │        │
+│ fhirre… │ FHIR   │ report… │ 135678 │ 1.0.4   │        │ yes     │ 1.1.0  │         │ 2024-… │
+│         │ repor… │         │        │         │        │         │        │         │        │
+│ fitcons │ fitCo… │ annota… │ 75116… │ 1.0.0   │ v4.1   │ yes     │ 1.0.0  │ v4.1    │ 2021-… │
+│ flank_… │ Flank… │ annota… │ 57287… │ 0.0.3   │ None   │ yes     │ 0.0.3  │         │ 2020-… │
+│         │ Seque… │         │        │         │        │         │        │         │        │
+│ ftdna-… │ Famil… │ conver… │ 37354  │ 2.0.2   │        │ yes     │ 2.0.2  │         │ 2024-… │
+│         │ Conve… │         │        │         │        │         │        │         │        │
+│ funseq2 │ FunSe… │ annota… │ 31663… │ 1.0.1   │ v2.1.6 │ yes     │ 1.0.1  │ v2.1.6  │ 2021-… │
+│ gencode │ GENCO… │ mapper  │ 46105… │ 46.1.1  │        │ yes     │ 46.1.1 │         │ 2024-… │
+│         │ Mapper │         │        │         │        │         │        │         │        │
+│ geneha… │ GeneH… │ annota… │ 42396… │ 1.2.1   │ v4.7   │ yes     │ 1.2.1  │ v4.7    │ 2024-… │
+│ genoca… │ GenoC… │ annota… │ 10570… │ 1.0.0   │ v4.2   │ yes     │ 1.0.0  │ v4.2    │ 2021-… │
+│ gerp    │ GERP++ │ annota… │ 97235… │ 3.7.0   │ dbNSFP │ yes     │ 3.6.2  │ dbNSFP  │ 2024-… │
+│         │        │         │        │         │ v4.0b1 │         │        │ v4.0b1  │        │
+│ geuvad… │ Geuva… │ annota… │ 99383  │ 0.0.1   │ None   │ yes     │ 0.0.1  │         │ 2020-… │
+│         │ eQTLs  │         │        │         │        │         │        │         │        │
+│ ghis    │ GHIS   │ annota… │ 701765 │ 3.6.1   │ dbNSFP │ yes     │ 3.6.1  │ dbNSFP  │ 2023-… │
+│         │        │         │        │         │ v4.0b1 │         │        │ v4.0b1  │        │
+│ gmvp    │ gMVP   │ annota… │ 19408… │ 1.0.0   │ dbNSFP │         │        │         │ 2025-… │
+│         │        │         │        │         │ v4.9a  │         │        │         │        │
+│ gnomad  │ gnomAD │ annota… │ 77931… │ 2.2.0   │ v2.1   │ yes     │ 2.2.0  │ v2.1    │ 2021-… │
+│ gnomad3 │ gnomA… │ annota… │ 44018… │ 1.1.2   │ v3     │ yes     │ 1.1.2  │ v3      │ 2024-… │
+│ gnomad… │ gnomA… │ annota… │ 14215… │ 1.1.0   │ v3.1   │ yes     │ 1.1.0  │ v3.1    │ 2023-… │
+│         │ Counts │         │        │         │        │         │        │         │        │
+│ gnomad4 │ gnomA… │ annota… │ 15464… │ 4.1.1   │ v4.1   │         │        │         │ 2025-… │
+│ gnomad… │ gnomAD │ annota… │ 11088… │ 2.2.2   │ v2.1   │ yes     │ 2.2.2  │ v2.1    │ 2023-… │
+│         │ Gene   │         │        │         │        │         │        │         │        │
+│ go      │ Gene   │ annota… │ 13970… │ 2025.0… │ 2025.… │ yes     │ 2022.… │ 2022.1… │ 2025-… │
+│         │ Ontol… │         │        │         │        │         │        │         │        │
+│ grasp   │ GRASP  │ annota… │ 71502… │ 2.1.0   │ v2.0.… │ yes     │ 2.1.0  │ v2.0.0… │ 2024-… │
+│ gtex    │ GTEx   │ annota… │ 14706… │ 8.0.0   │ v8     │ yes     │ 8.0.0  │ v8      │ 2024-… │
+│         │ eQTLs  │         │        │         │        │         │        │         │        │
+│ gvf-co… │ GVF    │ conver… │ 6015   │ 1.0.1   │        │ yes     │ 1.0.1  │         │ 2024-… │
+│         │ Conve… │         │        │         │        │         │        │         │        │
+│ gwas_c… │ GWAS   │ annota… │ 86632… │ 2.0.3   │        │ yes     │ 2.0.3  │         │ 2024-… │
+│         │ Catal… │         │        │         │        │         │        │         │        │
+│ haplor… │ Haplo… │ annota… │ 31844… │ 1.1.0   │ v4.1   │ yes     │ 1.1.0  │ v4.1    │ 2021-… │
+│         │ Afric… │         │        │         │        │         │        │         │        │
+│ haplor… │ Haplo… │ annota… │ 47330… │ 1.1.0   │ v4.1   │ yes     │ 1.1.0  │ v4.1    │ 2021-… │
+│         │ Ameri… │         │        │         │        │         │        │         │        │
+│ haplor… │ Haplo… │ annota… │ 36748… │ 1.1.0   │ v4.1   │ yes     │ 1.1.0  │ v4.1    │ 2021-… │
+│         │ Asian  │         │        │         │        │         │        │         │        │
+│ haplor… │ Haplo… │ annota… │ 43159… │ 1.1.0   │ v4.1   │ yes     │ 1.1.0  │ v4.1    │ 2021-… │
+│         │ Europ… │         │        │         │        │         │        │         │        │
+│ haplor… │ Haplo… │ group   │ 3917   │ 1.0.0   │ v4.1   │ yes     │ 1.0.0  │ v4.1    │ 2020-… │
+│ heredi… │ Hered… │ package │ 325474 │ 1.1.0   │ None   │         │        │         │ 2024-… │
+│         │ Cancer │         │        │         │        │         │        │         │        │
+│ hg18wgs │ UCSC   │ common  │ 80760… │ 1.0.2   │        │ yes     │ 1.0.2  │         │ 2023-… │
+│         │ hg18   │         │        │         │        │         │        │         │        │
+│         │ Whole  │         │        │         │        │         │        │         │        │
+│         │ Genome │         │        │         │        │         │        │         │        │
+│         │ Seque… │         │        │         │        │         │        │         │        │
+│ hg19    │ hg19   │ annota… │ 39235  │ 1.1.1   │        │ yes     │ 1.1.1  │         │ 2024-… │
+│         │ coord… │         │        │         │        │         │        │         │        │
+│ hg19wgs │ UCSC   │ common  │ 81624… │ 1.0.4   │        │ yes     │ 1.0.4  │         │ 2023-… │
+│         │ hg19   │         │        │         │        │         │        │         │        │
+│         │ Whole  │         │        │         │        │         │        │         │        │
+│         │ Genome │         │        │         │        │         │        │         │        │
+│         │ Seque… │         │        │         │        │         │        │         │        │
+│ hg38    │ UCSC   │ mapper  │ 13075… │ 1.11.0  │ None   │         │        │         │ 2022-… │
+│         │ hg38   │         │        │         │        │         │        │         │        │
+│         │ Gene   │         │        │         │        │         │        │         │        │
+│         │ Mapper │         │        │         │        │         │        │         │        │
+│ hg38wgs │ UCSC   │ common  │ 85177… │ 2023.1… │ 2020.… │ yes     │ 2023.… │ 2020.0… │ 2023-… │
+│         │ hg38   │         │        │         │        │         │        │         │        │
+│         │ Whole  │         │        │         │        │         │        │         │        │
+│         │ Genome │         │        │         │        │         │        │         │        │
+│         │ Seque… │         │        │         │        │         │        │         │        │
+│ hgdp    │ HGDP   │ annota… │ 24577… │ 1.0.0   │ None   │ yes     │ 1.0.0  │         │ 2021-… │
+│ hgvs    │ HGVS   │ annota… │ 30104… │ 1.0.7   │ v15.11 │         │        │         │ 2019-… │
+│         │ Format │         │        │         │        │         │        │         │        │
+│ hgvs-c… │ HGVS   │ conver… │ 12426  │ 1.1.0   │ None   │ yes     │ 1.1.0  │         │ 2025-… │
+│         │ Conve… │         │        │         │        │         │        │         │        │
+│ hpo     │ Human  │ annota… │ 65078… │ 2025.0… │ 2025.… │ yes     │ 1.0.1  │ April   │ 2025-… │
+│         │ Pheno… │         │        │         │        │         │        │ 2021    │        │
+│         │ Ontol… │         │        │         │        │         │        │         │        │
+│ intact  │ IntAct │ annota… │ 87634… │ 2019.0… │ 2018.… │ yes     │ 2019.… │ 2018.1… │ 2023-… │
+│ interp… │ Inter… │ annota… │ 36141… │ 71.3.0  │ v71    │ yes     │ 71.3.0 │ v71     │ 2021-… │
+│ javier… │ Promo… │ annota… │ 567987 │ 2022.1… │ 2016.… │ yes     │ 2022.… │ 2016.1… │ 2024-… │
+│         │ IR     │         │        │         │        │         │        │         │        │
+│ just_c… │ Cancer │ postag… │ 221958 │ 0.1.0   │        │ yes     │ 0.1.0  │         │ 2022-… │
+│         │ posta… │         │        │         │        │         │        │         │        │
+│ just_c… │ Cardio │ postag… │ 120418 │ 0.1.1   │        │         │        │         │ 2023-… │
+│         │ posta… │         │        │         │        │         │        │         │        │
+│ just_c… │ Coron… │ postag… │ 365773 │ 0.1.2   │        │         │        │         │ 2023-… │
+│         │ disea… │         │        │         │        │         │        │         │        │
+│         │ posta… │         │        │         │        │         │        │         │        │
+│ just_d… │ Longe… │ postag… │ 446501 │ 0.1.0   │        │         │        │         │ 2022-… │
+│         │ drugs  │         │        │         │        │         │        │         │        │
+│         │ posta… │         │        │         │        │         │        │         │        │
+│ just_l… │ Lipid  │ postag… │ 427455 │ 0.1.2   │        │         │        │         │ 2023-… │
+│         │ metab… │         │        │         │        │         │        │         │        │
+│         │ posta… │         │        │         │        │         │        │         │        │
+│ just_l… │ Longe… │ postag… │ 37577… │ 0.1.2   │        │         │        │         │ 2023-… │
+│         │ posta… │         │        │         │        │         │        │         │        │
+│ just_p… │ Prs    │ postag… │ 30795… │ 0.1.3   │        │         │        │         │ 2023-… │
+│         │ posta… │         │        │         │        │         │        │         │        │
+│ just_s… │ Super… │ postag… │ 18577… │ 0.1.0   │        │         │        │         │ 2023-… │
+│         │ posta… │         │        │         │        │         │        │         │        │
+│ just_t… │ Throm… │ postag… │ 418250 │ 0.1.2   │        │         │        │         │ 2023-… │
+│         │ risks  │         │        │         │        │         │        │         │        │
+│         │ posta… │         │        │         │        │         │        │         │        │
+│ just_v… │ VO2max │ postag… │ 206566 │ 0.1.2   │        │         │        │         │ 2023-… │
+│         │ posta… │         │        │         │        │         │        │         │        │
+│ linsig… │ LINSI… │ annota… │ 32446… │ 2021.0… │ 2018.… │ yes     │ 2021.… │ 2018.1… │ 2021-… │
+│ litvar  │ LitVar │ annota… │ 377144 │ 1.3.0   │        │ yes     │ 1.3.0  │         │ 2023-… │
+│ litvar… │ LitVar │ annota… │ 94170… │ 2.0.0   │ None   │         │        │         │ 2024-… │
+│         │ Full   │         │        │         │        │         │        │         │        │
+│ living… │ Living │ conver… │ 31796  │ 1.0.6   │        │ yes     │ 1.0.6  │         │ 2024-… │
+│         │ DNA    │         │        │         │        │         │        │         │        │
+│         │ conve… │         │        │         │        │         │        │         │        │
+│ loftool │ LoFto… │ annota… │ 11072… │ 3.6.2   │ dbNSFP │ yes     │ 3.6.2  │ dbNSFP  │ 2023-… │
+│         │        │         │        │         │ v4.0b1 │         │        │ v4.0b1  │        │
+│ longev… │ Longe… │ report… │ 509060 │ 0.4.3   │        │         │        │         │ 2024-… │
+│ longev… │ Longe… │ report… │ 32696… │ 0.2.0   │        │         │        │         │ 2022-… │
+│         │ Combi… │         │        │         │        │         │        │         │        │
+│ lrt     │ Likel… │ annota… │ 91690… │ 1.0.0   │ v4.1   │ yes     │ 1.0.0  │ v4.1    │ 2020-… │
+│         │ Ratio  │         │        │         │        │         │        │         │        │
+│         │ Test   │         │        │         │        │         │        │         │        │
+│ maf-co… │ MAF    │ conver… │ 6892   │ 1.0.3   │        │ yes     │ 1.0.3  │         │ 2024-… │
+│         │ Conve… │         │        │         │        │         │        │         │        │
+│ mafrep… │ MAF    │ report… │ 362508 │ 1.0.1   │        │ yes     │ 1.0.1  │         │ 2024-… │
+│         │ Repor… │         │        │         │        │         │        │         │        │
+│ mavedb  │ MaveDB │ annota… │ 20666… │ 1.1.0   │ v1.7.2 │ yes     │ 1.1.0  │ v1.7.2  │ 2025-… │
+│ metalr  │ MetaLR │ annota… │ 12782… │ 1.1.0   │ v4.1   │ yes     │ 1.0.3  │ v4.1    │ 2025-… │
+│ metarnn │ MetaR… │ annota… │ 18149… │ 1.1.0   │ dbNSFP │ yes     │ 1.0.1  │ 1.0.0   │ 2025-… │
+│         │        │         │        │         │ v4.9a  │         │        │         │        │
+│ metasvm │ MetaS… │ annota… │ 13362… │ 1.1.0   │ v4.1   │ yes     │ 1.0.1  │ v4.1    │ 2025-… │
+│ mirbase │ miRBa… │ annota… │ 305147 │ 1.0.1   │ v3.0   │ yes     │ 1.0.1  │ v3.0    │ 2021-… │
+│ mistic  │ MISTIC │ annota… │ 13397… │ 1.1.0   │ 2021   │         │        │         │ 2025-… │
+│         │ (MISs… │         │        │         │        │         │        │         │        │
+│         │ deleT… │         │        │         │        │         │        │         │        │
+│         │ predI… │         │        │         │        │         │        │         │        │
+│ mitomap │ MITOM… │ annota… │ 181254 │ 1.2.0   │ 2023.… │ yes     │ 1.2.0  │ 2023.0… │ 2024-… │
+│ mupit   │ MuPIT  │ annota… │ 21630… │ 4.3.3   │ v5.2.4 │ yes     │ 4.3.3  │ v5.2.4  │ 2021-… │
+│ mutati… │ Mutat… │ annota… │ 11542… │ 3.1.2   │ Relea… │ yes     │ 3.1.1  │ Release │ 2025-… │
+│         │ Asses… │         │        │         │ 3      │         │        │ 3       │        │
+│ mutati… │ Mutat… │ annota… │ 19146… │ 1.1.0   │ v4.1a  │ yes     │ 1.0.0… │ v4.1a   │ 2025-… │
+│ mutpan… │ Mutpa… │ annota… │ 397556 │ 1.0.1   │ v2.0   │ yes     │ 1.0.1  │ v2.0    │ 2025-… │
+│ mutpre… │ MutPr… │ annota… │ 31816… │ 1.5.0   │ v4.1   │ yes     │ 1.4.0  │ v4.1    │ 2025-… │
+│ mutpre… │ MutPr… │ annota… │ 29641… │ 1.1.1   │ v1.0   │ yes     │ 1.1.0  │ v1.0    │ 2024-… │
+│ ncbige… │ NCBI   │ annota… │ 63230… │ 2025.0… │ 2025.… │ yes     │ 2022.… │ 2022.0… │ 2025-… │
+│         │ Gene   │         │        │         │        │         │        │         │        │
+│ ncer    │ ncER:  │ annota… │ 14529… │ 2022.0… │ 2022.… │ yes     │ 2022.… │ 2022.0… │ 2025-… │
+│         │ non-c… │         │        │         │        │         │        │         │        │
+│         │ essen… │         │        │         │        │         │        │         │        │
+│         │ regul… │         │        │         │        │         │        │         │        │
+│ ncrna   │ ncRNA  │ annota… │ 16681… │ 2022.1… │ hg38   │         │        │         │ 2022-… │
+│ ndex    │ NDEx   │ annota… │ 797478 │ 4.1.2   │ v2     │ yes     │ 4.1.2  │ v2      │ 2023-… │
+│         │ NCI    │         │        │         │        │         │        │         │        │
+│         │ Cancer │         │        │         │        │         │        │         │        │
+│         │ Pathw… │         │        │         │        │         │        │         │        │
+│ ndex_c… │ NDEx   │ annota… │ 297376 │ 1.0.2   │ v2     │ yes     │ 1.0.2  │ v2      │ 2021-… │
+│         │ Conge… │         │        │         │        │         │        │         │        │
+│         │ Heart  │         │        │         │        │         │        │         │        │
+│         │ Disea… │         │        │         │        │         │        │         │        │
+│ ndex_g… │ NDEx   │ group   │ 74579  │ 1.0.0   │ 2020.… │ yes     │ 1.0.0  │ 2020.08 │ 2021-… │
+│ ndex_s… │ NDEx   │ annota… │ 364614 │ 1.1.0   │ v2     │ yes     │ 1.1.0  │ v2      │ 2024-… │
+│         │ SIGNOR │         │        │         │        │         │        │         │        │
+│ oldcra… │ OldCr… │ conver… │ 3619   │ 1.1.2   │ None   │ yes     │ 3.0.0  │         │ 2020-… │
+│         │ Conve… │         │        │         │        │         │        │         │        │
+│ omim    │ OMIM   │ annota… │ 27417… │ 1.1.0   │ v4.1   │ yes     │ 1.1.0  │ v4.1    │ 2024-… │
+│ oncokb  │ OncoKB │ annota… │ 15164… │ 1.5.2   │ 09.06… │ yes     │ 1.5.3  │ 09.06.… │ 2024-… │
+│ pandas… │ pandas │ report… │ 191504 │ 2.1.0   │        │ yes     │ 2.1.0  │         │ 2023-… │
+│         │ Repor… │         │        │         │        │         │        │         │        │
+│ pangal… │ Panga… │ annota… │ 450975 │ 1.0.0   │ 2020.… │ yes     │ 1.0.0  │ 2020.0… │ 2021-… │
+│ parque… │ Parqu… │ report… │ 57736  │ 1.1.1   │        │ yes     │ 1.1.1  │         │ 2024-… │
+│         │ Repor… │         │        │         │        │         │        │         │        │
+│ pathog… │ Patho… │ package │ 535051 │ 1.0.0   │ None   │         │        │         │ 2023-… │
+│         │ Varia… │         │        │         │        │         │        │         │        │
+│         │ Packa… │         │        │         │        │         │        │         │        │
+│ pharmg… │ Pharm… │ annota… │ 766828 │ 2025.0… │ 2025.… │ yes     │ 2.3.5  │ 2021-1… │ 2022-… │
+│ phastc… │ Phast  │ annota… │ 13620… │ 3.6.0   │ dbNSFP │ yes     │ 3.6.0  │ dbNSFP  │ 2024-… │
+│         │ Cons   │         │        │         │ v4.5a  │         │        │ v4.5a   │        │
+│ phdsnpg │ PhD-S… │ annota… │ 11984… │ 0.1.0   │ dbNSFP │ yes     │ 0.0.9  │ dbNSFP  │ 2025-… │
+│         │        │         │        │         │ v4.0b1 │         │        │ v4.0b1  │        │
+│ phi     │ p(HI)  │ annota… │ 711309 │ 3.6.2   │ dbNSFP │ yes     │ 3.6.2  │ dbNSFP  │ 2023-… │
+│         │        │         │        │         │ v4.0b1 │         │        │ v4.0b1  │        │
+│ phylop  │ PhyloP │ annota… │ 13455… │ 3.7.0   │ dbNSFP │ yes     │ 3.5.10 │ dbNSFP  │ 2024-… │
+│         │        │         │        │         │ v4.5a  │         │        │ v4.0b1  │        │
+│ pmkb    │ pmkb   │ annota… │ 48989… │ 1.0.0   │ 1.0.0  │ yes     │ 1.0.1  │ 1.0.0   │ 2024-… │
+│ polyph… │ PolyP… │ annota… │ 15971… │ 2024.0… │ 2022.… │ yes     │ 2024.… │ 2022.1… │ 2024-… │
+│ prec    │ P(rec) │ annota… │ 314517 │ 3.6.0   │ dbNSFP │ yes     │ 3.6.0  │ dbNSFP  │ 2020-… │
+│         │        │         │        │         │ v4.0b1 │         │        │ v4.0b1  │        │
+│ primat… │ Prima… │ annota… │ 15026… │ 1.0.0   │ dbNSF… │ yes     │ 1.0.0  │ dbNSFP… │ 2024-… │
+│ provean │ PROVE… │ annota… │ 24463… │ 1.1.0   │ v4.1a  │ yes     │ 1.1.0  │ v4.1a   │ 2022-… │
+│         │ Prote… │         │        │         │        │         │        │         │        │
+│         │ Varia… │         │        │         │        │         │        │         │        │
+│         │ Effect │         │        │         │        │         │        │         │        │
+│         │ Analy… │         │        │         │        │         │        │         │        │
+│ pseudo… │ Pseud… │ annota… │ 459225 │ 47.0.0  │ hg38   │ yes     │ 46.0.0 │ hg38    │ 2024-… │
+│ pubmed  │ PubMed │ annota… │ 989825 │ 1.1.6   │        │ yes     │ 1.1.6  │         │ 2023-… │
+│ rare_c… │ Rare   │ package │ 394603 │ 1.0.0   │ None   │         │        │         │ 2023-… │
+│         │ Coding │         │        │         │        │         │        │         │        │
+│         │ Packa… │         │        │         │        │         │        │         │        │
+│ rdatar… │ RData  │ report… │ 17989  │ 2.1.0   │        │ yes     │ 2.1.0  │         │ 2023-… │
+│         │ Repor… │         │        │         │        │         │        │         │        │
+│ regene… │ Regen… │ annota… │ 11358… │ 1.0.0   │ None   │         │        │         │ 2025-… │
+│ regulo… │ Regul… │ annota… │ 23518… │ 1.0.1   │ v2.0   │ yes     │ 1.0.1  │ v2.0    │ 2021-… │
+│ repeat  │ Repeat │ annota… │ 11221… │ 2020.1… │ hg38   │ yes     │ 2020.… │ hg38    │ 2020-… │
+│         │ Seque… │         │        │         │        │         │        │         │        │
+│ revel   │ REVEL  │ annota… │ 12775… │ 2024.0… │ v4.3a  │ yes     │ 2022.… │ v4.3a   │ 2024-… │
+│ rvis    │ RVIS   │ annota… │ 779754 │ 3.1.0   │ v3     │ yes     │ 3.1.0  │ v3      │ 2020-… │
+│ segway  │ Segway │ annota… │ 47191… │ 1.2.1   │ None   │ yes     │ 1.2.1  │         │ 2021-… │
+│ segway… │ Segway │ annota… │ 64522… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ Adren… │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 17099… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ Blood  │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 89188… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ Brain  │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 14213… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ Breast │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 40197… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ Esc    │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 89984… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ Esc    │         │        │         │        │         │        │         │        │
+│         │ Deriv… │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 17435… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ Fat    │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 23730… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ GI     │         │        │         │        │         │        │         │        │
+│         │ Colon  │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 18817… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ GI     │         │        │         │        │         │        │         │        │
+│         │ Duode… │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 15147… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ GI     │         │        │         │        │         │        │         │        │
+│         │ Intes… │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 28745… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ GI     │         │        │         │        │         │        │         │        │
+│         │ Rectum │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 34023… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ GI     │         │        │         │        │         │        │         │        │
+│         │ Stoma… │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ group   │ 6964   │ 1.0.0   │ 2019.… │ yes     │ 1.0.0  │ 2019.09 │ 2020-… │
+│ segway… │ Segway │ annota… │ 33376… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ Heart  │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 42973… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ Ipsc   │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 11216… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ Kidney │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 84098… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ Liver  │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 86698… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ Lung   │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 22677… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ Muscle │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 63796… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ Muscle │         │        │         │        │         │        │         │        │
+│         │ Leg    │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 84463… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ Ovary  │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 18364… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ Place… │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 43257… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ Skin   │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 16088… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ Strom… │         │        │         │        │         │        │         │        │
+│         │ Conne… │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 16890… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ Thymus │         │        │         │        │         │        │         │        │
+│ segway… │ Segway │ annota… │ 74509… │ 1.2.0   │ 2019.… │         │        │         │ 2021-… │
+│         │ Vascu… │         │        │         │        │         │        │         │        │
+│ sift    │ SIFT   │ annota… │ 43607… │ 1.3.0   │ SIFT4G │ yes     │ 1.2.0  │ SIFT4G  │ 2024-… │
+│         │        │         │        │         │ 2016-… │         │        │ 2016-0… │        │
+│ siphy   │ SiPhy  │ annota… │ 14734… │ 3.5.5   │ dbNSFP │ yes     │ 3.5.5  │ dbNSFP  │ 2020-… │
+│         │        │         │        │         │ v4.0b1 │         │        │ v4.0b1  │        │
+│ spdi    │ SPDI   │ annota… │ 11806… │ 1.0.0   │        │ yes     │ 1.0.0  │         │ 2023-… │
+│         │ Annot… │         │        │         │        │         │        │         │        │
+│ spdi-c… │ SPDI   │ conver… │ 8772   │ 1.0.1   │        │ yes     │ 1.0.1  │         │ 2024-… │
+│         │ Conve… │         │        │         │        │         │        │         │        │
+│ splice… │ Splic… │ annota… │ 71822… │ 1.0.0   │ v4.0   │ yes     │ 1.0.0  │ v4.0    │ 2021-… │
+│ splici… │ Splic… │ package │ 930769 │ 1.0.0   │ None   │         │        │         │ 2023-… │
+│         │ Packa… │         │        │         │        │         │        │         │        │
+│ sqlite… │ sqlit… │ report… │ 19206  │ 1.0.4   │        │ yes     │ 1.0.4  │         │ 2024-… │
+│ stdout… │ Stand… │ report… │ 2715   │ 2.0.0   │        │ yes     │ 2.0.0  │         │ 2023-… │
+│         │ Output │         │        │         │        │         │        │         │        │
+│         │ Repor… │         │        │         │        │         │        │         │        │
+│ superh… │ Super… │ report… │ 905152 │ 0.1.0   │        │         │        │         │ 2023-… │
+│ svracas │ SVRAC… │ annota… │ 30355  │ 1.0.1   │        │ yes     │ 1.0.1  │         │ 2022-… │
+│ swissp… │ Swiss… │ annota… │ 11249… │ 1.0.0   │ 12.02… │ yes     │ 1.0.0  │ 12.02.… │ 2021-… │
+│         │ Bindi… │         │        │         │        │         │        │         │        │
+│ swissp… │ Swiss… │ annota… │ 38753… │ 1.1.0   │ 02.01… │ yes     │ 1.1.0  │ 02.01.… │ 2024-… │
+│         │ Domai… │         │        │         │        │         │        │         │        │
+│ swissp… │ Swiss… │ annota… │ 22990… │ 1.2.0   │ 2024.… │ yes     │ 1.1.0  │ 2018.0… │ 2024-… │
+│         │ PTM    │         │        │         │        │         │        │         │        │
+│ tagsam… │ Sampl… │ postag… │ 3921   │ 3.1.0   │        │ yes     │ 3.1.0  │         │ 2023-… │
+│         │ and    │         │        │         │        │         │        │         │        │
+│         │ Tags   │         │        │         │        │         │        │         │        │
+│ target  │ TARGET │ annota… │ 27224  │ 3.1.0   │ v3.0.1 │ yes     │ 3.1.0  │ v3.0.1  │ 2020-… │
+│ textre… │ Text   │ report… │ 357941 │ 3.1.1   │        │ yes     │ 3.1.1  │         │ 2024-… │
+│         │ Repor… │         │        │         │        │         │        │         │        │
+│ thousa… │ 1000   │ annota… │ 18810… │ 4.1.0   │ Phase  │ yes     │ 4.1.0  │ Phase 3 │ 2020-… │
+│         │ Genom… │         │        │         │ 3      │         │        │         │        │
+│ thousa… │ 1000   │ annota… │ 15527… │ 4.1.1   │ Phase  │ yes     │ 4.1.1  │ Phase 3 │ 2021-… │
+│         │ Genom… │         │        │         │ 3      │         │        │         │        │
+│         │ Mixed  │         │        │         │        │         │        │         │        │
+│         │ Ameri… │         │        │         │        │         │        │         │        │
+│ thousa… │ 1000   │ annota… │ 18355… │ 4.1.1   │ Phase  │ yes     │ 4.1.1  │ Phase 3 │ 2021-… │
+│         │ Genom… │         │        │         │ 3      │         │        │         │        │
+│ thousa… │ 1000   │ annota… │ 15478… │ 4.1.1   │ Phase  │ yes     │ 4.1.1  │ Phase 3 │ 2021-… │
+│         │ Genom… │         │        │         │ 3      │         │        │         │        │
+│         │ Asian  │         │        │         │        │         │        │         │        │
+│ thousa… │ 1000   │ annota… │ 15606… │ 4.1.1   │ Phase  │ yes     │ 4.1.1  │ Phase 3 │ 2021-… │
+│         │ Genom… │         │        │         │ 3      │         │        │         │        │
+│ thousa… │ 1000   │ group   │ 17658  │ 3.1.0   │ Phase  │ yes     │ 3.1.0  │ Phase 3 │ 2020-… │
+│         │ Genom… │         │        │         │ 3      │         │        │         │        │
+│ thousa… │ 1000   │ annota… │ 15823… │ 4.1.1   │ Phase  │ yes     │ 4.1.1  │ Phase 3 │ 2021-… │
+│         │ Genom… │         │        │         │ 3      │         │        │         │        │
+│         │ Asian  │         │        │         │        │         │        │         │        │
+│ trinity │ Trini… │ annota… │ 114306 │ 1.0.0   │ 26     │ yes     │ 1.0.0  │ 26      │ 2020-… │
+│         │ CTAT   │         │        │         │ Febru… │         │        │ Februa… │        │
+│         │        │         │        │         │ 2020   │         │        │ 2020    │        │
+│ tsvrep… │ TSV    │ report… │ 263403 │ 3.1.0   │        │ yes     │ 3.1.0  │         │ 2023-… │
+│         │ Repor… │         │        │         │        │         │        │         │        │
+│ ucscge… │ UCSC   │ annota… │ 15007  │ 1.1.1   │        │ yes     │ 1.1.1  │         │ 2024-… │
+│         │ Genome │         │        │         │        │         │        │         │        │
+│         │ Brows… │         │        │         │        │         │        │         │        │
+│ uk10k_… │ UK10k  │ annota… │ 58664… │ 3.5.9   │ dbNSFP │ yes     │ 3.5.9  │ dbNSFP  │ 2020-… │
+│         │ Cohor… │         │        │         │ v4.0b1 │         │        │ v4.0b1  │        │
+│ uniprot │ UniPr… │ annota… │ 774650 │ 2020.0… │ 201809 │ yes     │ 2020.… │ 201809  │ 2023-… │
+│ unipro… │ Unipr… │ annota… │ 14891… │ 1.0.0   │ None   │         │        │         │ 2024-… │
+│         │ Domain │         │        │         │        │         │        │         │        │
+│ varian… │ OpenC… │ webapp  │ 54631… │ 1.6.2   │ None   │ yes     │ 1.5.1  │         │ 2025-… │
+│         │ Varia… │         │        │         │        │         │        │         │        │
+│         │ Report │         │        │         │        │         │        │         │        │
+│ varity… │ VARIT… │ annota… │ 20648… │ 1.1.0   │ None   │ yes     │ 1.0.0  │         │ 2025-… │
+│ varmeta │ Varia… │ postag… │ 4780   │ 1.1.0   │        │ yes     │ 1.1.0  │         │ 2025-… │
+│         │ Metad… │         │        │         │        │         │        │         │        │
+│ vcf-co… │ VCF    │ conver… │ 15499… │ 4.2.1   │        │ yes     │ 4.2.1  │         │ 2025-… │
+│         │ Conve… │         │        │         │        │         │        │         │        │
+│ vcfinfo │ VCF    │ postag… │ 1990   │ 2.0.0   │ None   │ yes     │ 1.4.0  │         │ 2024-… │
+│         │ Info   │         │        │         │        │         │        │         │        │
+│ vcfrep… │ VCF    │ report… │ 570591 │ 5.2.5   │        │ yes     │ 5.2.5  │         │ 2025-… │
+│         │ Repor… │         │        │         │        │         │        │         │        │
+│ vest    │ VEST4  │ annota… │ 21298… │ 4.5.1   │ v4     │ yes     │ 4.5.0  │ v4      │ 2024-… │
+│ vista_… │ VISTA  │ annota… │ 42768  │ 2019.0… │ hg19   │ yes     │ 2019.… │ hg19    │ 2020-… │
+│         │ Enhan… │         │        │         │        │         │        │         │        │
+│         │ Brows… │         │        │         │        │         │        │         │        │
+│ vrs_id  │ vrs_id │ annota… │ 231640 │ 1.0.0   │        │ yes     │ 1.0.0  │         │ 2024-… │
+│ wgalle… │ Allele │ webvie… │ 83861  │ 1.1.0   │ None   │ yes     │ 1.2.0  │         │ 2021-… │
+│         │ Frequ… │         │        │         │        │         │        │         │        │
+│         │ Spect… │         │        │         │        │         │        │         │        │
+│ wgaloft │ ALoFT  │ webvie… │ 951    │ 1.0.0   │ None   │ yes     │ 1.1.0  │         │ 2021-… │
+│ wgbase  │ Varia… │ webvie… │ 7463   │ 1.5.3   │        │ yes     │ 1.5.3  │         │ 2024-… │
+│         │ Annot… │         │        │         │        │         │        │         │        │
+│ wgbase… │ Base   │ webvie… │ 63955  │ 1.1.0   │ None   │         │        │         │ 2021-… │
+│         │ Chang… │         │        │         │        │         │        │         │        │
+│ wgbase… │ Base   │ webvie… │ 3446   │ 2.2.0   │ None   │         │        │         │ 2024-… │
+│         │ Subst… │         │        │         │        │         │        │         │        │
+│         │ Summa… │         │        │         │        │         │        │         │        │
+│ wgbaye… │ Bayes… │ webvie… │ 1019   │ 1.0.0   │ None   │         │        │         │ 2024-… │
+│ wgbiog… │ BioGR… │ webvie… │ 58323  │ 1.3.0   │        │ yes     │ 1.3.1  │         │ 2022-… │
+│ wgbrca… │ BRCA1  │ webvie… │ 657    │ 1.0.1   │ None   │ yes     │ 1.1.0  │         │ 2020-… │
+│         │ Funct… │         │        │         │        │         │        │         │        │
+│         │ Assay  │         │        │         │        │         │        │         │        │
+│ wgcadd  │ CADD   │ webvie… │ 985    │ 1.0.0   │ None   │         │        │         │ 2024-… │
+│ wgcadd… │ CADD   │ webvie… │ 1023   │ 1.0.0   │ None   │         │        │         │ 2024-… │
+│         │ Exome  │         │        │         │        │         │        │         │        │
+│ wgcanc… │ Cancer │ webvie… │ 961    │ 1.0.0   │ None   │ yes     │ 1.0.0  │         │ 2022-… │
+│         │ Genome │         │        │         │        │         │        │         │        │
+│         │ Inter… │         │        │         │        │         │        │         │        │
+│ wgcanc… │ Cancer │ webvie… │ 1268   │ 1.1.0   │ None   │ yes     │ 1.2.0  │         │ 2021-… │
+│         │ Hotsp… │         │        │         │        │         │        │         │        │
+│ wgcase… │ Case-… │ webvie… │ 74469  │ 1.1.0   │        │ yes     │ 1.1.0  │         │ 2022-… │
+│         │ - Most │         │        │         │        │         │        │         │        │
+│         │ signi… │         │        │         │        │         │        │         │        │
+│         │ p-val… │         │        │         │        │         │        │         │        │
+│ wgcase… │ Case-… │ webvie… │ 73837  │ 1.0.1   │ None   │ yes     │ 1.1.0  │         │ 2021-… │
+│         │ Summa… │         │        │         │        │         │        │         │        │
+│ wgccre… │ Candi… │ webvie… │ 947    │ 1.0.0   │ None   │ yes     │ 1.1.0  │         │ 2021-… │
+│         │ cis_R… │         │        │         │        │         │        │         │        │
+│         │ Eleme… │         │        │         │        │         │        │         │        │
+│         │ by     │         │        │         │        │         │        │         │        │
+│         │ ENCODE │         │        │         │        │         │        │         │        │
+│         │ (SCRE… │         │        │         │        │         │        │         │        │
+│ wgcgc   │ Cancer │ webvie… │ 12662  │ 1.1.0   │ None   │ yes     │ 1.2.0  │         │ 2020-… │
+│         │ Genome │         │        │         │        │         │        │         │        │
+│         │ Census │         │        │         │        │         │        │         │        │
+│ wgcgd   │ CGD:   │ webvie… │ 950    │ 1.0.0   │ None   │ yes     │ 1.0.0  │         │ 2021-… │
+│         │ Clini… │         │        │         │        │         │        │         │        │
+│         │ Genom… │         │        │         │        │         │        │         │        │
+│         │ Datab… │         │        │         │        │         │        │         │        │
+│ wgcgl   │ Cancer │ webvie… │ 641    │ 1.1.0   │ None   │ yes     │ 1.1.0  │         │ 2020-… │
+│         │ Gene   │         │        │         │        │         │        │         │        │
+│         │ Lands… │         │        │         │        │         │        │         │        │
+│ wgcgls… │ Cancer │ webvie… │ 67109  │ 1.1.0   │ None   │         │        │         │ 2020-… │
+│         │ Gene   │         │        │         │        │         │        │         │        │
+│         │ Lands… │         │        │         │        │         │        │         │        │
+│         │ Summa… │         │        │         │        │         │        │         │        │
+│ wgchas… │ CHASM… │ webvie… │ 75770  │ 1.1.0   │ None   │ yes     │ 1.1.0  │         │ 2020-… │
+│ wgcirc… │ Circos │ webvie… │ 895559 │ 2.2.1   │        │ yes     │ 2.2.1  │         │ 2023-… │
+│         │ Summa… │         │        │         │        │         │        │         │        │
+│ wgcivic │ CIViC  │ webvie… │ 44986  │ 1.1.0   │ None   │ yes     │ 1.1.0  │         │ 2020-… │
+│ wgcivi… │ CIViC  │ webvie… │ 45104  │ 1.1.1   │ None   │ yes     │ 1.1.1  │         │ 2021-… │
+│         │ Gene   │         │        │         │        │         │        │         │        │
+│ wgclin… │ ClinG… │ webvie… │ 1078   │ 1.1.1   │ None   │ yes     │ 1.1.1  │         │ 2021-… │
+│ wgclin… │ Clinv… │ webvie… │ 41169  │ 1.2.0   │        │ yes     │ 1.2.0  │         │ 2022-… │
+│ wgclin… │ ClinV… │ webvie… │ 1177   │ 1.0.0   │ None   │         │        │         │ 2021-… │
+│         │ Summa… │         │        │         │        │         │        │         │        │
+│ wgcodi… │ Coding │ webvie… │ 1426   │ 2.0.0   │ None   │ yes     │ 1.4.2  │         │ 2024-… │
+│         │ vs     │         │        │         │        │         │        │         │        │
+│         │ Nonco… │         │        │         │        │         │        │         │        │
+│         │ Summa… │         │        │         │        │         │        │         │        │
+│ wgcomu… │ Co-Mu… │ webvie… │ 127872 │ 1.1.0   │ None   │         │        │         │ 2023-… │
+│         │ Genes  │         │        │         │        │         │        │         │        │
+│         │ Across │         │        │         │        │         │        │         │        │
+│         │ Multi… │         │        │         │        │         │        │         │        │
+│         │ Sampl… │         │        │         │        │         │        │         │        │
+│ wgcosm… │ Cosmic │ webvie… │ 14535  │ 1.1.2   │ None   │ yes     │ 1.1.2  │         │ 2023-… │
+│ wgcosm… │ Cosmic │ webvie… │ 14555  │ 1.1.1   │ None   │ yes     │ 1.1.1  │         │ 2021-… │
+│         │ Gene   │         │        │         │        │         │        │         │        │
+│ wgdbgap │ dbGaP  │ webvie… │ 1980   │ 1.0.0   │        │ yes     │ 1.0.0  │         │ 2024-… │
+│ wgdbsnp │ dbSNP  │ webvie… │ 6920   │ 1.1.0   │ None   │ yes     │ 1.1.1  │         │ 2020-… │
+│ wgdeno… │ denov… │ webvie… │ 4990   │ 1.7.0   │ None   │         │        │         │ 2020-… │
+│ wgdgi   │ DGIdb  │ webvie… │ 1012   │ 1.0.0   │ None   │ yes     │ 1.0.0  │         │ 2021-… │
+│ wgdida  │ DIDA   │ webvie… │ 1670   │ 1.0.0   │ None   │ yes     │ 1.0.0  │         │ 2021-… │
+│ wgenco… │ ENCODE │ webvie… │ 994    │ 1.0.0   │ None   │ yes     │ 1.0.0  │         │ 2021-… │
+│         │ TFBS   │         │        │         │        │         │        │         │        │
+│ wgenha… │ Frequ… │ webvie… │ 60684  │ 1.2.0   │        │ yes     │ 1.2.0  │         │ 2024-… │
+│         │ Mutat… │         │        │         │        │         │        │         │        │
+│         │ Enhan… │         │        │         │        │         │        │         │        │
+│ wgense… │ Ensem… │ webvie… │ 945    │ 1.0.0   │ None   │ yes     │ 1.0.0  │         │ 2021-… │
+│         │ Regul… │         │        │         │        │         │        │         │        │
+│         │ Build  │         │        │         │        │         │        │         │        │
+│ wgesm1b │ ESM1b  │ webvie… │ 1116   │ 1.1.0   │ None   │         │        │         │ 2025-… │
+│ wgesp6… │ ESP65… │ webvie… │ 15755  │ 1.0.1   │ None   │ yes     │ 1.0.1  │         │ 2020-… │
+│ wgess_… │ Essen… │ webvie… │ 742    │ 1.1.0   │ None   │         │        │         │ 2020-… │
+│         │ Gene   │         │        │         │        │         │        │         │        │
+│ wgexac… │ ExAC   │ webvie… │ 748    │ 1.1.0   │ None   │         │        │         │ 2020-… │
+│         │ Gene   │         │        │         │        │         │        │         │        │
+│ wgfath… │ FATHMM │ webvie… │ 1292   │ 1.2.0   │ None   │ yes     │ 1.1.0  │         │ 2024-… │
+│ wgfuns… │ FunSe… │ webvie… │ 960    │ 1.0.0   │ None   │ yes     │ 1.0.0  │         │ 2021-… │
+│ wggene… │ GeneH… │ webvie… │ 952    │ 1.0.1   │ None   │ yes     │ 1.0.1  │         │ 2021-… │
+│ wggerp  │ GERP++ │ webvie… │ 779    │ 1.1.0   │ None   │ yes     │ 1.0.3  │         │ 2024-… │
+│ wgghis  │ GHIS   │ webvie… │ 582    │ 1.0.3   │ None   │ yes     │ 1.0.3  │         │ 2020-… │
+│ wggnom… │ gnomAD │ webvie… │ 22442  │ 1.1.1   │ None   │ yes     │ 1.2.0  │         │ 2021-… │
+│ wggnom… │ gnomA… │ webvie… │ 32195  │ 1.2.2   │        │ yes     │ 1.2.2  │         │ 2024-… │
+│ wggnom… │ gnomAD │ webvie… │ 22652  │ 1.2.1   │ None   │ yes     │ 1.2.1  │         │ 2021-… │
+│         │ Gene   │         │        │         │        │         │        │         │        │
+│ wggo    │ Gene   │ webvie… │ 19888  │ 1.3.1   │        │ yes     │ 1.3.1  │         │ 2024-… │
+│         │ ontol… │         │        │         │        │         │        │         │        │
+│ wggosu… │ Gene   │ webvie… │ 38843… │ 2.6.3   │        │ yes     │ 2.6.3  │         │ 2024-… │
+│         │ Ontol… │         │        │         │        │         │        │         │        │
+│         │ Summa… │         │        │         │        │         │        │         │        │
+│ wggrasp │ GRASP  │ webvie… │ 5365   │ 1.1.2   │ None   │ yes     │ 1.1.2  │         │ 2021-… │
+│ wggtex  │ GTEx   │ webvie… │ 25441  │ 1.2.1   │        │ yes     │ 1.2.1  │         │ 2024-… │
+│ wggwas… │ GWAS   │ webvie… │ 10804  │ 2.0.0   │        │ yes     │ 2.0.0  │         │ 2024-… │
+│         │ Catal… │         │        │         │        │         │        │         │        │
+│ wghapl… │ Haplo… │ webvie… │ 1024   │ 1.2.0   │ None   │ yes     │ 1.2.0  │         │ 2021-… │
+│         │ Afric… │         │        │         │        │         │        │         │        │
+│ wghapl… │ Haplo… │ webvie… │ 1025   │ 1.2.0   │ None   │ yes     │ 1.2.0  │         │ 2021-… │
+│         │ Ameri… │         │        │         │        │         │        │         │        │
+│ wghapl… │ Haplo… │ webvie… │ 1034   │ 1.2.0   │ None   │ yes     │ 1.2.0  │         │ 2021-… │
+│         │ Asian  │         │        │         │        │         │        │         │        │
+│ wghapl… │ Haplo… │ webvie… │ 1036   │ 1.2.0   │ None   │ yes     │ 1.2.0  │         │ 2021-… │
+│         │ Europ… │         │        │         │        │         │        │         │        │
+│ wghapl… │ Haplo… │ webvie… │ 1107   │ 1.1.0   │ None   │         │        │         │ 2020-… │
+│         │ Infor… │         │        │         │        │         │        │         │        │
+│ wghg19  │ hg19   │ webvie… │ 594    │ 1.0.3   │ None   │ yes     │ 1.0.3  │         │ 2020-… │
+│         │ info   │         │        │         │        │         │        │         │        │
+│         │ widget │         │        │         │        │         │        │         │        │
+│ wghgvs  │ HGVS   │ webvie… │ 1066   │ 1.2.0   │ None   │ yes     │ 1.2.0  │         │ 2020-… │
+│ wghpo   │ Human  │ webvie… │ 894    │ 1.0.0   │ None   │ yes     │ 1.0.0  │         │ 2021-… │
+│         │ Pheno… │         │        │         │        │         │        │         │        │
+│         │ Ontol… │         │        │         │        │         │        │         │        │
+│ wgigv   │ IGV    │ webvie… │ 13617… │ 1.2.1   │ None   │         │        │         │ 2023-… │
+│ wgindel │ Inser… │ webvie… │ 82297  │ 1.1.0   │ None   │         │        │         │ 2021-… │
+│         │ and    │         │        │         │        │         │        │         │        │
+│         │ Delet… │         │        │         │        │         │        │         │        │
+│ wginta… │ IntAct │ webvie… │ 23548  │ 1.1.0   │ None   │ yes     │ 1.1.0  │         │ 2020-… │
+│ wginte… │ Inter… │ webvie… │ 127414 │ 71.1.3  │ None   │ yes     │ 71.1.3 │         │ 2021-… │
+│ wglins… │ LINSI… │ webvie… │ 134943 │ 1.1.0   │ None   │         │        │         │ 2020-… │
+│ wgloft… │ LoFto… │ webvie… │ 672    │ 1.0.2   │ None   │         │        │         │ 2020-… │
+│ wgloll… │ Prote… │ webvie… │ 18760… │ 2.5.2   │        │ yes     │ 2.5.2  │         │ 2024-… │
+│         │ diagr… │         │        │         │        │         │        │         │        │
+│ wgmirb… │ miRBa… │ webvie… │ 879    │ 1.0.0   │ None   │ yes     │ 1.0.0  │         │ 2021-… │
+│ wgmito… │ MITOM… │ webvie… │ 898    │ 1.0.0   │ None   │ yes     │ 1.0.0  │         │ 2021-… │
+│ wgmupit │ MuPIT  │ webvie… │ 112455 │ 1.1.0   │ None   │         │        │         │ 2020-… │
+│ wgmuta… │ Mutat… │ webvie… │ 970    │ 1.2.0   │ None   │ yes     │ 1.2.0  │         │ 2021-… │
+│         │ Asses… │         │        │         │        │         │        │         │        │
+│ wgmuta… │ Mutat… │ webvie… │ 3602   │ 2.2.0   │ None   │         │        │         │ 2024-… │
+│         │ Signa… │         │        │         │        │         │        │         │        │
+│ wgmuta… │ Mutat… │ webvie… │ 938    │ 1.0.0   │ None   │ yes     │ 1.0.0  │         │ 2021-… │
+│ wgmutp… │ MutPr… │ webvie… │ 1137   │ 1.1.2   │ None   │ yes     │ 1.1.2  │         │ 2021-… │
+│ wgncbi… │ NCBI   │ webvie… │ 60001  │ 1.1.0   │ None   │ yes     │ 1.1.0  │         │ 2020-… │
+│         │ Gene   │         │        │         │        │         │        │         │        │
+│ wgncrna │ Non-c… │ webvie… │ 50038  │ 1.1.0   │ None   │ yes     │ 1.1.0  │         │ 2020-… │
+│         │ RNA    │         │        │         │        │         │        │         │        │
+│         │ diagr… │         │        │         │        │         │        │         │        │
+│ wgndex  │ NDEx   │ webvie… │ 894838 │ 1.2.1   │        │ yes     │ 1.2.1  │         │ 2024-… │
+│ wgndex… │ NDEx   │ webvie… │ 274460 │ 1.0.0   │ None   │ yes     │ 1.0.0  │         │ 2021-… │
+│         │ CHD    │         │        │         │        │         │        │         │        │
+│ wgndex… │ NDEx   │ webvie… │ 249767 │ 1.0.1   │ None   │ yes     │ 1.0.1  │         │ 2020-… │
+│         │ Conge… │         │        │         │        │         │        │         │        │
+│         │ Heart  │         │        │         │        │         │        │         │        │
+│         │ Disea… │         │        │         │        │         │        │         │        │
+│         │ Pathw… │         │        │         │        │         │        │         │        │
+│         │ Enric… │         │        │         │        │         │        │         │        │
+│         │ Summa… │         │        │         │        │         │        │         │        │
+│ wgndex… │ NDEx   │ webvie… │ 251502 │ 1.0.0   │ None   │ yes     │ 1.0.0  │         │ 2021-… │
+│         │ SIGNOR │         │        │         │        │         │        │         │        │
+│ wgndex… │ NDEx   │ webvie… │ 267760 │ 1.0.2   │ None   │ yes     │ 1.0.2  │         │ 2020-… │
+│         │ Signor │         │        │         │        │         │        │         │        │
+│         │ Pathw… │         │        │         │        │         │        │         │        │
+│         │ Enric… │         │        │         │        │         │        │         │        │
+│         │ Summa… │         │        │         │        │         │        │         │        │
+│ wgndex… │ Cancer │ webvie… │ 18409… │ 1.1.1   │ None   │ yes     │ 1.1.1  │         │ 2020-… │
+│         │ Pathw… │         │        │         │        │         │        │         │        │
+│         │ Enric… │         │        │         │        │         │        │         │        │
+│         │ for    │         │        │         │        │         │        │         │        │
+│         │ CHASM… │         │        │         │        │         │        │         │        │
+│         │ Drive… │         │        │         │        │         │        │         │        │
+│         │ (NDEx) │         │        │         │        │         │        │         │        │
+│ wgndex… │ NDEx   │ webvie… │ 14625… │ 1.1.0   │        │ yes     │ 1.1.0  │         │ 2024-… │
+│         │ NCI    │         │        │         │        │         │        │         │        │
+│         │ Cancer │         │        │         │        │         │        │         │        │
+│         │ Pathw… │         │        │         │        │         │        │         │        │
+│         │ Enric… │         │        │         │        │         │        │         │        │
+│         │ Summa… │         │        │         │        │         │        │         │        │
+│ wgndex… │ NDEX   │ webvie… │ 18406… │ 1.1.1   │ None   │         │        │         │ 2020-… │
+│         │ Enric… │         │        │         │        │         │        │         │        │
+│         │ Patho… │         │        │         │        │         │        │         │        │
+│         │ Pathw… │         │        │         │        │         │        │         │        │
+│ wgnote  │ Note   │ webvie… │ 1742   │ 3.0.0   │ None   │ yes     │ 2.1.1  │         │ 2024-… │
+│ wgomim  │ OMIM   │ webvie… │ 17596  │ 1.0.1   │        │ yes     │ 1.0.1  │         │ 2024-… │
+│ wgonco… │ OncoKB │ webvie… │ 13666  │ 1.4.1   │        │ yes     │ 1.4.1  │         │ 2023-… │
+│ wgpang… │ Panga… │ webvie… │ 995    │ 1.0.0   │ None   │ yes     │ 1.0.0  │         │ 2021-… │
+│ wgphar… │ Pharm… │ webvie… │ 1593   │ 2.0.1   │ None   │ yes     │ 2.0.1  │         │ 2021-… │
+│ wgphas… │ Phast  │ webvie… │ 796    │ 1.2.0   │ None   │ yes     │ 1.1.2  │         │ 2023-… │
+│         │ Cons   │         │        │         │        │         │        │         │        │
+│ wgphds… │ PhDSN… │ webvie… │ 6875   │ 1.1.0   │ None   │ yes     │ 1.1.0  │         │ 2020-… │
+│ wgphi   │ P(HI)  │ webvie… │ 613    │ 1.0.2   │ None   │         │        │         │ 2020-… │
+│ wgphyl… │ PhyloP │ webvie… │ 911    │ 1.3.0   │ None   │ yes     │ 1.2.1  │         │ 2024-… │
+│ wgpoly… │ Polyp… │ webvie… │ 54163  │ 1.1.2   │ None   │         │        │         │ 2021-… │
+│ wgprec  │ P(rec) │ webvie… │ 726    │ 1.1.0   │ None   │ yes     │ 1.1.0  │         │ 2020-… │
+│ wgprim… │ Prima… │ webvie… │ 998    │ 1.0.0   │ None   │ yes     │ 1.0.0  │         │ 2024-… │
+│ wgprov… │ PROVE… │ webvie… │ 879    │ 1.0.0   │ None   │ yes     │ 1.0.0  │         │ 2021-… │
+│ wgpseu… │ Pseud… │ webvie… │ 12982  │ 1.1.0   │ None   │ yes     │ 1.1.0  │         │ 2020-… │
+│ wgpubm… │ PubMed │ webvie… │ 29489  │ 1.1.0   │ None   │         │        │         │ 2020-… │
+│ wgrank… │ Rank   │ webvie… │ 59618  │ 1.1.0   │ None   │ yes     │ 1.1.0  │         │ 2022-… │
+│         │ Score  │         │        │         │        │         │        │         │        │
+│         │ Compa… │         │        │         │        │         │        │         │        │
+│ wgrevel │ REVEL  │ webvie… │ 34657  │ 1.3.0   │ None   │ yes     │ 1.2.1  │         │ 2024-… │
+│ wgrvis  │ RVIS   │ webvie… │ 734    │ 1.1.0   │ None   │ yes     │ 1.1.0  │         │ 2020-… │
+│ wgsift  │ SIFT   │ webvie… │ 1173   │ 1.1.0   │ None   │ yes     │ 1.0.0  │         │ 2024-… │
+│ wgsiphy │ SiPhy  │ webvie… │ 997    │ 1.1.1   │ None   │ yes     │ 1.1.1  │         │ 2021-… │
+│ wgsosa… │ Seque… │ webvie… │ 16556  │ 2.3.1   │        │ yes     │ 2.3.1  │         │ 2023-… │
+│         │ Ontol… │         │        │         │        │         │        │         │        │
+│         │ Sample │         │        │         │        │         │        │         │        │
+│         │ Summa… │         │        │         │        │         │        │         │        │
+│ wgsosu… │ Seque… │ webvie… │ 6780   │ 1.8.1   │        │ yes     │ 1.8.1  │         │ 2023-… │
+│         │ Ontol… │         │        │         │        │         │        │         │        │
+│         │ Summa… │         │        │         │        │         │        │         │        │
+│ wgswis… │ Swiss… │ webvie… │ 1144   │ 1.0.1   │ None   │ yes     │ 1.0.1  │         │ 2021-… │
+│         │ Bindi… │         │        │         │        │         │        │         │        │
+│ wgswis… │ Swiss… │ webvie… │ 1013   │ 1.0.1   │ None   │ yes     │ 1.0.1  │         │ 2021-… │
+│         │ Domai… │         │        │         │        │         │        │         │        │
+│ wgswis… │ Swiss… │ webvie… │ 1187   │ 1.1.1   │ None   │ yes     │ 1.1.1  │         │ 2021-… │
+│         │ PTM    │         │        │         │        │         │        │         │        │
+│ wgtarg… │ Target │ webvie… │ 63553  │ 1.1.0   │ None   │ yes     │ 1.1.0  │         │ 2020-… │
+│ wgthou… │ 1000   │ webvie… │ 18245  │ 1.1.0   │ None   │ yes     │ 1.1.0  │         │ 2021-… │
+│         │ Genom… │         │        │         │        │         │        │         │        │
+│ wgthou… │ 1000   │ webvie… │ 913    │ 1.1.0   │ None   │ yes     │ 1.1.0  │         │ 2021-… │
+│         │ Genom… │         │        │         │        │         │        │         │        │
+│         │ Mixed  │         │        │         │        │         │        │         │        │
+│         │ Ameri… │         │        │         │        │         │        │         │        │
+│ wgthou… │ 1000   │ webvie… │ 874    │ 1.1.0   │ None   │ yes     │ 1.1.0  │         │ 2021-… │
+│         │ Genom… │         │        │         │        │         │        │         │        │
+│ wgthou… │ 1000   │ webvie… │ 874    │ 1.1.0   │ None   │ yes     │ 1.1.0  │         │ 2021-… │
+│         │ Genom… │         │        │         │        │         │        │         │        │
+│         │ Asian  │         │        │         │        │         │        │         │        │
+│ wgthou… │ 1000   │ webvie… │ 862    │ 1.1.0   │ None   │ yes     │ 1.1.0  │         │ 2021-… │
+│         │ Genom… │         │        │         │        │         │        │         │        │
+│ wgthou… │ 1000   │ webvie… │ 877    │ 1.1.0   │ None   │ yes     │ 1.1.0  │         │ 2021-… │
+│         │ Genom… │         │        │         │        │         │        │         │        │
+│         │ Asian  │         │        │         │        │         │        │         │        │
+│ wgtopg… │ Top    │ webvie… │ 1433   │ 1.1.0   │ None   │         │        │         │ 2020-… │
+│         │ Genes  │         │        │         │        │         │        │         │        │
+│         │ CHASM… │         │        │         │        │         │        │         │        │
+│         │ Summa… │         │        │         │        │         │        │         │        │
+│ wgtopg… │ Recur… │ webvie… │ 310446 │ 2.3.1   │ None   │         │        │         │ 2024-… │
+│         │ Mutat… │         │        │         │        │         │        │         │        │
+│         │ Genes  │         │        │         │        │         │        │         │        │
+│ wgtopg… │ Top    │ webvie… │ 1392   │ 1.1.0   │ None   │         │        │         │ 2020-… │
+│         │ Genes  │         │        │         │        │         │        │         │        │
+│         │ VEST   │         │        │         │        │         │        │         │        │
+│         │ Summa… │         │        │         │        │         │        │         │        │
+│ wguk10… │ UK10K  │ webvie… │ 47349  │ 1.1.1   │ None   │ yes     │ 1.1.1  │         │ 2021-… │
+│         │ Cohort │         │        │         │        │         │        │         │        │
+│ wgvari… │ VARIT… │ webvie… │ 1011   │ 1.0.0   │ None   │         │        │         │ 2025-… │
+│ wgvcfi… │ VCF    │ webvie… │ 670    │ 1.0.3   │ None   │ yes     │ 1.0.3  │         │ 2020-… │
+│         │ info   │         │        │         │        │         │        │         │        │
+│         │ widget │         │        │         │        │         │        │         │        │
+│ wgvest  │ VEST   │ webvie… │ 162393 │ 1.3.0   │ None   │ yes     │ 1.2.0  │         │ 2024-… │
+└─────────┴────────┴─────────┴────────┴─────────┴────────┴─────────┴────────┴─────────┴────────┘
+
