@@ -428,12 +428,10 @@ async def filtersqlite_async(
                 or type(cf.filter) is not dict
             ):
                 from ..lib.exceptions import FilterLoadingError
-
                 raise FilterLoadingError()
             conn_read, conn_write = await cf.get_db_conns()
             if conn_read is None or conn_write is None:
                 from ..lib.exceptions import FilterLoadingError
-
                 raise FilterLoadingError()
             cursor_read = await conn_read.cursor()
             conn_new = await aiosqlite.connect(opath)
@@ -467,7 +465,7 @@ async def filtersqlite_async(
             await conn_new.execute("drop table if exists variant")
             await conn_new.execute(sql)
             await cf.get_level_data_iterator("variant", uid=ftable_uid, cursor_read=cursor_read)
-            q = f"insert into variant values ({",".join(['?' for _ in cursor_read.description])})"
+            q = f"insert into variant values ({','.join(['?' for _ in cursor_read.description])})"
             num_vars = 0
             for row in await cursor_read.fetchall():
                 await conn_new.execute(q, row)
