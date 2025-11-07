@@ -19825,38 +19825,6 @@ function ModuleFilterPanelHome(props) {
       }
     }), _el$10);
     insert(_el$5, createComponent(ModuleCard, {
-      moduleName: "cosmic",
-      get addToInstallQueue() {
-        return props.addToInstallQueue;
-      },
-      kind: "remote",
-      get remoteModuleInfo() {
-        return remoteModules["cosmic"];
-      },
-      get localModuleInfo() {
-        return localModules["cosmic"];
-      },
-      get moduleInfo() {
-        return remoteModules["cosmic"];
-      }
-    }), _el$10);
-    insert(_el$5, createComponent(ModuleCard, {
-      moduleName: "oncokb",
-      get addToInstallQueue() {
-        return props.addToInstallQueue;
-      },
-      kind: "remote",
-      get remoteModuleInfo() {
-        return remoteModules["oncokb"];
-      },
-      get localModuleInfo() {
-        return localModules["oncokb"];
-      },
-      get moduleInfo() {
-        return remoteModules["oncokb"];
-      }
-    }), _el$10);
-    insert(_el$5, createComponent(ModuleCard, {
       moduleName: "clinvar",
       get addToInstallQueue() {
         return props.addToInstallQueue;
@@ -19873,22 +19841,6 @@ function ModuleFilterPanelHome(props) {
       }
     }), _el$11);
     insert(_el$5, createComponent(ModuleCard, {
-      moduleName: "grasp",
-      get addToInstallQueue() {
-        return props.addToInstallQueue;
-      },
-      kind: "remote",
-      get remoteModuleInfo() {
-        return remoteModules["grasp"];
-      },
-      get localModuleInfo() {
-        return localModules["grasp"];
-      },
-      get moduleInfo() {
-        return remoteModules["grasp"];
-      }
-    }), _el$11);
-    insert(_el$5, createComponent(ModuleCard, {
       moduleName: "gwas_catalog",
       get addToInstallQueue() {
         return props.addToInstallQueue;
@@ -19902,22 +19854,6 @@ function ModuleFilterPanelHome(props) {
       },
       get moduleInfo() {
         return remoteModules["gwas_catalog"];
-      }
-    }), _el$11);
-    insert(_el$5, createComponent(ModuleCard, {
-      moduleName: "omim",
-      get addToInstallQueue() {
-        return props.addToInstallQueue;
-      },
-      kind: "remote",
-      get remoteModuleInfo() {
-        return remoteModules["omim"];
-      },
-      get localModuleInfo() {
-        return localModules["omim"];
-      },
-      get moduleInfo() {
-        return remoteModules["omim"];
       }
     }), _el$11);
     insert(_el$5, createComponent(ModuleCard, {
@@ -19969,22 +19905,6 @@ function ModuleFilterPanelHome(props) {
       }
     }), _el$13);
     insert(_el$5, createComponent(ModuleCard, {
-      moduleName: "cadd",
-      get addToInstallQueue() {
-        return props.addToInstallQueue;
-      },
-      kind: "remote",
-      get remoteModuleInfo() {
-        return remoteModules["cadd"];
-      },
-      get localModuleInfo() {
-        return localModules["cadd"];
-      },
-      get moduleInfo() {
-        return remoteModules["cadd"];
-      }
-    }), null);
-    insert(_el$5, createComponent(ModuleCard, {
       moduleName: "fathmm",
       get addToInstallQueue() {
         return props.addToInstallQueue;
@@ -19998,38 +19918,6 @@ function ModuleFilterPanelHome(props) {
       },
       get moduleInfo() {
         return remoteModules["fathmm"];
-      }
-    }), null);
-    insert(_el$5, createComponent(ModuleCard, {
-      moduleName: "sift",
-      get addToInstallQueue() {
-        return props.addToInstallQueue;
-      },
-      kind: "remote",
-      get remoteModuleInfo() {
-        return remoteModules["sift"];
-      },
-      get localModuleInfo() {
-        return localModules["sift"];
-      },
-      get moduleInfo() {
-        return remoteModules["sift"];
-      }
-    }), null);
-    insert(_el$5, createComponent(ModuleCard, {
-      moduleName: "polyphen2",
-      get addToInstallQueue() {
-        return props.addToInstallQueue;
-      },
-      kind: "remote",
-      get remoteModuleInfo() {
-        return remoteModules["polyphen2"];
-      },
-      get localModuleInfo() {
-        return localModules["polyphen2"];
-      },
-      get moduleInfo() {
-        return remoteModules["polyphen2"];
       }
     }), null);
     createRenderEffect((_p$) => {
