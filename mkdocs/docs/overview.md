@@ -22,10 +22,10 @@ OakVar automates this annotation work by:
 * Manage installation of annotation sources
 * Organize the annotation from different sources by variant
 
-The main OakVar command for annotation is `ov run`. For example, the following command will annotate the variants in a VCF file, `input.vcf`, with annotation sources ClinVar and COSMIC and generate an annotated VCF file, `annotated.vcf` as well as a database file, `annotated.sqlite`.
+The main OakVar command for annotation is `ov run`. For example, the following command will annotate the variants in a VCF file, `input.vcf`, with annotation sources ClinVar and generate an annotated VCF file, `annotated.vcf` as well as a database file, `annotated.sqlite`.
 
     ov module install clinvar # if clinvar module is not already installed.
-    ov run input.vcf -a clinvar cosmic -t vcf -n annotated
+    ov run input.vcf -a clinvar -t vcf -n annotated
 
 ## Query
 
@@ -37,7 +37,7 @@ The main OakVar command for querying variants is `ov report`. For example, the f
 
 Query options can be given to `ov run` as well. The following command will generate the same `annotated.sqlite` with annotated variants, but `annotated.vcf` will already have annotated and filtered variants.
 
-    ov run input.vcf -a clinvar cosmic -t vcf -n annotated -f filter.json
+    ov run input.vcf -a clinvar -t vcf -n annotated -f filter.json
 
 ## Visualize
 

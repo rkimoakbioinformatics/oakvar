@@ -6,14 +6,13 @@ For repeated jobs, using a .yml file with job definition is handy.
 
 For example, consider the following `ov run` job:
 
-    ov run input.vcf -a clinvar cosmic dbsnp -t csv
+    ov run input.vcf -a clinvar dbsnp -t csv
 
 The configuration of this job can be written in `conf.yml` file as follows:
 
     run:
         annotators: 
         - clinvar
-        - cosmic
         - dbsnp
         report_types: csv
 
