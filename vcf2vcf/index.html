@@ -65,6 +65,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#vcf-to-vcf-mode" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -1103,6 +1108,8 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
       
       <a href="./" class="md-nav__link md-nav__link--active">
         
@@ -1247,6 +1254,8 @@
   
   
   
+    
+  
   
 </nav>
                   </div>
@@ -1262,8 +1271,7 @@
 
 
 
-  <h1>VCF2VCF</h1>
-
+<h1 id="vcf-to-vcf-mode">VCF to VCF Mode</h1>
 <p>With OakVar v2.5.0 and later, a fast-track annotation workflow, <code>vcf2vcf</code>, is available. The speed-up by this workflow can be an order of magnitude compared to previous versions, depending on the number of samples. For example, mapping the variants in the chromosome 20 of the 1000 Genomes Project data took about 10 minutes with --vcf2vcf in our test system. With ClinVar annotation added, about 15 minutes. The condition to use this workflow is:</p>
 <ul>
 <li>Input file format is Variant Call Format (VCF).</li>

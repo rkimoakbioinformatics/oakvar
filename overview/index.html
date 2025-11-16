@@ -66,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#modular" class="md-skip">
+        <a href="#overview-of-oakvar" class="md-skip">
           Skip to content
         </a>
       
@@ -315,6 +315,8 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
           
@@ -346,6 +348,8 @@
 <nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
+  
+    
   
   
     <label class="md-nav__title" for="__toc">
@@ -1327,6 +1331,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -1395,8 +1401,7 @@
 
 
 
-  <h1>Overview</h1>
-
+<h1 id="overview-of-oakvar">Overview of OakVar</h1>
 <h2 id="modular">Modular</h2>
 <p>OakVar is a <strong>platform</strong> for genomic variant analyses. By platform, we mean that OakVar is modular. <em>Modules</em> written in Python are the building blocks of OakVar. OakVar achieves its functions by orchestrating such modules.</p>
 <p>OakVar has the following core functionality:</p>
@@ -1415,9 +1420,9 @@
 <li>Manage installation of annotation sources</li>
 <li>Organize the annotation from different sources by variant</li>
 </ul>
-<p>The main OakVar command for annotation is <code>ov run</code>. For example, the following command will annotate the variants in a VCF file, <code>input.vcf</code>, with annotation sources ClinVar and COSMIC and generate an annotated VCF file, <code>annotated.vcf</code> as well as a database file, <code>annotated.sqlite</code>.</p>
+<p>The main OakVar command for annotation is <code>ov run</code>. For example, the following command will annotate the variants in a VCF file, <code>input.vcf</code>, with annotation sources ClinVar and generate an annotated VCF file, <code>annotated.vcf</code> as well as a database file, <code>annotated.sqlite</code>.</p>
 <pre><code>ov module install clinvar # if clinvar module is not already installed.
-ov run input.vcf -a clinvar cosmic -t vcf -n annotated
+ov run input.vcf -a clinvar -t vcf -n annotated
 </code></pre>
 <h2 id="query">Query</h2>
 <p>Once variants are annotated, they can be filtered by their annotation, for example to know if a sample has clinically relevant variants or not. OakVar stores annotated variants as a database, and thus variants annotated with OakVar can be filtered with SQL queries. OakVar provides a standard mechanism to query variants regardless of their annotation sources.</p>
@@ -1425,7 +1430,7 @@ ov run input.vcf -a clinvar cosmic -t vcf -n annotated
 <pre><code>ov report annotated.sqlite -f filter.json -s filtered -t vcf
 </code></pre>
 <p>Query options can be given to <code>ov run</code> as well. The following command will generate the same <code>annotated.sqlite</code> with annotated variants, but <code>annotated.vcf</code> will already have annotated and filtered variants.</p>
-<pre><code>ov run input.vcf -a clinvar cosmic -t vcf -n annotated -f filter.json
+<pre><code>ov run input.vcf -a clinvar -t vcf -n annotated -f filter.json
 </code></pre>
 <h2 id="visualize">Visualize</h2>
 <p>OakVar comes with a graphical user interface. <code>ov gui</code> launches a job and store management web app by default, and also works as the entry point for OakVar's web apps. </p>
