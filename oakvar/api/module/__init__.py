@@ -45,11 +45,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from typing import Optional
-from typing import Any
-from typing import List
-from typing import Dict
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 
 def pack(
@@ -127,8 +124,8 @@ def ls(
         >>> oakvar.api.module.ls(tags=[".*allele.*"], search_store=True)
 
     """
-    from .ls_logic import list_modules
     from ...lib.util.util import print_list_of_dict
+    from .ls_logic import list_modules
 
     fmt = kwargs.get("fmt", "tabular")
     _ = kwargs
@@ -172,13 +169,18 @@ def info(
         >>> clinvar_info = oakvar.api.module.info("clinvar", outer=sys.stdout)
     """
     import json
+
     import yaml
-    from ...lib.module.local import get_local_module_info
-    from ...lib.module.remote import get_remote_module_info
-    from ...lib.module.remote import get_readme as get_remote_readme
-    from ...lib.module.local import get_readme as get_local_readme
-    from ...lib.module.local import get_remote_manifest_from_local
+
     from ...cli.module.info_fn import print_module_info
+    from ...lib.module.local import (
+        get_local_module_info,
+        get_remote_manifest_from_local,
+    )
+    from ...lib.module.local import get_readme as get_local_readme
+    from ...lib.module.remote import get_readme as get_remote_readme
+    from ...lib.module.remote import get_remote_module_info
+    from ...lib.store import store_label
 
     fmt = kwargs.get("fmt", "json")
     ret = {}
@@ -233,6 +235,17 @@ def info(
                 }
             }
             del ret["conf"]
+    store_code = ""
+    if remote_info and remote_info.store:
+        store_code = remote_info.store
+    else:
+        from ...lib.store.db import find_name_store
+
+        store_result = find_name_store(module_name)
+        if store_result:
+            _, store_code = store_result
+    if store_code:
+        ret["store"] = store_label(store_code)
     ret["installed"] = installed
     if installed and local_info:
         ret["installed_version"] = local_info.code_version
@@ -307,15 +320,17 @@ def install(
         `None` if no problem. `False` if there was a problem.
     """
     import sys
-    from .install_defs import get_modules_to_install
-    from .install_defs import show_modules_to_install
-    from ...lib.module import install_module
-    from ...lib.module import install_module_from_url
-    from ...lib.module import install_module_from_zip_path
-    from ...lib.util.run import get_y_or_n
-    from ...lib.util.download import is_zip_path
-    from ...lib.store.db import try_fetch_ov_store_cache
+
     from ...lib.exceptions import ModuleToSkipInstallation
+    from ...lib.module import (
+        install_module,
+        install_module_from_url,
+        install_module_from_zip_path,
+    )
+    from ...lib.store.db import try_fetch_ov_store_cache
+    from ...lib.util.download import is_zip_path
+    from ...lib.util.run import get_y_or_n
+    from .install_defs import get_modules_to_install, show_modules_to_install
 
     if not no_fetch:
         try_fetch_ov_store_cache(outer=outer)
@@ -386,6 +401,7 @@ def install(
                     problem_modules.append(module_name)
             if outer:
                 import traceback
+
                 s = traceback.format_exc()
                 outer.error(s)
             else:
@@ -424,8 +440,8 @@ def update(
     Returns:
         `True` if update was successful. `False` if not.
     """
-    from ...lib.module.local import search_local
     from ...lib.module import get_updatable
+    from ...lib.module.local import search_local
     from ...lib.store.db import try_fetch_ov_store_cache
     from ...lib.util.util import is_in_jupyter_notebook
 
@@ -485,9 +501,9 @@ def uninstall(
     Returns:
         `True` if successful. `False` if not.
     """
-    from ...lib.module.local import search_local
-    from ...lib.module import uninstall_module
     from ...lib.exceptions import ArgumentError
+    from ...lib.module import uninstall_module
+    from ...lib.module.local import search_local
     from ...lib.util.util import is_in_jupyter_notebook
 
     if not module_names:
@@ -539,9 +555,9 @@ def install_system_modules(
     Returns:
         `None` if successful. `False` if not.
     """
+    from ...lib.store.db import try_fetch_ov_store_cache
     from ...lib.system import get_system_conf
     from ...lib.system.consts import base_modules_key
-    from ...lib.store.db import try_fetch_ov_store_cache
 
     if not no_fetch:
         try_fetch_ov_store_cache(

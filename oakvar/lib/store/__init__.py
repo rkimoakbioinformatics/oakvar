@@ -46,11 +46,11 @@
 # SOFTWARE.
 
 from typing import Optional
-from ..module.remote import RemoteModule
-from ..module.remote import RemoteModuleLs
-from . import ov as ov
+
+from ..module.remote import RemoteModule, RemoteModuleLs
 from . import consts as consts
 from . import db as db
+from . import ov as ov
 
 
 def file_checksum(path):
@@ -92,7 +92,8 @@ def verify_against_manifest(dirpath, manifest):
     Verify that the files in manifest exist and have the right cksum.
     Return True if all pass, throw FileIntegrityError otherwise.
     """
-    from os.path import join, exists, isdir
+    from os.path import exists, isdir, join
+
     from ..exceptions import FileIntegrityError
 
     correct = True
@@ -129,6 +130,14 @@ def remote_module_info_latest_version(module_name) -> Optional[RemoteModule]:
 
     module_info = module_info(module_name)
     return module_info
+
+
+def store_label(store: str) -> str:
+    if store == "oc":
+        return "OpenCRAVAT"
+    if store == "ov":
+        return "OakVar"
+    return store or ""
 
 
 def get_module_urls(module_name: str, code_version=None) -> Optional[dict]:
@@ -179,8 +188,7 @@ def get_developer_dict(kwargs):
 
 
 def url(url: str = "", outer=None) -> str:
-    from .ov import get_store_url
-    from .ov import set_store_url
+    from .ov import get_store_url, set_store_url
 
     if url:
         set_store_url(url)

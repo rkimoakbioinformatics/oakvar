@@ -96,14 +96,31 @@ class StoreHandlers:
         self.routes.append(["GET", "/store/requiredmodules", self.get_required_modules])
         self.routes.append(["GET", "/store/storeurl", self.get_store_url])
 
+    def add_store_info(self, module_name: str, module_info: dict) -> None:
+        from ..lib.store import store_label
+        from ..lib.store.db import find_name_store
+
+        if not isinstance(module_info, dict):
+            return
+        store_code = module_info.get("store")
+        if not store_code:
+            store_result = find_name_store(module_name)
+            if store_result:
+                _, store_code = store_result
+                module_info["store"] = store_code
+        if store_code:
+            module_info["store_label"] = store_label(store_code)
+
     async def get_store_url(self, _):
         from aiohttp.web import json_response
+
         from ..lib.store.ov import get_store_url
 
         return json_response({"store_url": get_store_url()})
 
     async def get_required_modules(self, request):
         from aiohttp.web import json_response
+
         from ..api.module.install_defs import get_modules_to_install
 
         module_name = request.rel_url.query.get("module_name")
@@ -117,9 +134,11 @@ class StoreHandlers:
         return json_response(ret)
 
     async def local_module_logo_exists(self, request):
-        from aiohttp.web import json_response
-        from ..lib.module.cache import get_module_cache
         from pathlib import Path
+
+        from aiohttp.web import json_response
+
+        from ..lib.module.cache import get_module_cache
 
         module_name = request.match_info["module_name"]
         module_info = get_module_cache().local[module_name]
@@ -150,6 +169,7 @@ class StoreHandlers:
         local_cache = get_module_cache().get_local()
         for k, v in local_cache.items():
             m = v.serialize()
+            self.add_store_info(k, m)
             self.local_manifest[k] = m
 
     async def get_local_manifest(self, request):
@@ -179,10 +199,12 @@ class StoreHandlers:
         return json_response(self.local_manifest)
 
     async def get_local_module_logo(self, request):
+        from pathlib import Path
+
         from aiohttp.web import FileResponse
+
         from ..lib.module.cache import get_module_cache
         from ..lib.system import get_default_logo_path
-        from pathlib import Path
 
         queries = request.rel_url.query
         module = queries.get("module", None)
@@ -198,8 +220,9 @@ class StoreHandlers:
             return FileResponse(get_default_logo_path())
 
     def get_remote_manifest_cache(self) -> Optional[dict]:
-        from os.path import exists
         import pickle
+        from os.path import exists
+
         from ..lib.store.db import get_remote_manifest_cache_path
 
         cache_path = get_remote_manifest_cache_path()
@@ -222,6 +245,8 @@ class StoreHandlers:
                 for k in keys:
                     if k.endswith("package"):
                         del data[k]
+                for module_name, module_info in data.items():
+                    self.add_store_info(module_name, module_info)
                 return content
         else:
             return None
@@ -239,10 +264,13 @@ class StoreHandlers:
             if not data:
                 continue
             content["data"][module_name]["queued"] = True
+        for module_name, module_info in content.get("data", {}).items():
+            self.add_store_info(module_name, module_info)
         return content
 
     async def get_remote_manifest(self, request):
         from aiohttp.web import json_response
+
         from ..lib.store.db import fetch_ov_store_cache
 
         refresh = request.rel_url.query.get("refresh", "false")
@@ -259,10 +287,11 @@ class StoreHandlers:
             return json_response({})
 
     async def get_remote_module_logo(self, request):
-        from aiohttp.web import FileResponse
         from os.path import getsize
-        from ..lib.system import get_logo_path
-        from ..lib.system import get_default_logo_path
+
+        from aiohttp.web import FileResponse
+
+        from ..lib.system import get_default_logo_path, get_logo_path
 
         queries = request.rel_url.query
         module_name = queries.get("module", None)
@@ -299,8 +328,7 @@ class StoreHandlers:
         return Response(status=200)
 
     async def add_local_module_info(self, request):
-        from aiohttp.web import Response
-        from aiohttp.web import json_response
+        from aiohttp.web import Response, json_response
 
         from ..lib.module.cache import get_module_cache
 
@@ -313,12 +341,15 @@ class StoreHandlers:
         if not mdir:
             return Response(status=404)
         module_info = mc.get_local()[module_name]
-        return json_response(module_info.serialize())
+        module_dict = module_info.serialize()
+        self.add_store_info(module_name, module_dict)
+        return json_response(module_dict)
 
     async def uninstall_module(self, request):
-        from aiohttp.web import json_response
-        from aiohttp.web import Response
+        from aiohttp.web import Response, json_response
+
         from oakvar.lib.module import uninstall_module
+
         from ..lib.exceptions import ServerError
         from ..lib.module.cache import get_module_cache
 
@@ -339,6 +370,7 @@ class StoreHandlers:
 
     async def get_queue(self, _):
         from aiohttp.web import json_response
+
         from .consts import SYSTEM_STATE_INSTALL_QUEUE_KEY
 
         content = []
@@ -352,15 +384,15 @@ class StoreHandlers:
 
     async def get_system_worker_state_web(self, _):
         from aiohttp.web import json_response
-        from .util import copy_state
+
         from .consts import SYSTEM_STATE_INSTALL_KEY
+        from .util import copy_state
 
         content = dict(copy_state(self.system_worker_state[SYSTEM_STATE_INSTALL_KEY]))
         return json_response(content)
 
     def send_kill_install_signal(self, module_name: Optional[str]):
-        from .consts import SYSTEM_STATE_INSTALL_KEY
-        from .consts import INSTALL_KILL_SIGNAL
+        from .consts import INSTALL_KILL_SIGNAL, SYSTEM_STATE_INSTALL_KEY
 
         if not self.system_worker_state or not module_name:
             return
@@ -371,6 +403,7 @@ class StoreHandlers:
 
     async def unqueue_install(self, request):
         from aiohttp.web import Response
+
         from .consts import SYSTEM_STATE_INSTALL_KEY
 
         if self.servermode and self.mu:
@@ -388,8 +421,7 @@ class StoreHandlers:
         return Response(status=200)
 
     def unqueue(self, module_name):
-        from .consts import SYSTEM_STATE_INSTALL_KEY
-        from .consts import SYSTEM_STATE_INSTALL_QUEUE_KEY
+        from .consts import SYSTEM_STATE_INSTALL_KEY, SYSTEM_STATE_INSTALL_QUEUE_KEY
 
         to_del = None
         for i in range(len(self.system_queue)):  # type: ignore
@@ -405,6 +437,7 @@ class StoreHandlers:
 
     async def get_readme(self, request):
         from aiohttp.web import Response
+
         from ..lib.module.remote import get_readme
 
         queries = request.rel_url.query
@@ -418,8 +451,9 @@ class StoreHandlers:
 
     async def get_module_img(self, request):
         from pathlib import Path
-        from aiohttp.web import Response
-        from aiohttp.web import FileResponse
+
+        from aiohttp.web import FileResponse, Response
+
         from ..lib.module.local import get_module_dir
 
         queries = request.rel_url.query
@@ -440,8 +474,7 @@ class StoreHandlers:
         module_name: str = "",
         module_version: Optional[str] = None,
     ):
-        from .consts import SYSTEM_STATE_INSTALL_KEY
-        from .consts import SYSTEM_STATE_INSTALL_QUEUE_KEY
+        from .consts import SYSTEM_STATE_INSTALL_KEY, SYSTEM_STATE_INSTALL_QUEUE_KEY
 
         if self.system_worker_state is None:
             return

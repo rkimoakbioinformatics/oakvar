@@ -14899,7 +14899,7 @@ function createGlobalStates$9() {
 }
 const gvEnterprise = createRoot(createGlobalStates$9);
 
-var _tmpl$$1m = /* @__PURE__ */ template(`<div class="px-2 text-xs text-gray-600 truncate cursor-default">`), _tmpl$2$i = /* @__PURE__ */ template(`<div><div class=flex><a href=# class=tabhead title=Logout></a><a href=# class=tabhead title="Send a password reset email.">`), _tmpl$3$c = /* @__PURE__ */ template(`<div class="">`);
+var _tmpl$$1m = /* @__PURE__ */ template(`<div class="px-2 text-xs text-gray-600 truncate cursor-default">`), _tmpl$2$i = /* @__PURE__ */ template(`<div><div class=flex><a href=# class=tabhead title=Logout></a><a href=# class=tabhead title="Send a password reset email.">`), _tmpl$3$d = /* @__PURE__ */ template(`<div class="">`);
 function TabHeadLogging() {
   const {
     logged,
@@ -14953,7 +14953,7 @@ function TabHeadLogging() {
     resetPassword(setPasswordResetEmailOk);
   }
   return (() => {
-    var _el$ = _tmpl$3$c();
+    var _el$ = _tmpl$3$d();
     insert(_el$, createComponent(Show, {
       get when() {
         return createMemo(() => !!multiuser())() && enterprise() != null;
@@ -16580,7 +16580,7 @@ function InputFormatSelectPanel(props) {
 }
 delegateEvents(["click"]);
 
-var _tmpl$$1b = /* @__PURE__ */ template(`<div id=input-upload-list-div class="w-1/2 flex flex-col justify-center items-center p-2 relative h-full bg-gray-50"><button id=clear_inputfilelist_button class="text-gray-500 bg-neutral-200 hover:bg-neutral-300 p-1 w-16 rounded-md absolute top-1 left-1">Clear</button><div id=input-upload-list-wrapper class="flex w-full overflow-auto h-[13rem] absolute bottom-1 bg-gray-50"><div id=input-upload-list class="h-full overflow-auto">`), _tmpl$2$g = /* @__PURE__ */ template(`<label id=input-drop-area for=input-file class="flex items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-md cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600 relative"><div id=input-drop-box class=w-1/2><div class="flex flex-col items-center justify-center pt-5 pb-6"><p class="mb-2 text-sm text-gray-500 dark:text-gray-400"><span class=font-semibold>Click to upload</span> input files</p><button class="mb-2 text-sm text-gray-500 dark:text-gray-400 bg-neutral-200 hover:bg-neutral-300 p-2 rounded-md absolute top-0 right-0">Manually enter variants instead</button></div><input type=file class=hidden name=input-file id=input-file multiple>`), _tmpl$3$b = /* @__PURE__ */ template(`<span class="pl-2 text-sm text-gray-600 hover:text-gray-400 cursor-pointer round-md inline-block w-5/6"title="Click to remove">`);
+var _tmpl$$1b = /* @__PURE__ */ template(`<div id=input-upload-list-div class="w-1/2 flex flex-col justify-center items-center p-2 relative h-full bg-gray-50"><button id=clear_inputfilelist_button class="text-gray-500 bg-neutral-200 hover:bg-neutral-300 p-1 w-16 rounded-md absolute top-1 left-1">Clear</button><div id=input-upload-list-wrapper class="flex w-full overflow-auto h-[13rem] absolute bottom-1 bg-gray-50"><div id=input-upload-list class="h-full overflow-auto">`), _tmpl$2$g = /* @__PURE__ */ template(`<label id=input-drop-area for=input-file class="flex items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-md cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600 relative"><div id=input-drop-box class=w-1/2><div class="flex flex-col items-center justify-center pt-5 pb-6"><p class="mb-2 text-sm text-gray-500 dark:text-gray-400"><span class=font-semibold>Click to upload</span> input files</p><button class="mb-2 text-sm text-gray-500 dark:text-gray-400 bg-neutral-200 hover:bg-neutral-300 p-2 rounded-md absolute top-0 right-0">Manually enter variants instead</button></div><input type=file class=hidden name=input-file id=input-file multiple>`), _tmpl$3$c = /* @__PURE__ */ template(`<span class="pl-2 text-sm text-gray-600 hover:text-gray-400 cursor-pointer round-md inline-block w-5/6"title="Click to remove">`);
 function InputDropArea(props) {
   const {
     setShowErrorDialog,
@@ -16628,7 +16628,7 @@ function InputDropArea(props) {
             return props.inputDataDrop;
           },
           children: (file) => (() => {
-            var _el$11 = _tmpl$3$b();
+            var _el$11 = _tmpl$3$c();
             _el$11.$$click = removeFile;
             _el$11.$$clickData = file.name;
             insert(_el$11, () => file.name);
@@ -16736,7 +16736,7 @@ function JobSubmitButton(props) {
 }
 delegateEvents(["click"]);
 
-var _tmpl$$16 = /* @__PURE__ */ template(`<div class="flex items-center justify-center ml-6"><input id=default-checkbox type=checkbox value=""title="If checked, each input files will be processed separately."class="w-4 h-4 text-blue-600 bg-gray-100 checked:bg-gray-500 rounded border-gray-300 focus:ring-0 focus:ring-offset-0 dark:bg-gray-700 dark:border-gray-600"><label for=default-checkbox class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300"title="If checked, each input files will be processed separately.">Separate job per file`), _tmpl$2$f = /* @__PURE__ */ template(`<div class="flex items-center justify-center ml-6"><input id=default-checkbox type=checkbox title="If checked, each input line should be a path to an input file in the server."class="w-4 h-4 text-blue-600 bg-gray-100 checked:bg-gray-500 rounded border-gray-300 focus:ring-0 focus:ring-offset-0 dark:bg-gray-700 dark:border-gray-600"><label for=default-checkbox class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300"title="If checked, each input line should be a path to an input file in the server.">Server files`), _tmpl$3$a = /* @__PURE__ */ template(`<div id=input-div class="w-[40rem] items-center flex flex-col"style="height:calc(100vh - 10rem);"><div class=flex></div><div class="w-full flex items-center justify-center mt-1"ondragenter=onDragEnterInputFiles(event) ondragover=onDragOverInputFiles(event) ondragleave=onDragLeaveInputFiles(event) ondrop=onDropInputFiles(event)>`);
+var _tmpl$$16 = /* @__PURE__ */ template(`<div class="flex items-center justify-center ml-6"><input id=default-checkbox type=checkbox value=""title="If checked, each input files will be processed separately."class="w-4 h-4 text-blue-600 bg-gray-100 checked:bg-gray-500 rounded border-gray-300 focus:ring-0 focus:ring-offset-0 dark:bg-gray-700 dark:border-gray-600"><label for=default-checkbox class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300"title="If checked, each input files will be processed separately.">Separate job per file`), _tmpl$2$f = /* @__PURE__ */ template(`<div class="flex items-center justify-center ml-6"><input id=default-checkbox type=checkbox title="If checked, each input line should be a path to an input file in the server."class="w-4 h-4 text-blue-600 bg-gray-100 checked:bg-gray-500 rounded border-gray-300 focus:ring-0 focus:ring-offset-0 dark:bg-gray-700 dark:border-gray-600"><label for=default-checkbox class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300"title="If checked, each input line should be a path to an input file in the server.">Server files`), _tmpl$3$b = /* @__PURE__ */ template(`<div id=input-div class="w-[40rem] items-center flex flex-col"style="height:calc(100vh - 10rem);"><div class=flex></div><div class="w-full flex items-center justify-center mt-1"ondragenter=onDragEnterInputFiles(event) ondragover=onDragOverInputFiles(event) ondragleave=onDragLeaveInputFiles(event) ondrop=onDropInputFiles(event)>`);
 function InputPanel(props) {
   function changeInputData(mode, data) {
     props.setInputMode(mode);
@@ -16760,7 +16760,7 @@ function InputPanel(props) {
     props.setServerFileMode(!props.serverFileMode());
   }
   return (() => {
-    var _el$ = _tmpl$3$a(), _el$2 = _el$.firstChild, _el$7 = _el$2.nextSibling;
+    var _el$ = _tmpl$3$b(), _el$2 = _el$.firstChild, _el$7 = _el$2.nextSibling;
     insert(_el$2, createComponent(AssemblySelectPanel, {
       get assembly() {
         return props.assembly;
@@ -17424,7 +17424,7 @@ function addModuleDownNewList(mn) {
   }
 }
 
-var _tmpl$$14 = /* @__PURE__ */ template(`<input class="block w-full text-xs text-gray-900 bg-gray-50 rounded-lg border border-gray-300 cursor-pointer dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"type=file>`), _tmpl$2$e = /* @__PURE__ */ template(`<select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">`), _tmpl$3$9 = /* @__PURE__ */ template(`<div class="flex flex-col mb-4"><span class="mb-2 font-xs">`), _tmpl$4$7 = /* @__PURE__ */ template(`<input type=text>`), _tmpl$5$4 = /* @__PURE__ */ template(`<option>`);
+var _tmpl$$14 = /* @__PURE__ */ template(`<input class="block w-full text-xs text-gray-900 bg-gray-50 rounded-lg border border-gray-300 cursor-pointer dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"type=file>`), _tmpl$2$e = /* @__PURE__ */ template(`<select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">`), _tmpl$3$a = /* @__PURE__ */ template(`<div class="flex flex-col mb-4"><span class="mb-2 font-xs">`), _tmpl$4$7 = /* @__PURE__ */ template(`<input type=text>`), _tmpl$5$4 = /* @__PURE__ */ template(`<option>`);
 const {
   setModuleOption,
   getModuleOption
@@ -17443,7 +17443,7 @@ function ModuleOption(props) {
     setModuleOption(props.moduleName, props.name, props.values, value);
   }
   return (() => {
-    var _el$ = _tmpl$3$9(), _el$2 = _el$.firstChild;
+    var _el$ = _tmpl$3$a(), _el$2 = _el$.firstChild;
     insert(_el$2, () => props.values.title);
     insert(_el$, createComponent(Switch, {
       get fallback() {
@@ -17498,7 +17498,7 @@ function ModuleOption(props) {
 }
 delegateEvents(["click", "keyup"]);
 
-var _tmpl$$13 = /* @__PURE__ */ template(`<div title="Add this module for analysis">`), _tmpl$2$d = /* @__PURE__ */ template(`<div title="Remove this module and the module that depend on it">`), _tmpl$3$8 = /* @__PURE__ */ template(`<div title="Remove this module and its dependencies">`), _tmpl$4$6 = /* @__PURE__ */ template(`<img class="w-20 rounded-lg">`), _tmpl$5$3 = /* @__PURE__ */ template(`<span class=break-all>`), _tmpl$6$2 = /* @__PURE__ */ template(`<span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 cursor-default"title="Data version">`), _tmpl$7 = /* @__PURE__ */ template(`<span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">`), _tmpl$8 = /* @__PURE__ */ template(`<span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Installed`), _tmpl$9 = /* @__PURE__ */ template(`<span class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">New`), _tmpl$10 = /* @__PURE__ */ template(`<span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">Installed `), _tmpl$11 = /* @__PURE__ */ template(`<div class="absolute top-1 right-1">`), _tmpl$12 = /* @__PURE__ */ template(`<div class="group relative modulecard relative items-center space-x-3 rounded-lg border border-gray-300 px-6 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:border-gray-400 p-2 mb-2"><div class="absolute right-0 bottom-0 h-full w-[140px] p-2 cursor-default"style="background-color:rgba(68, 64, 60, 0.1);"></div><div class=flex><div class="w-24 h-24 mr-2 flex justify-center items-center"></div><div class="min-w-0 flex-1"style=min-height:6rem;><p><span class="text-md font-semibold text-gray-700"></span><span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 cursor-default"title="Installed version"></span></p><p class="text-sm text-gray-500"></p><p><span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800"></span></p><p>`);
+var _tmpl$$13 = /* @__PURE__ */ template(`<div title="Add this module for analysis">`), _tmpl$2$d = /* @__PURE__ */ template(`<div title="Remove this module and the module that depend on it">`), _tmpl$3$9 = /* @__PURE__ */ template(`<div title="Remove this module and its dependencies">`), _tmpl$4$6 = /* @__PURE__ */ template(`<img class="w-20 rounded-lg">`), _tmpl$5$3 = /* @__PURE__ */ template(`<span class=break-all>`), _tmpl$6$2 = /* @__PURE__ */ template(`<span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 cursor-default"title="Data version">`), _tmpl$7 = /* @__PURE__ */ template(`<span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">`), _tmpl$8 = /* @__PURE__ */ template(`<span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 ml-2"title=Store>`), _tmpl$9 = /* @__PURE__ */ template(`<span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Installed`), _tmpl$10 = /* @__PURE__ */ template(`<span class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">New`), _tmpl$11 = /* @__PURE__ */ template(`<span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">Installed `), _tmpl$12 = /* @__PURE__ */ template(`<div class="absolute top-1 right-1">`), _tmpl$13 = /* @__PURE__ */ template(`<div class="group relative modulecard relative items-center space-x-3 rounded-lg border border-gray-300 px-6 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:border-gray-400 p-2 mb-2"><div class="absolute right-0 bottom-0 h-full w-[140px] p-2 cursor-default"style="background-color:rgba(68, 64, 60, 0.1);"></div><div class=flex><div class="w-24 h-24 mr-2 flex justify-center items-center"></div><div class="min-w-0 flex-1"style=min-height:6rem;><p><span class="text-md font-semibold text-gray-700"></span><span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 cursor-default"title="Installed version"></span></p><p class="text-sm text-gray-500"></p><p><span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800"></span></p><p>`);
 function ModuleCard(props) {
   const {
     setRemoteModules
@@ -17532,6 +17532,12 @@ function ModuleCard(props) {
   } = gvMultiuser;
   function moduleInstalled() {
     return installed(props.moduleName);
+  }
+  function getStoreLabel() {
+    if (!props.moduleInfo) {
+      return null;
+    }
+    return props.moduleInfo.store_label || props.moduleInfo.store || null;
   }
   function onClickLogo(_) {
     if (props.kind == "remote") {
@@ -17600,7 +17606,7 @@ function ModuleCard(props) {
     }
   }
   return (() => {
-    var _el$ = _tmpl$12(), _el$2 = _el$.firstChild, _el$8 = _el$2.nextSibling, _el$9 = _el$8.firstChild, _el$13 = _el$9.nextSibling, _el$14 = _el$13.firstChild, _el$15 = _el$14.firstChild, _el$16 = _el$15.nextSibling, _el$18 = _el$14.nextSibling, _el$19 = _el$18.nextSibling, _el$21 = _el$19.firstChild, _el$22 = _el$19.nextSibling;
+    var _el$ = _tmpl$13(), _el$2 = _el$.firstChild, _el$8 = _el$2.nextSibling, _el$9 = _el$8.firstChild, _el$13 = _el$9.nextSibling, _el$14 = _el$13.firstChild, _el$15 = _el$14.firstChild, _el$16 = _el$15.nextSibling, _el$18 = _el$14.nextSibling, _el$19 = _el$18.nextSibling, _el$21 = _el$19.firstChild, _el$23 = _el$19.nextSibling;
     _el$.addEventListener("mouseleave", onMouseLeave);
     _el$.addEventListener("mouseenter", onMouseEnter);
     insert(_el$2, createComponent(Switch, {
@@ -17667,7 +17673,7 @@ function ModuleCard(props) {
               }));
               return _el$6;
             })(), (() => {
-              var _el$7 = _tmpl$3$8();
+              var _el$7 = _tmpl$3$9();
               _el$7.$$click = removeDownModule;
               insert(_el$7, createComponent(Button, {
                 "class": "details-button w-full text-sm h-8 cursor-pointer",
@@ -17786,7 +17792,17 @@ function ModuleCard(props) {
       }
     }), _el$21);
     insert(_el$21, () => props.moduleInfo.type);
-    insert(_el$22, createComponent(Switch, {
+    insert(_el$19, createComponent(Show, {
+      get when() {
+        return getStoreLabel();
+      },
+      get children() {
+        var _el$22 = _tmpl$8();
+        insert(_el$22, getStoreLabel);
+        return _el$22;
+      }
+    }), null);
+    insert(_el$23, createComponent(Switch, {
       get children() {
         return createComponent(Match, {
           get when() {
@@ -17798,17 +17814,17 @@ function ModuleCard(props) {
                 return moduleInstalled();
               },
               get children() {
-                return _tmpl$8();
+                return _tmpl$9();
               }
             }), createComponent(Show, {
               get when() {
                 return updateAvailableForModule(props.moduleName);
               },
               get children() {
-                return [_tmpl$9(), (() => {
-                  var _el$25 = _tmpl$10(); _el$25.firstChild;
-                  insert(_el$25, () => props.localModuleInfo.version, null);
-                  return _el$25;
+                return [_tmpl$10(), (() => {
+                  var _el$26 = _tmpl$11(); _el$26.firstChild;
+                  insert(_el$26, () => props.localModuleInfo.version, null);
+                  return _el$26;
                 })()];
               }
             })];
@@ -17823,8 +17839,8 @@ function ModuleCard(props) {
             return createMemo(() => props.kind == "remote")() && (multiuser() == false || admin() == true);
           },
           get children() {
-            var _el$27 = _tmpl$11();
-            insert(_el$27, createComponent(Show, {
+            var _el$28 = _tmpl$12();
+            insert(_el$28, createComponent(Show, {
               get when() {
                 return createMemo(() => !!(!moduleInstalled() || updateAvailableForModule(props.moduleName)))() && !inQueue(props.moduleName);
               },
@@ -17839,7 +17855,7 @@ function ModuleCard(props) {
                 });
               }
             }), null);
-            insert(_el$27, createComponent(Show, {
+            insert(_el$28, createComponent(Show, {
               get when() {
                 return moduleInstalled() || inQueue(props.moduleName);
               },
@@ -17852,7 +17868,7 @@ function ModuleCard(props) {
                 });
               }
             }), null);
-            return _el$27;
+            return _el$28;
           }
         });
       }
@@ -18269,7 +18285,7 @@ function TypePanel(props) {
 }
 delegateEvents(["click"]);
 
-var _tmpl$$V = /* @__PURE__ */ template(`<button type=button class="graybutton inline-flex items-center rounded border border-transparent bg-gray-50 px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-300 focus:outline-none drop-shadow-lg">`), _tmpl$2$b = /* @__PURE__ */ template(`<div class="flex items-center mr-4">`), _tmpl$3$7 = /* @__PURE__ */ template(`<div class="flex mb-2"><label for=search class=sr-only>Search</label><input type=text name=search class="block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mr-2"placeholder=Search><div class="relative flex text-xs font-medium text-gray-700 shadow-sm items-center"><button type=button class="ml-2 graybutton inline-flex items-center rounded border border-transparent bg-gray-50 px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-300 focus:outline-none drop-shadow-lg">`);
+var _tmpl$$V = /* @__PURE__ */ template(`<button type=button class="graybutton inline-flex items-center rounded border border-transparent bg-gray-50 px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-300 focus:outline-none drop-shadow-lg">`), _tmpl$2$b = /* @__PURE__ */ template(`<div class="flex items-center mr-4">`), _tmpl$3$8 = /* @__PURE__ */ template(`<div class="flex mb-2"><label for=search class=sr-only>Search</label><input type=text name=search class="block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mr-2"placeholder=Search><div class="relative flex text-xs font-medium text-gray-700 shadow-sm items-center"><button type=button class="ml-2 graybutton inline-flex items-center rounded border border-transparent bg-gray-50 px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-300 focus:outline-none drop-shadow-lg">`);
 function ModuleSearchPanel(props) {
   function updateSearchText(evt) {
     props.setSearchText(evt.target.value);
@@ -18295,7 +18311,7 @@ function ModuleSearchPanel(props) {
     }
   }
   return (() => {
-    var _el$ = _tmpl$3$7(), _el$2 = _el$.firstChild, _el$3 = _el$2.nextSibling, _el$4 = _el$3.nextSibling, _el$7 = _el$4.firstChild;
+    var _el$ = _tmpl$3$8(), _el$2 = _el$.firstChild, _el$3 = _el$2.nextSibling, _el$4 = _el$3.nextSibling, _el$7 = _el$4.firstChild;
     _el$3.$$keyup = updateSearchText;
     insert(_el$4, createComponent(Show, {
       get when() {
@@ -18847,7 +18863,7 @@ function SubmitWarnDialog(props) {
 }
 delegateEvents(["click"]);
 
-var _tmpl$$J = /* @__PURE__ */ template(`<div class="tabcontent p-4 snap-y snap-mandatory h-screen overflow-y-auto"><div class="relative container flex gap-8 snap-center max-w-7xl h-[95vh] justify-center items-start">`), _tmpl$2$9 = /* @__PURE__ */ template(`<div>Loading...`), _tmpl$3$6 = /* @__PURE__ */ template(`<div><span>Analysis submission was successful.</span><br><span>You can find the status of your analysis submission on the Results section.</span><br><span>`), _tmpl$4$5 = /* @__PURE__ */ template(`<div class=text-md><div>No analysis module was selected.</div><div class=mt-2>Proceed to submit?`);
+var _tmpl$$J = /* @__PURE__ */ template(`<div class="tabcontent p-4 snap-y snap-mandatory h-screen overflow-y-auto"><div class="relative container flex gap-8 snap-center max-w-7xl h-[95vh] justify-center items-start">`), _tmpl$2$9 = /* @__PURE__ */ template(`<div>Loading...`), _tmpl$3$7 = /* @__PURE__ */ template(`<div><span>Analysis submission was successful.</span><br><span>You can find the status of your analysis submission on the Results section.</span><br><span>`), _tmpl$4$5 = /* @__PURE__ */ template(`<div class=text-md><div>No analysis module was selected.</div><div class=mt-2>Proceed to submit?`);
 const {
   tabName: tabName$1
 } = gvTabName;
@@ -19208,7 +19224,7 @@ function TabSubmit(props) {
           },
           get text() {
             return (() => {
-              var _el$4 = _tmpl$3$6(), _el$5 = _el$4.firstChild, _el$6 = _el$5.nextSibling, _el$7 = _el$6.nextSibling, _el$8 = _el$7.nextSibling, _el$9 = _el$8.nextSibling;
+              var _el$4 = _tmpl$3$7(), _el$5 = _el$4.firstChild, _el$6 = _el$5.nextSibling, _el$7 = _el$6.nextSibling, _el$8 = _el$7.nextSibling, _el$9 = _el$8.nextSibling;
               insert(_el$9, () => "Look for the name " + submittedJobName() + ".");
               return _el$4;
             })();
@@ -19407,7 +19423,7 @@ function PageNavigation(props) {
 }
 delegateEvents(["click"]);
 
-var _tmpl$$E = /* @__PURE__ */ template(`<div>`), _tmpl$2$8 = /* @__PURE__ */ template(`<span class="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800">`), _tmpl$3$5 = /* @__PURE__ */ template(`<span class="inline-flex rounded-full bg-amber-100 px-2 text-xs font-semibold leading-5 text-amber-800">`), _tmpl$4$4 = /* @__PURE__ */ template(`<span class="inline-flex rounded-full bg-red-100 px-2 text-xs font-semibold leading-5 text-red-800">`), _tmpl$5$2 = /* @__PURE__ */ template(`<span class="inline-flex text-xs">`), _tmpl$6$1 = /* @__PURE__ */ template(`<tr class="text-sm h-16"><td scope=col class="relative w-12 px-6 sm:w-16 sm:px-8 bg-gray-50"><input type=checkbox class="absolute left-4 top-1/2 -mt-2 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 sm:left-6"></td><td class=jobs-table-td></td><td class="jobs-table-td bg-gray-50"></td><td class=jobs-table-td></td><td class="jobs-table-td bg-gray-50"></td><td class=jobs-table-td></td><td class="jobs-table-td bg-gray-50 text-xs"></td><td class=jobs-table-td></td><td class="jobs-table-td bg-gray-50"></td><td class=jobs-table-td>`);
+var _tmpl$$E = /* @__PURE__ */ template(`<div>`), _tmpl$2$8 = /* @__PURE__ */ template(`<span class="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800">`), _tmpl$3$6 = /* @__PURE__ */ template(`<span class="inline-flex rounded-full bg-amber-100 px-2 text-xs font-semibold leading-5 text-amber-800">`), _tmpl$4$4 = /* @__PURE__ */ template(`<span class="inline-flex rounded-full bg-red-100 px-2 text-xs font-semibold leading-5 text-red-800">`), _tmpl$5$2 = /* @__PURE__ */ template(`<span class="inline-flex text-xs">`), _tmpl$6$1 = /* @__PURE__ */ template(`<tr class="text-sm h-16"><td scope=col class="relative w-12 px-6 sm:w-16 sm:px-8 bg-gray-50"><input type=checkbox class="absolute left-4 top-1/2 -mt-2 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 sm:left-6"></td><td class=jobs-table-td></td><td class="jobs-table-td bg-gray-50"></td><td class=jobs-table-td></td><td class="jobs-table-td bg-gray-50"></td><td class=jobs-table-td></td><td class="jobs-table-td bg-gray-50 text-xs"></td><td class=jobs-table-td></td><td class="jobs-table-td bg-gray-50"></td><td class=jobs-table-td>`);
 function noStatusFetchNeeded(status) {
   return status == "Finished" || status == "Error" || status == "Aborted";
 }
@@ -19502,7 +19518,7 @@ function JobRow(props) {
       })();
     } else if (status == "Aborted") {
       return (() => {
-        var _el$4 = _tmpl$3$5();
+        var _el$4 = _tmpl$3$6();
         insert(_el$4, () => props.job.status);
         return _el$4;
       })();
@@ -20297,7 +20313,7 @@ function RemoteModuleFilterWrapper(props) {
 }
 delegateEvents(["click"]);
 
-var _tmpl$$t = /* @__PURE__ */ template(`<img class="w-24 rounded-lg">`), _tmpl$2$6 = /* @__PURE__ */ template(`<div class="group-hover:block absolute z-10 w-[6.5rem] h-[6.5rem]"><div class="install_pie absolute top-[1.25rem] left-[1.25rem]">`), _tmpl$3$4 = /* @__PURE__ */ template(`<div class="relative modulecard items-center rounded-lg border border-gray-300 bg-white shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:border-gray-400 flex items-center group h-[6.5rem] w-[6.5rem] shrink-0"><div class="flex justify-center items-center h-full w-full"></div><div class="group-hover:block hidden bg-gray-900/60 absolute z-20 w-full h-full">`), _tmpl$4$3 = /* @__PURE__ */ template(`<span class=break-all>`);
+var _tmpl$$t = /* @__PURE__ */ template(`<img class="w-24 rounded-lg">`), _tmpl$2$6 = /* @__PURE__ */ template(`<div class="group-hover:block absolute z-10 w-[6.5rem] h-[6.5rem]"><div class="install_pie absolute top-[1.25rem] left-[1.25rem]">`), _tmpl$3$5 = /* @__PURE__ */ template(`<div class="relative modulecard items-center rounded-lg border border-gray-300 bg-white shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:border-gray-400 flex items-center group h-[6.5rem] w-[6.5rem] shrink-0"><div class="flex justify-center items-center h-full w-full"></div><div class="group-hover:block hidden bg-gray-900/60 absolute z-20 w-full h-full">`), _tmpl$4$3 = /* @__PURE__ */ template(`<span class=break-all>`);
 const {
   serverUrl
 } = gvServer;
@@ -20329,7 +20345,7 @@ function InstallQueueModuleCard(props) {
     props.setTooltipShow(false);
   }
   return (() => {
-    var _el$ = _tmpl$3$4(), _el$2 = _el$.firstChild, _el$4 = _el$2.nextSibling;
+    var _el$ = _tmpl$3$5(), _el$2 = _el$.firstChild, _el$4 = _el$2.nextSibling;
     insert(_el$2, createComponent(Show, {
       get when() {
         return moduleInfo.has_logo;
@@ -20593,7 +20609,7 @@ function createGlobalStates() {
 }
 const gvUsers = createRoot(createGlobalStates);
 
-var _tmpl$$o = /* @__PURE__ */ template(`<form class=space-y-6 action=#><div><label for=email class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Up to 8 Emails to invite</label><textarea class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white h-48"required>`), _tmpl$2$5 = /* @__PURE__ */ template(`<button type=button class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"><div class=flex><p>Invite`), _tmpl$3$3 = /* @__PURE__ */ template(`<div class="h-screen w-screen grid place-items-center fixed z-10 top-0 left-0 bg-white opacity-95"><div aria-hidden=true class="z-10 p-4 overflow-x-hidden overflow-y-auto w-96"><h3 class="mb-4 text-xl font-medium text-gray-900 dark:text-white">Invite users</h3><div class="flex mt-2 items-center space-x-2 border-gray-200 rounded-b dark:border-gray-600"><button type=button class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600">Cancel`), _tmpl$4$2 = /* @__PURE__ */ template(`<div class=h-48>Invitation has been successful.`), _tmpl$5$1 = /* @__PURE__ */ template(`<button type=button class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Close`);
+var _tmpl$$o = /* @__PURE__ */ template(`<form class=space-y-6 action=#><div><label for=email class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Up to 8 Emails to invite</label><textarea class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white h-48"required>`), _tmpl$2$5 = /* @__PURE__ */ template(`<button type=button class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"><div class=flex><p>Invite`), _tmpl$3$4 = /* @__PURE__ */ template(`<div class="h-screen w-screen grid place-items-center fixed z-10 top-0 left-0 bg-white opacity-95"><div aria-hidden=true class="z-10 p-4 overflow-x-hidden overflow-y-auto w-96"><h3 class="mb-4 text-xl font-medium text-gray-900 dark:text-white">Invite users</h3><div class="flex mt-2 items-center space-x-2 border-gray-200 rounded-b dark:border-gray-600"><button type=button class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600">Cancel`), _tmpl$4$2 = /* @__PURE__ */ template(`<div class=h-48>Invitation has been successful.`), _tmpl$5$1 = /* @__PURE__ */ template(`<button type=button class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Close`);
 function InviteUserDialog(props) {
   const {
     email
@@ -20644,7 +20660,7 @@ function InviteUserDialog(props) {
     });
   }
   return (() => {
-    var _el$ = _tmpl$3$3(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild, _el$8 = _el$3.nextSibling, _el$12 = _el$8.firstChild;
+    var _el$ = _tmpl$3$4(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild, _el$8 = _el$3.nextSibling, _el$12 = _el$8.firstChild;
     insert(_el$2, createComponent(Show, {
       get when() {
         return !inviteSuccess();
@@ -20696,7 +20712,7 @@ function InviteUserDialog(props) {
 }
 delegateEvents(["click"]);
 
-var _tmpl$$n = /* @__PURE__ */ template(`<div class=mt-4><h3 class="text-lg font-semibold">Users</h3><div class="rounded-lg bg-white shadow mt-2"><button type=button class="m-2 items-center rounded border border-transparent bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-4">Invite user</button><table class="w-full text-sm text-left text-gray-500 dark:text-gray-400"><thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"><tr><th scope=col class="py-3 px-6">Email</th><th scope=col class="py-3 px-6">Role</th></tr></thead><tbody>`), _tmpl$2$4 = /* @__PURE__ */ template(`<span class="ml-2 inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Admin`), _tmpl$3$2 = /* @__PURE__ */ template(`<button type=button class="invisible inline-flex items-center rounded border border-transparent bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-4 group-hover:visible">Remove admin`), _tmpl$4$1 = /* @__PURE__ */ template(`<button type=button class="invisible inline-flex items-center rounded border border-transparent bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-4 group-hover:visible">Remove user`), _tmpl$5 = /* @__PURE__ */ template(`<tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 group"><td scope=row class="py-4 px-6 font-medium text-gray-900 whitespace-nowrap dark:text-white"></td><td class="py-4 px-6">`), _tmpl$6 = /* @__PURE__ */ template(`<button type=button class="invisible inline-flex items-center rounded border border-transparent bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-4 group-hover:visible">Make admin`);
+var _tmpl$$n = /* @__PURE__ */ template(`<div class=mt-4><h3 class="text-lg font-semibold">Users</h3><div class="rounded-lg bg-white shadow mt-2"><button type=button class="m-2 items-center rounded border border-transparent bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-4">Invite user</button><table class="w-full text-sm text-left text-gray-500 dark:text-gray-400"><thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"><tr><th scope=col class="py-3 px-6">Email</th><th scope=col class="py-3 px-6">Role</th></tr></thead><tbody>`), _tmpl$2$4 = /* @__PURE__ */ template(`<span class="ml-2 inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Admin`), _tmpl$3$3 = /* @__PURE__ */ template(`<button type=button class="invisible inline-flex items-center rounded border border-transparent bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-4 group-hover:visible">Remove admin`), _tmpl$4$1 = /* @__PURE__ */ template(`<button type=button class="invisible inline-flex items-center rounded border border-transparent bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-4 group-hover:visible">Remove user`), _tmpl$5 = /* @__PURE__ */ template(`<tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 group"><td scope=row class="py-4 px-6 font-medium text-gray-900 whitespace-nowrap dark:text-white"></td><td class="py-4 px-6">`), _tmpl$6 = /* @__PURE__ */ template(`<button type=button class="invisible inline-flex items-center rounded border border-transparent bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ml-4 group-hover:visible">Make admin`);
 function UserManagement() {
   const {
     users,
@@ -20738,7 +20754,7 @@ function UserManagement() {
             })();
           },
           get children() {
-            var _el$12 = _tmpl$3$2();
+            var _el$12 = _tmpl$3$3();
             _el$12.$$click = removeAdmin;
             _el$12.$$clickData = user.email;
             return _el$12;
@@ -23400,7 +23416,7 @@ function DetailCardData(props) {
   })();
 }
 
-var _tmpl$$f = /* @__PURE__ */ template(`<span class="relative inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 cursor-default"title="Data version">`), _tmpl$2$2 = /* @__PURE__ */ template(`<div class="absolute w-full h-full bg-white opacity-1 top-0 left-0 z-30"><div class="absolute opacity-1 top-[5vh] left-[10vw] w-[80vw] h-[80vh] overflow-auto bg-gray-50 z-30 m-4 p-8"><div class="-ml-1 mb-2"><span class="relative inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-80 cursor-default"></span><span class="relative inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 cursor-default"title="Latest version"></span><span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 cursor-default"></span><span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 cursor-default">Installed</span><span class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800 cursor-default">Update available</span></div><img class="h-[100px] top-0 right-0 rounded-lg"><div class="readme opacity-1 list-decimal mb-8"></div><h3 class="text-lg font-semibold">Module output</h3></div><div class="absolute top-0 right-0 cursor-pointer">`);
+var _tmpl$$f = /* @__PURE__ */ template(`<span class="relative inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 cursor-default"title=Store>`), _tmpl$2$2 = /* @__PURE__ */ template(`<span class="relative inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 cursor-default"title="Data version">`), _tmpl$3$2 = /* @__PURE__ */ template(`<div class="absolute w-full h-full bg-white opacity-1 top-0 left-0 z-30"><div class="absolute opacity-1 top-[5vh] left-[10vw] w-[80vw] h-[80vh] overflow-auto bg-gray-50 z-30 m-4 p-8"><div class="-ml-1 mb-2"><span class="relative inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-80 cursor-default"></span><span class="relative inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 cursor-default"title="Latest version"></span><span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 cursor-default"></span><span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 cursor-default">Installed</span><span class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800 cursor-default">Update available</span></div><img class="h-[100px] top-0 right-0 rounded-lg"><div class="readme opacity-1 list-decimal mb-8"></div><h3 class="text-lg font-semibold">Module output</h3></div><div class="absolute top-0 right-0 cursor-pointer">`);
 const ocImgRegex = /img src=\"(?!http)/g;
 function DetailCard() {
   const {
@@ -23448,25 +23464,42 @@ function DetailCard() {
     setDetailModuleName(null);
     mutate(null);
   }
+  function getStoreLabel() {
+    const info = moduleInfo();
+    if (!info) {
+      return null;
+    }
+    return info.store_label || info.store || null;
+  }
   return createComponent(Show, {
     get when() {
       return createMemo(() => !!showDetailCard())() && markdown() != null;
     },
     get children() {
-      var _el$ = _tmpl$2$2(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild, _el$4 = _el$3.firstChild, _el$5 = _el$4.nextSibling, _el$7 = _el$5.nextSibling, _el$8 = _el$7.nextSibling, _el$9 = _el$8.nextSibling, _el$10 = _el$3.nextSibling, _el$11 = _el$10.nextSibling; _el$11.nextSibling; var _el$13 = _el$2.nextSibling;
+      var _el$ = _tmpl$3$2(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild, _el$4 = _el$3.firstChild, _el$6 = _el$4.nextSibling, _el$8 = _el$6.nextSibling, _el$9 = _el$8.nextSibling, _el$10 = _el$9.nextSibling, _el$11 = _el$3.nextSibling, _el$12 = _el$11.nextSibling; _el$12.nextSibling; var _el$14 = _el$2.nextSibling;
       insert(_el$4, () => moduleInfo().type);
-      insert(_el$5, () => moduleInfo().latest_version);
+      insert(_el$3, createComponent(Show, {
+        get when() {
+          return getStoreLabel();
+        },
+        get children() {
+          var _el$5 = _tmpl$$f();
+          insert(_el$5, getStoreLabel);
+          return _el$5;
+        }
+      }), _el$6);
+      insert(_el$6, () => moduleInfo().latest_version);
       insert(_el$3, createComponent(Show, {
         get when() {
           return moduleInfo().conf.data_version != null;
         },
         get children() {
-          var _el$6 = _tmpl$$f();
-          insert(_el$6, () => moduleInfo().conf.data_version);
-          return _el$6;
+          var _el$7 = _tmpl$2$2();
+          insert(_el$7, () => moduleInfo().conf.data_version);
+          return _el$7;
         }
-      }), _el$7);
-      insert(_el$7, () => getSizeString(moduleInfo().size));
+      }), _el$8);
+      insert(_el$8, () => getSizeString(moduleInfo().size));
       insert(_el$2, createComponent(DetailCardOutputTable, {
         get outputColumns() {
           return moduleInfo().output_columns;
@@ -23482,17 +23515,17 @@ function DetailCard() {
           return moduleInfo().developer.data;
         }
       }), null);
-      _el$13.$$click = onClickX;
-      insert(_el$13, createComponent(HiOutlineXMark, {
+      _el$14.$$click = onClickX;
+      insert(_el$14, createComponent(HiOutlineXMark, {
         color: "rgb(107 114 128)",
         size: 64
       }));
       createRenderEffect((_p$) => {
         var _v$ = !installed(detailModuleName()), _v$2 = !updateAvailableForModule(detailModuleName()), _v$3 = `${serverUrl}/store/remotelogo?module=${moduleInfo().name}&store=${moduleInfo().store}`, _v$4 = markdown();
-        _v$ !== _p$.e && _el$8.classList.toggle("hidden", _p$.e = _v$);
-        _v$2 !== _p$.t && _el$9.classList.toggle("hidden", _p$.t = _v$2);
-        _v$3 !== _p$.a && setAttribute(_el$10, "src", _p$.a = _v$3);
-        _v$4 !== _p$.o && (_el$11.innerHTML = _p$.o = _v$4);
+        _v$ !== _p$.e && _el$9.classList.toggle("hidden", _p$.e = _v$);
+        _v$2 !== _p$.t && _el$10.classList.toggle("hidden", _p$.t = _v$2);
+        _v$3 !== _p$.a && setAttribute(_el$11, "src", _p$.a = _v$3);
+        _v$4 !== _p$.o && (_el$12.innerHTML = _p$.o = _v$4);
         return _p$;
       }, {
         e: void 0,

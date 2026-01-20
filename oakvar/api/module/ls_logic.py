@@ -45,9 +45,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from typing import Any
-from typing import List
-from typing import Dict
+from typing import Any, Dict, List
 
 
 def list_modules(
@@ -59,12 +57,15 @@ def list_modules(
     humanized_size: bool = False,
 ) -> List[Dict[str, Any]]:
     import re
-    from ...lib.module.remote import search_remote
-    from ...lib.module.local import search_local
-    from ...lib.module.local import get_local_module_info
-    from ...lib.module.remote import get_remote_module_info_ls
+
+    from ...lib.module.local import get_local_module_info, search_local
+    from ...lib.module.remote import (
+        RemoteModuleLs,
+        get_remote_module_info_ls,
+        search_remote,
+    )
+    from ...lib.store import store_label
     from ...lib.util.util import humanize_bytes
-    from ...lib.module.remote import RemoteModuleLs
 
     all_toks_json = []
     if search_store:
@@ -117,13 +118,14 @@ def list_modules(
                     {
                         "title": module_info.title,
                         "type": module_info.type,
+                        "store": store_label(module_info.store),
                         "size": size,
                         "version": module_info.latest_code_version,
                         "data_source": module_info.latest_data_source,
                         "installed": module_info.installed,
                         "local_code_version": module_info.local_code_version,
                         "local_data_source": module_info.local_data_source,
-                        "publish_time": module_info.publish_time
+                        "publish_time": module_info.publish_time,
                     }
                 )
             else:

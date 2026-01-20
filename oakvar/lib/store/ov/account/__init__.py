@@ -45,17 +45,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from typing import Optional
-from typing import Any
-from typing import Tuple
-from typing import Dict
 from pathlib import Path
+from typing import Any, Dict, Optional, Tuple
 
 
 def get_email_pw_from_user_conf(email: Optional[str] = None, pw: Optional[str] = None):
+    from ....store.consts import OV_STORE_EMAIL_KEY, OV_STORE_PW_KEY
     from ....system import get_user_conf
-    from ....store.consts import OV_STORE_EMAIL_KEY
-    from ....store.consts import OV_STORE_PW_KEY
 
     user_conf = get_user_conf()
     if not email:
@@ -68,10 +64,9 @@ def get_email_pw_from_user_conf(email: Optional[str] = None, pw: Optional[str] =
 def get_email_pw_interactively(
     email: Optional[str] = None, pw: Optional[str] = None, pwconfirm=False, outer=None
 ) -> Tuple:
-    from ....util.util import email_is_valid
-    from ....util.util import pw_is_valid
-    from ....util.util import is_in_jupyter_notebook
     from getpass import getpass
+
+    from ....util.util import email_is_valid, is_in_jupyter_notebook, pw_is_valid
 
     if not email:
         while True:
@@ -110,8 +105,9 @@ def create(
     outer=None,
 ) -> dict:
     from requests import post
-    from ....system import get_system_conf
+
     from ....store.consts import store_url_key
+    from ....system import get_system_conf
     from ....util.util import is_in_jupyter_notebook
 
     if (not email or not pw) and interactive:
@@ -176,6 +172,7 @@ def create(
 
 def delete(outer=None) -> bool:
     from requests import post
+
     from ...ov import get_store_url
 
     token_set = get_token_set()
@@ -224,9 +221,10 @@ def check_logged_in_with_token(outer=None) -> bool:
 
 
 def reset(email: Optional[str] = None, outer=None) -> bool:
-    from ...ov import get_store_url
-    from ....util.util import email_is_valid
     from requests import post
+
+    from ....util.util import email_is_valid
+    from ...ov import get_store_url
 
     if not email:
         return False
@@ -277,8 +275,9 @@ def login(
     outer=None,
 ) -> Dict[str, Any]:
     from requests import post
-    from ...ov import get_store_url
+
     from ....util.util import is_in_jupyter_notebook
+    from ...ov import get_store_url
 
     if not relogin and not email:
         ret, token_set_email = try_login_with_token(email=email)
@@ -334,10 +333,9 @@ def login(
 
 
 def get_token_set_path() -> Path:
-    from ....system import get_root_dir
-    from ....system import get_system_conf_path
     from ....exceptions import SystemMissingException
     from ....store.consts import ov_store_id_token_fname
+    from ....system import get_root_dir, get_system_conf_path
 
     root_dir = get_root_dir()
     if not root_dir:
@@ -351,8 +349,8 @@ def get_token_set_path() -> Path:
 
 
 def get_token_set() -> Optional[dict]:
-    from os.path import exists
     from json import load
+    from os.path import exists
 
     token_set_path = get_token_set_path()
     if not token_set_path or not exists(token_set_path):
@@ -406,8 +404,9 @@ def delete_id_token(outer=None):
 
 
 def id_token_is_valid() -> Tuple[bool, bool]:  # valid, expired
-    from ...ov import get_store_url
     from requests import post
+
+    from ...ov import get_store_url
 
     id_token = get_id_token()
     if not id_token:
@@ -427,8 +426,9 @@ def id_token_is_valid() -> Tuple[bool, bool]:  # valid, expired
 
 
 def refresh_token_set() -> Tuple[int, str]:
-    from ...ov import get_store_url
     from requests import post
+
+    from ...ov import get_store_url
 
     refresh_token = get_refresh_token()
     url = get_store_url() + "/account/refresh"
@@ -451,11 +451,13 @@ def refresh_token_set() -> Tuple[int, str]:
 
 
 def change(newpw: Optional[str] = None, outer=None) -> bool:
-    from requests import post
-    from ...ov import get_store_url
     from getpass import getpass
-    from ....util.util import pw_is_valid
+
+    from requests import post
+
     from ....exceptions import StoreServerError
+    from ....util.util import pw_is_valid
+    from ...ov import get_store_url
 
     id_token = get_id_token()
     if not id_token:
@@ -548,8 +550,8 @@ def token_set_exists() -> bool:
 
 
 def delete_token_set():
-    from os.path import exists
     from os import remove
+    from os.path import exists
 
     token_set_path = get_token_set_path()
     if exists(token_set_path):
@@ -562,10 +564,9 @@ def get_email_pw_from_settings(
     conf=None,
 ) -> Tuple[Optional[str], Optional[str]]:
     from os import environ
-    from ...consts import OV_STORE_EMAIL_KEY
-    from ...consts import OV_STORE_PW_KEY
-    from ....system import get_user_conf
-    from ....system import get_env_key
+
+    from ....system import get_env_key, get_user_conf
+    from ...consts import OV_STORE_EMAIL_KEY, OV_STORE_PW_KEY
 
     if email and pw:
         return email, pw
@@ -598,15 +599,15 @@ def get_email_pw_from_settings(
 
 
 def emailpw_are_valid(email: str = "", pw: str = "") -> bool:
-    from ....util.util import email_is_valid
-    from ....util.util import pw_is_valid
+    from ....util.util import email_is_valid, pw_is_valid
 
     return email_is_valid(email) and pw_is_valid(pw)
 
 
 def email_is_verified(email: str, outer=None) -> bool:
-    from ...ov import get_store_url
     from requests import post
+
+    from ...ov import get_store_url
 
     url = get_store_url() + "/account/email_verified"
     params = {"email": email}

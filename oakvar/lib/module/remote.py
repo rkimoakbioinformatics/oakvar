@@ -45,20 +45,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from typing import Any
-from typing import Optional
-from typing import Dict
-from typing import Tuple
-from typing import List
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class RemoteModuleLs:
     def __init__(self, __name__, **kwargs):
         from json import loads
+
         from ..store.db import latest_module_version_size
 
         self.name = kwargs.get("name") or ""
+        self.store = kwargs.get("store") or ""
         self.title = kwargs.get("title")
         self.type = kwargs.get("type")
         latest = latest_module_version_size(self.name)
@@ -141,16 +139,18 @@ class RemoteModule(object):
                 self.versions[code_version]["min_pkg_ver"] = ""
 
     def __init__(self, __name__, **kwargs):
+        from os.path import exists, getsize
+
         from ..store import get_developer_dict
-        from ..util.util import get_latest_version
-        from ..store.db import module_code_versions
-        from ..store.db import module_data_versions
-        from ..store.db import module_data_sources
-        from ..store.db import module_min_pkg_vers
-        from ..store.db import module_sizes
+        from ..store.db import (
+            module_code_versions,
+            module_data_sources,
+            module_data_versions,
+            module_min_pkg_vers,
+            module_sizes,
+        )
         from ..system import get_logo_path
-        from os.path import exists
-        from os.path import getsize
+        from ..util.util import get_latest_version
 
         self.name = kwargs.get("name") or ""
         self.store = kwargs.get("store") or "ov"
@@ -190,9 +190,11 @@ class RemoteModule(object):
 def get_conf(
     module_name: Optional[str] = None, conf_path: Optional[Path] = None
 ) -> Optional[dict]:
-    from ..system import get_cache_dir
     from json import load
+
     from oyaml import safe_load
+
+    from ..system import get_cache_dir
 
     fpath: Optional[Path] = None
     if not module_name and not conf_path:
@@ -222,9 +224,9 @@ def get_conf(
 
 
 def get_readme(module_name: str) -> Optional[str]:
-    from ..system import get_cache_dir
-    from ..store.db import find_name_store
     from ..exceptions import SystemMissingException
+    from ..store.db import find_name_store
+    from ..system import get_cache_dir
 
     ret = find_name_store(module_name)
     if not ret:
@@ -251,10 +253,11 @@ def get_install_deps(
     skip_installed=True,
 ) -> Tuple[dict, list]:
     from packaging.requirements import Requirement
-    from .local import get_local_module_info
+
     from ..store import remote_module_latest_version
     from ..util.util import get_latest_version
     from . import get_pypi_dependency_from_conf
+    from .local import get_local_module_info
 
     config = None
     if not module_name and not conf_path:
@@ -300,6 +303,7 @@ def get_install_deps(
 
 def search_remote(*patterns, module_type=None):
     from re import fullmatch
+
     from . import list_remote
 
     matching_names = []
@@ -312,8 +316,8 @@ def search_remote(*patterns, module_type=None):
 
 
 def get_remote_module_info_ls(module_name, version=None) -> Optional[RemoteModuleLs]:
-    from .cache import get_module_cache
     from ..store import remote_module_info_ls_latest_version
+    from .cache import get_module_cache
 
     mc = get_module_cache()
     if module_name not in mc.remote:
@@ -326,8 +330,8 @@ def get_remote_module_info_ls(module_name, version=None) -> Optional[RemoteModul
 
 
 def get_remote_module_info(module_name) -> Optional[RemoteModule]:
-    from .cache import get_module_cache
     from ..store import remote_module_info_latest_version
+    from .cache import get_module_cache
 
     mc = get_module_cache()
     if module_name not in mc.remote:
@@ -338,6 +342,7 @@ def get_remote_module_info(module_name) -> Optional[RemoteModule]:
 
 def save_remote_manifest_cache(content):
     import pickle
+
     from ..store.db import get_remote_manifest_cache_path
 
     path = get_remote_manifest_cache_path()
@@ -347,10 +352,10 @@ def save_remote_manifest_cache(content):
 
 
 def make_remote_manifest(refresh: bool = False):
-    from ..store.db import get_manifest
-    from ..store.db import get_remote_manifest_cache_path
-    from ..consts import module_tag_desc
     from traceback import print_exc
+
+    from ..consts import module_tag_desc
+    from ..store.db import get_manifest, get_remote_manifest_cache_path
 
     content = {}
     content["tagdesc"] = module_tag_desc

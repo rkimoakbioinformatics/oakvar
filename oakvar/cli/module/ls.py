@@ -48,12 +48,15 @@
 
 def list_modules(args):
     from oyaml import dump
-    from ...lib.module.remote import search_remote
-    from ...lib.module.local import search_local
-    from ...lib.module.local import get_local_module_info
-    from ...lib.module.remote import get_remote_module_info_ls
+
+    from ...lib.module.local import get_local_module_info, search_local
+    from ...lib.module.remote import (
+        RemoteModuleLs,
+        get_remote_module_info_ls,
+        search_remote,
+    )
+    from ...lib.store import store_label
     from ...lib.util.util import humanize_bytes
-    from ...lib.module.remote import RemoteModuleLs
 
     fmt = args.get("fmt", "return")
     nameonly = args.get("nameonly", False)
@@ -71,6 +74,7 @@ def list_modules(args):
                     "Name",
                     "Title",
                     "Type",
+                    "Store",
                     "Size",
                     "Store version",
                     "Store data source",
@@ -131,6 +135,7 @@ def list_modules(args):
                             [
                                 module_info.title,
                                 module_info.type,
+                                store_label(module_info.store),
                                 size,
                                 module_info.latest_code_version,
                                 module_info.latest_data_source,
@@ -158,6 +163,7 @@ def list_modules(args):
                             {
                                 "title": module_info.title,
                                 "type": module_info.type,
+                                "store": store_label(module_info.store),
                                 "size": size,
                                 "version": module_info.latest_code_version,
                                 "data_source": module_info.latest_data_source,

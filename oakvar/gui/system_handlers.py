@@ -84,8 +84,9 @@ class SystemHandlers:
 
     async def get_ez(self, _):
         from aiohttp.web import json_response
-        from ..lib.system import get_conf_dir
+
         from ..lib.store.ov.account import get_token_set
+        from ..lib.system import get_conf_dir
 
         conf_dir = get_conf_dir()
         token_set = get_token_set()
@@ -104,6 +105,7 @@ class SystemHandlers:
 
     async def get_base_modules(self, request):
         from aiohttp.web import json_response
+
         from ..lib.system import get_system_conf
         from ..lib.system.consts import base_modules_key
 
@@ -114,23 +116,34 @@ class SystemHandlers:
 
     async def get_local_module_info_web(self, request):
         from aiohttp.web import json_response
+
         from ..lib.module.local import get_local_module_info
+        from ..lib.store import store_label
+        from ..lib.store.db import find_name_store
 
         module_name = request.match_info["module"]
         mi = get_local_module_info(module_name)
         if mi:
-            return json_response(mi.serialize())
+            module_dict = mi.serialize()
+            store_result = find_name_store(module_name)
+            if store_result:
+                _, store_code = store_result
+                module_dict["store"] = store_code
+                module_dict["store_label"] = store_label(store_code)
+            return json_response(module_dict)
         else:
             return json_response({})
 
     async def start_setup(self, request):
         from aiohttp.web import Response
-        from ..lib.system.consts import root_dir_key
-        from ..lib.system.consts import modules_dir_key
-        from ..lib.system.consts import jobs_dir_key
-        from ..lib.system.consts import log_dir_key
-        from .consts import WS_COOKIE_KEY
-        from .consts import SYSTEM_STATE_SETUP_KEY
+
+        from ..lib.system.consts import (
+            jobs_dir_key,
+            log_dir_key,
+            modules_dir_key,
+            root_dir_key,
+        )
+        from .consts import SYSTEM_STATE_SETUP_KEY, WS_COOKIE_KEY
 
         # from .consts import SYSTEM_MSG_KEY
 
@@ -158,8 +171,8 @@ class SystemHandlers:
 
     async def get_modules_dir(self, _):
         from aiohttp.web import json_response
-        from ..lib.system import get_modules_dir
-        from ..lib.system import get_default_modules_dir
+
+        from ..lib.system import get_default_modules_dir, get_modules_dir
         from ..lib.system.consts import modules_dir_key
 
         modules_dir = get_modules_dir()
@@ -169,8 +182,8 @@ class SystemHandlers:
 
     async def get_jobs_dir(self, _):
         from aiohttp.web import json_response
-        from ..lib.system import get_jobs_dir
-        from ..lib.system import get_default_jobs_dir
+
+        from ..lib.system import get_default_jobs_dir, get_jobs_dir
         from ..lib.system.consts import jobs_dir_key
 
         jobs_dir = get_jobs_dir()
@@ -180,8 +193,8 @@ class SystemHandlers:
 
     async def get_log_dir(self, _):
         from aiohttp.web import json_response
-        from ..lib.system import get_log_dir
-        from ..lib.system import get_default_log_dir
+
+        from ..lib.system import get_default_log_dir, get_log_dir
         from ..lib.system.consts import log_dir_key
 
         log_dir = get_log_dir()
@@ -191,6 +204,7 @@ class SystemHandlers:
 
     async def check_server_dir(self, request):
         from pathlib import Path
+
         from aiohttp.web import json_response
 
         queries = request.rel_url.query
@@ -203,8 +217,8 @@ class SystemHandlers:
 
     async def get_root_dir(self, _):
         from aiohttp.web import json_response
-        from ..lib.system import get_root_dir
-        from ..lib.system import get_default_root_dir
+
+        from ..lib.system import get_default_root_dir, get_root_dir
         from ..lib.system.consts import root_dir_key
 
         root_dir = get_root_dir()
@@ -214,6 +228,7 @@ class SystemHandlers:
 
     async def get_package_versions(self, _):
         from aiohttp.web import json_response
+
         from ..lib.util.admin_util import get_current_package_version
 
         cur_ver = get_current_package_version()
@@ -222,6 +237,7 @@ class SystemHandlers:
 
     async def get_login_state(self, request):
         from aiohttp.web import json_response
+
         from .util import is_loggedin
 
         if not self.servermode or not self.mu:
@@ -238,8 +254,9 @@ class SystemHandlers:
     async def get_system_log(self, _):
         from aiohttp import web
         from aiohttp.web import Response
-        from .util import get_log_path
+
         from .consts import LOG_FN
+        from .util import get_log_path
 
         log_path = get_log_path()
         if not log_path:
