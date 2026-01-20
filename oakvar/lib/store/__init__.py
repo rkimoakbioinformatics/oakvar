@@ -100,7 +100,7 @@ def verify_against_manifest(dirpath, manifest):
     for item_name, v in manifest.items():
         item_path = join(dirpath, item_name)
         if exists(item_path):
-            if type(v) == dict:
+            if isinstance(v, dict):
                 correct = isdir(item_path) and verify_against_manifest(item_path, v)
             else:
                 correct = v == file_checksum(item_path)

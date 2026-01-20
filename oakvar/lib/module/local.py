@@ -45,19 +45,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from typing import Any
-from typing import Optional
-from typing import Union
-from typing import Tuple
-from typing import List
-from typing import Dict
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 
 class LocalModule(object):
     def __init__(self, dir_path: Path, __module_type__=None, name=None):
-        from ..util.util import load_yml_conf
         from ..store import get_developer_dict
+        from ..util.util import load_yml_conf
 
         self.directory = Path(dir_path).absolute()
         if not name:
@@ -129,6 +124,7 @@ class LocalModule(object):
             get_logo_path(self.name, self.type, module_dir=self.directory) is not None
         )
         self.publish_time = ""
+        self.store = ""
 
     def get_size(self):
         """
@@ -141,8 +137,9 @@ class LocalModule(object):
         return self.size
 
     def get_data_size(self):
-        from ..util.util import get_directory_size
         from os.path import join
+
+        from ..util.util import get_directory_size
 
         if self.data_size is None:
             self.data_size = get_directory_size(join(self.directory, "data"))
@@ -275,8 +272,9 @@ def get_module_data_version(
 def get_new_module_dir(
     module_name: str, module_type: str, modules_dir: Optional[Path] = None
 ):
-    from ..system import get_modules_dir
     from pathlib import Path
+
+    from ..system import get_modules_dir
 
     if not modules_dir:
         modules_dir = get_modules_dir()
@@ -319,10 +317,12 @@ def get_module_test_dir(module_name: str, module_type: str = "") -> Optional[Pat
         return module_dir / "test"
     return None
 
+
 def get_module_conf(
     module_name, module_type: str = "", module_dir: Optional[Path] = None
 ) -> Dict[str, Any]:
     from pathlib import Path
+
     from ..util.util import load_yml_conf
 
     if module_dir:
@@ -354,6 +354,7 @@ def get_module_conf_path(module_name: str, module_type: str = ""):
 
 def search_local(*patterns):
     from re import fullmatch
+
     from ..system import get_modules_dir
     from . import list_local
     from .cache import get_module_cache
@@ -378,9 +379,8 @@ def search_local(*patterns):
 
 
 def module_exists_local(module_name):
-    from os.path import exists
-    from os.path import basename
-    from os.path import join
+    from os.path import basename, exists, join
+
     from .cache import get_module_cache
 
     if module_name in get_module_cache().get_local():
@@ -395,8 +395,7 @@ def module_exists_local(module_name):
 def get_logo_b64_path(
     module_name: str, module_type: str = "", module_dir=None
 ) -> Optional[str]:
-    from os.path import join
-    from os.path import exists
+    from os.path import exists, join
 
     if not module_dir:
         module_dir = get_module_dir(module_name, module_type=module_type)
@@ -410,8 +409,7 @@ def get_logo_b64_path(
 def get_logo_path(
     module_name: str, module_type: str = "", module_dir=None
 ) -> Optional[str]:
-    from os.path import join
-    from os.path import exists
+    from os.path import exists, join
 
     if not module_dir:
         module_dir = get_module_dir(module_name, module_type=module_type)
@@ -424,9 +422,11 @@ def get_logo_path(
 
 def get_logo_b64(module_name: str, module_type: str = "") -> Optional[str]:
     from base64 import b64encode
-    from PIL import Image
-    from ..store.consts import logo_size
     from io import BytesIO
+
+    from PIL import Image
+
+    from ..store.consts import logo_size
 
     module_dir = get_module_dir(module_name, module_type=module_type)
     p = get_logo_b64_path(module_name, module_type=module_type, module_dir=module_dir)
@@ -443,10 +443,11 @@ def get_logo_b64(module_name: str, module_type: str = "") -> Optional[str]:
 
 
 def get_remote_manifest_from_local(module_name: str, outer=None):
-    from os.path import exists
     from datetime import datetime
-    from ..util.admin_util import oakvar_version
+    from os.path import exists
+
     from ..consts import publish_time_fmt
+    from ..util.admin_util import oakvar_version
 
     module_info = get_local_module_info(module_name)
     if not module_info:
@@ -499,6 +500,7 @@ def get_conf_path(module_name, module_type: str = "") -> Optional[Path]:
 
 def get_conf(module_name, module_type: str = "") -> Optional[dict]:
     from pathlib import Path
+
     from ..util.util import load_yml_conf
 
     p = get_conf_path(module_name, module_type=module_type)
@@ -544,8 +546,8 @@ def get_module_size(module_name, module_type: str = "") -> int:
 def get_data_size(
     module_name, data_version: str = "", module_type: str = ""
 ) -> Optional[int]:
-    from ..util.util import get_directory_size
     from ..store.db import get_module_data_version_size_from_store
+    from ..util.util import get_directory_size
 
     d = get_module_dir(module_name, module_type=module_type)
     if d:
@@ -567,10 +569,10 @@ def get_code_size(module_name, module_type: str = "") -> Optional[int]:
 
 def get_module_name_and_module_dir(module_name: str) -> Tuple[str, Path]:
     from os.path import exists
-    from ..exceptions import ArgumentError
-    from ..module.local import get_module_dir
-    from ..exceptions import ModuleLoadingError
     from pathlib import Path
+
+    from ..exceptions import ArgumentError, ModuleLoadingError
+    from ..module.local import get_module_dir
 
     if not module_name:
         raise ArgumentError(msg="argument module is missing")
@@ -610,15 +612,15 @@ def pack_module_zip(
     split: bool = False,
     outer=None,
 ) -> Optional[Path]:
-    from zipfile import ZipFile
-    from os import walk
-    from os import sep
+    from os import sep, walk
     from pathlib import Path
+    from zipfile import ZipFile
+
     from split_file_reader.split_file_writer import SplitFileWriter
+
+    from ..exceptions import ArgumentError, ModuleLoadingError
     from ..module.local import get_module_code_version
     from ..store.consts import MODULE_PACK_SPLIT_FILE_SIZE
-    from ..exceptions import ArgumentError
-    from ..exceptions import ModuleLoadingError
 
     try:
         module_name, module_dir = get_module_name_and_module_dir(module_name)
@@ -709,8 +711,7 @@ def pack_module(
 
 
 def load_modules(annotators: list = [], mapper: Optional[str] = None, input_file=None):
-    from ... import get_mapper
-    from ... import get_annotator
+    from ... import get_annotator, get_mapper
 
     modules = {}
     if mapper:
@@ -721,9 +722,8 @@ def load_modules(annotators: list = [], mapper: Optional[str] = None, input_file
 
 
 def remove_code_part_of_module(module_name: str, module_dir=None):
+    from os import listdir, remove
     from pathlib import Path
-    from os import listdir
-    from os import remove
     from shutil import rmtree
 
     if not module_dir:
@@ -740,8 +740,8 @@ def remove_code_part_of_module(module_name: str, module_dir=None):
 
 
 def is_same_class_val(a_val, b_val):
-    from types import FunctionType
     from inspect import getsource
+    from types import FunctionType
 
     a_ty = type(a_val)
     b_ty = type(b_val)
@@ -817,14 +817,13 @@ def get_class_code(cls) -> List[str]:
 
 
 def create_module_files(instance, overwrite: bool = False, interactive: bool = False):
+    from os import getcwd, makedirs
     from pathlib import Path
-    from os import makedirs
-    from os import getcwd
-    from shutil import copytree
-    from shutil import ignore_patterns
+    from shutil import copytree, ignore_patterns
+
     from oyaml import dump
-    from ..exceptions import IncompleteModuleError
-    from ..exceptions import SystemMissingException
+
+    from ..exceptions import IncompleteModuleError, SystemMissingException
     from ..system import get_modules_dir
     from ..util.util import is_in_jupyter_notebook
 

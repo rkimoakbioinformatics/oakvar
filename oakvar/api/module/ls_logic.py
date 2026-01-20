@@ -47,6 +47,8 @@
 
 from typing import Any, Dict, List
 
+from oakvar.lib.module.local import LocalModule
+
 
 def list_modules(
     module_names: List[str] = [],
@@ -145,7 +147,7 @@ def list_modules(
 def add_local_module_info_to_remote_module_info(remote_info):
     from ...lib.module.local import get_local_module_info
 
-    local_info = get_local_module_info(remote_info.name)
+    local_info: LocalModule | None = get_local_module_info(remote_info.name)
     if local_info:
         remote_info.installed = "yes"
         remote_info.local_code_version = local_info.latest_code_version

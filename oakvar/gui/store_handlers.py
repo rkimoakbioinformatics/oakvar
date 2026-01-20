@@ -265,7 +265,8 @@ class StoreHandlers:
                 continue
             content["data"][module_name]["queued"] = True
         for module_name, module_info in content.get("data", {}).items():
-            self.add_store_info(module_name, module_info)
+            if module_name:
+                self.add_store_info(module_name, module_info)
         return content
 
     async def get_remote_manifest(self, request):
