@@ -45,12 +45,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from typing import Optional
-from typing import Union
-#from typing import Tuple
-from typing import Dict
-from typing import List
 from pathlib import Path
+
+# from typing import Tuple
+from typing import Dict, List, Optional, Union
 
 custom_system_conf = None
 
@@ -72,14 +70,14 @@ def setup_system(
     sg_mode: bool = False,
     modules: List[str] = [],
 ):
-    #import platform
+    # import platform
     from os import environ
-    from ...api.module import install_system_modules
-    from ...api.module import install
-    from .consts import sys_conf_path_key
+
+    from ...api.module import install, install_system_modules
+    from ...gui.serveradmindb import setup_serveradmindb
     from ..store.ov import setup_ov_store_cache
     from ..util.run import show_logo
-    from ...gui.serveradmindb import setup_serveradmindb
+    from .consts import sys_conf_path_key
 
     _ = sg_mode
     _ = ws_id
@@ -101,12 +99,12 @@ def setup_system(
     # set up a user conf file.
     setup_user_conf_file(clean=clean, outer=outer)
     # set up a store account.
-    #os_platform = platform.platform()
-    #if (sg_mode or os_platform.startswith("Windows")) and install_mode != "web":
+    # os_platform = platform.platform()
+    # if (sg_mode or os_platform.startswith("Windows")) and install_mode != "web":
     #    ret = run_sg_store_account(
     #        email=email, pw=pw, install_mode=install_mode, clean=clean
     #    )
-    #else:
+    # else:
     ret = setup_store_account(
         conf=conf,
         email=email,
@@ -160,7 +158,13 @@ def setup_system(
         return False
     if outer:
         outer.write("Installing additional modules...")
-    ret = install(module_names=modules, yes=True, no_fetch=True, outer=outer, system_worker_state=system_worker_state)
+    ret = install(
+        module_names=modules,
+        yes=True,
+        no_fetch=True,
+        outer=outer,
+        system_worker_state=system_worker_state,
+    )
     if ret is None or ret == 0 or ret is True:  # 0 or None?
         if outer:
             outer.write("Done setting up the system.")
@@ -175,12 +179,14 @@ def setup_system(
 
 
 def setup_system_dirs(conf=None, outer=None):
-    from .consts import root_dir_key
-    from .consts import conf_dir_key
-    from .consts import modules_dir_key
-    from .consts import jobs_dir_key
-    from .consts import log_dir_key
-    from .consts import LIFTOVER_DIR_KEY
+    from .consts import (
+        LIFTOVER_DIR_KEY,
+        conf_dir_key,
+        jobs_dir_key,
+        log_dir_key,
+        modules_dir_key,
+        root_dir_key,
+    )
 
     if conf:
         create_dir_if_absent(conf[root_dir_key], outer=outer)
@@ -197,8 +203,9 @@ def setup_system_conf(
     custom_system_conf: Optional[Dict] = None,
     outer=None,
 ) -> dict:
-    from .consts import sys_conf_path_key
     from os.path import exists
+
+    from .consts import sys_conf_path_key
 
     conf = None
     if setup_file:
@@ -256,8 +263,7 @@ def setup_store_account(
     clean: bool = False,
     outer=None,
 ) -> dict:
-    from ..store.ov.account import total_login
-    from ..store.ov.account import delete_token_set
+    from ..store.ov.account import delete_token_set, total_login
 
     if clean:
         delete_token_set()
@@ -272,9 +278,9 @@ def setup_store_account(
 
 
 def setup_user_conf_file(clean: bool = False, outer=None):
+    from os import mkdir
     from os.path import exists
     from shutil import copyfile
-    from os import mkdir
 
     user_conf_dir = get_user_conf_dir()
     if not exists(user_conf_dir):
@@ -406,8 +412,9 @@ def get_sys_conf_value(
     conf_key: str, sys_conf_path=None, conf=None
 ) -> Optional[Union[str, int, float, dict]]:
     from os import environ
-    from ..util.util import load_yml_conf
     from os.path import exists
+
+    from ..util.util import load_yml_conf
 
     # custom conf
     if conf is not None and conf_key in conf:
@@ -471,8 +478,8 @@ def get_user_conf_path() -> Path:
 
 
 def get_default_user_conf_path() -> Path:
-    from .consts import user_conf_fname
     from ..util.admin_util import get_packagedir
+    from .consts import user_conf_fname
 
     default_user_conf_path = get_packagedir() / "lib" / "assets" / user_conf_fname
     return default_user_conf_path
@@ -488,16 +495,19 @@ def get_default_user_conf() -> dict:
 
 def add_system_dirs_to_system_conf(system_conf: dict) -> dict:
     from pathlib import Path
-    from .consts import root_dir_key
-    from .consts import modules_dir_key
-    from .consts import conf_dir_key
-    from .consts import jobs_dir_key
-    from .consts import log_dir_key
-    from .consts import package_dir_key
-    from .consts import sys_conf_path_key
-    from .consts import LIFTOVER_DIR_KEY
-    from .consts import LIFTOVER_DIR_NAME
+
     from ..util.admin_util import get_packagedir
+    from .consts import (
+        LIFTOVER_DIR_KEY,
+        LIFTOVER_DIR_NAME,
+        conf_dir_key,
+        jobs_dir_key,
+        log_dir_key,
+        modules_dir_key,
+        package_dir_key,
+        root_dir_key,
+        sys_conf_path_key,
+    )
 
     # conf_path
     if sys_conf_path_key in system_conf:
@@ -512,10 +522,11 @@ def add_system_dirs_to_system_conf(system_conf: dict) -> dict:
         root_dir = get_default_root_dir(conf=system_conf)
     system_conf[root_dir_key] = str(root_dir.expanduser())
     # conf_dir
-    if conf_dir_key in system_conf:
-        conf_dir: Path = Path(system_conf[conf_dir_key])
-    else:
-        conf_dir: Path = get_default_conf_dir(conf=system_conf)
+    conf_dir: Path = (
+        Path(system_conf[conf_dir_key])
+        if conf_dir_key in system_conf
+        else get_default_conf_dir(conf=system_conf)
+    )
     system_conf[conf_dir_key] = str(conf_dir.expanduser())
     # liftover dir
     liftover_dir = conf_dir / LIFTOVER_DIR_NAME
@@ -566,13 +577,16 @@ def augment_with_sys_conf_temp(conf: dict, conf_template: dict):
 def get_system_conf(sys_conf_path=None, conf=None, clean: bool = False) -> dict:
     from os import environ
     from os.path import exists
-    from .consts import sys_conf_path_key
-    from .consts import root_dir_key
-    from .consts import modules_dir_key
-    from .consts import log_dir_key
-    from .consts import conf_dir_key
-    from .consts import jobs_dir_key
+
     from ..util.util import load_yml_conf
+    from .consts import (
+        conf_dir_key,
+        jobs_dir_key,
+        log_dir_key,
+        modules_dir_key,
+        root_dir_key,
+        sys_conf_path_key,
+    )
 
     dir_keys = [modules_dir_key, log_dir_key, conf_dir_key, jobs_dir_key]
     # order is: given conf > custom conf path > env > sys conf > template
@@ -625,8 +639,9 @@ def update_system_conf_file(d):
 
 def get_main_default_path():
     import os
-    from .consts import user_conf_fname
+
     from ..util.admin_util import get_packagedir
+    from .consts import user_conf_fname
 
     return os.path.join(get_packagedir(), user_conf_fname)
 
@@ -636,6 +651,7 @@ def set_modules_dir(path, __overwrite__=False):
     Set the modules_dir to the directory in path.
     """
     import os
+
     from .consts import modules_dir_key
 
     path = os.path.abspath(os.path.expanduser(path))
@@ -645,8 +661,8 @@ def set_modules_dir(path, __overwrite__=False):
 
 
 def create_dir_if_absent(d, outer=None):
-    from os.path import exists
     from os import makedirs
+    from os.path import exists
 
     if d is not None:
         if not exists(d):
@@ -657,6 +673,7 @@ def create_dir_if_absent(d, outer=None):
 
 def is_root_user():
     from os import environ
+
     from ..util.admin_util import get_platform
 
     pl = get_platform()
@@ -682,11 +699,14 @@ def get_env_key(conf_key):
 def get_system_conf_path(conf=None) -> Path:
     from os import environ
     from pathlib import Path
-    from .consts import sys_conf_fname
-    from .consts import sys_conf_path_key
-    from .consts import root_dir_key
-    from .consts import conf_dir_key
-    from .consts import conf_dir_name
+
+    from .consts import (
+        conf_dir_key,
+        conf_dir_name,
+        root_dir_key,
+        sys_conf_fname,
+        sys_conf_path_key,
+    )
 
     # custom conf
     if conf:
@@ -740,9 +760,10 @@ def get_default_log_dir(conf=None):
 
 
 def get_default_root_dir(conf=None) -> Path:
-    from os.path import expandvars
     from os import environ
+    from os.path import expanduser, expandvars
     from pathlib import Path
+
     from ..util.admin_util import get_platform
     from .consts import root_dir_key
 
@@ -752,16 +773,26 @@ def get_default_root_dir(conf=None) -> Path:
     pl = get_platform()
     root_dir = None
     if pl == "windows":
-        root_dir = Path(expandvars("%systemdrive%")) / "\\open-cravat"
-        if not root_dir.exists():
-            root_dir = Path(expandvars("%systemdrive%")) / "\\oakvar"
+        root_dir = Path(expandvars("%systemdrive%")) / "\\oakvar"
+    elif pl == "macos":
+        root_dir = Path("/Users/Shared/oakvar")
     elif pl == "linux":
         path = ".oakvar"
         if is_root_user():
             sudo_user = environ.get("SUDO_USER")
             home = environ.get("HOME")
             if sudo_user is not None:
-                root_dir = Path("/home") / sudo_user / path
+                try:
+                    from pwd import getpwnam
+
+                    sudo_home = Path(getpwnam(sudo_user).pw_dir)
+                except Exception:
+                    expanded = expanduser(f"~{sudo_user}")
+                    sudo_home = None if expanded.startswith("~") else Path(expanded)
+                if sudo_home is not None:
+                    root_dir = sudo_home / path
+                else:
+                    root_dir = Path.home() / path
             elif home is not None and home == "/root":  # Ubuntu in docker
                 root_dir = Path(home) / ".oakvar"
             else:
@@ -769,22 +800,25 @@ def get_default_root_dir(conf=None) -> Path:
         else:
             user = environ.get("USER")
             if user is not None:
-                root_dir = Path("/home") / user / path
+                expanded = expanduser(f"~{user}")
+                root_dir = (
+                    Path(expanded) / path
+                    if not expanded.startswith("~")
+                    else Path.home() / path
+                )
             else:
                 root_dir = Path.home() / path
-    elif pl == "macos":
-        root_dir = Path("/Users/Shared/oakvar")
     else:
         root_dir = Path(".")
     return root_dir
 
 
 def get_max_num_concurrent_modules_per_job() -> int:
-    from .consts import max_num_concurrent_modules_per_job_key
     from .consts import (
+        DEFAULT_MAX_NUM_CONCURRENT_JOBS,
         max_num_concurrent_annotators_per_job_key,
+        max_num_concurrent_modules_per_job_key,
     )  # TODO: backward-compatibility. remove after some time.
-    from .consts import DEFAULT_MAX_NUM_CONCURRENT_JOBS
 
     value = get_sys_conf_int_value(max_num_concurrent_modules_per_job_key)
     if not value:
@@ -795,13 +829,14 @@ def get_max_num_concurrent_modules_per_job() -> int:
 
 
 def save_system_conf(conf: Dict):
-    from .consts import sys_conf_path_key
-    from oyaml import dump
-    from os import makedirs
     import copy
+    from os import makedirs
+
+    from oyaml import dump
+
     from ..exceptions import SystemMissingException
-    from ..store.consts import OV_STORE_EMAIL_KEY
-    from ..store.consts import OV_STORE_PW_KEY
+    from ..store.consts import OV_STORE_EMAIL_KEY, OV_STORE_PW_KEY
+    from .consts import sys_conf_path_key
 
     sys_conf_path: Optional[str] = conf.get(sys_conf_path_key)
     if sys_conf_path is None or sys_conf_path == "":
@@ -822,8 +857,8 @@ def save_system_conf(conf: Dict):
 
 
 def get_system_conf_template_path():
-    from .consts import sys_conf_fname
     from ..util.admin_util import get_packagedir
+    from .consts import sys_conf_fname
 
     return get_packagedir() / "lib" / "assets" / sys_conf_fname
 
@@ -846,10 +881,7 @@ def write_system_conf_file(d):
 
 
 def check_system_yml(outer=None) -> bool:
-    from .consts import conf_dir_key
-    from .consts import modules_dir_key
-    from .consts import jobs_dir_key
-    from .consts import log_dir_key
+    from .consts import conf_dir_key, jobs_dir_key, log_dir_key, modules_dir_key
 
     if outer:
         outer.write("Checking system configuration file...")
@@ -874,6 +906,7 @@ def check_system_yml(outer=None) -> bool:
 
 def check_user_yml(outer=None) -> bool:
     from pathlib import Path
+
     from ..util.util import load_yml_conf
 
     if outer:
@@ -894,11 +927,9 @@ def check_user_yml(outer=None) -> bool:
 
 
 def check_system_directories(outer=None) -> bool:
-    from .consts import conf_dir_key
-    from .consts import modules_dir_key
-    from .consts import jobs_dir_key
-    from .consts import log_dir_key
     from os.path import exists
+
+    from .consts import conf_dir_key, jobs_dir_key, log_dir_key, modules_dir_key
 
     if outer:
         outer.write("Checking system directories...")
@@ -917,8 +948,7 @@ def check_system_directories(outer=None) -> bool:
 
 
 def check_account(outer=None) -> bool:
-    from ..store.ov.account import token_set_exists
-    from ..store.ov.account import check_logged_in_with_token
+    from ..store.ov.account import check_logged_in_with_token, token_set_exists
 
     if outer:
         outer.write("Checking OakVar account...")
@@ -955,9 +985,9 @@ def check_cache_files(outer=None) -> bool:
 
 
 def check_module_version_requirement(outer=None) -> bool:
+    from ..module.local import get_local_module_info
     from ..util.admin_util import get_packagedir
     from ..util.util import compare_version
-    from ..module.local import get_local_module_info
 
     if outer:
         outer.write("Checking module version requirements...")
@@ -987,10 +1017,11 @@ def check_module_version_requirement(outer=None) -> bool:
 
 
 def check(outer=None) -> bool:
+    from rich import box
     from rich.console import Console
     from rich.table import Table
     from rich.text import Text
-    from rich import box
+
     from ..store.db import check_tables
 
     success = True
@@ -1171,11 +1202,15 @@ def show_liftover_license(outer=None):
 
 
 def update(yes: bool = False, outer=None) -> bool:
-    from subprocess import run
-    from packaging.version import Version
     import os
-    from ..util.admin_util import get_current_package_version
-    from ..util.admin_util import get_latest_package_version
+    from subprocess import run
+
+    from packaging.version import Version
+
+    from ..util.admin_util import (
+        get_current_package_version,
+        get_latest_package_version,
+    )
     from .consts import PIP_ENV_KEY
 
     if outer:
@@ -1349,9 +1384,12 @@ def run_sg_login(logo_data):
             return ret
 """
 
+
 def get_sg_logo_data():
     import io
+
     from PIL import Image
+
     from ..system import get_ov_logo_path
 
     logo_path = str(get_ov_logo_path())
@@ -1364,6 +1402,7 @@ def get_sg_logo_data():
     logo.save(bio, format="PNG")
     logo_data = bio.getvalue()
     return logo_data
+
 
 """
 def gui_get_already_has_account(logo_data):
