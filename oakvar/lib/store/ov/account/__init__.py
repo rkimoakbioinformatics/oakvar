@@ -162,12 +162,12 @@ def create(
     finally:
         if outer:
             outer.write(msg)
-        return {
-            "status_code": status_code,
-            "msg": msg,
-            "success": success,
-            "email": email,
-        }
+    return {
+        "status_code": status_code,
+        "msg": msg,
+        "success": success,
+        "email": email,
+    }
 
 
 def delete(outer=None) -> bool:

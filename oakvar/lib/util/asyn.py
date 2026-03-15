@@ -68,6 +68,17 @@ def get_event_loop():
         #    loop = get_event_loop()
         # else:
         #    loop = get_event_loop()
-        loop = asyncio.get_event_loop()
-        nest_asyncio.apply(loop)
-    return loop
+        try:
+            loop = asyncio.get_running_loop()
+            nest_asyncio.apply(loop)
+            return loop
+        except RuntimeError:
+            pass
+        try:
+            loop = asyncio.get_event_loop()
+            nest_asyncio.apply(loop)
+            return loop
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            nest_asyncio.apply(loop)
+            return loop

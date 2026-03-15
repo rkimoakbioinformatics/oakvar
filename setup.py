@@ -10,7 +10,7 @@ install_requires = [
     "liftover",
     "markdown",
     "aiohttp<4.0.0",
-    "chardet>=3.0.4",
+    "chardet<6",
     "aiosqlite",
     "oyaml",
     "nest-asyncio",
@@ -68,7 +68,7 @@ walk_and_add("oakvar", oakvar_files)
 walk_and_add("cravat", cravat_files)
 setup(
     name="oakvar",
-    version="2.12.25",
+    version="2.13.0",
     description="A genomic variant analysis platform",
     long_description=long_description,
     long_description_content_type="text/x-rst",
