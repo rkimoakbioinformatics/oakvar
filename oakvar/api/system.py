@@ -65,7 +65,8 @@ def setup(
     outer=None,
     system_worker_state=None,
     sg_mode: bool = False,
-    modules: List[str] = []
+    wait_for_verification: bool = False,
+    modules: List[str] = [],
 ):
     """setup.
 
@@ -80,6 +81,7 @@ def setup(
         publish_time (str): publish_time
         system_worker_state:
         outer:
+        wait_for_verification (bool): Wait for interactive email verification before login.
     """
     from ..lib.system import setup_system
 
@@ -98,6 +100,7 @@ def setup(
         outer=outer,
         system_worker_state=system_worker_state,
         sg_mode=sg_mode,
+        wait_for_verification=wait_for_verification,
         modules=modules,
     )
 

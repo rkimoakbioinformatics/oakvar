@@ -624,11 +624,24 @@ def email_is_verified(email: str, outer=None) -> bool:
         return False
 
 
-def announce_on_email_verification_if_needed(email: str, outer=None):
+def announce_on_email_verification_if_needed(email: str, outer=None) -> bool:
     from ....system import show_email_verify_action_banner
 
-    if not email_is_verified(email, outer=outer):
+    verified = email_is_verified(email, outer=outer)
+    if not verified:
         show_email_verify_action_banner(email)
+    return verified
+
+
+def wait_for_email_verification(email: str, outer=None) -> bool:
+    from ....util.util import is_in_jupyter_notebook
+
+    if is_in_jupyter_notebook():
+        return False
+    while True:
+        input("When your email is verified, press Enter to proceed.")
+        if email_is_verified(email, outer=outer):
+            return True
 
 
 def login_with_token_set(email=None, outer=None) -> Tuple[bool, str]:
@@ -668,6 +681,7 @@ def login_with_email_pw(
     pw: Optional[str] = None,
     conf: Optional[Dict] = None,
     outer=None,
+    wait_for_verification: bool = False,
 ) -> dict:
     email, pw = get_email_pw_from_settings(email=email, pw=pw, conf=conf)
     if not email or not pw:
@@ -678,7 +692,16 @@ def login_with_email_pw(
             "email": email,
         }
     if emailpw_are_valid(email=email, pw=pw):
-        announce_on_email_verification_if_needed(email, outer=outer)
+        if not announce_on_email_verification_if_needed(email, outer=outer):
+            if wait_for_verification and not wait_for_email_verification(
+                email, outer=outer
+            ):
+                return {
+                    "status_code": 403,
+                    "msg": "Email verification must be completed before login.",
+                    "success": False,
+                    "email": email,
+                }
         ret = login(email=email, pw=pw, outer=outer)
         return ret
     else:
@@ -697,6 +720,7 @@ def total_login(
     install_mode: str = "",
     conf: Optional[Dict] = None,
     outer=None,
+    wait_for_verification: bool = False,
 ) -> dict:
     from ....system import show_no_user_account_prelude
     from ....util.util import is_in_jupyter_notebook
@@ -705,7 +729,13 @@ def total_login(
         ret, logged_email = login_with_token_set(email=email, outer=outer)
         if ret is True:
             return {"success": True, "email": logged_email}
-    ret = login_with_email_pw(email=email, pw=pw, conf=conf, outer=outer)
+    ret = login_with_email_pw(
+        email=email,
+        pw=pw,
+        conf=conf,
+        outer=outer,
+        wait_for_verification=wait_for_verification,
+    )
     if ret.get("success"):
         return {"success": True, "email": ret["email"]}
     elif ret.get("status_code") == 400 and email is not None and pw is not None:
@@ -743,7 +773,13 @@ def total_login(
             email, pw = get_email_pw_interactively(
                 email=email, pw=pw, pwconfirm=False, outer=outer
             )
-        ret = login_with_email_pw(email=email, pw=pw, conf=conf)
+        ret = login_with_email_pw(
+            email=email,
+            pw=pw,
+            conf=conf,
+            wait_for_verification=True,
+            outer=outer,
+        )
         return ret
     else:
         show_no_user_account_prelude()
@@ -761,6 +797,13 @@ def total_login(
             if outer:
                 outer.write(ret)
             return ret
-        announce_on_email_verification_if_needed(email, outer=outer)
+        if not announce_on_email_verification_if_needed(email, outer=outer):
+            if not wait_for_email_verification(email, outer=outer):
+                return {
+                    "status_code": 403,
+                    "msg": "Email verification must be completed before login.",
+                    "success": False,
+                    "email": email,
+                }
         ret = login(email=email, pw=pw, outer=outer)
         return ret

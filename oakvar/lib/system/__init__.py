@@ -68,6 +68,7 @@ def setup_system(
     install_mode: str = "",
     ws_id: str = "",
     sg_mode: bool = False,
+    wait_for_verification: bool = False,
     modules: List[str] = [],
 ):
     # import platform
@@ -113,6 +114,7 @@ def setup_system(
         install_mode=install_mode,
         clean=clean,
         outer=outer,
+        wait_for_verification=wait_for_verification,
     )
     if ret.get("success") is not True:
         if outer:
@@ -262,6 +264,7 @@ def setup_store_account(
     install_mode: str = "",
     clean: bool = False,
     outer=None,
+    wait_for_verification: bool = False,
 ) -> dict:
     from ..store.ov.account import delete_token_set, total_login
 
@@ -274,6 +277,7 @@ def setup_store_account(
         create_account=create_account,
         install_mode=install_mode,
         outer=outer,
+        wait_for_verification=wait_for_verification,
     )
 
 

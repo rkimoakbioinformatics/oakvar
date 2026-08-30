@@ -58,6 +58,7 @@ def cli_system_setup(args):
 def setup(args, __name__="system setup"):
     from ..api.system import setup
 
+    args["wait_for_verification"] = True
     return setup(**args)
 
 
